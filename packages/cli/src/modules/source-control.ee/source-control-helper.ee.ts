@@ -21,8 +21,13 @@ import type { ExportedFolders } from './types/exportable-folders';
 import type { KeyPair } from './types/key-pair';
 import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-import type { StatusResourceOwner } from './types/resource-owner';
-import type { ExportableDataTable, ExportableDataTableColumn } from './types/exportable-data-table';
+import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
+import type {
+	DataTableResourceOwner,
+	ExportableDataTable,
+	ExportableDataTableColumn,
+	StatusExportableDataTable,
+} from './types/exportable-data-table';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
@@ -277,7 +282,7 @@ export function normalizeAndValidateSourceControlledFilePath(
 }
 
 export function hasOwnerChanged(
-	owner1?: StatusResourceOwner | null,
+	owner1?: RemoteResourceOwner | StatusResourceOwner | null,
 	owner2?: StatusResourceOwner | null,
 ): boolean {
 	// We only compare owners when there is at least one team owner
@@ -286,11 +291,19 @@ export function hasOwnerChanged(
 		return false;
 	}
 
+	// Handle string format (legacy personal email)
+	if (typeof owner1 === 'string') {
+		return false; // Personal projects are not synced
+	}
+
 	if (owner1.type !== 'team' && owner2.type !== 'team') {
 		return false;
 	}
 
-	return owner1.projectId !== owner2.projectId;
+	// For team projects, compare IDs
+	// owner1 could be TeamResourceOwner (with teamId) or StatusResourceOwner (with projectId)
+	const owner1TeamId = 'teamId' in owner1 ? owner1.teamId : owner1.projectId;
+	return owner1TeamId !== owner2.projectId;
 }
 
 /**
@@ -336,16 +349,19 @@ function areDataTableColumnsEqual(
 
 /**
  * Checks if a data table has been modified by comparing basic properties and schema (columns)
- * between local and remote versions
+ * between local and remote versions.
+ *
+ * Data tables only use PersonalResourceOwner or TeamResourceOwner (no legacy string format).
  */
 export function isDataTableModified(
-	localDt: ExportableDataTable,
+	localDt: StatusExportableDataTable,
 	remoteDt: ExportableDataTable,
 ): boolean {
 	if (localDt.name !== remoteDt.name) {
 		return true;
 	}
 
+	// For data tables, ownedBy is DataTableResourceOwner (never string)
 	const ownerChanged = hasOwnerChanged(remoteDt.ownedBy, localDt.ownedBy);
 	if (ownerChanged) {
 		return true;

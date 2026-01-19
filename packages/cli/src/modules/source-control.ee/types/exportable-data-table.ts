@@ -1,4 +1,8 @@
-import type { StatusResourceOwner } from './resource-owner';
+import type {
+	PersonalResourceOwner,
+	StatusResourceOwner,
+	TeamResourceOwner,
+} from './resource-owner';
 
 export interface ExportableDataTableColumn {
 	id: string;
@@ -6,6 +10,12 @@ export interface ExportableDataTableColumn {
 	type: string;
 	index: number;
 }
+
+/**
+ * Data table ownership in git files.
+ * Only includes PersonalResourceOwner and TeamResourceOwner (no legacy string format).
+ */
+export type DataTableResourceOwner = PersonalResourceOwner | TeamResourceOwner;
 
 export interface ExportableDataTable {
 	id: string;
@@ -17,10 +27,12 @@ export interface ExportableDataTable {
 	/**
 	 * Owner of this data table at the source instance.
 	 * Ownership is mirrored at target instance based on project sync.
+	 * Data tables are new so they don't have legacy string format.
 	 */
-	ownedBy: StatusResourceOwner | null;
+	ownedBy: DataTableResourceOwner | null;
 }
 
-export type StatusExportableDataTable = ExportableDataTable & {
+export type StatusExportableDataTable = Omit<ExportableDataTable, 'ownedBy'> & {
 	filename: string;
+	ownedBy: StatusResourceOwner | null;
 };

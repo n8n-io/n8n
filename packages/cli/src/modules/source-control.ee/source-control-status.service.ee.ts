@@ -24,10 +24,15 @@ import {
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { StatusExportableCredential } from './types/exportable-credential';
-import type { ExportableDataTable } from './types/exportable-data-table';
+import type {
+	DataTableResourceOwner,
+	ExportableDataTable,
+	StatusExportableDataTable,
+} from './types/exportable-data-table';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
+import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
@@ -51,6 +56,40 @@ export class SourceControlStatusService {
 
 	private get dataTableExportFolder(): string {
 		return `${this.gitFolder}/${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}`;
+	}
+
+	/**
+	 * Converts data table ownership (from file or DB) to StatusResourceOwner (for API).
+	 * Returns undefined for personal projects since IDs don't sync across instances.
+	 * Data tables don't have legacy string format.
+	 */
+	private convertToStatusResourceOwner(
+		owner: DataTableResourceOwner | StatusResourceOwner | null | undefined,
+	): StatusResourceOwner | undefined {
+		if (!owner) {
+			return;
+		}
+
+		// Personal projects don't sync IDs across instances, so we don't show ownership in status
+		if (owner.type === 'personal') {
+			return;
+		}
+
+		// Check for TeamResourceOwner first (has teamId)
+		if ('teamId' in owner && 'teamName' in owner) {
+			return {
+				type: 'team',
+				projectId: owner.teamId,
+				projectName: owner.teamName,
+			};
+		}
+
+		// If it's StatusResourceOwner (has projectId but not teamId), return as-is
+		if ('projectId' in owner) {
+			return owner;
+		}
+
+		return;
 	}
 
 	/**
@@ -482,7 +521,7 @@ export class SourceControlStatusService {
 			(local) => dataTablesRemote.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		const dtModifiedInEither: ExportableDataTable[] = [];
+		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
 		dataTablesLocal.forEach((local) => {
 			const remote = dataTablesRemote.find((r) => r.id === local.id);
 
@@ -509,7 +548,7 @@ export class SourceControlStatusService {
 				conflict: false,
 				file: getDataTableExportPath(item.id, this.dataTableExportFolder),
 				updatedAt: new Date().toISOString(),
-				owner: item.ownedBy ?? undefined,
+				owner: this.convertToStatusResourceOwner(item.ownedBy),
 			});
 		});
 
@@ -537,7 +576,7 @@ export class SourceControlStatusService {
 				conflict: true,
 				file: getDataTableExportPath(item.id, this.dataTableExportFolder),
 				updatedAt: new Date().toISOString(),
-				owner: item.ownedBy ?? undefined,
+				owner: this.convertToStatusResourceOwner(item.ownedBy),
 			});
 		});
 

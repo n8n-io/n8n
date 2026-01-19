@@ -46,7 +46,7 @@ import { SourceControlScopedService } from './source-control-scoped.service';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
-import type { ExportableDataTable } from './types/exportable-data-table';
+import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table';
 import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
@@ -271,7 +271,13 @@ export class SourceControlExportService {
 				where: {
 					id: In(candidateIds),
 				},
-				relations: ['columns', 'project'],
+				relations: [
+					'columns',
+					'project',
+					'project.projectRelations',
+					'project.projectRelations.role',
+					'project.projectRelations.user',
+				],
 				select: {
 					id: true,
 					name: true,
@@ -305,12 +311,24 @@ export class SourceControlExportService {
 
 			// Write each data table to its own file
 			for (const table of dataTables) {
-				let owner: StatusResourceOwner | null = null;
-				if (table.project) {
+				let owner: DataTableResourceOwner | null = null;
+				if (table.project?.type === 'personal') {
+					const ownerRelation = table.project.projectRelations?.find(
+						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
+					);
+					if (ownerRelation) {
+						owner = {
+							type: 'personal',
+							projectId: table.project.id,
+							projectName: table.project.name,
+							personalEmail: ownerRelation.user.email,
+						};
+					}
+				} else if (table.project?.type === 'team') {
 					owner = {
-						type: table.project.type,
-						projectId: table.project.id,
-						projectName: table.project.name,
+						type: 'team',
+						teamId: table.project.id,
+						teamName: table.project.name,
 					};
 				}
 

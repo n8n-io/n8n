@@ -1215,10 +1215,8 @@ export class SourceControlImportService {
 
 				if (dataTable.ownedBy) {
 					if (dataTable.ownedBy.type === 'personal') {
-						// For personal projects, extract email from projectName (format: "Name <email>")
-						const emailMatch = dataTable.ownedBy.projectName.match(/<([^>]+)>/);
-						const personalEmail = emailMatch ? emailMatch[1] : null;
-
+						// For personal projects, use the personalEmail field directly
+						const personalEmail = dataTable.ownedBy.personalEmail;
 						if (personalEmail) {
 							const user = await this.userRepository.findOne({ where: { email: personalEmail } });
 							if (user) {
@@ -1230,14 +1228,14 @@ export class SourceControlImportService {
 					} else if (dataTable.ownedBy.type === 'team') {
 						// For team projects, find or create
 						targetProject = await this.projectRepository.findOne({
-							where: { id: dataTable.ownedBy.projectId },
+							where: { id: dataTable.ownedBy.teamId },
 						});
 
 						if (!targetProject) {
 							targetProject = await this.createTeamProject({
 								type: 'team',
-								teamId: dataTable.ownedBy.projectId,
-								teamName: dataTable.ownedBy.projectName,
+								teamId: dataTable.ownedBy.teamId,
+								teamName: dataTable.ownedBy.teamName,
 							});
 						}
 					}
