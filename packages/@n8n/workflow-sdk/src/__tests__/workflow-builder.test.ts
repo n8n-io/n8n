@@ -791,6 +791,95 @@ describe('Workflow Builder', () => {
 		});
 	});
 
+	describe('pinData', () => {
+		it('should collect pinData from node config into workflow JSON', () => {
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start', position: [240, 300] },
+			});
+
+			const boxNode = node({
+				type: 'n8n-nodes-base.box',
+				version: 1,
+				config: {
+					name: 'Search Box Files',
+					parameters: {
+						resource: 'file',
+						operation: 'search',
+						query: 'test',
+					},
+					position: [540, 300],
+					pinData: [
+						{
+							id: '123456789',
+							type: 'file',
+							name: 'Q4_Report.pdf',
+							size: 2048576,
+						},
+						{
+							id: '987654321',
+							type: 'file',
+							name: 'Meeting_Notes.docx',
+							size: 524288,
+						},
+					],
+				},
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(triggerNode).then(boxNode);
+			const json = wf.toJSON();
+
+			// pinData should be in the workflow JSON at the top level, keyed by node name
+			expect(json.pinData).toBeDefined();
+			expect(json.pinData!['Search Box Files']).toBeDefined();
+			expect(json.pinData!['Search Box Files']).toHaveLength(2);
+			expect(json.pinData!['Search Box Files'][0].id).toBe('123456789');
+			expect(json.pinData!['Search Box Files'][1].id).toBe('987654321');
+		});
+
+		it('should collect pinData from multiple nodes', () => {
+			const node1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'HTTP Node 1',
+					pinData: [{ result: 'data1' }],
+				},
+			});
+
+			const node2 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: {
+					name: 'HTTP Node 2',
+					pinData: [{ result: 'data2' }],
+				},
+			});
+
+			const wf = workflow('test-id', 'Test').add(node1).then(node2);
+			const json = wf.toJSON();
+
+			expect(json.pinData).toBeDefined();
+			expect(json.pinData!['HTTP Node 1']).toEqual([{ result: 'data1' }]);
+			expect(json.pinData!['HTTP Node 2']).toEqual([{ result: 'data2' }]);
+		});
+
+		it('should not include pinData key when no nodes have pinData', () => {
+			const node1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP Node' },
+			});
+
+			const wf = workflow('test-id', 'Test').add(node1);
+			const json = wf.toJSON();
+
+			// pinData should not exist or be undefined when no nodes have pinData
+			expect(json.pinData).toBeUndefined();
+		});
+	});
+
 	describe('switchCase()', () => {
 		it('should create Switch node with case branches', () => {
 			const triggerNode = trigger({

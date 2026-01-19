@@ -78,6 +78,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		currentNode?: string | null;
 		currentOutput?: number;
 		settings?: WorkflowSettings;
+		pinData?: Record<string, IDataObject[]>;
 	}): WorkflowBuilderImpl {
 		const builder = new WorkflowBuilderImpl(
 			this.id,
@@ -85,11 +86,46 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			overrides.settings ?? this._settings,
 			overrides.nodes ?? this._nodes,
 			overrides.currentNode !== undefined ? overrides.currentNode : this._currentNode,
-			this._pinData,
+			overrides.pinData ?? this._pinData,
 			this._meta,
 		);
 		builder._currentOutput = overrides.currentOutput ?? this._currentOutput;
 		return builder;
+	}
+
+	/**
+	 * Collect pinData from a node and merge it with existing pinData
+	 */
+	private collectPinData(
+		node: NodeInstance<string, string, unknown>,
+	): Record<string, IDataObject[]> | undefined {
+		const nodePinData = node.config.pinData;
+		if (!nodePinData || nodePinData.length === 0) {
+			return this._pinData;
+		}
+
+		// Merge with existing pinData
+		return {
+			...this._pinData,
+			[node.name]: nodePinData,
+		};
+	}
+
+	/**
+	 * Collect pinData from all nodes in a chain
+	 */
+	private collectPinDataFromChain(chain: NodeChain): Record<string, IDataObject[]> | undefined {
+		let pinData = this._pinData;
+		for (const chainNode of chain.allNodes) {
+			const nodePinData = chainNode.config.pinData;
+			if (nodePinData && nodePinData.length > 0) {
+				pinData = {
+					...pinData,
+					[chainNode.name]: nodePinData,
+				};
+			}
+		}
+		return pinData;
 	}
 
 	add<
@@ -106,20 +142,28 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			for (const chainNode of node.allNodes) {
 				this.addNodeWithSubnodes(newNodes, chainNode);
 			}
+			// Collect pinData from all nodes in the chain
+			const chainPinData = this.collectPinDataFromChain(node);
 			// Set currentNode to the tail (last node in the chain)
 			return this.clone({
 				nodes: newNodes,
 				currentNode: node.tail.name,
 				currentOutput: 0,
+				pinData: chainPinData,
 			});
 		}
 
 		// Regular node or trigger
 		this.addNodeWithSubnodes(newNodes, node);
+
+		// Collect pinData from the node if present
+		const newPinData = this.collectPinData(node);
+
 		return this.clone({
 			nodes: newNodes,
 			currentNode: node.name,
 			currentOutput: 0,
+			pinData: newPinData,
 		});
 	}
 
@@ -166,10 +210,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			}
 		}
 
+		// Collect pinData from the node if present
+		const newPinData = this.collectPinData(node);
+
 		return this.clone({
 			nodes: newNodes,
 			currentNode: node.name,
 			currentOutput: 0,
+			pinData: newPinData,
 		});
 	}
 
