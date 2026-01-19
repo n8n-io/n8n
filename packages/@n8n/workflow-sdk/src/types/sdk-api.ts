@@ -886,114 +886,15 @@ export type RunOnceForEachItemFn = <T = unknown>(
 ) => { mode: 'runOnceForEachItem'; jsCode: string };
 
 // =============================================================================
-// Node Output Types and Expressions
-// =============================================================================
-
-/**
- * ## Understanding Node Output Types
- *
- * Every node produces output data with a specific shape. The generated types
- * include Output types that describe exactly what fields are available.
- *
- * ### Output Type Naming Convention
- *
- * Output types follow this pattern: `{Node}V{Version}{Resource}{Operation}Output`
- *
- * Examples:
- * - `AsanaV1TaskGetOutput` - Asana node v1, task resource, get operation
- * - `SlackV24MessagePostOutput` - Slack node v2.4, message resource, post operation
- * - `GithubV1IssueCreateOutput` - GitHub node v1, issue resource, create operation
- *
- * ### Using Output Types in Expressions
- *
- * **$json** - Access the previous node's output directly:
- * ```typescript
- * // After Asana "Get Task" node (see AsanaV1TaskGetOutput for available fields):
- * taskId: '={{ $json.gid }}'
- * taskName: '={{ $json.name }}'
- * assigneeName: '={{ $json.assignee?.name }}'
- * isCompleted: '={{ $json.completed }}'
- * ```
- *
- * **$('NodeName')** - Reference any upstream node by its name:
- * ```typescript
- * // Reference "Get Task" node from anywhere downstream:
- * taskId: "={{ $('Get Task').item.json.gid }}"
- * taskName: "={{ $('Get Task').item.json.name }}"
- * ```
- *
- * ### Example: AsanaV1TaskGetOutput
- *
- * When using Asana node with resource='task', operation='get', the output has:
- * ```typescript
- * {
- *   gid?: string;              // $json.gid - Task ID
- *   name?: string;             // $json.name - Task name
- *   notes?: string;            // $json.notes - Task description
- *   completed?: boolean;       // $json.completed - Completion status
- *   assignee?: {               // $json.assignee - Assigned user
- *     gid?: string;            // $json.assignee.gid
- *     name?: string;           // $json.assignee.name
- *   };
- *   permalink_url?: string;    // $json.permalink_url - Link to task
- *   workspace?: {              // $json.workspace - Workspace info
- *     gid?: string;
- *     name?: string;
- *   };
- *   // ... more fields in the full type
- * }
- * ```
- *
- * ### How to Find Output Types
- *
- * 1. Call get_nodes(["n8n-nodes-base.asana"]) to see all operations
- * 2. Look for the Output type section in the response
- * 3. The type name tells you the exact fields: AsanaV1TaskGetOutput
- * 4. Use those field names in $json expressions
- *
- * ### Common Output Patterns
- *
- * **HTTP Request**: Returns response body - shape depends on the API called
- * **Triggers**: Webhook triggers have $json.body, $json.headers, $json.query
- * **Service nodes**: Output depends on resource/operation (check *Output types)
- *
- * ### Pin Data for Testing
- *
- * Output types define the shape for pinData. Use them to create test data:
- * ```typescript
- * config: {
- *   pinData: [{ gid: '123', name: 'Test Task', completed: false }]
- * }
- * ```
- */
-
-// =============================================================================
 // Expression Helper
 // =============================================================================
 
 /**
- * Context available in n8n expressions (inside {{ }})
- *
- * IMPORTANT: The shape of `json` depends on which node ran before.
- * Check the Output types from get_nodes to know what fields are available.
- *
- * Example: After Asana "Get Task", json contains { gid, name, assignee, ... }
- * Example: After HTTP Request, json contains the API response body
- *
- * TJson allows typing based on upstream node's output type
+ * Context available in n8n expressions (inside {{ }}).
+ * TJson allows typing based on upstream node's output type.
  */
 export interface ExpressionContext<TJson = IDataObject> {
-	/**
-	 * Current item's JSON data from the previous node.
-	 *
-	 * IMPORTANT: The actual fields depend on the previous node's Output type.
-	 * Look up the *Output type (e.g., AsanaV1TaskGetOutput) to see available fields.
-	 *
-	 * Example - after Asana "Get Task" node, $json has AsanaV1TaskGetOutput shape:
-	 *   $json.gid, $json.name, $json.assignee?.name, $json.completed, etc.
-	 *
-	 * Example - after HTTP Request node, $json has the API response body shape.
-	 */
+	/** Current item's JSON data from the previous node */
 	json: TJson;
 	/** Current item's binary data */
 	binary: {
