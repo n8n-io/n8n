@@ -17,7 +17,7 @@ test.describe('Workflows', () => {
 	test('should create a new workflow using empty state button', async ({ n8n }) => {
 		const { projectId } = await n8n.projectComposer.createProject();
 		await n8n.page.goto(`projects/${projectId}/workflows`);
-		await n8n.workflows.clickNewWorkflowButtonFromOverview();
+		await n8n.workflows.clickNewWorkflowButtonFromProject();
 		// New workflows redirect to /workflow/<id>?new=true
 		await expect(n8n.page).toHaveURL(/workflow\/[a-zA-Z0-9_-]+\?.*new=true/);
 	});
