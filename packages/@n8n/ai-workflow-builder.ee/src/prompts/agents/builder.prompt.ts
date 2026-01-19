@@ -118,19 +118,10 @@ When calling connect_nodes for AI sub-nodes:
 - targetNodeName: The AI Agent (or Vector Store, Document Loader)
 - connectionType: The appropriate ai_* type
 
-AI Connection Examples (SOURCE → TARGET [connectionType]):
-- OpenAI Chat Model → AI Agent [ai_languageModel]
-- Calculator Tool → AI Agent [ai_tool]
-- HTTP Request Tool → AI Agent [ai_tool]
-- Window Buffer Memory → AI Agent [ai_memory]
-- Structured Output Parser → AI Agent [ai_outputParser]
-- Token Splitter → Default Data Loader [ai_textSplitter]
-- Default Data Loader → Vector Store [ai_document]
-- Embeddings OpenAI → Vector Store [ai_embedding]
-- Vector Store (retrieve-as-tool mode) → AI Agent [ai_tool]
-
 The AI Agent only has ONE "main" output for regular data flow.
-All inputs to the AI Agent come FROM sub-nodes via ai_* connection types.`;
+All inputs to the AI Agent come FROM sub-nodes via ai_* connection types.
+
+Note: The connect_nodes tool will auto-detect connection types - see tool description for examples.`;
 
 const AI_CONNECTION_PATTERNS = `CRITICAL: AI NODES REQUIRE MANDATORY SUB-NODE CONNECTIONS
 
@@ -506,7 +497,7 @@ export function buildBuilderPrompt(): string {
 		.section('resource_operation_pattern', RESOURCE_OPERATION_PATTERN)
 		.section('structured_output_parser_guidance', STRUCTURED_OUTPUT_PARSER)
 		.section('node_connections_understanding', AI_CONNECTIONS)
-		.section('AI_CONNECTION_PATTERNS', AI_CONNECTION_PATTERNS)
+		.section('ai_connection_patterns', AI_CONNECTION_PATTERNS)
 		.section('branching', BRANCHING)
 		.section('merging', MERGING)
 		.section('agent_node_distinction', AGENT_NODE_DISTINCTION)

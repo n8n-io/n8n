@@ -56,6 +56,26 @@ function findExistingOutgoingConnection(
 }
 
 /**
+ * Check if a specific connection already exists between two nodes
+ */
+function connectionExistsBetweenNodes(
+	connections: IConnections,
+	sourceNodeName: string,
+	targetNodeName: string,
+	connectionType: NodeConnectionType,
+): boolean {
+	const nodeConnections = connections[sourceNodeName];
+	if (!nodeConnections) return false;
+
+	const typeConnections = nodeConnections[connectionType];
+	if (!typeConnections) return false;
+
+	return typeConnections.some((connArray) =>
+		connArray?.some((conn) => conn.node === targetNodeName),
+	);
+}
+
+/**
  * Check if a target node already has an incoming connection of a specific type
  */
 function checkNodeHasInputConnection(
@@ -109,20 +129,28 @@ function buildSubNodeOutputsMap(
 }
 
 /**
- * Find candidate sub-nodes that can provide a specific input type
+ * Find candidate sub-nodes that can provide a specific input type to a target node.
+ * A sub-node is a candidate if it outputs the required type and is not already
+ * connected to the specific target node (allows one sub-node to connect to multiple targets).
  */
-function findCandidateSubNodes(ctx: AutoFixContext, missingType: NodeConnectionType): string[] {
+function findCandidateSubNodes(
+	ctx: AutoFixContext,
+	targetNodeName: string,
+	missingType: NodeConnectionType,
+): string[] {
 	const candidates: string[] = [];
 
 	for (const [subNodeName, outputs] of ctx.subNodeOutputs) {
 		if (outputs.has(missingType)) {
-			const existingConnection = findExistingOutgoingConnection(
+			// Check if this sub-node is already connected to THIS specific target
+			const alreadyConnectedToTarget = connectionExistsBetweenNodes(
 				ctx.result.updatedConnections,
 				subNodeName,
+				targetNodeName,
 				missingType,
 			);
 
-			if (!existingConnection && !ctx.connectedSubNodes.has(subNodeName)) {
+			if (!alreadyConnectedToTarget) {
 				candidates.push(subNodeName);
 			}
 		}
@@ -135,19 +163,18 @@ function findCandidateSubNodes(ctx: AutoFixContext, missingType: NodeConnectionT
  * Process a single missing input violation
  */
 function processMissingInputViolation(ctx: AutoFixContext, violation: ProgrammaticViolation): void {
-	const match = violation.description.match(
-		/Node (.+) \((.+)\) is missing required input of type (.+)/,
-	);
-	if (!match) return;
+	const nodeName = violation.metadata?.nodeName;
+	const missingType = violation.metadata?.missingType;
 
-	const [, nodeName, , missingType] = match;
+	if (!nodeName || !missingType) return;
+
 	const targetNode = ctx.nodesByName.get(nodeName);
 	if (!targetNode || targetNode.disabled) return;
 
 	// Only auto-fix AI connections (ai_*)
 	if (!missingType.startsWith('ai_')) return;
 
-	const candidates = findCandidateSubNodes(ctx, missingType as NodeConnectionType);
+	const candidates = findCandidateSubNodes(ctx, nodeName, missingType as NodeConnectionType);
 
 	if (candidates.length === 1) {
 		const sourceNodeName = candidates[0];
@@ -232,12 +259,11 @@ function processDisconnectedSubNodeViolation(
 	ctx: AutoFixContext,
 	violation: ProgrammaticViolation,
 ): void {
-	const match = violation.description.match(
-		/Sub-node (.+) \((.+)\) provides (.+) but is not connected/,
-	);
-	if (!match) return;
+	const subNodeName = violation.metadata?.nodeName;
+	const outputType = violation.metadata?.outputType;
 
-	const [, subNodeName, , outputType] = match;
+	if (!subNodeName || !outputType) return;
+
 	const subNode = ctx.nodesByName.get(subNodeName);
 	if (!subNode || subNode.disabled) return;
 

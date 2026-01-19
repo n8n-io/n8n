@@ -129,6 +129,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 				{
 					name: 'sub-node-not-connected',
@@ -136,6 +141,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Sub-node OpenAI Model (@n8n/n8n-nodes-langchain.lmChatOpenAi) provides ai_languageModel but is not connected to a root node.',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'OpenAI Model',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						outputType: 'ai_languageModel',
+					},
 				},
 			];
 
@@ -165,6 +175,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 			];
 
@@ -188,6 +203,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 			];
 
@@ -216,6 +236,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 			];
 
@@ -226,7 +251,7 @@ describe('autoFixConnections', () => {
 			expect(result.unfixable[0].reason).toContain('No available sub-node');
 		});
 
-		it('should not use a sub-node that is already connected', () => {
+		it('should allow a sub-node to connect to multiple root nodes', () => {
 			const workflow = createWorkflow(
 				[
 					createNode({ name: 'AI Agent 1', type: '@n8n/n8n-nodes-langchain.agent' }),
@@ -247,14 +272,24 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent 2 (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent 2',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 			];
 
 			const result = autoFixConnections(workflow, mockNodeTypes, violations);
 
-			expect(result.fixed).toHaveLength(0);
-			expect(result.unfixable).toHaveLength(1);
-			expect(result.unfixable[0].reason).toContain('No available sub-node');
+			// Sub-node is connected to Agent 1 but can still connect to Agent 2
+			expect(result.fixed).toHaveLength(1);
+			expect(result.fixed[0]).toMatchObject({
+				sourceNodeName: 'OpenAI Model',
+				targetNodeName: 'AI Agent 2',
+				connectionType: 'ai_languageModel',
+			});
+			expect(result.unfixable).toHaveLength(0);
 		});
 
 		it('should fix Vector Store missing embeddings', () => {
@@ -271,6 +306,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node Vector Store (@n8n/n8n-nodes-langchain.vectorStoreInMemory) is missing required input of type ai_embedding',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'Vector Store',
+						nodeType: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						missingType: 'ai_embedding',
+					},
 				},
 			];
 
@@ -300,6 +340,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Sub-node OpenAI Model (@n8n/n8n-nodes-langchain.lmChatOpenAi) provides ai_languageModel but is not connected to a root node.',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'OpenAI Model',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						outputType: 'ai_languageModel',
+					},
 				},
 			];
 
@@ -327,6 +372,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Sub-node OpenAI Model (@n8n/n8n-nodes-langchain.lmChatOpenAi) provides ai_languageModel but is not connected to a root node.',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'OpenAI Model',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						outputType: 'ai_languageModel',
+					},
 				},
 			];
 
@@ -351,6 +401,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 				{
 					name: 'sub-node-not-connected',
@@ -358,6 +413,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Sub-node OpenAI Model (@n8n/n8n-nodes-langchain.lmChatOpenAi) provides ai_languageModel but is not connected to a root node.',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'OpenAI Model',
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						outputType: 'ai_languageModel',
+					},
 				},
 			];
 
@@ -391,6 +451,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 			];
 
@@ -412,6 +477,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type main',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'main',
+					},
 				},
 			];
 
@@ -443,14 +513,21 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 			];
 
 			const result = autoFixConnections(workflow, mockNodeTypes, violations);
 
-			// Sub-node is already connected, so it shouldn't be a candidate
+			// Sub-node is already connected to this target, so no fix needed
 			expect(result.fixed).toHaveLength(0);
+			// Reports unfixable because the only candidate is already connected to this target
 			expect(result.unfixable).toHaveLength(1);
+			expect(result.unfixable[0].reason).toContain('No available sub-node');
 		});
 
 		it('should handle unknown node types gracefully', () => {
@@ -466,13 +543,18 @@ describe('autoFixConnections', () => {
 					description:
 						'Node Unknown Node (n8n-nodes-base.unknown) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'Unknown Node',
+						nodeType: 'n8n-nodes-base.unknown',
+						missingType: 'ai_languageModel',
+					},
 				},
 			];
 
 			const result = autoFixConnections(workflow, mockNodeTypes, violations);
 
-			// Auto-fix should still work based on the violation description
-			// The node type doesn't need to be known since the violation already tells us what input is needed
+			// Auto-fix should still work based on the metadata
+			// The node type doesn't need to be known since the metadata already tells us what input is needed
 			expect(result.fixed).toHaveLength(1);
 			expect(result.fixed[0].targetNodeName).toBe('Unknown Node');
 			expect(result.fixed[0].connectionType).toBe('ai_languageModel');
@@ -501,6 +583,11 @@ describe('autoFixConnections', () => {
 					description:
 						'Node AI Agent (@n8n/n8n-nodes-langchain.agent) is missing required input of type ai_languageModel',
 					pointsDeducted: 50,
+					metadata: {
+						nodeName: 'AI Agent',
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						missingType: 'ai_languageModel',
+					},
 				},
 			];
 
