@@ -4,7 +4,6 @@ export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
-export { AiSessionMetadataResponseDto } from './ai/ai-session-metadata-response.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
