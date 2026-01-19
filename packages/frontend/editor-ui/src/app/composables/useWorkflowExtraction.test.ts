@@ -4,7 +4,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useWorkflowExtraction } from './useWorkflowExtraction';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
 import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
@@ -42,15 +41,13 @@ vi.mock('vue-router', async (importOriginal) => {
 });
 
 describe('useWorkflowExtraction', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
-	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
-	let uiStore: ReturnType<typeof useUIStore>;
+	let workflowsStore: any;
+	let nodeTypesStore: any;
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
-		uiStore = mockedStore(useUIStore);
 
 		// Setup basic workflow
 		workflowsStore.workflow = {
@@ -110,9 +107,7 @@ describe('useWorkflowExtraction', () => {
 			workflowsStore.workflow.connections = connections;
 
 			// Mock createNewWorkflow to capture the workflow data
-			let capturedWorkflowData: any;
 			workflowsStore.createNewWorkflow = vi.fn((data) => {
-				capturedWorkflowData = data;
 				return Promise.resolve({
 					id: 'new-workflow-id',
 					versionId: 'version-1',
@@ -120,17 +115,20 @@ describe('useWorkflowExtraction', () => {
 				} as any);
 			});
 
-			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve());
+			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
 
 			// Mock node type descriptions
-			nodeTypesStore.getNodeType = vi.fn((type: string) => {
-				return {
-					name: type,
-					group: [],
-					inputs: ['main'],
-					outputs: ['main'],
-				} as INodeTypeDescription;
-			});
+			vi.spyOn(nodeTypesStore, 'getNodeType').mockReturnValue({
+				name: 'n8n-nodes-base.code',
+				version: 1,
+				group: [],
+				inputs: ['main'],
+				outputs: ['main'],
+				displayName: 'Code',
+				description: 'Run custom code',
+				defaults: {},
+				properties: [],
+			} as unknown as INodeTypeDescription);
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 
@@ -196,17 +194,20 @@ describe('useWorkflowExtraction', () => {
 				} as any);
 			});
 
-			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve());
+			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
 
 			// Mock node type descriptions
-			nodeTypesStore.getNodeType = vi.fn(() => {
-				return {
-					name: 'n8n-nodes-base.code',
-					group: [],
-					inputs: ['main'],
-					outputs: ['main'],
-				} as INodeTypeDescription;
-			});
+			vi.spyOn(nodeTypesStore, 'getNodeType').mockReturnValue({
+				name: 'n8n-nodes-base.code',
+				version: 1,
+				group: [],
+				inputs: ['main'],
+				outputs: ['main'],
+				displayName: 'Code',
+				description: 'Run custom code',
+				defaults: {},
+				properties: [],
+			} as unknown as INodeTypeDescription);
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 			const result = tryExtractNodesIntoSubworkflow(['node-1', 'node-2']);
@@ -281,16 +282,19 @@ describe('useWorkflowExtraction', () => {
 				} as any);
 			});
 
-			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve());
+			workflowsStore.publishWorkflow = vi.fn(() => Promise.resolve({} as any));
 
-			nodeTypesStore.getNodeType = vi.fn(() => {
-				return {
-					name: 'n8n-nodes-base.code',
-					group: [],
-					inputs: ['main'],
-					outputs: ['main'],
-				} as INodeTypeDescription;
-			});
+			vi.spyOn(nodeTypesStore, 'getNodeType').mockReturnValue({
+				name: 'n8n-nodes-base.code',
+				version: 1,
+				group: [],
+				inputs: ['main'],
+				outputs: ['main'],
+				displayName: 'Code',
+				description: 'Run custom code',
+				defaults: {},
+				properties: [],
+			} as unknown as INodeTypeDescription);
 
 			const { tryExtractNodesIntoSubworkflow } = useWorkflowExtraction();
 			tryExtractNodesIntoSubworkflow(['node-1', 'node-2', 'node-3']);
