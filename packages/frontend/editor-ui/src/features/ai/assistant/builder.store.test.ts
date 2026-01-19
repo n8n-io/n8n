@@ -1263,13 +1263,15 @@ describe('AI Builder store', () => {
 			});
 
 			// Mock loadSessions to prevent actual API call
-			vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
+			const spy = vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
 
 			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(mockGetBuilderCredits).toHaveBeenCalled();
 			expect(builderStore.creditsQuota).toBe(100);
 			expect(builderStore.creditsRemaining).toBe(80);
+
+			spy.mockRestore();
 		});
 	});
 
@@ -1976,13 +1978,165 @@ describe('AI Builder store', () => {
 		const mockTruncateBuilderMessages = vi.spyOn(chatAPI, 'truncateBuilderMessages');
 
 		beforeEach(() => {
-			mockGetAiSessions.mockClear();
-			mockTruncateBuilderMessages.mockClear();
+			mockGetAiSessions.mockReset();
+			mockTruncateBuilderMessages.mockReset();
+		});
+
+		describe('loadSessions guards', () => {
+			it('should return early if workflow is not saved', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as not saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': false };
+
+				await builderStore.loadSessions();
+
+				// Should not call the API
+				expect(mockGetAiSessions).not.toHaveBeenCalled();
+				expect(builderStore.chatMessages).toHaveLength(0);
+			});
+
+			it('should not request again after loading empty sessions for the same workflow', async () => {
+				const builderStore = useBuilderStore();
+
+				// Ensure clean state by resetting the builder chat
+				builderStore.resetBuilderChat();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return empty sessions
+				mockGetAiSessions.mockResolvedValueOnce({ sessions: [] });
+
+				// First call - should make API request
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+				expect(builderStore.chatMessages).toHaveLength(0);
+
+				// Reset mock to track second call
+				mockGetAiSessions.mockClear();
+
+				// Second call - should NOT make API request (cached)
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).not.toHaveBeenCalled();
+			});
+
+			it('should allow loading sessions after resetBuilderChat clears the cache', async () => {
+				const builderStore = useBuilderStore();
+
+				// Ensure clean state by resetting the builder chat
+				builderStore.resetBuilderChat();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return empty sessions
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// First call
+				await builderStore.loadSessions();
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+
+				// Reset mock
+				mockGetAiSessions.mockClear();
+
+				// Reset builder chat (this should clear the cache)
+				builderStore.resetBuilderChat();
+
+				// Now loadSessions should make a new API request
+				await builderStore.loadSessions();
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should prevent duplicate concurrent calls', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return with a delay
+				let resolvePromise: ((value: { sessions: [] }) => void) | undefined;
+				mockGetAiSessions.mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							resolvePromise = resolve;
+						}),
+				);
+
+				// Start first call
+				const firstCall = builderStore.loadSessions();
+
+				// Wait a tick to ensure the first call has started
+				await Promise.resolve();
+
+				// Start second call while first is still in progress
+				const secondCall = builderStore.loadSessions();
+
+				// Resolve the first call
+				if (resolvePromise) {
+					resolvePromise({ sessions: [] });
+				}
+
+				await firstCall;
+				await secondCall;
+
+				// Should only call the API once
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should reset loading state even on error and allow retry after resetBuilderChat', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// First call fails
+				mockGetAiSessions.mockRejectedValueOnce(new Error('API error'));
+				await builderStore.loadSessions();
+
+				// Reset mock call count
+				mockGetAiSessions.mockClear();
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// Reset builder chat to clear the cache and allow retry
+				builderStore.resetBuilderChat();
+
+				// Second call should work after proper reset
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should reset loading state even on error', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to throw error
+				mockGetAiSessions.mockRejectedValueOnce(new Error('API error'));
+
+				await builderStore.loadSessions();
+
+				// Reset mock
+				mockGetAiSessions.mockClear();
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// Should be able to call again (loading state was reset)
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
 		});
 
 		describe('fetchExistingVersionIds and message enrichment', () => {
 			it('should enrich messages with revertVersion when versions exist', async () => {
 				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
 
 				// Import the mocked module
 				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
@@ -2034,6 +2188,9 @@ describe('AI Builder store', () => {
 			it('should handle empty version IDs array', async () => {
 				const builderStore = useBuilderStore();
 
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
 				mockGetAiSessions.mockResolvedValueOnce({
 					sessions: [
 						{
@@ -2058,6 +2215,9 @@ describe('AI Builder store', () => {
 
 			it('should handle API errors gracefully when checking versions', async () => {
 				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
 
 				// Import the mocked module
 				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
@@ -2093,6 +2253,9 @@ describe('AI Builder store', () => {
 
 			it('should restore lastUserMessageId from loaded session', async () => {
 				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
 
 				// Mock API to return messages with a user message
 				mockGetAiSessions.mockResolvedValueOnce({

@@ -1,5 +1,4 @@
 import { createWorkflow, testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
@@ -55,10 +54,6 @@ describe('ExecutionRepository', () => {
 		});
 
 		it('should not create execution if execution data insert fails', async () => {
-			const { type: dbType, sqlite: sqliteConfig } = Container.get(GlobalConfig).database;
-			// Do not run this test for the legacy sqlite driver
-			if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) return;
-
 			const executionRepo = Container.get(ExecutionRepository);
 			const executionDataRepo = Container.get(ExecutionDataRepository);
 
