@@ -33,6 +33,7 @@ import * as useChatMessaging from '@/features/execution/logs/composables/useChat
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import type * as useNodeHelpersModule from '@/app/composables/useNodeHelpers';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -58,7 +59,7 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 const workflowStateRef: { current: WorkflowState | undefined } = { current: undefined };
 
 vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/app/composables/useNodeHelpers')>();
+	const actual = await importOriginal<typeof useNodeHelpersModule>();
 	return {
 		...actual,
 		useNodeHelpers: (opts = {}) =>
