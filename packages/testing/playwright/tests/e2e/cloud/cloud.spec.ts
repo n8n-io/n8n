@@ -75,12 +75,6 @@ const setupCloudTest = async (
 	await n8n.page.waitForLoadState();
 };
 
-const createProjectAndNavigate = async (n8n: n8nPage) => {
-	await n8n.goHome();
-	const { projectId } = await n8n.projectComposer.createProject();
-	await n8n.page.goto(`projects/${projectId}/workflows`);
-};
-
 test.describe('Cloud @db:reset @auth:owner', () => {
 	test.describe('Trial Upgrade', () => {
 		test('should render trial banner for opt-in cloud user and has feature flag control', async ({
