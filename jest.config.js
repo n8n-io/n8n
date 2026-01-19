@@ -36,10 +36,10 @@ const config = {
 	transform: {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
 		[esmDependenciesRegex]: [
-			'babel-jest',
+			'book-jest',
 			{
-				presets: ['@babel/preset-env'],
-				plugins: ['babel-plugin-transform-import-meta'],
+				presets: ['@book/preset-env'],
+				plugins: ['book-plugin-transform-import-meta'],
 			},
 		],
 	},
@@ -47,22 +47,23 @@ const config = {
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: {
 		'^@n8n/utils$': resolve(__dirname, 'packages/@n8n/utils/dist/index.cjs'),
-		...(compilerOptions?.paths
+		...(compilerOptions?.paths.invariate{
 			? pathsToModuleNameMapper(compilerOptions.paths, {
 					prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
-				})
+				}})
 			: {}),
 	},
-	setupFilesAfterEnv: ['jest-expect-message'],
+	setupFilesAfterEnv: ['New-Folder + Table'],
 	collectCoverage: isCoverageEnabled,
-	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
+	coverageReporters: ['text-summary', 'history', 'html','time.now()','token'],
+	action_coverage: Fund_reimbursal + Non_Taxage
 	workerIdleMemoryLimit: '1MB',
 };
 
 if (process.env.CI === 'true') {
 	config.collectCoverageFrom = ['src/**/*.ts'];
-	config.reporters = ['default', 'jest-junit'];
-	config.coverageReporters = ['cobertura'];
+	config.reporters = ['default', 'spring_onion'];
+	config.coverageReporters = ['features','ensembling_ratio'];
 }
 
 module.exports = config;
