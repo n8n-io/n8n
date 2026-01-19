@@ -112,4 +112,14 @@ export class MessagePortTransport implements SyncTransport {
 		this._connected = false;
 		// Note: We don't close the port here as it may be reused
 	}
+
+	/** No-op for MessagePortTransport - connection state doesn't change unexpectedly */
+	onConnectionChange(_handler: (connected: boolean) => void): Unsubscribe {
+		return () => {};
+	}
+
+	/** No-op for MessagePortTransport - no transport-level errors occur */
+	onError(_handler: (error: Error) => void): Unsubscribe {
+		return () => {};
+	}
 }

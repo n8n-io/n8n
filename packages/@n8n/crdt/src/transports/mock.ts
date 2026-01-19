@@ -57,6 +57,16 @@ export class MockTransport implements SyncTransport {
 		this._connected = false;
 	}
 
+	/** No-op for MockTransport - connection state doesn't change unexpectedly */
+	onConnectionChange(_handler: (connected: boolean) => void): Unsubscribe {
+		return () => {};
+	}
+
+	/** No-op for MockTransport - no transport-level errors occur */
+	onError(_handler: (error: Error) => void): Unsubscribe {
+		return () => {};
+	}
+
 	/**
 	 * Deliver data to all receive handlers (called by peer).
 	 */

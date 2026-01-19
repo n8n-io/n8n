@@ -158,6 +158,16 @@ export class WorkerTransport implements SyncTransport {
 		this.connectResolve = null;
 	}
 
+	/** No-op for WorkerTransport - connection state changes are handled via protocol messages */
+	onConnectionChange(_handler: (connected: boolean) => void): Unsubscribe {
+		return () => {};
+	}
+
+	/** No-op for WorkerTransport - no transport-level errors occur */
+	onError(_handler: (error: Error) => void): Unsubscribe {
+		return () => {};
+	}
+
 	private handleBinaryMessage(data: Uint8Array): void {
 		try {
 			const { messageType, docId, payload } = decodeWithDocId(data);

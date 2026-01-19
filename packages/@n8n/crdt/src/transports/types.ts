@@ -20,4 +20,10 @@ export interface SyncTransport {
 
 	/** Whether currently connected */
 	readonly connected: boolean;
+
+	/** Subscribe to connection state changes */
+	onConnectionChange(handler: (connected: boolean) => void): Unsubscribe;
+
+	/** Subscribe to transport-level errors (e.g., connection failures) */
+	onError(handler: (error: Error) => void): Unsubscribe;
 }
