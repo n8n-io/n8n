@@ -42,6 +42,7 @@ export interface ProgrammaticViolation {
 	type: ProgrammaticViolationType;
 	description: string;
 	pointsDeducted: number;
+	metadata?: Record<string, string>;
 }
 
 export interface SingleEvaluatorResult {

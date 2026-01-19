@@ -50,6 +50,11 @@ function checkMissingRequiredInputs(
 				type: 'critical',
 				description: `Node ${nodeInfo.node.name} (${nodeInfo.node.type}) is missing required input of type ${input.type}`,
 				pointsDeducted: 50,
+				metadata: {
+					nodeName: nodeInfo.node.name,
+					nodeType: nodeInfo.node.type,
+					missingType: input.type,
+				},
 			});
 		}
 	}
@@ -171,6 +176,11 @@ function checkSubNodeRootConnections(
 				type: 'critical',
 				description: `Sub-node ${node.name} (${node.type}) provides ${outputType} but is not connected to a root node.`,
 				pointsDeducted: 50,
+				metadata: {
+					nodeName: node.name,
+					nodeType: node.type,
+					outputType,
+				},
 			});
 		}
 	}
