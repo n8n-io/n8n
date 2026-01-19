@@ -54,6 +54,7 @@ catalog:
   iconv-lite: 0.6.3
   js-base64: 3.7.2
   jsonrepair: 3.13.1
+  jose: 5.9.6
   jsonwebtoken: 9.0.3
   lodash: 4.17.21
   luxon: 3.4.4

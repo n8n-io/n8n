@@ -26,6 +26,7 @@ import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
+import { getOidcConfig, hasValidSession, redirectToAuthorization } from '../../Webhook/oidcAuthFlow';
 import { generateFormPostBasicAuthToken, validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
@@ -592,20 +593,46 @@ export async function formWebhook(
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
 
-	try {
-		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
-			throw new WebhookAuthorizationError(403);
-		}
-		if (node.typeVersion > 1) {
-			await validateWebhookAuthentication(context, authProperty);
-		}
-	} catch (error) {
-		if (error instanceof WebhookAuthorizationError) {
-			res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
-			res.status(401).send();
+	// Check for bot blocking
+	if (options.ignoreBots && isbot(req.headers['user-agent'])) {
+		res.status(403).send('Forbidden');
+		return { noWebhookResponse: true };
+	}
+
+	// Handle OIDC authentication flow
+	const authentication = context.getNodeParameter(authProperty, 'none') as string;
+
+	if (authentication === 'oidcAuth' && node.typeVersion > 1) {
+		const webhookPath = req.path;
+		const { config: oidcConfig, credentialId } = await getOidcConfig(context);
+
+		// Check for valid session
+		const session = hasValidSession(req, webhookPath, oidcConfig.sessionSecret);
+		if (!session) {
+			// No valid session - redirect to IdP for login
+			// The callback is handled by the centralized /oidc-callback endpoint
+			const protocol = (req.headers['x-forwarded-proto'] as string) || 'http';
+			const host = (req.headers['x-forwarded-host'] as string) || req.headers.host;
+			const originalUrl = `${protocol}://${host}${req.originalUrl || req.url}`;
+
+			await redirectToAuthorization(res, oidcConfig, webhookPath, originalUrl, credentialId);
 			return { noWebhookResponse: true };
 		}
-		throw error;
+
+		// User is authenticated - continue to render form
+		// Session info is available in session.sub, session.email, session.name
+	} else if (node.typeVersion > 1 && authentication !== 'none') {
+		// Handle Basic Auth
+		try {
+			await validateWebhookAuthentication(context, authProperty);
+		} catch (error) {
+			if (error instanceof WebhookAuthorizationError) {
+				res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+				res.status(401).send();
+				return { noWebhookResponse: true };
+			}
+			throw error;
+		}
 	}
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';

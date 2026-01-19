@@ -120,6 +120,9 @@ catalogs:
     iconv-lite:
       specifier: 0.6.3
       version: 0.6.3
+    jose:
+      specifier: 5.9.6
+      version: 5.9.6
     js-base64:
       specifier: 3.7.2
       version: 3.7.2
@@ -1345,6 +1348,9 @@ importers:
       ignore:
         specifier: ^5.2.0
         version: 5.2.4
+      jose:
+        specifier: 'catalog:'
+        version: 5.9.6
       js-tiktoken:
         specifier: ^1.0.12
         version: 1.0.12
@@ -1775,6 +1781,9 @@ importers:
       isbot:
         specifier: 3.6.13
         version: 3.6.13
+      jose:
+        specifier: 'catalog:'
+        version: 5.9.6
       json-diff:
         specifier: 1.0.6
         version: 1.0.6
@@ -3178,6 +3187,9 @@ importers:
       iso-639-1:
         specifier: 2.1.15
         version: 2.1.15
+      jose:
+        specifier: 'catalog:'
+        version: 5.9.6
       js-nacl:
         specifier: 1.4.0
         version: 1.4.0
@@ -13468,8 +13480,8 @@ packages:
   join-component@1.1.0:
     resolution: {integrity: sha512-bF7vcQxbODoGK1imE2P9GS9aw4zD0Sd+Hni68IMZLj7zRnquH7dXUmMw9hDI5S/Jzt7q+IyTXN0rSg2GI0IKhQ==}
 
-  jose@6.0.11:
-    resolution: {integrity: sha512-QxG7EaliDARm1O1S8BGakqncGT9s25bKL1WSf6/oa17Tkqwi8D2ZNglqCF+DsYF88/rV66Q/Q2mFAy697E1DUg==}
+  jose@5.9.6:
+    resolution: {integrity: sha512-AMlnetc9+CV9asI19zHmrgS/WYsWUwCn2R7RzlbJWD7F9eWYUTGyBmU9o6PxngtLGOiDGPRu+Uc4fhKzbpteZQ==}
 
   jose@6.1.2:
     resolution: {integrity: sha512-MpcPtHLE5EmztuFIqB0vzHAWJPpmN1E6L4oo+kze56LIs3MyXIj9ZHMDxqOvkP38gBR7K1v3jqd4WU2+nrfONQ==}
@@ -31834,7 +31846,7 @@ snapshots:
 
   join-component@1.1.0: {}
 
-  jose@6.0.11: {}
+  jose@5.9.6: {}
 
   jose@6.1.2: {}
 
@@ -33813,7 +33825,7 @@ snapshots:
 
   openid-client@6.5.0:
     dependencies:
-      jose: 6.0.11
+      jose: 6.1.2
       oauth4webapi: 3.5.1
 
   option@0.2.4: {}

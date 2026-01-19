@@ -82,22 +82,36 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			name: 'oidcWebhookAuth',
+			required: true,
+			displayOptions: {
+				show: {
+					[FORM_TRIGGER_AUTHENTICATION_PROPERTY]: ['oidcAuth'],
+				},
+			},
+		},
 	],
 	properties: [
 		{
 			displayName: 'Authentication',
 			name: FORM_TRIGGER_AUTHENTICATION_PROPERTY,
 			type: 'options',
-			options: [
-				{
-					name: 'Basic Auth',
-					value: 'basicAuth',
-				},
-				{
-					name: 'None',
-					value: 'none',
-				},
-			],
+		options: [
+			{
+				name: 'Basic Auth',
+				value: 'basicAuth',
+			},
+			{
+				name: 'None',
+				value: 'none',
+			},
+			{
+				name: 'OIDC Auth',
+				value: 'oidcAuth',
+				description: 'Validate Bearer token using OIDC/OAuth2 provider (Azure AD, Okta)',
+			},
+		],
 			default: 'none',
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },

@@ -1,5 +1,6 @@
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
+import * as jose from 'jose';
 import jwt from 'jsonwebtoken';
 import { WorkflowConfigurationError } from 'n8n-workflow';
 import type {
@@ -16,6 +17,32 @@ import { BlockList } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
+
+// OIDC JWKS cache for performance - stores JWKS clients per discovery URL
+const oidcJwksCache = new Map<string, jose.JWTVerifyGetKey>();
+
+interface OidcDiscoveryDocument {
+	jwks_uri: string;
+	issuer: string;
+}
+
+/**
+ * Fetches and caches JWKS for OIDC token validation
+ */
+async function getOidcJwks(discoveryUrl: string): Promise<jose.JWTVerifyGetKey> {
+	if (!oidcJwksCache.has(discoveryUrl)) {
+		const response = await fetch(discoveryUrl);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch OIDC discovery document: ${response.statusText}`);
+		}
+		const discovery = (await response.json()) as OidcDiscoveryDocument;
+		if (!discovery.jwks_uri) {
+			throw new Error('OIDC discovery document missing jwks_uri');
+		}
+		oidcJwksCache.set(discoveryUrl, jose.createRemoteJWKSet(new URL(discovery.jwks_uri)));
+	}
+	return oidcJwksCache.get(discoveryUrl)!;
+}
 
 export type WebhookParameters = {
 	httpMethod: string | string[];
@@ -317,6 +344,53 @@ export async function validateWebhookAuthentication(
 			}) as IDataObject;
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
+		}
+	} else if (authentication === 'oidcAuth') {
+		// OIDC authentication - validate Bearer token using IdP's JWKS
+		let oidcConfig: {
+			discoveryUrl: string;
+			issuer?: string;
+			audience?: string;
+		};
+
+		try {
+			oidcConfig = await ctx.getCredentials<{
+				discoveryUrl: string;
+				issuer?: string;
+				audience?: string;
+			}>('oidcWebhookAuth');
+		} catch {
+			throw new WebhookAuthorizationError(500, 'No OIDC authentication data defined on node!');
+		}
+
+		if (!oidcConfig?.discoveryUrl) {
+			throw new WebhookAuthorizationError(500, 'OIDC configuration incomplete - Discovery URL required');
+		}
+
+		const authHeader = req.headers.authorization;
+		const token = authHeader?.split(' ')[1];
+
+		if (!token) {
+			throw new WebhookAuthorizationError(401, 'No Bearer token provided');
+		}
+
+		try {
+			const jwks = await getOidcJwks(oidcConfig.discoveryUrl);
+
+			// Build verification options - only add issuer/audience if configured
+			const verifyOptions: jose.JWTVerifyOptions = {};
+			if (oidcConfig.issuer) {
+				verifyOptions.issuer = oidcConfig.issuer;
+			}
+			if (oidcConfig.audience) {
+				verifyOptions.audience = oidcConfig.audience;
+			}
+
+			const { payload } = await jose.jwtVerify(token, jwks, verifyOptions);
+			return payload as IDataObject;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Token validation failed';
+			throw new WebhookAuthorizationError(403, errorMessage);
 		}
 	}
 }

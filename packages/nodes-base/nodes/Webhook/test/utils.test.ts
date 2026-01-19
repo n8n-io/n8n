@@ -531,6 +531,61 @@ describe('Webhook Utils', () => {
 			);
 			expect(result).toEqual(decodedPayload);
 		});
+
+		it('should throw an error if oidcAuth is enabled but no authentication data is defined on the node', async () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('oidcAuth'),
+				getCredentials: jest
+					.fn()
+					.mockRejectedValue(new Error('No OIDC authentication data defined on node!')),
+				getRequestObject: jest.fn().mockReturnValue({
+					headers: {},
+				}),
+				getHeaderData: jest.fn().mockReturnValue({}),
+			};
+			const authPropertyName = 'authentication';
+			await expect(
+				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
+			).rejects.toThrowError('No OIDC authentication data defined on node!');
+		});
+
+		it('should throw an error if oidcAuth is enabled but OIDC configuration is incomplete', async () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('oidcAuth'),
+				getCredentials: jest.fn().mockResolvedValue({
+					discoveryUrl: '',
+					issuer: '',
+					audience: '',
+				}),
+				getRequestObject: jest.fn().mockReturnValue({
+					headers: {},
+				}),
+				getHeaderData: jest.fn().mockReturnValue({}),
+			};
+			const authPropertyName = 'authentication';
+			await expect(
+				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
+			).rejects.toThrowError('OIDC configuration incomplete - Discovery URL required');
+		});
+
+		it('should throw an error if oidcAuth is enabled but no Bearer token is provided', async () => {
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: jest.fn().mockReturnValue('oidcAuth'),
+				getCredentials: jest.fn().mockResolvedValue({
+					discoveryUrl: 'https://example.com/.well-known/openid-configuration',
+					issuer: 'https://example.com',
+					audience: 'api://my-app',
+				}),
+				getRequestObject: jest.fn().mockReturnValue({
+					headers: {},
+				}),
+				getHeaderData: jest.fn().mockReturnValue({}),
+			};
+			const authPropertyName = 'authentication';
+			await expect(
+				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
+			).rejects.toThrowError('No Bearer token provided');
+		});
 	});
 
 	describe('handleFormData', () => {
