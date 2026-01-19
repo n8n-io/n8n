@@ -1054,10 +1054,9 @@ function onResourceLocatorDrop(data: string) {
 	emit('drop', data);
 }
 
-function onUpdateTextInput(value: string | number | null) {
-	const stringValue = String(value ?? '');
-	valueChanged(stringValue);
-	onTextInputChange(stringValue);
+function onUpdateTextInput(value: string) {
+	valueChanged(value);
+	onTextInputChange(value);
 }
 
 const onUpdateTextInputDebounced = debounce(onUpdateTextInput, { debounceTime: 200 });
