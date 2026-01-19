@@ -20,20 +20,18 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 
 	constructor(
 		version: string,
-		mode: MergeMode,
-		numInputs: number,
+		_mode: MergeMode,
+		_numInputs: number,
 		config?: { name?: string; id?: string; parameters?: NodeConfig['parameters'] },
 	) {
 		this.version = version;
 		this.id = config?.id ?? uuid();
 		this.name = config?.name ?? 'Merge';
+		// Preserve original parameters exactly - don't add mode/numberInputs
+		// as n8n can infer these from connections
 		this.config = {
 			...config,
-			parameters: {
-				mode,
-				numberInputs: numInputs,
-				...config?.parameters,
-			},
+			parameters: config?.parameters,
 		};
 	}
 

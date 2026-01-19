@@ -9,7 +9,7 @@ const FIXTURES_DIR = path.resolve(__dirname, '../../test-fixtures/real-workflows
 // Workflows with complex topologies that codegen doesn't fully support yet:
 // - Multiple disconnected triggers/subgraphs
 // - Nodes not reachable from main trigger chain
-// - Merge nodes with implicit default parameters
+// - Multi-output nodes not handled by IF/Switch/Merge composites
 const SKIP_WORKFLOWS = new Set([
 	// Disconnected subgraphs / multiple triggers
 	'8500', // Jarvis: multiple MCP triggers with disconnected tool nodes
@@ -33,36 +33,6 @@ const SKIP_WORKFLOWS = new Set([
 	'6993', // Google Maps scraper: disconnected subgraph
 	'10132', // Nested PDF: disconnected subgraph
 	'2878', // Deep research agent: complex multi-trigger topology
-	// Merge nodes with implicit default parameters (SDK adds mode/numberInputs)
-	'7756', // Nutrition tracker: merge with implicit defaults
-	'9437', // Course recommendation: merge with implicit defaults
-	'12462', // AI product images: merge with implicit defaults
-	'8549', // Nano banana: merge with implicit defaults
-	'5683', // YouTube shorts: merge with implicit defaults
-	'10427', // Facebook Ads: merge with implicit defaults
-	'3066', // Social media content: merge with implicit defaults
-	'9801', // Meeting transcripts: merge with implicit defaults
-	'5817', // AI trend alerter: merge with implicit defaults
-	'5711', // Stock trading: merge with implicit defaults
-	'11724', // News digest videos: merge with implicit defaults
-	'4557', // Email organization: merge with implicit defaults
-	'4721', // Deep Research: merge with implicit defaults
-	'4849', // Invoice processing: merge with implicit defaults
-	'7945', // Legal documents: merge with implicit defaults
-	'6897', // CV screening: merge with implicit defaults
-	'5163', // Stock analysis: merge with implicit defaults
-	'7154', // AI dataset generator: merge with implicit defaults
-	'4767', // VEO3 video: merge with implicit defaults
-	'11466', // Tech news digests: merge with implicit defaults
-	'11637', // Zyte AI extraction: merge with implicit defaults
-	'3790', // Stock analysis reports: merge with implicit defaults
-	'10729', // Content safety benchmarks: merge with implicit defaults
-	'9876', // DHL shipment tracking: merge with implicit defaults
-	'3121', // Short-form video: merge with implicit defaults
-	'6272', // Social media trends: merge with implicit defaults
-	'5453', // Resume screening: merge with implicit defaults
-	'4868', // Invoice data extraction: merge with implicit defaults
-	'5375', // Content strategy reports: merge with implicit defaults
 	// Multi-output nodes not handled by IF/Switch/Merge composites
 	'5678', // Email filtering: multi-output node not handled by composites
 	'9383', // Law firm leads: multi-output node not handled by composites

@@ -144,6 +144,41 @@ describe('Workflow Builder', () => {
 			expect(json.connections['IF'].main[1][0].node).toBe('False');
 			expect(json.connections['IF'].main[2][0].node).toBe('Error');
 		});
+
+		it('should return this (not handler) for proper chaining with .then()', () => {
+			// BUG FIX TEST: When using .then(node.onError(handler)), the .then() should
+			// connect to the node, not to the handler returned by onError()
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const slackNode = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.4,
+				config: { name: 'Send Slack', onError: 'continueErrorOutput' },
+			});
+			const telegramNode = node({
+				type: 'n8n-nodes-base.telegram',
+				version: 1.2,
+				config: { name: 'Error Alert' },
+			});
+
+			// This chained syntax: .then(node.onError(handler))
+			// Should result in: trigger -> slack -> (error) -> telegram
+			// NOT: trigger -> telegram (which happens if onError returns handler)
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.then(slackNode.onError(telegramNode));
+
+			const json = wf.toJSON();
+
+			// Trigger should connect to Slack (not Telegram)
+			expect(json.connections['Start'].main[0][0].node).toBe('Send Slack');
+
+			// Slack's error output (index 1) should connect to Telegram
+			expect(json.connections['Send Slack'].main[1][0].node).toBe('Error Alert');
+		});
 	});
 
 	describe('.settings()', () => {

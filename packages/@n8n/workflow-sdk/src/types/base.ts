@@ -314,9 +314,9 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * - IF nodes: index 2 (after true=0, false=1)
 	 * - Switch nodes: index = numberOfCases (after all case outputs)
 	 * @param handler - The error handler node to connect to
-	 * @returns The handler node (for chaining)
+	 * @returns This node (for chaining with .then())
 	 */
-	onError<T extends NodeInstance<string, string, unknown>>(handler: T): T;
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this;
 
 	/**
 	 * Get all declared connections from this node

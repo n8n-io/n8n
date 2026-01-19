@@ -90,10 +90,10 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		return target;
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(handler: T): T {
+	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
 		const errorOutputIndex = this.calculateErrorOutputIndex();
 		this._connections.push({ target: handler, outputIndex: errorOutputIndex });
-		return handler;
+		return this;
 	}
 
 	/**
@@ -241,7 +241,7 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		throw new Error('Sticky notes do not support connections');
 	}
 
-	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): T {
+	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {
 		throw new Error('Sticky notes do not support error handlers');
 	}
 
