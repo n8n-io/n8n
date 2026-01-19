@@ -174,6 +174,9 @@ catalogs:
     vitest-mock-extended:
       specifier: ^3.1.0
       version: 3.1.0
+    vm2:
+      specifier: ^3.10.2
+      version: 3.10.2
     xml2js:
       specifier: 0.6.2
       version: 0.6.2
@@ -1297,9 +1300,6 @@ importers:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      '@n8n/vm2':
-        specifier: 3.9.25
-        version: 3.9.25
       '@pinecone-database/pinecone':
         specifier: ^5.0.2
         version: 5.1.2
@@ -1402,6 +1402,9 @@ importers:
       undici:
         specifier: ^6.21.0
         version: 6.21.3
+      vm2:
+        specifier: 'catalog:'
+        version: 3.10.2
       weaviate-client:
         specifier: 3.9.0
         version: 3.9.0(encoding@0.1.13)
@@ -3106,9 +3109,6 @@ importers:
       '@n8n/imap':
         specifier: workspace:*
         version: link:../@n8n/imap
-      '@n8n/vm2':
-        specifier: 3.9.25
-        version: 3.9.25
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12
@@ -3298,6 +3298,9 @@ importers:
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
+      vm2:
+        specifier: 'catalog:'
+        version: 3.10.2
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
@@ -6511,11 +6514,6 @@ packages:
       sqlite3:
         optional: true
 
-  '@n8n/vm2@3.9.25':
-    resolution: {integrity: sha512-qoGLFzyHBW7HKpwXkl05QKsIh3GkDw6lOiTOWYlUDnOIQ1b7EgM+O5EMjrMGy7r+kz52+Q7o6GLxBIcxVI8rEg==}
-    engines: {node: '>=18.10', pnpm: '>=9.6'}
-    hasBin: true
-
   '@n8n_io/ai-assistant-sdk@1.20.0':
     resolution: {integrity: sha512-uXa6EDufQIV46tvqQ222441dWZYLnT219HC5H8grfAVd6Mpp2Rs4NoBM6YPWnGFWBp8XVsgXUud0EKRbJsw0eA==}
     engines: {node: '>=20.15', pnpm: '>=8.14'}
@@ -9483,11 +9481,6 @@ packages:
 
   acorn@7.4.1:
     resolution: {integrity: sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
-  acorn@8.12.1:
-    resolution: {integrity: sha512-tcpGyI9zbizT9JbV6oYE477V6mTlXvvi0T0G3SNIYE2apm/G5huBa1+K89VGeovbg+jycCrfhl3ADxErOuO6Jg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
 
@@ -18168,6 +18161,11 @@ packages:
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
 
+  vm2@3.10.2:
+    resolution: {integrity: sha512-qTnbvpada8qlEEyIPFwhTcF5Ns+k83fVlOSE8XvAtHkhcQ+okMnbvryVQBfP/ExRT1CRsQpYusdATR+FBJfrnQ==}
+    engines: {node: '>=6.0'}
+    hasBin: true
+
   void-elements@3.1.0:
     resolution: {integrity: sha512-Dhxzh5HZuiHQhbvTW9AMetFfBHDMYpo23Uo9btPXgdYP+3T5S+p+jgNy7spra+veYhBP2dCSgxR/i2Y02h5/6w==}
     engines: {node: '>=0.10.0'}
@@ -23030,11 +23028,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@n8n/vm2@3.9.25':
-    dependencies:
-      acorn: 8.12.1
-      acorn-walk: 8.3.4
-
   '@n8n_io/ai-assistant-sdk@1.20.0': {}
 
   '@n8n_io/license-sdk@2.25.0':
@@ -26708,8 +26701,6 @@ snapshots:
       acorn: 8.15.0
 
   acorn@7.4.1: {}
-
-  acorn@8.12.1: {}
 
   acorn@8.14.0: {}
 
@@ -37403,6 +37394,11 @@ snapshots:
       - yaml
 
   vm-browserify@1.1.2: {}
+
+  vm2@3.10.2:
+    dependencies:
+      acorn: 8.15.0
+      acorn-walk: 8.3.4
 
   void-elements@3.1.0: {}
 

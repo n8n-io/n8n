@@ -71,6 +71,7 @@ catalog:
   typescript: 5.9.2
   uuid: 10.0.0
   vite: npm:rolldown-vite@latest
+  vm2: ^3.10.2
   vite-plugin-dts: ^4.5.4
   vitest: ^3.1.3
   vitest-mock-extended: ^3.1.0
@@ -128,3 +129,4 @@ minimumReleaseAgeExclude:
   - '@google/genai'
   - body-parser
   - node-forge
+  - vm2
