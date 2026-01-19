@@ -27,6 +27,7 @@ export function createBuilderPayload(
 		executionData?: IRunExecutionData['resultData'];
 		workflow?: IWorkflowDb;
 		nodesForSchema?: string[];
+		mode?: 'build' | 'plan';
 	} = {},
 ): ChatRequest.UserChatMessage {
 	const assistantHelpers = useAIAssistantHelpers();
@@ -77,6 +78,7 @@ export function createBuilderPayload(
 		quickReplyType: options.quickReplyType,
 		workflowContext,
 		featureFlags,
+		mode: options.mode,
 	};
 }
 

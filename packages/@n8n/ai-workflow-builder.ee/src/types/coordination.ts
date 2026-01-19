@@ -5,7 +5,12 @@
  * and enable deterministic routing without polluting the messages array.
  */
 
-export type SubgraphPhase = 'discovery' | 'builder' | 'configurator' | 'state_management';
+export type SubgraphPhase =
+	| 'discovery'
+	| 'builder'
+	| 'configurator'
+	| 'state_management'
+	| 'planner';
 
 /**
  * Entry in the coordination log tracking subgraph completion.
@@ -35,7 +40,8 @@ export type CoordinationMetadata =
 	| BuilderMetadata
 	| ConfiguratorMetadata
 	| StateManagementMetadata
-	| ErrorMetadata;
+	| ErrorMetadata
+	| PlannerMetadata;
 
 export interface DiscoveryMetadata {
 	phase: 'discovery';
@@ -87,6 +93,18 @@ export interface StateManagementMetadata {
 	messagesRemoved?: number;
 }
 
+export interface PlannerMetadata {
+	phase: 'planner';
+	/** Number of questions asked */
+	questionsAsked: number;
+	/** Number of questions answered (not skipped) */
+	questionsAnswered: number;
+	/** Number of questions skipped */
+	questionsSkipped: number;
+	/** Whether a plan was generated */
+	planGenerated: boolean;
+}
+
 /**
  * Helper functions to create typed metadata objects.
  * These eliminate the need for type assertions when creating coordination log entries.
@@ -113,4 +131,8 @@ export function createStateManagementMetadata(
 	data: Omit<StateManagementMetadata, 'phase'>,
 ): StateManagementMetadata {
 	return { phase: 'state_management', ...data };
+}
+
+export function createPlannerMetadata(data: Omit<PlannerMetadata, 'phase'>): PlannerMetadata {
+	return { phase: 'planner', ...data };
 }

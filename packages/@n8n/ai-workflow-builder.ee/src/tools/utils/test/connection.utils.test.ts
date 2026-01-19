@@ -10,6 +10,7 @@ import {
 	getNodeConnections,
 	formatConnectionMessage,
 	inferConnectionType,
+	extractConnectionChangingParameters,
 } from '../connection.utils';
 
 describe('connection.utils', () => {
@@ -985,6 +986,168 @@ describe('connection.utils', () => {
 			};
 			expect(nodeHasOutputType(returnExprNode, NodeConnectionTypes.Main)).toBe(true);
 			expect(nodeHasOutputType(returnExprNode, 'ai_tool')).toBe(true);
+		});
+	});
+
+	describe('extractConnectionChangingParameters', () => {
+		it('should extract parameters from inputs expression', () => {
+			const nodeType: INodeTypeDescription = {
+				...mockMainNodeType,
+				inputs: "={{ $parameter.mode === 'chat' ? ['ai_languageModel'] : ['main'] }}",
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Chat', value: 'chat' },
+							{ name: 'Tool', value: 'tool' },
+						],
+						default: 'chat',
+					},
+				],
+			};
+			const result = extractConnectionChangingParameters(nodeType);
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('mode');
+			expect(result[0].possibleValues).toEqual(['chat', 'tool']);
+		});
+
+		it('should extract parameters from outputs expression', () => {
+			const nodeType: INodeTypeDescription = {
+				...mockMainNodeType,
+				outputs: "={{ $parameter.outputType === 'array' ? ['main', 'main'] : ['main'] }}",
+				properties: [
+					{
+						displayName: 'Output Type',
+						name: 'outputType',
+						type: 'options',
+						options: [
+							{ name: 'Single', value: 'single' },
+							{ name: 'Array', value: 'array' },
+						],
+						default: 'single',
+					},
+				],
+			};
+			const result = extractConnectionChangingParameters(nodeType);
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('outputType');
+			expect(result[0].possibleValues).toEqual(['single', 'array']);
+		});
+
+		it('should extract boolean parameters', () => {
+			const nodeType: INodeTypeDescription = {
+				...mockMainNodeType,
+				inputs: '={{ $parameter.hasOutputParser ? [] : ["ai_outputParser"] }}',
+				properties: [
+					{
+						displayName: 'Has Output Parser',
+						name: 'hasOutputParser',
+						type: 'boolean',
+						default: false,
+					},
+				],
+			};
+			const result = extractConnectionChangingParameters(nodeType);
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('hasOutputParser');
+			expect(result[0].possibleValues).toEqual([true, false]);
+		});
+
+		it('should extract multiple parameters from both inputs and outputs', () => {
+			const nodeType: INodeTypeDescription = {
+				...mockMainNodeType,
+				inputs: "={{ $parameter.mode === 'retrieve' ? ['main', 'ai_embedding'] : [] }}",
+				outputs: "={{ $parameter.outputFormat === 'json' ? ['main'] : ['main', 'main'] }}",
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Retrieve', value: 'retrieve' },
+							{ name: 'Insert', value: 'insert' },
+						],
+						default: 'retrieve',
+					},
+					{
+						displayName: 'Output Format',
+						name: 'outputFormat',
+						type: 'options',
+						options: [
+							{ name: 'JSON', value: 'json' },
+							{ name: 'Raw', value: 'raw' },
+						],
+						default: 'json',
+					},
+				],
+			};
+			const result = extractConnectionChangingParameters(nodeType);
+			expect(result).toHaveLength(2);
+			expect(result.map((p) => p.name).sort()).toEqual(['mode', 'outputFormat']);
+		});
+
+		it('should return empty array for nodes without expression-based inputs/outputs', () => {
+			const result = extractConnectionChangingParameters(mockMainNodeType);
+			expect(result).toEqual([]);
+		});
+
+		it('should return empty array for parameters not found in properties', () => {
+			const nodeType: INodeTypeDescription = {
+				...mockMainNodeType,
+				inputs: "={{ $parameter.unknownParam === 'value' ? [] : ['main'] }}",
+				properties: [],
+			};
+			const result = extractConnectionChangingParameters(nodeType);
+			expect(result).toEqual([]);
+		});
+
+		it('should handle multiOptions parameters', () => {
+			const nodeType: INodeTypeDescription = {
+				...mockMainNodeType,
+				inputs: '={{ $parameter.inputTypes }}',
+				properties: [
+					{
+						displayName: 'Input Types',
+						name: 'inputTypes',
+						type: 'multiOptions',
+						options: [
+							{ name: 'Main', value: 'main' },
+							{ name: 'AI', value: 'ai' },
+							{ name: 'Custom', value: 'custom' },
+						],
+						default: ['main'],
+					},
+				],
+			};
+			const result = extractConnectionChangingParameters(nodeType);
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('inputTypes');
+			expect(result[0].possibleValues).toEqual(['main', 'ai', 'custom']);
+		});
+
+		it('should handle bracket notation for parameter access', () => {
+			const nodeType: INodeTypeDescription = {
+				...mockMainNodeType,
+				inputs: "={{ $parameter['mode-type'] === 'special' ? [] : ['main'] }}",
+				properties: [
+					{
+						displayName: 'Mode Type',
+						name: 'mode-type',
+						type: 'options',
+						options: [
+							{ name: 'Normal', value: 'normal' },
+							{ name: 'Special', value: 'special' },
+						],
+						default: 'normal',
+					},
+				],
+			};
+			const result = extractConnectionChangingParameters(nodeType);
+			expect(result).toHaveLength(1);
+			expect(result[0].name).toBe('mode-type');
+			expect(result[0].possibleValues).toEqual(['normal', 'special']);
 		});
 	});
 });

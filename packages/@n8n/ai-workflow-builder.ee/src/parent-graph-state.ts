@@ -3,6 +3,7 @@ import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
 import type { CoordinationLogEntry } from './types/coordination';
 import type { DiscoveryContext } from './types/discovery-types';
+import type { PlannerPhase, PlannerQuestion, PlanOutput } from './types/planner-types';
 import type { WorkflowMetadata } from './types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import { appendArrayReducer, cachedTemplatesReducer } from './utils/state-reducers';
@@ -73,5 +74,39 @@ export const ParentGraphState = Annotation.Root({
 	cachedTemplates: Annotation<WorkflowMetadata[]>({
 		reducer: cachedTemplatesReducer,
 		default: () => [],
+	}),
+
+	// ========================================================================
+	// Plan Mode fields
+	// ========================================================================
+
+	// Builder mode: 'build' for direct workflow generation, 'plan' for planning first
+	mode: Annotation<'build' | 'plan'>({
+		reducer: (x, y) => y ?? x,
+		default: () => 'build',
+	}),
+
+	// Current planner phase for HITL (Human-in-the-Loop) flow
+	plannerPhase: Annotation<PlannerPhase>({
+		reducer: (x, y) => y ?? x,
+		default: () => 'idle',
+	}),
+
+	// Pending questions waiting for user answers
+	pendingQuestions: Annotation<PlannerQuestion[]>({
+		reducer: (x, y) => y ?? x,
+		default: () => [],
+	}),
+
+	// Intro message before questions (from planner)
+	introMessage: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
+
+	// Generated plan output
+	planOutput: Annotation<PlanOutput | null>({
+		reducer: (x, y) => y ?? x,
+		default: () => null,
 	}),
 });

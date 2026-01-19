@@ -11,7 +11,10 @@ import type {
 	ToolProgressChunk,
 	WorkflowUpdateChunk,
 	StreamOutput,
+	QuestionsChunk,
+	PlanChunk,
 } from '../types/streaming';
+import type { PlannerQuestion, PlanOutput } from '../types/planner-types';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -60,6 +63,7 @@ const SKIPPED_NODES = [
 	'configurator_subgraph',
 	'discovery_subgraph',
 	'builder_subgraph',
+	'planner_subgraph',
 ];
 
 /**
@@ -70,6 +74,7 @@ const SKIPPED_SUBGRAPH_PREFIXES = [
 	'discovery_subgraph',
 	'builder_subgraph',
 	'configurator_subgraph',
+	'planner_subgraph',
 ];
 
 // ============================================================================
@@ -168,6 +173,72 @@ function processOperationsUpdate(update: unknown): StreamOutput | null {
 	return { messages: [workflowUpdateChunk] };
 }
 
+/** Handle planner_subgraph node update - emit questions or plan */
+function processPlannerSubgraphUpdate(update: unknown): StreamOutput | null {
+	const typed = update as
+		| {
+				pendingQuestions?: PlannerQuestion[];
+				planOutput?: PlanOutput | null;
+				plannerPhase?: string;
+				introMessage?: string;
+		  }
+		| undefined;
+
+	console.log('[processPlannerSubgraphUpdate] update:', {
+		hasQuestions: !!typed?.pendingQuestions?.length,
+		questionCount: typed?.pendingQuestions?.length ?? 0,
+		hasPlan: !!typed?.planOutput,
+		plannerPhase: typed?.plannerPhase,
+	});
+
+	if (!typed) return null;
+
+	// Emit questions if waiting for answers
+	if (typed.plannerPhase === 'waiting_for_answers' && typed.pendingQuestions?.length) {
+		const questionsChunk: QuestionsChunk = {
+			type: 'questions',
+			introMessage: typed.introMessage,
+			questions: typed.pendingQuestions.map((q) => ({
+				id: q.id,
+				question: q.question,
+				type: q.type,
+				options: q.options,
+				allowCustom: q.allowCustom,
+			})),
+		};
+		console.log(
+			'[processPlannerSubgraphUpdate] emitting questions:',
+			questionsChunk.questions.length,
+		);
+		return { messages: [questionsChunk] };
+	}
+
+	// Emit plan if plan is displayed
+	if (typed.plannerPhase === 'plan_displayed' && typed.planOutput) {
+		const planChunk: PlanChunk = {
+			type: 'plan',
+			plan: {
+				summary: typed.planOutput.summary,
+				trigger: typed.planOutput.trigger,
+				steps: typed.planOutput.steps.map((s) => ({
+					description: s.description,
+					subSteps: s.subSteps,
+					suggestedNodes: s.suggestedNodes,
+				})),
+				additionalSpecs: typed.planOutput.additionalSpecs,
+			},
+		};
+		console.log(
+			'[processPlannerSubgraphUpdate] emitting plan with',
+			planChunk.plan.steps.length,
+			'steps',
+		);
+		return { messages: [planChunk] };
+	}
+
+	return null;
+}
+
 /** Handle agent node message update */
 function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput | null {
 	if (!shouldEmitFromNode(nodeName)) return null;
@@ -210,6 +281,12 @@ function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput 
 	// Process operations emits workflow updates
 	if (nodeUpdate.process_operations) {
 		return processOperationsUpdate(nodeUpdate.process_operations);
+	}
+
+	// Planner subgraph emits questions or plan
+	if (nodeUpdate.planner_subgraph) {
+		const result = processPlannerSubgraphUpdate(nodeUpdate.planner_subgraph);
+		if (result) return result;
 	}
 
 	// Generic agent node handling

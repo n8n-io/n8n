@@ -32,6 +32,7 @@ import {
 	buildWorkflowJsonBlock,
 	buildExecutionContextBlock,
 	buildDiscoveryContextBlock,
+	buildPlanContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -209,7 +210,12 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
-		const userRequest = extractUserRequest(parentState.messages);
+		// When we have a plan, use the plan summary as the user request
+		// Otherwise extract from messages
+		const hasPlan = !!parentState.planOutput;
+		const userRequest = hasPlan
+			? parentState.planOutput!.summary
+			: extractUserRequest(parentState.messages);
 
 		// Build context parts for Configurator
 		const contextParts: string[] = [];
@@ -220,7 +226,13 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(userRequest);
 		}
 
-		// 2. Discovery context - includes available resources/operations for each node type
+		// 2. Plan context (if we have a plan from plan mode)
+		if (parentState.planOutput) {
+			contextParts.push('=== IMPLEMENTATION PLAN ===');
+			contextParts.push(buildPlanContextBlock(parentState.planOutput));
+		}
+
+		// 3. Discovery context - includes available resources/operations for each node type
 		if (parentState.discoveryContext) {
 			contextParts.push('=== DISCOVERY CONTEXT ===');
 			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));

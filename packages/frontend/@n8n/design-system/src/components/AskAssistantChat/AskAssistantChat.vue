@@ -568,7 +568,11 @@ defineExpose({
 				@upgrade-click="emit('upgrade-click')"
 				@submit="onSendMessage"
 				@stop="emit('stop')"
-			/>
+			>
+				<template v-if="$slots['before-actions']" #beforeActions>
+					<slot name="before-actions" />
+				</template>
+			</N8nPromptInput>
 		</div>
 	</div>
 </template>

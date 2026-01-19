@@ -16,6 +16,17 @@ import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-syst
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
+import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
+import PlanDisplayMessage from './PlanDisplayMessage.vue';
+import AnswerSummaryMessage from './AnswerSummaryMessage.vue';
+import PlanModeSelector from './PlanModeSelector.vue';
+import {
+	isPlanModeQuestionsMessage,
+	isPlanModePlanMessage,
+	isPlanModeAnswerSummaryMessage,
+	type PlanMode,
+} from '../../assistant.types';
+import type { BuilderMode } from '../../builder.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
@@ -367,6 +378,50 @@ function onShowVersion(versionId: string) {
 	window.open(route.href, '_blank');
 }
 
+/**
+ * Handle Plan Mode question answers submission
+ */
+async function onPlanQuestionsSubmit(answers: PlanMode.QuestionResponse[]) {
+	// Format answers as a message and send to the builder
+	const formattedAnswers = answers
+		.filter((a) => !a.skipped)
+		.map((a) => {
+			const parts: string[] = [a.question];
+			if (a.selectedOptions.length > 0) {
+				parts.push(a.selectedOptions.join(', '));
+			}
+			if (a.customText?.trim()) {
+				parts.push(a.customText.trim());
+			}
+			return parts.join(': ');
+		})
+		.join('\n');
+
+	await builderStore.sendChatMessage({
+		text: formattedAnswers,
+		quickReplyType: 'plan-answers',
+	});
+}
+
+/**
+ * Handle "Implement the plan" button click
+ */
+async function onImplementPlan() {
+	// Switch to build mode and implement
+	builderStore.setBuilderMode('build');
+	await builderStore.sendChatMessage({
+		text: 'Implement the plan',
+		quickReplyType: 'implement-plan',
+	});
+}
+
+/**
+ * Handle mode selector change
+ */
+function onModeChange(mode: BuilderMode) {
+	builderStore.setBuilderMode(mode);
+}
+
 // Reset on route change, but not if streaming is in progress
 watch(currentRoute, () => {
 	if (!builderStore.streaming) {
@@ -424,6 +479,32 @@ defineExpose({
 				<N8nText :class="$style.topText"
 					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
 				</N8nText>
+			</template>
+			<template #before-actions>
+				<PlanModeSelector
+					:model-value="builderStore.builderMode"
+					:disabled="builderStore.streaming"
+					@update:model-value="onModeChange"
+				/>
+			</template>
+			<template #custom-message="{ message }">
+				<PlanQuestionsMessage
+					v-if="isPlanModeQuestionsMessage(message)"
+					:questions="message.data.questions"
+					:intro-message="message.data.introMessage"
+					:disabled="builderStore.streaming"
+					@submit="onPlanQuestionsSubmit"
+				/>
+				<PlanDisplayMessage
+					v-else-if="isPlanModePlanMessage(message)"
+					:plan="message.data.plan"
+					:disabled="builderStore.streaming"
+					@implement="onImplementPlan"
+				/>
+				<AnswerSummaryMessage
+					v-else-if="isPlanModeAnswerSummaryMessage(message)"
+					:answers="message.data.answers"
+				/>
 			</template>
 		</N8nAskAssistantChat>
 	</div>

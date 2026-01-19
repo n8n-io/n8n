@@ -4,6 +4,23 @@ import { useI18n } from '@n8n/i18n';
 import { isTextMessage, isWorkflowUpdatedMessage, isToolMessage } from '../assistant.types';
 import { generateShortId } from '../builder.utils';
 
+// Type guards for API Plan Mode messages
+function isApiQuestionsMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiQuestionsMessage {
+	return 'type' in msg && msg.type === 'questions' && 'questions' in msg;
+}
+
+function isApiPlanMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.ApiPlanMessage {
+	return 'type' in msg && msg.type === 'plan' && 'plan' in msg;
+}
+
+function isApiAnswerSummaryMessage(
+	msg: ChatRequest.MessageResponse,
+): msg is ChatRequest.ApiAnswerSummaryMessage {
+	return 'type' in msg && msg.type === 'answer_summary' && 'answers' in msg;
+}
+
 export interface MessageProcessingResult {
 	messages: ChatUI.AssistantMessage[];
 	thinkingMessage?: string;
@@ -172,6 +189,46 @@ export function useBuilderMessages() {
 				read: false,
 				retry,
 			});
+			shouldClearThinking = true;
+		} else if (isApiQuestionsMessage(msg)) {
+			// Handle Plan Mode questions message
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'questions',
+				data: {
+					questions: msg.questions,
+					introMessage: msg.introMessage,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isApiPlanMessage(msg)) {
+			// Handle Plan Mode plan message
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'plan',
+				data: {
+					plan: msg.plan,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage);
+			shouldClearThinking = true;
+		} else if (isApiAnswerSummaryMessage(msg)) {
+			// Handle Plan Mode answer summary message
+			messages.push({
+				id: messageId,
+				role: 'assistant',
+				type: 'custom',
+				customType: 'answer_summary',
+				data: {
+					answers: msg.answers,
+				},
+				read: false,
+			} as ChatUI.AssistantMessage);
 			shouldClearThinking = true;
 		}
 

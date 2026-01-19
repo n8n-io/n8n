@@ -380,6 +380,7 @@ defineExpose({
 						@input="adjustHeight"
 					/>
 					<div :class="$style.inlineActions">
+						<slot name="beforeActions" />
 						<N8nSendStopButton
 							data-test-id="send-message-button"
 							:streaming="streaming"
@@ -418,6 +419,7 @@ defineExpose({
 						/>
 					</N8nScrollArea>
 					<div :class="$style.bottomActions">
+						<slot name="beforeActions" />
 						<N8nSendStopButton
 							data-test-id="send-message-button"
 							:streaming="streaming"

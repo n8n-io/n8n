@@ -14,9 +14,10 @@ import type {
 	BuilderMetadata,
 	ConfiguratorMetadata,
 	StateManagementMetadata,
+	PlannerMetadata,
 } from '../types/coordination';
 
-export type RoutingDecision = 'discovery' | 'builder' | 'configurator' | 'responder';
+export type RoutingDecision = 'discovery' | 'builder' | 'configurator' | 'planner' | 'responder';
 
 /**
  * Get the last completed phase from the coordination log
@@ -87,8 +88,18 @@ export function getPhaseMetadata(
 ): StateManagementMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
+	phase: 'planner',
+): PlannerMetadata | null;
+export function getPhaseMetadata(
+	log: CoordinationLogEntry[],
 	phase: SubgraphPhase,
-): DiscoveryMetadata | BuilderMetadata | ConfiguratorMetadata | StateManagementMetadata | null {
+):
+	| DiscoveryMetadata
+	| BuilderMetadata
+	| ConfiguratorMetadata
+	| StateManagementMetadata
+	| PlannerMetadata
+	| null {
 	const entry = getPhaseEntry(log, phase);
 	if (!entry) return null;
 

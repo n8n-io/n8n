@@ -95,6 +95,7 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
+		planMode?: boolean;
 	}
 
 	export interface UserChatMessage {
@@ -106,6 +107,8 @@ export namespace ChatRequest {
 		context?: UserContext;
 		workflowContext?: WorkflowContext;
 		featureFlags?: BuilderFeatureFlags;
+		/** Builder mode: 'build' for direct workflow generation, 'plan' for planning first */
+		mode?: 'build' | 'plan';
 	}
 
 	export interface UserContext {
@@ -185,6 +188,27 @@ export namespace ChatRequest {
 		suggestionId?: string;
 	}
 
+	// API-only types for Plan Mode messages
+	// These are the raw formats sent by the backend
+	export interface ApiQuestionsMessage {
+		role: 'assistant';
+		type: 'questions';
+		questions: PlanMode.PlannerQuestion[];
+		introMessage?: string;
+	}
+
+	export interface ApiPlanMessage {
+		role: 'assistant';
+		type: 'plan';
+		plan: PlanMode.PlanOutput;
+	}
+
+	export interface ApiAnswerSummaryMessage {
+		role: 'assistant';
+		type: 'answer_summary';
+		answers: PlanMode.QuestionResponse[];
+	}
+
 	// API-only types
 	export type MessageResponse =
 		| ((
@@ -196,6 +220,9 @@ export namespace ChatRequest {
 				| ChatUI.WorkflowUpdatedMessage
 				| ToolMessage
 				| ChatUI.ErrorMessage
+				| ApiQuestionsMessage
+				| ApiPlanMessage
+				| ApiAnswerSummaryMessage
 		  ) & {
 				quickReplies?: ChatUI.QuickReply[];
 		  })
@@ -240,6 +267,117 @@ export namespace AskAiRequest {
 		forNode: 'code' | 'transform';
 	}
 }
+
+// ============================================================================
+// Plan Mode Types
+// ============================================================================
+
+export namespace PlanMode {
+	/**
+	 * Types for clarifying question in Plan Mode
+	 */
+	export type QuestionType = 'single' | 'multi' | 'text';
+
+	export interface PlannerQuestion {
+		id: string;
+		question: string;
+		type: QuestionType;
+		options?: string[];
+		allowCustom?: boolean;
+	}
+
+	export interface QuestionResponse {
+		questionId: string;
+		question: string;
+		selectedOptions: string[];
+		customText?: string;
+		skipped?: boolean;
+	}
+
+	export interface PlanStep {
+		description: string;
+		subSteps?: string[];
+		suggestedNodes?: string[];
+	}
+
+	export interface PlanOutput {
+		summary: string;
+		trigger: string;
+		steps: PlanStep[];
+		additionalSpecs?: string[];
+	}
+
+	/**
+	 * Custom message data for questions UI
+	 */
+	export interface QuestionsMessageData {
+		questions: PlannerQuestion[];
+		introMessage?: string;
+	}
+
+	/**
+	 * Custom message data for plan display
+	 */
+	export interface PlanMessageData {
+		plan: PlanOutput;
+	}
+
+	/**
+	 * Custom message data for answer summary
+	 */
+	export interface AnswerSummaryMessageData {
+		answers: QuestionResponse[];
+	}
+
+	/**
+	 * Custom message types for Plan Mode
+	 */
+	export type QuestionsMessage = ChatUI.CustomMessage & {
+		customType: 'questions';
+		data: QuestionsMessageData;
+	};
+
+	export type PlanMessage = ChatUI.CustomMessage & {
+		customType: 'plan';
+		data: PlanMessageData;
+	};
+
+	export type AnswerSummaryMessage = ChatUI.CustomMessage & {
+		customType: 'answer_summary';
+		data: AnswerSummaryMessageData;
+	};
+
+	export type PlanModeMessage = QuestionsMessage | PlanMessage | AnswerSummaryMessage;
+}
+
+// Type guards for Plan Mode messages
+export function isPlanModeQuestionsMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is PlanMode.QuestionsMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'questions';
+}
+
+export function isPlanModePlanMessage(msg: ChatUI.AssistantMessage): msg is PlanMode.PlanMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'plan';
+}
+
+export function isPlanModeAnswerSummaryMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is PlanMode.AnswerSummaryMessage {
+	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'answer_summary';
+}
+
+export function isPlanModeMessage(msg: ChatUI.AssistantMessage): msg is PlanMode.PlanModeMessage {
+	return (
+		isPlanModeQuestionsMessage(msg) ||
+		isPlanModePlanMessage(msg) ||
+		isPlanModeAnswerSummaryMessage(msg)
+	);
+}
+
+// ============================================================================
+// Type guards for ChatRequest messages
+// ============================================================================
 
 // Type guards for ChatRequest messages
 export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.TextMessage {

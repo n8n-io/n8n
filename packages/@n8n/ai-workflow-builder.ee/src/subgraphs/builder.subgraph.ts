@@ -29,6 +29,7 @@ import {
 	buildDiscoveryContextBlock,
 	buildWorkflowJsonBlock,
 	buildExecutionSchemaBlock,
+	buildPlanContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -180,7 +181,12 @@ export class BuilderSubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
-		const userRequest = extractUserRequest(parentState.messages);
+		// When we have a plan, use the plan summary as the user request
+		// Otherwise extract from messages
+		const hasPlan = !!parentState.planOutput;
+		const userRequest = hasPlan
+			? parentState.planOutput!.summary
+			: extractUserRequest(parentState.messages);
 
 		// Build context parts for Builder
 		const contextParts: string[] = [];
@@ -189,13 +195,20 @@ export class BuilderSubgraph extends BaseSubgraph<
 		contextParts.push('=== USER REQUEST ===');
 		contextParts.push(userRequest);
 
-		// 2. Discovery context (what nodes to use)
+		// 2. Plan context (if we have a plan from plan mode, this takes priority)
+		if (parentState.planOutput) {
+			contextParts.push('=== IMPLEMENTATION PLAN ===');
+			contextParts.push('Follow this plan to build the workflow:');
+			contextParts.push(buildPlanContextBlock(parentState.planOutput));
+		}
+
+		// 3. Discovery context (what nodes to use)
 		if (parentState.discoveryContext) {
 			contextParts.push('=== DISCOVERY CONTEXT ===');
 			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
 		}
 
-		// 3. Current workflow JSON (to add nodes to)
+		// 4. Current workflow JSON (to add nodes to)
 		contextParts.push('=== CURRENT WORKFLOW ===');
 		if (parentState.workflowJSON.nodes.length > 0) {
 			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
@@ -203,7 +216,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			contextParts.push('Empty workflow - ready to build');
 		}
 
-		// 4. Execution schema (data types available, NOT full data)
+		// 5. Execution schema (data types available, NOT full data)
 		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
 		if (schemaBlock) {
 			contextParts.push('=== AVAILABLE DATA SCHEMA ===');

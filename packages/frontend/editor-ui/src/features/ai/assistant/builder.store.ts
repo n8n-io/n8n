@@ -96,6 +96,8 @@ interface UserSubmittedBuilderMessageTrackingPayload
 	error_node_type?: string;
 }
 
+export type BuilderMode = 'build' | 'plan';
+
 export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	// Core state
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
@@ -109,6 +111,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		success: 0,
 		error: 0,
 	});
+
+	// Plan Mode state
+	const builderMode = ref<BuilderMode>('plan');
 
 	// Track whether AI Builder made edits since last save (resets after each save)
 	const aiBuilderMadeEdits = ref(false);
@@ -210,6 +215,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
 		loadedSessionsForWorkflowId.value = undefined;
+		builderMode.value = 'plan';
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
@@ -602,6 +608,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
+			mode: builderMode.value,
 		});
 
 		const retry = createRetryHandler(userMessageId, async () => await sendChatMessage(options));
@@ -754,6 +761,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	 */
 	function setBuilderMadeEdits(value: boolean): void {
 		aiBuilderMadeEdits.value = value;
+	}
+
+	/**
+	 * Sets the builder mode (build or plan).
+	 */
+	function setBuilderMode(mode: BuilderMode): void {
+		builderMode.value = mode;
 	}
 
 	function updateBuilderCredits(quota?: number, claimed?: number) {
@@ -918,6 +932,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		hasMessages,
 		workflowTodos,
 		lastUserMessageId,
+		builderMode,
 
 		// Methods
 		abortStreaming,
@@ -932,6 +947,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		getAiBuilderMadeEdits,
 		resetAiBuilderMadeEdits,
 		setBuilderMadeEdits,
+		setBuilderMode,
 		incrementManualExecutionStats,
 		resetManualExecutionStats,
 		// Version management

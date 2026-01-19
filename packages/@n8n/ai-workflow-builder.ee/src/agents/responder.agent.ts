@@ -156,12 +156,29 @@ export class ResponderAgent {
 	 * @param config - Optional RunnableConfig for tracing callbacks
 	 */
 	async invoke(context: ResponderContext, config?: RunnableConfig): Promise<AIMessage> {
+		// DEBUG: Log what responder receives
+		console.log('[Responder.invoke] messages.length:', context.messages.length);
+		console.log(
+			'[Responder.invoke] messages:',
+			context.messages.map((m, i) => ({
+				index: i,
+				type: m.constructor.name,
+				content: typeof m.content === 'string' ? m.content.substring(0, 80) : '[non-string]',
+			})),
+		);
+		console.log(
+			'[Responder.invoke] coordinationLog:',
+			context.coordinationLog.map((e) => ({ phase: e.phase, status: e.status })),
+		);
+
 		const agent = systemPrompt.pipe(this.llm);
 
 		const contextMessage = this.buildContextMessage(context);
 		const messagesToSend = contextMessage
 			? [...context.messages, contextMessage]
 			: context.messages;
+
+		console.log('[Responder.invoke] contextMessage exists:', !!contextMessage);
 
 		const result = await agent.invoke({ messages: messagesToSend }, config);
 		if (!isAIMessage(result)) {
