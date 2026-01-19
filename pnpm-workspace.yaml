@@ -129,4 +129,4 @@ minimumReleaseAgeExclude:
   - '@google/genai'
   - body-parser
   - node-forge
-  - vm2 # Security fix for CVSS 9.8 sandbox escape vulnerability
+  - vm2
