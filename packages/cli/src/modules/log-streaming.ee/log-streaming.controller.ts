@@ -51,8 +51,14 @@ export class EventBusController {
 	@Post('/destination')
 	@GlobalScope('eventBusDestination:create')
 	async postDestination(req: AuthenticatedRequest): Promise<MessageEventBusDestinationOptions> {
-		// Manually validate using the union schema since TypeScript reflection doesn't work with plain Zod schemas
-		const body = CreateDestinationDto.parse(req.body);
+		// Manually validate using the discriminated union schema since TypeScript reflection doesn't work with plain Zod schemas
+		// And ZodClass doesn't support discriminated unions directly
+		const parseResult = CreateDestinationDto.safeParse(req.body);
+		if (!parseResult.success) {
+			throw new BadRequestError(parseResult.error.errors[0].message);
+		}
+
+		const body = parseResult.data;
 		let result: MessageEventBusDestination;
 
 		switch (body.__type) {
