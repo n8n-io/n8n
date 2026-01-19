@@ -423,6 +423,180 @@ return workflow('multi-trigger', 'Multi-Channel Notifications')
   );
 \`\`\`
 
+## Example 5: Switch Routing (Multi-Way Branching)
+Use \`switchCase()\` to route items to different branches based on rules:
+\`\`\`typescript
+return workflow('order-router', 'Route Orders by Priority')
+  .add(trigger({{
+    type: 'n8n-nodes-base.manualTrigger',
+    version: 1.1,
+    config: {{ name: 'Start', position: [240, 300] }}
+  }}))
+  .then(switchCase([
+    // Output 0: High priority
+    node({{
+      type: 'n8n-nodes-base.slack',
+      version: 2.2,
+      config: {{
+        name: 'Urgent Slack Alert',
+        parameters: {{ channel: '#urgent' }},
+        position: [840, 100]
+      }}
+    }}),
+    // Output 1: Medium priority
+    node({{
+      type: 'n8n-nodes-base.slack',
+      version: 2.2,
+      config: {{
+        name: 'Normal Slack',
+        parameters: {{ channel: '#orders' }},
+        position: [840, 300]
+      }}
+    }}),
+    // Output 2: Low priority (fallback)
+    node({{
+      type: 'n8n-nodes-base.noOp',
+      version: 1,
+      config: {{ name: 'Log Only', position: [840, 500] }}
+    }})
+  ], {{
+    name: 'Route by Priority',
+    parameters: {{
+      mode: 'rules',
+      rules: {{
+        values: [
+          {{
+            conditions: {{
+              conditions: [{{
+                leftValue: '={{{{ $json.priority }}}}',
+                rightValue: 'high',
+                operator: {{ type: 'string', operation: 'equals' }}
+              }}]
+            }},
+            outputIndex: 0
+          }},
+          {{
+            conditions: {{
+              conditions: [{{
+                leftValue: '={{{{ $json.priority }}}}',
+                rightValue: 'medium',
+                operator: {{ type: 'string', operation: 'equals' }}
+              }}]
+            }},
+            outputIndex: 1
+          }}
+        ]
+      }},
+      fallbackOutput: 2
+    }},
+    position: [540, 300]
+  }}));
+\`\`\`
+
+## Example 6: Merge Parallel Branches
+Use \`merge()\` to execute multiple operations in parallel and combine results:
+\`\`\`typescript
+return workflow('parallel-fetch', 'Fetch Multiple APIs')
+  .add(trigger({{
+    type: 'n8n-nodes-base.manualTrigger',
+    version: 1.1,
+    config: {{ name: 'Start', position: [240, 300] }}
+  }}))
+  // Fan out to parallel branches, then merge results
+  .then(merge([
+    // Branch 1: Fetch users
+    node({{
+      type: 'n8n-nodes-base.httpRequest',
+      version: 4.3,
+      config: {{
+        name: 'Fetch Users',
+        parameters: {{ method: 'GET', url: 'https://api.example.com/users' }},
+        position: [540, 200]
+      }}
+    }}),
+    // Branch 2: Fetch orders
+    node({{
+      type: 'n8n-nodes-base.httpRequest',
+      version: 4.3,
+      config: {{
+        name: 'Fetch Orders',
+        parameters: {{ method: 'GET', url: 'https://api.example.com/orders' }},
+        position: [540, 400]
+      }}
+    }})
+  ], {{
+    mode: 'combine',
+    name: 'Combine Results',
+    parameters: {{ mode: 'combine', combinationMode: 'mergeByPosition' }}
+  }}))
+  // Continue processing after merge
+  .then(node({{
+    type: 'n8n-nodes-base.set',
+    version: 3.4,
+    config: {{
+      name: 'Process Combined Data',
+      position: [1140, 300]
+    }}
+  }}));
+\`\`\`
+
+Key merge modes:
+- \`append\`: Concatenates items from all branches (default)
+- \`combine\`: Merges items by position (first from each branch, then second, etc.)
+- \`multiplex\`: Creates all combinations of items from branches
+- \`chooseBranch\`: Waits for any one branch to complete
+
+## Example 7: IF Branch with Continue After
+For IF branches where both paths continue to the same node, chain after the ifBranch:
+\`\`\`typescript
+return workflow('validate-data', 'Data Validation')
+  .add(trigger({{
+    type: 'n8n-nodes-base.manualTrigger',
+    version: 1.1,
+    config: {{ name: 'Start', position: [240, 300] }}
+  }}))
+  .then(ifBranch([
+    // True: Valid data - just pass through
+    node({{
+      type: 'n8n-nodes-base.noOp',
+      version: 1,
+      config: {{ name: 'Valid', position: [840, 200] }}
+    }}),
+    // False: Invalid data - set error flag
+    node({{
+      type: 'n8n-nodes-base.set',
+      version: 3.4,
+      config: {{
+        name: 'Add Error Flag',
+        parameters: {{
+          mode: 'manual',
+          fields: {{ values: [{{ name: 'error', stringValue: 'Invalid data' }}] }}
+        }},
+        position: [840, 400]
+      }}
+    }})
+  ], {{
+    name: 'Is Valid?',
+    parameters: {{
+      conditions: {{
+        conditions: [{{
+          leftValue: '={{{{ $json.isValid }}}}',
+          rightValue: true,
+          operator: {{ type: 'boolean', operation: 'equals' }}
+        }}]
+      }}
+    }},
+    position: [540, 300]
+  }}));
+\`\`\`
+
+Key points for branching:
+- \`ifBranch([trueNode, falseNode], config)\`: Two-way conditional branching
+- \`switchCase([case0, case1, ..., fallback], config)\`: Multi-way routing with rules
+- \`merge([branch1, branch2, ...], config)\`: Parallel execution with result combination
+- Position branch outputs vertically (e.g., y: 100, 300, 500) to avoid overlap
+- Use \`null\` in ifBranch array for branches that should not connect: \`ifBranch([null, errorHandler], config)\`
+
 Key points for multiple chains:
 - Each .add() receives a complete chain of nodes connected via .then()
 - All nodes in the chain are automatically added to the workflow

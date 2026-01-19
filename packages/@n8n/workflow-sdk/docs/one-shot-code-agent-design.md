@@ -272,7 +272,7 @@ const exported = modified.toJSON();  // All original data preserved
 
 ### 7. Code-First Mental Model
 
-The SDK mirrors how developers think about workflows:
+The SDK mirrors simplifies workflows, making it easy for LLMs to understand as TS code:
 
 ```typescript
 // Natural reading order: trigger → process → output
