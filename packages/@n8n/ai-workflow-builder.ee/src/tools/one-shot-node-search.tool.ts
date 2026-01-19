@@ -36,55 +36,63 @@ function debugLog(message: string, data?: Record<string, unknown>): void {
 
 /**
  * Create the simplified node search tool for one-shot agent
+ * Accepts multiple queries and returns separate results for each
  */
 export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
-	debugLog('Creating search_node tool');
+	debugLog('Creating search_nodes tool');
 
 	return tool(
-		async (input: { query: string }) => {
-			debugLog('========== SEARCH_NODE TOOL INVOKED ==========');
-			debugLog('Input', { query: input.query });
+		async (input: { queries: string[] }) => {
+			debugLog('========== SEARCH_NODES TOOL INVOKED ==========');
+			debugLog('Input', { queries: input.queries });
 
-			const searchStartTime = Date.now();
-			const results = nodeTypeParser.searchNodeTypes(input.query, 5);
-			const searchDuration = Date.now() - searchStartTime;
+			const allResults: string[] = [];
 
-			debugLog('Search complete', {
-				searchDurationMs: searchDuration,
-				resultCount: results.length,
-				results: results.map((node) => ({
-					id: node.id,
-					displayName: node.displayName,
-					isTrigger: node.isTrigger,
-				})),
-			});
+			for (const query of input.queries) {
+				const searchStartTime = Date.now();
+				const results = nodeTypeParser.searchNodeTypes(query, 5);
+				const searchDuration = Date.now() - searchStartTime;
 
-			if (results.length === 0) {
-				const response = `No nodes found matching "${input.query}". Try a different search term.`;
-				debugLog('Returning empty response', { response });
-				return response;
+				debugLog(`Search complete for "${query}"`, {
+					searchDurationMs: searchDuration,
+					resultCount: results.length,
+					results: results.map((node) => ({
+						id: node.id,
+						displayName: node.displayName,
+						isTrigger: node.isTrigger,
+					})),
+				});
+
+				if (results.length === 0) {
+					allResults.push(`## "${query}"\nNo nodes found. Try a different search term.`);
+				} else {
+					const resultLines = results.map((node) => {
+						const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
+						return `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Description: ${node.description}`;
+					});
+					allResults.push(
+						`## "${query}"\nFound ${results.length} nodes:\n\n${resultLines.join('\n\n')}`,
+					);
+				}
 			}
 
-			const resultLines = results.map((node) => {
-				const triggerTag = node.isTrigger ? ' [TRIGGER]' : '';
-				return `- ${node.id}${triggerTag}\n  Display Name: ${node.displayName}\n  Description: ${node.description}`;
-			});
-
-			const response = `Found ${results.length} nodes matching "${input.query}":\n\n${resultLines.join('\n\n')}\n\nUse get_nodes to see the full TypeScript type definitions for these nodes.`;
+			const response = `${allResults.join('\n\n---\n\n')}\n\nUse get_nodes to see the full TypeScript type definitions for these nodes.`;
 			debugLog('Returning response', {
 				responseLength: response.length,
 				responsePreview: response.substring(0, 500),
 			});
-			debugLog('========== SEARCH_NODE TOOL COMPLETE ==========');
+			debugLog('========== SEARCH_NODES TOOL COMPLETE ==========');
 
 			return response;
 		},
 		{
-			name: 'search_node',
+			name: 'search_nodes',
 			description:
-				'Search for n8n nodes by name or service. Returns a list of node IDs matching the query. Use this when you need to find nodes for a specific integration or service (e.g., "salesforce", "http", "gmail").',
+				'Search for n8n nodes by name or service. Accepts multiple search queries and returns separate result lists for each. Use this when you need to find nodes for specific integrations or services (e.g., ["salesforce", "http", "gmail"]).',
 			schema: z.object({
-				query: z.string().describe('Search query (e.g., "salesforce", "http", "gmail")'),
+				queries: z
+					.array(z.string())
+					.describe('Array of search queries (e.g., ["salesforce", "http", "gmail"])'),
 			}),
 		},
 	);

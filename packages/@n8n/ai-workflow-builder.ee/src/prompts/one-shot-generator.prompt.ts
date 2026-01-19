@@ -645,6 +645,59 @@ Key points for multiple chains:
 - All nodes in the chain are automatically added to the workflow
 - Connections between nodes in the chain are preserved
 - Position nodes vertically to avoid overlap (e.g., y: 200 for first chain, y: 500 for second)
+
+## Example 9: Multi-Agent Orchestration
+\`\`\`typescript
+// Sub-agent that can be called as a tool
+const researchAgent = tool({{
+  type: '@n8n/n8n-nodes-langchain.agentTool',
+  version: 3,
+  config: {{
+    name: 'Research Agent',
+    parameters: {{
+      toolDescription: 'Researches a topic and returns findings',
+      text: '={{{{ $fromAI(\\'topic\\', \\'Topic to research\\', \\'string\\') }}}}'
+    }},
+    subnodes: {{
+      model: languageModel({{
+        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+        version: 1.3,
+        config: {{ credentials: {{ openAiApi: newCredential('OpenAI') }} }}
+      }}),
+      tools: [
+        tool({{
+          type: '@n8n/n8n-nodes-langchain.toolSerpApi',
+          version: 1,
+          config: {{ credentials: {{ serpApi: newCredential('SerpAPI') }} }}
+        }})
+      ]
+    }}
+  }}
+}});
+
+return workflow('orchestrator', 'Multi-Agent Workflow')
+  .add(trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {{}} }}))
+  .then(node({{
+    type: '@n8n/n8n-nodes-langchain.agent',
+    version: 3.1,
+    config: {{
+      name: 'Orchestrator',
+      parameters: {{
+        promptType: 'define',
+        text: '={{{{ $json.chatInput }}}}',
+        options: {{ systemMessage: 'Coordinate the research agent to answer questions.' }}
+      }},
+      subnodes: {{
+        model: languageModel({{
+          type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+          version: 1.3,
+          config: {{ credentials: {{ openAiApi: newCredential('OpenAI') }} }}
+        }}),
+        tools: [researchAgent]
+      }}
+    }}
+  }}));
+\`\`\`
 </workflow_examples>`;
 
 /**

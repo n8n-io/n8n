@@ -2,6 +2,11 @@
 	"fetchedAt": "2026-01-18T11:13:40.599Z",
 	"workflows": [
 		{
+			"id": 0,
+			"name": "Multi-Agent Research Report",
+			"success": true
+		},
+		{
 			"id": 6270,
 			"name": "Build your first AI agent",
 			"success": true
