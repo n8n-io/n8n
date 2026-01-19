@@ -84,6 +84,11 @@ async function loadSourceControlStatus() {
 
 	try {
 		const freshStatus = await sourceControlStore.getAggregatedStatus();
+		console.log('[DataTable Debug] Received status from backend:', freshStatus);
+		console.log(
+			'[DataTable Debug] Data tables in status:',
+			freshStatus.filter((f) => f.type === 'datatable'),
+		);
 
 		if (!freshStatus.length) {
 			toast.showMessage({
@@ -172,6 +177,14 @@ const classifyFilesByType = (files: SourceControlledFile[], currentWorkflowId?: 
 			}
 
 			if (file.type === SOURCE_CONTROL_FILE_TYPE.datatable) {
+				console.log('[DataTable Debug] Processing datatable file:', {
+					id: file.id,
+					name: file.name,
+					owner: file.owner,
+					projectId: file.owner?.projectId,
+					foundProject: project,
+					availableProjects: projectsStore.availableProjects,
+				});
 				acc.datatable.push({ ...file, project });
 				return acc;
 			}

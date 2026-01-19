@@ -471,6 +471,10 @@ export class SourceControlImportService {
 			absolute: true,
 		});
 
+		this.logger.debug(
+			`[DataTable Debug] Found ${dataTableFiles.length} data table files in remote`,
+		);
+
 		if (dataTableFiles.length === 0) {
 			return [];
 		}
@@ -479,7 +483,12 @@ export class SourceControlImportService {
 			dataTableFiles.map(async (file) => {
 				try {
 					const fileContent = await fsReadFile(file, { encoding: 'utf8' });
-					return jsonParse<ExportableDataTable>(fileContent);
+					const parsed = jsonParse<ExportableDataTable>(fileContent);
+					this.logger.debug(
+						`[DataTable Debug] Parsed remote table ${parsed.id} (${parsed.name}), owner:`,
+						parsed.ownedBy,
+					);
+					return parsed;
 				} catch (error) {
 					this.logger.debug(`Failed to parse data table from file ${file}: ${error.message}`);
 					return undefined;
@@ -496,7 +505,12 @@ export class SourceControlImportService {
 			const dataTables = await this.dataTableRepository.find({
 				relations: ['columns', 'project'],
 			});
+			this.logger.debug(`[DataTable Debug] Found ${dataTables.length} data tables in DB`);
 			return dataTables.map((table) => {
+				this.logger.debug(
+					`[DataTable Debug] Processing table ${table.id} (${table.name}), project:`,
+					table.project,
+				);
 				let ownedBy: StatusResourceOwner | null = null;
 				if (table.project?.type === 'personal') {
 					const ownerRelation = table.project.projectRelations?.find(
@@ -516,6 +530,7 @@ export class SourceControlImportService {
 						projectName: table.project.name,
 					};
 				}
+				this.logger.debug(`[DataTable Debug] Table ${table.id} resolved owner:`, ownedBy);
 
 				return {
 					id: table.id,
