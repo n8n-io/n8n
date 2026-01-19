@@ -1,3 +1,4 @@
+import { cloudflared } from './cloudflared';
 import { gitea, createGiteaHelper } from './gitea';
 import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
@@ -27,6 +28,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	proxy,
 	taskRunner,
 	loadBalancer,
+	cloudflared,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
