@@ -134,7 +134,7 @@ export const MessageEventBusDestinationOptionsSchema = z.object({
 			'$$MessageEventBusDestinationSyslog',
 		])
 		.optional(),
-	id: z.string().uuid().optional(),
+	id: z.string().optional(),
 	label: z.string().min(1).optional(),
 	enabled: z.boolean().optional(),
 	subscribedEvents: z.array(z.string()).optional(),
