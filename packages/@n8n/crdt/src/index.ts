@@ -74,7 +74,7 @@ export {
 } from './protocol';
 
 // Utilities
-export { seedValueDeep, toJSON, getNestedValue, setNestedValue } from './utils';
+export { seedValueDeep, toJSON } from './utils';
 
 /**
  * Creates a CRDT provider based on the given configuration.
