@@ -3,6 +3,7 @@ import { Logger, inProduction } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
 import { readFileSync } from 'fs';
+import { writeFile, rename } from 'fs/promises';
 import { join } from 'path';
 
 import {
@@ -28,6 +29,14 @@ export class CommunityNodeTypesService {
 		private config: CommunityPackagesConfig,
 		private communityPackagesService: CommunityPackagesService,
 	) {}
+
+	async init() {
+		if (this.communityNodeTypes.size > 0) return;
+		this.logger.debug('Initializing community node types...');
+
+		const environment = this.detectEnvironment();
+		this.hydrateNodeTypes(environment);
+	}
 
 	private async detectUpdates(environment: 'staging' | 'production'): Promise<number[]> {
 		const communityNodesMetadata = await getCommunityNodesMetadata(environment);
@@ -119,6 +128,24 @@ export class CommunityNodeTypesService {
 		for (const nodeType of nodeTypes) {
 			this.communityNodeTypes.set(nodeType.name, nodeType);
 		}
+
+		this.persistNodeTypesToFile(nodeTypes).catch((error) => {
+			this.logger.error('Failed to persist community node types to file', {
+				error: ensureError(error),
+			});
+		});
+	}
+
+	private async persistNodeTypesToFile(nodeTypes: StrapiCommunityNodeType[]) {
+		if (nodeTypes.length === 0) return;
+
+		const environment = this.detectEnvironment();
+		const filePath = join(__dirname, 'data', `${environment}-node-types.json`);
+		const tempFilePath = `${filePath}.tmp`;
+		const jsonContent = JSON.stringify(Array.from(this.communityNodeTypes.values()));
+
+		await writeFile(tempFilePath, jsonContent, 'utf-8');
+		await rename(tempFilePath, filePath);
 	}
 
 	private updateRequired() {

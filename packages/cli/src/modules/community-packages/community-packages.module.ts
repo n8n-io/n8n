@@ -9,6 +9,9 @@ export class CommunityPackagesModule implements ModuleInterface {
 	async init() {
 		await import('./community-packages.controller');
 		await import('./community-node-types.controller');
+
+		const { CommunityNodeTypesService } = await import('./community-node-types.service');
+		await Container.get(CommunityNodeTypesService).init();
 	}
 
 	async commands() {
