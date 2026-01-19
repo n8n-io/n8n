@@ -319,12 +319,11 @@ test('DELETE /eventbus/destination delete all destinations by id', async () => {
 		return acc;
 	}, []);
 
-	await Promise.all(
-		existingDestinationIds.map(async (id) => {
-			const response = await authOwnerAgent.del('/eventbus/destination').query({ id });
-			expect(response.statusCode).toBe(200);
-		}),
-	);
+	// Delete sequentially to avoid race conditions
+	for (const id of existingDestinationIds) {
+		const response = await authOwnerAgent.del('/eventbus/destination').query({ id });
+		expect(response.statusCode).toBe(200);
+	}
 
 	const remainingDestinations = await destinationService.findDestination();
 	expect(remainingDestinations.length).toBe(0);

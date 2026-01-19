@@ -84,7 +84,6 @@ export { InsightsDateFilterDto } from './insights/date-filter.dto';
 export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
 export {
 	CreateDestinationDto,
-	type CreateDestinationDto as CreateDestinationDtoType,
 	type WebhookDestination,
 	type SentryDestination,
 	type SyslogDestination,

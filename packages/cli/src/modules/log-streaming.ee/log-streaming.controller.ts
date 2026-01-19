@@ -4,16 +4,8 @@ import {
 	GetDestinationQueryDto,
 	TestDestinationQueryDto,
 } from '@n8n/api-types';
-import {
-	Body,
-	Delete,
-	Get,
-	GlobalScope,
-	Licensed,
-	Post,
-	Query,
-	RestController,
-} from '@n8n/decorators';
+import type { AuthenticatedRequest } from '@n8n/db';
+import { Delete, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import type {
 	MessageEventBusDestinationOptions,
 	MessageEventBusDestinationSentryOptions,
@@ -48,6 +40,8 @@ export class EventBusController {
 	@Get('/destination')
 	@GlobalScope('eventBusDestination:list')
 	async getDestination(
+		_req: AuthenticatedRequest,
+		_res: unknown,
 		@Query query: GetDestinationQueryDto,
 	): Promise<MessageEventBusDestinationOptions[]> {
 		return await this.destinationService.findDestination(query.id);
@@ -56,25 +50,25 @@ export class EventBusController {
 	@Licensed('feat:logStreaming')
 	@Post('/destination')
 	@GlobalScope('eventBusDestination:create')
-	async postDestination(
-		@Body body: CreateDestinationDto,
-	): Promise<MessageEventBusDestinationOptions> {
+	async postDestination(req: AuthenticatedRequest): Promise<MessageEventBusDestinationOptions> {
+		// Manually validate using the union schema since TypeScript reflection doesn't work with plain Zod schemas
+		const body = CreateDestinationDto.parse(req.body);
 		let result: MessageEventBusDestination;
 
 		switch (body.__type) {
-			case MessageEventBusDestinationTypeNames.sentry:
-				result = await this.destinationService.addDestination(
-					new MessageEventBusDestinationSentry(
-						this.eventBus,
-						body as MessageEventBusDestinationSentryOptions,
-					),
-				);
-				break;
 			case MessageEventBusDestinationTypeNames.webhook:
 				result = await this.destinationService.addDestination(
 					new MessageEventBusDestinationWebhook(
 						this.eventBus,
 						body as MessageEventBusDestinationWebhookOptions,
+					),
+				);
+				break;
+			case MessageEventBusDestinationTypeNames.sentry:
+				result = await this.destinationService.addDestination(
+					new MessageEventBusDestinationSentry(
+						this.eventBus,
+						body as MessageEventBusDestinationSentryOptions,
 					),
 				);
 				break;
@@ -96,14 +90,22 @@ export class EventBusController {
 	@Licensed('feat:logStreaming')
 	@Get('/testmessage')
 	@GlobalScope('eventBusDestination:test')
-	async sendTestMessage(@Query query: TestDestinationQueryDto): Promise<boolean> {
+	async sendTestMessage(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Query query: TestDestinationQueryDto,
+	): Promise<boolean> {
 		return await this.destinationService.testDestination(query.id);
 	}
 
 	@Licensed('feat:logStreaming')
 	@Delete('/destination')
 	@GlobalScope('eventBusDestination:delete')
-	async deleteDestination(@Query query: DeleteDestinationQueryDto): Promise<void> {
+	async deleteDestination(
+		_req: AuthenticatedRequest,
+		_res: unknown,
+		@Query query: DeleteDestinationQueryDto,
+	): Promise<void> {
 		await this.destinationService.removeDestination(query.id);
 	}
 }
