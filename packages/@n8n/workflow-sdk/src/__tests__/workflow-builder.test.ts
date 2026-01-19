@@ -881,6 +881,61 @@ describe('Workflow Builder', () => {
 	});
 
 	describe('switchCase()', () => {
+		it('should connect previous node to switch when using chain with add()', () => {
+			// BUG FIX TEST: When using .add() with a chain containing switchCase(),
+			// the connection from the previous node to the switch was not being created
+			// because the chain's getConnections() returns switchCaseComposite as target,
+			// which doesn't have a .name property (it has switchNode.name instead)
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const linearNode = node({
+				type: 'n8n-nodes-base.linear',
+				version: 1.1,
+				config: { name: 'Get Issues' },
+			});
+			const case0 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Bug Handler' },
+			});
+			const case1 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Feature Handler' },
+			});
+
+			// This pattern is what causes the bug: chain with switchCase inside add()
+			// Type cast needed because NodeChain.then() types don't include composites
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const chain = t.then(linearNode).then(
+				switchCase([case0, case1], {
+					name: 'Triage',
+					parameters: { mode: 'rules' },
+				}) as any,
+			);
+
+			const wf = workflow('test', 'Test').add(chain);
+			const json = wf.toJSON();
+
+			// All 5 nodes should be present
+			expect(json.nodes).toHaveLength(5);
+
+			// Trigger should connect to Linear node
+			expect(json.connections['Start']!.main[0]![0]!.node).toBe('Get Issues');
+
+			// Linear node should connect to Switch - THIS IS THE BUG!
+			// Before fix: json.connections['Get Issues'] is undefined
+			expect(json.connections['Get Issues']).toBeDefined();
+			expect(json.connections['Get Issues']!.main[0]![0]!.node).toBe('Triage');
+
+			// Switch should connect to cases
+			expect(json.connections['Triage']!.main[0]![0]!.node).toBe('Bug Handler');
+			expect(json.connections['Triage']!.main[1]![0]!.node).toBe('Feature Handler');
+		});
+
 		it('should create Switch node with case branches', () => {
 			const triggerNode = trigger({
 				type: 'n8n-nodes-base.manualTrigger',

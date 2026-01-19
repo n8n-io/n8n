@@ -597,6 +597,49 @@ Key points for branching:
 - Position branch outputs vertically (e.g., y: 100, 300, 500) to avoid overlap
 - Use \`null\` in ifBranch array for branches that should not connect: \`ifBranch([null, errorHandler], config)\`
 
+## Example 8: Sticky Notes for Documentation
+Use \`sticky()\` to add documentation notes. Pass \`nodes\` to auto-position around nodes:
+\`\`\`typescript
+// Create nodes first
+const fetchUsers = node({{
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: {{
+    name: 'Fetch Users',
+    parameters: {{ method: 'GET', url: 'https://api.example.com/users' }},
+    position: [540, 300]
+  }}
+}});
+const processUsers = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{
+    name: 'Process Users',
+    position: [840, 300]
+  }}
+}});
+
+return workflow('documented-flow', 'Documented Workflow')
+  .add(trigger({{
+    type: 'n8n-nodes-base.manualTrigger',
+    version: 1.1,
+    config: {{ name: 'Start', position: [240, 300] }}
+  }}))
+  .then(fetchUsers)
+  .then(processUsers)
+  // Add sticky note that auto-wraps around the nodes
+  .add(sticky('## User Data Processing\\nFetches and transforms user data from the API.', {{
+    nodes: [fetchUsers, processUsers],
+    color: 4
+  }}));
+\`\`\`
+
+Sticky note options:
+- \`nodes\`: Array of nodes to wrap (auto-calculates position and size)
+- \`color\`: Color index 1-7 (1=yellow, 2=orange, 3=red, 4=purple, 5=blue, 6=teal, 7=green)
+- \`position\`: Manual position [x, y] (overrides \`nodes\` calculation)
+- \`width\`, \`height\`: Manual dimensions
+
 Key points for multiple chains:
 - Each .add() receives a complete chain of nodes connected via .then()
 - All nodes in the chain are automatically added to the workflow

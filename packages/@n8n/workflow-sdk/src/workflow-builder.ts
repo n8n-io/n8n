@@ -304,12 +304,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			if (typeof graphNode.instance.getConnections === 'function') {
 				const nodeConns = graphNode.instance.getConnections();
 				for (const { target, outputIndex } of nodeConns) {
+					// Resolve target node name - handles both NodeInstance and composites
+					const targetName = this.resolveTargetNodeName(target);
+					if (!targetName) continue;
+
 					const mainConns = graphNode.connections.get('main') || new Map();
 					const outputConns = mainConns.get(outputIndex) || [];
 					// Avoid duplicates
-					const alreadyExists = outputConns.some((c: ConnectionTarget) => c.node === target.name);
+					const alreadyExists = outputConns.some((c: ConnectionTarget) => c.node === targetName);
 					if (!alreadyExists) {
-						outputConns.push({ node: target.name, type: 'main', index: 0 });
+						outputConns.push({ node: targetName, type: 'main', index: 0 });
 						mainConns.set(outputIndex, outputConns);
 						graphNode.connections.set('main', mainConns);
 					}
@@ -493,6 +497,32 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Resolve the target node name from a connection target.
+	 * Handles both NodeInstance and composites (SwitchCaseComposite, IfBranchComposite, MergeComposite).
+	 */
+	private resolveTargetNodeName(target: unknown): string | undefined {
+		if (target === null || typeof target !== 'object') return undefined;
+
+		// Check for SwitchCaseComposite
+		if (this.isSwitchCaseComposite(target)) {
+			return (target as SwitchCaseComposite).switchNode.name;
+		}
+
+		// Check for IfBranchComposite
+		if (this.isIfBranchComposite(target)) {
+			return (target as IfBranchComposite).ifNode.name;
+		}
+
+		// Check for MergeComposite
+		if (this.isMergeComposite(target)) {
+			return (target as MergeComposite).mergeNode.name;
+		}
+
+		// Regular NodeInstance
+		return (target as NodeInstance<string, string, unknown>).name;
+	}
+
+	/**
 	 * Check if value is an IfBranchComposite
 	 */
 	private isIfBranchComposite(value: unknown): boolean {
@@ -512,13 +542,22 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Add nodes from a SwitchCaseComposite to the nodes map
 	 */
 	private addSwitchCaseNodes(nodes: Map<string, GraphNode>, composite: SwitchCaseComposite): void {
-		// Add the switch node
-		this.addNodeWithSubnodes(nodes, composite.switchNode);
+		// Build the switch node connections to its cases
+		const switchMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add all case nodes
-		for (const caseNode of composite.cases) {
+		// Add all case nodes and build connections from switch to each case
+		composite.cases.forEach((caseNode, index) => {
 			this.addNodeWithSubnodes(nodes, caseNode);
-		}
+			switchMainConns.set(index, [{ node: caseNode.name, type: 'main', index: 0 }]);
+		});
+
+		// Add the switch node with connections to cases
+		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
+		switchConns.set('main', switchMainConns);
+		nodes.set(composite.switchNode.name, {
+			instance: composite.switchNode,
+			connections: switchConns,
+		});
 	}
 
 	/**

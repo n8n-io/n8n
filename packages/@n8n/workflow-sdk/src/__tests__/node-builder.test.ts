@@ -203,6 +203,43 @@ describe('Node Builder', () => {
 			expect(s.config.parameters?.width).toBe(300);
 			expect(s.config.parameters?.height).toBe(200);
 		});
+
+		it('should auto-position around nodes when nodes option is provided', () => {
+			const n1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP 1', position: [400, 300] },
+			});
+			const n2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Set', position: [700, 300] },
+			});
+
+			const s = sticky('## API Section', { nodes: [n1, n2], color: 2 });
+
+			// Should calculate bounding box around nodes with padding (50px)
+			// minX = 400, maxX = 700 + 200 = 900, minY = 300, maxY = 300 + 100 = 400
+			// position = [400-50, 300-50] = [350, 250]
+			// width = (900-400) + 100 = 600, height = (400-300) + 100 = 200
+			expect(s.config.position).toEqual([350, 250]);
+			expect(s.config.parameters?.width).toBe(600);
+			expect(s.config.parameters?.height).toBe(200);
+			expect(s.config.parameters?.color).toBe(2);
+		});
+
+		it('should allow manual position to override nodes bounding box', () => {
+			const n1 = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'HTTP', position: [400, 300] },
+			});
+
+			const s = sticky('## Note', { nodes: [n1], position: [100, 100] });
+
+			// Manual position should override calculated position
+			expect(s.config.position).toEqual([100, 100]);
+		});
 	});
 
 	describe('placeholder()', () => {

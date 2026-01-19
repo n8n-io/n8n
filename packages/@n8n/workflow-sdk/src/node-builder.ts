@@ -281,6 +281,44 @@ export function trigger<TTrigger extends TriggerInput>(
 	);
 }
 
+// Default node dimensions for bounding box calculation
+const DEFAULT_NODE_WIDTH = 200;
+const DEFAULT_NODE_HEIGHT = 100;
+const STICKY_PADDING = 50;
+
+/**
+ * Calculate bounding box around a set of nodes
+ */
+function calculateNodesBoundingBox(nodes: NodeInstance<string, string, unknown>[]): {
+	position: [number, number];
+	width: number;
+	height: number;
+} | null {
+	if (nodes.length === 0) return null;
+
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+
+	for (const node of nodes) {
+		const pos = node.config.position ?? [0, 0];
+		const x = pos[0];
+		const y = pos[1];
+
+		minX = Math.min(minX, x);
+		minY = Math.min(minY, y);
+		maxX = Math.max(maxX, x + DEFAULT_NODE_WIDTH);
+		maxY = Math.max(maxY, y + DEFAULT_NODE_HEIGHT);
+	}
+
+	return {
+		position: [minX - STICKY_PADDING, minY - STICKY_PADDING],
+		width: maxX - minX + STICKY_PADDING * 2,
+		height: maxY - minY + STICKY_PADDING * 2,
+	};
+}
+
 /**
  * Sticky note node instance
  */
@@ -294,14 +332,22 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 	constructor(content: string, stickyConfig: StickyNoteConfig = {}) {
 		this.id = uuid();
 		this.name = stickyConfig.name ?? 'Sticky Note';
+
+		// If nodes are provided, calculate bounding box to wrap around them
+		const boundingBox = stickyConfig.nodes ? calculateNodesBoundingBox(stickyConfig.nodes) : null;
+
 		this.config = {
 			name: this.name,
-			position: stickyConfig.position,
+			position: stickyConfig.position ?? boundingBox?.position,
 			parameters: {
 				content,
 				...(stickyConfig.color !== undefined && { color: stickyConfig.color }),
-				...(stickyConfig.width !== undefined && { width: stickyConfig.width }),
-				...(stickyConfig.height !== undefined && { height: stickyConfig.height }),
+				...((stickyConfig.width ?? boundingBox?.width) !== undefined && {
+					width: stickyConfig.width ?? boundingBox?.width,
+				}),
+				...((stickyConfig.height ?? boundingBox?.height) !== undefined && {
+					height: stickyConfig.height ?? boundingBox?.height,
+				}),
 			},
 		};
 	}
@@ -338,15 +384,21 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
  * Create a sticky note for workflow documentation
  *
  * @param content - Markdown content for the sticky note
- * @param config - Optional configuration (color, position, size)
+ * @param config - Optional configuration (color, position, size, nodes to wrap)
  * @returns A sticky note node instance
  *
  * @example
  * ```typescript
+ * // Manual positioning
  * const note = sticky('## API Integration\nThis section handles API calls', {
  *   color: 4,
  *   position: [80, -176]
  * });
+ *
+ * // Auto-position around nodes
+ * const httpNode = node({ type: 'n8n-nodes-base.httpRequest', ... });
+ * const setNode = node({ type: 'n8n-nodes-base.set', ... });
+ * const note = sticky('## Data Processing', { nodes: [httpNode, setNode], color: 2 });
  * ```
  */
 export function sticky(
