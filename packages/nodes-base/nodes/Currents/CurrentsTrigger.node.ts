@@ -40,6 +40,13 @@ export class CurrentsTrigger implements INodeType {
 				default: '',
 			},
 			{
+				displayName:
+					'Currents sends separate webhook events for each group in a run. If your run has multiple groups, you will receive separate events for each group.',
+				name: 'noticeGroups',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Events',
 				name: 'events',
 				type: 'multiOptions',
@@ -86,11 +93,11 @@ export class CurrentsTrigger implements INodeType {
 							'Optional secret to validate webhook requests. Configure the same secret in Currents Dashboard as a custom header.',
 					},
 					{
-						displayName: 'Secret Header Name',
-						name: 'secretHeaderName',
+						displayName: 'Header Name for Validation',
+						name: 'validationHeaderName',
 						type: 'string',
 						default: 'x-webhook-secret',
-						description: 'The header name where the secret is sent',
+						description: 'The HTTP header name where the webhook secret is sent',
 					},
 				],
 			},
@@ -119,27 +126,9 @@ export class CurrentsTrigger implements INodeType {
 			};
 		}
 
-		// Return the webhook data
+		// Return the full webhook payload
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray([
-					{
-						event: bodyData.event,
-						runUrl: bodyData.runUrl,
-						buildId: bodyData.buildId,
-						groupId: bodyData.groupId,
-						tags: bodyData.tags,
-						commit: bodyData.commit,
-						overall: bodyData.overall,
-						passes: bodyData.passes,
-						failures: bodyData.failures,
-						pending: bodyData.pending,
-						skipped: bodyData.skipped,
-						retries: bodyData.retries,
-						flaky: bodyData.flaky,
-					},
-				]),
-			],
+			workflowData: [this.helpers.returnJsonArray([bodyData])],
 		};
 	}
 }

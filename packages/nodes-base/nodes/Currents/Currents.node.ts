@@ -1,9 +1,15 @@
 import type { INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import { actionFields, actionOperations } from './descriptions/ActionDescription';
+import { listSearch } from './methods';
 import { instanceFields, instanceOperations } from './descriptions/InstanceDescription';
 import { projectFields, projectOperations } from './descriptions/ProjectDescription';
 import { runFields, runOperations } from './descriptions/RunDescription';
+import { signatureFields, signatureOperations } from './descriptions/SignatureDescription';
+import { specFileFields, specFileOperations } from './descriptions/SpecFileDescription';
+import { testFields, testOperations } from './descriptions/TestDescription';
+import { testResultFields, testResultOperations } from './descriptions/TestResultDescription';
 
 export class Currents implements INodeType {
 	description: INodeTypeDescription = {
@@ -17,6 +23,7 @@ export class Currents implements INodeType {
 		defaults: {
 			name: 'Currents',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [
@@ -40,6 +47,11 @@ export class Currents implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Action',
+						value: 'action',
+						description: 'Test action rules (skip, quarantine, tag)',
+					},
+					{
 						name: 'Instance',
 						value: 'instance',
 						description: 'Spec file execution instance',
@@ -54,9 +66,37 @@ export class Currents implements INodeType {
 						value: 'run',
 						description: 'Test run',
 					},
+					{
+						name: 'Signature',
+						value: 'signature',
+						description: 'Generate unique test signatures',
+					},
+					{
+						name: 'Spec File',
+						value: 'specFile',
+						description: 'Spec file performance metrics',
+					},
+					{
+						name: 'Test',
+						value: 'test',
+						description: 'Individual test performance metrics',
+					},
+					{
+						name: 'Test Result',
+						value: 'testResult',
+						description: 'Historical test execution results',
+					},
 				],
 				default: 'run',
 			},
+
+			// Action
+			...actionOperations,
+			...actionFields,
+
+			// Instance
+			...instanceOperations,
+			...instanceFields,
 
 			// Project
 			...projectOperations,
@@ -66,9 +106,25 @@ export class Currents implements INodeType {
 			...runOperations,
 			...runFields,
 
-			// Instance
-			...instanceOperations,
-			...instanceFields,
+			// Signature
+			...signatureOperations,
+			...signatureFields,
+
+			// Spec File
+			...specFileOperations,
+			...specFileFields,
+
+			// Test
+			...testOperations,
+			...testFields,
+
+			// Test Result
+			...testResultOperations,
+			...testResultFields,
 		],
+	};
+
+	methods = {
+		listSearch,
 	};
 }

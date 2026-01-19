@@ -78,36 +78,41 @@ export const projectFields: INodeProperties[] = [
 	//         project:get
 	// ----------------------------------
 	{
-		displayName: 'Project ID',
+		displayName: 'Project',
 		name: 'projectId',
-		type: 'string',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		default: '',
 		displayOptions: {
 			show: {
 				resource: ['project'],
 				operation: ['get', 'getInsights'],
 			},
 		},
-		description: 'The ID of the project',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a project...',
+				typeOptions: {
+					searchListMethod: 'getProjects',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. abc123',
+			},
+		],
+		description: 'The Currents project',
 	},
 
 	// ----------------------------------
 	//         project:getAll
 	// ----------------------------------
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				resource: ['project'],
-				operation: ['getAll'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
 	{
 		displayName: 'Limit',
 		name: 'limit',
@@ -116,12 +121,11 @@ export const projectFields: INodeProperties[] = [
 			show: {
 				resource: ['project'],
 				operation: ['getAll'],
-				returnAll: [false],
 			},
 		},
 		typeOptions: {
 			minValue: 1,
-			maxValue: 100,
+			maxValue: 50,
 		},
 		default: 10,
 		routing: {
@@ -190,6 +194,45 @@ export const projectFields: INodeProperties[] = [
 		},
 		options: [
 			{
+				displayName: 'Authors',
+				name: 'authors',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'authors',
+					},
+				},
+				description: 'Filter by commit author names (comma-separated)',
+			},
+			{
+				displayName: 'Branches',
+				name: 'branches',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'branches',
+					},
+				},
+				description: 'Filter by branch names (comma-separated)',
+			},
+			{
+				displayName: 'Groups',
+				name: 'groups',
+				type: 'string',
+				default: '',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'groups',
+					},
+				},
+				description: 'Filter by group names (comma-separated)',
+			},
+			{
 				displayName: 'Resolution',
 				name: 'resolution',
 				type: 'options',
@@ -206,19 +249,6 @@ export const projectFields: INodeProperties[] = [
 					},
 				},
 				description: 'Time resolution for metrics',
-			},
-			{
-				displayName: 'Branches',
-				name: 'branches',
-				type: 'string',
-				default: '',
-				routing: {
-					send: {
-						type: 'query',
-						property: 'branches',
-					},
-				},
-				description: 'Filter by branch names (comma-separated)',
 			},
 			{
 				displayName: 'Tags',
