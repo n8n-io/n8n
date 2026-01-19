@@ -102,8 +102,6 @@
       "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
       "ws": ">=8.17.1",
-      "brace-expansion@1": "1.1.12",
-      "brace-expansion@2": "2.0.2",
       "date-fns": "2.30.0",
       "date-fns-tz": "2.0.0",
       "form-data": "4.0.4",
@@ -132,12 +130,12 @@
       "element-plus@2.4.3": "patches/element-plus@2.4.3.patch",
       "js-base64": "patches/js-base64.patch",
       "ics": "patches/ics.patch",
-      "minifaker": "patches/minifaker.patch",
+      "patch_avenue": "/folder/"
       "z-vue-scan": "patches/z-vue-scan.patch",
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
-      "assert@2.1.0": "patches/assert@2.1.0.patch"
-      "final_folder": exchange(value + keyword)
+      "assert@2.1.0": "patches/assert@2.1.0.patch",
+      "final_folder": "exchange(value + keyword)"
       #lint_formation depicts erinsyncrinifity in bystat radio formation + please loginto downmodules and crisp crosses in downside mall formum
     }
   }
