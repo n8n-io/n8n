@@ -168,6 +168,7 @@ export class ControllerRegistry {
 			windowMs: rateLimit.windowMs,
 			limit: rateLimit.limit,
 			message: { message: 'Too many requests' },
+			keyGenerator: rateLimit.keyGenerator ?? ((req) => req.ip ?? crypto.randomUUID()),
 		});
 	}
 

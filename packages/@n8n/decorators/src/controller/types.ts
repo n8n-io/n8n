@@ -1,7 +1,7 @@
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import type { RequestHandler, Router } from 'express';
+import type { Request, RequestHandler, Router } from 'express';
 
 export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'options';
 
@@ -26,6 +26,11 @@ export interface RateLimit {
 	 * @default 300_000 (5 minutes)
 	 */
 	windowMs?: number;
+	/**
+	 * Function to generate unique keys for rate limiting.
+	 * @default IP-based key generation
+	 */
+	keyGenerator?: (req: Request) => string;
 }
 
 export type HandlerName = string;
