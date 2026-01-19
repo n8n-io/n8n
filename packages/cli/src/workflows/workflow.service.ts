@@ -265,6 +265,10 @@ export class WorkflowService {
 			);
 		}
 
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot update an archived workflow.');
+		}
+
 		if (!forceSave && expectedChecksum) {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
@@ -531,6 +535,10 @@ export class WorkflowService {
 			throw new NotFoundError(
 				'You do not have permission to activate this workflow. Ask the owner to share it with you.',
 			);
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot activate an archived workflow.');
 		}
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
