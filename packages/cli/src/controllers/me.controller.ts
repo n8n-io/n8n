@@ -60,7 +60,7 @@ export class MeController {
 		const isFirstNameChanged = firstName !== currentFirstName;
 		const isLastNameChanged = lastName !== currentLastName;
 
-		// Check if the user is authenticated via LDAP or OIDC - they cannot change their profile info
+		// Check if the user is authenticated via SSO - they cannot change their profile info
 		if (isEmailBeingChanged || isFirstNameChanged || isLastNameChanged) {
 			const ssoIdentity = await this.userService.findSsoIdentity(userId);
 
