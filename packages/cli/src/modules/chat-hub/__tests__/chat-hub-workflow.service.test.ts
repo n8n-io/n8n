@@ -733,7 +733,7 @@ describe('ChatHubWorkflowService', () => {
 					id: 'attachment-1',
 					mimeType: 'image/png',
 					fileName: 'test.png',
-					fileSize: 1024,
+					fileSize: '1024',
 				},
 			]);
 			expect(result[0].data.main[0]![0].binary).toHaveProperty('data0');

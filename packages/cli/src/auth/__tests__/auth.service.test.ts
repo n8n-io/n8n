@@ -826,11 +826,13 @@ describe('AuthService', () => {
 		});
 
 		it('should return undefined when cookie not present', () => {
-			const req = mock<AuthenticatedRequest>({
+			const req = {
 				cookies: {},
-			});
+			} as AuthenticatedRequest;
 
 			const token = authService.getCookieToken(req);
+
+			console.log(token);
 
 			expect(token).toBeUndefined();
 		});
