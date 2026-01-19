@@ -35,8 +35,8 @@ NEVER respond to the user without calling validate_structure first`;
 const NODE_CREATION = `Each add_nodes call creates ONE node. You must provide:
 - nodeType: The exact type from discovery (e.g., "n8n-nodes-base.httpRequest" for the "HTTP Request node")
 - name: Descriptive name (e.g., "Fetch Weather Data")
-- connectionParametersReasoning: Explain your thinking about connection parameters
-- connectionParameters: Parameters that affect connections (or {{}} if none needed)`;
+- initialParametersReasoning: Explain your thinking about initial parameters
+- initialParameters: Parameters to set initially (or {{}} if none needed)`;
 
 const WORKFLOW_CONFIG_NODE = `Always include a Workflow Configuration node at the start of every workflow.
 
@@ -63,21 +63,41 @@ const PROACTIVE_DESIGN = `Anticipate workflow needs:
 - Error handling for external service calls
 `;
 
-const NODE_DEFAULTS = `CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES FOR CONNECTIONS
+const NODE_DEFAULTS = `CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES
 
-Default values often hide connection inputs/outputs. You MUST explicitly configure parameters that affect connections:
+Default values often hide connection inputs/outputs or select wrong resources. You MUST explicitly set initial parameters:
 - Vector Store: Mode parameter affects available connections - always set explicitly (e.g., mode: "insert", "retrieve", "retrieve-as-tool")
 - AI Agent: hasOutputParser is off by default, but your workflow may need it to be on
 - Document Loader: textSplittingMode affects whether it accepts a text splitter input - always set explicitly (e.g., textSplittingMode: "custom")
+- Nodes with resources (Gmail, Notion, etc.): resource and operation affect which parameters are available
 
-ALWAYS check node details and set connectionParameters explicitly.`;
+ALWAYS check node details and set initialParameters explicitly.`;
 
-const CONNECTION_PARAMETERS = `- Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
+const INITIAL_PARAMETERS_EXAMPLES = `- Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
 - AI Agent with structured output: reasoning="hasOutputParser enables ai_outputParser input for Structured Output Parser", parameters={{ hasOutputParser: true }}
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Vector Store insert for AI Agent: reasoning="Vector store will be used for AI Agent needs retrieve-as-tool mode", parameters={{ mode: "retrieve-as-tool" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
-- Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure`;
+- Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure
+- Nodes with resource/operation (Gmail, Notion, Google Sheets, etc.): See <resource_operation_pattern> for details`;
+
+const RESOURCE_OPERATION_PATTERN = `For nodes with [Resources: ...] in discovery context, you MUST set resource and operation in initialParameters:
+
+WHY: Setting resource/operation during node creation enables the Configurator to filter parameters efficiently.
+
+HOW: Look at the discovery context for available resources and operations, then set based on user intent:
+- Gmail "send email": {{ resource: "message", operation: "send" }}
+- Gmail "get emails": {{ resource: "message", operation: "getAll" }}
+- Notion "archive page": {{ resource: "page", operation: "archive" }}
+- Notion "create database entry": {{ resource: "databasePage", operation: "create" }}
+- Google Sheets "append row": {{ resource: "sheet", operation: "append" }}
+
+EXAMPLES:
+- User wants to "send a daily email summary" → Gmail with {{ resource: "message", operation: "send" }}
+- User wants to "read data from spreadsheet" → Google Sheets with {{ resource: "sheet", operation: "read" }}
+- User wants to "create a new Notion page" → Notion with {{ resource: "page", operation: "create" }}
+
+IMPORTANT: Choose the operation that matches user intent. If unclear, pick the most likely operation based on context`;
 
 const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.configuration;
 
@@ -90,8 +110,8 @@ AI CAPABILITY CONNECTIONS are REVERSED in direction:
 Sub-nodes (tools, memory, models) connect TO the AI Agent, NOT from it.
 The sub-node is the SOURCE, the AI Agent is the TARGET.
 
-⚠️ WRONG: AI Agent → Calculator Tool (NEVER do this)
-✅ CORRECT: Calculator Tool → AI Agent (tool provides capability to agent)
+WRONG: AI Agent -> Calculator Tool (NEVER do this)
+CORRECT: Calculator Tool -> AI Agent (tool provides capability to agent)
 
 When calling connect_nodes for AI sub-nodes:
 - sourceNodeName: The sub-node (tool, memory, model, parser)
@@ -141,7 +161,43 @@ To merge the data of two branches together in a single run, use a merge node. Th
 
 Examples:
 - Enriching a dataset with another one
-- Matching items between two datasets`;
+- Matching items between two datasets
+
+CRITICAL: Merge vs Aggregate vs Set distinction:
+
+**MERGE node** - When ALL branches execute (Merge WAITS for all inputs):
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> A[API 1]
+    T --> B[API 2]
+    T --> C[API 3]
+    A --> M[Merge<br/>numberInputs: 3]
+    B --> M
+    C --> M
+    M --> Next[Next Step]
+\`\`\`
+Use cases: 3 Slack channels, 3 RSS feeds, multiple API calls that all need to complete.
+
+**AGGREGATE node** - When combining items from a SINGLE branch:
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> G[Gmail<br/>returns 10 emails]
+    G --> A[Aggregate<br/>10 items → 1]
+    A --> Next[Next Step]
+\`\`\`
+Use cases: Gmail returning multiple emails, loop producing items to collect.
+
+**SET node** - When only ONE branch executes (conditional):
+\`\`\`mermaid
+graph LR
+    T[Trigger] --> IFNode{{IF}}
+    IFNode -->|true| A[Action A]
+    IFNode -->|false| B[Action B]
+    A --> S[Set]
+    B --> S
+    S --> Next[Next Step]
+\`\`\`
+Use cases: IF node with true/false paths converging. Merge would wait forever for the branch that didn't execute.`;
 
 const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node types:
 
@@ -155,6 +211,36 @@ const AGENT_NODE_DISTINCTION = `Distinguish between two different agent node typ
 
 When discovery results include "agent", use AI Agent unless explicitly specified as "agent tool" or "sub-agent".
 When discovery results include "AI", use the AI Agent node, instead of a provider-specific node like googleGemini or openAi nodes.`;
+
+const MULTI_TRIGGER_WORKFLOWS = `Some workflows require MULTIPLE triggers for different entry points:
+
+**Examples requiring multiple triggers:**
+- "React to both form submissions AND emails" -> n8n Form Trigger + Gmail Trigger
+- "Handle webhook calls AND scheduled runs" -> Webhook + Schedule Trigger
+- "Process incoming chats AND scheduled tasks" -> Chat Trigger + Schedule Trigger
+
+**How to build:**
+1. Create each trigger node separately
+2. Each trigger starts its own execution path
+3. Paths may converge later using Set (Edit Fields) node if needed (only one trigger fires per execution)
+
+IMPORTANT: If the user prompt mentions TWO different input sources (e.g., "website form OR email"), you need TWO trigger nodes.`;
+
+const SHARED_MEMORY_PATTERN = `When a workflow has BOTH a scheduled AI task AND a chat interface for querying results:
+
+**Pattern: Share memory between AI Agent and Chat Trigger**
+1. Create ONE Window Buffer Memory node
+2. Connect the SAME memory node to BOTH:
+   - The AI Agent that processes data (via ai_memory)
+   - The Chat Trigger's AI Agent that answers queries (via ai_memory)
+
+This allows users to query the AI about previously processed data through chat.
+
+Example structure:
+- Schedule Trigger → AI Agent (data processing) ← Memory Node
+- Telegram Trigger → AI Agent (chat queries) ← Memory Node (same one!)
+
+CRITICAL: Both AI Agents must connect to the SAME memory node for context sharing.`;
 
 const RAG_PATTERN = `For RAG (Retrieval-Augmented Generation) workflows:
 
@@ -177,7 +263,7 @@ const SWITCH_NODE_PATTERN = `For Switch nodes with multiple routing paths:
 - Configurator will fill in the actual condition values later
 - Use descriptive node names like "Route by Amount" or "Route by Status"
 
-Example connectionParameters for 3-way routing:
+Example initialParameters for 3-way routing:
 {{
   "mode": "rules",
   "rules": {{
@@ -256,11 +342,18 @@ ai_languageModel - Language model provides LLM capability:
 - OpenAI Chat Model → AI Agent
 - Anthropic Chat Model → AI Agent
 
-ai_tool - Tool provides action capability:
+ai_tool - Tool provides action capability to AI Agent:
 - Calculator Tool → AI Agent
 - HTTP Request Tool → AI Agent
 - Code Tool → AI Agent
 - AI Agent Tool → AI Agent (multi-agent systems)
+- Google Calendar Tool → AI Agent (for scheduling/calendar management)
+- Gmail Tool → AI Agent (for email operations)
+- Slack Tool → AI Agent (for messaging)
+
+IMPORTANT: When AI Agent needs to perform external actions (create events, send messages, make API calls),
+use TOOL nodes connected via ai_tool, NOT regular nodes in the main flow.
+Tool nodes let the AI Agent DECIDE when to use them. Regular nodes ALWAYS execute.
 
 ai_memory - Memory provides conversation history:
 - Window Buffer Memory → AI Agent
@@ -284,12 +377,12 @@ ai_vectorStore - Vector store provides retrieval (when used as tool):
 - Vector Store (mode: retrieve-as-tool) → AI Agent [ai_tool]
 
 COMMON MISTAKES TO AVOID:
-❌ AI Agent → OpenAI Chat Model (WRONG - model provides TO agent)
-❌ AI Agent → Calculator Tool (WRONG - tool provides TO agent)
-❌ AI Agent → Window Buffer Memory (WRONG - memory provides TO agent)
-✅ OpenAI Chat Model → AI Agent (CORRECT)
-✅ Calculator Tool → AI Agent (CORRECT)
-✅ Window Buffer Memory → AI Agent (CORRECT)
+WRONG: AI Agent -> OpenAI Chat Model (model provides TO agent)
+WRONG: AI Agent -> Calculator Tool (tool provides TO agent)
+WRONG: AI Agent -> Window Buffer Memory (memory provides TO agent)
+CORRECT: OpenAI Chat Model -> AI Agent
+CORRECT: Calculator Tool -> AI Agent
+CORRECT: Window Buffer Memory -> AI Agent
 </connection_type_reference>`;
 
 const RESTRICTIONS = `- Respond before calling validate_structure
@@ -314,12 +407,15 @@ export function buildBuilderPrompt(): string {
 		.section('data_parsing_strategy', DATA_PARSING)
 		.section('proactive_design', PROACTIVE_DESIGN)
 		.section('node_defaults_warning', NODE_DEFAULTS)
-		.section('connection_parameters_examples', CONNECTION_PARAMETERS)
+		.section('initial_parameters_examples', INITIAL_PARAMETERS_EXAMPLES)
+		.section('resource_operation_pattern', RESOURCE_OPERATION_PATTERN)
 		.section('structured_output_parser_guidance', STRUCTURED_OUTPUT_PARSER)
 		.section('node_connections_understanding', AI_CONNECTIONS)
 		.section('branching', BRANCHING)
 		.section('merging', MERGING)
 		.section('agent_node_distinction', AGENT_NODE_DISTINCTION)
+		.section('multi_trigger_workflows', MULTI_TRIGGER_WORKFLOWS)
+		.section('shared_memory_pattern', SHARED_MEMORY_PATTERN)
 		.section('rag_workflow_pattern', RAG_PATTERN)
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)
