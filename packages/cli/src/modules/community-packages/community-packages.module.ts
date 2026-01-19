@@ -13,6 +13,7 @@ export class CommunityPackagesModule implements ModuleInterface {
 
 	async commands() {
 		await import('./community-node.command');
+		await import('./update-node-types.command');
 	}
 
 	async entities() {

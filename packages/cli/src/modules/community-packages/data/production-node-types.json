@@ -38981,232 +38981,6 @@
   },
   {
     "nodeDescription": {
-      "name": "@wix/n8n-nodes-preview-wix.wix",
-      "codex": {},
-      "group": [
-        "transform"
-      ],
-      "inputs": [
-        "main"
-      ],
-      "iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Wix_92e945bc4a.svg",
-      "outputs": [
-        "main"
-      ],
-      "version": 1,
-      "defaults": {
-        "name": "Wix"
-      },
-      "subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
-      "properties": [
-        {
-          "name": "resource",
-          "type": "options",
-          "default": "order",
-          "options": [
-            {
-              "name": "Order",
-              "value": "order"
-            },
-            {
-              "name": "Product",
-              "value": "product"
-            }
-          ],
-          "displayName": "Resource",
-          "noDataExpression": true
-        },
-        {
-          "name": "operation",
-          "type": "options",
-          "default": "get",
-          "options": [
-            {
-              "name": "Cancel",
-              "value": "cancel",
-              "action": "Cancel an order",
-              "routing": {
-                "request": {
-                  "url": "=/ecom/v1/orders/{{$parameter.orderId}}/cancel",
-                  "method": "POST"
-                }
-              },
-              "description": "Cancel an existing order"
-            },
-            {
-              "name": "Create",
-              "value": "create",
-              "action": "Create an order",
-              "routing": {
-                "request": {
-                  "url": "/ecom/v1/orders",
-                  "method": "POST"
-                }
-              },
-              "description": "Create a new order"
-            },
-            {
-              "name": "Get",
-              "value": "get",
-              "action": "Get an order",
-              "routing": {
-                "request": {
-                  "url": "=/ecom/v1/orders/{{$parameter.orderId}}",
-                  "method": "GET"
-                }
-              },
-              "description": "Get a single order by ID"
-            },
-            {
-              "name": "Get Many",
-              "value": "getMany",
-              "action": "Get many orders",
-              "routing": {
-                "output": {
-                  "postReceive": [
-                    null
-                  ]
-                },
-                "request": {
-                  "url": "/ecom/v1/orders/search",
-                  "method": "POST"
-                }
-              },
-              "description": "Query and list orders"
-            },
-            {
-              "name": "Update",
-              "value": "update",
-              "action": "Update an order",
-              "routing": {
-                "request": {
-                  "url": "=/ecom/v1/orders/{{$parameter.orderId}}",
-                  "method": "PATCH"
-                }
-              },
-              "description": "Update an existing order"
-            }
-          ],
-          "displayName": "Operation",
-          "displayOptions": {
-            "show": {
-              "resource": [
-                "order"
-              ]
-            }
-          },
-          "noDataExpression": true
-        },
-        {
-          "name": "operation",
-          "type": "options",
-          "default": "get",
-          "options": [
-            {
-              "name": "Create",
-              "value": "create",
-              "action": "Create a product",
-              "routing": {
-                "request": {
-                  "url": "/stores/v3/products-with-inventory",
-                  "method": "POST"
-                }
-              },
-              "description": "Create a new product with inventory"
-            },
-            {
-              "name": "Delete",
-              "value": "delete",
-              "action": "Delete a product",
-              "routing": {
-                "request": {
-                  "url": "=/stores/v3/products/{{$parameter.productId}}",
-                  "method": "DELETE"
-                }
-              },
-              "description": "Delete an existing product"
-            },
-            {
-              "name": "Get",
-              "value": "get",
-              "action": "Get a product",
-              "routing": {
-                "request": {
-                  "url": "=/stores/v3/products/{{$parameter.productId}}",
-                  "method": "GET"
-                }
-              },
-              "description": "Get a single product by ID"
-            },
-            {
-              "name": "Get Many",
-              "value": "getMany",
-              "action": "Get many products",
-              "routing": {
-                "output": {
-                  "postReceive": [
-                    null
-                  ]
-                },
-                "request": {
-                  "url": "/stores/v3/products/search",
-                  "method": "POST"
-                }
-              },
-              "description": "Query and list products"
-            },
-            {
-              "name": "Update",
-              "value": "update",
-              "action": "Update a product",
-              "routing": {
-                "request": {
-                  "url": "=/stores/v3/products-with-inventory/{{$parameter.productId}}",
-                  "method": "PATCH"
-                }
-              },
-              "description": "Update an existing product with inventory"
-            }
-          ],
-          "displayName": "Operation",
-          "displayOptions": {
-            "show": {
-              "resource": [
-                "product"
-              ]
-            }
-          },
-          "noDataExpression": true
-        }
-      ],
-      "description": "Interact with the Wix API",
-      "displayName": "Wix",
-      "originalName": "@wix/n8n-nodes-wix.wix"
-    },
-    "createdAt": "2026-01-14T15:58:44.904Z",
-    "updatedAt": "2026-01-14T16:41:16.353Z",
-    "authorGithubUrl": "https://github.com/wix-incubator/n8n-nodes-wix.git",
-    "authorName": "wix-ci",
-    "checksum": "sha512-Z6+GfbZwJV+2B5QjNV6s7/9Y+gjy+Q9BiULz6DEWoxUNG2vKQxOd/e5Hub+2pkyRDkDgQGxGkI4+dDcpIvvAfg==",
-    "description": "Interact with the Wix API",
-    "displayName": "Wix",
-    "name": "@wix/n8n-nodes-wix.wix",
-    "numberOfStars": 1,
-    "numberOfDownloads": 156,
-    "packageName": "@wix/n8n-nodes-wix",
-    "npmVersion": "1.0.0",
-    "isOfficialNode": true,
-    "isPublished": true,
-    "companyName": null,
-    "nodeVersions": [
-      {
-        "checksum": "sha512-Z6+GfbZwJV+2B5QjNV6s7/9Y+gjy+Q9BiULz6DEWoxUNG2vKQxOd/e5Hub+2pkyRDkDgQGxGkI4+dDcpIvvAfg==",
-        "npmVersion": "1.0.0"
-      }
-    ]
-  },
-  {
-    "nodeDescription": {
       "name": "n8n-nodes-preview-swiftgum-trigger.swiftgumTrigger",
       "codex": {},
       "group": [
@@ -39448,6 +39222,232 @@
       {
         "checksum": "sha512-1CzlN6SOMnoJTtiQAF1CbogxIeh53mMmW1L+UUv9qTrbDJzO8ibpBcCIIy2QCoR0vcO1fyZsehh6JHLQ26FVHg==",
         "npmVersion": "0.2.7"
+      }
+    ]
+  },
+  {
+    "nodeDescription": {
+      "name": "@wix/n8n-nodes-preview-wix.wix",
+      "codex": {},
+      "group": [
+        "transform"
+      ],
+      "inputs": [
+        "main"
+      ],
+      "iconUrl": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Wix_92e945bc4a.svg",
+      "outputs": [
+        "main"
+      ],
+      "version": 1,
+      "defaults": {
+        "name": "Wix"
+      },
+      "subtitle": "={{$parameter[\"operation\"] + \": \" + $parameter[\"resource\"]}}",
+      "properties": [
+        {
+          "name": "resource",
+          "type": "options",
+          "default": "order",
+          "options": [
+            {
+              "name": "Order",
+              "value": "order"
+            },
+            {
+              "name": "Product",
+              "value": "product"
+            }
+          ],
+          "displayName": "Resource",
+          "noDataExpression": true
+        },
+        {
+          "name": "operation",
+          "type": "options",
+          "default": "get",
+          "options": [
+            {
+              "name": "Cancel",
+              "value": "cancel",
+              "action": "Cancel an order",
+              "routing": {
+                "request": {
+                  "url": "=/ecom/v1/orders/{{$parameter.orderId}}/cancel",
+                  "method": "POST"
+                }
+              },
+              "description": "Cancel an existing order"
+            },
+            {
+              "name": "Create",
+              "value": "create",
+              "action": "Create an order",
+              "routing": {
+                "request": {
+                  "url": "/ecom/v1/orders",
+                  "method": "POST"
+                }
+              },
+              "description": "Create a new order"
+            },
+            {
+              "name": "Get",
+              "value": "get",
+              "action": "Get an order",
+              "routing": {
+                "request": {
+                  "url": "=/ecom/v1/orders/{{$parameter.orderId}}",
+                  "method": "GET"
+                }
+              },
+              "description": "Get a single order by ID"
+            },
+            {
+              "name": "Get Many",
+              "value": "getMany",
+              "action": "Get many orders",
+              "routing": {
+                "output": {
+                  "postReceive": [
+                    null
+                  ]
+                },
+                "request": {
+                  "url": "/ecom/v1/orders/search",
+                  "method": "POST"
+                }
+              },
+              "description": "Query and list orders"
+            },
+            {
+              "name": "Update",
+              "value": "update",
+              "action": "Update an order",
+              "routing": {
+                "request": {
+                  "url": "=/ecom/v1/orders/{{$parameter.orderId}}",
+                  "method": "PATCH"
+                }
+              },
+              "description": "Update an existing order"
+            }
+          ],
+          "displayName": "Operation",
+          "displayOptions": {
+            "show": {
+              "resource": [
+                "order"
+              ]
+            }
+          },
+          "noDataExpression": true
+        },
+        {
+          "name": "operation",
+          "type": "options",
+          "default": "get",
+          "options": [
+            {
+              "name": "Create",
+              "value": "create",
+              "action": "Create a product",
+              "routing": {
+                "request": {
+                  "url": "/stores/v3/products-with-inventory",
+                  "method": "POST"
+                }
+              },
+              "description": "Create a new product with inventory"
+            },
+            {
+              "name": "Delete",
+              "value": "delete",
+              "action": "Delete a product",
+              "routing": {
+                "request": {
+                  "url": "=/stores/v3/products/{{$parameter.productId}}",
+                  "method": "DELETE"
+                }
+              },
+              "description": "Delete an existing product"
+            },
+            {
+              "name": "Get",
+              "value": "get",
+              "action": "Get a product",
+              "routing": {
+                "request": {
+                  "url": "=/stores/v3/products/{{$parameter.productId}}",
+                  "method": "GET"
+                }
+              },
+              "description": "Get a single product by ID"
+            },
+            {
+              "name": "Get Many",
+              "value": "getMany",
+              "action": "Get many products",
+              "routing": {
+                "output": {
+                  "postReceive": [
+                    null
+                  ]
+                },
+                "request": {
+                  "url": "/stores/v3/products/search",
+                  "method": "POST"
+                }
+              },
+              "description": "Query and list products"
+            },
+            {
+              "name": "Update",
+              "value": "update",
+              "action": "Update a product",
+              "routing": {
+                "request": {
+                  "url": "=/stores/v3/products-with-inventory/{{$parameter.productId}}",
+                  "method": "PATCH"
+                }
+              },
+              "description": "Update an existing product with inventory"
+            }
+          ],
+          "displayName": "Operation",
+          "displayOptions": {
+            "show": {
+              "resource": [
+                "product"
+              ]
+            }
+          },
+          "noDataExpression": true
+        }
+      ],
+      "description": "Interact with the Wix API",
+      "displayName": "Wix",
+      "originalName": "@wix/n8n-nodes-wix.wix"
+    },
+    "createdAt": "2026-01-14T15:58:44.904Z",
+    "updatedAt": "2026-01-16T11:14:16.576Z",
+    "authorGithubUrl": "https://github.com/wix-incubator/n8n-nodes-wix.git",
+    "authorName": "wix-ci",
+    "checksum": "sha512-Z6+GfbZwJV+2B5QjNV6s7/9Y+gjy+Q9BiULz6DEWoxUNG2vKQxOd/e5Hub+2pkyRDkDgQGxGkI4+dDcpIvvAfg==",
+    "description": "Interact with the Wix API",
+    "displayName": "Wix",
+    "name": "@wix/n8n-nodes-wix.wix",
+    "numberOfStars": 1,
+    "numberOfDownloads": 156,
+    "packageName": "@wix/n8n-nodes-wix",
+    "npmVersion": "1.0.0",
+    "isOfficialNode": true,
+    "isPublished": true,
+    "companyName": "Wix",
+    "nodeVersions": [
+      {
+        "checksum": "sha512-Z6+GfbZwJV+2B5QjNV6s7/9Y+gjy+Q9BiULz6DEWoxUNG2vKQxOd/e5Hub+2pkyRDkDgQGxGkI4+dDcpIvvAfg==",
+        "npmVersion": "1.0.0"
       }
     ]
   },

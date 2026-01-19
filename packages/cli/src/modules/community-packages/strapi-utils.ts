@@ -25,8 +25,9 @@ interface Pagination {
 	total: number;
 }
 
-interface PaginationRequestOptions {
+export interface PaginationRequestOptions {
 	includeEntryId?: boolean;
+	throwOnError?: boolean;
 }
 
 interface PaginationRequestParams {
@@ -64,6 +65,7 @@ export async function paginatedRequest<T>(
 			Container.get(Logger).error(
 				`Error while fetching community nodes: ${(error as Error).message}`,
 			);
+			if (options?.throwOnError) throw error;
 			break;
 		}
 
