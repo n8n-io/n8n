@@ -380,7 +380,8 @@ const showRecommendedTemplatesInline = computed(() => {
 	return (
 		recommendedTemplatesStore.isFeatureEnabled() &&
 		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create
+		projectPermissions.value.workflow.create &&
+		workflowsAndFolders.value.length === 0
 	);
 });
 
@@ -2158,6 +2159,9 @@ const onNameSubmit = async (name: string) => {
 						}}
 					</template></N8nActionBox
 				>
+			</div>
+			<div v-if="showRecommendedTemplatesInline" :class="$style.templatesContainer">
+				<RecommendedTemplatesSection />
 			</div>
 		</template>
 	</ResourcesListLayout>
