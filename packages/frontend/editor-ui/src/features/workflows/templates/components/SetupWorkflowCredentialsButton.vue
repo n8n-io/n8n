@@ -11,6 +11,7 @@ import { N8nButton } from '@n8n/design-system';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useRoute } from 'vue-router';
 
 const workflowsStore = useWorkflowsStore();
 const readyToRunStore = useReadyToRunStore();
@@ -19,6 +20,11 @@ const nodeTypesStore = useNodeTypesStore();
 const posthogStore = usePostHog();
 const uiStore = useUIStore();
 const i18n = useI18n();
+const route = useRoute();
+
+const isTemplateImportRoute = computed(() => {
+	return route.query.templateId !== undefined;
+});
 
 const isTemplateSetupCompleted = computed(() => {
 	return !!workflowsStore.workflow?.meta?.templateCredsSetupCompleted;
@@ -74,7 +80,12 @@ onMounted(() => {
 	const templateId = workflowsStore.workflow?.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
-	if (isNewTemplatesSetupEnabled.value && showButton.value && !isReadyToRunWorkflow) {
+	if (
+		isNewTemplatesSetupEnabled.value &&
+		showButton.value &&
+		!isReadyToRunWorkflow &&
+		isTemplateImportRoute.value
+	) {
 		openSetupModal();
 	}
 });
