@@ -191,6 +191,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					this.addNodeWithSubnodes(newNodes, chainNode);
 				}
 			}
+			// Also add nodes from connections that aren't in allNodes (e.g., onError handlers)
+			this.addConnectionTargetNodes(newNodes, node);
 			// Collect pinData from all nodes in the chain
 			const chainPinData = this.collectPinDataFromChain(node);
 			// Set currentNode to the tail (last node in the chain)
@@ -536,6 +538,26 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private isMergeComposite(value: unknown): boolean {
 		if (value === null || typeof value !== 'object') return false;
 		return 'mergeNode' in value && 'branches' in value;
+	}
+
+	/**
+	 * Add target nodes from a chain's connections that aren't already in the nodes map.
+	 * This handles nodes added via .onError() which aren't included in the chain's allNodes.
+	 */
+	private addConnectionTargetNodes(nodes: Map<string, GraphNode>, chain: NodeChain): void {
+		const connections = chain.getConnections();
+		for (const { target } of connections) {
+			// Skip if target is a composite (already handled elsewhere)
+			if (this.isSwitchCaseComposite(target)) continue;
+			if (this.isIfBranchComposite(target)) continue;
+			if (this.isMergeComposite(target)) continue;
+
+			// Add the target node if not already in the map
+			const targetNode = target as NodeInstance<string, string, unknown>;
+			if (!nodes.has(targetNode.name)) {
+				this.addNodeWithSubnodes(nodes, targetNode);
+			}
+		}
 	}
 
 	/**

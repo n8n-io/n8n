@@ -240,6 +240,27 @@ describe('Node Builder', () => {
 			// Manual position should override calculated position
 			expect(s.config.position).toEqual([100, 100]);
 		});
+
+		it('should use default name for multiple stickies and have unique IDs', () => {
+			const s1 = sticky('## Note 1');
+			const s2 = sticky('## Note 2');
+			const s3 = sticky('## Note 3');
+
+			// All stickies use the same default name (matching n8n behavior)
+			expect(s1.name).toBe('Sticky Note');
+			expect(s2.name).toBe('Sticky Note');
+			expect(s3.name).toBe('Sticky Note');
+
+			// Each sticky should have a unique ID
+			expect(s1.id).not.toBe(s2.id);
+			expect(s2.id).not.toBe(s3.id);
+			expect(s1.id).not.toBe(s3.id);
+		});
+
+		it('should use explicit name when provided', () => {
+			const s = sticky('## My Content', { name: 'Custom Sticky Name' });
+			expect(s.name).toBe('Custom Sticky Name');
+		});
 	});
 
 	describe('placeholder()', () => {

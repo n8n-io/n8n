@@ -1,5 +1,5 @@
 import { workflow } from '../workflow-builder';
-import { node, trigger } from '../node-builder';
+import { node, trigger, sticky } from '../node-builder';
 import { languageModel, memory, tool } from '../subnode-builders';
 import { merge } from '../merge';
 import { ifBranch } from '../if-branch';
@@ -74,6 +74,54 @@ describe('Workflow Builder', () => {
 			// Connections should be preserved
 			expect(json.connections['Start'].main[0]![0]!.node).toBe('HTTP Request');
 			expect(json.connections['HTTP Request'].main[0]![0]!.node).toBe('Set Data');
+		});
+
+		it('should add multiple sticky notes with explicit names', () => {
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const agentNode = node({
+				type: 'n8n-nodes-langchain.agent',
+				version: 1.6,
+				config: { name: 'Research Agent', position: [400, 300] },
+			});
+
+			// Create 4 sticky notes with explicit names (recommended approach to avoid collisions)
+			const sticky1 = sticky('## Research Agent Note', { color: 5, name: 'Research Note' });
+			const sticky2 = sticky('## Fact-Check Agent Note', { color: 3, name: 'Fact-Check Note' });
+			const sticky3 = sticky('## Writing Agent Note', { color: 6, name: 'Writing Note' });
+			const sticky4 = sticky('## Editing Agent Note', { color: 4, name: 'Editing Note' });
+
+			const wf = workflow('test-id', 'Test Workflow')
+				.add(t)
+				.then(agentNode)
+				.add(sticky1)
+				.add(sticky2)
+				.add(sticky3)
+				.add(sticky4);
+
+			const json = wf.toJSON();
+
+			// All 6 nodes should be present (trigger, agent, 4 stickies)
+			expect(json.nodes).toHaveLength(6);
+
+			// All sticky notes should have unique names
+			const stickyNodes = json.nodes.filter((n) => n.type === 'n8n-nodes-base.stickyNote');
+			expect(stickyNodes).toHaveLength(4);
+
+			// Extract names and verify uniqueness
+			const stickyNames = stickyNodes.map((n) => n.name);
+			const uniqueNames = new Set(stickyNames);
+			expect(uniqueNames.size).toBe(4);
+
+			// Verify content is preserved for each sticky
+			const contents = stickyNodes.map((n) => n.parameters?.content);
+			expect(contents).toContain('## Research Agent Note');
+			expect(contents).toContain('## Fact-Check Agent Note');
+			expect(contents).toContain('## Writing Agent Note');
+			expect(contents).toContain('## Editing Agent Note');
 		});
 	});
 
@@ -881,6 +929,74 @@ describe('Workflow Builder', () => {
 	});
 
 	describe('switchCase()', () => {
+		it('should connect all switch outputs including fallback (output 2)', () => {
+			// BUG: When using workflow.add(chain).then(switchCase([3 cases])),
+			// output 2 (fallback) was not being connected
+			const t = trigger({
+				type: 'n8n-nodes-base.manualTrigger',
+				version: 1,
+				config: { name: 'Start' },
+			});
+			const linearNode = node({
+				type: 'n8n-nodes-base.linear',
+				version: 1.1,
+				config: { name: 'Get Issues', onError: 'continueErrorOutput' },
+			});
+			const errorHandler = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.4,
+				config: { name: 'Send Error to Slack' },
+			});
+			const case0 = node({
+				type: 'n8n-nodes-base.linear',
+				version: 1.1,
+				config: { name: 'Update as Bug' },
+			});
+			const case1 = node({
+				type: 'n8n-nodes-base.linear',
+				version: 1.1,
+				config: { name: 'Update as Feature' },
+			});
+			const case2 = node({
+				type: 'n8n-nodes-base.linear',
+				version: 1.1,
+				config: { name: 'Update as Other' },
+			});
+
+			// Exact pattern from user's code:
+			// .add(trigger().then(node().onError(errorHandler)))
+			// .then(switchCase([case0, case1, case2], config))
+			const wf = workflow('test', 'Test')
+				.add(t.then(linearNode.onError(errorHandler)))
+				.then(
+					switchCase([case0, case1, case2], {
+						name: 'Triage Issues',
+						parameters: {
+							mode: 'rules',
+							options: { fallbackOutput: 2 },
+						},
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			// All 7 nodes should be present (including error handler)
+			expect(json.nodes).toHaveLength(7);
+			expect(json.nodes.map((n) => n.name)).toContain('Send Error to Slack');
+
+			// Linear node should connect to Switch
+			expect(json.connections['Get Issues']).toBeDefined();
+			expect(json.connections['Get Issues']!.main[0]![0]!.node).toBe('Triage Issues');
+
+			// Switch should connect to ALL 3 cases
+			expect(json.connections['Triage Issues']).toBeDefined();
+			expect(json.connections['Triage Issues']!.main[0]![0]!.node).toBe('Update as Bug');
+			expect(json.connections['Triage Issues']!.main[1]![0]!.node).toBe('Update as Feature');
+			// THIS IS THE BUG - output 2 (fallback) should be connected
+			expect(json.connections['Triage Issues']!.main[2]).toBeDefined();
+			expect(json.connections['Triage Issues']!.main[2]![0]!.node).toBe('Update as Other');
+		});
+
 		it('should connect previous node to switch when using chain with add()', () => {
 			// BUG FIX TEST: When using .add() with a chain containing switchCase(),
 			// the connection from the previous node to the switch was not being created

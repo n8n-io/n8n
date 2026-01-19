@@ -690,6 +690,36 @@ Generate your response as a JSON object with a single field:
 
 The **workflowCode** field must contain complete TypeScript code starting with \`return workflow(...)\`.
 
+## IMPORTANT: SDK Functions Are Pre-Loaded
+
+The following SDK functions are **already available in the execution environment** - do NOT include import statements:
+
+- \`workflow(id, name)\` - Create a workflow
+- \`node(config)\` - Create a regular node
+- \`trigger(config)\` - Create a trigger node
+- \`sticky(content, options)\` - Create a sticky note
+- \`placeholder(description)\` - Create a placeholder value for user input
+- \`newCredential(name)\` - Create a credential placeholder
+- \`ifBranch([trueNode, falseNode], config)\` - Create conditional branching
+- \`switchCase([case0, case1, ...], config)\` - Create multi-way routing
+- \`merge([branch1, branch2, ...], config)\` - Create parallel merge
+- \`splitInBatches(config)\` - Create batch processing loop
+- AI subnode builders: \`languageModel()\`, \`memory()\`, \`tool()\`, \`outputParser()\`, \`embedding()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\`
+
+**DO NOT write import statements like:**
+\`\`\`typescript
+// WRONG - do not do this!
+import {{ workflow, node, trigger }} from '@n8n/workflow-sdk';
+\`\`\`
+
+**Just use the functions directly:**
+\`\`\`typescript
+// CORRECT
+return workflow('id', 'name')
+  .add(trigger({{ ... }}))
+  .then(node({{ ... }}));
+\`\`\`
+
 The code will be automatically parsed and validated. Make sure:
 - All node types are valid (use search_node if unsure)
 - All nodes are connected (no orphans except trigger)
