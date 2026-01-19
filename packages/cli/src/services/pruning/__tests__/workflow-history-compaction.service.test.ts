@@ -102,9 +102,38 @@ describe('WorkflowHistoryCompactionService', () => {
 			.spyOn(compactingService, 'compactHistories')
 			.mockImplementation();
 
+		const trimLongRunningHistoriesSpy = jest
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'trimLongRunningHistories');
+
 		compactingService.startCompacting();
 
 		expect(compactingService['trimmingInterval']).toBe(undefined);
+		expect(trimLongRunningHistoriesSpy).not.toBeCalled();
+	});
+	it('should not skip trimming if pruneTime > trimAge', () => {
+		const compactingService = new WorkflowHistoryCompactionService(
+			{ ...config, trimOnStartUp: true },
+			{ ...globalConfig, workflowHistory: { pruneTime: 8 * 24 } },
+			mockLogger(),
+			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+			dbConnection,
+			mock(),
+		);
+
+		const trimLongRunningHistoriesSpy = jest
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'trimLongRunningHistories')
+			.mockImplementation();
+
+		jest
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'compactHistories')
+			.mockImplementation();
+
+		compactingService.startCompacting();
+
+		expect(trimLongRunningHistoriesSpy).toBeCalled();
 	});
 
 	it('should compact on start up ', () => {
