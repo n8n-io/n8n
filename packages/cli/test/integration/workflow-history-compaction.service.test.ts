@@ -27,6 +27,10 @@ describe('compacting cycle', () => {
 	const yesterdayE = new Date(now - 1.001 * Time.days.toMilliseconds);
 	const lastWeekA = new Date(now - 7.5 * Time.days.toMilliseconds);
 	const lastWeekB = new Date(now - 7.3 * Time.days.toMilliseconds);
+	const lastWeekC = new Date(now - 7.29 * Time.days.toMilliseconds);
+	const lastWeekD = new Date(now - 7.2 * Time.days.toMilliseconds);
+	const lastWeekE = new Date(now - 7.15 * Time.days.toMilliseconds);
+	const lastWeekF = new Date(now - 7.1 * Time.days.toMilliseconds);
 
 	const wf1_versions = Array<string>(10)
 		.fill('')
@@ -218,5 +222,135 @@ describe('compacting cycle', () => {
 			allVersions.includes(wf3_history[0][1]) && allVersions.includes(wf3_history[1][1]);
 
 		expect(0 + +includesWf1 + +includesWf2 + +includesWf3).toBe(1);
+	});
+	describe('long term compaction', () => {
+		it('leaves one version every four hours for >10000 characters', async () => {
+			// ARRANGE
+			const wf1 = await createWorkflow({ versionId: wf1_versions[0] });
+
+			const wf1_history: Array<[Date, string]> = [
+				lastWeekA,
+				lastWeekB,
+				lastWeekC,
+				lastWeekD,
+				lastWeekE,
+				lastWeekF,
+			].map((x) => [x, uuid()]);
+
+			for (const [i, [createdAt, versionId]] of wf1_history.entries()) {
+				await createWorkflowHistory(
+					{
+						...wf1,
+						versionId,
+						nodes: [{ ...testNode1, parameters: { a: repeat('1', 10001 + i) } }],
+					},
+					undefined,
+					undefined,
+					{
+						createdAt,
+					},
+				);
+			}
+
+			// ACT
+			await compactionService['trimLongRunningHistories']();
+
+			// ASSERT
+			const allHistories = await Container.get(WorkflowHistoryRepository).find({});
+			const expectedVersions = [wf1_history[0], wf1_history[2], wf1_history[5]].map((x) => x[1]);
+			expect(allHistories.map((x) => x.versionId)).toEqual(
+				expect.arrayContaining(expectedVersions),
+			);
+		});
+		it('leaves one version every hour for >5000 characters', async () => {
+			// ARRANGE
+			const wf1 = await createWorkflow({ versionId: wf1_versions[0] });
+
+			const wf1_history: Array<[Date, string]> = [
+				lastWeekA,
+				lastWeekB,
+				lastWeekC,
+				lastWeekD,
+				lastWeekE,
+				lastWeekF,
+			].map((x) => [x, uuid()]);
+
+			for (const [i, [createdAt, versionId]] of wf1_history.entries()) {
+				await createWorkflowHistory(
+					{
+						...wf1,
+						versionId,
+						nodes: [{ ...testNode1, parameters: { a: repeat('1', 5001 + i) } }],
+					},
+					undefined,
+					undefined,
+					{
+						createdAt,
+					},
+				);
+			}
+
+			// ACT
+			await compactionService['trimLongRunningHistories']();
+
+			// ASSERT
+			const allHistories = await Container.get(WorkflowHistoryRepository).find({});
+			const expectedVersions = [
+				wf1_history[0],
+				wf1_history[2],
+				wf1_history[3],
+				wf1_history[4],
+				wf1_history[5],
+			].map((x) => x[1]);
+			expect(allHistories.map((x) => x.versionId)).toEqual(
+				expect.arrayContaining(expectedVersions),
+			);
+		});
+
+		it('leaves one version every five minutes for >100 characters', async () => {
+			// ARRANGE
+			const wf1 = await createWorkflow({ versionId: wf1_versions[0] });
+
+			const wf1_history: Array<[Date, string]> = [
+				lastWeekA,
+				lastWeekB,
+				lastWeekC,
+				lastWeekD,
+				lastWeekE,
+				lastWeekF,
+			].map((x) => [x, uuid()]);
+
+			for (const [i, [createdAt, versionId]] of wf1_history.entries()) {
+				await createWorkflowHistory(
+					{
+						...wf1,
+						versionId,
+						nodes: [{ ...testNode1, parameters: { a: repeat('1', 101 + i) } }],
+					},
+					undefined,
+					undefined,
+					{
+						createdAt,
+					},
+				);
+			}
+
+			// ACT
+			await compactionService['trimLongRunningHistories']();
+
+			// ASSERT
+			const allHistories = await Container.get(WorkflowHistoryRepository).find({});
+			const expectedVersions = [
+				wf1_history[0],
+				wf1_history[1],
+				wf1_history[2],
+				wf1_history[3],
+				wf1_history[4],
+				wf1_history[5],
+			].map((x) => x[1]);
+			expect(allHistories.map((x) => x.versionId)).toEqual(
+				expect.arrayContaining(expectedVersions),
+			);
+		});
 	});
 });

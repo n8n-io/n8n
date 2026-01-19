@@ -15,7 +15,7 @@ describe('WorkflowHistoryCompactionService', () => {
 		batchSize: 1000,
 		compactingMinimumAgeHours: 24,
 		compactingTimeWindowHours: 2,
-		compactOnStartUp: false,
+		trimOnStartUp: false,
 		minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
 	});
 
@@ -66,28 +66,64 @@ describe('WorkflowHistoryCompactionService', () => {
 				.spyOn(compactingService, 'scheduleRollingCompacting')
 				.mockImplementation();
 
+			const scheduleTrimmingSpy = jest
+				// @ts-expect-error Private method
+				.spyOn(compactingService, 'scheduleTrimming')
+				.mockImplementation();
+
 			compactingService.startCompacting();
 
 			expect(scheduleRollingCompactingSpy).toHaveBeenCalled();
+			expect(scheduleTrimmingSpy).toHaveBeenCalled();
 		});
 	});
 
-	it('should compact on start up if config says so', () => {
+	it('should compact on start up ', () => {
 		const compactingService = new WorkflowHistoryCompactionService(
-			{ ...config, compactOnStartUp: true },
+			config,
 			mockLogger(),
 			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
 			dbConnection,
 			mock(),
 		);
 
-		const scheduleRollingCompactingSpy = jest
+		const compactRecentHistoriesSpy = jest
 			// @ts-expect-error Private method
-			.spyOn(compactingService, 'compactHistories')
+			.spyOn(compactingService, 'compactRecentHistories')
+			.mockImplementation();
+		const trimLongRunningHistoriesSpy = jest
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'trimLongRunningHistories')
 			.mockImplementation();
 
 		compactingService.startCompacting();
 
-		expect(scheduleRollingCompactingSpy).toHaveBeenCalled();
+		expect(compactRecentHistoriesSpy).toHaveBeenCalled();
+		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
+	});
+
+	it('should trim on start up if flag is provided', () => {
+		const compactingService = new WorkflowHistoryCompactionService(
+			{ ...config, trimOnStartUp: true },
+			mockLogger(),
+			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
+			dbConnection,
+			mock(),
+		);
+
+		const compactRecentHistoriesSpy = jest
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'compactRecentHistories')
+			.mockImplementation();
+		const trimLongRunningHistoriesSpy = jest
+			// @ts-expect-error Private method
+			.spyOn(compactingService, 'trimLongRunningHistories')
+			.mockImplementation();
+
+		compactingService.startCompacting();
+
+		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
+		// should still call recent history compaction
+		expect(compactRecentHistoriesSpy).toHaveBeenCalled();
 	});
 });

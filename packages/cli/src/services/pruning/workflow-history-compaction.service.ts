@@ -5,7 +5,7 @@ import { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
+import { DiffMetaData, DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 /**
@@ -29,10 +29,12 @@ import { strict } from 'node:assert';
 @Service()
 export class WorkflowHistoryCompactionService {
 	private compactingInterval: NodeJS.Timeout | undefined;
+	private trimmingInterval: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
 
 	private isCompactingRecentHistories = false;
+	private isTrimmingHistories = false;
 
 	constructor(
 		private readonly config: WorkflowHistoryCompactionConfig,
@@ -59,23 +61,42 @@ export class WorkflowHistoryCompactionService {
 		const { connectionState } = this.dbConnection;
 		if (!this.isEnabled || !connectionState.migrated || this.isShuttingDown) return;
 
-		this.logger.debug('Started workflow histories compaction', { ...this.config });
+		this.logger.debug('Started workflow histories compaction and trimming', { ...this.config });
 
 		this.scheduleRollingCompacting();
-
-		if (this.config.compactOnStartUp) {
-			this.logger.debug('Compacting on start up');
-			void this.compactRecentHistories();
-		}
+		this.scheduleTrimming();
 	}
 
 	@OnLeaderStepdown()
 	stopCompacting() {
-		if (!this.compactingInterval) return;
+		if (!this.compactingInterval && !this.trimmingInterval) return;
 
 		clearInterval(this.compactingInterval);
+		clearInterval(this.trimmingInterval);
 
-		this.logger.debug('Stopped workflow histories compaction');
+		this.logger.debug('Stopped workflow histories compaction and trimming');
+	}
+
+	private scheduleTrimming() {
+		// This needs to account for leader changes and in particular the same instance
+		// being re-elected leader.
+		// If the instance is restarted at 3am server time after trimming has occurred we
+		// will rerun immediately, but there is no way to avoid this without persisting data
+		const trimOnceADay = async () => {
+			if (new Date().getHours() === 3) {
+				await this.trimLongRunningHistories();
+			}
+		};
+
+		this.trimmingInterval = setInterval(trimOnceADay, 1 * Time.hours.toMilliseconds);
+
+		if (this.config.trimOnStartUp) {
+			void this.trimLongRunningHistories();
+		} else {
+			void trimOnceADay();
+		}
+
+		this.logger.debug('Trimming histories once a day at 3am server time');
 	}
 
 	private scheduleRollingCompacting() {
@@ -89,12 +110,49 @@ export class WorkflowHistoryCompactionService {
 		this.logger.debug(
 			`Compacting histories every ${this.config.compactingTimeWindowHours / 2.0} hour(s)`,
 		);
+
+		void this.compactRecentHistories();
 	}
 
 	@OnShutdown()
 	shutdown(): void {
 		this.isShuttingDown = true;
 		this.stopCompacting();
+	}
+
+	private async trimLongRunningHistories(): Promise<void> {
+		if (this.isTrimmingHistories) {
+			this.logger.warn('Skipping trimming as there is already a running iteration');
+			return;
+		}
+		this.isTrimmingHistories = true;
+
+		const startDelta =
+			(this.config.trimmingMinimumAgeDays + this.config.trimmingTimeWindowDays) *
+			Time.days.toMilliseconds;
+		const endDelta = this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds;
+
+		try {
+			await this.compactHistories(
+				startDelta,
+				endDelta,
+				[
+					RULES.makeMergeDependingOnSizeRule(
+						new Map([
+							[0, 60 * 1_000],
+							[100, 5 * 60 * 1_000],
+							[1000, 30 * 60 * 1_000],
+							[5000, 60 * 60 * 1_000],
+							[10000, 4 * 60 * 60 * 1_000],
+						]),
+					),
+				],
+				[],
+				{ workflowSizeScore: true },
+			);
+		} finally {
+			this.isTrimmingHistories = false;
+		}
 	}
 
 	private async compactRecentHistories(): Promise<void> {
@@ -126,6 +184,7 @@ export class WorkflowHistoryCompactionService {
 		endDeltaMs: number,
 		rules: DiffRule[],
 		skipRules: DiffRule[],
+		metaData: Partial<Record<keyof DiffMetaData, boolean>> = {},
 	): Promise<void> {
 		const compactionStartTime = Date.now();
 
@@ -161,6 +220,7 @@ export class WorkflowHistoryCompactionService {
 					endDate,
 					rules,
 					skipRules,
+					metaData,
 				);
 				batchSum += seen;
 				totalVersionsSeen += seen;
