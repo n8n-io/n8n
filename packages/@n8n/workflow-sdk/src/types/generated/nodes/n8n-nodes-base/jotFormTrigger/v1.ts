@@ -1,8 +1,6 @@
 /**
  * Jotform Trigger Node - Version 1
  * Handle Jotform events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -39,13 +37,18 @@ export interface JotFormTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JotFormTriggerV1Node = {
+interface JotFormTriggerV1NodeBase {
 	type: 'n8n-nodes-base.jotFormTrigger';
 	version: 1;
-	config: NodeConfig<JotFormTriggerV1Params>;
 	credentials?: JotFormTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type JotFormTriggerV1ParamsNode = JotFormTriggerV1NodeBase & {
+	config: NodeConfig<JotFormTriggerV1Params>;
 };
+
+export type JotFormTriggerV1Node = JotFormTriggerV1ParamsNode;

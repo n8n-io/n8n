@@ -1,8 +1,6 @@
 /**
  * Aggregate Node - Version 1
  * Combine a field from many items into a list in a single item
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -48,12 +46,16 @@ export interface AggregateV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AggregateV1Node = {
+interface AggregateV1NodeBase {
 	type: 'n8n-nodes-base.aggregate';
 	version: 1;
+}
+
+export type AggregateV1ParamsNode = AggregateV1NodeBase & {
 	config: NodeConfig<AggregateV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type AggregateV1Node = AggregateV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Mailcheck Node - Version 1
  * Consume Mailcheck API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -28,6 +26,21 @@ export type MailcheckV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MailcheckV1EmailCheckOutput = {
+	email?: string;
+	githubUsername?: string;
+	isNotDisposable?: boolean;
+	isNotSmtpCatchAll?: boolean;
+	microsoftAccountExists?: boolean;
+	mxExists?: boolean;
+	smtpExists?: boolean;
+	trustRate?: number;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -36,12 +49,18 @@ export interface MailcheckV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailcheckV1Node = {
+interface MailcheckV1NodeBase {
 	type: 'n8n-nodes-base.mailcheck';
 	version: 1;
-	config: NodeConfig<MailcheckV1Params>;
 	credentials?: MailcheckV1Credentials;
+}
+
+export type MailcheckV1EmailCheckNode = MailcheckV1NodeBase & {
+	config: NodeConfig<MailcheckV1EmailCheckConfig>;
+	output?: MailcheckV1EmailCheckOutput;
 };
+
+export type MailcheckV1Node = MailcheckV1EmailCheckNode;

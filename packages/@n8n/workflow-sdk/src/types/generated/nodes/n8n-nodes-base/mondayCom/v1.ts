@@ -1,8 +1,6 @@
 /**
  * Monday.com Node - Version 1
  * Consume Monday.com API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -350,6 +348,133 @@ export type MondayComV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MondayComV1BoardCreateOutput = {
+	id?: string;
+};
+
+export type MondayComV1BoardGetOutput = {
+	board_kind?: string;
+	id?: string;
+	name?: string;
+	owners?: Array<{
+		id?: string;
+	}>;
+	state?: string;
+};
+
+export type MondayComV1BoardGetAllOutput = {
+	board_kind?: string;
+	id?: string;
+	name?: string;
+	owners?: Array<{
+		id?: string;
+	}>;
+	state?: string;
+};
+
+export type MondayComV1BoardColumnCreateOutput = {
+	id?: string;
+};
+
+export type MondayComV1BoardColumnGetAllOutput = {
+	archived?: boolean;
+	id?: string;
+	settings_str?: string;
+	title?: string;
+	type?: string;
+};
+
+export type MondayComV1BoardGroupCreateOutput = {
+	id?: string;
+};
+
+export type MondayComV1BoardGroupGetAllOutput = {
+	archived?: boolean;
+	color?: string;
+	id?: string;
+	position?: string;
+	title?: string;
+};
+
+export type MondayComV1BoardItemAddUpdateOutput = {
+	id?: string;
+};
+
+export type MondayComV1BoardItemChangeColumnValueOutput = {
+	id?: string;
+};
+
+export type MondayComV1BoardItemChangeMultipleColumnValuesOutput = {
+	id?: string;
+};
+
+export type MondayComV1BoardItemCreateOutput = {
+	id?: string;
+};
+
+export type MondayComV1BoardItemDeleteOutput = {
+	id?: string;
+};
+
+export type MondayComV1BoardItemGetOutput = {
+	column_values?: Array<{
+		column?: {
+			archived?: boolean;
+			settings_str?: string;
+			title?: string;
+		};
+		id?: string;
+		type?: string;
+	}>;
+	created_at?: string;
+	id?: string;
+	name?: string;
+	state?: string;
+};
+
+export type MondayComV1BoardItemGetByColumnValueOutput = {
+	board?: {
+		id?: string;
+	};
+	column_values?: Array<{
+		column?: {
+			archived?: boolean;
+			settings_str?: string;
+			title?: string;
+		};
+		id?: string;
+		type?: string;
+	}>;
+	created_at?: string;
+	id?: string;
+	name?: string;
+	state?: string;
+};
+
+export type MondayComV1BoardItemGetAllOutput = {
+	column_values?: Array<{
+		column?: {
+			archived?: boolean;
+			settings_str?: string;
+			title?: string;
+		};
+		id?: string;
+		type?: string;
+	}>;
+	created_at?: string;
+	id?: string;
+	name?: string;
+	state?: string;
+};
+
+export type MondayComV1BoardItemMoveOutput = {
+	id?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -359,12 +484,120 @@ export interface MondayComV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MondayComV1Node = {
+interface MondayComV1NodeBase {
 	type: 'n8n-nodes-base.mondayCom';
 	version: 1;
-	config: NodeConfig<MondayComV1Params>;
 	credentials?: MondayComV1Credentials;
+}
+
+export type MondayComV1BoardArchiveNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardArchiveConfig>;
 };
+
+export type MondayComV1BoardCreateNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardCreateConfig>;
+	output?: MondayComV1BoardCreateOutput;
+};
+
+export type MondayComV1BoardGetNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardGetConfig>;
+	output?: MondayComV1BoardGetOutput;
+};
+
+export type MondayComV1BoardGetAllNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardGetAllConfig>;
+	output?: MondayComV1BoardGetAllOutput;
+};
+
+export type MondayComV1BoardColumnCreateNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardColumnCreateConfig>;
+	output?: MondayComV1BoardColumnCreateOutput;
+};
+
+export type MondayComV1BoardColumnGetAllNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardColumnGetAllConfig>;
+	output?: MondayComV1BoardColumnGetAllOutput;
+};
+
+export type MondayComV1BoardGroupDeleteNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardGroupDeleteConfig>;
+};
+
+export type MondayComV1BoardGroupCreateNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardGroupCreateConfig>;
+	output?: MondayComV1BoardGroupCreateOutput;
+};
+
+export type MondayComV1BoardGroupGetAllNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardGroupGetAllConfig>;
+	output?: MondayComV1BoardGroupGetAllOutput;
+};
+
+export type MondayComV1BoardItemAddUpdateNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemAddUpdateConfig>;
+	output?: MondayComV1BoardItemAddUpdateOutput;
+};
+
+export type MondayComV1BoardItemChangeColumnValueNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemChangeColumnValueConfig>;
+	output?: MondayComV1BoardItemChangeColumnValueOutput;
+};
+
+export type MondayComV1BoardItemChangeMultipleColumnValuesNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemChangeMultipleColumnValuesConfig>;
+	output?: MondayComV1BoardItemChangeMultipleColumnValuesOutput;
+};
+
+export type MondayComV1BoardItemCreateNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemCreateConfig>;
+	output?: MondayComV1BoardItemCreateOutput;
+};
+
+export type MondayComV1BoardItemDeleteNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemDeleteConfig>;
+	output?: MondayComV1BoardItemDeleteOutput;
+};
+
+export type MondayComV1BoardItemGetNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemGetConfig>;
+	output?: MondayComV1BoardItemGetOutput;
+};
+
+export type MondayComV1BoardItemGetByColumnValueNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemGetByColumnValueConfig>;
+	output?: MondayComV1BoardItemGetByColumnValueOutput;
+};
+
+export type MondayComV1BoardItemGetAllNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemGetAllConfig>;
+	output?: MondayComV1BoardItemGetAllOutput;
+};
+
+export type MondayComV1BoardItemMoveNode = MondayComV1NodeBase & {
+	config: NodeConfig<MondayComV1BoardItemMoveConfig>;
+	output?: MondayComV1BoardItemMoveOutput;
+};
+
+export type MondayComV1Node =
+	| MondayComV1BoardArchiveNode
+	| MondayComV1BoardCreateNode
+	| MondayComV1BoardGetNode
+	| MondayComV1BoardGetAllNode
+	| MondayComV1BoardColumnCreateNode
+	| MondayComV1BoardColumnGetAllNode
+	| MondayComV1BoardGroupDeleteNode
+	| MondayComV1BoardGroupCreateNode
+	| MondayComV1BoardGroupGetAllNode
+	| MondayComV1BoardItemAddUpdateNode
+	| MondayComV1BoardItemChangeColumnValueNode
+	| MondayComV1BoardItemChangeMultipleColumnValuesNode
+	| MondayComV1BoardItemCreateNode
+	| MondayComV1BoardItemDeleteNode
+	| MondayComV1BoardItemGetNode
+	| MondayComV1BoardItemGetByColumnValueNode
+	| MondayComV1BoardItemGetAllNode
+	| MondayComV1BoardItemMoveNode
+	;

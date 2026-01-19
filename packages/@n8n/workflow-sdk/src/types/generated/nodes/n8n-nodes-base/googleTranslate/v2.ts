@@ -1,8 +1,6 @@
 /**
  * Google Translate Node - Version 2
  * Translate data using Google Translate
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -43,12 +41,17 @@ export interface GoogleTranslateV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleTranslateV2Node = {
+interface GoogleTranslateV2NodeBase {
 	type: 'n8n-nodes-base.googleTranslate';
 	version: 2;
-	config: NodeConfig<GoogleTranslateV2Params>;
 	credentials?: GoogleTranslateV2Credentials;
+}
+
+export type GoogleTranslateV2LanguageTranslateNode = GoogleTranslateV2NodeBase & {
+	config: NodeConfig<GoogleTranslateV2LanguageTranslateConfig>;
 };
+
+export type GoogleTranslateV2Node = GoogleTranslateV2LanguageTranslateNode;

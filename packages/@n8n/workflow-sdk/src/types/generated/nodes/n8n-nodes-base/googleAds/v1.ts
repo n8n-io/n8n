@@ -1,8 +1,6 @@
 /**
  * Google Ads Node - Version 1
  * Use the Google Ads API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -56,12 +54,24 @@ export interface GoogleAdsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleAdsV1Node = {
+interface GoogleAdsV1NodeBase {
 	type: 'n8n-nodes-base.googleAds';
 	version: 1;
-	config: NodeConfig<GoogleAdsV1Params>;
 	credentials?: GoogleAdsV1Credentials;
+}
+
+export type GoogleAdsV1CampaignGetAllNode = GoogleAdsV1NodeBase & {
+	config: NodeConfig<GoogleAdsV1CampaignGetAllConfig>;
 };
+
+export type GoogleAdsV1CampaignGetNode = GoogleAdsV1NodeBase & {
+	config: NodeConfig<GoogleAdsV1CampaignGetConfig>;
+};
+
+export type GoogleAdsV1Node =
+	| GoogleAdsV1CampaignGetAllNode
+	| GoogleAdsV1CampaignGetNode
+	;

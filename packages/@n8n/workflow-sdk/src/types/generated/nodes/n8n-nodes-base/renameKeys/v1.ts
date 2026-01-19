@@ -1,8 +1,6 @@
 /**
  * Rename Keys Node - Version 1
  * Update item field names
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -36,12 +34,16 @@ export interface RenameKeysV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RenameKeysV1Node = {
+interface RenameKeysV1NodeBase {
 	type: 'n8n-nodes-base.renameKeys';
 	version: 1;
+}
+
+export type RenameKeysV1ParamsNode = RenameKeysV1NodeBase & {
 	config: NodeConfig<RenameKeysV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type RenameKeysV1Node = RenameKeysV1ParamsNode;

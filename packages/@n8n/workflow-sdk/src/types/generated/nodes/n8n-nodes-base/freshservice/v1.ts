@@ -1,8 +1,6 @@
 /**
  * Freshservice Node - Version 1
  * Consume the Freshservice API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -1040,6 +1038,57 @@ export type FreshserviceV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type FreshserviceV1TicketGetOutput = {
+	attachments?: Array<{
+		attachment_url?: string;
+		content_type?: string;
+		created_at?: string;
+		id?: number;
+		name?: string;
+		size?: number;
+		updated_at?: string;
+	}>;
+	cc_emails?: Array<string>;
+	created_at?: string;
+	created_within_business_hours?: boolean;
+	custom_fields?: {
+		business_impact?: null;
+		impacted_locations?: null;
+		major_incident_type?: null;
+		no_of_customers_impacted?: null;
+		ticket_has_been_triaged?: null;
+	};
+	deleted?: boolean;
+	description?: string;
+	description_text?: string;
+	due_by?: string;
+	fr_due_by?: string;
+	fr_escalated?: boolean;
+	id?: number;
+	impact?: number;
+	is_escalated?: boolean;
+	priority?: number;
+	reply_cc_emails?: Array<string>;
+	requested_for_id?: number;
+	requester_id?: number;
+	resolution_notes?: null;
+	resolution_notes_html?: null;
+	sla_policy_id?: number;
+	source?: number;
+	spam?: boolean;
+	status?: number;
+	subject?: string;
+	tasks_dependency_type?: number;
+	type?: string;
+	updated_at?: string;
+	urgency?: number;
+	workspace_id?: number;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -1048,12 +1097,375 @@ export interface FreshserviceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FreshserviceV1Node = {
+interface FreshserviceV1NodeBase {
 	type: 'n8n-nodes-base.freshservice';
 	version: 1;
-	config: NodeConfig<FreshserviceV1Params>;
 	credentials?: FreshserviceV1Credentials;
+}
+
+export type FreshserviceV1AgentCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentCreateConfig>;
 };
+
+export type FreshserviceV1AgentDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentDeleteConfig>;
+};
+
+export type FreshserviceV1AgentGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentGetConfig>;
+};
+
+export type FreshserviceV1AgentGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentGetAllConfig>;
+};
+
+export type FreshserviceV1AgentUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentUpdateConfig>;
+};
+
+export type FreshserviceV1AgentGroupCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentGroupCreateConfig>;
+};
+
+export type FreshserviceV1AgentGroupDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentGroupDeleteConfig>;
+};
+
+export type FreshserviceV1AgentGroupGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentGroupGetConfig>;
+};
+
+export type FreshserviceV1AgentGroupGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentGroupGetAllConfig>;
+};
+
+export type FreshserviceV1AgentGroupUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentGroupUpdateConfig>;
+};
+
+export type FreshserviceV1AgentRoleGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentRoleGetConfig>;
+};
+
+export type FreshserviceV1AgentRoleGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AgentRoleGetAllConfig>;
+};
+
+export type FreshserviceV1AnnouncementCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AnnouncementCreateConfig>;
+};
+
+export type FreshserviceV1AnnouncementDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AnnouncementDeleteConfig>;
+};
+
+export type FreshserviceV1AnnouncementGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AnnouncementGetConfig>;
+};
+
+export type FreshserviceV1AnnouncementGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AnnouncementGetAllConfig>;
+};
+
+export type FreshserviceV1AnnouncementUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AnnouncementUpdateConfig>;
+};
+
+export type FreshserviceV1AssetTypeCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AssetTypeCreateConfig>;
+};
+
+export type FreshserviceV1AssetTypeDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AssetTypeDeleteConfig>;
+};
+
+export type FreshserviceV1AssetTypeGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AssetTypeGetConfig>;
+};
+
+export type FreshserviceV1AssetTypeGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AssetTypeGetAllConfig>;
+};
+
+export type FreshserviceV1AssetTypeUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1AssetTypeUpdateConfig>;
+};
+
+export type FreshserviceV1ChangeCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ChangeCreateConfig>;
+};
+
+export type FreshserviceV1ChangeDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ChangeDeleteConfig>;
+};
+
+export type FreshserviceV1ChangeGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ChangeGetConfig>;
+};
+
+export type FreshserviceV1ChangeGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ChangeGetAllConfig>;
+};
+
+export type FreshserviceV1ChangeUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ChangeUpdateConfig>;
+};
+
+export type FreshserviceV1DepartmentCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1DepartmentCreateConfig>;
+};
+
+export type FreshserviceV1DepartmentDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1DepartmentDeleteConfig>;
+};
+
+export type FreshserviceV1DepartmentGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1DepartmentGetConfig>;
+};
+
+export type FreshserviceV1DepartmentGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1DepartmentGetAllConfig>;
+};
+
+export type FreshserviceV1DepartmentUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1DepartmentUpdateConfig>;
+};
+
+export type FreshserviceV1LocationCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1LocationCreateConfig>;
+};
+
+export type FreshserviceV1LocationDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1LocationDeleteConfig>;
+};
+
+export type FreshserviceV1LocationGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1LocationGetConfig>;
+};
+
+export type FreshserviceV1LocationGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1LocationGetAllConfig>;
+};
+
+export type FreshserviceV1LocationUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1LocationUpdateConfig>;
+};
+
+export type FreshserviceV1ProblemCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProblemCreateConfig>;
+};
+
+export type FreshserviceV1ProblemDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProblemDeleteConfig>;
+};
+
+export type FreshserviceV1ProblemGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProblemGetConfig>;
+};
+
+export type FreshserviceV1ProblemGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProblemGetAllConfig>;
+};
+
+export type FreshserviceV1ProblemUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProblemUpdateConfig>;
+};
+
+export type FreshserviceV1ProductCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProductCreateConfig>;
+};
+
+export type FreshserviceV1ProductDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProductDeleteConfig>;
+};
+
+export type FreshserviceV1ProductGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProductGetConfig>;
+};
+
+export type FreshserviceV1ProductGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProductGetAllConfig>;
+};
+
+export type FreshserviceV1ProductUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ProductUpdateConfig>;
+};
+
+export type FreshserviceV1ReleaseCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ReleaseCreateConfig>;
+};
+
+export type FreshserviceV1ReleaseDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ReleaseDeleteConfig>;
+};
+
+export type FreshserviceV1ReleaseGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ReleaseGetConfig>;
+};
+
+export type FreshserviceV1ReleaseGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ReleaseGetAllConfig>;
+};
+
+export type FreshserviceV1ReleaseUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1ReleaseUpdateConfig>;
+};
+
+export type FreshserviceV1RequesterCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterCreateConfig>;
+};
+
+export type FreshserviceV1RequesterDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterDeleteConfig>;
+};
+
+export type FreshserviceV1RequesterGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterGetConfig>;
+};
+
+export type FreshserviceV1RequesterGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterGetAllConfig>;
+};
+
+export type FreshserviceV1RequesterUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterUpdateConfig>;
+};
+
+export type FreshserviceV1RequesterGroupCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterGroupCreateConfig>;
+};
+
+export type FreshserviceV1RequesterGroupDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterGroupDeleteConfig>;
+};
+
+export type FreshserviceV1RequesterGroupGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterGroupGetConfig>;
+};
+
+export type FreshserviceV1RequesterGroupGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterGroupGetAllConfig>;
+};
+
+export type FreshserviceV1RequesterGroupUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1RequesterGroupUpdateConfig>;
+};
+
+export type FreshserviceV1SoftwareCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1SoftwareCreateConfig>;
+};
+
+export type FreshserviceV1SoftwareDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1SoftwareDeleteConfig>;
+};
+
+export type FreshserviceV1SoftwareGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1SoftwareGetConfig>;
+};
+
+export type FreshserviceV1SoftwareGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1SoftwareGetAllConfig>;
+};
+
+export type FreshserviceV1SoftwareUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1SoftwareUpdateConfig>;
+};
+
+export type FreshserviceV1TicketCreateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1TicketCreateConfig>;
+};
+
+export type FreshserviceV1TicketDeleteNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1TicketDeleteConfig>;
+};
+
+export type FreshserviceV1TicketGetNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1TicketGetConfig>;
+	output?: FreshserviceV1TicketGetOutput;
+};
+
+export type FreshserviceV1TicketGetAllNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1TicketGetAllConfig>;
+};
+
+export type FreshserviceV1TicketUpdateNode = FreshserviceV1NodeBase & {
+	config: NodeConfig<FreshserviceV1TicketUpdateConfig>;
+};
+
+export type FreshserviceV1Node =
+	| FreshserviceV1AgentCreateNode
+	| FreshserviceV1AgentDeleteNode
+	| FreshserviceV1AgentGetNode
+	| FreshserviceV1AgentGetAllNode
+	| FreshserviceV1AgentUpdateNode
+	| FreshserviceV1AgentGroupCreateNode
+	| FreshserviceV1AgentGroupDeleteNode
+	| FreshserviceV1AgentGroupGetNode
+	| FreshserviceV1AgentGroupGetAllNode
+	| FreshserviceV1AgentGroupUpdateNode
+	| FreshserviceV1AgentRoleGetNode
+	| FreshserviceV1AgentRoleGetAllNode
+	| FreshserviceV1AnnouncementCreateNode
+	| FreshserviceV1AnnouncementDeleteNode
+	| FreshserviceV1AnnouncementGetNode
+	| FreshserviceV1AnnouncementGetAllNode
+	| FreshserviceV1AnnouncementUpdateNode
+	| FreshserviceV1AssetTypeCreateNode
+	| FreshserviceV1AssetTypeDeleteNode
+	| FreshserviceV1AssetTypeGetNode
+	| FreshserviceV1AssetTypeGetAllNode
+	| FreshserviceV1AssetTypeUpdateNode
+	| FreshserviceV1ChangeCreateNode
+	| FreshserviceV1ChangeDeleteNode
+	| FreshserviceV1ChangeGetNode
+	| FreshserviceV1ChangeGetAllNode
+	| FreshserviceV1ChangeUpdateNode
+	| FreshserviceV1DepartmentCreateNode
+	| FreshserviceV1DepartmentDeleteNode
+	| FreshserviceV1DepartmentGetNode
+	| FreshserviceV1DepartmentGetAllNode
+	| FreshserviceV1DepartmentUpdateNode
+	| FreshserviceV1LocationCreateNode
+	| FreshserviceV1LocationDeleteNode
+	| FreshserviceV1LocationGetNode
+	| FreshserviceV1LocationGetAllNode
+	| FreshserviceV1LocationUpdateNode
+	| FreshserviceV1ProblemCreateNode
+	| FreshserviceV1ProblemDeleteNode
+	| FreshserviceV1ProblemGetNode
+	| FreshserviceV1ProblemGetAllNode
+	| FreshserviceV1ProblemUpdateNode
+	| FreshserviceV1ProductCreateNode
+	| FreshserviceV1ProductDeleteNode
+	| FreshserviceV1ProductGetNode
+	| FreshserviceV1ProductGetAllNode
+	| FreshserviceV1ProductUpdateNode
+	| FreshserviceV1ReleaseCreateNode
+	| FreshserviceV1ReleaseDeleteNode
+	| FreshserviceV1ReleaseGetNode
+	| FreshserviceV1ReleaseGetAllNode
+	| FreshserviceV1ReleaseUpdateNode
+	| FreshserviceV1RequesterCreateNode
+	| FreshserviceV1RequesterDeleteNode
+	| FreshserviceV1RequesterGetNode
+	| FreshserviceV1RequesterGetAllNode
+	| FreshserviceV1RequesterUpdateNode
+	| FreshserviceV1RequesterGroupCreateNode
+	| FreshserviceV1RequesterGroupDeleteNode
+	| FreshserviceV1RequesterGroupGetNode
+	| FreshserviceV1RequesterGroupGetAllNode
+	| FreshserviceV1RequesterGroupUpdateNode
+	| FreshserviceV1SoftwareCreateNode
+	| FreshserviceV1SoftwareDeleteNode
+	| FreshserviceV1SoftwareGetNode
+	| FreshserviceV1SoftwareGetAllNode
+	| FreshserviceV1SoftwareUpdateNode
+	| FreshserviceV1TicketCreateNode
+	| FreshserviceV1TicketDeleteNode
+	| FreshserviceV1TicketGetNode
+	| FreshserviceV1TicketGetAllNode
+	| FreshserviceV1TicketUpdateNode
+	;

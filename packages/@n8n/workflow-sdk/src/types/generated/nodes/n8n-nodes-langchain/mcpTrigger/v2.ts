@@ -1,8 +1,6 @@
 /**
  * MCP Server Trigger Node - Version 2
  * Expose n8n tools as an MCP Server endpoint
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcMcpTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMcpTriggerV2Node = {
+interface LcMcpTriggerV2NodeBase {
 	type: '@n8n/n8n-nodes-langchain.mcpTrigger';
 	version: 2;
-	config: NodeConfig<LcMcpTriggerV2Params>;
 	credentials?: LcMcpTriggerV2Credentials;
 	isTrigger: true;
+}
+
+export type LcMcpTriggerV2ParamsNode = LcMcpTriggerV2NodeBase & {
+	config: NodeConfig<LcMcpTriggerV2Params>;
 };
+
+export type LcMcpTriggerV2Node = LcMcpTriggerV2ParamsNode;

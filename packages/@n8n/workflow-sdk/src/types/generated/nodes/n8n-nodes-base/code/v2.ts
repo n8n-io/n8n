@@ -1,8 +1,6 @@
 /**
  * Code Node - Version 2
  * Run custom JavaScript or Python code
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -55,12 +53,23 @@ export type CodeV2Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CodeV2Node = {
+interface CodeV2NodeBase {
 	type: 'n8n-nodes-base.code';
 	version: 2;
-	config: NodeConfig<CodeV2Params>;
-	credentials?: Record<string, never>;
+}
+
+export type CodeV2RunOnceForAllItemsNode = CodeV2NodeBase & {
+	config: NodeConfig<CodeV2RunOnceForAllItemsConfig>;
 };
+
+export type CodeV2RunOnceForEachItemNode = CodeV2NodeBase & {
+	config: NodeConfig<CodeV2RunOnceForEachItemConfig>;
+};
+
+export type CodeV2Node =
+	| CodeV2RunOnceForAllItemsNode
+	| CodeV2RunOnceForEachItemNode
+	;

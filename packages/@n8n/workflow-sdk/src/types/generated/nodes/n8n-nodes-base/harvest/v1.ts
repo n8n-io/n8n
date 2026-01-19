@@ -1,8 +1,6 @@
 /**
  * Harvest Node - Version 1
  * Access data on Harvest
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -982,6 +980,172 @@ export type HarvestV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type HarvestV1ClientGetAllOutput = {
+	created_at?: string;
+	currency?: string;
+	id?: number;
+	is_active?: boolean;
+	name?: string;
+	statement_key?: string;
+	updated_at?: string;
+};
+
+export type HarvestV1InvoiceGetAllOutput = {
+	client?: {
+		id?: number;
+		name?: string;
+	};
+	client_key?: string;
+	closed_at?: null;
+	created_at?: string;
+	creator?: {
+		id?: number;
+		name?: string;
+	};
+	currency?: string;
+	discount_amount?: number;
+	due_date?: string;
+	estimate?: null;
+	id?: number;
+	issue_date?: string;
+	line_items?: Array<{
+		description?: string;
+		id?: number;
+		kind?: string;
+		project?: {
+			id?: number;
+			name?: string;
+		};
+		taxed?: boolean;
+		taxed2?: boolean;
+	}>;
+	notes?: string;
+	number?: string;
+	payment_options?: Array<string>;
+	payment_term?: string;
+	purchase_order?: string;
+	retainer?: null;
+	state?: string;
+	subject?: string;
+	tax2?: null;
+	tax2_amount?: number;
+	updated_at?: string;
+};
+
+export type HarvestV1ProjectGetOutput = {
+	bill_by?: string;
+	budget_by?: string;
+	budget_is_monthly?: boolean;
+	client?: {
+		currency?: string;
+		id?: number;
+		name?: string;
+	};
+	cost_budget_include_expenses?: boolean;
+	created_at?: string;
+	id?: number;
+	is_active?: boolean;
+	is_billable?: boolean;
+	is_fixed_fee?: boolean;
+	name?: string;
+	notes?: string;
+	notify_when_over_budget?: boolean;
+	over_budget_notification_percentage?: number;
+	show_budget_to_all?: boolean;
+	updated_at?: string;
+};
+
+export type HarvestV1ProjectGetAllOutput = {
+	bill_by?: string;
+	budget_by?: string;
+	budget_is_monthly?: boolean;
+	client?: {
+		currency?: string;
+		id?: number;
+		name?: string;
+	};
+	cost_budget_include_expenses?: boolean;
+	created_at?: string;
+	id?: number;
+	is_active?: boolean;
+	is_billable?: boolean;
+	is_fixed_fee?: boolean;
+	name?: string;
+	notify_when_over_budget?: boolean;
+	over_budget_notification_percentage?: number;
+	show_budget_to_all?: boolean;
+	updated_at?: string;
+};
+
+export type HarvestV1TimeEntryGetAllOutput = {
+	billable?: boolean;
+	budgeted?: boolean;
+	client?: {
+		currency?: string;
+		id?: number;
+		name?: string;
+	};
+	created_at?: string;
+	id?: number;
+	is_billed?: boolean;
+	is_closed?: boolean;
+	is_locked?: boolean;
+	is_running?: boolean;
+	project?: {
+		id?: number;
+		name?: string;
+	};
+	spent_date?: string;
+	task?: {
+		id?: number;
+		name?: string;
+	};
+	task_assignment?: {
+		billable?: boolean;
+		created_at?: string;
+		id?: number;
+		updated_at?: string;
+	};
+	updated_at?: string;
+	user?: {
+		id?: number;
+		name?: string;
+	};
+	user_assignment?: {
+		created_at?: string;
+		id?: number;
+		is_active?: boolean;
+		is_project_manager?: boolean;
+		updated_at?: string;
+		use_default_rates?: boolean;
+	};
+};
+
+export type HarvestV1UserGetAllOutput = {
+	access_roles?: Array<string>;
+	avatar_url?: string;
+	calendar_integration_enabled?: boolean;
+	can_create_projects?: boolean;
+	created_at?: string;
+	email?: string;
+	first_name?: string;
+	has_access_to_all_future_projects?: boolean;
+	id?: number;
+	is_active?: boolean;
+	is_contractor?: boolean;
+	last_name?: string;
+	permissions_claims?: Array<string>;
+	roles?: Array<string>;
+	telephone?: string;
+	timezone?: string;
+	updated_at?: string;
+	weekly_capacity?: number;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -991,12 +1155,275 @@ export interface HarvestV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HarvestV1Node = {
+interface HarvestV1NodeBase {
 	type: 'n8n-nodes-base.harvest';
 	version: 1;
-	config: NodeConfig<HarvestV1Params>;
 	credentials?: HarvestV1Credentials;
+}
+
+export type HarvestV1ClientCreateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ClientCreateConfig>;
 };
+
+export type HarvestV1ClientDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ClientDeleteConfig>;
+};
+
+export type HarvestV1ClientGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ClientGetConfig>;
+};
+
+export type HarvestV1ClientGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ClientGetAllConfig>;
+	output?: HarvestV1ClientGetAllOutput;
+};
+
+export type HarvestV1ClientUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ClientUpdateConfig>;
+};
+
+export type HarvestV1CompanyGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1CompanyGetConfig>;
+};
+
+export type HarvestV1ContactCreateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ContactCreateConfig>;
+};
+
+export type HarvestV1ContactDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ContactDeleteConfig>;
+};
+
+export type HarvestV1ContactGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ContactGetConfig>;
+};
+
+export type HarvestV1ContactGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ContactGetAllConfig>;
+};
+
+export type HarvestV1ContactUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ContactUpdateConfig>;
+};
+
+export type HarvestV1EstimateCreateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1EstimateCreateConfig>;
+};
+
+export type HarvestV1EstimateDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1EstimateDeleteConfig>;
+};
+
+export type HarvestV1EstimateGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1EstimateGetConfig>;
+};
+
+export type HarvestV1EstimateGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1EstimateGetAllConfig>;
+};
+
+export type HarvestV1EstimateUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1EstimateUpdateConfig>;
+};
+
+export type HarvestV1ExpenseCreateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ExpenseCreateConfig>;
+};
+
+export type HarvestV1ExpenseDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ExpenseDeleteConfig>;
+};
+
+export type HarvestV1ExpenseGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ExpenseGetConfig>;
+};
+
+export type HarvestV1ExpenseGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ExpenseGetAllConfig>;
+};
+
+export type HarvestV1ExpenseUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ExpenseUpdateConfig>;
+};
+
+export type HarvestV1InvoiceCreateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1InvoiceCreateConfig>;
+};
+
+export type HarvestV1InvoiceDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1InvoiceDeleteConfig>;
+};
+
+export type HarvestV1InvoiceGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1InvoiceGetConfig>;
+};
+
+export type HarvestV1InvoiceGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1InvoiceGetAllConfig>;
+	output?: HarvestV1InvoiceGetAllOutput;
+};
+
+export type HarvestV1InvoiceUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1InvoiceUpdateConfig>;
+};
+
+export type HarvestV1ProjectCreateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ProjectCreateConfig>;
+};
+
+export type HarvestV1ProjectDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ProjectDeleteConfig>;
+};
+
+export type HarvestV1ProjectGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ProjectGetConfig>;
+	output?: HarvestV1ProjectGetOutput;
+};
+
+export type HarvestV1ProjectGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ProjectGetAllConfig>;
+	output?: HarvestV1ProjectGetAllOutput;
+};
+
+export type HarvestV1ProjectUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1ProjectUpdateConfig>;
+};
+
+export type HarvestV1TaskCreateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TaskCreateConfig>;
+};
+
+export type HarvestV1TaskDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TaskDeleteConfig>;
+};
+
+export type HarvestV1TaskGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TaskGetConfig>;
+};
+
+export type HarvestV1TaskGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TaskGetAllConfig>;
+};
+
+export type HarvestV1TaskUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TaskUpdateConfig>;
+};
+
+export type HarvestV1TimeEntryCreateByDurationNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryCreateByDurationConfig>;
+};
+
+export type HarvestV1TimeEntryCreateByStartEndNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryCreateByStartEndConfig>;
+};
+
+export type HarvestV1TimeEntryDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryDeleteConfig>;
+};
+
+export type HarvestV1TimeEntryDeleteExternalNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryDeleteExternalConfig>;
+};
+
+export type HarvestV1TimeEntryGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryGetConfig>;
+};
+
+export type HarvestV1TimeEntryGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryGetAllConfig>;
+	output?: HarvestV1TimeEntryGetAllOutput;
+};
+
+export type HarvestV1TimeEntryRestartTimeNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryRestartTimeConfig>;
+};
+
+export type HarvestV1TimeEntryStopTimeNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryStopTimeConfig>;
+};
+
+export type HarvestV1TimeEntryUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1TimeEntryUpdateConfig>;
+};
+
+export type HarvestV1UserCreateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1UserCreateConfig>;
+};
+
+export type HarvestV1UserDeleteNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1UserDeleteConfig>;
+};
+
+export type HarvestV1UserGetNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1UserGetConfig>;
+};
+
+export type HarvestV1UserGetAllNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1UserGetAllConfig>;
+	output?: HarvestV1UserGetAllOutput;
+};
+
+export type HarvestV1UserMeNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1UserMeConfig>;
+};
+
+export type HarvestV1UserUpdateNode = HarvestV1NodeBase & {
+	config: NodeConfig<HarvestV1UserUpdateConfig>;
+};
+
+export type HarvestV1Node =
+	| HarvestV1ClientCreateNode
+	| HarvestV1ClientDeleteNode
+	| HarvestV1ClientGetNode
+	| HarvestV1ClientGetAllNode
+	| HarvestV1ClientUpdateNode
+	| HarvestV1CompanyGetNode
+	| HarvestV1ContactCreateNode
+	| HarvestV1ContactDeleteNode
+	| HarvestV1ContactGetNode
+	| HarvestV1ContactGetAllNode
+	| HarvestV1ContactUpdateNode
+	| HarvestV1EstimateCreateNode
+	| HarvestV1EstimateDeleteNode
+	| HarvestV1EstimateGetNode
+	| HarvestV1EstimateGetAllNode
+	| HarvestV1EstimateUpdateNode
+	| HarvestV1ExpenseCreateNode
+	| HarvestV1ExpenseDeleteNode
+	| HarvestV1ExpenseGetNode
+	| HarvestV1ExpenseGetAllNode
+	| HarvestV1ExpenseUpdateNode
+	| HarvestV1InvoiceCreateNode
+	| HarvestV1InvoiceDeleteNode
+	| HarvestV1InvoiceGetNode
+	| HarvestV1InvoiceGetAllNode
+	| HarvestV1InvoiceUpdateNode
+	| HarvestV1ProjectCreateNode
+	| HarvestV1ProjectDeleteNode
+	| HarvestV1ProjectGetNode
+	| HarvestV1ProjectGetAllNode
+	| HarvestV1ProjectUpdateNode
+	| HarvestV1TaskCreateNode
+	| HarvestV1TaskDeleteNode
+	| HarvestV1TaskGetNode
+	| HarvestV1TaskGetAllNode
+	| HarvestV1TaskUpdateNode
+	| HarvestV1TimeEntryCreateByDurationNode
+	| HarvestV1TimeEntryCreateByStartEndNode
+	| HarvestV1TimeEntryDeleteNode
+	| HarvestV1TimeEntryDeleteExternalNode
+	| HarvestV1TimeEntryGetNode
+	| HarvestV1TimeEntryGetAllNode
+	| HarvestV1TimeEntryRestartTimeNode
+	| HarvestV1TimeEntryStopTimeNode
+	| HarvestV1TimeEntryUpdateNode
+	| HarvestV1UserCreateNode
+	| HarvestV1UserDeleteNode
+	| HarvestV1UserGetNode
+	| HarvestV1UserGetAllNode
+	| HarvestV1UserMeNode
+	| HarvestV1UserUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Autopilot Trigger Node - Version 1
  * Handle Autopilot events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -26,13 +24,18 @@ export interface AutopilotTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AutopilotTriggerV1Node = {
+interface AutopilotTriggerV1NodeBase {
 	type: 'n8n-nodes-base.autopilotTrigger';
 	version: 1;
-	config: NodeConfig<AutopilotTriggerV1Params>;
 	credentials?: AutopilotTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AutopilotTriggerV1ParamsNode = AutopilotTriggerV1NodeBase & {
+	config: NodeConfig<AutopilotTriggerV1Params>;
 };
+
+export type AutopilotTriggerV1Node = AutopilotTriggerV1ParamsNode;

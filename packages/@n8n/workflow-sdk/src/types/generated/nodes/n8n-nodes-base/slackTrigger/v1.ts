@@ -1,8 +1,6 @@
 /**
  * Slack Trigger Node - Version 1
  * Handle Slack events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -49,13 +47,18 @@ export interface SlackTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SlackTriggerV1Node = {
+interface SlackTriggerV1NodeBase {
 	type: 'n8n-nodes-base.slackTrigger';
 	version: 1;
-	config: NodeConfig<SlackTriggerV1Params>;
 	credentials?: SlackTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type SlackTriggerV1ParamsNode = SlackTriggerV1NodeBase & {
+	config: NodeConfig<SlackTriggerV1Params>;
 };
+
+export type SlackTriggerV1Node = SlackTriggerV1ParamsNode;

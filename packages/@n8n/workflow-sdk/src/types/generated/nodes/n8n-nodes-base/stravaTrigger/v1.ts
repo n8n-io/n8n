@@ -1,8 +1,6 @@
 /**
  * Strava Trigger Node - Version 1
  * Starts the workflow when Strava events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -33,13 +31,18 @@ export interface StravaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StravaTriggerV1Node = {
+interface StravaTriggerV1NodeBase {
 	type: 'n8n-nodes-base.stravaTrigger';
 	version: 1;
-	config: NodeConfig<StravaTriggerV1Params>;
 	credentials?: StravaTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type StravaTriggerV1ParamsNode = StravaTriggerV1NodeBase & {
+	config: NodeConfig<StravaTriggerV1Params>;
 };
+
+export type StravaTriggerV1Node = StravaTriggerV1ParamsNode;

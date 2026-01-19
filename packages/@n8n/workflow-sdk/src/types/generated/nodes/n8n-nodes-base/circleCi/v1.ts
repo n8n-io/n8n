@@ -1,8 +1,6 @@
 /**
  * CircleCI Node - Version 1
  * Consume CircleCI API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -96,12 +94,29 @@ export interface CircleCiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CircleCiV1Node = {
+interface CircleCiV1NodeBase {
 	type: 'n8n-nodes-base.circleCi';
 	version: 1;
-	config: NodeConfig<CircleCiV1Params>;
 	credentials?: CircleCiV1Credentials;
+}
+
+export type CircleCiV1PipelineGetNode = CircleCiV1NodeBase & {
+	config: NodeConfig<CircleCiV1PipelineGetConfig>;
 };
+
+export type CircleCiV1PipelineGetAllNode = CircleCiV1NodeBase & {
+	config: NodeConfig<CircleCiV1PipelineGetAllConfig>;
+};
+
+export type CircleCiV1PipelineTriggerNode = CircleCiV1NodeBase & {
+	config: NodeConfig<CircleCiV1PipelineTriggerConfig>;
+};
+
+export type CircleCiV1Node =
+	| CircleCiV1PipelineGetNode
+	| CircleCiV1PipelineGetAllNode
+	| CircleCiV1PipelineTriggerNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Postgres Chat Memory Node - Version 1
  * Stores the chat history in Postgres table.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -37,13 +35,18 @@ export interface LcMemoryPostgresChatV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryPostgresChatV1Node = {
+interface LcMemoryPostgresChatV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryPostgresChat';
 	version: 1;
-	config: NodeConfig<LcMemoryPostgresChatV1Params>;
 	credentials?: LcMemoryPostgresChatV1Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryPostgresChatV1ParamsNode = LcMemoryPostgresChatV1NodeBase & {
+	config: NodeConfig<LcMemoryPostgresChatV1Params>;
 };
+
+export type LcMemoryPostgresChatV1Node = LcMemoryPostgresChatV1ParamsNode;

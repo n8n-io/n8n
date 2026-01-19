@@ -1,8 +1,6 @@
 /**
  * Embeddings Hugging Face Inference Node - Version 1
  * Use HuggingFace Inference Embeddings
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcEmbeddingsHuggingFaceInferenceV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsHuggingFaceInferenceV1Node = {
+interface LcEmbeddingsHuggingFaceInferenceV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsHuggingFaceInferenceV1Params>;
 	credentials?: LcEmbeddingsHuggingFaceInferenceV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsHuggingFaceInferenceV1ParamsNode = LcEmbeddingsHuggingFaceInferenceV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsHuggingFaceInferenceV1Params>;
 };
+
+export type LcEmbeddingsHuggingFaceInferenceV1Node = LcEmbeddingsHuggingFaceInferenceV1ParamsNode;

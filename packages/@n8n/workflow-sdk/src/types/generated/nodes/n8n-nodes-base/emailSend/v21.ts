@@ -1,8 +1,6 @@
 /**
  * Send Email Node - Version 2.1
  * Sends an email using SMTP protocol
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -87,12 +85,17 @@ export interface EmailSendV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmailSendV21Node = {
+interface EmailSendV21NodeBase {
 	type: 'n8n-nodes-base.emailSend';
 	version: 2.1;
-	config: NodeConfig<EmailSendV21Params>;
 	credentials?: EmailSendV21Credentials;
+}
+
+export type EmailSendV21ParamsNode = EmailSendV21NodeBase & {
+	config: NodeConfig<EmailSendV21Params>;
 };
+
+export type EmailSendV21Node = EmailSendV21ParamsNode;

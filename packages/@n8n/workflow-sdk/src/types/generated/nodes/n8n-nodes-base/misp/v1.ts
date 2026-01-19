@@ -1,8 +1,6 @@
 /**
  * MISP Node - Version 1
  * Consume the MISP API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -632,12 +630,234 @@ export interface MispV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MispV1Node = {
+interface MispV1NodeBase {
 	type: 'n8n-nodes-base.misp';
 	version: 1;
-	config: NodeConfig<MispV1Params>;
 	credentials?: MispV1Credentials;
+}
+
+export type MispV1AttributeCreateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1AttributeCreateConfig>;
 };
+
+export type MispV1AttributeDeleteNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1AttributeDeleteConfig>;
+};
+
+export type MispV1AttributeGetNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1AttributeGetConfig>;
+};
+
+export type MispV1AttributeGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1AttributeGetAllConfig>;
+};
+
+export type MispV1AttributeSearchNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1AttributeSearchConfig>;
+};
+
+export type MispV1AttributeUpdateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1AttributeUpdateConfig>;
+};
+
+export type MispV1EventCreateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventCreateConfig>;
+};
+
+export type MispV1EventDeleteNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventDeleteConfig>;
+};
+
+export type MispV1EventGetNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventGetConfig>;
+};
+
+export type MispV1EventGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventGetAllConfig>;
+};
+
+export type MispV1EventPublishNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventPublishConfig>;
+};
+
+export type MispV1EventSearchNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventSearchConfig>;
+};
+
+export type MispV1EventUnpublishNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventUnpublishConfig>;
+};
+
+export type MispV1EventUpdateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventUpdateConfig>;
+};
+
+export type MispV1EventTagAddNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventTagAddConfig>;
+};
+
+export type MispV1EventTagRemoveNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1EventTagRemoveConfig>;
+};
+
+export type MispV1FeedCreateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1FeedCreateConfig>;
+};
+
+export type MispV1FeedDisableNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1FeedDisableConfig>;
+};
+
+export type MispV1FeedEnableNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1FeedEnableConfig>;
+};
+
+export type MispV1FeedGetNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1FeedGetConfig>;
+};
+
+export type MispV1FeedGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1FeedGetAllConfig>;
+};
+
+export type MispV1FeedUpdateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1FeedUpdateConfig>;
+};
+
+export type MispV1GalaxyDeleteNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1GalaxyDeleteConfig>;
+};
+
+export type MispV1GalaxyGetNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1GalaxyGetConfig>;
+};
+
+export type MispV1GalaxyGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1GalaxyGetAllConfig>;
+};
+
+export type MispV1NoticelistGetNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1NoticelistGetConfig>;
+};
+
+export type MispV1NoticelistGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1NoticelistGetAllConfig>;
+};
+
+export type MispV1ObjectSearchNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1ObjectSearchConfig>;
+};
+
+export type MispV1OrganisationCreateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1OrganisationCreateConfig>;
+};
+
+export type MispV1OrganisationDeleteNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1OrganisationDeleteConfig>;
+};
+
+export type MispV1OrganisationGetNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1OrganisationGetConfig>;
+};
+
+export type MispV1OrganisationGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1OrganisationGetAllConfig>;
+};
+
+export type MispV1OrganisationUpdateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1OrganisationUpdateConfig>;
+};
+
+export type MispV1TagCreateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1TagCreateConfig>;
+};
+
+export type MispV1TagDeleteNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1TagDeleteConfig>;
+};
+
+export type MispV1TagGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1TagGetAllConfig>;
+};
+
+export type MispV1TagUpdateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1TagUpdateConfig>;
+};
+
+export type MispV1UserCreateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1UserCreateConfig>;
+};
+
+export type MispV1UserDeleteNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1UserDeleteConfig>;
+};
+
+export type MispV1UserGetNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1UserGetConfig>;
+};
+
+export type MispV1UserGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1UserGetAllConfig>;
+};
+
+export type MispV1UserUpdateNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1UserUpdateConfig>;
+};
+
+export type MispV1WarninglistGetNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1WarninglistGetConfig>;
+};
+
+export type MispV1WarninglistGetAllNode = MispV1NodeBase & {
+	config: NodeConfig<MispV1WarninglistGetAllConfig>;
+};
+
+export type MispV1Node =
+	| MispV1AttributeCreateNode
+	| MispV1AttributeDeleteNode
+	| MispV1AttributeGetNode
+	| MispV1AttributeGetAllNode
+	| MispV1AttributeSearchNode
+	| MispV1AttributeUpdateNode
+	| MispV1EventCreateNode
+	| MispV1EventDeleteNode
+	| MispV1EventGetNode
+	| MispV1EventGetAllNode
+	| MispV1EventPublishNode
+	| MispV1EventSearchNode
+	| MispV1EventUnpublishNode
+	| MispV1EventUpdateNode
+	| MispV1EventTagAddNode
+	| MispV1EventTagRemoveNode
+	| MispV1FeedCreateNode
+	| MispV1FeedDisableNode
+	| MispV1FeedEnableNode
+	| MispV1FeedGetNode
+	| MispV1FeedGetAllNode
+	| MispV1FeedUpdateNode
+	| MispV1GalaxyDeleteNode
+	| MispV1GalaxyGetNode
+	| MispV1GalaxyGetAllNode
+	| MispV1NoticelistGetNode
+	| MispV1NoticelistGetAllNode
+	| MispV1ObjectSearchNode
+	| MispV1OrganisationCreateNode
+	| MispV1OrganisationDeleteNode
+	| MispV1OrganisationGetNode
+	| MispV1OrganisationGetAllNode
+	| MispV1OrganisationUpdateNode
+	| MispV1TagCreateNode
+	| MispV1TagDeleteNode
+	| MispV1TagGetAllNode
+	| MispV1TagUpdateNode
+	| MispV1UserCreateNode
+	| MispV1UserDeleteNode
+	| MispV1UserGetNode
+	| MispV1UserGetAllNode
+	| MispV1UserUpdateNode
+	| MispV1WarninglistGetNode
+	| MispV1WarninglistGetAllNode
+	;

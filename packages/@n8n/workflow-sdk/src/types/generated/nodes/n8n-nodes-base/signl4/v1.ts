@@ -1,8 +1,6 @@
 /**
  * SIGNL4 Node - Version 1
  * Consume SIGNL4 API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -50,12 +48,24 @@ export interface Signl4V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type Signl4V1Node = {
+interface Signl4V1NodeBase {
 	type: 'n8n-nodes-base.signl4';
 	version: 1;
-	config: NodeConfig<Signl4V1Params>;
 	credentials?: Signl4V1Credentials;
+}
+
+export type Signl4V1AlertSendNode = Signl4V1NodeBase & {
+	config: NodeConfig<Signl4V1AlertSendConfig>;
 };
+
+export type Signl4V1AlertResolveNode = Signl4V1NodeBase & {
+	config: NodeConfig<Signl4V1AlertResolveConfig>;
+};
+
+export type Signl4V1Node =
+	| Signl4V1AlertSendNode
+	| Signl4V1AlertResolveNode
+	;

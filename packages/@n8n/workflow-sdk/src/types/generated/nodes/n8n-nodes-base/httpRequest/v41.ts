@@ -1,8 +1,6 @@
 /**
  * HTTP Request Node - Version 4.1
  * Makes an HTTP request and returns the response data
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -418,12 +416,29 @@ export interface HttpRequestV41Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HttpRequestV41Node = {
+interface HttpRequestV41NodeBase {
 	type: 'n8n-nodes-base.httpRequest';
 	version: 4.1;
-	config: NodeConfig<HttpRequestV41Params>;
 	credentials?: HttpRequestV41Credentials;
+}
+
+export type HttpRequestV41NoneNode = HttpRequestV41NodeBase & {
+	config: NodeConfig<HttpRequestV41NoneConfig>;
 };
+
+export type HttpRequestV41PredefinedCredentialTypeNode = HttpRequestV41NodeBase & {
+	config: NodeConfig<HttpRequestV41PredefinedCredentialTypeConfig>;
+};
+
+export type HttpRequestV41GenericCredentialTypeNode = HttpRequestV41NodeBase & {
+	config: NodeConfig<HttpRequestV41GenericCredentialTypeConfig>;
+};
+
+export type HttpRequestV41Node =
+	| HttpRequestV41NoneNode
+	| HttpRequestV41PredefinedCredentialTypeNode
+	| HttpRequestV41GenericCredentialTypeNode
+	;

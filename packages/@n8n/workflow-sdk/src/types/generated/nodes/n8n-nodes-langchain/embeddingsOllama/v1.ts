@@ -1,8 +1,6 @@
 /**
  * Embeddings Ollama Node - Version 1
  * Use Ollama Embeddings
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface LcEmbeddingsOllamaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsOllamaV1Node = {
+interface LcEmbeddingsOllamaV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsOllama';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsOllamaV1Params>;
 	credentials?: LcEmbeddingsOllamaV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsOllamaV1ParamsNode = LcEmbeddingsOllamaV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsOllamaV1Params>;
 };
+
+export type LcEmbeddingsOllamaV1Node = LcEmbeddingsOllamaV1ParamsNode;

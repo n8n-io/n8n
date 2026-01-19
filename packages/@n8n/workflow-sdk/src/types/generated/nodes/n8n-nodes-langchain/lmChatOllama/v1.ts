@@ -1,8 +1,6 @@
 /**
  * Ollama Chat Model Node - Version 1
  * Language Model Ollama
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcLmChatOllamaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatOllamaV1Node = {
+interface LcLmChatOllamaV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatOllama';
 	version: 1;
-	config: NodeConfig<LcLmChatOllamaV1Params>;
 	credentials?: LcLmChatOllamaV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatOllamaV1ParamsNode = LcLmChatOllamaV1NodeBase & {
+	config: NodeConfig<LcLmChatOllamaV1Params>;
 };
+
+export type LcLmChatOllamaV1Node = LcLmChatOllamaV1ParamsNode;

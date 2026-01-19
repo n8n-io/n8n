@@ -1,8 +1,6 @@
 /**
  * Iterable Node - Version 1
  * Consume Iterable API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -141,12 +139,44 @@ export interface IterableV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type IterableV1Node = {
+interface IterableV1NodeBase {
 	type: 'n8n-nodes-base.iterable';
 	version: 1;
-	config: NodeConfig<IterableV1Params>;
 	credentials?: IterableV1Credentials;
+}
+
+export type IterableV1EventTrackNode = IterableV1NodeBase & {
+	config: NodeConfig<IterableV1EventTrackConfig>;
 };
+
+export type IterableV1UserUpsertNode = IterableV1NodeBase & {
+	config: NodeConfig<IterableV1UserUpsertConfig>;
+};
+
+export type IterableV1UserDeleteNode = IterableV1NodeBase & {
+	config: NodeConfig<IterableV1UserDeleteConfig>;
+};
+
+export type IterableV1UserGetNode = IterableV1NodeBase & {
+	config: NodeConfig<IterableV1UserGetConfig>;
+};
+
+export type IterableV1UserListAddNode = IterableV1NodeBase & {
+	config: NodeConfig<IterableV1UserListAddConfig>;
+};
+
+export type IterableV1UserListRemoveNode = IterableV1NodeBase & {
+	config: NodeConfig<IterableV1UserListRemoveConfig>;
+};
+
+export type IterableV1Node =
+	| IterableV1EventTrackNode
+	| IterableV1UserUpsertNode
+	| IterableV1UserDeleteNode
+	| IterableV1UserGetNode
+	| IterableV1UserListAddNode
+	| IterableV1UserListRemoveNode
+	;

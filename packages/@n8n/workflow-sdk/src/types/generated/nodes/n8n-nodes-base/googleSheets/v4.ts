@@ -1,8 +1,6 @@
 /**
  * Google Sheets Node - Version 4
  * Read, update and write data to Google Sheets
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -193,12 +191,64 @@ export interface GoogleSheetsV4Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSheetsV4Node = {
+interface GoogleSheetsV4NodeBase {
 	type: 'n8n-nodes-base.googleSheets';
 	version: 4;
-	config: NodeConfig<GoogleSheetsV4Params>;
 	credentials?: GoogleSheetsV4Credentials;
+}
+
+export type GoogleSheetsV4SpreadsheetCreateNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SpreadsheetCreateConfig>;
 };
+
+export type GoogleSheetsV4SpreadsheetDeleteSpreadsheetNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SpreadsheetDeleteSpreadsheetConfig>;
+};
+
+export type GoogleSheetsV4SheetAppendOrUpdateNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SheetAppendOrUpdateConfig>;
+};
+
+export type GoogleSheetsV4SheetAppendNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SheetAppendConfig>;
+};
+
+export type GoogleSheetsV4SheetClearNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SheetClearConfig>;
+};
+
+export type GoogleSheetsV4SheetCreateNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SheetCreateConfig>;
+};
+
+export type GoogleSheetsV4SheetRemoveNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SheetRemoveConfig>;
+};
+
+export type GoogleSheetsV4SheetDeleteNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SheetDeleteConfig>;
+};
+
+export type GoogleSheetsV4SheetReadNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SheetReadConfig>;
+};
+
+export type GoogleSheetsV4SheetUpdateNode = GoogleSheetsV4NodeBase & {
+	config: NodeConfig<GoogleSheetsV4SheetUpdateConfig>;
+};
+
+export type GoogleSheetsV4Node =
+	| GoogleSheetsV4SpreadsheetCreateNode
+	| GoogleSheetsV4SpreadsheetDeleteSpreadsheetNode
+	| GoogleSheetsV4SheetAppendOrUpdateNode
+	| GoogleSheetsV4SheetAppendNode
+	| GoogleSheetsV4SheetClearNode
+	| GoogleSheetsV4SheetCreateNode
+	| GoogleSheetsV4SheetRemoveNode
+	| GoogleSheetsV4SheetDeleteNode
+	| GoogleSheetsV4SheetReadNode
+	| GoogleSheetsV4SheetUpdateNode
+	;

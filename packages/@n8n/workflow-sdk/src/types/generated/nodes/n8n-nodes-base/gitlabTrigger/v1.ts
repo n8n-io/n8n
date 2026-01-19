@@ -1,8 +1,6 @@
 /**
  * GitLab Trigger Node - Version 1
  * Starts the workflow when GitLab events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -40,13 +38,18 @@ export interface GitlabTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GitlabTriggerV1Node = {
+interface GitlabTriggerV1NodeBase {
 	type: 'n8n-nodes-base.gitlabTrigger';
 	version: 1;
-	config: NodeConfig<GitlabTriggerV1Params>;
 	credentials?: GitlabTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type GitlabTriggerV1ParamsNode = GitlabTriggerV1NodeBase & {
+	config: NodeConfig<GitlabTriggerV1Params>;
 };
+
+export type GitlabTriggerV1Node = GitlabTriggerV1ParamsNode;

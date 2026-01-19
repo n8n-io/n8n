@@ -1,8 +1,6 @@
 /**
  * OpenAI Chat Model Node - Version 1.1
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -38,13 +36,18 @@ export interface LcLmChatOpenAiV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatOpenAiV11Node = {
+interface LcLmChatOpenAiV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatOpenAi';
 	version: 1.1;
-	config: NodeConfig<LcLmChatOpenAiV11Params>;
 	credentials?: LcLmChatOpenAiV11Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatOpenAiV11ParamsNode = LcLmChatOpenAiV11NodeBase & {
+	config: NodeConfig<LcLmChatOpenAiV11Params>;
 };
+
+export type LcLmChatOpenAiV11Node = LcLmChatOpenAiV11ParamsNode;

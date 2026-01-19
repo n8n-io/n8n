@@ -1,8 +1,6 @@
 /**
  * Postgres PGVector Store Node - Version 1.1
  * Work with your data in Postgresql with the PGVector extension
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -129,12 +127,34 @@ export interface LcVectorStorePGVectorV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStorePGVectorV11Node = {
+interface LcVectorStorePGVectorV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStorePGVector';
 	version: 1.1;
-	config: NodeConfig<LcVectorStorePGVectorV11Params>;
 	credentials?: LcVectorStorePGVectorV11Credentials;
+}
+
+export type LcVectorStorePGVectorV11LoadNode = LcVectorStorePGVectorV11NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV11LoadConfig>;
 };
+
+export type LcVectorStorePGVectorV11InsertNode = LcVectorStorePGVectorV11NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV11InsertConfig>;
+};
+
+export type LcVectorStorePGVectorV11RetrieveNode = LcVectorStorePGVectorV11NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV11RetrieveConfig>;
+};
+
+export type LcVectorStorePGVectorV11RetrieveAsToolNode = LcVectorStorePGVectorV11NodeBase & {
+	config: NodeConfig<LcVectorStorePGVectorV11RetrieveAsToolConfig>;
+};
+
+export type LcVectorStorePGVectorV11Node =
+	| LcVectorStorePGVectorV11LoadNode
+	| LcVectorStorePGVectorV11InsertNode
+	| LcVectorStorePGVectorV11RetrieveNode
+	| LcVectorStorePGVectorV11RetrieveAsToolNode
+	;

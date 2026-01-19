@@ -1,8 +1,6 @@
 /**
  * Google Business Profile Trigger Node - Version 1
  * Fetches reviews from Google Business Profile and starts the workflow on specified polling intervals.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -88,13 +86,18 @@ export interface GoogleBusinessProfileTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBusinessProfileTriggerV1Node = {
+interface GoogleBusinessProfileTriggerV1NodeBase {
 	type: 'n8n-nodes-base.googleBusinessProfileTrigger';
 	version: 1;
-	config: NodeConfig<GoogleBusinessProfileTriggerV1Params>;
 	credentials?: GoogleBusinessProfileTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type GoogleBusinessProfileTriggerV1ParamsNode = GoogleBusinessProfileTriggerV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileTriggerV1Params>;
 };
+
+export type GoogleBusinessProfileTriggerV1Node = GoogleBusinessProfileTriggerV1ParamsNode;

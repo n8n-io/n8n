@@ -1,8 +1,6 @@
 /**
  * Send Email Node - Version 1
  * Sends an Email
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -58,12 +56,17 @@ export interface EmailSendV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmailSendV1Node = {
+interface EmailSendV1NodeBase {
 	type: 'n8n-nodes-base.emailSend';
 	version: 1;
-	config: NodeConfig<EmailSendV1Params>;
 	credentials?: EmailSendV1Credentials;
+}
+
+export type EmailSendV1ParamsNode = EmailSendV1NodeBase & {
+	config: NodeConfig<EmailSendV1Params>;
 };
+
+export type EmailSendV1Node = EmailSendV1ParamsNode;

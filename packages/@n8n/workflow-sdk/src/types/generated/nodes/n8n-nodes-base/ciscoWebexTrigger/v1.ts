@@ -1,8 +1,6 @@
 /**
  * Webex by Cisco Trigger Node - Version 1
  * Starts the workflow when Cisco Webex events occur.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -34,13 +32,18 @@ export interface CiscoWebexTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CiscoWebexTriggerV1Node = {
+interface CiscoWebexTriggerV1NodeBase {
 	type: 'n8n-nodes-base.ciscoWebexTrigger';
 	version: 1;
-	config: NodeConfig<CiscoWebexTriggerV1Params>;
 	credentials?: CiscoWebexTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type CiscoWebexTriggerV1ParamsNode = CiscoWebexTriggerV1NodeBase & {
+	config: NodeConfig<CiscoWebexTriggerV1Params>;
 };
+
+export type CiscoWebexTriggerV1Node = CiscoWebexTriggerV1ParamsNode;

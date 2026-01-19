@@ -1,8 +1,6 @@
 /**
  * Postgres Node - Version 2.5
  * Get, add and update data in Postgres
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -110,12 +108,17 @@ export interface PostgresV25Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresV25Node = {
+interface PostgresV25NodeBase {
 	type: 'n8n-nodes-base.postgres';
 	version: 2.5;
-	config: NodeConfig<PostgresV25Params>;
 	credentials?: PostgresV25Credentials;
+}
+
+export type PostgresV25ParamsNode = PostgresV25NodeBase & {
+	config: NodeConfig<PostgresV25Params>;
 };
+
+export type PostgresV25Node = PostgresV25ParamsNode;

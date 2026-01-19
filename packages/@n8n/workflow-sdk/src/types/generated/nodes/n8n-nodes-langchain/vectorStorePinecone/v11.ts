@@ -1,8 +1,6 @@
 /**
  * Pinecone Vector Store Node - Version 1.1
  * Work with your data in Pinecone Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -129,12 +127,39 @@ export interface LcVectorStorePineconeV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStorePineconeV11Node = {
+interface LcVectorStorePineconeV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStorePinecone';
 	version: 1.1;
-	config: NodeConfig<LcVectorStorePineconeV11Params>;
 	credentials?: LcVectorStorePineconeV11Credentials;
+}
+
+export type LcVectorStorePineconeV11LoadNode = LcVectorStorePineconeV11NodeBase & {
+	config: NodeConfig<LcVectorStorePineconeV11LoadConfig>;
 };
+
+export type LcVectorStorePineconeV11InsertNode = LcVectorStorePineconeV11NodeBase & {
+	config: NodeConfig<LcVectorStorePineconeV11InsertConfig>;
+};
+
+export type LcVectorStorePineconeV11RetrieveNode = LcVectorStorePineconeV11NodeBase & {
+	config: NodeConfig<LcVectorStorePineconeV11RetrieveConfig>;
+};
+
+export type LcVectorStorePineconeV11RetrieveAsToolNode = LcVectorStorePineconeV11NodeBase & {
+	config: NodeConfig<LcVectorStorePineconeV11RetrieveAsToolConfig>;
+};
+
+export type LcVectorStorePineconeV11UpdateNode = LcVectorStorePineconeV11NodeBase & {
+	config: NodeConfig<LcVectorStorePineconeV11UpdateConfig>;
+};
+
+export type LcVectorStorePineconeV11Node =
+	| LcVectorStorePineconeV11LoadNode
+	| LcVectorStorePineconeV11InsertNode
+	| LcVectorStorePineconeV11RetrieveNode
+	| LcVectorStorePineconeV11RetrieveAsToolNode
+	| LcVectorStorePineconeV11UpdateNode
+	;

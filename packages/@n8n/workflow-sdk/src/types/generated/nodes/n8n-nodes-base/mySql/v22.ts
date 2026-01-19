@@ -1,8 +1,6 @@
 /**
  * MySQL Node - Version 2.2
  * Get, add and update data in MySQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -128,12 +126,17 @@ export interface MySqlV22Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MySqlV22Node = {
+interface MySqlV22NodeBase {
 	type: 'n8n-nodes-base.mySql';
 	version: 2.2;
-	config: NodeConfig<MySqlV22Params>;
 	credentials?: MySqlV22Credentials;
+}
+
+export type MySqlV22ParamsNode = MySqlV22NodeBase & {
+	config: NodeConfig<MySqlV22Params>;
 };
+
+export type MySqlV22Node = MySqlV22ParamsNode;

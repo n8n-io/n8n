@@ -1,8 +1,6 @@
 /**
  * Google Drive Node - Version 1
  * Access data on Google Drive
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -354,12 +352,89 @@ export interface GoogleDriveV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleDriveV1Node = {
+interface GoogleDriveV1NodeBase {
 	type: 'n8n-nodes-base.googleDrive';
 	version: 1;
-	config: NodeConfig<GoogleDriveV1Params>;
 	credentials?: GoogleDriveV1Credentials;
+}
+
+export type GoogleDriveV1DriveCreateNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1DriveCreateConfig>;
 };
+
+export type GoogleDriveV1DriveDeleteNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1DriveDeleteConfig>;
+};
+
+export type GoogleDriveV1DriveGetNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1DriveGetConfig>;
+};
+
+export type GoogleDriveV1DriveListNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1DriveListConfig>;
+};
+
+export type GoogleDriveV1DriveUpdateNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1DriveUpdateConfig>;
+};
+
+export type GoogleDriveV1FileCopyNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FileCopyConfig>;
+};
+
+export type GoogleDriveV1FileDeleteNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FileDeleteConfig>;
+};
+
+export type GoogleDriveV1FileDownloadNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FileDownloadConfig>;
+};
+
+export type GoogleDriveV1FileListNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FileListConfig>;
+};
+
+export type GoogleDriveV1FileShareNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FileShareConfig>;
+};
+
+export type GoogleDriveV1FileUpdateNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FileUpdateConfig>;
+};
+
+export type GoogleDriveV1FileUploadNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FileUploadConfig>;
+};
+
+export type GoogleDriveV1FolderCreateNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FolderCreateConfig>;
+};
+
+export type GoogleDriveV1FolderDeleteNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FolderDeleteConfig>;
+};
+
+export type GoogleDriveV1FolderShareNode = GoogleDriveV1NodeBase & {
+	config: NodeConfig<GoogleDriveV1FolderShareConfig>;
+};
+
+export type GoogleDriveV1Node =
+	| GoogleDriveV1DriveCreateNode
+	| GoogleDriveV1DriveDeleteNode
+	| GoogleDriveV1DriveGetNode
+	| GoogleDriveV1DriveListNode
+	| GoogleDriveV1DriveUpdateNode
+	| GoogleDriveV1FileCopyNode
+	| GoogleDriveV1FileDeleteNode
+	| GoogleDriveV1FileDownloadNode
+	| GoogleDriveV1FileListNode
+	| GoogleDriveV1FileShareNode
+	| GoogleDriveV1FileUpdateNode
+	| GoogleDriveV1FileUploadNode
+	| GoogleDriveV1FolderCreateNode
+	| GoogleDriveV1FolderDeleteNode
+	| GoogleDriveV1FolderShareNode
+	;

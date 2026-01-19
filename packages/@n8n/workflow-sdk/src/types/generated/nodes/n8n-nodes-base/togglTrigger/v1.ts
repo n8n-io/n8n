@@ -1,8 +1,6 @@
 /**
  * Toggl Trigger Node - Version 1
  * Starts the workflow when Toggl events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -73,13 +71,18 @@ export interface TogglTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TogglTriggerV1Node = {
+interface TogglTriggerV1NodeBase {
 	type: 'n8n-nodes-base.togglTrigger';
 	version: 1;
-	config: NodeConfig<TogglTriggerV1Params>;
 	credentials?: TogglTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type TogglTriggerV1ParamsNode = TogglTriggerV1NodeBase & {
+	config: NodeConfig<TogglTriggerV1Params>;
 };
+
+export type TogglTriggerV1Node = TogglTriggerV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Discord Node - Version 2
  * Sends data to Discord
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -504,6 +502,357 @@ export type DiscordV2Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type DiscordV2ChannelCreateOutput = {
+	flags?: number;
+	guild_id?: string;
+	id?: string;
+	last_message_id?: null;
+	name?: string;
+	nsfw?: boolean;
+	permission_overwrites?: Array<{
+		allow?: string;
+		deny?: string;
+		id?: string;
+		type?: number;
+	}>;
+	position?: number;
+	rate_limit_per_user?: number;
+	type?: number;
+};
+
+export type DiscordV2ChannelDeleteChannelOutput = {
+	flags?: number;
+	guild_id?: string;
+	icon_emoji?: {
+		id?: null;
+		name?: string;
+	};
+	id?: string;
+	name?: string;
+	nsfw?: boolean;
+	permission_overwrites?: Array<{
+		allow?: string;
+		deny?: string;
+		id?: string;
+		type?: number;
+	}>;
+	position?: number;
+	rate_limit_per_user?: number;
+	theme_color?: null;
+	topic?: null;
+	type?: number;
+};
+
+export type DiscordV2ChannelGetOutput = {
+	flags?: number;
+	guild_id?: string;
+	id?: string;
+	name?: string;
+	nsfw?: boolean;
+	permission_overwrites?: Array<{
+		allow?: string;
+		deny?: string;
+		id?: string;
+		type?: number;
+	}>;
+	position?: number;
+	rate_limit_per_user?: number;
+	type?: number;
+};
+
+export type DiscordV2ChannelGetAllOutput = {
+	flags?: number;
+	guild_id?: string;
+	icon_emoji?: {
+		id?: null;
+		name?: string;
+	};
+	id?: string;
+	name?: string;
+	nsfw?: boolean;
+	permission_overwrites?: Array<{
+		allow?: string;
+		deny?: string;
+		id?: string;
+		type?: number;
+	}>;
+	position?: number;
+	rate_limit_per_user?: number;
+	theme_color?: null;
+	type?: number;
+};
+
+export type DiscordV2MessageDeleteMessageOutput = {
+	success?: boolean;
+};
+
+export type DiscordV2MessageGetOutput = {
+	attachments?: Array<{
+		content_scan_version?: number;
+		content_type?: string;
+		filename?: string;
+		height?: number;
+		id?: string;
+		placeholder?: string;
+		placeholder_version?: number;
+		proxy_url?: string;
+		size?: number;
+		url?: string;
+		width?: number;
+	}>;
+	author?: {
+		accent_color?: null;
+		banner?: null;
+		banner_color?: null;
+		collectibles?: null;
+		discriminator?: string;
+		flags?: number;
+		id?: string;
+		public_flags?: number;
+		username?: string;
+	};
+	channel_id?: string;
+	components?: Array<{
+		components?: Array<{
+			custom_id?: string;
+			id?: number;
+			label?: string;
+			style?: number;
+			type?: number;
+		}>;
+		id?: number;
+		type?: number;
+	}>;
+	content?: string;
+	embeds?: Array<{
+		color?: number;
+		content_scan_version?: number;
+		description?: string;
+		thumbnail?: {
+			flags?: number;
+			height?: number;
+			placeholder?: string;
+			placeholder_version?: number;
+			proxy_url?: string;
+			url?: string;
+			width?: number;
+		};
+		title?: string;
+		type?: string;
+		url?: string;
+	}>;
+	flags?: number;
+	id?: string;
+	mention_everyone?: boolean;
+	mention_roles?: Array<string>;
+	mentions?: Array<{
+		accent_color?: null;
+		avatar_decoration_data?: null;
+		banner?: null;
+		banner_color?: null;
+		clan?: null;
+		discriminator?: string;
+		flags?: number;
+		id?: string;
+		primary_guild?: null;
+		public_flags?: number;
+		username?: string;
+	}>;
+	pinned?: boolean;
+	timestamp?: string;
+	tts?: boolean;
+	type?: number;
+};
+
+export type DiscordV2MessageGetAllOutput = {
+	attachments?: Array<{
+		content_type?: string;
+		filename?: string;
+		height?: number;
+		id?: string;
+		placeholder?: string;
+		placeholder_version?: number;
+		proxy_url?: string;
+		size?: number;
+		url?: string;
+		width?: number;
+	}>;
+	author?: {
+		accent_color?: null;
+		banner?: null;
+		banner_color?: null;
+		clan?: null;
+		collectibles?: null;
+		discriminator?: string;
+		flags?: number;
+		id?: string;
+		primary_guild?: null;
+		public_flags?: number;
+		username?: string;
+	};
+	channel_id?: string;
+	components?: Array<{
+		components?: Array<{
+			id?: number;
+			label?: string;
+			style?: number;
+			type?: number;
+			url?: string;
+		}>;
+		id?: number;
+		type?: number;
+	}>;
+	content?: string;
+	embeds?: Array<{
+		author?: {
+			name?: string;
+			url?: string;
+		};
+		color?: number;
+		description?: string;
+		provider?: {
+			name?: string;
+			url?: string;
+		};
+		thumbnail?: {
+			flags?: number;
+			height?: number;
+			placeholder?: string;
+			placeholder_version?: number;
+			proxy_url?: string;
+			url?: string;
+			width?: number;
+		};
+		title?: string;
+		type?: string;
+		url?: string;
+		video?: {
+			flags?: number;
+			height?: number;
+			placeholder?: string;
+			placeholder_version?: number;
+			url?: string;
+			width?: number;
+		};
+	}>;
+	flags?: number;
+	id?: string;
+	mention_everyone?: boolean;
+	mention_roles?: Array<string>;
+	mentions?: Array<{
+		accent_color?: null;
+		banner?: null;
+		banner_color?: null;
+		clan?: null;
+		collectibles?: null;
+		discriminator?: string;
+		flags?: number;
+		id?: string;
+		primary_guild?: null;
+		public_flags?: number;
+		username?: string;
+	}>;
+	pinned?: boolean;
+	timestamp?: string;
+	tts?: boolean;
+	type?: number;
+};
+
+export type DiscordV2MessageReactOutput = {
+	success?: boolean;
+};
+
+export type DiscordV2MessageSendOutput = {
+	attachments?: Array<{
+		content_scan_version?: number;
+		content_type?: string;
+		filename?: string;
+		id?: string;
+		proxy_url?: string;
+		size?: number;
+		title?: string;
+		url?: string;
+	}>;
+	author?: {
+		accent_color?: null;
+		avatar_decoration_data?: null;
+		banner_color?: null;
+		bot?: boolean;
+		clan?: null;
+		collectibles?: null;
+		discriminator?: string;
+		flags?: number;
+		global_name?: null;
+		id?: string;
+		primary_guild?: null;
+		public_flags?: number;
+		username?: string;
+	};
+	channel_id?: string;
+	content?: string;
+	edited_timestamp?: null;
+	embeds?: Array<{
+		color?: number;
+		content_scan_version?: number;
+		description?: string;
+		title?: string;
+		type?: string;
+	}>;
+	flags?: number;
+	id?: string;
+	mention_everyone?: boolean;
+	mentions?: Array<{
+		avatar_decoration_data?: null;
+		clan?: null;
+		collectibles?: null;
+		discriminator?: string;
+		flags?: number;
+		id?: string;
+		primary_guild?: null;
+		public_flags?: number;
+		username?: string;
+	}>;
+	pinned?: boolean;
+	timestamp?: string;
+	tts?: boolean;
+	type?: number;
+};
+
+export type DiscordV2MessageSendAndWaitOutput = {
+	data?: {
+		approved?: boolean;
+	};
+};
+
+export type DiscordV2MemberGetAllOutput = {
+	communication_disabled_until?: null;
+	deaf?: boolean;
+	flags?: number;
+	joined_at?: string;
+	mute?: boolean;
+	pending?: boolean;
+	roles?: Array<string>;
+	user?: {
+		accent_color?: null;
+		banner?: null;
+		banner_color?: null;
+		clan?: null;
+		discriminator?: string;
+		flags?: number;
+		id?: string;
+		public_flags?: number;
+		username?: string;
+	};
+};
+
+export type DiscordV2MemberRoleAddOutput = {
+	success?: boolean;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -514,12 +863,96 @@ export interface DiscordV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DiscordV2Node = {
+interface DiscordV2NodeBase {
 	type: 'n8n-nodes-base.discord';
 	version: 2;
-	config: NodeConfig<DiscordV2Params>;
 	credentials?: DiscordV2Credentials;
+}
+
+export type DiscordV2ChannelCreateNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2ChannelCreateConfig>;
+	output?: DiscordV2ChannelCreateOutput;
 };
+
+export type DiscordV2ChannelDeleteChannelNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2ChannelDeleteChannelConfig>;
+	output?: DiscordV2ChannelDeleteChannelOutput;
+};
+
+export type DiscordV2ChannelGetNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2ChannelGetConfig>;
+	output?: DiscordV2ChannelGetOutput;
+};
+
+export type DiscordV2ChannelGetAllNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2ChannelGetAllConfig>;
+	output?: DiscordV2ChannelGetAllOutput;
+};
+
+export type DiscordV2ChannelUpdateNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2ChannelUpdateConfig>;
+};
+
+export type DiscordV2MessageDeleteMessageNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MessageDeleteMessageConfig>;
+	output?: DiscordV2MessageDeleteMessageOutput;
+};
+
+export type DiscordV2MessageGetNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MessageGetConfig>;
+	output?: DiscordV2MessageGetOutput;
+};
+
+export type DiscordV2MessageGetAllNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MessageGetAllConfig>;
+	output?: DiscordV2MessageGetAllOutput;
+};
+
+export type DiscordV2MessageReactNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MessageReactConfig>;
+	output?: DiscordV2MessageReactOutput;
+};
+
+export type DiscordV2MessageSendNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MessageSendConfig>;
+	output?: DiscordV2MessageSendOutput;
+};
+
+export type DiscordV2MessageSendAndWaitNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MessageSendAndWaitConfig>;
+	output?: DiscordV2MessageSendAndWaitOutput;
+};
+
+export type DiscordV2MemberGetAllNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MemberGetAllConfig>;
+	output?: DiscordV2MemberGetAllOutput;
+};
+
+export type DiscordV2MemberRoleAddNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MemberRoleAddConfig>;
+	output?: DiscordV2MemberRoleAddOutput;
+};
+
+export type DiscordV2MemberRoleRemoveNode = DiscordV2NodeBase & {
+	config: NodeConfig<DiscordV2MemberRoleRemoveConfig>;
+};
+
+export type DiscordV2Node =
+	| DiscordV2ChannelCreateNode
+	| DiscordV2ChannelDeleteChannelNode
+	| DiscordV2ChannelGetNode
+	| DiscordV2ChannelGetAllNode
+	| DiscordV2ChannelUpdateNode
+	| DiscordV2MessageDeleteMessageNode
+	| DiscordV2MessageGetNode
+	| DiscordV2MessageGetAllNode
+	| DiscordV2MessageReactNode
+	| DiscordV2MessageSendNode
+	| DiscordV2MessageSendAndWaitNode
+	| DiscordV2MemberGetAllNode
+	| DiscordV2MemberRoleAddNode
+	| DiscordV2MemberRoleRemoveNode
+	;

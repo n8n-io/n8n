@@ -1,8 +1,6 @@
 /**
  * Cal.com Trigger Node - Version 2
  * Handle Cal.com events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -28,13 +26,18 @@ export interface CalTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CalTriggerV2Node = {
+interface CalTriggerV2NodeBase {
 	type: 'n8n-nodes-base.calTrigger';
 	version: 2;
-	config: NodeConfig<CalTriggerV2Params>;
 	credentials?: CalTriggerV2Credentials;
 	isTrigger: true;
+}
+
+export type CalTriggerV2ParamsNode = CalTriggerV2NodeBase & {
+	config: NodeConfig<CalTriggerV2Params>;
 };
+
+export type CalTriggerV2Node = CalTriggerV2ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * RSS Read Node - Version 1.1
  * Reads data from an RSS Feed
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -26,12 +24,16 @@ export interface RssFeedReadV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RssFeedReadV11Node = {
+interface RssFeedReadV11NodeBase {
 	type: 'n8n-nodes-base.rssFeedRead';
 	version: 1.1;
+}
+
+export type RssFeedReadV11ParamsNode = RssFeedReadV11NodeBase & {
 	config: NodeConfig<RssFeedReadV11Params>;
-	credentials?: Record<string, never>;
 };
+
+export type RssFeedReadV11Node = RssFeedReadV11ParamsNode;

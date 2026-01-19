@@ -1,8 +1,6 @@
 /**
  * Microsoft Teams Node - Version 1
  * Consume Microsoft Teams API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -338,12 +336,89 @@ export interface MicrosoftTeamsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftTeamsV1Node = {
+interface MicrosoftTeamsV1NodeBase {
 	type: 'n8n-nodes-base.microsoftTeams';
 	version: 1;
-	config: NodeConfig<MicrosoftTeamsV1Params>;
 	credentials?: MicrosoftTeamsV1Credentials;
+}
+
+export type MicrosoftTeamsV1ChannelCreateNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChannelCreateConfig>;
 };
+
+export type MicrosoftTeamsV1ChannelDeleteNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChannelDeleteConfig>;
+};
+
+export type MicrosoftTeamsV1ChannelGetNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChannelGetConfig>;
+};
+
+export type MicrosoftTeamsV1ChannelGetAllNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChannelGetAllConfig>;
+};
+
+export type MicrosoftTeamsV1ChannelUpdateNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChannelUpdateConfig>;
+};
+
+export type MicrosoftTeamsV1ChannelMessageCreateNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChannelMessageCreateConfig>;
+};
+
+export type MicrosoftTeamsV1ChannelMessageGetAllNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChannelMessageGetAllConfig>;
+};
+
+export type MicrosoftTeamsV1ChatMessageCreateNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChatMessageCreateConfig>;
+};
+
+export type MicrosoftTeamsV1ChatMessageGetNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChatMessageGetConfig>;
+};
+
+export type MicrosoftTeamsV1ChatMessageGetAllNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1ChatMessageGetAllConfig>;
+};
+
+export type MicrosoftTeamsV1TaskCreateNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1TaskCreateConfig>;
+};
+
+export type MicrosoftTeamsV1TaskDeleteNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1TaskDeleteConfig>;
+};
+
+export type MicrosoftTeamsV1TaskGetNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1TaskGetConfig>;
+};
+
+export type MicrosoftTeamsV1TaskGetAllNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1TaskGetAllConfig>;
+};
+
+export type MicrosoftTeamsV1TaskUpdateNode = MicrosoftTeamsV1NodeBase & {
+	config: NodeConfig<MicrosoftTeamsV1TaskUpdateConfig>;
+};
+
+export type MicrosoftTeamsV1Node =
+	| MicrosoftTeamsV1ChannelCreateNode
+	| MicrosoftTeamsV1ChannelDeleteNode
+	| MicrosoftTeamsV1ChannelGetNode
+	| MicrosoftTeamsV1ChannelGetAllNode
+	| MicrosoftTeamsV1ChannelUpdateNode
+	| MicrosoftTeamsV1ChannelMessageCreateNode
+	| MicrosoftTeamsV1ChannelMessageGetAllNode
+	| MicrosoftTeamsV1ChatMessageCreateNode
+	| MicrosoftTeamsV1ChatMessageGetNode
+	| MicrosoftTeamsV1ChatMessageGetAllNode
+	| MicrosoftTeamsV1TaskCreateNode
+	| MicrosoftTeamsV1TaskDeleteNode
+	| MicrosoftTeamsV1TaskGetNode
+	| MicrosoftTeamsV1TaskGetAllNode
+	| MicrosoftTeamsV1TaskUpdateNode
+	;

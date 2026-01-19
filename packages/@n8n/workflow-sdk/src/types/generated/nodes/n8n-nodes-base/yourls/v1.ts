@@ -1,8 +1,6 @@
 /**
  * Yourls Node - Version 1
  * Consume Yourls API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -62,12 +60,29 @@ export interface YourlsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type YourlsV1Node = {
+interface YourlsV1NodeBase {
 	type: 'n8n-nodes-base.yourls';
 	version: 1;
-	config: NodeConfig<YourlsV1Params>;
 	credentials?: YourlsV1Credentials;
+}
+
+export type YourlsV1UrlExpandNode = YourlsV1NodeBase & {
+	config: NodeConfig<YourlsV1UrlExpandConfig>;
 };
+
+export type YourlsV1UrlShortenNode = YourlsV1NodeBase & {
+	config: NodeConfig<YourlsV1UrlShortenConfig>;
+};
+
+export type YourlsV1UrlStatsNode = YourlsV1NodeBase & {
+	config: NodeConfig<YourlsV1UrlStatsConfig>;
+};
+
+export type YourlsV1Node =
+	| YourlsV1UrlExpandNode
+	| YourlsV1UrlShortenNode
+	| YourlsV1UrlStatsNode
+	;

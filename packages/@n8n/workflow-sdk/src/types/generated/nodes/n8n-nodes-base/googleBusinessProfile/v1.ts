@@ -1,8 +1,6 @@
 /**
  * Google Business Profile Node - Version 1
  * Consume Google Business Profile API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -317,12 +315,59 @@ export interface GoogleBusinessProfileV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBusinessProfileV1Node = {
+interface GoogleBusinessProfileV1NodeBase {
 	type: 'n8n-nodes-base.googleBusinessProfile';
 	version: 1;
-	config: NodeConfig<GoogleBusinessProfileV1Params>;
 	credentials?: GoogleBusinessProfileV1Credentials;
+}
+
+export type GoogleBusinessProfileV1PostCreateNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1PostCreateConfig>;
 };
+
+export type GoogleBusinessProfileV1PostDeleteNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1PostDeleteConfig>;
+};
+
+export type GoogleBusinessProfileV1PostGetNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1PostGetConfig>;
+};
+
+export type GoogleBusinessProfileV1PostGetAllNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1PostGetAllConfig>;
+};
+
+export type GoogleBusinessProfileV1PostUpdateNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1PostUpdateConfig>;
+};
+
+export type GoogleBusinessProfileV1ReviewDeleteNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1ReviewDeleteConfig>;
+};
+
+export type GoogleBusinessProfileV1ReviewGetNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1ReviewGetConfig>;
+};
+
+export type GoogleBusinessProfileV1ReviewGetAllNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1ReviewGetAllConfig>;
+};
+
+export type GoogleBusinessProfileV1ReviewReplyNode = GoogleBusinessProfileV1NodeBase & {
+	config: NodeConfig<GoogleBusinessProfileV1ReviewReplyConfig>;
+};
+
+export type GoogleBusinessProfileV1Node =
+	| GoogleBusinessProfileV1PostCreateNode
+	| GoogleBusinessProfileV1PostDeleteNode
+	| GoogleBusinessProfileV1PostGetNode
+	| GoogleBusinessProfileV1PostGetAllNode
+	| GoogleBusinessProfileV1PostUpdateNode
+	| GoogleBusinessProfileV1ReviewDeleteNode
+	| GoogleBusinessProfileV1ReviewGetNode
+	| GoogleBusinessProfileV1ReviewGetAllNode
+	| GoogleBusinessProfileV1ReviewReplyNode
+	;

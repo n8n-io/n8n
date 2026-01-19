@@ -1,8 +1,6 @@
 /**
  * Wise Node - Version 1
  * Consume the Wise API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -278,6 +276,38 @@ export type WiseV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type WiseV1AccountGetBalancesOutput = {
+	active?: boolean;
+	balances?: Array<{
+		amount?: {
+			currency?: string;
+		};
+		balanceType?: string;
+		currency?: string;
+		id?: number;
+		reservedAmount?: {
+			currency?: string;
+		};
+	}>;
+	creationTime?: string;
+	eligible?: boolean;
+	id?: number;
+	modificationTime?: string;
+	profileId?: number;
+	recipientId?: number;
+};
+
+export type WiseV1ExchangeRateGetOutput = {
+	rate?: number;
+	source?: string;
+	target?: string;
+	time?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -286,12 +316,86 @@ export interface WiseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WiseV1Node = {
+interface WiseV1NodeBase {
 	type: 'n8n-nodes-base.wise';
 	version: 1;
-	config: NodeConfig<WiseV1Params>;
 	credentials?: WiseV1Credentials;
+}
+
+export type WiseV1AccountGetBalancesNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1AccountGetBalancesConfig>;
+	output?: WiseV1AccountGetBalancesOutput;
 };
+
+export type WiseV1AccountGetCurrenciesNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1AccountGetCurrenciesConfig>;
+};
+
+export type WiseV1AccountGetStatementNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1AccountGetStatementConfig>;
+};
+
+export type WiseV1ExchangeRateGetNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1ExchangeRateGetConfig>;
+	output?: WiseV1ExchangeRateGetOutput;
+};
+
+export type WiseV1ProfileGetNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1ProfileGetConfig>;
+};
+
+export type WiseV1ProfileGetAllNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1ProfileGetAllConfig>;
+};
+
+export type WiseV1QuoteCreateNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1QuoteCreateConfig>;
+};
+
+export type WiseV1QuoteGetNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1QuoteGetConfig>;
+};
+
+export type WiseV1RecipientGetAllNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1RecipientGetAllConfig>;
+};
+
+export type WiseV1TransferCreateNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1TransferCreateConfig>;
+};
+
+export type WiseV1TransferDeleteNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1TransferDeleteConfig>;
+};
+
+export type WiseV1TransferExecuteNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1TransferExecuteConfig>;
+};
+
+export type WiseV1TransferGetNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1TransferGetConfig>;
+};
+
+export type WiseV1TransferGetAllNode = WiseV1NodeBase & {
+	config: NodeConfig<WiseV1TransferGetAllConfig>;
+};
+
+export type WiseV1Node =
+	| WiseV1AccountGetBalancesNode
+	| WiseV1AccountGetCurrenciesNode
+	| WiseV1AccountGetStatementNode
+	| WiseV1ExchangeRateGetNode
+	| WiseV1ProfileGetNode
+	| WiseV1ProfileGetAllNode
+	| WiseV1QuoteCreateNode
+	| WiseV1QuoteGetNode
+	| WiseV1RecipientGetAllNode
+	| WiseV1TransferCreateNode
+	| WiseV1TransferDeleteNode
+	| WiseV1TransferExecuteNode
+	| WiseV1TransferGetNode
+	| WiseV1TransferGetAllNode
+	;

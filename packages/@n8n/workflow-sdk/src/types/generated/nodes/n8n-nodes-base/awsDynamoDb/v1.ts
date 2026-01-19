@@ -1,8 +1,6 @@
 /**
  * AWS DynamoDB Node - Version 1
  * Consume the AWS DynamoDB API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -229,12 +227,34 @@ export interface AwsDynamoDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsDynamoDbV1Node = {
+interface AwsDynamoDbV1NodeBase {
 	type: 'n8n-nodes-base.awsDynamoDb';
 	version: 1;
-	config: NodeConfig<AwsDynamoDbV1Params>;
 	credentials?: AwsDynamoDbV1Credentials;
+}
+
+export type AwsDynamoDbV1ItemUpsertNode = AwsDynamoDbV1NodeBase & {
+	config: NodeConfig<AwsDynamoDbV1ItemUpsertConfig>;
 };
+
+export type AwsDynamoDbV1ItemDeleteNode = AwsDynamoDbV1NodeBase & {
+	config: NodeConfig<AwsDynamoDbV1ItemDeleteConfig>;
+};
+
+export type AwsDynamoDbV1ItemGetNode = AwsDynamoDbV1NodeBase & {
+	config: NodeConfig<AwsDynamoDbV1ItemGetConfig>;
+};
+
+export type AwsDynamoDbV1ItemGetAllNode = AwsDynamoDbV1NodeBase & {
+	config: NodeConfig<AwsDynamoDbV1ItemGetAllConfig>;
+};
+
+export type AwsDynamoDbV1Node =
+	| AwsDynamoDbV1ItemUpsertNode
+	| AwsDynamoDbV1ItemDeleteNode
+	| AwsDynamoDbV1ItemGetNode
+	| AwsDynamoDbV1ItemGetAllNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Microsoft Excel 365 Node - Version 2.2
  * Consume Microsoft Excel API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -404,12 +402,99 @@ export interface MicrosoftExcelV22Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftExcelV22Node = {
+interface MicrosoftExcelV22NodeBase {
 	type: 'n8n-nodes-base.microsoftExcel';
 	version: 2.2;
-	config: NodeConfig<MicrosoftExcelV22Params>;
 	credentials?: MicrosoftExcelV22Credentials;
+}
+
+export type MicrosoftExcelV22TableAppendNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22TableAppendConfig>;
 };
+
+export type MicrosoftExcelV22TableConvertToRangeNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22TableConvertToRangeConfig>;
+};
+
+export type MicrosoftExcelV22TableAddTableNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22TableAddTableConfig>;
+};
+
+export type MicrosoftExcelV22TableDeleteTableNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22TableDeleteTableConfig>;
+};
+
+export type MicrosoftExcelV22TableGetColumnsNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22TableGetColumnsConfig>;
+};
+
+export type MicrosoftExcelV22TableGetRowsNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22TableGetRowsConfig>;
+};
+
+export type MicrosoftExcelV22TableLookupNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22TableLookupConfig>;
+};
+
+export type MicrosoftExcelV22WorkbookAddWorksheetNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorkbookAddWorksheetConfig>;
+};
+
+export type MicrosoftExcelV22WorkbookDeleteWorkbookNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorkbookDeleteWorkbookConfig>;
+};
+
+export type MicrosoftExcelV22WorkbookGetAllNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorkbookGetAllConfig>;
+};
+
+export type MicrosoftExcelV22WorksheetAppendNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorksheetAppendConfig>;
+};
+
+export type MicrosoftExcelV22WorksheetUpsertNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorksheetUpsertConfig>;
+};
+
+export type MicrosoftExcelV22WorksheetClearNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorksheetClearConfig>;
+};
+
+export type MicrosoftExcelV22WorksheetDeleteWorksheetNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorksheetDeleteWorksheetConfig>;
+};
+
+export type MicrosoftExcelV22WorksheetGetAllNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorksheetGetAllConfig>;
+};
+
+export type MicrosoftExcelV22WorksheetReadRowsNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorksheetReadRowsConfig>;
+};
+
+export type MicrosoftExcelV22WorksheetUpdateNode = MicrosoftExcelV22NodeBase & {
+	config: NodeConfig<MicrosoftExcelV22WorksheetUpdateConfig>;
+};
+
+export type MicrosoftExcelV22Node =
+	| MicrosoftExcelV22TableAppendNode
+	| MicrosoftExcelV22TableConvertToRangeNode
+	| MicrosoftExcelV22TableAddTableNode
+	| MicrosoftExcelV22TableDeleteTableNode
+	| MicrosoftExcelV22TableGetColumnsNode
+	| MicrosoftExcelV22TableGetRowsNode
+	| MicrosoftExcelV22TableLookupNode
+	| MicrosoftExcelV22WorkbookAddWorksheetNode
+	| MicrosoftExcelV22WorkbookDeleteWorkbookNode
+	| MicrosoftExcelV22WorkbookGetAllNode
+	| MicrosoftExcelV22WorksheetAppendNode
+	| MicrosoftExcelV22WorksheetUpsertNode
+	| MicrosoftExcelV22WorksheetClearNode
+	| MicrosoftExcelV22WorksheetDeleteWorksheetNode
+	| MicrosoftExcelV22WorksheetGetAllNode
+	| MicrosoftExcelV22WorksheetReadRowsNode
+	| MicrosoftExcelV22WorksheetUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Onfleet Node - Version 1
  * Consume Onfleet API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -758,6 +756,118 @@ export type OnfleetV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type OnfleetV1TaskGetAllOutput = {
+	additionalQuantities?: {
+		quantityA?: number;
+		quantityB?: number;
+		quantityC?: number;
+	};
+	appearance?: {
+		triangleColor?: null;
+	};
+	completionDetails?: {
+		actions?: Array<{
+			actionType?: string;
+			adminId?: string;
+			createdAt?: string;
+			prevState?: {
+				failureNotes?: string;
+				notes?: string;
+				success?: boolean;
+				successNotes?: string;
+			};
+		}>;
+		events?: Array<{
+			location?: Array<number>;
+			name?: string;
+			time?: number;
+		}>;
+		failureNotes?: string;
+		failureReason?: string;
+		firstLocation?: Array<number>;
+		lastLocation?: Array<number>;
+		notes?: string;
+		success?: boolean;
+		successNotes?: string;
+	};
+	creator?: string;
+	dependencies?: Array<string>;
+	destination?: {
+		address?: {
+			apartment?: string;
+			city?: string;
+			country?: string;
+			name?: string;
+			number?: string;
+			postalCode?: string;
+			state?: string;
+			street?: string;
+		};
+		id?: string;
+		location?: Array<number>;
+		notes?: string;
+		timeCreated?: number;
+		timeLastModified?: number;
+		useGPS?: boolean;
+		warnings?: Array<string>;
+	};
+	estimatedArrivalTime?: null;
+	estimatedCompletionTime?: null;
+	eta?: null;
+	executor?: string;
+	feedback?: Array<{
+		comments?: string;
+		rating?: number;
+		recipient?: string;
+		time?: string;
+	}>;
+	id?: string;
+	identity?: {
+		checksum?: null;
+		failedScanCount?: number;
+	};
+	merchant?: string;
+	notes?: string;
+	orderShortId?: null;
+	organization?: string;
+	pickupTask?: boolean;
+	recipients?: Array<{
+		id?: string;
+		name?: string;
+		notes?: string;
+		organization?: string;
+		phone?: string;
+		skipSMSNotifications?: boolean;
+		timeCreated?: number;
+		timeLastModified?: number;
+	}>;
+	scanOnlyRequiredBarcodes?: boolean;
+	serviceTime?: number;
+	shortId?: string;
+	state?: number;
+	timeCreated?: number;
+	timeLastModified?: number;
+	trackingURL?: string;
+	trackingViewed?: boolean;
+	type?: number;
+	worker?: string;
+};
+
+export type OnfleetV1TeamGetAllOutput = {
+	enableSelfAssignment?: boolean;
+	id?: string;
+	managers?: Array<string>;
+	name?: string;
+	tasks?: Array<string>;
+	timeCreated?: number;
+	timeLastModified?: number;
+	workers?: Array<string>;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -766,12 +876,201 @@ export interface OnfleetV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OnfleetV1Node = {
+interface OnfleetV1NodeBase {
 	type: 'n8n-nodes-base.onfleet';
 	version: 1;
-	config: NodeConfig<OnfleetV1Params>;
 	credentials?: OnfleetV1Credentials;
+}
+
+export type OnfleetV1AdminCreateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1AdminCreateConfig>;
 };
+
+export type OnfleetV1AdminDeleteNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1AdminDeleteConfig>;
+};
+
+export type OnfleetV1AdminGetAllNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1AdminGetAllConfig>;
+};
+
+export type OnfleetV1AdminUpdateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1AdminUpdateConfig>;
+};
+
+export type OnfleetV1ContainerAddTaskNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1ContainerAddTaskConfig>;
+};
+
+export type OnfleetV1ContainerGetNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1ContainerGetConfig>;
+};
+
+export type OnfleetV1ContainerUpdateTaskNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1ContainerUpdateTaskConfig>;
+};
+
+export type OnfleetV1DestinationCreateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1DestinationCreateConfig>;
+};
+
+export type OnfleetV1DestinationGetNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1DestinationGetConfig>;
+};
+
+export type OnfleetV1HubCreateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1HubCreateConfig>;
+};
+
+export type OnfleetV1HubGetAllNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1HubGetAllConfig>;
+};
+
+export type OnfleetV1HubUpdateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1HubUpdateConfig>;
+};
+
+export type OnfleetV1OrganizationGetNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1OrganizationGetConfig>;
+};
+
+export type OnfleetV1OrganizationGetDelegateeNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1OrganizationGetDelegateeConfig>;
+};
+
+export type OnfleetV1RecipientCreateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1RecipientCreateConfig>;
+};
+
+export type OnfleetV1RecipientGetNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1RecipientGetConfig>;
+};
+
+export type OnfleetV1RecipientUpdateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1RecipientUpdateConfig>;
+};
+
+export type OnfleetV1TaskCloneNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TaskCloneConfig>;
+};
+
+export type OnfleetV1TaskCompleteNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TaskCompleteConfig>;
+};
+
+export type OnfleetV1TaskCreateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TaskCreateConfig>;
+};
+
+export type OnfleetV1TaskDeleteNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TaskDeleteConfig>;
+};
+
+export type OnfleetV1TaskGetNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TaskGetConfig>;
+};
+
+export type OnfleetV1TaskGetAllNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TaskGetAllConfig>;
+	output?: OnfleetV1TaskGetAllOutput;
+};
+
+export type OnfleetV1TaskUpdateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TaskUpdateConfig>;
+};
+
+export type OnfleetV1TeamAutoDispatchNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TeamAutoDispatchConfig>;
+};
+
+export type OnfleetV1TeamCreateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TeamCreateConfig>;
+};
+
+export type OnfleetV1TeamDeleteNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TeamDeleteConfig>;
+};
+
+export type OnfleetV1TeamGetNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TeamGetConfig>;
+};
+
+export type OnfleetV1TeamGetAllNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TeamGetAllConfig>;
+	output?: OnfleetV1TeamGetAllOutput;
+};
+
+export type OnfleetV1TeamGetTimeEstimatesNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TeamGetTimeEstimatesConfig>;
+};
+
+export type OnfleetV1TeamUpdateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1TeamUpdateConfig>;
+};
+
+export type OnfleetV1WorkerCreateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1WorkerCreateConfig>;
+};
+
+export type OnfleetV1WorkerDeleteNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1WorkerDeleteConfig>;
+};
+
+export type OnfleetV1WorkerGetNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1WorkerGetConfig>;
+};
+
+export type OnfleetV1WorkerGetAllNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1WorkerGetAllConfig>;
+};
+
+export type OnfleetV1WorkerGetScheduleNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1WorkerGetScheduleConfig>;
+};
+
+export type OnfleetV1WorkerUpdateNode = OnfleetV1NodeBase & {
+	config: NodeConfig<OnfleetV1WorkerUpdateConfig>;
+};
+
+export type OnfleetV1Node =
+	| OnfleetV1AdminCreateNode
+	| OnfleetV1AdminDeleteNode
+	| OnfleetV1AdminGetAllNode
+	| OnfleetV1AdminUpdateNode
+	| OnfleetV1ContainerAddTaskNode
+	| OnfleetV1ContainerGetNode
+	| OnfleetV1ContainerUpdateTaskNode
+	| OnfleetV1DestinationCreateNode
+	| OnfleetV1DestinationGetNode
+	| OnfleetV1HubCreateNode
+	| OnfleetV1HubGetAllNode
+	| OnfleetV1HubUpdateNode
+	| OnfleetV1OrganizationGetNode
+	| OnfleetV1OrganizationGetDelegateeNode
+	| OnfleetV1RecipientCreateNode
+	| OnfleetV1RecipientGetNode
+	| OnfleetV1RecipientUpdateNode
+	| OnfleetV1TaskCloneNode
+	| OnfleetV1TaskCompleteNode
+	| OnfleetV1TaskCreateNode
+	| OnfleetV1TaskDeleteNode
+	| OnfleetV1TaskGetNode
+	| OnfleetV1TaskGetAllNode
+	| OnfleetV1TaskUpdateNode
+	| OnfleetV1TeamAutoDispatchNode
+	| OnfleetV1TeamCreateNode
+	| OnfleetV1TeamDeleteNode
+	| OnfleetV1TeamGetNode
+	| OnfleetV1TeamGetAllNode
+	| OnfleetV1TeamGetTimeEstimatesNode
+	| OnfleetV1TeamUpdateNode
+	| OnfleetV1WorkerCreateNode
+	| OnfleetV1WorkerDeleteNode
+	| OnfleetV1WorkerGetNode
+	| OnfleetV1WorkerGetAllNode
+	| OnfleetV1WorkerGetScheduleNode
+	| OnfleetV1WorkerUpdateNode
+	;

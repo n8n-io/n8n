@@ -1,8 +1,6 @@
 /**
  * Vero Node - Version 1
  * Consume Vero API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -206,12 +204,54 @@ export interface VeroV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VeroV1Node = {
+interface VeroV1NodeBase {
 	type: 'n8n-nodes-base.vero';
 	version: 1;
-	config: NodeConfig<VeroV1Params>;
 	credentials?: VeroV1Credentials;
+}
+
+export type VeroV1UserAddTagsNode = VeroV1NodeBase & {
+	config: NodeConfig<VeroV1UserAddTagsConfig>;
 };
+
+export type VeroV1UserAliasNode = VeroV1NodeBase & {
+	config: NodeConfig<VeroV1UserAliasConfig>;
+};
+
+export type VeroV1UserCreateNode = VeroV1NodeBase & {
+	config: NodeConfig<VeroV1UserCreateConfig>;
+};
+
+export type VeroV1UserDeleteNode = VeroV1NodeBase & {
+	config: NodeConfig<VeroV1UserDeleteConfig>;
+};
+
+export type VeroV1UserResubscribeNode = VeroV1NodeBase & {
+	config: NodeConfig<VeroV1UserResubscribeConfig>;
+};
+
+export type VeroV1UserRemoveTagsNode = VeroV1NodeBase & {
+	config: NodeConfig<VeroV1UserRemoveTagsConfig>;
+};
+
+export type VeroV1UserUnsubscribeNode = VeroV1NodeBase & {
+	config: NodeConfig<VeroV1UserUnsubscribeConfig>;
+};
+
+export type VeroV1EventTrackNode = VeroV1NodeBase & {
+	config: NodeConfig<VeroV1EventTrackConfig>;
+};
+
+export type VeroV1Node =
+	| VeroV1UserAddTagsNode
+	| VeroV1UserAliasNode
+	| VeroV1UserCreateNode
+	| VeroV1UserDeleteNode
+	| VeroV1UserResubscribeNode
+	| VeroV1UserRemoveTagsNode
+	| VeroV1UserUnsubscribeNode
+	| VeroV1EventTrackNode
+	;

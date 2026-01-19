@@ -1,8 +1,6 @@
 /**
  * KoBoToolbox Trigger Node - Version 1
  * Process KoBoToolbox submissions
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -31,13 +29,18 @@ export interface KoBoToolboxTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type KoBoToolboxTriggerV1Node = {
+interface KoBoToolboxTriggerV1NodeBase {
 	type: 'n8n-nodes-base.koBoToolboxTrigger';
 	version: 1;
-	config: NodeConfig<KoBoToolboxTriggerV1Params>;
 	credentials?: KoBoToolboxTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type KoBoToolboxTriggerV1ParamsNode = KoBoToolboxTriggerV1NodeBase & {
+	config: NodeConfig<KoBoToolboxTriggerV1Params>;
 };
+
+export type KoBoToolboxTriggerV1Node = KoBoToolboxTriggerV1ParamsNode;

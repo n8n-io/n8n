@@ -1,8 +1,6 @@
 /**
  * Notion Node - Version 2.1
  * Consume Notion API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -2797,6 +2795,278 @@ export type NotionV21Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type NotionV21BlockAppendOutput = {
+	has_more?: boolean;
+	next_cursor?: null;
+	object?: string;
+	request_id?: string;
+	results?: Array<{
+		archived?: boolean;
+		created_by?: {
+			id?: string;
+			object?: string;
+		};
+		created_time?: string;
+		has_children?: boolean;
+		id?: string;
+		in_trash?: boolean;
+		last_edited_by?: {
+			id?: string;
+			object?: string;
+		};
+		last_edited_time?: string;
+		object?: string;
+		paragraph?: {
+			color?: string;
+			text?: Array<{
+				annotations?: {
+					bold?: boolean;
+					code?: boolean;
+					color?: string;
+					italic?: boolean;
+					strikethrough?: boolean;
+					underline?: boolean;
+				};
+				plain_text?: string;
+				text?: {
+					content?: string;
+				};
+				type?: string;
+			}>;
+		};
+		parent?: {
+			page_id?: string;
+			type?: string;
+		};
+		type?: string;
+	}>;
+};
+
+export type NotionV21BlockGetAllOutput = {
+	archived?: boolean;
+	content?: string;
+	has_children?: boolean;
+	id?: string;
+	in_trash?: boolean;
+	last_edited_by?: {
+		id?: string;
+		object?: string;
+	};
+	object?: string;
+	parent?: {
+		page_id?: string;
+		type?: string;
+	};
+	parent_id?: string;
+	root_id?: string;
+	type?: string;
+};
+
+export type NotionV21DatabaseGetOutput = {
+	archived?: boolean;
+	created_by?: {
+		id?: string;
+		object?: string;
+	};
+	created_time?: string;
+	description?: Array<{
+		annotations?: {
+			bold?: boolean;
+			code?: boolean;
+			color?: string;
+			italic?: boolean;
+			strikethrough?: boolean;
+			underline?: boolean;
+		};
+		href?: null;
+		plain_text?: string;
+		text?: {
+			content?: string;
+			link?: null;
+		};
+		type?: string;
+	}>;
+	id?: string;
+	in_trash?: boolean;
+	is_inline?: boolean;
+	last_edited_by?: {
+		id?: string;
+		object?: string;
+	};
+	last_edited_time?: string;
+	name?: string;
+	object?: string;
+	parent?: {
+		type?: string;
+		workspace?: boolean;
+	};
+	properties?: {
+		''?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		answer?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		Author?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		'Dateien und Medien'?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		department?: {
+			description?: null;
+			id?: string;
+			multi_select?: {
+				options?: Array<{
+					color?: string;
+					description?: null;
+					id?: string;
+					name?: string;
+				}>;
+			};
+			name?: string;
+			type?: string;
+		};
+		question?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		tags?: {
+			description?: null;
+			id?: string;
+			multi_select?: {
+				options?: Array<{
+					color?: string;
+					description?: null;
+					id?: string;
+					name?: string;
+				}>;
+			};
+			name?: string;
+			type?: string;
+		};
+		updated_at?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+	};
+	public_url?: null;
+	request_id?: string;
+	title?: Array<{
+		annotations?: {
+			bold?: boolean;
+			code?: boolean;
+			color?: string;
+			italic?: boolean;
+			strikethrough?: boolean;
+			underline?: boolean;
+		};
+		href?: null;
+		plain_text?: string;
+		text?: {
+			content?: string;
+			link?: null;
+		};
+		type?: string;
+	}>;
+	url?: string;
+};
+
+export type NotionV21DatabaseGetAllOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21DatabaseSearchOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21DatabasePageCreateOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21DatabasePageGetOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21DatabasePageGetAllOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21DatabasePageUpdateOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21PageArchiveOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21PageCreateOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21PageSearchOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV21UserGetOutput = {
+	id?: string;
+	name?: string;
+	object?: string;
+	person?: {
+		email?: string;
+	};
+	request_id?: string;
+	type?: string;
+};
+
+export type NotionV21UserGetAllOutput = {
+	id?: string;
+	name?: string;
+	object?: string;
+	person?: {
+		email?: string;
+	};
+	type?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -2805,12 +3075,98 @@ export interface NotionV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NotionV21Node = {
+interface NotionV21NodeBase {
 	type: 'n8n-nodes-base.notion';
 	version: 2.1;
-	config: NodeConfig<NotionV21Params>;
 	credentials?: NotionV21Credentials;
+}
+
+export type NotionV21BlockAppendNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21BlockAppendConfig>;
+	output?: NotionV21BlockAppendOutput;
 };
+
+export type NotionV21BlockGetAllNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21BlockGetAllConfig>;
+	output?: NotionV21BlockGetAllOutput;
+};
+
+export type NotionV21DatabaseGetNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21DatabaseGetConfig>;
+	output?: NotionV21DatabaseGetOutput;
+};
+
+export type NotionV21DatabaseGetAllNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21DatabaseGetAllConfig>;
+	output?: NotionV21DatabaseGetAllOutput;
+};
+
+export type NotionV21DatabaseSearchNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21DatabaseSearchConfig>;
+	output?: NotionV21DatabaseSearchOutput;
+};
+
+export type NotionV21DatabasePageCreateNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21DatabasePageCreateConfig>;
+	output?: NotionV21DatabasePageCreateOutput;
+};
+
+export type NotionV21DatabasePageGetNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21DatabasePageGetConfig>;
+	output?: NotionV21DatabasePageGetOutput;
+};
+
+export type NotionV21DatabasePageGetAllNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21DatabasePageGetAllConfig>;
+	output?: NotionV21DatabasePageGetAllOutput;
+};
+
+export type NotionV21DatabasePageUpdateNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21DatabasePageUpdateConfig>;
+	output?: NotionV21DatabasePageUpdateOutput;
+};
+
+export type NotionV21PageArchiveNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21PageArchiveConfig>;
+	output?: NotionV21PageArchiveOutput;
+};
+
+export type NotionV21PageCreateNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21PageCreateConfig>;
+	output?: NotionV21PageCreateOutput;
+};
+
+export type NotionV21PageSearchNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21PageSearchConfig>;
+	output?: NotionV21PageSearchOutput;
+};
+
+export type NotionV21UserGetNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21UserGetConfig>;
+	output?: NotionV21UserGetOutput;
+};
+
+export type NotionV21UserGetAllNode = NotionV21NodeBase & {
+	config: NodeConfig<NotionV21UserGetAllConfig>;
+	output?: NotionV21UserGetAllOutput;
+};
+
+export type NotionV21Node =
+	| NotionV21BlockAppendNode
+	| NotionV21BlockGetAllNode
+	| NotionV21DatabaseGetNode
+	| NotionV21DatabaseGetAllNode
+	| NotionV21DatabaseSearchNode
+	| NotionV21DatabasePageCreateNode
+	| NotionV21DatabasePageGetNode
+	| NotionV21DatabasePageGetAllNode
+	| NotionV21DatabasePageUpdateNode
+	| NotionV21PageArchiveNode
+	| NotionV21PageCreateNode
+	| NotionV21PageSearchNode
+	| NotionV21UserGetNode
+	| NotionV21UserGetAllNode
+	;

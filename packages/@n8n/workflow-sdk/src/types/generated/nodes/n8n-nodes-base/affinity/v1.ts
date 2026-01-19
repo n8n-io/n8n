@@ -1,8 +1,6 @@
 /**
  * Affinity Node - Version 1
  * Consume Affinity API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -288,6 +286,104 @@ export type AffinityV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type AffinityV1ListEntryCreateOutput = {
+	created_at?: string;
+	creator_id?: number;
+	entity?: {
+		crunchbase_uuid?: null;
+		domain?: string;
+		domains?: Array<string>;
+		global?: boolean;
+		id?: number;
+		name?: string;
+	};
+	entity_id?: number;
+	entity_type?: number;
+	id?: number;
+	list_id?: number;
+};
+
+export type AffinityV1ListEntryGetAllOutput = {
+	created_at?: string;
+	creator_id?: number;
+	entity?: {
+		crunchbase_uuid?: null;
+		domains?: Array<string>;
+		global?: boolean;
+		id?: number;
+		name?: string;
+	};
+	entity_id?: number;
+	entity_type?: number;
+	id?: number;
+	list_id?: number;
+};
+
+export type AffinityV1OrganizationCreateOutput = {
+	crunchbase_uuid?: null;
+	domain?: string;
+	domains?: Array<string>;
+	global?: boolean;
+	id?: number;
+	name?: string;
+	person_ids?: Array<number>;
+};
+
+export type AffinityV1OrganizationGetOutput = {
+	crunchbase_uuid?: null;
+	domain?: string;
+	domains?: Array<string>;
+	global?: boolean;
+	id?: number;
+	list_entries?: Array<{
+		created_at?: string;
+		creator_id?: number;
+		entity_id?: number;
+		entity_type?: number;
+		id?: number;
+		list_id?: number;
+	}>;
+	name?: string;
+	person_ids?: Array<number>;
+};
+
+export type AffinityV1OrganizationGetAllOutput = {
+	crunchbase_uuid?: null;
+	domains?: Array<string>;
+	global?: boolean;
+	id?: number;
+	name?: string;
+};
+
+export type AffinityV1PersonGetOutput = {
+	emails?: Array<string>;
+	first_name?: string;
+	id?: number;
+	last_name?: string;
+	list_entries?: Array<{
+		created_at?: string;
+		creator_id?: number;
+		entity_id?: number;
+		entity_type?: number;
+		id?: number;
+		list_id?: number;
+	}>;
+	organization_ids?: Array<number>;
+	type?: number;
+};
+
+export type AffinityV1PersonGetAllOutput = {
+	emails?: Array<string>;
+	first_name?: string;
+	id?: number;
+	last_name?: string;
+	type?: number;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -296,12 +392,101 @@ export interface AffinityV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AffinityV1Node = {
+interface AffinityV1NodeBase {
 	type: 'n8n-nodes-base.affinity';
 	version: 1;
-	config: NodeConfig<AffinityV1Params>;
 	credentials?: AffinityV1Credentials;
+}
+
+export type AffinityV1ListGetNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1ListGetConfig>;
 };
+
+export type AffinityV1ListGetAllNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1ListGetAllConfig>;
+};
+
+export type AffinityV1ListEntryCreateNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1ListEntryCreateConfig>;
+	output?: AffinityV1ListEntryCreateOutput;
+};
+
+export type AffinityV1ListEntryDeleteNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1ListEntryDeleteConfig>;
+};
+
+export type AffinityV1ListEntryGetNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1ListEntryGetConfig>;
+};
+
+export type AffinityV1ListEntryGetAllNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1ListEntryGetAllConfig>;
+	output?: AffinityV1ListEntryGetAllOutput;
+};
+
+export type AffinityV1OrganizationCreateNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1OrganizationCreateConfig>;
+	output?: AffinityV1OrganizationCreateOutput;
+};
+
+export type AffinityV1OrganizationDeleteNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1OrganizationDeleteConfig>;
+};
+
+export type AffinityV1OrganizationGetNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1OrganizationGetConfig>;
+	output?: AffinityV1OrganizationGetOutput;
+};
+
+export type AffinityV1OrganizationGetAllNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1OrganizationGetAllConfig>;
+	output?: AffinityV1OrganizationGetAllOutput;
+};
+
+export type AffinityV1OrganizationUpdateNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1OrganizationUpdateConfig>;
+};
+
+export type AffinityV1PersonCreateNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1PersonCreateConfig>;
+};
+
+export type AffinityV1PersonDeleteNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1PersonDeleteConfig>;
+};
+
+export type AffinityV1PersonGetNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1PersonGetConfig>;
+	output?: AffinityV1PersonGetOutput;
+};
+
+export type AffinityV1PersonGetAllNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1PersonGetAllConfig>;
+	output?: AffinityV1PersonGetAllOutput;
+};
+
+export type AffinityV1PersonUpdateNode = AffinityV1NodeBase & {
+	config: NodeConfig<AffinityV1PersonUpdateConfig>;
+};
+
+export type AffinityV1Node =
+	| AffinityV1ListGetNode
+	| AffinityV1ListGetAllNode
+	| AffinityV1ListEntryCreateNode
+	| AffinityV1ListEntryDeleteNode
+	| AffinityV1ListEntryGetNode
+	| AffinityV1ListEntryGetAllNode
+	| AffinityV1OrganizationCreateNode
+	| AffinityV1OrganizationDeleteNode
+	| AffinityV1OrganizationGetNode
+	| AffinityV1OrganizationGetAllNode
+	| AffinityV1OrganizationUpdateNode
+	| AffinityV1PersonCreateNode
+	| AffinityV1PersonDeleteNode
+	| AffinityV1PersonGetNode
+	| AffinityV1PersonGetAllNode
+	| AffinityV1PersonUpdateNode
+	;

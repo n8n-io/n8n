@@ -1,8 +1,6 @@
 /**
  * Clockify Trigger Node - Version 1
  * Listens to Clockify events
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -77,13 +75,18 @@ export interface ClockifyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClockifyTriggerV1Node = {
+interface ClockifyTriggerV1NodeBase {
 	type: 'n8n-nodes-base.clockifyTrigger';
 	version: 1;
-	config: NodeConfig<ClockifyTriggerV1Params>;
 	credentials?: ClockifyTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type ClockifyTriggerV1ParamsNode = ClockifyTriggerV1NodeBase & {
+	config: NodeConfig<ClockifyTriggerV1Params>;
 };
+
+export type ClockifyTriggerV1Node = ClockifyTriggerV1ParamsNode;

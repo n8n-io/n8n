@@ -1,8 +1,6 @@
 /**
  * n8n Trigger Node - Version 1
  * Handle events and perform actions on your n8n instance
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -31,13 +29,17 @@ export interface N8nTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type N8nTriggerV1Node = {
+interface N8nTriggerV1NodeBase {
 	type: 'n8n-nodes-base.n8nTrigger';
 	version: 1;
-	config: NodeConfig<N8nTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type N8nTriggerV1ParamsNode = N8nTriggerV1NodeBase & {
+	config: NodeConfig<N8nTriggerV1Params>;
 };
+
+export type N8nTriggerV1Node = N8nTriggerV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * FileMaker Node - Version 1
  * Retrieve data from the FileMaker data API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -185,12 +183,17 @@ export interface FilemakerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FilemakerV1Node = {
+interface FilemakerV1NodeBase {
 	type: 'n8n-nodes-base.filemaker';
 	version: 1;
-	config: NodeConfig<FilemakerV1Params>;
 	credentials?: FilemakerV1Credentials;
+}
+
+export type FilemakerV1ParamsNode = FilemakerV1NodeBase & {
+	config: NodeConfig<FilemakerV1Params>;
 };
+
+export type FilemakerV1Node = FilemakerV1ParamsNode;

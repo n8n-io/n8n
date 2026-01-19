@@ -1,8 +1,6 @@
 /**
  * Vonage Node - Version 1
  * Consume Vonage API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -39,6 +37,19 @@ export type VonageV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type VonageV1SmsSendOutput = {
+	'message-id'?: string;
+	'message-price'?: string;
+	network?: string;
+	'remaining-balance'?: string;
+	status?: string;
+	to?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -47,12 +58,18 @@ export interface VonageV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VonageV1Node = {
+interface VonageV1NodeBase {
 	type: 'n8n-nodes-base.vonage';
 	version: 1;
-	config: NodeConfig<VonageV1Params>;
 	credentials?: VonageV1Credentials;
+}
+
+export type VonageV1SmsSendNode = VonageV1NodeBase & {
+	config: NodeConfig<VonageV1SmsSendConfig>;
+	output?: VonageV1SmsSendOutput;
 };
+
+export type VonageV1Node = VonageV1SmsSendNode;

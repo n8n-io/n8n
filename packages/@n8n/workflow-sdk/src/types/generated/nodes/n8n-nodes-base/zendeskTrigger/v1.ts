@@ -1,8 +1,6 @@
 /**
  * Zendesk Trigger Node - Version 1
  * Handle Zendesk events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -134,13 +132,18 @@ export interface ZendeskTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZendeskTriggerV1Node = {
+interface ZendeskTriggerV1NodeBase {
 	type: 'n8n-nodes-base.zendeskTrigger';
 	version: 1;
-	config: NodeConfig<ZendeskTriggerV1Params>;
 	credentials?: ZendeskTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type ZendeskTriggerV1ParamsNode = ZendeskTriggerV1NodeBase & {
+	config: NodeConfig<ZendeskTriggerV1Params>;
 };
+
+export type ZendeskTriggerV1Node = ZendeskTriggerV1ParamsNode;

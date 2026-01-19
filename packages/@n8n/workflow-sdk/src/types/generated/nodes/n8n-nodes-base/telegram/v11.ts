@@ -1,8 +1,6 @@
 /**
  * Telegram Node - Version 1.1
  * Sends data to Telegram
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -1570,6 +1568,459 @@ export type TelegramV11Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type TelegramV11ChatGetOutput = {
+	ok?: boolean;
+	result?: {
+		accent_color_id?: number;
+		accepted_gift_types?: {
+			limited_gifts?: boolean;
+			premium_subscription?: boolean;
+			unique_gifts?: boolean;
+			unlimited_gifts?: boolean;
+		};
+		active_usernames?: Array<string>;
+		can_send_gift?: boolean;
+		first_name?: string;
+		id?: number;
+		max_reaction_count?: number;
+		type?: string;
+		username?: string;
+	};
+};
+
+export type TelegramV11ChatAdministratorsOutput = {
+	can_be_edited?: boolean;
+	can_change_info?: boolean;
+	can_delete_messages?: boolean;
+	can_delete_stories?: boolean;
+	can_edit_stories?: boolean;
+	can_invite_users?: boolean;
+	can_manage_chat?: boolean;
+	can_manage_topics?: boolean;
+	can_manage_video_chats?: boolean;
+	can_manage_voice_chats?: boolean;
+	can_pin_messages?: boolean;
+	can_post_stories?: boolean;
+	can_promote_members?: boolean;
+	can_restrict_members?: boolean;
+	is_anonymous?: boolean;
+	status?: string;
+	user?: {
+		first_name?: string;
+		id?: number;
+		is_bot?: boolean;
+		language_code?: string;
+		last_name?: string;
+		username?: string;
+	};
+};
+
+export type TelegramV11ChatMemberOutput = {
+	ok?: boolean;
+	result?: {
+		is_anonymous?: boolean;
+		status?: string;
+		user?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			language_code?: string;
+			username?: string;
+		};
+	};
+};
+
+export type TelegramV11ChatLeaveOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV11CallbackAnswerQueryOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV11FileGetOutput = {
+	ok?: boolean;
+	result?: {
+		file_id?: string;
+		file_path?: string;
+		file_size?: number;
+		file_unique_id?: string;
+	};
+};
+
+export type TelegramV11MessageDeleteMessageOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV11MessageEditMessageTextOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		edit_date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		text?: string;
+	};
+};
+
+export type TelegramV11MessagePinChatMessageOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV11MessageSendAnimationOutput = {
+	ok?: boolean;
+	result?: {
+		animation?: {
+			duration?: number;
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			mime_type?: string;
+			thumb?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			thumbnail?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			width?: number;
+		};
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		document?: {
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			mime_type?: string;
+			thumb?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			thumbnail?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+		};
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+	};
+};
+
+export type TelegramV11MessageSendAudioOutput = {
+	ok?: boolean;
+	result?: {
+		audio?: {
+			duration?: number;
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			mime_type?: string;
+		};
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+	};
+};
+
+export type TelegramV11MessageSendChatActionOutput = {
+	ok?: boolean;
+	result?: boolean;
+};
+
+export type TelegramV11MessageSendDocumentOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		document?: {
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			mime_type?: string;
+		};
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+	};
+};
+
+export type TelegramV11MessageSendLocationOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		location?: {
+			latitude?: number;
+			longitude?: number;
+		};
+		message_id?: number;
+	};
+};
+
+export type TelegramV11MessageSendMediaGroupOutput = {
+	ok?: boolean;
+	result?: Array<{
+		caption?: string;
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		photo?: Array<{
+			file_id?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			width?: number;
+		}>;
+	}>;
+};
+
+export type TelegramV11MessageSendMessageOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+		};
+		date?: number;
+		entities?: Array<{
+			length?: number;
+			offset?: number;
+			type?: string;
+			url?: string;
+		}>;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		link_preview_options?: {
+			is_disabled?: boolean;
+		};
+		message_id?: number;
+		text?: string;
+	};
+};
+
+export type TelegramV11MessageSendAndWaitOutput = {
+	data?: {
+		text?: string;
+	};
+};
+
+export type TelegramV11MessageSendPhotoOutput = {
+	ok?: boolean;
+	result?: {
+		caption?: string;
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		photo?: Array<{
+			file_id?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			width?: number;
+		}>;
+	};
+};
+
+export type TelegramV11MessageSendStickerOutput = {
+	ok?: boolean;
+	result?: {
+		chat?: {
+			first_name?: string;
+			id?: number;
+			last_name?: string;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		sticker?: {
+			emoji?: string;
+			file_id?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			is_animated?: boolean;
+			is_video?: boolean;
+			set_name?: string;
+			thumb?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			thumbnail?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			type?: string;
+			width?: number;
+		};
+	};
+};
+
+export type TelegramV11MessageSendVideoOutput = {
+	ok?: boolean;
+	result?: {
+		caption?: string;
+		chat?: {
+			first_name?: string;
+			id?: number;
+			type?: string;
+			username?: string;
+		};
+		date?: number;
+		from?: {
+			first_name?: string;
+			id?: number;
+			is_bot?: boolean;
+			username?: string;
+		};
+		message_id?: number;
+		video?: {
+			duration?: number;
+			file_id?: string;
+			file_name?: string;
+			file_size?: number;
+			file_unique_id?: string;
+			height?: number;
+			mime_type?: string;
+			thumb?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			thumbnail?: {
+				file_id?: string;
+				file_size?: number;
+				file_unique_id?: string;
+				height?: number;
+				width?: number;
+			};
+			width?: number;
+		};
+	};
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -1578,12 +2029,154 @@ export interface TelegramV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TelegramV11Node = {
+interface TelegramV11NodeBase {
 	type: 'n8n-nodes-base.telegram';
 	version: 1.1;
-	config: NodeConfig<TelegramV11Params>;
 	credentials?: TelegramV11Credentials;
+}
+
+export type TelegramV11ChatGetNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11ChatGetConfig>;
+	output?: TelegramV11ChatGetOutput;
 };
+
+export type TelegramV11ChatAdministratorsNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11ChatAdministratorsConfig>;
+	output?: TelegramV11ChatAdministratorsOutput;
+};
+
+export type TelegramV11ChatMemberNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11ChatMemberConfig>;
+	output?: TelegramV11ChatMemberOutput;
+};
+
+export type TelegramV11ChatLeaveNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11ChatLeaveConfig>;
+	output?: TelegramV11ChatLeaveOutput;
+};
+
+export type TelegramV11ChatSetDescriptionNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11ChatSetDescriptionConfig>;
+};
+
+export type TelegramV11ChatSetTitleNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11ChatSetTitleConfig>;
+};
+
+export type TelegramV11CallbackAnswerQueryNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11CallbackAnswerQueryConfig>;
+	output?: TelegramV11CallbackAnswerQueryOutput;
+};
+
+export type TelegramV11CallbackAnswerInlineQueryNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11CallbackAnswerInlineQueryConfig>;
+};
+
+export type TelegramV11FileGetNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11FileGetConfig>;
+	output?: TelegramV11FileGetOutput;
+};
+
+export type TelegramV11MessageDeleteMessageNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageDeleteMessageConfig>;
+	output?: TelegramV11MessageDeleteMessageOutput;
+};
+
+export type TelegramV11MessageEditMessageTextNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageEditMessageTextConfig>;
+	output?: TelegramV11MessageEditMessageTextOutput;
+};
+
+export type TelegramV11MessagePinChatMessageNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessagePinChatMessageConfig>;
+	output?: TelegramV11MessagePinChatMessageOutput;
+};
+
+export type TelegramV11MessageSendAnimationNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendAnimationConfig>;
+	output?: TelegramV11MessageSendAnimationOutput;
+};
+
+export type TelegramV11MessageSendAudioNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendAudioConfig>;
+	output?: TelegramV11MessageSendAudioOutput;
+};
+
+export type TelegramV11MessageSendChatActionNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendChatActionConfig>;
+	output?: TelegramV11MessageSendChatActionOutput;
+};
+
+export type TelegramV11MessageSendDocumentNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendDocumentConfig>;
+	output?: TelegramV11MessageSendDocumentOutput;
+};
+
+export type TelegramV11MessageSendLocationNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendLocationConfig>;
+	output?: TelegramV11MessageSendLocationOutput;
+};
+
+export type TelegramV11MessageSendMediaGroupNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendMediaGroupConfig>;
+	output?: TelegramV11MessageSendMediaGroupOutput;
+};
+
+export type TelegramV11MessageSendMessageNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendMessageConfig>;
+	output?: TelegramV11MessageSendMessageOutput;
+};
+
+export type TelegramV11MessageSendAndWaitNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendAndWaitConfig>;
+	output?: TelegramV11MessageSendAndWaitOutput;
+};
+
+export type TelegramV11MessageSendPhotoNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendPhotoConfig>;
+	output?: TelegramV11MessageSendPhotoOutput;
+};
+
+export type TelegramV11MessageSendStickerNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendStickerConfig>;
+	output?: TelegramV11MessageSendStickerOutput;
+};
+
+export type TelegramV11MessageSendVideoNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageSendVideoConfig>;
+	output?: TelegramV11MessageSendVideoOutput;
+};
+
+export type TelegramV11MessageUnpinChatMessageNode = TelegramV11NodeBase & {
+	config: NodeConfig<TelegramV11MessageUnpinChatMessageConfig>;
+};
+
+export type TelegramV11Node =
+	| TelegramV11ChatGetNode
+	| TelegramV11ChatAdministratorsNode
+	| TelegramV11ChatMemberNode
+	| TelegramV11ChatLeaveNode
+	| TelegramV11ChatSetDescriptionNode
+	| TelegramV11ChatSetTitleNode
+	| TelegramV11CallbackAnswerQueryNode
+	| TelegramV11CallbackAnswerInlineQueryNode
+	| TelegramV11FileGetNode
+	| TelegramV11MessageDeleteMessageNode
+	| TelegramV11MessageEditMessageTextNode
+	| TelegramV11MessagePinChatMessageNode
+	| TelegramV11MessageSendAnimationNode
+	| TelegramV11MessageSendAudioNode
+	| TelegramV11MessageSendChatActionNode
+	| TelegramV11MessageSendDocumentNode
+	| TelegramV11MessageSendLocationNode
+	| TelegramV11MessageSendMediaGroupNode
+	| TelegramV11MessageSendMessageNode
+	| TelegramV11MessageSendAndWaitNode
+	| TelegramV11MessageSendPhotoNode
+	| TelegramV11MessageSendStickerNode
+	| TelegramV11MessageSendVideoNode
+	| TelegramV11MessageUnpinChatMessageNode
+	;

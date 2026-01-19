@@ -1,8 +1,6 @@
 /**
  * Twilio Trigger Node - Version 1
  * Starts the workflow on a Twilio update
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -26,13 +24,18 @@ export interface TwilioTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwilioTriggerV1Node = {
+interface TwilioTriggerV1NodeBase {
 	type: 'n8n-nodes-base.twilioTrigger';
 	version: 1;
-	config: NodeConfig<TwilioTriggerV1Params>;
 	credentials?: TwilioTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type TwilioTriggerV1ParamsNode = TwilioTriggerV1NodeBase & {
+	config: NodeConfig<TwilioTriggerV1Params>;
 };
+
+export type TwilioTriggerV1Node = TwilioTriggerV1ParamsNode;

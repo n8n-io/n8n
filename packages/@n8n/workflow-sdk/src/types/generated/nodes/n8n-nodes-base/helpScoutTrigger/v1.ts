@@ -1,8 +1,6 @@
 /**
  * Help Scout Trigger Node - Version 1
  * Starts the workflow when Help Scout events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -26,13 +24,18 @@ export interface HelpScoutTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HelpScoutTriggerV1Node = {
+interface HelpScoutTriggerV1NodeBase {
 	type: 'n8n-nodes-base.helpScoutTrigger';
 	version: 1;
-	config: NodeConfig<HelpScoutTriggerV1Params>;
 	credentials?: HelpScoutTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type HelpScoutTriggerV1ParamsNode = HelpScoutTriggerV1NodeBase & {
+	config: NodeConfig<HelpScoutTriggerV1Params>;
 };
+
+export type HelpScoutTriggerV1Node = HelpScoutTriggerV1ParamsNode;

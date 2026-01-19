@@ -1,8 +1,6 @@
 /**
  * Twilio Node - Version 1
  * Send SMS and WhatsApp messages or make phone calls
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -70,6 +68,73 @@ export type TwilioV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type TwilioV1CallMakeOutput = {
+	account_sid?: string;
+	annotation?: null;
+	answered_by?: null;
+	api_version?: string;
+	caller_name?: null;
+	date_created?: null;
+	date_updated?: null;
+	direction?: string;
+	duration?: null;
+	end_time?: null;
+	forwarded_from?: null;
+	from?: string;
+	from_formatted?: string;
+	group_sid?: null;
+	parent_call_sid?: null;
+	price?: null;
+	price_unit?: string;
+	queue_time?: string;
+	sid?: string;
+	start_time?: null;
+	status?: string;
+	subresource_uris?: {
+		events?: string;
+		notifications?: string;
+		payments?: string;
+		recordings?: string;
+		siprec?: string;
+		streams?: string;
+		transcriptions?: string;
+		user_defined_message_subscriptions?: string;
+		user_defined_messages?: string;
+	};
+	to?: string;
+	to_formatted?: string;
+	trunk_sid?: null;
+	uri?: string;
+};
+
+export type TwilioV1SmsSendOutput = {
+	account_sid?: string;
+	api_version?: string;
+	body?: string;
+	date_created?: string;
+	date_sent?: null;
+	date_updated?: string;
+	direction?: string;
+	error_code?: null;
+	error_message?: null;
+	from?: string;
+	messaging_service_sid?: string;
+	num_media?: string;
+	num_segments?: string;
+	price?: null;
+	sid?: string;
+	status?: string;
+	subresource_uris?: {
+		media?: string;
+	};
+	to?: string;
+	uri?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -78,12 +143,26 @@ export interface TwilioV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwilioV1Node = {
+interface TwilioV1NodeBase {
 	type: 'n8n-nodes-base.twilio';
 	version: 1;
-	config: NodeConfig<TwilioV1Params>;
 	credentials?: TwilioV1Credentials;
+}
+
+export type TwilioV1CallMakeNode = TwilioV1NodeBase & {
+	config: NodeConfig<TwilioV1CallMakeConfig>;
+	output?: TwilioV1CallMakeOutput;
 };
+
+export type TwilioV1SmsSendNode = TwilioV1NodeBase & {
+	config: NodeConfig<TwilioV1SmsSendConfig>;
+	output?: TwilioV1SmsSendOutput;
+};
+
+export type TwilioV1Node =
+	| TwilioV1CallMakeNode
+	| TwilioV1SmsSendNode
+	;

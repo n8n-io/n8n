@@ -1,8 +1,6 @@
 /**
  * Magento 2 Node - Version 1
  * Consume Magento API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -288,12 +286,89 @@ export interface Magento2V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type Magento2V1Node = {
+interface Magento2V1NodeBase {
 	type: 'n8n-nodes-base.magento2';
 	version: 1;
-	config: NodeConfig<Magento2V1Params>;
 	credentials?: Magento2V1Credentials;
+}
+
+export type Magento2V1CustomerCreateNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1CustomerCreateConfig>;
 };
+
+export type Magento2V1CustomerDeleteNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1CustomerDeleteConfig>;
+};
+
+export type Magento2V1CustomerGetNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1CustomerGetConfig>;
+};
+
+export type Magento2V1CustomerGetAllNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1CustomerGetAllConfig>;
+};
+
+export type Magento2V1CustomerUpdateNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1CustomerUpdateConfig>;
+};
+
+export type Magento2V1InvoiceCreateNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1InvoiceCreateConfig>;
+};
+
+export type Magento2V1OrderCancelNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1OrderCancelConfig>;
+};
+
+export type Magento2V1OrderGetNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1OrderGetConfig>;
+};
+
+export type Magento2V1OrderGetAllNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1OrderGetAllConfig>;
+};
+
+export type Magento2V1OrderShipNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1OrderShipConfig>;
+};
+
+export type Magento2V1ProductCreateNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1ProductCreateConfig>;
+};
+
+export type Magento2V1ProductDeleteNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1ProductDeleteConfig>;
+};
+
+export type Magento2V1ProductGetNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1ProductGetConfig>;
+};
+
+export type Magento2V1ProductGetAllNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1ProductGetAllConfig>;
+};
+
+export type Magento2V1ProductUpdateNode = Magento2V1NodeBase & {
+	config: NodeConfig<Magento2V1ProductUpdateConfig>;
+};
+
+export type Magento2V1Node =
+	| Magento2V1CustomerCreateNode
+	| Magento2V1CustomerDeleteNode
+	| Magento2V1CustomerGetNode
+	| Magento2V1CustomerGetAllNode
+	| Magento2V1CustomerUpdateNode
+	| Magento2V1InvoiceCreateNode
+	| Magento2V1OrderCancelNode
+	| Magento2V1OrderGetNode
+	| Magento2V1OrderGetAllNode
+	| Magento2V1OrderShipNode
+	| Magento2V1ProductCreateNode
+	| Magento2V1ProductDeleteNode
+	| Magento2V1ProductGetNode
+	| Magento2V1ProductGetAllNode
+	| Magento2V1ProductUpdateNode
+	;

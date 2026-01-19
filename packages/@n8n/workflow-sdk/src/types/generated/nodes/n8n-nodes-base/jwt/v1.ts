@@ -1,8 +1,6 @@
 /**
  * JWT Node - Version 1
  * JWT
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -50,12 +48,17 @@ export interface JwtV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JwtV1Node = {
+interface JwtV1NodeBase {
 	type: 'n8n-nodes-base.jwt';
 	version: 1;
-	config: NodeConfig<JwtV1Params>;
 	credentials?: JwtV1Credentials;
+}
+
+export type JwtV1ParamsNode = JwtV1NodeBase & {
+	config: NodeConfig<JwtV1Params>;
 };
+
+export type JwtV1Node = JwtV1ParamsNode;

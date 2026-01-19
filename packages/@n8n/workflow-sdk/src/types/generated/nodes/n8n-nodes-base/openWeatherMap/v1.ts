@@ -1,8 +1,6 @@
 /**
  * OpenWeatherMap Node - Version 1
  * Gets current and future weather information
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -66,12 +64,17 @@ export interface OpenWeatherMapV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OpenWeatherMapV1Node = {
+interface OpenWeatherMapV1NodeBase {
 	type: 'n8n-nodes-base.openWeatherMap';
 	version: 1;
-	config: NodeConfig<OpenWeatherMapV1Params>;
 	credentials?: OpenWeatherMapV1Credentials;
+}
+
+export type OpenWeatherMapV1ParamsNode = OpenWeatherMapV1NodeBase & {
+	config: NodeConfig<OpenWeatherMapV1Params>;
 };
+
+export type OpenWeatherMapV1Node = OpenWeatherMapV1ParamsNode;

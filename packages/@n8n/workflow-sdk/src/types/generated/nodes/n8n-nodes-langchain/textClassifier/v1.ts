@@ -1,8 +1,6 @@
 /**
  * Text Classifier Node - Version 1
  * Classify your text into distinct categories
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -36,12 +34,16 @@ export interface LcTextClassifierV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcTextClassifierV1Node = {
+interface LcTextClassifierV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.textClassifier';
 	version: 1;
+}
+
+export type LcTextClassifierV1ParamsNode = LcTextClassifierV1NodeBase & {
 	config: NodeConfig<LcTextClassifierV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcTextClassifierV1Node = LcTextClassifierV1ParamsNode;

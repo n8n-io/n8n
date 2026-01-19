@@ -1,8 +1,6 @@
 /**
  * Code Tool Node - Version 1.3
  * Write a tool in JS or Python
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -74,13 +72,17 @@ return _query.upper()
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolCodeV13Node = {
+interface LcToolCodeV13NodeBase {
 	type: '@n8n/n8n-nodes-langchain.toolCode';
 	version: 1.3;
-	config: NodeConfig<LcToolCodeV13Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcToolCodeV13ParamsNode = LcToolCodeV13NodeBase & {
+	config: NodeConfig<LcToolCodeV13Params>;
 };
+
+export type LcToolCodeV13Node = LcToolCodeV13ParamsNode;

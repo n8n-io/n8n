@@ -1,8 +1,6 @@
 /**
  * RabbitMQ Trigger Node - Version 1
  * Listens to RabbitMQ messages
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface RabbitmqTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RabbitmqTriggerV1Node = {
+interface RabbitmqTriggerV1NodeBase {
 	type: 'n8n-nodes-base.rabbitmqTrigger';
 	version: 1;
-	config: NodeConfig<RabbitmqTriggerV1Params>;
 	credentials?: RabbitmqTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type RabbitmqTriggerV1ParamsNode = RabbitmqTriggerV1NodeBase & {
+	config: NodeConfig<RabbitmqTriggerV1Params>;
 };
+
+export type RabbitmqTriggerV1Node = RabbitmqTriggerV1ParamsNode;

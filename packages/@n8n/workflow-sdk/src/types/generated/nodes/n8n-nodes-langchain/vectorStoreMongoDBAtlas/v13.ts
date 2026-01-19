@@ -1,8 +1,6 @@
 /**
  * MongoDB Atlas Vector Store Node - Version 1.3
  * Work with your data in MongoDB Atlas Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -199,12 +197,39 @@ export interface LcVectorStoreMongoDBAtlasV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreMongoDBAtlasV13Node = {
+interface LcVectorStoreMongoDBAtlasV13NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreMongoDBAtlas';
 	version: 1.3;
-	config: NodeConfig<LcVectorStoreMongoDBAtlasV13Params>;
 	credentials?: LcVectorStoreMongoDBAtlasV13Credentials;
+}
+
+export type LcVectorStoreMongoDBAtlasV13LoadNode = LcVectorStoreMongoDBAtlasV13NodeBase & {
+	config: NodeConfig<LcVectorStoreMongoDBAtlasV13LoadConfig>;
 };
+
+export type LcVectorStoreMongoDBAtlasV13InsertNode = LcVectorStoreMongoDBAtlasV13NodeBase & {
+	config: NodeConfig<LcVectorStoreMongoDBAtlasV13InsertConfig>;
+};
+
+export type LcVectorStoreMongoDBAtlasV13RetrieveNode = LcVectorStoreMongoDBAtlasV13NodeBase & {
+	config: NodeConfig<LcVectorStoreMongoDBAtlasV13RetrieveConfig>;
+};
+
+export type LcVectorStoreMongoDBAtlasV13RetrieveAsToolNode = LcVectorStoreMongoDBAtlasV13NodeBase & {
+	config: NodeConfig<LcVectorStoreMongoDBAtlasV13RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreMongoDBAtlasV13UpdateNode = LcVectorStoreMongoDBAtlasV13NodeBase & {
+	config: NodeConfig<LcVectorStoreMongoDBAtlasV13UpdateConfig>;
+};
+
+export type LcVectorStoreMongoDBAtlasV13Node =
+	| LcVectorStoreMongoDBAtlasV13LoadNode
+	| LcVectorStoreMongoDBAtlasV13InsertNode
+	| LcVectorStoreMongoDBAtlasV13RetrieveNode
+	| LcVectorStoreMongoDBAtlasV13RetrieveAsToolNode
+	| LcVectorStoreMongoDBAtlasV13UpdateNode
+	;

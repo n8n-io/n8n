@@ -1,8 +1,6 @@
 /**
  * Microsoft Outlook Node - Version 2
  * Consume Microsoft Outlook API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -632,12 +630,204 @@ export interface MicrosoftOutlookV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOutlookV2Node = {
+interface MicrosoftOutlookV2NodeBase {
 	type: 'n8n-nodes-base.microsoftOutlook';
 	version: 2;
-	config: NodeConfig<MicrosoftOutlookV2Params>;
 	credentials?: MicrosoftOutlookV2Credentials;
+}
+
+export type MicrosoftOutlookV2CalendarCreateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2CalendarCreateConfig>;
 };
+
+export type MicrosoftOutlookV2CalendarDeleteNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2CalendarDeleteConfig>;
+};
+
+export type MicrosoftOutlookV2CalendarGetNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2CalendarGetConfig>;
+};
+
+export type MicrosoftOutlookV2CalendarGetAllNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2CalendarGetAllConfig>;
+};
+
+export type MicrosoftOutlookV2CalendarUpdateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2CalendarUpdateConfig>;
+};
+
+export type MicrosoftOutlookV2ContactCreateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2ContactCreateConfig>;
+};
+
+export type MicrosoftOutlookV2ContactDeleteNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2ContactDeleteConfig>;
+};
+
+export type MicrosoftOutlookV2ContactGetNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2ContactGetConfig>;
+};
+
+export type MicrosoftOutlookV2ContactGetAllNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2ContactGetAllConfig>;
+};
+
+export type MicrosoftOutlookV2ContactUpdateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2ContactUpdateConfig>;
+};
+
+export type MicrosoftOutlookV2DraftCreateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2DraftCreateConfig>;
+};
+
+export type MicrosoftOutlookV2DraftDeleteNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2DraftDeleteConfig>;
+};
+
+export type MicrosoftOutlookV2DraftGetNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2DraftGetConfig>;
+};
+
+export type MicrosoftOutlookV2DraftSendNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2DraftSendConfig>;
+};
+
+export type MicrosoftOutlookV2DraftUpdateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2DraftUpdateConfig>;
+};
+
+export type MicrosoftOutlookV2EventCreateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2EventCreateConfig>;
+};
+
+export type MicrosoftOutlookV2EventDeleteNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2EventDeleteConfig>;
+};
+
+export type MicrosoftOutlookV2EventGetNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2EventGetConfig>;
+};
+
+export type MicrosoftOutlookV2EventGetAllNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2EventGetAllConfig>;
+};
+
+export type MicrosoftOutlookV2EventUpdateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2EventUpdateConfig>;
+};
+
+export type MicrosoftOutlookV2FolderCreateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2FolderCreateConfig>;
+};
+
+export type MicrosoftOutlookV2FolderDeleteNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2FolderDeleteConfig>;
+};
+
+export type MicrosoftOutlookV2FolderGetNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2FolderGetConfig>;
+};
+
+export type MicrosoftOutlookV2FolderGetAllNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2FolderGetAllConfig>;
+};
+
+export type MicrosoftOutlookV2FolderUpdateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2FolderUpdateConfig>;
+};
+
+export type MicrosoftOutlookV2FolderMessageGetAllNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2FolderMessageGetAllConfig>;
+};
+
+export type MicrosoftOutlookV2MessageDeleteNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageDeleteConfig>;
+};
+
+export type MicrosoftOutlookV2MessageGetNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageGetConfig>;
+};
+
+export type MicrosoftOutlookV2MessageGetAllNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageGetAllConfig>;
+};
+
+export type MicrosoftOutlookV2MessageMoveNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageMoveConfig>;
+};
+
+export type MicrosoftOutlookV2MessageReplyNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageReplyConfig>;
+};
+
+export type MicrosoftOutlookV2MessageSendNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageSendConfig>;
+};
+
+export type MicrosoftOutlookV2MessageSendAndWaitNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageSendAndWaitConfig>;
+};
+
+export type MicrosoftOutlookV2MessageUpdateNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageUpdateConfig>;
+};
+
+export type MicrosoftOutlookV2MessageAttachmentAddNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageAttachmentAddConfig>;
+};
+
+export type MicrosoftOutlookV2MessageAttachmentDownloadNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageAttachmentDownloadConfig>;
+};
+
+export type MicrosoftOutlookV2MessageAttachmentGetNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageAttachmentGetConfig>;
+};
+
+export type MicrosoftOutlookV2MessageAttachmentGetAllNode = MicrosoftOutlookV2NodeBase & {
+	config: NodeConfig<MicrosoftOutlookV2MessageAttachmentGetAllConfig>;
+};
+
+export type MicrosoftOutlookV2Node =
+	| MicrosoftOutlookV2CalendarCreateNode
+	| MicrosoftOutlookV2CalendarDeleteNode
+	| MicrosoftOutlookV2CalendarGetNode
+	| MicrosoftOutlookV2CalendarGetAllNode
+	| MicrosoftOutlookV2CalendarUpdateNode
+	| MicrosoftOutlookV2ContactCreateNode
+	| MicrosoftOutlookV2ContactDeleteNode
+	| MicrosoftOutlookV2ContactGetNode
+	| MicrosoftOutlookV2ContactGetAllNode
+	| MicrosoftOutlookV2ContactUpdateNode
+	| MicrosoftOutlookV2DraftCreateNode
+	| MicrosoftOutlookV2DraftDeleteNode
+	| MicrosoftOutlookV2DraftGetNode
+	| MicrosoftOutlookV2DraftSendNode
+	| MicrosoftOutlookV2DraftUpdateNode
+	| MicrosoftOutlookV2EventCreateNode
+	| MicrosoftOutlookV2EventDeleteNode
+	| MicrosoftOutlookV2EventGetNode
+	| MicrosoftOutlookV2EventGetAllNode
+	| MicrosoftOutlookV2EventUpdateNode
+	| MicrosoftOutlookV2FolderCreateNode
+	| MicrosoftOutlookV2FolderDeleteNode
+	| MicrosoftOutlookV2FolderGetNode
+	| MicrosoftOutlookV2FolderGetAllNode
+	| MicrosoftOutlookV2FolderUpdateNode
+	| MicrosoftOutlookV2FolderMessageGetAllNode
+	| MicrosoftOutlookV2MessageDeleteNode
+	| MicrosoftOutlookV2MessageGetNode
+	| MicrosoftOutlookV2MessageGetAllNode
+	| MicrosoftOutlookV2MessageMoveNode
+	| MicrosoftOutlookV2MessageReplyNode
+	| MicrosoftOutlookV2MessageSendNode
+	| MicrosoftOutlookV2MessageSendAndWaitNode
+	| MicrosoftOutlookV2MessageUpdateNode
+	| MicrosoftOutlookV2MessageAttachmentAddNode
+	| MicrosoftOutlookV2MessageAttachmentDownloadNode
+	| MicrosoftOutlookV2MessageAttachmentGetNode
+	| MicrosoftOutlookV2MessageAttachmentGetAllNode
+	;

@@ -1,8 +1,6 @@
 /**
  * LangChain Code Node - Version 1
  * LangChain Code Node
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -84,12 +82,16 @@ return new WikipediaQueryRun();
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcCodeV1Node = {
+interface LcCodeV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.code';
 	version: 1;
+}
+
+export type LcCodeV1ParamsNode = LcCodeV1NodeBase & {
 	config: NodeConfig<LcCodeV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcCodeV1Node = LcCodeV1ParamsNode;

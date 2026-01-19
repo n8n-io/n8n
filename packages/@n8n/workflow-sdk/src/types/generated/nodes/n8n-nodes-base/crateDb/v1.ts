@@ -1,8 +1,6 @@
 /**
  * CrateDB Node - Version 1
  * Add and update data in CrateDB
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -60,12 +58,17 @@ export interface CrateDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CrateDbV1Node = {
+interface CrateDbV1NodeBase {
 	type: 'n8n-nodes-base.crateDb';
 	version: 1;
-	config: NodeConfig<CrateDbV1Params>;
 	credentials?: CrateDbV1Credentials;
+}
+
+export type CrateDbV1ParamsNode = CrateDbV1NodeBase & {
+	config: NodeConfig<CrateDbV1Params>;
 };
+
+export type CrateDbV1Node = CrateDbV1ParamsNode;

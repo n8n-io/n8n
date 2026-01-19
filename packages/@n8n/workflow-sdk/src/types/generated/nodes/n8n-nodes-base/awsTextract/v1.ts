@@ -1,8 +1,6 @@
 /**
  * AWS Textract Node - Version 1
  * Sends data to Amazon Textract
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -40,12 +38,17 @@ export interface AwsTextractV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsTextractV1Node = {
+interface AwsTextractV1NodeBase {
 	type: 'n8n-nodes-base.awsTextract';
 	version: 1;
-	config: NodeConfig<AwsTextractV1Params>;
 	credentials?: AwsTextractV1Credentials;
+}
+
+export type AwsTextractV1ParamsNode = AwsTextractV1NodeBase & {
+	config: NodeConfig<AwsTextractV1Params>;
 };
+
+export type AwsTextractV1Node = AwsTextractV1ParamsNode;

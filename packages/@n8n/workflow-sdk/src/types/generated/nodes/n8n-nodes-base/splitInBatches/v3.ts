@@ -1,8 +1,6 @@
 /**
  * Loop Over Items (Split in Batches) Node - Version 3
  * Split data into batches and iterate over each batch
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,12 +25,16 @@ export interface SplitInBatchesV3Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SplitInBatchesV3Node = {
+interface SplitInBatchesV3NodeBase {
 	type: 'n8n-nodes-base.splitInBatches';
 	version: 3;
+}
+
+export type SplitInBatchesV3ParamsNode = SplitInBatchesV3NodeBase & {
 	config: NodeConfig<SplitInBatchesV3Params>;
-	credentials?: Record<string, never>;
 };
+
+export type SplitInBatchesV3Node = SplitInBatchesV3ParamsNode;

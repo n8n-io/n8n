@@ -1,8 +1,6 @@
 /**
  * AI Agent Node - Version 2.2
  * Generates an action plan and executes it. Can use external tools.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -48,12 +46,28 @@ export type LcAgentV22Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAgentV22Node = {
+interface LcAgentV22NodeBase {
 	type: '@n8n/n8n-nodes-langchain.agent';
 	version: 2.2;
-	config: NodeConfig<LcAgentV22Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcAgentV22AutoNode = LcAgentV22NodeBase & {
+	config: NodeConfig<LcAgentV22AutoConfig>;
 };
+
+export type LcAgentV22GuardrailsNode = LcAgentV22NodeBase & {
+	config: NodeConfig<LcAgentV22GuardrailsConfig>;
+};
+
+export type LcAgentV22DefineNode = LcAgentV22NodeBase & {
+	config: NodeConfig<LcAgentV22DefineConfig>;
+};
+
+export type LcAgentV22Node =
+	| LcAgentV22AutoNode
+	| LcAgentV22GuardrailsNode
+	| LcAgentV22DefineNode
+	;

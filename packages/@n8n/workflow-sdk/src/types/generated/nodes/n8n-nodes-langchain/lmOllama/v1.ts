@@ -1,8 +1,6 @@
 /**
  * Ollama Model Node - Version 1
  * Language Model Ollama
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcLmOllamaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmOllamaV1Node = {
+interface LcLmOllamaV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmOllama';
 	version: 1;
-	config: NodeConfig<LcLmOllamaV1Params>;
 	credentials?: LcLmOllamaV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmOllamaV1ParamsNode = LcLmOllamaV1NodeBase & {
+	config: NodeConfig<LcLmOllamaV1Params>;
 };
+
+export type LcLmOllamaV1Node = LcLmOllamaV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * AWS SES Node - Version 1
  * Sends data to AWS SES
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -280,12 +278,79 @@ export interface AwsSesV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsSesV1Node = {
+interface AwsSesV1NodeBase {
 	type: 'n8n-nodes-base.awsSes';
 	version: 1;
-	config: NodeConfig<AwsSesV1Params>;
 	credentials?: AwsSesV1Credentials;
+}
+
+export type AwsSesV1CustomVerificationEmailCreateNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1CustomVerificationEmailCreateConfig>;
 };
+
+export type AwsSesV1CustomVerificationEmailDeleteNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1CustomVerificationEmailDeleteConfig>;
+};
+
+export type AwsSesV1CustomVerificationEmailGetNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1CustomVerificationEmailGetConfig>;
+};
+
+export type AwsSesV1CustomVerificationEmailGetAllNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1CustomVerificationEmailGetAllConfig>;
+};
+
+export type AwsSesV1CustomVerificationEmailSendNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1CustomVerificationEmailSendConfig>;
+};
+
+export type AwsSesV1CustomVerificationEmailUpdateNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1CustomVerificationEmailUpdateConfig>;
+};
+
+export type AwsSesV1EmailSendNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1EmailSendConfig>;
+};
+
+export type AwsSesV1EmailSendTemplateNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1EmailSendTemplateConfig>;
+};
+
+export type AwsSesV1TemplateCreateNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1TemplateCreateConfig>;
+};
+
+export type AwsSesV1TemplateDeleteNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1TemplateDeleteConfig>;
+};
+
+export type AwsSesV1TemplateGetNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1TemplateGetConfig>;
+};
+
+export type AwsSesV1TemplateGetAllNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1TemplateGetAllConfig>;
+};
+
+export type AwsSesV1TemplateUpdateNode = AwsSesV1NodeBase & {
+	config: NodeConfig<AwsSesV1TemplateUpdateConfig>;
+};
+
+export type AwsSesV1Node =
+	| AwsSesV1CustomVerificationEmailCreateNode
+	| AwsSesV1CustomVerificationEmailDeleteNode
+	| AwsSesV1CustomVerificationEmailGetNode
+	| AwsSesV1CustomVerificationEmailGetAllNode
+	| AwsSesV1CustomVerificationEmailSendNode
+	| AwsSesV1CustomVerificationEmailUpdateNode
+	| AwsSesV1EmailSendNode
+	| AwsSesV1EmailSendTemplateNode
+	| AwsSesV1TemplateCreateNode
+	| AwsSesV1TemplateDeleteNode
+	| AwsSesV1TemplateGetNode
+	| AwsSesV1TemplateGetAllNode
+	| AwsSesV1TemplateUpdateNode
+	;

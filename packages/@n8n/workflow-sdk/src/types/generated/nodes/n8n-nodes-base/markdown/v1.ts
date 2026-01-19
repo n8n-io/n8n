@@ -1,8 +1,6 @@
 /**
  * Markdown Node - Version 1
  * Convert data between Markdown and HTML
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -57,12 +55,23 @@ export type MarkdownV1Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MarkdownV1Node = {
+interface MarkdownV1NodeBase {
 	type: 'n8n-nodes-base.markdown';
 	version: 1;
-	config: NodeConfig<MarkdownV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type MarkdownV1MarkdownToHtmlNode = MarkdownV1NodeBase & {
+	config: NodeConfig<MarkdownV1MarkdownToHtmlConfig>;
 };
+
+export type MarkdownV1HtmlToMarkdownNode = MarkdownV1NodeBase & {
+	config: NodeConfig<MarkdownV1HtmlToMarkdownConfig>;
+};
+
+export type MarkdownV1Node =
+	| MarkdownV1MarkdownToHtmlNode
+	| MarkdownV1HtmlToMarkdownNode
+	;

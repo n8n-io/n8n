@@ -1,8 +1,6 @@
 /**
  * MySQL Node - Version 2
  * Get, add and update data in MySQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -128,12 +126,17 @@ export interface MySqlV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MySqlV2Node = {
+interface MySqlV2NodeBase {
 	type: 'n8n-nodes-base.mySql';
 	version: 2;
-	config: NodeConfig<MySqlV2Params>;
 	credentials?: MySqlV2Credentials;
+}
+
+export type MySqlV2ParamsNode = MySqlV2NodeBase & {
+	config: NodeConfig<MySqlV2Params>;
 };
+
+export type MySqlV2Node = MySqlV2ParamsNode;

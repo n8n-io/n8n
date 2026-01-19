@@ -1,8 +1,6 @@
 /**
  * n8n Form Node - Version 2.5
  * Generate webforms in n8n and pass their responses to the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -71,12 +69,16 @@ export interface FormV25Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormV25Node = {
+interface FormV25NodeBase {
 	type: 'n8n-nodes-base.form';
 	version: 2.5;
+}
+
+export type FormV25ParamsNode = FormV25NodeBase & {
 	config: NodeConfig<FormV25Params>;
-	credentials?: Record<string, never>;
 };
+
+export type FormV25Node = FormV25ParamsNode;

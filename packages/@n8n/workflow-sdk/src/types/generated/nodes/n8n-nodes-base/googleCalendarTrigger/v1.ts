@@ -1,8 +1,6 @@
 /**
  * Google Calendar Trigger Node - Version 1
  * Starts the workflow when Google Calendar events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -82,13 +80,18 @@ export interface GoogleCalendarTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCalendarTriggerV1Node = {
+interface GoogleCalendarTriggerV1NodeBase {
 	type: 'n8n-nodes-base.googleCalendarTrigger';
 	version: 1;
-	config: NodeConfig<GoogleCalendarTriggerV1Params>;
 	credentials?: GoogleCalendarTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type GoogleCalendarTriggerV1ParamsNode = GoogleCalendarTriggerV1NodeBase & {
+	config: NodeConfig<GoogleCalendarTriggerV1Params>;
 };
+
+export type GoogleCalendarTriggerV1Node = GoogleCalendarTriggerV1ParamsNode;

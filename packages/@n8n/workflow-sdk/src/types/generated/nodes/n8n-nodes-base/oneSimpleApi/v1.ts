@@ -1,8 +1,6 @@
 /**
  * One Simple API Node - Version 1
  * A toolbox of no-code utilities
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -183,12 +181,64 @@ export interface OneSimpleApiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OneSimpleApiV1Node = {
+interface OneSimpleApiV1NodeBase {
 	type: 'n8n-nodes-base.oneSimpleApi';
 	version: 1;
-	config: NodeConfig<OneSimpleApiV1Params>;
 	credentials?: OneSimpleApiV1Credentials;
+}
+
+export type OneSimpleApiV1InformationExchangeRateNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1InformationExchangeRateConfig>;
 };
+
+export type OneSimpleApiV1InformationImageMetadataNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1InformationImageMetadataConfig>;
+};
+
+export type OneSimpleApiV1SocialProfileInstagramProfileNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1SocialProfileInstagramProfileConfig>;
+};
+
+export type OneSimpleApiV1SocialProfileSpotifyArtistProfileNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1SocialProfileSpotifyArtistProfileConfig>;
+};
+
+export type OneSimpleApiV1UtilityExpandURLNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1UtilityExpandURLConfig>;
+};
+
+export type OneSimpleApiV1UtilityQrCodeNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1UtilityQrCodeConfig>;
+};
+
+export type OneSimpleApiV1UtilityValidateEmailNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1UtilityValidateEmailConfig>;
+};
+
+export type OneSimpleApiV1WebsitePdfNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1WebsitePdfConfig>;
+};
+
+export type OneSimpleApiV1WebsiteSeoNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1WebsiteSeoConfig>;
+};
+
+export type OneSimpleApiV1WebsiteScreenshotNode = OneSimpleApiV1NodeBase & {
+	config: NodeConfig<OneSimpleApiV1WebsiteScreenshotConfig>;
+};
+
+export type OneSimpleApiV1Node =
+	| OneSimpleApiV1InformationExchangeRateNode
+	| OneSimpleApiV1InformationImageMetadataNode
+	| OneSimpleApiV1SocialProfileInstagramProfileNode
+	| OneSimpleApiV1SocialProfileSpotifyArtistProfileNode
+	| OneSimpleApiV1UtilityExpandURLNode
+	| OneSimpleApiV1UtilityQrCodeNode
+	| OneSimpleApiV1UtilityValidateEmailNode
+	| OneSimpleApiV1WebsitePdfNode
+	| OneSimpleApiV1WebsiteSeoNode
+	| OneSimpleApiV1WebsiteScreenshotNode
+	;

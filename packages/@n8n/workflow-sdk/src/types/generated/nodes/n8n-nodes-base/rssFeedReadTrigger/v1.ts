@@ -1,8 +1,6 @@
 /**
  * RSS Feed Trigger Node - Version 1
  * Starts a workflow when an RSS feed is updated
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -73,13 +71,17 @@ export interface RssFeedReadTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RssFeedReadTriggerV1Node = {
+interface RssFeedReadTriggerV1NodeBase {
 	type: 'n8n-nodes-base.rssFeedReadTrigger';
 	version: 1;
-	config: NodeConfig<RssFeedReadTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type RssFeedReadTriggerV1ParamsNode = RssFeedReadTriggerV1NodeBase & {
+	config: NodeConfig<RssFeedReadTriggerV1Params>;
 };
+
+export type RssFeedReadTriggerV1Node = RssFeedReadTriggerV1ParamsNode;

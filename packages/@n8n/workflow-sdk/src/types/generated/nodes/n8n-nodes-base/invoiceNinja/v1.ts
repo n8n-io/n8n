@@ -1,8 +1,6 @@
 /**
  * Invoice Ninja Node - Version 1
  * Consume Invoice Ninja API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -540,12 +538,169 @@ export interface InvoiceNinjaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type InvoiceNinjaV1Node = {
+interface InvoiceNinjaV1NodeBase {
 	type: 'n8n-nodes-base.invoiceNinja';
 	version: 1;
-	config: NodeConfig<InvoiceNinjaV1Params>;
 	credentials?: InvoiceNinjaV1Credentials;
+}
+
+export type InvoiceNinjaV1BankTransactionCreateNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1BankTransactionCreateConfig>;
 };
+
+export type InvoiceNinjaV1BankTransactionDeleteNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1BankTransactionDeleteConfig>;
+};
+
+export type InvoiceNinjaV1BankTransactionGetNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1BankTransactionGetConfig>;
+};
+
+export type InvoiceNinjaV1BankTransactionGetAllNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1BankTransactionGetAllConfig>;
+};
+
+export type InvoiceNinjaV1BankTransactionMatchPaymentNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1BankTransactionMatchPaymentConfig>;
+};
+
+export type InvoiceNinjaV1ClientCreateNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1ClientCreateConfig>;
+};
+
+export type InvoiceNinjaV1ClientDeleteNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1ClientDeleteConfig>;
+};
+
+export type InvoiceNinjaV1ClientGetNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1ClientGetConfig>;
+};
+
+export type InvoiceNinjaV1ClientGetAllNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1ClientGetAllConfig>;
+};
+
+export type InvoiceNinjaV1ExpenseCreateNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1ExpenseCreateConfig>;
+};
+
+export type InvoiceNinjaV1ExpenseDeleteNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1ExpenseDeleteConfig>;
+};
+
+export type InvoiceNinjaV1ExpenseGetNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1ExpenseGetConfig>;
+};
+
+export type InvoiceNinjaV1ExpenseGetAllNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1ExpenseGetAllConfig>;
+};
+
+export type InvoiceNinjaV1InvoiceCreateNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1InvoiceCreateConfig>;
+};
+
+export type InvoiceNinjaV1InvoiceDeleteNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1InvoiceDeleteConfig>;
+};
+
+export type InvoiceNinjaV1InvoiceEmailNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1InvoiceEmailConfig>;
+};
+
+export type InvoiceNinjaV1InvoiceGetNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1InvoiceGetConfig>;
+};
+
+export type InvoiceNinjaV1InvoiceGetAllNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1InvoiceGetAllConfig>;
+};
+
+export type InvoiceNinjaV1PaymentCreateNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1PaymentCreateConfig>;
+};
+
+export type InvoiceNinjaV1PaymentDeleteNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1PaymentDeleteConfig>;
+};
+
+export type InvoiceNinjaV1PaymentGetNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1PaymentGetConfig>;
+};
+
+export type InvoiceNinjaV1PaymentGetAllNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1PaymentGetAllConfig>;
+};
+
+export type InvoiceNinjaV1QuoteCreateNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1QuoteCreateConfig>;
+};
+
+export type InvoiceNinjaV1QuoteDeleteNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1QuoteDeleteConfig>;
+};
+
+export type InvoiceNinjaV1QuoteEmailNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1QuoteEmailConfig>;
+};
+
+export type InvoiceNinjaV1QuoteGetNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1QuoteGetConfig>;
+};
+
+export type InvoiceNinjaV1QuoteGetAllNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1QuoteGetAllConfig>;
+};
+
+export type InvoiceNinjaV1TaskCreateNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1TaskCreateConfig>;
+};
+
+export type InvoiceNinjaV1TaskDeleteNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1TaskDeleteConfig>;
+};
+
+export type InvoiceNinjaV1TaskGetNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1TaskGetConfig>;
+};
+
+export type InvoiceNinjaV1TaskGetAllNode = InvoiceNinjaV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaV1TaskGetAllConfig>;
+};
+
+export type InvoiceNinjaV1Node =
+	| InvoiceNinjaV1BankTransactionCreateNode
+	| InvoiceNinjaV1BankTransactionDeleteNode
+	| InvoiceNinjaV1BankTransactionGetNode
+	| InvoiceNinjaV1BankTransactionGetAllNode
+	| InvoiceNinjaV1BankTransactionMatchPaymentNode
+	| InvoiceNinjaV1ClientCreateNode
+	| InvoiceNinjaV1ClientDeleteNode
+	| InvoiceNinjaV1ClientGetNode
+	| InvoiceNinjaV1ClientGetAllNode
+	| InvoiceNinjaV1ExpenseCreateNode
+	| InvoiceNinjaV1ExpenseDeleteNode
+	| InvoiceNinjaV1ExpenseGetNode
+	| InvoiceNinjaV1ExpenseGetAllNode
+	| InvoiceNinjaV1InvoiceCreateNode
+	| InvoiceNinjaV1InvoiceDeleteNode
+	| InvoiceNinjaV1InvoiceEmailNode
+	| InvoiceNinjaV1InvoiceGetNode
+	| InvoiceNinjaV1InvoiceGetAllNode
+	| InvoiceNinjaV1PaymentCreateNode
+	| InvoiceNinjaV1PaymentDeleteNode
+	| InvoiceNinjaV1PaymentGetNode
+	| InvoiceNinjaV1PaymentGetAllNode
+	| InvoiceNinjaV1QuoteCreateNode
+	| InvoiceNinjaV1QuoteDeleteNode
+	| InvoiceNinjaV1QuoteEmailNode
+	| InvoiceNinjaV1QuoteGetNode
+	| InvoiceNinjaV1QuoteGetAllNode
+	| InvoiceNinjaV1TaskCreateNode
+	| InvoiceNinjaV1TaskDeleteNode
+	| InvoiceNinjaV1TaskGetNode
+	| InvoiceNinjaV1TaskGetAllNode
+	;

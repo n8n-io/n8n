@@ -1,8 +1,6 @@
 /**
  * Mailchimp Trigger Node - Version 1
  * Handle Mailchimp events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -41,13 +39,18 @@ export interface MailchimpTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailchimpTriggerV1Node = {
+interface MailchimpTriggerV1NodeBase {
 	type: 'n8n-nodes-base.mailchimpTrigger';
 	version: 1;
-	config: NodeConfig<MailchimpTriggerV1Params>;
 	credentials?: MailchimpTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MailchimpTriggerV1ParamsNode = MailchimpTriggerV1NodeBase & {
+	config: NodeConfig<MailchimpTriggerV1Params>;
 };
+
+export type MailchimpTriggerV1Node = MailchimpTriggerV1ParamsNode;

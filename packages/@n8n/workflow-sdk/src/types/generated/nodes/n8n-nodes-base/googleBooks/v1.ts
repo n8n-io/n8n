@@ -1,8 +1,6 @@
 /**
  * Google Books Node - Version 1
  * Read data from Google Books
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -206,12 +204,59 @@ export interface GoogleBooksV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBooksV1Node = {
+interface GoogleBooksV1NodeBase {
 	type: 'n8n-nodes-base.googleBooks';
 	version: 1;
-	config: NodeConfig<GoogleBooksV1Params>;
 	credentials?: GoogleBooksV1Credentials;
+}
+
+export type GoogleBooksV1BookshelfGetNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1BookshelfGetConfig>;
 };
+
+export type GoogleBooksV1BookshelfGetAllNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1BookshelfGetAllConfig>;
+};
+
+export type GoogleBooksV1BookshelfVolumeAddNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1BookshelfVolumeAddConfig>;
+};
+
+export type GoogleBooksV1BookshelfVolumeClearNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1BookshelfVolumeClearConfig>;
+};
+
+export type GoogleBooksV1BookshelfVolumeGetAllNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1BookshelfVolumeGetAllConfig>;
+};
+
+export type GoogleBooksV1BookshelfVolumeMoveNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1BookshelfVolumeMoveConfig>;
+};
+
+export type GoogleBooksV1BookshelfVolumeRemoveNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1BookshelfVolumeRemoveConfig>;
+};
+
+export type GoogleBooksV1VolumeGetNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1VolumeGetConfig>;
+};
+
+export type GoogleBooksV1VolumeGetAllNode = GoogleBooksV1NodeBase & {
+	config: NodeConfig<GoogleBooksV1VolumeGetAllConfig>;
+};
+
+export type GoogleBooksV1Node =
+	| GoogleBooksV1BookshelfGetNode
+	| GoogleBooksV1BookshelfGetAllNode
+	| GoogleBooksV1BookshelfVolumeAddNode
+	| GoogleBooksV1BookshelfVolumeClearNode
+	| GoogleBooksV1BookshelfVolumeGetAllNode
+	| GoogleBooksV1BookshelfVolumeMoveNode
+	| GoogleBooksV1BookshelfVolumeRemoveNode
+	| GoogleBooksV1VolumeGetNode
+	| GoogleBooksV1VolumeGetAllNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Mindee Node - Version 1
  * Consume Mindee API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -39,12 +37,17 @@ export interface MindeeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MindeeV1Node = {
+interface MindeeV1NodeBase {
 	type: 'n8n-nodes-base.mindee';
 	version: 1;
-	config: NodeConfig<MindeeV1Params>;
 	credentials?: MindeeV1Credentials;
+}
+
+export type MindeeV1ParamsNode = MindeeV1NodeBase & {
+	config: NodeConfig<MindeeV1Params>;
 };
+
+export type MindeeV1Node = MindeeV1ParamsNode;

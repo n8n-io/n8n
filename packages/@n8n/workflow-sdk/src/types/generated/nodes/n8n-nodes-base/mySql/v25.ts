@@ -1,8 +1,6 @@
 /**
  * MySQL Node - Version 2.5
  * Get, add and update data in MySQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -128,12 +126,17 @@ export interface MySqlV25Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MySqlV25Node = {
+interface MySqlV25NodeBase {
 	type: 'n8n-nodes-base.mySql';
 	version: 2.5;
-	config: NodeConfig<MySqlV25Params>;
 	credentials?: MySqlV25Credentials;
+}
+
+export type MySqlV25ParamsNode = MySqlV25NodeBase & {
+	config: NodeConfig<MySqlV25Params>;
 };
+
+export type MySqlV25Node = MySqlV25ParamsNode;

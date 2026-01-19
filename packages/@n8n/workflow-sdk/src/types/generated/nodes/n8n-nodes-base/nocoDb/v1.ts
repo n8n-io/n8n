@@ -1,8 +1,6 @@
 /**
  * NocoDB Node - Version 1
  * Read, update, write and delete data from NocoDB
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -260,12 +258,39 @@ export interface NocoDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NocoDbV1Node = {
+interface NocoDbV1NodeBase {
 	type: 'n8n-nodes-base.nocoDb';
 	version: 1;
-	config: NodeConfig<NocoDbV1Params>;
 	credentials?: NocoDbV1Credentials;
+}
+
+export type NocoDbV1RowCreateNode = NocoDbV1NodeBase & {
+	config: NodeConfig<NocoDbV1RowCreateConfig>;
 };
+
+export type NocoDbV1RowDeleteNode = NocoDbV1NodeBase & {
+	config: NodeConfig<NocoDbV1RowDeleteConfig>;
+};
+
+export type NocoDbV1RowGetNode = NocoDbV1NodeBase & {
+	config: NodeConfig<NocoDbV1RowGetConfig>;
+};
+
+export type NocoDbV1RowGetAllNode = NocoDbV1NodeBase & {
+	config: NodeConfig<NocoDbV1RowGetAllConfig>;
+};
+
+export type NocoDbV1RowUpdateNode = NocoDbV1NodeBase & {
+	config: NodeConfig<NocoDbV1RowUpdateConfig>;
+};
+
+export type NocoDbV1Node =
+	| NocoDbV1RowCreateNode
+	| NocoDbV1RowDeleteNode
+	| NocoDbV1RowGetNode
+	| NocoDbV1RowGetAllNode
+	| NocoDbV1RowUpdateNode
+	;

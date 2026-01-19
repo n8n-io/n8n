@@ -1,8 +1,6 @@
 /**
  * Taiga Trigger Node - Version 1
  * Handle Taiga events via webhook
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -39,13 +37,18 @@ export interface TaigaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TaigaTriggerV1Node = {
+interface TaigaTriggerV1NodeBase {
 	type: 'n8n-nodes-base.taigaTrigger';
 	version: 1;
-	config: NodeConfig<TaigaTriggerV1Params>;
 	credentials?: TaigaTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type TaigaTriggerV1ParamsNode = TaigaTriggerV1NodeBase & {
+	config: NodeConfig<TaigaTriggerV1Params>;
 };
+
+export type TaigaTriggerV1Node = TaigaTriggerV1ParamsNode;

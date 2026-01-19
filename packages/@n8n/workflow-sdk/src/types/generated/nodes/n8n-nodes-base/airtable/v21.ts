@@ -1,8 +1,6 @@
 /**
  * Airtable Node - Version 2.1
  * Read, update, write and delete data from Airtable
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -178,12 +176,54 @@ export interface AirtableV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtableV21Node = {
+interface AirtableV21NodeBase {
 	type: 'n8n-nodes-base.airtable';
 	version: 2.1;
-	config: NodeConfig<AirtableV21Params>;
 	credentials?: AirtableV21Credentials;
+}
+
+export type AirtableV21BaseGetManyNode = AirtableV21NodeBase & {
+	config: NodeConfig<AirtableV21BaseGetManyConfig>;
 };
+
+export type AirtableV21BaseGetSchemaNode = AirtableV21NodeBase & {
+	config: NodeConfig<AirtableV21BaseGetSchemaConfig>;
+};
+
+export type AirtableV21RecordCreateNode = AirtableV21NodeBase & {
+	config: NodeConfig<AirtableV21RecordCreateConfig>;
+};
+
+export type AirtableV21RecordUpsertNode = AirtableV21NodeBase & {
+	config: NodeConfig<AirtableV21RecordUpsertConfig>;
+};
+
+export type AirtableV21RecordDeleteRecordNode = AirtableV21NodeBase & {
+	config: NodeConfig<AirtableV21RecordDeleteRecordConfig>;
+};
+
+export type AirtableV21RecordGetNode = AirtableV21NodeBase & {
+	config: NodeConfig<AirtableV21RecordGetConfig>;
+};
+
+export type AirtableV21RecordSearchNode = AirtableV21NodeBase & {
+	config: NodeConfig<AirtableV21RecordSearchConfig>;
+};
+
+export type AirtableV21RecordUpdateNode = AirtableV21NodeBase & {
+	config: NodeConfig<AirtableV21RecordUpdateConfig>;
+};
+
+export type AirtableV21Node =
+	| AirtableV21BaseGetManyNode
+	| AirtableV21BaseGetSchemaNode
+	| AirtableV21RecordCreateNode
+	| AirtableV21RecordUpsertNode
+	| AirtableV21RecordDeleteRecordNode
+	| AirtableV21RecordGetNode
+	| AirtableV21RecordSearchNode
+	| AirtableV21RecordUpdateNode
+	;

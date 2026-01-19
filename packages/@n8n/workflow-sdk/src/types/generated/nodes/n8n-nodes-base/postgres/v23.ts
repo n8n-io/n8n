@@ -1,8 +1,6 @@
 /**
  * Postgres Node - Version 2.3
  * Get, add and update data in Postgres
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -110,12 +108,17 @@ export interface PostgresV23Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresV23Node = {
+interface PostgresV23NodeBase {
 	type: 'n8n-nodes-base.postgres';
 	version: 2.3;
-	config: NodeConfig<PostgresV23Params>;
 	credentials?: PostgresV23Credentials;
+}
+
+export type PostgresV23ParamsNode = PostgresV23NodeBase & {
+	config: NodeConfig<PostgresV23Params>;
 };
+
+export type PostgresV23Node = PostgresV23ParamsNode;

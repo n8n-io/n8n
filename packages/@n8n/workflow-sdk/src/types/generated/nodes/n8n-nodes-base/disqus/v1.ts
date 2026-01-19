@@ -1,8 +1,6 @@
 /**
  * Disqus Node - Version 1
  * Access data on Disqus
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -113,12 +111,34 @@ export interface DisqusV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DisqusV1Node = {
+interface DisqusV1NodeBase {
 	type: 'n8n-nodes-base.disqus';
 	version: 1;
-	config: NodeConfig<DisqusV1Params>;
 	credentials?: DisqusV1Credentials;
+}
+
+export type DisqusV1ForumGetNode = DisqusV1NodeBase & {
+	config: NodeConfig<DisqusV1ForumGetConfig>;
 };
+
+export type DisqusV1ForumGetCategoriesNode = DisqusV1NodeBase & {
+	config: NodeConfig<DisqusV1ForumGetCategoriesConfig>;
+};
+
+export type DisqusV1ForumGetThreadsNode = DisqusV1NodeBase & {
+	config: NodeConfig<DisqusV1ForumGetThreadsConfig>;
+};
+
+export type DisqusV1ForumGetPostsNode = DisqusV1NodeBase & {
+	config: NodeConfig<DisqusV1ForumGetPostsConfig>;
+};
+
+export type DisqusV1Node =
+	| DisqusV1ForumGetNode
+	| DisqusV1ForumGetCategoriesNode
+	| DisqusV1ForumGetThreadsNode
+	| DisqusV1ForumGetPostsNode
+	;

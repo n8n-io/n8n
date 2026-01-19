@@ -1,8 +1,6 @@
 /**
  * Redis Chat Memory Node - Version 1.4
  * Stores the chat history in Redis.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -36,13 +34,18 @@ export interface LcMemoryRedisChatV14Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryRedisChatV14Node = {
+interface LcMemoryRedisChatV14NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryRedisChat';
 	version: 1.4;
-	config: NodeConfig<LcMemoryRedisChatV14Params>;
 	credentials?: LcMemoryRedisChatV14Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryRedisChatV14ParamsNode = LcMemoryRedisChatV14NodeBase & {
+	config: NodeConfig<LcMemoryRedisChatV14Params>;
 };
+
+export type LcMemoryRedisChatV14Node = LcMemoryRedisChatV14ParamsNode;

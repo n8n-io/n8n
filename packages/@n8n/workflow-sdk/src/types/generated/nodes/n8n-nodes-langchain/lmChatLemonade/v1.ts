@@ -1,8 +1,6 @@
 /**
  * Lemonade Chat Model Node - Version 1
  * Language Model Lemonade Chat
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -34,13 +32,18 @@ export interface LcLmChatLemonadeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatLemonadeV1Node = {
+interface LcLmChatLemonadeV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatLemonade';
 	version: 1;
-	config: NodeConfig<LcLmChatLemonadeV1Params>;
 	credentials?: LcLmChatLemonadeV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatLemonadeV1ParamsNode = LcLmChatLemonadeV1NodeBase & {
+	config: NodeConfig<LcLmChatLemonadeV1Params>;
 };
+
+export type LcLmChatLemonadeV1Node = LcLmChatLemonadeV1ParamsNode;

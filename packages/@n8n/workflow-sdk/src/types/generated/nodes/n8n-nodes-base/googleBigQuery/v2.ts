@@ -1,8 +1,6 @@
 /**
  * Google BigQuery Node - Version 2
  * Consume Google BigQuery API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -63,12 +61,17 @@ export interface GoogleBigQueryV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleBigQueryV2Node = {
+interface GoogleBigQueryV2NodeBase {
 	type: 'n8n-nodes-base.googleBigQuery';
 	version: 2;
-	config: NodeConfig<GoogleBigQueryV2Params>;
 	credentials?: GoogleBigQueryV2Credentials;
+}
+
+export type GoogleBigQueryV2ParamsNode = GoogleBigQueryV2NodeBase & {
+	config: NodeConfig<GoogleBigQueryV2Params>;
 };
+
+export type GoogleBigQueryV2Node = GoogleBigQueryV2ParamsNode;

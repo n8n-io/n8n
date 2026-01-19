@@ -1,8 +1,6 @@
 /**
  * MQTT Node - Version 1
  * Push messages to MQTT
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -40,12 +38,17 @@ export interface MqttV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MqttV1Node = {
+interface MqttV1NodeBase {
 	type: 'n8n-nodes-base.mqtt';
 	version: 1;
-	config: NodeConfig<MqttV1Params>;
 	credentials?: MqttV1Credentials;
+}
+
+export type MqttV1ParamsNode = MqttV1NodeBase & {
+	config: NodeConfig<MqttV1Params>;
 };
+
+export type MqttV1Node = MqttV1ParamsNode;

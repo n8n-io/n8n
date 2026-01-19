@@ -1,8 +1,6 @@
 /**
  * QuestDB Node - Version 1
  * Get, add and update data in QuestDB
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -53,12 +51,17 @@ export interface QuestDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type QuestDbV1Node = {
+interface QuestDbV1NodeBase {
 	type: 'n8n-nodes-base.questDb';
 	version: 1;
-	config: NodeConfig<QuestDbV1Params>;
 	credentials?: QuestDbV1Credentials;
+}
+
+export type QuestDbV1ParamsNode = QuestDbV1NodeBase & {
+	config: NodeConfig<QuestDbV1Params>;
 };
+
+export type QuestDbV1Node = QuestDbV1ParamsNode;

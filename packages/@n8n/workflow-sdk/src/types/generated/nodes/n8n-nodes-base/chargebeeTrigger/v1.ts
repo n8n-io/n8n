@@ -1,8 +1,6 @@
 /**
  * Chargebee Trigger Node - Version 1
  * Starts the workflow when Chargebee events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -22,13 +20,17 @@ export interface ChargebeeTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ChargebeeTriggerV1Node = {
+interface ChargebeeTriggerV1NodeBase {
 	type: 'n8n-nodes-base.chargebeeTrigger';
 	version: 1;
-	config: NodeConfig<ChargebeeTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type ChargebeeTriggerV1ParamsNode = ChargebeeTriggerV1NodeBase & {
+	config: NodeConfig<ChargebeeTriggerV1Params>;
 };
+
+export type ChargebeeTriggerV1Node = ChargebeeTriggerV1ParamsNode;

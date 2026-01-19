@@ -1,8 +1,6 @@
 /**
  * Chat Memory Manager Node - Version 1.1
  * Manage chat messages memory and use it in the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -84,12 +82,28 @@ export type LcMemoryManagerV11Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryManagerV11Node = {
+interface LcMemoryManagerV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryManager';
 	version: 1.1;
-	config: NodeConfig<LcMemoryManagerV11Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcMemoryManagerV11LoadNode = LcMemoryManagerV11NodeBase & {
+	config: NodeConfig<LcMemoryManagerV11LoadConfig>;
 };
+
+export type LcMemoryManagerV11InsertNode = LcMemoryManagerV11NodeBase & {
+	config: NodeConfig<LcMemoryManagerV11InsertConfig>;
+};
+
+export type LcMemoryManagerV11DeleteNode = LcMemoryManagerV11NodeBase & {
+	config: NodeConfig<LcMemoryManagerV11DeleteConfig>;
+};
+
+export type LcMemoryManagerV11Node =
+	| LcMemoryManagerV11LoadNode
+	| LcMemoryManagerV11InsertNode
+	| LcMemoryManagerV11DeleteNode
+	;

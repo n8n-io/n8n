@@ -1,8 +1,6 @@
 /**
  * Brevo Trigger Node - Version 1
  * Starts the workflow when Brevo events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,13 +25,18 @@ export interface SendInBlueTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SendInBlueTriggerV1Node = {
+interface SendInBlueTriggerV1NodeBase {
 	type: 'n8n-nodes-base.sendInBlueTrigger';
 	version: 1;
-	config: NodeConfig<SendInBlueTriggerV1Params>;
 	credentials?: SendInBlueTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type SendInBlueTriggerV1ParamsNode = SendInBlueTriggerV1NodeBase & {
+	config: NodeConfig<SendInBlueTriggerV1Params>;
 };
+
+export type SendInBlueTriggerV1Node = SendInBlueTriggerV1ParamsNode;

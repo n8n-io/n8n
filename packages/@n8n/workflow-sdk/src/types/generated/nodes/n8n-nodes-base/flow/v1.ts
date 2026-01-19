@@ -1,8 +1,6 @@
 /**
  * Flow Node - Version 1
  * Consume Flow API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -86,12 +84,34 @@ export interface FlowV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FlowV1Node = {
+interface FlowV1NodeBase {
 	type: 'n8n-nodes-base.flow';
 	version: 1;
-	config: NodeConfig<FlowV1Params>;
 	credentials?: FlowV1Credentials;
+}
+
+export type FlowV1TaskCreateNode = FlowV1NodeBase & {
+	config: NodeConfig<FlowV1TaskCreateConfig>;
 };
+
+export type FlowV1TaskUpdateNode = FlowV1NodeBase & {
+	config: NodeConfig<FlowV1TaskUpdateConfig>;
+};
+
+export type FlowV1TaskGetNode = FlowV1NodeBase & {
+	config: NodeConfig<FlowV1TaskGetConfig>;
+};
+
+export type FlowV1TaskGetAllNode = FlowV1NodeBase & {
+	config: NodeConfig<FlowV1TaskGetAllConfig>;
+};
+
+export type FlowV1Node =
+	| FlowV1TaskCreateNode
+	| FlowV1TaskUpdateNode
+	| FlowV1TaskGetNode
+	| FlowV1TaskGetAllNode
+	;

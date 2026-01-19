@@ -1,8 +1,6 @@
 /**
  * Action Network Node - Version 1
  * Consume the Action Network API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -526,12 +524,129 @@ export interface ActionNetworkV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ActionNetworkV1Node = {
+interface ActionNetworkV1NodeBase {
 	type: 'n8n-nodes-base.actionNetwork';
 	version: 1;
-	config: NodeConfig<ActionNetworkV1Params>;
 	credentials?: ActionNetworkV1Credentials;
+}
+
+export type ActionNetworkV1AttendanceCreateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1AttendanceCreateConfig>;
 };
+
+export type ActionNetworkV1AttendanceGetNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1AttendanceGetConfig>;
+};
+
+export type ActionNetworkV1AttendanceGetAllNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1AttendanceGetAllConfig>;
+};
+
+export type ActionNetworkV1EventCreateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1EventCreateConfig>;
+};
+
+export type ActionNetworkV1EventGetNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1EventGetConfig>;
+};
+
+export type ActionNetworkV1EventGetAllNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1EventGetAllConfig>;
+};
+
+export type ActionNetworkV1PersonCreateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PersonCreateConfig>;
+};
+
+export type ActionNetworkV1PersonGetNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PersonGetConfig>;
+};
+
+export type ActionNetworkV1PersonGetAllNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PersonGetAllConfig>;
+};
+
+export type ActionNetworkV1PersonUpdateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PersonUpdateConfig>;
+};
+
+export type ActionNetworkV1PersonTagAddNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PersonTagAddConfig>;
+};
+
+export type ActionNetworkV1PersonTagRemoveNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PersonTagRemoveConfig>;
+};
+
+export type ActionNetworkV1PetitionCreateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PetitionCreateConfig>;
+};
+
+export type ActionNetworkV1PetitionGetNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PetitionGetConfig>;
+};
+
+export type ActionNetworkV1PetitionGetAllNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PetitionGetAllConfig>;
+};
+
+export type ActionNetworkV1PetitionUpdateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1PetitionUpdateConfig>;
+};
+
+export type ActionNetworkV1SignatureCreateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1SignatureCreateConfig>;
+};
+
+export type ActionNetworkV1SignatureGetNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1SignatureGetConfig>;
+};
+
+export type ActionNetworkV1SignatureGetAllNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1SignatureGetAllConfig>;
+};
+
+export type ActionNetworkV1SignatureUpdateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1SignatureUpdateConfig>;
+};
+
+export type ActionNetworkV1TagCreateNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1TagCreateConfig>;
+};
+
+export type ActionNetworkV1TagGetNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1TagGetConfig>;
+};
+
+export type ActionNetworkV1TagGetAllNode = ActionNetworkV1NodeBase & {
+	config: NodeConfig<ActionNetworkV1TagGetAllConfig>;
+};
+
+export type ActionNetworkV1Node =
+	| ActionNetworkV1AttendanceCreateNode
+	| ActionNetworkV1AttendanceGetNode
+	| ActionNetworkV1AttendanceGetAllNode
+	| ActionNetworkV1EventCreateNode
+	| ActionNetworkV1EventGetNode
+	| ActionNetworkV1EventGetAllNode
+	| ActionNetworkV1PersonCreateNode
+	| ActionNetworkV1PersonGetNode
+	| ActionNetworkV1PersonGetAllNode
+	| ActionNetworkV1PersonUpdateNode
+	| ActionNetworkV1PersonTagAddNode
+	| ActionNetworkV1PersonTagRemoveNode
+	| ActionNetworkV1PetitionCreateNode
+	| ActionNetworkV1PetitionGetNode
+	| ActionNetworkV1PetitionGetAllNode
+	| ActionNetworkV1PetitionUpdateNode
+	| ActionNetworkV1SignatureCreateNode
+	| ActionNetworkV1SignatureGetNode
+	| ActionNetworkV1SignatureGetAllNode
+	| ActionNetworkV1SignatureUpdateNode
+	| ActionNetworkV1TagCreateNode
+	| ActionNetworkV1TagGetNode
+	| ActionNetworkV1TagGetAllNode
+	;

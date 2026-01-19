@@ -1,8 +1,6 @@
 /**
  * Default Data Loader Node - Version 1
  * Load data from previous step in the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -38,12 +36,16 @@ export interface LcDocumentDefaultDataLoaderV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcDocumentDefaultDataLoaderV1Node = {
+interface LcDocumentDefaultDataLoaderV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
 	version: 1;
+}
+
+export type LcDocumentDefaultDataLoaderV1ParamsNode = LcDocumentDefaultDataLoaderV1NodeBase & {
 	config: NodeConfig<LcDocumentDefaultDataLoaderV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcDocumentDefaultDataLoaderV1Node = LcDocumentDefaultDataLoaderV1ParamsNode;

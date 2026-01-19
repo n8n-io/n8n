@@ -1,8 +1,6 @@
 /**
  * LinkedIn Node - Version 1
  * Consume LinkedIn API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -47,6 +45,14 @@ export type LinkedInV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type LinkedInV1PostCreateOutput = {
+	urn?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -56,12 +62,18 @@ export interface LinkedInV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LinkedInV1Node = {
+interface LinkedInV1NodeBase {
 	type: 'n8n-nodes-base.linkedIn';
 	version: 1;
-	config: NodeConfig<LinkedInV1Params>;
 	credentials?: LinkedInV1Credentials;
+}
+
+export type LinkedInV1PostCreateNode = LinkedInV1NodeBase & {
+	config: NodeConfig<LinkedInV1PostCreateConfig>;
+	output?: LinkedInV1PostCreateOutput;
 };
+
+export type LinkedInV1Node = LinkedInV1PostCreateNode;

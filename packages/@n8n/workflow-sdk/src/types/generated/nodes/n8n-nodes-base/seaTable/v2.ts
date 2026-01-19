@@ -1,8 +1,6 @@
 /**
  * SeaTable Node - Version 2
  * Consume the SeaTable API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -382,6 +380,29 @@ export type SeaTableV2Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type SeaTableV2RowCreateOutput = {
+	_creator?: string;
+	_ctime?: string;
+	_id?: string;
+	_last_modifier?: string;
+	_mtime?: string;
+};
+
+export type SeaTableV2RowListOutput = {
+	_archived?: boolean;
+	_creator?: string;
+	_ctime?: string;
+	_id?: string;
+	_last_modifier?: string;
+	_locked?: null;
+	_locked_by?: null;
+	_mtime?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -390,12 +411,96 @@ export interface SeaTableV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SeaTableV2Node = {
+interface SeaTableV2NodeBase {
 	type: 'n8n-nodes-base.seaTable';
 	version: 2;
-	config: NodeConfig<SeaTableV2Params>;
 	credentials?: SeaTableV2Credentials;
+}
+
+export type SeaTableV2RowCreateNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2RowCreateConfig>;
+	output?: SeaTableV2RowCreateOutput;
 };
+
+export type SeaTableV2RowRemoveNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2RowRemoveConfig>;
+};
+
+export type SeaTableV2RowGetNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2RowGetConfig>;
+};
+
+export type SeaTableV2RowListNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2RowListConfig>;
+	output?: SeaTableV2RowListOutput;
+};
+
+export type SeaTableV2RowLockNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2RowLockConfig>;
+};
+
+export type SeaTableV2RowSearchNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2RowSearchConfig>;
+};
+
+export type SeaTableV2RowUnlockNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2RowUnlockConfig>;
+};
+
+export type SeaTableV2RowUpdateNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2RowUpdateConfig>;
+};
+
+export type SeaTableV2BaseSnapshotNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2BaseSnapshotConfig>;
+};
+
+export type SeaTableV2BaseMetadataNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2BaseMetadataConfig>;
+};
+
+export type SeaTableV2BaseCollaboratorNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2BaseCollaboratorConfig>;
+};
+
+export type SeaTableV2LinkAddNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2LinkAddConfig>;
+};
+
+export type SeaTableV2LinkListNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2LinkListConfig>;
+};
+
+export type SeaTableV2LinkRemoveNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2LinkRemoveConfig>;
+};
+
+export type SeaTableV2AssetGetPublicURLNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2AssetGetPublicURLConfig>;
+};
+
+export type SeaTableV2AssetUploadNode = SeaTableV2NodeBase & {
+	config: NodeConfig<SeaTableV2AssetUploadConfig>;
+};
+
+export type SeaTableV2Node =
+	| SeaTableV2RowCreateNode
+	| SeaTableV2RowRemoveNode
+	| SeaTableV2RowGetNode
+	| SeaTableV2RowListNode
+	| SeaTableV2RowLockNode
+	| SeaTableV2RowSearchNode
+	| SeaTableV2RowUnlockNode
+	| SeaTableV2RowUpdateNode
+	| SeaTableV2BaseSnapshotNode
+	| SeaTableV2BaseMetadataNode
+	| SeaTableV2BaseCollaboratorNode
+	| SeaTableV2LinkAddNode
+	| SeaTableV2LinkListNode
+	| SeaTableV2LinkRemoveNode
+	| SeaTableV2AssetGetPublicURLNode
+	| SeaTableV2AssetUploadNode
+	;

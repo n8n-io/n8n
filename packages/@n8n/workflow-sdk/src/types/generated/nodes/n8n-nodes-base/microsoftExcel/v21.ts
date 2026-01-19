@@ -1,8 +1,6 @@
 /**
  * Microsoft Excel 365 Node - Version 2.1
  * Consume Microsoft Excel API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -404,12 +402,99 @@ export interface MicrosoftExcelV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftExcelV21Node = {
+interface MicrosoftExcelV21NodeBase {
 	type: 'n8n-nodes-base.microsoftExcel';
 	version: 2.1;
-	config: NodeConfig<MicrosoftExcelV21Params>;
 	credentials?: MicrosoftExcelV21Credentials;
+}
+
+export type MicrosoftExcelV21TableAppendNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21TableAppendConfig>;
 };
+
+export type MicrosoftExcelV21TableConvertToRangeNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21TableConvertToRangeConfig>;
+};
+
+export type MicrosoftExcelV21TableAddTableNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21TableAddTableConfig>;
+};
+
+export type MicrosoftExcelV21TableDeleteTableNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21TableDeleteTableConfig>;
+};
+
+export type MicrosoftExcelV21TableGetColumnsNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21TableGetColumnsConfig>;
+};
+
+export type MicrosoftExcelV21TableGetRowsNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21TableGetRowsConfig>;
+};
+
+export type MicrosoftExcelV21TableLookupNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21TableLookupConfig>;
+};
+
+export type MicrosoftExcelV21WorkbookAddWorksheetNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorkbookAddWorksheetConfig>;
+};
+
+export type MicrosoftExcelV21WorkbookDeleteWorkbookNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorkbookDeleteWorkbookConfig>;
+};
+
+export type MicrosoftExcelV21WorkbookGetAllNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorkbookGetAllConfig>;
+};
+
+export type MicrosoftExcelV21WorksheetAppendNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorksheetAppendConfig>;
+};
+
+export type MicrosoftExcelV21WorksheetUpsertNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorksheetUpsertConfig>;
+};
+
+export type MicrosoftExcelV21WorksheetClearNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorksheetClearConfig>;
+};
+
+export type MicrosoftExcelV21WorksheetDeleteWorksheetNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorksheetDeleteWorksheetConfig>;
+};
+
+export type MicrosoftExcelV21WorksheetGetAllNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorksheetGetAllConfig>;
+};
+
+export type MicrosoftExcelV21WorksheetReadRowsNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorksheetReadRowsConfig>;
+};
+
+export type MicrosoftExcelV21WorksheetUpdateNode = MicrosoftExcelV21NodeBase & {
+	config: NodeConfig<MicrosoftExcelV21WorksheetUpdateConfig>;
+};
+
+export type MicrosoftExcelV21Node =
+	| MicrosoftExcelV21TableAppendNode
+	| MicrosoftExcelV21TableConvertToRangeNode
+	| MicrosoftExcelV21TableAddTableNode
+	| MicrosoftExcelV21TableDeleteTableNode
+	| MicrosoftExcelV21TableGetColumnsNode
+	| MicrosoftExcelV21TableGetRowsNode
+	| MicrosoftExcelV21TableLookupNode
+	| MicrosoftExcelV21WorkbookAddWorksheetNode
+	| MicrosoftExcelV21WorkbookDeleteWorkbookNode
+	| MicrosoftExcelV21WorkbookGetAllNode
+	| MicrosoftExcelV21WorksheetAppendNode
+	| MicrosoftExcelV21WorksheetUpsertNode
+	| MicrosoftExcelV21WorksheetClearNode
+	| MicrosoftExcelV21WorksheetDeleteWorksheetNode
+	| MicrosoftExcelV21WorksheetGetAllNode
+	| MicrosoftExcelV21WorksheetReadRowsNode
+	| MicrosoftExcelV21WorksheetUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * LoneScale Trigger Node - Version 1
  * Trigger LoneScale Workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -29,13 +27,18 @@ export interface LoneScaleTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LoneScaleTriggerV1Node = {
+interface LoneScaleTriggerV1NodeBase {
 	type: 'n8n-nodes-base.loneScaleTrigger';
 	version: 1;
-	config: NodeConfig<LoneScaleTriggerV1Params>;
 	credentials?: LoneScaleTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type LoneScaleTriggerV1ParamsNode = LoneScaleTriggerV1NodeBase & {
+	config: NodeConfig<LoneScaleTriggerV1Params>;
 };
+
+export type LoneScaleTriggerV1Node = LoneScaleTriggerV1ParamsNode;

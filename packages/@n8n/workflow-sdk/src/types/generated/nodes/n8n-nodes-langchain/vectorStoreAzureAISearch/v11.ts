@@ -1,8 +1,6 @@
 /**
  * Azure AI Search Vector Store Node - Version 1.1
  * Work with your data in Azure AI Search Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -146,12 +144,39 @@ export interface LcVectorStoreAzureAISearchV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreAzureAISearchV11Node = {
+interface LcVectorStoreAzureAISearchV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreAzureAISearch';
 	version: 1.1;
-	config: NodeConfig<LcVectorStoreAzureAISearchV11Params>;
 	credentials?: LcVectorStoreAzureAISearchV11Credentials;
+}
+
+export type LcVectorStoreAzureAISearchV11LoadNode = LcVectorStoreAzureAISearchV11NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV11LoadConfig>;
 };
+
+export type LcVectorStoreAzureAISearchV11InsertNode = LcVectorStoreAzureAISearchV11NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV11InsertConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV11RetrieveNode = LcVectorStoreAzureAISearchV11NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV11RetrieveConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV11RetrieveAsToolNode = LcVectorStoreAzureAISearchV11NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV11RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV11UpdateNode = LcVectorStoreAzureAISearchV11NodeBase & {
+	config: NodeConfig<LcVectorStoreAzureAISearchV11UpdateConfig>;
+};
+
+export type LcVectorStoreAzureAISearchV11Node =
+	| LcVectorStoreAzureAISearchV11LoadNode
+	| LcVectorStoreAzureAISearchV11InsertNode
+	| LcVectorStoreAzureAISearchV11RetrieveNode
+	| LcVectorStoreAzureAISearchV11RetrieveAsToolNode
+	| LcVectorStoreAzureAISearchV11UpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Dropbox Node - Version 1
  * Access data on Dropbox
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -219,6 +217,161 @@ export type DropboxV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type DropboxV1FileCopyOutput = {
+	metadata?: {
+		'.tag'?: string;
+		client_modified?: string;
+		content_hash?: string;
+		id?: string;
+		is_downloadable?: boolean;
+		name?: string;
+		parent_shared_folder_id?: string;
+		path_display?: string;
+		path_lower?: string;
+		rev?: string;
+		server_modified?: string;
+		sharing_info?: {
+			modified_by?: string;
+			parent_shared_folder_id?: string;
+			read_only?: boolean;
+		};
+		size?: number;
+	};
+};
+
+export type DropboxV1FileDeleteOutput = {
+	metadata?: {
+		'.tag'?: string;
+		client_modified?: string;
+		content_hash?: string;
+		id?: string;
+		is_downloadable?: boolean;
+		name?: string;
+		path_display?: string;
+		path_lower?: string;
+		rev?: string;
+		server_modified?: string;
+		size?: number;
+	};
+};
+
+export type DropboxV1FileDownloadOutput = {
+	contentHash?: string;
+	contentSize?: number;
+	id?: string;
+	isDownloadable?: boolean;
+	lastModifiedClient?: string;
+	lastModifiedServer?: string;
+	name?: string;
+	pathDisplay?: string;
+	pathLower?: string;
+	rev?: string;
+	type?: string;
+};
+
+export type DropboxV1FileMoveOutput = {
+	metadata?: {
+		'.tag'?: string;
+		client_modified?: string;
+		content_hash?: string;
+		id?: string;
+		is_downloadable?: boolean;
+		name?: string;
+		path_display?: string;
+		path_lower?: string;
+		rev?: string;
+		server_modified?: string;
+		size?: number;
+	};
+};
+
+export type DropboxV1FileUploadOutput = {
+	client_modified?: string;
+	content_hash?: string;
+	id?: string;
+	is_downloadable?: boolean;
+	name?: string;
+	path_display?: string;
+	path_lower?: string;
+	rev?: string;
+	server_modified?: string;
+	size?: number;
+};
+
+export type DropboxV1FolderCreateOutput = {
+	metadata?: {
+		id?: string;
+		name?: string;
+		path_display?: string;
+		path_lower?: string;
+	};
+};
+
+export type DropboxV1FolderDeleteOutput = {
+	metadata?: {
+		'.tag'?: string;
+		id?: string;
+		name?: string;
+		path_display?: string;
+		path_lower?: string;
+	};
+};
+
+export type DropboxV1FolderListOutput = {
+	contentHash?: string;
+	contentSize?: number;
+	id?: string;
+	isDownloadable?: boolean;
+	lastModifiedClient?: string;
+	lastModifiedServer?: string;
+	name?: string;
+	pathDisplay?: string;
+	pathLower?: string;
+	rev?: string;
+	type?: string;
+};
+
+export type DropboxV1FolderMoveOutput = {
+	metadata?: {
+		'.tag'?: string;
+		id?: string;
+		name?: string;
+		parent_shared_folder_id?: string;
+		path_display?: string;
+		path_lower?: string;
+		sharing_info?: {
+			no_access?: boolean;
+			parent_shared_folder_id?: string;
+			read_only?: boolean;
+			traverse_only?: boolean;
+		};
+	};
+};
+
+export type DropboxV1SearchQueryOutput = {
+	'.tag'?: string;
+	client_modified?: string;
+	content_hash?: string;
+	file_owner_team_encrypted_id?: string;
+	id?: string;
+	is_downloadable?: boolean;
+	name?: string;
+	path_display?: string;
+	path_lower?: string;
+	rev?: string;
+	server_modified?: string;
+	sharing_info?: {
+		modified_by?: string;
+		parent_shared_folder_id?: string;
+		read_only?: boolean;
+	};
+	size?: number;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -228,12 +381,79 @@ export interface DropboxV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DropboxV1Node = {
+interface DropboxV1NodeBase {
 	type: 'n8n-nodes-base.dropbox';
 	version: 1;
-	config: NodeConfig<DropboxV1Params>;
 	credentials?: DropboxV1Credentials;
+}
+
+export type DropboxV1FileCopyNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FileCopyConfig>;
+	output?: DropboxV1FileCopyOutput;
 };
+
+export type DropboxV1FileDeleteNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FileDeleteConfig>;
+	output?: DropboxV1FileDeleteOutput;
+};
+
+export type DropboxV1FileDownloadNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FileDownloadConfig>;
+	output?: DropboxV1FileDownloadOutput;
+};
+
+export type DropboxV1FileMoveNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FileMoveConfig>;
+	output?: DropboxV1FileMoveOutput;
+};
+
+export type DropboxV1FileUploadNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FileUploadConfig>;
+	output?: DropboxV1FileUploadOutput;
+};
+
+export type DropboxV1FolderCopyNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FolderCopyConfig>;
+};
+
+export type DropboxV1FolderCreateNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FolderCreateConfig>;
+	output?: DropboxV1FolderCreateOutput;
+};
+
+export type DropboxV1FolderDeleteNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FolderDeleteConfig>;
+	output?: DropboxV1FolderDeleteOutput;
+};
+
+export type DropboxV1FolderListNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FolderListConfig>;
+	output?: DropboxV1FolderListOutput;
+};
+
+export type DropboxV1FolderMoveNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1FolderMoveConfig>;
+	output?: DropboxV1FolderMoveOutput;
+};
+
+export type DropboxV1SearchQueryNode = DropboxV1NodeBase & {
+	config: NodeConfig<DropboxV1SearchQueryConfig>;
+	output?: DropboxV1SearchQueryOutput;
+};
+
+export type DropboxV1Node =
+	| DropboxV1FileCopyNode
+	| DropboxV1FileDeleteNode
+	| DropboxV1FileDownloadNode
+	| DropboxV1FileMoveNode
+	| DropboxV1FileUploadNode
+	| DropboxV1FolderCopyNode
+	| DropboxV1FolderCreateNode
+	| DropboxV1FolderDeleteNode
+	| DropboxV1FolderListNode
+	| DropboxV1FolderMoveNode
+	| DropboxV1SearchQueryNode
+	;

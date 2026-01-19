@@ -1,8 +1,6 @@
 /**
  * Wait Node - Version 1.1
  * Wait before continue with execution
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -264,12 +262,17 @@ export interface WaitV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WaitV11Node = {
+interface WaitV11NodeBase {
 	type: 'n8n-nodes-base.wait';
 	version: 1.1;
-	config: NodeConfig<WaitV11Params>;
 	credentials?: WaitV11Credentials;
+}
+
+export type WaitV11ParamsNode = WaitV11NodeBase & {
+	config: NodeConfig<WaitV11Params>;
 };
+
+export type WaitV11Node = WaitV11ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Lemlist Trigger Node - Version 1
  * Handle Lemlist events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,13 +25,18 @@ export interface LemlistTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LemlistTriggerV1Node = {
+interface LemlistTriggerV1NodeBase {
 	type: 'n8n-nodes-base.lemlistTrigger';
 	version: 1;
-	config: NodeConfig<LemlistTriggerV1Params>;
 	credentials?: LemlistTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type LemlistTriggerV1ParamsNode = LemlistTriggerV1NodeBase & {
+	config: NodeConfig<LemlistTriggerV1Params>;
 };
+
+export type LemlistTriggerV1Node = LemlistTriggerV1ParamsNode;

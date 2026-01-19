@@ -1,8 +1,6 @@
 /**
  * Nextcloud Node - Version 1
  * Access data on Nextcloud
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -328,6 +326,32 @@ export type NextCloudV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type NextCloudV1FileDownloadOutput = {
+	contentLength?: string;
+	contentType?: string;
+	eTag?: string;
+	lastModified?: string;
+	path?: string;
+	type?: string;
+};
+
+export type NextCloudV1FolderCreateOutput = {
+	error?: string;
+};
+
+export type NextCloudV1FolderListOutput = {
+	contentLength?: string;
+	contentType?: string;
+	eTag?: string;
+	lastModified?: string;
+	path?: string;
+	type?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -337,12 +361,102 @@ export interface NextCloudV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NextCloudV1Node = {
+interface NextCloudV1NodeBase {
 	type: 'n8n-nodes-base.nextCloud';
 	version: 1;
-	config: NodeConfig<NextCloudV1Params>;
 	credentials?: NextCloudV1Credentials;
+}
+
+export type NextCloudV1FileCopyNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FileCopyConfig>;
 };
+
+export type NextCloudV1FileDeleteNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FileDeleteConfig>;
+};
+
+export type NextCloudV1FileDownloadNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FileDownloadConfig>;
+	output?: NextCloudV1FileDownloadOutput;
+};
+
+export type NextCloudV1FileMoveNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FileMoveConfig>;
+};
+
+export type NextCloudV1FileShareNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FileShareConfig>;
+};
+
+export type NextCloudV1FileUploadNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FileUploadConfig>;
+};
+
+export type NextCloudV1FolderCopyNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FolderCopyConfig>;
+};
+
+export type NextCloudV1FolderCreateNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FolderCreateConfig>;
+	output?: NextCloudV1FolderCreateOutput;
+};
+
+export type NextCloudV1FolderDeleteNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FolderDeleteConfig>;
+};
+
+export type NextCloudV1FolderListNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FolderListConfig>;
+	output?: NextCloudV1FolderListOutput;
+};
+
+export type NextCloudV1FolderMoveNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FolderMoveConfig>;
+};
+
+export type NextCloudV1FolderShareNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1FolderShareConfig>;
+};
+
+export type NextCloudV1UserCreateNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1UserCreateConfig>;
+};
+
+export type NextCloudV1UserDeleteNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1UserDeleteConfig>;
+};
+
+export type NextCloudV1UserGetNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1UserGetConfig>;
+};
+
+export type NextCloudV1UserGetAllNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1UserGetAllConfig>;
+};
+
+export type NextCloudV1UserUpdateNode = NextCloudV1NodeBase & {
+	config: NodeConfig<NextCloudV1UserUpdateConfig>;
+};
+
+export type NextCloudV1Node =
+	| NextCloudV1FileCopyNode
+	| NextCloudV1FileDeleteNode
+	| NextCloudV1FileDownloadNode
+	| NextCloudV1FileMoveNode
+	| NextCloudV1FileShareNode
+	| NextCloudV1FileUploadNode
+	| NextCloudV1FolderCopyNode
+	| NextCloudV1FolderCreateNode
+	| NextCloudV1FolderDeleteNode
+	| NextCloudV1FolderListNode
+	| NextCloudV1FolderMoveNode
+	| NextCloudV1FolderShareNode
+	| NextCloudV1UserCreateNode
+	| NextCloudV1UserDeleteNode
+	| NextCloudV1UserGetNode
+	| NextCloudV1UserGetAllNode
+	| NextCloudV1UserUpdateNode
+	;

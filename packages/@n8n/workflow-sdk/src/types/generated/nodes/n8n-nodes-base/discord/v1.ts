@@ -1,8 +1,6 @@
 /**
  * Discord Node - Version 1
  * Sends data to Discord
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -24,12 +22,16 @@ export interface DiscordV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DiscordV1Node = {
+interface DiscordV1NodeBase {
 	type: 'n8n-nodes-base.discord';
 	version: 1;
+}
+
+export type DiscordV1ParamsNode = DiscordV1NodeBase & {
 	config: NodeConfig<DiscordV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type DiscordV1Node = DiscordV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Embeddings Google Gemini Node - Version 1
  * Use Google Gemini Embeddings
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface LcEmbeddingsGoogleGeminiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsGoogleGeminiV1Node = {
+interface LcEmbeddingsGoogleGeminiV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsGoogleGemini';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsGoogleGeminiV1Params>;
 	credentials?: LcEmbeddingsGoogleGeminiV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsGoogleGeminiV1ParamsNode = LcEmbeddingsGoogleGeminiV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsGoogleGeminiV1Params>;
 };
+
+export type LcEmbeddingsGoogleGeminiV1Node = LcEmbeddingsGoogleGeminiV1ParamsNode;

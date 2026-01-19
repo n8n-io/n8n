@@ -1,8 +1,6 @@
 /**
  * Peekalink Node - Version 1
  * Consume the Peekalink API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,12 +25,17 @@ export interface PeekalinkV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PeekalinkV1Node = {
+interface PeekalinkV1NodeBase {
 	type: 'n8n-nodes-base.peekalink';
 	version: 1;
-	config: NodeConfig<PeekalinkV1Params>;
 	credentials?: PeekalinkV1Credentials;
+}
+
+export type PeekalinkV1ParamsNode = PeekalinkV1NodeBase & {
+	config: NodeConfig<PeekalinkV1Params>;
 };
+
+export type PeekalinkV1Node = PeekalinkV1ParamsNode;

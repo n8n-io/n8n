@@ -1,8 +1,6 @@
 /**
  * AWS Bedrock Chat Model Node - Version 1
  * Language Model AWS Bedrock
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcLmChatAwsBedrockV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatAwsBedrockV1Node = {
+interface LcLmChatAwsBedrockV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock';
 	version: 1;
-	config: NodeConfig<LcLmChatAwsBedrockV1Params>;
 	credentials?: LcLmChatAwsBedrockV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatAwsBedrockV1ParamsNode = LcLmChatAwsBedrockV1NodeBase & {
+	config: NodeConfig<LcLmChatAwsBedrockV1Params>;
 };
+
+export type LcLmChatAwsBedrockV1Node = LcLmChatAwsBedrockV1ParamsNode;

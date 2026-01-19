@@ -1,8 +1,6 @@
 /**
  * Execute Workflow Trigger Node - Version 1.1
  * Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -22,13 +20,17 @@ export interface ExecuteWorkflowTriggerV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ExecuteWorkflowTriggerV11Node = {
+interface ExecuteWorkflowTriggerV11NodeBase {
 	type: 'n8n-nodes-base.executeWorkflowTrigger';
 	version: 1.1;
-	config: NodeConfig<ExecuteWorkflowTriggerV11Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type ExecuteWorkflowTriggerV11ParamsNode = ExecuteWorkflowTriggerV11NodeBase & {
+	config: NodeConfig<ExecuteWorkflowTriggerV11Params>;
 };
+
+export type ExecuteWorkflowTriggerV11Node = ExecuteWorkflowTriggerV11ParamsNode;

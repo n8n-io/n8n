@@ -1,8 +1,6 @@
 /**
  * Sentry.io Node - Version 1
  * Consume Sentry.io API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -499,6 +497,59 @@ export type SentryIoV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type SentryIoV1IssueGetAllOutput = {
+	count?: string;
+	culprit?: string;
+	firstSeen?: string;
+	hasSeen?: boolean;
+	id?: string;
+	isBookmarked?: boolean;
+	isPublic?: boolean;
+	isSubscribed?: boolean;
+	issueCategory?: string;
+	issueType?: string;
+	isUnhandled?: boolean;
+	lastSeen?: string;
+	level?: string;
+	metadata?: {
+		filename?: string;
+		'function'?: string;
+		in_app_frame_mix?: string;
+		initial_priority?: number;
+		sdk?: {
+			name?: string;
+			name_normalized?: string;
+		};
+		severity_reason?: string;
+		type?: string;
+		value?: string;
+	};
+	numComments?: number;
+	permalink?: string;
+	platform?: string;
+	priority?: string;
+	project?: {
+		id?: string;
+		name?: string;
+		platform?: string;
+		slug?: string;
+	};
+	shareId?: null;
+	shortId?: string;
+	stats?: {
+		'24h'?: Array<Array<number>>;
+	};
+	status?: string;
+	substatus?: string;
+	title?: string;
+	type?: string;
+	userCount?: number;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -509,12 +560,140 @@ export interface SentryIoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SentryIoV1Node = {
+interface SentryIoV1NodeBase {
 	type: 'n8n-nodes-base.sentryIo';
 	version: 1;
-	config: NodeConfig<SentryIoV1Params>;
 	credentials?: SentryIoV1Credentials;
+}
+
+export type SentryIoV1EventGetNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1EventGetConfig>;
 };
+
+export type SentryIoV1EventGetAllNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1EventGetAllConfig>;
+};
+
+export type SentryIoV1IssueDeleteNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1IssueDeleteConfig>;
+};
+
+export type SentryIoV1IssueGetNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1IssueGetConfig>;
+};
+
+export type SentryIoV1IssueGetAllNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1IssueGetAllConfig>;
+	output?: SentryIoV1IssueGetAllOutput;
+};
+
+export type SentryIoV1IssueUpdateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1IssueUpdateConfig>;
+};
+
+export type SentryIoV1OrganizationCreateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1OrganizationCreateConfig>;
+};
+
+export type SentryIoV1OrganizationGetNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1OrganizationGetConfig>;
+};
+
+export type SentryIoV1OrganizationGetAllNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1OrganizationGetAllConfig>;
+};
+
+export type SentryIoV1OrganizationUpdateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1OrganizationUpdateConfig>;
+};
+
+export type SentryIoV1ProjectCreateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ProjectCreateConfig>;
+};
+
+export type SentryIoV1ProjectDeleteNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ProjectDeleteConfig>;
+};
+
+export type SentryIoV1ProjectGetNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ProjectGetConfig>;
+};
+
+export type SentryIoV1ProjectGetAllNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ProjectGetAllConfig>;
+};
+
+export type SentryIoV1ProjectUpdateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ProjectUpdateConfig>;
+};
+
+export type SentryIoV1ReleaseCreateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ReleaseCreateConfig>;
+};
+
+export type SentryIoV1ReleaseDeleteNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ReleaseDeleteConfig>;
+};
+
+export type SentryIoV1ReleaseGetNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ReleaseGetConfig>;
+};
+
+export type SentryIoV1ReleaseGetAllNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ReleaseGetAllConfig>;
+};
+
+export type SentryIoV1ReleaseUpdateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1ReleaseUpdateConfig>;
+};
+
+export type SentryIoV1TeamCreateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1TeamCreateConfig>;
+};
+
+export type SentryIoV1TeamDeleteNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1TeamDeleteConfig>;
+};
+
+export type SentryIoV1TeamGetNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1TeamGetConfig>;
+};
+
+export type SentryIoV1TeamGetAllNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1TeamGetAllConfig>;
+};
+
+export type SentryIoV1TeamUpdateNode = SentryIoV1NodeBase & {
+	config: NodeConfig<SentryIoV1TeamUpdateConfig>;
+};
+
+export type SentryIoV1Node =
+	| SentryIoV1EventGetNode
+	| SentryIoV1EventGetAllNode
+	| SentryIoV1IssueDeleteNode
+	| SentryIoV1IssueGetNode
+	| SentryIoV1IssueGetAllNode
+	| SentryIoV1IssueUpdateNode
+	| SentryIoV1OrganizationCreateNode
+	| SentryIoV1OrganizationGetNode
+	| SentryIoV1OrganizationGetAllNode
+	| SentryIoV1OrganizationUpdateNode
+	| SentryIoV1ProjectCreateNode
+	| SentryIoV1ProjectDeleteNode
+	| SentryIoV1ProjectGetNode
+	| SentryIoV1ProjectGetAllNode
+	| SentryIoV1ProjectUpdateNode
+	| SentryIoV1ReleaseCreateNode
+	| SentryIoV1ReleaseDeleteNode
+	| SentryIoV1ReleaseGetNode
+	| SentryIoV1ReleaseGetAllNode
+	| SentryIoV1ReleaseUpdateNode
+	| SentryIoV1TeamCreateNode
+	| SentryIoV1TeamDeleteNode
+	| SentryIoV1TeamGetNode
+	| SentryIoV1TeamGetAllNode
+	| SentryIoV1TeamUpdateNode
+	;

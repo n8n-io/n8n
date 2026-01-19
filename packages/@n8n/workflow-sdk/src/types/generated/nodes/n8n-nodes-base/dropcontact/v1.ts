@@ -1,8 +1,6 @@
 /**
  * Dropcontact Node - Version 1
  * Find B2B emails and enrich contacts
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -37,12 +35,17 @@ export interface DropcontactV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DropcontactV1Node = {
+interface DropcontactV1NodeBase {
 	type: 'n8n-nodes-base.dropcontact';
 	version: 1;
-	config: NodeConfig<DropcontactV1Params>;
 	credentials?: DropcontactV1Credentials;
+}
+
+export type DropcontactV1ParamsNode = DropcontactV1NodeBase & {
+	config: NodeConfig<DropcontactV1Params>;
 };
+
+export type DropcontactV1Node = DropcontactV1ParamsNode;

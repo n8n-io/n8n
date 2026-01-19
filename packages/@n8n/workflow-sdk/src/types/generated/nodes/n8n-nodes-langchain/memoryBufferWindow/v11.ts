@@ -1,8 +1,6 @@
 /**
  * Simple Memory Node - Version 1.1
  * Stores in n8n memory, so no credentials required
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,13 +25,17 @@ export interface LcMemoryBufferWindowV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryBufferWindowV11Node = {
+interface LcMemoryBufferWindowV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 	version: 1.1;
-	config: NodeConfig<LcMemoryBufferWindowV11Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcMemoryBufferWindowV11ParamsNode = LcMemoryBufferWindowV11NodeBase & {
+	config: NodeConfig<LcMemoryBufferWindowV11Params>;
 };
+
+export type LcMemoryBufferWindowV11Node = LcMemoryBufferWindowV11ParamsNode;

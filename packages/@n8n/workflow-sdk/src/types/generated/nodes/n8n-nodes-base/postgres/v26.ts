@@ -1,8 +1,6 @@
 /**
  * Postgres Node - Version 2.6
  * Get, add and update data in Postgres
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -110,12 +108,17 @@ export interface PostgresV26Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresV26Node = {
+interface PostgresV26NodeBase {
 	type: 'n8n-nodes-base.postgres';
 	version: 2.6;
-	config: NodeConfig<PostgresV26Params>;
 	credentials?: PostgresV26Credentials;
+}
+
+export type PostgresV26ParamsNode = PostgresV26NodeBase & {
+	config: NodeConfig<PostgresV26Params>;
 };
+
+export type PostgresV26Node = PostgresV26ParamsNode;

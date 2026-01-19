@@ -1,8 +1,6 @@
 /**
  * Microsoft Graph Security Node - Version 1
  * Consume the Microsoft Graph Security API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -107,12 +105,39 @@ export interface MicrosoftGraphSecurityV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftGraphSecurityV1Node = {
+interface MicrosoftGraphSecurityV1NodeBase {
 	type: 'n8n-nodes-base.microsoftGraphSecurity';
 	version: 1;
-	config: NodeConfig<MicrosoftGraphSecurityV1Params>;
 	credentials?: MicrosoftGraphSecurityV1Credentials;
+}
+
+export type MicrosoftGraphSecurityV1SecureScoreGetNode = MicrosoftGraphSecurityV1NodeBase & {
+	config: NodeConfig<MicrosoftGraphSecurityV1SecureScoreGetConfig>;
 };
+
+export type MicrosoftGraphSecurityV1SecureScoreGetAllNode = MicrosoftGraphSecurityV1NodeBase & {
+	config: NodeConfig<MicrosoftGraphSecurityV1SecureScoreGetAllConfig>;
+};
+
+export type MicrosoftGraphSecurityV1SecureScoreControlProfileGetNode = MicrosoftGraphSecurityV1NodeBase & {
+	config: NodeConfig<MicrosoftGraphSecurityV1SecureScoreControlProfileGetConfig>;
+};
+
+export type MicrosoftGraphSecurityV1SecureScoreControlProfileGetAllNode = MicrosoftGraphSecurityV1NodeBase & {
+	config: NodeConfig<MicrosoftGraphSecurityV1SecureScoreControlProfileGetAllConfig>;
+};
+
+export type MicrosoftGraphSecurityV1SecureScoreControlProfileUpdateNode = MicrosoftGraphSecurityV1NodeBase & {
+	config: NodeConfig<MicrosoftGraphSecurityV1SecureScoreControlProfileUpdateConfig>;
+};
+
+export type MicrosoftGraphSecurityV1Node =
+	| MicrosoftGraphSecurityV1SecureScoreGetNode
+	| MicrosoftGraphSecurityV1SecureScoreGetAllNode
+	| MicrosoftGraphSecurityV1SecureScoreControlProfileGetNode
+	| MicrosoftGraphSecurityV1SecureScoreControlProfileGetAllNode
+	| MicrosoftGraphSecurityV1SecureScoreControlProfileUpdateNode
+	;

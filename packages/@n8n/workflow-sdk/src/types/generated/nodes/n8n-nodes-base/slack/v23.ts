@@ -1,8 +1,6 @@
 /**
  * Slack Node - Version 2.3
  * Consume Slack API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -814,6 +812,838 @@ export type SlackV23Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type SlackV23ChannelCreateOutput = {
+	context_team_id?: string;
+	created?: number;
+	creator?: string;
+	id?: string;
+	is_archived?: boolean;
+	is_channel?: boolean;
+	is_ext_shared?: boolean;
+	is_general?: boolean;
+	is_group?: boolean;
+	is_im?: boolean;
+	is_member?: boolean;
+	is_mpim?: boolean;
+	is_org_shared?: boolean;
+	is_pending_ext_shared?: boolean;
+	is_private?: boolean;
+	is_shared?: boolean;
+	last_read?: string;
+	name?: string;
+	name_normalized?: string;
+	parent_conversation?: null;
+	priority?: number;
+	purpose?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	shared_team_ids?: Array<string>;
+	topic?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	unlinked?: number;
+	updated?: number;
+};
+
+export type SlackV23ChannelGetOutput = {
+	context_team_id?: string;
+	created?: number;
+	creator?: string;
+	id?: string;
+	is_archived?: boolean;
+	is_channel?: boolean;
+	is_ext_shared?: boolean;
+	is_general?: boolean;
+	is_group?: boolean;
+	is_im?: boolean;
+	is_member?: boolean;
+	is_mpim?: boolean;
+	is_org_shared?: boolean;
+	is_pending_ext_shared?: boolean;
+	is_private?: boolean;
+	is_shared?: boolean;
+	last_read?: string;
+	name?: string;
+	name_normalized?: string;
+	parent_conversation?: null;
+	previous_names?: Array<string>;
+	properties?: {
+		canvas?: {
+			file_id?: string;
+			is_empty?: boolean;
+			quip_thread_id?: string;
+		};
+		tabs?: Array<{
+			id?: string;
+			label?: string;
+			type?: string;
+		}>;
+		tabz?: Array<{
+			type?: string;
+		}>;
+	};
+	purpose?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	shared_team_ids?: Array<string>;
+	topic?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	unlinked?: number;
+	updated?: number;
+};
+
+export type SlackV23ChannelGetAllOutput = {
+	context_team_id?: string;
+	created?: number;
+	creator?: string;
+	id?: string;
+	is_archived?: boolean;
+	is_channel?: boolean;
+	is_ext_shared?: boolean;
+	is_general?: boolean;
+	is_group?: boolean;
+	is_im?: boolean;
+	is_member?: boolean;
+	is_mpim?: boolean;
+	is_org_shared?: boolean;
+	is_pending_ext_shared?: boolean;
+	is_private?: boolean;
+	is_shared?: boolean;
+	name?: string;
+	name_normalized?: string;
+	num_members?: number;
+	parent_conversation?: null;
+	previous_names?: Array<string>;
+	properties?: {
+		canvas?: {
+			file_id?: string;
+			is_empty?: boolean;
+			quip_thread_id?: string;
+		};
+		tabs?: Array<{
+			id?: string;
+			label?: string;
+			type?: string;
+		}>;
+		tabz?: Array<{
+			type?: string;
+		}>;
+		use_case?: string;
+	};
+	purpose?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	shared_team_ids?: Array<string>;
+	topic?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	unlinked?: number;
+	updated?: number;
+};
+
+export type SlackV23ChannelHistoryOutput = {
+	blocks?: Array<{
+		block_id?: string;
+		elements?: Array<{
+			elements?: Array<{
+				style?: {
+					bold?: boolean;
+					italic?: boolean;
+				};
+				text?: string;
+				type?: string;
+			}>;
+			type?: string;
+		}>;
+		type?: string;
+	}>;
+	bot_id?: string;
+	client_msg_id?: string;
+	team?: string;
+	text?: string;
+	ts?: string;
+	type?: string;
+	user?: string;
+};
+
+export type SlackV23ChannelInviteOutput = {
+	error?: string;
+};
+
+export type SlackV23ChannelJoinOutput = {
+	context_team_id?: string;
+	created?: number;
+	creator?: string;
+	id?: string;
+	is_archived?: boolean;
+	is_channel?: boolean;
+	is_ext_shared?: boolean;
+	is_general?: boolean;
+	is_group?: boolean;
+	is_im?: boolean;
+	is_member?: boolean;
+	is_mpim?: boolean;
+	is_org_shared?: boolean;
+	is_pending_ext_shared?: boolean;
+	is_private?: boolean;
+	is_shared?: boolean;
+	name?: string;
+	name_normalized?: string;
+	parent_conversation?: null;
+	previous_names?: Array<string>;
+	purpose?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	shared_team_ids?: Array<string>;
+	topic?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	unlinked?: number;
+	updated?: number;
+};
+
+export type SlackV23ChannelMemberOutput = {
+	member?: string;
+};
+
+export type SlackV23ChannelOpenOutput = {
+	id?: string;
+};
+
+export type SlackV23ChannelRepliesOutput = {
+	app_id?: string;
+	blocks?: Array<{
+		block_id?: string;
+		elements?: Array<{
+			elements?: Array<{
+				text?: string;
+				type?: string;
+			}>;
+			type?: string;
+		}>;
+		type?: string;
+	}>;
+	bot_id?: string;
+	bot_profile?: {
+		app_id?: string;
+		deleted?: boolean;
+		icons?: {
+			image_36?: string;
+			image_48?: string;
+			image_72?: string;
+		};
+		id?: string;
+		name?: string;
+		team_id?: string;
+		updated?: number;
+		user_id?: string;
+	};
+	client_msg_id?: string;
+	is_locked?: boolean;
+	latest_reply?: string;
+	parent_user_id?: string;
+	reply_count?: number;
+	reply_users?: Array<string>;
+	reply_users_count?: number;
+	subscribed?: boolean;
+	team?: string;
+	text?: string;
+	thread_ts?: string;
+	ts?: string;
+	type?: string;
+	user?: string;
+};
+
+export type SlackV23ChannelSetTopicOutput = {
+	context_team_id?: string;
+	created?: number;
+	creator?: string;
+	id?: string;
+	is_archived?: boolean;
+	is_channel?: boolean;
+	is_ext_shared?: boolean;
+	is_general?: boolean;
+	is_group?: boolean;
+	is_im?: boolean;
+	is_member?: boolean;
+	is_mpim?: boolean;
+	is_org_shared?: boolean;
+	is_pending_ext_shared?: boolean;
+	is_private?: boolean;
+	is_shared?: boolean;
+	name?: string;
+	name_normalized?: string;
+	parent_conversation?: null;
+	previous_names?: Array<string>;
+	purpose?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	shared_team_ids?: Array<string>;
+	topic?: {
+		creator?: string;
+		last_set?: number;
+		value?: string;
+	};
+	unlinked?: number;
+	updated?: number;
+};
+
+export type SlackV23FileGetOutput = {
+	aac?: string;
+	audio_wave_samples?: Array<number>;
+	channels?: Array<string>;
+	comments_count?: number;
+	created?: number;
+	display_as_bot?: boolean;
+	duration_ms?: number;
+	editable?: boolean;
+	external_type?: string;
+	file_access?: string;
+	filetype?: string;
+	groups?: Array<string>;
+	has_more_shares?: boolean;
+	has_rich_preview?: boolean;
+	id?: string;
+	ims?: Array<string>;
+	is_external?: boolean;
+	is_public?: boolean;
+	is_starred?: boolean;
+	media_display_type?: string;
+	mimetype?: string;
+	mode?: string;
+	name?: string;
+	permalink?: string;
+	permalink_public?: string;
+	pretty_type?: string;
+	public_url_shared?: boolean;
+	size?: number;
+	subtype?: string;
+	timestamp?: number;
+	title?: string;
+	transcription?: {
+		status?: string;
+	};
+	url_private?: string;
+	url_private_download?: string;
+	user?: string;
+	user_team?: string;
+	username?: string;
+};
+
+export type SlackV23FileGetAllOutput = {
+	channels?: Array<string>;
+	comments_count?: number;
+	created?: number;
+	display_as_bot?: boolean;
+	editable?: boolean;
+	external_type?: string;
+	filetype?: string;
+	groups?: Array<string>;
+	id?: string;
+	ims?: Array<string>;
+	is_external?: boolean;
+	is_public?: boolean;
+	media_display_type?: string;
+	mimetype?: string;
+	mode?: string;
+	name?: string;
+	permalink?: string;
+	pretty_type?: string;
+	public_url_shared?: boolean;
+	size?: number;
+	timestamp?: number;
+	title?: string;
+	url_private?: string;
+	url_private_download?: string;
+	user?: string;
+	user_team?: string;
+	username?: string;
+};
+
+export type SlackV23FileUploadOutput = {
+	channels?: Array<string>;
+	comments_count?: number;
+	created?: number;
+	display_as_bot?: boolean;
+	editable?: boolean;
+	external_type?: string;
+	file_access?: string;
+	filetype?: string;
+	groups?: Array<string>;
+	has_more_shares?: boolean;
+	has_rich_preview?: boolean;
+	id?: string;
+	is_external?: boolean;
+	is_public?: boolean;
+	is_starred?: boolean;
+	media_display_type?: string;
+	mimetype?: string;
+	mode?: string;
+	name?: string;
+	permalink?: string;
+	permalink_public?: string;
+	pretty_type?: string;
+	public_url_shared?: boolean;
+	size?: number;
+	timestamp?: number;
+	title?: string;
+	url_private?: string;
+	url_private_download?: string;
+	user?: string;
+	user_team?: string;
+	username?: string;
+};
+
+export type SlackV23MessageDeleteOutput = {
+	channel?: string;
+	message_timestamp?: string;
+	ok?: boolean;
+};
+
+export type SlackV23MessageGetPermalinkOutput = {
+	channel?: string;
+	ok?: boolean;
+	permalink?: string;
+};
+
+export type SlackV23MessageSearchOutput = {
+	blocks?: Array<{
+		block_id?: string;
+		elements?: Array<{
+			elements?: Array<{
+				text?: string;
+				type?: string;
+				user_id?: string;
+			}>;
+			type?: string;
+		}>;
+		type?: string;
+	}>;
+	channel?: {
+		id?: string;
+		is_channel?: boolean;
+		is_ext_shared?: boolean;
+		is_group?: boolean;
+		is_im?: boolean;
+		is_mpim?: boolean;
+		is_org_shared?: boolean;
+		is_pending_ext_shared?: boolean;
+		is_private?: boolean;
+		is_shared?: boolean;
+		name?: string;
+	};
+	iid?: string;
+	no_reactions?: boolean;
+	permalink?: string;
+	team?: string;
+	text?: string;
+	ts?: string;
+	type?: string;
+	username?: string;
+};
+
+export type SlackV23MessagePostOutput = {
+	channel?: string;
+	message?: {
+		app_id?: string;
+		blocks?: Array<{
+			block_id?: string;
+			elements?: Array<{
+				elements?: Array<{
+					style?: {
+						italic?: boolean;
+					};
+					text?: string;
+					type?: string;
+					url?: string;
+				}>;
+				type?: string;
+			}>;
+			type?: string;
+		}>;
+		bot_id?: string;
+		bot_profile?: {
+			app_id?: string;
+			deleted?: boolean;
+			icons?: {
+				image_36?: string;
+				image_48?: string;
+				image_72?: string;
+			};
+			id?: string;
+			name?: string;
+			team_id?: string;
+			updated?: number;
+		};
+		team?: string;
+		text?: string;
+		ts?: string;
+		type?: string;
+		user?: string;
+	};
+	message_timestamp?: string;
+	ok?: boolean;
+};
+
+export type SlackV23MessageSendAndWaitOutput = {
+	data?: {
+		approved?: boolean;
+	};
+};
+
+export type SlackV23MessageUpdateOutput = {
+	channel?: string;
+	message?: {
+		app_id?: string;
+		blocks?: Array<{
+			block_id?: string;
+			elements?: Array<{
+				elements?: Array<{
+					style?: {
+						bold?: boolean;
+						italic?: boolean;
+					};
+					text?: string;
+					type?: string;
+					url?: string;
+				}>;
+				type?: string;
+			}>;
+			text?: {
+				text?: string;
+				type?: string;
+				verbatim?: boolean;
+			};
+			type?: string;
+		}>;
+		bot_id?: string;
+		bot_profile?: {
+			app_id?: string;
+			deleted?: boolean;
+			icons?: {
+				image_36?: string;
+				image_48?: string;
+				image_72?: string;
+			};
+			id?: string;
+			name?: string;
+			team_id?: string;
+			updated?: number;
+		};
+		edited?: {
+			ts?: string;
+			user?: string;
+		};
+		team?: string;
+		text?: string;
+		type?: string;
+		user?: string;
+	};
+	message_timestamp?: string;
+	ok?: boolean;
+	text?: string;
+};
+
+export type SlackV23ReactionAddOutput = {
+	ok?: boolean;
+};
+
+export type SlackV23ReactionGetOutput = {
+	channel?: string;
+	message?: {
+		blocks?: Array<{
+			block_id?: string;
+			elements?: Array<{
+				elements?: Array<{
+					text?: string;
+					type?: string;
+					url?: string;
+				}>;
+				type?: string;
+			}>;
+			type?: string;
+		}>;
+		client_msg_id?: string;
+		permalink?: string;
+		reactions?: Array<{
+			count?: number;
+			name?: string;
+			users?: Array<string>;
+		}>;
+		team?: string;
+		text?: string;
+		ts?: string;
+		type?: string;
+		user?: string;
+	};
+	ok?: boolean;
+	type?: string;
+};
+
+export type SlackV23ReactionRemoveOutput = {
+	ok?: boolean;
+};
+
+export type SlackV23UserInfoOutput = {
+	color?: string;
+	deleted?: boolean;
+	id?: string;
+	is_admin?: boolean;
+	is_app_user?: boolean;
+	is_bot?: boolean;
+	is_email_confirmed?: boolean;
+	is_owner?: boolean;
+	is_primary_owner?: boolean;
+	is_restricted?: boolean;
+	is_ultra_restricted?: boolean;
+	name?: string;
+	profile?: {
+		avatar_hash?: string;
+		display_name?: string;
+		display_name_normalized?: string;
+		first_name?: string;
+		huddle_state?: string;
+		huddle_state_expiration_ts?: number;
+		image_1024?: string;
+		image_192?: string;
+		image_24?: string;
+		image_32?: string;
+		image_48?: string;
+		image_512?: string;
+		image_72?: string;
+		image_original?: string;
+		is_custom_image?: boolean;
+		last_name?: string;
+		phone?: string;
+		real_name?: string;
+		real_name_normalized?: string;
+		skype?: string;
+		status_emoji?: string;
+		status_emoji_display_info?: Array<{
+			display_url?: string;
+			emoji_name?: string;
+			unicode?: string;
+		}>;
+		status_expiration?: number;
+		status_text?: string;
+		status_text_canonical?: string;
+		team?: string;
+		title?: string;
+	};
+	real_name?: string;
+	team_id?: string;
+	tz?: string;
+	tz_label?: string;
+	tz_offset?: number;
+	updated?: number;
+	who_can_share_contact_card?: string;
+};
+
+export type SlackV23UserGetAllOutput = {
+	color?: string;
+	deleted?: boolean;
+	id?: string;
+	is_admin?: boolean;
+	is_app_user?: boolean;
+	is_bot?: boolean;
+	is_email_confirmed?: boolean;
+	is_owner?: boolean;
+	is_primary_owner?: boolean;
+	is_restricted?: boolean;
+	is_ultra_restricted?: boolean;
+	name?: string;
+	profile?: {
+		always_active?: boolean;
+		avatar_hash?: string;
+		display_name?: string;
+		display_name_normalized?: string;
+		first_name?: string;
+		huddle_state?: string;
+		huddle_state_expiration_ts?: number;
+		image_1024?: string;
+		image_192?: string;
+		image_24?: string;
+		image_32?: string;
+		image_48?: string;
+		image_512?: string;
+		image_72?: string;
+		image_original?: string;
+		is_custom_image?: boolean;
+		last_name?: string;
+		phone?: string;
+		real_name?: string;
+		real_name_normalized?: string;
+		skype?: string;
+		status_emoji?: string;
+		status_emoji_display_info?: Array<{
+			display_url?: string;
+			emoji_name?: string;
+			unicode?: string;
+		}>;
+		status_expiration?: number;
+		status_text?: string;
+		status_text_canonical?: string;
+		team?: string;
+		title?: string;
+	};
+	real_name?: string;
+	team_id?: string;
+	tz?: string;
+	tz_label?: string;
+	tz_offset?: number;
+	updated?: number;
+	who_can_share_contact_card?: string;
+};
+
+export type SlackV23UserGetProfileOutput = {
+	avatar_hash?: string;
+	display_name?: string;
+	display_name_normalized?: string;
+	email?: string;
+	first_name?: string;
+	image_1024?: string;
+	image_192?: string;
+	image_24?: string;
+	image_32?: string;
+	image_48?: string;
+	image_512?: string;
+	image_72?: string;
+	image_original?: string;
+	is_custom_image?: boolean;
+	last_name?: string;
+	phone?: string;
+	real_name?: string;
+	real_name_normalized?: string;
+	skype?: string;
+	status_emoji?: string;
+	status_emoji_display_info?: Array<{
+		display_url?: string;
+		emoji_name?: string;
+		unicode?: string;
+	}>;
+	status_expiration?: number;
+	status_text?: string;
+	status_text_canonical?: string;
+	title?: string;
+};
+
+export type SlackV23UserGetPresenceOutput = {
+	ok?: boolean;
+	presence?: string;
+};
+
+export type SlackV23UserUpdateProfileOutput = {
+	avatar_hash?: string;
+	display_name?: string;
+	display_name_normalized?: string;
+	email?: string;
+	fields?: {
+		Xf03UMDX9738?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf03UMDX98DC?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf03UR35L6MT?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf03UR35L7K7?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf03UTUL86LB?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf03UU2E8W4S?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf03UWFR6VJQ?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf03V6LREDCZ?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf0403NW3YCQ?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf05GWG5K0S0?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf08BT55JWBG?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf08BWUCR1LM?: {
+			alt?: string;
+			value?: string;
+		};
+		Xf08FLSF1456?: {
+			alt?: string;
+			value?: string;
+		};
+	};
+	first_name?: string;
+	huddle_state?: string;
+	huddle_state_expiration_ts?: number;
+	image_1024?: string;
+	image_192?: string;
+	image_24?: string;
+	image_32?: string;
+	image_48?: string;
+	image_512?: string;
+	image_72?: string;
+	image_original?: string;
+	is_custom_image?: boolean;
+	last_name?: string;
+	phone?: string;
+	real_name?: string;
+	real_name_normalized?: string;
+	skype?: string;
+	start_date?: string;
+	status_emoji?: string;
+	status_emoji_display_info?: Array<{
+		display_url?: string;
+		emoji_name?: string;
+		unicode?: string;
+	}>;
+	status_expiration?: number;
+	status_text?: string;
+	status_text_canonical?: string;
+	title?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -823,12 +1653,251 @@ export interface SlackV23Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SlackV23Node = {
+interface SlackV23NodeBase {
 	type: 'n8n-nodes-base.slack';
 	version: 2.3;
-	config: NodeConfig<SlackV23Params>;
 	credentials?: SlackV23Credentials;
+}
+
+export type SlackV23ChannelArchiveNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelArchiveConfig>;
 };
+
+export type SlackV23ChannelCloseNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelCloseConfig>;
+};
+
+export type SlackV23ChannelCreateNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelCreateConfig>;
+	output?: SlackV23ChannelCreateOutput;
+};
+
+export type SlackV23ChannelGetNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelGetConfig>;
+	output?: SlackV23ChannelGetOutput;
+};
+
+export type SlackV23ChannelGetAllNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelGetAllConfig>;
+	output?: SlackV23ChannelGetAllOutput;
+};
+
+export type SlackV23ChannelHistoryNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelHistoryConfig>;
+	output?: SlackV23ChannelHistoryOutput;
+};
+
+export type SlackV23ChannelInviteNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelInviteConfig>;
+	output?: SlackV23ChannelInviteOutput;
+};
+
+export type SlackV23ChannelJoinNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelJoinConfig>;
+	output?: SlackV23ChannelJoinOutput;
+};
+
+export type SlackV23ChannelKickNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelKickConfig>;
+};
+
+export type SlackV23ChannelLeaveNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelLeaveConfig>;
+};
+
+export type SlackV23ChannelMemberNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelMemberConfig>;
+	output?: SlackV23ChannelMemberOutput;
+};
+
+export type SlackV23ChannelOpenNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelOpenConfig>;
+	output?: SlackV23ChannelOpenOutput;
+};
+
+export type SlackV23ChannelRenameNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelRenameConfig>;
+};
+
+export type SlackV23ChannelRepliesNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelRepliesConfig>;
+	output?: SlackV23ChannelRepliesOutput;
+};
+
+export type SlackV23ChannelSetPurposeNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelSetPurposeConfig>;
+};
+
+export type SlackV23ChannelSetTopicNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelSetTopicConfig>;
+	output?: SlackV23ChannelSetTopicOutput;
+};
+
+export type SlackV23ChannelUnarchiveNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ChannelUnarchiveConfig>;
+};
+
+export type SlackV23FileGetNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23FileGetConfig>;
+	output?: SlackV23FileGetOutput;
+};
+
+export type SlackV23FileGetAllNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23FileGetAllConfig>;
+	output?: SlackV23FileGetAllOutput;
+};
+
+export type SlackV23FileUploadNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23FileUploadConfig>;
+	output?: SlackV23FileUploadOutput;
+};
+
+export type SlackV23MessageDeleteNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23MessageDeleteConfig>;
+	output?: SlackV23MessageDeleteOutput;
+};
+
+export type SlackV23MessageGetPermalinkNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23MessageGetPermalinkConfig>;
+	output?: SlackV23MessageGetPermalinkOutput;
+};
+
+export type SlackV23MessageSearchNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23MessageSearchConfig>;
+	output?: SlackV23MessageSearchOutput;
+};
+
+export type SlackV23MessagePostNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23MessagePostConfig>;
+	output?: SlackV23MessagePostOutput;
+};
+
+export type SlackV23MessageSendAndWaitNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23MessageSendAndWaitConfig>;
+	output?: SlackV23MessageSendAndWaitOutput;
+};
+
+export type SlackV23MessageUpdateNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23MessageUpdateConfig>;
+	output?: SlackV23MessageUpdateOutput;
+};
+
+export type SlackV23ReactionAddNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ReactionAddConfig>;
+	output?: SlackV23ReactionAddOutput;
+};
+
+export type SlackV23ReactionGetNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ReactionGetConfig>;
+	output?: SlackV23ReactionGetOutput;
+};
+
+export type SlackV23ReactionRemoveNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23ReactionRemoveConfig>;
+	output?: SlackV23ReactionRemoveOutput;
+};
+
+export type SlackV23StarAddNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23StarAddConfig>;
+};
+
+export type SlackV23StarDeleteNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23StarDeleteConfig>;
+};
+
+export type SlackV23StarGetAllNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23StarGetAllConfig>;
+};
+
+export type SlackV23UserInfoNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserInfoConfig>;
+	output?: SlackV23UserInfoOutput;
+};
+
+export type SlackV23UserGetAllNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserGetAllConfig>;
+	output?: SlackV23UserGetAllOutput;
+};
+
+export type SlackV23UserGetProfileNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserGetProfileConfig>;
+	output?: SlackV23UserGetProfileOutput;
+};
+
+export type SlackV23UserGetPresenceNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserGetPresenceConfig>;
+	output?: SlackV23UserGetPresenceOutput;
+};
+
+export type SlackV23UserUpdateProfileNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserUpdateProfileConfig>;
+	output?: SlackV23UserUpdateProfileOutput;
+};
+
+export type SlackV23UserGroupCreateNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserGroupCreateConfig>;
+};
+
+export type SlackV23UserGroupDisableNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserGroupDisableConfig>;
+};
+
+export type SlackV23UserGroupEnableNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserGroupEnableConfig>;
+};
+
+export type SlackV23UserGroupGetAllNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserGroupGetAllConfig>;
+};
+
+export type SlackV23UserGroupUpdateNode = SlackV23NodeBase & {
+	config: NodeConfig<SlackV23UserGroupUpdateConfig>;
+};
+
+export type SlackV23Node =
+	| SlackV23ChannelArchiveNode
+	| SlackV23ChannelCloseNode
+	| SlackV23ChannelCreateNode
+	| SlackV23ChannelGetNode
+	| SlackV23ChannelGetAllNode
+	| SlackV23ChannelHistoryNode
+	| SlackV23ChannelInviteNode
+	| SlackV23ChannelJoinNode
+	| SlackV23ChannelKickNode
+	| SlackV23ChannelLeaveNode
+	| SlackV23ChannelMemberNode
+	| SlackV23ChannelOpenNode
+	| SlackV23ChannelRenameNode
+	| SlackV23ChannelRepliesNode
+	| SlackV23ChannelSetPurposeNode
+	| SlackV23ChannelSetTopicNode
+	| SlackV23ChannelUnarchiveNode
+	| SlackV23FileGetNode
+	| SlackV23FileGetAllNode
+	| SlackV23FileUploadNode
+	| SlackV23MessageDeleteNode
+	| SlackV23MessageGetPermalinkNode
+	| SlackV23MessageSearchNode
+	| SlackV23MessagePostNode
+	| SlackV23MessageSendAndWaitNode
+	| SlackV23MessageUpdateNode
+	| SlackV23ReactionAddNode
+	| SlackV23ReactionGetNode
+	| SlackV23ReactionRemoveNode
+	| SlackV23StarAddNode
+	| SlackV23StarDeleteNode
+	| SlackV23StarGetAllNode
+	| SlackV23UserInfoNode
+	| SlackV23UserGetAllNode
+	| SlackV23UserGetProfileNode
+	| SlackV23UserGetPresenceNode
+	| SlackV23UserUpdateProfileNode
+	| SlackV23UserGroupCreateNode
+	| SlackV23UserGroupDisableNode
+	| SlackV23UserGroupEnableNode
+	| SlackV23UserGroupGetAllNode
+	| SlackV23UserGroupUpdateNode
+	;

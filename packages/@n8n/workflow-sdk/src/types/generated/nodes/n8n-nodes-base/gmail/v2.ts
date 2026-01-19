@@ -1,8 +1,6 @@
 /**
  * Gmail Node - Version 2
  * Consume the Gmail API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -391,12 +389,144 @@ export interface GmailV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GmailV2Node = {
+interface GmailV2NodeBase {
 	type: 'n8n-nodes-base.gmail';
 	version: 2;
-	config: NodeConfig<GmailV2Params>;
 	credentials?: GmailV2Credentials;
+}
+
+export type GmailV2MessageAddLabelsNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageAddLabelsConfig>;
 };
+
+export type GmailV2MessageDeleteNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageDeleteConfig>;
+};
+
+export type GmailV2MessageGetNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageGetConfig>;
+};
+
+export type GmailV2MessageGetAllNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageGetAllConfig>;
+};
+
+export type GmailV2MessageMarkAsReadNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageMarkAsReadConfig>;
+};
+
+export type GmailV2MessageMarkAsUnreadNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageMarkAsUnreadConfig>;
+};
+
+export type GmailV2MessageRemoveLabelsNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageRemoveLabelsConfig>;
+};
+
+export type GmailV2MessageReplyNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageReplyConfig>;
+};
+
+export type GmailV2MessageSendNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageSendConfig>;
+};
+
+export type GmailV2MessageSendAndWaitNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2MessageSendAndWaitConfig>;
+};
+
+export type GmailV2LabelCreateNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2LabelCreateConfig>;
+};
+
+export type GmailV2LabelDeleteNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2LabelDeleteConfig>;
+};
+
+export type GmailV2LabelGetNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2LabelGetConfig>;
+};
+
+export type GmailV2LabelGetAllNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2LabelGetAllConfig>;
+};
+
+export type GmailV2DraftCreateNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2DraftCreateConfig>;
+};
+
+export type GmailV2DraftDeleteNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2DraftDeleteConfig>;
+};
+
+export type GmailV2DraftGetNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2DraftGetConfig>;
+};
+
+export type GmailV2DraftGetAllNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2DraftGetAllConfig>;
+};
+
+export type GmailV2ThreadAddLabelsNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2ThreadAddLabelsConfig>;
+};
+
+export type GmailV2ThreadDeleteNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2ThreadDeleteConfig>;
+};
+
+export type GmailV2ThreadGetNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2ThreadGetConfig>;
+};
+
+export type GmailV2ThreadGetAllNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2ThreadGetAllConfig>;
+};
+
+export type GmailV2ThreadRemoveLabelsNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2ThreadRemoveLabelsConfig>;
+};
+
+export type GmailV2ThreadReplyNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2ThreadReplyConfig>;
+};
+
+export type GmailV2ThreadTrashNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2ThreadTrashConfig>;
+};
+
+export type GmailV2ThreadUntrashNode = GmailV2NodeBase & {
+	config: NodeConfig<GmailV2ThreadUntrashConfig>;
+};
+
+export type GmailV2Node =
+	| GmailV2MessageAddLabelsNode
+	| GmailV2MessageDeleteNode
+	| GmailV2MessageGetNode
+	| GmailV2MessageGetAllNode
+	| GmailV2MessageMarkAsReadNode
+	| GmailV2MessageMarkAsUnreadNode
+	| GmailV2MessageRemoveLabelsNode
+	| GmailV2MessageReplyNode
+	| GmailV2MessageSendNode
+	| GmailV2MessageSendAndWaitNode
+	| GmailV2LabelCreateNode
+	| GmailV2LabelDeleteNode
+	| GmailV2LabelGetNode
+	| GmailV2LabelGetAllNode
+	| GmailV2DraftCreateNode
+	| GmailV2DraftDeleteNode
+	| GmailV2DraftGetNode
+	| GmailV2DraftGetAllNode
+	| GmailV2ThreadAddLabelsNode
+	| GmailV2ThreadDeleteNode
+	| GmailV2ThreadGetNode
+	| GmailV2ThreadGetAllNode
+	| GmailV2ThreadRemoveLabelsNode
+	| GmailV2ThreadReplyNode
+	| GmailV2ThreadTrashNode
+	| GmailV2ThreadUntrashNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Google Cloud Natural Language Node - Version 1
  * Consume Google Cloud Natural Language API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -48,12 +46,17 @@ export interface GoogleCloudNaturalLanguageV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCloudNaturalLanguageV1Node = {
+interface GoogleCloudNaturalLanguageV1NodeBase {
 	type: 'n8n-nodes-base.googleCloudNaturalLanguage';
 	version: 1;
-	config: NodeConfig<GoogleCloudNaturalLanguageV1Params>;
 	credentials?: GoogleCloudNaturalLanguageV1Credentials;
+}
+
+export type GoogleCloudNaturalLanguageV1DocumentAnalyzeSentimentNode = GoogleCloudNaturalLanguageV1NodeBase & {
+	config: NodeConfig<GoogleCloudNaturalLanguageV1DocumentAnalyzeSentimentConfig>;
 };
+
+export type GoogleCloudNaturalLanguageV1Node = GoogleCloudNaturalLanguageV1DocumentAnalyzeSentimentNode;

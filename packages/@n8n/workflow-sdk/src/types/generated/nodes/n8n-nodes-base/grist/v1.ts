@@ -1,8 +1,6 @@
 /**
  * Grist Node - Version 1
  * Consume the Grist API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -73,12 +71,17 @@ export interface GristV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GristV1Node = {
+interface GristV1NodeBase {
 	type: 'n8n-nodes-base.grist';
 	version: 1;
-	config: NodeConfig<GristV1Params>;
 	credentials?: GristV1Credentials;
+}
+
+export type GristV1ParamsNode = GristV1NodeBase & {
+	config: NodeConfig<GristV1Params>;
 };
+
+export type GristV1Node = GristV1ParamsNode;

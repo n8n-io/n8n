@@ -1,8 +1,6 @@
 /**
  * Cockpit Node - Version 1
  * Consume Cockpit API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -178,12 +176,39 @@ export interface CockpitV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CockpitV1Node = {
+interface CockpitV1NodeBase {
 	type: 'n8n-nodes-base.cockpit';
 	version: 1;
-	config: NodeConfig<CockpitV1Params>;
 	credentials?: CockpitV1Credentials;
+}
+
+export type CockpitV1CollectionCreateNode = CockpitV1NodeBase & {
+	config: NodeConfig<CockpitV1CollectionCreateConfig>;
 };
+
+export type CockpitV1CollectionGetAllNode = CockpitV1NodeBase & {
+	config: NodeConfig<CockpitV1CollectionGetAllConfig>;
+};
+
+export type CockpitV1CollectionUpdateNode = CockpitV1NodeBase & {
+	config: NodeConfig<CockpitV1CollectionUpdateConfig>;
+};
+
+export type CockpitV1FormSubmitNode = CockpitV1NodeBase & {
+	config: NodeConfig<CockpitV1FormSubmitConfig>;
+};
+
+export type CockpitV1SingletonGetNode = CockpitV1NodeBase & {
+	config: NodeConfig<CockpitV1SingletonGetConfig>;
+};
+
+export type CockpitV1Node =
+	| CockpitV1CollectionCreateNode
+	| CockpitV1CollectionGetAllNode
+	| CockpitV1CollectionUpdateNode
+	| CockpitV1FormSubmitNode
+	| CockpitV1SingletonGetNode
+	;

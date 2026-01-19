@@ -1,8 +1,6 @@
 /**
  * Notion Trigger Node - Version 1
  * Starts the workflow when Notion events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -88,13 +86,18 @@ export interface NotionTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NotionTriggerV1Node = {
+interface NotionTriggerV1NodeBase {
 	type: 'n8n-nodes-base.notionTrigger';
 	version: 1;
-	config: NodeConfig<NotionTriggerV1Params>;
 	credentials?: NotionTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type NotionTriggerV1ParamsNode = NotionTriggerV1NodeBase & {
+	config: NodeConfig<NotionTriggerV1Params>;
 };
+
+export type NotionTriggerV1Node = NotionTriggerV1ParamsNode;

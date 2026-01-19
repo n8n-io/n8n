@@ -1,8 +1,6 @@
 /**
  * SSH Node - Version 1
  * Execute commands via SSH
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -63,6 +61,28 @@ export type SshV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type SshV1CommandExecuteOutput = {
+	code?: number;
+	signal?: null;
+	stderr?: string;
+	stdout?: string;
+};
+
+export type SshV1FileDownloadOutput = {
+	code?: number;
+	signal?: null;
+	stderr?: string;
+	stdout?: string;
+};
+
+export type SshV1FileUploadOutput = {
+	success?: boolean;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -72,12 +92,32 @@ export interface SshV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SshV1Node = {
+interface SshV1NodeBase {
 	type: 'n8n-nodes-base.ssh';
 	version: 1;
-	config: NodeConfig<SshV1Params>;
 	credentials?: SshV1Credentials;
+}
+
+export type SshV1CommandExecuteNode = SshV1NodeBase & {
+	config: NodeConfig<SshV1CommandExecuteConfig>;
+	output?: SshV1CommandExecuteOutput;
 };
+
+export type SshV1FileDownloadNode = SshV1NodeBase & {
+	config: NodeConfig<SshV1FileDownloadConfig>;
+	output?: SshV1FileDownloadOutput;
+};
+
+export type SshV1FileUploadNode = SshV1NodeBase & {
+	config: NodeConfig<SshV1FileUploadConfig>;
+	output?: SshV1FileUploadOutput;
+};
+
+export type SshV1Node =
+	| SshV1CommandExecuteNode
+	| SshV1FileDownloadNode
+	| SshV1FileUploadNode
+	;

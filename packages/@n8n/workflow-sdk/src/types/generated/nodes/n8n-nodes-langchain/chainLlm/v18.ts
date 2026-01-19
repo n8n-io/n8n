@@ -1,8 +1,6 @@
 /**
  * Basic LLM Chain Node - Version 1.8
  * A simple chain to prompt a large language model
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -133,12 +131,28 @@ export type LcChainLlmV18Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainLlmV18Node = {
+interface LcChainLlmV18NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainLlm';
 	version: 1.8;
-	config: NodeConfig<LcChainLlmV18Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainLlmV18AutoNode = LcChainLlmV18NodeBase & {
+	config: NodeConfig<LcChainLlmV18AutoConfig>;
 };
+
+export type LcChainLlmV18GuardrailsNode = LcChainLlmV18NodeBase & {
+	config: NodeConfig<LcChainLlmV18GuardrailsConfig>;
+};
+
+export type LcChainLlmV18DefineNode = LcChainLlmV18NodeBase & {
+	config: NodeConfig<LcChainLlmV18DefineConfig>;
+};
+
+export type LcChainLlmV18Node =
+	| LcChainLlmV18AutoNode
+	| LcChainLlmV18GuardrailsNode
+	| LcChainLlmV18DefineNode
+	;

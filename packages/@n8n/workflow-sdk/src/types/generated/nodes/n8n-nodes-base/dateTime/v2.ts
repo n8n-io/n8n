@@ -1,8 +1,6 @@
 /**
  * Date & Time Node - Version 2
  * Manipulate date and time values
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -125,12 +123,23 @@ export type DateTimeV2Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DateTimeV2Node = {
+interface DateTimeV2NodeBase {
 	type: 'n8n-nodes-base.dateTime';
 	version: 2;
-	config: NodeConfig<DateTimeV2Params>;
-	credentials?: Record<string, never>;
+}
+
+export type DateTimeV2RoundDownNode = DateTimeV2NodeBase & {
+	config: NodeConfig<DateTimeV2RoundDownConfig>;
 };
+
+export type DateTimeV2RoundUpNode = DateTimeV2NodeBase & {
+	config: NodeConfig<DateTimeV2RoundUpConfig>;
+};
+
+export type DateTimeV2Node =
+	| DateTimeV2RoundDownNode
+	| DateTimeV2RoundUpNode
+	;

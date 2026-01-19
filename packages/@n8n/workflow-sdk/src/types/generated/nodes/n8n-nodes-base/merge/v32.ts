@@ -1,8 +1,6 @@
 /**
  * Merge Node - Version 3.2
  * Merges data of multiple streams once data from both is available
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -128,12 +126,33 @@ export type MergeV32Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MergeV32Node = {
+interface MergeV32NodeBase {
 	type: 'n8n-nodes-base.merge';
 	version: 3.2;
-	config: NodeConfig<MergeV32Params>;
-	credentials?: Record<string, never>;
+}
+
+export type MergeV32AppendNode = MergeV32NodeBase & {
+	config: NodeConfig<MergeV32AppendConfig>;
 };
+
+export type MergeV32CombineNode = MergeV32NodeBase & {
+	config: NodeConfig<MergeV32CombineConfig>;
+};
+
+export type MergeV32CombineBySqlNode = MergeV32NodeBase & {
+	config: NodeConfig<MergeV32CombineBySqlConfig>;
+};
+
+export type MergeV32ChooseBranchNode = MergeV32NodeBase & {
+	config: NodeConfig<MergeV32ChooseBranchConfig>;
+};
+
+export type MergeV32Node =
+	| MergeV32AppendNode
+	| MergeV32CombineNode
+	| MergeV32CombineBySqlNode
+	| MergeV32ChooseBranchNode
+	;

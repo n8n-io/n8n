@@ -1,8 +1,6 @@
 /**
  * HaloPSA Node - Version 1
  * Consume HaloPSA API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -311,6 +309,82 @@ export type HaloPSAV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type HaloPSAV1ClientGetAllOutput = {
+	accountmanagertech?: number;
+	actionemail?: number;
+	clearemail?: number;
+	client_to_invoice?: number;
+	client_to_invoice_recurring?: number;
+	colour?: string;
+	confirmemail?: number;
+	contract_tax_code?: number;
+	customer_relationship?: Array<{
+		id?: string;
+		name?: string;
+	}>;
+	customer_relationship_list?: string;
+	customertype?: number;
+	default_currency_code?: number;
+	default_mailbox_id?: number;
+	excludefrominvoicesync?: boolean;
+	id?: number;
+	inactive?: boolean;
+	is_account?: boolean;
+	is_vip?: boolean;
+	item_tax_code?: number;
+	jira_validated?: boolean;
+	key?: number;
+	mailbox_override?: number;
+	messagegroup_id?: number;
+	name?: string;
+	notes?: string;
+	overridepdftemplateinvoice?: number;
+	overridepdftemplatequote?: number;
+	percentage_to_survey?: number;
+	prepay_tax_code?: number;
+	pritech?: number;
+	qbo_company_id?: string;
+	sectech?: number;
+	service_tax_code?: number;
+	servicenow_validated?: boolean;
+	stopped?: number;
+	table?: number;
+	taxable?: boolean;
+	ticket_invoices_for_each_site?: boolean;
+	toplevel_id?: number;
+	toplevel_name?: string;
+	use?: string;
+};
+
+export type HaloPSAV1TicketGetOutput = {
+	agent_id?: number;
+	details?: string;
+	id?: number;
+	summary?: string;
+	targetdate?: string;
+};
+
+export type HaloPSAV1TicketGetAllOutput = {
+	agent_id?: number;
+	details?: string;
+	id?: number;
+	summary?: string;
+	targetdate?: string;
+};
+
+export type HaloPSAV1UserGetAllOutput = {
+	emailaddress?: string;
+	id?: number;
+	inactive?: boolean;
+	name?: string;
+	site_id?: number;
+	surname?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -319,12 +393,118 @@ export interface HaloPSAV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HaloPSAV1Node = {
+interface HaloPSAV1NodeBase {
 	type: 'n8n-nodes-base.haloPSA';
 	version: 1;
-	config: NodeConfig<HaloPSAV1Params>;
 	credentials?: HaloPSAV1Credentials;
+}
+
+export type HaloPSAV1ClientCreateNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1ClientCreateConfig>;
 };
+
+export type HaloPSAV1ClientDeleteNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1ClientDeleteConfig>;
+};
+
+export type HaloPSAV1ClientGetNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1ClientGetConfig>;
+};
+
+export type HaloPSAV1ClientGetAllNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1ClientGetAllConfig>;
+	output?: HaloPSAV1ClientGetAllOutput;
+};
+
+export type HaloPSAV1ClientUpdateNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1ClientUpdateConfig>;
+};
+
+export type HaloPSAV1SiteCreateNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1SiteCreateConfig>;
+};
+
+export type HaloPSAV1SiteDeleteNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1SiteDeleteConfig>;
+};
+
+export type HaloPSAV1SiteGetNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1SiteGetConfig>;
+};
+
+export type HaloPSAV1SiteGetAllNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1SiteGetAllConfig>;
+};
+
+export type HaloPSAV1SiteUpdateNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1SiteUpdateConfig>;
+};
+
+export type HaloPSAV1TicketCreateNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1TicketCreateConfig>;
+};
+
+export type HaloPSAV1TicketDeleteNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1TicketDeleteConfig>;
+};
+
+export type HaloPSAV1TicketGetNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1TicketGetConfig>;
+	output?: HaloPSAV1TicketGetOutput;
+};
+
+export type HaloPSAV1TicketGetAllNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1TicketGetAllConfig>;
+	output?: HaloPSAV1TicketGetAllOutput;
+};
+
+export type HaloPSAV1TicketUpdateNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1TicketUpdateConfig>;
+};
+
+export type HaloPSAV1UserCreateNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1UserCreateConfig>;
+};
+
+export type HaloPSAV1UserDeleteNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1UserDeleteConfig>;
+};
+
+export type HaloPSAV1UserGetNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1UserGetConfig>;
+};
+
+export type HaloPSAV1UserGetAllNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1UserGetAllConfig>;
+	output?: HaloPSAV1UserGetAllOutput;
+};
+
+export type HaloPSAV1UserUpdateNode = HaloPSAV1NodeBase & {
+	config: NodeConfig<HaloPSAV1UserUpdateConfig>;
+};
+
+export type HaloPSAV1Node =
+	| HaloPSAV1ClientCreateNode
+	| HaloPSAV1ClientDeleteNode
+	| HaloPSAV1ClientGetNode
+	| HaloPSAV1ClientGetAllNode
+	| HaloPSAV1ClientUpdateNode
+	| HaloPSAV1SiteCreateNode
+	| HaloPSAV1SiteDeleteNode
+	| HaloPSAV1SiteGetNode
+	| HaloPSAV1SiteGetAllNode
+	| HaloPSAV1SiteUpdateNode
+	| HaloPSAV1TicketCreateNode
+	| HaloPSAV1TicketDeleteNode
+	| HaloPSAV1TicketGetNode
+	| HaloPSAV1TicketGetAllNode
+	| HaloPSAV1TicketUpdateNode
+	| HaloPSAV1UserCreateNode
+	| HaloPSAV1UserDeleteNode
+	| HaloPSAV1UserGetNode
+	| HaloPSAV1UserGetAllNode
+	| HaloPSAV1UserUpdateNode
+	;

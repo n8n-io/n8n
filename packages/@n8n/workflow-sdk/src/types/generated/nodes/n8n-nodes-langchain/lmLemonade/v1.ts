@@ -1,8 +1,6 @@
 /**
  * Lemonade Model Node - Version 1
  * Language Model Lemonade
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -34,13 +32,18 @@ export interface LcLmLemonadeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmLemonadeV1Node = {
+interface LcLmLemonadeV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmLemonade';
 	version: 1;
-	config: NodeConfig<LcLmLemonadeV1Params>;
 	credentials?: LcLmLemonadeV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmLemonadeV1ParamsNode = LcLmLemonadeV1NodeBase & {
+	config: NodeConfig<LcLmLemonadeV1Params>;
 };
+
+export type LcLmLemonadeV1Node = LcLmLemonadeV1ParamsNode;

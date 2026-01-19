@@ -1,8 +1,6 @@
 /**
  * Xata Node - Version 1
  * Use Xata Memory
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -32,13 +30,18 @@ export interface LcMemoryXataV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMemoryXataV1Node = {
+interface LcMemoryXataV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.memoryXata';
 	version: 1;
-	config: NodeConfig<LcMemoryXataV1Params>;
 	credentials?: LcMemoryXataV1Credentials;
 	isTrigger: true;
+}
+
+export type LcMemoryXataV1ParamsNode = LcMemoryXataV1NodeBase & {
+	config: NodeConfig<LcMemoryXataV1Params>;
 };
+
+export type LcMemoryXataV1Node = LcMemoryXataV1ParamsNode;

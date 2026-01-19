@@ -1,8 +1,6 @@
 /**
  * GetResponse Node - Version 1
  * Consume GetResponse API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -90,6 +88,67 @@ export type GetResponseV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type GetResponseV1ContactGetOutput = {
+	activities?: string;
+	campaign?: {
+		campaignId?: string;
+		href?: string;
+		name?: string;
+	};
+	changedOn?: string;
+	contactId?: string;
+	createdOn?: string;
+	customFieldValues?: Array<{
+		customFieldId?: string;
+		fieldType?: string;
+		name?: string;
+		type?: string;
+		value?: Array<string>;
+		values?: Array<string>;
+		valueType?: string;
+	}>;
+	dayOfCycle?: null;
+	email?: string;
+	geolocation?: {
+		continentCode?: string;
+		countryCode?: string;
+		dmaCode?: null;
+	};
+	href?: string;
+	ipAddress?: string;
+	note?: null;
+	origin?: string;
+	tags?: Array<{
+		color?: string;
+		href?: string;
+		name?: string;
+		tagId?: string;
+	}>;
+	timeZone?: string;
+};
+
+export type GetResponseV1ContactGetAllOutput = {
+	activities?: string;
+	campaign?: {
+		campaignId?: string;
+		href?: string;
+		name?: string;
+	};
+	changedOn?: string;
+	contactId?: string;
+	createdOn?: string;
+	email?: string;
+	href?: string;
+	ipAddress?: string;
+	note?: null;
+	origin?: string;
+	timeZone?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -99,12 +158,41 @@ export interface GetResponseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GetResponseV1Node = {
+interface GetResponseV1NodeBase {
 	type: 'n8n-nodes-base.getResponse';
 	version: 1;
-	config: NodeConfig<GetResponseV1Params>;
 	credentials?: GetResponseV1Credentials;
+}
+
+export type GetResponseV1ContactCreateNode = GetResponseV1NodeBase & {
+	config: NodeConfig<GetResponseV1ContactCreateConfig>;
 };
+
+export type GetResponseV1ContactDeleteNode = GetResponseV1NodeBase & {
+	config: NodeConfig<GetResponseV1ContactDeleteConfig>;
+};
+
+export type GetResponseV1ContactGetNode = GetResponseV1NodeBase & {
+	config: NodeConfig<GetResponseV1ContactGetConfig>;
+	output?: GetResponseV1ContactGetOutput;
+};
+
+export type GetResponseV1ContactGetAllNode = GetResponseV1NodeBase & {
+	config: NodeConfig<GetResponseV1ContactGetAllConfig>;
+	output?: GetResponseV1ContactGetAllOutput;
+};
+
+export type GetResponseV1ContactUpdateNode = GetResponseV1NodeBase & {
+	config: NodeConfig<GetResponseV1ContactUpdateConfig>;
+};
+
+export type GetResponseV1Node =
+	| GetResponseV1ContactCreateNode
+	| GetResponseV1ContactDeleteNode
+	| GetResponseV1ContactGetNode
+	| GetResponseV1ContactGetAllNode
+	| GetResponseV1ContactUpdateNode
+	;

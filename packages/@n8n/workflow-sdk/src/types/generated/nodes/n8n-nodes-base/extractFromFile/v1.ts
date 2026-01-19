@@ -1,8 +1,6 @@
 /**
  * Extract from File Node - Version 1
  * Convert binary data to JSON
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,12 +28,16 @@ export interface ExtractFromFileV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ExtractFromFileV1Node = {
+interface ExtractFromFileV1NodeBase {
 	type: 'n8n-nodes-base.extractFromFile';
 	version: 1;
+}
+
+export type ExtractFromFileV1ParamsNode = ExtractFromFileV1NodeBase & {
 	config: NodeConfig<ExtractFromFileV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type ExtractFromFileV1Node = ExtractFromFileV1ParamsNode;

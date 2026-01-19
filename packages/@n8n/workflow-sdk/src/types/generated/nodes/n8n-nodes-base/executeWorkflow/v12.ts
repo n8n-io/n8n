@@ -1,8 +1,6 @@
 /**
  * Execute Sub-workflow Node - Version 1.2
  * Execute another workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -44,12 +42,16 @@ export interface ExecuteWorkflowV12Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ExecuteWorkflowV12Node = {
+interface ExecuteWorkflowV12NodeBase {
 	type: 'n8n-nodes-base.executeWorkflow';
 	version: 1.2;
+}
+
+export type ExecuteWorkflowV12ParamsNode = ExecuteWorkflowV12NodeBase & {
 	config: NodeConfig<ExecuteWorkflowV12Params>;
-	credentials?: Record<string, never>;
 };
+
+export type ExecuteWorkflowV12Node = ExecuteWorkflowV12ParamsNode;

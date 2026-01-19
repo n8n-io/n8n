@@ -1,8 +1,6 @@
 /**
  * Crypto Node - Version 1
  * Provide cryptographic utilities
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -75,12 +73,16 @@ export interface CryptoV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CryptoV1Node = {
+interface CryptoV1NodeBase {
 	type: 'n8n-nodes-base.crypto';
 	version: 1;
+}
+
+export type CryptoV1ParamsNode = CryptoV1NodeBase & {
 	config: NodeConfig<CryptoV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type CryptoV1Node = CryptoV1ParamsNode;

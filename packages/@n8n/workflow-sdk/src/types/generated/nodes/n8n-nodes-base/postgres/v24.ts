@@ -1,8 +1,6 @@
 /**
  * Postgres Node - Version 2.4
  * Get, add and update data in Postgres
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -110,12 +108,17 @@ export interface PostgresV24Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresV24Node = {
+interface PostgresV24NodeBase {
 	type: 'n8n-nodes-base.postgres';
 	version: 2.4;
-	config: NodeConfig<PostgresV24Params>;
 	credentials?: PostgresV24Credentials;
+}
+
+export type PostgresV24ParamsNode = PostgresV24NodeBase & {
+	config: NodeConfig<PostgresV24Params>;
 };
+
+export type PostgresV24Node = PostgresV24ParamsNode;

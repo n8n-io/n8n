@@ -1,8 +1,6 @@
 /**
  * urlscan.io Node - Version 1
  * Provides various utilities for monitoring websites like health checks or screenshots
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -59,6 +57,19 @@ export type UrlScanIoV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type UrlScanIoV1ScanPerformOutput = {
+	api?: string;
+	message?: string;
+	result?: string;
+	scanId?: string;
+	url?: string;
+	visibility?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -67,12 +78,30 @@ export interface UrlScanIoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UrlScanIoV1Node = {
+interface UrlScanIoV1NodeBase {
 	type: 'n8n-nodes-base.urlScanIo';
 	version: 1;
-	config: NodeConfig<UrlScanIoV1Params>;
 	credentials?: UrlScanIoV1Credentials;
+}
+
+export type UrlScanIoV1ScanGetNode = UrlScanIoV1NodeBase & {
+	config: NodeConfig<UrlScanIoV1ScanGetConfig>;
 };
+
+export type UrlScanIoV1ScanGetAllNode = UrlScanIoV1NodeBase & {
+	config: NodeConfig<UrlScanIoV1ScanGetAllConfig>;
+};
+
+export type UrlScanIoV1ScanPerformNode = UrlScanIoV1NodeBase & {
+	config: NodeConfig<UrlScanIoV1ScanPerformConfig>;
+	output?: UrlScanIoV1ScanPerformOutput;
+};
+
+export type UrlScanIoV1Node =
+	| UrlScanIoV1ScanGetNode
+	| UrlScanIoV1ScanGetAllNode
+	| UrlScanIoV1ScanPerformNode
+	;

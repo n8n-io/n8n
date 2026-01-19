@@ -1,8 +1,6 @@
 /**
  * Todoist Node - Version 2.1
  * Consume Todoist API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -441,6 +439,77 @@ export type TodoistV21Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type TodoistV21TaskCloseOutput = {
+	success?: boolean;
+};
+
+export type TodoistV21TaskCreateOutput = {
+	assignee_id?: null;
+	assigner_id?: null;
+	comment_count?: number;
+	content?: string;
+	created_at?: string;
+	creator_id?: string;
+	deadline?: null;
+	description?: string;
+	duration?: null;
+	id?: string;
+	is_completed?: boolean;
+	labels?: Array<string>;
+	order?: number;
+	priority?: number;
+	project_id?: string;
+	url?: string;
+};
+
+export type TodoistV21TaskGetOutput = {
+	comment_count?: number;
+	content?: string;
+	created_at?: string;
+	creator_id?: string;
+	description?: string;
+	due?: {
+		date?: string;
+		is_recurring?: boolean;
+		lang?: string;
+		string?: string;
+	};
+	id?: string;
+	is_completed?: boolean;
+	labels?: Array<string>;
+	order?: number;
+	priority?: number;
+	project_id?: string;
+	url?: string;
+};
+
+export type TodoistV21TaskGetAllOutput = {
+	comment_count?: number;
+	content?: string;
+	created_at?: string;
+	creator_id?: string;
+	description?: string;
+	id?: string;
+	is_completed?: boolean;
+	labels?: Array<string>;
+	order?: number;
+	priority?: number;
+	project_id?: string;
+	url?: string;
+};
+
+export type TodoistV21TaskMoveOutput = {
+	success?: boolean;
+};
+
+export type TodoistV21TaskUpdateOutput = {
+	success?: boolean;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -450,12 +519,200 @@ export interface TodoistV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TodoistV21Node = {
+interface TodoistV21NodeBase {
 	type: 'n8n-nodes-base.todoist';
 	version: 2.1;
-	config: NodeConfig<TodoistV21Params>;
 	credentials?: TodoistV21Credentials;
+}
+
+export type TodoistV21TaskCloseNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskCloseConfig>;
+	output?: TodoistV21TaskCloseOutput;
 };
+
+export type TodoistV21TaskCreateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskCreateConfig>;
+	output?: TodoistV21TaskCreateOutput;
+};
+
+export type TodoistV21TaskDeleteNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskDeleteConfig>;
+};
+
+export type TodoistV21TaskGetNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskGetConfig>;
+	output?: TodoistV21TaskGetOutput;
+};
+
+export type TodoistV21TaskGetAllNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskGetAllConfig>;
+	output?: TodoistV21TaskGetAllOutput;
+};
+
+export type TodoistV21TaskMoveNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskMoveConfig>;
+	output?: TodoistV21TaskMoveOutput;
+};
+
+export type TodoistV21TaskQuickAddNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskQuickAddConfig>;
+};
+
+export type TodoistV21TaskReopenNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskReopenConfig>;
+};
+
+export type TodoistV21TaskUpdateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21TaskUpdateConfig>;
+	output?: TodoistV21TaskUpdateOutput;
+};
+
+export type TodoistV21ProjectArchiveNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ProjectArchiveConfig>;
+};
+
+export type TodoistV21ProjectCreateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ProjectCreateConfig>;
+};
+
+export type TodoistV21ProjectDeleteNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ProjectDeleteConfig>;
+};
+
+export type TodoistV21ProjectGetNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ProjectGetConfig>;
+};
+
+export type TodoistV21ProjectGetCollaboratorsNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ProjectGetCollaboratorsConfig>;
+};
+
+export type TodoistV21ProjectGetAllNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ProjectGetAllConfig>;
+};
+
+export type TodoistV21ProjectUnarchiveNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ProjectUnarchiveConfig>;
+};
+
+export type TodoistV21ProjectUpdateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ProjectUpdateConfig>;
+};
+
+export type TodoistV21SectionCreateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21SectionCreateConfig>;
+};
+
+export type TodoistV21SectionDeleteNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21SectionDeleteConfig>;
+};
+
+export type TodoistV21SectionGetNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21SectionGetConfig>;
+};
+
+export type TodoistV21SectionGetAllNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21SectionGetAllConfig>;
+};
+
+export type TodoistV21SectionUpdateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21SectionUpdateConfig>;
+};
+
+export type TodoistV21CommentCreateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21CommentCreateConfig>;
+};
+
+export type TodoistV21CommentDeleteNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21CommentDeleteConfig>;
+};
+
+export type TodoistV21CommentGetNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21CommentGetConfig>;
+};
+
+export type TodoistV21CommentGetAllNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21CommentGetAllConfig>;
+};
+
+export type TodoistV21CommentUpdateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21CommentUpdateConfig>;
+};
+
+export type TodoistV21LabelCreateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21LabelCreateConfig>;
+};
+
+export type TodoistV21LabelDeleteNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21LabelDeleteConfig>;
+};
+
+export type TodoistV21LabelGetNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21LabelGetConfig>;
+};
+
+export type TodoistV21LabelGetAllNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21LabelGetAllConfig>;
+};
+
+export type TodoistV21LabelUpdateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21LabelUpdateConfig>;
+};
+
+export type TodoistV21ReminderCreateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ReminderCreateConfig>;
+};
+
+export type TodoistV21ReminderDeleteNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ReminderDeleteConfig>;
+};
+
+export type TodoistV21ReminderGetAllNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ReminderGetAllConfig>;
+};
+
+export type TodoistV21ReminderUpdateNode = TodoistV21NodeBase & {
+	config: NodeConfig<TodoistV21ReminderUpdateConfig>;
+};
+
+export type TodoistV21Node =
+	| TodoistV21TaskCloseNode
+	| TodoistV21TaskCreateNode
+	| TodoistV21TaskDeleteNode
+	| TodoistV21TaskGetNode
+	| TodoistV21TaskGetAllNode
+	| TodoistV21TaskMoveNode
+	| TodoistV21TaskQuickAddNode
+	| TodoistV21TaskReopenNode
+	| TodoistV21TaskUpdateNode
+	| TodoistV21ProjectArchiveNode
+	| TodoistV21ProjectCreateNode
+	| TodoistV21ProjectDeleteNode
+	| TodoistV21ProjectGetNode
+	| TodoistV21ProjectGetCollaboratorsNode
+	| TodoistV21ProjectGetAllNode
+	| TodoistV21ProjectUnarchiveNode
+	| TodoistV21ProjectUpdateNode
+	| TodoistV21SectionCreateNode
+	| TodoistV21SectionDeleteNode
+	| TodoistV21SectionGetNode
+	| TodoistV21SectionGetAllNode
+	| TodoistV21SectionUpdateNode
+	| TodoistV21CommentCreateNode
+	| TodoistV21CommentDeleteNode
+	| TodoistV21CommentGetNode
+	| TodoistV21CommentGetAllNode
+	| TodoistV21CommentUpdateNode
+	| TodoistV21LabelCreateNode
+	| TodoistV21LabelDeleteNode
+	| TodoistV21LabelGetNode
+	| TodoistV21LabelGetAllNode
+	| TodoistV21LabelUpdateNode
+	| TodoistV21ReminderCreateNode
+	| TodoistV21ReminderDeleteNode
+	| TodoistV21ReminderGetAllNode
+	| TodoistV21ReminderUpdateNode
+	;

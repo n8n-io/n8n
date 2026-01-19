@@ -1,8 +1,6 @@
 /**
  * Discourse Node - Version 1
  * Consume Discourse API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -323,12 +321,94 @@ export interface DiscourseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DiscourseV1Node = {
+interface DiscourseV1NodeBase {
 	type: 'n8n-nodes-base.discourse';
 	version: 1;
-	config: NodeConfig<DiscourseV1Params>;
 	credentials?: DiscourseV1Credentials;
+}
+
+export type DiscourseV1CategoryCreateNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1CategoryCreateConfig>;
 };
+
+export type DiscourseV1CategoryGetAllNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1CategoryGetAllConfig>;
+};
+
+export type DiscourseV1CategoryUpdateNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1CategoryUpdateConfig>;
+};
+
+export type DiscourseV1GroupCreateNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1GroupCreateConfig>;
+};
+
+export type DiscourseV1GroupGetNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1GroupGetConfig>;
+};
+
+export type DiscourseV1GroupGetAllNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1GroupGetAllConfig>;
+};
+
+export type DiscourseV1GroupUpdateNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1GroupUpdateConfig>;
+};
+
+export type DiscourseV1PostCreateNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1PostCreateConfig>;
+};
+
+export type DiscourseV1PostGetNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1PostGetConfig>;
+};
+
+export type DiscourseV1PostGetAllNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1PostGetAllConfig>;
+};
+
+export type DiscourseV1PostUpdateNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1PostUpdateConfig>;
+};
+
+export type DiscourseV1UserCreateNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1UserCreateConfig>;
+};
+
+export type DiscourseV1UserGetNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1UserGetConfig>;
+};
+
+export type DiscourseV1UserGetAllNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1UserGetAllConfig>;
+};
+
+export type DiscourseV1UserGroupAddNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1UserGroupAddConfig>;
+};
+
+export type DiscourseV1UserGroupRemoveNode = DiscourseV1NodeBase & {
+	config: NodeConfig<DiscourseV1UserGroupRemoveConfig>;
+};
+
+export type DiscourseV1Node =
+	| DiscourseV1CategoryCreateNode
+	| DiscourseV1CategoryGetAllNode
+	| DiscourseV1CategoryUpdateNode
+	| DiscourseV1GroupCreateNode
+	| DiscourseV1GroupGetNode
+	| DiscourseV1GroupGetAllNode
+	| DiscourseV1GroupUpdateNode
+	| DiscourseV1PostCreateNode
+	| DiscourseV1PostGetNode
+	| DiscourseV1PostGetAllNode
+	| DiscourseV1PostUpdateNode
+	| DiscourseV1UserCreateNode
+	| DiscourseV1UserGetNode
+	| DiscourseV1UserGetAllNode
+	| DiscourseV1UserGroupAddNode
+	| DiscourseV1UserGroupRemoveNode
+	;

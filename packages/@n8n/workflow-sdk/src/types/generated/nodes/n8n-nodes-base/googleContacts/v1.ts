@@ -1,8 +1,6 @@
 /**
  * Google Contacts Node - Version 1
  * Consume Google Contacts API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -121,12 +119,39 @@ export interface GoogleContactsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleContactsV1Node = {
+interface GoogleContactsV1NodeBase {
 	type: 'n8n-nodes-base.googleContacts';
 	version: 1;
-	config: NodeConfig<GoogleContactsV1Params>;
 	credentials?: GoogleContactsV1Credentials;
+}
+
+export type GoogleContactsV1ContactCreateNode = GoogleContactsV1NodeBase & {
+	config: NodeConfig<GoogleContactsV1ContactCreateConfig>;
 };
+
+export type GoogleContactsV1ContactDeleteNode = GoogleContactsV1NodeBase & {
+	config: NodeConfig<GoogleContactsV1ContactDeleteConfig>;
+};
+
+export type GoogleContactsV1ContactGetNode = GoogleContactsV1NodeBase & {
+	config: NodeConfig<GoogleContactsV1ContactGetConfig>;
+};
+
+export type GoogleContactsV1ContactGetAllNode = GoogleContactsV1NodeBase & {
+	config: NodeConfig<GoogleContactsV1ContactGetAllConfig>;
+};
+
+export type GoogleContactsV1ContactUpdateNode = GoogleContactsV1NodeBase & {
+	config: NodeConfig<GoogleContactsV1ContactUpdateConfig>;
+};
+
+export type GoogleContactsV1Node =
+	| GoogleContactsV1ContactCreateNode
+	| GoogleContactsV1ContactDeleteNode
+	| GoogleContactsV1ContactGetNode
+	| GoogleContactsV1ContactGetAllNode
+	| GoogleContactsV1ContactUpdateNode
+	;

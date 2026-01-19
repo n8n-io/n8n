@@ -1,8 +1,6 @@
 /**
  * ClickUp Trigger Node - Version 1
  * Handle ClickUp events via webhooks (Beta)
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -33,13 +31,18 @@ export interface ClickUpTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClickUpTriggerV1Node = {
+interface ClickUpTriggerV1NodeBase {
 	type: 'n8n-nodes-base.clickUpTrigger';
 	version: 1;
-	config: NodeConfig<ClickUpTriggerV1Params>;
 	credentials?: ClickUpTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type ClickUpTriggerV1ParamsNode = ClickUpTriggerV1NodeBase & {
+	config: NodeConfig<ClickUpTriggerV1Params>;
 };
+
+export type ClickUpTriggerV1Node = ClickUpTriggerV1ParamsNode;

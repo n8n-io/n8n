@@ -1,8 +1,6 @@
 /**
  * Filter Node - Version 2.2
  * Remove items matching a condition
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -26,12 +24,16 @@ export interface FilterV22Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FilterV22Node = {
+interface FilterV22NodeBase {
 	type: 'n8n-nodes-base.filter';
 	version: 2.2;
+}
+
+export type FilterV22ParamsNode = FilterV22NodeBase & {
 	config: NodeConfig<FilterV22Params>;
-	credentials?: Record<string, never>;
 };
+
+export type FilterV22Node = FilterV22ParamsNode;

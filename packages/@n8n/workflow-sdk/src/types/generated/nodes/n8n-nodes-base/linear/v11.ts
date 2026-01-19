@@ -1,8 +1,6 @@
 /**
  * Linear Node - Version 1.1
  * Consume Linear API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -94,6 +92,77 @@ export type LinearV11Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type LinearV11IssueCreateOutput = {
+	archivedAt?: null;
+	createdAt?: string;
+	creator?: {
+		displayName?: string;
+		id?: string;
+	};
+	dueDate?: null;
+	id?: string;
+	identifier?: string;
+	priority?: number;
+	state?: {
+		id?: string;
+		name?: string;
+	};
+	title?: string;
+};
+
+export type LinearV11IssueGetOutput = {
+	createdAt?: string;
+	creator?: {
+		displayName?: string;
+		id?: string;
+	};
+	id?: string;
+	identifier?: string;
+	priority?: number;
+	state?: {
+		id?: string;
+		name?: string;
+	};
+	title?: string;
+};
+
+export type LinearV11IssueGetAllOutput = {
+	archivedAt?: null;
+	createdAt?: string;
+	creator?: {
+		displayName?: string;
+		id?: string;
+	};
+	id?: string;
+	identifier?: string;
+	priority?: number;
+	state?: {
+		id?: string;
+		name?: string;
+	};
+	title?: string;
+};
+
+export type LinearV11IssueUpdateOutput = {
+	createdAt?: string;
+	creator?: {
+		displayName?: string;
+		id?: string;
+	};
+	id?: string;
+	identifier?: string;
+	priority?: number;
+	state?: {
+		id?: string;
+		name?: string;
+	};
+	title?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -103,12 +172,53 @@ export interface LinearV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LinearV11Node = {
+interface LinearV11NodeBase {
 	type: 'n8n-nodes-base.linear';
 	version: 1.1;
-	config: NodeConfig<LinearV11Params>;
 	credentials?: LinearV11Credentials;
+}
+
+export type LinearV11CommentAddCommentNode = LinearV11NodeBase & {
+	config: NodeConfig<LinearV11CommentAddCommentConfig>;
 };
+
+export type LinearV11IssueAddLinkNode = LinearV11NodeBase & {
+	config: NodeConfig<LinearV11IssueAddLinkConfig>;
+};
+
+export type LinearV11IssueCreateNode = LinearV11NodeBase & {
+	config: NodeConfig<LinearV11IssueCreateConfig>;
+	output?: LinearV11IssueCreateOutput;
+};
+
+export type LinearV11IssueDeleteNode = LinearV11NodeBase & {
+	config: NodeConfig<LinearV11IssueDeleteConfig>;
+};
+
+export type LinearV11IssueGetNode = LinearV11NodeBase & {
+	config: NodeConfig<LinearV11IssueGetConfig>;
+	output?: LinearV11IssueGetOutput;
+};
+
+export type LinearV11IssueGetAllNode = LinearV11NodeBase & {
+	config: NodeConfig<LinearV11IssueGetAllConfig>;
+	output?: LinearV11IssueGetAllOutput;
+};
+
+export type LinearV11IssueUpdateNode = LinearV11NodeBase & {
+	config: NodeConfig<LinearV11IssueUpdateConfig>;
+	output?: LinearV11IssueUpdateOutput;
+};
+
+export type LinearV11Node =
+	| LinearV11CommentAddCommentNode
+	| LinearV11IssueAddLinkNode
+	| LinearV11IssueCreateNode
+	| LinearV11IssueDeleteNode
+	| LinearV11IssueGetNode
+	| LinearV11IssueGetAllNode
+	| LinearV11IssueUpdateNode
+	;

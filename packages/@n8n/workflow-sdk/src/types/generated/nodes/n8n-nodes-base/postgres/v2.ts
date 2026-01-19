@@ -1,8 +1,6 @@
 /**
  * Postgres Node - Version 2
  * Get, add and update data in Postgres
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -141,12 +139,17 @@ export interface PostgresV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresV2Node = {
+interface PostgresV2NodeBase {
 	type: 'n8n-nodes-base.postgres';
 	version: 2;
-	config: NodeConfig<PostgresV2Params>;
 	credentials?: PostgresV2Credentials;
+}
+
+export type PostgresV2ParamsNode = PostgresV2NodeBase & {
+	config: NodeConfig<PostgresV2Params>;
 };
+
+export type PostgresV2Node = PostgresV2ParamsNode;

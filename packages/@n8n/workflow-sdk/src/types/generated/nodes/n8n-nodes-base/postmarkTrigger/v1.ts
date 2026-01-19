@@ -1,8 +1,6 @@
 /**
  * Postmark Trigger Node - Version 1
  * Starts the workflow when Postmark events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -42,13 +40,18 @@ export interface PostmarkTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostmarkTriggerV1Node = {
+interface PostmarkTriggerV1NodeBase {
 	type: 'n8n-nodes-base.postmarkTrigger';
 	version: 1;
-	config: NodeConfig<PostmarkTriggerV1Params>;
 	credentials?: PostmarkTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type PostmarkTriggerV1ParamsNode = PostmarkTriggerV1NodeBase & {
+	config: NodeConfig<PostmarkTriggerV1Params>;
 };
+
+export type PostmarkTriggerV1Node = PostmarkTriggerV1ParamsNode;

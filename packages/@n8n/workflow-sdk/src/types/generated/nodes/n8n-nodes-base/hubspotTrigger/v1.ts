@@ -1,8 +1,6 @@
 /**
  * HubSpot Trigger Node - Version 1
  * Starts the workflow when HubSpot events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -46,13 +44,18 @@ export interface HubspotTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HubspotTriggerV1Node = {
+interface HubspotTriggerV1NodeBase {
 	type: 'n8n-nodes-base.hubspotTrigger';
 	version: 1;
-	config: NodeConfig<HubspotTriggerV1Params>;
 	credentials?: HubspotTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type HubspotTriggerV1ParamsNode = HubspotTriggerV1NodeBase & {
+	config: NodeConfig<HubspotTriggerV1Params>;
 };
+
+export type HubspotTriggerV1Node = HubspotTriggerV1ParamsNode;

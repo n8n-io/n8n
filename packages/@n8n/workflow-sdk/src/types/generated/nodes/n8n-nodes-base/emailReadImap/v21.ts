@@ -1,8 +1,6 @@
 /**
  * Email Trigger (IMAP) Node - Version 2.1
  * Triggers the workflow when a new email is received
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -49,13 +47,18 @@ export interface EmailReadImapV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmailReadImapV21Node = {
+interface EmailReadImapV21NodeBase {
 	type: 'n8n-nodes-base.emailReadImap';
 	version: 2.1;
-	config: NodeConfig<EmailReadImapV21Params>;
 	credentials?: EmailReadImapV21Credentials;
 	isTrigger: true;
+}
+
+export type EmailReadImapV21ParamsNode = EmailReadImapV21NodeBase & {
+	config: NodeConfig<EmailReadImapV21Params>;
 };
+
+export type EmailReadImapV21Node = EmailReadImapV21ParamsNode;

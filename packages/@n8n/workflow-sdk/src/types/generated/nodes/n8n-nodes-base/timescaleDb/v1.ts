@@ -1,8 +1,6 @@
 /**
  * TimescaleDB Node - Version 1
  * Add and update data in TimescaleDB
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -60,12 +58,17 @@ export interface TimescaleDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TimescaleDbV1Node = {
+interface TimescaleDbV1NodeBase {
 	type: 'n8n-nodes-base.timescaleDb';
 	version: 1;
-	config: NodeConfig<TimescaleDbV1Params>;
 	credentials?: TimescaleDbV1Credentials;
+}
+
+export type TimescaleDbV1ParamsNode = TimescaleDbV1NodeBase & {
+	config: NodeConfig<TimescaleDbV1Params>;
 };
+
+export type TimescaleDbV1Node = TimescaleDbV1ParamsNode;

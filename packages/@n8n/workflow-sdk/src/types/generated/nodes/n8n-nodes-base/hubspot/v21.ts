@@ -1,8 +1,6 @@
 /**
  * HubSpot Node - Version 2.1
  * Consume HubSpot API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -522,6 +520,882 @@ export type HubspotV21Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type HubspotV21CompanyCreateOutput = {
+	companyId?: number;
+	isDeleted?: boolean;
+	portalId?: number;
+	properties?: {
+		createdate?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+		hs_lastmodifieddate?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+		hs_object_id?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+		hs_object_source?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+		hs_object_source_id?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+		hs_object_source_label?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+		hs_pipeline?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+		lifecyclestage?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+		name?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				value?: string;
+			}>;
+		};
+	};
+};
+
+export type HubspotV21CompanyGetAllOutput = {
+	companyId?: number;
+	isDeleted?: boolean;
+	portalId?: number;
+	properties?: {
+		name?: {
+			source?: string;
+			timestamp?: number;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				updatedByUserId?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+	};
+	stateChanges?: Array<{
+		changeFlag?: string;
+		timestamp?: number;
+	}>;
+};
+
+export type HubspotV21CompanySearchByDomainOutput = {
+	additionalDomains?: Array<{
+		domain?: string;
+		source?: string;
+		sourceId?: string;
+		timestamp?: number;
+	}>;
+	companyId?: number;
+	isDeleted?: boolean;
+	portalId?: number;
+	properties?: {
+		domain?: {
+			source?: string;
+			timestamp?: number;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				sourceVid?: Array<number>;
+				timestamp?: number;
+				updatedByUserId?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+	};
+};
+
+export type HubspotV21CompanyUpdateOutput = {
+	companyId?: number;
+	isDeleted?: boolean;
+	portalId?: number;
+	properties?: {
+		createdate?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+		hs_lastmodifieddate?: {
+			source?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+		hs_object_id?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+		hs_object_source?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+		hs_object_source_id?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+		hs_object_source_label?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+		hs_pipeline?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+		lifecyclestage?: {
+			source?: string;
+			sourceId?: string;
+			timestamp?: number;
+			updatedByUserId?: null;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				timestamp?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+	};
+};
+
+export type HubspotV21ContactUpsertOutput = {
+	isNew?: boolean;
+	vid?: number;
+};
+
+export type HubspotV21ContactGetOutput = {
+	'canonical-vid'?: number;
+	'form-submissions'?: Array<{
+		'conversion-id'?: string;
+		'form-id'?: string;
+		'form-type'?: string;
+		'portal-id'?: number;
+		timestamp?: number;
+		title?: string;
+	}>;
+	'identity-profiles'?: Array<{
+		'deleted-changed-timestamp'?: number;
+		identities?: Array<{
+			'is-primary'?: boolean;
+			timestamp?: number;
+			type?: string;
+			value?: string;
+		}>;
+		'saved-at-timestamp'?: number;
+		vid?: number;
+	}>;
+	'is-contact'?: boolean;
+	'list-memberships'?: Array<{
+		'internal-list-id'?: number;
+		'is-member'?: boolean;
+		'static-list-id'?: number;
+		timestamp?: number;
+		vid?: number;
+	}>;
+	'portal-id'?: number;
+	properties?: {
+		createdate?: {
+			value?: string;
+		};
+		email?: {
+			value?: string;
+		};
+		firstname?: {
+			value?: string;
+		};
+		hs_all_contact_vids?: {
+			value?: string;
+		};
+		hs_analytics_average_page_views?: {
+			value?: string;
+		};
+		hs_analytics_first_timestamp?: {
+			value?: string;
+		};
+		hs_analytics_num_event_completions?: {
+			value?: string;
+		};
+		hs_analytics_num_page_views?: {
+			value?: string;
+		};
+		hs_analytics_num_visits?: {
+			value?: string;
+		};
+		hs_analytics_revenue?: {
+			value?: string;
+		};
+		hs_analytics_source?: {
+			value?: string;
+		};
+		hs_analytics_source_data_1?: {
+			value?: string;
+		};
+		hs_analytics_source_data_2?: {
+			value?: string;
+		};
+		hs_associated_target_accounts?: {
+			value?: string;
+		};
+		hs_currently_enrolled_in_prospecting_agent?: {
+			value?: string;
+		};
+		hs_email_domain?: {
+			value?: string;
+		};
+		hs_full_name_or_email?: {
+			value?: string;
+		};
+		hs_is_contact?: {
+			value?: string;
+		};
+		hs_is_unworked?: {
+			value?: string;
+		};
+		hs_latest_source?: {
+			value?: string;
+		};
+		hs_latest_source_data_1?: {
+			value?: string;
+		};
+		hs_latest_source_data_2?: {
+			value?: string;
+		};
+		hs_latest_source_timestamp?: {
+			value?: string;
+		};
+		hs_lifecyclestage_lead_date?: {
+			value?: string;
+		};
+		hs_membership_has_accessed_private_content?: {
+			value?: string;
+		};
+		hs_object_id?: {
+			value?: string;
+		};
+		hs_object_source?: {
+			value?: string;
+		};
+		hs_object_source_id?: {
+			value?: string;
+		};
+		hs_object_source_label?: {
+			value?: string;
+		};
+		hs_pipeline?: {
+			value?: string;
+		};
+		hs_prospecting_agent_actively_enrolled_count?: {
+			value?: string;
+		};
+		hs_registered_member?: {
+			value?: string;
+		};
+		hs_sequences_actively_enrolled_count?: {
+			value?: string;
+		};
+		hs_social_facebook_clicks?: {
+			value?: string;
+		};
+		hs_social_google_plus_clicks?: {
+			value?: string;
+		};
+		hs_social_linkedin_clicks?: {
+			value?: string;
+		};
+		hs_social_num_broadcast_clicks?: {
+			value?: string;
+		};
+		hs_social_twitter_clicks?: {
+			value?: string;
+		};
+		hs_updated_by_user_id?: {
+			value?: string;
+		};
+		hs_v2_date_entered_lead?: {
+			value?: string;
+		};
+		lastmodifieddate?: {
+			value?: string;
+		};
+		lastname?: {
+			value?: string;
+		};
+		lifecyclestage?: {
+			value?: string;
+		};
+		num_conversion_events?: {
+			value?: string;
+		};
+		num_notes?: {
+			value?: string;
+		};
+		num_unique_conversion_events?: {
+			value?: string;
+		};
+	};
+	vid?: number;
+};
+
+export type HubspotV21ContactGetAllOutput = {
+	addedAt?: number;
+	'canonical-vid'?: number;
+	'form-submissions'?: Array<{
+		'contact-associated-by'?: Array<string>;
+		'conversion-id'?: string;
+		'form-id'?: string;
+		'form-type'?: string;
+		'page-title'?: string;
+		'page-url'?: string;
+		'portal-id'?: number;
+		timestamp?: number;
+		title?: string;
+	}>;
+	'identity-profiles'?: Array<{
+		'deleted-changed-timestamp'?: number;
+		identities?: Array<{
+			'is-primary'?: boolean;
+			timestamp?: number;
+			type?: string;
+			value?: string;
+		}>;
+		'saved-at-timestamp'?: number;
+		vid?: number;
+	}>;
+	'is-contact'?: boolean;
+	'merge-audits'?: Array<{
+		'canonical-vid'?: number;
+		'entity-id'?: string;
+		'first-name'?: string;
+		'is-reverted'?: boolean;
+		'last-name'?: string;
+		merged_from_email?: {
+			'data-sensitivity'?: null;
+			'is-encrypted'?: null;
+			selected?: boolean;
+			'source-id'?: string;
+			'source-label'?: null;
+			'source-type'?: string;
+			timestamp?: number;
+			value?: string;
+		};
+		merged_to_email?: {
+			'data-sensitivity'?: null;
+			'is-encrypted'?: null;
+			selected?: boolean;
+			'source-id'?: string;
+			'source-label'?: null;
+			'source-type'?: string;
+			timestamp?: number;
+			'updated-by-user-id'?: null;
+			value?: string;
+		};
+		'num-properties-moved'?: number;
+		'primary-vid-to-merge'?: number;
+		timestamp?: number;
+		'user-id'?: number;
+		'vid-to-merge'?: number;
+	}>;
+	'merged-vids'?: Array<number>;
+	'portal-id'?: number;
+	properties?: {
+		firstname?: {
+			value?: string;
+		};
+		lastmodifieddate?: {
+			value?: string;
+		};
+		lastname?: {
+			value?: string;
+		};
+	};
+	vid?: number;
+};
+
+export type HubspotV21ContactGetRecentlyCreatedUpdatedOutput = {
+	addedAt?: number;
+	'canonical-vid'?: number;
+	'form-submissions'?: Array<{
+		'contact-associated-by'?: Array<string>;
+		'conversion-id'?: string;
+		'form-id'?: string;
+		'form-type'?: string;
+		'page-title'?: string;
+		'page-url'?: string;
+		'portal-id'?: number;
+		timestamp?: number;
+		title?: string;
+	}>;
+	'identity-profiles'?: Array<{
+		'deleted-changed-timestamp'?: number;
+		identities?: Array<{
+			'is-primary'?: boolean;
+			timestamp?: number;
+			type?: string;
+			value?: string;
+		}>;
+		'saved-at-timestamp'?: number;
+		vid?: number;
+	}>;
+	'is-contact'?: boolean;
+	'merge-audits'?: Array<{
+		'canonical-vid'?: number;
+		'entity-id'?: string;
+		'first-name'?: string;
+		'is-reverted'?: boolean;
+		'last-name'?: string;
+		merged_from_email?: {
+			'data-sensitivity'?: null;
+			'is-encrypted'?: null;
+			selected?: boolean;
+			'source-label'?: null;
+			'source-type'?: string;
+			timestamp?: number;
+			value?: string;
+		};
+		merged_to_email?: {
+			'data-sensitivity'?: null;
+			'is-encrypted'?: null;
+			selected?: boolean;
+			'source-label'?: null;
+			'source-type'?: string;
+			timestamp?: number;
+			value?: string;
+		};
+		'num-properties-moved'?: number;
+		'primary-vid-to-merge'?: number;
+		timestamp?: number;
+		'user-id'?: number;
+		'vid-to-merge'?: number;
+	}>;
+	'merged-vids'?: Array<number>;
+	'portal-id'?: number;
+	properties?: {
+		company?: {
+			value?: string;
+		};
+		createdate?: {
+			value?: string;
+		};
+		firstname?: {
+			value?: string;
+		};
+		lastmodifieddate?: {
+			value?: string;
+		};
+		lastname?: {
+			value?: string;
+		};
+	};
+	vid?: number;
+};
+
+export type HubspotV21ContactSearchOutput = {
+	archived?: boolean;
+	createdAt?: string;
+	id?: string;
+	properties?: {
+		createdate?: string;
+		hs_object_id?: string;
+		lastmodifieddate?: string;
+	};
+	updatedAt?: string;
+};
+
+export type HubspotV21ContactListAddOutput = {
+	discarded?: Array<number>;
+	invalidEmails?: Array<string>;
+	invalidVids?: Array<number>;
+	updated?: Array<number>;
+};
+
+export type HubspotV21DealGetAllOutput = {
+	isDeleted?: boolean;
+	portalId?: number;
+	stateChanges?: Array<{
+		changeFlag?: string;
+		timestamp?: number;
+	}>;
+};
+
+export type HubspotV21DealSearchOutput = {
+	archived?: boolean;
+	createdAt?: string;
+	id?: string;
+	properties?: {
+		createdate?: string;
+		dealstage?: string;
+		hs_lastmodifieddate?: string;
+		hs_object_id?: string;
+	};
+	updatedAt?: string;
+};
+
+export type HubspotV21EngagementCreateOutput = {
+	associations?: {
+		companyIds?: Array<number>;
+		contactIds?: Array<number>;
+		dealIds?: Array<number>;
+		ownerIds?: Array<number>;
+		ticketIds?: Array<number>;
+	};
+	engagement?: {
+		active?: boolean;
+		bodyPreview?: string;
+		bodyPreviewHtml?: string;
+		bodyPreviewIsTruncated?: boolean;
+		createdAt?: number;
+		id?: number;
+		lastUpdated?: number;
+		portalId?: number;
+		timestamp?: number;
+		type?: string;
+	};
+	metadata?: {
+		status?: string;
+	};
+};
+
+export type HubspotV21EngagementGetOutput = {
+	associations?: {
+		companyIds?: Array<number>;
+		contactIds?: Array<number>;
+		dealIds?: Array<number>;
+		ownerIds?: Array<number>;
+		ticketIds?: Array<number>;
+	};
+	attachments?: Array<{
+		id?: number;
+	}>;
+	engagement?: {
+		active?: boolean;
+		allAccessibleTeamIds?: Array<number>;
+		bodyPreview?: string;
+		bodyPreviewHtml?: string;
+		bodyPreviewIsTruncated?: boolean;
+		createdAt?: number;
+		createdBy?: number;
+		id?: number;
+		lastUpdated?: number;
+		modifiedBy?: number;
+		ownerId?: number;
+		portalId?: number;
+		queueMembershipIds?: Array<number>;
+		source?: string;
+		timestamp?: number;
+		type?: string;
+		uid?: string;
+	};
+	metadata?: {
+		cc?: Array<{
+			email?: string;
+			firstName?: string;
+			lastName?: string;
+			raw?: string;
+		}>;
+		html?: string;
+		ownerIdsCc?: Array<number>;
+		ownerIdsFrom?: Array<number>;
+		ownerIdsTo?: Array<number>;
+		status?: string;
+		subject?: string;
+		to?: Array<{
+			email?: string;
+			firstName?: string;
+			lastName?: string;
+			raw?: string;
+		}>;
+	};
+};
+
+export type HubspotV21EngagementGetAllOutput = {
+	associations?: {
+		companyIds?: Array<number>;
+		contactIds?: Array<number>;
+		dealIds?: Array<number>;
+		ownerIds?: Array<number>;
+		ticketIds?: Array<number>;
+	};
+	attachments?: Array<{
+		id?: number;
+	}>;
+	engagement?: {
+		active?: boolean;
+		allAccessibleTeamIds?: Array<number>;
+		bodyPreview?: string;
+		bodyPreviewHtml?: string;
+		bodyPreviewIsTruncated?: boolean;
+		createdAt?: number;
+		createdBy?: number;
+		id?: number;
+		lastUpdated?: number;
+		modifiedBy?: number;
+		ownerId?: number;
+		portalId?: number;
+		queueMembershipIds?: Array<number>;
+		source?: string;
+		timestamp?: number;
+		type?: string;
+	};
+	metadata?: {
+		body?: string;
+		forObjectType?: string;
+		isAllDay?: boolean;
+		priority?: string;
+		reminders?: Array<number>;
+		sendDefaultReminder?: boolean;
+		status?: string;
+		subject?: string;
+		taskType?: string;
+	};
+	scheduledTasks?: Array<{
+		engagementId?: number;
+		engagementType?: string;
+		portalId?: number;
+		taskType?: string;
+		timestamp?: number;
+		uuid?: string;
+	}>;
+};
+
+export type HubspotV21TicketDeleteOutput = {
+	deleted?: boolean;
+};
+
+export type HubspotV21TicketGetOutput = {
+	isDeleted?: boolean;
+	objectId?: number;
+	objectType?: string;
+	portalId?: number;
+};
+
+export type HubspotV21TicketGetAllOutput = {
+	isDeleted?: boolean;
+	objectId?: number;
+	objectType?: string;
+	portalId?: number;
+	properties?: {
+		subject?: {
+			isEncrypted?: boolean;
+			sensitivityLevel?: string;
+			source?: string;
+			timestamp?: number;
+			value?: string;
+			versions?: Array<{
+				name?: string;
+				requestId?: string;
+				source?: string;
+				sourceId?: string;
+				sourceUpstreamDeployable?: string;
+				timestamp?: number;
+				updatedByUserId?: number;
+				useTimestampAsPersistenceTimestamp?: boolean;
+				value?: string;
+			}>;
+		};
+	};
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -532,12 +1406,187 @@ export interface HubspotV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HubspotV21Node = {
+interface HubspotV21NodeBase {
 	type: 'n8n-nodes-base.hubspot';
 	version: 2.1;
-	config: NodeConfig<HubspotV21Params>;
 	credentials?: HubspotV21Credentials;
+}
+
+export type HubspotV21CompanyCreateNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21CompanyCreateConfig>;
+	output?: HubspotV21CompanyCreateOutput;
 };
+
+export type HubspotV21CompanyDeleteNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21CompanyDeleteConfig>;
+};
+
+export type HubspotV21CompanyGetNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21CompanyGetConfig>;
+};
+
+export type HubspotV21CompanyGetAllNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21CompanyGetAllConfig>;
+	output?: HubspotV21CompanyGetAllOutput;
+};
+
+export type HubspotV21CompanyGetRecentlyCreatedUpdatedNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21CompanyGetRecentlyCreatedUpdatedConfig>;
+};
+
+export type HubspotV21CompanySearchByDomainNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21CompanySearchByDomainConfig>;
+	output?: HubspotV21CompanySearchByDomainOutput;
+};
+
+export type HubspotV21CompanyUpdateNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21CompanyUpdateConfig>;
+	output?: HubspotV21CompanyUpdateOutput;
+};
+
+export type HubspotV21ContactUpsertNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21ContactUpsertConfig>;
+	output?: HubspotV21ContactUpsertOutput;
+};
+
+export type HubspotV21ContactDeleteNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21ContactDeleteConfig>;
+};
+
+export type HubspotV21ContactGetNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21ContactGetConfig>;
+	output?: HubspotV21ContactGetOutput;
+};
+
+export type HubspotV21ContactGetAllNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21ContactGetAllConfig>;
+	output?: HubspotV21ContactGetAllOutput;
+};
+
+export type HubspotV21ContactGetRecentlyCreatedUpdatedNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21ContactGetRecentlyCreatedUpdatedConfig>;
+	output?: HubspotV21ContactGetRecentlyCreatedUpdatedOutput;
+};
+
+export type HubspotV21ContactSearchNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21ContactSearchConfig>;
+	output?: HubspotV21ContactSearchOutput;
+};
+
+export type HubspotV21ContactListAddNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21ContactListAddConfig>;
+	output?: HubspotV21ContactListAddOutput;
+};
+
+export type HubspotV21ContactListRemoveNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21ContactListRemoveConfig>;
+};
+
+export type HubspotV21DealCreateNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21DealCreateConfig>;
+};
+
+export type HubspotV21DealDeleteNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21DealDeleteConfig>;
+};
+
+export type HubspotV21DealGetNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21DealGetConfig>;
+};
+
+export type HubspotV21DealGetAllNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21DealGetAllConfig>;
+	output?: HubspotV21DealGetAllOutput;
+};
+
+export type HubspotV21DealGetRecentlyCreatedUpdatedNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21DealGetRecentlyCreatedUpdatedConfig>;
+};
+
+export type HubspotV21DealSearchNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21DealSearchConfig>;
+	output?: HubspotV21DealSearchOutput;
+};
+
+export type HubspotV21DealUpdateNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21DealUpdateConfig>;
+};
+
+export type HubspotV21EngagementCreateNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21EngagementCreateConfig>;
+	output?: HubspotV21EngagementCreateOutput;
+};
+
+export type HubspotV21EngagementDeleteNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21EngagementDeleteConfig>;
+};
+
+export type HubspotV21EngagementGetNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21EngagementGetConfig>;
+	output?: HubspotV21EngagementGetOutput;
+};
+
+export type HubspotV21EngagementGetAllNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21EngagementGetAllConfig>;
+	output?: HubspotV21EngagementGetAllOutput;
+};
+
+export type HubspotV21TicketCreateNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21TicketCreateConfig>;
+};
+
+export type HubspotV21TicketDeleteNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21TicketDeleteConfig>;
+	output?: HubspotV21TicketDeleteOutput;
+};
+
+export type HubspotV21TicketGetNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21TicketGetConfig>;
+	output?: HubspotV21TicketGetOutput;
+};
+
+export type HubspotV21TicketGetAllNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21TicketGetAllConfig>;
+	output?: HubspotV21TicketGetAllOutput;
+};
+
+export type HubspotV21TicketUpdateNode = HubspotV21NodeBase & {
+	config: NodeConfig<HubspotV21TicketUpdateConfig>;
+};
+
+export type HubspotV21Node =
+	| HubspotV21CompanyCreateNode
+	| HubspotV21CompanyDeleteNode
+	| HubspotV21CompanyGetNode
+	| HubspotV21CompanyGetAllNode
+	| HubspotV21CompanyGetRecentlyCreatedUpdatedNode
+	| HubspotV21CompanySearchByDomainNode
+	| HubspotV21CompanyUpdateNode
+	| HubspotV21ContactUpsertNode
+	| HubspotV21ContactDeleteNode
+	| HubspotV21ContactGetNode
+	| HubspotV21ContactGetAllNode
+	| HubspotV21ContactGetRecentlyCreatedUpdatedNode
+	| HubspotV21ContactSearchNode
+	| HubspotV21ContactListAddNode
+	| HubspotV21ContactListRemoveNode
+	| HubspotV21DealCreateNode
+	| HubspotV21DealDeleteNode
+	| HubspotV21DealGetNode
+	| HubspotV21DealGetAllNode
+	| HubspotV21DealGetRecentlyCreatedUpdatedNode
+	| HubspotV21DealSearchNode
+	| HubspotV21DealUpdateNode
+	| HubspotV21EngagementCreateNode
+	| HubspotV21EngagementDeleteNode
+	| HubspotV21EngagementGetNode
+	| HubspotV21EngagementGetAllNode
+	| HubspotV21TicketCreateNode
+	| HubspotV21TicketDeleteNode
+	| HubspotV21TicketGetNode
+	| HubspotV21TicketGetAllNode
+	| HubspotV21TicketUpdateNode
+	;

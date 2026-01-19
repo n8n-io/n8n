@@ -1,8 +1,6 @@
 /**
  * Google Sheets Node - Version 4.4
  * Read, update and write data to Google Sheets
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -193,12 +191,64 @@ export interface GoogleSheetsV44Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSheetsV44Node = {
+interface GoogleSheetsV44NodeBase {
 	type: 'n8n-nodes-base.googleSheets';
 	version: 4.4;
-	config: NodeConfig<GoogleSheetsV44Params>;
 	credentials?: GoogleSheetsV44Credentials;
+}
+
+export type GoogleSheetsV44SpreadsheetCreateNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SpreadsheetCreateConfig>;
 };
+
+export type GoogleSheetsV44SpreadsheetDeleteSpreadsheetNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SpreadsheetDeleteSpreadsheetConfig>;
+};
+
+export type GoogleSheetsV44SheetAppendOrUpdateNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SheetAppendOrUpdateConfig>;
+};
+
+export type GoogleSheetsV44SheetAppendNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SheetAppendConfig>;
+};
+
+export type GoogleSheetsV44SheetClearNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SheetClearConfig>;
+};
+
+export type GoogleSheetsV44SheetCreateNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SheetCreateConfig>;
+};
+
+export type GoogleSheetsV44SheetRemoveNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SheetRemoveConfig>;
+};
+
+export type GoogleSheetsV44SheetDeleteNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SheetDeleteConfig>;
+};
+
+export type GoogleSheetsV44SheetReadNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SheetReadConfig>;
+};
+
+export type GoogleSheetsV44SheetUpdateNode = GoogleSheetsV44NodeBase & {
+	config: NodeConfig<GoogleSheetsV44SheetUpdateConfig>;
+};
+
+export type GoogleSheetsV44Node =
+	| GoogleSheetsV44SpreadsheetCreateNode
+	| GoogleSheetsV44SpreadsheetDeleteSpreadsheetNode
+	| GoogleSheetsV44SheetAppendOrUpdateNode
+	| GoogleSheetsV44SheetAppendNode
+	| GoogleSheetsV44SheetClearNode
+	| GoogleSheetsV44SheetCreateNode
+	| GoogleSheetsV44SheetRemoveNode
+	| GoogleSheetsV44SheetDeleteNode
+	| GoogleSheetsV44SheetReadNode
+	| GoogleSheetsV44SheetUpdateNode
+	;

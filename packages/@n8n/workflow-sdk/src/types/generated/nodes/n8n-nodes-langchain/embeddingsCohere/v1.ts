@@ -1,8 +1,6 @@
 /**
  * Embeddings Cohere Node - Version 1
  * Use Cohere Embeddings
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface LcEmbeddingsCohereV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsCohereV1Node = {
+interface LcEmbeddingsCohereV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsCohere';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsCohereV1Params>;
 	credentials?: LcEmbeddingsCohereV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsCohereV1ParamsNode = LcEmbeddingsCohereV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsCohereV1Params>;
 };
+
+export type LcEmbeddingsCohereV1Node = LcEmbeddingsCohereV1ParamsNode;

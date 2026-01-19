@@ -1,8 +1,6 @@
 /**
  * Azure Storage Node - Version 1
  * Interact with Azure Storage API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -194,12 +192,54 @@ export interface AzureStorageV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AzureStorageV1Node = {
+interface AzureStorageV1NodeBase {
 	type: 'n8n-nodes-base.azureStorage';
 	version: 1;
-	config: NodeConfig<AzureStorageV1Params>;
 	credentials?: AzureStorageV1Credentials;
+}
+
+export type AzureStorageV1BlobCreateNode = AzureStorageV1NodeBase & {
+	config: NodeConfig<AzureStorageV1BlobCreateConfig>;
 };
+
+export type AzureStorageV1BlobDeleteNode = AzureStorageV1NodeBase & {
+	config: NodeConfig<AzureStorageV1BlobDeleteConfig>;
+};
+
+export type AzureStorageV1BlobGetNode = AzureStorageV1NodeBase & {
+	config: NodeConfig<AzureStorageV1BlobGetConfig>;
+};
+
+export type AzureStorageV1BlobGetAllNode = AzureStorageV1NodeBase & {
+	config: NodeConfig<AzureStorageV1BlobGetAllConfig>;
+};
+
+export type AzureStorageV1ContainerCreateNode = AzureStorageV1NodeBase & {
+	config: NodeConfig<AzureStorageV1ContainerCreateConfig>;
+};
+
+export type AzureStorageV1ContainerDeleteNode = AzureStorageV1NodeBase & {
+	config: NodeConfig<AzureStorageV1ContainerDeleteConfig>;
+};
+
+export type AzureStorageV1ContainerGetNode = AzureStorageV1NodeBase & {
+	config: NodeConfig<AzureStorageV1ContainerGetConfig>;
+};
+
+export type AzureStorageV1ContainerGetAllNode = AzureStorageV1NodeBase & {
+	config: NodeConfig<AzureStorageV1ContainerGetAllConfig>;
+};
+
+export type AzureStorageV1Node =
+	| AzureStorageV1BlobCreateNode
+	| AzureStorageV1BlobDeleteNode
+	| AzureStorageV1BlobGetNode
+	| AzureStorageV1BlobGetAllNode
+	| AzureStorageV1ContainerCreateNode
+	| AzureStorageV1ContainerDeleteNode
+	| AzureStorageV1ContainerGetNode
+	| AzureStorageV1ContainerGetAllNode
+	;

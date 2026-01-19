@@ -1,8 +1,6 @@
 /**
  * Google Docs Node - Version 1
  * Consume Google Docs API.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -288,12 +286,29 @@ export interface GoogleDocsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleDocsV1Node = {
+interface GoogleDocsV1NodeBase {
 	type: 'n8n-nodes-base.googleDocs';
 	version: 1;
-	config: NodeConfig<GoogleDocsV1Params>;
 	credentials?: GoogleDocsV1Credentials;
+}
+
+export type GoogleDocsV1DocumentCreateNode = GoogleDocsV1NodeBase & {
+	config: NodeConfig<GoogleDocsV1DocumentCreateConfig>;
 };
+
+export type GoogleDocsV1DocumentGetNode = GoogleDocsV1NodeBase & {
+	config: NodeConfig<GoogleDocsV1DocumentGetConfig>;
+};
+
+export type GoogleDocsV1DocumentUpdateNode = GoogleDocsV1NodeBase & {
+	config: NodeConfig<GoogleDocsV1DocumentUpdateConfig>;
+};
+
+export type GoogleDocsV1Node =
+	| GoogleDocsV1DocumentCreateNode
+	| GoogleDocsV1DocumentGetNode
+	| GoogleDocsV1DocumentUpdateNode
+	;

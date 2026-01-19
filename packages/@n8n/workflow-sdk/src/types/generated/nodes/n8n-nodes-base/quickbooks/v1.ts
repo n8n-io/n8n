@@ -1,8 +1,6 @@
 /**
  * QuickBooks Online Node - Version 1
  * Consume the QuickBooks Online API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -643,6 +641,742 @@ export type QuickbooksV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type QuickbooksV1BillGetAllOutput = {
+	APAccountRef?: {
+		name?: string;
+		value?: string;
+	};
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	DocNumber?: string;
+	domain?: string;
+	DueDate?: string;
+	Id?: string;
+	Line?: Array<{
+		AccountBasedExpenseLineDetail?: {
+			AccountRef?: {
+				name?: string;
+				value?: string;
+			};
+			BillableStatus?: string;
+			TaxCodeRef?: {
+				value?: string;
+			};
+		};
+		Description?: string;
+		DetailType?: string;
+		Id?: string;
+		ItemBasedExpenseLineDetail?: {
+			BillableStatus?: string;
+			ItemRef?: {
+				name?: string;
+				value?: string;
+			};
+			Qty?: number;
+			TaxCodeRef?: {
+				value?: string;
+			};
+		};
+		LineNum?: number;
+	}>;
+	LinkedTxn?: Array<{
+		TxnId?: string;
+		TxnType?: string;
+	}>;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	SalesTermRef?: {
+		value?: string;
+	};
+	sparse?: boolean;
+	SyncToken?: string;
+	TxnDate?: string;
+	VendorRef?: {
+		name?: string;
+		value?: string;
+	};
+};
+
+export type QuickbooksV1CustomerCreateOutput = {
+	Active?: boolean;
+	Balance?: number;
+	BalanceWithJobs?: number;
+	BillWithParent?: boolean;
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	DefaultTaxCodeRef?: {
+		value?: string;
+	};
+	DisplayName?: string;
+	domain?: string;
+	FullyQualifiedName?: string;
+	Id?: string;
+	IsProject?: boolean;
+	Job?: boolean;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	PreferredDeliveryMethod?: string;
+	PrintOnCheckName?: string;
+	sparse?: boolean;
+	SyncToken?: string;
+	Taxable?: boolean;
+};
+
+export type QuickbooksV1CustomerGetOutput = {
+	Active?: boolean;
+	BillWithParent?: boolean;
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	DefaultTaxCodeRef?: {
+		value?: string;
+	};
+	DisplayName?: string;
+	domain?: string;
+	FullyQualifiedName?: string;
+	Id?: string;
+	IsProject?: boolean;
+	Job?: boolean;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	PreferredDeliveryMethod?: string;
+	PrintOnCheckName?: string;
+	sparse?: boolean;
+	SyncToken?: string;
+	Taxable?: boolean;
+};
+
+export type QuickbooksV1CustomerGetAllOutput = {
+	Active?: boolean;
+	BillAddr?: {
+		City?: string;
+		CountrySubDivisionCode?: string;
+		Id?: string;
+		Line1?: string;
+		PostalCode?: string;
+	};
+	BillWithParent?: boolean;
+	CompanyName?: string;
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	DisplayName?: string;
+	domain?: string;
+	FullyQualifiedName?: string;
+	Id?: string;
+	Job?: boolean;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	PreferredDeliveryMethod?: string;
+	PrimaryEmailAddr?: {
+		Address?: string;
+	};
+	PrimaryPhone?: {
+		FreeFormNumber?: string;
+	};
+	PrintOnCheckName?: string;
+	ShipAddr?: {
+		City?: string;
+		CountrySubDivisionCode?: string;
+		Id?: string;
+		Line1?: string;
+		PostalCode?: string;
+	};
+	sparse?: boolean;
+	SyncToken?: string;
+	Taxable?: boolean;
+};
+
+export type QuickbooksV1InvoiceCreateOutput = {
+	AllowIPNPayment?: boolean;
+	AllowOnlineACHPayment?: boolean;
+	AllowOnlineCreditCardPayment?: boolean;
+	AllowOnlinePayment?: boolean;
+	ApplyTaxAfterDiscount?: boolean;
+	BillAddr?: {
+		City?: string;
+		CountrySubDivisionCode?: string;
+		Id?: string;
+		Lat?: string;
+		Line1?: string;
+		Long?: string;
+		PostalCode?: string;
+	};
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomerRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomField?: Array<{
+		DefinitionId?: string;
+		Name?: string;
+		Type?: string;
+	}>;
+	DocNumber?: string;
+	domain?: string;
+	DueDate?: string;
+	EmailStatus?: string;
+	Id?: string;
+	Line?: Array<{
+		Description?: string;
+		DetailType?: string;
+		Id?: string;
+		LineNum?: number;
+		SalesItemLineDetail?: {
+			ItemAccountRef?: {
+				name?: string;
+				value?: string;
+			};
+			ItemRef?: {
+				name?: string;
+				value?: string;
+			};
+			TaxCodeRef?: {
+				value?: string;
+			};
+		};
+	}>;
+	LinkedTxn?: Array<{
+		TxnId?: string;
+		TxnType?: string;
+	}>;
+	MetaData?: {
+		CreateTime?: string;
+		LastModifiedByRef?: {
+			value?: string;
+		};
+		LastUpdatedTime?: string;
+	};
+	PrintStatus?: string;
+	ShipFromAddr?: {
+		Id?: string;
+		Line1?: string;
+		Line2?: string;
+	};
+	sparse?: boolean;
+	SyncToken?: string;
+	TxnDate?: string;
+};
+
+export type QuickbooksV1InvoiceGetOutput = {
+	AllowIPNPayment?: boolean;
+	AllowOnlineACHPayment?: boolean;
+	AllowOnlineCreditCardPayment?: boolean;
+	AllowOnlinePayment?: boolean;
+	ApplyTaxAfterDiscount?: boolean;
+	BillAddr?: {
+		City?: string;
+		CountrySubDivisionCode?: string;
+		Id?: string;
+		Line1?: string;
+		PostalCode?: string;
+	};
+	BillEmail?: {
+		Address?: string;
+	};
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomerRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomField?: Array<{
+		DefinitionId?: string;
+		Name?: string;
+		Type?: string;
+	}>;
+	DocNumber?: string;
+	domain?: string;
+	DueDate?: string;
+	EmailStatus?: string;
+	Id?: string;
+	Line?: Array<{
+		Description?: string;
+		DetailType?: string;
+		Id?: string;
+		LineNum?: number;
+		SalesItemLineDetail?: {
+			ItemAccountRef?: {
+				name?: string;
+				value?: string;
+			};
+			ItemRef?: {
+				name?: string;
+				value?: string;
+			};
+			TaxCodeRef?: {
+				value?: string;
+			};
+		};
+	}>;
+	LinkedTxn?: Array<{
+		TxnId?: string;
+		TxnType?: string;
+	}>;
+	MetaData?: {
+		CreateTime?: string;
+		LastModifiedByRef?: {
+			value?: string;
+		};
+		LastUpdatedTime?: string;
+	};
+	PrintStatus?: string;
+	SalesTermRef?: {
+		name?: string;
+		value?: string;
+	};
+	ShipAddr?: {
+		City?: string;
+		CountrySubDivisionCode?: string;
+		Id?: string;
+		Line1?: string;
+		PostalCode?: string;
+	};
+	sparse?: boolean;
+	SyncToken?: string;
+	TxnDate?: string;
+	TxnTaxDetail?: {
+		TaxLine?: Array<{
+			DetailType?: string;
+			TaxLineDetail?: {
+				PercentBased?: boolean;
+				TaxRateRef?: {
+					value?: string;
+				};
+			};
+		}>;
+	};
+};
+
+export type QuickbooksV1InvoiceGetAllOutput = {
+	AllowIPNPayment?: boolean;
+	AllowOnlineACHPayment?: boolean;
+	AllowOnlineCreditCardPayment?: boolean;
+	AllowOnlinePayment?: boolean;
+	ApplyTaxAfterDiscount?: boolean;
+	BillAddr?: {
+		Id?: string;
+		Line1?: string;
+		Line2?: string;
+		Line3?: string;
+	};
+	BillEmail?: {
+		Address?: string;
+	};
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomerMemo?: {
+		value?: string;
+	};
+	CustomerRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomField?: Array<{
+		DefinitionId?: string;
+		Name?: string;
+		Type?: string;
+	}>;
+	DocNumber?: string;
+	domain?: string;
+	DueDate?: string;
+	EmailStatus?: string;
+	Id?: string;
+	Line?: Array<{
+		Description?: string;
+		DetailType?: string;
+		Id?: string;
+		LineNum?: number;
+		SalesItemLineDetail?: {
+			ItemRef?: {
+				name?: string;
+				value?: string;
+			};
+			TaxCodeRef?: {
+				value?: string;
+			};
+		};
+	}>;
+	LinkedTxn?: Array<{
+		TxnId?: string;
+		TxnType?: string;
+	}>;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	PrintStatus?: string;
+	SalesTermRef?: {
+		name?: string;
+		value?: string;
+	};
+	ShipAddr?: {
+		City?: string;
+		CountrySubDivisionCode?: string;
+		Id?: string;
+		Line1?: string;
+		PostalCode?: string;
+	};
+	sparse?: boolean;
+	SyncToken?: string;
+	TxnDate?: string;
+	TxnTaxDetail?: {
+		TaxLine?: Array<{
+			DetailType?: string;
+			TaxLineDetail?: {
+				PercentBased?: boolean;
+				TaxRateRef?: {
+					value?: string;
+				};
+			};
+		}>;
+		TxnTaxCodeRef?: {
+			value?: string;
+		};
+	};
+};
+
+export type QuickbooksV1InvoiceSendOutput = {
+	AllowIPNPayment?: boolean;
+	AllowOnlineACHPayment?: boolean;
+	AllowOnlineCreditCardPayment?: boolean;
+	AllowOnlinePayment?: boolean;
+	ApplyTaxAfterDiscount?: boolean;
+	BillEmail?: {
+		Address?: string;
+	};
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomerRef?: {
+		name?: string;
+		value?: string;
+	};
+	DeliveryInfo?: {
+		DeliveryTime?: string;
+		DeliveryType?: string;
+	};
+	DocNumber?: string;
+	domain?: string;
+	DueDate?: string;
+	EmailStatus?: string;
+	Id?: string;
+	Line?: Array<{
+		Description?: string;
+		DetailType?: string;
+		Id?: string;
+		LineNum?: number;
+		SalesItemLineDetail?: {
+			ItemRef?: {
+				name?: string;
+				value?: string;
+			};
+			TaxCodeRef?: {
+				value?: string;
+			};
+		};
+	}>;
+	LinkedTxn?: Array<{
+		TxnId?: string;
+		TxnType?: string;
+	}>;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	PrintStatus?: string;
+	sparse?: boolean;
+	SyncToken?: string;
+	TxnDate?: string;
+};
+
+export type QuickbooksV1ItemGetOutput = {
+	Active?: boolean;
+	DeferredRevenue?: boolean;
+	Description?: string;
+	domain?: string;
+	FullyQualifiedName?: string;
+	Id?: string;
+	IncomeAccountRef?: {
+		name?: string;
+		value?: string;
+	};
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	Name?: string;
+	sparse?: boolean;
+	SyncToken?: string;
+	Taxable?: boolean;
+	TrackQtyOnHand?: boolean;
+	Type?: string;
+	UnitPrice?: number;
+};
+
+export type QuickbooksV1ItemGetAllOutput = {
+	Active?: boolean;
+	Description?: string;
+	domain?: string;
+	FullyQualifiedName?: string;
+	Id?: string;
+	IncomeAccountRef?: {
+		name?: string;
+		value?: string;
+	};
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	Name?: string;
+	sparse?: boolean;
+	SyncToken?: string;
+	Taxable?: boolean;
+	TrackQtyOnHand?: boolean;
+	Type?: string;
+};
+
+export type QuickbooksV1PaymentGetOutput = {
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomerRef?: {
+		name?: string;
+		value?: string;
+	};
+	DepositToAccountRef?: {
+		value?: string;
+	};
+	domain?: string;
+	ExchangeRate?: number;
+	Id?: string;
+	Line?: Array<{
+		LineEx?: {
+			any?: Array<{
+				declaredType?: string;
+				globalScope?: boolean;
+				name?: string;
+				nil?: boolean;
+				scope?: string;
+				typeSubstituted?: boolean;
+				value?: {
+					Name?: string;
+					Value?: string;
+				};
+			}>;
+		};
+		LinkedTxn?: Array<{
+			TxnId?: string;
+			TxnType?: string;
+		}>;
+	}>;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	PaymentMethodRef?: {
+		value?: string;
+	};
+	PaymentRefNum?: string;
+	ProcessPayment?: boolean;
+	sparse?: boolean;
+	SyncToken?: string;
+	TxnDate?: string;
+	UnappliedAmt?: number;
+};
+
+export type QuickbooksV1PaymentGetAllOutput = {
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	CustomerRef?: {
+		name?: string;
+		value?: string;
+	};
+	DepositToAccountRef?: {
+		value?: string;
+	};
+	domain?: string;
+	Id?: string;
+	Line?: Array<{
+		LineEx?: {
+			any?: Array<{
+				declaredType?: string;
+				globalScope?: boolean;
+				name?: string;
+				nil?: boolean;
+				scope?: string;
+				typeSubstituted?: boolean;
+				value?: {
+					Name?: string;
+					Value?: string;
+				};
+			}>;
+		};
+		LinkedTxn?: Array<{
+			TxnId?: string;
+			TxnType?: string;
+		}>;
+	}>;
+	LinkedTxn?: Array<{
+		TxnId?: string;
+		TxnType?: string;
+	}>;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	PaymentMethodRef?: {
+		value?: string;
+	};
+	ProcessPayment?: boolean;
+	sparse?: boolean;
+	SyncToken?: string;
+	TxnDate?: string;
+};
+
+export type QuickbooksV1PurchaseGetAllOutput = {
+	AccountRef?: {
+		name?: string;
+		value?: string;
+	};
+	Credit?: boolean;
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	domain?: string;
+	EntityRef?: {
+		name?: string;
+		type?: string;
+		value?: string;
+	};
+	Id?: string;
+	Line?: Array<{
+		AccountBasedExpenseLineDetail?: {
+			AccountRef?: {
+				name?: string;
+				value?: string;
+			};
+			BillableStatus?: string;
+			TaxCodeRef?: {
+				value?: string;
+			};
+		};
+		DetailType?: string;
+		Id?: string;
+	}>;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	PaymentType?: string;
+	PurchaseEx?: {
+		any?: Array<{
+			declaredType?: string;
+			globalScope?: boolean;
+			name?: string;
+			nil?: boolean;
+			scope?: string;
+			typeSubstituted?: boolean;
+			value?: {
+				Name?: string;
+				Value?: string;
+			};
+		}>;
+	};
+	sparse?: boolean;
+	SyncToken?: string;
+	TxnDate?: string;
+};
+
+export type QuickbooksV1TransactionGetReportOutput = {
+	account_name?: string;
+	doc_num?: string;
+	is_no_post?: string;
+	memo?: string;
+	name?: string;
+	other_account?: string;
+	subt_nat_amount?: string;
+	tx_date?: string;
+	txn_type?: string;
+};
+
+export type QuickbooksV1VendorGetAllOutput = {
+	AcctNum?: string;
+	Active?: boolean;
+	BillAddr?: {
+		City?: string;
+		CountrySubDivisionCode?: string;
+		Id?: string;
+		Lat?: string;
+		Line1?: string;
+		Long?: string;
+		PostalCode?: string;
+	};
+	CompanyName?: string;
+	CurrencyRef?: {
+		name?: string;
+		value?: string;
+	};
+	DisplayName?: string;
+	domain?: string;
+	FamilyName?: string;
+	Fax?: {
+		FreeFormNumber?: string;
+	};
+	GivenName?: string;
+	Id?: string;
+	MetaData?: {
+		CreateTime?: string;
+		LastUpdatedTime?: string;
+	};
+	Mobile?: {
+		FreeFormNumber?: string;
+	};
+	PrimaryEmailAddr?: {
+		Address?: string;
+	};
+	PrimaryPhone?: {
+		FreeFormNumber?: string;
+	};
+	PrintOnCheckName?: string;
+	sparse?: boolean;
+	SyncToken?: string;
+	Vendor1099?: boolean;
+	WebAddr?: {
+		URI?: string;
+	};
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -651,12 +1385,239 @@ export interface QuickbooksV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type QuickbooksV1Node = {
+interface QuickbooksV1NodeBase {
 	type: 'n8n-nodes-base.quickbooks';
 	version: 1;
-	config: NodeConfig<QuickbooksV1Params>;
 	credentials?: QuickbooksV1Credentials;
+}
+
+export type QuickbooksV1BillCreateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1BillCreateConfig>;
 };
+
+export type QuickbooksV1BillDeleteNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1BillDeleteConfig>;
+};
+
+export type QuickbooksV1BillGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1BillGetConfig>;
+};
+
+export type QuickbooksV1BillGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1BillGetAllConfig>;
+	output?: QuickbooksV1BillGetAllOutput;
+};
+
+export type QuickbooksV1BillUpdateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1BillUpdateConfig>;
+};
+
+export type QuickbooksV1CustomerCreateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1CustomerCreateConfig>;
+	output?: QuickbooksV1CustomerCreateOutput;
+};
+
+export type QuickbooksV1CustomerGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1CustomerGetConfig>;
+	output?: QuickbooksV1CustomerGetOutput;
+};
+
+export type QuickbooksV1CustomerGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1CustomerGetAllConfig>;
+	output?: QuickbooksV1CustomerGetAllOutput;
+};
+
+export type QuickbooksV1CustomerUpdateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1CustomerUpdateConfig>;
+};
+
+export type QuickbooksV1EmployeeCreateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EmployeeCreateConfig>;
+};
+
+export type QuickbooksV1EmployeeGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EmployeeGetConfig>;
+};
+
+export type QuickbooksV1EmployeeGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EmployeeGetAllConfig>;
+};
+
+export type QuickbooksV1EmployeeUpdateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EmployeeUpdateConfig>;
+};
+
+export type QuickbooksV1EstimateCreateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EstimateCreateConfig>;
+};
+
+export type QuickbooksV1EstimateDeleteNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EstimateDeleteConfig>;
+};
+
+export type QuickbooksV1EstimateGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EstimateGetConfig>;
+};
+
+export type QuickbooksV1EstimateGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EstimateGetAllConfig>;
+};
+
+export type QuickbooksV1EstimateSendNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EstimateSendConfig>;
+};
+
+export type QuickbooksV1EstimateUpdateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1EstimateUpdateConfig>;
+};
+
+export type QuickbooksV1InvoiceCreateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1InvoiceCreateConfig>;
+	output?: QuickbooksV1InvoiceCreateOutput;
+};
+
+export type QuickbooksV1InvoiceDeleteNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1InvoiceDeleteConfig>;
+};
+
+export type QuickbooksV1InvoiceGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1InvoiceGetConfig>;
+	output?: QuickbooksV1InvoiceGetOutput;
+};
+
+export type QuickbooksV1InvoiceGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1InvoiceGetAllConfig>;
+	output?: QuickbooksV1InvoiceGetAllOutput;
+};
+
+export type QuickbooksV1InvoiceSendNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1InvoiceSendConfig>;
+	output?: QuickbooksV1InvoiceSendOutput;
+};
+
+export type QuickbooksV1InvoiceUpdateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1InvoiceUpdateConfig>;
+};
+
+export type QuickbooksV1InvoiceVoidNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1InvoiceVoidConfig>;
+};
+
+export type QuickbooksV1ItemGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1ItemGetConfig>;
+	output?: QuickbooksV1ItemGetOutput;
+};
+
+export type QuickbooksV1ItemGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1ItemGetAllConfig>;
+	output?: QuickbooksV1ItemGetAllOutput;
+};
+
+export type QuickbooksV1PaymentCreateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PaymentCreateConfig>;
+};
+
+export type QuickbooksV1PaymentDeleteNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PaymentDeleteConfig>;
+};
+
+export type QuickbooksV1PaymentGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PaymentGetConfig>;
+	output?: QuickbooksV1PaymentGetOutput;
+};
+
+export type QuickbooksV1PaymentGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PaymentGetAllConfig>;
+	output?: QuickbooksV1PaymentGetAllOutput;
+};
+
+export type QuickbooksV1PaymentSendNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PaymentSendConfig>;
+};
+
+export type QuickbooksV1PaymentUpdateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PaymentUpdateConfig>;
+};
+
+export type QuickbooksV1PaymentVoidNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PaymentVoidConfig>;
+};
+
+export type QuickbooksV1PurchaseGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PurchaseGetConfig>;
+};
+
+export type QuickbooksV1PurchaseGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1PurchaseGetAllConfig>;
+	output?: QuickbooksV1PurchaseGetAllOutput;
+};
+
+export type QuickbooksV1TransactionGetReportNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1TransactionGetReportConfig>;
+	output?: QuickbooksV1TransactionGetReportOutput;
+};
+
+export type QuickbooksV1VendorCreateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1VendorCreateConfig>;
+};
+
+export type QuickbooksV1VendorGetNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1VendorGetConfig>;
+};
+
+export type QuickbooksV1VendorGetAllNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1VendorGetAllConfig>;
+	output?: QuickbooksV1VendorGetAllOutput;
+};
+
+export type QuickbooksV1VendorUpdateNode = QuickbooksV1NodeBase & {
+	config: NodeConfig<QuickbooksV1VendorUpdateConfig>;
+};
+
+export type QuickbooksV1Node =
+	| QuickbooksV1BillCreateNode
+	| QuickbooksV1BillDeleteNode
+	| QuickbooksV1BillGetNode
+	| QuickbooksV1BillGetAllNode
+	| QuickbooksV1BillUpdateNode
+	| QuickbooksV1CustomerCreateNode
+	| QuickbooksV1CustomerGetNode
+	| QuickbooksV1CustomerGetAllNode
+	| QuickbooksV1CustomerUpdateNode
+	| QuickbooksV1EmployeeCreateNode
+	| QuickbooksV1EmployeeGetNode
+	| QuickbooksV1EmployeeGetAllNode
+	| QuickbooksV1EmployeeUpdateNode
+	| QuickbooksV1EstimateCreateNode
+	| QuickbooksV1EstimateDeleteNode
+	| QuickbooksV1EstimateGetNode
+	| QuickbooksV1EstimateGetAllNode
+	| QuickbooksV1EstimateSendNode
+	| QuickbooksV1EstimateUpdateNode
+	| QuickbooksV1InvoiceCreateNode
+	| QuickbooksV1InvoiceDeleteNode
+	| QuickbooksV1InvoiceGetNode
+	| QuickbooksV1InvoiceGetAllNode
+	| QuickbooksV1InvoiceSendNode
+	| QuickbooksV1InvoiceUpdateNode
+	| QuickbooksV1InvoiceVoidNode
+	| QuickbooksV1ItemGetNode
+	| QuickbooksV1ItemGetAllNode
+	| QuickbooksV1PaymentCreateNode
+	| QuickbooksV1PaymentDeleteNode
+	| QuickbooksV1PaymentGetNode
+	| QuickbooksV1PaymentGetAllNode
+	| QuickbooksV1PaymentSendNode
+	| QuickbooksV1PaymentUpdateNode
+	| QuickbooksV1PaymentVoidNode
+	| QuickbooksV1PurchaseGetNode
+	| QuickbooksV1PurchaseGetAllNode
+	| QuickbooksV1TransactionGetReportNode
+	| QuickbooksV1VendorCreateNode
+	| QuickbooksV1VendorGetNode
+	| QuickbooksV1VendorGetAllNode
+	| QuickbooksV1VendorUpdateNode
+	;

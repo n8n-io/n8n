@@ -1,8 +1,6 @@
 /**
  * Microsoft OneDrive Trigger Node - Version 1
  * Trigger for Microsoft OneDrive API.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -106,13 +104,18 @@ export interface MicrosoftOneDriveTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOneDriveTriggerV1Node = {
+interface MicrosoftOneDriveTriggerV1NodeBase {
 	type: 'n8n-nodes-base.microsoftOneDriveTrigger';
 	version: 1;
-	config: NodeConfig<MicrosoftOneDriveTriggerV1Params>;
 	credentials?: MicrosoftOneDriveTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MicrosoftOneDriveTriggerV1ParamsNode = MicrosoftOneDriveTriggerV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveTriggerV1Params>;
 };
+
+export type MicrosoftOneDriveTriggerV1Node = MicrosoftOneDriveTriggerV1ParamsNode;

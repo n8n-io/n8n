@@ -1,8 +1,6 @@
 /**
  * AWS S3 Node - Version 1
  * Sends data to AWS S3
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -226,12 +224,74 @@ export interface AwsS3V1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsS3V1Node = {
+interface AwsS3V1NodeBase {
 	type: 'n8n-nodes-base.awsS3';
 	version: 1;
-	config: NodeConfig<AwsS3V1Params>;
 	credentials?: AwsS3V1Credentials;
+}
+
+export type AwsS3V1BucketCreateNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1BucketCreateConfig>;
 };
+
+export type AwsS3V1BucketDeleteNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1BucketDeleteConfig>;
+};
+
+export type AwsS3V1BucketGetAllNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1BucketGetAllConfig>;
+};
+
+export type AwsS3V1BucketSearchNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1BucketSearchConfig>;
+};
+
+export type AwsS3V1FileCopyNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1FileCopyConfig>;
+};
+
+export type AwsS3V1FileDeleteNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1FileDeleteConfig>;
+};
+
+export type AwsS3V1FileDownloadNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1FileDownloadConfig>;
+};
+
+export type AwsS3V1FileGetAllNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1FileGetAllConfig>;
+};
+
+export type AwsS3V1FileUploadNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1FileUploadConfig>;
+};
+
+export type AwsS3V1FolderCreateNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1FolderCreateConfig>;
+};
+
+export type AwsS3V1FolderDeleteNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1FolderDeleteConfig>;
+};
+
+export type AwsS3V1FolderGetAllNode = AwsS3V1NodeBase & {
+	config: NodeConfig<AwsS3V1FolderGetAllConfig>;
+};
+
+export type AwsS3V1Node =
+	| AwsS3V1BucketCreateNode
+	| AwsS3V1BucketDeleteNode
+	| AwsS3V1BucketGetAllNode
+	| AwsS3V1BucketSearchNode
+	| AwsS3V1FileCopyNode
+	| AwsS3V1FileDeleteNode
+	| AwsS3V1FileDownloadNode
+	| AwsS3V1FileGetAllNode
+	| AwsS3V1FileUploadNode
+	| AwsS3V1FolderCreateNode
+	| AwsS3V1FolderDeleteNode
+	| AwsS3V1FolderGetAllNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Switch Node - Version 3.1
  * Route items depending on defined expression or rules
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -57,12 +55,23 @@ export type SwitchV31Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SwitchV31Node = {
+interface SwitchV31NodeBase {
 	type: 'n8n-nodes-base.switch';
 	version: 3.1;
-	config: NodeConfig<SwitchV31Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SwitchV31RulesNode = SwitchV31NodeBase & {
+	config: NodeConfig<SwitchV31RulesConfig>;
 };
+
+export type SwitchV31ExpressionNode = SwitchV31NodeBase & {
+	config: NodeConfig<SwitchV31ExpressionConfig>;
+};
+
+export type SwitchV31Node =
+	| SwitchV31RulesNode
+	| SwitchV31ExpressionNode
+	;

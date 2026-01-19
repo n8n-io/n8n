@@ -1,8 +1,6 @@
 /**
  * Microsoft Entra ID Node - Version 1
  * Interact with Microsoft Entra ID API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -252,12 +250,74 @@ export interface MicrosoftEntraV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftEntraV1Node = {
+interface MicrosoftEntraV1NodeBase {
 	type: 'n8n-nodes-base.microsoftEntra';
 	version: 1;
-	config: NodeConfig<MicrosoftEntraV1Params>;
 	credentials?: MicrosoftEntraV1Credentials;
+}
+
+export type MicrosoftEntraV1GroupCreateNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1GroupCreateConfig>;
 };
+
+export type MicrosoftEntraV1GroupDeleteNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1GroupDeleteConfig>;
+};
+
+export type MicrosoftEntraV1GroupGetNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1GroupGetConfig>;
+};
+
+export type MicrosoftEntraV1GroupGetAllNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1GroupGetAllConfig>;
+};
+
+export type MicrosoftEntraV1GroupUpdateNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1GroupUpdateConfig>;
+};
+
+export type MicrosoftEntraV1UserAddGroupNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1UserAddGroupConfig>;
+};
+
+export type MicrosoftEntraV1UserCreateNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1UserCreateConfig>;
+};
+
+export type MicrosoftEntraV1UserDeleteNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1UserDeleteConfig>;
+};
+
+export type MicrosoftEntraV1UserGetNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1UserGetConfig>;
+};
+
+export type MicrosoftEntraV1UserGetAllNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1UserGetAllConfig>;
+};
+
+export type MicrosoftEntraV1UserRemoveGroupNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1UserRemoveGroupConfig>;
+};
+
+export type MicrosoftEntraV1UserUpdateNode = MicrosoftEntraV1NodeBase & {
+	config: NodeConfig<MicrosoftEntraV1UserUpdateConfig>;
+};
+
+export type MicrosoftEntraV1Node =
+	| MicrosoftEntraV1GroupCreateNode
+	| MicrosoftEntraV1GroupDeleteNode
+	| MicrosoftEntraV1GroupGetNode
+	| MicrosoftEntraV1GroupGetAllNode
+	| MicrosoftEntraV1GroupUpdateNode
+	| MicrosoftEntraV1UserAddGroupNode
+	| MicrosoftEntraV1UserCreateNode
+	| MicrosoftEntraV1UserDeleteNode
+	| MicrosoftEntraV1UserGetNode
+	| MicrosoftEntraV1UserGetAllNode
+	| MicrosoftEntraV1UserRemoveGroupNode
+	| MicrosoftEntraV1UserUpdateNode
+	;

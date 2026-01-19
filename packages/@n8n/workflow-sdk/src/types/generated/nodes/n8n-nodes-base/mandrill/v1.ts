@@ -1,8 +1,6 @@
 /**
  * Mandrill Node - Version 1
  * Consume Mandrill API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -239,6 +237,22 @@ export type MandrillV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MandrillV1MessageSendTemplateOutput = {
+	_id?: string;
+	email?: string;
+	status?: string;
+};
+
+export type MandrillV1MessageSendHtmlOutput = {
+	_id?: string;
+	email?: string;
+	status?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -247,12 +261,26 @@ export interface MandrillV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MandrillV1Node = {
+interface MandrillV1NodeBase {
 	type: 'n8n-nodes-base.mandrill';
 	version: 1;
-	config: NodeConfig<MandrillV1Params>;
 	credentials?: MandrillV1Credentials;
+}
+
+export type MandrillV1MessageSendTemplateNode = MandrillV1NodeBase & {
+	config: NodeConfig<MandrillV1MessageSendTemplateConfig>;
+	output?: MandrillV1MessageSendTemplateOutput;
 };
+
+export type MandrillV1MessageSendHtmlNode = MandrillV1NodeBase & {
+	config: NodeConfig<MandrillV1MessageSendHtmlConfig>;
+	output?: MandrillV1MessageSendHtmlOutput;
+};
+
+export type MandrillV1Node =
+	| MandrillV1MessageSendTemplateNode
+	| MandrillV1MessageSendHtmlNode
+	;

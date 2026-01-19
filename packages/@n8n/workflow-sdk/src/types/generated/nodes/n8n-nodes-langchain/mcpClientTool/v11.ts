@@ -1,8 +1,6 @@
 /**
  * MCP Client Tool Node - Version 1.1
  * Connect tools from an MCP Server
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -55,13 +53,18 @@ export interface LcMcpClientToolV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMcpClientToolV11Node = {
+interface LcMcpClientToolV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.mcpClientTool';
 	version: 1.1;
-	config: NodeConfig<LcMcpClientToolV11Params>;
 	credentials?: LcMcpClientToolV11Credentials;
 	isTrigger: true;
+}
+
+export type LcMcpClientToolV11ParamsNode = LcMcpClientToolV11NodeBase & {
+	config: NodeConfig<LcMcpClientToolV11Params>;
 };
+
+export type LcMcpClientToolV11Node = LcMcpClientToolV11ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Google Analytics Node - Version 1
  * Use the Google Analytics API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -86,12 +84,24 @@ export interface GoogleAnalyticsV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleAnalyticsV1Node = {
+interface GoogleAnalyticsV1NodeBase {
 	type: 'n8n-nodes-base.googleAnalytics';
 	version: 1;
-	config: NodeConfig<GoogleAnalyticsV1Params>;
 	credentials?: GoogleAnalyticsV1Credentials;
+}
+
+export type GoogleAnalyticsV1ReportGetNode = GoogleAnalyticsV1NodeBase & {
+	config: NodeConfig<GoogleAnalyticsV1ReportGetConfig>;
 };
+
+export type GoogleAnalyticsV1UserActivitySearchNode = GoogleAnalyticsV1NodeBase & {
+	config: NodeConfig<GoogleAnalyticsV1UserActivitySearchConfig>;
+};
+
+export type GoogleAnalyticsV1Node =
+	| GoogleAnalyticsV1ReportGetNode
+	| GoogleAnalyticsV1UserActivitySearchNode
+	;

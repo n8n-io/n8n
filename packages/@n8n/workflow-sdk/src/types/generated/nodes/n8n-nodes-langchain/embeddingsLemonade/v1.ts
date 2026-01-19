@@ -1,8 +1,6 @@
 /**
  * Embeddings Lemonade Node - Version 1
  * Use Lemonade Embeddings
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -29,13 +27,18 @@ export interface LcEmbeddingsLemonadeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsLemonadeV1Node = {
+interface LcEmbeddingsLemonadeV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsLemonade';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsLemonadeV1Params>;
 	credentials?: LcEmbeddingsLemonadeV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsLemonadeV1ParamsNode = LcEmbeddingsLemonadeV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsLemonadeV1Params>;
 };
+
+export type LcEmbeddingsLemonadeV1Node = LcEmbeddingsLemonadeV1ParamsNode;

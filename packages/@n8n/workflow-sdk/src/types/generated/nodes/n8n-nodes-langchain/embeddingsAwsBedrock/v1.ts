@@ -1,8 +1,6 @@
 /**
  * Embeddings AWS Bedrock Node - Version 1
  * Use Embeddings AWS Bedrock
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -29,13 +27,18 @@ export interface LcEmbeddingsAwsBedrockV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsAwsBedrockV1Node = {
+interface LcEmbeddingsAwsBedrockV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsAwsBedrock';
 	version: 1;
-	config: NodeConfig<LcEmbeddingsAwsBedrockV1Params>;
 	credentials?: LcEmbeddingsAwsBedrockV1Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsAwsBedrockV1ParamsNode = LcEmbeddingsAwsBedrockV1NodeBase & {
+	config: NodeConfig<LcEmbeddingsAwsBedrockV1Params>;
 };
+
+export type LcEmbeddingsAwsBedrockV1Node = LcEmbeddingsAwsBedrockV1ParamsNode;

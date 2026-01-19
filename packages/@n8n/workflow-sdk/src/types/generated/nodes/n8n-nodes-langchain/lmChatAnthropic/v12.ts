@@ -1,8 +1,6 @@
 /**
  * Anthropic Chat Model Node - Version 1.2
  * Language Model Anthropic
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface LcLmChatAnthropicV12Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatAnthropicV12Node = {
+interface LcLmChatAnthropicV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatAnthropic';
 	version: 1.2;
-	config: NodeConfig<LcLmChatAnthropicV12Params>;
 	credentials?: LcLmChatAnthropicV12Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatAnthropicV12ParamsNode = LcLmChatAnthropicV12NodeBase & {
+	config: NodeConfig<LcLmChatAnthropicV12Params>;
 };
+
+export type LcLmChatAnthropicV12Node = LcLmChatAnthropicV12ParamsNode;

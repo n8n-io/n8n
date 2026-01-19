@@ -1,8 +1,6 @@
 /**
  * Pushover Node - Version 1
  * Consume Pushover API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -52,6 +50,15 @@ export type PushoverV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type PushoverV1MessagePushOutput = {
+	request?: string;
+	status?: number;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -60,12 +67,18 @@ export interface PushoverV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PushoverV1Node = {
+interface PushoverV1NodeBase {
 	type: 'n8n-nodes-base.pushover';
 	version: 1;
-	config: NodeConfig<PushoverV1Params>;
 	credentials?: PushoverV1Credentials;
+}
+
+export type PushoverV1MessagePushNode = PushoverV1NodeBase & {
+	config: NodeConfig<PushoverV1MessagePushConfig>;
+	output?: PushoverV1MessagePushOutput;
 };
+
+export type PushoverV1Node = PushoverV1MessagePushNode;

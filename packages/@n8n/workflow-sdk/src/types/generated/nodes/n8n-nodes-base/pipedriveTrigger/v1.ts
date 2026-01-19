@@ -1,8 +1,6 @@
 /**
  * Pipedrive Trigger Node - Version 1
  * Starts the workflow when Pipedrive events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -48,13 +46,18 @@ export interface PipedriveTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PipedriveTriggerV1Node = {
+interface PipedriveTriggerV1NodeBase {
 	type: 'n8n-nodes-base.pipedriveTrigger';
 	version: 1;
-	config: NodeConfig<PipedriveTriggerV1Params>;
 	credentials?: PipedriveTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type PipedriveTriggerV1ParamsNode = PipedriveTriggerV1NodeBase & {
+	config: NodeConfig<PipedriveTriggerV1Params>;
 };
+
+export type PipedriveTriggerV1Node = PipedriveTriggerV1ParamsNode;

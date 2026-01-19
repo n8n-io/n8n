@@ -1,8 +1,6 @@
 /**
  * Freshdesk Node - Version 1
  * Consume Freshdesk API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -135,6 +133,104 @@ export type FreshdeskV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type FreshdeskV1ContactGetAllOutput = {
+	active?: boolean;
+	created_at?: string;
+	facebook_id?: null;
+	first_name?: string;
+	id?: number;
+	last_name?: string;
+	name?: string;
+	org_contact_id?: number;
+	time_zone?: string;
+	twitter_id?: null;
+	updated_at?: string;
+	visitor_id?: string;
+};
+
+export type FreshdeskV1TicketCreateOutput = {
+	created_at?: string;
+	custom_fields?: {
+		cf_reference_number?: null;
+	};
+	description?: string;
+	description_text?: string;
+	fr_escalated?: boolean;
+	id?: number;
+	is_escalated?: boolean;
+	nr_due_by?: null;
+	nr_escalated?: boolean;
+	priority?: number;
+	requester_id?: number;
+	source?: number;
+	spam?: boolean;
+	status?: number;
+	subject?: string;
+	support_email?: null;
+	tags?: Array<string>;
+	to_emails?: null;
+	updated_at?: string;
+};
+
+export type FreshdeskV1TicketGetOutput = {
+	association_type?: null;
+	attachments?: Array<{
+		attachment_url?: string;
+		content_type?: string;
+		created_at?: string;
+		id?: number;
+		name?: string;
+		size?: number;
+		updated_at?: string;
+	}>;
+	cc_emails?: Array<string>;
+	created_at?: string;
+	description?: string;
+	description_text?: string;
+	due_by?: string;
+	fr_due_by?: string;
+	fr_escalated?: boolean;
+	fwd_emails?: Array<string>;
+	id?: number;
+	is_escalated?: boolean;
+	priority?: number;
+	reply_cc_emails?: Array<string>;
+	requester_id?: number;
+	source?: number;
+	source_additional_info?: null;
+	spam?: boolean;
+	status?: number;
+	subject?: string;
+	tags?: Array<string>;
+	ticket_cc_emails?: Array<string>;
+	updated_at?: string;
+};
+
+export type FreshdeskV1TicketGetAllOutput = {
+	cc_emails?: Array<string>;
+	created_at?: string;
+	fr_escalated?: boolean;
+	fwd_emails?: Array<string>;
+	id?: number;
+	is_escalated?: boolean;
+	nr_due_by?: null;
+	nr_escalated?: boolean;
+	priority?: number;
+	reply_cc_emails?: Array<string>;
+	requester_id?: number;
+	source?: number;
+	spam?: boolean;
+	status?: number;
+	subject?: string;
+	tags?: Array<string>;
+	ticket_cc_emails?: Array<string>;
+	updated_at?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -143,12 +239,68 @@ export interface FreshdeskV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FreshdeskV1Node = {
+interface FreshdeskV1NodeBase {
 	type: 'n8n-nodes-base.freshdesk';
 	version: 1;
-	config: NodeConfig<FreshdeskV1Params>;
 	credentials?: FreshdeskV1Credentials;
+}
+
+export type FreshdeskV1ContactCreateNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1ContactCreateConfig>;
 };
+
+export type FreshdeskV1ContactDeleteNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1ContactDeleteConfig>;
+};
+
+export type FreshdeskV1ContactGetNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1ContactGetConfig>;
+};
+
+export type FreshdeskV1ContactGetAllNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1ContactGetAllConfig>;
+	output?: FreshdeskV1ContactGetAllOutput;
+};
+
+export type FreshdeskV1ContactUpdateNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1ContactUpdateConfig>;
+};
+
+export type FreshdeskV1TicketCreateNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1TicketCreateConfig>;
+	output?: FreshdeskV1TicketCreateOutput;
+};
+
+export type FreshdeskV1TicketDeleteNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1TicketDeleteConfig>;
+};
+
+export type FreshdeskV1TicketGetNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1TicketGetConfig>;
+	output?: FreshdeskV1TicketGetOutput;
+};
+
+export type FreshdeskV1TicketGetAllNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1TicketGetAllConfig>;
+	output?: FreshdeskV1TicketGetAllOutput;
+};
+
+export type FreshdeskV1TicketUpdateNode = FreshdeskV1NodeBase & {
+	config: NodeConfig<FreshdeskV1TicketUpdateConfig>;
+};
+
+export type FreshdeskV1Node =
+	| FreshdeskV1ContactCreateNode
+	| FreshdeskV1ContactDeleteNode
+	| FreshdeskV1ContactGetNode
+	| FreshdeskV1ContactGetAllNode
+	| FreshdeskV1ContactUpdateNode
+	| FreshdeskV1TicketCreateNode
+	| FreshdeskV1TicketDeleteNode
+	| FreshdeskV1TicketGetNode
+	| FreshdeskV1TicketGetAllNode
+	| FreshdeskV1TicketUpdateNode
+	;

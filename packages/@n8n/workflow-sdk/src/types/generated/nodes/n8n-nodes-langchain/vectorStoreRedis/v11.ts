@@ -1,8 +1,6 @@
 /**
  * Redis Vector Store Node - Version 1.1
  * Work with your data in a Redis vector index
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -129,12 +127,39 @@ export interface LcVectorStoreRedisV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreRedisV11Node = {
+interface LcVectorStoreRedisV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreRedis';
 	version: 1.1;
-	config: NodeConfig<LcVectorStoreRedisV11Params>;
 	credentials?: LcVectorStoreRedisV11Credentials;
+}
+
+export type LcVectorStoreRedisV11LoadNode = LcVectorStoreRedisV11NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV11LoadConfig>;
 };
+
+export type LcVectorStoreRedisV11InsertNode = LcVectorStoreRedisV11NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV11InsertConfig>;
+};
+
+export type LcVectorStoreRedisV11RetrieveNode = LcVectorStoreRedisV11NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV11RetrieveConfig>;
+};
+
+export type LcVectorStoreRedisV11RetrieveAsToolNode = LcVectorStoreRedisV11NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV11RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreRedisV11UpdateNode = LcVectorStoreRedisV11NodeBase & {
+	config: NodeConfig<LcVectorStoreRedisV11UpdateConfig>;
+};
+
+export type LcVectorStoreRedisV11Node =
+	| LcVectorStoreRedisV11LoadNode
+	| LcVectorStoreRedisV11InsertNode
+	| LcVectorStoreRedisV11RetrieveNode
+	| LcVectorStoreRedisV11RetrieveAsToolNode
+	| LcVectorStoreRedisV11UpdateNode
+	;

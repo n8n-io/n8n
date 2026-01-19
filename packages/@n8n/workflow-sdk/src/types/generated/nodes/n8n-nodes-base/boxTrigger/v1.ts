@@ -1,8 +1,6 @@
 /**
  * Box Trigger Node - Version 1
  * Starts the workflow when Box events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -38,13 +36,18 @@ export interface BoxTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BoxTriggerV1Node = {
+interface BoxTriggerV1NodeBase {
 	type: 'n8n-nodes-base.boxTrigger';
 	version: 1;
-	config: NodeConfig<BoxTriggerV1Params>;
 	credentials?: BoxTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type BoxTriggerV1ParamsNode = BoxTriggerV1NodeBase & {
+	config: NodeConfig<BoxTriggerV1Params>;
 };
+
+export type BoxTriggerV1Node = BoxTriggerV1ParamsNode;

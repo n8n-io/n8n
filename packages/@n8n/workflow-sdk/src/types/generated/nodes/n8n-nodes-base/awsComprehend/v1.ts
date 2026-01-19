@@ -1,8 +1,6 @@
 /**
  * AWS Comprehend Node - Version 1
  * Sends data to Amazon Comprehend
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -51,12 +49,17 @@ export interface AwsComprehendV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsComprehendV1Node = {
+interface AwsComprehendV1NodeBase {
 	type: 'n8n-nodes-base.awsComprehend';
 	version: 1;
-	config: NodeConfig<AwsComprehendV1Params>;
 	credentials?: AwsComprehendV1Credentials;
+}
+
+export type AwsComprehendV1ParamsNode = AwsComprehendV1NodeBase & {
+	config: NodeConfig<AwsComprehendV1Params>;
 };
+
+export type AwsComprehendV1Node = AwsComprehendV1ParamsNode;

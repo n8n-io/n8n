@@ -1,8 +1,6 @@
 /**
  * Figma Trigger (Beta) Node - Version 1
  * Starts the workflow when Figma events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface FigmaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FigmaTriggerV1Node = {
+interface FigmaTriggerV1NodeBase {
 	type: 'n8n-nodes-base.figmaTrigger';
 	version: 1;
-	config: NodeConfig<FigmaTriggerV1Params>;
 	credentials?: FigmaTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type FigmaTriggerV1ParamsNode = FigmaTriggerV1NodeBase & {
+	config: NodeConfig<FigmaTriggerV1Params>;
 };
+
+export type FigmaTriggerV1Node = FigmaTriggerV1ParamsNode;

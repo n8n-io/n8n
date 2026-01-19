@@ -1,8 +1,6 @@
 /**
  * Microsoft To Do Node - Version 1
  * Consume Microsoft To Do API.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -256,12 +254,89 @@ export interface MicrosoftToDoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftToDoV1Node = {
+interface MicrosoftToDoV1NodeBase {
 	type: 'n8n-nodes-base.microsoftToDo';
 	version: 1;
-	config: NodeConfig<MicrosoftToDoV1Params>;
 	credentials?: MicrosoftToDoV1Credentials;
+}
+
+export type MicrosoftToDoV1LinkedResourceCreateNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1LinkedResourceCreateConfig>;
 };
+
+export type MicrosoftToDoV1LinkedResourceDeleteNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1LinkedResourceDeleteConfig>;
+};
+
+export type MicrosoftToDoV1LinkedResourceGetNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1LinkedResourceGetConfig>;
+};
+
+export type MicrosoftToDoV1LinkedResourceGetAllNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1LinkedResourceGetAllConfig>;
+};
+
+export type MicrosoftToDoV1LinkedResourceUpdateNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1LinkedResourceUpdateConfig>;
+};
+
+export type MicrosoftToDoV1ListCreateNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1ListCreateConfig>;
+};
+
+export type MicrosoftToDoV1ListDeleteNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1ListDeleteConfig>;
+};
+
+export type MicrosoftToDoV1ListGetNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1ListGetConfig>;
+};
+
+export type MicrosoftToDoV1ListGetAllNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1ListGetAllConfig>;
+};
+
+export type MicrosoftToDoV1ListUpdateNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1ListUpdateConfig>;
+};
+
+export type MicrosoftToDoV1TaskCreateNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1TaskCreateConfig>;
+};
+
+export type MicrosoftToDoV1TaskDeleteNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1TaskDeleteConfig>;
+};
+
+export type MicrosoftToDoV1TaskGetNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1TaskGetConfig>;
+};
+
+export type MicrosoftToDoV1TaskGetAllNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1TaskGetAllConfig>;
+};
+
+export type MicrosoftToDoV1TaskUpdateNode = MicrosoftToDoV1NodeBase & {
+	config: NodeConfig<MicrosoftToDoV1TaskUpdateConfig>;
+};
+
+export type MicrosoftToDoV1Node =
+	| MicrosoftToDoV1LinkedResourceCreateNode
+	| MicrosoftToDoV1LinkedResourceDeleteNode
+	| MicrosoftToDoV1LinkedResourceGetNode
+	| MicrosoftToDoV1LinkedResourceGetAllNode
+	| MicrosoftToDoV1LinkedResourceUpdateNode
+	| MicrosoftToDoV1ListCreateNode
+	| MicrosoftToDoV1ListDeleteNode
+	| MicrosoftToDoV1ListGetNode
+	| MicrosoftToDoV1ListGetAllNode
+	| MicrosoftToDoV1ListUpdateNode
+	| MicrosoftToDoV1TaskCreateNode
+	| MicrosoftToDoV1TaskDeleteNode
+	| MicrosoftToDoV1TaskGetNode
+	| MicrosoftToDoV1TaskGetAllNode
+	| MicrosoftToDoV1TaskUpdateNode
+	;

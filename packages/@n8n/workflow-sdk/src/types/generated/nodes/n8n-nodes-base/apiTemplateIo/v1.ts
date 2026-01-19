@@ -1,8 +1,6 @@
 /**
  * APITemplate.io Node - Version 1
  * Consume the APITemplate.io API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -93,6 +91,25 @@ export type ApiTemplateIoV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type ApiTemplateIoV1ImageCreateOutput = {
+	download_url?: string;
+	download_url_png?: string;
+	status?: string;
+	template_id?: string;
+	transaction_ref?: string;
+};
+
+export type ApiTemplateIoV1PdfCreateOutput = {
+	download_url?: string;
+	status?: string;
+	template_id?: string;
+	transaction_ref?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -101,12 +118,31 @@ export interface ApiTemplateIoV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ApiTemplateIoV1Node = {
+interface ApiTemplateIoV1NodeBase {
 	type: 'n8n-nodes-base.apiTemplateIo';
 	version: 1;
-	config: NodeConfig<ApiTemplateIoV1Params>;
 	credentials?: ApiTemplateIoV1Credentials;
+}
+
+export type ApiTemplateIoV1AccountGetNode = ApiTemplateIoV1NodeBase & {
+	config: NodeConfig<ApiTemplateIoV1AccountGetConfig>;
 };
+
+export type ApiTemplateIoV1ImageCreateNode = ApiTemplateIoV1NodeBase & {
+	config: NodeConfig<ApiTemplateIoV1ImageCreateConfig>;
+	output?: ApiTemplateIoV1ImageCreateOutput;
+};
+
+export type ApiTemplateIoV1PdfCreateNode = ApiTemplateIoV1NodeBase & {
+	config: NodeConfig<ApiTemplateIoV1PdfCreateConfig>;
+	output?: ApiTemplateIoV1PdfCreateOutput;
+};
+
+export type ApiTemplateIoV1Node =
+	| ApiTemplateIoV1AccountGetNode
+	| ApiTemplateIoV1ImageCreateNode
+	| ApiTemplateIoV1PdfCreateNode
+	;

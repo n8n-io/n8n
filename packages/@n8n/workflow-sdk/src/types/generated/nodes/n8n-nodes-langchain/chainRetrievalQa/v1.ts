@@ -1,8 +1,6 @@
 /**
  * Question and Answer Chain Node - Version 1
  * Answer questions about retrieved documents
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -46,12 +44,28 @@ export type LcChainRetrievalQaV1Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainRetrievalQaV1Node = {
+interface LcChainRetrievalQaV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 	version: 1;
-	config: NodeConfig<LcChainRetrievalQaV1Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainRetrievalQaV1AutoNode = LcChainRetrievalQaV1NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV1AutoConfig>;
 };
+
+export type LcChainRetrievalQaV1GuardrailsNode = LcChainRetrievalQaV1NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV1GuardrailsConfig>;
+};
+
+export type LcChainRetrievalQaV1DefineNode = LcChainRetrievalQaV1NodeBase & {
+	config: NodeConfig<LcChainRetrievalQaV1DefineConfig>;
+};
+
+export type LcChainRetrievalQaV1Node =
+	| LcChainRetrievalQaV1AutoNode
+	| LcChainRetrievalQaV1GuardrailsNode
+	| LcChainRetrievalQaV1DefineNode
+	;

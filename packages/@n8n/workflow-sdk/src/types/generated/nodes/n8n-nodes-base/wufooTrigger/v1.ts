@@ -1,8 +1,6 @@
 /**
  * Wufoo Trigger Node - Version 1
  * Handle Wufoo events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -34,13 +32,18 @@ export interface WufooTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WufooTriggerV1Node = {
+interface WufooTriggerV1NodeBase {
 	type: 'n8n-nodes-base.wufooTrigger';
 	version: 1;
-	config: NodeConfig<WufooTriggerV1Params>;
 	credentials?: WufooTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type WufooTriggerV1ParamsNode = WufooTriggerV1NodeBase & {
+	config: NodeConfig<WufooTriggerV1Params>;
 };
+
+export type WufooTriggerV1Node = WufooTriggerV1ParamsNode;

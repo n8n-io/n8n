@@ -1,8 +1,6 @@
 /**
  * Agile CRM Node - Version 1
  * Consume Agile CRM API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -337,12 +335,89 @@ export interface AgileCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AgileCrmV1Node = {
+interface AgileCrmV1NodeBase {
 	type: 'n8n-nodes-base.agileCrm';
 	version: 1;
-	config: NodeConfig<AgileCrmV1Params>;
 	credentials?: AgileCrmV1Credentials;
+}
+
+export type AgileCrmV1CompanyCreateNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1CompanyCreateConfig>;
 };
+
+export type AgileCrmV1CompanyDeleteNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1CompanyDeleteConfig>;
+};
+
+export type AgileCrmV1CompanyGetNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1CompanyGetConfig>;
+};
+
+export type AgileCrmV1CompanyGetAllNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1CompanyGetAllConfig>;
+};
+
+export type AgileCrmV1CompanyUpdateNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1CompanyUpdateConfig>;
+};
+
+export type AgileCrmV1ContactCreateNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1ContactCreateConfig>;
+};
+
+export type AgileCrmV1ContactDeleteNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1ContactDeleteConfig>;
+};
+
+export type AgileCrmV1ContactGetNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1ContactGetConfig>;
+};
+
+export type AgileCrmV1ContactGetAllNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1ContactGetAllConfig>;
+};
+
+export type AgileCrmV1ContactUpdateNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1ContactUpdateConfig>;
+};
+
+export type AgileCrmV1DealCreateNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1DealCreateConfig>;
+};
+
+export type AgileCrmV1DealDeleteNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1DealDeleteConfig>;
+};
+
+export type AgileCrmV1DealGetNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1DealGetConfig>;
+};
+
+export type AgileCrmV1DealGetAllNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1DealGetAllConfig>;
+};
+
+export type AgileCrmV1DealUpdateNode = AgileCrmV1NodeBase & {
+	config: NodeConfig<AgileCrmV1DealUpdateConfig>;
+};
+
+export type AgileCrmV1Node =
+	| AgileCrmV1CompanyCreateNode
+	| AgileCrmV1CompanyDeleteNode
+	| AgileCrmV1CompanyGetNode
+	| AgileCrmV1CompanyGetAllNode
+	| AgileCrmV1CompanyUpdateNode
+	| AgileCrmV1ContactCreateNode
+	| AgileCrmV1ContactDeleteNode
+	| AgileCrmV1ContactGetNode
+	| AgileCrmV1ContactGetAllNode
+	| AgileCrmV1ContactUpdateNode
+	| AgileCrmV1DealCreateNode
+	| AgileCrmV1DealDeleteNode
+	| AgileCrmV1DealGetNode
+	| AgileCrmV1DealGetAllNode
+	| AgileCrmV1DealUpdateNode
+	;

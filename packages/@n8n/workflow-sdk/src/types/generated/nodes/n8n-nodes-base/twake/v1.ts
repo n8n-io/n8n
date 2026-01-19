@@ -1,8 +1,6 @@
 /**
  * Twake Node - Version 1
  * Consume Twake API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -43,12 +41,17 @@ export interface TwakeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TwakeV1Node = {
+interface TwakeV1NodeBase {
 	type: 'n8n-nodes-base.twake';
 	version: 1;
-	config: NodeConfig<TwakeV1Params>;
 	credentials?: TwakeV1Credentials;
+}
+
+export type TwakeV1MessageSendNode = TwakeV1NodeBase & {
+	config: NodeConfig<TwakeV1MessageSendConfig>;
 };
+
+export type TwakeV1Node = TwakeV1MessageSendNode;

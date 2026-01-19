@@ -1,8 +1,6 @@
 /**
  * RabbitMQ Node - Version 1
  * Sends messages to a RabbitMQ topic
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -83,12 +81,24 @@ export interface RabbitmqV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RabbitmqV1Node = {
+interface RabbitmqV1NodeBase {
 	type: 'n8n-nodes-base.rabbitmq';
 	version: 1;
-	config: NodeConfig<RabbitmqV1Params>;
 	credentials?: RabbitmqV1Credentials;
+}
+
+export type RabbitmqV1QueueNode = RabbitmqV1NodeBase & {
+	config: NodeConfig<RabbitmqV1QueueConfig>;
 };
+
+export type RabbitmqV1ExchangeNode = RabbitmqV1NodeBase & {
+	config: NodeConfig<RabbitmqV1ExchangeConfig>;
+};
+
+export type RabbitmqV1Node =
+	| RabbitmqV1QueueNode
+	| RabbitmqV1ExchangeNode
+	;

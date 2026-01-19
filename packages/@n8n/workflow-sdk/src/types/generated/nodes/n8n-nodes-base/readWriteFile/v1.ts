@@ -1,8 +1,6 @@
 /**
  * Read/Write Files from Disk Node - Version 1
  * Read or write files from the computer that runs n8n
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,12 +33,16 @@ export interface ReadWriteFileV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ReadWriteFileV1Node = {
+interface ReadWriteFileV1NodeBase {
 	type: 'n8n-nodes-base.readWriteFile';
 	version: 1;
+}
+
+export type ReadWriteFileV1ParamsNode = ReadWriteFileV1NodeBase & {
 	config: NodeConfig<ReadWriteFileV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type ReadWriteFileV1Node = ReadWriteFileV1ParamsNode;

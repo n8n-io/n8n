@@ -1,8 +1,6 @@
 /**
  * Google Cloud Realtime Database Node - Version 1
  * Interact with Google Firebase - Realtime Database API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -40,12 +38,17 @@ export interface GoogleFirebaseRealtimeDatabaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleFirebaseRealtimeDatabaseV1Node = {
+interface GoogleFirebaseRealtimeDatabaseV1NodeBase {
 	type: 'n8n-nodes-base.googleFirebaseRealtimeDatabase';
 	version: 1;
-	config: NodeConfig<GoogleFirebaseRealtimeDatabaseV1Params>;
 	credentials?: GoogleFirebaseRealtimeDatabaseV1Credentials;
+}
+
+export type GoogleFirebaseRealtimeDatabaseV1ParamsNode = GoogleFirebaseRealtimeDatabaseV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseRealtimeDatabaseV1Params>;
 };
+
+export type GoogleFirebaseRealtimeDatabaseV1Node = GoogleFirebaseRealtimeDatabaseV1ParamsNode;

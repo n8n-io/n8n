@@ -1,8 +1,6 @@
 /**
  * GraphQL Node - Version 1.1
  * Makes a GraphQL request and returns the received data
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -90,12 +88,17 @@ export interface GraphqlV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GraphqlV11Node = {
+interface GraphqlV11NodeBase {
 	type: 'n8n-nodes-base.graphql';
 	version: 1.1;
-	config: NodeConfig<GraphqlV11Params>;
 	credentials?: GraphqlV11Credentials;
+}
+
+export type GraphqlV11ParamsNode = GraphqlV11NodeBase & {
+	config: NodeConfig<GraphqlV11Params>;
 };
+
+export type GraphqlV11Node = GraphqlV11ParamsNode;

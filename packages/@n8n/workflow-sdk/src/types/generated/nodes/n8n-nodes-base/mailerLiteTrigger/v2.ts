@@ -1,8 +1,6 @@
 /**
  * MailerLite Trigger Node - Version 2
  * Starts the workflow when MailerLite events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface MailerLiteTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MailerLiteTriggerV2Node = {
+interface MailerLiteTriggerV2NodeBase {
 	type: 'n8n-nodes-base.mailerLiteTrigger';
 	version: 2;
-	config: NodeConfig<MailerLiteTriggerV2Params>;
 	credentials?: MailerLiteTriggerV2Credentials;
 	isTrigger: true;
+}
+
+export type MailerLiteTriggerV2ParamsNode = MailerLiteTriggerV2NodeBase & {
+	config: NodeConfig<MailerLiteTriggerV2Params>;
 };
+
+export type MailerLiteTriggerV2Node = MailerLiteTriggerV2ParamsNode;

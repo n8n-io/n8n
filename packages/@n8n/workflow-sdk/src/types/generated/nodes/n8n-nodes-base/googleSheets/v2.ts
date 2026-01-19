@@ -1,8 +1,6 @@
 /**
  * Google Sheets  Node - Version 2
  * Read, update and write data to Google Sheets
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -452,12 +450,64 @@ export interface GoogleSheetsV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSheetsV2Node = {
+interface GoogleSheetsV2NodeBase {
 	type: 'n8n-nodes-base.googleSheets';
 	version: 2;
-	config: NodeConfig<GoogleSheetsV2Params>;
 	credentials?: GoogleSheetsV2Credentials;
+}
+
+export type GoogleSheetsV2SpreadsheetCreateNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SpreadsheetCreateConfig>;
 };
+
+export type GoogleSheetsV2SheetAppendNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetAppendConfig>;
+};
+
+export type GoogleSheetsV2SheetClearNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetClearConfig>;
+};
+
+export type GoogleSheetsV2SheetCreateNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetCreateConfig>;
+};
+
+export type GoogleSheetsV2SheetUpsertNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetUpsertConfig>;
+};
+
+export type GoogleSheetsV2SheetDeleteNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetDeleteConfig>;
+};
+
+export type GoogleSheetsV2SheetLookupNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetLookupConfig>;
+};
+
+export type GoogleSheetsV2SheetReadNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetReadConfig>;
+};
+
+export type GoogleSheetsV2SheetRemoveNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetRemoveConfig>;
+};
+
+export type GoogleSheetsV2SheetUpdateNode = GoogleSheetsV2NodeBase & {
+	config: NodeConfig<GoogleSheetsV2SheetUpdateConfig>;
+};
+
+export type GoogleSheetsV2Node =
+	| GoogleSheetsV2SpreadsheetCreateNode
+	| GoogleSheetsV2SheetAppendNode
+	| GoogleSheetsV2SheetClearNode
+	| GoogleSheetsV2SheetCreateNode
+	| GoogleSheetsV2SheetUpsertNode
+	| GoogleSheetsV2SheetDeleteNode
+	| GoogleSheetsV2SheetLookupNode
+	| GoogleSheetsV2SheetReadNode
+	| GoogleSheetsV2SheetRemoveNode
+	| GoogleSheetsV2SheetUpdateNode
+	;

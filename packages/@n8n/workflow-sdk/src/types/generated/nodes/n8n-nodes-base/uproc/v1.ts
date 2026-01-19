@@ -1,8 +1,6 @@
 /**
  * uProc Node - Version 1
  * Consume uProc API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -743,12 +741,17 @@ export interface UprocV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UprocV1Node = {
+interface UprocV1NodeBase {
 	type: 'n8n-nodes-base.uproc';
 	version: 1;
-	config: NodeConfig<UprocV1Params>;
 	credentials?: UprocV1Credentials;
+}
+
+export type UprocV1ParamsNode = UprocV1NodeBase & {
+	config: NodeConfig<UprocV1Params>;
 };
+
+export type UprocV1Node = UprocV1ParamsNode;

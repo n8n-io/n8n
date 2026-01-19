@@ -1,8 +1,6 @@
 /**
  * Evaluation Node - Version 4.8
  * Runs an evaluation
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -153,12 +151,17 @@ export interface EvaluationV48Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EvaluationV48Node = {
+interface EvaluationV48NodeBase {
 	type: 'n8n-nodes-base.evaluation';
 	version: 4.8;
-	config: NodeConfig<EvaluationV48Params>;
 	credentials?: EvaluationV48Credentials;
+}
+
+export type EvaluationV48ParamsNode = EvaluationV48NodeBase & {
+	config: NodeConfig<EvaluationV48Params>;
 };
+
+export type EvaluationV48Node = EvaluationV48ParamsNode;

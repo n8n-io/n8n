@@ -1,8 +1,6 @@
 /**
  * WooCommerce Trigger Node - Version 1
  * Handle WooCommerce events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -29,13 +27,18 @@ export interface WooCommerceTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WooCommerceTriggerV1Node = {
+interface WooCommerceTriggerV1NodeBase {
 	type: 'n8n-nodes-base.wooCommerceTrigger';
 	version: 1;
-	config: NodeConfig<WooCommerceTriggerV1Params>;
 	credentials?: WooCommerceTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type WooCommerceTriggerV1ParamsNode = WooCommerceTriggerV1NodeBase & {
+	config: NodeConfig<WooCommerceTriggerV1Params>;
 };
+
+export type WooCommerceTriggerV1Node = WooCommerceTriggerV1ParamsNode;

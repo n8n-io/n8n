@@ -1,8 +1,6 @@
 /**
  * Airtable Node - Version 1
  * Read, update, write and delete data from Airtable
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -222,12 +220,29 @@ export interface AirtableV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtableV1Node = {
+interface AirtableV1NodeBase {
 	type: 'n8n-nodes-base.airtable';
 	version: 1;
-	config: NodeConfig<AirtableV1Params>;
 	credentials?: AirtableV1Credentials;
+}
+
+export type AirtableV1AirtableTokenApiNode = AirtableV1NodeBase & {
+	config: NodeConfig<AirtableV1AirtableTokenApiConfig>;
 };
+
+export type AirtableV1AirtableOAuth2ApiNode = AirtableV1NodeBase & {
+	config: NodeConfig<AirtableV1AirtableOAuth2ApiConfig>;
+};
+
+export type AirtableV1AirtableApiNode = AirtableV1NodeBase & {
+	config: NodeConfig<AirtableV1AirtableApiConfig>;
+};
+
+export type AirtableV1Node =
+	| AirtableV1AirtableTokenApiNode
+	| AirtableV1AirtableOAuth2ApiNode
+	| AirtableV1AirtableApiNode
+	;

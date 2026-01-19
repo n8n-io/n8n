@@ -1,8 +1,6 @@
 /**
  * Groq Chat Model Node - Version 1
  * Language Model Groq
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcLmChatGroqV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatGroqV1Node = {
+interface LcLmChatGroqV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatGroq';
 	version: 1;
-	config: NodeConfig<LcLmChatGroqV1Params>;
 	credentials?: LcLmChatGroqV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatGroqV1ParamsNode = LcLmChatGroqV1NodeBase & {
+	config: NodeConfig<LcLmChatGroqV1Params>;
 };
+
+export type LcLmChatGroqV1Node = LcLmChatGroqV1ParamsNode;

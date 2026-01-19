@@ -1,8 +1,6 @@
 /**
  * ProfitWell Node - Version 1
  * Consume ProfitWell API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -52,12 +50,24 @@ export interface ProfitWellV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ProfitWellV1Node = {
+interface ProfitWellV1NodeBase {
 	type: 'n8n-nodes-base.profitWell';
 	version: 1;
-	config: NodeConfig<ProfitWellV1Params>;
 	credentials?: ProfitWellV1Credentials;
+}
+
+export type ProfitWellV1CompanyGetSettingNode = ProfitWellV1NodeBase & {
+	config: NodeConfig<ProfitWellV1CompanyGetSettingConfig>;
 };
+
+export type ProfitWellV1MetricGetNode = ProfitWellV1NodeBase & {
+	config: NodeConfig<ProfitWellV1MetricGetConfig>;
+};
+
+export type ProfitWellV1Node =
+	| ProfitWellV1CompanyGetSettingNode
+	| ProfitWellV1MetricGetNode
+	;

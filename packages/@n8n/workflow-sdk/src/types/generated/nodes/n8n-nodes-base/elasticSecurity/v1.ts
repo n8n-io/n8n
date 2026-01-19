@@ -1,8 +1,6 @@
 /**
  * Elastic Security Node - Version 1
  * Consume the Elastic Security API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -326,12 +324,84 @@ export interface ElasticSecurityV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ElasticSecurityV1Node = {
+interface ElasticSecurityV1NodeBase {
 	type: 'n8n-nodes-base.elasticSecurity';
 	version: 1;
-	config: NodeConfig<ElasticSecurityV1Params>;
 	credentials?: ElasticSecurityV1Credentials;
+}
+
+export type ElasticSecurityV1CaseCreateNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseCreateConfig>;
 };
+
+export type ElasticSecurityV1CaseDeleteNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseDeleteConfig>;
+};
+
+export type ElasticSecurityV1CaseGetNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseGetConfig>;
+};
+
+export type ElasticSecurityV1CaseGetAllNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseGetAllConfig>;
+};
+
+export type ElasticSecurityV1CaseGetStatusNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseGetStatusConfig>;
+};
+
+export type ElasticSecurityV1CaseUpdateNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseUpdateConfig>;
+};
+
+export type ElasticSecurityV1CaseCommentAddNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseCommentAddConfig>;
+};
+
+export type ElasticSecurityV1CaseCommentGetNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseCommentGetConfig>;
+};
+
+export type ElasticSecurityV1CaseCommentGetAllNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseCommentGetAllConfig>;
+};
+
+export type ElasticSecurityV1CaseCommentRemoveNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseCommentRemoveConfig>;
+};
+
+export type ElasticSecurityV1CaseCommentUpdateNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseCommentUpdateConfig>;
+};
+
+export type ElasticSecurityV1CaseTagAddNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseTagAddConfig>;
+};
+
+export type ElasticSecurityV1CaseTagRemoveNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1CaseTagRemoveConfig>;
+};
+
+export type ElasticSecurityV1ConnectorCreateNode = ElasticSecurityV1NodeBase & {
+	config: NodeConfig<ElasticSecurityV1ConnectorCreateConfig>;
+};
+
+export type ElasticSecurityV1Node =
+	| ElasticSecurityV1CaseCreateNode
+	| ElasticSecurityV1CaseDeleteNode
+	| ElasticSecurityV1CaseGetNode
+	| ElasticSecurityV1CaseGetAllNode
+	| ElasticSecurityV1CaseGetStatusNode
+	| ElasticSecurityV1CaseUpdateNode
+	| ElasticSecurityV1CaseCommentAddNode
+	| ElasticSecurityV1CaseCommentGetNode
+	| ElasticSecurityV1CaseCommentGetAllNode
+	| ElasticSecurityV1CaseCommentRemoveNode
+	| ElasticSecurityV1CaseCommentUpdateNode
+	| ElasticSecurityV1CaseTagAddNode
+	| ElasticSecurityV1CaseTagRemoveNode
+	| ElasticSecurityV1ConnectorCreateNode
+	;

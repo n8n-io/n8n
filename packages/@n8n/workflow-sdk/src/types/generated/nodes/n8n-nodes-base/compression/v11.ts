@@ -1,8 +1,6 @@
 /**
  * Compression Node - Version 1.1
  * Compress and decompress files
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -47,12 +45,16 @@ export interface CompressionV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CompressionV11Node = {
+interface CompressionV11NodeBase {
 	type: 'n8n-nodes-base.compression';
 	version: 1.1;
+}
+
+export type CompressionV11ParamsNode = CompressionV11NodeBase & {
 	config: NodeConfig<CompressionV11Params>;
-	credentials?: Record<string, never>;
 };
+
+export type CompressionV11Node = CompressionV11ParamsNode;

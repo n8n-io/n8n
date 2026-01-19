@@ -1,8 +1,6 @@
 /**
  * Github Trigger Node - Version 1
  * Starts the workflow when Github events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -38,13 +36,18 @@ export interface GithubTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GithubTriggerV1Node = {
+interface GithubTriggerV1NodeBase {
 	type: 'n8n-nodes-base.githubTrigger';
 	version: 1;
-	config: NodeConfig<GithubTriggerV1Params>;
 	credentials?: GithubTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type GithubTriggerV1ParamsNode = GithubTriggerV1NodeBase & {
+	config: NodeConfig<GithubTriggerV1Params>;
 };
+
+export type GithubTriggerV1Node = GithubTriggerV1ParamsNode;

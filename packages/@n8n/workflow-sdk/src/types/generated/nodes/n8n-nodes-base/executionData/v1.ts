@@ -1,8 +1,6 @@
 /**
  * Execution Data Node - Version 1
  * Add execution data for search
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -32,12 +30,16 @@ export interface ExecutionDataV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ExecutionDataV1Node = {
+interface ExecutionDataV1NodeBase {
 	type: 'n8n-nodes-base.executionData';
 	version: 1;
+}
+
+export type ExecutionDataV1ParamsNode = ExecutionDataV1NodeBase & {
 	config: NodeConfig<ExecutionDataV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type ExecutionDataV1Node = ExecutionDataV1ParamsNode;

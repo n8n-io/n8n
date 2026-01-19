@@ -1,8 +1,6 @@
 /**
  * Eventbrite Trigger Node - Version 1
  * Handle Eventbrite events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -45,13 +43,18 @@ export interface EventbriteTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EventbriteTriggerV1Node = {
+interface EventbriteTriggerV1NodeBase {
 	type: 'n8n-nodes-base.eventbriteTrigger';
 	version: 1;
-	config: NodeConfig<EventbriteTriggerV1Params>;
 	credentials?: EventbriteTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type EventbriteTriggerV1ParamsNode = EventbriteTriggerV1NodeBase & {
+	config: NodeConfig<EventbriteTriggerV1Params>;
 };
+
+export type EventbriteTriggerV1Node = EventbriteTriggerV1ParamsNode;

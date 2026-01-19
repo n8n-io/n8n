@@ -1,8 +1,6 @@
 /**
  * Postgres Trigger Node - Version 1
  * Listens to Postgres messages
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -39,13 +37,18 @@ export interface PostgresTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PostgresTriggerV1Node = {
+interface PostgresTriggerV1NodeBase {
 	type: 'n8n-nodes-base.postgresTrigger';
 	version: 1;
-	config: NodeConfig<PostgresTriggerV1Params>;
 	credentials?: PostgresTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type PostgresTriggerV1ParamsNode = PostgresTriggerV1NodeBase & {
+	config: NodeConfig<PostgresTriggerV1Params>;
 };
+
+export type PostgresTriggerV1Node = PostgresTriggerV1ParamsNode;

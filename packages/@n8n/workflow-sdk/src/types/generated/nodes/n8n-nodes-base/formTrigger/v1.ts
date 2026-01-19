@@ -1,8 +1,6 @@
 /**
  * n8n Form Trigger Node - Version 1
  * Generate webforms in n8n and pass their responses to the workflow
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -177,13 +175,17 @@ export interface FormTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormTriggerV1Node = {
+interface FormTriggerV1NodeBase {
 	type: 'n8n-nodes-base.formTrigger';
 	version: 1;
-	config: NodeConfig<FormTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type FormTriggerV1ParamsNode = FormTriggerV1NodeBase & {
+	config: NodeConfig<FormTriggerV1Params>;
 };
+
+export type FormTriggerV1Node = FormTriggerV1ParamsNode;

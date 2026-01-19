@@ -1,8 +1,6 @@
 /**
  * Guardrails Node - Version 2
  * Safeguard AI models from malicious input or prevent them from generating undesirable responses
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -57,12 +55,16 @@ Analyze the following text according to the instructions above.
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcGuardrailsV2Node = {
+interface LcGuardrailsV2NodeBase {
 	type: '@n8n/n8n-nodes-langchain.guardrails';
 	version: 2;
+}
+
+export type LcGuardrailsV2ParamsNode = LcGuardrailsV2NodeBase & {
 	config: NodeConfig<LcGuardrailsV2Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcGuardrailsV2Node = LcGuardrailsV2ParamsNode;

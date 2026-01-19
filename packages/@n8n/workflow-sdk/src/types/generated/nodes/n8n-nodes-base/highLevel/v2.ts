@@ -1,8 +1,6 @@
 /**
  * HighLevel Node - Version 2
  * Consume HighLevel API v2
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -262,6 +260,299 @@ export type HighLevelV2Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type HighLevelV2ContactCreateOutput = {
+	country?: string;
+	createdBy?: {
+		channel?: string;
+		source?: string;
+		sourceId?: string;
+		timestamp?: string;
+	};
+	customFields?: Array<{
+		id?: string;
+	}>;
+	dateAdded?: string;
+	dateUpdated?: string;
+	email?: string;
+	emailLowerCase?: string;
+	firstName?: string;
+	firstNameLowerCase?: string;
+	followers?: Array<string>;
+	fullNameLowerCase?: string;
+	id?: string;
+	lastName?: string;
+	lastNameLowerCase?: string;
+	locationId?: string;
+	tags?: Array<string>;
+	type?: string;
+};
+
+export type HighLevelV2ContactGetOutput = {
+	additionalPhones?: Array<{
+		phone?: string;
+		phoneLabel?: string;
+	}>;
+	attributionSource?: {
+		medium?: string;
+		sessionSource?: string;
+	};
+	country?: string;
+	createdBy?: {
+		channel?: string;
+		source?: string;
+		sourceId?: string;
+		timestamp?: string;
+	};
+	customFields?: Array<{
+		id?: string;
+	}>;
+	dateAdded?: string;
+	dateUpdated?: string;
+	email?: string;
+	emailLowerCase?: string;
+	firstName?: string;
+	firstNameLowerCase?: string;
+	fullNameLowerCase?: string;
+	id?: string;
+	lastName?: string;
+	lastNameLowerCase?: string;
+	locationId?: string;
+	phone?: string;
+	tags?: Array<string>;
+	type?: string;
+};
+
+export type HighLevelV2ContactGetAllOutput = {
+	attributions?: Array<{
+		isFirst?: boolean;
+		medium?: string;
+		utmSessionSource?: string;
+	}>;
+	contactName?: string;
+	customFields?: Array<{
+		id?: string;
+	}>;
+	dateAdded?: string;
+	dateUpdated?: string;
+	dnd?: boolean;
+	id?: string;
+	locationId?: string;
+	tags?: Array<string>;
+};
+
+export type HighLevelV2ContactUpdateOutput = {
+	additionalPhones?: Array<{
+		phone?: string;
+	}>;
+	country?: string;
+	createdBy?: {
+		channel?: string;
+		source?: string;
+		sourceId?: string;
+		timestamp?: string;
+	};
+	customFields?: Array<{
+		id?: string;
+	}>;
+	dateAdded?: string;
+	dateUpdated?: string;
+	email?: string;
+	emailLowerCase?: string;
+	firstName?: string;
+	firstNameLowerCase?: string;
+	followers?: Array<string>;
+	fullNameLowerCase?: string;
+	id?: string;
+	lastName?: string;
+	lastNameLowerCase?: string;
+	locationId?: string;
+	phone?: string;
+	tags?: Array<string>;
+	type?: string;
+};
+
+export type HighLevelV2OpportunityCreateOutput = {
+	opportunity?: {
+		contact?: {
+			email?: string;
+			followers?: Array<string>;
+			id?: string;
+			name?: string;
+			phone?: string;
+			tags?: Array<string>;
+		};
+		contactId?: string;
+		createdAt?: string;
+		followers?: Array<string>;
+		id?: string;
+		internalSource?: {
+			apiVersion?: string;
+			channel?: string;
+			id?: string;
+			source?: string;
+			type?: string;
+		};
+		isAttribute?: boolean;
+		lastActionDate?: string;
+		lastStageChangeAt?: string;
+		lastStatusChangeAt?: string;
+		locationId?: string;
+		monetaryValue?: number;
+		name?: string;
+		pipelineId?: string;
+		pipelineStageId?: string;
+		status?: string;
+		updatedAt?: string;
+	};
+	traceId?: string;
+};
+
+export type HighLevelV2OpportunityGetOutput = {
+	opportunity?: {
+		contact?: {
+			email?: string;
+			followers?: Array<string>;
+			id?: string;
+			name?: string;
+			phone?: string;
+			tags?: Array<string>;
+		};
+		contactId?: string;
+		createdAt?: string;
+		followers?: Array<string>;
+		id?: string;
+		indexVersion?: number;
+		internalSource?: {
+			apiVersion?: string;
+			channel?: string;
+			id?: string;
+			source?: string;
+			type?: string;
+		};
+		isAttribute?: boolean;
+		lastActionDate?: string;
+		lastStageChangeAt?: string;
+		lastStatusChangeAt?: string;
+		locationId?: string;
+		name?: string;
+		pipelineId?: string;
+		pipelineStageId?: string;
+		status?: string;
+		updatedAt?: string;
+	};
+	traceId?: string;
+};
+
+export type HighLevelV2OpportunityGetAllOutput = {
+	attributions?: Array<{
+		isFirst?: boolean;
+		medium?: string;
+		utmSessionSource?: string;
+	}>;
+	contact?: {
+		id?: string;
+		name?: string;
+		tags?: Array<string>;
+	};
+	contactId?: string;
+	createdAt?: string;
+	customFields?: Array<{
+		fieldValueString?: string;
+		id?: string;
+		type?: string;
+	}>;
+	followers?: Array<string>;
+	id?: string;
+	lastStageChangeAt?: string;
+	lastStatusChangeAt?: string;
+	locationId?: string;
+	name?: string;
+	pipelineId?: string;
+	pipelineStageId?: string;
+	pipelineStageUId?: string;
+	relations?: Array<{
+		associationId?: string;
+		objectKey?: string;
+		primary?: boolean;
+		recordId?: string;
+		relationId?: string;
+		tags?: Array<string>;
+	}>;
+	status?: string;
+	updatedAt?: string;
+};
+
+export type HighLevelV2OpportunityUpdateOutput = {
+	opportunity?: {
+		contact?: {
+			email?: string;
+			id?: string;
+			name?: string;
+			phone?: string;
+			tags?: Array<string>;
+		};
+		contactId?: string;
+		createdAt?: string;
+		followers?: Array<string>;
+		id?: string;
+		indexVersion?: number;
+		internalSource?: {
+			apiVersion?: string;
+			channel?: string;
+			id?: string;
+			source?: string;
+			type?: string;
+		};
+		isAttribute?: boolean;
+		lastActionDate?: string;
+		lastStageChangeAt?: string;
+		lastStatusChangeAt?: string;
+		locationId?: string;
+		monetaryValue?: number;
+		name?: string;
+		pipelineId?: string;
+		pipelineStageId?: string;
+		source?: string;
+		status?: string;
+		updatedAt?: string;
+	};
+	traceId?: string;
+};
+
+export type HighLevelV2TaskCreateOutput = {
+	contactId?: string;
+	task?: {
+		businessId?: string;
+		completed?: boolean;
+		contactId?: string;
+		dueDate?: string;
+		id?: string;
+		title?: string;
+	};
+	traceId?: string;
+};
+
+export type HighLevelV2CalendarBookAppointmentOutput = {
+	address?: string;
+	appoinmentStatus?: string;
+	assignedUserId?: string;
+	calendarId?: string;
+	contactId?: string;
+	id?: string;
+	isRecurring?: boolean;
+	status?: string;
+	title?: string;
+	traceId?: string;
+};
+
+export type HighLevelV2CalendarGetFreeSlotsOutput = {
+	traceId?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -270,12 +561,110 @@ export interface HighLevelV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HighLevelV2Node = {
+interface HighLevelV2NodeBase {
 	type: 'n8n-nodes-base.highLevel';
 	version: 2;
-	config: NodeConfig<HighLevelV2Params>;
 	credentials?: HighLevelV2Credentials;
+}
+
+export type HighLevelV2ContactCreateNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2ContactCreateConfig>;
+	output?: HighLevelV2ContactCreateOutput;
 };
+
+export type HighLevelV2ContactDeleteNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2ContactDeleteConfig>;
+};
+
+export type HighLevelV2ContactGetNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2ContactGetConfig>;
+	output?: HighLevelV2ContactGetOutput;
+};
+
+export type HighLevelV2ContactGetAllNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2ContactGetAllConfig>;
+	output?: HighLevelV2ContactGetAllOutput;
+};
+
+export type HighLevelV2ContactUpdateNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2ContactUpdateConfig>;
+	output?: HighLevelV2ContactUpdateOutput;
+};
+
+export type HighLevelV2OpportunityCreateNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2OpportunityCreateConfig>;
+	output?: HighLevelV2OpportunityCreateOutput;
+};
+
+export type HighLevelV2OpportunityDeleteNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2OpportunityDeleteConfig>;
+};
+
+export type HighLevelV2OpportunityGetNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2OpportunityGetConfig>;
+	output?: HighLevelV2OpportunityGetOutput;
+};
+
+export type HighLevelV2OpportunityGetAllNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2OpportunityGetAllConfig>;
+	output?: HighLevelV2OpportunityGetAllOutput;
+};
+
+export type HighLevelV2OpportunityUpdateNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2OpportunityUpdateConfig>;
+	output?: HighLevelV2OpportunityUpdateOutput;
+};
+
+export type HighLevelV2TaskCreateNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2TaskCreateConfig>;
+	output?: HighLevelV2TaskCreateOutput;
+};
+
+export type HighLevelV2TaskDeleteNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2TaskDeleteConfig>;
+};
+
+export type HighLevelV2TaskGetNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2TaskGetConfig>;
+};
+
+export type HighLevelV2TaskGetAllNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2TaskGetAllConfig>;
+};
+
+export type HighLevelV2TaskUpdateNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2TaskUpdateConfig>;
+};
+
+export type HighLevelV2CalendarBookAppointmentNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2CalendarBookAppointmentConfig>;
+	output?: HighLevelV2CalendarBookAppointmentOutput;
+};
+
+export type HighLevelV2CalendarGetFreeSlotsNode = HighLevelV2NodeBase & {
+	config: NodeConfig<HighLevelV2CalendarGetFreeSlotsConfig>;
+	output?: HighLevelV2CalendarGetFreeSlotsOutput;
+};
+
+export type HighLevelV2Node =
+	| HighLevelV2ContactCreateNode
+	| HighLevelV2ContactDeleteNode
+	| HighLevelV2ContactGetNode
+	| HighLevelV2ContactGetAllNode
+	| HighLevelV2ContactUpdateNode
+	| HighLevelV2OpportunityCreateNode
+	| HighLevelV2OpportunityDeleteNode
+	| HighLevelV2OpportunityGetNode
+	| HighLevelV2OpportunityGetAllNode
+	| HighLevelV2OpportunityUpdateNode
+	| HighLevelV2TaskCreateNode
+	| HighLevelV2TaskDeleteNode
+	| HighLevelV2TaskGetNode
+	| HighLevelV2TaskGetAllNode
+	| HighLevelV2TaskUpdateNode
+	| HighLevelV2CalendarBookAppointmentNode
+	| HighLevelV2CalendarGetFreeSlotsNode
+	;

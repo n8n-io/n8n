@@ -1,8 +1,6 @@
 /**
  * E2E Test Node - Version 1
  * Dummy node used for e2e testing
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,12 +33,16 @@ export interface E2eTestV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type E2eTestV1Node = {
+interface E2eTestV1NodeBase {
 	type: 'n8n-nodes-base.e2eTest';
 	version: 1;
+}
+
+export type E2eTestV1ParamsNode = E2eTestV1NodeBase & {
 	config: NodeConfig<E2eTestV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type E2eTestV1Node = E2eTestV1ParamsNode;

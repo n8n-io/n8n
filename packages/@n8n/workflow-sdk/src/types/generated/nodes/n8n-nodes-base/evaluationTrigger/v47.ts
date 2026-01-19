@@ -1,8 +1,6 @@
 /**
  * Evaluation Trigger Node - Version 4.7
  * Run a test dataset through your workflow to check performance
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -83,13 +81,18 @@ export interface EvaluationTriggerV47Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EvaluationTriggerV47Node = {
+interface EvaluationTriggerV47NodeBase {
 	type: 'n8n-nodes-base.evaluationTrigger';
 	version: 4.7;
-	config: NodeConfig<EvaluationTriggerV47Params>;
 	credentials?: EvaluationTriggerV47Credentials;
 	isTrigger: true;
+}
+
+export type EvaluationTriggerV47ParamsNode = EvaluationTriggerV47NodeBase & {
+	config: NodeConfig<EvaluationTriggerV47Params>;
 };
+
+export type EvaluationTriggerV47Node = EvaluationTriggerV47ParamsNode;

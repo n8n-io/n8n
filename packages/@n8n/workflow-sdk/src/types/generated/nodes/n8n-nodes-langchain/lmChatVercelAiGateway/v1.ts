@@ -1,8 +1,6 @@
 /**
  * Vercel AI Gateway Chat Model Node - Version 1
  * For advanced usage with an AI chain via Vercel AI Gateway
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcLmChatVercelAiGatewayV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatVercelAiGatewayV1Node = {
+interface LcLmChatVercelAiGatewayV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatVercelAiGateway';
 	version: 1;
-	config: NodeConfig<LcLmChatVercelAiGatewayV1Params>;
 	credentials?: LcLmChatVercelAiGatewayV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatVercelAiGatewayV1ParamsNode = LcLmChatVercelAiGatewayV1NodeBase & {
+	config: NodeConfig<LcLmChatVercelAiGatewayV1Params>;
 };
+
+export type LcLmChatVercelAiGatewayV1Node = LcLmChatVercelAiGatewayV1ParamsNode;

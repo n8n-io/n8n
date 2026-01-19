@@ -1,8 +1,6 @@
 /**
  * Copper Trigger Node - Version 1
  * Handle Copper events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -33,13 +31,18 @@ export interface CopperTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CopperTriggerV1Node = {
+interface CopperTriggerV1NodeBase {
 	type: 'n8n-nodes-base.copperTrigger';
 	version: 1;
-	config: NodeConfig<CopperTriggerV1Params>;
 	credentials?: CopperTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type CopperTriggerV1ParamsNode = CopperTriggerV1NodeBase & {
+	config: NodeConfig<CopperTriggerV1Params>;
 };
+
+export type CopperTriggerV1Node = CopperTriggerV1ParamsNode;

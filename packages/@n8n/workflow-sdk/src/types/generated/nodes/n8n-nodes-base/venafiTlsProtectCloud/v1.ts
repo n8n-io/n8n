@@ -1,8 +1,6 @@
 /**
  * Venafi TLS Protect Cloud Node - Version 1
  * Consume Venafi TLS Protect Cloud API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -155,12 +153,54 @@ export interface VenafiTlsProtectCloudV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VenafiTlsProtectCloudV1Node = {
+interface VenafiTlsProtectCloudV1NodeBase {
 	type: 'n8n-nodes-base.venafiTlsProtectCloud';
 	version: 1;
-	config: NodeConfig<VenafiTlsProtectCloudV1Params>;
 	credentials?: VenafiTlsProtectCloudV1Credentials;
+}
+
+export type VenafiTlsProtectCloudV1CertificateDeleteNode = VenafiTlsProtectCloudV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudV1CertificateDeleteConfig>;
 };
+
+export type VenafiTlsProtectCloudV1CertificateDownloadNode = VenafiTlsProtectCloudV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudV1CertificateDownloadConfig>;
+};
+
+export type VenafiTlsProtectCloudV1CertificateGetNode = VenafiTlsProtectCloudV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudV1CertificateGetConfig>;
+};
+
+export type VenafiTlsProtectCloudV1CertificateGetManyNode = VenafiTlsProtectCloudV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudV1CertificateGetManyConfig>;
+};
+
+export type VenafiTlsProtectCloudV1CertificateRenewNode = VenafiTlsProtectCloudV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudV1CertificateRenewConfig>;
+};
+
+export type VenafiTlsProtectCloudV1CertificateRequestCreateNode = VenafiTlsProtectCloudV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudV1CertificateRequestCreateConfig>;
+};
+
+export type VenafiTlsProtectCloudV1CertificateRequestGetNode = VenafiTlsProtectCloudV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudV1CertificateRequestGetConfig>;
+};
+
+export type VenafiTlsProtectCloudV1CertificateRequestGetManyNode = VenafiTlsProtectCloudV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudV1CertificateRequestGetManyConfig>;
+};
+
+export type VenafiTlsProtectCloudV1Node =
+	| VenafiTlsProtectCloudV1CertificateDeleteNode
+	| VenafiTlsProtectCloudV1CertificateDownloadNode
+	| VenafiTlsProtectCloudV1CertificateGetNode
+	| VenafiTlsProtectCloudV1CertificateGetManyNode
+	| VenafiTlsProtectCloudV1CertificateRenewNode
+	| VenafiTlsProtectCloudV1CertificateRequestCreateNode
+	| VenafiTlsProtectCloudV1CertificateRequestGetNode
+	| VenafiTlsProtectCloudV1CertificateRequestGetManyNode
+	;

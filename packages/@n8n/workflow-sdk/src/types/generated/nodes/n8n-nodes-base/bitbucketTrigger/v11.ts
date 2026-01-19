@@ -1,8 +1,6 @@
 /**
  * Bitbucket Trigger Node - Version 1.1
  * Handle Bitbucket events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -44,13 +42,18 @@ export interface BitbucketTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BitbucketTriggerV11Node = {
+interface BitbucketTriggerV11NodeBase {
 	type: 'n8n-nodes-base.bitbucketTrigger';
 	version: 1.1;
-	config: NodeConfig<BitbucketTriggerV11Params>;
 	credentials?: BitbucketTriggerV11Credentials;
 	isTrigger: true;
+}
+
+export type BitbucketTriggerV11ParamsNode = BitbucketTriggerV11NodeBase & {
+	config: NodeConfig<BitbucketTriggerV11Params>;
 };
+
+export type BitbucketTriggerV11Node = BitbucketTriggerV11ParamsNode;

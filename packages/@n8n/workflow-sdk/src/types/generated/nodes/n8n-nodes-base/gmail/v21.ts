@@ -1,8 +1,6 @@
 /**
  * Gmail Node - Version 2.1
  * Consume the Gmail API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -391,12 +389,144 @@ export interface GmailV21Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GmailV21Node = {
+interface GmailV21NodeBase {
 	type: 'n8n-nodes-base.gmail';
 	version: 2.1;
-	config: NodeConfig<GmailV21Params>;
 	credentials?: GmailV21Credentials;
+}
+
+export type GmailV21MessageAddLabelsNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageAddLabelsConfig>;
 };
+
+export type GmailV21MessageDeleteNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageDeleteConfig>;
+};
+
+export type GmailV21MessageGetNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageGetConfig>;
+};
+
+export type GmailV21MessageGetAllNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageGetAllConfig>;
+};
+
+export type GmailV21MessageMarkAsReadNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageMarkAsReadConfig>;
+};
+
+export type GmailV21MessageMarkAsUnreadNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageMarkAsUnreadConfig>;
+};
+
+export type GmailV21MessageRemoveLabelsNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageRemoveLabelsConfig>;
+};
+
+export type GmailV21MessageReplyNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageReplyConfig>;
+};
+
+export type GmailV21MessageSendNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageSendConfig>;
+};
+
+export type GmailV21MessageSendAndWaitNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21MessageSendAndWaitConfig>;
+};
+
+export type GmailV21LabelCreateNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21LabelCreateConfig>;
+};
+
+export type GmailV21LabelDeleteNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21LabelDeleteConfig>;
+};
+
+export type GmailV21LabelGetNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21LabelGetConfig>;
+};
+
+export type GmailV21LabelGetAllNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21LabelGetAllConfig>;
+};
+
+export type GmailV21DraftCreateNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21DraftCreateConfig>;
+};
+
+export type GmailV21DraftDeleteNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21DraftDeleteConfig>;
+};
+
+export type GmailV21DraftGetNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21DraftGetConfig>;
+};
+
+export type GmailV21DraftGetAllNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21DraftGetAllConfig>;
+};
+
+export type GmailV21ThreadAddLabelsNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21ThreadAddLabelsConfig>;
+};
+
+export type GmailV21ThreadDeleteNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21ThreadDeleteConfig>;
+};
+
+export type GmailV21ThreadGetNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21ThreadGetConfig>;
+};
+
+export type GmailV21ThreadGetAllNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21ThreadGetAllConfig>;
+};
+
+export type GmailV21ThreadRemoveLabelsNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21ThreadRemoveLabelsConfig>;
+};
+
+export type GmailV21ThreadReplyNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21ThreadReplyConfig>;
+};
+
+export type GmailV21ThreadTrashNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21ThreadTrashConfig>;
+};
+
+export type GmailV21ThreadUntrashNode = GmailV21NodeBase & {
+	config: NodeConfig<GmailV21ThreadUntrashConfig>;
+};
+
+export type GmailV21Node =
+	| GmailV21MessageAddLabelsNode
+	| GmailV21MessageDeleteNode
+	| GmailV21MessageGetNode
+	| GmailV21MessageGetAllNode
+	| GmailV21MessageMarkAsReadNode
+	| GmailV21MessageMarkAsUnreadNode
+	| GmailV21MessageRemoveLabelsNode
+	| GmailV21MessageReplyNode
+	| GmailV21MessageSendNode
+	| GmailV21MessageSendAndWaitNode
+	| GmailV21LabelCreateNode
+	| GmailV21LabelDeleteNode
+	| GmailV21LabelGetNode
+	| GmailV21LabelGetAllNode
+	| GmailV21DraftCreateNode
+	| GmailV21DraftDeleteNode
+	| GmailV21DraftGetNode
+	| GmailV21DraftGetAllNode
+	| GmailV21ThreadAddLabelsNode
+	| GmailV21ThreadDeleteNode
+	| GmailV21ThreadGetNode
+	| GmailV21ThreadGetAllNode
+	| GmailV21ThreadRemoveLabelsNode
+	| GmailV21ThreadReplyNode
+	| GmailV21ThreadTrashNode
+	| GmailV21ThreadUntrashNode
+	;

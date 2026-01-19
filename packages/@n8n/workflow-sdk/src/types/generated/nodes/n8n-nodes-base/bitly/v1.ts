@@ -1,8 +1,6 @@
 /**
  * Bitly Node - Version 1
  * Consume Bitly API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -75,6 +73,22 @@ export type BitlyV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type BitlyV1LinkCreateOutput = {
+	archived?: boolean;
+	created_at?: string;
+	id?: string;
+	link?: string;
+	long_url?: string;
+	references?: {
+		group?: string;
+	};
+	tags?: Array<string>;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -84,12 +98,30 @@ export interface BitlyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BitlyV1Node = {
+interface BitlyV1NodeBase {
 	type: 'n8n-nodes-base.bitly';
 	version: 1;
-	config: NodeConfig<BitlyV1Params>;
 	credentials?: BitlyV1Credentials;
+}
+
+export type BitlyV1LinkCreateNode = BitlyV1NodeBase & {
+	config: NodeConfig<BitlyV1LinkCreateConfig>;
+	output?: BitlyV1LinkCreateOutput;
 };
+
+export type BitlyV1LinkGetNode = BitlyV1NodeBase & {
+	config: NodeConfig<BitlyV1LinkGetConfig>;
+};
+
+export type BitlyV1LinkUpdateNode = BitlyV1NodeBase & {
+	config: NodeConfig<BitlyV1LinkUpdateConfig>;
+};
+
+export type BitlyV1Node =
+	| BitlyV1LinkCreateNode
+	| BitlyV1LinkGetNode
+	| BitlyV1LinkUpdateNode
+	;

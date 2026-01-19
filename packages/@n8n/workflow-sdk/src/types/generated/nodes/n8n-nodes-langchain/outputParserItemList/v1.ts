@@ -1,8 +1,6 @@
 /**
  * Item List Output Parser Node - Version 1
  * Return the results as separate items
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -22,13 +20,17 @@ export interface LcOutputParserItemListV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOutputParserItemListV1Node = {
+interface LcOutputParserItemListV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.outputParserItemList';
 	version: 1;
-	config: NodeConfig<LcOutputParserItemListV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcOutputParserItemListV1ParamsNode = LcOutputParserItemListV1NodeBase & {
+	config: NodeConfig<LcOutputParserItemListV1Params>;
 };
+
+export type LcOutputParserItemListV1Node = LcOutputParserItemListV1ParamsNode;

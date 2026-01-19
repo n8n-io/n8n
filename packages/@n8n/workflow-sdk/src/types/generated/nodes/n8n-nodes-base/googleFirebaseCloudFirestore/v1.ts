@@ -1,8 +1,6 @@
 /**
  * Google Cloud Firestore Node - Version 1
  * Interact with Google Firebase - Cloud Firestore API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -248,12 +246,49 @@ export interface GoogleFirebaseCloudFirestoreV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleFirebaseCloudFirestoreV1Node = {
+interface GoogleFirebaseCloudFirestoreV1NodeBase {
 	type: 'n8n-nodes-base.googleFirebaseCloudFirestore';
 	version: 1;
-	config: NodeConfig<GoogleFirebaseCloudFirestoreV1Params>;
 	credentials?: GoogleFirebaseCloudFirestoreV1Credentials;
+}
+
+export type GoogleFirebaseCloudFirestoreV1DocumentCreateNode = GoogleFirebaseCloudFirestoreV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV1DocumentCreateConfig>;
 };
+
+export type GoogleFirebaseCloudFirestoreV1DocumentUpsertNode = GoogleFirebaseCloudFirestoreV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV1DocumentUpsertConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV1DocumentDeleteNode = GoogleFirebaseCloudFirestoreV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV1DocumentDeleteConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV1DocumentGetNode = GoogleFirebaseCloudFirestoreV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV1DocumentGetConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV1DocumentGetAllNode = GoogleFirebaseCloudFirestoreV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV1DocumentGetAllConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV1DocumentQueryNode = GoogleFirebaseCloudFirestoreV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV1DocumentQueryConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV1CollectionGetAllNode = GoogleFirebaseCloudFirestoreV1NodeBase & {
+	config: NodeConfig<GoogleFirebaseCloudFirestoreV1CollectionGetAllConfig>;
+};
+
+export type GoogleFirebaseCloudFirestoreV1Node =
+	| GoogleFirebaseCloudFirestoreV1DocumentCreateNode
+	| GoogleFirebaseCloudFirestoreV1DocumentUpsertNode
+	| GoogleFirebaseCloudFirestoreV1DocumentDeleteNode
+	| GoogleFirebaseCloudFirestoreV1DocumentGetNode
+	| GoogleFirebaseCloudFirestoreV1DocumentGetAllNode
+	| GoogleFirebaseCloudFirestoreV1DocumentQueryNode
+	| GoogleFirebaseCloudFirestoreV1CollectionGetAllNode
+	;

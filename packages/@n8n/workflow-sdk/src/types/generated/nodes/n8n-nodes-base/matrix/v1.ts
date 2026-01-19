@@ -1,8 +1,6 @@
 /**
  * Matrix Node - Version 1
  * Consume Matrix API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -207,6 +205,54 @@ export type MatrixV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type MatrixV1MessageCreateOutput = {
+	event_id?: string;
+};
+
+export type MatrixV1MessageGetAllOutput = {
+	age?: number;
+	content?: {
+		body?: string;
+		msgtype?: string;
+	};
+	event_id?: string;
+	origin_server_ts?: number;
+	room_id?: string;
+	sender?: string;
+	type?: string;
+	unsigned?: {
+		age?: number;
+		membership?: string;
+		transaction_id?: string;
+	};
+	user_id?: string;
+};
+
+export type MatrixV1RoomMemberGetAllOutput = {
+	age?: number;
+	content?: {
+		avatar_url?: string;
+		displayname?: string;
+		membership?: string;
+	};
+	event_id?: string;
+	origin_server_ts?: number;
+	replaces_state?: string;
+	room_id?: string;
+	sender?: string;
+	state_key?: string;
+	type?: string;
+	unsigned?: {
+		age?: number;
+		replaces_state?: string;
+	};
+	user_id?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -215,12 +261,72 @@ export interface MatrixV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MatrixV1Node = {
+interface MatrixV1NodeBase {
 	type: 'n8n-nodes-base.matrix';
 	version: 1;
-	config: NodeConfig<MatrixV1Params>;
 	credentials?: MatrixV1Credentials;
+}
+
+export type MatrixV1AccountMeNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1AccountMeConfig>;
 };
+
+export type MatrixV1EventGetNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1EventGetConfig>;
+};
+
+export type MatrixV1MediaUploadNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1MediaUploadConfig>;
+};
+
+export type MatrixV1MessageCreateNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1MessageCreateConfig>;
+	output?: MatrixV1MessageCreateOutput;
+};
+
+export type MatrixV1MessageGetAllNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1MessageGetAllConfig>;
+	output?: MatrixV1MessageGetAllOutput;
+};
+
+export type MatrixV1RoomCreateNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1RoomCreateConfig>;
+};
+
+export type MatrixV1RoomInviteNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1RoomInviteConfig>;
+};
+
+export type MatrixV1RoomJoinNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1RoomJoinConfig>;
+};
+
+export type MatrixV1RoomKickNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1RoomKickConfig>;
+};
+
+export type MatrixV1RoomLeaveNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1RoomLeaveConfig>;
+};
+
+export type MatrixV1RoomMemberGetAllNode = MatrixV1NodeBase & {
+	config: NodeConfig<MatrixV1RoomMemberGetAllConfig>;
+	output?: MatrixV1RoomMemberGetAllOutput;
+};
+
+export type MatrixV1Node =
+	| MatrixV1AccountMeNode
+	| MatrixV1EventGetNode
+	| MatrixV1MediaUploadNode
+	| MatrixV1MessageCreateNode
+	| MatrixV1MessageGetAllNode
+	| MatrixV1RoomCreateNode
+	| MatrixV1RoomInviteNode
+	| MatrixV1RoomJoinNode
+	| MatrixV1RoomKickNode
+	| MatrixV1RoomLeaveNode
+	| MatrixV1RoomMemberGetAllNode
+	;

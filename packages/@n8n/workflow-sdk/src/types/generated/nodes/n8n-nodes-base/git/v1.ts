@@ -1,8 +1,6 @@
 /**
  * Git Node - Version 1
  * Control git.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -80,12 +78,17 @@ export interface GitV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GitV1Node = {
+interface GitV1NodeBase {
 	type: 'n8n-nodes-base.git';
 	version: 1;
-	config: NodeConfig<GitV1Params>;
 	credentials?: GitV1Credentials;
+}
+
+export type GitV1ParamsNode = GitV1NodeBase & {
+	config: NodeConfig<GitV1Params>;
 };
+
+export type GitV1Node = GitV1ParamsNode;

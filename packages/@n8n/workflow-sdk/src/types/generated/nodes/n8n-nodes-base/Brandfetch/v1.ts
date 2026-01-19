@@ -1,8 +1,6 @@
 /**
  * Brandfetch Node - Version 1
  * Consume Brandfetch API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -43,12 +41,17 @@ export interface BrandfetchV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BrandfetchV1Node = {
+interface BrandfetchV1NodeBase {
 	type: 'n8n-nodes-base.Brandfetch';
 	version: 1;
-	config: NodeConfig<BrandfetchV1Params>;
 	credentials?: BrandfetchV1Credentials;
+}
+
+export type BrandfetchV1ParamsNode = BrandfetchV1NodeBase & {
+	config: NodeConfig<BrandfetchV1Params>;
 };
+
+export type BrandfetchV1Node = BrandfetchV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * HTTP Request Node - Version 2
  * Makes an HTTP request and returns the response data
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -366,12 +364,29 @@ export interface HttpRequestV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HttpRequestV2Node = {
+interface HttpRequestV2NodeBase {
 	type: 'n8n-nodes-base.httpRequest';
 	version: 2;
-	config: NodeConfig<HttpRequestV2Params>;
 	credentials?: HttpRequestV2Credentials;
+}
+
+export type HttpRequestV2NoneNode = HttpRequestV2NodeBase & {
+	config: NodeConfig<HttpRequestV2NoneConfig>;
 };
+
+export type HttpRequestV2PredefinedCredentialTypeNode = HttpRequestV2NodeBase & {
+	config: NodeConfig<HttpRequestV2PredefinedCredentialTypeConfig>;
+};
+
+export type HttpRequestV2GenericCredentialTypeNode = HttpRequestV2NodeBase & {
+	config: NodeConfig<HttpRequestV2GenericCredentialTypeConfig>;
+};
+
+export type HttpRequestV2Node =
+	| HttpRequestV2NoneNode
+	| HttpRequestV2PredefinedCredentialTypeNode
+	| HttpRequestV2GenericCredentialTypeNode
+	;

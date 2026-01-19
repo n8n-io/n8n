@@ -1,8 +1,6 @@
 /**
  * Convert to File Node - Version 1
  * Convert JSON data to binary data
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -49,12 +47,16 @@ export interface ConvertToFileV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ConvertToFileV1Node = {
+interface ConvertToFileV1NodeBase {
 	type: 'n8n-nodes-base.convertToFile';
 	version: 1;
+}
+
+export type ConvertToFileV1ParamsNode = ConvertToFileV1NodeBase & {
 	config: NodeConfig<ConvertToFileV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type ConvertToFileV1Node = ConvertToFileV1ParamsNode;

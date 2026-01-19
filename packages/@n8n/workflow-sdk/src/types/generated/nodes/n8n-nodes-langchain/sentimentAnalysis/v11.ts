@@ -1,8 +1,6 @@
 /**
  * Sentiment Analysis Node - Version 1.1
  * Analyze the sentiment of your text
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -26,12 +24,16 @@ export interface LcSentimentAnalysisV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcSentimentAnalysisV11Node = {
+interface LcSentimentAnalysisV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.sentimentAnalysis';
 	version: 1.1;
+}
+
+export type LcSentimentAnalysisV11ParamsNode = LcSentimentAnalysisV11NodeBase & {
 	config: NodeConfig<LcSentimentAnalysisV11Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcSentimentAnalysisV11Node = LcSentimentAnalysisV11ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Airtable Trigger Node - Version 1
  * Starts the workflow when Airtable events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -99,13 +97,18 @@ export interface AirtableTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtableTriggerV1Node = {
+interface AirtableTriggerV1NodeBase {
 	type: 'n8n-nodes-base.airtableTrigger';
 	version: 1;
-	config: NodeConfig<AirtableTriggerV1Params>;
 	credentials?: AirtableTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AirtableTriggerV1ParamsNode = AirtableTriggerV1NodeBase & {
+	config: NodeConfig<AirtableTriggerV1Params>;
 };
+
+export type AirtableTriggerV1Node = AirtableTriggerV1ParamsNode;

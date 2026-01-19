@@ -1,8 +1,6 @@
 /**
  * Segment Node - Version 1
  * Consume Segment API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -484,6 +482,14 @@ export type SegmentV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type SegmentV1TrackEventOutput = {
+	success?: boolean;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -492,12 +498,35 @@ export interface SegmentV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SegmentV1Node = {
+interface SegmentV1NodeBase {
 	type: 'n8n-nodes-base.segment';
 	version: 1;
-	config: NodeConfig<SegmentV1Params>;
 	credentials?: SegmentV1Credentials;
+}
+
+export type SegmentV1GroupAddNode = SegmentV1NodeBase & {
+	config: NodeConfig<SegmentV1GroupAddConfig>;
 };
+
+export type SegmentV1IdentifyCreateNode = SegmentV1NodeBase & {
+	config: NodeConfig<SegmentV1IdentifyCreateConfig>;
+};
+
+export type SegmentV1TrackEventNode = SegmentV1NodeBase & {
+	config: NodeConfig<SegmentV1TrackEventConfig>;
+	output?: SegmentV1TrackEventOutput;
+};
+
+export type SegmentV1TrackPageNode = SegmentV1NodeBase & {
+	config: NodeConfig<SegmentV1TrackPageConfig>;
+};
+
+export type SegmentV1Node =
+	| SegmentV1GroupAddNode
+	| SegmentV1IdentifyCreateNode
+	| SegmentV1TrackEventNode
+	| SegmentV1TrackPageNode
+	;

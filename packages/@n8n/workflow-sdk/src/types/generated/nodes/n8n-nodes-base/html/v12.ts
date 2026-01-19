@@ -1,8 +1,6 @@
 /**
  * HTML Node - Version 1.2
  * Work with HTML
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -77,12 +75,16 @@ console.log("Hello World!");
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HtmlV12Node = {
+interface HtmlV12NodeBase {
 	type: 'n8n-nodes-base.html';
 	version: 1.2;
+}
+
+export type HtmlV12ParamsNode = HtmlV12NodeBase & {
 	config: NodeConfig<HtmlV12Params>;
-	credentials?: Record<string, never>;
 };
+
+export type HtmlV12Node = HtmlV12ParamsNode;

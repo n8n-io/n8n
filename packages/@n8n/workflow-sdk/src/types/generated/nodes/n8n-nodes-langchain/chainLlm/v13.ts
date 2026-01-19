@@ -1,8 +1,6 @@
 /**
  * Basic LLM Chain Node - Version 1.3
  * A simple chain to prompt a large language model
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -136,12 +134,28 @@ export type LcChainLlmV13Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainLlmV13Node = {
+interface LcChainLlmV13NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainLlm';
 	version: 1.3;
-	config: NodeConfig<LcChainLlmV13Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcChainLlmV13AutoNode = LcChainLlmV13NodeBase & {
+	config: NodeConfig<LcChainLlmV13AutoConfig>;
 };
+
+export type LcChainLlmV13GuardrailsNode = LcChainLlmV13NodeBase & {
+	config: NodeConfig<LcChainLlmV13GuardrailsConfig>;
+};
+
+export type LcChainLlmV13DefineNode = LcChainLlmV13NodeBase & {
+	config: NodeConfig<LcChainLlmV13DefineConfig>;
+};
+
+export type LcChainLlmV13Node =
+	| LcChainLlmV13AutoNode
+	| LcChainLlmV13GuardrailsNode
+	| LcChainLlmV13DefineNode
+	;

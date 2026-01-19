@@ -1,8 +1,6 @@
 /**
  * Simple Vector Store Node - Version 1.2
  * The easiest way to experiment with vector stores, without external setup.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -107,12 +105,33 @@ export type LcVectorStoreInMemoryV12Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreInMemoryV12Node = {
+interface LcVectorStoreInMemoryV12NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory';
 	version: 1.2;
-	config: NodeConfig<LcVectorStoreInMemoryV12Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcVectorStoreInMemoryV12LoadNode = LcVectorStoreInMemoryV12NodeBase & {
+	config: NodeConfig<LcVectorStoreInMemoryV12LoadConfig>;
 };
+
+export type LcVectorStoreInMemoryV12InsertNode = LcVectorStoreInMemoryV12NodeBase & {
+	config: NodeConfig<LcVectorStoreInMemoryV12InsertConfig>;
+};
+
+export type LcVectorStoreInMemoryV12RetrieveNode = LcVectorStoreInMemoryV12NodeBase & {
+	config: NodeConfig<LcVectorStoreInMemoryV12RetrieveConfig>;
+};
+
+export type LcVectorStoreInMemoryV12RetrieveAsToolNode = LcVectorStoreInMemoryV12NodeBase & {
+	config: NodeConfig<LcVectorStoreInMemoryV12RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreInMemoryV12Node =
+	| LcVectorStoreInMemoryV12LoadNode
+	| LcVectorStoreInMemoryV12InsertNode
+	| LcVectorStoreInMemoryV12RetrieveNode
+	| LcVectorStoreInMemoryV12RetrieveAsToolNode
+	;

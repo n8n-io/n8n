@@ -1,8 +1,6 @@
 /**
  * Zulip Node - Version 1
  * Consume Zulip API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -259,12 +257,94 @@ export interface ZulipV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZulipV1Node = {
+interface ZulipV1NodeBase {
 	type: 'n8n-nodes-base.zulip';
 	version: 1;
-	config: NodeConfig<ZulipV1Params>;
 	credentials?: ZulipV1Credentials;
+}
+
+export type ZulipV1MessageDeleteNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1MessageDeleteConfig>;
 };
+
+export type ZulipV1MessageGetNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1MessageGetConfig>;
+};
+
+export type ZulipV1MessageSendPrivateNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1MessageSendPrivateConfig>;
+};
+
+export type ZulipV1MessageSendStreamNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1MessageSendStreamConfig>;
+};
+
+export type ZulipV1MessageUpdateNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1MessageUpdateConfig>;
+};
+
+export type ZulipV1MessageUpdateFileNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1MessageUpdateFileConfig>;
+};
+
+export type ZulipV1StreamCreateNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1StreamCreateConfig>;
+};
+
+export type ZulipV1StreamDeleteNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1StreamDeleteConfig>;
+};
+
+export type ZulipV1StreamGetAllNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1StreamGetAllConfig>;
+};
+
+export type ZulipV1StreamGetSubscribedNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1StreamGetSubscribedConfig>;
+};
+
+export type ZulipV1StreamUpdateNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1StreamUpdateConfig>;
+};
+
+export type ZulipV1UserCreateNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1UserCreateConfig>;
+};
+
+export type ZulipV1UserDeactivateNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1UserDeactivateConfig>;
+};
+
+export type ZulipV1UserGetNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1UserGetConfig>;
+};
+
+export type ZulipV1UserGetAllNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1UserGetAllConfig>;
+};
+
+export type ZulipV1UserUpdateNode = ZulipV1NodeBase & {
+	config: NodeConfig<ZulipV1UserUpdateConfig>;
+};
+
+export type ZulipV1Node =
+	| ZulipV1MessageDeleteNode
+	| ZulipV1MessageGetNode
+	| ZulipV1MessageSendPrivateNode
+	| ZulipV1MessageSendStreamNode
+	| ZulipV1MessageUpdateNode
+	| ZulipV1MessageUpdateFileNode
+	| ZulipV1StreamCreateNode
+	| ZulipV1StreamDeleteNode
+	| ZulipV1StreamGetAllNode
+	| ZulipV1StreamGetSubscribedNode
+	| ZulipV1StreamUpdateNode
+	| ZulipV1UserCreateNode
+	| ZulipV1UserDeactivateNode
+	| ZulipV1UserGetNode
+	| ZulipV1UserGetAllNode
+	| ZulipV1UserUpdateNode
+	;

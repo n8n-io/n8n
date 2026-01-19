@@ -1,8 +1,6 @@
 /**
  * AWS Transcribe Node - Version 1
  * Sends data to AWS Transcribe
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -75,12 +73,17 @@ export interface AwsTranscribeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsTranscribeV1Node = {
+interface AwsTranscribeV1NodeBase {
 	type: 'n8n-nodes-base.awsTranscribe';
 	version: 1;
-	config: NodeConfig<AwsTranscribeV1Params>;
 	credentials?: AwsTranscribeV1Credentials;
+}
+
+export type AwsTranscribeV1ParamsNode = AwsTranscribeV1NodeBase & {
+	config: NodeConfig<AwsTranscribeV1Params>;
 };
+
+export type AwsTranscribeV1Node = AwsTranscribeV1ParamsNode;

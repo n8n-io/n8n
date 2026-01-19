@@ -1,8 +1,6 @@
 /**
  * Think Tool Node - Version 1.1
  * Invite the AI agent to do some thinking
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -26,13 +24,17 @@ export interface LcToolThinkV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolThinkV11Node = {
+interface LcToolThinkV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.toolThink';
 	version: 1.1;
-	config: NodeConfig<LcToolThinkV11Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcToolThinkV11ParamsNode = LcToolThinkV11NodeBase & {
+	config: NodeConfig<LcToolThinkV11Params>;
 };
+
+export type LcToolThinkV11Node = LcToolThinkV11ParamsNode;

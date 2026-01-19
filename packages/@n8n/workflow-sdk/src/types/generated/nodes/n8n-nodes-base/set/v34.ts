@@ -1,8 +1,6 @@
 /**
  * Edit Fields (Set) Node - Version 3.4
  * Modify, add, or remove item fields
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -83,12 +81,23 @@ export type SetV34Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SetV34Node = {
+interface SetV34NodeBase {
 	type: 'n8n-nodes-base.set';
 	version: 3.4;
-	config: NodeConfig<SetV34Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SetV34ManualNode = SetV34NodeBase & {
+	config: NodeConfig<SetV34ManualConfig>;
 };
+
+export type SetV34RawNode = SetV34NodeBase & {
+	config: NodeConfig<SetV34RawConfig>;
+};
+
+export type SetV34Node =
+	| SetV34ManualNode
+	| SetV34RawNode
+	;

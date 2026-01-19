@@ -1,8 +1,6 @@
 /**
  * Typeform Trigger Node - Version 1
  * Starts the workflow on a Typeform form submission
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -41,13 +39,18 @@ export interface TypeformTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TypeformTriggerV1Node = {
+interface TypeformTriggerV1NodeBase {
 	type: 'n8n-nodes-base.typeformTrigger';
 	version: 1;
-	config: NodeConfig<TypeformTriggerV1Params>;
 	credentials?: TypeformTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type TypeformTriggerV1ParamsNode = TypeformTriggerV1NodeBase & {
+	config: NodeConfig<TypeformTriggerV1Params>;
 };
+
+export type TypeformTriggerV1Node = TypeformTriggerV1ParamsNode;

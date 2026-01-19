@@ -1,8 +1,6 @@
 /**
  * TheHive 5 Trigger Node - Version 1
  * Starts the workflow when TheHive events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -46,13 +44,17 @@ export interface TheHiveProjectTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TheHiveProjectTriggerV1Node = {
+interface TheHiveProjectTriggerV1NodeBase {
 	type: 'n8n-nodes-base.theHiveProjectTrigger';
 	version: 1;
-	config: NodeConfig<TheHiveProjectTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type TheHiveProjectTriggerV1ParamsNode = TheHiveProjectTriggerV1NodeBase & {
+	config: NodeConfig<TheHiveProjectTriggerV1Params>;
 };
+
+export type TheHiveProjectTriggerV1Node = TheHiveProjectTriggerV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * MCP Client Node - Version 1
  * Standalone MCP Client
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -167,12 +165,39 @@ export interface LcMcpClientV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcMcpClientV1Node = {
+interface LcMcpClientV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.mcpClient';
 	version: 1;
-	config: NodeConfig<LcMcpClientV1Params>;
 	credentials?: LcMcpClientV1Credentials;
+}
+
+export type LcMcpClientV1BearerAuthNode = LcMcpClientV1NodeBase & {
+	config: NodeConfig<LcMcpClientV1BearerAuthConfig>;
 };
+
+export type LcMcpClientV1HeaderAuthNode = LcMcpClientV1NodeBase & {
+	config: NodeConfig<LcMcpClientV1HeaderAuthConfig>;
+};
+
+export type LcMcpClientV1McpOAuth2ApiNode = LcMcpClientV1NodeBase & {
+	config: NodeConfig<LcMcpClientV1McpOAuth2ApiConfig>;
+};
+
+export type LcMcpClientV1MultipleHeadersAuthNode = LcMcpClientV1NodeBase & {
+	config: NodeConfig<LcMcpClientV1MultipleHeadersAuthConfig>;
+};
+
+export type LcMcpClientV1NoneNode = LcMcpClientV1NodeBase & {
+	config: NodeConfig<LcMcpClientV1NoneConfig>;
+};
+
+export type LcMcpClientV1Node =
+	| LcMcpClientV1BearerAuthNode
+	| LcMcpClientV1HeaderAuthNode
+	| LcMcpClientV1McpOAuth2ApiNode
+	| LcMcpClientV1MultipleHeadersAuthNode
+	| LcMcpClientV1NoneNode
+	;

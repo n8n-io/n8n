@@ -1,8 +1,6 @@
 /**
  * WhatsApp Trigger Node - Version 1
  * Handle WhatsApp events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,13 +25,18 @@ export interface WhatsAppTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WhatsAppTriggerV1Node = {
+interface WhatsAppTriggerV1NodeBase {
 	type: 'n8n-nodes-base.whatsAppTrigger';
 	version: 1;
-	config: NodeConfig<WhatsAppTriggerV1Params>;
 	credentials?: WhatsAppTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type WhatsAppTriggerV1ParamsNode = WhatsAppTriggerV1NodeBase & {
+	config: NodeConfig<WhatsAppTriggerV1Params>;
 };
+
+export type WhatsAppTriggerV1Node = WhatsAppTriggerV1ParamsNode;

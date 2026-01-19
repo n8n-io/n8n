@@ -1,8 +1,6 @@
 /**
  * Telegram Trigger Node - Version 1.1
  * Starts the workflow on a Telegram update
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,13 +25,18 @@ export interface TelegramTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TelegramTriggerV11Node = {
+interface TelegramTriggerV11NodeBase {
 	type: 'n8n-nodes-base.telegramTrigger';
 	version: 1.1;
-	config: NodeConfig<TelegramTriggerV11Params>;
 	credentials?: TelegramTriggerV11Credentials;
 	isTrigger: true;
+}
+
+export type TelegramTriggerV11ParamsNode = TelegramTriggerV11NodeBase & {
+	config: NodeConfig<TelegramTriggerV11Params>;
 };
+
+export type TelegramTriggerV11Node = TelegramTriggerV11ParamsNode;

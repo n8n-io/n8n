@@ -1,8 +1,6 @@
 /**
  * Cohere Chat Model Node - Version 1
  * For advanced usage with an AI chain
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcLmChatCohereV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcLmChatCohereV1Node = {
+interface LcLmChatCohereV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.lmChatCohere';
 	version: 1;
-	config: NodeConfig<LcLmChatCohereV1Params>;
 	credentials?: LcLmChatCohereV1Credentials;
 	isTrigger: true;
+}
+
+export type LcLmChatCohereV1ParamsNode = LcLmChatCohereV1NodeBase & {
+	config: NodeConfig<LcLmChatCohereV1Params>;
 };
+
+export type LcLmChatCohereV1Node = LcLmChatCohereV1ParamsNode;

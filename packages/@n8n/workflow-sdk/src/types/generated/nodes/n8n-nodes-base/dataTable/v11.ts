@@ -1,8 +1,6 @@
 /**
  * Data table Node - Version 1.1
  * Permanently save data across workflow executions in a table
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -315,16 +313,97 @@ export type DataTableV11Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type DataTableV11RowDeleteRowsOutput = {
+	createdAt?: string;
+	id?: number;
+	updatedAt?: string;
+};
+
+export type DataTableV11RowGetOutput = {
+	createdAt?: string;
+	id?: number;
+	updatedAt?: string;
+};
+
+export type DataTableV11RowInsertOutput = {
+	createdAt?: string;
+	id?: number;
+	updatedAt?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DataTableV11Node = {
+interface DataTableV11NodeBase {
 	type: 'n8n-nodes-base.dataTable';
 	version: 1.1;
-	config: NodeConfig<DataTableV11Params>;
-	credentials?: Record<string, never>;
+}
+
+export type DataTableV11RowDeleteRowsNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11RowDeleteRowsConfig>;
+	output?: DataTableV11RowDeleteRowsOutput;
 };
+
+export type DataTableV11RowGetNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11RowGetConfig>;
+	output?: DataTableV11RowGetOutput;
+};
+
+export type DataTableV11RowRowExistsNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11RowRowExistsConfig>;
+};
+
+export type DataTableV11RowRowNotExistsNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11RowRowNotExistsConfig>;
+};
+
+export type DataTableV11RowInsertNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11RowInsertConfig>;
+	output?: DataTableV11RowInsertOutput;
+};
+
+export type DataTableV11RowUpdateNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11RowUpdateConfig>;
+};
+
+export type DataTableV11RowUpsertNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11RowUpsertConfig>;
+};
+
+export type DataTableV11TableCreateNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11TableCreateConfig>;
+};
+
+export type DataTableV11TableDeleteNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11TableDeleteConfig>;
+};
+
+export type DataTableV11TableListNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11TableListConfig>;
+};
+
+export type DataTableV11TableUpdateNode = DataTableV11NodeBase & {
+	config: NodeConfig<DataTableV11TableUpdateConfig>;
+};
+
+export type DataTableV11Node =
+	| DataTableV11RowDeleteRowsNode
+	| DataTableV11RowGetNode
+	| DataTableV11RowRowExistsNode
+	| DataTableV11RowRowNotExistsNode
+	| DataTableV11RowInsertNode
+	| DataTableV11RowUpdateNode
+	| DataTableV11RowUpsertNode
+	| DataTableV11TableCreateNode
+	| DataTableV11TableDeleteNode
+	| DataTableV11TableListNode
+	| DataTableV11TableUpdateNode
+	;

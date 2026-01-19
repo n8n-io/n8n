@@ -1,8 +1,6 @@
 /**
  * Respond to Webhook Node - Version 1.1
  * Returns data for Webhook
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -60,12 +58,17 @@ export interface RespondToWebhookV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RespondToWebhookV11Node = {
+interface RespondToWebhookV11NodeBase {
 	type: 'n8n-nodes-base.respondToWebhook';
 	version: 1.1;
-	config: NodeConfig<RespondToWebhookV11Params>;
 	credentials?: RespondToWebhookV11Credentials;
+}
+
+export type RespondToWebhookV11ParamsNode = RespondToWebhookV11NodeBase & {
+	config: NodeConfig<RespondToWebhookV11Params>;
 };
+
+export type RespondToWebhookV11Node = RespondToWebhookV11ParamsNode;

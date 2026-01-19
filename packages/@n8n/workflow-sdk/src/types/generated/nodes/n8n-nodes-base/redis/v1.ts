@@ -1,8 +1,6 @@
 /**
  * Redis Node - Version 1
  * Get, send and update data in Redis
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -99,12 +97,17 @@ export interface RedisV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RedisV1Node = {
+interface RedisV1NodeBase {
 	type: 'n8n-nodes-base.redis';
 	version: 1;
-	config: NodeConfig<RedisV1Params>;
 	credentials?: RedisV1Credentials;
+}
+
+export type RedisV1ParamsNode = RedisV1NodeBase & {
+	config: NodeConfig<RedisV1Params>;
 };
+
+export type RedisV1Node = RedisV1ParamsNode;

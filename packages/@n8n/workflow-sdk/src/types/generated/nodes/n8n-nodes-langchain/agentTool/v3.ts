@@ -1,8 +1,6 @@
 /**
  * AI Agent Tool Node - Version 3
  * Generates an action plan and executes it. Can use external tools.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,12 +28,16 @@ export interface LcAgentToolV3Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAgentToolV3Node = {
+interface LcAgentToolV3NodeBase {
 	type: '@n8n/n8n-nodes-langchain.agentTool';
 	version: 3;
+}
+
+export type LcAgentToolV3ParamsNode = LcAgentToolV3NodeBase & {
 	config: NodeConfig<LcAgentToolV3Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcAgentToolV3Node = LcAgentToolV3ParamsNode;

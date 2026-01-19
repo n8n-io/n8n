@@ -1,8 +1,6 @@
 /**
  * Structured Output Parser Node - Version 1.1
  * Return data in a defined JSON format
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -84,12 +82,16 @@ Please try again. Please only respond with an answer that satisfies the constrai
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOutputParserStructuredV11Node = {
+interface LcOutputParserStructuredV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.outputParserStructured';
 	version: 1.1;
+}
+
+export type LcOutputParserStructuredV11ParamsNode = LcOutputParserStructuredV11NodeBase & {
 	config: NodeConfig<LcOutputParserStructuredV11Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcOutputParserStructuredV11Node = LcOutputParserStructuredV11ParamsNode;

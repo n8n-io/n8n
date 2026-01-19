@@ -1,8 +1,6 @@
 /**
  * Remove Duplicates Node - Version 2
  * Delete items with matching field values
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -69,12 +67,16 @@ export interface RemoveDuplicatesV2Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type RemoveDuplicatesV2Node = {
+interface RemoveDuplicatesV2NodeBase {
 	type: 'n8n-nodes-base.removeDuplicates';
 	version: 2;
+}
+
+export type RemoveDuplicatesV2ParamsNode = RemoveDuplicatesV2NodeBase & {
 	config: NodeConfig<RemoveDuplicatesV2Params>;
-	credentials?: Record<string, never>;
 };
+
+export type RemoveDuplicatesV2Node = RemoveDuplicatesV2ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Stripe Node - Version 1
  * Consume the Stripe API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -385,6 +383,300 @@ export type StripeV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type StripeV1BalanceGetOutput = {
+	available?: Array<{
+		amount?: number;
+		currency?: string;
+		source_types?: {
+			card?: number;
+		};
+	}>;
+	livemode?: boolean;
+	object?: string;
+	pending?: Array<{
+		amount?: number;
+		currency?: string;
+		source_types?: {
+			card?: number;
+		};
+	}>;
+	refund_and_dispute_prefunding?: {
+		available?: Array<{
+			amount?: number;
+			currency?: string;
+		}>;
+		pending?: Array<{
+			amount?: number;
+			currency?: string;
+		}>;
+	};
+};
+
+export type StripeV1ChargeGetOutput = {
+	amount?: number;
+	amount_captured?: number;
+	amount_refunded?: number;
+	application_fee?: null;
+	application_fee_amount?: null;
+	captured?: boolean;
+	created?: number;
+	currency?: string;
+	destination?: null;
+	dispute?: null;
+	disputed?: boolean;
+	failure_balance_transaction?: null;
+	id?: string;
+	livemode?: boolean;
+	metadata?: {
+		date_due?: string;
+		erp_provider_dimension_id?: string;
+		invoice_id?: string;
+		period_end?: string;
+		period_start?: string;
+		reservation_id?: string;
+		type?: string;
+	};
+	object?: string;
+	on_behalf_of?: null;
+	order?: null;
+	outcome?: {
+		network_status?: string;
+		risk_level?: string;
+		risk_score?: number;
+		seller_message?: string;
+		type?: string;
+	};
+	paid?: boolean;
+	payment_intent?: string;
+	payment_method?: string;
+	payment_method_details?: {
+		card?: {
+			brand?: string;
+			capture_before?: number;
+			country?: string;
+			exp_month?: number;
+			exp_year?: number;
+			extended_authorization?: {
+				status?: string;
+			};
+			fingerprint?: string;
+			funding?: string;
+			incremental_authorization?: {
+				status?: string;
+			};
+			installments?: null;
+			last4?: string;
+			mandate?: null;
+			multicapture?: {
+				status?: string;
+			};
+			network?: string;
+			network_token?: {
+				used?: boolean;
+			};
+			network_transaction_id?: string;
+			overcapture?: {
+				maximum_amount_capturable?: number;
+				status?: string;
+			};
+			regulated_status?: string;
+			three_d_secure?: null;
+		};
+		type?: string;
+	};
+	refunded?: boolean;
+	refunds?: {
+		data?: Array<{
+			amount?: number;
+			balance_transaction?: string;
+			charge?: string;
+			created?: number;
+			currency?: string;
+			destination_details?: {
+				card?: {
+					reference?: string;
+					reference_status?: string;
+					reference_type?: string;
+					type?: string;
+				};
+				type?: string;
+			};
+			id?: string;
+			object?: string;
+			payment_intent?: string;
+			reason?: null;
+			source_transfer_reversal?: null;
+			status?: string;
+			transfer_reversal?: null;
+		}>;
+		has_more?: boolean;
+		object?: string;
+		total_count?: number;
+		url?: string;
+	};
+	review?: null;
+	shipping?: null;
+	source?: null;
+	source_transfer?: null;
+	statement_descriptor?: null;
+	statement_descriptor_suffix?: null;
+	status?: string;
+	transfer_data?: null;
+	transfer_group?: null;
+};
+
+export type StripeV1ChargeGetAllOutput = {
+	amount?: number;
+	amount_captured?: number;
+	amount_refunded?: number;
+	application_fee?: null;
+	captured?: boolean;
+	created?: number;
+	currency?: string;
+	destination?: null;
+	dispute?: null;
+	disputed?: boolean;
+	failure_balance_transaction?: null;
+	id?: string;
+	livemode?: boolean;
+	object?: string;
+	on_behalf_of?: null;
+	order?: null;
+	outcome?: {
+		network_status?: string;
+		risk_level?: string;
+		seller_message?: string;
+		type?: string;
+	};
+	paid?: boolean;
+	payment_method_details?: {
+		card?: {
+			brand?: string;
+			country?: string;
+			exp_month?: number;
+			exp_year?: number;
+			extended_authorization?: {
+				status?: string;
+			};
+			fingerprint?: string;
+			funding?: string;
+			incremental_authorization?: {
+				status?: string;
+			};
+			installments?: null;
+			last4?: string;
+			mandate?: null;
+			multicapture?: {
+				status?: string;
+			};
+			network?: string;
+			network_token?: {
+				used?: boolean;
+			};
+			overcapture?: {
+				maximum_amount_capturable?: number;
+				status?: string;
+			};
+			regulated_status?: string;
+		};
+		type?: string;
+	};
+	refunded?: boolean;
+	refunds?: {
+		has_more?: boolean;
+		object?: string;
+		total_count?: number;
+		url?: string;
+	};
+	review?: null;
+	source_transfer?: null;
+	status?: string;
+	transfer_data?: null;
+	transfer_group?: null;
+};
+
+export type StripeV1CustomerCreateOutput = {
+	balance?: number;
+	created?: number;
+	currency?: null;
+	default_source?: null;
+	delinquent?: boolean;
+	discount?: null;
+	id?: string;
+	invoice_prefix?: string;
+	invoice_settings?: {
+		custom_fields?: null;
+		default_payment_method?: null;
+		footer?: null;
+		rendering_options?: null;
+	};
+	livemode?: boolean;
+	next_invoice_sequence?: number;
+	object?: string;
+	tax_exempt?: string;
+	test_clock?: null;
+};
+
+export type StripeV1CustomerGetOutput = {
+	balance?: number;
+	created?: number;
+	delinquent?: boolean;
+	id?: string;
+	invoice_prefix?: string;
+	invoice_settings?: {
+		footer?: null;
+	};
+	livemode?: boolean;
+	object?: string;
+	preferred_locales?: Array<string>;
+	tax_exempt?: string;
+};
+
+export type StripeV1CustomerGetAllOutput = {
+	balance?: number;
+	created?: number;
+	delinquent?: boolean;
+	id?: string;
+	invoice_prefix?: string;
+	invoice_settings?: {
+		custom_fields?: null;
+		footer?: null;
+		rendering_options?: null;
+	};
+	livemode?: boolean;
+	object?: string;
+	preferred_locales?: Array<string>;
+	tax_exempt?: string;
+	test_clock?: null;
+};
+
+export type StripeV1CustomerUpdateOutput = {
+	balance?: number;
+	created?: number;
+	delinquent?: boolean;
+	discount?: null;
+	id?: string;
+	invoice_prefix?: string;
+	invoice_settings?: {
+		custom_fields?: null;
+		footer?: null;
+		rendering_options?: null;
+	};
+	livemode?: boolean;
+	metadata?: {
+		Telefone?: string;
+	};
+	next_invoice_sequence?: number;
+	object?: string;
+	preferred_locales?: Array<string>;
+	tax_exempt?: string;
+	test_clock?: null;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -393,12 +685,121 @@ export interface StripeV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type StripeV1Node = {
+interface StripeV1NodeBase {
 	type: 'n8n-nodes-base.stripe';
 	version: 1;
-	config: NodeConfig<StripeV1Params>;
 	credentials?: StripeV1Credentials;
+}
+
+export type StripeV1BalanceGetNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1BalanceGetConfig>;
+	output?: StripeV1BalanceGetOutput;
 };
+
+export type StripeV1ChargeCreateNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1ChargeCreateConfig>;
+};
+
+export type StripeV1ChargeGetNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1ChargeGetConfig>;
+	output?: StripeV1ChargeGetOutput;
+};
+
+export type StripeV1ChargeGetAllNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1ChargeGetAllConfig>;
+	output?: StripeV1ChargeGetAllOutput;
+};
+
+export type StripeV1ChargeUpdateNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1ChargeUpdateConfig>;
+};
+
+export type StripeV1CouponCreateNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CouponCreateConfig>;
+};
+
+export type StripeV1CouponGetAllNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CouponGetAllConfig>;
+};
+
+export type StripeV1CustomerCreateNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CustomerCreateConfig>;
+	output?: StripeV1CustomerCreateOutput;
+};
+
+export type StripeV1CustomerDeleteNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CustomerDeleteConfig>;
+};
+
+export type StripeV1CustomerGetNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CustomerGetConfig>;
+	output?: StripeV1CustomerGetOutput;
+};
+
+export type StripeV1CustomerGetAllNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CustomerGetAllConfig>;
+	output?: StripeV1CustomerGetAllOutput;
+};
+
+export type StripeV1CustomerUpdateNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CustomerUpdateConfig>;
+	output?: StripeV1CustomerUpdateOutput;
+};
+
+export type StripeV1CustomerCardAddNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CustomerCardAddConfig>;
+};
+
+export type StripeV1CustomerCardGetNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CustomerCardGetConfig>;
+};
+
+export type StripeV1CustomerCardRemoveNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1CustomerCardRemoveConfig>;
+};
+
+export type StripeV1MeterEventCreateNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1MeterEventCreateConfig>;
+};
+
+export type StripeV1SourceCreateNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1SourceCreateConfig>;
+};
+
+export type StripeV1SourceDeleteNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1SourceDeleteConfig>;
+};
+
+export type StripeV1SourceGetNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1SourceGetConfig>;
+};
+
+export type StripeV1TokenCreateNode = StripeV1NodeBase & {
+	config: NodeConfig<StripeV1TokenCreateConfig>;
+};
+
+export type StripeV1Node =
+	| StripeV1BalanceGetNode
+	| StripeV1ChargeCreateNode
+	| StripeV1ChargeGetNode
+	| StripeV1ChargeGetAllNode
+	| StripeV1ChargeUpdateNode
+	| StripeV1CouponCreateNode
+	| StripeV1CouponGetAllNode
+	| StripeV1CustomerCreateNode
+	| StripeV1CustomerDeleteNode
+	| StripeV1CustomerGetNode
+	| StripeV1CustomerGetAllNode
+	| StripeV1CustomerUpdateNode
+	| StripeV1CustomerCardAddNode
+	| StripeV1CustomerCardGetNode
+	| StripeV1CustomerCardRemoveNode
+	| StripeV1MeterEventCreateNode
+	| StripeV1SourceCreateNode
+	| StripeV1SourceDeleteNode
+	| StripeV1SourceGetNode
+	| StripeV1TokenCreateNode
+	;

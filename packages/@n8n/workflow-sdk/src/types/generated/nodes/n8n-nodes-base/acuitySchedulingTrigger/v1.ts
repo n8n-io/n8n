@@ -1,8 +1,6 @@
 /**
  * Acuity Scheduling Trigger Node - Version 1
  * Handle Acuity Scheduling events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -33,13 +31,18 @@ export interface AcuitySchedulingTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AcuitySchedulingTriggerV1Node = {
+interface AcuitySchedulingTriggerV1NodeBase {
 	type: 'n8n-nodes-base.acuitySchedulingTrigger';
 	version: 1;
-	config: NodeConfig<AcuitySchedulingTriggerV1Params>;
 	credentials?: AcuitySchedulingTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AcuitySchedulingTriggerV1ParamsNode = AcuitySchedulingTriggerV1NodeBase & {
+	config: NodeConfig<AcuitySchedulingTriggerV1Params>;
 };
+
+export type AcuitySchedulingTriggerV1Node = AcuitySchedulingTriggerV1ParamsNode;

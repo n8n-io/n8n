@@ -1,8 +1,6 @@
 /**
  * Chat Node - Version 1
  * Send a message into the chat
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -61,12 +59,16 @@ export interface LcChatV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChatV1Node = {
+interface LcChatV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chat';
 	version: 1;
+}
+
+export type LcChatV1ParamsNode = LcChatV1NodeBase & {
 	config: NodeConfig<LcChatV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcChatV1Node = LcChatV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Notion Node - Version 2
  * Consume Notion API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -2796,6 +2794,278 @@ export type NotionV2Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type NotionV2BlockAppendOutput = {
+	has_more?: boolean;
+	next_cursor?: null;
+	object?: string;
+	request_id?: string;
+	results?: Array<{
+		archived?: boolean;
+		created_by?: {
+			id?: string;
+			object?: string;
+		};
+		created_time?: string;
+		has_children?: boolean;
+		id?: string;
+		in_trash?: boolean;
+		last_edited_by?: {
+			id?: string;
+			object?: string;
+		};
+		last_edited_time?: string;
+		object?: string;
+		paragraph?: {
+			color?: string;
+			text?: Array<{
+				annotations?: {
+					bold?: boolean;
+					code?: boolean;
+					color?: string;
+					italic?: boolean;
+					strikethrough?: boolean;
+					underline?: boolean;
+				};
+				plain_text?: string;
+				text?: {
+					content?: string;
+				};
+				type?: string;
+			}>;
+		};
+		parent?: {
+			page_id?: string;
+			type?: string;
+		};
+		type?: string;
+	}>;
+};
+
+export type NotionV2BlockGetAllOutput = {
+	archived?: boolean;
+	content?: string;
+	has_children?: boolean;
+	id?: string;
+	in_trash?: boolean;
+	last_edited_by?: {
+		id?: string;
+		object?: string;
+	};
+	object?: string;
+	parent?: {
+		page_id?: string;
+		type?: string;
+	};
+	parent_id?: string;
+	root_id?: string;
+	type?: string;
+};
+
+export type NotionV2DatabaseGetOutput = {
+	archived?: boolean;
+	created_by?: {
+		id?: string;
+		object?: string;
+	};
+	created_time?: string;
+	description?: Array<{
+		annotations?: {
+			bold?: boolean;
+			code?: boolean;
+			color?: string;
+			italic?: boolean;
+			strikethrough?: boolean;
+			underline?: boolean;
+		};
+		href?: null;
+		plain_text?: string;
+		text?: {
+			content?: string;
+			link?: null;
+		};
+		type?: string;
+	}>;
+	id?: string;
+	in_trash?: boolean;
+	is_inline?: boolean;
+	last_edited_by?: {
+		id?: string;
+		object?: string;
+	};
+	last_edited_time?: string;
+	name?: string;
+	object?: string;
+	parent?: {
+		type?: string;
+		workspace?: boolean;
+	};
+	properties?: {
+		''?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		answer?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		Author?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		'Dateien und Medien'?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		department?: {
+			description?: null;
+			id?: string;
+			multi_select?: {
+				options?: Array<{
+					color?: string;
+					description?: null;
+					id?: string;
+					name?: string;
+				}>;
+			};
+			name?: string;
+			type?: string;
+		};
+		question?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+		tags?: {
+			description?: null;
+			id?: string;
+			multi_select?: {
+				options?: Array<{
+					color?: string;
+					description?: null;
+					id?: string;
+					name?: string;
+				}>;
+			};
+			name?: string;
+			type?: string;
+		};
+		updated_at?: {
+			description?: null;
+			id?: string;
+			name?: string;
+			type?: string;
+		};
+	};
+	public_url?: null;
+	request_id?: string;
+	title?: Array<{
+		annotations?: {
+			bold?: boolean;
+			code?: boolean;
+			color?: string;
+			italic?: boolean;
+			strikethrough?: boolean;
+			underline?: boolean;
+		};
+		href?: null;
+		plain_text?: string;
+		text?: {
+			content?: string;
+			link?: null;
+		};
+		type?: string;
+	}>;
+	url?: string;
+};
+
+export type NotionV2DatabaseGetAllOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2DatabaseSearchOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2DatabasePageCreateOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2DatabasePageGetOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2DatabasePageGetAllOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2DatabasePageUpdateOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2PageArchiveOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2PageCreateOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2PageSearchOutput = {
+	id?: string;
+	name?: string;
+	url?: string;
+};
+
+export type NotionV2UserGetOutput = {
+	id?: string;
+	name?: string;
+	object?: string;
+	person?: {
+		email?: string;
+	};
+	request_id?: string;
+	type?: string;
+};
+
+export type NotionV2UserGetAllOutput = {
+	id?: string;
+	name?: string;
+	object?: string;
+	person?: {
+		email?: string;
+	};
+	type?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -2804,12 +3074,98 @@ export interface NotionV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type NotionV2Node = {
+interface NotionV2NodeBase {
 	type: 'n8n-nodes-base.notion';
 	version: 2;
-	config: NodeConfig<NotionV2Params>;
 	credentials?: NotionV2Credentials;
+}
+
+export type NotionV2BlockAppendNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2BlockAppendConfig>;
+	output?: NotionV2BlockAppendOutput;
 };
+
+export type NotionV2BlockGetAllNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2BlockGetAllConfig>;
+	output?: NotionV2BlockGetAllOutput;
+};
+
+export type NotionV2DatabaseGetNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2DatabaseGetConfig>;
+	output?: NotionV2DatabaseGetOutput;
+};
+
+export type NotionV2DatabaseGetAllNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2DatabaseGetAllConfig>;
+	output?: NotionV2DatabaseGetAllOutput;
+};
+
+export type NotionV2DatabaseSearchNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2DatabaseSearchConfig>;
+	output?: NotionV2DatabaseSearchOutput;
+};
+
+export type NotionV2DatabasePageCreateNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2DatabasePageCreateConfig>;
+	output?: NotionV2DatabasePageCreateOutput;
+};
+
+export type NotionV2DatabasePageGetNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2DatabasePageGetConfig>;
+	output?: NotionV2DatabasePageGetOutput;
+};
+
+export type NotionV2DatabasePageGetAllNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2DatabasePageGetAllConfig>;
+	output?: NotionV2DatabasePageGetAllOutput;
+};
+
+export type NotionV2DatabasePageUpdateNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2DatabasePageUpdateConfig>;
+	output?: NotionV2DatabasePageUpdateOutput;
+};
+
+export type NotionV2PageArchiveNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2PageArchiveConfig>;
+	output?: NotionV2PageArchiveOutput;
+};
+
+export type NotionV2PageCreateNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2PageCreateConfig>;
+	output?: NotionV2PageCreateOutput;
+};
+
+export type NotionV2PageSearchNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2PageSearchConfig>;
+	output?: NotionV2PageSearchOutput;
+};
+
+export type NotionV2UserGetNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2UserGetConfig>;
+	output?: NotionV2UserGetOutput;
+};
+
+export type NotionV2UserGetAllNode = NotionV2NodeBase & {
+	config: NodeConfig<NotionV2UserGetAllConfig>;
+	output?: NotionV2UserGetAllOutput;
+};
+
+export type NotionV2Node =
+	| NotionV2BlockAppendNode
+	| NotionV2BlockGetAllNode
+	| NotionV2DatabaseGetNode
+	| NotionV2DatabaseGetAllNode
+	| NotionV2DatabaseSearchNode
+	| NotionV2DatabasePageCreateNode
+	| NotionV2DatabasePageGetNode
+	| NotionV2DatabasePageGetAllNode
+	| NotionV2DatabasePageUpdateNode
+	| NotionV2PageArchiveNode
+	| NotionV2PageCreateNode
+	| NotionV2PageSearchNode
+	| NotionV2UserGetNode
+	| NotionV2UserGetAllNode
+	;

@@ -1,8 +1,6 @@
 /**
  * AWS SNS Trigger Node - Version 1
  * Handle AWS SNS events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -31,13 +29,18 @@ export interface AwsSnsTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsSnsTriggerV1Node = {
+interface AwsSnsTriggerV1NodeBase {
 	type: 'n8n-nodes-base.awsSnsTrigger';
 	version: 1;
-	config: NodeConfig<AwsSnsTriggerV1Params>;
 	credentials?: AwsSnsTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type AwsSnsTriggerV1ParamsNode = AwsSnsTriggerV1NodeBase & {
+	config: NodeConfig<AwsSnsTriggerV1Params>;
 };
+
+export type AwsSnsTriggerV1Node = AwsSnsTriggerV1ParamsNode;

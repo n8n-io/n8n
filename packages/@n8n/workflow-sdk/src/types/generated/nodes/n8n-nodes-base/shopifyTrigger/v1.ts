@@ -1,8 +1,6 @@
 /**
  * Shopify Trigger Node - Version 1
  * Handle Shopify events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -29,13 +27,18 @@ export interface ShopifyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ShopifyTriggerV1Node = {
+interface ShopifyTriggerV1NodeBase {
 	type: 'n8n-nodes-base.shopifyTrigger';
 	version: 1;
-	config: NodeConfig<ShopifyTriggerV1Params>;
 	credentials?: ShopifyTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type ShopifyTriggerV1ParamsNode = ShopifyTriggerV1NodeBase & {
+	config: NodeConfig<ShopifyTriggerV1Params>;
 };
+
+export type ShopifyTriggerV1Node = ShopifyTriggerV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Unleashed Software Node - Version 1
  * Consume Unleashed Software API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -65,6 +63,82 @@ export type UnleashedSoftwareV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type UnleashedSoftwareV1SalesOrderGetAllOutput = {
+	AllocateProduct?: boolean;
+	CreatedBy?: string;
+	CreatedOn?: string;
+	Currency?: {
+		CurrencyCode?: string;
+		DefaultBuyRate?: null;
+		DefaultSellRate?: null;
+		Description?: string;
+		Guid?: string;
+		LastModifiedOn?: string;
+	};
+	Customer?: {
+		CurrencyId?: number;
+		CustomerCode?: string;
+		CustomerName?: string;
+		Guid?: string;
+		LastModifiedOn?: string;
+	};
+	Guid?: string;
+	LastModifiedBy?: string;
+	LastModifiedOn?: string;
+	OrderDate?: string;
+	OrderNumber?: string;
+	OrderStatus?: string;
+	ReceivedDate?: null;
+	SalesAccount?: null;
+	SalesOrderLines?: Array<{
+		BatchNumbers?: null;
+		DueDate?: string;
+		Guid?: string;
+		LastModifiedOn?: string;
+		LineNumber?: number;
+		OrderQuantity?: number;
+		Product?: {
+			Guid?: string;
+			ProductDescription?: string;
+		};
+		SerialNumbers?: null;
+		XeroTaxCode?: string;
+	}>;
+	SalesPerson?: {
+		Email?: string;
+		FullName?: string;
+		Guid?: string;
+		LastModifiedOn?: string;
+		Obsolete?: boolean;
+	};
+	SaveAddress?: boolean;
+	SendAccountingJournalOnly?: boolean;
+	SourceId?: null;
+	Tax?: {
+		CanApplyToExpenses?: boolean;
+		CanApplyToRevenue?: boolean;
+		Description?: string;
+		Guid?: string;
+		LastModifiedOn?: string;
+		Obsolete?: boolean;
+		TaxCode?: string;
+	};
+	Warehouse?: {
+		FaxNumber?: null;
+		Guid?: string;
+		IsDefault?: boolean;
+		LastModifiedOn?: string;
+		Obsolete?: boolean;
+		WarehouseCode?: string;
+		WarehouseName?: string;
+	};
+	XeroTaxCode?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -73,12 +147,30 @@ export interface UnleashedSoftwareV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type UnleashedSoftwareV1Node = {
+interface UnleashedSoftwareV1NodeBase {
 	type: 'n8n-nodes-base.unleashedSoftware';
 	version: 1;
-	config: NodeConfig<UnleashedSoftwareV1Params>;
 	credentials?: UnleashedSoftwareV1Credentials;
+}
+
+export type UnleashedSoftwareV1SalesOrderGetAllNode = UnleashedSoftwareV1NodeBase & {
+	config: NodeConfig<UnleashedSoftwareV1SalesOrderGetAllConfig>;
+	output?: UnleashedSoftwareV1SalesOrderGetAllOutput;
 };
+
+export type UnleashedSoftwareV1StockOnHandGetNode = UnleashedSoftwareV1NodeBase & {
+	config: NodeConfig<UnleashedSoftwareV1StockOnHandGetConfig>;
+};
+
+export type UnleashedSoftwareV1StockOnHandGetAllNode = UnleashedSoftwareV1NodeBase & {
+	config: NodeConfig<UnleashedSoftwareV1StockOnHandGetAllConfig>;
+};
+
+export type UnleashedSoftwareV1Node =
+	| UnleashedSoftwareV1SalesOrderGetAllNode
+	| UnleashedSoftwareV1StockOnHandGetNode
+	| UnleashedSoftwareV1StockOnHandGetAllNode
+	;

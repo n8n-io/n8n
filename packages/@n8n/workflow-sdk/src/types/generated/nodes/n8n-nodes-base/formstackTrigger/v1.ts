@@ -1,8 +1,6 @@
 /**
  * Formstack Trigger Node - Version 1
  * Starts the workflow on a Formstack form submission.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -36,13 +34,18 @@ export interface FormstackTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FormstackTriggerV1Node = {
+interface FormstackTriggerV1NodeBase {
 	type: 'n8n-nodes-base.formstackTrigger';
 	version: 1;
-	config: NodeConfig<FormstackTriggerV1Params>;
 	credentials?: FormstackTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type FormstackTriggerV1ParamsNode = FormstackTriggerV1NodeBase & {
+	config: NodeConfig<FormstackTriggerV1Params>;
 };
+
+export type FormstackTriggerV1Node = FormstackTriggerV1ParamsNode;

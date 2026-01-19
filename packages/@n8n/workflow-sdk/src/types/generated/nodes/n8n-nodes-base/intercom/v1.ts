@@ -1,8 +1,6 @@
 /**
  * Intercom Node - Version 1
  * Consume Intercom API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -400,6 +398,98 @@ export type IntercomV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type IntercomV1LeadCreateOutput = {
+	android_app_name?: null;
+	android_app_version?: null;
+	android_device?: null;
+	android_last_seen_at?: null;
+	android_os_version?: null;
+	android_sdk_version?: null;
+	avatar?: null;
+	browser?: null;
+	browser_language?: null;
+	browser_version?: null;
+	companies?: {
+		has_more?: boolean;
+		total_count?: number;
+		type?: string;
+		url?: string;
+	};
+	created_at?: number;
+	email?: string;
+	external_id?: null;
+	has_hard_bounced?: boolean;
+	id?: string;
+	ios_app_name?: null;
+	ios_app_version?: null;
+	ios_device?: null;
+	ios_last_seen_at?: null;
+	ios_os_version?: null;
+	ios_sdk_version?: null;
+	language_override?: null;
+	last_contacted_at?: null;
+	last_email_clicked_at?: null;
+	last_email_opened_at?: null;
+	last_replied_at?: null;
+	last_seen_at?: null;
+	location?: {
+		city?: null;
+		continent_code?: null;
+		country?: null;
+		country_code?: null;
+		region?: null;
+		type?: string;
+	};
+	marked_email_as_spam?: boolean;
+	notes?: {
+		has_more?: boolean;
+		total_count?: number;
+		type?: string;
+		url?: string;
+	};
+	opted_in_subscription_types?: {
+		has_more?: boolean;
+		total_count?: number;
+		type?: string;
+		url?: string;
+	};
+	opted_out_subscription_types?: {
+		has_more?: boolean;
+		total_count?: number;
+		type?: string;
+		url?: string;
+	};
+	os?: null;
+	owner_id?: null;
+	referrer?: null;
+	role?: string;
+	signed_up_at?: null;
+	sms_consent?: boolean;
+	social_profiles?: {
+		type?: string;
+	};
+	tags?: {
+		has_more?: boolean;
+		total_count?: number;
+		type?: string;
+		url?: string;
+	};
+	type?: string;
+	unsubscribed_from_emails?: boolean;
+	unsubscribed_from_sms?: boolean;
+	updated_at?: number;
+	utm_campaign?: null;
+	utm_content?: null;
+	utm_medium?: null;
+	utm_source?: null;
+	utm_term?: null;
+	workspace_id?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -408,12 +498,90 @@ export interface IntercomV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type IntercomV1Node = {
+interface IntercomV1NodeBase {
 	type: 'n8n-nodes-base.intercom';
 	version: 1;
-	config: NodeConfig<IntercomV1Params>;
 	credentials?: IntercomV1Credentials;
+}
+
+export type IntercomV1CompanyCreateNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1CompanyCreateConfig>;
 };
+
+export type IntercomV1CompanyGetNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1CompanyGetConfig>;
+};
+
+export type IntercomV1CompanyGetAllNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1CompanyGetAllConfig>;
+};
+
+export type IntercomV1CompanyUpdateNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1CompanyUpdateConfig>;
+};
+
+export type IntercomV1CompanyUsersNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1CompanyUsersConfig>;
+};
+
+export type IntercomV1LeadCreateNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1LeadCreateConfig>;
+	output?: IntercomV1LeadCreateOutput;
+};
+
+export type IntercomV1LeadDeleteNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1LeadDeleteConfig>;
+};
+
+export type IntercomV1LeadGetNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1LeadGetConfig>;
+};
+
+export type IntercomV1LeadGetAllNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1LeadGetAllConfig>;
+};
+
+export type IntercomV1LeadUpdateNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1LeadUpdateConfig>;
+};
+
+export type IntercomV1UserCreateNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1UserCreateConfig>;
+};
+
+export type IntercomV1UserDeleteNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1UserDeleteConfig>;
+};
+
+export type IntercomV1UserGetNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1UserGetConfig>;
+};
+
+export type IntercomV1UserGetAllNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1UserGetAllConfig>;
+};
+
+export type IntercomV1UserUpdateNode = IntercomV1NodeBase & {
+	config: NodeConfig<IntercomV1UserUpdateConfig>;
+};
+
+export type IntercomV1Node =
+	| IntercomV1CompanyCreateNode
+	| IntercomV1CompanyGetNode
+	| IntercomV1CompanyGetAllNode
+	| IntercomV1CompanyUpdateNode
+	| IntercomV1CompanyUsersNode
+	| IntercomV1LeadCreateNode
+	| IntercomV1LeadDeleteNode
+	| IntercomV1LeadGetNode
+	| IntercomV1LeadGetAllNode
+	| IntercomV1LeadUpdateNode
+	| IntercomV1UserCreateNode
+	| IntercomV1UserDeleteNode
+	| IntercomV1UserGetNode
+	| IntercomV1UserGetAllNode
+	| IntercomV1UserUpdateNode
+	;

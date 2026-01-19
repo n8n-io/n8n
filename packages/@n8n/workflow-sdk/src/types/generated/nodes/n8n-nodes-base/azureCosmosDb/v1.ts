@@ -1,8 +1,6 @@
 /**
  * Azure Cosmos DB Node - Version 1
  * Interact with Azure Cosmos DB API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -284,12 +282,64 @@ export interface AzureCosmosDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AzureCosmosDbV1Node = {
+interface AzureCosmosDbV1NodeBase {
 	type: 'n8n-nodes-base.azureCosmosDb';
 	version: 1;
-	config: NodeConfig<AzureCosmosDbV1Params>;
 	credentials?: AzureCosmosDbV1Credentials;
+}
+
+export type AzureCosmosDbV1ContainerCreateNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ContainerCreateConfig>;
 };
+
+export type AzureCosmosDbV1ContainerDeleteNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ContainerDeleteConfig>;
+};
+
+export type AzureCosmosDbV1ContainerGetNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ContainerGetConfig>;
+};
+
+export type AzureCosmosDbV1ContainerGetAllNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ContainerGetAllConfig>;
+};
+
+export type AzureCosmosDbV1ItemCreateNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ItemCreateConfig>;
+};
+
+export type AzureCosmosDbV1ItemDeleteNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ItemDeleteConfig>;
+};
+
+export type AzureCosmosDbV1ItemGetNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ItemGetConfig>;
+};
+
+export type AzureCosmosDbV1ItemGetAllNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ItemGetAllConfig>;
+};
+
+export type AzureCosmosDbV1ItemQueryNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ItemQueryConfig>;
+};
+
+export type AzureCosmosDbV1ItemUpdateNode = AzureCosmosDbV1NodeBase & {
+	config: NodeConfig<AzureCosmosDbV1ItemUpdateConfig>;
+};
+
+export type AzureCosmosDbV1Node =
+	| AzureCosmosDbV1ContainerCreateNode
+	| AzureCosmosDbV1ContainerDeleteNode
+	| AzureCosmosDbV1ContainerGetNode
+	| AzureCosmosDbV1ContainerGetAllNode
+	| AzureCosmosDbV1ItemCreateNode
+	| AzureCosmosDbV1ItemDeleteNode
+	| AzureCosmosDbV1ItemGetNode
+	| AzureCosmosDbV1ItemGetAllNode
+	| AzureCosmosDbV1ItemQueryNode
+	| AzureCosmosDbV1ItemUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * MongoDB Node - Version 1
  * Find, insert and update documents in MongoDB
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -267,12 +265,69 @@ export interface MongoDbV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MongoDbV1Node = {
+interface MongoDbV1NodeBase {
 	type: 'n8n-nodes-base.mongoDb';
 	version: 1;
-	config: NodeConfig<MongoDbV1Params>;
 	credentials?: MongoDbV1Credentials;
+}
+
+export type MongoDbV1SearchIndexesCreateSearchIndexNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1SearchIndexesCreateSearchIndexConfig>;
 };
+
+export type MongoDbV1SearchIndexesDropSearchIndexNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1SearchIndexesDropSearchIndexConfig>;
+};
+
+export type MongoDbV1SearchIndexesListSearchIndexesNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1SearchIndexesListSearchIndexesConfig>;
+};
+
+export type MongoDbV1SearchIndexesUpdateSearchIndexNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1SearchIndexesUpdateSearchIndexConfig>;
+};
+
+export type MongoDbV1DocumentAggregateNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1DocumentAggregateConfig>;
+};
+
+export type MongoDbV1DocumentDeleteNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1DocumentDeleteConfig>;
+};
+
+export type MongoDbV1DocumentFindNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1DocumentFindConfig>;
+};
+
+export type MongoDbV1DocumentFindOneAndReplaceNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1DocumentFindOneAndReplaceConfig>;
+};
+
+export type MongoDbV1DocumentFindOneAndUpdateNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1DocumentFindOneAndUpdateConfig>;
+};
+
+export type MongoDbV1DocumentInsertNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1DocumentInsertConfig>;
+};
+
+export type MongoDbV1DocumentUpdateNode = MongoDbV1NodeBase & {
+	config: NodeConfig<MongoDbV1DocumentUpdateConfig>;
+};
+
+export type MongoDbV1Node =
+	| MongoDbV1SearchIndexesCreateSearchIndexNode
+	| MongoDbV1SearchIndexesDropSearchIndexNode
+	| MongoDbV1SearchIndexesListSearchIndexesNode
+	| MongoDbV1SearchIndexesUpdateSearchIndexNode
+	| MongoDbV1DocumentAggregateNode
+	| MongoDbV1DocumentDeleteNode
+	| MongoDbV1DocumentFindNode
+	| MongoDbV1DocumentFindOneAndReplaceNode
+	| MongoDbV1DocumentFindOneAndUpdateNode
+	| MongoDbV1DocumentInsertNode
+	| MongoDbV1DocumentUpdateNode
+	;

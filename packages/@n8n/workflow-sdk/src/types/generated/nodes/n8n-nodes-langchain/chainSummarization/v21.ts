@@ -1,8 +1,6 @@
 /**
  * Summarization Chain Node - Version 2.1
  * Transforms text into a concise summary
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -45,12 +43,16 @@ export interface LcChainSummarizationV21Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcChainSummarizationV21Node = {
+interface LcChainSummarizationV21NodeBase {
 	type: '@n8n/n8n-nodes-langchain.chainSummarization';
 	version: 2.1;
+}
+
+export type LcChainSummarizationV21ParamsNode = LcChainSummarizationV21NodeBase & {
 	config: NodeConfig<LcChainSummarizationV21Params>;
-	credentials?: Record<string, never>;
 };
+
+export type LcChainSummarizationV21Node = LcChainSummarizationV21ParamsNode;

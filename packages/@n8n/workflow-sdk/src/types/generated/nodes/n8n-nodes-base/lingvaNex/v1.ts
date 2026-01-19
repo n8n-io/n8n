@@ -1,8 +1,6 @@
 /**
  * LingvaNex Node - Version 1
  * Consume LingvaNex API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -37,12 +35,17 @@ export interface LingvaNexV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LingvaNexV1Node = {
+interface LingvaNexV1NodeBase {
 	type: 'n8n-nodes-base.lingvaNex';
 	version: 1;
-	config: NodeConfig<LingvaNexV1Params>;
 	credentials?: LingvaNexV1Credentials;
+}
+
+export type LingvaNexV1ParamsNode = LingvaNexV1NodeBase & {
+	config: NodeConfig<LingvaNexV1Params>;
 };
+
+export type LingvaNexV1Node = LingvaNexV1ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * ActiveCampaign Trigger Node - Version 1
  * Handle ActiveCampaign events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -31,13 +29,18 @@ export interface ActiveCampaignTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ActiveCampaignTriggerV1Node = {
+interface ActiveCampaignTriggerV1NodeBase {
 	type: 'n8n-nodes-base.activeCampaignTrigger';
 	version: 1;
-	config: NodeConfig<ActiveCampaignTriggerV1Params>;
 	credentials?: ActiveCampaignTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type ActiveCampaignTriggerV1ParamsNode = ActiveCampaignTriggerV1NodeBase & {
+	config: NodeConfig<ActiveCampaignTriggerV1Params>;
 };
+
+export type ActiveCampaignTriggerV1Node = ActiveCampaignTriggerV1ParamsNode;

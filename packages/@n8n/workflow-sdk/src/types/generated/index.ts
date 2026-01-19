@@ -6,8 +6,6 @@
  *
  * To regenerate:
  *   pnpm generate-types
- *
- * @generated
  */
 
 // Import node types for AllNodeTypes union

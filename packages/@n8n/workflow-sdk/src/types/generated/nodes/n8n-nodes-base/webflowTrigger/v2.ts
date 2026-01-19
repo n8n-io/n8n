@@ -1,8 +1,6 @@
 /**
  * Webflow Trigger Node - Version 2
  * Handle Webflow events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface WebflowTriggerV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type WebflowTriggerV2Node = {
+interface WebflowTriggerV2NodeBase {
 	type: 'n8n-nodes-base.webflowTrigger';
 	version: 2;
-	config: NodeConfig<WebflowTriggerV2Params>;
 	credentials?: WebflowTriggerV2Credentials;
 	isTrigger: true;
+}
+
+export type WebflowTriggerV2ParamsNode = WebflowTriggerV2NodeBase & {
+	config: NodeConfig<WebflowTriggerV2Params>;
 };
+
+export type WebflowTriggerV2Node = WebflowTriggerV2ParamsNode;

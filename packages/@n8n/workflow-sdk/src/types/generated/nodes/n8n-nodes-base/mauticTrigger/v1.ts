@@ -1,8 +1,6 @@
 /**
  * Mautic Trigger Node - Version 1
  * Handle Mautic events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -37,13 +35,18 @@ export interface MauticTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MauticTriggerV1Node = {
+interface MauticTriggerV1NodeBase {
 	type: 'n8n-nodes-base.mauticTrigger';
 	version: 1;
-	config: NodeConfig<MauticTriggerV1Params>;
 	credentials?: MauticTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MauticTriggerV1ParamsNode = MauticTriggerV1NodeBase & {
+	config: NodeConfig<MauticTriggerV1Params>;
 };
+
+export type MauticTriggerV1Node = MauticTriggerV1ParamsNode;

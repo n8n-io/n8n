@@ -1,8 +1,6 @@
 /**
  * Linear Trigger Node - Version 1
  * Starts the workflow when Linear events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -32,13 +30,18 @@ export interface LinearTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LinearTriggerV1Node = {
+interface LinearTriggerV1NodeBase {
 	type: 'n8n-nodes-base.linearTrigger';
 	version: 1;
-	config: NodeConfig<LinearTriggerV1Params>;
 	credentials?: LinearTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type LinearTriggerV1ParamsNode = LinearTriggerV1NodeBase & {
+	config: NodeConfig<LinearTriggerV1Params>;
 };
+
+export type LinearTriggerV1Node = LinearTriggerV1ParamsNode;

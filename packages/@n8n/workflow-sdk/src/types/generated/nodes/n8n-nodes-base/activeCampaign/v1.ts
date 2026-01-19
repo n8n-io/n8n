@@ -1,8 +1,6 @@
 /**
  * ActiveCampaign Node - Version 1
  * Create and edit data in ActiveCampaign
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -925,6 +923,759 @@ export type ActiveCampaignV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type ActiveCampaignV1AccountGetOutput = {
+	account?: {
+		accountUrl?: string;
+		createdTimestamp?: string;
+		updatedTimestamp?: string;
+		id?: string;
+		links?: {
+			accountContacts?: string;
+			accountCustomFieldData?: string;
+			contactEmails?: string;
+			emailActivities?: string;
+			notes?: string;
+			owner?: string;
+		};
+		name?: string;
+		owner?: string;
+	};
+};
+
+export type ActiveCampaignV1AccountGetAllOutput = {
+	contactCount?: string;
+	createdTimestamp?: string;
+	dealCount?: string;
+	id?: string;
+	links?: {
+		accountContacts?: string;
+		accountCustomFieldData?: string;
+		contactEmails?: string;
+		emailActivities?: string;
+		notes?: string;
+		owner?: string;
+	};
+	name?: string;
+	owner?: string;
+	updatedTimestamp?: string;
+};
+
+export type ActiveCampaignV1ContactCreateOutput = {
+	anonymized?: string;
+	bounced_hard?: string;
+	bounced_soft?: string;
+	cdate?: string;
+	created_timestamp?: string;
+	created_utc_timestamp?: string;
+	deleted?: string;
+	email?: string;
+	email_domain?: string;
+	email_local?: string;
+	fieldValues?: Array<string>;
+	firstName?: string;
+	gravatar?: string;
+	hash?: string;
+	id?: string;
+	ip?: string;
+	lastName?: string;
+	links?: {
+		automationEntryCounts?: string;
+		bounceLogs?: string;
+		contactAutomations?: string;
+		contactData?: string;
+		contactDeals?: string;
+		contactGoals?: string;
+		contactLists?: string;
+		contactLogs?: string;
+		contactTags?: string;
+		deals?: string;
+		fieldValues?: string;
+		geoIps?: string;
+		notes?: string;
+		organization?: string;
+		plusAppend?: string;
+		scoreValues?: string;
+		trackingLogs?: string;
+	};
+	mpp_tracking?: string;
+	orgid?: string;
+	orgname?: string;
+	phone?: string;
+	segmentio_id?: string;
+	sentcnt?: string;
+	socialdata_lastcheck?: null;
+	udate?: string;
+	updated_timestamp?: string;
+	updated_utc_timestamp?: string;
+};
+
+export type ActiveCampaignV1ContactGetOutput = {
+	accountContacts?: Array<{
+		account?: string;
+		contact?: string;
+		createdTimestamp?: string;
+		id?: string;
+		jobTitle?: string;
+		links?: {
+			account?: string;
+			contact?: string;
+		};
+		updatedTimestamp?: string;
+	}>;
+	contact?: {
+		accountContacts?: Array<string>;
+		anonymized?: string;
+		bounced_hard?: string;
+		bounced_soft?: string;
+		cdate?: string;
+		contactAutomations?: Array<string>;
+		contactData?: string;
+		contactLists?: Array<string>;
+		created_timestamp?: string;
+		created_utc_timestamp?: string;
+		deals?: Array<string>;
+		deleted?: string;
+		deleted_at?: null;
+		email?: string;
+		email_domain?: string;
+		email_local?: string;
+		fieldValues?: Array<string>;
+		firstName?: string;
+		geoIps?: Array<string>;
+		gravatar?: string;
+		hash?: string;
+		id?: string;
+		ip?: string;
+		lastName?: string;
+		links?: {
+			accountContacts?: string;
+			automationEntryCounts?: string;
+			bounceLogs?: string;
+			contactAutomations?: string;
+			contactData?: string;
+			contactDeals?: string;
+			contactGoals?: string;
+			contactLists?: string;
+			contactLogs?: string;
+			contactTags?: string;
+			deals?: string;
+			fieldValues?: string;
+			geoIps?: string;
+			notes?: string;
+			organization?: string;
+			plusAppend?: string;
+			scoreValues?: string;
+			trackingLogs?: string;
+		};
+		mpp_tracking?: string;
+		orgid?: string;
+		orgname?: string;
+		phone?: string;
+		segmentio_id?: string;
+		sentcnt?: string;
+		socialdata_lastcheck?: null;
+		udate?: string;
+		updated_timestamp?: string;
+		updated_utc_timestamp?: string;
+	};
+	contactAutomations?: Array<{
+		adddate?: string;
+		automation?: string;
+		completed?: number;
+		completedElements?: number;
+		completeValue?: number;
+		contact?: string;
+		id?: string;
+		lastblock?: string;
+		lastdate?: string;
+		lastlogid?: string;
+		links?: {
+			automation?: string;
+			automationLogs?: string;
+			contact?: string;
+			contactGoals?: string;
+		};
+		seriesid?: string;
+		startid?: string;
+		status?: string;
+		totalElements?: number;
+	}>;
+	contactData?: Array<{
+		contact?: string;
+		created_timestamp?: string;
+		fb_id?: string;
+		fb_name?: string;
+		ga_campaign_content?: string;
+		ga_campaign_customsegment?: string;
+		ga_campaign_medium?: string;
+		ga_campaign_name?: string;
+		ga_campaign_source?: string;
+		ga_campaign_term?: string;
+		ga_first_visit?: null;
+		ga_times_visited?: string;
+		geo_country?: string;
+		geoArea?: string;
+		geoCity?: string;
+		geoCountry2?: string;
+		geoIp4?: string;
+		geoLat?: string;
+		geoLon?: string;
+		geoState?: string;
+		geoTz?: string;
+		geoTzOffset?: string;
+		geoZip?: string;
+		id?: string;
+		tstamp?: string;
+		tw_id?: string;
+		updated_timestamp?: string;
+	}>;
+	contactLists?: Array<{
+		autosyncLog?: null;
+		contact?: string;
+		created_timestamp?: string;
+		first_name?: string;
+		id?: string;
+		ip4_last?: string;
+		ip4Sub?: string;
+		ip4Unsub?: string;
+		last_name?: string;
+		links?: {
+			automation?: string;
+			autosyncLog?: string;
+			campaign?: string;
+			contact?: string;
+			form?: string;
+			list?: string;
+			message?: string;
+			unsubscribeAutomation?: string;
+		};
+		list?: string;
+		message?: null;
+		responder?: string;
+		sdate?: string;
+		seriesid?: string;
+		sourceid?: string;
+		status?: string;
+		sync?: string;
+		updated_timestamp?: string;
+	}>;
+	deals?: Array<{
+		activitycount?: string;
+		cdate?: string;
+		contact?: string;
+		currency?: string;
+		description?: string;
+		group?: string;
+		hash?: string;
+		id?: string;
+		isDisabled?: boolean;
+		links?: {
+			account?: string;
+			contact?: string;
+			contactDeals?: string;
+			customerAccount?: string;
+			dealActivities?: string;
+			dealCustomFieldData?: string;
+			group?: string;
+			nextTask?: string;
+			notes?: string;
+			organization?: string;
+			owner?: string;
+			scoreValues?: string;
+			stage?: string;
+			tasks?: string;
+		};
+		mdate?: string;
+		nextdealid?: string;
+		owner?: string;
+		percent?: string;
+		stage?: string;
+		status?: string;
+		title?: string;
+		value?: string;
+		winProbability?: null;
+	}>;
+	fieldValues?: Array<{
+		cdate?: string;
+		contact?: string;
+		id?: string;
+		links?: {
+			field?: string;
+			owner?: string;
+		};
+		owner?: string;
+		udate?: string;
+		value?: string;
+	}>;
+	geoIps?: Array<{
+		campaignid?: string;
+		contact?: string;
+		geoAddress?: string;
+		geoaddrid?: string;
+		id?: string;
+		ip4?: string;
+		links?: {
+			geoAddress?: string;
+		};
+		messageid?: string;
+		tstamp?: string;
+	}>;
+};
+
+export type ActiveCampaignV1ContactGetAllOutput = {
+	anonymized?: string;
+	bounced_hard?: string;
+	bounced_soft?: string;
+	created_timestamp?: string;
+	created_utc_timestamp?: string;
+	deleted?: string;
+	deleted_at?: null;
+	email?: string;
+	email_domain?: string;
+	email_local?: string;
+	firstName?: string;
+	gravatar?: string;
+	hash?: string;
+	id?: string;
+	ip?: string;
+	lastName?: string;
+	links?: {
+		accountContacts?: string;
+		automationEntryCounts?: string;
+		bounceLogs?: string;
+		contactAutomations?: string;
+		contactData?: string;
+		contactDeals?: string;
+		contactGoals?: string;
+		contactLists?: string;
+		contactLogs?: string;
+		contactTags?: string;
+		deals?: string;
+		fieldValues?: string;
+		geoIps?: string;
+		notes?: string;
+		organization?: string;
+		plusAppend?: string;
+		scoreValues?: string;
+		trackingLogs?: string;
+	};
+	mpp_tracking?: string;
+	orgid?: string;
+	orgname?: string;
+	phone?: string;
+	segmentio_id?: string;
+	sentcnt?: string;
+	socialdata_lastcheck?: null;
+	udate?: string;
+	updated_timestamp?: string;
+	updated_utc_timestamp?: string;
+};
+
+export type ActiveCampaignV1ContactUpdateOutput = {
+	anonymized?: string;
+	bounced_hard?: string;
+	bounced_soft?: string;
+	cdate?: string;
+	created_timestamp?: string;
+	created_utc_timestamp?: string;
+	deleted?: string;
+	deleted_at?: null;
+	email?: string;
+	email_domain?: string;
+	email_local?: string;
+	fieldValues?: Array<string>;
+	firstName?: string;
+	gravatar?: string;
+	hash?: string;
+	id?: string;
+	ip?: string;
+	lastName?: string;
+	links?: {
+		accountContacts?: string;
+		automationEntryCounts?: string;
+		bounceLogs?: string;
+		contactAutomations?: string;
+		contactData?: string;
+		contactDeals?: string;
+		contactGoals?: string;
+		contactLists?: string;
+		contactLogs?: string;
+		contactTags?: string;
+		deals?: string;
+		fieldValues?: string;
+		geoIps?: string;
+		notes?: string;
+		organization?: string;
+		plusAppend?: string;
+		scoreValues?: string;
+		trackingLogs?: string;
+	};
+	mpp_tracking?: string;
+	orgid?: string;
+	orgname?: string;
+	phone?: string;
+	segmentio_id?: string;
+	sentcnt?: string;
+	socialdata_lastcheck?: null;
+	udate?: string;
+	updated_timestamp?: string;
+	updated_utc_timestamp?: string;
+};
+
+export type ActiveCampaignV1ContactListAddOutput = {
+	success?: boolean;
+};
+
+export type ActiveCampaignV1ContactTagAddOutput = {
+	cdate?: string;
+	created_by?: null;
+	created_timestamp?: string;
+	id?: string;
+	links?: {
+		contact?: string;
+		tag?: string;
+	};
+	updated_by?: null;
+	updated_timestamp?: string;
+};
+
+export type ActiveCampaignV1DealCreateOutput = {
+	contacts?: Array<{
+		anonymized?: string;
+		bounced_date?: null;
+		bounced_hard?: string;
+		bounced_soft?: string;
+		cdate?: string;
+		created_timestamp?: string;
+		created_utc_timestamp?: string;
+		deleted?: string;
+		deleted_at?: null;
+		email?: string;
+		email_domain?: string;
+		email_local?: string;
+		firstName?: string;
+		gravatar?: string;
+		hash?: string;
+		id?: string;
+		ip?: string;
+		last_mpp_open_date?: null;
+		lastName?: string;
+		links?: {
+			accountContacts?: string;
+			automationEntryCounts?: string;
+			bounceLogs?: string;
+			contactAutomations?: string;
+			contactData?: string;
+			contactDeals?: string;
+			contactGoals?: string;
+			contactLists?: string;
+			contactLogs?: string;
+			contactTags?: string;
+			deals?: string;
+			fieldValues?: string;
+			geoIps?: string;
+			notes?: string;
+			organization?: string;
+			plusAppend?: string;
+			scoreValues?: string;
+			trackingLogs?: string;
+		};
+		mpp_tracking?: string;
+		organization?: null;
+		orgid?: string;
+		orgname?: string;
+		phone?: string;
+		segmentio_id?: string;
+		sentcnt?: string;
+		socialdata_lastcheck?: null;
+		udate?: string;
+		updated_timestamp?: string;
+		updated_utc_timestamp?: string;
+	}>;
+	deal?: {
+		account?: null;
+		cdate?: string;
+		contact?: string;
+		currency?: string;
+		customerAccount?: null;
+		description?: string;
+		hash?: string;
+		id?: string;
+		isDisabled?: boolean;
+		links?: {
+			account?: string;
+			contact?: string;
+			contactDeals?: string;
+			customerAccount?: string;
+			dealActivities?: string;
+			dealCustomFieldData?: string;
+			group?: string;
+			nextTask?: string;
+			notes?: string;
+			organization?: string;
+			owner?: string;
+			scoreValues?: string;
+			stage?: string;
+			tasks?: string;
+		};
+		mdate?: string;
+		nextdate?: null;
+		nextdealid?: string;
+		organization?: null;
+		status?: number;
+		title?: string;
+		winProbability?: null;
+		winProbabilityMdate?: null;
+	};
+	dealGroups?: Array<{
+		allgroups?: string;
+		allusers?: string;
+		autoassign?: string;
+		cdate?: string;
+		currency?: string;
+		id?: string;
+		links?: {
+			dealGroupGroups?: string;
+			dealGroupUsers?: string;
+			stages?: string;
+			winProbabilityFeatures?: string;
+		};
+		title?: string;
+		udate?: string;
+		win_probability_initialize_date?: null;
+	}>;
+	dealStages?: Array<{
+		cardRegion1?: string;
+		cardRegion2?: string;
+		cardRegion3?: string;
+		cardRegion4?: string;
+		cardRegion5?: string;
+		cdate?: null;
+		color?: string;
+		dealOrder?: string;
+		group?: string;
+		id?: string;
+		links?: {
+			group?: string;
+		};
+		order?: string;
+		title?: string;
+		width?: string;
+	}>;
+};
+
+export type ActiveCampaignV1DealGetOutput = {
+	deal?: {
+		activitycount?: string;
+		cdate?: string;
+		currency?: string;
+		description?: string;
+		group?: string;
+		hash?: string;
+		id?: string;
+		isDisabled?: boolean;
+		links?: {
+			account?: string;
+			contact?: string;
+			contactDeals?: string;
+			customerAccount?: string;
+			dealActivities?: string;
+			dealCustomFieldData?: string;
+			group?: string;
+			nextTask?: string;
+			notes?: string;
+			organization?: string;
+			owner?: string;
+			scoreValues?: string;
+			stage?: string;
+			tasks?: string;
+		};
+		mdate?: string;
+		nextdealid?: string;
+		owner?: string;
+		percent?: string;
+		stage?: string;
+		status?: string;
+		title?: string;
+		value?: string;
+	};
+};
+
+export type ActiveCampaignV1DealGetAllOutput = {
+	activitycount?: string;
+	cdate?: string;
+	currency?: string;
+	description?: string;
+	group?: string;
+	hash?: string;
+	id?: string;
+	isDisabled?: boolean;
+	links?: {
+		account?: string;
+		contact?: string;
+		contactDeals?: string;
+		customerAccount?: string;
+		dealActivities?: string;
+		dealCustomFieldData?: string;
+		group?: string;
+		nextTask?: string;
+		notes?: string;
+		organization?: string;
+		owner?: string;
+		scoreValues?: string;
+		stage?: string;
+		tasks?: string;
+	};
+	mdate?: string;
+	nextdealid?: string;
+	owner?: string;
+	percent?: string;
+	stage?: string;
+	status?: string;
+	title?: string;
+	value?: string;
+};
+
+export type ActiveCampaignV1DealUpdateOutput = {
+	deal?: {
+		activitycount?: string;
+		cdate?: string;
+		contact?: string;
+		currency?: string;
+		description?: string;
+		group?: string;
+		hash?: string;
+		id?: string;
+		isDisabled?: boolean;
+		links?: {
+			account?: string;
+			contact?: string;
+			contactDeals?: string;
+			customerAccount?: string;
+			dealActivities?: string;
+			dealCustomFieldData?: string;
+			group?: string;
+			nextTask?: string;
+			notes?: string;
+			organization?: string;
+			owner?: string;
+			scoreValues?: string;
+			stage?: string;
+			tasks?: string;
+		};
+		mdate?: string;
+		nextdealid?: string;
+		owner?: string;
+		percent?: string;
+		stage?: string;
+		title?: string;
+	};
+	dealStages?: Array<{
+		cardRegion1?: string;
+		cardRegion2?: string;
+		cardRegion3?: string;
+		cardRegion4?: string;
+		cardRegion5?: string;
+		color?: string;
+		dealOrder?: string;
+		group?: string;
+		id?: string;
+		links?: {
+			group?: string;
+		};
+		order?: string;
+		title?: string;
+		udate?: string;
+		width?: string;
+	}>;
+};
+
+export type ActiveCampaignV1ListGetAllOutput = {
+	analytics_domains?: null;
+	analytics_source?: string;
+	analytics_ua?: string;
+	cdate?: string;
+	created_by?: null;
+	created_timestamp?: string;
+	deletestamp?: null;
+	facebook_session?: null;
+	get_unsubscribe_reason?: string;
+	id?: string;
+	links?: {
+		addressLists?: string;
+		contactGoalLists?: string;
+		user?: string;
+	};
+	name?: string;
+	optinmessageid?: string;
+	optinoptout?: string;
+	optoutconf?: string;
+	p_embed_image?: string;
+	p_use_analytics_link?: string;
+	p_use_analytics_read?: string;
+	p_use_captcha?: string;
+	p_use_facebook?: string;
+	p_use_tracking?: string;
+	p_use_twitter?: string;
+	private?: string;
+	require_name?: string;
+	send_last_broadcast?: string;
+	sender_addr1?: string;
+	sender_addr2?: string;
+	sender_city?: string;
+	sender_country?: string;
+	sender_name?: string;
+	sender_phone?: string;
+	sender_reminder?: string;
+	sender_state?: string;
+	sender_url?: string;
+	sender_zip?: string;
+	stringid?: string;
+	to_name?: string;
+	twitter_token?: string;
+	twitter_token_secret?: string;
+	updated_by?: null;
+	updated_timestamp?: string;
+	user?: string;
+	userid?: string;
+};
+
+export type ActiveCampaignV1TagGetOutput = {
+	tag?: {
+		created_timestamp?: string;
+		deleted?: string;
+		description?: string;
+		id?: string;
+		links?: {
+			contactGoalTags?: string;
+			templateTags?: string;
+		};
+		subscriber_count?: string;
+		tag?: string;
+		tagType?: string;
+		updated_timestamp?: string;
+	};
+};
+
+export type ActiveCampaignV1TagGetAllOutput = {
+	created_timestamp?: string;
+	deleted?: string;
+	description?: string;
+	id?: string;
+	links?: {
+		contactGoalTags?: string;
+		templateTags?: string;
+	};
+	subscriber_count?: string;
+	tag?: string;
+	tagType?: string;
+	updated_timestamp?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -933,12 +1684,269 @@ export interface ActiveCampaignV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ActiveCampaignV1Node = {
+interface ActiveCampaignV1NodeBase {
 	type: 'n8n-nodes-base.activeCampaign';
 	version: 1;
-	config: NodeConfig<ActiveCampaignV1Params>;
 	credentials?: ActiveCampaignV1Credentials;
+}
+
+export type ActiveCampaignV1AccountCreateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1AccountCreateConfig>;
 };
+
+export type ActiveCampaignV1AccountDeleteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1AccountDeleteConfig>;
+};
+
+export type ActiveCampaignV1AccountGetNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1AccountGetConfig>;
+	output?: ActiveCampaignV1AccountGetOutput;
+};
+
+export type ActiveCampaignV1AccountGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1AccountGetAllConfig>;
+	output?: ActiveCampaignV1AccountGetAllOutput;
+};
+
+export type ActiveCampaignV1AccountUpdateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1AccountUpdateConfig>;
+};
+
+export type ActiveCampaignV1AccountContactCreateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1AccountContactCreateConfig>;
+};
+
+export type ActiveCampaignV1AccountContactDeleteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1AccountContactDeleteConfig>;
+};
+
+export type ActiveCampaignV1AccountContactUpdateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1AccountContactUpdateConfig>;
+};
+
+export type ActiveCampaignV1ConnectionCreateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ConnectionCreateConfig>;
+};
+
+export type ActiveCampaignV1ConnectionDeleteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ConnectionDeleteConfig>;
+};
+
+export type ActiveCampaignV1ConnectionGetNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ConnectionGetConfig>;
+};
+
+export type ActiveCampaignV1ConnectionGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ConnectionGetAllConfig>;
+};
+
+export type ActiveCampaignV1ConnectionUpdateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ConnectionUpdateConfig>;
+};
+
+export type ActiveCampaignV1ContactCreateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactCreateConfig>;
+	output?: ActiveCampaignV1ContactCreateOutput;
+};
+
+export type ActiveCampaignV1ContactDeleteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactDeleteConfig>;
+};
+
+export type ActiveCampaignV1ContactGetNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactGetConfig>;
+	output?: ActiveCampaignV1ContactGetOutput;
+};
+
+export type ActiveCampaignV1ContactGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactGetAllConfig>;
+	output?: ActiveCampaignV1ContactGetAllOutput;
+};
+
+export type ActiveCampaignV1ContactUpdateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactUpdateConfig>;
+	output?: ActiveCampaignV1ContactUpdateOutput;
+};
+
+export type ActiveCampaignV1ContactListAddNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactListAddConfig>;
+	output?: ActiveCampaignV1ContactListAddOutput;
+};
+
+export type ActiveCampaignV1ContactListRemoveNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactListRemoveConfig>;
+};
+
+export type ActiveCampaignV1ContactTagAddNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactTagAddConfig>;
+	output?: ActiveCampaignV1ContactTagAddOutput;
+};
+
+export type ActiveCampaignV1ContactTagRemoveNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ContactTagRemoveConfig>;
+};
+
+export type ActiveCampaignV1DealCreateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1DealCreateConfig>;
+	output?: ActiveCampaignV1DealCreateOutput;
+};
+
+export type ActiveCampaignV1DealCreateNoteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1DealCreateNoteConfig>;
+};
+
+export type ActiveCampaignV1DealDeleteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1DealDeleteConfig>;
+};
+
+export type ActiveCampaignV1DealGetNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1DealGetConfig>;
+	output?: ActiveCampaignV1DealGetOutput;
+};
+
+export type ActiveCampaignV1DealGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1DealGetAllConfig>;
+	output?: ActiveCampaignV1DealGetAllOutput;
+};
+
+export type ActiveCampaignV1DealUpdateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1DealUpdateConfig>;
+	output?: ActiveCampaignV1DealUpdateOutput;
+};
+
+export type ActiveCampaignV1DealUpdateNoteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1DealUpdateNoteConfig>;
+};
+
+export type ActiveCampaignV1EcommerceCustomerCreateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceCustomerCreateConfig>;
+};
+
+export type ActiveCampaignV1EcommerceCustomerDeleteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceCustomerDeleteConfig>;
+};
+
+export type ActiveCampaignV1EcommerceCustomerGetNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceCustomerGetConfig>;
+};
+
+export type ActiveCampaignV1EcommerceCustomerGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceCustomerGetAllConfig>;
+};
+
+export type ActiveCampaignV1EcommerceCustomerUpdateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceCustomerUpdateConfig>;
+};
+
+export type ActiveCampaignV1EcommerceOrderCreateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceOrderCreateConfig>;
+};
+
+export type ActiveCampaignV1EcommerceOrderDeleteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceOrderDeleteConfig>;
+};
+
+export type ActiveCampaignV1EcommerceOrderGetNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceOrderGetConfig>;
+};
+
+export type ActiveCampaignV1EcommerceOrderGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceOrderGetAllConfig>;
+};
+
+export type ActiveCampaignV1EcommerceOrderUpdateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceOrderUpdateConfig>;
+};
+
+export type ActiveCampaignV1EcommerceOrderProductsGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceOrderProductsGetAllConfig>;
+};
+
+export type ActiveCampaignV1EcommerceOrderProductsGetByProductIdNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceOrderProductsGetByProductIdConfig>;
+};
+
+export type ActiveCampaignV1EcommerceOrderProductsGetByOrderIdNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1EcommerceOrderProductsGetByOrderIdConfig>;
+};
+
+export type ActiveCampaignV1ListGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1ListGetAllConfig>;
+	output?: ActiveCampaignV1ListGetAllOutput;
+};
+
+export type ActiveCampaignV1TagCreateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1TagCreateConfig>;
+};
+
+export type ActiveCampaignV1TagDeleteNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1TagDeleteConfig>;
+};
+
+export type ActiveCampaignV1TagGetNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1TagGetConfig>;
+	output?: ActiveCampaignV1TagGetOutput;
+};
+
+export type ActiveCampaignV1TagGetAllNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1TagGetAllConfig>;
+	output?: ActiveCampaignV1TagGetAllOutput;
+};
+
+export type ActiveCampaignV1TagUpdateNode = ActiveCampaignV1NodeBase & {
+	config: NodeConfig<ActiveCampaignV1TagUpdateConfig>;
+};
+
+export type ActiveCampaignV1Node =
+	| ActiveCampaignV1AccountCreateNode
+	| ActiveCampaignV1AccountDeleteNode
+	| ActiveCampaignV1AccountGetNode
+	| ActiveCampaignV1AccountGetAllNode
+	| ActiveCampaignV1AccountUpdateNode
+	| ActiveCampaignV1AccountContactCreateNode
+	| ActiveCampaignV1AccountContactDeleteNode
+	| ActiveCampaignV1AccountContactUpdateNode
+	| ActiveCampaignV1ConnectionCreateNode
+	| ActiveCampaignV1ConnectionDeleteNode
+	| ActiveCampaignV1ConnectionGetNode
+	| ActiveCampaignV1ConnectionGetAllNode
+	| ActiveCampaignV1ConnectionUpdateNode
+	| ActiveCampaignV1ContactCreateNode
+	| ActiveCampaignV1ContactDeleteNode
+	| ActiveCampaignV1ContactGetNode
+	| ActiveCampaignV1ContactGetAllNode
+	| ActiveCampaignV1ContactUpdateNode
+	| ActiveCampaignV1ContactListAddNode
+	| ActiveCampaignV1ContactListRemoveNode
+	| ActiveCampaignV1ContactTagAddNode
+	| ActiveCampaignV1ContactTagRemoveNode
+	| ActiveCampaignV1DealCreateNode
+	| ActiveCampaignV1DealCreateNoteNode
+	| ActiveCampaignV1DealDeleteNode
+	| ActiveCampaignV1DealGetNode
+	| ActiveCampaignV1DealGetAllNode
+	| ActiveCampaignV1DealUpdateNode
+	| ActiveCampaignV1DealUpdateNoteNode
+	| ActiveCampaignV1EcommerceCustomerCreateNode
+	| ActiveCampaignV1EcommerceCustomerDeleteNode
+	| ActiveCampaignV1EcommerceCustomerGetNode
+	| ActiveCampaignV1EcommerceCustomerGetAllNode
+	| ActiveCampaignV1EcommerceCustomerUpdateNode
+	| ActiveCampaignV1EcommerceOrderCreateNode
+	| ActiveCampaignV1EcommerceOrderDeleteNode
+	| ActiveCampaignV1EcommerceOrderGetNode
+	| ActiveCampaignV1EcommerceOrderGetAllNode
+	| ActiveCampaignV1EcommerceOrderUpdateNode
+	| ActiveCampaignV1EcommerceOrderProductsGetAllNode
+	| ActiveCampaignV1EcommerceOrderProductsGetByProductIdNode
+	| ActiveCampaignV1EcommerceOrderProductsGetByOrderIdNode
+	| ActiveCampaignV1ListGetAllNode
+	| ActiveCampaignV1TagCreateNode
+	| ActiveCampaignV1TagDeleteNode
+	| ActiveCampaignV1TagGetNode
+	| ActiveCampaignV1TagGetAllNode
+	| ActiveCampaignV1TagUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * MQTT Trigger Node - Version 1
  * Listens to MQTT events
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface MqttTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MqttTriggerV1Node = {
+interface MqttTriggerV1NodeBase {
 	type: 'n8n-nodes-base.mqttTrigger';
 	version: 1;
-	config: NodeConfig<MqttTriggerV1Params>;
 	credentials?: MqttTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type MqttTriggerV1ParamsNode = MqttTriggerV1NodeBase & {
+	config: NodeConfig<MqttTriggerV1Params>;
 };
+
+export type MqttTriggerV1Node = MqttTriggerV1ParamsNode;

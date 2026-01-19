@@ -1,8 +1,6 @@
 /**
  * Vector Store Question Answer Tool Node - Version 1
  * Answer questions with a vector store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -34,13 +32,17 @@ export interface LcToolVectorStoreV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolVectorStoreV1Node = {
+interface LcToolVectorStoreV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.toolVectorStore';
 	version: 1;
-	config: NodeConfig<LcToolVectorStoreV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcToolVectorStoreV1ParamsNode = LcToolVectorStoreV1NodeBase & {
+	config: NodeConfig<LcToolVectorStoreV1Params>;
 };
+
+export type LcToolVectorStoreV1Node = LcToolVectorStoreV1ParamsNode;

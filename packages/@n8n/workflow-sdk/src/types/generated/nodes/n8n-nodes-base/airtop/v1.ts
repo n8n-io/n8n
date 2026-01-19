@@ -1,8 +1,6 @@
 /**
  * Airtop Node - Version 1
  * Scrape and control any site with Airtop
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -766,6 +764,149 @@ export type AirtopV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type AirtopV1ExtractionQueryOutput = {
+	data?: {
+		modelResponse?: string;
+	};
+	meta?: {
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	warnings?: Array<{
+		message?: string;
+	}>;
+};
+
+export type AirtopV1ExtractionGetPaginatedOutput = {
+	data?: {
+		modelResponse?: string;
+	};
+	meta?: {
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	sessionId?: string;
+	windowId?: string;
+};
+
+export type AirtopV1ExtractionScrapeOutput = {
+	data?: {
+		modelResponse?: {
+			scrapedContent?: {
+				contentType?: string;
+				text?: string;
+			};
+			title?: string;
+		};
+	};
+	meta?: {
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	sessionId?: string;
+	windowId?: string;
+};
+
+export type AirtopV1InteractionClickOutput = {
+	data?: {
+		modelResponse?: string;
+	};
+	meta?: {
+		actionId?: string;
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	sessionId?: string;
+	warnings?: Array<{
+		message?: string;
+	}>;
+	windowId?: string;
+};
+
+export type AirtopV1InteractionTypeOutput = {
+	data?: {
+		modelResponse?: string;
+	};
+	meta?: {
+		actionId?: string;
+		requestId?: string;
+		status?: string;
+		usage?: {
+			credits?: number;
+			id?: string;
+		};
+	};
+	sessionId?: string;
+	warnings?: Array<{
+		message?: string;
+	}>;
+	windowId?: string;
+};
+
+export type AirtopV1SessionCreateOutput = {
+	data?: {
+		cdpUrl?: string;
+		cdpWsUrl?: string;
+		chromedriverUrl?: string;
+		configuration?: {
+			baseProfileId?: string;
+			timeoutMinutes?: number;
+		};
+		dateCreated?: string;
+		id?: string;
+		lastActivity?: string;
+		status?: string;
+	};
+	errors?: null;
+	meta?: {
+		requestId?: string;
+	};
+	sessionId?: string;
+	warnings?: Array<{
+		code?: string;
+		message?: string;
+	}>;
+};
+
+export type AirtopV1SessionTerminateOutput = {
+	success?: boolean;
+};
+
+export type AirtopV1WindowCreateOutput = {
+	data?: {
+		liveViewUrl?: string;
+		targetId?: string;
+		windowId?: string;
+	};
+	errors?: null;
+	meta?: {
+		requestId?: string;
+	};
+	sessionId?: string;
+	warnings?: null;
+	windowId?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -774,12 +915,142 @@ export interface AirtopV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AirtopV1Node = {
+interface AirtopV1NodeBase {
 	type: 'n8n-nodes-base.airtop';
 	version: 1;
-	config: NodeConfig<AirtopV1Params>;
 	credentials?: AirtopV1Credentials;
+}
+
+export type AirtopV1AgentRunNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1AgentRunConfig>;
 };
+
+export type AirtopV1ExtractionQueryNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1ExtractionQueryConfig>;
+	output?: AirtopV1ExtractionQueryOutput;
+};
+
+export type AirtopV1ExtractionGetPaginatedNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1ExtractionGetPaginatedConfig>;
+	output?: AirtopV1ExtractionGetPaginatedOutput;
+};
+
+export type AirtopV1ExtractionScrapeNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1ExtractionScrapeConfig>;
+	output?: AirtopV1ExtractionScrapeOutput;
+};
+
+export type AirtopV1FileDeleteFileNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1FileDeleteFileConfig>;
+};
+
+export type AirtopV1FileGetNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1FileGetConfig>;
+};
+
+export type AirtopV1FileGetManyNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1FileGetManyConfig>;
+};
+
+export type AirtopV1FileLoadNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1FileLoadConfig>;
+};
+
+export type AirtopV1FileUploadNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1FileUploadConfig>;
+};
+
+export type AirtopV1InteractionClickNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1InteractionClickConfig>;
+	output?: AirtopV1InteractionClickOutput;
+};
+
+export type AirtopV1InteractionFillNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1InteractionFillConfig>;
+};
+
+export type AirtopV1InteractionHoverNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1InteractionHoverConfig>;
+};
+
+export type AirtopV1InteractionScrollNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1InteractionScrollConfig>;
+};
+
+export type AirtopV1InteractionTypeNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1InteractionTypeConfig>;
+	output?: AirtopV1InteractionTypeOutput;
+};
+
+export type AirtopV1SessionCreateNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1SessionCreateConfig>;
+	output?: AirtopV1SessionCreateOutput;
+};
+
+export type AirtopV1SessionSaveNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1SessionSaveConfig>;
+};
+
+export type AirtopV1SessionTerminateNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1SessionTerminateConfig>;
+	output?: AirtopV1SessionTerminateOutput;
+};
+
+export type AirtopV1SessionWaitForDownloadNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1SessionWaitForDownloadConfig>;
+};
+
+export type AirtopV1WindowCloseNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1WindowCloseConfig>;
+};
+
+export type AirtopV1WindowCreateNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1WindowCreateConfig>;
+	output?: AirtopV1WindowCreateOutput;
+};
+
+export type AirtopV1WindowGetLiveViewNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1WindowGetLiveViewConfig>;
+};
+
+export type AirtopV1WindowListNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1WindowListConfig>;
+};
+
+export type AirtopV1WindowLoadNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1WindowLoadConfig>;
+};
+
+export type AirtopV1WindowTakeScreenshotNode = AirtopV1NodeBase & {
+	config: NodeConfig<AirtopV1WindowTakeScreenshotConfig>;
+};
+
+export type AirtopV1Node =
+	| AirtopV1AgentRunNode
+	| AirtopV1ExtractionQueryNode
+	| AirtopV1ExtractionGetPaginatedNode
+	| AirtopV1ExtractionScrapeNode
+	| AirtopV1FileDeleteFileNode
+	| AirtopV1FileGetNode
+	| AirtopV1FileGetManyNode
+	| AirtopV1FileLoadNode
+	| AirtopV1FileUploadNode
+	| AirtopV1InteractionClickNode
+	| AirtopV1InteractionFillNode
+	| AirtopV1InteractionHoverNode
+	| AirtopV1InteractionScrollNode
+	| AirtopV1InteractionTypeNode
+	| AirtopV1SessionCreateNode
+	| AirtopV1SessionSaveNode
+	| AirtopV1SessionTerminateNode
+	| AirtopV1SessionWaitForDownloadNode
+	| AirtopV1WindowCloseNode
+	| AirtopV1WindowCreateNode
+	| AirtopV1WindowGetLiveViewNode
+	| AirtopV1WindowListNode
+	| AirtopV1WindowLoadNode
+	| AirtopV1WindowTakeScreenshotNode
+	;

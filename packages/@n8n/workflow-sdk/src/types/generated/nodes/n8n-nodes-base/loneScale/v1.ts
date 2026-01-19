@@ -1,8 +1,6 @@
 /**
  * LoneScale Node - Version 1
  * Create List, add / delete items
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -78,12 +76,24 @@ export interface LoneScaleV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LoneScaleV1Node = {
+interface LoneScaleV1NodeBase {
 	type: 'n8n-nodes-base.loneScale';
 	version: 1;
-	config: NodeConfig<LoneScaleV1Params>;
 	credentials?: LoneScaleV1Credentials;
+}
+
+export type LoneScaleV1ListCreateNode = LoneScaleV1NodeBase & {
+	config: NodeConfig<LoneScaleV1ListCreateConfig>;
 };
+
+export type LoneScaleV1ItemAddNode = LoneScaleV1NodeBase & {
+	config: NodeConfig<LoneScaleV1ItemAddConfig>;
+};
+
+export type LoneScaleV1Node =
+	| LoneScaleV1ListCreateNode
+	| LoneScaleV1ItemAddNode
+	;

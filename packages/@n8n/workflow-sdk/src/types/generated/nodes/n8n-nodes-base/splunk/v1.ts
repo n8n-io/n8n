@@ -1,8 +1,6 @@
 /**
  * Splunk Node - Version 1
  * Consume the Splunk Enterprise API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -235,12 +233,84 @@ export interface SplunkV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SplunkV1Node = {
+interface SplunkV1NodeBase {
 	type: 'n8n-nodes-base.splunk';
 	version: 1;
-	config: NodeConfig<SplunkV1Params>;
 	credentials?: SplunkV1Credentials;
+}
+
+export type SplunkV1FiredAlertGetReportNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1FiredAlertGetReportConfig>;
 };
+
+export type SplunkV1SearchConfigurationDeleteNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1SearchConfigurationDeleteConfig>;
+};
+
+export type SplunkV1SearchConfigurationGetNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1SearchConfigurationGetConfig>;
+};
+
+export type SplunkV1SearchConfigurationGetAllNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1SearchConfigurationGetAllConfig>;
+};
+
+export type SplunkV1SearchJobCreateNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1SearchJobCreateConfig>;
+};
+
+export type SplunkV1SearchJobDeleteNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1SearchJobDeleteConfig>;
+};
+
+export type SplunkV1SearchJobGetNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1SearchJobGetConfig>;
+};
+
+export type SplunkV1SearchJobGetAllNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1SearchJobGetAllConfig>;
+};
+
+export type SplunkV1SearchResultGetAllNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1SearchResultGetAllConfig>;
+};
+
+export type SplunkV1UserCreateNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1UserCreateConfig>;
+};
+
+export type SplunkV1UserDeleteNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1UserDeleteConfig>;
+};
+
+export type SplunkV1UserGetNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1UserGetConfig>;
+};
+
+export type SplunkV1UserGetAllNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1UserGetAllConfig>;
+};
+
+export type SplunkV1UserUpdateNode = SplunkV1NodeBase & {
+	config: NodeConfig<SplunkV1UserUpdateConfig>;
+};
+
+export type SplunkV1Node =
+	| SplunkV1FiredAlertGetReportNode
+	| SplunkV1SearchConfigurationDeleteNode
+	| SplunkV1SearchConfigurationGetNode
+	| SplunkV1SearchConfigurationGetAllNode
+	| SplunkV1SearchJobCreateNode
+	| SplunkV1SearchJobDeleteNode
+	| SplunkV1SearchJobGetNode
+	| SplunkV1SearchJobGetAllNode
+	| SplunkV1SearchResultGetAllNode
+	| SplunkV1UserCreateNode
+	| SplunkV1UserDeleteNode
+	| SplunkV1UserGetNode
+	| SplunkV1UserGetAllNode
+	| SplunkV1UserUpdateNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Google Tasks Node - Version 1
  * Consume Google Tasks API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -108,12 +106,39 @@ export interface GoogleTasksV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleTasksV1Node = {
+interface GoogleTasksV1NodeBase {
 	type: 'n8n-nodes-base.googleTasks';
 	version: 1;
-	config: NodeConfig<GoogleTasksV1Params>;
 	credentials?: GoogleTasksV1Credentials;
+}
+
+export type GoogleTasksV1TaskCreateNode = GoogleTasksV1NodeBase & {
+	config: NodeConfig<GoogleTasksV1TaskCreateConfig>;
 };
+
+export type GoogleTasksV1TaskDeleteNode = GoogleTasksV1NodeBase & {
+	config: NodeConfig<GoogleTasksV1TaskDeleteConfig>;
+};
+
+export type GoogleTasksV1TaskGetNode = GoogleTasksV1NodeBase & {
+	config: NodeConfig<GoogleTasksV1TaskGetConfig>;
+};
+
+export type GoogleTasksV1TaskGetAllNode = GoogleTasksV1NodeBase & {
+	config: NodeConfig<GoogleTasksV1TaskGetAllConfig>;
+};
+
+export type GoogleTasksV1TaskUpdateNode = GoogleTasksV1NodeBase & {
+	config: NodeConfig<GoogleTasksV1TaskUpdateConfig>;
+};
+
+export type GoogleTasksV1Node =
+	| GoogleTasksV1TaskCreateNode
+	| GoogleTasksV1TaskDeleteNode
+	| GoogleTasksV1TaskGetNode
+	| GoogleTasksV1TaskGetAllNode
+	| GoogleTasksV1TaskUpdateNode
+	;

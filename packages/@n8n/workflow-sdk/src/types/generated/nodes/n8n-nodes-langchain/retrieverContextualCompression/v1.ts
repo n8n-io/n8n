@@ -1,8 +1,6 @@
 /**
  * Contextual Compression Retriever Node - Version 1
  * Enhances document similarity search by contextual compression.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -21,13 +19,17 @@ export interface LcRetrieverContextualCompressionV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcRetrieverContextualCompressionV1Node = {
+interface LcRetrieverContextualCompressionV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.retrieverContextualCompression';
 	version: 1;
-	config: NodeConfig<LcRetrieverContextualCompressionV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcRetrieverContextualCompressionV1ParamsNode = LcRetrieverContextualCompressionV1NodeBase & {
+	config: NodeConfig<LcRetrieverContextualCompressionV1Params>;
 };
+
+export type LcRetrieverContextualCompressionV1Node = LcRetrieverContextualCompressionV1ParamsNode;

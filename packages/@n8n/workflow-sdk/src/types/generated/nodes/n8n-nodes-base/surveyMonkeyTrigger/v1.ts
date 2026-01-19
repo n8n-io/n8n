@@ -1,8 +1,6 @@
 /**
  * SurveyMonkey Trigger Node - Version 1
  * Starts the workflow when Survey Monkey events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -60,13 +58,18 @@ export interface SurveyMonkeyTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SurveyMonkeyTriggerV1Node = {
+interface SurveyMonkeyTriggerV1NodeBase {
 	type: 'n8n-nodes-base.surveyMonkeyTrigger';
 	version: 1;
-	config: NodeConfig<SurveyMonkeyTriggerV1Params>;
 	credentials?: SurveyMonkeyTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type SurveyMonkeyTriggerV1ParamsNode = SurveyMonkeyTriggerV1NodeBase & {
+	config: NodeConfig<SurveyMonkeyTriggerV1Params>;
 };
+
+export type SurveyMonkeyTriggerV1Node = SurveyMonkeyTriggerV1ParamsNode;

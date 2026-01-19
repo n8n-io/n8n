@@ -1,8 +1,6 @@
 /**
  * Netscaler ADC Node - Version 1
  * Consume Netscaler ADC API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -181,12 +179,39 @@ export interface CitrixAdcV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CitrixAdcV1Node = {
+interface CitrixAdcV1NodeBase {
 	type: 'n8n-nodes-base.citrixAdc';
 	version: 1;
-	config: NodeConfig<CitrixAdcV1Params>;
 	credentials?: CitrixAdcV1Credentials;
+}
+
+export type CitrixAdcV1CertificateCreateNode = CitrixAdcV1NodeBase & {
+	config: NodeConfig<CitrixAdcV1CertificateCreateConfig>;
 };
+
+export type CitrixAdcV1CertificateInstallNode = CitrixAdcV1NodeBase & {
+	config: NodeConfig<CitrixAdcV1CertificateInstallConfig>;
+};
+
+export type CitrixAdcV1FileDeleteNode = CitrixAdcV1NodeBase & {
+	config: NodeConfig<CitrixAdcV1FileDeleteConfig>;
+};
+
+export type CitrixAdcV1FileDownloadNode = CitrixAdcV1NodeBase & {
+	config: NodeConfig<CitrixAdcV1FileDownloadConfig>;
+};
+
+export type CitrixAdcV1FileUploadNode = CitrixAdcV1NodeBase & {
+	config: NodeConfig<CitrixAdcV1FileUploadConfig>;
+};
+
+export type CitrixAdcV1Node =
+	| CitrixAdcV1CertificateCreateNode
+	| CitrixAdcV1CertificateInstallNode
+	| CitrixAdcV1FileDeleteNode
+	| CitrixAdcV1FileDownloadNode
+	| CitrixAdcV1FileUploadNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Hunter Node - Version 1
  * Consume Hunter API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -69,12 +67,17 @@ export interface HunterV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HunterV1Node = {
+interface HunterV1NodeBase {
 	type: 'n8n-nodes-base.hunter';
 	version: 1;
-	config: NodeConfig<HunterV1Params>;
 	credentials?: HunterV1Credentials;
+}
+
+export type HunterV1ParamsNode = HunterV1NodeBase & {
+	config: NodeConfig<HunterV1Params>;
 };
+
+export type HunterV1Node = HunterV1ParamsNode;

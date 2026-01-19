@@ -1,8 +1,6 @@
 /**
  * Jira Trigger Node - Version 1.1
  * Starts the workflow when Jira events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface JiraTriggerV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JiraTriggerV11Node = {
+interface JiraTriggerV11NodeBase {
 	type: 'n8n-nodes-base.jiraTrigger';
 	version: 1.1;
-	config: NodeConfig<JiraTriggerV11Params>;
 	credentials?: JiraTriggerV11Credentials;
 	isTrigger: true;
+}
+
+export type JiraTriggerV11ParamsNode = JiraTriggerV11NodeBase & {
+	config: NodeConfig<JiraTriggerV11Params>;
 };
+
+export type JiraTriggerV11Node = JiraTriggerV11ParamsNode;

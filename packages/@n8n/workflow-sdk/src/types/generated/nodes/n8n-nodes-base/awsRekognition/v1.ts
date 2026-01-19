@@ -1,8 +1,6 @@
 /**
  * AWS Rekognition Node - Version 1
  * Sends data to AWS Rekognition
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -48,12 +46,17 @@ export interface AwsRekognitionV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsRekognitionV1Node = {
+interface AwsRekognitionV1NodeBase {
 	type: 'n8n-nodes-base.awsRekognition';
 	version: 1;
-	config: NodeConfig<AwsRekognitionV1Params>;
 	credentials?: AwsRekognitionV1Credentials;
+}
+
+export type AwsRekognitionV1ParamsNode = AwsRekognitionV1NodeBase & {
+	config: NodeConfig<AwsRekognitionV1Params>;
 };
+
+export type AwsRekognitionV1Node = AwsRekognitionV1ParamsNode;

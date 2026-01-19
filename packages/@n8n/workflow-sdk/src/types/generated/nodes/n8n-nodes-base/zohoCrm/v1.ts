@@ -1,8 +1,6 @@
 /**
  * Zoho CRM Node - Version 1
  * Consume Zoho CRM API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -884,12 +882,319 @@ export interface ZohoCrmV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ZohoCrmV1Node = {
+interface ZohoCrmV1NodeBase {
 	type: 'n8n-nodes-base.zohoCrm';
 	version: 1;
-	config: NodeConfig<ZohoCrmV1Params>;
 	credentials?: ZohoCrmV1Credentials;
+}
+
+export type ZohoCrmV1AccountCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1AccountCreateConfig>;
 };
+
+export type ZohoCrmV1AccountUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1AccountUpsertConfig>;
+};
+
+export type ZohoCrmV1AccountDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1AccountDeleteConfig>;
+};
+
+export type ZohoCrmV1AccountGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1AccountGetConfig>;
+};
+
+export type ZohoCrmV1AccountGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1AccountGetAllConfig>;
+};
+
+export type ZohoCrmV1AccountUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1AccountUpdateConfig>;
+};
+
+export type ZohoCrmV1ContactCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ContactCreateConfig>;
+};
+
+export type ZohoCrmV1ContactUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ContactUpsertConfig>;
+};
+
+export type ZohoCrmV1ContactDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ContactDeleteConfig>;
+};
+
+export type ZohoCrmV1ContactGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ContactGetConfig>;
+};
+
+export type ZohoCrmV1ContactGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ContactGetAllConfig>;
+};
+
+export type ZohoCrmV1ContactUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ContactUpdateConfig>;
+};
+
+export type ZohoCrmV1DealCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1DealCreateConfig>;
+};
+
+export type ZohoCrmV1DealUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1DealUpsertConfig>;
+};
+
+export type ZohoCrmV1DealDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1DealDeleteConfig>;
+};
+
+export type ZohoCrmV1DealGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1DealGetConfig>;
+};
+
+export type ZohoCrmV1DealGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1DealGetAllConfig>;
+};
+
+export type ZohoCrmV1DealUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1DealUpdateConfig>;
+};
+
+export type ZohoCrmV1InvoiceCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1InvoiceCreateConfig>;
+};
+
+export type ZohoCrmV1InvoiceUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1InvoiceUpsertConfig>;
+};
+
+export type ZohoCrmV1InvoiceDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1InvoiceDeleteConfig>;
+};
+
+export type ZohoCrmV1InvoiceGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1InvoiceGetConfig>;
+};
+
+export type ZohoCrmV1InvoiceGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1InvoiceGetAllConfig>;
+};
+
+export type ZohoCrmV1InvoiceUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1InvoiceUpdateConfig>;
+};
+
+export type ZohoCrmV1LeadCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1LeadCreateConfig>;
+};
+
+export type ZohoCrmV1LeadUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1LeadUpsertConfig>;
+};
+
+export type ZohoCrmV1LeadDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1LeadDeleteConfig>;
+};
+
+export type ZohoCrmV1LeadGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1LeadGetConfig>;
+};
+
+export type ZohoCrmV1LeadGetFieldsNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1LeadGetFieldsConfig>;
+};
+
+export type ZohoCrmV1LeadGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1LeadGetAllConfig>;
+};
+
+export type ZohoCrmV1LeadUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1LeadUpdateConfig>;
+};
+
+export type ZohoCrmV1ProductCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ProductCreateConfig>;
+};
+
+export type ZohoCrmV1ProductUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ProductUpsertConfig>;
+};
+
+export type ZohoCrmV1ProductDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ProductDeleteConfig>;
+};
+
+export type ZohoCrmV1ProductGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ProductGetConfig>;
+};
+
+export type ZohoCrmV1ProductGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ProductGetAllConfig>;
+};
+
+export type ZohoCrmV1ProductUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1ProductUpdateConfig>;
+};
+
+export type ZohoCrmV1PurchaseOrderCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1PurchaseOrderCreateConfig>;
+};
+
+export type ZohoCrmV1PurchaseOrderUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1PurchaseOrderUpsertConfig>;
+};
+
+export type ZohoCrmV1PurchaseOrderDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1PurchaseOrderDeleteConfig>;
+};
+
+export type ZohoCrmV1PurchaseOrderGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1PurchaseOrderGetConfig>;
+};
+
+export type ZohoCrmV1PurchaseOrderGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1PurchaseOrderGetAllConfig>;
+};
+
+export type ZohoCrmV1PurchaseOrderUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1PurchaseOrderUpdateConfig>;
+};
+
+export type ZohoCrmV1QuoteCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1QuoteCreateConfig>;
+};
+
+export type ZohoCrmV1QuoteUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1QuoteUpsertConfig>;
+};
+
+export type ZohoCrmV1QuoteDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1QuoteDeleteConfig>;
+};
+
+export type ZohoCrmV1QuoteGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1QuoteGetConfig>;
+};
+
+export type ZohoCrmV1QuoteGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1QuoteGetAllConfig>;
+};
+
+export type ZohoCrmV1QuoteUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1QuoteUpdateConfig>;
+};
+
+export type ZohoCrmV1SalesOrderCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1SalesOrderCreateConfig>;
+};
+
+export type ZohoCrmV1SalesOrderUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1SalesOrderUpsertConfig>;
+};
+
+export type ZohoCrmV1SalesOrderDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1SalesOrderDeleteConfig>;
+};
+
+export type ZohoCrmV1SalesOrderGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1SalesOrderGetConfig>;
+};
+
+export type ZohoCrmV1SalesOrderGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1SalesOrderGetAllConfig>;
+};
+
+export type ZohoCrmV1SalesOrderUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1SalesOrderUpdateConfig>;
+};
+
+export type ZohoCrmV1VendorCreateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1VendorCreateConfig>;
+};
+
+export type ZohoCrmV1VendorUpsertNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1VendorUpsertConfig>;
+};
+
+export type ZohoCrmV1VendorDeleteNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1VendorDeleteConfig>;
+};
+
+export type ZohoCrmV1VendorGetNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1VendorGetConfig>;
+};
+
+export type ZohoCrmV1VendorGetAllNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1VendorGetAllConfig>;
+};
+
+export type ZohoCrmV1VendorUpdateNode = ZohoCrmV1NodeBase & {
+	config: NodeConfig<ZohoCrmV1VendorUpdateConfig>;
+};
+
+export type ZohoCrmV1Node =
+	| ZohoCrmV1AccountCreateNode
+	| ZohoCrmV1AccountUpsertNode
+	| ZohoCrmV1AccountDeleteNode
+	| ZohoCrmV1AccountGetNode
+	| ZohoCrmV1AccountGetAllNode
+	| ZohoCrmV1AccountUpdateNode
+	| ZohoCrmV1ContactCreateNode
+	| ZohoCrmV1ContactUpsertNode
+	| ZohoCrmV1ContactDeleteNode
+	| ZohoCrmV1ContactGetNode
+	| ZohoCrmV1ContactGetAllNode
+	| ZohoCrmV1ContactUpdateNode
+	| ZohoCrmV1DealCreateNode
+	| ZohoCrmV1DealUpsertNode
+	| ZohoCrmV1DealDeleteNode
+	| ZohoCrmV1DealGetNode
+	| ZohoCrmV1DealGetAllNode
+	| ZohoCrmV1DealUpdateNode
+	| ZohoCrmV1InvoiceCreateNode
+	| ZohoCrmV1InvoiceUpsertNode
+	| ZohoCrmV1InvoiceDeleteNode
+	| ZohoCrmV1InvoiceGetNode
+	| ZohoCrmV1InvoiceGetAllNode
+	| ZohoCrmV1InvoiceUpdateNode
+	| ZohoCrmV1LeadCreateNode
+	| ZohoCrmV1LeadUpsertNode
+	| ZohoCrmV1LeadDeleteNode
+	| ZohoCrmV1LeadGetNode
+	| ZohoCrmV1LeadGetFieldsNode
+	| ZohoCrmV1LeadGetAllNode
+	| ZohoCrmV1LeadUpdateNode
+	| ZohoCrmV1ProductCreateNode
+	| ZohoCrmV1ProductUpsertNode
+	| ZohoCrmV1ProductDeleteNode
+	| ZohoCrmV1ProductGetNode
+	| ZohoCrmV1ProductGetAllNode
+	| ZohoCrmV1ProductUpdateNode
+	| ZohoCrmV1PurchaseOrderCreateNode
+	| ZohoCrmV1PurchaseOrderUpsertNode
+	| ZohoCrmV1PurchaseOrderDeleteNode
+	| ZohoCrmV1PurchaseOrderGetNode
+	| ZohoCrmV1PurchaseOrderGetAllNode
+	| ZohoCrmV1PurchaseOrderUpdateNode
+	| ZohoCrmV1QuoteCreateNode
+	| ZohoCrmV1QuoteUpsertNode
+	| ZohoCrmV1QuoteDeleteNode
+	| ZohoCrmV1QuoteGetNode
+	| ZohoCrmV1QuoteGetAllNode
+	| ZohoCrmV1QuoteUpdateNode
+	| ZohoCrmV1SalesOrderCreateNode
+	| ZohoCrmV1SalesOrderUpsertNode
+	| ZohoCrmV1SalesOrderDeleteNode
+	| ZohoCrmV1SalesOrderGetNode
+	| ZohoCrmV1SalesOrderGetAllNode
+	| ZohoCrmV1SalesOrderUpdateNode
+	| ZohoCrmV1VendorCreateNode
+	| ZohoCrmV1VendorUpsertNode
+	| ZohoCrmV1VendorDeleteNode
+	| ZohoCrmV1VendorGetNode
+	| ZohoCrmV1VendorGetAllNode
+	| ZohoCrmV1VendorUpdateNode
+	;

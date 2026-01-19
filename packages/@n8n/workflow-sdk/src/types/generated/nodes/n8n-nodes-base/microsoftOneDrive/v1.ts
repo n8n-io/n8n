@@ -1,8 +1,6 @@
 /**
  * Microsoft OneDrive Node - Version 1
  * Consume Microsoft OneDrive API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -229,12 +227,84 @@ export interface MicrosoftOneDriveV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftOneDriveV1Node = {
+interface MicrosoftOneDriveV1NodeBase {
 	type: 'n8n-nodes-base.microsoftOneDrive';
 	version: 1;
-	config: NodeConfig<MicrosoftOneDriveV1Params>;
 	credentials?: MicrosoftOneDriveV1Credentials;
+}
+
+export type MicrosoftOneDriveV1FileCopyNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FileCopyConfig>;
 };
+
+export type MicrosoftOneDriveV1FileDeleteNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FileDeleteConfig>;
+};
+
+export type MicrosoftOneDriveV1FileDownloadNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FileDownloadConfig>;
+};
+
+export type MicrosoftOneDriveV1FileGetNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FileGetConfig>;
+};
+
+export type MicrosoftOneDriveV1FileRenameNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FileRenameConfig>;
+};
+
+export type MicrosoftOneDriveV1FileSearchNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FileSearchConfig>;
+};
+
+export type MicrosoftOneDriveV1FileShareNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FileShareConfig>;
+};
+
+export type MicrosoftOneDriveV1FileUploadNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FileUploadConfig>;
+};
+
+export type MicrosoftOneDriveV1FolderCreateNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FolderCreateConfig>;
+};
+
+export type MicrosoftOneDriveV1FolderDeleteNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FolderDeleteConfig>;
+};
+
+export type MicrosoftOneDriveV1FolderGetChildrenNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FolderGetChildrenConfig>;
+};
+
+export type MicrosoftOneDriveV1FolderRenameNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FolderRenameConfig>;
+};
+
+export type MicrosoftOneDriveV1FolderSearchNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FolderSearchConfig>;
+};
+
+export type MicrosoftOneDriveV1FolderShareNode = MicrosoftOneDriveV1NodeBase & {
+	config: NodeConfig<MicrosoftOneDriveV1FolderShareConfig>;
+};
+
+export type MicrosoftOneDriveV1Node =
+	| MicrosoftOneDriveV1FileCopyNode
+	| MicrosoftOneDriveV1FileDeleteNode
+	| MicrosoftOneDriveV1FileDownloadNode
+	| MicrosoftOneDriveV1FileGetNode
+	| MicrosoftOneDriveV1FileRenameNode
+	| MicrosoftOneDriveV1FileSearchNode
+	| MicrosoftOneDriveV1FileShareNode
+	| MicrosoftOneDriveV1FileUploadNode
+	| MicrosoftOneDriveV1FolderCreateNode
+	| MicrosoftOneDriveV1FolderDeleteNode
+	| MicrosoftOneDriveV1FolderGetChildrenNode
+	| MicrosoftOneDriveV1FolderRenameNode
+	| MicrosoftOneDriveV1FolderSearchNode
+	| MicrosoftOneDriveV1FolderShareNode
+	;

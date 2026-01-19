@@ -1,8 +1,6 @@
 /**
  * Weaviate Vector Store Node - Version 1.3
  * Work with your data in a Weaviate Cluster
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -116,12 +114,34 @@ export interface LcVectorStoreWeaviateV13Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreWeaviateV13Node = {
+interface LcVectorStoreWeaviateV13NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreWeaviate';
 	version: 1.3;
-	config: NodeConfig<LcVectorStoreWeaviateV13Params>;
 	credentials?: LcVectorStoreWeaviateV13Credentials;
+}
+
+export type LcVectorStoreWeaviateV13LoadNode = LcVectorStoreWeaviateV13NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV13LoadConfig>;
 };
+
+export type LcVectorStoreWeaviateV13InsertNode = LcVectorStoreWeaviateV13NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV13InsertConfig>;
+};
+
+export type LcVectorStoreWeaviateV13RetrieveNode = LcVectorStoreWeaviateV13NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV13RetrieveConfig>;
+};
+
+export type LcVectorStoreWeaviateV13RetrieveAsToolNode = LcVectorStoreWeaviateV13NodeBase & {
+	config: NodeConfig<LcVectorStoreWeaviateV13RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreWeaviateV13Node =
+	| LcVectorStoreWeaviateV13LoadNode
+	| LcVectorStoreWeaviateV13InsertNode
+	| LcVectorStoreWeaviateV13RetrieveNode
+	| LcVectorStoreWeaviateV13RetrieveAsToolNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Facebook Graph API Node - Version 1
  * Interacts with Facebook using the Graph API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -66,12 +64,17 @@ export interface FacebookGraphApiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type FacebookGraphApiV1Node = {
+interface FacebookGraphApiV1NodeBase {
 	type: 'n8n-nodes-base.facebookGraphApi';
 	version: 1;
-	config: NodeConfig<FacebookGraphApiV1Params>;
 	credentials?: FacebookGraphApiV1Credentials;
+}
+
+export type FacebookGraphApiV1ParamsNode = FacebookGraphApiV1NodeBase & {
+	config: NodeConfig<FacebookGraphApiV1Params>;
 };
+
+export type FacebookGraphApiV1Node = FacebookGraphApiV1ParamsNode;

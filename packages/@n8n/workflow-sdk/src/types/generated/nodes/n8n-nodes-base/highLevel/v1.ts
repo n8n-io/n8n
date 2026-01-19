@@ -1,8 +1,6 @@
 /**
  * HighLevel Node - Version 1
  * Consume HighLevel API v1
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -268,6 +266,38 @@ export type HighLevelV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type HighLevelV1ContactLookupOutput = {
+	address1?: string;
+	assignedTo?: string;
+	city?: string;
+	country?: string;
+	customField?: Array<{
+		id?: string;
+	}>;
+	dateAdded?: string;
+	email?: string;
+	emailLowerCase?: string;
+	fingerprint?: string;
+	firstName?: string;
+	firstNameLowerCase?: string;
+	fullNameLowerCase?: string;
+	id?: string;
+	lastName?: string;
+	lastNameLowerCase?: string;
+	locationId?: string;
+	phone?: string;
+	postalCode?: string;
+	source?: string;
+	state?: string;
+	tags?: Array<string>;
+	timezone?: string;
+	type?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -276,12 +306,95 @@ export interface HighLevelV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HighLevelV1Node = {
+interface HighLevelV1NodeBase {
 	type: 'n8n-nodes-base.highLevel';
 	version: 1;
-	config: NodeConfig<HighLevelV1Params>;
 	credentials?: HighLevelV1Credentials;
+}
+
+export type HighLevelV1ContactCreateNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1ContactCreateConfig>;
 };
+
+export type HighLevelV1ContactDeleteNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1ContactDeleteConfig>;
+};
+
+export type HighLevelV1ContactGetNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1ContactGetConfig>;
+};
+
+export type HighLevelV1ContactGetAllNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1ContactGetAllConfig>;
+};
+
+export type HighLevelV1ContactLookupNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1ContactLookupConfig>;
+	output?: HighLevelV1ContactLookupOutput;
+};
+
+export type HighLevelV1ContactUpdateNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1ContactUpdateConfig>;
+};
+
+export type HighLevelV1OpportunityCreateNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1OpportunityCreateConfig>;
+};
+
+export type HighLevelV1OpportunityDeleteNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1OpportunityDeleteConfig>;
+};
+
+export type HighLevelV1OpportunityGetNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1OpportunityGetConfig>;
+};
+
+export type HighLevelV1OpportunityGetAllNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1OpportunityGetAllConfig>;
+};
+
+export type HighLevelV1OpportunityUpdateNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1OpportunityUpdateConfig>;
+};
+
+export type HighLevelV1TaskCreateNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1TaskCreateConfig>;
+};
+
+export type HighLevelV1TaskDeleteNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1TaskDeleteConfig>;
+};
+
+export type HighLevelV1TaskGetNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1TaskGetConfig>;
+};
+
+export type HighLevelV1TaskGetAllNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1TaskGetAllConfig>;
+};
+
+export type HighLevelV1TaskUpdateNode = HighLevelV1NodeBase & {
+	config: NodeConfig<HighLevelV1TaskUpdateConfig>;
+};
+
+export type HighLevelV1Node =
+	| HighLevelV1ContactCreateNode
+	| HighLevelV1ContactDeleteNode
+	| HighLevelV1ContactGetNode
+	| HighLevelV1ContactGetAllNode
+	| HighLevelV1ContactLookupNode
+	| HighLevelV1ContactUpdateNode
+	| HighLevelV1OpportunityCreateNode
+	| HighLevelV1OpportunityDeleteNode
+	| HighLevelV1OpportunityGetNode
+	| HighLevelV1OpportunityGetAllNode
+	| HighLevelV1OpportunityUpdateNode
+	| HighLevelV1TaskCreateNode
+	| HighLevelV1TaskDeleteNode
+	| HighLevelV1TaskGetNode
+	| HighLevelV1TaskGetAllNode
+	| HighLevelV1TaskUpdateNode
+	;

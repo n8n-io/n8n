@@ -1,8 +1,6 @@
 /**
  * Ollama Node - Version 1
  * Interact with Ollama AI models
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -83,12 +81,24 @@ export interface LcOllamaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOllamaV1Node = {
+interface LcOllamaV1NodeBase {
 	type: '@n8n/n8n-nodes-langchain.ollama';
 	version: 1;
-	config: NodeConfig<LcOllamaV1Params>;
 	credentials?: LcOllamaV1Credentials;
+}
+
+export type LcOllamaV1ImageAnalyzeNode = LcOllamaV1NodeBase & {
+	config: NodeConfig<LcOllamaV1ImageAnalyzeConfig>;
 };
+
+export type LcOllamaV1TextMessageNode = LcOllamaV1NodeBase & {
+	config: NodeConfig<LcOllamaV1TextMessageConfig>;
+};
+
+export type LcOllamaV1Node =
+	| LcOllamaV1ImageAnalyzeNode
+	| LcOllamaV1TextMessageNode
+	;

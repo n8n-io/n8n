@@ -1,8 +1,6 @@
 /**
  * Jina AI Node - Version 1
  * Interact with Jina AI API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -73,6 +71,55 @@ export type JinaAiV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type JinaAiV1ReaderReadOutput = {
+	content?: string;
+	description?: string;
+	external?: {
+		alternate?: {
+			'https://techcrunch.com/feed/'?: {
+				title?: string;
+				type?: string;
+			};
+			'https://techcrunch.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F09%2F26%2Fdiscover-how-developer-tools-are-shifting-fast-with-lauri-moore-and-david-cramer-at-techcrunch-disrupt-2025%2F'?: {
+				title?: string;
+				type?: string;
+			};
+			'https://techcrunch.com/wp-json/oembed/1.0/embed?url=https%3A%2F%2Ftechcrunch.com%2F2025%2F09%2F26%2Fdiscover-how-developer-tools-are-shifting-fast-with-lauri-moore-and-david-cramer-at-techcrunch-disrupt-2025%2F&format=xml'?: {
+				title?: string;
+				type?: string;
+			};
+			'https://techcrunch.com/wp-json/wp/v2/posts/3037224'?: {
+				title?: string;
+				type?: string;
+			};
+		};
+		icon?: {
+			'https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png?w=192'?: {
+				sizes?: string;
+			};
+			'https://techcrunch.com/wp-content/uploads/2015/02/cropped-cropped-favicon-gradient.png?w=32'?: {
+				sizes?: string;
+			};
+		};
+	};
+	metadata?: {
+		description?: string;
+		lang?: string;
+		'og:locale'?: string;
+		'og:type'?: string;
+		'og:url'?: string;
+	};
+	title?: string;
+	url?: string;
+	usage?: {
+		tokens?: number;
+	};
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -81,12 +128,30 @@ export interface JinaAiV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type JinaAiV1Node = {
+interface JinaAiV1NodeBase {
 	type: 'n8n-nodes-base.jinaAi';
 	version: 1;
-	config: NodeConfig<JinaAiV1Params>;
 	credentials?: JinaAiV1Credentials;
+}
+
+export type JinaAiV1ReaderReadNode = JinaAiV1NodeBase & {
+	config: NodeConfig<JinaAiV1ReaderReadConfig>;
+	output?: JinaAiV1ReaderReadOutput;
 };
+
+export type JinaAiV1ReaderSearchNode = JinaAiV1NodeBase & {
+	config: NodeConfig<JinaAiV1ReaderSearchConfig>;
+};
+
+export type JinaAiV1ResearchDeepResearchNode = JinaAiV1NodeBase & {
+	config: NodeConfig<JinaAiV1ResearchDeepResearchConfig>;
+};
+
+export type JinaAiV1Node =
+	| JinaAiV1ReaderReadNode
+	| JinaAiV1ReaderSearchNode
+	| JinaAiV1ResearchDeepResearchNode
+	;

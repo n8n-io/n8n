@@ -1,8 +1,6 @@
 /**
  * AI Agent Node - Version 2.1
  * Generates an action plan and executes it. Can use external tools.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -48,12 +46,28 @@ export type LcAgentV21Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcAgentV21Node = {
+interface LcAgentV21NodeBase {
 	type: '@n8n/n8n-nodes-langchain.agent';
 	version: 2.1;
-	config: NodeConfig<LcAgentV21Params>;
-	credentials?: Record<string, never>;
+}
+
+export type LcAgentV21AutoNode = LcAgentV21NodeBase & {
+	config: NodeConfig<LcAgentV21AutoConfig>;
 };
+
+export type LcAgentV21GuardrailsNode = LcAgentV21NodeBase & {
+	config: NodeConfig<LcAgentV21GuardrailsConfig>;
+};
+
+export type LcAgentV21DefineNode = LcAgentV21NodeBase & {
+	config: NodeConfig<LcAgentV21DefineConfig>;
+};
+
+export type LcAgentV21Node =
+	| LcAgentV21AutoNode
+	| LcAgentV21GuardrailsNode
+	| LcAgentV21DefineNode
+	;

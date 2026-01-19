@@ -1,8 +1,6 @@
 /**
  * Box Node - Version 1
  * Consume Box API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -284,6 +282,425 @@ export type BoxV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type BoxV1FileCopyOutput = {
+	content_created_at?: string;
+	content_modified_at?: string;
+	created_at?: string;
+	created_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	description?: string;
+	etag?: string;
+	file_version?: {
+		id?: string;
+		sha1?: string;
+		type?: string;
+	};
+	id?: string;
+	item_status?: string;
+	modified_at?: string;
+	modified_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	name?: string;
+	owned_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	parent?: {
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	path_collection?: {
+		entries?: Array<{
+			id?: string;
+			name?: string;
+			type?: string;
+		}>;
+		total_count?: number;
+	};
+	purged_at?: null;
+	sequence_id?: string;
+	sha1?: string;
+	shared_link?: null;
+	size?: number;
+	trashed_at?: null;
+	type?: string;
+};
+
+export type BoxV1FileDeleteOutput = {
+	success?: boolean;
+};
+
+export type BoxV1FileDownloadOutput = {
+	created_at?: string;
+	created_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	etag?: string;
+	id?: string;
+	name?: string;
+	sequence_id?: string;
+	type?: string;
+};
+
+export type BoxV1FileGetOutput = {
+	content_created_at?: string;
+	content_modified_at?: string;
+	created_at?: string;
+	created_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	description?: string;
+	etag?: string;
+	file_version?: {
+		id?: string;
+		sha1?: string;
+		type?: string;
+	};
+	id?: string;
+	item_status?: string;
+	modified_at?: string;
+	modified_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	name?: string;
+	owned_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	parent?: {
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	path_collection?: {
+		entries?: Array<{
+			id?: string;
+			name?: string;
+			type?: string;
+		}>;
+		total_count?: number;
+	};
+	purged_at?: null;
+	sequence_id?: string;
+	sha1?: string;
+	size?: number;
+	trashed_at?: null;
+	type?: string;
+};
+
+export type BoxV1FileSearchOutput = {
+	content_created_at?: string;
+	content_modified_at?: string;
+	created_at?: string;
+	created_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	description?: string;
+	etag?: string;
+	file_version?: {
+		id?: string;
+		sha1?: string;
+		type?: string;
+	};
+	id?: string;
+	item_status?: string;
+	modified_at?: string;
+	modified_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	name?: string;
+	owned_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	parent?: {
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	path_collection?: {
+		entries?: Array<{
+			id?: string;
+			name?: string;
+			type?: string;
+		}>;
+		total_count?: number;
+	};
+	purged_at?: null;
+	sequence_id?: string;
+	sha1?: string;
+	size?: number;
+	trashed_at?: null;
+	type?: string;
+};
+
+export type BoxV1FileUploadOutput = {
+	content_created_at?: string;
+	content_modified_at?: string;
+	created_at?: string;
+	created_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	description?: string;
+	etag?: string;
+	file_version?: {
+		id?: string;
+		sha1?: string;
+		type?: string;
+	};
+	id?: string;
+	item_status?: string;
+	modified_at?: string;
+	modified_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	name?: string;
+	owned_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	parent?: {
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	path_collection?: {
+		entries?: Array<{
+			id?: string;
+			name?: string;
+			type?: string;
+		}>;
+		total_count?: number;
+	};
+	purged_at?: null;
+	sequence_id?: string;
+	sha1?: string;
+	shared_link?: null;
+	size?: number;
+	trashed_at?: null;
+	type?: string;
+};
+
+export type BoxV1FolderCreateOutput = {
+	content_created_at?: string;
+	content_modified_at?: string;
+	created_at?: string;
+	created_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	description?: string;
+	etag?: string;
+	folder_upload_email?: null;
+	id?: string;
+	item_collection?: {
+		limit?: number;
+		offset?: number;
+		order?: Array<{
+			by?: string;
+			direction?: string;
+		}>;
+		total_count?: number;
+	};
+	item_status?: string;
+	modified_at?: string;
+	modified_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	name?: string;
+	owned_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	parent?: {
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	path_collection?: {
+		entries?: Array<{
+			id?: string;
+			name?: string;
+			type?: string;
+		}>;
+		total_count?: number;
+	};
+	purged_at?: null;
+	sequence_id?: string;
+	shared_link?: null;
+	size?: number;
+	trashed_at?: null;
+	type?: string;
+};
+
+export type BoxV1FolderGetOutput = {
+	content_created_at?: string;
+	content_modified_at?: string;
+	created_at?: string;
+	created_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	description?: string;
+	etag?: string;
+	id?: string;
+	item_collection?: {
+		entries?: Array<{
+			etag?: string;
+			file_version?: {
+				id?: string;
+				sha1?: string;
+				type?: string;
+			};
+			id?: string;
+			name?: string;
+			sequence_id?: string;
+			sha1?: string;
+			type?: string;
+		}>;
+		limit?: number;
+		offset?: number;
+		order?: Array<{
+			by?: string;
+			direction?: string;
+		}>;
+		total_count?: number;
+	};
+	item_status?: string;
+	modified_at?: string;
+	modified_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	name?: string;
+	owned_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	parent?: {
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	path_collection?: {
+		entries?: Array<{
+			id?: string;
+			name?: string;
+			type?: string;
+		}>;
+		total_count?: number;
+	};
+	purged_at?: null;
+	sequence_id?: string;
+	size?: number;
+	trashed_at?: null;
+	type?: string;
+};
+
+export type BoxV1FolderSearchOutput = {
+	content_created_at?: string;
+	content_modified_at?: string;
+	created_at?: string;
+	created_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	description?: string;
+	etag?: string;
+	folder_upload_email?: null;
+	id?: string;
+	item_status?: string;
+	modified_at?: string;
+	modified_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	name?: string;
+	owned_by?: {
+		id?: string;
+		login?: string;
+		name?: string;
+		type?: string;
+	};
+	parent?: {
+		id?: string;
+		name?: string;
+		type?: string;
+	};
+	path_collection?: {
+		entries?: Array<{
+			id?: string;
+			name?: string;
+			type?: string;
+		}>;
+		total_count?: number;
+	};
+	purged_at?: null;
+	sequence_id?: string;
+	size?: number;
+	trashed_at?: null;
+	type?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -292,12 +709,88 @@ export interface BoxV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type BoxV1Node = {
+interface BoxV1NodeBase {
 	type: 'n8n-nodes-base.box';
 	version: 1;
-	config: NodeConfig<BoxV1Params>;
 	credentials?: BoxV1Credentials;
+}
+
+export type BoxV1FileCopyNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FileCopyConfig>;
+	output?: BoxV1FileCopyOutput;
 };
+
+export type BoxV1FileDeleteNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FileDeleteConfig>;
+	output?: BoxV1FileDeleteOutput;
+};
+
+export type BoxV1FileDownloadNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FileDownloadConfig>;
+	output?: BoxV1FileDownloadOutput;
+};
+
+export type BoxV1FileGetNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FileGetConfig>;
+	output?: BoxV1FileGetOutput;
+};
+
+export type BoxV1FileSearchNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FileSearchConfig>;
+	output?: BoxV1FileSearchOutput;
+};
+
+export type BoxV1FileShareNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FileShareConfig>;
+};
+
+export type BoxV1FileUploadNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FileUploadConfig>;
+	output?: BoxV1FileUploadOutput;
+};
+
+export type BoxV1FolderCreateNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FolderCreateConfig>;
+	output?: BoxV1FolderCreateOutput;
+};
+
+export type BoxV1FolderDeleteNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FolderDeleteConfig>;
+};
+
+export type BoxV1FolderGetNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FolderGetConfig>;
+	output?: BoxV1FolderGetOutput;
+};
+
+export type BoxV1FolderSearchNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FolderSearchConfig>;
+	output?: BoxV1FolderSearchOutput;
+};
+
+export type BoxV1FolderShareNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FolderShareConfig>;
+};
+
+export type BoxV1FolderUpdateNode = BoxV1NodeBase & {
+	config: NodeConfig<BoxV1FolderUpdateConfig>;
+};
+
+export type BoxV1Node =
+	| BoxV1FileCopyNode
+	| BoxV1FileDeleteNode
+	| BoxV1FileDownloadNode
+	| BoxV1FileGetNode
+	| BoxV1FileSearchNode
+	| BoxV1FileShareNode
+	| BoxV1FileUploadNode
+	| BoxV1FolderCreateNode
+	| BoxV1FolderDeleteNode
+	| BoxV1FolderGetNode
+	| BoxV1FolderSearchNode
+	| BoxV1FolderShareNode
+	| BoxV1FolderUpdateNode
+	;

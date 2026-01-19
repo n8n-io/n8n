@@ -1,8 +1,6 @@
 /**
  * Quick Base Node - Version 1
  * Integrate with the Quick Base RESTful API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -275,6 +273,20 @@ export type QuickbaseV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type QuickbaseV1RecordCreateOutput = {
+	'3'?: number;
+};
+
+export type QuickbaseV1RecordGetAllOutput = {
+	'Date Modified'?: string;
+	NSN?: string;
+	Status?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -283,12 +295,66 @@ export interface QuickbaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type QuickbaseV1Node = {
+interface QuickbaseV1NodeBase {
 	type: 'n8n-nodes-base.quickbase';
 	version: 1;
-	config: NodeConfig<QuickbaseV1Params>;
 	credentials?: QuickbaseV1Credentials;
+}
+
+export type QuickbaseV1FieldGetAllNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1FieldGetAllConfig>;
 };
+
+export type QuickbaseV1FileDeleteNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1FileDeleteConfig>;
+};
+
+export type QuickbaseV1FileDownloadNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1FileDownloadConfig>;
+};
+
+export type QuickbaseV1RecordCreateNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1RecordCreateConfig>;
+	output?: QuickbaseV1RecordCreateOutput;
+};
+
+export type QuickbaseV1RecordUpsertNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1RecordUpsertConfig>;
+};
+
+export type QuickbaseV1RecordDeleteNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1RecordDeleteConfig>;
+};
+
+export type QuickbaseV1RecordGetAllNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1RecordGetAllConfig>;
+	output?: QuickbaseV1RecordGetAllOutput;
+};
+
+export type QuickbaseV1RecordUpdateNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1RecordUpdateConfig>;
+};
+
+export type QuickbaseV1ReportGetNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1ReportGetConfig>;
+};
+
+export type QuickbaseV1ReportRunNode = QuickbaseV1NodeBase & {
+	config: NodeConfig<QuickbaseV1ReportRunConfig>;
+};
+
+export type QuickbaseV1Node =
+	| QuickbaseV1FieldGetAllNode
+	| QuickbaseV1FileDeleteNode
+	| QuickbaseV1FileDownloadNode
+	| QuickbaseV1RecordCreateNode
+	| QuickbaseV1RecordUpsertNode
+	| QuickbaseV1RecordDeleteNode
+	| QuickbaseV1RecordGetAllNode
+	| QuickbaseV1RecordUpdateNode
+	| QuickbaseV1ReportGetNode
+	| QuickbaseV1ReportRunNode
+	;

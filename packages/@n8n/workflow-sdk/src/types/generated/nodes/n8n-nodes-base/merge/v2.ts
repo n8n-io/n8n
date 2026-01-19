@@ -1,8 +1,6 @@
 /**
  * Merge Node - Version 2
  * Merges data of multiple streams once data from both is available
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -56,12 +54,28 @@ export type MergeV2Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MergeV2Node = {
+interface MergeV2NodeBase {
 	type: 'n8n-nodes-base.merge';
 	version: 2;
-	config: NodeConfig<MergeV2Params>;
-	credentials?: Record<string, never>;
+}
+
+export type MergeV2AppendNode = MergeV2NodeBase & {
+	config: NodeConfig<MergeV2AppendConfig>;
 };
+
+export type MergeV2CombineNode = MergeV2NodeBase & {
+	config: NodeConfig<MergeV2CombineConfig>;
+};
+
+export type MergeV2ChooseBranchNode = MergeV2NodeBase & {
+	config: NodeConfig<MergeV2ChooseBranchConfig>;
+};
+
+export type MergeV2Node =
+	| MergeV2AppendNode
+	| MergeV2CombineNode
+	| MergeV2ChooseBranchNode
+	;

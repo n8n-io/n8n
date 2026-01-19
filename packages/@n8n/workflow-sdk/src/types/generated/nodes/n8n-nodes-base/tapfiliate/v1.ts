@@ -1,8 +1,6 @@
 /**
  * Tapfiliate Node - Version 1
  * Consume Tapfiliate API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -252,12 +250,74 @@ export interface TapfiliateV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TapfiliateV1Node = {
+interface TapfiliateV1NodeBase {
 	type: 'n8n-nodes-base.tapfiliate';
 	version: 1;
-	config: NodeConfig<TapfiliateV1Params>;
 	credentials?: TapfiliateV1Credentials;
+}
+
+export type TapfiliateV1AffiliateCreateNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1AffiliateCreateConfig>;
 };
+
+export type TapfiliateV1AffiliateDeleteNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1AffiliateDeleteConfig>;
+};
+
+export type TapfiliateV1AffiliateGetNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1AffiliateGetConfig>;
+};
+
+export type TapfiliateV1AffiliateGetAllNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1AffiliateGetAllConfig>;
+};
+
+export type TapfiliateV1AffiliateMetadataAddNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1AffiliateMetadataAddConfig>;
+};
+
+export type TapfiliateV1AffiliateMetadataRemoveNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1AffiliateMetadataRemoveConfig>;
+};
+
+export type TapfiliateV1AffiliateMetadataUpdateNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1AffiliateMetadataUpdateConfig>;
+};
+
+export type TapfiliateV1ProgramAffiliateAddNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1ProgramAffiliateAddConfig>;
+};
+
+export type TapfiliateV1ProgramAffiliateApproveNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1ProgramAffiliateApproveConfig>;
+};
+
+export type TapfiliateV1ProgramAffiliateDisapproveNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1ProgramAffiliateDisapproveConfig>;
+};
+
+export type TapfiliateV1ProgramAffiliateGetNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1ProgramAffiliateGetConfig>;
+};
+
+export type TapfiliateV1ProgramAffiliateGetAllNode = TapfiliateV1NodeBase & {
+	config: NodeConfig<TapfiliateV1ProgramAffiliateGetAllConfig>;
+};
+
+export type TapfiliateV1Node =
+	| TapfiliateV1AffiliateCreateNode
+	| TapfiliateV1AffiliateDeleteNode
+	| TapfiliateV1AffiliateGetNode
+	| TapfiliateV1AffiliateGetAllNode
+	| TapfiliateV1AffiliateMetadataAddNode
+	| TapfiliateV1AffiliateMetadataRemoveNode
+	| TapfiliateV1AffiliateMetadataUpdateNode
+	| TapfiliateV1ProgramAffiliateAddNode
+	| TapfiliateV1ProgramAffiliateApproveNode
+	| TapfiliateV1ProgramAffiliateDisapproveNode
+	| TapfiliateV1ProgramAffiliateGetNode
+	| TapfiliateV1ProgramAffiliateGetAllNode
+	;

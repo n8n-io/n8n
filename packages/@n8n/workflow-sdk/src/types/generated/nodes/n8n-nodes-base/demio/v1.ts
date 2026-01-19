@@ -1,8 +1,6 @@
 /**
  * Demio Node - Version 1
  * Consume the Demio API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -95,12 +93,34 @@ export interface DemioV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type DemioV1Node = {
+interface DemioV1NodeBase {
 	type: 'n8n-nodes-base.demio';
 	version: 1;
-	config: NodeConfig<DemioV1Params>;
 	credentials?: DemioV1Credentials;
+}
+
+export type DemioV1EventGetNode = DemioV1NodeBase & {
+	config: NodeConfig<DemioV1EventGetConfig>;
 };
+
+export type DemioV1EventGetAllNode = DemioV1NodeBase & {
+	config: NodeConfig<DemioV1EventGetAllConfig>;
+};
+
+export type DemioV1EventRegisterNode = DemioV1NodeBase & {
+	config: NodeConfig<DemioV1EventRegisterConfig>;
+};
+
+export type DemioV1ReportGetNode = DemioV1NodeBase & {
+	config: NodeConfig<DemioV1ReportGetConfig>;
+};
+
+export type DemioV1Node =
+	| DemioV1EventGetNode
+	| DemioV1EventGetAllNode
+	| DemioV1EventRegisterNode
+	| DemioV1ReportGetNode
+	;

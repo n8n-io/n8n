@@ -1,8 +1,6 @@
 /**
  * Google Calendar Node - Version 1
  * Consume Google Calendar API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -161,12 +159,44 @@ export interface GoogleCalendarV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleCalendarV1Node = {
+interface GoogleCalendarV1NodeBase {
 	type: 'n8n-nodes-base.googleCalendar';
 	version: 1;
-	config: NodeConfig<GoogleCalendarV1Params>;
 	credentials?: GoogleCalendarV1Credentials;
+}
+
+export type GoogleCalendarV1CalendarAvailabilityNode = GoogleCalendarV1NodeBase & {
+	config: NodeConfig<GoogleCalendarV1CalendarAvailabilityConfig>;
 };
+
+export type GoogleCalendarV1EventCreateNode = GoogleCalendarV1NodeBase & {
+	config: NodeConfig<GoogleCalendarV1EventCreateConfig>;
+};
+
+export type GoogleCalendarV1EventDeleteNode = GoogleCalendarV1NodeBase & {
+	config: NodeConfig<GoogleCalendarV1EventDeleteConfig>;
+};
+
+export type GoogleCalendarV1EventGetNode = GoogleCalendarV1NodeBase & {
+	config: NodeConfig<GoogleCalendarV1EventGetConfig>;
+};
+
+export type GoogleCalendarV1EventGetAllNode = GoogleCalendarV1NodeBase & {
+	config: NodeConfig<GoogleCalendarV1EventGetAllConfig>;
+};
+
+export type GoogleCalendarV1EventUpdateNode = GoogleCalendarV1NodeBase & {
+	config: NodeConfig<GoogleCalendarV1EventUpdateConfig>;
+};
+
+export type GoogleCalendarV1Node =
+	| GoogleCalendarV1CalendarAvailabilityNode
+	| GoogleCalendarV1EventCreateNode
+	| GoogleCalendarV1EventDeleteNode
+	| GoogleCalendarV1EventGetNode
+	| GoogleCalendarV1EventGetAllNode
+	| GoogleCalendarV1EventUpdateNode
+	;

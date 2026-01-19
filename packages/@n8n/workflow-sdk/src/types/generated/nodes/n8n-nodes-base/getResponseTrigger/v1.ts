@@ -1,8 +1,6 @@
 /**
  * GetResponse Trigger Node - Version 1
  * Starts the workflow when GetResponse events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -34,13 +32,18 @@ export interface GetResponseTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GetResponseTriggerV1Node = {
+interface GetResponseTriggerV1NodeBase {
 	type: 'n8n-nodes-base.getResponseTrigger';
 	version: 1;
-	config: NodeConfig<GetResponseTriggerV1Params>;
 	credentials?: GetResponseTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type GetResponseTriggerV1ParamsNode = GetResponseTriggerV1NodeBase & {
+	config: NodeConfig<GetResponseTriggerV1Params>;
 };
+
+export type GetResponseTriggerV1Node = GetResponseTriggerV1ParamsNode;

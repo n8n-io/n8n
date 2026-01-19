@@ -1,8 +1,6 @@
 /**
  * Supabase Vector Store Node - Version 1.1
  * Work with your data in Supabase Vector Store
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -130,12 +128,39 @@ export interface LcVectorStoreSupabaseV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcVectorStoreSupabaseV11Node = {
+interface LcVectorStoreSupabaseV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.vectorStoreSupabase';
 	version: 1.1;
-	config: NodeConfig<LcVectorStoreSupabaseV11Params>;
 	credentials?: LcVectorStoreSupabaseV11Credentials;
+}
+
+export type LcVectorStoreSupabaseV11LoadNode = LcVectorStoreSupabaseV11NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV11LoadConfig>;
 };
+
+export type LcVectorStoreSupabaseV11InsertNode = LcVectorStoreSupabaseV11NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV11InsertConfig>;
+};
+
+export type LcVectorStoreSupabaseV11RetrieveNode = LcVectorStoreSupabaseV11NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV11RetrieveConfig>;
+};
+
+export type LcVectorStoreSupabaseV11RetrieveAsToolNode = LcVectorStoreSupabaseV11NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV11RetrieveAsToolConfig>;
+};
+
+export type LcVectorStoreSupabaseV11UpdateNode = LcVectorStoreSupabaseV11NodeBase & {
+	config: NodeConfig<LcVectorStoreSupabaseV11UpdateConfig>;
+};
+
+export type LcVectorStoreSupabaseV11Node =
+	| LcVectorStoreSupabaseV11LoadNode
+	| LcVectorStoreSupabaseV11InsertNode
+	| LcVectorStoreSupabaseV11RetrieveNode
+	| LcVectorStoreSupabaseV11RetrieveAsToolNode
+	| LcVectorStoreSupabaseV11UpdateNode
+	;

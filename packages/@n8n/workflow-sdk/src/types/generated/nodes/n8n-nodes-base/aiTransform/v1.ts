@@ -1,8 +1,6 @@
 /**
  * AI Transform Node - Version 1
  * Modify data based on instructions written in plain english
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,12 +25,16 @@ export interface AiTransformV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AiTransformV1Node = {
+interface AiTransformV1NodeBase {
 	type: 'n8n-nodes-base.aiTransform';
 	version: 1;
+}
+
+export type AiTransformV1ParamsNode = AiTransformV1NodeBase & {
 	config: NodeConfig<AiTransformV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type AiTransformV1Node = AiTransformV1ParamsNode;

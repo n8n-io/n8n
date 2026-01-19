@@ -1,8 +1,6 @@
 /**
  * Compare Datasets Node - Version 1
  * Compare two inputs for changes
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -37,12 +35,16 @@ export interface CompareDatasetsV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CompareDatasetsV1Node = {
+interface CompareDatasetsV1NodeBase {
 	type: 'n8n-nodes-base.compareDatasets';
 	version: 1;
+}
+
+export type CompareDatasetsV1ParamsNode = CompareDatasetsV1NodeBase & {
 	config: NodeConfig<CompareDatasetsV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type CompareDatasetsV1Node = CompareDatasetsV1ParamsNode;

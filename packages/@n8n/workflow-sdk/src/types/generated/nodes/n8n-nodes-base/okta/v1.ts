@@ -1,8 +1,6 @@
 /**
  * Okta Node - Version 1
  * Use the Okta API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -121,6 +119,119 @@ export type OktaV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type OktaV1UserGetOutput = {
+	_links?: {
+		changePassword?: {
+			href?: string;
+			method?: string;
+		};
+		changeRecoveryQuestion?: {
+			href?: string;
+			method?: string;
+		};
+		deactivate?: {
+			href?: string;
+			method?: string;
+		};
+		expirePassword?: {
+			href?: string;
+			method?: string;
+		};
+		forgotPassword?: {
+			href?: string;
+			method?: string;
+		};
+		reactivate?: {
+			href?: string;
+			method?: string;
+		};
+		resetFactors?: {
+			href?: string;
+			method?: string;
+		};
+		resetPassword?: {
+			href?: string;
+			method?: string;
+		};
+		schema?: {
+			href?: string;
+		};
+		self?: {
+			href?: string;
+		};
+		suspend?: {
+			href?: string;
+			method?: string;
+		};
+		type?: {
+			href?: string;
+		};
+	};
+	created?: string;
+	credentials?: {
+		provider?: {
+			name?: string;
+			type?: string;
+		};
+	};
+	id?: string;
+	lastUpdated?: string;
+	profile?: {
+		email?: string;
+		firstName?: string;
+		lastName?: string;
+		login?: string;
+	};
+	status?: string;
+	type?: {
+		id?: string;
+	};
+};
+
+export type OktaV1UserGetAllOutput = {
+	_links?: {
+		self?: {
+			href?: string;
+		};
+	};
+	created?: string;
+	credentials?: {
+		provider?: {
+			name?: string;
+			type?: string;
+		};
+	};
+	id?: string;
+	lastUpdated?: string;
+	profile?: {
+		city?: string;
+		countryCode?: string;
+		department?: string;
+		displayName?: string;
+		email?: string;
+		firstName?: string;
+		lastName?: string;
+		login?: string;
+		manager?: string;
+		managerEmail?: string;
+		organization?: string;
+		site?: string;
+		startDate?: string;
+		timezone?: string;
+		title?: string;
+		userType?: string;
+	};
+	realmId?: string;
+	status?: string;
+	type?: {
+		id?: string;
+	};
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -129,12 +240,41 @@ export interface OktaV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OktaV1Node = {
+interface OktaV1NodeBase {
 	type: 'n8n-nodes-base.okta';
 	version: 1;
-	config: NodeConfig<OktaV1Params>;
 	credentials?: OktaV1Credentials;
+}
+
+export type OktaV1UserCreateNode = OktaV1NodeBase & {
+	config: NodeConfig<OktaV1UserCreateConfig>;
 };
+
+export type OktaV1UserDeleteNode = OktaV1NodeBase & {
+	config: NodeConfig<OktaV1UserDeleteConfig>;
+};
+
+export type OktaV1UserGetNode = OktaV1NodeBase & {
+	config: NodeConfig<OktaV1UserGetConfig>;
+	output?: OktaV1UserGetOutput;
+};
+
+export type OktaV1UserGetAllNode = OktaV1NodeBase & {
+	config: NodeConfig<OktaV1UserGetAllConfig>;
+	output?: OktaV1UserGetAllOutput;
+};
+
+export type OktaV1UserUpdateNode = OktaV1NodeBase & {
+	config: NodeConfig<OktaV1UserUpdateConfig>;
+};
+
+export type OktaV1Node =
+	| OktaV1UserCreateNode
+	| OktaV1UserDeleteNode
+	| OktaV1UserGetNode
+	| OktaV1UserGetAllNode
+	| OktaV1UserUpdateNode
+	;

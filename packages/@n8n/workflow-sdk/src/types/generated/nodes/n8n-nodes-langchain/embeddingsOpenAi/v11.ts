@@ -1,8 +1,6 @@
 /**
  * Embeddings OpenAI Node - Version 1.1
  * Use Embeddings OpenAI
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface LcEmbeddingsOpenAiV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcEmbeddingsOpenAiV11Node = {
+interface LcEmbeddingsOpenAiV11NodeBase {
 	type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi';
 	version: 1.1;
-	config: NodeConfig<LcEmbeddingsOpenAiV11Params>;
 	credentials?: LcEmbeddingsOpenAiV11Credentials;
 	isTrigger: true;
+}
+
+export type LcEmbeddingsOpenAiV11ParamsNode = LcEmbeddingsOpenAiV11NodeBase & {
+	config: NodeConfig<LcEmbeddingsOpenAiV11Params>;
 };
+
+export type LcEmbeddingsOpenAiV11Node = LcEmbeddingsOpenAiV11ParamsNode;

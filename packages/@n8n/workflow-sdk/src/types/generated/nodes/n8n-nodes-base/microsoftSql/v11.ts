@@ -1,8 +1,6 @@
 /**
  * Microsoft SQL Node - Version 1.1
  * Get, add and update data in Microsoft SQL
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -53,12 +51,17 @@ export interface MicrosoftSqlV11Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type MicrosoftSqlV11Node = {
+interface MicrosoftSqlV11NodeBase {
 	type: 'n8n-nodes-base.microsoftSql';
 	version: 1.1;
-	config: NodeConfig<MicrosoftSqlV11Params>;
 	credentials?: MicrosoftSqlV11Credentials;
+}
+
+export type MicrosoftSqlV11ParamsNode = MicrosoftSqlV11NodeBase & {
+	config: NodeConfig<MicrosoftSqlV11Params>;
 };
+
+export type MicrosoftSqlV11Node = MicrosoftSqlV11ParamsNode;

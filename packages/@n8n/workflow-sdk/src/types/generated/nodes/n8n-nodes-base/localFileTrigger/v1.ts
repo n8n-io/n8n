@@ -1,8 +1,6 @@
 /**
  * Local File Trigger Node - Version 1
  * Triggers a workflow on file system changes
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,17 @@ export interface LocalFileTriggerV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LocalFileTriggerV1Node = {
+interface LocalFileTriggerV1NodeBase {
 	type: 'n8n-nodes-base.localFileTrigger';
 	version: 1;
-	config: NodeConfig<LocalFileTriggerV1Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LocalFileTriggerV1ParamsNode = LocalFileTriggerV1NodeBase & {
+	config: NodeConfig<LocalFileTriggerV1Params>;
 };
+
+export type LocalFileTriggerV1Node = LocalFileTriggerV1ParamsNode;

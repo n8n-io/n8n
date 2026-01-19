@@ -1,8 +1,6 @@
 /**
  * OpenThesaurus Node - Version 1
  * Get synonmns for German words using the OpenThesaurus API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -28,12 +26,16 @@ export interface OpenThesaurusV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OpenThesaurusV1Node = {
+interface OpenThesaurusV1NodeBase {
 	type: 'n8n-nodes-base.openThesaurus';
 	version: 1;
+}
+
+export type OpenThesaurusV1ParamsNode = OpenThesaurusV1NodeBase & {
 	config: NodeConfig<OpenThesaurusV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type OpenThesaurusV1Node = OpenThesaurusV1ParamsNode;

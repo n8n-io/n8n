@@ -1,8 +1,6 @@
 /**
  * Emelia Trigger Node - Version 1
  * Handle Emelia campaign activity events via webhooks
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface EmeliaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type EmeliaTriggerV1Node = {
+interface EmeliaTriggerV1NodeBase {
 	type: 'n8n-nodes-base.emeliaTrigger';
 	version: 1;
-	config: NodeConfig<EmeliaTriggerV1Params>;
 	credentials?: EmeliaTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type EmeliaTriggerV1ParamsNode = EmeliaTriggerV1NodeBase & {
+	config: NodeConfig<EmeliaTriggerV1Params>;
 };
+
+export type EmeliaTriggerV1Node = EmeliaTriggerV1ParamsNode;

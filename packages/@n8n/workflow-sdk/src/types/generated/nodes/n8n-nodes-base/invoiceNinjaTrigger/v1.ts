@@ -1,8 +1,6 @@
 /**
  * Invoice Ninja Trigger Node - Version 1
  * Starts the workflow when Invoice Ninja events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -27,13 +25,18 @@ export interface InvoiceNinjaTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type InvoiceNinjaTriggerV1Node = {
+interface InvoiceNinjaTriggerV1NodeBase {
 	type: 'n8n-nodes-base.invoiceNinjaTrigger';
 	version: 1;
-	config: NodeConfig<InvoiceNinjaTriggerV1Params>;
 	credentials?: InvoiceNinjaTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type InvoiceNinjaTriggerV1ParamsNode = InvoiceNinjaTriggerV1NodeBase & {
+	config: NodeConfig<InvoiceNinjaTriggerV1Params>;
 };
+
+export type InvoiceNinjaTriggerV1Node = InvoiceNinjaTriggerV1ParamsNode;

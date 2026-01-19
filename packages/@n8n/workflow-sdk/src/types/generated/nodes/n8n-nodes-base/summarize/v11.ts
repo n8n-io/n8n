@@ -1,8 +1,6 @@
 /**
  * Summarize Node - Version 1.1
  * Sum, count, max, etc. across items
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -66,12 +64,16 @@ export interface SummarizeV11Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SummarizeV11Node = {
+interface SummarizeV11NodeBase {
 	type: 'n8n-nodes-base.summarize';
 	version: 1.1;
+}
+
+export type SummarizeV11ParamsNode = SummarizeV11NodeBase & {
 	config: NodeConfig<SummarizeV11Params>;
-	credentials?: Record<string, never>;
 };
+
+export type SummarizeV11Node = SummarizeV11ParamsNode;

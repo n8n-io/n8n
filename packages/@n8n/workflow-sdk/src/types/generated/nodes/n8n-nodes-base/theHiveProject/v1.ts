@@ -1,8 +1,6 @@
 /**
  * TheHive 5 Node - Version 1
  * Consume TheHive 5 API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -1338,12 +1336,254 @@ export interface TheHiveProjectV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type TheHiveProjectV1Node = {
+interface TheHiveProjectV1NodeBase {
 	type: 'n8n-nodes-base.theHiveProject';
 	version: 1;
-	config: NodeConfig<TheHiveProjectV1Params>;
 	credentials?: TheHiveProjectV1Credentials;
+}
+
+export type TheHiveProjectV1AlertCreateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertCreateConfig>;
 };
+
+export type TheHiveProjectV1AlertDeleteAlertNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertDeleteAlertConfig>;
+};
+
+export type TheHiveProjectV1AlertExecuteResponderNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertExecuteResponderConfig>;
+};
+
+export type TheHiveProjectV1AlertGetNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertGetConfig>;
+};
+
+export type TheHiveProjectV1AlertMergeNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertMergeConfig>;
+};
+
+export type TheHiveProjectV1AlertPromoteNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertPromoteConfig>;
+};
+
+export type TheHiveProjectV1AlertSearchNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertSearchConfig>;
+};
+
+export type TheHiveProjectV1AlertUpdateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertUpdateConfig>;
+};
+
+export type TheHiveProjectV1AlertStatusNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1AlertStatusConfig>;
+};
+
+export type TheHiveProjectV1CaseAddAttachmentNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseAddAttachmentConfig>;
+};
+
+export type TheHiveProjectV1CaseCreateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseCreateConfig>;
+};
+
+export type TheHiveProjectV1CaseDeleteAttachmentNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseDeleteAttachmentConfig>;
+};
+
+export type TheHiveProjectV1CaseDeleteCaseNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseDeleteCaseConfig>;
+};
+
+export type TheHiveProjectV1CaseExecuteResponderNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseExecuteResponderConfig>;
+};
+
+export type TheHiveProjectV1CaseGetNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseGetConfig>;
+};
+
+export type TheHiveProjectV1CaseGetAttachmentNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseGetAttachmentConfig>;
+};
+
+export type TheHiveProjectV1CaseGetTimelineNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseGetTimelineConfig>;
+};
+
+export type TheHiveProjectV1CaseSearchNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseSearchConfig>;
+};
+
+export type TheHiveProjectV1CaseUpdateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CaseUpdateConfig>;
+};
+
+export type TheHiveProjectV1CommentAddNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CommentAddConfig>;
+};
+
+export type TheHiveProjectV1CommentDeleteCommentNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CommentDeleteCommentConfig>;
+};
+
+export type TheHiveProjectV1CommentSearchNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CommentSearchConfig>;
+};
+
+export type TheHiveProjectV1CommentUpdateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1CommentUpdateConfig>;
+};
+
+export type TheHiveProjectV1ObservableCreateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1ObservableCreateConfig>;
+};
+
+export type TheHiveProjectV1ObservableDeleteObservableNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1ObservableDeleteObservableConfig>;
+};
+
+export type TheHiveProjectV1ObservableExecuteAnalyzerNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1ObservableExecuteAnalyzerConfig>;
+};
+
+export type TheHiveProjectV1ObservableExecuteResponderNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1ObservableExecuteResponderConfig>;
+};
+
+export type TheHiveProjectV1ObservableGetNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1ObservableGetConfig>;
+};
+
+export type TheHiveProjectV1ObservableSearchNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1ObservableSearchConfig>;
+};
+
+export type TheHiveProjectV1ObservableUpdateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1ObservableUpdateConfig>;
+};
+
+export type TheHiveProjectV1PageCreateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1PageCreateConfig>;
+};
+
+export type TheHiveProjectV1PageDeletePageNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1PageDeletePageConfig>;
+};
+
+export type TheHiveProjectV1PageSearchNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1PageSearchConfig>;
+};
+
+export type TheHiveProjectV1PageUpdateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1PageUpdateConfig>;
+};
+
+export type TheHiveProjectV1QueryExecuteQueryNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1QueryExecuteQueryConfig>;
+};
+
+export type TheHiveProjectV1TaskCreateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1TaskCreateConfig>;
+};
+
+export type TheHiveProjectV1TaskDeleteTaskNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1TaskDeleteTaskConfig>;
+};
+
+export type TheHiveProjectV1TaskExecuteResponderNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1TaskExecuteResponderConfig>;
+};
+
+export type TheHiveProjectV1TaskGetNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1TaskGetConfig>;
+};
+
+export type TheHiveProjectV1TaskSearchNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1TaskSearchConfig>;
+};
+
+export type TheHiveProjectV1TaskUpdateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1TaskUpdateConfig>;
+};
+
+export type TheHiveProjectV1LogAddAttachmentNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1LogAddAttachmentConfig>;
+};
+
+export type TheHiveProjectV1LogCreateNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1LogCreateConfig>;
+};
+
+export type TheHiveProjectV1LogDeleteLogNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1LogDeleteLogConfig>;
+};
+
+export type TheHiveProjectV1LogDeleteAttachmentNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1LogDeleteAttachmentConfig>;
+};
+
+export type TheHiveProjectV1LogExecuteResponderNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1LogExecuteResponderConfig>;
+};
+
+export type TheHiveProjectV1LogGetNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1LogGetConfig>;
+};
+
+export type TheHiveProjectV1LogSearchNode = TheHiveProjectV1NodeBase & {
+	config: NodeConfig<TheHiveProjectV1LogSearchConfig>;
+};
+
+export type TheHiveProjectV1Node =
+	| TheHiveProjectV1AlertCreateNode
+	| TheHiveProjectV1AlertDeleteAlertNode
+	| TheHiveProjectV1AlertExecuteResponderNode
+	| TheHiveProjectV1AlertGetNode
+	| TheHiveProjectV1AlertMergeNode
+	| TheHiveProjectV1AlertPromoteNode
+	| TheHiveProjectV1AlertSearchNode
+	| TheHiveProjectV1AlertUpdateNode
+	| TheHiveProjectV1AlertStatusNode
+	| TheHiveProjectV1CaseAddAttachmentNode
+	| TheHiveProjectV1CaseCreateNode
+	| TheHiveProjectV1CaseDeleteAttachmentNode
+	| TheHiveProjectV1CaseDeleteCaseNode
+	| TheHiveProjectV1CaseExecuteResponderNode
+	| TheHiveProjectV1CaseGetNode
+	| TheHiveProjectV1CaseGetAttachmentNode
+	| TheHiveProjectV1CaseGetTimelineNode
+	| TheHiveProjectV1CaseSearchNode
+	| TheHiveProjectV1CaseUpdateNode
+	| TheHiveProjectV1CommentAddNode
+	| TheHiveProjectV1CommentDeleteCommentNode
+	| TheHiveProjectV1CommentSearchNode
+	| TheHiveProjectV1CommentUpdateNode
+	| TheHiveProjectV1ObservableCreateNode
+	| TheHiveProjectV1ObservableDeleteObservableNode
+	| TheHiveProjectV1ObservableExecuteAnalyzerNode
+	| TheHiveProjectV1ObservableExecuteResponderNode
+	| TheHiveProjectV1ObservableGetNode
+	| TheHiveProjectV1ObservableSearchNode
+	| TheHiveProjectV1ObservableUpdateNode
+	| TheHiveProjectV1PageCreateNode
+	| TheHiveProjectV1PageDeletePageNode
+	| TheHiveProjectV1PageSearchNode
+	| TheHiveProjectV1PageUpdateNode
+	| TheHiveProjectV1QueryExecuteQueryNode
+	| TheHiveProjectV1TaskCreateNode
+	| TheHiveProjectV1TaskDeleteTaskNode
+	| TheHiveProjectV1TaskExecuteResponderNode
+	| TheHiveProjectV1TaskGetNode
+	| TheHiveProjectV1TaskSearchNode
+	| TheHiveProjectV1TaskUpdateNode
+	| TheHiveProjectV1LogAddAttachmentNode
+	| TheHiveProjectV1LogCreateNode
+	| TheHiveProjectV1LogDeleteLogNode
+	| TheHiveProjectV1LogDeleteAttachmentNode
+	| TheHiveProjectV1LogExecuteResponderNode
+	| TheHiveProjectV1LogGetNode
+	| TheHiveProjectV1LogSearchNode
+	;

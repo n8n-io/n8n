@@ -1,8 +1,6 @@
 /**
  * SeaTable Trigger Node - Version 1
  * Starts the workflow when SeaTable events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -82,13 +80,18 @@ export interface SeaTableTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SeaTableTriggerV1Node = {
+interface SeaTableTriggerV1NodeBase {
 	type: 'n8n-nodes-base.seaTableTrigger';
 	version: 1;
-	config: NodeConfig<SeaTableTriggerV1Params>;
 	credentials?: SeaTableTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type SeaTableTriggerV1ParamsNode = SeaTableTriggerV1NodeBase & {
+	config: NodeConfig<SeaTableTriggerV1Params>;
 };
+
+export type SeaTableTriggerV1Node = SeaTableTriggerV1ParamsNode;

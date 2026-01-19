@@ -1,8 +1,6 @@
 /**
  * Edit Fields (Set) Node - Version 3.2
  * Modify, add, or remove item fields
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -127,12 +125,23 @@ export type SetV32Params =
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SetV32Node = {
+interface SetV32NodeBase {
 	type: 'n8n-nodes-base.set';
 	version: 3.2;
-	config: NodeConfig<SetV32Params>;
-	credentials?: Record<string, never>;
+}
+
+export type SetV32ManualNode = SetV32NodeBase & {
+	config: NodeConfig<SetV32ManualConfig>;
 };
+
+export type SetV32RawNode = SetV32NodeBase & {
+	config: NodeConfig<SetV32RawConfig>;
+};
+
+export type SetV32Node =
+	| SetV32ManualNode
+	| SetV32RawNode
+	;

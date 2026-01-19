@@ -1,8 +1,6 @@
 /**
  * Gotify Node - Version 1
  * Consume Gotify API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -63,12 +61,29 @@ export interface GotifyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GotifyV1Node = {
+interface GotifyV1NodeBase {
 	type: 'n8n-nodes-base.gotify';
 	version: 1;
-	config: NodeConfig<GotifyV1Params>;
 	credentials?: GotifyV1Credentials;
+}
+
+export type GotifyV1MessageCreateNode = GotifyV1NodeBase & {
+	config: NodeConfig<GotifyV1MessageCreateConfig>;
 };
+
+export type GotifyV1MessageDeleteNode = GotifyV1NodeBase & {
+	config: NodeConfig<GotifyV1MessageDeleteConfig>;
+};
+
+export type GotifyV1MessageGetAllNode = GotifyV1NodeBase & {
+	config: NodeConfig<GotifyV1MessageGetAllConfig>;
+};
+
+export type GotifyV1Node =
+	| GotifyV1MessageCreateNode
+	| GotifyV1MessageDeleteNode
+	| GotifyV1MessageGetAllNode
+	;

@@ -1,8 +1,6 @@
 /**
  * Clockify Node - Version 1
  * Consume Clockify REST API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -351,6 +349,160 @@ export type ClockifyV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type ClockifyV1ClientGetAllOutput = {
+	archived?: boolean;
+	currencyCode?: string;
+	currencyId?: string;
+	id?: string;
+	name?: string;
+	workspaceId?: string;
+};
+
+export type ClockifyV1ProjectGetOutput = {
+	archived?: boolean;
+	billable?: boolean;
+	clientId?: string;
+	clientName?: string;
+	color?: string;
+	costRate?: null;
+	duration?: string;
+	estimate?: {
+		estimate?: string;
+		type?: string;
+	};
+	hourlyRate?: {
+		amount?: number;
+		currency?: string;
+	};
+	id?: string;
+	memberships?: Array<{
+		costRate?: null;
+		membershipStatus?: string;
+		membershipType?: string;
+		targetId?: string;
+		userId?: string;
+	}>;
+	name?: string;
+	public?: boolean;
+	template?: boolean;
+	timeEstimate?: {
+		active?: boolean;
+		estimate?: string;
+		includeNonBillable?: boolean;
+		type?: string;
+	};
+	workspaceId?: string;
+};
+
+export type ClockifyV1ProjectGetAllOutput = {
+	archived?: boolean;
+	billable?: boolean;
+	clientId?: string;
+	clientName?: string;
+	color?: string;
+	estimate?: {
+		estimate?: string;
+		type?: string;
+	};
+	estimateReset?: null;
+	hourlyRate?: {
+		amount?: number;
+		currency?: string;
+	};
+	id?: string;
+	memberships?: Array<{
+		costRate?: null;
+		hourlyRate?: null;
+		membershipStatus?: string;
+		membershipType?: string;
+		targetId?: string;
+		userId?: string;
+	}>;
+	name?: string;
+	note?: string;
+	public?: boolean;
+	template?: boolean;
+	timeEstimate?: {
+		active?: boolean;
+		estimate?: string;
+		includeNonBillable?: boolean;
+		resetOption?: null;
+		type?: string;
+	};
+	workspaceId?: string;
+};
+
+export type ClockifyV1TimeEntryCreateOutput = {
+	billable?: boolean;
+	customFieldValues?: Array<{
+		customFieldId?: string;
+		name?: string;
+		timeEntryId?: string;
+		type?: string;
+		value?: null;
+	}>;
+	id?: string;
+	isLocked?: boolean;
+	kioskId?: null;
+	timeInterval?: {
+		start?: string;
+	};
+	type?: string;
+	userId?: string;
+	workspaceId?: string;
+};
+
+export type ClockifyV1UserGetAllOutput = {
+	activeWorkspace?: string;
+	customFields?: Array<{
+		customFieldId?: string;
+		customFieldName?: string;
+		customFieldType?: string;
+		userId?: string;
+	}>;
+	defaultWorkspace?: string;
+	email?: string;
+	id?: string;
+	settings?: {
+		alerts?: boolean;
+		approval?: boolean;
+		collapseAllProjectLists?: boolean;
+		dashboardPinToTop?: boolean;
+		dashboardSelection?: string;
+		dashboardViewType?: string;
+		dateFormat?: string;
+		groupSimilarEntriesDisabled?: boolean;
+		isCompactViewOn?: boolean;
+		lang?: string;
+		longRunning?: boolean;
+		multiFactorEnabled?: boolean;
+		myStartOfDay?: string;
+		onboarding?: boolean;
+		projectPickerTaskFilter?: boolean;
+		pto?: boolean;
+		reminders?: boolean;
+		scheduledReports?: boolean;
+		scheduling?: boolean;
+		sendNewsletter?: boolean;
+		showOnlyWorkingDays?: boolean;
+		summaryReportSettings?: {
+			group?: string;
+			subgroup?: string;
+		};
+		theme?: string;
+		timeFormat?: string;
+		timeTrackingManual?: boolean;
+		timeZone?: string;
+		weeklyUpdates?: boolean;
+		weekStart?: string;
+	};
+	status?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -359,12 +511,144 @@ export interface ClockifyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClockifyV1Node = {
+interface ClockifyV1NodeBase {
 	type: 'n8n-nodes-base.clockify';
 	version: 1;
-	config: NodeConfig<ClockifyV1Params>;
 	credentials?: ClockifyV1Credentials;
+}
+
+export type ClockifyV1ClientCreateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ClientCreateConfig>;
 };
+
+export type ClockifyV1ClientDeleteNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ClientDeleteConfig>;
+};
+
+export type ClockifyV1ClientGetNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ClientGetConfig>;
+};
+
+export type ClockifyV1ClientGetAllNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ClientGetAllConfig>;
+	output?: ClockifyV1ClientGetAllOutput;
+};
+
+export type ClockifyV1ClientUpdateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ClientUpdateConfig>;
+};
+
+export type ClockifyV1ProjectCreateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ProjectCreateConfig>;
+};
+
+export type ClockifyV1ProjectDeleteNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ProjectDeleteConfig>;
+};
+
+export type ClockifyV1ProjectGetNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ProjectGetConfig>;
+	output?: ClockifyV1ProjectGetOutput;
+};
+
+export type ClockifyV1ProjectGetAllNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ProjectGetAllConfig>;
+	output?: ClockifyV1ProjectGetAllOutput;
+};
+
+export type ClockifyV1ProjectUpdateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1ProjectUpdateConfig>;
+};
+
+export type ClockifyV1TagCreateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TagCreateConfig>;
+};
+
+export type ClockifyV1TagDeleteNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TagDeleteConfig>;
+};
+
+export type ClockifyV1TagGetAllNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TagGetAllConfig>;
+};
+
+export type ClockifyV1TagUpdateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TagUpdateConfig>;
+};
+
+export type ClockifyV1TaskCreateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TaskCreateConfig>;
+};
+
+export type ClockifyV1TaskDeleteNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TaskDeleteConfig>;
+};
+
+export type ClockifyV1TaskGetNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TaskGetConfig>;
+};
+
+export type ClockifyV1TaskGetAllNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TaskGetAllConfig>;
+};
+
+export type ClockifyV1TaskUpdateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TaskUpdateConfig>;
+};
+
+export type ClockifyV1TimeEntryCreateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TimeEntryCreateConfig>;
+	output?: ClockifyV1TimeEntryCreateOutput;
+};
+
+export type ClockifyV1TimeEntryDeleteNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TimeEntryDeleteConfig>;
+};
+
+export type ClockifyV1TimeEntryGetNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TimeEntryGetConfig>;
+};
+
+export type ClockifyV1TimeEntryUpdateNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1TimeEntryUpdateConfig>;
+};
+
+export type ClockifyV1UserGetAllNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1UserGetAllConfig>;
+	output?: ClockifyV1UserGetAllOutput;
+};
+
+export type ClockifyV1WorkspaceGetAllNode = ClockifyV1NodeBase & {
+	config: NodeConfig<ClockifyV1WorkspaceGetAllConfig>;
+};
+
+export type ClockifyV1Node =
+	| ClockifyV1ClientCreateNode
+	| ClockifyV1ClientDeleteNode
+	| ClockifyV1ClientGetNode
+	| ClockifyV1ClientGetAllNode
+	| ClockifyV1ClientUpdateNode
+	| ClockifyV1ProjectCreateNode
+	| ClockifyV1ProjectDeleteNode
+	| ClockifyV1ProjectGetNode
+	| ClockifyV1ProjectGetAllNode
+	| ClockifyV1ProjectUpdateNode
+	| ClockifyV1TagCreateNode
+	| ClockifyV1TagDeleteNode
+	| ClockifyV1TagGetAllNode
+	| ClockifyV1TagUpdateNode
+	| ClockifyV1TaskCreateNode
+	| ClockifyV1TaskDeleteNode
+	| ClockifyV1TaskGetNode
+	| ClockifyV1TaskGetAllNode
+	| ClockifyV1TaskUpdateNode
+	| ClockifyV1TimeEntryCreateNode
+	| ClockifyV1TimeEntryDeleteNode
+	| ClockifyV1TimeEntryGetNode
+	| ClockifyV1TimeEntryUpdateNode
+	| ClockifyV1UserGetAllNode
+	| ClockifyV1WorkspaceGetAllNode
+	;

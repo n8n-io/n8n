@@ -1,8 +1,6 @@
 /**
  * Call n8n Workflow Tool Node - Version 1.3
  * Uses another n8n workflow as a tool. Allows packaging any n8n node(s) as a tool.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -114,13 +112,17 @@ export interface LcToolWorkflowV13Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcToolWorkflowV13Node = {
+interface LcToolWorkflowV13NodeBase {
 	type: '@n8n/n8n-nodes-langchain.toolWorkflow';
 	version: 1.3;
-	config: NodeConfig<LcToolWorkflowV13Params>;
-	credentials?: Record<string, never>;
 	isTrigger: true;
+}
+
+export type LcToolWorkflowV13ParamsNode = LcToolWorkflowV13NodeBase & {
+	config: NodeConfig<LcToolWorkflowV13Params>;
 };
+
+export type LcToolWorkflowV13Node = LcToolWorkflowV13ParamsNode;

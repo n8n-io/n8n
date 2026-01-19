@@ -1,8 +1,6 @@
 /**
  * Pushcut Trigger Node - Version 1
  * Starts the workflow when Pushcut events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -29,13 +27,18 @@ export interface PushcutTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type PushcutTriggerV1Node = {
+interface PushcutTriggerV1NodeBase {
 	type: 'n8n-nodes-base.pushcutTrigger';
 	version: 1;
-	config: NodeConfig<PushcutTriggerV1Params>;
 	credentials?: PushcutTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type PushcutTriggerV1ParamsNode = PushcutTriggerV1NodeBase & {
+	config: NodeConfig<PushcutTriggerV1Params>;
 };
+
+export type PushcutTriggerV1Node = PushcutTriggerV1ParamsNode;

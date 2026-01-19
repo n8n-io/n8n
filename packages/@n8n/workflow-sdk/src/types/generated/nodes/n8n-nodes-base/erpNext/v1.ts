@@ -1,8 +1,6 @@
 /**
  * ERPNext Node - Version 1
  * Consume ERPNext API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -131,6 +129,74 @@ export type ErpNextV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type ErpNextV1DocumentCreateOutput = {
+	annual_revenue?: number;
+	base_opportunity_amount?: number;
+	base_total?: number;
+	company?: string;
+	conversion_rate?: number;
+	creation?: string;
+	currency?: string;
+	customer_name?: string;
+	disabled?: number;
+	docstatus?: number;
+	doctype?: string;
+	idx?: number;
+	items?: Array<{
+		__unsaved?: number;
+		creation?: string;
+		description?: string;
+		docstatus?: number;
+		doctype?: string;
+		idx?: number;
+		item_name?: string;
+		modified?: string;
+		modified_by?: string;
+		name?: string;
+		owner?: string;
+		parent?: string;
+		parentfield?: string;
+		parenttype?: string;
+		qty?: number;
+		rate?: number;
+	}>;
+	language?: string;
+	modified?: string;
+	modified_by?: string;
+	name?: string;
+	naming_series?: string;
+	no_of_employees?: string;
+	opportunity_amount?: number;
+	opportunity_from?: string;
+	opportunity_type?: string;
+	owner?: string;
+	party_name?: string;
+	probability?: number;
+	status?: string;
+	title?: string;
+	total?: number;
+	transaction_date?: string;
+};
+
+export type ErpNextV1DocumentGetOutput = {
+	creation?: string;
+	docstatus?: number;
+	doctype?: string;
+	idx?: number;
+	modified?: string;
+	modified_by?: string;
+	name?: string;
+	owner?: string;
+};
+
+export type ErpNextV1DocumentGetAllOutput = {
+	name?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -139,12 +205,42 @@ export interface ErpNextV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ErpNextV1Node = {
+interface ErpNextV1NodeBase {
 	type: 'n8n-nodes-base.erpNext';
 	version: 1;
-	config: NodeConfig<ErpNextV1Params>;
 	credentials?: ErpNextV1Credentials;
+}
+
+export type ErpNextV1DocumentCreateNode = ErpNextV1NodeBase & {
+	config: NodeConfig<ErpNextV1DocumentCreateConfig>;
+	output?: ErpNextV1DocumentCreateOutput;
 };
+
+export type ErpNextV1DocumentDeleteNode = ErpNextV1NodeBase & {
+	config: NodeConfig<ErpNextV1DocumentDeleteConfig>;
+};
+
+export type ErpNextV1DocumentGetNode = ErpNextV1NodeBase & {
+	config: NodeConfig<ErpNextV1DocumentGetConfig>;
+	output?: ErpNextV1DocumentGetOutput;
+};
+
+export type ErpNextV1DocumentGetAllNode = ErpNextV1NodeBase & {
+	config: NodeConfig<ErpNextV1DocumentGetAllConfig>;
+	output?: ErpNextV1DocumentGetAllOutput;
+};
+
+export type ErpNextV1DocumentUpdateNode = ErpNextV1NodeBase & {
+	config: NodeConfig<ErpNextV1DocumentUpdateConfig>;
+};
+
+export type ErpNextV1Node =
+	| ErpNextV1DocumentCreateNode
+	| ErpNextV1DocumentDeleteNode
+	| ErpNextV1DocumentGetNode
+	| ErpNextV1DocumentGetAllNode
+	| ErpNextV1DocumentUpdateNode
+	;

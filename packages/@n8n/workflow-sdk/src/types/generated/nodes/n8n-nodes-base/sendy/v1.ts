@@ -1,8 +1,6 @@
 /**
  * Sendy Node - Version 1
  * Consume Sendy API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -151,12 +149,44 @@ export interface SendyV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SendyV1Node = {
+interface SendyV1NodeBase {
 	type: 'n8n-nodes-base.sendy';
 	version: 1;
-	config: NodeConfig<SendyV1Params>;
 	credentials?: SendyV1Credentials;
+}
+
+export type SendyV1CampaignCreateNode = SendyV1NodeBase & {
+	config: NodeConfig<SendyV1CampaignCreateConfig>;
 };
+
+export type SendyV1SubscriberAddNode = SendyV1NodeBase & {
+	config: NodeConfig<SendyV1SubscriberAddConfig>;
+};
+
+export type SendyV1SubscriberCountNode = SendyV1NodeBase & {
+	config: NodeConfig<SendyV1SubscriberCountConfig>;
+};
+
+export type SendyV1SubscriberDeleteNode = SendyV1NodeBase & {
+	config: NodeConfig<SendyV1SubscriberDeleteConfig>;
+};
+
+export type SendyV1SubscriberRemoveNode = SendyV1NodeBase & {
+	config: NodeConfig<SendyV1SubscriberRemoveConfig>;
+};
+
+export type SendyV1SubscriberStatusNode = SendyV1NodeBase & {
+	config: NodeConfig<SendyV1SubscriberStatusConfig>;
+};
+
+export type SendyV1Node =
+	| SendyV1CampaignCreateNode
+	| SendyV1SubscriberAddNode
+	| SendyV1SubscriberCountNode
+	| SendyV1SubscriberDeleteNode
+	| SendyV1SubscriberRemoveNode
+	| SendyV1SubscriberStatusNode
+	;

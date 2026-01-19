@@ -1,8 +1,6 @@
 /**
  * AWS Certificate Manager Node - Version 1
  * Sends data to AWS Certificate Manager
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -96,12 +94,39 @@ export interface AwsCertificateManagerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type AwsCertificateManagerV1Node = {
+interface AwsCertificateManagerV1NodeBase {
 	type: 'n8n-nodes-base.awsCertificateManager';
 	version: 1;
-	config: NodeConfig<AwsCertificateManagerV1Params>;
 	credentials?: AwsCertificateManagerV1Credentials;
+}
+
+export type AwsCertificateManagerV1CertificateDeleteNode = AwsCertificateManagerV1NodeBase & {
+	config: NodeConfig<AwsCertificateManagerV1CertificateDeleteConfig>;
 };
+
+export type AwsCertificateManagerV1CertificateGetNode = AwsCertificateManagerV1NodeBase & {
+	config: NodeConfig<AwsCertificateManagerV1CertificateGetConfig>;
+};
+
+export type AwsCertificateManagerV1CertificateGetManyNode = AwsCertificateManagerV1NodeBase & {
+	config: NodeConfig<AwsCertificateManagerV1CertificateGetManyConfig>;
+};
+
+export type AwsCertificateManagerV1CertificateGetMetadataNode = AwsCertificateManagerV1NodeBase & {
+	config: NodeConfig<AwsCertificateManagerV1CertificateGetMetadataConfig>;
+};
+
+export type AwsCertificateManagerV1CertificateRenewNode = AwsCertificateManagerV1NodeBase & {
+	config: NodeConfig<AwsCertificateManagerV1CertificateRenewConfig>;
+};
+
+export type AwsCertificateManagerV1Node =
+	| AwsCertificateManagerV1CertificateDeleteNode
+	| AwsCertificateManagerV1CertificateGetNode
+	| AwsCertificateManagerV1CertificateGetManyNode
+	| AwsCertificateManagerV1CertificateGetMetadataNode
+	| AwsCertificateManagerV1CertificateRenewNode
+	;

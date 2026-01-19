@@ -1,8 +1,6 @@
 /**
  * Oracle Database Node - Version 1
  * Get, add and update data in Oracle database
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -105,12 +103,17 @@ export interface OracleDatabaseV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type OracleDatabaseV1Node = {
+interface OracleDatabaseV1NodeBase {
 	type: 'n8n-nodes-base.oracleDatabase';
 	version: 1;
-	config: NodeConfig<OracleDatabaseV1Params>;
 	credentials?: OracleDatabaseV1Credentials;
+}
+
+export type OracleDatabaseV1ParamsNode = OracleDatabaseV1NodeBase & {
+	config: NodeConfig<OracleDatabaseV1Params>;
 };
+
+export type OracleDatabaseV1Node = OracleDatabaseV1ParamsNode;

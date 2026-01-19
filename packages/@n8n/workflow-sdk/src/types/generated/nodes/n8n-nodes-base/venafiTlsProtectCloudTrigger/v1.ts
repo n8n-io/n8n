@@ -1,8 +1,6 @@
 /**
  * Venafi TLS Protect Cloud Trigger Node - Version 1
  * Starts the workflow when Venafi events occur
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -35,13 +33,18 @@ export interface VenafiTlsProtectCloudTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type VenafiTlsProtectCloudTriggerV1Node = {
+interface VenafiTlsProtectCloudTriggerV1NodeBase {
 	type: 'n8n-nodes-base.venafiTlsProtectCloudTrigger';
 	version: 1;
-	config: NodeConfig<VenafiTlsProtectCloudTriggerV1Params>;
 	credentials?: VenafiTlsProtectCloudTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type VenafiTlsProtectCloudTriggerV1ParamsNode = VenafiTlsProtectCloudTriggerV1NodeBase & {
+	config: NodeConfig<VenafiTlsProtectCloudTriggerV1Params>;
 };
+
+export type VenafiTlsProtectCloudTriggerV1Node = VenafiTlsProtectCloudTriggerV1ParamsNode;

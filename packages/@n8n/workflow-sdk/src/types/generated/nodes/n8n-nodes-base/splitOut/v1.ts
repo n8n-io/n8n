@@ -1,8 +1,6 @@
 /**
  * Split Out Node - Version 1
  * Turn a list inside item(s) into separate items
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -37,12 +35,16 @@ export interface SplitOutV1Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type SplitOutV1Node = {
+interface SplitOutV1NodeBase {
 	type: 'n8n-nodes-base.splitOut';
 	version: 1;
+}
+
+export type SplitOutV1ParamsNode = SplitOutV1NodeBase & {
 	config: NodeConfig<SplitOutV1Params>;
-	credentials?: Record<string, never>;
 };
+
+export type SplitOutV1Node = SplitOutV1ParamsNode;

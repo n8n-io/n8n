@@ -1,8 +1,6 @@
 /**
  * Clearbit Node - Version 1
  * Consume Clearbit API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -55,6 +53,59 @@ export type ClearbitV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type ClearbitV1CompanyAutocompleteOutput = {
+	domain?: string;
+	name?: string;
+};
+
+export type ClearbitV1PersonEnrichOutput = {
+	bio?: null;
+	email?: string;
+	emailProvider?: boolean;
+	employment?: {
+		domain?: string;
+		name?: string;
+	};
+	facebook?: {
+		handle?: null;
+	};
+	fuzzy?: boolean;
+	googleplus?: {
+		handle?: null;
+	};
+	gravatar?: {
+		avatars?: Array<{
+			type?: string;
+			url?: string;
+		}>;
+	};
+	id?: string;
+	inactiveAt?: null;
+	indexedAt?: string;
+	name?: {
+		familyName?: string;
+		fullName?: string;
+		givenName?: string;
+	};
+	site?: null;
+	twitter?: {
+		avatar?: null;
+		bio?: null;
+		favorites?: null;
+		followers?: null;
+		following?: null;
+		handle?: null;
+		id?: null;
+		location?: null;
+		site?: null;
+		statuses?: null;
+	};
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -63,12 +114,31 @@ export interface ClearbitV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type ClearbitV1Node = {
+interface ClearbitV1NodeBase {
 	type: 'n8n-nodes-base.clearbit';
 	version: 1;
-	config: NodeConfig<ClearbitV1Params>;
 	credentials?: ClearbitV1Credentials;
+}
+
+export type ClearbitV1CompanyAutocompleteNode = ClearbitV1NodeBase & {
+	config: NodeConfig<ClearbitV1CompanyAutocompleteConfig>;
+	output?: ClearbitV1CompanyAutocompleteOutput;
 };
+
+export type ClearbitV1CompanyEnrichNode = ClearbitV1NodeBase & {
+	config: NodeConfig<ClearbitV1CompanyEnrichConfig>;
+};
+
+export type ClearbitV1PersonEnrichNode = ClearbitV1NodeBase & {
+	config: NodeConfig<ClearbitV1PersonEnrichConfig>;
+	output?: ClearbitV1PersonEnrichOutput;
+};
+
+export type ClearbitV1Node =
+	| ClearbitV1CompanyAutocompleteNode
+	| ClearbitV1CompanyEnrichNode
+	| ClearbitV1PersonEnrichNode
+	;

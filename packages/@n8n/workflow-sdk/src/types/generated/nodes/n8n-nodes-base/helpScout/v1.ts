@@ -1,8 +1,6 @@
 /**
  * Help Scout Node - Version 1
  * Consume Help Scout API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -325,6 +323,380 @@ export type HelpScoutV1Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type HelpScoutV1ConversationCreateOutput = {
+	_links?: {
+		closedBy?: {
+			href?: string;
+		};
+		createdByUser?: {
+			href?: string;
+		};
+		mailbox?: {
+			href?: string;
+		};
+		primaryCustomer?: {
+			href?: string;
+		};
+		self?: {
+			href?: string;
+		};
+		threads?: {
+			href?: string;
+		};
+		web?: {
+			href?: string;
+		};
+	};
+	closedBy?: number;
+	closedByUser?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		type?: string;
+	};
+	createdAt?: string;
+	createdBy?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		photoUrl?: string;
+		type?: string;
+	};
+	customerWaitingSince?: {
+		friendly?: string;
+		time?: string;
+	};
+	folderId?: number;
+	mailboxId?: number;
+	number?: number;
+	primaryCustomer?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		photoUrl?: string;
+		type?: string;
+	};
+	source?: {
+		type?: string;
+		via?: string;
+	};
+	state?: string;
+	status?: string;
+	subject?: string;
+	tags?: Array<{
+		color?: string;
+		id?: number;
+		tag?: string;
+	}>;
+	threads?: number;
+	type?: string;
+	userUpdatedAt?: string;
+};
+
+export type HelpScoutV1ConversationGetOutput = {
+	_links?: {
+		assignee?: {
+			href?: string;
+		};
+		closedBy?: {
+			href?: string;
+		};
+		createdByUser?: {
+			href?: string;
+		};
+		mailbox?: {
+			href?: string;
+		};
+		primaryCustomer?: {
+			href?: string;
+		};
+		self?: {
+			href?: string;
+		};
+		threads?: {
+			href?: string;
+		};
+		web?: {
+			href?: string;
+		};
+	};
+	assignee?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		type?: string;
+	};
+	cc?: Array<string>;
+	closedBy?: number;
+	closedByUser?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		type?: string;
+	};
+	createdAt?: string;
+	createdBy?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		type?: string;
+	};
+	customerWaitingSince?: {
+		friendly?: string;
+		time?: string;
+	};
+	customFields?: Array<{
+		id?: number;
+		name?: string;
+		text?: string;
+		value?: string;
+	}>;
+	folderId?: number;
+	id?: number;
+	mailboxId?: number;
+	number?: number;
+	preview?: string;
+	primaryCustomer?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		photoUrl?: string;
+		type?: string;
+	};
+	source?: {
+		type?: string;
+		via?: string;
+	};
+	state?: string;
+	status?: string;
+	subject?: string;
+	tags?: Array<{
+		color?: string;
+		id?: number;
+		tag?: string;
+	}>;
+	threads?: number;
+	type?: string;
+	userUpdatedAt?: string;
+};
+
+export type HelpScoutV1ConversationGetAllOutput = {
+	_embedded?: {
+		threads?: Array<{
+			_embedded?: {
+				attachments?: Array<{
+					_links?: {
+						data?: {
+							href?: string;
+						};
+						self?: {
+							href?: string;
+						};
+						web?: {
+							href?: string;
+						};
+					};
+					filename?: string;
+					height?: number;
+					id?: number;
+					mimeType?: string;
+					size?: number;
+					state?: string;
+					width?: number;
+				}>;
+			};
+			_links?: {
+				assignedTo?: {
+					href?: string;
+				};
+				createdByCustomer?: {
+					href?: string;
+				};
+				createdByUser?: {
+					href?: string;
+				};
+				customer?: {
+					href?: string;
+				};
+			};
+			action?: {
+				associatedEntities?: {
+					user?: number;
+				};
+				text?: string;
+				type?: string;
+			};
+			assignedTo?: {
+				email?: string;
+				first?: string;
+				id?: number;
+				last?: string;
+				photoUrl?: string;
+				type?: string;
+			};
+			body?: string;
+			createdAt?: string;
+			createdBy?: {
+				email?: string;
+				first?: string;
+				id?: number;
+				last?: string;
+				photoUrl?: string;
+				type?: string;
+			};
+			customer?: {
+				email?: string;
+				first?: string;
+				id?: number;
+				last?: string;
+				photoUrl?: string;
+			};
+			id?: number;
+			openedAt?: string;
+			savedReplyId?: number;
+			source?: {
+				type?: string;
+				via?: string;
+			};
+			state?: string;
+			status?: string;
+			to?: Array<string>;
+			type?: string;
+		}>;
+	};
+	_links?: {
+		closedBy?: {
+			href?: string;
+		};
+		createdByCustomer?: {
+			href?: string;
+		};
+		mailbox?: {
+			href?: string;
+		};
+		primaryCustomer?: {
+			href?: string;
+		};
+		self?: {
+			href?: string;
+		};
+		threads?: {
+			href?: string;
+		};
+		web?: {
+			href?: string;
+		};
+	};
+	bcc?: Array<string>;
+	cc?: Array<string>;
+	closedBy?: number;
+	closedByUser?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		type?: string;
+	};
+	createdAt?: string;
+	createdBy?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		photoUrl?: string;
+		type?: string;
+	};
+	customerWaitingSince?: {
+		friendly?: string;
+		time?: string;
+	};
+	customFields?: Array<{
+		id?: number;
+		name?: string;
+		text?: string;
+		value?: string;
+	}>;
+	folderId?: number;
+	id?: number;
+	mailboxId?: number;
+	number?: number;
+	preview?: string;
+	primaryCustomer?: {
+		email?: string;
+		first?: string;
+		id?: number;
+		last?: string;
+		photoUrl?: string;
+		type?: string;
+	};
+	source?: {
+		type?: string;
+		via?: string;
+	};
+	state?: string;
+	status?: string;
+	subject?: string;
+	tags?: Array<{
+		color?: string;
+		id?: number;
+		tag?: string;
+	}>;
+	threads?: number;
+	type?: string;
+	userUpdatedAt?: string;
+};
+
+export type HelpScoutV1MailboxGetOutput = {
+	_links?: {
+		fields?: {
+			href?: string;
+		};
+		folders?: {
+			href?: string;
+		};
+		self?: {
+			href?: string;
+		};
+	};
+	createdAt?: string;
+	email?: string;
+	id?: number;
+	name?: string;
+	slug?: string;
+	updatedAt?: string;
+};
+
+export type HelpScoutV1MailboxGetAllOutput = {
+	_links?: {
+		fields?: {
+			href?: string;
+		};
+		folders?: {
+			href?: string;
+		};
+		self?: {
+			href?: string;
+		};
+	};
+	createdAt?: string;
+	email?: string;
+	id?: number;
+	name?: string;
+	slug?: string;
+	updatedAt?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -333,12 +705,84 @@ export interface HelpScoutV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type HelpScoutV1Node = {
+interface HelpScoutV1NodeBase {
 	type: 'n8n-nodes-base.helpScout';
 	version: 1;
-	config: NodeConfig<HelpScoutV1Params>;
 	credentials?: HelpScoutV1Credentials;
+}
+
+export type HelpScoutV1ConversationCreateNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1ConversationCreateConfig>;
+	output?: HelpScoutV1ConversationCreateOutput;
 };
+
+export type HelpScoutV1ConversationDeleteNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1ConversationDeleteConfig>;
+};
+
+export type HelpScoutV1ConversationGetNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1ConversationGetConfig>;
+	output?: HelpScoutV1ConversationGetOutput;
+};
+
+export type HelpScoutV1ConversationGetAllNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1ConversationGetAllConfig>;
+	output?: HelpScoutV1ConversationGetAllOutput;
+};
+
+export type HelpScoutV1CustomerCreateNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1CustomerCreateConfig>;
+};
+
+export type HelpScoutV1CustomerGetNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1CustomerGetConfig>;
+};
+
+export type HelpScoutV1CustomerGetAllNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1CustomerGetAllConfig>;
+};
+
+export type HelpScoutV1CustomerPropertiesNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1CustomerPropertiesConfig>;
+};
+
+export type HelpScoutV1CustomerUpdateNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1CustomerUpdateConfig>;
+};
+
+export type HelpScoutV1MailboxGetNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1MailboxGetConfig>;
+	output?: HelpScoutV1MailboxGetOutput;
+};
+
+export type HelpScoutV1MailboxGetAllNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1MailboxGetAllConfig>;
+	output?: HelpScoutV1MailboxGetAllOutput;
+};
+
+export type HelpScoutV1ThreadCreateNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1ThreadCreateConfig>;
+};
+
+export type HelpScoutV1ThreadGetAllNode = HelpScoutV1NodeBase & {
+	config: NodeConfig<HelpScoutV1ThreadGetAllConfig>;
+};
+
+export type HelpScoutV1Node =
+	| HelpScoutV1ConversationCreateNode
+	| HelpScoutV1ConversationDeleteNode
+	| HelpScoutV1ConversationGetNode
+	| HelpScoutV1ConversationGetAllNode
+	| HelpScoutV1CustomerCreateNode
+	| HelpScoutV1CustomerGetNode
+	| HelpScoutV1CustomerGetAllNode
+	| HelpScoutV1CustomerPropertiesNode
+	| HelpScoutV1CustomerUpdateNode
+	| HelpScoutV1MailboxGetNode
+	| HelpScoutV1MailboxGetAllNode
+	| HelpScoutV1ThreadCreateNode
+	| HelpScoutV1ThreadGetAllNode
+	;

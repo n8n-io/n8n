@@ -1,8 +1,6 @@
 /**
  * If Node - Version 2.1
  * Route items to different branches (true/false)
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -26,12 +24,16 @@ export interface IfV21Params {
 // ===========================================================================
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type IfV21Node = {
+interface IfV21NodeBase {
 	type: 'n8n-nodes-base.if';
 	version: 2.1;
+}
+
+export type IfV21ParamsNode = IfV21NodeBase & {
 	config: NodeConfig<IfV21Params>;
-	credentials?: Record<string, never>;
 };
+
+export type IfV21Node = IfV21ParamsNode;

@@ -1,8 +1,6 @@
 /**
  * Google Sheets Node - Version 3
  * Read, update and write data to Google Sheets
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -268,12 +266,64 @@ export interface GoogleSheetsV3Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type GoogleSheetsV3Node = {
+interface GoogleSheetsV3NodeBase {
 	type: 'n8n-nodes-base.googleSheets';
 	version: 3;
-	config: NodeConfig<GoogleSheetsV3Params>;
 	credentials?: GoogleSheetsV3Credentials;
+}
+
+export type GoogleSheetsV3SpreadsheetCreateNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SpreadsheetCreateConfig>;
 };
+
+export type GoogleSheetsV3SpreadsheetDeleteSpreadsheetNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SpreadsheetDeleteSpreadsheetConfig>;
+};
+
+export type GoogleSheetsV3SheetAppendOrUpdateNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SheetAppendOrUpdateConfig>;
+};
+
+export type GoogleSheetsV3SheetAppendNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SheetAppendConfig>;
+};
+
+export type GoogleSheetsV3SheetClearNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SheetClearConfig>;
+};
+
+export type GoogleSheetsV3SheetCreateNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SheetCreateConfig>;
+};
+
+export type GoogleSheetsV3SheetRemoveNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SheetRemoveConfig>;
+};
+
+export type GoogleSheetsV3SheetDeleteNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SheetDeleteConfig>;
+};
+
+export type GoogleSheetsV3SheetReadNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SheetReadConfig>;
+};
+
+export type GoogleSheetsV3SheetUpdateNode = GoogleSheetsV3NodeBase & {
+	config: NodeConfig<GoogleSheetsV3SheetUpdateConfig>;
+};
+
+export type GoogleSheetsV3Node =
+	| GoogleSheetsV3SpreadsheetCreateNode
+	| GoogleSheetsV3SpreadsheetDeleteSpreadsheetNode
+	| GoogleSheetsV3SheetAppendOrUpdateNode
+	| GoogleSheetsV3SheetAppendNode
+	| GoogleSheetsV3SheetClearNode
+	| GoogleSheetsV3SheetCreateNode
+	| GoogleSheetsV3SheetRemoveNode
+	| GoogleSheetsV3SheetDeleteNode
+	| GoogleSheetsV3SheetReadNode
+	| GoogleSheetsV3SheetUpdateNode
+	;

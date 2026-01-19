@@ -1,8 +1,6 @@
 /**
  * OpenAI Node - Version 1.4
  * Message an assistant or GPT, analyze images, generate audio, etc.
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -312,12 +310,89 @@ export interface LcOpenAiV14Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type LcOpenAiV14Node = {
+interface LcOpenAiV14NodeBase {
 	type: '@n8n/n8n-nodes-langchain.openAi';
 	version: 1.4;
-	config: NodeConfig<LcOpenAiV14Params>;
 	credentials?: LcOpenAiV14Credentials;
+}
+
+export type LcOpenAiV14AssistantCreateNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14AssistantCreateConfig>;
 };
+
+export type LcOpenAiV14AssistantDeleteAssistantNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14AssistantDeleteAssistantConfig>;
+};
+
+export type LcOpenAiV14AssistantListNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14AssistantListConfig>;
+};
+
+export type LcOpenAiV14AssistantMessageNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14AssistantMessageConfig>;
+};
+
+export type LcOpenAiV14AssistantUpdateNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14AssistantUpdateConfig>;
+};
+
+export type LcOpenAiV14TextMessageNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14TextMessageConfig>;
+};
+
+export type LcOpenAiV14TextClassifyNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14TextClassifyConfig>;
+};
+
+export type LcOpenAiV14ImageAnalyzeNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14ImageAnalyzeConfig>;
+};
+
+export type LcOpenAiV14ImageGenerateNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14ImageGenerateConfig>;
+};
+
+export type LcOpenAiV14AudioGenerateNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14AudioGenerateConfig>;
+};
+
+export type LcOpenAiV14AudioTranscribeNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14AudioTranscribeConfig>;
+};
+
+export type LcOpenAiV14AudioTranslateNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14AudioTranslateConfig>;
+};
+
+export type LcOpenAiV14FileDeleteFileNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14FileDeleteFileConfig>;
+};
+
+export type LcOpenAiV14FileListNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14FileListConfig>;
+};
+
+export type LcOpenAiV14FileUploadNode = LcOpenAiV14NodeBase & {
+	config: NodeConfig<LcOpenAiV14FileUploadConfig>;
+};
+
+export type LcOpenAiV14Node =
+	| LcOpenAiV14AssistantCreateNode
+	| LcOpenAiV14AssistantDeleteAssistantNode
+	| LcOpenAiV14AssistantListNode
+	| LcOpenAiV14AssistantMessageNode
+	| LcOpenAiV14AssistantUpdateNode
+	| LcOpenAiV14TextMessageNode
+	| LcOpenAiV14TextClassifyNode
+	| LcOpenAiV14ImageAnalyzeNode
+	| LcOpenAiV14ImageGenerateNode
+	| LcOpenAiV14AudioGenerateNode
+	| LcOpenAiV14AudioTranscribeNode
+	| LcOpenAiV14AudioTranslateNode
+	| LcOpenAiV14FileDeleteFileNode
+	| LcOpenAiV14FileListNode
+	| LcOpenAiV14FileUploadNode
+	;

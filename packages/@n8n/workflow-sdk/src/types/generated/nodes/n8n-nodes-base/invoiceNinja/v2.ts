@@ -1,8 +1,6 @@
 /**
  * Invoice Ninja Node - Version 2
  * Consume Invoice Ninja API
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -532,6 +530,110 @@ export type InvoiceNinjaV2Params =
 	;
 
 // ===========================================================================
+// Output Types
+// ===========================================================================
+
+export type InvoiceNinjaV2InvoiceGetAllOutput = {
+	archived_at?: number;
+	assigned_user_id?: string;
+	auto_bill_enabled?: boolean;
+	balance?: number;
+	client_id?: string;
+	created_at?: number;
+	custom_surcharge_tax1?: boolean;
+	custom_surcharge_tax2?: boolean;
+	custom_surcharge_tax3?: boolean;
+	custom_surcharge_tax4?: boolean;
+	custom_surcharge1?: number;
+	custom_surcharge2?: number;
+	custom_surcharge3?: number;
+	custom_surcharge4?: number;
+	custom_value1?: string;
+	custom_value2?: string;
+	custom_value3?: string;
+	custom_value4?: string;
+	date?: string;
+	design_id?: string;
+	discount?: number;
+	due_date?: string;
+	entity_type?: string;
+	exchange_rate?: number;
+	footer?: string;
+	has_expenses?: boolean;
+	has_tasks?: boolean;
+	id?: string;
+	invitations?: Array<{
+		archived_at?: number;
+		client_contact_id?: string;
+		created_at?: number;
+		email_error?: string;
+		email_status?: string;
+		id?: string;
+		key?: string;
+		link?: string;
+		message_id?: string;
+		opened_date?: string;
+		sent_date?: string;
+		updated_at?: number;
+		viewed_date?: string;
+	}>;
+	is_amount_discount?: boolean;
+	is_deleted?: boolean;
+	last_sent_date?: string;
+	line_items?: Array<{
+		_id?: string;
+		custom_value1?: string;
+		custom_value2?: string;
+		custom_value3?: string;
+		custom_value4?: string;
+		date?: string;
+		discount?: number;
+		expense_id?: string;
+		is_amount_discount?: boolean;
+		notes?: string;
+		product_cost?: number;
+		product_key?: string;
+		sort_id?: string;
+		task_id?: string;
+		tax_amount?: number;
+		tax_id?: string;
+		tax_name1?: string;
+		tax_name2?: string;
+		tax_name3?: string;
+		tax_rate1?: number;
+		tax_rate2?: number;
+		tax_rate3?: number;
+		type_id?: string;
+		unit_code?: string;
+	}>;
+	next_send_date?: string;
+	number?: string;
+	partial?: number;
+	partial_due_date?: string;
+	po_number?: string;
+	private_notes?: string;
+	project_id?: string;
+	public_notes?: string;
+	recurring_id?: string;
+	reminder_last_sent?: string;
+	reminder1_sent?: string;
+	reminder2_sent?: string;
+	reminder3_sent?: string;
+	status_id?: string;
+	subscription_id?: string;
+	tax_name1?: string;
+	tax_name2?: string;
+	tax_name3?: string;
+	tax_rate2?: number;
+	tax_rate3?: number;
+	terms?: string;
+	updated_at?: number;
+	user_id?: string;
+	uses_inclusive_taxes?: boolean;
+	vendor_id?: string;
+};
+
+// ===========================================================================
 // Credentials
 // ===========================================================================
 
@@ -540,12 +642,170 @@ export interface InvoiceNinjaV2Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type InvoiceNinjaV2Node = {
+interface InvoiceNinjaV2NodeBase {
 	type: 'n8n-nodes-base.invoiceNinja';
 	version: 2;
-	config: NodeConfig<InvoiceNinjaV2Params>;
 	credentials?: InvoiceNinjaV2Credentials;
+}
+
+export type InvoiceNinjaV2BankTransactionCreateNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2BankTransactionCreateConfig>;
 };
+
+export type InvoiceNinjaV2BankTransactionDeleteNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2BankTransactionDeleteConfig>;
+};
+
+export type InvoiceNinjaV2BankTransactionGetNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2BankTransactionGetConfig>;
+};
+
+export type InvoiceNinjaV2BankTransactionGetAllNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2BankTransactionGetAllConfig>;
+};
+
+export type InvoiceNinjaV2BankTransactionMatchPaymentNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2BankTransactionMatchPaymentConfig>;
+};
+
+export type InvoiceNinjaV2ClientCreateNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2ClientCreateConfig>;
+};
+
+export type InvoiceNinjaV2ClientDeleteNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2ClientDeleteConfig>;
+};
+
+export type InvoiceNinjaV2ClientGetNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2ClientGetConfig>;
+};
+
+export type InvoiceNinjaV2ClientGetAllNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2ClientGetAllConfig>;
+};
+
+export type InvoiceNinjaV2ExpenseCreateNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2ExpenseCreateConfig>;
+};
+
+export type InvoiceNinjaV2ExpenseDeleteNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2ExpenseDeleteConfig>;
+};
+
+export type InvoiceNinjaV2ExpenseGetNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2ExpenseGetConfig>;
+};
+
+export type InvoiceNinjaV2ExpenseGetAllNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2ExpenseGetAllConfig>;
+};
+
+export type InvoiceNinjaV2InvoiceCreateNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2InvoiceCreateConfig>;
+};
+
+export type InvoiceNinjaV2InvoiceDeleteNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2InvoiceDeleteConfig>;
+};
+
+export type InvoiceNinjaV2InvoiceEmailNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2InvoiceEmailConfig>;
+};
+
+export type InvoiceNinjaV2InvoiceGetNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2InvoiceGetConfig>;
+};
+
+export type InvoiceNinjaV2InvoiceGetAllNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2InvoiceGetAllConfig>;
+	output?: InvoiceNinjaV2InvoiceGetAllOutput;
+};
+
+export type InvoiceNinjaV2PaymentCreateNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2PaymentCreateConfig>;
+};
+
+export type InvoiceNinjaV2PaymentDeleteNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2PaymentDeleteConfig>;
+};
+
+export type InvoiceNinjaV2PaymentGetNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2PaymentGetConfig>;
+};
+
+export type InvoiceNinjaV2PaymentGetAllNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2PaymentGetAllConfig>;
+};
+
+export type InvoiceNinjaV2QuoteCreateNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2QuoteCreateConfig>;
+};
+
+export type InvoiceNinjaV2QuoteDeleteNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2QuoteDeleteConfig>;
+};
+
+export type InvoiceNinjaV2QuoteEmailNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2QuoteEmailConfig>;
+};
+
+export type InvoiceNinjaV2QuoteGetNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2QuoteGetConfig>;
+};
+
+export type InvoiceNinjaV2QuoteGetAllNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2QuoteGetAllConfig>;
+};
+
+export type InvoiceNinjaV2TaskCreateNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2TaskCreateConfig>;
+};
+
+export type InvoiceNinjaV2TaskDeleteNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2TaskDeleteConfig>;
+};
+
+export type InvoiceNinjaV2TaskGetNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2TaskGetConfig>;
+};
+
+export type InvoiceNinjaV2TaskGetAllNode = InvoiceNinjaV2NodeBase & {
+	config: NodeConfig<InvoiceNinjaV2TaskGetAllConfig>;
+};
+
+export type InvoiceNinjaV2Node =
+	| InvoiceNinjaV2BankTransactionCreateNode
+	| InvoiceNinjaV2BankTransactionDeleteNode
+	| InvoiceNinjaV2BankTransactionGetNode
+	| InvoiceNinjaV2BankTransactionGetAllNode
+	| InvoiceNinjaV2BankTransactionMatchPaymentNode
+	| InvoiceNinjaV2ClientCreateNode
+	| InvoiceNinjaV2ClientDeleteNode
+	| InvoiceNinjaV2ClientGetNode
+	| InvoiceNinjaV2ClientGetAllNode
+	| InvoiceNinjaV2ExpenseCreateNode
+	| InvoiceNinjaV2ExpenseDeleteNode
+	| InvoiceNinjaV2ExpenseGetNode
+	| InvoiceNinjaV2ExpenseGetAllNode
+	| InvoiceNinjaV2InvoiceCreateNode
+	| InvoiceNinjaV2InvoiceDeleteNode
+	| InvoiceNinjaV2InvoiceEmailNode
+	| InvoiceNinjaV2InvoiceGetNode
+	| InvoiceNinjaV2InvoiceGetAllNode
+	| InvoiceNinjaV2PaymentCreateNode
+	| InvoiceNinjaV2PaymentDeleteNode
+	| InvoiceNinjaV2PaymentGetNode
+	| InvoiceNinjaV2PaymentGetAllNode
+	| InvoiceNinjaV2QuoteCreateNode
+	| InvoiceNinjaV2QuoteDeleteNode
+	| InvoiceNinjaV2QuoteEmailNode
+	| InvoiceNinjaV2QuoteGetNode
+	| InvoiceNinjaV2QuoteGetAllNode
+	| InvoiceNinjaV2TaskCreateNode
+	| InvoiceNinjaV2TaskDeleteNode
+	| InvoiceNinjaV2TaskGetNode
+	| InvoiceNinjaV2TaskGetAllNode
+	;

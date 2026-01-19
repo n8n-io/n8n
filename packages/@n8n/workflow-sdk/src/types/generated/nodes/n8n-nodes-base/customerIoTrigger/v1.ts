@@ -1,8 +1,6 @@
 /**
  * Customer.io Trigger Node - Version 1
  * Starts the workflow on a Customer.io update (Beta)
- *
- * @generated - Do not edit manually. Run `pnpm generate-types` to regenerate.
  */
 
 // @ts-nocheck - Generated file may have unused imports
@@ -30,13 +28,18 @@ export interface CustomerIoTriggerV1Credentials {
 }
 
 // ===========================================================================
-// Node Type
+// Node Types
 // ===========================================================================
 
-export type CustomerIoTriggerV1Node = {
+interface CustomerIoTriggerV1NodeBase {
 	type: 'n8n-nodes-base.customerIoTrigger';
 	version: 1;
-	config: NodeConfig<CustomerIoTriggerV1Params>;
 	credentials?: CustomerIoTriggerV1Credentials;
 	isTrigger: true;
+}
+
+export type CustomerIoTriggerV1ParamsNode = CustomerIoTriggerV1NodeBase & {
+	config: NodeConfig<CustomerIoTriggerV1Params>;
 };
+
+export type CustomerIoTriggerV1Node = CustomerIoTriggerV1ParamsNode;
