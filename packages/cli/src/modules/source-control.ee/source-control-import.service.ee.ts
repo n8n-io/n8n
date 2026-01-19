@@ -1,4 +1,4 @@
-import type { SourceControlledFile } from '@n8n/api-types';
+import type { AutoPublishMode, SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
@@ -638,7 +638,11 @@ export class SourceControlImportService {
 		};
 	}
 
-	async importWorkflowFromWorkFolder(candidates: SourceControlledFile[], userId: string) {
+	async importWorkflowFromWorkFolder(
+		candidates: SourceControlledFile[],
+		userId: string,
+		autoPublish: AutoPublishMode = 'none',
+	) {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
@@ -670,18 +674,38 @@ export class SourceControlImportService {
 			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
 			// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
 			// In that case, we deactivate the existing workflow on pull and turn it archived.
-			if (existingWorkflow) {
-				if (importedWorkflow.isArchived) {
-					importedWorkflow.active = false;
-					importedWorkflow.activeVersionId = null;
-				} else {
-					importedWorkflow.active = !!existingWorkflow.activeVersionId;
-					importedWorkflow.activeVersionId = existingWorkflow.activeVersionId;
-				}
-			} else {
+			// The autoPublish parameter can override this behavior to auto-activate workflows.
+
+			const shouldActivate = this.shouldActivateWorkflow(
+				existingWorkflow,
+				importedWorkflow,
+				autoPublish,
+			);
+
+			const shouldDeactivate =
+				existingWorkflow &&
+				this.shouldDeactivateWorkflow(existingWorkflow, importedWorkflow, shouldActivate);
+			if (shouldDeactivate && existingWorkflow) {
+				await this.deactivateImportedWorkflow(existingWorkflow.id, userId);
+			}
+
+			// Always update versionId to a new one on import to ensure fresh version
+			importedWorkflow.versionId = uuid();
+
+			// Set active state for upsert
+			if (shouldDeactivate) {
+				// We will activate the workflow later if needed
 				importedWorkflow.active = false;
 				importedWorkflow.activeVersionId = null;
-				importedWorkflow.versionId = importedWorkflow.versionId ?? uuid();
+			} else if (existingWorkflow) {
+				// Preserve existing active state
+				importedWorkflow.active = !!existingWorkflow.activeVersionId;
+				importedWorkflow.activeVersionId = existingWorkflow.activeVersionId;
+			} else {
+				// New workflow - start inactive
+				// It will be activated later if needed
+				importedWorkflow.active = false;
+				importedWorkflow.activeVersionId = null;
 			}
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
@@ -715,10 +739,10 @@ export class SourceControlImportService {
 				repository: this.sharedWorkflowRepository,
 			});
 
-			await this.activateImportedWorkflowIfAlreadyActive(
-				{ existingWorkflow, importedWorkflow },
-				userId,
-			);
+			// Now activate the workflow if needed (after history is saved)
+			if (shouldActivate) {
+				await this.activateImportedWorkflow(importedWorkflow, userId);
+			}
 
 			importWorkflowsResult.push({
 				id: importedWorkflow.id ?? 'unknown',
@@ -745,50 +769,72 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async activateImportedWorkflowIfAlreadyActive(
-		{
-			existingWorkflow,
-			importedWorkflow,
-		}: {
-			existingWorkflow?: WorkflowEntity;
-			importedWorkflow: IWorkflowToImport;
-		},
-		userId: string,
-	) {
-		if (!existingWorkflow?.activeVersionId) return;
-		let didAdd = false;
-		const newVersionId = importedWorkflow.versionId ?? uuid();
+	private shouldActivateWorkflow(
+		existingWorkflow: WorkflowEntity | undefined,
+		importedWorkflow: IWorkflowToImport,
+		autoPublish: AutoPublishMode,
+	): boolean {
+		// Archived workflows should never be activated
+		if (importedWorkflow.isArchived) {
+			return false;
+		}
+
+		if (autoPublish === 'all') {
+			return true;
+		}
+
+		const wasActive = !!existingWorkflow?.activeVersionId;
+
+		if (autoPublish === 'published' && wasActive) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private shouldDeactivateWorkflow(
+		existingWorkflow: WorkflowEntity,
+		importedWorkflow: IWorkflowToImport,
+		shouldActivate: boolean,
+	): boolean {
+		const wasActive = !!existingWorkflow.activeVersionId;
+		if (!wasActive) {
+			return false;
+		}
+
+		if (importedWorkflow.isArchived) {
+			return true;
+		}
+
+		return shouldActivate;
+	}
+
+	private async deactivateImportedWorkflow(workflowId: string, userId: string) {
+		const user = await this.userRepository.findOneByOrFail({ id: userId });
 
 		try {
-			// remove active pre-import workflow
-			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-			await this.activeWorkflowManager.remove(existingWorkflow.id);
-
-			// If the workflow should be active (was active before and not archived),
-			// reactivate it with the new version
-			if (importedWorkflow.activeVersionId && !importedWorkflow.isArchived) {
-				// Activate the workflow with the new published version
-				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
-				didAdd = true;
-			}
+			this.logger.debug(`Deactivating workflow id ${workflowId} before import`);
+			await this.workflowService.deactivateWorkflow(user, workflowId);
 		} catch (e) {
 			const error = ensureError(e);
-			this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });
-		} finally {
-			// update the versionId of the workflow to match the imported workflow
-			await this.workflowRepository.update(
-				{ id: existingWorkflow.id },
-				{ versionId: newVersionId },
-			);
+			this.logger.error(`Failed to deactivate workflow ${workflowId}`, { error });
+			throw error;
+		}
+	}
 
-			// Add record to workflow publish history
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId: existingWorkflow.id,
-				versionId: didAdd ? newVersionId : existingWorkflow.activeVersionId,
-				event: didAdd ? 'activated' : 'deactivated',
-				userId,
+	private async activateImportedWorkflow(importedWorkflow: IWorkflowToImport, userId: string) {
+		const versionId = importedWorkflow.versionId!;
+		const user = await this.userRepository.findOneByOrFail({ id: userId });
+
+		try {
+			this.logger.debug(`Activating imported workflow id ${importedWorkflow.id}`);
+			await this.workflowService.activateWorkflow(user, importedWorkflow.id, {
+				versionId,
 			});
+		} catch (e) {
+			const error = ensureError(e);
+			this.logger.error(`Failed to activate workflow ${importedWorkflow.id}`, { error });
+			throw error;
 		}
 	}
 

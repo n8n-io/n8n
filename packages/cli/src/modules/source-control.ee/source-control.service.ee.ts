@@ -501,6 +501,7 @@ export class SourceControlService {
 		await this.sourceControlImportService.importWorkflowFromWorkFolder(
 			workflowsToBeImported,
 			user.id,
+			options.autoPublish,
 		);
 		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
 		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
