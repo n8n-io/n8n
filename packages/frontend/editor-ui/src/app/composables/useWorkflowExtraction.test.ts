@@ -116,7 +116,7 @@ describe('useWorkflowExtraction', () => {
 
 			workflowsStore.publishWorkflow = vi.fn(
 				async () => ({}),
-			) as typeof workflowsStore.publishWorkflow;
+			) as unknown as typeof workflowsStore.publishWorkflow;
 
 			// Mock node type descriptions
 			nodeTypesStore.getNodeType = vi.fn(() => ({
@@ -197,7 +197,7 @@ describe('useWorkflowExtraction', () => {
 
 			workflowsStore.publishWorkflow = vi.fn(
 				async () => ({}),
-			) as typeof workflowsStore.publishWorkflow;
+			) as unknown as typeof workflowsStore.publishWorkflow;
 
 			// Mock node type descriptions
 			nodeTypesStore.getNodeType = vi.fn(() => ({
@@ -287,7 +287,7 @@ describe('useWorkflowExtraction', () => {
 
 			workflowsStore.publishWorkflow = vi.fn(
 				async () => ({}),
-			) as typeof workflowsStore.publishWorkflow;
+			) as unknown as typeof workflowsStore.publishWorkflow;
 
 			nodeTypesStore.getNodeType = vi.fn(() => ({
 				name: 'n8n-nodes-base.code',
