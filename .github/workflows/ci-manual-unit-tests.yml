@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: Create pending check run on PR
         id: create
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -88,7 +88,7 @@ jobs:
     steps:
       - name: Update check run on PR (if triggered from PR comment)
         if: inputs.pr_number != ''
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
