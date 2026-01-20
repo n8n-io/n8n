@@ -1,5 +1,5 @@
 import { nextTick, onScopeDispose } from 'vue';
-import type { Node, Edge, VueFlowStore, Connection } from '@vue-flow/core';
+import type { Node, Edge, VueFlowStore, ValidConnectionFunc } from '@vue-flow/core';
 import type { WorkflowDocument, WorkflowNode, WorkflowEdge } from '../types/workflowDocument.types';
 import { useConnectionValidation } from './useConnectionValidation';
 
@@ -62,7 +62,7 @@ export interface UseCanvasSyncResult {
 	initialNodes: Node[];
 	initialEdges: Edge[];
 	/** Validation function for Vue Flow's :is-valid-connection prop */
-	isValidConnection: (connection: Connection) => boolean;
+	isValidConnection: ValidConnectionFunc;
 }
 
 /**
@@ -92,7 +92,7 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 	const { doc, instance } = options;
 
 	// --- Connection validation ---
-	const { isValidConnection, validateConnection } = useConnectionValidation({ doc });
+	const { isValidConnection } = useConnectionValidation({ doc });
 
 	// --- Initial data for Vue Flow ---
 	const initialNodes = doc.getNodes().map(toVueFlowNode);
@@ -110,8 +110,13 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 		doc.updateNodePositions(updates);
 	});
 
-	// Wire node removal events to document
+	// Handle all node changes - apply to Vue Flow first, then sync to CRDT
+	// With :apply-default="false", we must manually call applyNodeChanges
 	const unsubNodesChange = instance.onNodesChange((changes) => {
+		// Apply changes to Vue Flow state first
+		instance.applyNodeChanges(changes);
+
+		// Then sync relevant changes to CRDT document
 		for (const change of changes) {
 			if (change.type === 'remove') {
 				doc.removeNode(change.id);
@@ -121,16 +126,9 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 
 	// --- Local → Document: Edges ---
 
-	// Wire connection creation to CRDT document (with validation)
+	// Wire connection creation to CRDT document
+	// Note: isValidConnection on VueFlow already prevents invalid connections
 	const unsubConnect = instance.onConnect((connection) => {
-		// Validate the connection before adding
-		// Vue Flow's isValidConnection prevents most invalid connections visually,
-		// but we double-check here for safety (e.g., programmatic connections)
-		const validation = validateConnection(connection);
-		if (!validation.valid) {
-			return;
-		}
-
 		const edgeId = createEdgeId(
 			connection.source,
 			connection.target,
@@ -141,7 +139,7 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 		const sourceHandle = connection.sourceHandle ?? 'outputs/main/0';
 		const targetHandle = connection.targetHandle ?? 'inputs/main/0';
 
-		// Add to Vue Flow FIRST (before CRDT, to avoid duplicate check failing)
+		// Add to Vue Flow for immediate local rendering
 		instance.addEdges([
 			{
 				id: edgeId,
@@ -152,7 +150,7 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 			},
 		]);
 
-		// Then add to CRDT for persistence and sync
+		// Add to CRDT for persistence and remote sync
 		doc.addEdge({
 			id: edgeId,
 			source: connection.source,
@@ -162,8 +160,13 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 		});
 	});
 
-	// Wire edge removal to CRDT document
+	// Handle all edge changes - apply to Vue Flow first, then sync to CRDT
+	// With :apply-default="false", we must manually call applyEdgeChanges
 	const unsubEdgesChange = instance.onEdgesChange((changes) => {
+		// Apply changes to Vue Flow state first
+		instance.applyEdgeChanges(changes);
+
+		// Then sync relevant changes to CRDT document
 		for (const change of changes) {
 			if (change.type === 'remove') {
 				doc.removeEdge(change.id);

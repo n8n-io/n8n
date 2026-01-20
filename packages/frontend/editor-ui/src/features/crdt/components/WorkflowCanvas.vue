@@ -85,6 +85,7 @@ const zoom = computed(() => instance.viewport.value.zoom);
 			:min-zoom="0"
 			:max-zoom="4"
 			edges-selectable
+			:apply-default="false"
 		>
 			<!-- Cursors rendered inside viewport (like React Flow's edgelabel-renderer) -->
 			<template #zoom-pane>

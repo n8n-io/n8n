@@ -1,9 +1,13 @@
-import type { Connection } from '@vue-flow/core';
-import type {
-	WorkflowDocument,
-	WorkflowEdge,
-	ComputedHandle,
-} from '../types/workflowDocument.types';
+import type { Connection, ValidConnectionFunc } from '@vue-flow/core';
+import type { WorkflowDocument, ComputedHandle } from '../types/workflowDocument.types';
+
+/** Common edge interface for both Vue Flow and Workflow edges */
+interface EdgeLike {
+	source: string;
+	target: string;
+	sourceHandle?: string | null;
+	targetHandle?: string | null;
+}
 
 /**
  * Parse a handle string into its components.
@@ -25,7 +29,7 @@ export function parseHandle(handle: string | null | undefined): {
  * Count existing connections for a specific handle.
  */
 export function countConnectionsForHandle(
-	edges: WorkflowEdge[],
+	edges: EdgeLike[],
 	nodeId: string,
 	handleString: string,
 ): number {
@@ -72,18 +76,15 @@ export interface UseConnectionValidationOptions {
  * - Enforces maxConnections limits on handles
  * - Prevents self-connections (node connecting to itself)
  *
+ * Note: Duplicate connection detection is handled by Vue Flow internally
+ * via `connectionExists()` in `addEdgeToStore()`.
+ *
  * @example
  * ```ts
- * const { isValidConnection, validateConnection } = useConnectionValidation({ doc });
+ * const { isValidConnection } = useConnectionValidation({ doc });
  *
  * // Use with Vue Flow
  * <VueFlow :is-valid-connection="isValidConnection" />
- *
- * // Or check programmatically
- * const result = validateConnection(connection);
- * if (!result.valid) {
- *   console.log('Invalid:', result.reason);
- * }
  * ```
  */
 export function useConnectionValidation(options: UseConnectionValidationOptions) {
@@ -91,8 +92,12 @@ export function useConnectionValidation(options: UseConnectionValidationOptions)
 
 	/**
 	 * Validate a connection with detailed reason.
+	 * Uses edges provided by Vue Flow's ValidConnectionFunc callback.
 	 */
-	function validateConnection(connection: Connection): ConnectionValidationResult {
+	function validateConnection(
+		connection: Connection,
+		edges: EdgeLike[],
+	): ConnectionValidationResult {
 		const { source, target, sourceHandle, targetHandle } = connection;
 
 		// 1. Prevent self-connections
@@ -118,7 +123,7 @@ export function useConnectionValidation(options: UseConnectionValidationOptions)
 			};
 		}
 
-		// 5. Check maxConnections limits
+		// 5. Check maxConnections limits using edges from Vue Flow
 		const sourceNode = doc.findNode(source);
 		const targetNode = doc.findNode(target);
 
@@ -130,7 +135,7 @@ export function useConnectionValidation(options: UseConnectionValidationOptions)
 		if (sourceHandle) {
 			const sourceHandleMeta = findHandleMetadata(sourceNode.outputs, sourceHandle);
 			if (sourceHandleMeta?.maxConnections !== undefined) {
-				const currentCount = countConnectionsForHandle(doc.getEdges(), source, sourceHandle);
+				const currentCount = countConnectionsForHandle(edges, source, sourceHandle);
 				if (currentCount >= sourceHandleMeta.maxConnections) {
 					return {
 						valid: false,
@@ -144,7 +149,7 @@ export function useConnectionValidation(options: UseConnectionValidationOptions)
 		if (targetHandle) {
 			const targetHandleMeta = findHandleMetadata(targetNode.inputs, targetHandle);
 			if (targetHandleMeta?.maxConnections !== undefined) {
-				const currentCount = countConnectionsForHandle(doc.getEdges(), target, targetHandle);
+				const currentCount = countConnectionsForHandle(edges, target, targetHandle);
 				if (currentCount >= targetHandleMeta.maxConnections) {
 					return {
 						valid: false,
@@ -154,34 +159,24 @@ export function useConnectionValidation(options: UseConnectionValidationOptions)
 			}
 		}
 
-		// 6. Check for duplicate connections
-		const edges = doc.getEdges();
-		const duplicate = edges.some(
-			(edge) =>
-				edge.source === source &&
-				edge.target === target &&
-				edge.sourceHandle === sourceHandle &&
-				edge.targetHandle === targetHandle,
-		);
-		if (duplicate) {
-			return { valid: false, reason: 'Connection already exists' };
-		}
+		// Note: Duplicate detection is handled by Vue Flow's connectionExists()
+		// in addEdgeToStore(), so we don't need to check here.
 
 		return { valid: true };
 	}
 
 	/**
-	 * Simple boolean validator for Vue Flow's isValidConnection prop.
+	 * Validator for Vue Flow's isValidConnection prop.
+	 * Matches ValidConnectionFunc signature: (connection, { edges, nodes, sourceNode, targetNode }) => boolean
 	 */
-	function isValidConnection(connection: Connection): boolean {
-		return validateConnection(connection).valid;
-	}
+	const isValidConnection: ValidConnectionFunc = (connection, { edges }) => {
+		return validateConnection(connection, edges).valid;
+	};
 
 	return {
 		validateConnection,
 		isValidConnection,
 		parseHandle,
-		countConnectionsForHandle: (nodeId: string, handleString: string) =>
-			countConnectionsForHandle(doc.getEdges(), nodeId, handleString),
+		countConnectionsForHandle,
 	};
 }
