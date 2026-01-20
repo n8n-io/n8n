@@ -1802,6 +1802,11 @@ export function useCanvasOperations() {
 			connection: mappedConnection,
 		});
 
+		void nextTick(() => {
+			nodeHelpers.updateNodeInputIssues(sourceNode);
+			nodeHelpers.updateNodeInputIssues(targetNode);
+		});
+
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RemoveConnectionCommand(mappedConnection, Date.now()));
 
