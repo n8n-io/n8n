@@ -33,19 +33,19 @@ describe('CreateExternalSecretsProviderTable Migration', () => {
 
 		if (context.isSqlite) {
 			const result = await context.queryRunner.query(
-				`SELECT name FROM sqlite_master WHERE type='table' AND name=?`,
+				'SELECT name FROM sqlite_master WHERE type="table" AND name=?',
 				[tableName],
 			);
 			return result.length > 0;
 		} else if (context.isPostgres) {
 			const result = await context.queryRunner.query(
-				`SELECT table_name FROM information_schema.tables WHERE table_name = $1`,
+				'SELECT table_name FROM information_schema.tables WHERE table_name = $1',
 				[`${context.tablePrefix}${tableName}`],
 			);
 			return result.length > 0;
 		} else if (context.isMysql) {
 			const result = await context.queryRunner.query(
-				`SELECT table_name FROM information_schema.tables WHERE table_name = ?`,
+				'SELECT table_name FROM information_schema.tables WHERE table_name = ?',
 				[`${context.tablePrefix}${tableName}`],
 			);
 			return result.length > 0;
