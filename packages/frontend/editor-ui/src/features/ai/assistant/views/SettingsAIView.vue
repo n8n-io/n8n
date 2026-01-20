@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
-import { N8nHeading, N8nInfoTip, N8nCheckbox, N8nNotice } from '@n8n/design-system';
+import { N8nHeading, N8nInfoTip, N8nCheckbox, N8nNotice, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -86,21 +86,45 @@ onMounted(async () => {
 			</N8nInfoTip>
 		</div>
 		<div :class="$style.content">
-			<N8nCheckbox
-				v-model="allowSendingSchema"
-				:disabled="true"
-				:label="i18n.baseText('settings.ai.allowSendingSchema.label')"
-				:tooltip-text="i18n.baseText('settings.ai.allowSendingSchema.description')"
+			<div :class="$style.checkboxContainer">
+				<N8nCheckbox
+					v-model="allowSendingSchema"
+					:disabled="true"
+					:label="i18n.baseText('settings.ai.allowSendingSchema.label')"
+				/>
+				<N8nText :class="$style.checkboxDescription" color="text-base">
+					{{ i18n.baseText('settings.ai.allowSendingSchema.description') }}
+				</N8nText>
+			</div>
+			<div :class="$style.checkboxContainer">
+				<N8nCheckbox
+					:model-value="allowSendingParameterValues"
+					:label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
+					@update:model-value="onallowSendingParameterValuesChange"
+				/>
+				<N8nText :class="$style.checkboxDescription" color="text-base">
+					{{ i18n.baseText('settings.ai.allowSendingParameterValues.description') }}
+				</N8nText>
+				<N8nNotice
+					v-if="!allowSendingParameterValues"
+					type="warning"
+					:closable="false"
+					:class="$style.notice"
+				>
+					{{ i18n.baseText('settings.ai.efficiencyNotice') }}
+				</N8nNotice>
+			</div>
+		</div>
+		<div :class="$style.privacyNote">
+			<N8nText :bold="true">{{ i18n.baseText('settings.ai.privacyNote.heading') }}</N8nText>
+			<N8nText
+				v-n8n-html="
+					i18n.baseText('settings.ai.privacyNote.content', {
+						interpolate: { docsLink: 'https://docs.n8n.io/manage-cloud/ai-assistant' },
+					})
+				"
+				color="text-base"
 			/>
-			<N8nCheckbox
-				:model-value="allowSendingParameterValues"
-				:label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
-				:tooltip-text="i18n.baseText('settings.ai.allowSendingParameterValues.description')"
-				@update:model-value="onallowSendingParameterValuesChange"
-			/>
-			<N8nNotice v-if="!allowSendingParameterValues" type="warning" :closable="false">
-				{{ i18n.baseText('settings.ai.efficiencyNotice') }}
-			</N8nNotice>
 		</div>
 	</div>
 </template>
@@ -121,6 +145,34 @@ onMounted(async () => {
 .content {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--md);
+	gap: var(--spacing--2xs);
+}
+
+.checkboxContainer {
+	display: flex;
+	flex-direction: column;
+	padding: var(--spacing--xs);
+	border: var(--border-width) var(--border-style) var(--color--info--tint-1);
+	border-radius: var(--radius);
+	padding: var(--spacing--md) var(--spacing--md) var(--spacing--xs);
+
+	label {
+		font-weight: var(--font-weight--bold);
+		padding-bottom: var(--spacing--5xs);
+	}
+
+	.checkboxDescription {
+		padding: var(--spacing--2xs) var(--spacing--xl);
+	}
+
+	.notice {
+		margin-left: var(--spacing--xl);
+		margin-top: var(--spacing--2xs);
+	}
+}
+
+.privacyNote {
+	display: flex;
+	gap: var(--spacing--4xs);
 }
 </style>
