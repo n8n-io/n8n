@@ -21,7 +21,6 @@ import {
 	WorkflowRepository,
 	WorkflowTagMapping,
 	WorkflowTagMappingRepository,
-	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -36,7 +35,6 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -141,7 +139,6 @@ export class SourceControlImportService {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly variablesService: VariablesService,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
@@ -158,7 +155,6 @@ export class SourceControlImportService {
 		private readonly folderRepository: FolderRepository,
 		instanceSettings: InstanceSettings,
 		private readonly sourceControlScopedService: SourceControlScopedService,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
@@ -676,7 +672,7 @@ export class SourceControlImportService {
 			// In that case, we deactivate the existing workflow on pull and turn it archived.
 			// The autoPublish parameter can override this behavior to auto-activate workflows.
 
-			const shouldActivate = this.shouldActivateWorkflow(
+			let shouldActivate = this.shouldActivateWorkflow(
 				existingWorkflow,
 				importedWorkflow,
 				autoPublish,
@@ -686,7 +682,11 @@ export class SourceControlImportService {
 				existingWorkflow &&
 				this.shouldDeactivateWorkflow(existingWorkflow, importedWorkflow, shouldActivate);
 			if (shouldDeactivate && existingWorkflow) {
-				await this.deactivateImportedWorkflow(existingWorkflow.id, userId);
+				const deactivated = await this.deactivateImportedWorkflow(existingWorkflow.id, userId);
+				// If deactivation failed, don't try to activate
+				if (!deactivated) {
+					shouldActivate = false;
+				}
 			}
 
 			// Always update versionId to a new one on import to ensure fresh version
@@ -809,22 +809,33 @@ export class SourceControlImportService {
 		return shouldActivate;
 	}
 
-	private async deactivateImportedWorkflow(workflowId: string, userId: string) {
-		const user = await this.userRepository.findOneByOrFail({ id: userId });
+	private async deactivateImportedWorkflow(workflowId: string, userId: string): Promise<boolean> {
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		if (!user) {
+			this.logger.error(`User ${userId} not found, cannot deactivate workflow ${workflowId}`);
+			return false;
+		}
 
 		try {
 			this.logger.debug(`Deactivating workflow id ${workflowId} before import`);
 			await this.workflowService.deactivateWorkflow(user, workflowId);
+			return true;
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(`Failed to deactivate workflow ${workflowId}`, { error });
-			throw error;
+			return false;
 		}
 	}
 
 	private async activateImportedWorkflow(importedWorkflow: IWorkflowToImport, userId: string) {
 		const versionId = importedWorkflow.versionId!;
-		const user = await this.userRepository.findOneByOrFail({ id: userId });
+		const user = await this.userRepository.findOne({ where: { id: userId } });
+		if (!user) {
+			this.logger.error(
+				`User ${userId} not found, cannot activate workflow ${importedWorkflow.id}`,
+			);
+			return;
+		}
 
 		try {
 			this.logger.debug(`Activating imported workflow id ${importedWorkflow.id}`);
@@ -834,7 +845,6 @@ export class SourceControlImportService {
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(`Failed to activate workflow ${importedWorkflow.id}`, { error });
-			throw error;
 		}
 	}
 
