@@ -26,6 +26,15 @@ import type { IExecutionTrackProperties } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
 
+// Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
+const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
+
+function limitNodeGraphStringSize(nodeGraphString: string): string {
+	if (Buffer.byteLength(nodeGraphString, 'utf8') > MAX_NODE_GRAPH_STRING_SIZE) return '{}';
+
+	return nodeGraphString;
+}
+
 @Service()
 export class TelemetryEventRelay extends EventRelay {
 	constructor(
@@ -97,6 +106,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'instance-owner-setup': async (event) => await this.instanceOwnerSetup(event),
 			'first-production-workflow-succeeded': (event) =>
 				this.firstProductionWorkflowSucceeded(event),
+			'instance-first-production-workflow-failed': (event) =>
+				this.instanceFirstProductionWorkflowFailed(event),
 			'first-workflow-data-loaded': (event) => this.firstWorkflowDataLoaded(event),
 			'workflow-post-execute': async (event) => await this.workflowPostExecute(event),
 			'user-changed-role': (event) => this.userChangedRole(event),
@@ -591,7 +602,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User created workflow', {
 			user_id: user.id,
 			workflow_id: workflow.id,
-			node_graph_string: JSON.stringify(nodeGraph),
+			node_graph_string: limitNodeGraphStringSize(JSON.stringify(nodeGraph)),
 			public_api: publicApi,
 			project_id: projectId,
 			project_type: projectType,
@@ -694,7 +705,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User saved workflow', {
 			user_id: user.id,
 			workflow_id: workflow.id,
-			node_graph_string: JSON.stringify(nodeGraph),
+			node_graph_string: limitNodeGraphStringSize(JSON.stringify(nodeGraph)),
 			notes_count_overlapping: overlappingCount,
 			notes_count_non_overlapping: notesCount - overlappingCount,
 			version_cli: N8N_VERSION,
@@ -779,7 +790,9 @@ export class TelemetryEventRelay extends EventRelay {
 						runData: runData.data.resultData?.runData,
 					});
 					telemetryProperties.node_graph = nodeGraphResult.nodeGraph;
-					telemetryProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+					telemetryProperties.node_graph_string = limitNodeGraphStringSize(
+						JSON.stringify(nodeGraphResult.nodeGraph),
+					);
 
 					if (errorNodeName) {
 						telemetryProperties.error_node_id = nodeGraphResult.nameIndices[errorNodeName];
@@ -830,7 +843,9 @@ export class TelemetryEventRelay extends EventRelay {
 					nodeGraphResult = TelemetryHelpers.generateNodesGraph(workflow, this.nodeTypes, {
 						runData: runData.data.resultData?.runData,
 					});
-					manualExecEventProperties.node_graph_string = JSON.stringify(nodeGraphResult.nodeGraph);
+					manualExecEventProperties.node_graph_string = limitNodeGraphStringSize(
+						JSON.stringify(nodeGraphResult.nodeGraph),
+					);
 				}
 
 				nodeGraphResult?.evaluationTriggerNodeNames?.forEach((name: string) => {
@@ -982,6 +997,18 @@ export class TelemetryEventRelay extends EventRelay {
 			project_id: projectId,
 			workflow_id: workflowId,
 			user_id: userId ?? undefined,
+		});
+	}
+
+	private instanceFirstProductionWorkflowFailed({
+		projectId,
+		workflowId,
+		userId,
+	}: RelayEventMap['instance-first-production-workflow-failed']) {
+		this.telemetry.track('Instance first prod failure', {
+			project_id: projectId,
+			workflow_id: workflowId,
+			user_id: userId,
 		});
 	}
 

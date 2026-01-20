@@ -8,9 +8,6 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: true
 
-env:
-  COVERAGE_ENABLED: 'true' # Set globally for all jobs - ensures Turbo cache consistency
-
 jobs:
   install-and-build:
     name: Install & Build
