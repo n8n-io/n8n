@@ -30,6 +30,7 @@ export const LOG_SCOPES = [
 	'source-control',
 	'dynamic-credentials',
 	'workflow-history-compaction',
+	'workflow-publication-outbox-consumer',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -124,7 +125,7 @@ export class LoggingConfig {
 	 * - `workflow-activation`
 	 * - `insights`
 	 * - `chat-hub`
-	 *
+	 * - `workflow-publication-outbox-consumer`
 	 * @example
 	 * `N8N_LOG_SCOPES=license`
 	 * `N8N_LOG_SCOPES=license,waiting-executions`
