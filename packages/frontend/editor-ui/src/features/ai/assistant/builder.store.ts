@@ -16,7 +16,6 @@ import {
 	chatWithBuilder,
 	getAiSessions,
 	getBuilderCredits,
-	getSessionsMetadata,
 	truncateBuilderMessages,
 } from '@/features/ai/assistant/assistant.api';
 import {
@@ -39,6 +38,7 @@ import type { IWorkflowDb } from '@/Interface';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -50,7 +50,11 @@ export type WorkflowBuilderJourneyEventType =
 	| 'user_clicked_todo'
 	| 'field_focus_placeholder_in_ndv'
 	| 'no_placeholder_values_left'
-	| 'revert_version_from_builder';
+	| 'revert_version_from_builder'
+	| 'browser_notification_ask_permission'
+	| 'browser_notification_accept'
+	| 'browser_notification_dismiss'
+	| 'browser_generation_done_notified';
 
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
@@ -58,6 +62,7 @@ interface WorkflowBuilderJourneyEventProperties {
 	revert_user_message_id?: string;
 	revert_version_id?: string;
 	no_versions_reverted?: number;
+	completion_type?: 'workflow-ready' | 'input-needed';
 }
 
 interface WorkflowBuilderJourneyPayload extends ITelemetryTrackProperties {
@@ -100,7 +105,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const initialGeneration = ref<boolean>(false);
 	const creditsQuota = ref<number | undefined>();
 	const creditsClaimed = ref<number | undefined>();
-	const hasMessages = ref<boolean>(false);
 	const manualExecStatsInBetweenMessages = ref<{ success: number; error: number }>({
 		success: 0,
 		error: 0,
@@ -113,6 +117,13 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 	// Track the last user message ID for telemetry
 	const lastUserMessageId = ref<string | undefined>();
+
+	// Track whether loadSessions is in progress to prevent duplicate calls
+	const isLoadingSessions = ref(false);
+
+	// Track the workflowId for which sessions have been loaded (or attempted)
+	// to prevent redundant API calls when no session exists
+	const loadedSessionsForWorkflowId = ref<string | undefined>();
 
 	const documentTitle = useDocumentTitle();
 
@@ -185,6 +196,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return creditsRemaining.value !== undefined ? creditsRemaining.value === 0 : false;
 	});
 
+	const hasMessages = computed(() => chatMessages.value.length > 0);
+
 	// Chat management functions
 	/**
 	 * Resets the entire chat session to initial state.
@@ -196,6 +209,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		builderThinkingMessage.value = undefined;
 		initialGeneration.value = false;
 		lastUserMessageId.value = undefined;
+		loadedSessionsForWorkflowId.value = undefined;
 	}
 
 	function incrementManualExecutionStats(type: 'success' | 'error') {
@@ -247,10 +261,67 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			user_message_id: userMessageId,
 			workflow_id: workflowsStore.workflowId,
 			session_id: trackingSessionId.value,
+			tab_visible: document.visibilityState === 'visible',
 			...getWorkflowModifications(currentStreamingMessage.value),
 			...payload,
 			...getTodosToTrack(),
 		});
+	}
+
+	type CompletionType = 'workflow-ready' | 'input-needed';
+
+	/**
+	 * Checks if the current streaming response included a workflow update.
+	 * Used to determine whether to show "workflow ready" or "input needed" notification.
+	 */
+	function hasWorkflowUpdateInCurrentBatch(userMessageId: string): boolean {
+		return chatMessages.value.some(
+			(msg) => msg.type === 'workflow-updated' && msg.id?.startsWith(userMessageId),
+		);
+	}
+
+	/**
+	 * Shows a browser notification when the AI builder completes.
+	 * Only shows if browser notifications are enabled.
+	 * Clicking the notification focuses the window and closes it.
+	 */
+	function notifyOnCompletion(completionType: CompletionType) {
+		const { showNotification, isEnabled } = useBrowserNotifications();
+		if (!isEnabled.value) {
+			return;
+		}
+
+		const workflowName = workflowsStore.workflowName;
+
+		const titleKey =
+			completionType === 'workflow-ready'
+				? 'aiAssistant.builder.notification.title'
+				: 'aiAssistant.builder.notification.inputNeeded.title';
+
+		const bodyKey =
+			completionType === 'workflow-ready'
+				? 'aiAssistant.builder.notification.body'
+				: 'aiAssistant.builder.notification.inputNeeded.body';
+
+		const notification = showNotification(locale.baseText(titleKey), {
+			body: locale.baseText(bodyKey, {
+				interpolate: { workflowName },
+			}),
+			icon: '/favicon.ico',
+			tag: `workflow-build-${workflowsStore.workflowId}`,
+			requireInteraction: false,
+		});
+
+		if (notification) {
+			trackWorkflowBuilderJourney('browser_generation_done_notified', {
+				completion_type: completionType,
+			});
+
+			notification.onclick = () => {
+				window.focus();
+				notification.close();
+			};
+		}
 	}
 
 	function stopStreaming(payload?: StopStreamingPayload) {
@@ -261,11 +332,23 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		trackEndBuilderResponse(payload);
+
+		// Capture userMessageId before clearing currentStreamingMessage
+		const userMessageId = currentStreamingMessage.value?.userMessageId;
 		currentStreamingMessage.value = undefined;
 
+		const wasAborted = payload && 'aborted' in payload && payload.aborted;
+
 		// Update page title on completion. We show Done when the user is not on the page
+		// Browser notifications are only shown when the tab is hidden
 		if (document.hidden) {
 			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'AI_DONE');
+			if (!wasAborted && userMessageId) {
+				const completionType = hasWorkflowUpdateInCurrentBatch(userMessageId)
+					? 'workflow-ready'
+					: 'input-needed';
+				notifyOnCompletion(completionType);
+			}
 		} else {
 			documentTitle.setDocumentTitle(workflowsStore.workflowName, 'IDLE');
 		}
@@ -573,8 +656,25 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			return [];
 		}
 
+		// Guard: Don't load if workflow is not saved
+		if (!workflowsStore.isWorkflowSaved[workflowId]) {
+			return [];
+		}
+
+		// Guard: Don't load if already loaded for this workflow (even if empty)
+		if (loadedSessionsForWorkflowId.value === workflowId) {
+			return [];
+		}
+
+		// Guard: Prevent duplicate concurrent calls
+		if (isLoadingSessions.value) {
+			return [];
+		}
+
+		isLoadingSessions.value = true;
 		try {
 			const response = await getAiSessions(rootStore.restApiContext, workflowId);
+			loadedSessionsForWorkflowId.value = workflowId;
 			const sessions = response.sessions || [];
 
 			// Load the most recent session if available
@@ -618,6 +718,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		} catch (error) {
 			console.error('Failed to load AI sessions:', error);
 			return [];
+		} finally {
+			isLoadingSessions.value = false;
 		}
 	}
 
@@ -672,36 +774,30 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 	}
 
-	async function fetchSessionsMetadata() {
-		const workflowId = workflowsStore.workflowId;
-		if (!workflowId) {
-			hasMessages.value = false;
-			return;
-		}
-
-		try {
-			const response = await getSessionsMetadata(rootStore.restApiContext, workflowId);
-			hasMessages.value = response.hasMessages;
-		} catch (error) {
-			console.error('Failed to fetch sessions metadata:', error);
-			hasMessages.value = false;
-		}
-	}
-
-	// Watch workflowId changes to fetch sessions metadata when a valid workflow is loaded
+	// Watch workflowId changes to reset chat and load sessions when workflow changes
 	watch(
 		() => workflowsStore.workflowId,
-		(newWorkflowId) => {
-			// Only fetch if we have a valid workflow ID, AI builder is enabled, and we're in a builder-enabled view
+		(newWorkflowId, oldWorkflowId) => {
+			if (newWorkflowId === oldWorkflowId) {
+				return;
+			}
+
+			if (streaming.value) {
+				abortStreaming();
+			}
+
+			resetBuilderChat();
+
+			// Load sessions if AI builder is enabled and we're in a builder-enabled view
+			// loadSessions has its own guards for workflow saved state and deduplication
 			if (
 				newWorkflowId &&
-				workflowsStore.isWorkflowSaved[workflowsStore.workflowId] &&
+				route?.name &&
 				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS) &&
 				isAIBuilderEnabled.value
 			) {
-				void fetchSessionsMetadata();
-			} else {
-				hasMessages.value = false;
+				void fetchBuilderCredits();
+				void loadSessions();
 			}
 		},
 	);
@@ -819,7 +915,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		creditsQuota: computed(() => creditsQuota.value),
 		creditsRemaining,
 		hasNoCreditsRemaining,
-		hasMessages: computed(() => hasMessages.value),
+		hasMessages,
 		workflowTodos,
 		lastUserMessageId,
 
@@ -832,7 +928,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		fetchBuilderCredits,
 		updateBuilderCredits,
 		getRunningTools,
-		fetchSessionsMetadata,
 		trackWorkflowBuilderJourney,
 		getAiBuilderMadeEdits,
 		resetAiBuilderMadeEdits,

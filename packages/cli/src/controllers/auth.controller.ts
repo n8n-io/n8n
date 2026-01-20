@@ -126,7 +126,10 @@ export class AuthController {
 		allowSkipMFA: true,
 	})
 	async currentUser(req: AuthenticatedRequest): Promise<PublicUser> {
-		return await this.userService.toPublic(req.user, {
+		// We need auth identities to determine signInType in toPublic method
+		const user = await this.userService.findUserWithAuthIdentities(req.user.id);
+
+		return await this.userService.toPublic(user, {
 			posthog: this.postHog,
 			withScopes: true,
 			mfaAuthenticated: req.authInfo?.usedMfa,

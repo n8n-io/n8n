@@ -1,5 +1,5 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { DatabaseConfig, SecurityConfig, WorkflowsConfig } from '@n8n/config';
+import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -54,7 +54,6 @@ import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
 import '@/credentials/credentials.controller';
-import '@/eventbus/event-bus.controller';
 import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
@@ -136,20 +135,6 @@ export class Server extends AbstractServer {
 
 		if (!this.globalConfig.tags.disabled) {
 			await import('@/controllers/tags.controller');
-		}
-
-		// ----------------------------------------
-		// SAML
-		// ----------------------------------------
-
-		// initialize SamlService if it is licensed, even if not enabled, to
-		// set up the initial environment
-		try {
-			const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
-			await Container.get(SamlService).init();
-			await import('@/sso.ee/saml/routes/saml.controller.ee');
-		} catch (error) {
-			this.logger.warn(`SAML initialization failed: ${(error as Error).message}`);
 		}
 
 		if (this.globalConfig.diagnostics.enabled) {
@@ -476,12 +461,6 @@ export class Server extends AbstractServer {
 
 	private async initializeWorkflowIndexing() {
 		if (Container.get(WorkflowsConfig).indexingEnabled) {
-			if (Container.get(DatabaseConfig).isLegacySqlite) {
-				this.logger.warn(
-					'Workflow indexing is disabled because legacy Sqlite databases are not supported. Please migrate the database to enable workflow indexing.',
-				);
-				return;
-			}
 			const { WorkflowIndexService } = await import(
 				'@/modules/workflow-index/workflow-index.service'
 			);

@@ -1,133 +1,50 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import {
+	limitWaitTimeOption,
+	sendAndWaitWebhooksDescription,
+} from 'n8n-nodes-base/dist/utils/sendAndWait/descriptions';
+import {
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from 'n8n-nodes-base/dist/utils/sendAndWait/utils';
+import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_WAIT_USER_REPLY,
+	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	NodeConnectionTypes,
 	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeTypeDescription,
 	INodeType,
-	INodeProperties,
 	NodeTypeAndVersion,
 	INode,
 } from 'n8n-workflow';
 
-import { configureInputs, configureWaitTillDate } from './util';
-
-const limitWaitTimeProperties: INodeProperties[] = [
-	{
-		displayName: 'Limit Type',
-		name: 'limitType',
-		type: 'options',
-		default: 'afterTimeInterval',
-		description:
-			'Sets the condition for the execution to resume. Can be a specified date or after some time.',
-		options: [
-			{
-				name: 'After Time Interval',
-				description: 'Waits for a certain amount of time',
-				value: 'afterTimeInterval',
-			},
-			{
-				name: 'At Specified Time',
-				description: 'Waits until the set date and time to continue',
-				value: 'atSpecifiedTime',
-			},
-		],
-	},
-	{
-		displayName: 'Amount',
-		name: 'resumeAmount',
-		type: 'number',
-		displayOptions: {
-			show: {
-				limitType: ['afterTimeInterval'],
-			},
-		},
-		typeOptions: {
-			minValue: 0,
-			numberPrecision: 2,
-		},
-		default: 1,
-		description: 'The time to wait',
-	},
-	{
-		displayName: 'Unit',
-		name: 'resumeUnit',
-		type: 'options',
-		displayOptions: {
-			show: {
-				limitType: ['afterTimeInterval'],
-			},
-		},
-		options: [
-			{
-				name: 'Minutes',
-				value: 'minutes',
-			},
-			{
-				name: 'Hours',
-				value: 'hours',
-			},
-			{
-				name: 'Days',
-				value: 'days',
-			},
-		],
-		default: 'hours',
-		description: 'Unit of the interval value',
-	},
-	{
-		displayName: 'Max Date and Time',
-		name: 'maxDateAndTime',
-		type: 'dateTime',
-		displayOptions: {
-			show: {
-				limitType: ['atSpecifiedTime'],
-			},
-		},
-		default: '',
-		description: 'Continue execution after the specified date and time',
-	},
-];
-
-const limitWaitTimeOption: INodeProperties = {
-	displayName: 'Limit Wait Time',
-	name: 'limitWaitTime',
-	type: 'fixedCollection',
-	description:
-		'Whether to limit the time this node should wait for a user response before execution resumes',
-	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
-	options: [
-		{
-			displayName: 'Values',
-			name: 'values',
-			values: limitWaitTimeProperties,
-		},
-	],
-	displayOptions: {
-		show: {
-			[`/${CHAT_WAIT_USER_REPLY}`]: [true],
-		},
-	},
-};
+import {
+	configureInputs,
+	configureWaitTillDate,
+	getChatMessage,
+	getSendAndWaitPropertiesForChatNode,
+} from './util';
 
 export class Chat implements INodeType {
 	description: INodeTypeDescription = {
 		usableAsTool: true,
-		displayName: 'Respond to Chat',
+		displayName: 'Chat',
 		name: 'chat',
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['input'],
-		version: 1,
-		description: 'Send a message to a chat',
+		version: [1, 1.1],
+		defaultVersion: 1.1,
+		description: 'Send a message into the chat',
 		defaults: {
-			name: 'Respond to Chat',
+			name: 'Chat',
 		},
 		codex: {
 			categories: ['Core Nodes', 'HITL'],
@@ -145,6 +62,8 @@ export class Chat implements INodeType {
 		},
 		inputs: `={{ (${configureInputs})($parameter) }}`,
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
+		webhooks: sendAndWaitWebhooksDescription,
 		properties: [
 			{
 				displayName:
@@ -154,13 +73,37 @@ export class Chat implements INodeType {
 				default: '',
 			},
 			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				default: 'send',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Send Message',
+						value: 'send',
+						action: 'Send a message',
+					},
+					{
+						name: 'Send and Wait for Response',
+						value: SEND_AND_WAIT_OPERATION,
+						action: 'Send message and wait for response',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Message',
 				name: 'message',
 				type: 'string',
 				default: '',
 				required: true,
 				typeOptions: {
-					rows: 6,
+					rows: 4,
 				},
 			},
 			{
@@ -169,7 +112,13 @@ export class Chat implements INodeType {
 				type: 'boolean',
 				default: true,
 				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.1 } }],
+					},
+				},
 			},
+			...getSendAndWaitPropertiesForChatNode(),
 			{
 				displayName: 'Options',
 				name: 'options',
@@ -187,8 +136,28 @@ export class Chat implements INodeType {
 						name: 'memoryConnection',
 						type: 'boolean',
 						default: false,
+						displayOptions: {
+							hide: {
+								'/responseType': ['approval'],
+							},
+						},
 					},
-					limitWaitTimeOption,
+					{
+						...limitWaitTimeOption,
+						displayOptions: {
+							show: {
+								[`/${CHAT_WAIT_USER_REPLY}`]: [true],
+							},
+						},
+					},
+					{
+						...limitWaitTimeOption,
+						displayOptions: {
+							show: {
+								'/operation': [SEND_AND_WAIT_OPERATION],
+							},
+						},
+					},
 				],
 			},
 			{
@@ -205,8 +174,24 @@ export class Chat implements INodeType {
 					},
 				},
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [limitWaitTimeOption],
+				displayOptions: {
+					show: {
+						'@tool': [true],
+						'/operation': [SEND_AND_WAIT_OPERATION],
+					},
+				},
+			},
 		],
 	};
+
+	webhook = sendAndWaitWebhook;
 
 	async onMessage(
 		context: IExecuteFunctions,
@@ -216,7 +201,14 @@ export class Chat implements INodeType {
 			memoryConnection?: boolean;
 		};
 
-		const waitForReply = context.getNodeParameter(CHAT_WAIT_USER_REPLY, 0, true) as boolean;
+		const nodeVersion = context.getNode().typeVersion;
+		let waitForReply;
+		if (nodeVersion >= 1.1) {
+			const operation = context.getNodeParameter('operation', 0, 'sendMessage');
+			waitForReply = operation === SEND_AND_WAIT_OPERATION;
+		} else {
+			waitForReply = context.getNodeParameter(CHAT_WAIT_USER_REPLY, 0, true) as boolean;
+		}
 
 		if (!waitForReply) {
 			const inputData = context.getInputData();
@@ -235,7 +227,34 @@ export class Chat implements INodeType {
 			}
 		}
 
-		return [[data]];
+		if (nodeVersion < 1.1) {
+			return [[data]];
+		}
+
+		const responseType = context.getNodeParameter(
+			'responseType',
+			0,
+			FREE_TEXT_CHAT_RESPONSE_TYPE,
+		) as string;
+		const isFreeText = responseType === FREE_TEXT_CHAT_RESPONSE_TYPE;
+		return [
+			[
+				{
+					...data,
+					json: {
+						// put everything under the `data` key to be consistent
+						// with other HITL nodes
+						data: {
+							...data.json,
+							// if the response type is not "Free Text" and the
+							// user has typed something - we assume it's
+							// disapproval
+							approved: isFreeText ? undefined : false,
+						},
+					},
+				},
+			],
+		];
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -269,7 +288,7 @@ export class Chat implements INodeType {
 		if (parameters.mode === 'webhook') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'"Embeded chat" is not supported, change the "Mode" in the chat trigger node to the "Hosted Chat"',
+				'"Embedded chat" is not supported, change the "Mode" in the chat trigger node to the "Hosted Chat"',
 			);
 		}
 
@@ -280,7 +299,7 @@ export class Chat implements INodeType {
 			);
 		}
 
-		const message = (this.getNodeParameter('message', 0) as string) ?? '';
+		const message = getChatMessage(this);
 		const options = this.getNodeParameter('options', 0, {}) as {
 			memoryConnection?: boolean;
 		};
@@ -291,7 +310,8 @@ export class Chat implements INodeType {
 				| undefined;
 
 			if (memory) {
-				await memory.chatHistory.addAIMessage(message);
+				const text = typeof message === 'string' ? message : message.text;
+				await memory.chatHistory.addAIMessage(text);
 			}
 		}
 
