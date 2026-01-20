@@ -1,0 +1,32 @@
+ARG NODE_VERSION=22.21.1
+
+FROM node:${NODE_VERSION}-alpine AS build-base
+ENV DOCKER_BUILD=1
+WORKDIR /app
+RUN corepack enable pnpm
+COPY package.json pnpm-*.yaml tsconfig.json turbo.json turbo.json ./
+COPY packages ./packages
+COPY patches ./patches
+COPY scripts ./scripts
+
+FROM build-base AS deps
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter "{packages/nodes-runner}" i --prod
+
+FROM build-base AS build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm --filter "{packages/nodes-runner}" i --frozen-lockfile
+RUN pnpm --filter "{packages/nodes-runner}" build
+RUN pnpm deploy --filter "{packages/nodes-runner}" /prod
+
+FROM node:${NODE_VERSION}-alpine AS prod
+WORKDIR /app
+COPY --from=build /prod ./
+
+#COPY --from=deps /app/node_modules ./node_modules
+#COPY --from=deps /app/packages/nodes-runner/node_modules ./packages/nodes-runner/node_modules
+#COPY --from=build /app/packages/nodes-runner/dist ./packages/nodes-runner/dist
+#COPY --from=deps /app/packages/nodes-base/node_modules ./packages/nodes-base/node_modules
+#COPY --from=build /app/packages/nodes-base/dist ./packages/nodes-base/dist
+#COPY --from=deps /app/packages/workflow/node_modules ./packages/workflow/node_modules
+#COPY --from=build /app/packages/workflow/dist ./packages/workflow/dist
+
+CMD ["node", "dist/run.js"]

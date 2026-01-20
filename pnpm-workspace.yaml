@@ -130,3 +130,5 @@ minimumReleaseAgeExclude:
   - body-parser
   - node-forge
   - vm2
+
+injectWorkspacePackages: true
