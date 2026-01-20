@@ -110,7 +110,7 @@ const handleOpenChange = (open: boolean) => {
 							v-bind="{ ...button.attrs, ...button.listeners }"
 						/>
 					</div>
-					<TooltipArrow :class="$style.arrow" :width="6" :height="6" />
+					<TooltipArrow :class="$style.arrow" :width="11" :height="5" />
 				</TooltipContent>
 			</TooltipPortal>
 		</TooltipRoot>
