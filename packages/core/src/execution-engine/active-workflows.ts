@@ -297,7 +297,6 @@ export class ActiveWorkflows {
 
 		const workflowData = this.activeWorkflows[workflowId];
 		const triggersByNode = workflowData.triggersByNode ?? new Map();
-		const nodeIdSet = new Set(nodeIds);
 
 		// Close triggers for the specified nodes
 		for (const nodeId of nodeIds) {
