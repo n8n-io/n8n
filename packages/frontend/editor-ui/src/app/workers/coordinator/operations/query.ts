@@ -12,7 +12,6 @@ import { withActiveWorker } from '../utils';
 /**
  * Execute a SQL statement (routes to active tab's worker)
  *
- * @param worker - The active data worker
  * @param state - The coordinator state
  * @param sql - The SQL statement to execute
  */
@@ -21,7 +20,6 @@ export const exec = withActiveWorker(async (worker, sql: string) => await worker
 /**
  * Execute a SQL query (routes to active tab's worker)
  *
- * @param worker - The active data worker
  * @param state - The coordinator state
  * @param sql - The SQL query to execute
  * @returns Query result with columns and rows
@@ -33,7 +31,6 @@ export const query = withActiveWorker(
 /**
  * Execute a SQL query with parameters (routes to active tab's worker)
  *
- * @param worker - The active data worker
  * @param state - The coordinator state
  * @param sql - The SQL query to execute
  * @param params - The parameters to bind to the query

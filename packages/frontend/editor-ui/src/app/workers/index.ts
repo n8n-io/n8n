@@ -13,10 +13,6 @@
 import { coordinator, registerTab } from './coordinator';
 import type { SQLiteParam } from './data/types';
 
-export interface InitializeOptions {
-	baseUrl: string;
-}
-
 /**
  * Ensure the tab is registered before performing operations
  */
@@ -25,11 +21,8 @@ async function ensureRegistered(): Promise<void> {
 }
 
 /**
- * Initialize the database and load data
+ * Initialize the database
  * This will route to the active tab's data worker
- *
- * @param options - Initialization options
- * @param options.baseUrl - The base URL for API requests (required for loading node types)
  */
 export async function initialize(): Promise<void> {
 	await ensureRegistered();
