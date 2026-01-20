@@ -155,8 +155,9 @@ describe('OIDC Form Auth Token', () => {
 
 		it('should return null for payload with wrong types', () => {
 			// Create payload with wrong field types to test type validation
+			// Use normalized webhookPath so the path check passes and we reach type validation
 			const wrongTypesPayload = Buffer.from(
-				JSON.stringify({ sub: 123, exp: 'not-a-number', path: '/form/test' }),
+				JSON.stringify({ sub: 123, exp: 'not-a-number', path: '/form/test-form' }),
 			).toString('base64url');
 			const validSignature = createHmac('sha256', sessionSecret)
 				.update(wrongTypesPayload)
