@@ -1,7 +1,6 @@
 #!/usr/bin/env tsx
 import { parseArgs } from 'node:util';
 
-import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 import type { CloudflaredResult } from './services/cloudflared';
@@ -13,6 +12,7 @@ import type { VictoriaLogsResult } from './services/victoria-logs';
 import type { VictoriaMetricsResult } from './services/victoria-metrics';
 import type { N8NConfig, N8NStack } from './stack';
 import { createN8NStack } from './stack';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 // ANSI colors for terminal output
 const colors = {
@@ -308,7 +308,7 @@ async function main() {
 }
 
 function displayConfig(config: N8NConfig) {
-	const dockerImage = getDockerImageFromEnv();
+	const dockerImage = TEST_CONTAINER_IMAGES.n8n;
 	const mains = config.mains ?? 1;
 	const workers = config.workers ?? 0;
 	const isQueueMode = mains > 1 || workers > 0;
