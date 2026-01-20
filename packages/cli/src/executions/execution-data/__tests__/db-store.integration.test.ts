@@ -3,16 +3,15 @@ import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { DbStore } from '../db-store';
-import type { ExecutionDataPayload, ExecutionRef } from '../types';
-import { executionId, payload, ref, workflowId } from './mocks';
+import type { ExecutionDataPayload } from '../types';
+import { payload, workflowId } from './mocks';
 
 let dbStore: DbStore;
 let repository: ExecutionDataRepository;
 let executionRepository: ExecutionRepository;
 
-async function createExecution(id: string) {
-	await executionRepository.save({
-		id,
+async function createExecution() {
+	const execution = await executionRepository.save({
 		workflowId,
 		finished: true,
 		mode: 'manual',
@@ -21,6 +20,8 @@ async function createExecution(id: string) {
 		stoppedAt: new Date(),
 		status: 'success',
 	});
+
+	return execution;
 }
 
 beforeAll(async () => {
@@ -41,16 +42,20 @@ afterAll(async () => {
 
 describe('write', () => {
 	it('should store execution data', async () => {
-		await createExecution(executionId);
+		const execution = await createExecution();
+		const ref = { workflowId, executionId: execution.id };
+
 		await dbStore.write(ref, payload);
 
-		const stored = await repository.findOneBy({ executionId });
+		const stored = await repository.findOneBy({ executionId: execution.id });
 
 		expect(stored).toMatchObject(payload);
 	});
 
 	it('should overwrite on duplicate `executionId`', async () => {
-		await createExecution(executionId);
+		const execution = await createExecution();
+		const ref = { workflowId, executionId: execution.id };
+
 		await dbStore.write(ref, payload);
 
 		const updatedPayload: ExecutionDataPayload = {
@@ -63,14 +68,16 @@ describe('write', () => {
 		const count = await repository.count();
 		expect(count).toBe(1);
 
-		const stored = await repository.findOneBy({ executionId });
+		const stored = await repository.findOneBy({ executionId: execution.id });
 		expect(stored).toMatchObject(updatedPayload);
 	});
 });
 
 describe('read', () => {
 	it('should retrieve stored execution data', async () => {
-		await createExecution(executionId);
+		const execution = await createExecution();
+		const ref = { workflowId, executionId: execution.id };
+
 		await dbStore.write(ref, payload);
 
 		const stored = await dbStore.read(ref);
@@ -87,35 +94,37 @@ describe('read', () => {
 
 describe('delete', () => {
 	it('should delete data for single execution', async () => {
-		await createExecution(executionId);
+		const execution = await createExecution();
+		const ref = { workflowId, executionId: execution.id };
+
 		await dbStore.write(ref, payload);
 
 		await dbStore.delete(ref);
 
-		const result = await repository.findOneBy({ executionId });
+		const result = await repository.findOneBy({ executionId: execution.id });
 		expect(result).toBeNull();
 	});
 
 	it('should delete data for multiple executions', async () => {
-		const refs: ExecutionRef[] = [
-			{ workflowId, executionId: '1' },
-			{ workflowId, executionId: '2' },
-			{ workflowId, executionId: '3' },
-		];
+		const executions = await Promise.all([createExecution(), createExecution(), createExecution()]);
 
-		for (const r of refs) {
-			await createExecution(r.executionId);
-			await dbStore.write(r, payload);
+		const refs = executions.map((e) => ({ workflowId, executionId: e.id }));
+
+		for (const ref of refs) {
+			await dbStore.write(ref, payload);
 		}
 
 		await dbStore.delete([refs[0], refs[1]]);
 
 		const remaining = await repository.find();
-		expect(remaining[0].executionId).toBe('3');
+		expect(remaining).toHaveLength(1);
+		expect(remaining[0].executionId).toBe(executions[2].id);
 	});
 
 	it('should skip deletion on empty array', async () => {
-		await createExecution(executionId);
+		const execution = await createExecution();
+		const ref = { workflowId, executionId: execution.id };
+
 		await dbStore.write(ref, payload);
 
 		await dbStore.delete([]);
@@ -125,6 +134,6 @@ describe('delete', () => {
 	});
 
 	it('should not throw on deleting a non-existent execution', async () => {
-		await expect(dbStore.delete({ workflowId, executionId: '999' })).resolves.not.toThrow();
+		await expect(dbStore.delete({ workflowId, executionId: '999' })).resolves.toBeUndefined();
 	});
 });
