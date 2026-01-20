@@ -6,6 +6,7 @@
   "scripts": {
     "format": "biome format --write .",
     "format:check": "biome ci .",
+    "build": "tsc --build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

@@ -1,44 +1,48 @@
-import type {
-	IExecuteFunctions,
-	INodeExecutionData,
-	INodeType,
-	VersionedNodeType,
-} from 'n8n-workflow';
+import type { IExecuteFunctions, INodeType, VersionedNodeType } from 'n8n-workflow';
 
-type ExecuteNode = (params: {
+type ExecuteForSure = Exclude<INodeType['execute'], undefined>;
+
+type ExecuteNodeParams = {
 	packageName: string;
 	executeFunction: IExecuteFunctions;
 	nodeVersion?: number;
-}) => Promise<INodeExecutionData[][]>;
+};
 
-const getExecuteFunction = (
-	node: INodeType | VersionedNodeType | undefined,
-	nodeVersion?: number,
-): INodeType['execute'] => {
+type NodeType = INodeType | VersionedNodeType;
+type NodeClass =
+	| {
+			new (): NodeType;
+	  }
+	| undefined;
+
+const getExecuteFunction = (nodeClass: NodeClass, nodeVersion?: number): ExecuteForSure => {
 	let actualNode: INodeType | undefined;
-	if (Object.hasOwn(node, 'getNodeType')) {
-		if (nodeVersion) {
-			actualNode = (node as VersionedNodeType).getNodeType(nodeVersion);
+	if (nodeClass) {
+		const node: NodeType = new nodeClass();
+		if (Object.hasOwn(node as Object, 'getNodeType')) {
+			if (nodeVersion) {
+				actualNode = (node as VersionedNodeType).getNodeType(nodeVersion);
+			} else {
+				throw new Error('Versioned node detected but no version was provided');
+			}
 		} else {
-			throw new Error('Versioned node detected but no version was provided');
+			actualNode = node as INodeType;
 		}
-	} else {
-		actualNode = node as INodeType;
-	}
-	if (actualNode && !Object.hasOwn(actualNode, 'execute')) {
-		return actualNode.execute;
+		if (actualNode && !Object.hasOwn(actualNode, 'execute')) {
+			return actualNode.execute as ExecuteForSure;
+		}
 	}
 
 	throw new Error('execute() method not found');
 };
 
-const executeNode: ExecuteNode = async ({ packageName, executeFunction, nodeVersion }) => {
-	try {
-		const node: INodeType | VersionedNodeType = await import(`n8n-nodes-base/${packageName}`);
-		const execute = getExecuteFunction(node, nodeVersion);
+const executeNode = async ({ packageName, executeFunction, nodeVersion }: ExecuteNodeParams) => {
+	const node: NodeClass = (
+		await import(`n8n-nodes-base/dist/nodes/${packageName}/${packageName}.node.js`)
+	)?.[packageName];
+	const execute = getExecuteFunction(node, nodeVersion);
 
-		return execute.call(executeFunction);
-	} catch (e) {
-		console.error('Massive error occurred', e.message, e.stack);
-	}
+	return execute.call(executeFunction);
 };
+
+export default executeNode;
