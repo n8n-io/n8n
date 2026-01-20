@@ -127,6 +127,7 @@
       "dist/nodes/text_splitters/TextSplitterCharacterTextSplitter/TextSplitterCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterRecursiveCharacterTextSplitter/TextSplitterRecursiveCharacterTextSplitter.node.js",
       "dist/nodes/text_splitters/TextSplitterTokenSplitter/TextSplitterTokenSplitter.node.js",
+      "dist/nodes/tools/ToolA2A/ToolA2A.node.js",
       "dist/nodes/tools/ToolCalculator/ToolCalculator.node.js",
       "dist/nodes/tools/ToolCode/ToolCode.node.js",
       "dist/nodes/tools/ToolHttpRequest/ToolHttpRequest.node.js",
