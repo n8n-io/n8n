@@ -110,7 +110,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
-	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);
+	const isAiCreditsEnabled = computed(
+		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
+	);
 
 	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
 
