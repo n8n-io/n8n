@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { DialogRoot, DialogTrigger, DialogPortal } from 'reka-ui';
-import { computed, ref } from 'vue';
+import {
+	DialogRoot as N8nDialogRoot,
+	DialogTrigger as N8nDialogTrigger,
+	DialogPortal as N8nDialogPortal,
+} from 'reka-ui';
+import { ref, watch } from 'vue';
 
-import N8nDialogOverlay from './DialogOverlay.vue';
-import N8nDialogContent from './DialogContent.vue';
-import N8nDialogHeader from './DialogHeader.vue';
-import N8nDialogTitle from './DialogTitle.vue';
-import N8nDialogDescription from './DialogDescription.vue';
-import N8nDialogFooter from './DialogFooter.vue';
-import N8nButton from '../../../components/N8nButton/Button.vue';
+import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import N8nDialogContent from '@n8n/design-system/v2/components/Dialog/DialogContent.vue';
+import N8nDialogDescription from '@n8n/design-system/v2/components/Dialog/DialogDescription.vue';
+import N8nDialogFooter from '@n8n/design-system/v2/components/Dialog/DialogFooter.vue';
+import N8nDialogHeader from '@n8n/design-system/v2/components/Dialog/DialogHeader.vue';
+import N8nDialogOverlay from '@n8n/design-system/v2/components/Dialog/DialogOverlay.vue';
+import N8nDialogTitle from '@n8n/design-system/v2/components/Dialog/DialogTitle.vue';
 
 export type AlertDialogActionVariant = 'solid' | 'destructive';
 export type AlertDialogSize = 'small' | 'medium';
@@ -86,21 +90,21 @@ defineSlots<{
 	default?: () => unknown;
 }>();
 
-const isControlled = computed(() => props.open !== undefined);
-const internalOpen = ref(props.defaultOpen);
+const internalOpen = ref(props.open ?? props.defaultOpen);
 
-const isOpen = computed({
-	get: () => (isControlled.value ? props.open! : internalOpen.value),
-	set: (value: boolean) => {
-		if (!isControlled.value) {
-			internalOpen.value = value;
+// Sync internal state with controlled prop
+watch(
+	() => props.open,
+	(newVal) => {
+		if (newVal !== undefined) {
+			internalOpen.value = newVal;
 		}
-		emit('update:open', value);
 	},
-});
+);
 
 const handleOpenChange = (open: boolean) => {
-	isOpen.value = open;
+	internalOpen.value = open;
+	emit('update:open', open);
 };
 
 const handleAction = () => {
@@ -114,12 +118,12 @@ const handleCancel = () => {
 </script>
 
 <template>
-	<DialogRoot :open="isOpen" @update:open="handleOpenChange">
-		<DialogTrigger v-if="$slots.trigger" as-child>
+	<N8nDialogRoot :open="internalOpen" @update:open="handleOpenChange">
+		<N8nDialogTrigger v-if="$slots.trigger" as-child>
 			<slot name="trigger" />
-		</DialogTrigger>
+		</N8nDialogTrigger>
 
-		<DialogPortal>
+		<N8nDialogPortal>
 			<N8nDialogOverlay />
 			<N8nDialogContent :size="size" :show-close-button="false">
 				<N8nDialogHeader>
@@ -141,6 +145,6 @@ const handleCancel = () => {
 					/>
 				</N8nDialogFooter>
 			</N8nDialogContent>
-		</DialogPortal>
-	</DialogRoot>
+		</N8nDialogPortal>
+	</N8nDialogRoot>
 </template>

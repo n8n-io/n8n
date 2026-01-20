@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-
 import {
 	N8nDialogRoot,
 	N8nDialogTrigger,
@@ -16,7 +15,7 @@ import {
 	N8nDialogClose,
 	N8nAlertDialog,
 	type DialogContentProps,
-} from './index';
+} from '@n8n/design-system/v2/components/Dialog';
 
 const meta = {
 	title: 'Components v2/Dialog',
@@ -77,7 +76,7 @@ export const Default: Story = {
 
 						<N8nDialogFooter>
 							<N8nDialogClose as-child>
-								<N8nButton variant="secondary" label="Cancel" />
+								<N8nButton type="secondary" label="Cancel" />
 							</N8nDialogClose>
 							<N8nButton label="Save changes" />
 						</N8nDialogFooter>
