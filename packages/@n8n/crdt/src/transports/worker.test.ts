@@ -18,8 +18,8 @@ import { WorkerTransport } from './worker';
 class MockPort {
 	private handlers: Set<(event: MessageEvent) => void> = new Set();
 	private started = false;
-	public sentMessages: Uint8Array[] = [];
-	public otherPort: MockPort | null = null;
+	sentMessages: Uint8Array[] = [];
+	otherPort: MockPort | null = null;
 
 	addEventListener(type: string, handler: EventListener) {
 		if (type === 'message') {

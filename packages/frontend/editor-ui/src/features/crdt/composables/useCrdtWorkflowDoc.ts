@@ -1,7 +1,8 @@
 import { computed, onScopeDispose } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { CRDTDoc, CRDTMap, DeepChange, ChangeOrigin, CRDTAwareness } from '@n8n/crdt';
-import { isMapChange, ChangeOrigin as CO, seedValueDeep, setNestedValue, toJSON } from '@n8n/crdt';
+import { isMapChange, ChangeOrigin as CO, seedValueDeep, toJSON } from '@n8n/crdt';
+import { setNestedValue } from '../utils/crdtUtils';
 import { useCRDTSync } from './useCRDTSync';
 import type {
 	WorkflowDocument,

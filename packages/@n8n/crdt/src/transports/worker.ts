@@ -109,8 +109,8 @@ export class WorkerTransport implements SyncTransport {
 			this.connectResolve = resolve;
 
 			// Set up message handler
-			this.messageHandler = (event: MessageEvent) => {
-				const data = event.data;
+			this.messageHandler = (event: MessageEvent<Uint8Array | ArrayBuffer>) => {
+				const data: Uint8Array | ArrayBuffer = event.data;
 
 				// Handle binary messages with docId
 				if (data instanceof Uint8Array || data instanceof ArrayBuffer) {
@@ -156,6 +156,16 @@ export class WorkerTransport implements SyncTransport {
 		this._connected = false;
 		this.connectPromise = null;
 		this.connectResolve = null;
+	}
+
+	/** No-op for WorkerTransport - connection state changes are handled via protocol messages */
+	onConnectionChange(_handler: (connected: boolean) => void): Unsubscribe {
+		return () => {};
+	}
+
+	/** No-op for WorkerTransport - no transport-level errors occur */
+	onError(_handler: (error: Error) => void): Unsubscribe {
+		return () => {};
 	}
 
 	private handleBinaryMessage(data: Uint8Array): void {

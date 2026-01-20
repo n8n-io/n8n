@@ -39,7 +39,10 @@ export class YjsAwareness<T extends AwarenessState = AwarenessState> implements 
 	}
 
 	getLocalState(): T | null {
-		return this.awareness.getLocalState() as T | null;
+		// y-protocols returns Record<string, any> | null, cast to generic T for type safety
+		const state = this.awareness.getLocalState();
+		if (state === null) return null;
+		return state as T;
 	}
 
 	setLocalState(state: T | null): void {
@@ -51,6 +54,7 @@ export class YjsAwareness<T extends AwarenessState = AwarenessState> implements 
 	}
 
 	getStates(): Map<AwarenessClientId, T> {
+		// y-protocols returns Map<number, Record<string, any>>, cast for type safety
 		return this.awareness.getStates() as Map<AwarenessClientId, T>;
 	}
 

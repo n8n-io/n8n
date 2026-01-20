@@ -7,7 +7,7 @@ import type {
 	Unsubscribe,
 } from '../types';
 
-/** Origin symbol used for tracking local changes in transactions */
+/** Origin symbol used for undo manager to track local changes */
 export const YjsUndoManagerOrigin = Symbol('local-undo-tracked');
 
 /** Origin symbol used for remote changes that should NOT be tracked */
@@ -51,7 +51,7 @@ export class YjsUndoManager implements CRDTUndoManager {
 		// This provides document-wide undo rather than per-structure
 		// Y.UndoManager accepts AbstractType or array of AbstractType
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const scope: any[] = [];
+		const scope: Array<Y.AbstractType<Y.YEvent<any>>> = [];
 
 		// Get all named maps and arrays at the root
 		const typeNames: string[] = [];
@@ -60,17 +60,16 @@ export class YjsUndoManager implements CRDTUndoManager {
 			typeNames.push(name);
 		});
 
-		// eslint-disable-next-line no-console
-		console.log('[YjsUndoManager] Creating with scope:', typeNames);
-
 		// If no types exist yet, we still need a valid scope
 		// Create a dummy type that will be included when real types are added
 		if (scope.length === 0) {
 			// Use a hidden map as the scope - any changes will still be tracked
-			// because Y.UndoManager observes the doc's transaction events
-			scope.push(yDoc.getMap('__undo_scope__'));
-			// eslint-disable-next-line no-console
-			console.log('[YjsUndoManager] No types found, using fallback scope');
+			// because Y.UndoManager observes the doc's transaction events.
+			// Double cast required: Y.Map extends AbstractType at runtime, but TypeScript's
+			// event type hierarchy (YMapEvent vs YEvent) prevents direct assignment
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const dummyScope = yDoc.getMap('__undo_scope__') as unknown as Y.AbstractType<Y.YEvent<any>>;
+			scope.push(dummyScope);
 		}
 
 		this.undoManager = new Y.UndoManager(scope, {

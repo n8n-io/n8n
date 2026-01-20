@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch, onUnmounted, h, defineComponent, shallowRef } from 'vue';
-import { toJSON, getNestedValue } from '@n8n/crdt';
+import { toJSON } from '@n8n/crdt';
+import { getNestedValue } from '../utils/crdtUtils';
 import type { CRDTMap, Unsubscribe } from '@n8n/crdt';
 import { useWorkflowDoc } from '../composables/useWorkflowSync';
 

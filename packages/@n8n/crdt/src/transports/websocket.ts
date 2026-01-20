@@ -116,6 +116,9 @@ export class WebSocketTransport implements SyncTransport {
 	}
 
 	async connect(): Promise<void> {
+		// Clear any pending reconnect to avoid parallel WebSocket connections
+		this.clearReconnectTimeout();
+
 		if (this._connected) {
 			return await Promise.resolve();
 		}
@@ -212,7 +215,7 @@ export class WebSocketTransport implements SyncTransport {
 			} catch (error) {
 				clearTimeout(timeoutId);
 				this.isConnecting = false;
-				reject(error);
+				reject(error instanceof Error ? error : new Error(String(error)));
 			}
 		});
 	}

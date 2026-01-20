@@ -15,6 +15,18 @@ interface SyncMessage {
 type PortMessage = SyncMessage;
 
 /**
+ * Type guard to validate incoming MessagePort messages
+ */
+function isPortMessage(data: unknown): data is PortMessage {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'type' in data &&
+		(data as { type: unknown }).type === 'sync'
+	);
+}
+
+/**
  * MessagePortTransport - Transport using MessagePort for SharedWorker/Worker communication.
  *
  * This transport wraps a MessagePort (from SharedWorker, Worker, or MessageChannel)
@@ -80,7 +92,8 @@ export class MessagePortTransport implements SyncTransport {
 		}
 
 		this.messageHandler = (event: MessageEvent) => {
-			const message = event.data as PortMessage;
+			if (!isPortMessage(event.data)) return;
+			const message = event.data;
 
 			if (message.type === 'sync') {
 				// Ensure we have a Uint8Array (may be transferred as ArrayBuffer)
@@ -111,5 +124,15 @@ export class MessagePortTransport implements SyncTransport {
 
 		this._connected = false;
 		// Note: We don't close the port here as it may be reused
+	}
+
+	/** No-op for MessagePortTransport - connection state doesn't change unexpectedly */
+	onConnectionChange(_handler: (connected: boolean) => void): Unsubscribe {
+		return () => {};
+	}
+
+	/** No-op for MessagePortTransport - no transport-level errors occur */
+	onError(_handler: (error: Error) => void): Unsubscribe {
+		return () => {};
 	}
 }

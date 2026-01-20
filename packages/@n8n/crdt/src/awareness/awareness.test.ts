@@ -398,11 +398,11 @@ describe.each([CRDTEngine.yjs])('Awareness Conformance: %s', (engine) => {
 
 			awareness.destroy();
 
-			// After destroy, local state should be null
-			// Note: calling getLocalState after destroy may vary by implementation
+			// After destroy, local state should be null (marked offline)
+			expect(awareness.getLocalState()).toBeNull();
 		});
 
-		it('should not emit events after destroy', () => {
+		it('should emit removed event when destroyed', () => {
 			const changes: AwarenessChangeEvent[] = [];
 			awareness.onChange((event) => changes.push(event));
 
@@ -414,8 +414,10 @@ describe.each([CRDTEngine.yjs])('Awareness Conformance: %s', (engine) => {
 
 			awareness.destroy();
 
-			// Further operations should not emit events
-			// Note: behavior after destroy is implementation-dependent
+			// Destroy should emit a removed event (marking client offline)
+			expect(changes.length).toBeGreaterThan(1);
+			const lastChange = changes[changes.length - 1];
+			expect(lastChange.removed).toContain(awareness.clientId);
 		});
 	});
 
