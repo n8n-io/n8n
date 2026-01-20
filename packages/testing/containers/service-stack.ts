@@ -1,5 +1,5 @@
-import { createN8NStack, type N8NStack } from './stack';
 import type { ServiceName } from './services/types';
+import { createN8NStack, type N8NStack } from './stack';
 
 export interface ServiceStackOptions {
 	services: ServiceName[];
@@ -20,7 +20,7 @@ export interface ServiceStackOptions {
 export async function createServiceStack(options: ServiceStackOptions): Promise<N8NStack> {
 	const { services, projectName } = options;
 
-	return createN8NStack({
+	return await createN8NStack({
 		mains: 0,
 		workers: 0,
 		postgres: services.includes('postgres'),

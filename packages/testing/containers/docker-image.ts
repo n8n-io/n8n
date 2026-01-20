@@ -2,7 +2,7 @@
  * Get the Docker image to use for the n8n container
  */
 export function getDockerImageFromEnv(defaultImage = 'n8nio/n8n:local') {
-	const configuredImage = process.env.N8N_DOCKER_IMAGE;
+	const configuredImage = process.env.TEST_IMAGE_N8N;
 	if (!configuredImage) {
 		return defaultImage;
 	}
