@@ -416,7 +416,11 @@ export class FrontendService {
 		} catch {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
-		this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
+		try {
+			this.settings.ai.allowSendingParameterValues = await this.aiUsageService.getAiUsageSettings();
+		} catch {
+			this.settings.ai.allowSendingParameterValues = true;
+		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');

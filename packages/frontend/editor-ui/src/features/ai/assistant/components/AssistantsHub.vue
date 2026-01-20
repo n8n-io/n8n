@@ -133,17 +133,13 @@ onBeforeUnmount(() => {
 					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
 						<!-- Header switcher is only visible when both modes are available in current view -->
 						<template v-if="canToggleModes" #header>
-							<<<<<<< HEAD
-							<HubSwitcher
-								:is-build-mode="isBuildMode"
-								:disabled="!allowSendingParameterValues"
-								@toggle="toggleAssistantMode"
-							/>
-							=======
 							<AskModeCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
-								<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+								<HubSwitcher
+									:is-build-mode="isBuildMode"
+									:disabled="!allowSendingParameterValues"
+									@toggle="toggleAssistantMode"
+								/>
 							</AskModeCoachmark>
-							>>>>>>> master
 						</template>
 					</AskAssistantChat>
 				</div>
