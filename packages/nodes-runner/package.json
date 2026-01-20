@@ -9,5 +9,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.22.0"
+  "packageManager": "pnpm@10.22.0",
+  "devDependencies": {
+    "n8n-workflow": "workspace:*",
+    "@n8n/typescript-config": "workspace:*"
+  }
 }
