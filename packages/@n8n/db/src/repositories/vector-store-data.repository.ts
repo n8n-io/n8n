@@ -265,6 +265,38 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 	}
 
 	/**
+	 * Delete vectors by file names stored in metadata
+	 */
+	async deleteByFileNames(memoryKey: string, fileNames: string[]): Promise<number> {
+		if (fileNames.length === 0) {
+			return 0;
+		}
+
+		const qb = this.createQueryBuilder('vectorStore').delete().where('memoryKey = :memoryKey', {
+			memoryKey,
+		});
+
+		// For each fileName, add an OR condition to match it in the metadata JSON
+		const orConditions = fileNames.map((_, index) => {
+			const paramName = `fileName${index}`;
+			if (this.manager.connection.options.type === 'postgres') {
+				// PostgreSQL JSON query
+				return `metadata->>'fileName' = :${paramName}`;
+			} else {
+				// SQLite JSON query
+				return `json_extract(metadata, '$.fileName') = :${paramName}`;
+			}
+		});
+
+		qb.andWhere(`(${orConditions.join(' OR ')})`, {
+			...Object.fromEntries(fileNames.map((name, index) => [`fileName${index}`, name])),
+		});
+
+		const result = await qb.execute();
+		return result.affected ?? 0;
+	}
+
+	/**
 	 * List all unique memory keys
 	 */
 	async listStores(): Promise<string[]> {

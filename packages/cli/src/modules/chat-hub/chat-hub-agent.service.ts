@@ -6,6 +6,7 @@ import type {
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
+import { VectorStoreDataRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -30,6 +31,7 @@ export class ChatHubAgentService {
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
+		private readonly vectorStoreDataRepository: VectorStoreDataRepository,
 	) {}
 
 	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelDto[]> {
@@ -145,6 +147,7 @@ export class ChatHubAgentService {
 				}
 			}
 
+			const newFiles: IBinaryData[] = [];
 			for (const file of updates.files) {
 				if (file.id) {
 					// Skip existing file
@@ -153,6 +156,7 @@ export class ChatHubAgentService {
 
 				const f = await this.chatHubAttachmentService.storeAgentAttachment(id, file);
 				updatedFiles.push(f);
+				newFiles.push(file);
 			}
 
 			if (filesToDelete.length > 0) {
@@ -160,11 +164,33 @@ export class ChatHubAgentService {
 			}
 
 			updateData.files = updatedFiles;
+
+			// Sync vector store if any PDF files were added or removed
+			const deletedPdfFiles = filesToDelete.filter((f) => f.mimeType === 'application/pdf');
+			const newPdfFiles = newFiles.filter((f) => f.mimeType === 'application/pdf');
+
+			// Delete removed PDF files from vector store
+			if (deletedPdfFiles.length > 0) {
+				const fileNamesToDelete = deletedPdfFiles
+					.map((f) => f.fileName)
+					.filter((name): name is string => !!name);
+
+				if (fileNamesToDelete.length > 0) {
+					await this.deleteDocumentsByFileNames(user.id, id, fileNamesToDelete);
+				}
+			}
+
+			// Insert new PDF files
+			if (newPdfFiles.length > 0) {
+				const agentForInsertion = {
+					...existingAgent,
+					...updateData,
+				} as ChatHubAgent;
+				await this.insertDocuments(user, agentForInsertion, newPdfFiles);
+			}
 		}
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
-
-		// TODO: insert new documents, delete old documents
 
 		this.logger.debug(`Chat agent updated: ${id} by user ${user.id}`);
 		return agent;
@@ -180,7 +206,8 @@ export class ChatHubAgentService {
 		await this.chatHubAttachmentService.deleteAgentAttachmentById(id);
 		await this.chatAgentRepository.deleteAgent(id);
 
-		// TODO: delete documents
+		// Delete all embeddings for this agent from vector store
+		await this.deleteDocuments(userId, id);
 
 		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
 	}
@@ -232,5 +259,38 @@ export class ChatHubAgentService {
 		} finally {
 			//await this.chatHubWorkflowService.deleteWorkflow(workflowData.id);
 		}
+	}
+
+	private async deleteDocuments(userId: string, agentId: string): Promise<void> {
+		const memoryKey = this.chatHubWorkflowService.getAgentMemoryKey(userId, agentId);
+
+		// Delete all embeddings for this agent from the vector store
+		await this.vectorStoreDataRepository.clearStore(memoryKey);
+
+		this.logger.debug(
+			`Deleted embeddings for agent ${agentId} from vector store (memoryKey: ${memoryKey})`,
+		);
+	}
+
+	private async deleteDocumentsByFileNames(
+		userId: string,
+		agentId: string,
+		fileNames: string[],
+	): Promise<void> {
+		if (fileNames.length === 0) {
+			return;
+		}
+
+		const memoryKey = this.chatHubWorkflowService.getAgentMemoryKey(userId, agentId);
+
+		// Delete embeddings for specific files from the vector store
+		const deletedCount = await this.vectorStoreDataRepository.deleteByFileNames(
+			memoryKey,
+			fileNames,
+		);
+
+		this.logger.debug(
+			`Deleted ${deletedCount} embeddings for ${fileNames.length} files from vector store (memoryKey: ${memoryKey}, fileNames: ${fileNames.join(', ')})`,
+		);
 	}
 }

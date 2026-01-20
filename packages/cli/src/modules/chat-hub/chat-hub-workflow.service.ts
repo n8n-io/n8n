@@ -1113,13 +1113,17 @@ Respond the title only:`,
 		};
 	}
 
+	getAgentMemoryKey(userId: string, agentId: string): string {
+		return `agent-files-${userId}-${agentId}`;
+	}
+
 	private buildVectorStoreNode(userId: string, agentId: string): INode {
 		return {
 			parameters: {
 				mode: 'retrieve',
 				memoryKey: {
 					__rl: true,
-					value: `agent-files-${userId}-${agentId}`,
+					value: this.getAgentMemoryKey(userId, agentId),
 					cachedResultName: '',
 				},
 				enablePersistence: true,
@@ -1195,7 +1199,7 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 					mode: 'insert',
 					memoryKey: {
 						__rl: true,
-						value: `agent-files-${userId}-${agentId}`,
+						value: this.getAgentMemoryKey(userId, agentId),
 						mode: 'list',
 						cachedResultName: '',
 					},
@@ -1212,7 +1216,17 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 			{
 				parameters: {
 					dataType: 'binary',
-					options: {},
+					options: {
+						metadata: {
+							metadataValues: [
+								{
+									name: 'fileName',
+									// Extract fileName from the binary data field
+									value: '={{ $binary.data.fileName }}',
+								},
+							],
+						},
+					},
 				},
 				type: DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE,
 				typeVersion: 1.1,
@@ -1259,25 +1273,24 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 				],
 			},
 		};
+		// Create one item per file so each file gets its own metadata with correct fileName
+		const items = attachments.map((attachment) => ({
+			json: {
+				sessionId: uuidv4(),
+				action: 'sendMessage',
+				chatInput: '',
+				files: [{ ...attachment, data: undefined }], // Strip data field
+			},
+			binary: {
+				data: attachment,
+			},
+		}));
+
 		const nodeExecutionStack: IExecuteData[] = [
 			{
 				node: triggerNode,
 				data: {
-					main: [
-						[
-							{
-								json: {
-									sessionId: uuidv4(),
-									action: 'sendMessage',
-									chatInput: '',
-									files: attachments.map(({ data, ...metadata }) => metadata),
-								},
-								binary: Object.fromEntries(
-									attachments.map((attachment, index) => [`data${index}`, attachment]),
-								),
-							},
-						],
-					],
+					main: [items],
 				},
 				source: null,
 			},
