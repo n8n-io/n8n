@@ -219,7 +219,7 @@ describe('data-table-helpers', () => {
 				nodeName: 'Data Table',
 				tableName: 'my_table',
 				columns: [],
-				setNodeName: null,
+				setNodeName: undefined,
 				operation: 'insert',
 			});
 		});
@@ -241,7 +241,7 @@ describe('data-table-helpers', () => {
 			};
 
 			const info = extractDataTableInfo(workflow);
-			expect(info[0].tableName).toBe('unknown');
+			expect(info[0].tableName).toBeUndefined();
 		});
 
 		it('should default operation to insert', () => {
@@ -346,7 +346,7 @@ describe('data-table-helpers', () => {
 
 			const info = extractDataTableInfo(workflow);
 			expect(info[0].columns).toEqual([]);
-			expect(info[0].setNodeName).toBeNull();
+			expect(info[0].setNodeName).toBeUndefined();
 		});
 
 		it('should extract info from multiple Data Table nodes', () => {

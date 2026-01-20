@@ -7,7 +7,7 @@
 
 import type { DataTableRowOperation } from 'n8n-workflow';
 
-import type { SimpleWorkflow } from '../types/workflow';
+import type { SimpleWorkflow } from '../types';
 
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';
@@ -46,13 +46,13 @@ export interface DataTableInfo {
 	/** The node name in the workflow */
 	nodeName: string;
 	/** The table name/ID (may be a placeholder) */
-	tableName: string;
+	tableName?: string;
 	/** Column definitions inferred from the preceding Set node */
 	columns: ColumnDefinition[];
 	/** The name of the Set node that defines the columns (if found) */
-	setNodeName: string | null;
+	setNodeName?: string;
 	/** The operation (insert, update, upsert, get, delete) */
-	operation: string;
+	operation: DataTableRowOperation;
 }
 
 /**
@@ -133,21 +133,21 @@ export function extractDataTableInfo(workflow: SimpleWorkflow): DataTableInfo[] 
 	return dataTableNodes.map((node) => {
 		const params = node.parameters ?? {};
 
-		// Extract table name from dataTableId parameter
-		// The structure is: { __rl: true, mode: 'id', value: 'tableName' }
-		let tableName = 'unknown';
+		let tableName = undefined;
 		const dataTableId = params.dataTableId as { value?: string } | undefined;
 		if (dataTableId?.value) {
 			tableName = dataTableId.value;
 		}
 
 		// Get the operation type
-		const operation = (params.operation as string) ?? 'insert';
+		const operation: DataTableRowOperation =
+			(params.operation as DataTableRowOperation) ?? 'insert';
 
 		// Only look for Set node columns on row write operations
 		let columns: ColumnDefinition[] = [];
-		let setNodeName: string | null = null;
+		let setNodeName: string | undefined = undefined;
 
+		// Look for a set node before the data table operation - this should contain the columns
 		if (isDataTableRowColumnOperation(operation)) {
 			const predecessors = findPredecessorNodes(workflow, node.name);
 			for (const predecessorName of predecessors) {
