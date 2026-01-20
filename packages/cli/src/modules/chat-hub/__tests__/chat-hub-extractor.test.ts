@@ -148,7 +148,9 @@ describe('ChatHubExtractor', () => {
 			expect(result).toEqual({});
 			expect(mockLogger.error).toHaveBeenCalledWith(
 				'Failed to decrypt/parse encrypted chat metadata',
-				expect.objectContaining({ error: 'Decryption failed' }),
+				expect.objectContaining({
+					error: expect.objectContaining({ message: 'Decryption failed' }),
+				}),
 			);
 		});
 

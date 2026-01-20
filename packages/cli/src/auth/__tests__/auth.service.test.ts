@@ -852,7 +852,7 @@ describe('AuthService', () => {
 			expect(browserId).toBe('browser-123');
 		});
 
-		it('should return undefined for GET on skip endpoints', () => {
+		it('should return false for GET on skip endpoints', () => {
 			const req = mock<AuthenticatedRequest>({
 				method: 'GET',
 				baseUrl: '/api',
@@ -865,7 +865,7 @@ describe('AuthService', () => {
 
 			const browserId = authService.getBrowserIdIfApplicable(req);
 
-			expect(browserId).toBeUndefined();
+			expect(browserId).toBe(false);
 		});
 
 		it('should return browserId for POST on skip endpoints', () => {
