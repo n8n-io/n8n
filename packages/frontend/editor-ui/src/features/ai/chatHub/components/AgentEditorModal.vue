@@ -207,16 +207,13 @@ async function onSave() {
 		assert(selectedModel.value);
 		assert(credentialIdForSelectedModelProvider.value);
 
-		// Build tools array including vector store if enabled
-		const allTools: INode[] = [...tools.value];
-
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
 			...selectedModel.value,
 			credentialId: credentialIdForSelectedModelProvider.value,
-			tools: allTools,
+			tools: tools.value,
 			icon: icon.value,
 			files: files.value.map((file) => ({ fileName: '', ...file })),
 		};
@@ -284,11 +281,7 @@ function onSelectTools() {
 		data: {
 			selected: tools.value,
 			onConfirm: (newTools: INode[]) => {
-				// Keep vector store tool if it exists, add other tools
-				const vectorStoreTool = tools.value.find(
-					(tool) => tool.type === VECTOR_STORE_SIMPLE_NODE_TYPE,
-				);
-				tools.value = vectorStoreTool ? [...newTools, vectorStoreTool] : newTools;
+				tools.value = newTools;
 			},
 		},
 	});
