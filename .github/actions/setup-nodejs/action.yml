@@ -3,7 +3,7 @@
 # GitHub-hosted runners use standard GitHub Actions caching.
 
 name: 'Node.js Build Setup'
-description: 'Configures Node.js with pnpm, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command.'
+description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply chain protection, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command.'
 
 inputs:
   node-version:
@@ -33,8 +33,25 @@ runs:
         node-version: ${{ inputs.node-version }}
         cache: 'pnpm'
 
+    - name: Install Aikido SafeChain
+      if: runner.os != 'Windows'
+      run: |
+        VERSION="1.4.1"
+        EXPECTED_SHA256="628235987175072a4255aa3f5f0128f31795b63970f1970ae8a04d07bf8527b0"
+        curl -fsSL -o install-safe-chain.sh \
+          "https://github.com/AikidoSec/safe-chain/releases/download/${VERSION}/install-safe-chain.sh"
+        echo "${EXPECTED_SHA256}  install-safe-chain.sh" | sha256sum -c -
+        sh install-safe-chain.sh --ci
+        rm install-safe-chain.sh
+      shell: bash
+
     - name: Install Dependencies
       run: pnpm install --frozen-lockfile
+      shell: bash
+
+    - name: Disable safe-chain
+      if: runner.os != 'Windows'
+      run: safe-chain teardown
       shell: bash
 
     - name: Configure Turborepo Cache
