@@ -741,18 +741,6 @@ export function buildPlannerContextMessage(context: {
 	parts.push(context.userRequest);
 	parts.push('</user_request>');
 
-	// Existing workflow context (if any)
-	if (context.existingWorkflowSummary) {
-		parts.push('');
-		parts.push('<existing_workflow>');
-		parts.push(context.existingWorkflowSummary);
-		parts.push('</existing_workflow>');
-		parts.push('');
-		parts.push(
-			'IMPORTANT: A workflow already exists. Generate an INCREMENTAL plan that only adds/modifies what the user is requesting. Do NOT recreate existing functionality.',
-		);
-	}
-
 	// User answers (if resuming after questions)
 	if (context.userAnswers && context.userAnswers.length > 0) {
 		parts.push('');
@@ -765,14 +753,39 @@ export function buildPlannerContextMessage(context: {
 		parts.push('</user_answers>');
 	}
 
+	// Determine scenario: plan refinement vs incremental planning
+	const hasExistingWorkflow = !!context.existingWorkflowSummary;
+	const hasPreviousPlan = !!context.previousPlan;
+
+	// Existing workflow context (if any)
+	if (hasExistingWorkflow) {
+		parts.push('');
+		parts.push('<existing_workflow>');
+		parts.push(context.existingWorkflowSummary!);
+		parts.push('</existing_workflow>');
+	}
+
 	// Previous plan (if refining)
-	if (context.previousPlan) {
+	if (hasPreviousPlan) {
 		parts.push('');
 		parts.push('<previous_plan>');
-		parts.push(context.previousPlan);
+		parts.push(context.previousPlan!);
 		parts.push('</previous_plan>');
+	}
+
+	// Add scenario-specific instructions
+	if (hasExistingWorkflow) {
+		// INCREMENTAL PLANNING: Workflow exists, add only new steps
 		parts.push('');
-		parts.push('The user is requesting changes to this plan. Update it based on their message.');
+		parts.push(
+			'IMPORTANT: A workflow already exists on the canvas. Generate an INCREMENTAL plan that only adds/modifies what the user is requesting. Do NOT recreate existing functionality - reference existing nodes when connecting new steps.',
+		);
+	} else if (hasPreviousPlan) {
+		// PLAN REFINEMENT: No workflow yet, just refining the plan
+		parts.push('');
+		parts.push(
+			'IMPORTANT: The user is refining the plan before implementation. Generate a COMPLETE UPDATED PLAN that incorporates their requested changes. Include all steps (existing + new) in the updated plan.',
+		);
 	}
 
 	return parts.join('\n');
