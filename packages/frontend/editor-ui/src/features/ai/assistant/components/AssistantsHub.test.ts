@@ -83,6 +83,11 @@ describe('AssistantsHub', () => {
 
 		// Default store states - both modes enabled
 		settingsStore.isAiAssistantEnabled = true;
+		settingsStore.settings = {
+			ai: {
+				allowSendingParameterValues: true,
+			},
+		} as ReturnType<typeof useSettingsStore>['settings'];
 		builderStore.isAIBuilderEnabled = true;
 		builderStore.chatMessages = [];
 
