@@ -6,13 +6,6 @@
  *   e.g., TEST_IMAGE_POSTGRES=postgres:16 overrides the postgres image
  *   e.g., TEST_IMAGE_N8N=n8nio/n8n:latest overrides the n8n image
  *   e.g., TEST_IMAGE_TASK_RUNNER=n8nio/runners:latest overrides the task runner image
- *
- * For n8n image, shorthand syntax is supported:
- *   TEST_IMAGE_N8N=stable         → n8nio/n8n:stable
- *   TEST_IMAGE_N8N=n8n:stable     → n8nio/n8n:stable
- *   TEST_IMAGE_N8N=n8nio/n8n:stable → n8nio/n8n:stable
- *
- * N8N_DOCKER_IMAGE is also supported for backwards compatibility.
  */
 
 /** Default images - override via TEST_IMAGE_<KEY> env vars */
@@ -102,4 +95,39 @@ export const TEST_CONTAINER_IMAGES = {
 	kafka: getImage('kafka'),
 	mysql: getImage('mysql'),
 	ngrok: getImage('ngrok'),
+} as const;
+
+/**
+ * Convert camelCase to SCREAMING_SNAKE_CASE for env var names
+ * e.g., victoriaLogs -> VICTORIA_LOGS, taskRunner -> TASK_RUNNER
+ */
+function toEnvVarName(key: string): string {
+	return key.replace(/([a-z])([A-Z])/g, '$1_$2').toUpperCase();
+}
+
+/**
+ * Get image with env var override support
+ * Checks TEST_IMAGE_<KEY> env var, falls back to default
+ */
+function getImage<K extends keyof typeof DEFAULT_IMAGES>(key: K): string {
+	const envVar = `TEST_IMAGE_${toEnvVarName(key)}`;
+	return process.env[envVar] ?? DEFAULT_IMAGES[key];
+}
+
+export const TEST_CONTAINER_IMAGES = {
+	postgres: getImage('postgres'),
+	redis: getImage('redis'),
+	caddy: getImage('caddy'),
+	n8n: getImage('n8n'),
+	taskRunner: getImage('taskRunner'),
+	mailpit: getImage('mailpit'),
+	mockserver: getImage('mockserver'),
+	gitea: getImage('gitea'),
+	keycloak: getImage('keycloak'),
+	victoriaLogs: getImage('victoriaLogs'),
+	victoriaMetrics: getImage('victoriaMetrics'),
+	vector: getImage('vector'),
+	n8nTracer: getImage('n8nTracer'),
+	jaeger: getImage('jaeger'),
+	cloudflared: getImage('cloudflared'),
 } as const;
