@@ -239,8 +239,9 @@ export class ActiveWorkflows {
 		}
 
 		const workflowData = this.activeWorkflows[workflowId];
-		const triggersByNode = workflowData.triggersByNode ?? new Map();
-		const triggerResponses = workflowData.triggerResponses ?? [];
+		const triggersByNode: Map<string, ITriggerResponse[]> =
+			workflowData.triggersByNode ?? new Map<string, ITriggerResponse[]>();
+		const triggerResponses: ITriggerResponse[] = workflowData.triggerResponses ?? [];
 
 		for (const node of nodes) {
 			const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -258,7 +259,7 @@ export class ActiveWorkflows {
 
 				if (triggerResponse !== undefined) {
 					triggerResponses.push(triggerResponse);
-					const nodeTriggers = triggersByNode.get(node.id) ?? [];
+					const nodeTriggers: ITriggerResponse[] = triggersByNode.get(node.id) ?? [];
 					nodeTriggers.push(triggerResponse);
 					triggersByNode.set(node.id, nodeTriggers);
 				}
@@ -296,11 +297,12 @@ export class ActiveWorkflows {
 		}
 
 		const workflowData = this.activeWorkflows[workflowId];
-		const triggersByNode = workflowData.triggersByNode ?? new Map();
+		const triggersByNode: Map<string, ITriggerResponse[]> =
+			workflowData.triggersByNode ?? new Map<string, ITriggerResponse[]>();
 
 		// Close triggers for the specified nodes
 		for (const nodeId of nodeIds) {
-			const nodeTriggers = triggersByNode.get(nodeId);
+			const nodeTriggers: ITriggerResponse[] | undefined = triggersByNode.get(nodeId);
 			if (nodeTriggers) {
 				for (const trigger of nodeTriggers) {
 					await this.closeTrigger(trigger, workflowId);
