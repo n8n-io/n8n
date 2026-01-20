@@ -1,5 +1,11 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import type {
+	WorkflowEntity,
+	WorkflowHistory,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { WorkflowActivateMode } from 'n8n-workflow';
@@ -12,6 +18,10 @@ describe('ActiveWorkflowManager', () => {
 	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
+	const globalConfig = mock<GlobalConfig>({
+		workflows: { useWorkflowPublicationService: false },
+	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -34,6 +44,8 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
+			workflowPublishedVersionRepository,
+			globalConfig,
 		);
 	});
 

@@ -6,9 +6,9 @@ import {
 	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
 } from '@/constants';
 import { Logger } from '@n8n/backend-common';
-import { WorkflowsConfig } from '@n8n/config';
+import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -61,6 +61,7 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { getPublishedWorkflowData } from '@/workflows/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
 
@@ -94,6 +95,8 @@ export class ActiveWorkflowManager {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly push: Push,
 		private readonly eventService: EventService,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -288,7 +291,7 @@ export class ActiveWorkflowManager {
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecutePollFunctions(
-		workflowData: IWorkflowDb,
+		initialWorkflowData: IWorkflowDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
@@ -301,32 +304,58 @@ export class ActiveWorkflowManager {
 			) => {
 				this.logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
-				);
 
-				if (donePromise) {
-					void executePromise.then((executionId) => {
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
-					});
-				} else {
-					void executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
-				}
+				// Load fresh workflow data at execution time
+				void getPublishedWorkflowData(
+					initialWorkflowData.id,
+					this.workflowRepository,
+					this.workflowPublishedVersionRepository,
+					this.globalConfig.workflows.useWorkflowPublicationService,
+				).then((publishedWorkflowData) => {
+					if (!publishedWorkflowData) {
+						this.logger.error(
+							`Published workflow ${initialWorkflowData.id} not found at execution time`,
+						);
+						return;
+					}
+
+					// Merge fresh nodes/connections with initial workflow data (preserves staticData)
+					const workflowData: IWorkflowDb = {
+						...initialWorkflowData,
+						nodes: publishedWorkflowData.nodes,
+						connections: publishedWorkflowData.connections,
+						name: publishedWorkflowData.name,
+					};
+
+					const executePromise = this.workflowExecutionService.runWorkflow(
+						workflowData,
+						node,
+						data,
+						additionalData,
+						mode,
+						responsePromise,
+					);
+
+					if (donePromise) {
+						void executePromise.then((executionId) => {
+							this.activeExecutions
+								.getPostExecutePromise(executionId)
+								.then(donePromise.resolve)
+								.catch(donePromise.reject);
+						});
+					} else {
+						void executePromise.catch((error: Error) =>
+							this.logger.error(error.message, { error }),
+						);
+					}
+				});
 			};
 
 			const __emitError = (error: ExecutionError) => {
 				void this.executionService
-					.createErrorExecution(error, node, workflowData, workflow, mode)
+					.createErrorExecution(error, node, initialWorkflowData, workflow, mode)
 					.then(() => {
-						this.executeErrorWorkflow(error, workflowData, mode);
+						this.executeErrorWorkflow(error, initialWorkflowData, mode);
 					});
 			};
 
@@ -339,7 +368,7 @@ export class ActiveWorkflowManager {
 	 * and overwrites the emit to be able to start it in subprocess
 	 */
 	getExecuteTriggerFunctions(
-		workflowData: IWorkflowDb,
+		initialWorkflowData: IWorkflowDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		activation: WorkflowActivateMode,
@@ -353,59 +382,82 @@ export class ActiveWorkflowManager {
 				this.logger.debug(`Received trigger for workflow "${workflow.name}"`);
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
-				const executePromise = this.workflowExecutionService.runWorkflow(
-					workflowData,
-					node,
-					data,
-					additionalData,
-					mode,
-					responsePromise,
-				);
+				// Load fresh workflow data at execution time
+				void getPublishedWorkflowData(
+					initialWorkflowData.id,
+					this.workflowRepository,
+					this.workflowPublishedVersionRepository,
+					this.globalConfig.workflows.useWorkflowPublicationService,
+				).then((publishedWorkflowData) => {
+					if (!publishedWorkflowData) {
+						this.logger.error(
+							`Published workflow ${initialWorkflowData.id} not found at execution time`,
+						);
+						return;
+					}
 
-				void executePromise.then((executionId) => {
-					this.eventService.emit('workflow-executed', {
-						workflowId: workflowData.id,
-						workflowName: workflowData.name,
-						executionId,
-						source: 'trigger',
-					});
-				});
+					// Merge fresh nodes/connections with initial workflow data (preserves staticData)
+					const workflowData: IWorkflowDb = {
+						...initialWorkflowData,
+						nodes: publishedWorkflowData.nodes,
+						connections: publishedWorkflowData.connections,
+						name: publishedWorkflowData.name,
+					};
 
-				if (donePromise) {
+					const executePromise = this.workflowExecutionService.runWorkflow(
+						workflowData,
+						node,
+						data,
+						additionalData,
+						mode,
+						responsePromise,
+					);
+
 					void executePromise.then((executionId) => {
-						this.activeExecutions
-							.getPostExecutePromise(executionId)
-							.then(donePromise.resolve)
-							.catch(donePromise.reject);
+						this.eventService.emit('workflow-executed', {
+							workflowId: workflowData.id,
+							workflowName: workflowData.name,
+							executionId,
+							source: 'trigger',
+						});
 					});
-				} else {
-					executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
-				}
+
+					if (donePromise) {
+						void executePromise.then((executionId) => {
+							this.activeExecutions
+								.getPostExecutePromise(executionId)
+								.then(donePromise.resolve)
+								.catch(donePromise.reject);
+						});
+					} else {
+						executePromise.catch((error: Error) => this.logger.error(error.message, { error }));
+					}
+				});
 			};
 			const emitError = (error: Error): void => {
 				this.logger.info(
-					`The trigger node "${node.name}" of workflow "${workflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
+					`The trigger node "${node.name}" of workflow "${initialWorkflowData.name}" failed with the error: "${error.message}". Will try to reactivate.`,
 					{
 						nodeName: node.name,
-						workflowId: workflowData.id,
-						workflowName: workflowData.name,
+						workflowId: initialWorkflowData.id,
+						workflowName: initialWorkflowData.name,
 					},
 				);
 
 				// Remove the workflow as "active"
 
-				void this.activeWorkflows.remove(workflowData.id);
+				void this.activeWorkflows.remove(initialWorkflowData.id);
 
-				void this.activationErrorsService.register(workflowData.id, error.message);
+				void this.activationErrorsService.register(initialWorkflowData.id, error.message);
 
 				// Run Error Workflow if defined
 				const activationError = new WorkflowActivationError(
 					`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
 					{ cause: error, node },
 				);
-				this.executeErrorWorkflow(activationError, workflowData, mode);
+				this.executeErrorWorkflow(activationError, initialWorkflowData, mode);
 
-				this.addQueuedWorkflowActivation(activation, workflowData as WorkflowEntity);
+				this.addQueuedWorkflowActivation(activation, initialWorkflowData as WorkflowEntity);
 			};
 			return new TriggerContext(workflow, node, additionalData, mode, activation, emit, emitError);
 		};
@@ -604,14 +656,21 @@ export class ActiveWorkflowManager {
 				return added;
 			}
 
-			// Get workflow data from the active version
-			if (!dbWorkflow.activeVersion) {
-				throw new UnexpectedError('Active version not found for workflow', {
+			// Get workflow data from the published version
+			const publishedWorkflowData = await getPublishedWorkflowData(
+				dbWorkflow.id,
+				this.workflowRepository,
+				this.workflowPublishedVersionRepository,
+				this.globalConfig.workflows.useWorkflowPublicationService,
+			);
+
+			if (!publishedWorkflowData) {
+				throw new UnexpectedError('Published workflow data not found', {
 					extra: { workflowId: dbWorkflow.id },
 				});
 			}
 
-			const { nodes, connections } = dbWorkflow.activeVersion;
+			const { nodes, connections } = publishedWorkflowData;
 			dbWorkflow.nodes = nodes;
 			dbWorkflow.connections = connections;
 

@@ -1,5 +1,12 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WebhookEntity, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import type {
+	WebhookEntity,
+	WorkflowEntity,
+	WorkflowHistory,
+	WorkflowPublishedVersionRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import type {
@@ -29,6 +36,10 @@ describe('LiveWebhooks', () => {
 	const webhookService = mock<WebhookService>();
 	const nodeTypes = mock<NodeTypes>();
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
+	const workflowPublishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
+	const globalConfig = mock<GlobalConfig>({
+		workflows: { useWorkflowPublicationService: false },
+	});
 
 	let liveWebhooks: LiveWebhooks;
 
@@ -40,6 +51,8 @@ describe('LiveWebhooks', () => {
 			webhookService,
 			workflowRepository,
 			workflowStaticDataService,
+			workflowPublishedVersionRepository,
+			globalConfig,
 		);
 
 		// Mock WorkflowExecuteAdditionalData.getBase to avoid DI issues
