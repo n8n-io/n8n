@@ -46,7 +46,12 @@ export const submitQuestionsSchema = z.object({
 const planStepSchema = z.object({
 	description: z.string().describe('Description of what this step does'),
 	subSteps: z.array(z.string()).optional().describe('Optional sub-steps for complex operations'),
-	suggestedNodes: z.array(z.string()).optional().describe('Suggested n8n node names for this step'),
+	suggestedNodes: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'Internal node type names from search_nodes (e.g., "n8n-nodes-base.httpRequest", "@n8n/n8n-nodes-langchain.agent")',
+		),
 });
 
 /**
@@ -147,7 +152,11 @@ The plan should include:
 For each step, include:
 - A clear description of what happens
 - Sub-steps for complex operations
-- Suggested n8n nodes when known (from your search results)
+- suggestedNodes: MUST use internal node type names from search_nodes <node_name> field
+
+CRITICAL: suggestedNodes MUST contain the INTERNAL node type names exactly as returned by search_nodes.
+These look like "n8n-nodes-base.httpRequest" or "@n8n/n8n-nodes-langchain.agent".
+DO NOT use display names like "HTTP Request" or "AI Agent".
 
 Example:
 {
@@ -156,7 +165,7 @@ Example:
   "steps": [
     {
       "description": "Receive webhook notification of new blog post",
-      "suggestedNodes": ["Webhook"]
+      "suggestedNodes": ["n8n-nodes-base.webhook"]
     },
     {
       "description": "Extract blog content and metadata",
@@ -164,7 +173,7 @@ Example:
         "Fetch the full blog post content",
         "Extract title, summary, and key points"
       ],
-      "suggestedNodes": ["HTTP Request", "HTML Extract"]
+      "suggestedNodes": ["n8n-nodes-base.httpRequest", "n8n-nodes-base.html"]
     },
     {
       "description": "Generate social media posts using AI",
@@ -173,11 +182,11 @@ Example:
         "Create LinkedIn post (professional tone)",
         "Create Instagram caption"
       ],
-      "suggestedNodes": ["OpenAI", "Set"]
+      "suggestedNodes": ["@n8n/n8n-nodes-langchain.agent", "n8n-nodes-base.set"]
     },
     {
       "description": "Post to social media platforms",
-      "suggestedNodes": ["Twitter", "LinkedIn", "HTTP Request"]
+      "suggestedNodes": ["n8n-nodes-base.twitter", "n8n-nodes-base.linkedIn", "n8n-nodes-base.httpRequest"]
     }
   ],
   "additionalSpecs": [

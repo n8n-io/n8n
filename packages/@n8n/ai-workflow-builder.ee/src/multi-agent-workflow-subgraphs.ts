@@ -11,13 +11,11 @@ import {
 	MAX_BUILDER_ITERATIONS,
 	MAX_CONFIGURATOR_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
-	MAX_PLANNER_ITERATIONS,
 } from './constants';
 import { ParentGraphState } from './parent-graph-state';
 import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
-import { PlannerSubgraph } from './subgraphs/planner.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { SubgraphPhase } from './types/coordination';
 import { createErrorMetadata } from './types/coordination';
@@ -43,7 +41,6 @@ function routeToNode(next: string): string {
 		discovery: 'discovery_subgraph',
 		builder: 'builder_subgraph',
 		configurator: 'configurator_subgraph',
-		planner: 'planner_subgraph',
 	};
 	return nodeMapping[next] ?? 'responder';
 }
@@ -147,12 +144,13 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const discoverySubgraph = new DiscoverySubgraph();
 	const builderSubgraph = new BuilderSubgraph();
 	const configuratorSubgraph = new ConfiguratorSubgraph();
-	const plannerSubgraph = new PlannerSubgraph();
 
 	// Compile subgraphs with per-stage LLMs
+	// Note: Discovery now handles both build mode and plan mode (planner merged into discovery)
 	const compiledDiscovery = discoverySubgraph.create({
 		parsedNodeTypes,
 		llm: stageLLMs.discovery,
+		llmPlanner: stageLLMs.planner, // Separate LLM for plan mode
 		logger,
 		featureFlags,
 	});
@@ -168,12 +166,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		llmParameterUpdater: stageLLMs.parameterUpdater,
 		logger,
 		instanceUrl,
-		featureFlags,
-	});
-	const compiledPlanner = plannerSubgraph.create({
-		parsedNodeTypes,
-		llm: stageLLMs.planner,
-		logger,
 		featureFlags,
 	});
 
@@ -291,37 +283,12 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					MAX_CONFIGURATOR_ITERATIONS,
 				),
 			)
-			.addNode(
-				'planner_subgraph',
-				createSubgraphNodeHandler(
-					plannerSubgraph,
-					compiledPlanner,
-					'planner_subgraph',
-					logger,
-					MAX_PLANNER_ITERATIONS,
-				),
-			)
 			// Mode-based routing node
 			.addNode('check_mode', (state) => {
-				// DEBUG: Log mode routing decision
-				console.log('[check_mode] mode:', state.mode, '| messages:', state.messages.length);
-				console.log('[check_mode] planOutput:', state.planOutput ? 'exists' : 'null');
-				console.log(
-					'[check_mode] discoveryContext.nodesFound:',
-					state.discoveryContext?.nodesFound?.length ?? 0,
-				);
-				console.log(
-					'[check_mode] message contents:',
-					state.messages.map((m) => ({
-						type: m._getType(),
-						content: typeof m.content === 'string' ? m.content.substring(0, 80) : '[non-string]',
-					})),
-				);
-
-				// Route to planner when mode is 'plan'
+				// Route to discovery when mode is 'plan' (discovery now handles plan mode)
 				if (state.mode === 'plan') {
-					console.log('[check_mode] → planner (plan mode)');
-					return { nextPhase: 'planner' };
+					logger?.debug('[check_mode] → discovery (plan mode)');
+					return { nextPhase: 'discovery' };
 				}
 
 				// If we have a plan with discovery context, skip discovery and go directly to builder
@@ -332,22 +299,43 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					state.discoveryContext.nodesFound.length > 0;
 
 				if (hasValidPlanContext) {
-					console.log(
-						'[check_mode] → builder (has plan context with',
-						state.discoveryContext?.nodesFound?.length,
-						'nodes)',
-					);
+					logger?.debug('[check_mode] → builder (has plan context with nodes)', {
+						nodeCount: state.discoveryContext?.nodesFound?.length,
+					});
 					return { nextPhase: 'builder' };
 				}
 
 				// Otherwise continue to supervisor for normal routing
-				console.log('[check_mode] → supervisor (continue)');
+				logger?.debug('[check_mode] → supervisor (continue)');
 				return { nextPhase: 'continue' };
 			})
-			// Connect all subgraphs to process_operations
-			.addEdge('discovery_subgraph', 'process_operations')
+			// Connect builder and configurator subgraphs to process_operations
 			.addEdge('builder_subgraph', 'process_operations')
 			.addEdge('configurator_subgraph', 'process_operations')
+			// Discovery routing: HITL pause points for plan mode, otherwise process_operations
+			.addConditionalEdges(
+				'discovery_subgraph',
+				(state) => {
+					// If waiting for answers (questions generated), END to pause for user input
+					if (state.plannerPhase === 'waiting_for_answers') {
+						logger?.debug('[discovery_subgraph routing] → END (waiting for answers)');
+						return 'end';
+					}
+
+					// If plan displayed, END (user will see plan and can click "implement")
+					if (state.plannerPhase === 'plan_displayed') {
+						logger?.debug('[discovery_subgraph routing] → END (plan displayed)');
+						return 'end';
+					}
+
+					// Normal discovery completion → process_operations
+					return 'process_operations';
+				},
+				{
+					end: END,
+					process_operations: 'process_operations',
+				},
+			)
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
 			// Conditional routing from check_state
@@ -377,7 +365,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			})
 			// Conditional Edge for check_mode (mode-based routing)
 			.addConditionalEdges('check_mode', (state) => {
-				if (state.nextPhase === 'planner') return 'planner_subgraph';
+				if (state.nextPhase === 'discovery') return 'discovery_subgraph';
 				if (state.nextPhase === 'builder') return 'builder_subgraph';
 				return 'supervisor';
 			})
@@ -386,41 +374,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Deterministic routing after subgraphs complete (based on coordination log)
 			.addConditionalEdges('process_operations', (state) =>
 				routeToNode(getNextPhaseFromLog(state.coordinationLog)),
-			)
-			// Planner routing: questions → END (HITL pause), plan → responder
-			.addConditionalEdges(
-				'planner_subgraph',
-				(state) => {
-					console.log('[planner_subgraph routing] plannerPhase:', state.plannerPhase);
-					console.log(
-						'[planner_subgraph routing] pendingQuestions:',
-						state.pendingQuestions?.length ?? 0,
-					);
-					console.log(
-						'[planner_subgraph routing] planOutput:',
-						state.planOutput ? 'exists' : 'null',
-					);
-
-					// If waiting for answers (questions generated), END to pause for user input
-					if (state.plannerPhase === 'waiting_for_answers') {
-						console.log('[planner_subgraph routing] → END (waiting for answers)');
-						return 'end';
-					}
-
-					// If plan displayed, END (user will see plan and can click "implement")
-					if (state.plannerPhase === 'plan_displayed') {
-						console.log('[planner_subgraph routing] → END (plan displayed)');
-						return 'end';
-					}
-
-					// Otherwise go to responder
-					console.log('[planner_subgraph routing] → responder');
-					return 'responder';
-				},
-				{
-					end: END,
-					responder: 'responder',
-				},
 			)
 			// Responder ends the workflow
 			.addEdge('responder', END)

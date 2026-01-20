@@ -6,6 +6,7 @@ import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
 
+import type { PlannerQuestion, PlanOutput } from '../types/planner-types';
 import type {
 	AgentMessageChunk,
 	ToolProgressChunk,
@@ -14,7 +15,6 @@ import type {
 	QuestionsChunk,
 	PlanChunk,
 } from '../types/streaming';
-import type { PlannerQuestion, PlanOutput } from '../types/planner-types';
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -63,7 +63,6 @@ const SKIPPED_NODES = [
 	'configurator_subgraph',
 	'discovery_subgraph',
 	'builder_subgraph',
-	'planner_subgraph',
 ];
 
 /**
@@ -74,7 +73,6 @@ const SKIPPED_SUBGRAPH_PREFIXES = [
 	'discovery_subgraph',
 	'builder_subgraph',
 	'configurator_subgraph',
-	'planner_subgraph',
 ];
 
 // ============================================================================
@@ -173,8 +171,11 @@ function processOperationsUpdate(update: unknown): StreamOutput | null {
 	return { messages: [workflowUpdateChunk] };
 }
 
-/** Handle planner_subgraph node update - emit questions or plan */
-function processPlannerSubgraphUpdate(update: unknown): StreamOutput | null {
+/**
+ * Handle discovery_subgraph node update for plan mode - emit questions or plan.
+ * Discovery now handles both build mode and plan mode (planner merged into discovery).
+ */
+function processDiscoveryPlanModeUpdate(update: unknown): StreamOutput | null {
 	const typed = update as
 		| {
 				pendingQuestions?: PlannerQuestion[];
@@ -184,7 +185,7 @@ function processPlannerSubgraphUpdate(update: unknown): StreamOutput | null {
 		  }
 		| undefined;
 
-	console.log('[processPlannerSubgraphUpdate] update:', {
+	console.log('[processDiscoveryPlanModeUpdate] update:', {
 		hasQuestions: !!typed?.pendingQuestions?.length,
 		questionCount: typed?.pendingQuestions?.length ?? 0,
 		hasPlan: !!typed?.planOutput,
@@ -207,7 +208,7 @@ function processPlannerSubgraphUpdate(update: unknown): StreamOutput | null {
 			})),
 		};
 		console.log(
-			'[processPlannerSubgraphUpdate] emitting questions:',
+			'[processDiscoveryPlanModeUpdate] emitting questions:',
 			questionsChunk.questions.length,
 		);
 		return { messages: [questionsChunk] };
@@ -229,7 +230,7 @@ function processPlannerSubgraphUpdate(update: unknown): StreamOutput | null {
 			},
 		};
 		console.log(
-			'[processPlannerSubgraphUpdate] emitting plan with',
+			'[processDiscoveryPlanModeUpdate] emitting plan with',
 			planChunk.plan.steps.length,
 			'steps',
 		);
@@ -283,9 +284,9 @@ function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput 
 		return processOperationsUpdate(nodeUpdate.process_operations);
 	}
 
-	// Planner subgraph emits questions or plan
-	if (nodeUpdate.planner_subgraph) {
-		const result = processPlannerSubgraphUpdate(nodeUpdate.planner_subgraph);
+	// Discovery subgraph emits questions or plan in plan mode
+	if (nodeUpdate.discovery_subgraph) {
+		const result = processDiscoveryPlanModeUpdate(nodeUpdate.discovery_subgraph);
 		if (result) return result;
 	}
 
