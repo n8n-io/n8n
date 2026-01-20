@@ -14,6 +14,14 @@
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseChatMemory } from '@langchain/classic/memory';
+import { AgentExecutor, createToolCallingAgent } from '@langchain/classic/agents';
+import {
+	ChatPromptTemplate,
+	MessagesPlaceholder,
+	HumanMessagePromptTemplate,
+	SystemMessagePromptTemplate,
+} from '@langchain/core/prompts';
+import type { StructuredToolInterface } from '@langchain/core/tools';
 import { Node, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -316,8 +324,29 @@ export class A2AAgent extends Node {
 		}
 
 		const memory = await this.getOptionalMemory(ctx);
-		const tools = await getConnectedTools(ctx, true, false);
+
+		// Debug: Try to get tools with explicit logging
+		let tools: Awaited<ReturnType<typeof getConnectedTools>> = [];
+		try {
+			tools = await getConnectedTools(ctx, true, false);
+			ctx.logger.info('A2A Agent: Tools resolved successfully', {
+				toolCount: tools.length,
+				toolNames: tools.map((t) => t.name),
+				toolDescriptions: tools.map((t) => t.description?.substring(0, 50)),
+			});
+		} catch (error) {
+			ctx.logger.error('A2A Agent: Failed to get connected tools', {
+				error: error instanceof Error ? error.message : 'Unknown error',
+			});
+		}
+
 		const systemMessage = ctx.getNodeParameter('systemMessage', '') as string;
+
+		ctx.logger.info('A2A Agent: Configuration', {
+			systemMessage: systemMessage.substring(0, 100),
+			hasMemory: !!memory,
+			toolCount: tools.length,
+		});
 
 		// Store task immediately with "working" status
 		const storedTask: StoredTask = {
@@ -338,16 +367,14 @@ export class A2AAgent extends Node {
 		};
 		storeTask(storedTask);
 
-		// Create initial "working" response
+		// Send "working" response IMMEDIATELY (before agent execution)
 		const workingTask = createA2ATask(taskId, 'working');
-
-		// Send JSON-RPC response immediately with "working" status
 		const res = ctx.getResponseObject();
 		res.setHeader('Content-Type', 'application/json');
 		res.status(200).json(createJsonRpcResponse(request.id, workingTask));
 
-		// Execute agent in background (after response is sent)
-		void this.executeAgentInBackground(
+		// NOW execute agent synchronously (tools work because we're still in execution context)
+		const { outputText, a2aState } = await this.executeAgent(
 			ctx,
 			taskId,
 			inputText,
@@ -355,8 +382,24 @@ export class A2AAgent extends Node {
 			memory,
 			tools,
 			systemMessage,
-			pushNotification as A2APushNotification | undefined,
 		);
+
+		// Update stored task with final result
+		storedTask.status = { state: a2aState };
+		storedTask.messages.push({
+			role: 'agent',
+			parts: [{ type: 'text', text: outputText }],
+		});
+		storedTask.updatedAt = new Date();
+
+		// Create the completed task for push notification
+		const responseMessage = createA2AMessage('agent', outputText);
+		const completedTask = createA2ATask(taskId, a2aState, responseMessage);
+
+		// Send push notification if configured (with final result)
+		if (pushNotification?.url) {
+			void sendPushNotification(ctx, pushNotification as A2APushNotification, completedTask);
+		}
 
 		// Return workflow data
 		const executionId = ctx.getExecutionId?.() ?? undefined;
@@ -366,7 +409,8 @@ export class A2AAgent extends Node {
 					taskId,
 					executionId,
 					input: inputText,
-					state: 'working',
+					output: outputText,
+					state: a2aState,
 					pushNotificationUrl: pushNotification?.url,
 				},
 			},
@@ -379,84 +423,115 @@ export class A2AAgent extends Node {
 	}
 
 	/**
-	 * Execute agent in background (after response is sent)
+	 * Execute agent synchronously and return result
 	 */
-	private async executeAgentInBackground(
+	private async executeAgent(
 		ctx: IWebhookFunctions,
 		taskId: string,
 		inputText: string,
 		model: BaseChatModel,
 		memory: BaseChatMemory | undefined,
-		tools: Array<{ name: string }>,
+		tools: StructuredToolInterface[],
 		systemMessage: string,
-		pushNotification: A2APushNotification | undefined,
-	): Promise<void> {
+	): Promise<{ outputText: string; a2aState: import('./a2a.types').A2ATaskState }> {
 		let outputText: string;
 		let executionState: 'success' | 'error' = 'success';
 
 		try {
-			// Bind tools to model if available
-			const modelWithTools =
-				tools.length > 0 && model.bindTools ? model.bindTools(tools as never) : model;
+			ctx.logger.info('A2A Agent: Starting execution', {
+				taskId,
+				toolCount: tools.length,
+				toolNames: tools.map((t) => t.name),
+				hasMemory: !!memory,
+			});
 
-			// Prepare chat history from memory
-			const chatHistory = memory ? await memory.chatHistory.getMessages() : [];
+			if (tools.length > 0) {
+				// Use AgentExecutor for tool-calling agents
+				// This handles the loop: model -> tool call -> tool result -> model -> ...
 
-			// Prepare messages for the model
-			const messages = [
-				...(systemMessage ? [{ role: 'system' as const, content: systemMessage }] : []),
-				...chatHistory.map((msg) => ({
-					role: msg._getType() === 'human' ? ('user' as const) : ('assistant' as const),
-					content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-				})),
-				{ role: 'user' as const, content: inputText },
-			];
+				// Create the prompt template
+				const prompt = ChatPromptTemplate.fromMessages([
+					SystemMessagePromptTemplate.fromTemplate(
+						systemMessage || 'You are a helpful AI assistant.',
+					),
+					new MessagesPlaceholder('chat_history'),
+					HumanMessagePromptTemplate.fromTemplate('{input}'),
+					new MessagesPlaceholder('agent_scratchpad'),
+				]);
 
-			// Invoke the model
-			const response = await modelWithTools.invoke(messages);
+				// Create the agent
+				const agent = createToolCallingAgent({
+					llm: model,
+					tools,
+					prompt,
+					streamRunnable: false,
+				});
 
-			// Extract output text
-			outputText =
-				typeof response.content === 'string' ? response.content : JSON.stringify(response.content);
+				// Create the executor
+				const executor = AgentExecutor.fromAgentAndTools({
+					agent,
+					tools,
+					memory,
+					maxIterations: 10,
+					returnIntermediateSteps: true,
+				});
 
-			// Save to memory if connected
-			if (memory) {
-				await memory.chatHistory.addUserMessage(inputText);
-				await memory.chatHistory.addAIMessage(outputText);
+				ctx.logger.info('A2A Agent: Invoking executor', { taskId, input: inputText });
+
+				// Invoke the executor
+				const result = await executor.invoke({
+					input: inputText,
+					chat_history: memory ? await memory.chatHistory.getMessages() : [],
+				});
+
+				ctx.logger.info('A2A Agent: Executor completed', {
+					taskId,
+					output:
+						typeof result.output === 'string' ? result.output.substring(0, 200) : 'non-string',
+					intermediateSteps: result.intermediateSteps?.length ?? 0,
+				});
+
+				outputText = result.output as string;
+			} else {
+				// No tools - simple model invocation
+				const chatHistory = memory ? await memory.chatHistory.getMessages() : [];
+
+				const messages = [
+					...(systemMessage ? [{ role: 'system' as const, content: systemMessage }] : []),
+					...chatHistory.map((msg) => ({
+						role: msg._getType() === 'human' ? ('user' as const) : ('assistant' as const),
+						content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+					})),
+					{ role: 'user' as const, content: inputText },
+				];
+
+				const response = await model.invoke(messages);
+				outputText =
+					typeof response.content === 'string'
+						? response.content
+						: JSON.stringify(response.content);
+
+				// Save to memory if connected
+				if (memory) {
+					await memory.chatHistory.addUserMessage(inputText);
+					await memory.chatHistory.addAIMessage(outputText);
+				}
 			}
 		} catch (error) {
 			executionState = 'error';
 			outputText = error instanceof Error ? error.message : 'Agent execution failed';
-			ctx.logger.error('A2A Agent background execution failed', { error: outputText, taskId });
+			ctx.logger.error('A2A Agent execution failed', { error: outputText, taskId });
 		}
 
-		// Map execution state to A2A state
+		// Map execution state to A2A state and return
 		const a2aState = mapExecutionStatusToA2A(executionState);
 
-		// Update stored task with result
-		const storedTask = getTask(taskId);
-		if (storedTask) {
-			storedTask.status = { state: a2aState };
-			storedTask.messages.push({
-				role: 'agent',
-				parts: [{ type: 'text', text: outputText }],
-			});
-			storedTask.updatedAt = new Date();
-		}
-
-		// Create the completed task for push notification
-		const responseMessage = createA2AMessage('agent', outputText);
-		const completedTask = createA2ATask(taskId, a2aState, responseMessage);
-
-		// Send push notification if configured
-		if (pushNotification?.url) {
-			void sendPushNotification(ctx, pushNotification, completedTask);
-		}
-
-		ctx.logger.info('A2A Agent background execution completed', {
+		ctx.logger.info('A2A Agent execution completed', {
 			taskId,
 			state: a2aState,
 		});
+
+		return { outputText, a2aState };
 	}
 
 	/**
