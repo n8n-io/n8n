@@ -149,8 +149,7 @@ async function onSubmit() {
 	}
 }
 
-function onPromptInput(inputValue: string | number | null) {
-	const value = String(inputValue ?? '');
+function onPromptInput(value: string) {
 	prompt.value = value;
 	emit('valueChanged', {
 		name: getPath(props.parameter.name),

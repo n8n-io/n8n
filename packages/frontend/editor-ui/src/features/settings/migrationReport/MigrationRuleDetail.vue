@@ -111,10 +111,9 @@ const debouncedSearch = useDebounceFn((value: string) => {
 	searchQuery.value = value;
 }, 300);
 
-const onSearchInput = (value: string | number | null) => {
-	const stringValue = String(value ?? '');
-	searchInput.value = stringValue; // Update input immediately
-	void debouncedSearch(stringValue); // Debounce the filter update
+const onSearchInput = (value: string) => {
+	searchInput.value = value; // Update input immediately
+	void debouncedSearch(value); // Debounce the filter update
 };
 
 const statusOptions = computed(() => [

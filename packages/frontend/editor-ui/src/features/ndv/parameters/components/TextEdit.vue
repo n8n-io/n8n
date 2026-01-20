@@ -50,8 +50,8 @@ onMounted(() => {
 	tempValue.value = props.modelValue;
 });
 
-const valueChanged = (value: string | number | null) => {
-	emit('update:modelValue', String(value ?? ''));
+const valueChanged = (value: string) => {
+	emit('update:modelValue', value);
 };
 
 const onKeyDownEsc = () => {
