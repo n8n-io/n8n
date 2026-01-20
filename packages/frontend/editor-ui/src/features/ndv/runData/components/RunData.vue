@@ -58,6 +58,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useLogsStore } from '@/app/stores/logs.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
 import { searchInObject } from '@/app/utils/objectUtils';
@@ -104,6 +105,7 @@ const LazyRunDataAi = defineAsyncComponent(
 	async () => await import('./RunDataParsedAiContent.vue'),
 );
 const LazyRunDataSearch = defineAsyncComponent(async () => await import('./RunDataSearch.vue'));
+const LazyRunDataLogs = defineAsyncComponent(async () => await import('./RunDataLogs.vue'));
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink';
@@ -670,6 +672,16 @@ const parsedAiContent = computed(() =>
 const hasParsedAiContent = computed(() =>
 	parsedAiContent.value.some((prr) => prr.parsedContent?.parsed),
 );
+
+const hasLogsForNode = computed(() => {
+	if (!node.value) return false;
+	const logsStore = useLogsStore();
+	return logsStore.getConsoleMessagesForNode(node.value.name).length > 0;
+});
+
+const shouldShowLogsTab = computed(() => {
+	return node.value?.nodeDebugLogs && hasLogsForNode.value;
+});
 
 const binaryDataDisplayVisible = computed(
 	() => binaryDataDisplayData.value !== null && props.displayMode === 'binary',
@@ -1518,6 +1530,7 @@ defineExpose({ enterEditMode });
 					:pane-type="paneType"
 					:node-generates-html="shouldDisplayHtml"
 					:has-renderable-data="hasParsedAiContent"
+					:show-logs="shouldShowLogsTab"
 					@change="onDisplayModeChange"
 				/>
 
@@ -1941,6 +1954,10 @@ defineExpose({ enterEditMode });
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>
+			</Suspense>
+
+			<Suspense v-else-if="hasNodeRun && displayMode === 'logs' && node">
+				<LazyRunDataLogs :node-name="node.name" :class="$style.dataDisplay" />
 			</Suspense>
 
 			<RunDataBinary
