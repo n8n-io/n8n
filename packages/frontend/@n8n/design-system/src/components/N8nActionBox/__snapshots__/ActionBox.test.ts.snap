@@ -9,7 +9,7 @@ exports[`N8NActionBox > should render correctly with emoji 1`] = `
   <div class="description">
     <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
   </div>
-  <n8n-tooltip-stub placement="top" disabled="true" showafter="0" visible="false" enterable="true" teleported="true" offset="6" buttons="" justifybuttons="flex-end" avoidcollisions="true"></n8n-tooltip-stub>
+  <n8n-tooltip-stub placement="top" disabled="true" showafter="0" visible="false" enterable="true" teleported="true" offset="8" buttons="" justifybuttons="flex-end" avoidcollisions="true"></n8n-tooltip-stub>
   <!--v-if-->
   <!--v-if-->
 </div>"
@@ -26,7 +26,7 @@ exports[`N8NActionBox > should render correctly with icon 1`] = `
   <div class="description">
     <n8n-text-stub color="text-base" bold="false" size="medium" compact="false" tag="span"></n8n-text-stub>
   </div>
-  <n8n-tooltip-stub placement="top" disabled="true" showafter="0" visible="false" enterable="true" teleported="true" offset="6" buttons="" justifybuttons="flex-end" avoidcollisions="true"></n8n-tooltip-stub>
+  <n8n-tooltip-stub placement="top" disabled="true" showafter="0" visible="false" enterable="true" teleported="true" offset="8" buttons="" justifybuttons="flex-end" avoidcollisions="true"></n8n-tooltip-stub>
   <!--v-if-->
   <!--v-if-->
 </div>"

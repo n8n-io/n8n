@@ -11,7 +11,7 @@ exports[`N8nInfoTip > should render correctly as tooltip 1`] = `
 "<div class="n8n-info-tip infoTip info tooltip bold">
   <!-- Note that the branching is required to support displaying
 		 the slot either in the tooltip of the icon or following it -->
-  <n8n-tooltip-stub contentclass="tooltipContent" placement="top" disabled="false" showafter="0" visible="false" enterable="true" teleported="true" offset="6" buttons="" justifybuttons="flex-end" avoidcollisions="true"></n8n-tooltip-stub>
+  <n8n-tooltip-stub contentclass="tooltipContent" placement="top" disabled="false" showafter="0" visible="false" enterable="true" teleported="true" offset="8" buttons="" justifybuttons="flex-end" avoidcollisions="true"></n8n-tooltip-stub>
 </div>"
 `;
 
