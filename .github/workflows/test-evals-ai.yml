@@ -5,7 +5,8 @@ on:
     branches:
       - master
     paths:
-      - 'packages/@n8n/ai-workflow-builder.ee/**'
+      - 'packages/@n8n/ai-workflow-builder.ee/src/prompts/**'
+      - 'packages/@n8n/ai-workflow-builder.ee/**/*.prompt.ts'
       - '.github/workflows/test-evals-ai.yml'
       - '.github/workflows/test-evals-ai-reusable.yml'
   schedule:
@@ -19,12 +20,12 @@ on:
       dataset:
         description: 'LangSmith dataset to use.'
         required: false
-        default: 'workflow-builder-canvas-prompts'
+        default: 'notion-pairwise-fresh'
       repetitions:
         description: 'Number of repetitions to run.'
         required: false
         default: '3'
-      num_judges:
+      judges:
         description: 'Number of judges to use.'
         required: false
         default: '3'
@@ -102,7 +103,7 @@ jobs:
       branch: ${{ steps.config.outputs.branch }}
       dataset: ${{ steps.config.outputs.dataset }}
       repetitions: ${{ steps.config.outputs.repetitions }}
-      num_judges: ${{ steps.config.outputs.num_judges }}
+      judges: ${{ steps.config.outputs.judges }}
       experiment_prefix: ${{ steps.config.outputs.experiment_prefix }}
     steps:
       - name: Set configuration based on trigger
@@ -114,9 +115,9 @@ jobs:
             # Merge to master: lighter config (1 rep, 1 judge)
             {
               echo "branch=${{ github.ref_name }}"
-              echo "dataset=workflow-builder-canvas-prompts"
+              echo "dataset=notion-pairwise-fresh"
               echo "repetitions=1"
-              echo "num_judges=1"
+              echo "judges=1"
               echo "experiment_prefix="
             } >> "$GITHUB_OUTPUT"
           elif [ "$EVENT_NAME" = "schedule" ]; then
@@ -125,7 +126,7 @@ jobs:
               echo "branch=master"
               echo "dataset=prompts-v2"
               echo "repetitions=3"
-              echo "num_judges=3"
+              echo "judges=3"
               echo "experiment_prefix=CI_scheduled"
             } >> "$GITHUB_OUTPUT"
           else
@@ -134,7 +135,7 @@ jobs:
               echo "branch=${{ inputs.branch || 'master' }}"
               echo "dataset=${{ inputs.dataset || 'workflow-builder-canvas-prompts' }}"
               echo "repetitions=${{ inputs.repetitions || '3' }}"
-              echo "num_judges=${{ inputs.num_judges || '3' }}"
+              echo "judges=${{ inputs.judges || '3' }}"
               echo "experiment_prefix=CI_manual"
             } >> "$GITHUB_OUTPUT"
           fi
@@ -147,6 +148,6 @@ jobs:
       branch: ${{ needs.determine-config.outputs.branch }}
       dataset: ${{ needs.determine-config.outputs.dataset }}
       repetitions: ${{ fromJson(needs.determine-config.outputs.repetitions) }}
-      num_judges: ${{ fromJson(needs.determine-config.outputs.num_judges) }}
+      judges: ${{ fromJson(needs.determine-config.outputs.judges) }}
       experiment_name_prefix: ${{ needs.determine-config.outputs.experiment_prefix }}
     secrets: inherit

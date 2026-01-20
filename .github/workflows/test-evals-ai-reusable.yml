@@ -10,12 +10,12 @@ on:
       dataset:
         description: 'LangSmith dataset to use.'
         type: string
-        default: 'workflow-builder-canvas-prompts'
+        default: 'notion-pairwise-fresh'
       repetitions:
         description: 'Number of repetitions to run.'
         type: number
         default: 1
-      num_judges:
+      judges:
         description: 'Number of judges to use.'
         type: number
         default: 1
@@ -88,8 +88,8 @@ jobs:
       - name: Run Evaluations
         working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
         run: |
-          pnpm eval:langsmith \
+          pnpm eval:pairwise:langsmith \
             --dataset "${{ inputs.dataset }}" \
             --repetitions ${{ inputs.repetitions }} \
-            --num-judges ${{ inputs.num_judges }} \
+            --judges ${{ inputs.judges }} \
             --name "${{ steps.experiment.outputs.name }}"

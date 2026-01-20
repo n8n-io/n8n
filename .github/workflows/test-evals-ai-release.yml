@@ -38,8 +38,8 @@ jobs:
     uses: ./.github/workflows/test-evals-ai-reusable.yml
     with:
       branch: ${{ github.event.release.tag_name }}
-      dataset: workflow-builder-canvas-prompts
+      dataset: notion-pairwise-fresh
       repetitions: 2
-      num_judges: 3
+      judges: 3
       experiment_name_prefix: CI_${{ needs.check-minor-release.outputs.version }}
     secrets: inherit
