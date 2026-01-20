@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 
 export async function assertDir(dir: string) {
+	if (dir === '') return;
+
 	try {
 		await fs.access(dir);
 	} catch {
