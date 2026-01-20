@@ -42,7 +42,7 @@ import { getModelMetadata, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub
 import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
-import { CHATHUB_EXTRACTOR_NAME, ChatHubTriggerItem } from './chat-hub-extractor';
+import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 import { Cipher } from 'n8n-core';
 
 @Service()
@@ -67,7 +67,7 @@ export class ChatHubWorkflowService {
 		systemMessage: string | undefined,
 		tools: INode[],
 		timeZone: string,
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -191,7 +191,7 @@ export class ChatHubWorkflowService {
 		sessionId: string,
 		message: string,
 		attachments: IBinaryData[],
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	): IExecuteData[] {
 		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
 		// Attachments are already processed (id field populated) by the caller
@@ -301,7 +301,7 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
-		executionMetadata: ChatHubTriggerItem;
+		executionMetadata: ChatHubAuthenticationMetadata;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);

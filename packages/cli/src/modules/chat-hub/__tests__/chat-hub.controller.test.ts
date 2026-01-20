@@ -38,13 +38,13 @@ describe('ChatHubController', () => {
 		);
 	});
 
-	describe('extractChatHubTrigger', () => {
+	describe('extractAuthenticationMetadata', () => {
 		it('should extract authToken and browserId', () => {
 			mockAuthService.getCookieToken.mockReturnValue('token-123');
 			mockAuthService.getBrowserIdIfApplicable.mockReturnValue('browser-456');
 
 			const req = mock<AuthenticatedRequest>();
-			const result = controller['extractChatHubTrigger'](req);
+			const result = controller['extractAuthenticationMetadata'](req);
 
 			expect(mockAuthService.getCookieToken).toHaveBeenCalledWith(req);
 			expect(mockAuthService.getBrowserIdIfApplicable).toHaveBeenCalledWith(req);
@@ -59,7 +59,7 @@ describe('ChatHubController', () => {
 			mockAuthService.getBrowserIdIfApplicable.mockReturnValue(undefined);
 
 			const req = mock<AuthenticatedRequest>();
-			const result = controller['extractChatHubTrigger'](req);
+			const result = controller['extractAuthenticationMetadata'](req);
 
 			expect(result).toEqual({
 				authToken: 'token-123',
@@ -72,8 +72,8 @@ describe('ChatHubController', () => {
 
 			const req = mock<AuthenticatedRequest>();
 
-			expect(() => controller['extractChatHubTrigger'](req)).toThrow(UnauthenticatedError);
-			expect(() => controller['extractChatHubTrigger'](req)).toThrow(
+			expect(() => controller['extractAuthenticationMetadata'](req)).toThrow(UnauthenticatedError);
+			expect(() => controller['extractAuthenticationMetadata'](req)).toThrow(
 				'No authentication token found',
 			);
 		});
@@ -83,7 +83,7 @@ describe('ChatHubController', () => {
 
 			const req = mock<AuthenticatedRequest>();
 
-			expect(() => controller['extractChatHubTrigger'](req)).toThrow(UnauthenticatedError);
+			expect(() => controller['extractAuthenticationMetadata'](req)).toThrow(UnauthenticatedError);
 		});
 
 		it('should not call getBrowserIdIfApplicable when authToken is missing', () => {
@@ -91,7 +91,7 @@ describe('ChatHubController', () => {
 
 			const req = mock<AuthenticatedRequest>();
 
-			expect(() => controller['extractChatHubTrigger'](req)).toThrow(UnauthenticatedError);
+			expect(() => controller['extractAuthenticationMetadata'](req)).toThrow(UnauthenticatedError);
 			expect(mockAuthService.getBrowserIdIfApplicable).not.toHaveBeenCalled();
 		});
 	});

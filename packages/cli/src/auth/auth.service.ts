@@ -164,7 +164,7 @@ export class AuthService {
 		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
 		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
-			return;
+			return false;
 		}
 		return req.browserId;
 	}
@@ -245,14 +245,13 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
-		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
-		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
-			this.logger.debug(`Skipped browserId check on ${endpoint}`);
-		} else if (
+		const browserId = this.getBrowserIdIfApplicable(req);
+		if (
+			browserId !== false &&
 			jwtPayload.browserId &&
 			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
 		) {
+			const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
 			this.logger.warn(`browserId check failed on ${endpoint}`);
 			throw new AuthError('Unauthorized');
 		}

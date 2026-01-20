@@ -89,7 +89,7 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
-import { ChatHubTriggerItem } from './chat-hub-extractor';
+import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 
 @Service()
 export class ChatHubService {
@@ -163,7 +163,7 @@ export class ChatHubService {
 		res: Response,
 		user: User,
 		payload: HumanMessagePayload,
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const {
 			sessionId,
@@ -316,7 +316,7 @@ export class ChatHubService {
 		res: Response,
 		user: User,
 		payload: EditMessagePayload,
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
@@ -438,7 +438,7 @@ export class ChatHubService {
 		res: Response,
 		user: User,
 		payload: RegenerateMessagePayload,
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const { sessionId, retryId, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
@@ -522,7 +522,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		timeZone: string,
 		trx: EntityManager,
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		if (model.provider === 'n8n') {
 			return await this.prepareWorkflowAgentWorkflow(
@@ -578,7 +578,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		timeZone: string,
 		trx: EntityManager,
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
@@ -610,7 +610,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		timeZone: string,
 		trx: EntityManager,
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
 
@@ -667,7 +667,7 @@ export class ChatHubService {
 		message: string,
 		attachments: IBinaryData[],
 		trx: EntityManager,
-		executionMetadata: ChatHubTriggerItem,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,

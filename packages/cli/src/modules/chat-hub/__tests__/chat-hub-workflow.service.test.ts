@@ -9,7 +9,7 @@ import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
-import type { ChatHubTriggerItem } from '../chat-hub-extractor';
+import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -22,7 +22,7 @@ describe('ChatHubWorkflowService', () => {
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
 
-	const defaultExecutionMetadata: ChatHubTriggerItem = {
+	const defaultExecutionMetadata: ChatHubAuthenticationMetadata = {
 		authToken: 'test-token-123',
 		browserId: 'browser-456',
 	};

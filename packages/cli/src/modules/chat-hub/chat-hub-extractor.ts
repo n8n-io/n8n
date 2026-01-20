@@ -7,19 +7,19 @@ import {
 	IContextEstablishmentHook,
 } from '@n8n/decorators';
 import { Cipher } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { ensureError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 const EncryptedMetadataSchema = z.object({
 	encryptedMetadata: z.string(),
 });
 
-const ChatHubTriggerItemSchema = z.object({
+const ChatHubAuthenticationMetadataSchema = z.object({
 	authToken: z.string(),
 	browserId: z.string().optional(),
 });
 
-export type ChatHubTriggerItem = z.output<typeof ChatHubTriggerItemSchema>;
+export type ChatHubAuthenticationMetadata = z.output<typeof ChatHubAuthenticationMetadataSchema>;
 export const CHATHUB_EXTRACTOR_NAME = 'ChatHubExtractor';
 
 @ContextEstablishmentHook()
@@ -57,7 +57,7 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 			try {
 				const decrypted = this.cipher.decrypt(encryptedMetadataResult.data.encryptedMetadata);
 				const parsed = jsonParse(decrypted);
-				const chatHubInformation = ChatHubTriggerItemSchema.safeParse(parsed);
+				const chatHubInformation = ChatHubAuthenticationMetadataSchema.safeParse(parsed);
 				if (chatHubInformation.success) {
 					return {
 						triggerItems: options.triggerItems,
@@ -77,7 +77,7 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 				}
 			} catch (error) {
 				this.logger.error('Failed to decrypt/parse encrypted chat metadata', {
-					error: error instanceof Error ? error.message : String(error),
+					error: ensureError(error),
 				});
 			}
 		}
