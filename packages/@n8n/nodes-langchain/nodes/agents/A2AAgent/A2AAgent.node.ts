@@ -297,12 +297,9 @@ export class A2AAgent extends Node {
 		}
 
 		// Generate a unique task ID
-		// Note: We use UUID because the n8n executionId is not available until after
-		// the workflow starts running (after the webhook response is sent).
-		// The executionId will be included in the workflow output data for correlation.
 		const taskId = uuidv4();
 
-		// Get model, memory, and tools
+		// Get model, memory, and tools upfront (needed for validation)
 		let model: BaseChatModel;
 		try {
 			model = await this.getChatModel(ctx);
@@ -322,17 +319,89 @@ export class A2AAgent extends Node {
 		const tools = await getConnectedTools(ctx, true, false);
 		const systemMessage = ctx.getNodeParameter('systemMessage', '') as string;
 
-		// Bind tools to model if available
-		const modelWithTools = tools.length > 0 && model.bindTools ? model.bindTools(tools) : model;
+		// Store task immediately with "working" status
+		const storedTask: StoredTask = {
+			taskId,
+			status: {
+				state: 'working',
+			},
+			messages: [
+				{
+					role: 'user',
+					parts: [{ type: 'text', text: inputText }],
+				},
+			],
+			artifacts: [],
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			executionId: ctx.getExecutionId?.() ?? undefined,
+		};
+		storeTask(storedTask);
 
-		// Prepare chat history from memory
-		const chatHistory = memory ? await memory.chatHistory.getMessages() : [];
+		// Create initial "working" response
+		const workingTask = createA2ATask(taskId, 'working');
 
-		// Execute the agent
+		// Send JSON-RPC response immediately with "working" status
+		const res = ctx.getResponseObject();
+		res.setHeader('Content-Type', 'application/json');
+		res.status(200).json(createJsonRpcResponse(request.id, workingTask));
+
+		// Execute agent in background (after response is sent)
+		void this.executeAgentInBackground(
+			ctx,
+			taskId,
+			inputText,
+			model,
+			memory,
+			tools,
+			systemMessage,
+			pushNotification as A2APushNotification | undefined,
+		);
+
+		// Return workflow data
+		const executionId = ctx.getExecutionId?.() ?? undefined;
+		const returnData: INodeExecutionData[] = [
+			{
+				json: {
+					taskId,
+					executionId,
+					input: inputText,
+					state: 'working',
+					pushNotificationUrl: pushNotification?.url,
+				},
+			},
+		];
+
+		return {
+			noWebhookResponse: true,
+			workflowData: [returnData],
+		};
+	}
+
+	/**
+	 * Execute agent in background (after response is sent)
+	 */
+	private async executeAgentInBackground(
+		ctx: IWebhookFunctions,
+		taskId: string,
+		inputText: string,
+		model: BaseChatModel,
+		memory: BaseChatMemory | undefined,
+		tools: Array<{ name: string }>,
+		systemMessage: string,
+		pushNotification: A2APushNotification | undefined,
+	): Promise<void> {
 		let outputText: string;
 		let executionState: 'success' | 'error' = 'success';
 
 		try {
+			// Bind tools to model if available
+			const modelWithTools =
+				tools.length > 0 && model.bindTools ? model.bindTools(tools as never) : model;
+
+			// Prepare chat history from memory
+			const chatHistory = memory ? await memory.chatHistory.getMessages() : [];
+
 			// Prepare messages for the model
 			const messages = [
 				...(systemMessage ? [{ role: 'system' as const, content: systemMessage }] : []),
@@ -358,69 +427,36 @@ export class A2AAgent extends Node {
 		} catch (error) {
 			executionState = 'error';
 			outputText = error instanceof Error ? error.message : 'Agent execution failed';
-			ctx.logger.error('A2A Agent execution failed', { error: outputText, taskId });
+			ctx.logger.error('A2A Agent background execution failed', { error: outputText, taskId });
 		}
 
 		// Map execution state to A2A state
 		const a2aState = mapExecutionStatusToA2A(executionState);
 
-		// Create the response task
-		const responseMessage = createA2AMessage('agent', outputText);
-		const task = createA2ATask(taskId, a2aState, responseMessage);
+		// Update stored task with result
+		const storedTask = getTask(taskId);
+		if (storedTask) {
+			storedTask.status = { state: a2aState };
+			storedTask.messages.push({
+				role: 'agent',
+				parts: [{ type: 'text', text: outputText }],
+			});
+			storedTask.updatedAt = new Date();
+		}
 
-		// Store task in memory for tasks/get queries (MVP: in-memory, lost on restart)
-		const storedTask: StoredTask = {
-			taskId,
-			status: {
-				state: a2aState,
-			},
-			messages: [
-				{
-					role: 'user',
-					parts: [{ type: 'text', text: inputText }],
-				},
-				{
-					role: 'agent',
-					parts: [{ type: 'text', text: outputText }],
-				},
-			],
-			artifacts: [],
-			createdAt: new Date(),
-			updatedAt: new Date(),
-			executionId: ctx.getExecutionId?.() ?? undefined,
-		};
-		storeTask(storedTask);
+		// Create the completed task for push notification
+		const responseMessage = createA2AMessage('agent', outputText);
+		const completedTask = createA2ATask(taskId, a2aState, responseMessage);
 
 		// Send push notification if configured
 		if (pushNotification?.url) {
-			// Send push notification asynchronously (don't await)
-			void sendPushNotification(ctx, pushNotification as A2APushNotification, task);
+			void sendPushNotification(ctx, pushNotification, completedTask);
 		}
 
-		// Send JSON-RPC response
-		const res = ctx.getResponseObject();
-		res.setHeader('Content-Type', 'application/json');
-		res.status(200).json(createJsonRpcResponse(request.id, task));
-
-		// Return workflow data (include executionId if available for correlation)
-		const executionId = ctx.getExecutionId?.() ?? undefined;
-		const returnData: INodeExecutionData[] = [
-			{
-				json: {
-					taskId,
-					executionId,
-					input: inputText,
-					output: outputText,
-					state: a2aState,
-					pushNotificationUrl: pushNotification?.url,
-				},
-			},
-		];
-
-		return {
-			noWebhookResponse: true,
-			workflowData: [returnData],
-		};
+		ctx.logger.info('A2A Agent background execution completed', {
+			taskId,
+			state: a2aState,
+		});
 	}
 
 	/**
