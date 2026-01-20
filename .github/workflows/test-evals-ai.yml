@@ -7,6 +7,7 @@ on:
     paths:
       - 'packages/@n8n/ai-workflow-builder.ee/**'
       - '.github/workflows/test-evals-ai.yml'
+      - '.github/workflows/test-evals-ai-reusable.yml'
   schedule:
     - cron: '0 22 * * 6'
   workflow_dispatch:
@@ -19,58 +20,68 @@ on:
         description: 'LangSmith dataset to use.'
         required: false
         default: 'workflow-builder-canvas-prompts'
+      repetitions:
+        description: 'Number of repetitions to run.'
+        required: false
+        default: '3'
+      num_judges:
+        description: 'Number of judges to use.'
+        required: false
+        default: '3'
 
 jobs:
-  evals:
-    name: Run Evaluations
-    runs-on: blacksmith-2vcpu-ubuntu-2204
-    env:
-      N8N_AI_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
-      LANGSMITH_TRACING: true
-      LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
-      LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+  determine-config:
+    name: Determine Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.config.outputs.branch }}
+      dataset: ${{ steps.config.outputs.dataset }}
+      repetitions: ${{ steps.config.outputs.repetitions }}
+      num_judges: ${{ steps.config.outputs.num_judges }}
+      experiment_prefix: ${{ steps.config.outputs.experiment_prefix }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ github.event.inputs.branch || github.ref }}
-
-      - name: Select dataset
-        env:
-          DATASET_INPUT: ${{ github.event.inputs.dataset }}
-          EVENT_NAME: ${{ github.event_name }}
+      - name: Set configuration based on trigger
+        id: config
         run: |
-          DATASET="workflow-builder-canvas-prompts"
-          if [ "$EVENT_NAME" = "schedule" ]; then
-            DATASET="prompts-v2"
-          elif [ -n "$DATASET_INPUT" ]; then
-            DATASET="$DATASET_INPUT"
+          EVENT_NAME="${{ github.event_name }}"
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            # Merge to master: lighter config (1 rep, 1 judge)
+            {
+              echo "branch=${{ github.ref_name }}"
+              echo "dataset=workflow-builder-canvas-prompts"
+              echo "repetitions=1"
+              echo "num_judges=1"
+              echo "experiment_prefix="
+            } >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "schedule" ]; then
+            # Scheduled run: full config (3 reps, 3 judges)
+            {
+              echo "branch=master"
+              echo "dataset=prompts-v2"
+              echo "repetitions=3"
+              echo "num_judges=3"
+              echo "experiment_prefix=CI_scheduled"
+            } >> "$GITHUB_OUTPUT"
+          else
+            # Manual dispatch: use provided values
+            {
+              echo "branch=${{ inputs.branch || 'master' }}"
+              echo "dataset=${{ inputs.dataset || 'workflow-builder-canvas-prompts' }}"
+              echo "repetitions=${{ inputs.repetitions || '3' }}"
+              echo "num_judges=${{ inputs.num_judges || '3' }}"
+              echo "experiment_prefix=CI_manual"
+            } >> "$GITHUB_OUTPUT"
           fi
-          echo "LANGSMITH_DATASET_NAME=$DATASET" >> "$GITHUB_ENV"
 
-      - name: Setup and Build
-        uses: ./.github/actions/setup-nodejs
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0
-        with:
-          enable-cache: true
-
-      - name: Install just
-        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3.0.0
-
-      - name: Install Python
-        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
-        run: uv python install 3.11
-
-      - name: Install workflow comparison dependencies
-        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
-        run: just sync-all
-
-      - name: Export Node Types
-        run: |
-          ./packages/cli/bin/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json
-
-      - name: Run Evaluations
-        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
-        run: |
-          pnpm eval:langsmith --repetitions 3
+  run-evals:
+    name: Run Evaluations
+    needs: determine-config
+    uses: ./.github/workflows/test-evals-ai-reusable.yml
+    with:
+      branch: ${{ needs.determine-config.outputs.branch }}
+      dataset: ${{ needs.determine-config.outputs.dataset }}
+      repetitions: ${{ fromJson(needs.determine-config.outputs.repetitions) }}
+      num_judges: ${{ fromJson(needs.determine-config.outputs.num_judges) }}
+      experiment_name_prefix: ${{ needs.determine-config.outputs.experiment_prefix }}
+    secrets: inherit
