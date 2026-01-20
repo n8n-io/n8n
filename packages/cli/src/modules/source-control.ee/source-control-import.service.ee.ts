@@ -480,13 +480,12 @@ export class SourceControlImportService {
 			dataTableFiles.map(async (file): Promise<ExportableDataTable | undefined> => {
 				this.logger.debug(`Parsing data table file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
-				const parsed = jsonParse<ExportableDataTable>(fileContent, {
-					fallbackValue: (() => undefined) as unknown as ExportableDataTable,
-				});
-				if (!parsed) {
+				try {
+					return jsonParse<ExportableDataTable>(fileContent);
+				} catch (error) {
 					this.logger.warn(`Failed to parse data table from file ${file}: invalid JSON format`);
+					return undefined;
 				}
-				return parsed;
 			}),
 		);
 
