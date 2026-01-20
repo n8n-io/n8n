@@ -149,7 +149,8 @@ function checkDataTableHasSetNodePredecessor(
 
 	// Only check for Set node on row column operations (insert, update, upsert)
 	// Read operations (get, getAll) and delete don't need a Set node
-	const operation = (node.parameters?.operation as string) ?? 'insert';
+	const operationParam = node.parameters?.operation;
+	const operation = typeof operationParam === 'string' ? operationParam : 'insert';
 	if (!isDataTableRowColumnOperation(operation)) {
 		return [];
 	}

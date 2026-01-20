@@ -92,6 +92,31 @@ function mapSetNodeTypeToDataTableType(setNodeType: string): string {
 	}
 }
 
+interface SetNodeAssignment {
+	name: string;
+	type: string;
+}
+
+interface SetNodeAssignments {
+	assignments?: SetNodeAssignment[];
+}
+
+function isSetNodeAssignments(value: unknown): value is SetNodeAssignments {
+	if (typeof value !== 'object' || value === null) return false;
+	const obj = value as Record<string, unknown>;
+	if (!('assignments' in obj)) return true; // assignments is optional
+	if (!Array.isArray(obj.assignments)) return false;
+	return obj.assignments.every(
+		(item) =>
+			typeof item === 'object' &&
+			item !== null &&
+			'name' in item &&
+			'type' in item &&
+			typeof (item as Record<string, unknown>).name === 'string' &&
+			typeof (item as Record<string, unknown>).type === 'string',
+	);
+}
+
 /**
  * Extract field definitions from a Set node's assignments
  */
@@ -103,11 +128,9 @@ export function extractSetNodeFields(
 	if (!node) return [];
 
 	const params = node.parameters ?? {};
-	const assignments = params.assignments as
-		| { assignments?: Array<{ name: string; type: string }> }
-		| undefined;
+	const assignments = params.assignments;
 
-	if (!assignments?.assignments) return [];
+	if (!isSetNodeAssignments(assignments) || !assignments.assignments) return [];
 
 	return assignments.assignments
 		.filter((a) => a.name && a.type)
