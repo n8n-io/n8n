@@ -172,7 +172,8 @@ export class WorkflowPublicationOutboxConsumer {
 		);
 
 		// Handle added and modified nodes
-		const nodesToAdd = [...diff.added, ...diff.modified];
+		// Filter out disabled nodes - they should not be activated
+		const nodesToAdd = [...diff.added, ...diff.modified].filter((n) => !n.disabled);
 		if (nodesToAdd.length > 0) {
 			await this.addNodes(workflowId, newPublishedVersion, nodesToAdd);
 		}
