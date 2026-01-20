@@ -234,25 +234,6 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiBuilder')
-	@Post('/sessions/metadata', { rateLimit: { limit: 100 } })
-	async getSessionsMetadata(
-		req: AuthenticatedRequest,
-		_: Response,
-		@Body payload: AiSessionRetrievalRequestDto,
-	): Promise<AiSessionMetadataResponseDto> {
-		try {
-			const metadata = await this.workflowBuilderService.getSessionsMetadata(
-				payload.workflowId,
-				req.user,
-			);
-			return metadata;
-		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
-		}
-	}
-
-	@Licensed('feat:aiBuilder')
 	@Get('/build/credits')
 	async getBuilderCredits(
 		req: AuthenticatedRequest,

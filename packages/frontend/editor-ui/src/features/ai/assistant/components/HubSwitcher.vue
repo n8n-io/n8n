@@ -35,10 +35,10 @@ function toggle(value: boolean) {
 		:disabled="!props.disabled"
 	>
 		<N8nRadioButtons
-			size="small"
+			size="small-medium"
 			:model-value="isBuildMode"
-			:options="options"
 			:disabled="props.disabled"
+			:options="options"
 			@update:model-value="toggle"
 		/>
 	</N8nTooltip>

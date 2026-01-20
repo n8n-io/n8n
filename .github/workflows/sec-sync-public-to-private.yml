@@ -1,0 +1,54 @@
+# Sync n8n-io/n8n to n8n-io/n8n-private
+#
+# Runs hourly to keep private in sync with public.
+# Can also be triggered manually for conflict recovery.
+#
+# Scheduled runs only sync if private is not ahead of public.
+# Manual runs always sync (for conflict recovery after failed cherry-pick).
+
+name: 'Security: Sync from Public'
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Sync even if private is ahead (for conflict recovery)
+        type: boolean
+        default: true
+
+jobs:
+  sync-from-public:
+    if: github.repository == 'n8n-io/n8n-private'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Sync from public
+        run: |
+          git fetch https://github.com/n8n-io/n8n.git master:public-master
+
+          # Check if private is ahead of public
+          AHEAD_COUNT=$(git rev-list public-master..HEAD --count)
+
+          if [ "$AHEAD_COUNT" -gt 0 ]; then
+            if [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "Private is $AHEAD_COUNT commit(s) ahead of public, skipping scheduled sync"
+              exit 0
+            elif [ "${{ inputs.force }}" != "true" ]; then
+              echo "Private is $AHEAD_COUNT commit(s) ahead of public, skipping (force not enabled)"
+              exit 0
+            else
+              echo "Private is $AHEAD_COUNT commit(s) ahead of public, force syncing anyway"
+            fi
+          fi
+
+          git reset --hard public-master
+          git push origin master --force-with-lease

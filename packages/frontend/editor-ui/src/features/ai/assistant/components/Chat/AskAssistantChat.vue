@@ -7,6 +7,8 @@ import { N8nAskAssistantChat } from '@n8n/design-system';
 import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useI18n } from '@n8n/i18n';
+import AskModeEmptyState from './AskModeEmptyState.vue';
 
 const emit = defineEmits<{
 	close: [];
@@ -18,6 +20,7 @@ const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 const slots = useSlots();
+const i18n = useI18n();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
@@ -89,6 +92,7 @@ defineExpose({
 			:streaming="assistantStore.streaming"
 			:loading-message="loadingMessage"
 			:session-id="assistantStore.currentSessionId"
+			:input-placeholder="i18n.baseText('aiAssistant.askMode.inputPlaceholder')"
 			@close="emit('close')"
 			@message="onUserMessage"
 			@code-replace="onCodeReplace"
@@ -103,6 +107,9 @@ defineExpose({
 						:disabled="assistantStore.streaming"
 					/>
 				</div>
+			</template>
+			<template #placeholder>
+				<AskModeEmptyState />
 			</template>
 		</N8nAskAssistantChat>
 	</div>

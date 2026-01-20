@@ -8,9 +8,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 import AskAssistantBuild from './Agent/AskAssistantBuild.vue';
 import AskAssistantChat from './Chat/AskAssistantChat.vue';
-import { useRoute } from 'vue-router';
-import { BUILDER_ENABLED_VIEWS } from '../constants';
-import type { VIEWS } from '@/app/constants';
+import AskModeCoachmark from './AskModeCoachmark.vue';
+import { useAskModeCoachmark } from '../composables/useAskModeCoachmark';
 
 import { N8nResizeWrapper } from '@n8n/design-system';
 import HubSwitcher from '@/features/ai/assistant/components/HubSwitcher.vue';
@@ -19,28 +18,18 @@ const builderStore = useBuilderStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const settingsStore = useSettingsStore();
-const route = useRoute();
+
+const { isBuildMode, canToggleModes, shouldShowCoachmark, onDismissCoachmark } =
+	useAskModeCoachmark();
 
 const askAssistantBuildRef = ref<InstanceType<typeof AskAssistantBuild>>();
 const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 
-const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);
 const chatWidth = computed(() => chatPanelStore.width);
 
 const allowSendingParameterValues = computed(
 	() => settingsStore.settings.ai.allowSendingParameterValues,
 );
-
-// Show toggle only when both modes are available in current view
-const canToggleModes = computed(() => {
-	const currentRoute = route?.name;
-	return (
-		settingsStore.isAiAssistantEnabled &&
-		builderStore.isAIBuilderEnabled &&
-		currentRoute &&
-		BUILDER_ENABLED_VIEWS.includes(currentRoute as VIEWS)
-	);
-});
 
 function onResize(data: { direction: string; x: number; width: number }) {
 	chatPanelStore.updateWidth(data.width);
@@ -144,11 +133,17 @@ onBeforeUnmount(() => {
 					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
 						<!-- Header switcher is only visible when both modes are available in current view -->
 						<template v-if="canToggleModes" #header>
+							<<<<<<< HEAD
 							<HubSwitcher
 								:is-build-mode="isBuildMode"
 								:disabled="!allowSendingParameterValues"
 								@toggle="toggleAssistantMode"
 							/>
+							=======
+							<AskModeCoachmark :visible="shouldShowCoachmark" @dismiss="onDismissCoachmark">
+								<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+							</AskModeCoachmark>
+							>>>>>>> master
 						</template>
 					</AskAssistantChat>
 				</div>

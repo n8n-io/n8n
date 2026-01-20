@@ -97,7 +97,6 @@ export namespace ChatRequest {
 
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
-		multiAgent?: boolean;
 	}
 
 	export interface UserChatMessage {
