@@ -21,6 +21,5 @@ module.exports = {
 	// transform cache (write-file-atomic). Performance impact is minimal
 	// since integration tests are I/O-bound, not transform-bound.
 	cache: false,
-	// Force exit to avoid hanging on testcontainer cleanup
 	forceExit: true,
 };
