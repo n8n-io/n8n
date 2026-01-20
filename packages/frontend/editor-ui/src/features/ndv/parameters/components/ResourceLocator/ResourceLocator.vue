@@ -249,6 +249,7 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 });
 
 const urlValue = ref<string | null>(null);
+let urlWatchInvocation = 0;
 
 watch(
 	[
@@ -261,6 +262,8 @@ watch(
 		currentMode,
 	],
 	async () => {
+		const currentInvocation = ++urlWatchInvocation;
+
 		if (isListMode.value && typeof props.modelValue === 'object') {
 			urlValue.value = props.modelValue?.cachedResultUrl ?? null;
 			return;
@@ -287,6 +290,9 @@ watch(
 			if (typeof value === 'string') {
 				const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
 				const resolved = await workflowHelpers.resolveExpression(expression);
+
+				// Discard stale results if a newer invocation has started
+				if (currentInvocation !== urlWatchInvocation) return;
 
 				urlValue.value = typeof resolved === 'string' ? resolved : null;
 				return;

@@ -100,9 +100,13 @@ const issues = computed(() => {
 	return ndvStore.activeNode?.issues?.parameters ?? {};
 });
 
+let optionsWatchInvocation = 0;
+
 watch(
 	() => props.node?.parameters,
 	async () => {
+		const currentInvocation = ++optionsWatchInvocation;
+
 		const typeOptions = props.parameter.typeOptions?.filter;
 
 		if (!typeOptions) {
@@ -116,6 +120,9 @@ watch(
 				...(await resolveParameter(typeOptions as unknown as NodeParameterValue)),
 			};
 		} catch (error) {}
+
+		// Discard stale results if a newer invocation has started
+		if (currentInvocation !== optionsWatchInvocation) return;
 
 		if (!isEqual(state.paramValue.options, newOptions)) {
 			state.paramValue.options = newOptions;

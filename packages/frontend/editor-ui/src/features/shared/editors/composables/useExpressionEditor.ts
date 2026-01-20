@@ -89,6 +89,7 @@ export const useExpressionEditor = ({
 	const autocompleteStatus = ref<'pending' | 'active' | null>(null);
 	const dragging = ref(false);
 	const hasChanges = ref(false);
+	let updateSegmentsGeneration = 0;
 	const expressionLocalResolveContext = inject(
 		ExpressionLocalResolveContextSymbol,
 		computed(() => undefined),
@@ -97,6 +98,8 @@ export const useExpressionEditor = ({
 	const emitChanges = debounce(onChange, 300);
 
 	const updateSegments = async (): Promise<void> => {
+		const currentGeneration = ++updateSegmentsGeneration;
+
 		const state = editor.value?.state;
 		if (!state) return;
 
@@ -149,6 +152,9 @@ export const useExpressionEditor = ({
 				return { kind: 'plaintext' as const, from, to, plaintext: text };
 			}),
 		);
+
+		// Only update if this is still the latest invocation (prevents race condition)
+		if (currentGeneration !== updateSegmentsGeneration) return;
 
 		segments.value = resolvedSegments;
 		if (
