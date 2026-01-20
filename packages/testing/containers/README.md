@@ -19,6 +19,9 @@ pnpm stack --mains 2 --workers 1
 
 # Cloud plan simulation
 pnpm stack --plan starter
+
+# Public tunnel for webhook testing
+pnpm stack --tunnel
 ```
 
 When started, you'll see the URL: `http://localhost:[port]`
@@ -351,6 +354,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
 | `loadBalancer` | - | Caddy for multi-main |
+| `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
 
 **Note:** For observability (logs + metrics), enable all three: `['victoriaLogs', 'victoriaMetrics', 'vector']`.
 The `observability` capability shortcut handles this automatically: `test.use({ capability: 'observability' })`.
@@ -367,7 +371,8 @@ The `observability` capability shortcut handles this automatically: `test.use({ 
 | `--name <name>` | Custom project name for parallel runs |
 | `--env KEY=VALUE` | Set environment variables |
 | `--observability` | Enable metrics/logs stack |
-| `--tracing` | Enable tracing stack (Jaeger) |
+| `--tracing` | Enable Jaeger tracing |
+| `--tunnel` | Enable Cloudflare Tunnel for public webhook URLs |
 | `--oidc` | Enable Keycloak |
 | `--source-control` | Enable Gitea |
 | `--mailpit` | Enable email testing (Mailpit) |
