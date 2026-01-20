@@ -1186,6 +1186,14 @@ export const mainProperties: INodeProperties[] = [
 				description:
 					'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 			},
+			{
+				displayName: 'Send Credentials on Cross-Origin Redirect',
+				name: 'sendCredentialsOnCrossOriginRedirect',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to send credentials, like the "Authorization" header, on redirects to a different origin',
+			},
 		],
 	},
 	...optimizeResponseProperties.map((prop) => ({

@@ -107,7 +107,39 @@ describe('Request Helper Functions', () => {
 		});
 
 		describe('redirects', () => {
-			test('should forward authorization header', async () => {
+			test.each([[undefined], [true]])(
+				'should forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: 'https://otherdomain.com/test' });
+					nock('https://otherdomain.com')
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = await proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						resolveWithFullResponse: true,
+						sendCredentialsOnCrossOriginRedirect,
+					});
+
+					expect(response.statusCode).toBe(200);
+					const forwardedHeaders = JSON.parse(response.body);
+					expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
+
+			test('should not forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
 				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
 				nock('https://otherdomain.com')
 					.get('/test')
@@ -125,13 +157,46 @@ describe('Request Helper Functions', () => {
 						'X-Other-Header': 'otherHeaderContent',
 					},
 					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect: false,
 				});
 
 				expect(response.statusCode).toBe(200);
 				const forwardedHeaders = JSON.parse(response.body);
-				expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+				expect(forwardedHeaders.authorization).toBeUndefined();
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			});
+
+			test.each([[undefined], [true], [false]])(
+				'should forward authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: `${baseUrl}/test` });
+					nock(baseUrl)
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = await proxyRequestToAxios(workflow, additionalData, node, {
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						resolveWithFullResponse: true,
+						sendCredentialsOnCrossOriginRedirect,
+					});
+
+					expect(response.statusCode).toBe(200);
+					const forwardedHeaders = JSON.parse(response.body);
+					expect(forwardedHeaders.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
 
 			test('should follow redirects by default', async () => {
 				nock(baseUrl)
@@ -901,6 +966,90 @@ describe('Request Helper Functions', () => {
 			});
 			expect(response).toEqual({ success: true });
 			scope.done();
+		});
+
+		describe('redirects', () => {
+			test.each([[undefined], [true]])(
+				'should forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: 'https://otherdomain.com/test' });
+					nock('https://otherdomain.com')
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = (await httpRequest({
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						sendCredentialsOnCrossOriginRedirect,
+					})) as { authorization: string; 'x-other-header': string };
+
+					expect(response.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(response['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
+
+			test('should not forward authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
+				nock(baseUrl).get('/redirect').reply(301, '', { Location: 'https://otherdomain.com/test' });
+				nock('https://otherdomain.com')
+					.get('/test')
+					.reply(200, function () {
+						return this.req.headers;
+					});
+
+				const response = (await httpRequest({
+					url: `${baseUrl}/redirect`,
+					auth: {
+						username: 'testuser',
+						password: 'testpassword',
+					},
+					headers: {
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					sendCredentialsOnCrossOriginRedirect: false,
+				})) as { authorization: undefined; 'x-other-header': string };
+
+				expect(response.authorization).toBeUndefined();
+				expect(response['x-other-header']).toBe('otherHeaderContent');
+			});
+
+			test.each([[undefined], [true], [false]])(
+				'should forward authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+				async (sendCredentialsOnCrossOriginRedirect) => {
+					nock(baseUrl)
+						.get('/redirect')
+						.reply(301, '', { Location: `${baseUrl}/test` });
+					nock(baseUrl)
+						.get('/test')
+						.reply(200, function () {
+							return this.req.headers;
+						});
+
+					const response = (await httpRequest({
+						url: `${baseUrl}/redirect`,
+						auth: {
+							username: 'testuser',
+							password: 'testpassword',
+						},
+						headers: {
+							'X-Other-Header': 'otherHeaderContent',
+						},
+						sendCredentialsOnCrossOriginRedirect,
+					})) as { authorization: string; 'x-other-header': string };
+
+					expect(response.authorization).toBe('Basic dGVzdHVzZXI6dGVzdHBhc3N3b3Jk');
+					expect(response['x-other-header']).toBe('otherHeaderContent');
+				},
+			);
 		});
 	});
 
