@@ -423,7 +423,7 @@ defineExpose({
 					<AISettingsButton
 						v-if="showSettingsButton"
 						:show-usability-notice="false"
-						:disabled="assistantStore.streaming"
+						:disabled="builderStore.streaming"
 					/>
 				</div>
 			</template>
