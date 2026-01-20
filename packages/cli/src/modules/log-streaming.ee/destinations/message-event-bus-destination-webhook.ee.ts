@@ -201,7 +201,7 @@ export class MessageEventBusDestinationWebhook
 		const sendHeaders = this.sendHeaders;
 		const specifyHeaders = this.specifyHeaders;
 
-		if (this.sendQuery && this.options.queryParameterArrays) {
+		if (this.sendQuery && this.options?.queryParameterArrays) {
 			Object.assign(this.axiosRequestOptions, {
 				qsStringifyOptions: { arrayFormat: this.options.queryParameterArrays },
 			});
