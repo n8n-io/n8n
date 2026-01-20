@@ -240,10 +240,7 @@ export function formatPrefetchedOptionsForLLM(results: RLCPrefetchResult[]): str
 		return '';
 	}
 
-	const parts: string[] = ['=== PRE-FETCHED RESOURCE OPTIONS ==='];
-	parts.push(
-		'The following resource options have been pre-fetched for your convenience. Use these values when configuring the corresponding parameters:',
-	);
+	const parts: string[] = ['=== PRE-FETCHED RESOURCE LOCATOR PARAMETERS OPTIONS ==='];
 	parts.push('');
 
 	for (const result of successfulResults) {
@@ -253,19 +250,11 @@ export function formatPrefetchedOptionsForLLM(results: RLCPrefetchResult[]): str
 			parts.push('  <option>');
 			parts.push(`    <display_name>${opt.name}</display_name>`);
 			parts.push(`    <id>${String(opt.value)}</id>`);
-			if (opt.url) {
-				parts.push(`    <url>${opt.url}</url>`);
-			}
 			parts.push('  </option>');
 		}
 
 		parts.push('</resource_options>');
-		parts.push('');
 	}
-
-	parts.push(
-		'<note>Use the "id" value for the ResourceLocator "value" field, and optionally store the "display_name" in "cachedResultName".</note>',
-	);
 
 	return parts.join('\n');
 }
