@@ -1,19 +1,23 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
-type ExecutionRef = {
+export type ExecutionRef = {
 	workflowId: string;
 	executionId: string;
 };
 
-type ExecutionDataPayload = {
+export type ExecutionDataPayload = {
 	data: string;
 	workflowData: IWorkflowBase;
 	workflowVersionId: string | null;
 };
 
-export interface ExecutionDataManager {
+export type ExecutionDataBundle = ExecutionDataPayload & {
+	version: number;
+};
+
+export interface ExecutionDataStore {
 	init?(): Promise<void>;
 	write(ref: ExecutionRef, payload: ExecutionDataPayload): Promise<void>;
-	read(ref: ExecutionRef): Promise<ExecutionDataPayload>;
+	read(ref: ExecutionRef): Promise<ExecutionDataBundle | null>;
 	delete(ref: ExecutionRef | ExecutionRef[]): Promise<void>;
 }
