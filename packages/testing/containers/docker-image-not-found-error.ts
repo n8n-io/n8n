@@ -12,10 +12,10 @@ export class DockerImageNotFoundError extends Error {
 This is likely because the image is not available locally.
 To fix this, you can either:
   1. Build the image by running: pnpm build:docker at the root
-  2. Use a different image by setting: N8N_DOCKER_IMAGE=<image-tag>
+  2. Use a different image by setting: TEST_IMAGE_N8N=<image-tag>
 
 Example with different image:
-  N8N_DOCKER_IMAGE=n8nio/n8n:latest npm run stack`;
+  TEST_IMAGE_N8N=n8nio/n8n:latest npm run stack`;
 
 		super(message);
 		this.name = 'DockerImageNotFoundError';
