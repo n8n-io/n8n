@@ -1,21 +1,18 @@
 <script setup lang="ts">
-import Node from '@/features/workflows/canvas/components/elements/nodes/CanvasNode.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { STICKY_NODE_TYPE } from '@/app/constants';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
-import SyncedWorkflowCanvas from '@/features/workflows/workflowDiff/SyncedWorkflowCanvas.vue';
+import WorkflowDiffContent from '@/features/workflows/workflowDiff/WorkflowDiffContent.vue';
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
 import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
-import type { IWorkflowDb, INodeUi } from '@/Interface';
+import { useWorkflowDiffUI } from '@/features/workflows/workflowDiff/useWorkflowDiffUI';
+import type { IWorkflowDb } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
-import { NodeDiffStatus, type IWorkflowSettings } from 'n8n-workflow';
-import { computed, ref, useCssModule, onMounted } from 'vue';
-import HighlightedEdge from './HighlightedEdge.vue';
-import WorkflowDiffAside from './WorkflowDiffAside.vue';
+import { NodeDiffStatus } from 'n8n-workflow';
+import { computed, useCssModule, onMounted } from 'vue';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import {
@@ -52,195 +49,28 @@ const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
 	computed(() => removeWorkflowExecutionData(props.newWorkflow)),
 );
 
-type SettingsChange = {
-	name: string;
-	before: string;
-	after: string;
-};
-
-const settingsDiff = computed(() => {
-	const sourceSettings: IWorkflowSettings = props.oldWorkflow?.settings ?? {};
-	const targetSettings: IWorkflowSettings = props.newWorkflow?.settings ?? {};
-
-	const allKeys = new Set<keyof IWorkflowSettings>(
-		[...Object.keys(sourceSettings), ...Object.keys(targetSettings)].filter(
-			(key): key is keyof IWorkflowSettings => key in sourceSettings || key in targetSettings,
-		),
-	);
-
-	const settings = Array.from(allKeys).reduce<SettingsChange[]>((acc, key) => {
-		const val1 = sourceSettings[key];
-		const val2 = targetSettings[key];
-
-		if (val1 !== val2) {
-			acc.push({
-				name: key,
-				before: String(val1),
-				after: String(val2),
-			});
-		}
-		return acc;
-	}, []);
-
-	const sourceName = props.oldWorkflow?.name;
-	const targetName = props.newWorkflow?.name;
-
-	if (sourceName && targetName && sourceName !== targetName) {
-		settings.unshift({
-			name: 'name',
-			before: sourceName,
-			after: targetName,
-		});
-	}
-
-	const sourceTags = (props.oldWorkflow?.tags ?? []).map((tag) =>
-		typeof tag === 'string' ? tag : tag.name,
-	);
-	const targetTags = (props.newWorkflow?.tags ?? []).map((tag) =>
-		typeof tag === 'string' ? tag : tag.name,
-	);
-
-	if (sourceTags.join('') !== targetTags.join('')) {
-		settings.push({
-			name: 'tags',
-			before: JSON.stringify(sourceTags, null, 2),
-			after: JSON.stringify(targetTags, null, 2),
-		});
-	}
-
-	return settings;
+// Use shared composable for UI logic
+const {
+	settingsDiff,
+	nodeChanges,
+	nextNodeChange,
+	previousNodeChange,
+	activeTab,
+	tabs,
+	setActiveTab,
+	selectedNode,
+	nodeDiffs,
+	changesCount,
+	isSourceWorkflowNew,
+	modifiers,
+	setSelectedDetailId,
+} = useWorkflowDiffUI({
+	sourceWorkflow: computed(() => props.oldWorkflow),
+	targetWorkflow: computed(() => props.newWorkflow),
+	nodesDiff,
+	connectionsDiff,
+	selectedDetailId,
 });
-
-function getNodeStatusClass(id: string) {
-	const status = nodesDiff.value?.get(id)?.status ?? 'equal';
-	return $style[status];
-}
-
-function getEdgeStatusClass(id: string) {
-	const status = connectionsDiff.value.get(id)?.status ?? NodeDiffStatus.Eq;
-	return $style[`edge-${status}`];
-}
-
-const nodeChanges = computed(() => {
-	if (!nodesDiff.value) return [];
-	return [...nodesDiff.value.values()]
-		.filter((change) => change.status !== NodeDiffStatus.Eq)
-		.map((change) => ({
-			...change,
-			type: nodeTypesStore.getNodeType(change.node.type, change.node.typeVersion),
-		}));
-});
-
-function nextNodeChange() {
-	const currentIndex = nodeChanges.value.findIndex(
-		(change) => change.node.id === selectedDetailId.value,
-	);
-
-	const nextIndex = (currentIndex + 1) % nodeChanges.value.length;
-	selectedDetailId.value = nodeChanges.value[nextIndex]?.node.id;
-}
-
-function previousNodeChange() {
-	const currentIndex = nodeChanges.value.findIndex(
-		(change) => change.node.id === selectedDetailId.value,
-	);
-
-	const previousIndex = (currentIndex - 1 + nodeChanges.value.length) % nodeChanges.value.length;
-	selectedDetailId.value = nodeChanges.value[previousIndex]?.node.id;
-}
-
-const activeTab = ref<'nodes' | 'connectors' | 'settings'>();
-
-const tabs = computed(() => [
-	{
-		value: 'nodes' as const,
-		label: i18n.baseText('workflowDiff.nodes'),
-		disabled: false,
-		data: {
-			count: nodeChanges.value.length,
-		},
-	},
-	{
-		value: 'connectors' as const,
-		label: i18n.baseText('workflowDiff.connectors'),
-		disabled: false,
-		data: {
-			count: connectionsDiff.value.size,
-		},
-	},
-	{
-		value: 'settings' as const,
-		label: i18n.baseText('workflowDiff.settings'),
-		disabled: false,
-		data: {
-			count: settingsDiff.value.length,
-		},
-	},
-]);
-
-function setActiveTab(active: boolean) {
-	if (!active) {
-		activeTab.value = undefined;
-		return;
-	}
-	activeTab.value = 'nodes';
-}
-
-const selectedNode = computed((): INodeUi | undefined => {
-	if (!selectedDetailId.value) return undefined;
-
-	const node = nodesDiff.value.get(selectedDetailId.value)?.node;
-	if (!node) return undefined;
-
-	return node;
-});
-
-const nodeDiffs = computed(() => {
-	if (!selectedDetailId.value) {
-		return {
-			oldString: '',
-			newString: '',
-		};
-	}
-	const sourceNode = props.oldWorkflow?.nodes.find(
-		(node) => node.id === selectedDetailId.value,
-	);
-	const targetNode = props.newWorkflow?.nodes.find(
-		(node) => node.id === selectedDetailId.value,
-	);
-
-	function replacer(key: string, value: unknown, nodeType?: string) {
-		if (key === 'position') {
-			return undefined;
-		}
-
-		if (
-			(key === 'jsCode' || (key === 'content' && nodeType === STICKY_NODE_TYPE)) &&
-			typeof value === 'string'
-		) {
-			return value.split('\n');
-		}
-
-		return value;
-	}
-
-	const withNodeType = (type?: string) => (key: string, value: unknown) =>
-		replacer(key, value, type);
-
-	return {
-		oldString: JSON.stringify(sourceNode, withNodeType(sourceNode?.type), 2) ?? '',
-		newString: JSON.stringify(targetNode, withNodeType(targetNode?.type), 2) ?? '',
-	};
-});
-
-function setSelectedDetailId(nodeId: string | undefined) {
-	if (!nodeId) {
-		selectedDetailId.value = undefined;
-		return;
-	}
-
-	selectedDetailId.value = nodeId;
-}
 
 onNodeClick((nodeId: string) => {
 	const node = nodesDiff.value.get(nodeId);
@@ -252,32 +82,6 @@ onNodeClick((nodeId: string) => {
 		selectedDetailId.value = nodeId;
 	}
 });
-
-const changesCount = computed(
-	() => nodeChanges.value.length + connectionsDiff.value.size + settingsDiff.value.length,
-);
-
-const isSourceWorkflowNew = computed(() => {
-	const sourceExists = !!props.oldWorkflow;
-	const targetExists = !!props.newWorkflow;
-	return !sourceExists && targetExists;
-});
-
-const modifiers = [
-	{
-		name: 'preventOverflow',
-		options: {
-			boundary: 'viewport',
-			padding: 8,
-		},
-	},
-	{
-		name: 'offset',
-		options: {
-			offset: [80, 8],
-		},
-	},
-];
 
 onMounted(async () => {
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
@@ -326,9 +130,7 @@ onMounted(async () => {
 								>
 									<template #option="{ label, data: optionData }">
 										{{ label }}
-										<span v-if="optionData?.count" class="ml-4xs">
-											({{ optionData.count }})
-										</span>
+										<span v-if="optionData?.count" class="ml-4xs"> ({{ optionData.count }}) </span>
 									</template>
 								</N8nRadioButtons>
 								<div>
@@ -368,9 +170,7 @@ onMounted(async () => {
 																[$style.clickableChangeActive]:
 																	selectedDetailId === change[1].connection.source?.id,
 															}"
-															@click.prevent="
-																setSelectedDetailId(change[1].connection.source?.id)
-															"
+															@click.prevent="setSelectedDetailId(change[1].connection.source?.id)"
 														>
 															<NodeIcon
 																:node-type="change[1].connection.sourceType"
@@ -388,9 +188,7 @@ onMounted(async () => {
 																[$style.clickableChangeActive]:
 																	selectedDetailId === change[1].connection.target?.id,
 															}"
-															@click.prevent="
-																setSelectedDetailId(change[1].connection.target?.id)
-															"
+															@click.prevent="setSelectedDetailId(change[1].connection.target?.id)"
 														>
 															<NodeIcon
 																:node-type="change[1].connection.targetType"
@@ -452,87 +250,23 @@ onMounted(async () => {
 			</div>
 		</div>
 
-		<div :class="$style.workflowDiffContent">
-			<div :class="$style.workflowDiff">
-				<div :class="$style.workflowDiffPanel">
-					<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
-						{{ oldLabel }}
-					</N8nText>
-					<template v-if="oldWorkflow">
-						<SyncedWorkflowCanvas
-							id="top"
-							:nodes="source.nodes"
-							:connections="source.connections"
-							:apply-layout="tidyUp"
-						>
-							<template #node="{ nodeProps }">
-								<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
-									<template #toolbar />
-								</Node>
-							</template>
-							<template #edge="{ edgeProps, arrowHeadMarkerId }">
-								<HighlightedEdge
-									v-bind="edgeProps"
-									:marker-end="`url(#${arrowHeadMarkerId})`"
-									:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-								/>
-							</template>
-						</SyncedWorkflowCanvas>
-					</template>
-					<template v-else>
-						<div :class="$style.emptyWorkflow">
-							<N8nHeading size="large">{{
-								isSourceWorkflowNew
-									? i18n.baseText('workflowDiff.newWorkflow')
-									: i18n.baseText('workflowDiff.deletedWorkflow')
-							}}</N8nHeading>
-						</div>
-					</template>
-				</div>
-				<div :class="$style.workflowDiffPanel">
-					<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
-						{{ newLabel }}
-					</N8nText>
-					<template v-if="newWorkflow">
-						<SyncedWorkflowCanvas
-							id="bottom"
-							:nodes="target.nodes"
-							:connections="target.connections"
-							:apply-layout="tidyUp"
-						>
-							<template #node="{ nodeProps }">
-								<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
-									<template #toolbar />
-								</Node>
-							</template>
-							<template #edge="{ edgeProps, arrowHeadMarkerId }">
-								<HighlightedEdge
-									v-bind="edgeProps"
-									:marker-end="`url(#${arrowHeadMarkerId})`"
-									:class="{ [getEdgeStatusClass(edgeProps.id)]: true }"
-								/>
-							</template>
-						</SyncedWorkflowCanvas>
-					</template>
-					<template v-else>
-						<div :class="$style.emptyWorkflow">
-							<N8nHeading size="large">{{
-								i18n.baseText('workflowDiff.deletedWorkflow')
-							}}</N8nHeading>
-						</div>
-					</template>
-				</div>
-			</div>
-			<WorkflowDiffAside
-				v-if="selectedNode"
-				:node="selectedNode"
-				@close="selectedDetailId = undefined"
-			>
-				<template #default="{ outputFormat }">
-					<NodeDiff v-bind="nodeDiffs" :output-format="outputFormat" />
-				</template>
-			</WorkflowDiffAside>
-		</div>
+		<WorkflowDiffContent
+			:source-nodes="source.nodes"
+			:source-connections="source.connections"
+			:target-nodes="target.nodes"
+			:target-connections="target.connections"
+			:source-label="oldLabel"
+			:target-label="newLabel"
+			:source-exists="!!oldWorkflow"
+			:target-exists="!!newWorkflow"
+			:selected-node="selectedNode"
+			:node-diffs="nodeDiffs"
+			:is-source-workflow-new="isSourceWorkflowNew"
+			:apply-layout="tidyUp"
+			:nodes-diff="nodesDiff"
+			:connections-diff="connectionsDiff"
+			@close-aside="selectedDetailId = undefined"
+		/>
 	</div>
 </template>
 
@@ -541,22 +275,6 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
-}
-
-.sourceBadge {
-	position: absolute;
-	top: 12px;
-	left: 12px;
-	z-index: 1;
-	border-radius: 4px;
-	border: 1px solid var(--color--foreground--tint-1);
-	background: var(--color--foreground--tint-2);
-	display: flex;
-	height: 30px;
-	padding: 0 12px;
-	align-items: center;
-	gap: 8px;
-	align-self: stretch;
 }
 
 .tabs {
@@ -638,130 +356,6 @@ onMounted(async () => {
 	z-index: 1;
 }
 
-.deleted,
-.added,
-.modified {
-	position: relative;
-	&::before {
-		position: absolute;
-		top: 0;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		border-radius: 4px;
-		color: var(--color--text--tint-3);
-		font-family: Inter, var(--font-family);
-		font-size: 10px;
-		font-weight: 700;
-		z-index: 1;
-		width: 16px;
-		height: 16px;
-		display: inline-flex;
-		justify-content: center;
-		align-items: center;
-	}
-}
-
-.deleted {
-	--canvas-node--color--background: var(--diff--color--deleted--faint);
-	--canvas-node--border-color: var(--diff--color--deleted);
-	--sticky--color--background: var(--diff--color--deleted--faint);
-	--sticky--border-color: var(--diff--color--deleted);
-
-	:global(> div) {
-		--canvas-node--border-width: 2px;
-	}
-
-	&::before {
-		content: 'D';
-		background-color: var(--diff--color--deleted);
-	}
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--deleted);
-		border: none;
-	}
-
-	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff--color--deleted) !important;
-	}
-}
-.added {
-	--canvas-node--border-color: var(--diff--color--new);
-	--canvas-node--color--background: var(--diff--color--new--faint);
-	--sticky--color--background: var(--diff--color--new--faint);
-	--sticky--border-color: var(--diff--color--new);
-	position: relative;
-
-	:global(> div) {
-		--canvas-node--border-width: 2px;
-	}
-
-	&::before {
-		content: 'N';
-		background-color: var(--diff--color--new);
-	}
-
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--new);
-		border: none;
-	}
-
-	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff--color--new) !important;
-	}
-}
-.equal {
-	opacity: 0.5;
-	position: relative;
-	pointer-events: none;
-	cursor: default;
-	--sticky--color--background: rgba(126, 129, 134, 0.2);
-	--canvas-node--icon-color: var(--color--foreground--shade-2);
-	--sticky--border-color: var(--color--foreground--shade-2);
-	&:deep(img) {
-		filter: contrast(0) grayscale(100%);
-	}
-}
-.modified {
-	--canvas-node--border-width: 2px;
-	--canvas-node--border-color: var(--diff--color--modified);
-	--canvas-node--color--background: var(--diff--color--modified--faint);
-	--sticky--color--background: var(--diff--color--modified--faint);
-	--sticky--border-color: var(--diff--color--modified);
-	position: relative;
-
-	:global(> div) {
-		--canvas-node--border-width: 2px;
-	}
-
-	&::before {
-		content: 'M';
-		background-color: var(--diff--color--modified);
-	}
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--modified);
-		border: none;
-	}
-
-	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff--color--modified) !important;
-	}
-}
-
-.edge-deleted {
-	--canvas-edge--color: var(--diff--color--deleted);
-	--edge--color--highlight: var(--diff--color--deleted--light);
-}
-.edge-added {
-	--canvas-edge--color: var(--diff--color--new);
-	--edge--color--highlight: var(--diff--color--new--light);
-}
-.edge-equal {
-	opacity: 0.5;
-}
-
 .circleBadge {
 	display: inline-flex;
 	align-items: center;
@@ -797,35 +391,6 @@ onMounted(async () => {
 			display: none;
 		}
 	}
-}
-
-.workflowDiffContent {
-	display: flex;
-	height: 100%;
-	flex: 1;
-	overflow: hidden;
-}
-
-.workflowDiff {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	flex: 1;
-}
-
-.workflowDiffPanel {
-	flex: 1;
-	position: relative;
-	border-top: 1px solid var(--color--foreground);
-	background: var(--canvas--color--background);
-}
-
-.emptyWorkflow {
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
 }
 
 .header {
