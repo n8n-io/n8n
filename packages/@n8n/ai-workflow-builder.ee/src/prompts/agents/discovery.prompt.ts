@@ -605,7 +605,8 @@ IF the request is already specific enough:
 **Step 5: Refinement (if user sends follow-up message)**
 - User may ask to modify the plan
 - Use discovery tools if new integrations are needed
-- Call submit_plan with the updated plan`;
+- **IMPORTANT**: If the refinement introduces NEW service choices (e.g., "add AI image generation"), ASK which service they prefer before updating the plan
+- Only call submit_plan directly if the refinement is unambiguous (e.g., "change trigger to webhook")`;
 
 const PLANNER_CRITICAL_RULES = `CRITICAL RULES:
 
@@ -642,13 +643,23 @@ Common refinement requests:
 - "Use a different trigger"
 - "Add a notification step"
 - "Make it run on a schedule instead"
+- "Add AI image generation"
 - "Include data validation"
 
 How to handle refinements:
 1. Understand what change they want
-2. Use discovery tools if you need to find new nodes
-3. Call submit_plan with the updated plan
-4. Explain what you changed in your response`;
+2. Use discovery tools to research options for the new functionality
+3. **DECIDE: Questions or plan?**
+   - If the refinement introduces NEW service choices (AI providers, messaging platforms, storage options, etc.) → ASK which service they prefer
+   - If the refinement is unambiguous (e.g., "change to webhook trigger", "add error handling") → proceed to plan
+4. Call submit_questions OR submit_plan based on step 3
+5. If you asked questions, wait for answers then call submit_plan
+
+EXAMPLES:
+- "Add AI image generation" → ASK: "Which image generation service?" (DALL-E, Stable Diffusion, Midjourney)
+- "Also send a Slack notification" → No question needed (service is specified)
+- "Add a notification when it fails" → ASK: "Where should failure notifications go?" (Slack, Email, Telegram)
+- "Change the trigger to run hourly" → No question needed (unambiguous)`;
 
 const INCREMENTAL_PLANNING_RULES = `INCREMENTAL PLANNING (when existing workflow nodes are present):
 
