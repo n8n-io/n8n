@@ -37,7 +37,6 @@ import {
 	personalAgentDefaultIcon,
 	isLlmProviderModel,
 	createMimeTypes,
-	isHiddenTool,
 } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -124,9 +123,6 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
-
-// Filter out vector store tools for display in ToolsSelector
-const displayTools = computed(() => tools.value.filter((tool) => !isHiddenTool(tool)));
 
 modalBus.value.once('opened', () => {
 	isOpened.value = true;
@@ -286,7 +282,7 @@ function onSelectTools() {
 	uiStore.openModalWithData({
 		name: TOOLS_SELECTOR_MODAL_KEY,
 		data: {
-			selected: displayTools.value,
+			selected: tools.value,
 			onConfirm: (newTools: INode[]) => {
 				// Keep vector store tool if it exists, add other tools
 				const vectorStoreTool = tools.value.find(
@@ -490,7 +486,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 										? undefined
 										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
 								"
-								:selected="displayTools"
+								:selected="tools"
 								@click="onSelectTools"
 							/>
 						</div>
