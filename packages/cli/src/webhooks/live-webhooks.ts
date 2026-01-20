@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
-import { WorkflowRepository } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import { WorkflowRepository, WorkflowPublishedVersionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { Workflow, CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
@@ -20,6 +21,7 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { getPublishedWorkflowData } from '@/workflows/workflow-helpers';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 /**
@@ -35,6 +37,8 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -44,15 +48,17 @@ export class LiveWebhooks implements IWebhookManager {
 	async findAccessControlOptions(path: string, httpMethod: IHttpRequestMethods) {
 		const webhook = await this.findWebhook(path, httpMethod);
 
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
-			select: ['nodes'],
-		});
+		const publishedWorkflowData = await getPublishedWorkflowData(
+			webhook.workflowId,
+			this.workflowRepository,
+			this.workflowPublishedVersionRepository,
+			this.globalConfig.workflows.useWorkflowPublicationService,
+		);
 
 		const isChatWebhookNode = (type: string, webhookId?: string) =>
 			type === CHAT_TRIGGER_NODE_TYPE && `${webhookId}/chat` === path;
 
-		const nodes = workflowData?.nodes;
+		const nodes = publishedWorkflowData?.nodes;
 		const webhookNode = nodes?.find(
 			({ type, parameters, typeVersion, webhookId }) =>
 				(parameters?.path === path &&
@@ -94,47 +100,47 @@ export class LiveWebhooks implements IWebhookManager {
 			});
 		}
 
-		const workflowData = await this.workflowRepository.findOne({
-			where: { id: webhook.workflowId },
-			relations: {
-				activeVersion: true,
-				shared: { project: { projectRelations: true } },
-			},
-		});
+		const publishedWorkflowData = await getPublishedWorkflowData(
+			webhook.workflowId,
+			this.workflowRepository,
+			this.workflowPublishedVersionRepository,
+			this.globalConfig.workflows.useWorkflowPublicationService,
+		);
 
-		if (workflowData === null) {
-			throw new NotFoundError(`Could not find workflow with id "${webhook.workflowId}"`);
+		if (!publishedWorkflowData) {
+			throw new NotFoundError(`Published workflow ${webhook.workflowId} not found`);
 		}
 
-		if (!workflowData.activeVersion) {
-			throw new NotFoundError(
-				`Active version not found for workflow with id "${webhook.workflowId}"`,
-			);
-		}
-
-		const { nodes, connections } = workflowData.activeVersion;
+		const { nodes, connections, name, staticData, settings, shared } = publishedWorkflowData;
 
 		// Create a clean workflowData object with only activeVersion nodes/connections
 		// This prevents any downstream code from accidentally using the draft nodes
 		const activeWorkflowData: IWorkflowBase = {
-			...workflowData,
+			id: webhook.workflowId,
+			name,
 			nodes,
 			connections,
+			active: true,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			staticData,
+			settings,
+			activeVersionId: null,
 		};
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
-			name: workflowData.name,
+			name,
 			nodes,
 			connections,
-			active: workflowData.activeVersionId !== null,
+			active: true,
 			nodeTypes: this.nodeTypes,
-			staticData: workflowData.staticData,
-			settings: workflowData.settings,
+			staticData: staticData ?? undefined,
+			settings: settings ?? undefined,
 		});
 
-		const ownerProjectId = workflowData.shared.find((share) => share.role === 'workflow:owner')
-			?.project.id;
+		const ownerProjectId = shared?.find((share) => share.role === 'workflow:owner')?.project.id;
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			projectId: ownerProjectId,
 		});
