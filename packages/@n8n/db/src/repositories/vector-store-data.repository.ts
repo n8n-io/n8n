@@ -1,0 +1,386 @@
+import { DatabaseConfig } from '@n8n/config';
+import { Service } from '@n8n/di';
+import { DataSource, Repository } from '@n8n/typeorm';
+import { generateNanoId } from '../utils/generators';
+
+import { VectorStoreData } from '../entities';
+import { dbType } from '../entities/abstract-entity';
+
+export interface VectorDocument {
+	content: string;
+	metadata: Record<string, unknown>;
+}
+
+export interface VectorSearchResult {
+	document: VectorDocument;
+	score: number;
+}
+
+@Service()
+export class VectorStoreDataRepository extends Repository<VectorStoreData> {
+	constructor(
+		dataSource: DataSource,
+		private readonly databaseConfig: DatabaseConfig,
+	) {
+		super(VectorStoreData, dataSource.manager);
+	}
+
+	/**
+	 * Add vectors to the store
+	 */
+	async addVectors(
+		memoryKey: string,
+		documents: VectorDocument[],
+		embeddings: number[][],
+		clearStore: boolean = false,
+	): Promise<void> {
+		console.log('[VectorStore] Adding vectors:', {
+			memoryKey,
+			documentCount: documents.length,
+			embeddingCount: embeddings.length,
+			clearStore,
+			firstEmbeddingLength: embeddings[0]?.length,
+		});
+
+		if (clearStore) {
+			await this.clearStore(memoryKey);
+			console.log('[VectorStore] Cleared existing store for:', memoryKey);
+		}
+
+		const entities: VectorStoreData[] = [];
+		for (let i = 0; i < documents.length; i++) {
+			const entity = new VectorStoreData();
+			entity.id = generateNanoId();
+			entity.memoryKey = memoryKey;
+			entity.content = documents[i].content;
+			entity.metadata = documents[i].metadata;
+			entity.vector = this.serializeVector(embeddings[i]);
+			entities.push(entity);
+		}
+
+		await this.save(entities);
+		console.log('[VectorStore] Successfully saved vectors:', entities.length);
+	}
+
+	/**
+	 * Perform similarity search on vectors
+	 */
+	async similaritySearch(
+		memoryKey: string,
+		queryEmbedding: number[],
+		k: number,
+		filter?: Record<string, unknown>,
+	): Promise<VectorSearchResult[]> {
+		console.log('[VectorStore] Similarity search called:', {
+			memoryKey,
+			queryEmbeddingLength: queryEmbedding.length,
+			k,
+			filter,
+			dbType,
+		});
+
+		if (dbType === 'postgresdb') {
+			return await this.similaritySearchPostgres(memoryKey, queryEmbedding, k, filter);
+		} else if (dbType === 'sqlite') {
+			return await this.similaritySearchSQLite(memoryKey, queryEmbedding, k, filter);
+		}
+
+		throw new Error(`Database type ${dbType} does not support vector similarity search`);
+	}
+
+	/**
+	 * PostgreSQL similarity search using pgvector
+	 */
+	private async similaritySearchPostgres(
+		memoryKey: string,
+		queryEmbedding: number[],
+		k: number,
+		filter?: Record<string, unknown>,
+	): Promise<VectorSearchResult[]> {
+		const tableName = this.getTableName('vector_store_data');
+		const memoryKeyCol = this.getColumnName('memoryKey');
+		const vectorCol = this.getColumnName('vector');
+		const contentCol = this.getColumnName('content');
+		const metadataCol = this.getColumnName('metadata');
+
+		// Check if pgvector is available by trying to use the operator
+		try {
+			// Build WHERE clause
+			let whereClause = `${memoryKeyCol} = $1`;
+			const params: unknown[] = [memoryKey];
+			let paramIndex = 2;
+
+			if (filter) {
+				for (const [key, value] of Object.entries(filter)) {
+					whereClause += ` AND ${metadataCol}->>'${key}' = $${paramIndex}`;
+					params.push(value);
+					paramIndex++;
+				}
+			}
+
+			// Use pgvector cosine distance operator
+			const vectorString = `[${queryEmbedding.join(',')}]`;
+			params.push(vectorString);
+
+			const query = `
+				SELECT ${contentCol} as content, ${metadataCol} as metadata,
+					   1 - (${vectorCol} <=> $${paramIndex}::vector) as score
+				FROM ${tableName}
+				WHERE ${whereClause}
+				ORDER BY ${vectorCol} <=> $${paramIndex}::vector
+				LIMIT ${k}
+			`;
+
+			const results = await this.query(query, params);
+			return results.map(
+				(row: { content: string; metadata: Record<string, unknown>; score: number }) => ({
+					document: {
+						content: row.content,
+						metadata: row.metadata,
+					},
+					score: row.score,
+				}),
+			);
+		} catch (error) {
+			// pgvector not available, fall back to in-memory computation
+			return await this.similaritySearchFallback(memoryKey, queryEmbedding, k, filter);
+		}
+	}
+
+	/**
+	 * SQLite similarity search using sqlite-vec
+	 */
+	private async similaritySearchSQLite(
+		memoryKey: string,
+		queryEmbedding: number[],
+		k: number,
+		filter?: Record<string, unknown>,
+	): Promise<VectorSearchResult[]> {
+		const tableName = this.getTableName('vector_store_data');
+		const memoryKeyCol = this.getColumnName('memoryKey');
+		const vectorCol = this.getColumnName('vector');
+		const contentCol = this.getColumnName('content');
+		const metadataCol = this.getColumnName('metadata');
+
+		console.log('[VectorStore] SQLite search starting:', {
+			memoryKey,
+			queryEmbeddingLength: queryEmbedding.length,
+			k,
+		});
+
+		// First, check if there are any records with this memoryKey
+		const countQuery = `SELECT COUNT(*) as count FROM ${tableName} WHERE ${memoryKeyCol} = ?`;
+		const countResult = await this.query(countQuery, [memoryKey]);
+		console.log('[VectorStore] Records found with memoryKey:', {
+			memoryKey,
+			count: countResult[0]?.count || 0,
+		});
+
+		// Check a sample vector length from database
+		const sampleQuery = `SELECT LENGTH(${vectorCol}) as vectorLength FROM ${tableName} WHERE ${memoryKeyCol} = ? LIMIT 1`;
+		const sampleResult = await this.query(sampleQuery, [memoryKey]);
+		console.log('[VectorStore] Sample stored vector info:', {
+			storedVectorLength: sampleResult[0]?.vectorLength,
+			expectedLength: queryEmbedding.length * 4,
+		});
+
+		// Test if vec_distance_cosine function works with a sample
+		try {
+			const queryVectorBlob = this.serializeVector(queryEmbedding);
+			const testQuery = `SELECT vec_distance_cosine(${vectorCol}, ?) as distance FROM ${tableName} WHERE ${memoryKeyCol} = ? LIMIT 1`;
+			const testResult = await this.query(testQuery, [queryVectorBlob, memoryKey]);
+			console.log('[VectorStore] vec_distance_cosine test:', {
+				works: testResult.length > 0,
+				sampleDistance: testResult[0]?.distance,
+			});
+		} catch (testErr) {
+			console.error('[VectorStore] vec_distance_cosine test failed:', testErr);
+		}
+
+		try {
+			// Serialize query vector for sqlite-vec
+			const queryVectorBlob = this.serializeVector(queryEmbedding);
+
+			// Build WHERE clause
+			let whereClause = `${memoryKeyCol} = ?`;
+			const whereParams: unknown[] = [memoryKey];
+
+			if (filter) {
+				for (const [key, value] of Object.entries(filter)) {
+					whereClause += ` AND json_extract(${metadataCol}, '$.${key}') = ?`;
+					whereParams.push(value);
+				}
+			}
+
+			const query = `
+				SELECT ${contentCol} as content, ${metadataCol} as metadata,
+					   1 - vec_distance_cosine(${vectorCol}, ?) as score
+				FROM ${tableName}
+				WHERE ${whereClause}
+				ORDER BY vec_distance_cosine(${vectorCol}, ?)
+				LIMIT ${k}
+			`;
+
+			// Parameters must be in the order they appear in the query:
+			// 1. First ? in SELECT vec_distance_cosine -> queryVectorBlob
+			// 2. WHERE clause parameters -> memoryKey (and filter values)
+			// 3. Second ? in ORDER BY vec_distance_cosine -> queryVectorBlob
+			const params = [queryVectorBlob, ...whereParams, queryVectorBlob];
+
+			console.log('[VectorStore] Executing SQLite vec query:', {
+				query,
+				paramsCount: params.length,
+				queryVectorBlobLength: queryVectorBlob.length,
+				memoryKey,
+			});
+
+			const results = await this.query(query, params);
+
+			console.log('[VectorStore] SQLite vec query results:', {
+				resultCount: results.length,
+				scores: results.map((r: { score: number }) => r.score),
+			});
+
+			return results.map((row: { content: string; metadata: string; score: number }) => ({
+				document: {
+					content: row.content,
+					metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+				},
+				score: row.score,
+			}));
+		} catch (error) {
+			// sqlite-vec not available, fall back to in-memory computation
+			console.error('[VectorStore] SQLite vec search failed, falling back to in-memory:', error);
+			return await this.similaritySearchFallback(memoryKey, queryEmbedding, k, filter);
+		}
+	}
+
+	/**
+	 * Fallback similarity search using in-memory computation
+	 * Used when vector extensions are not available
+	 */
+	private async similaritySearchFallback(
+		memoryKey: string,
+		queryEmbedding: number[],
+		k: number,
+		filter?: Record<string, unknown>,
+	): Promise<VectorSearchResult[]> {
+		console.log('[VectorStore] Using fallback in-memory search:', { memoryKey, k });
+
+		const queryBuilder = this.createQueryBuilder('vectorStore').where(
+			'vectorStore.memoryKey = :memoryKey',
+			{ memoryKey },
+		);
+
+		if (filter) {
+			for (const [key, value] of Object.entries(filter)) {
+				queryBuilder.andWhere(`vectorStore.metadata->>'${key}' = :${key}`, { [key]: value });
+			}
+		}
+
+		const vectors = await queryBuilder.getMany();
+		console.log('[VectorStore] Fallback: Found vectors to compute:', vectors.length);
+
+		// Compute cosine similarity in-memory
+		const vectorsWithScores = vectors.map((v) => {
+			const embedding = this.deserializeVector(v.vector);
+			const similarity = this.cosineSimilarity(queryEmbedding, embedding);
+			return {
+				document: {
+					content: v.content,
+					metadata: v.metadata,
+				},
+				score: similarity,
+			};
+		});
+
+		// Sort by similarity and return top k
+		const results = vectorsWithScores.sort((a, b) => b.score - a.score).slice(0, k);
+		console.log('[VectorStore] Fallback results:', {
+			resultCount: results.length,
+			scores: results.map((r) => r.score),
+		});
+
+		return results;
+	}
+
+	/**
+	 * Get count of vectors for a memory key
+	 */
+	async getVectorCount(memoryKey: string): Promise<number> {
+		return await this.countBy({ memoryKey });
+	}
+
+	/**
+	 * Clear all vectors for a memory key
+	 */
+	async clearStore(memoryKey: string): Promise<void> {
+		await this.delete({ memoryKey });
+	}
+
+	/**
+	 * Delete entire store (alias for clearStore)
+	 */
+	async deleteStore(memoryKey: string): Promise<void> {
+		await this.clearStore(memoryKey);
+	}
+
+	/**
+	 * List all unique memory keys
+	 */
+	async listStores(): Promise<string[]> {
+		const result = await this.createQueryBuilder('vectorStore')
+			.select('DISTINCT vectorStore.memoryKey', 'memoryKey')
+			.getRawMany<{ memoryKey: string }>();
+
+		return result.map((row) => row.memoryKey);
+	}
+
+	/**
+	 * Serialize vector for storage (convert float array to buffer)
+	 */
+	private serializeVector(vector: number[]): Buffer {
+		const buffer = Buffer.allocUnsafe(vector.length * 4);
+		for (let i = 0; i < vector.length; i++) {
+			buffer.writeFloatLE(vector[i], i * 4);
+		}
+		return buffer;
+	}
+
+	/**
+	 * Deserialize vector from storage (convert buffer to float array)
+	 */
+	private deserializeVector(buffer: Buffer): number[] {
+		const vector: number[] = [];
+		for (let i = 0; i < buffer.length; i += 4) {
+			vector.push(buffer.readFloatLE(i));
+		}
+		return vector;
+	}
+
+	/**
+	 * Compute cosine similarity between two vectors
+	 */
+	private cosineSimilarity(a: number[], b: number[]): number {
+		let dotProduct = 0;
+		let normA = 0;
+		let normB = 0;
+
+		for (let i = 0; i < a.length; i++) {
+			dotProduct += a[i] * b[i];
+			normA += a[i] * a[i];
+			normB += b[i] * b[i];
+		}
+
+		return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+	}
+
+	private getTableName(name: string): string {
+		const { tablePrefix } = this.databaseConfig;
+		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);
+	}
+
+	private getColumnName(name: string): string {
+		return this.manager.connection.driver.escape(name);
+	}
+}

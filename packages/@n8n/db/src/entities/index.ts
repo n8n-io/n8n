@@ -26,6 +26,7 @@ import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
+import { VectorStoreData } from './vector-store-data';
 import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
@@ -56,6 +57,7 @@ export {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	VectorStoreData,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
@@ -93,6 +95,7 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	VectorStoreData,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,

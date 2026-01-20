@@ -13,6 +13,7 @@ import {
 
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 import { MemoryVectorStoreManager } from '../shared/MemoryManager/MemoryVectorStoreManager';
+import { DatabaseVectorStore } from './DatabaseVectorStore';
 
 const warningBanner: INodeProperties = {
 	displayName:
@@ -20,9 +21,35 @@ const warningBanner: INodeProperties = {
 	name: 'notice',
 	type: 'notice',
 	default: '',
+	displayOptions: {
+		show: {
+			enablePersistence: [false],
+		},
+	},
+};
+
+const persistenceBanner: INodeProperties = {
+	displayName:
+		'<strong>Database Persistence</strong>: Vectors are stored in the n8n instance database and will persist across restarts. Requires pgvector extension for PostgreSQL or uses sqlite-vec for SQLite. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/">More info</a>',
+	name: 'persistenceNotice',
+	type: 'notice',
+	default: '',
+	displayOptions: {
+		show: {
+			enablePersistence: [true],
+		},
+	},
 };
 
 const insertFields: INodeProperties[] = [
+	{
+		displayName: 'Enable Persistence',
+		name: 'enablePersistence',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to store vectors in the instance database instead of memory',
+		hint: 'Requires pgvector extension for PostgreSQL instances',
+	},
 	{
 		displayName: 'Clear Store',
 		name: 'clearStore',
@@ -31,6 +58,7 @@ const insertFields: INodeProperties[] = [
 		description: 'Whether to clear the store before inserting new data',
 	},
 	warningBanner,
+	persistenceBanner,
 ];
 
 const DEFAULT_MEMORY_KEY = 'vector_store_key';
@@ -173,19 +201,107 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 		},
 	},
 	insertFields,
-	loadFields: [warningBanner],
-	retrieveFields: [warningBanner],
+	loadFields: [
+		{
+			displayName: 'Enable Persistence',
+			name: 'enablePersistence',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to load vectors from the instance database instead of memory',
+			hint: 'Requires pgvector extension for PostgreSQL instances',
+		},
+		warningBanner,
+		persistenceBanner,
+	],
+	retrieveFields: [
+		{
+			displayName: 'Enable Persistence',
+			name: 'enablePersistence',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to retrieve vectors from the instance database instead of memory',
+			hint: 'Requires pgvector extension for PostgreSQL instances',
+		},
+		warningBanner,
+		persistenceBanner,
+	],
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const memoryKey = getMemoryKey(context, itemIndex);
-		const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
+		const enablePersistence = context.getNodeParameter(
+			'enablePersistence',
+			itemIndex,
+			false,
+		) as boolean;
 
-		return await vectorStoreSingleton.getVectorStore(memoryKey);
+		if (enablePersistence) {
+			// Use database-backed vector store
+			const vectorStoreService = context.helpers.getVectorStoreService?.();
+
+			if (!vectorStoreService) {
+				throw new ApplicationError(
+					'Vector store persistence is not available. The vector-store module may not be loaded.',
+				);
+			}
+
+			// Type assertion since we know the structure but it's typed as unknown
+			const service = vectorStoreService as {
+				canUsePersistence(): boolean;
+			};
+
+			if (!service.canUsePersistence()) {
+				throw new ApplicationError(
+					'Database persistence is not available. PostgreSQL requires pgvector extension to be installed.',
+				);
+			}
+
+			return new DatabaseVectorStore(embeddings, vectorStoreService, memoryKey);
+		} else {
+			// Use in-memory vector store (existing behavior)
+			const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
+			return await vectorStoreSingleton.getVectorStore(memoryKey);
+		}
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const memoryKey = getMemoryKey(context, itemIndex);
 		const clearStore = context.getNodeParameter('clearStore', itemIndex) as boolean;
-		const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
+		const enablePersistence = context.getNodeParameter(
+			'enablePersistence',
+			itemIndex,
+			false,
+		) as boolean;
 
-		await vectorStoreInstance.addDocuments(memoryKey, documents, clearStore);
+		if (enablePersistence) {
+			// Use database-backed vector store
+			const vectorStoreService = context.helpers.getVectorStoreService?.();
+
+			if (!vectorStoreService) {
+				throw new ApplicationError(
+					'Vector store persistence is not available. The vector-store module may not be loaded.',
+				);
+			}
+
+			// Type assertion since we know the structure but it's typed as unknown
+			const service = vectorStoreService as {
+				canUsePersistence(): boolean;
+			};
+
+			if (!service.canUsePersistence()) {
+				throw new ApplicationError(
+					'Database persistence is not available. PostgreSQL requires pgvector extension to be installed.',
+				);
+			}
+
+			const vectorStore = new DatabaseVectorStore(embeddings, vectorStoreService, memoryKey);
+
+			if (clearStore) {
+				await vectorStore.clearStore();
+			}
+
+			await vectorStore.addDocuments(documents);
+		} else {
+			// Use in-memory vector store (existing behavior)
+			const vectorStoreInstance = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
+			await vectorStoreInstance.addDocuments(memoryKey, documents, clearStore);
+		}
 	},
 }) {}

@@ -41,6 +41,7 @@ export class ModuleRegistry {
 		'dynamic-credentials',
 		'chat-hub',
 		'sso-oidc',
+		'vector-store',
 	];
 
 	private readonly activeModules: string[] = [];

@@ -38,6 +38,7 @@
     "nanoid": "catalog:",
     "p-lazy": "3.1.0",
     "reflect-metadata": "catalog:",
+    "sqlite-vec": "0.1.7-alpha.2",
     "uuid": "catalog:",
     "xss": "catalog:",
     "zod": "catalog:"

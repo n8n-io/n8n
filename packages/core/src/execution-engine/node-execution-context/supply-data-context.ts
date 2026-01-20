@@ -32,6 +32,7 @@ import { constructExecutionMetaData } from './utils/construct-execution-metadata
 import { copyInputItems } from './utils/copy-input-items';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
+import { getVectorStoreHelperFunctions } from './utils/vector-store-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 // eslint-disable-next-line import-x/no-cycle
 import { getInputConnectionData } from './utils/get-input-connection-data';
@@ -93,6 +94,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getFileSystemHelperFunctions(node),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
+			...getVectorStoreHelperFunctions(additionalData),
 			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
 				assertBinaryData(inputData, node, itemIndex, propertyName, 0, workflow.settings.binaryMode),

@@ -846,6 +846,9 @@ importers:
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
+      sqlite-vec:
+        specifier: 0.1.7-alpha.2
+        version: 0.1.7-alpha.2
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -16805,6 +16808,34 @@ packages:
 
   sprintf-js@1.1.3:
     resolution: {integrity: sha512-Oo+0REFV59/rz3gfJNKQiBlwfHaSESl1pcGyABQsnnIfWOFt6JNj5gCog2U6MLZ//IGYD+nA8nI+mTShREReaA==}
+
+  sqlite-vec-darwin-arm64@0.1.7-alpha.2:
+    resolution: {integrity: sha512-raIATOqFYkeCHhb/t3r7W7Cf2lVYdf4J3ogJ6GFc8PQEgHCPEsi+bYnm2JT84MzLfTlSTIdxr4/NKv+zF7oLPw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  sqlite-vec-darwin-x64@0.1.7-alpha.2:
+    resolution: {integrity: sha512-jeZEELsQjjRsVojsvU5iKxOvkaVuE+JYC8Y4Ma8U45aAERrDYmqZoHvgSG7cg1PXL3bMlumFTAmHynf1y4pOzA==}
+    cpu: [x64]
+    os: [darwin]
+
+  sqlite-vec-linux-arm64@0.1.7-alpha.2:
+    resolution: {integrity: sha512-6Spj4Nfi7tG13jsUG+W7jnT0bCTWbyPImu2M8nWp20fNrd1SZ4g3CSlDAK8GBdavX7wRlbBHCZ+BDa++rbDewA==}
+    cpu: [arm64]
+    os: [linux]
+
+  sqlite-vec-linux-x64@0.1.7-alpha.2:
+    resolution: {integrity: sha512-IcgrbHaDccTVhXDf8Orwdc2+hgDLAFORl6OBUhcvlmwswwBP1hqBTSEhovClG4NItwTOBNgpwOoQ7Qp3VDPWLg==}
+    cpu: [x64]
+    os: [linux]
+
+  sqlite-vec-windows-x64@0.1.7-alpha.2:
+    resolution: {integrity: sha512-TRP6hTjAcwvQ6xpCZvjP00pdlda8J38ArFy1lMYhtQWXiIBmWnhMaMbq4kaeCYwvTTddfidatRS+TJrwIKB/oQ==}
+    cpu: [x64]
+    os: [win32]
+
+  sqlite-vec@0.1.7-alpha.2:
+    resolution: {integrity: sha512-rNgRCv+4V4Ed3yc33Qr+nNmjhtrMnnHzXfLVPeGb28Dx5mmDL3Ngw/Wk8vhCGjj76+oC6gnkmMG8y73BZWGBwQ==}
 
   sqlite3@5.1.7:
     resolution: {integrity: sha512-GGIyOiFaG+TUra3JIfkI/zGP8yZYLPQ0pl1bH+ODjiX57sPhrLU5sQJn1y9bDKZUFYkX1crlrPfSYt0BKKdkog==}
@@ -35788,6 +35819,29 @@ snapshots:
   sprintf-js@1.1.2: {}
 
   sprintf-js@1.1.3: {}
+
+  sqlite-vec-darwin-arm64@0.1.7-alpha.2:
+    optional: true
+
+  sqlite-vec-darwin-x64@0.1.7-alpha.2:
+    optional: true
+
+  sqlite-vec-linux-arm64@0.1.7-alpha.2:
+    optional: true
+
+  sqlite-vec-linux-x64@0.1.7-alpha.2:
+    optional: true
+
+  sqlite-vec-windows-x64@0.1.7-alpha.2:
+    optional: true
+
+  sqlite-vec@0.1.7-alpha.2:
+    optionalDependencies:
+      sqlite-vec-darwin-arm64: 0.1.7-alpha.2
+      sqlite-vec-darwin-x64: 0.1.7-alpha.2
+      sqlite-vec-linux-arm64: 0.1.7-alpha.2
+      sqlite-vec-linux-x64: 0.1.7-alpha.2
+      sqlite-vec-windows-x64: 0.1.7-alpha.2
 
   sqlite3@5.1.7:
     dependencies:

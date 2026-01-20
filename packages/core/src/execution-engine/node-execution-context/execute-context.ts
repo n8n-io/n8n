@@ -38,6 +38,7 @@ import { constructExecutionMetaData } from './utils/construct-execution-metadata
 import { copyInputItems } from './utils/copy-input-items';
 import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
+import { getVectorStoreHelperFunctions } from './utils/vector-store-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
 import { normalizeItems } from './utils/normalize-items';
@@ -96,6 +97,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...getDataTableHelperFunctions(additionalData, workflow, node),
+			...getVectorStoreHelperFunctions(additionalData),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getDeduplicationHelperFunctions(workflow, node),
