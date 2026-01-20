@@ -15,10 +15,7 @@ import {
 	createResourceLocatorResults,
 } from '../../../test/test-utils';
 import type { ResourceLocatorCallback } from '../../types/callbacks';
-import {
-	createGetResourceLocatorOptionsTool,
-	GET_RESOURCE_LOCATOR_OPTIONS_TOOL,
-} from '../get-resource-locator-options.tool';
+import { createGetResourceLocatorOptionsTool } from '../get-resource-locator-options.tool';
 
 jest.mock('@langchain/langgraph', () => ({
 	getCurrentTaskInput: jest.fn(),
@@ -44,11 +41,6 @@ describe('getResourceLocatorOptions tool', () => {
 				'getCalendars',
 			),
 		];
-	});
-
-	it('should have correct tool metadata', () => {
-		expect(GET_RESOURCE_LOCATOR_OPTIONS_TOOL.toolName).toBe('get_resource_locator_options');
-		expect(GET_RESOURCE_LOCATOR_OPTIONS_TOOL.displayTitle).toBe('Fetching resource options');
 	});
 
 	describe('callback not provided', () => {

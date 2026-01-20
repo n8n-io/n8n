@@ -202,7 +202,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		/**
 		 * Prefetch node - pre-fetches RLC options for required empty parameters
 		 * This runs before the agent to provide all necessary resource options upfront
-		 * Mutates messages in place to append RLC context (similar to applySubgraphCacheMarkers)
+		 * Mutates messages in place to append RLC context
 		 */
 		const prefetchRLCNode = async (state: typeof ConfiguratorSubgraphState.State) => {
 			// Skip if no callback is available

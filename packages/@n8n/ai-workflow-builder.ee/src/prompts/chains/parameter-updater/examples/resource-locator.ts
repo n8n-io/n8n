@@ -31,7 +31,7 @@ Expected Output:
   "otherOptions": {}
 }
 
-#### Example 2: Slack Node - Channel by List Selection
+#### Example 2: Slack Node - Channel by name
 Current Parameters:
 {
   "select": "channel",
@@ -57,7 +57,7 @@ Expected Output:
   "otherOptions": {}
 }
 
-#### Example 3: Google Sheets Node - Spreadsheet by List Selection
+#### Example 3: Google Sheets Node - Spreadsheet by name
 Current Parameters:
 {
   "operation": "read",
@@ -154,7 +154,7 @@ Current Parameters:
   }
 }
 
-Requested Changes: Use the "Customer Database (ID: 9XYZ789DEF)" spreadsheet
+Requested Changes: Use the "Customer Database" spreadsheet
 
 Expected Output:
 {

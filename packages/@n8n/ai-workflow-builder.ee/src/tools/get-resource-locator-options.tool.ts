@@ -77,9 +77,6 @@ function formatOptionsForLLM(options: INodeListSearchItems[], parameterPath: str
 		parts.push(`  <option index="${index}">`);
 		parts.push(`    <display_name>${opt.name}</display_name>`);
 		parts.push(`    <id>${String(opt.value)}</id>`);
-		if (opt.description) {
-			parts.push(`    <description>${opt.description}</description>`);
-		}
 		parts.push('  </option>');
 	});
 
