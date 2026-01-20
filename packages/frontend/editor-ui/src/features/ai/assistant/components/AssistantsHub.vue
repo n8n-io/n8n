@@ -127,7 +127,11 @@ onBeforeUnmount(() => {
 				<div :class="$style.assistantContent">
 					<AskAssistantBuild v-if="isBuildMode" ref="askAssistantBuildRef" @close="onClose">
 						<template v-if="canToggleModes" #header>
-							<HubSwitcher :is-build-mode="isBuildMode" @toggle="toggleAssistantMode" />
+							<HubSwitcher
+								:is-build-mode="isBuildMode"
+								:disabled="!allowSendingParameterValues"
+								@toggle="toggleAssistantMode"
+							/>
 						</template>
 					</AskAssistantBuild>
 					<AskAssistantChat v-else ref="askAssistantChatRef" @close="onClose">
