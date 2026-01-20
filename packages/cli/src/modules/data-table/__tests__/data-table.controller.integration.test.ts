@@ -19,6 +19,7 @@ import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
 
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
@@ -4193,9 +4194,13 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 describe('Source Control read-only mode', () => {
 	let sourceControlPreferencesService: SourceControlPreferencesService;
 	let testDataTable: DataTable;
+	let originalPreferences: SourceControlPreferences;
 
 	beforeAll(async () => {
 		sourceControlPreferencesService = Container.get(SourceControlPreferencesService);
+
+		// Capture original preferences
+		originalPreferences = sourceControlPreferencesService.getPreferences();
 
 		// Enable read-only mode
 		await sourceControlPreferencesService.setPreferences({
@@ -4217,12 +4222,8 @@ describe('Source Control read-only mode', () => {
 	});
 
 	afterAll(async () => {
-		// Disable read-only mode
-		await sourceControlPreferencesService.setPreferences({
-			connected: true,
-			keyGeneratorType: 'rsa',
-			branchReadOnly: false,
-		});
+		// Restore original preferences
+		await sourceControlPreferencesService.setPreferences(originalPreferences);
 	});
 
 	describe('mutating endpoints should return 403', () => {
