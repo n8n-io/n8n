@@ -149,9 +149,14 @@ export function createGetResourceLocatorOptionsTool(
 					return createErrorResponse(config, error);
 				}
 
-				// Check if node has credentials configured
+				// Check if node has credentials configured (only if node type requires them)
+				// Internal nodes like DataTable don't require credentials
+				const nodeTypeRequiresCredentials =
+					Array.isArray(nodeType.credentials) && nodeType.credentials.length > 0;
 				const credentials = node.credentials;
-				if (!credentials || Object.keys(credentials).length === 0) {
+				const hasCredentials = credentials && Object.keys(credentials).length > 0;
+
+				if (nodeTypeRequiresCredentials && !hasCredentials) {
 					const error = new ValidationError(
 						`Node "${node.name}" does not have credentials configured. Set up credentials before fetching resource options.`,
 					);

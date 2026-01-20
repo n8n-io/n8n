@@ -12,16 +12,16 @@ ResourceLocator parameters are special fields used for selecting resources like 
 \`\`\`json
 {
   "__rl": true,
-  "mode": "id" | "url" | "list",
+  "mode": "id" | "url" | "list" | "name",
   "value": "the-actual-value"
 }
 \`\`\`
 
 ### Mode Detection Guidelines:
-- Prefer default mode from node type definition when possible
 - Use the node type definition to determine the default mode and available modes for specific parameter
+- Prefer default mode from node type definition when possible
 - Switch the mode based on the input value format when necessary
-- Use mode "list" when the value is an ID + display name (e.g. "Marketing Team (ID: C0122KQ70S7E)")
+- Use mode "list" when the value is an ID + display name (e.g. "Marketing Team (ID: C0122KQ70S7E)"). Value should be set to the ID part, and cachedResultName to the display name part
 - Use mode "url" when the value is a URL (starts with http:// or https://)
 - Use mode "id" when the value looks like an ID (alphanumeric string, UUID, or other identifier)
 

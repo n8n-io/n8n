@@ -147,8 +147,8 @@ For numeric ranges (e.g., $100-$1000):
 Always set renameOutput: true and provide descriptive outputKey labels.`;
 
 const RESOURCE_LOCATOR_CONFIGURATION = `RESOURCE LOCATOR PARAMETERS:
-Some node parameters use "resource locators" to select from dynamic lists (calendars, documents, boards, channels, etc.).
-These parameters have a specific structure in the workflow JSON:
+Some node parameters use "resource locator" type. This allows user to select from dynamic lists (calendars, documents, boards, channels, etc.).
+These parameters have a specific structure in the node configuration:
 {{
   "__rl": true,
   "mode": "list",
@@ -171,7 +171,7 @@ Example:
 - Find "Q4 Report" in the results with ID "1mtaEwM07..."
 - Configure the parameter with the correct ID value and display name
 
-NEVER configure resource locator parameters without first calling get_resource_locator_options
+NEVER configure resource locator parameters without fetching a list of possible options using get_resource_locator_options
 
 Run get_resource_locator_options for all resource locator parameters BEFORE configuring nodes IN PARALLEL to save time`;
 
