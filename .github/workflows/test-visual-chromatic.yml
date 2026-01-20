@@ -16,7 +16,7 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       - name: Determine changed files
-        uses: tomi/paths-filter-action@v3.0.2
+        uses: tomi/paths-filter-action@32c62f5ca100c1110406e3477d5b3ecef4666fec # v3.0.2
         id: changed
         if: github.event_name == 'pull_request_review'
         with:
