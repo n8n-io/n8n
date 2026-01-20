@@ -12,6 +12,7 @@ import {
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
@@ -52,6 +53,8 @@ export class ApiHelpers {
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
 
+	publicApi: PublicApiHelper;
+
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
@@ -63,6 +66,8 @@ export class ApiHelpers {
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
+
+		this.publicApi = new PublicApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
@@ -368,6 +373,16 @@ export class ApiHelpers {
 		const result = await response.json();
 		// Handle both direct response and {data: ...} wrapped response
 		return result.data ?? result;
+	}
+
+	/**
+	 * Delete all log streaming destinations.
+	 */
+	async deleteAllLogStreamingDestinations(): Promise<void> {
+		const destinations = await this.getLogStreamingDestinations();
+		for (const destination of destinations) {
+			await this.deleteLogStreamingDestination(destination.id);
+		}
 	}
 
 	// ===== PRIVATE METHODS =====

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, useCssModule, useTemplateRef } from 'vue';
-import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText } from '@n8n/design-system';
-import { type ComponentProps } from 'vue-component-type-helpers';
-import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubLLMProviderSchema } from '@n8n/api-types';
+import { computed, ref, useTemplateRef } from 'vue';
+import { N8nDropdownMenu, N8nIcon, N8nButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import type {
 	ChatHubProvider,
 	ChatHubLLMProvider,
@@ -13,10 +12,9 @@ import type {
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
-	providerDisplayNames,
+	MAX_AGENT_NAME_CHARS,
+	NEW_AGENT_MENU_ID,
 } from '@/features/ai/chatHub/constants';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 
 import type { CredentialsMap } from '../chat.types';
@@ -24,22 +22,17 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import {
-	personalAgentDefaultIcon,
 	flattenModel,
 	fromStringToModel,
 	isLlmProviderModel,
-	stringifyModel,
-	workflowAgentDefaultIcon,
 } from '@/features/ai/chatHub/chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { truncateBeforeLast } from '@n8n/utils';
-
-const NEW_AGENT_MENU_ID = 'agent::new';
-const MAX_AGENT_NAME_CHARS = 30;
-const MAX_AGENT_NAME_CHARS_MENU = 45;
+import ChatProviderAvatar from './ChatProviderAvatar.vue';
+import { applySearch, buildModelSelectorMenuItems } from '../model-selector.utils';
 
 const {
 	selectedAgent,
@@ -80,7 +73,8 @@ const settingStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
-const styles = useCssModule();
+
+const searchQuery = ref('');
 
 const credentialsName = computed(() =>
 	selectedAgent
@@ -97,214 +91,16 @@ const isCredentialsMissing = computed(
 		!credentials?.[selectedAgent?.model.provider],
 );
 
-const menu = computed(() => {
-	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
-	const fullNamesMap: Record<string, string> = {};
+const menu = computed(() =>
+	buildModelSelectorMenuItems(agents, {
+		includeCustomAgents,
+		isLoading,
+		i18n,
+		settings: settingStore.moduleSettings?.['chat-hub']?.providers ?? {},
+	}),
+);
 
-	if (includeCustomAgents) {
-		// Create submenu items for each project
-		const n8nAgentsSubmenu: (typeof N8nNavigationDropdown)['menu'] = [];
-
-		if (isLoading) {
-			n8nAgentsSubmenu.push({
-				id: 'loading',
-				title: i18n.baseText('generic.loadingEllipsis'),
-				disabled: true,
-			});
-		} else if (agents.n8n.models.length === 0) {
-			n8nAgentsSubmenu.push({
-				id: 'no-agents',
-				title: i18n.baseText('chatHub.workflowAgents.empty.noAgents'),
-				disabled: true,
-			});
-		} else {
-			n8nAgentsSubmenu.push(
-				...agents.n8n.models.map((agent) => {
-					const id = stringifyModel(agent.model);
-					fullNamesMap[id] = agent.name;
-					return {
-						id,
-						icon: agent.icon ?? workflowAgentDefaultIcon,
-						iconSize: 'large',
-						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-						disabled: false,
-						description: agent.description
-							? truncateBeforeLast(agent.description, 200, 0)
-							: undefined,
-					};
-				}),
-			);
-		}
-
-		const customAgents = isLoading
-			? []
-			: agents['custom-agent'].models.map((agent) => {
-					const id = stringifyModel(agent.model);
-					fullNamesMap[id] = agent.name;
-					return {
-						id,
-						icon: agent.icon ?? personalAgentDefaultIcon,
-						iconSize: 'large',
-						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-						disabled: false,
-						description: agent.description
-							? truncateBeforeLast(agent.description, 200, 0)
-							: undefined,
-					};
-				});
-
-		menuItems.push({
-			id: 'custom-agents',
-			title: i18n.baseText('chatHub.agent.personalAgents'),
-			icon: 'message-square',
-			iconSize: 'large',
-			iconMargin: false,
-			submenu: [
-				...(isLoading
-					? [
-							{ id: 'loading', title: i18n.baseText('generic.loadingEllipsis'), disabled: true },
-							{ isDivider: true as const, id: 'divider' },
-						]
-					: customAgents.length > 0
-						? [...customAgents, { isDivider: true as const, id: 'divider' }]
-						: []),
-				{
-					id: NEW_AGENT_MENU_ID,
-					icon: 'plus',
-					iconSize: 'large',
-					title: i18n.baseText('chatHub.agent.newAgent'),
-					disabled: false,
-				},
-			],
-		});
-
-		menuItems.push({
-			id: 'n8n-agents',
-			title: i18n.baseText('chatHub.agent.workflowAgents'),
-			icon: 'robot',
-			iconSize: 'large',
-			iconMargin: false,
-			submenu: n8nAgentsSubmenu,
-		});
-
-		menuItems.push({ isDivider: true as const, id: 'agents-divider' });
-	}
-
-	for (const provider of chatHubLLMProviderSchema.options) {
-		const settings = settingStore.moduleSettings?.['chat-hub']?.providers[provider];
-
-		// Filter out disabled providers from the menu
-		if (settings && !settings.enabled) continue;
-		const configureMenu = {
-			id: `${provider}::configure`,
-			icon: 'settings' as const,
-			iconSize: 'large' as const,
-			title: i18n.baseText('chatHub.agent.configureCredentials'),
-			disabled: false,
-		};
-
-		if (isLoading) {
-			menuItems.push({
-				id: provider,
-				title: providerDisplayNames[provider],
-				submenu: [
-					configureMenu,
-					{ isDivider: true as const, id: 'divider' },
-					{
-						id: `${provider}::loading`,
-						title: i18n.baseText('generic.loadingEllipsis'),
-						disabled: true,
-					},
-				],
-			});
-			continue;
-		}
-
-		const theAgents = [...agents[provider].models];
-
-		// Add any manually defined models in settings
-		for (const model of settings?.allowedModels ?? []) {
-			if (model.isManual) {
-				theAgents.push({
-					name: model.displayName,
-					description: '',
-					icon: null,
-					model: {
-						provider,
-						model: model.model,
-					},
-					createdAt: '',
-					updatedAt: null,
-					// Assume file attachment and tools are supported
-					metadata: {
-						inputModalities: ['text', 'image', 'audio', 'video', 'file'],
-						capabilities: {
-							functionCalling: true,
-						},
-						available: true,
-					},
-				});
-			}
-		}
-
-		const error = agents[provider].error;
-		const agentOptions =
-			theAgents.length > 0
-				? theAgents
-						.filter(
-							(agent) =>
-								agent.model.provider === 'n8n' ||
-								// Filter out models not allowed in settings
-								!settings ||
-								settings.allowedModels.length === 0 ||
-								settings.allowedModels.some(
-									(m) => 'model' in agent.model && m.model === agent.model.model,
-								),
-						)
-						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => {
-							const id = stringifyModel(agent.model);
-							fullNamesMap[id] = agent.name;
-							return {
-								id,
-								title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-								disabled: false,
-							};
-						})
-						.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index)
-				: error
-					? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
-					: [];
-
-		const submenu = agentOptions.concat([
-			...(agentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
-			...(settings?.allowedModels.length === 0
-				? [
-						// Disallow "Add model" if models are limited in settings
-						{
-							id: `${provider}::add-model`,
-							icon: 'plus',
-							iconSize: 'large',
-							title: i18n.baseText('chatHub.agent.addModel'),
-							disabled: false,
-						} as const,
-					]
-				: []),
-		]);
-
-		submenu.unshift(
-			configureMenu,
-			...(submenu.length > 1 ? [{ isDivider: true as const, id: 'divider' }] : []),
-		);
-
-		menuItems.push({
-			id: provider,
-			title: providerDisplayNames[provider],
-			submenu,
-		});
-	}
-
-	return { items: menuItems, fullNames: fullNamesMap };
-});
+const filteredMenu = computed(() => applySearch(menu.value, searchQuery.value, i18n));
 
 const selectedLabel = computed(
 	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),
@@ -375,13 +171,9 @@ function onSelect(id: string) {
 	emit('change', parsedModel);
 }
 
-onClickOutside(
-	computed(() => dropdownRef.value?.$el),
-	() => dropdownRef.value?.close(),
-	{
-		ignore: [`.${styles.component} [role=menuitem]`],
-	},
-);
+function handleSearch(query: string) {
+	searchQuery.value = query.toLowerCase();
+}
 
 defineExpose({
 	open: () => dropdownRef.value?.open(),
@@ -391,66 +183,103 @@ defineExpose({
 </script>
 
 <template>
-	<N8nNavigationDropdown
+	<N8nDropdownMenu
 		ref="dropdownRef"
-		:submenu-class="$style.component"
-		:menu="menu.items"
-		teleport
+		:items="filteredMenu"
+		teleported
+		placement="bottom-start"
+		:extra-popper-class="[$style.component, searchQuery ? $style.searching : ''].join(' ')"
+		searchable
+		:emptyText="searchQuery ? i18n.baseText('chatHub.models.selector.noMatch') : undefined"
+		@search="handleSearch"
 		@select="onSelect"
 	>
-		<template #item-icon="{ item }">
-			<CredentialIcon
-				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
-				:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.id as ChatHubLLMProvider]"
-				:size="16"
+		<template #trigger>
+			<N8nButton
+				:class="$style.dropdownButton"
+				type="secondary"
+				:text="text"
+				data-test-id="chat-model-selector"
+			>
+				<ChatAgentAvatar
+					:agent="selectedAgent"
+					:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
+					:class="$style.icon"
+				/>
+				<div :class="$style.selected">
+					<div>
+						{{ truncateBeforeLast(selectedLabel, MAX_AGENT_NAME_CHARS) }}
+					</div>
+					<N8nText v-if="credentialsName" size="xsmall" color="text-light">
+						{{ truncateBeforeLast(credentialsName, MAX_AGENT_NAME_CHARS) }}
+					</N8nText>
+					<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
+						<N8nIcon
+							icon="node-validation-error"
+							size="xsmall"
+							:class="$style.credentialsMissingIcon"
+						/>
+						{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
+					</N8nText>
+				</div>
+				<N8nIcon icon="chevron-down" size="medium" />
+			</N8nButton>
+		</template>
+
+		<template #item-leading="{ item }">
+			<ChatProviderAvatar
+				v-if="item.data?.provider"
+				:provider="item.data?.provider"
+				:icon="item.icon"
 				:class="$style.menuIcon"
 			/>
 		</template>
 
-		<N8nButton
-			:class="$style.dropdownButton"
-			type="secondary"
-			:text="text"
-			data-test-id="chat-model-selector"
-		>
-			<ChatAgentAvatar
-				:agent="selectedAgent"
-				:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
-				:class="$style.icon"
-			/>
-			<div :class="$style.selected">
-				<div>
-					{{ truncateBeforeLast(selectedLabel, MAX_AGENT_NAME_CHARS) }}
+		<template #item-label="{ item, ui }">
+			<template v-if="item.data?.parts">
+				<div :class="[$style.flattenedLabel, ui.class]">
+					<template v-for="(part, index) in item.data.parts" :key="index">
+						<N8nText v-if="index > 0" color="text-light" :class="$style.separator">
+							<N8nIcon icon="chevron-right" size="small" />
+						</N8nText>
+						<N8nText
+							size="medium"
+							:color="index === item.data.parts.length - 1 ? 'text-dark' : 'text-base'"
+						>
+							{{ part }}
+						</N8nText>
+					</template>
 				</div>
-				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
-					{{ truncateBeforeLast(credentialsName, MAX_AGENT_NAME_CHARS) }}
-				</N8nText>
-				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
-					<N8nIcon
-						icon="node-validation-error"
-						size="xsmall"
-						:class="$style.credentialsMissingIcon"
-					/>
-					{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
-				</N8nText>
-			</div>
-			<N8nIcon icon="chevron-down" size="medium" />
-		</N8nButton>
-	</N8nNavigationDropdown>
+			</template>
+			<N8nText v-else :class="ui.class" size="medium" color="text-dark">
+				{{ item.label }}
+			</N8nText>
+		</template>
+
+		<template #item-trailing="{ item, ui }">
+			<N8nTooltip
+				v-if="item.data?.description"
+				:content="truncateBeforeLast(item.data.description, 200, 0)"
+				:class="ui.class"
+				:popper-class="$style.tooltip"
+			>
+				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
+			</N8nTooltip>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style lang="scss" module>
 .component {
-	& :global(.el-popper) {
-		/* Enforce via text truncation instead */
-		max-width: unset !important;
-	}
+	z-index: var(--floating-ui--z);
+	width: auto !important;
 }
 
 .dropdownButton {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	width: fit-content;
 
 	/* disable underline */
 	text-decoration: none !important;
@@ -473,11 +302,36 @@ defineExpose({
 	margin-block: -4px;
 }
 
+.infoIcon,
 .menuIcon {
 	flex-shrink: 0;
 }
 
+.infoIcon {
+	margin-inline: var(--spacing--5xs);
+}
+
 .avatarIcon {
 	margin-right: var(--spacing--2xs);
+}
+
+.tooltip {
+	/* higher than dropdown submenu */
+	z-index: calc(999999 + 1000) !important;
+}
+
+.flattenedLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	overflow: hidden;
+	flex-grow: 1;
+	white-space: nowrap;
+}
+
+.separator {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
 }
 </style>

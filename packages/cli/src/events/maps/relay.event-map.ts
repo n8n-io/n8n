@@ -44,6 +44,13 @@ export type RelayEventMap = {
 		userId: string | null;
 	};
 
+	'instance-first-production-workflow-failed': {
+		projectId: string;
+		workflowId: string;
+		workflowName: string;
+		userId: string;
+	};
+
 	'first-workflow-data-loaded': {
 		userId: string;
 		workflowId: string;
@@ -130,16 +137,16 @@ export type RelayEventMap = {
 		workflowId: string;
 		workflowName: string;
 		executionId: string;
-		source: 'user-manual' | 'user-retry';
-		// TODO: To be added in future PR
-		// | 'webhook'
-		// | 'trigger'
-		// | 'error'
-		// | 'cli'
-		// | 'integrated'
-		// | 'internal'
-		// | 'evaluation'
-		// | 'chat';
+		source:
+			| 'user-manual'
+			| 'user-retry'
+			| 'webhook'
+			| 'trigger'
+			| 'error'
+			| 'cli'
+			| 'integrated'
+			| 'evaluation'
+			| 'chat';
 	};
 
 	// #endregion

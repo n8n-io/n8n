@@ -2,14 +2,8 @@ import { SCHEDULE_TRIGGER_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 import type { n8nPage } from '../../../../../pages/n8nPage';
 
-async function saveWorkflowAndGetId(n8n: n8nPage): Promise<string> {
-	const saveResponsePromise = n8n.page.waitForResponse(
-		(response) =>
-			response.url().includes('/rest/workflows') &&
-			(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
-	);
-	await n8n.canvas.saveWorkflow();
-	const saveResponse = await saveResponsePromise;
+async function getWorkflowIdAfterSave(n8n: n8nPage): Promise<string> {
+	const saveResponse = await n8n.canvas.waitForSaveWorkflowCompleted();
 	const {
 		data: { id },
 	} = await saveResponse.json();
@@ -45,7 +39,8 @@ test.describe('Workflow Archive @fixme', () => {
 	});
 
 	test('should archive nonactive workflow and then delete it', async ({ n8n }) => {
-		const workflowId = await saveWorkflowAndGetId(n8n);
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		const workflowId = await getWorkflowIdAfterSave(n8n);
 		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
 
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
@@ -73,7 +68,7 @@ test.describe('Workflow Archive @fixme', () => {
 	// Flaky in multi-main mode
 	test.fixme('should archive published workflow and then delete it @fixme', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		const workflowId = await saveWorkflowAndGetId(n8n);
+		const workflowId = await getWorkflowIdAfterSave(n8n);
 		await n8n.canvas.publishWorkflow();
 		await n8n.page.keyboard.press('Escape');
 
@@ -104,7 +99,8 @@ test.describe('Workflow Archive @fixme', () => {
 	});
 
 	test('should archive nonactive workflow and then unarchive it', async ({ n8n }) => {
-		const workflowId = await saveWorkflowAndGetId(n8n);
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		const workflowId = await getWorkflowIdAfterSave(n8n);
 		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
 
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
@@ -131,7 +127,7 @@ test.describe('Workflow Archive @fixme', () => {
 
 	test('should not show unpublish menu item for non-published workflow', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvas.waitForSaveWorkflowCompleted();
 
 		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
 
@@ -160,7 +156,7 @@ test.describe('Workflow Archive @fixme', () => {
 	// Flaky in multi-main mode
 	test.fixme('should unpublish published workflow on archive @fixme', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		const workflowId = await saveWorkflowAndGetId(n8n);
+		const workflowId = await getWorkflowIdAfterSave(n8n);
 		await n8n.canvas.publishWorkflow();
 		await n8n.page.keyboard.press('Escape');
 
