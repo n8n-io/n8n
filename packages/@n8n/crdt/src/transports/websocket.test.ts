@@ -93,7 +93,7 @@ describe('WebSocketTransport', () => {
 			expect(states).toEqual([true, false]);
 		});
 
-		it('should reject on connection error', async () => {
+		it('should mark as disconnected when server closes connection', async () => {
 			WebSocketMock.clean();
 			server = new WebSocketMock('ws://localhost:1234');
 			server.on('connection', (socket) => {

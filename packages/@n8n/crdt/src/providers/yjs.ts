@@ -329,8 +329,7 @@ class YjsDoc implements CRDTDoc {
 			_doc: Y.Doc,
 			transaction: Y.Transaction,
 		) => {
-			const changeOrigin = transaction.local ? ChangeOrigin.local : ChangeOrigin.remote;
-			handler(update, changeOrigin);
+			handler(update, getChangeOrigin(transaction));
 		};
 		this.yDoc.on('update', wrappedHandler);
 		return () => {

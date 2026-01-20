@@ -64,9 +64,12 @@ export class YjsUndoManager implements CRDTUndoManager {
 		// Create a dummy type that will be included when real types are added
 		if (scope.length === 0) {
 			// Use a hidden map as the scope - any changes will still be tracked
-			// because Y.UndoManager observes the doc's transaction events
+			// because Y.UndoManager observes the doc's transaction events.
+			// Double cast required: Y.Map extends AbstractType at runtime, but TypeScript's
+			// event type hierarchy (YMapEvent vs YEvent) prevents direct assignment
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			scope.push(yDoc.getMap('__undo_scope__') as unknown as Y.AbstractType<Y.YEvent<any>>);
+			const dummyScope = yDoc.getMap('__undo_scope__') as unknown as Y.AbstractType<Y.YEvent<any>>;
+			scope.push(dummyScope);
 		}
 
 		this.undoManager = new Y.UndoManager(scope, {
