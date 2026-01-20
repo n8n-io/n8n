@@ -4,7 +4,7 @@
 #   GitHub Action not pinned to full commit SHA.
 #   Pin actions to SHA for supply chain security.
 # custom:
-#   level: warning
+#   level: error
 package rules.unpinned_action
 
 import data.poutine
@@ -12,9 +12,9 @@ import rego.v1
 
 rule := poutine.rule(rego.metadata.chain())
 
-# Match 40-character hex SHA
+# Match 40-character hex SHA (Git) or 64-character sha256 digest (Docker)
 is_sha_pinned(uses) if {
-	regex.match(`@[a-f0-9]{40}`, uses)
+	regex.match(`@(sha256:[a-f0-9]{64}|[a-f0-9]{40})`, uses)
 }
 
 # Check if it's a local action (starts with ./)
