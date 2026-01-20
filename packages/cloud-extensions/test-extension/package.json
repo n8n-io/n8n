@@ -1,0 +1,17 @@
+{
+  "name": "@n8n/ce-test-extension",
+  "version": "0.0.1",
+  "type": "module",
+  "dependencies": {
+    "@n8n/extension-sdk": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "@n8n/i18n": "workspace:*",
+    "@n8n/design-system": "workspace:*"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@vitejs/plugin-vue": "catalog:frontend",
+    "vite": "catalog:",
+    "vue": "catalog:frontend"
+  }
+}
