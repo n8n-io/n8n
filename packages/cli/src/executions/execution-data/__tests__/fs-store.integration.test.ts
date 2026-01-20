@@ -182,6 +182,6 @@ describe('delete', () => {
 	it('should not throw on deleting a non-existent execution', async () => {
 		await expect(
 			fsStore.delete({ workflowId, executionId: 'non-existent' }),
-		).resolves.not.toThrow();
+		).resolves.toBeUndefined();
 	});
 });
