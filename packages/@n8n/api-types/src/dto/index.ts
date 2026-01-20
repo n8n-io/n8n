@@ -83,6 +83,16 @@ export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
 
+export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
+export {
+	CreateDestinationDto,
+	type WebhookDestination,
+	type SentryDestination,
+	type SyslogDestination,
+} from './log-streaming/create-destination.dto';
+export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
+export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
+
 export { PaginationDto } from './pagination/pagination.dto';
 export {
 	UsersListFilterDto,
