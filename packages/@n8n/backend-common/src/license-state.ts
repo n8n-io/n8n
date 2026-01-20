@@ -1,15 +1,8 @@
 import type { BooleanLicenseFeature } from '@n8n/constants';
-import { LICENSE_FEATURES, UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
+import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
 
 import type { FeatureReturnType, LicenseProvider } from './types';
-
-class ProviderNotSetError extends UnexpectedError {
-	constructor() {
-		super('Cannot query license state because license provider has not been set');
-	}
-}
 
 @Service()
 export class LicenseState {
@@ -19,35 +12,22 @@ export class LicenseState {
 		this.licenseProvider = provider;
 	}
 
-	private assertProvider(): asserts this is { licenseProvider: LicenseProvider } {
-		if (!this.licenseProvider) throw new ProviderNotSetError();
-	}
+	// --------------------
+	//     core queries (UNLOCKED)
+	// --------------------
 
-	// --------------------
-	//     core queries
-	// --------------------
-	/*
-	 * If the feature is a string. checks if the feature is licensed
-	 * If the feature is an array of strings, it checks if any of the features are licensed
+	/**
+	 * Always returns true - all features are licensed
 	 */
-	isLicensed(feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
-		this.assertProvider();
-
-		if (typeof feature === 'string') return this.licenseProvider.isLicensed(feature);
-
-		for (const featureName of feature) {
-			if (this.licenseProvider.isLicensed(featureName)) {
-				return true;
-			}
-		}
-
-		return false;
+	isLicensed(_feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
+		return true;
 	}
 
-	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
-		this.assertProvider();
-
-		return this.licenseProvider.getValue(feature);
+	/**
+	 * Always returns UNLIMITED_LICENSE_QUOTA for any feature
+	 */
+	getValue<T extends keyof FeatureReturnType>(_feature: T): FeatureReturnType[T] {
+		return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
 	}
 
 	// --------------------
@@ -55,131 +35,131 @@ export class LicenseState {
 	// --------------------
 
 	isCustomRolesLicensed() {
-		return this.isLicensed(LICENSE_FEATURES.CUSTOM_ROLES);
+		return true;
 	}
 
 	isDynamicCredentialsLicensed() {
-		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
+		return true;
 	}
 
 	isSharingLicensed() {
-		return this.isLicensed('feat:sharing');
+		return true;
 	}
 
 	isLogStreamingLicensed() {
-		return this.isLicensed('feat:logStreaming');
+		return true;
 	}
 
 	isLdapLicensed() {
-		return this.isLicensed('feat:ldap');
+		return true;
 	}
 
 	isSamlLicensed() {
-		return this.isLicensed('feat:saml');
+		return true;
 	}
 
 	isOidcLicensed() {
-		return this.isLicensed('feat:oidc');
+		return true;
 	}
 
 	isMFAEnforcementLicensed() {
-		return this.isLicensed('feat:mfaEnforcement');
+		return true;
 	}
 
 	isApiKeyScopesLicensed() {
-		return this.isLicensed('feat:apiKeyScopes');
+		return true;
 	}
 
 	isAiAssistantLicensed() {
-		return this.isLicensed('feat:aiAssistant');
+		return true;
 	}
 
 	isAskAiLicensed() {
-		return this.isLicensed('feat:askAi');
+		return true;
 	}
 
 	isAiCreditsLicensed() {
-		return this.isLicensed('feat:aiCredits');
+		return true;
 	}
 
 	isAdvancedExecutionFiltersLicensed() {
-		return this.isLicensed('feat:advancedExecutionFilters');
+		return true;
 	}
 
 	isAdvancedPermissionsLicensed() {
-		return this.isLicensed('feat:advancedPermissions');
+		return true;
 	}
 
 	isDebugInEditorLicensed() {
-		return this.isLicensed('feat:debugInEditor');
+		return true;
 	}
 
 	isBinaryDataS3Licensed() {
-		return this.isLicensed('feat:binaryDataS3');
+		return true;
 	}
 
 	isMultiMainLicensed() {
-		return this.isLicensed('feat:multipleMainInstances');
+		return true;
 	}
 
 	isVariablesLicensed() {
-		return this.isLicensed('feat:variables');
+		return true;
 	}
 
 	isSourceControlLicensed() {
-		return this.isLicensed('feat:sourceControl');
+		return true;
 	}
 
 	isExternalSecretsLicensed() {
-		return this.isLicensed('feat:externalSecrets');
+		return true;
 	}
 
 	isAPIDisabled() {
-		return this.isLicensed('feat:apiDisabled');
+		return false; // API should NOT be disabled
 	}
 
 	isWorkerViewLicensed() {
-		return this.isLicensed('feat:workerView');
+		return true;
 	}
 
 	isProjectRoleAdminLicensed() {
-		return this.isLicensed('feat:projectRole:admin');
+		return true;
 	}
 
 	isProjectRoleEditorLicensed() {
-		return this.isLicensed('feat:projectRole:editor');
+		return true;
 	}
 
 	isProjectRoleViewerLicensed() {
-		return this.isLicensed('feat:projectRole:viewer');
+		return true;
 	}
 
 	isCustomNpmRegistryLicensed() {
-		return this.isLicensed('feat:communityNodes:customRegistry');
+		return true;
 	}
 
 	isFoldersLicensed() {
-		return this.isLicensed('feat:folders');
+		return true;
 	}
 
 	isInsightsSummaryLicensed() {
-		return this.isLicensed('feat:insights:viewSummary');
+		return true;
 	}
 
 	isInsightsDashboardLicensed() {
-		return this.isLicensed('feat:insights:viewDashboard');
+		return true;
 	}
 
 	isInsightsHourlyDataLicensed() {
-		return this.isLicensed('feat:insights:viewHourlyData');
+		return true;
 	}
 
 	isWorkflowDiffsLicensed() {
-		return this.isLicensed('feat:workflowDiffs');
+		return true;
 	}
 
 	isProvisioningLicensed() {
-		return this.isLicensed(['feat:saml', 'feat:oidc']);
+		return true;
 	}
 
 	// --------------------
@@ -187,42 +167,42 @@ export class LicenseState {
 	// --------------------
 
 	getMaxUsers() {
-		return this.getValue('quota:users') ?? UNLIMITED_LICENSE_QUOTA;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getMaxActiveWorkflows() {
-		return this.getValue('quota:activeWorkflows') ?? UNLIMITED_LICENSE_QUOTA;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getMaxVariables() {
-		return this.getValue('quota:maxVariables') ?? UNLIMITED_LICENSE_QUOTA;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getMaxAiCredits() {
-		return this.getValue('quota:aiCredits') ?? 0;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getWorkflowHistoryPruneQuota() {
-		return this.getValue('quota:workflowHistoryPrune') ?? UNLIMITED_LICENSE_QUOTA;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getInsightsMaxHistory() {
-		return this.getValue('quota:insights:maxHistoryDays') ?? 7;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getInsightsRetentionMaxAge() {
-		return this.getValue('quota:insights:retention:maxAgeDays') ?? 180;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getInsightsRetentionPruneInterval() {
-		return this.getValue('quota:insights:retention:pruneIntervalDays') ?? 24;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getMaxTeamProjects() {
-		return this.getValue('quota:maxTeamProjects') ?? 0;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 
 	getMaxWorkflowsWithEvaluations() {
-		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
+		return UNLIMITED_LICENSE_QUOTA;
 	}
 }
