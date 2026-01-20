@@ -4,14 +4,19 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.22.0",
-  "devDependencies": {
+  "dependencies": {
     "n8n-workflow": "workspace:*",
+    "n8n-nodes-base": "workspace:*"
+  },
+  "devDependencies": {
     "@n8n/typescript-config": "workspace:*"
   }
 }

@@ -3415,13 +3415,17 @@ importers:
         version: link:../core
 
   packages/nodes-runner:
+    dependencies:
+      n8n-nodes-base:
+        specifier: workspace:*
+        version: link:../nodes-base
+      n8n-workflow:
+        specifier: workspace:*
+        version: link:../workflow
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../workflow
 
   packages/testing/containers:
     devDependencies:
