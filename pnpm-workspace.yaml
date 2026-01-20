@@ -130,3 +130,4 @@ minimumReleaseAgeExclude:
   - body-parser
   - node-forge
   - vm2
+  - tar
