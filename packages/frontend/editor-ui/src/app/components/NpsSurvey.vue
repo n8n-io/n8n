@@ -85,8 +85,8 @@ async function selectSurveyValue(value: string) {
 	await useNpsSurveyStore().respondNpsSurvey();
 }
 
-function onFeedbackInput(value: string | number | null) {
-	form.value.feedback = String(value ?? '');
+function onFeedbackInput(value: string) {
+	form.value.feedback = value;
 }
 
 async function send() {

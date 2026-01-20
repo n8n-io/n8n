@@ -59,8 +59,8 @@ const onInputBlur = () => {
 	if (!isResizing.value) emit('edit', false);
 };
 
-const onUpdateModelValue = (value: string | number | null) => {
-	emit('update:modelValue', String(value ?? ''));
+const onUpdateModelValue = (value: string) => {
+	emit('update:modelValue', value);
 };
 
 const onMarkdownClick = (link: HTMLAnchorElement, event: MouseEvent) => {

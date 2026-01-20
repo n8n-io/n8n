@@ -354,10 +354,9 @@ function onExecute() {
 	);
 }
 
-function onInputChange(val: string | number | null) {
-	const stringVal = String(val ?? '');
-	inputValue.value = stringVal;
-	valueChanged(stringVal);
+function onInputChange(val: string) {
+	inputValue.value = val;
+	valueChanged(val);
 }
 
 // Wait for editor to mount before focusing

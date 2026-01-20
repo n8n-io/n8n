@@ -46,8 +46,8 @@ const onChange = (value: string | null) => {
 	emit('change', value);
 };
 
-const onInput = (value: string | number | null) => {
-	color.value = String(value ?? '');
+const onInput = (value: string) => {
+	color.value = value;
 };
 
 const onActiveChange = (value: string | null) => {
