@@ -16,9 +16,7 @@ const i18n = useI18n();
 <template>
 	<N8nTooltip
 		:visible="visible"
-		:show-arrow="true"
-		trigger="manual"
-		popper-class="ask-mode-coachmark-popper"
+		:content-class="$style.content"
 	>
 		<template #content>
 			<div :class="$style.header">
@@ -72,10 +70,8 @@ const i18n = useI18n();
 		background-color: var(--color--primary--shade-1);
 	}
 }
-</style>
 
-<style lang="scss">
-.ask-mode-coachmark-popper {
+.content {
 	width: 289px;
 }
 </style>
