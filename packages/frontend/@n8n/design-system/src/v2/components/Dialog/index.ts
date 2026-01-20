@@ -5,13 +5,13 @@ export {
 	DialogClose as N8nDialogClose,
 } from 'reka-ui';
 
-export { default as N8nDialogOverlay } from './DialogOverlay.vue';
+export { default as N8nAlertDialog } from './AlertDialog.vue';
 export { default as N8nDialogContent } from './DialogContent.vue';
-export { default as N8nDialogHeader } from './DialogHeader.vue';
-export { default as N8nDialogTitle } from './DialogTitle.vue';
 export { default as N8nDialogDescription } from './DialogDescription.vue';
 export { default as N8nDialogFooter } from './DialogFooter.vue';
-export { default as N8nAlertDialog } from './AlertDialog.vue';
+export { default as N8nDialogHeader } from './DialogHeader.vue';
+export { default as N8nDialogOverlay } from './DialogOverlay.vue';
+export { default as N8nDialogTitle } from './DialogTitle.vue';
 
 export type { DialogOverlayProps } from './DialogOverlay.vue';
 export type {
