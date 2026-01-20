@@ -610,56 +610,30 @@ IF the request is already specific enough:
 
 const PLANNER_CRITICAL_RULES = `CRITICAL RULES:
 
-DEFAULT TO ASKING QUESTIONS:
-- Plan mode is designed for gathering requirements - LEAN INTO asking questions
-- A workflow using tools the user knows is 10x better than a generic one
-- When in doubt, ASK - users appreciate being consulted about their preferences
-- Only skip questions if the user explicitly specified EVERYTHING (services, parameters, timing, destination)
+QUESTIONS: Follow the <question_rules> section. Default to asking questions about service preferences.
 
-RESEARCH FIRST:
-- ALWAYS call discovery tools (get_documentation, search_nodes) BEFORE asking questions
-- Your questions should be informed by what n8n can actually do
-- For integration choices, offer options you found via search_nodes
+RESEARCH: Always call discovery tools (get_documentation, search_nodes) BEFORE asking questions or generating plans.
 
-QUESTION QUALITY:
-- Focus on SERVICE PREFERENCES - which tools does the user already use?
-- If user says "send email" - ask which email service (Gmail, Outlook, SendGrid, etc.)
-- If user says "use AI" - ask which provider (OpenAI, Anthropic, Google, etc.)
-- If user says "notify me" - ask which platform (Slack, Telegram, Email, etc.)
-- Don't ask generic questions - ask questions that help you pick the right n8n nodes
-
-OUTPUT RULES:
-- Maximum 5 questions per submission (aim for 3-4)
-- Always call one of the output tools (submit_questions or submit_plan) at the end
-- When generating a plan, include specific n8n nodes from your research
-- Plans should be actionable - use internal node type names in suggestedNodes`;
+OUTPUT:
+- Always call submit_questions OR submit_plan at the end
+- Plans must use internal node type names in suggestedNodes
+- Maximum 5 questions per submission (aim for 3-4)`;
 
 const REFINEMENT_RULES = `REFINEMENT MODE:
 
-When the user sends a message after you've generated a plan, they're requesting changes.
+When user sends a follow-up message after a plan, they're requesting changes.
 
-Common refinement requests:
-- "Add error handling"
-- "Use a different trigger"
-- "Add a notification step"
-- "Make it run on a schedule instead"
-- "Add AI image generation"
-- "Include data validation"
-
-How to handle refinements:
+Process:
 1. Understand what change they want
-2. Use discovery tools to research options for the new functionality
-3. **DECIDE: Questions or plan?**
-   - If the refinement introduces NEW service choices (AI providers, messaging platforms, storage options, etc.) → ASK which service they prefer
-   - If the refinement is unambiguous (e.g., "change to webhook trigger", "add error handling") → proceed to plan
-4. Call submit_questions OR submit_plan based on step 3
-5. If you asked questions, wait for answers then call submit_plan
+2. Research with discovery tools if needed
+3. If refinement introduces NEW service choices → follow <question_rules> and ask
+4. If refinement is unambiguous → call submit_plan with updated plan
 
-EXAMPLES:
-- "Add AI image generation" → ASK: "Which image generation service?" (DALL-E, Stable Diffusion, Midjourney)
-- "Also send a Slack notification" → No question needed (service is specified)
-- "Add a notification when it fails" → ASK: "Where should failure notifications go?" (Slack, Email, Telegram)
-- "Change the trigger to run hourly" → No question needed (unambiguous)`;
+Examples:
+- "Add AI image generation" → ASK (new service choice)
+- "Also send a Slack notification" → PLAN (service specified)
+- "Add a notification when it fails" → ASK (which platform?)
+- "Change the trigger to run hourly" → PLAN (unambiguous)`;
 
 const INCREMENTAL_PLANNING_RULES = `INCREMENTAL PLANNING (when existing workflow nodes are present):
 
@@ -768,6 +742,41 @@ export function buildPlannerPrompt(options: PlannerPromptOptions = {}): string {
 }
 
 /**
+ * Planning scenarios - explicit handling for all context combinations.
+ * This replaces fragile if/else if logic with explicit scenario detection.
+ */
+type PlanningScenario =
+	| 'fresh' // No plan, no workflow - initial request
+	| 'answering_questions' // User submitted answers to questions
+	| 'refining_plan' // Has plan, no workflow - user refining before implementation
+	| 'incremental_to_workflow'; // Has workflow (with or without plan) - adding features
+
+/**
+ * Determine the planning scenario based on context.
+ * Handles all combinations of existing workflow, previous plan, and user answers.
+ */
+function determinePlanningScenario(context: {
+	hasExistingWorkflow: boolean;
+	hasPreviousPlan: boolean;
+	hasAnswers: boolean;
+}): PlanningScenario {
+	const { hasExistingWorkflow, hasPreviousPlan, hasAnswers } = context;
+
+	// User submitted answers to questions - generate plan from answers
+	if (hasAnswers) return 'answering_questions';
+
+	// Workflow exists on canvas - always incremental (even if plan also exists)
+	// When both exist, user implemented a plan and now wants to add more
+	if (hasExistingWorkflow) return 'incremental_to_workflow';
+
+	// Has previous plan but no workflow - refining the plan before implementation
+	if (hasPreviousPlan) return 'refining_plan';
+
+	// Fresh start - no prior context
+	return 'fresh';
+}
+
+/**
  * Build a context message for the planner with user request and existing context.
  */
 export function buildPlannerContextMessage(context: {
@@ -795,39 +804,53 @@ export function buildPlannerContextMessage(context: {
 		parts.push('</user_answers>');
 	}
 
-	// Determine scenario: plan refinement vs incremental planning
-	const hasExistingWorkflow = !!context.existingWorkflowSummary;
-	const hasPreviousPlan = !!context.previousPlan;
-
 	// Existing workflow context (if any)
-	if (hasExistingWorkflow) {
+	if (context.existingWorkflowSummary) {
 		parts.push('');
 		parts.push('<existing_workflow>');
-		parts.push(context.existingWorkflowSummary!);
+		parts.push(context.existingWorkflowSummary);
 		parts.push('</existing_workflow>');
 	}
 
 	// Previous plan (if refining)
-	if (hasPreviousPlan) {
+	if (context.previousPlan) {
 		parts.push('');
 		parts.push('<previous_plan>');
-		parts.push(context.previousPlan!);
+		parts.push(context.previousPlan);
 		parts.push('</previous_plan>');
 	}
 
+	// Determine scenario and add appropriate instructions
+	const scenario = determinePlanningScenario({
+		hasExistingWorkflow: !!context.existingWorkflowSummary,
+		hasPreviousPlan: !!context.previousPlan,
+		hasAnswers: (context.userAnswers?.length ?? 0) > 0,
+	});
+
 	// Add scenario-specific instructions
-	if (hasExistingWorkflow) {
-		// INCREMENTAL PLANNING: Workflow exists, add only new steps
-		parts.push('');
-		parts.push(
-			'IMPORTANT: A workflow already exists on the canvas. Generate an INCREMENTAL plan that only adds/modifies what the user is requesting. Do NOT recreate existing functionality - reference existing nodes when connecting new steps.',
-		);
-	} else if (hasPreviousPlan) {
-		// PLAN REFINEMENT: No workflow yet, just refining the plan
-		parts.push('');
-		parts.push(
-			'IMPORTANT: The user is refining the plan before implementation. Generate a COMPLETE UPDATED PLAN that incorporates their requested changes. Include all steps (existing + new) in the updated plan.',
-		);
+	switch (scenario) {
+		case 'fresh':
+			// No special instructions - follow standard question/plan flow
+			break;
+
+		case 'answering_questions':
+			parts.push('');
+			parts.push("Generate a plan based on the user's answers above.");
+			break;
+
+		case 'refining_plan':
+			parts.push('');
+			parts.push(
+				'PLAN REFINEMENT: The user is refining the plan before implementation. Generate a COMPLETE UPDATED PLAN that incorporates their requested changes. Include all steps (existing + new) in the updated plan.',
+			);
+			break;
+
+		case 'incremental_to_workflow':
+			parts.push('');
+			parts.push(
+				'INCREMENTAL: A workflow already exists on the canvas. Generate only NEW steps that add to the existing workflow. Reference existing nodes when connecting new steps. Do NOT recreate existing functionality.',
+			);
+			break;
 	}
 
 	return parts.join('\n');
