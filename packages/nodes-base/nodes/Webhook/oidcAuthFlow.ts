@@ -168,8 +168,10 @@ export async function redirectToAuthorization(
 	const { codeVerifier, codeChallenge } = generatePkce();
 
 	// Build centralized callback URL
-	const protocol = (res.req.headers['x-forwarded-proto'] as string) || res.req.protocol || 'http';
-	const host = (res.req.headers['x-forwarded-host'] as string) || res.req.headers.host;
+	const forwardedProto = res.req.headers['x-forwarded-proto'];
+	const protocol = typeof forwardedProto === 'string' ? forwardedProto : res.req.protocol || 'http';
+	const forwardedHost = res.req.headers['x-forwarded-host'];
+	const host = typeof forwardedHost === 'string' ? forwardedHost : res.req.headers.host;
 	const callbackUrl = `${protocol}://${host}/rest/oidc-callback`;
 
 	// Store complete state in cookie for the callback controller to use

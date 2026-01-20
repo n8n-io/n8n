@@ -639,11 +639,13 @@ export async function formWebhook(
 			// For GET requests, validate via session cookie (works with navigation)
 			const session = hasValidSession(req, webhookPath, oidcConfig.sessionSecret);
 
-			if (!session) {
-				// No valid session - redirect to IdP for login
-				const protocol = (req.headers['x-forwarded-proto'] as string) || 'http';
-				const host = (req.headers['x-forwarded-host'] as string) || req.headers.host;
-				const originalUrl = `${protocol}://${host}${req.originalUrl || req.url}`;
+		if (!session) {
+			// No valid session - redirect to IdP for login
+			const forwardedProto = req.headers['x-forwarded-proto'];
+			const protocol = typeof forwardedProto === 'string' ? forwardedProto : 'http';
+			const forwardedHost = req.headers['x-forwarded-host'];
+			const host = typeof forwardedHost === 'string' ? forwardedHost : req.headers.host;
+			const originalUrl = `${protocol}://${host}${req.originalUrl || req.url}`;
 
 				await redirectToAuthorization(res, oidcConfig, webhookPath, originalUrl, credentialId);
 				return { noWebhookResponse: true };
