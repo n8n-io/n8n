@@ -26,7 +26,7 @@ const i18n = useI18n();
 				:aria-label="i18n.baseText('settings.ai.button.tooltip')"
 				:class="{ [$style.link]: true, [$style.disabled]: props.disabled }"
 			>
-				<N8nIcon icon="settings" size="large" />
+				<N8nIcon icon="settings" size="large" color="text-light" />
 			</N8nLink>
 		</N8nTooltip>
 	</div>
