@@ -19,11 +19,13 @@ import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
 import PlanQuestionsMessage from './PlanQuestionsMessage.vue';
 import PlanDisplayMessage from './PlanDisplayMessage.vue';
 import AnswerSummaryMessage from './AnswerSummaryMessage.vue';
+import UserAnswersMessage from './UserAnswersMessage.vue';
 import PlanModeSelector from './PlanModeSelector.vue';
 import {
 	isPlanModeQuestionsMessage,
 	isPlanModePlanMessage,
 	isPlanModeAnswerSummaryMessage,
+	isPlanModeUserAnswersMessage,
 	type PlanMode,
 } from '../../assistant.types';
 import type { BuilderMode } from '../../builder.store';
@@ -167,6 +169,25 @@ const disabledTooltip = computed(() => {
 	}
 	return undefined;
 });
+
+/**
+ * Check if a questions message has been answered.
+ * A questions message is considered answered if there's a user answers message
+ * that appears after it in the conversation.
+ */
+function isQuestionsAnswered(questionsMessage: { id: string }): boolean {
+	const messages = builderStore.chatMessages;
+	const questionsIndex = messages.findIndex((m) => m.id === questionsMessage.id);
+	if (questionsIndex === -1) return false;
+
+	// Check if there's a user answers message after this questions message
+	for (let i = questionsIndex + 1; i < messages.length; i++) {
+		if (isPlanModeUserAnswersMessage(messages[i])) {
+			return true;
+		}
+	}
+	return false;
+}
 
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
@@ -379,27 +400,29 @@ function onShowVersion(versionId: string) {
 }
 
 /**
- * Handle Plan Mode question answers submission
+ * Handle Plan Mode question answers submission.
+ * Sends answers as structured JSON that the backend can parse.
+ * The chat displays a custom UserAnswersMessage component instead of raw JSON.
  */
 async function onPlanQuestionsSubmit(answers: PlanMode.QuestionResponse[]) {
-	// Format answers as a message and send to the builder
-	const formattedAnswers = answers
-		.filter((a) => !a.skipped)
-		.map((a) => {
-			const parts: string[] = [a.question];
-			if (a.selectedOptions.length > 0) {
-				parts.push(a.selectedOptions.join(', '));
-			}
-			if (a.customText?.trim()) {
-				parts.push(a.customText.trim());
-			}
-			return parts.join(': ');
-		})
-		.join('\n');
+	// Create structured payload for the backend
+	// Include question text for session persistence (so answers display correctly after reload)
+	const structuredPayload = {
+		type: 'question_answers',
+		answers: answers.map((a) => ({
+			questionId: a.questionId,
+			question: a.question,
+			selectedOptions: a.selectedOptions,
+			customValue: a.customText?.trim() || undefined,
+			skipped: a.skipped,
+		})),
+	};
 
 	await builderStore.sendChatMessage({
-		text: formattedAnswers,
+		text: JSON.stringify(structuredPayload),
 		quickReplyType: 'plan-answers',
+		// Pass the original answers for the custom message display
+		planAnswers: answers,
 	});
 }
 
@@ -488,13 +511,22 @@ defineExpose({
 				/>
 			</template>
 			<template #custom-message="{ message }">
+				<!-- Show questions form only if not yet answered -->
 				<PlanQuestionsMessage
-					v-if="isPlanModeQuestionsMessage(message)"
+					v-if="isPlanModeQuestionsMessage(message) && !isQuestionsAnswered(message)"
 					:questions="message.data.questions"
 					:intro-message="message.data.introMessage"
 					:disabled="builderStore.streaming"
 					@submit="onPlanQuestionsSubmit"
 				/>
+				<!-- Show just the intro text when questions have been answered -->
+				<N8nText
+					v-else-if="isPlanModeQuestionsMessage(message) && message.data.introMessage"
+					tag="p"
+					:class="$style.introText"
+				>
+					{{ message.data.introMessage }}
+				</N8nText>
 				<PlanDisplayMessage
 					v-else-if="isPlanModePlanMessage(message)"
 					:plan="message.data.plan"
@@ -503,6 +535,10 @@ defineExpose({
 				/>
 				<AnswerSummaryMessage
 					v-else-if="isPlanModeAnswerSummaryMessage(message)"
+					:answers="message.data.answers"
+				/>
+				<UserAnswersMessage
+					v-else-if="isPlanModeUserAnswersMessage(message)"
 					:answers="message.data.answers"
 				/>
 			</template>
@@ -530,6 +566,12 @@ defineExpose({
 
 .topText {
 	color: var(--color--text);
+}
+
+:root .introText {
+	// color: var(--color--text);
+	// line-height: var(--line-height--xl);
+	margin-bottom: var(--spacing--xs);
 }
 
 .newWorkflowButtonWrapper {

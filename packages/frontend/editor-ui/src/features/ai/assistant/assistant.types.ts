@@ -347,7 +347,20 @@ export namespace PlanMode {
 		data: AnswerSummaryMessageData;
 	};
 
-	export type PlanModeMessage = QuestionsMessage | PlanMessage | AnswerSummaryMessage;
+	/**
+	 * User's submitted answers message (displayed as user message in chat)
+	 */
+	export type UserAnswersMessage = ChatUI.CustomMessage & {
+		role: 'user';
+		customType: 'user_answers';
+		data: AnswerSummaryMessageData;
+	};
+
+	export type PlanModeMessage =
+		| QuestionsMessage
+		| PlanMessage
+		| AnswerSummaryMessage
+		| UserAnswersMessage;
 }
 
 // Type guards for Plan Mode messages
@@ -365,6 +378,17 @@ export function isPlanModeAnswerSummaryMessage(
 	msg: ChatUI.AssistantMessage,
 ): msg is PlanMode.AnswerSummaryMessage {
 	return msg.type === 'custom' && 'customType' in msg && msg.customType === 'answer_summary';
+}
+
+export function isPlanModeUserAnswersMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is PlanMode.UserAnswersMessage {
+	return (
+		msg.type === 'custom' &&
+		msg.role === 'user' &&
+		'customType' in msg &&
+		msg.customType === 'user_answers'
+	);
 }
 
 export function isPlanModeMessage(msg: ChatUI.AssistantMessage): msg is PlanMode.PlanModeMessage {

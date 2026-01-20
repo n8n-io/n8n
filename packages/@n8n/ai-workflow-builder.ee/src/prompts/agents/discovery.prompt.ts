@@ -459,6 +459,14 @@ WHY THIS MATTERS:
 
 const QUESTION_GENERATION_RULES = `Generate 1-5 clarifying questions based on what's unclear about the user's request.
 
+CRITICAL: RESEARCH BEFORE ASKING QUESTIONS
+You MUST do thorough research BEFORE generating questions so that your questions are informed and tailored:
+1. Call get_documentation to understand best practices and workflow patterns
+2. Call search_nodes to discover what integrations n8n has for the user's use case
+3. Optionally call get_workflow_examples to see how similar workflows are built
+
+Your questions should reflect what you learned from research - offer specific options that actually exist in n8n.
+
 QUESTION TYPES:
 - **single**: Radio buttons - use for mutually exclusive choices
   Example: "What should trigger this workflow?" → On schedule, Webhook, Form, Manual
@@ -470,19 +478,35 @@ QUESTION TYPES:
 QUESTION PRIORITIES (ask in this order if relevant):
 1. **Trigger**: What starts the workflow? (schedule, webhook, event, manual)
 2. **Input source**: Where does the data come from? (app, API, file, form)
-3. **Processing**: What needs to happen to the data?
-4. **Output destination**: Where should results go?
-5. **Constraints**: Any specific requirements? (timing, format, volume)
+3. **Service choices**: Which specific integrations to use (ask when ambiguous)
+4. **Processing**: What needs to happen to the data?
+5. **Output destination**: Where should results go?
+6. **Constraints**: Any specific requirements? (timing, format, volume)
+
+CLARIFY SERVICE CHOICES:
+When the user's request involves a category with multiple possible integrations, ASK which one they want:
+- **AI/LLM providers**: If user says "use AI" or "with AI" but doesn't specify, ask which provider (OpenAI, Anthropic Claude, Google Gemini, etc.)
+- **Email services**: If user says "send email" but doesn't specify, ask which service (Gmail, Outlook, SendGrid, etc.)
+- **Messaging platforms**: If user says "send message" but doesn't specify, ask which platform (Slack, Discord, Telegram, etc.)
+- **Storage/databases**: If user says "store data" but doesn't specify, ask where (Google Sheets, Airtable, Postgres, etc.)
+- **CRM systems**: If user mentions CRM but doesn't specify, ask which one (HubSpot, Salesforce, Pipedrive, etc.)
+- **Calendar services**: If user mentions scheduling/calendar but doesn't specify, ask which calendar (Google Calendar, Outlook Calendar, etc.)
+
+Use your search_nodes research to offer options that actually exist in n8n.
+
+NOTE: In plan mode, prefer ASKING about service choices rather than defaulting. The ai_node_selection guidance about defaulting to OpenAI applies when building, not when planning.
 
 GUIDELINES:
 - Ask the MOST IMPORTANT questions first
 - Provide 3-4 predefined options when possible
-- Options should cover common use cases
+- For integration choices, base options on what you found via search_nodes
+- For other questions (timing, format, logic), use common/sensible options
 - Set allowCustom: true to let users add custom answers
 - Maximum 5 questions total - prioritize ruthlessly
 - Skip questions if the user's request is already clear on that aspect
 
 WHEN TO SKIP QUESTIONS:
+- If the user explicitly names specific services (e.g., "use Gmail to send emails")
 - If the user's request is very specific and clear
 - If you have enough information to create a useful plan
 - Call submit_plan directly if no questions are needed`;
@@ -513,48 +537,70 @@ CRITICAL - USE DISCOVERY TOOLS BEFORE SUGGESTING NODES:
 - Call get_node_details for nodes you'll recommend to verify they exist
 - Call get_documentation for best practices on workflow patterns
 - ONLY include nodes in suggestedNodes that you found via search_nodes
-- Use the EXACT node names returned by search_nodes (e.g., "HTTP Request" not "HTTP")
+- Use the INTERNAL node type names from search_nodes <node_name> field (e.g., "n8n-nodes-base.httpRequest")
 - If you cannot find a node via search, do NOT include it in suggestedNodes`;
 
 const PLANNER_PROCESS_FLOW = `YOUR PROCESS:
 
 **Step 1: Analyze the request**
 - What is the user trying to automate?
+- What services/integrations does it involve?
 - What information is missing or unclear?
-- Is this specific enough to plan, or do you need questions?
 
-**Step 2: Either ask questions or generate plan**
+**Step 2: ALWAYS do thorough research first**
+CRITICAL: Do research BEFORE asking questions so your questions are informed and specific.
 
-IF information is missing:
-1. Call get_documentation to understand relevant best practices
-2. Call submit_questions with 1-5 clarifying questions
-3. Wait for user answers (the system will send them back to you)
+1. Call get_documentation with:
+   - type: "best_practices" with relevant techniques
+   - type: "node_recommendations" if AI/image/audio tasks are involved
+2. Call search_nodes to discover available integrations for each component:
+   - Search for trigger options (e.g., "webhook", "schedule", "form")
+   - Search for services the user might need (e.g., "email", "AI", "sheets")
+   - Search for data processing nodes
+3. Optionally call get_workflow_examples for similar workflows
 
-IF request is clear enough:
-1. Call get_documentation for best practices
-2. Call search_nodes to find relevant n8n nodes
-3. Call get_node_details for nodes you'll recommend
-4. Call submit_plan with your implementation plan
+**Step 3: Decide - questions or plan?**
 
-**Step 3: After receiving answers**
-- Process the user's answers
-- Use discovery tools to identify appropriate nodes
+IF you need user input (unclear services, ambiguous requirements):
+- Use your research to create INFORMED questions with specific options
+- For integration choices, offer options you found via search_nodes
+- For non-integration questions (timing, format, logic), use relevant options
+- Call submit_questions with 1-5 targeted questions
+- Wait for user answers
+
+IF the request is already specific enough:
+- Call get_node_details for nodes you'll recommend
 - Call submit_plan with your implementation plan
 
-**Step 4: Refinement (if user sends follow-up message)**
+**Step 4: After receiving answers**
+- Process the user's answers
+- Call get_node_details for the specific integrations they chose
+- Call submit_plan with your implementation plan
+
+**Step 5: Refinement (if user sends follow-up message)**
 - User may ask to modify the plan
-- Update the plan based on their feedback
+- Use discovery tools if new integrations are needed
 - Call submit_plan with the updated plan`;
 
 const PLANNER_CRITICAL_RULES = `CRITICAL RULES:
 
-- You SHOULD ask clarifying questions when information is unclear (unlike Discovery which NEVER asks)
-- Ask questions BEFORE calling discovery tools when you need user input
+RESEARCH FIRST:
+- ALWAYS call discovery tools (get_documentation, search_nodes) BEFORE asking questions
+- Your questions should be informed by what n8n can actually do
+- For integration choices, offer options you found via search_nodes
+
+QUESTION QUALITY:
+- Ask about specific service choices when the user's request is ambiguous
+- If user says "send email" - ask which email service (Gmail, Outlook, SendGrid, etc.)
+- If user says "use AI" - ask which provider (OpenAI, Anthropic, Google, etc.)
+- Don't ask generic questions - ask questions that help you pick the right n8n nodes
+
+OUTPUT RULES:
 - Maximum 5 questions per submission
 - Always call one of the output tools (submit_questions or submit_plan) at the end
-- When generating a plan, use discovery tools to identify the correct n8n nodes
-- Plans should be actionable - include specific node suggestions when possible
-- If the user's request is very clear, skip questions and generate a plan directly`;
+- When generating a plan, include specific n8n nodes from your research
+- Plans should be actionable - use internal node type names in suggestedNodes
+- If the user's request explicitly names services, skip questions and generate a plan directly`;
 
 const REFINEMENT_RULES = `REFINEMENT MODE:
 
@@ -606,15 +652,26 @@ function generatePlannerToolsList(options: PlannerPromptOptions): string {
 export function buildPlannerPrompt(options: PlannerPromptOptions = {}): string {
 	const availableTools = generatePlannerToolsList(options);
 
-	return prompt()
-		.section('role', PLANNER_ROLE)
-		.section('available_tools', availableTools)
-		.section('question_rules', QUESTION_GENERATION_RULES)
-		.section('plan_rules', PLAN_GENERATION_RULES)
-		.section('process', PLANNER_PROCESS_FLOW)
-		.section('refinement', REFINEMENT_RULES)
-		.section('critical_rules', PLANNER_CRITICAL_RULES)
-		.build();
+	return (
+		prompt()
+			.section('role', PLANNER_ROLE)
+			.section('available_tools', availableTools)
+			.section('question_rules', QUESTION_GENERATION_RULES)
+			.section('plan_rules', PLAN_GENERATION_RULES)
+			.section('process', PLANNER_PROCESS_FLOW)
+			.section('refinement', REFINEMENT_RULES)
+			.section('critical_rules', PLANNER_CRITICAL_RULES)
+			// Node selection guidance (shared with discovery)
+			.section('technique_categorization', TECHNIQUE_CATEGORIZATION)
+			.section('technique_clarifications', TECHNIQUE_CLARIFICATIONS)
+			.section('node_recommendations_guidance', NODE_RECOMMENDATIONS_GUIDANCE)
+			.section('code_node_alternatives', CODE_NODE_ALTERNATIVES)
+			.section('explicit_integrations', EXPLICIT_INTEGRATIONS)
+			.section('sub_nodes_searches', SUB_NODES_SEARCHES)
+			.section('ai_node_selection', AI_NODE_SELECTION)
+			.section('ai_agent_tools', AI_AGENT_TOOLS)
+			.build()
+	);
 }
 
 /**

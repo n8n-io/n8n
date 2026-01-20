@@ -82,13 +82,6 @@ function onCustomTextChange(text: string) {
 	currentAnswer.value.skipped = false;
 }
 
-function onSkip() {
-	currentAnswer.value.skipped = true;
-	currentAnswer.value.selectedOptions = [];
-	currentAnswer.value.customText = '';
-	goToNext();
-}
-
 function goToPrevious() {
 	if (!isFirstQuestion.value) {
 		currentIndex.value--;
@@ -121,86 +114,74 @@ function submitAnswers() {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<!-- Intro message -->
-		<div v-if="introMessage && currentIndex === 0" :class="$style.intro">
-			<N8nText>{{ introMessage }}</N8nText>
-		</div>
+	<div :class="$style.wrapper">
+		<!-- Intro message (outside the card) -->
+		<N8nText v-if="introMessage && currentIndex === 0" :class="$style.intro">
+			{{ introMessage }}
+		</N8nText>
 
-		<!-- Progress indicator -->
-		<div :class="$style.progress">
-			<div
-				v-for="(_, i) in questions"
-				:key="i"
-				:class="[
-					$style.progressDot,
-					{ [$style.active]: i === currentIndex, [$style.completed]: i < currentIndex },
-				]"
-			/>
-		</div>
+		<div :class="$style.container">
+			<!-- Question -->
+			<div :class="$style.question">
+				<N8nText tag="p" :bold="true" :class="$style.questionText">
+					{{ currentQuestion.question }}
+				</N8nText>
 
-		<!-- Question -->
-		<div :class="$style.question">
-			<N8nText tag="p" :class="$style.questionText">
-				{{ currentQuestion.question }}
-			</N8nText>
+				<!-- Single choice (radio-like using checkboxes with exclusive selection) -->
+				<div v-if="currentQuestion.type === 'single'" :class="$style.options">
+					<label
+						v-for="option in currentQuestion.options"
+						:key="option"
+						:class="[
+							$style.radioOption,
+							{ [$style.selected]: currentAnswer.selectedOptions.includes(option) },
+						]"
+					>
+						<input
+							type="radio"
+							:name="`question-${currentQuestion.id}`"
+							:checked="currentAnswer.selectedOptions.includes(option)"
+							:disabled="disabled"
+							:class="$style.radioInput"
+							@change="() => onSingleSelect(option)"
+						/>
+						<span :class="$style.optionLabel">{{ option }}</span>
+					</label>
+				</div>
 
-			<!-- Single choice (radio-like using checkboxes with exclusive selection) -->
-			<div v-if="currentQuestion.type === 'single'" :class="$style.options">
-				<label
-					v-for="option in currentQuestion.options"
-					:key="option"
-					:class="[
-						$style.radioOption,
-						{ [$style.selected]: currentAnswer.selectedOptions.includes(option) },
-					]"
-				>
-					<input
-						type="radio"
-						:name="`question-${currentQuestion.id}`"
-						:checked="currentAnswer.selectedOptions.includes(option)"
+				<!-- Multi choice (checkbox) -->
+				<div v-else-if="currentQuestion.type === 'multi'" :class="$style.options">
+					<label
+						v-for="option in currentQuestion.options"
+						:key="option"
+						:class="$style.checkboxOption"
+					>
+						<N8nCheckbox
+							:model-value="currentAnswer.selectedOptions.includes(option)"
+							:disabled="disabled"
+							@update:model-value="(checked: boolean) => onMultiSelect(option, checked)"
+						/>
+						<span :class="$style.optionLabel">{{ option }}</span>
+					</label>
+				</div>
+
+				<!-- Text input -->
+				<div v-else-if="currentQuestion.type === 'text'" :class="$style.textInput">
+					<N8nInput
+						:model-value="currentAnswer.customText"
+						type="textarea"
+						:rows="3"
 						:disabled="disabled"
-						:class="$style.radioInput"
-						@change="() => onSingleSelect(option)"
+						placeholder="Enter your answer..."
+						@update:model-value="onCustomTextChange"
 					/>
-					<span :class="$style.optionLabel">{{ option }}</span>
-				</label>
-			</div>
+				</div>
 
-			<!-- Multi choice (checkbox) -->
-			<div v-else-if="currentQuestion.type === 'multi'" :class="$style.options">
-				<label
-					v-for="option in currentQuestion.options"
-					:key="option"
-					:class="$style.checkboxOption"
+				<!-- "Other" option for single/multi - inline with input -->
+				<div
+					v-if="currentQuestion.type !== 'text' && currentQuestion.allowCustom !== false"
+					:class="$style.otherOption"
 				>
-					<N8nCheckbox
-						:model-value="currentAnswer.selectedOptions.includes(option)"
-						:disabled="disabled"
-						@update:model-value="(checked: boolean) => onMultiSelect(option, checked)"
-					/>
-					<span :class="$style.optionLabel">{{ option }}</span>
-				</label>
-			</div>
-
-			<!-- Text input -->
-			<div v-else-if="currentQuestion.type === 'text'" :class="$style.textInput">
-				<N8nInput
-					:model-value="currentAnswer.customText"
-					type="textarea"
-					:rows="3"
-					:disabled="disabled"
-					placeholder="Enter your answer..."
-					@update:model-value="onCustomTextChange"
-				/>
-			</div>
-
-			<!-- "Other" option for single/multi -->
-			<div
-				v-if="currentQuestion.type !== 'text' && currentQuestion.allowCustom !== false"
-				:class="$style.customOption"
-			>
-				<label :class="$style.checkboxOption">
 					<N8nCheckbox
 						:model-value="!!currentAnswer.customText?.trim()"
 						:disabled="disabled"
@@ -210,89 +191,71 @@ function submitAnswers() {
 							}
 						"
 					/>
-					<span :class="$style.optionLabel">Other</span>
-				</label>
-				<N8nInput
-					:model-value="currentAnswer.customText"
-					:disabled="disabled"
-					placeholder="Enter custom answer..."
-					size="small"
-					@update:model-value="onCustomTextChange"
-				/>
+					<N8nInput
+						:model-value="currentAnswer.customText"
+						:disabled="disabled"
+						placeholder="Other"
+						size="small"
+						:class="$style.otherInput"
+						@update:model-value="onCustomTextChange"
+					/>
+				</div>
 			</div>
-		</div>
 
-		<!-- Navigation buttons -->
-		<div :class="$style.navigation">
-			<N8nButton
-				v-if="!isFirstQuestion"
-				type="tertiary"
-				size="small"
-				:disabled="disabled"
-				@click="goToPrevious"
-			>
-				Back
-			</N8nButton>
-			<div v-else />
+			<!-- Footer: Progress + Buttons -->
+			<div :class="$style.footer">
+				<!-- Progress dots -->
+				<div :class="$style.progress">
+					<div
+						v-for="(_, i) in questions"
+						:key="i"
+						:class="[$style.progressDot, { [$style.active]: i <= currentIndex }]"
+					/>
+				</div>
 
-			<div :class="$style.rightButtons">
-				<N8nButton type="tertiary" size="small" :disabled="disabled" @click="onSkip">
-					Skip
-				</N8nButton>
-				<N8nButton
-					type="primary"
-					size="small"
-					:disabled="disabled || !hasValidAnswer"
-					@click="goToNext"
-				>
-					{{ isLastQuestion ? 'Submit' : 'Next' }}
-				</N8nButton>
+				<!-- Navigation buttons -->
+				<div :class="$style.navigation">
+					<N8nButton
+						v-if="!isFirstQuestion"
+						type="secondary"
+						size="small"
+						:disabled="disabled"
+						@click="goToPrevious"
+					>
+						Back
+					</N8nButton>
+					<div v-else />
+
+					<N8nButton
+						type="primary"
+						size="small"
+						:disabled="disabled || !hasValidAnswer"
+						@click="goToNext"
+					>
+						{{ isLastQuestion ? 'Submit' : 'Next' }}
+					</N8nButton>
+				</div>
 			</div>
-		</div>
-
-		<!-- Question counter -->
-		<div :class="$style.counter">
-			<N8nText size="small" color="text-light">
-				Question {{ currentIndex + 1 }} of {{ totalQuestions }}
-			</N8nText>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.container {
-	background-color: var(--color--background--light-3);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	margin: var(--spacing--xs) 0;
+.wrapper {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 .intro {
-	margin-bottom: var(--spacing--sm);
 	color: var(--color--text);
+	line-height: var(--line-height--xl);
 }
 
-.progress {
-	display: flex;
-	gap: var(--spacing--3xs);
-	margin-bottom: var(--spacing--sm);
-	justify-content: center;
-}
-
-.progressDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background-color: var(--color--foreground--tint-1);
-	transition: background-color 0.2s ease;
-
-	&.active {
-		background-color: var(--color--primary);
-	}
-
-	&.completed {
-		background-color: var(--color--success);
-	}
+.container {
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm);
 }
 
 .question {
@@ -300,14 +263,13 @@ function submitAnswers() {
 }
 
 .questionText {
-	font-weight: var(--font-weight--bold);
 	margin-bottom: var(--spacing--xs);
 }
 
 .options {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--3xs);
 }
 
 .radioOption,
@@ -316,7 +278,7 @@ function submitAnswers() {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	cursor: pointer;
-	padding: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border-radius: var(--radius);
 	transition: background-color 0.15s ease;
 
@@ -325,7 +287,7 @@ function submitAnswers() {
 	}
 
 	&.selected {
-		background-color: var(--color--primary--tint-3);
+		background-color: var(--color--foreground--tint-2);
 	}
 }
 
@@ -334,6 +296,7 @@ function submitAnswers() {
 	height: 16px;
 	accent-color: var(--color--primary);
 	cursor: pointer;
+	margin: 0;
 }
 
 .optionLabel {
@@ -345,27 +308,46 @@ function submitAnswers() {
 	margin-top: var(--spacing--2xs);
 }
 
-.customOption {
-	margin-top: var(--spacing--xs);
+.otherOption {
 	display: flex;
-	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--3xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+}
+
+.otherInput {
+	flex: 1;
+}
+
+.footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding-top: var(--spacing--xs);
+	border-top: var(--border);
+	margin-top: var(--spacing--xs);
+}
+
+.progress {
+	display: flex;
 	gap: var(--spacing--3xs);
+}
+
+.progressDot {
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--color--foreground--tint-1);
+	transition: background-color 0.2s ease;
+
+	&.active {
+		background-color: var(--color--text);
+	}
 }
 
 .navigation {
 	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-top: var(--spacing--sm);
-}
-
-.rightButtons {
-	display: flex;
 	gap: var(--spacing--2xs);
-}
-
-.counter {
-	text-align: center;
-	margin-top: var(--spacing--xs);
 }
 </style>

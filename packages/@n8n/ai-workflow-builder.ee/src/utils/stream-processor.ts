@@ -433,6 +433,62 @@ function processArrayContent(content: unknown[]): Array<Record<string, unknown>>
 
 /** Process AIMessage content and return formatted messages */
 function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>> {
+	// Check for special plan mode messages (questions or plan)
+	const messageType = msg.additional_kwargs?.messageType;
+
+	if (messageType === 'questions' && typeof msg.content === 'string') {
+		try {
+			const data = JSON.parse(msg.content) as {
+				type: string;
+				introMessage?: string;
+				questions: Array<{
+					id: string;
+					question: string;
+					type: string;
+					options?: string[];
+					allowCustom?: boolean;
+				}>;
+			};
+			return [
+				{
+					role: 'assistant',
+					type: 'questions',
+					questions: data.questions,
+					introMessage: data.introMessage,
+				},
+			];
+		} catch {
+			// Fall through to normal processing
+		}
+	}
+
+	if (messageType === 'plan' && typeof msg.content === 'string') {
+		try {
+			const data = JSON.parse(msg.content) as {
+				type: string;
+				plan: {
+					summary: string;
+					trigger: string;
+					steps: Array<{
+						description: string;
+						subSteps?: string[];
+						suggestedNodes?: string[];
+					}>;
+					additionalSpecs?: string[];
+				};
+			};
+			return [
+				{
+					role: 'assistant',
+					type: 'plan',
+					plan: data.plan,
+				},
+			];
+		} catch {
+			// Fall through to normal processing
+		}
+	}
+
 	if (!msg.content) {
 		return [];
 	}

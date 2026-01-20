@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseMessage, AIMessage } from '@langchain/core/messages';
-import { isAIMessage } from '@langchain/core/messages';
+import type { BaseMessage } from '@langchain/core/messages';
+import { AIMessage, isAIMessage, HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
@@ -51,7 +51,7 @@ import type { WorkflowMetadata } from '../types/tools';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
 import { appendArrayReducer, cachedTemplatesReducer } from '../utils/state-reducers';
-import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
+import { executeSubgraphTools } from '../utils/subgraph-helpers';
 
 /**
  * Strict Output Schema for Discovery
@@ -417,6 +417,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			const response = (await this.plannerAgent.invoke({
 				messages: state.messages,
 				prompt: context,
+				techniques: formatTechniqueList(),
+				exampleCategorizations: formatExampleCategorizations(),
 			})) as AIMessage;
 
 			return { messages: [response] };
@@ -867,7 +869,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
-		const userRequest = extractUserRequest(parentState.messages, 'Build a workflow');
+		// Extract user request, filtering out answer messages in plan mode
+		const userRequest = this.extractOriginalUserRequest(
+			parentState.messages,
+			parentState.mode === 'plan' ? parentState.pendingQuestions : undefined,
+		);
 
 		// Build context parts for Discovery
 		const contextParts: string[] = [];
@@ -998,8 +1004,57 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			}),
 		};
 
+		// Create special AIMessage for session persistence
+		// These messages are detected by formatMessages() and converted to proper types
+		const planModeMessages: AIMessage[] = [];
+
+		if (plannerPhase === 'waiting_for_answers' && questions.length > 0) {
+			// Add questions as an AIMessage for persistence
+			planModeMessages.push(
+				new AIMessage({
+					content: JSON.stringify({
+						type: 'questions',
+						introMessage: introMessage ?? '',
+						questions: questions.map((q) => ({
+							id: q.id,
+							question: q.question,
+							type: q.type,
+							options: q.options,
+							allowCustom: q.allowCustom,
+						})),
+					}),
+					additional_kwargs: {
+						messageType: 'questions',
+					},
+				}),
+			);
+		} else if (plannerPhase === 'plan_displayed' && planWithContext) {
+			// Add plan as an AIMessage for persistence
+			planModeMessages.push(
+				new AIMessage({
+					content: JSON.stringify({
+						type: 'plan',
+						plan: {
+							summary: planWithContext.summary,
+							trigger: planWithContext.trigger,
+							steps: planWithContext.steps.map((s) => ({
+								description: s.description,
+								subSteps: s.subSteps,
+								suggestedNodes: s.suggestedNodes,
+							})),
+							additionalSpecs: planWithContext.additionalSpecs,
+						},
+					}),
+					additional_kwargs: {
+						messageType: 'plan',
+					},
+				}),
+			);
+		}
+
 		return {
 			...baseOutput,
+			...(planModeMessages.length > 0 && { messages: planModeMessages }),
 			pendingQuestions: questions,
 			introMessage: introMessage ?? '',
 			planOutput: planWithContext,
@@ -1013,22 +1068,21 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	// ========================================================================
 
 	/**
-	 * Check if a message is an answers submission
+	 * Check if a message is an answers submission.
+	 * Expects structured JSON: { "type": "question_answers", "answers": [...] }
 	 */
 	private isAnswersMessage(message: BaseMessage | undefined): boolean {
 		if (!message) return false;
 
-		// Check message content for question_answers type
 		const content = message.content;
-		if (typeof content === 'string') {
-			try {
-				const parsed = JSON.parse(content) as { type?: string };
-				return parsed.type === 'question_answers';
-			} catch {
-				return false;
-			}
+		if (typeof content !== 'string') return false;
+
+		try {
+			const parsed = JSON.parse(content) as { type?: string };
+			return parsed.type === 'question_answers';
+		} catch {
+			return false;
 		}
-		return false;
 	}
 
 	/**
@@ -1102,5 +1156,57 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		}
 
 		return result.length > 0 ? result : undefined;
+	}
+
+	/**
+	 * Extract the original user request, intelligently filtering out answer messages.
+	 *
+	 * In plan mode, subsequent HumanMessages may be answers to questions, not new requests.
+	 * We detect answers by checking if the message contains question text from pendingQuestions.
+	 *
+	 * @param messages - All messages in the conversation
+	 * @param pendingQuestions - Questions that were asked (used to detect answer messages)
+	 */
+	private extractOriginalUserRequest(
+		messages: BaseMessage[],
+		pendingQuestions?: PlannerQuestion[],
+	): string {
+		const humanMessages = messages.filter(
+			(m): m is HumanMessage =>
+				m instanceof HumanMessage && typeof m.content === 'string' && m.content.trim() !== '',
+		);
+
+		if (humanMessages.length === 0) {
+			return 'Build a workflow';
+		}
+
+		// If no pending questions, use standard behavior (last message for iterations)
+		if (!pendingQuestions || pendingQuestions.length === 0) {
+			const lastMessage = humanMessages[humanMessages.length - 1];
+			return lastMessage.content as string;
+		}
+
+		// Filter out messages that look like answers to pending questions
+		// An answer typically contains the question text (e.g., "What's your location?: New York")
+		const questionTexts = pendingQuestions.map((q) => q.question.toLowerCase());
+
+		const nonAnswerMessages = humanMessages.filter((m) => {
+			const content = (m.content as string).toLowerCase();
+			// Check if this message contains any question text (indicating it's an answer)
+			const looksLikeAnswer = questionTexts.some((qText) => {
+				// Check if message starts with or contains significant portion of question
+				const questionStart = qText.substring(0, Math.min(30, qText.length));
+				return content.includes(questionStart);
+			});
+			return !looksLikeAnswer;
+		});
+
+		// Return the last non-answer message (original request or refinement)
+		if (nonAnswerMessages.length > 0) {
+			return nonAnswerMessages[nonAnswerMessages.length - 1].content as string;
+		}
+
+		// Fallback to first message if all messages look like answers
+		return humanMessages[0].content as string;
 	}
 }
