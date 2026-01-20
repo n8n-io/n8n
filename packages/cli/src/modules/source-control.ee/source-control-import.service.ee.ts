@@ -60,6 +60,7 @@ import {
 } from './constants';
 import {
 	getCredentialExportPath,
+	getDataTableExportPath,
 	getProjectExportPath,
 	getWorkflowExportPath,
 } from './source-control-helper.ee';
@@ -535,10 +536,11 @@ export class SourceControlImportService {
 							index: col.index,
 						})),
 					ownedBy: ownedBy,
+					filename: getDataTableExportPath(table.id, this.dataTableExportFolder),
 					createdAt: table.createdAt.toISOString(),
 					updatedAt: table.updatedAt.toISOString(),
 				};
-			}) as StatusExportableDataTable[];
+			});
 		} catch (error) {
 			// Return empty array if DataTable entity is not registered (e.g., in test environments)
 			if (error instanceof Error && error.message.includes('No metadata for "DataTable"')) {
