@@ -24,7 +24,7 @@ import type {
 import { CHAT_VIEW } from './constants';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import { VECTOR_STORE_PGVECTOR_NODE_TYPE, type INode } from 'n8n-workflow';
+import { VECTOR_STORE_SIMPLE_NODE_TYPE, type INode } from 'n8n-workflow';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -507,5 +507,5 @@ export const isRegenerable = (message: ChatMessage): boolean => {
 };
 
 export function isHiddenTool(tool: INode) {
-	return tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE;
+	return tool.type === VECTOR_STORE_SIMPLE_NODE_TYPE;
 }

@@ -533,6 +533,7 @@ export class ChatHubService {
 			tools,
 			attachments,
 			[],
+			null,
 			timeZone,
 			trx,
 		);
@@ -549,6 +550,7 @@ export class ChatHubService {
 		tools: INode[],
 		attachments: IBinaryData[],
 		contextFiles: IBinaryData[],
+		agentId: string | null,
 		timeZone: string,
 		trx: EntityManager,
 	) {
@@ -568,6 +570,7 @@ export class ChatHubService {
 			model,
 			systemMessage,
 			tools,
+			agentId,
 			timeZone,
 			trx,
 		);
@@ -626,6 +629,7 @@ export class ChatHubService {
 			tools,
 			attachments,
 			agent.files,
+			agent.id,
 			timeZone,
 			trx,
 		);

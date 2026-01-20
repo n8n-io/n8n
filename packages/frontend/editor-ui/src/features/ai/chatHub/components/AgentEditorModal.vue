@@ -31,7 +31,7 @@ import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
-import { VECTOR_STORE_PGVECTOR_NODE_TYPE, type IBinaryData, type INode } from 'n8n-workflow';
+import { VECTOR_STORE_SIMPLE_NODE_TYPE, type IBinaryData, type INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import {
 	personalAgentDefaultIcon,
@@ -44,7 +44,6 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
-import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -80,11 +79,6 @@ const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
 const files = ref<IBinaryData[]>([]);
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
 
-// Vector store configuration
-const enableVectorStore = ref(false);
-const vectorStoreCredentialId = ref<string | null>(null);
-const vectorStoreTableName = ref('n8n_vectors');
-
 const agentSelectedCredentials = ref<CredentialsMap>({});
 const credentialIdForSelectedModelProvider = computed(
 	() => selectedModel.value && agentMergedCredentials.value[selectedModel.value.provider],
@@ -112,22 +106,13 @@ const acceptedMimeTypes = computed(() =>
 	createMimeTypes(selectedAgent.value?.metadata.inputModalities ?? []),
 );
 
-const isValid = computed(() => {
-	const baseValid =
+const isValid = computed(
+	() =>
 		name.value.trim().length > 0 &&
 		systemPrompt.value.trim().length > 0 &&
 		selectedModel.value !== null &&
-		!!credentialIdForSelectedModelProvider.value;
-
-	// If PDF files exist, vector store credential is required
-	if (hasPdfFiles.value) {
-		return (
-			baseValid && !!vectorStoreCredentialId.value && vectorStoreTableName.value.trim().length > 0
-		);
-	}
-
-	return baseValid;
-});
+		!!credentialIdForSelectedModelProvider.value,
+);
 
 const agentMergedCredentials = computed((): CredentialsMap => {
 	return {
@@ -142,17 +127,6 @@ const canSelectTools = computed(
 
 // Filter out vector store tools for display in ToolsSelector
 const displayTools = computed(() => tools.value.filter((tool) => !isHiddenTool(tool)));
-
-const hasPdfFiles = computed(() => files.value.some((file) => file.mimeType === 'application/pdf'));
-
-const shouldShowVectorStore = computed(() => hasPdfFiles.value || enableVectorStore.value);
-
-// Auto-enable vector store when PDF files are present
-watch(hasPdfFiles, (hasPdfs) => {
-	if (hasPdfs && !enableVectorStore.value) {
-		enableVectorStore.value = true;
-	}
-});
 
 modalBus.value.once('opened', () => {
 	isOpened.value = true;
@@ -184,17 +158,6 @@ watch(
 
 		if (agent.credentialId) {
 			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
-		}
-
-		// Extract vector store configuration from tools
-		const vectorStoreTool = agent.tools?.find(
-			(tool) => tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE,
-		);
-
-		if (vectorStoreTool) {
-			enableVectorStore.value = true;
-			vectorStoreTableName.value = String(vectorStoreTool.parameters.tableName) || 'n8n_vectors';
-			vectorStoreCredentialId.value = vectorStoreTool.credentials?.postgres?.id || null;
 		}
 	},
 	{ immediate: true },
@@ -250,40 +213,6 @@ async function onSave() {
 
 		// Build tools array including vector store if enabled
 		const allTools: INode[] = [...tools.value];
-
-		if (enableVectorStore.value && vectorStoreCredentialId.value) {
-			// Add or update vector store tool
-			const vectorStoreTool: INode = {
-				parameters: {
-					tableName: vectorStoreTableName.value,
-				},
-				type: VECTOR_STORE_PGVECTOR_NODE_TYPE,
-				typeVersion: 1.3,
-				position: [0, 0],
-				id: '',
-				name: '', // To be replaced at runtime
-				credentials: {
-					postgres: {
-						id: vectorStoreCredentialId.value,
-						name: '',
-					},
-				},
-			};
-
-			// Remove any existing vector store tools and add the new one
-			const filteredTools = allTools.filter(
-				(tool) => tool.type !== VECTOR_STORE_PGVECTOR_NODE_TYPE,
-			);
-			allTools.length = 0;
-			allTools.push(...filteredTools, vectorStoreTool);
-		} else {
-			// Remove vector store tool if disabled
-			const filteredTools = allTools.filter(
-				(tool) => tool.type !== VECTOR_STORE_PGVECTOR_NODE_TYPE,
-			);
-			allTools.length = 0;
-			allTools.push(...filteredTools);
-		}
 
 		const payload = {
 			name: name.value.trim(),
@@ -361,7 +290,7 @@ function onSelectTools() {
 			onConfirm: (newTools: INode[]) => {
 				// Keep vector store tool if it exists, add other tools
 				const vectorStoreTool = tools.value.find(
-					(tool) => tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE,
+					(tool) => tool.type === VECTOR_STORE_SIMPLE_NODE_TYPE,
 				);
 				tools.value = vectorStoreTool ? [...newTools, vectorStoreTool] : newTools;
 			},
@@ -437,14 +366,6 @@ function handleFileClick(index: number) {
 
 	const url = buildAgentAttachmentUrl(useRootStore().restApiContext, props.data.agentId, index);
 	window.open(url, '_blank');
-}
-
-function onVectorStoreCredentialSelected(credentialId: string) {
-	vectorStoreCredentialId.value = credentialId;
-}
-
-function onVectorStoreCredentialDeselected() {
-	vectorStoreCredentialId.value = null;
 }
 
 const fileDrop = useFileDrop(true, onFilesDropped);
@@ -612,50 +533,6 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 						>
 							Add file
 						</N8nButton>
-					</div>
-				</N8nInputLabel>
-
-				<N8nInputLabel
-					v-if="shouldShowVectorStore"
-					input-name="agent-vector-store"
-					label="Vector Store (PGVector)"
-					:required="false"
-				>
-					<div :class="$style.vectorStoreFields">
-						<N8nInputLabel
-							input-name="vector-store-credential"
-							label="Postgres Credential"
-							:required="true"
-						>
-							<div :class="$style.credentialPickerRow">
-								<CredentialPicker
-									:class="$style.credentialPicker"
-									app-name="Postgres"
-									credential-type="postgres"
-									:selected-credential-id="vectorStoreCredentialId"
-									:show-delete="false"
-									@credential-selected="onVectorStoreCredentialSelected"
-									@credential-deselected="onVectorStoreCredentialDeselected"
-								/>
-								<N8nIconButton
-									v-if="vectorStoreCredentialId"
-									type="tertiary"
-									icon="x"
-									size="medium"
-									:title="'Clear credential'"
-									@click="onVectorStoreCredentialDeselected"
-								/>
-							</div>
-						</N8nInputLabel>
-
-						<N8nInputLabel input-name="vector-store-table" label="Table Name" :required="true">
-							<N8nInput
-								id="vector-store-table"
-								v-model="vectorStoreTableName"
-								placeholder="n8n_vectors"
-								:class="$style.input"
-							/>
-						</N8nInputLabel>
 					</div>
 				</N8nInputLabel>
 			</div>

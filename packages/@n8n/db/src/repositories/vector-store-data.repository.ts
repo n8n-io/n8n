@@ -103,26 +103,24 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		const contentCol = this.getColumnName('content');
 		const metadataCol = this.getColumnName('metadata');
 
-		// Check if pgvector is available by trying to use the operator
-		try {
-			// Build WHERE clause
-			let whereClause = `${memoryKeyCol} = $1`;
-			const params: unknown[] = [memoryKey];
-			let paramIndex = 2;
+		// Build WHERE clause
+		let whereClause = `${memoryKeyCol} = $1`;
+		const params: unknown[] = [memoryKey];
+		let paramIndex = 2;
 
-			if (filter) {
-				for (const [key, value] of Object.entries(filter)) {
-					whereClause += ` AND ${metadataCol}->>'${key}' = $${paramIndex}`;
-					params.push(value);
-					paramIndex++;
-				}
+		if (filter) {
+			for (const [key, value] of Object.entries(filter)) {
+				whereClause += ` AND ${metadataCol}->>'${key}' = $${paramIndex}`;
+				params.push(value);
+				paramIndex++;
 			}
+		}
 
-			// Use pgvector cosine distance operator
-			const vectorString = `[${queryEmbedding.join(',')}]`;
-			params.push(vectorString);
+		// Use pgvector cosine distance operator
+		const vectorString = `[${queryEmbedding.join(',')}]`;
+		params.push(vectorString);
 
-			const query = `
+		const query = `
 				SELECT ${contentCol} as content, ${metadataCol} as metadata,
 					   1 - (${vectorCol} <=> $${paramIndex}::vector) as score
 				FROM ${tableName}
@@ -131,20 +129,16 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 				LIMIT ${k}
 			`;
 
-			const results = await this.query(query, params);
-			return results.map(
-				(row: { content: string; metadata: Record<string, unknown>; score: number }) => ({
-					document: {
-						content: row.content,
-						metadata: row.metadata,
-					},
-					score: row.score,
-				}),
-			);
-		} catch (error) {
-			// pgvector not available, fall back to in-memory computation
-			return await this.similaritySearchFallback(memoryKey, queryEmbedding, k, filter);
-		}
+		const results = await this.query(query, params);
+		return results.map(
+			(row: { content: string; metadata: Record<string, unknown>; score: number }) => ({
+				document: {
+					content: row.content,
+					metadata: row.metadata,
+				},
+				score: row.score,
+			}),
+		);
 	}
 
 	/**
@@ -197,22 +191,21 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 			console.error('[VectorStore] vec_distance_cosine test failed:', testErr);
 		}
 
-		try {
-			// Serialize query vector for sqlite-vec
-			const queryVectorBlob = this.serializeVector(queryEmbedding);
+		// Serialize query vector for sqlite-vec
+		const queryVectorBlob = this.serializeVector(queryEmbedding);
 
-			// Build WHERE clause
-			let whereClause = `${memoryKeyCol} = ?`;
-			const whereParams: unknown[] = [memoryKey];
+		// Build WHERE clause
+		let whereClause = `${memoryKeyCol} = ?`;
+		const whereParams: unknown[] = [memoryKey];
 
-			if (filter) {
-				for (const [key, value] of Object.entries(filter)) {
-					whereClause += ` AND json_extract(${metadataCol}, '$.${key}') = ?`;
-					whereParams.push(value);
-				}
+		if (filter) {
+			for (const [key, value] of Object.entries(filter)) {
+				whereClause += ` AND json_extract(${metadataCol}, '$.${key}') = ?`;
+				whereParams.push(value);
 			}
+		}
 
-			const query = `
+		const query = `
 				SELECT ${contentCol} as content, ${metadataCol} as metadata,
 					   1 - vec_distance_cosine(${vectorCol}, ?) as score
 				FROM ${tableName}
@@ -221,87 +214,33 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 				LIMIT ${k}
 			`;
 
-			// Parameters must be in the order they appear in the query:
-			// 1. First ? in SELECT vec_distance_cosine -> queryVectorBlob
-			// 2. WHERE clause parameters -> memoryKey (and filter values)
-			// 3. Second ? in ORDER BY vec_distance_cosine -> queryVectorBlob
-			const params = [queryVectorBlob, ...whereParams, queryVectorBlob];
+		// Parameters must be in the order they appear in the query:
+		// 1. First ? in SELECT vec_distance_cosine -> queryVectorBlob
+		// 2. WHERE clause parameters -> memoryKey (and filter values)
+		// 3. Second ? in ORDER BY vec_distance_cosine -> queryVectorBlob
+		const params = [queryVectorBlob, ...whereParams, queryVectorBlob];
 
-			console.log('[VectorStore] Executing SQLite vec query:', {
-				query,
-				paramsCount: params.length,
-				queryVectorBlobLength: queryVectorBlob.length,
-				memoryKey,
-			});
-
-			const results = await this.query(query, params);
-
-			console.log('[VectorStore] SQLite vec query results:', {
-				resultCount: results.length,
-				scores: results.map((r: { score: number }) => r.score),
-			});
-
-			return results.map((row: { content: string; metadata: string; score: number }) => ({
-				document: {
-					content: row.content,
-					metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
-				},
-				score: row.score,
-			}));
-		} catch (error) {
-			// sqlite-vec not available, fall back to in-memory computation
-			console.error('[VectorStore] SQLite vec search failed, falling back to in-memory:', error);
-			return await this.similaritySearchFallback(memoryKey, queryEmbedding, k, filter);
-		}
-	}
-
-	/**
-	 * Fallback similarity search using in-memory computation
-	 * Used when vector extensions are not available
-	 */
-	private async similaritySearchFallback(
-		memoryKey: string,
-		queryEmbedding: number[],
-		k: number,
-		filter?: Record<string, unknown>,
-	): Promise<VectorSearchResult[]> {
-		console.log('[VectorStore] Using fallback in-memory search:', { memoryKey, k });
-
-		const queryBuilder = this.createQueryBuilder('vectorStore').where(
-			'vectorStore.memoryKey = :memoryKey',
-			{ memoryKey },
-		);
-
-		if (filter) {
-			for (const [key, value] of Object.entries(filter)) {
-				queryBuilder.andWhere(`vectorStore.metadata->>'${key}' = :${key}`, { [key]: value });
-			}
-		}
-
-		const vectors = await queryBuilder.getMany();
-		console.log('[VectorStore] Fallback: Found vectors to compute:', vectors.length);
-
-		// Compute cosine similarity in-memory
-		const vectorsWithScores = vectors.map((v) => {
-			const embedding = this.deserializeVector(v.vector);
-			const similarity = this.cosineSimilarity(queryEmbedding, embedding);
-			return {
-				document: {
-					content: v.content,
-					metadata: v.metadata,
-				},
-				score: similarity,
-			};
+		console.log('[VectorStore] Executing SQLite vec query:', {
+			query,
+			paramsCount: params.length,
+			queryVectorBlobLength: queryVectorBlob.length,
+			memoryKey,
 		});
 
-		// Sort by similarity and return top k
-		const results = vectorsWithScores.sort((a, b) => b.score - a.score).slice(0, k);
-		console.log('[VectorStore] Fallback results:', {
+		const results = await this.query(query, params);
+
+		console.log('[VectorStore] SQLite vec query results:', {
 			resultCount: results.length,
-			scores: results.map((r) => r.score),
+			scores: results.map((r: { score: number }) => r.score),
 		});
 
-		return results;
+		return results.map((row: { content: string; metadata: string; score: number }) => ({
+			document: {
+				content: row.content,
+				metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
+			},
+			score: row.score,
+		}));
 	}
 
 	/**

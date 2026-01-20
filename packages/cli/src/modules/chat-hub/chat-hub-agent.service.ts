@@ -16,11 +16,7 @@ import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { getModelMetadata } from './chat-hub.constants';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import {
-	VECTOR_STORE_PGVECTOR_NODE_TYPE,
-	type IBinaryData,
-	type INodeCredentials,
-} from 'n8n-workflow';
+import { type IBinaryData, type INodeCredentials } from 'n8n-workflow';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -194,17 +190,6 @@ export class ChatHubAgentService {
 			return;
 		}
 
-		// Find vector store tool in tools array
-		const vectorStoreTool = agent.tools.find(
-			(tool) => tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE,
-		);
-
-		if (!vectorStoreTool) {
-			throw new BadRequestError(
-				'To insert documents for RAG, vector store tool has to be configured',
-			);
-		}
-
 		if (!agent.credentialId) {
 			throw new BadRequestError(
 				'Agent must have credentials configured to insert documents for RAG',
@@ -223,9 +208,9 @@ export class ChatHubAgentService {
 				const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 				return await this.chatHubWorkflowService.createDocumentsInsertionWorkflow(
 					user.id,
+					agent.id,
 					project.id,
 					files,
-					vectorStoreTool,
 					agent.provider,
 					credentials,
 					trx,

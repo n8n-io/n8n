@@ -35,7 +35,7 @@ import {
 	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
-	VECTOR_STORE_PGVECTOR_NODE_TYPE,
+	VECTOR_STORE_SIMPLE_NODE_TYPE,
 	VECTOR_STORE_TOOL_NODE_TYPE,
 	type IBinaryData,
 	type NodeParameterValueType,
@@ -84,6 +84,7 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel,
 		systemMessage: string | undefined,
 		tools: INode[],
+		agentId: string | null,
 		timeZone: string,
 		trx?: EntityManager,
 	): Promise<{
@@ -107,6 +108,7 @@ export class ChatHubWorkflowService {
 				model,
 				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
 				tools,
+				agentId,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -291,6 +293,7 @@ export class ChatHubWorkflowService {
 		model,
 		systemMessage,
 		tools,
+		agentId,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -302,31 +305,23 @@ export class ChatHubWorkflowService {
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
+		agentId: string | null;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
-		const restoreMemoryNode = await this.buildRestoreMemoryNode(
-			history,
-			model,
-			contextFiles.filter((c) => c.mimeType !== 'application/pdf'),
-		);
+		const restoreMemoryNode = await this.buildRestoreMemoryNode(history, model, contextFiles);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
 		const pdfFiles = contextFiles.filter((c) => c.mimeType === 'application/pdf');
 
 		// Find vector store tool in tools array
-		const vectorStoreTool = tools.find((tool) => tool.type === VECTOR_STORE_PGVECTOR_NODE_TYPE);
 		const shouldIncludeVectorStoreTool = pdfFiles.length > 0;
 
-		if (pdfFiles.length > 0 && !vectorStoreTool) {
-			throw new BadRequestError('To process PDF files, vector store must be configured.');
-		}
-
 		const vectorStoreNodes =
-			shouldIncludeVectorStoreTool && vectorStoreTool
-				? this.buildVectorStoreNodes(vectorStoreTool, pdfFiles, model, credentials)
+			shouldIncludeVectorStoreTool && agentId
+				? this.buildVectorStoreNodes(userId, agentId, pdfFiles, model, credentials)
 				: [];
 
 		const nodes: INode[] = [
@@ -342,7 +337,7 @@ export class ChatHubWorkflowService {
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
 		// Filter out vector store tools from regular tools (they're handled specially above)
-		const regularTools = tools.filter((tool) => tool.type !== VECTOR_STORE_PGVECTOR_NODE_TYPE);
+		const regularTools = tools.filter((tool) => tool.type !== VECTOR_STORE_SIMPLE_NODE_TYPE);
 		const distinctTools = regularTools.map((tool, i) => {
 			// Spread out the tool nodes so that they don't overlap on the canvas
 			const position = [
@@ -923,6 +918,13 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				throw new TotalFileSizeExceededError();
 			}
 
+			if (attachment.mimeType === 'application/pdf') {
+				return {
+					type: 'text',
+					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \nUse Vector Store Question Tool to query this document`,
+				};
+			}
+
 			if (this.isTextFile(attachment.mimeType)) {
 				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
 				const content = buffer.toString('utf-8');
@@ -1057,13 +1059,14 @@ Respond the title only:`,
 	}
 
 	private buildVectorStoreNodes(
-		vectorStoreTool: INode,
+		userId: string,
+		agentId: string,
 		pdfFiles: IBinaryData[],
 		model: ChatHubBaseLLMModel,
 		credentials: INodeCredentials,
 	): INode[] {
 		const embeddingsModelNode = this.buildEmbeddingsModelNode(model, credentials);
-		const vectorStoreNode = this.buildVectorStoreNode(vectorStoreTool);
+		const vectorStoreNode = this.buildVectorStoreNode(userId, agentId);
 		const vectorStoreQuestionToolNode = this.buildVectorStoreQuestionToolNode(pdfFiles);
 
 		return [embeddingsModelNode, vectorStoreNode, vectorStoreQuestionToolNode];
@@ -1093,23 +1096,29 @@ Respond the title only:`,
 		};
 	}
 
-	private buildVectorStoreNode(vectorStoreTool: INode): INode {
+	private buildVectorStoreNode(userId: string, agentId: string): INode {
 		return {
-			...vectorStoreTool,
 			parameters: {
-				...vectorStoreTool.parameters,
 				mode: 'retrieve',
+				memoryKey: {
+					__rl: true,
+					value: `agent-files-${userId}-${agentId}`,
+					cachedResultName: '',
+				},
+				enablePersistence: true,
 			},
+			type: VECTOR_STORE_SIMPLE_NODE_TYPE,
+			typeVersion: 1.3,
 			position: [800, 496],
 			id: uuidv4(),
-			name: NODE_NAMES.VECTOR_STORE,
+			name: 'Vector Store',
 		};
 	}
 
 	private buildVectorStoreQuestionToolNode(pdfFiles: IBinaryData[]): INode {
 		return {
 			parameters: {
-				description: `Use this tool to query following documents that the user has provided for context:
+				description: `Use this tool to query following context files:
 ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 `,
 			},
@@ -1123,9 +1132,9 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 
 	async createDocumentsInsertionWorkflow(
 		userId: string,
+		agentId: string,
 		projectId: string,
 		attachments: IBinaryData[],
-		vectorStoreTool: INode,
 		provider: ChatHubLLMProvider,
 		credentials: INodeCredentials,
 		trx: EntityManager,
@@ -1165,14 +1174,21 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 
 		const nodes: INode[] = [
 			{
-				...vectorStoreTool,
 				parameters: {
-					...vectorStoreTool.parameters,
 					mode: 'insert',
+					memoryKey: {
+						__rl: true,
+						value: `agent-files-${userId}-${agentId}`,
+						mode: 'list',
+						cachedResultName: '',
+					},
+					enablePersistence: true,
 				},
+				type: VECTOR_STORE_SIMPLE_NODE_TYPE,
+				typeVersion: 1.3,
 				position: [208, 0],
 				id: uuidv4(),
-				name: 'PGVector Store',
+				name: 'Vector Store',
 			},
 			triggerNode,
 			embeddingsNode,
@@ -1189,25 +1205,25 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 			},
 		];
 		const connections: IConnections = {
-			'PGVector Store': {
+			'Vector Store': {
 				main: [[]],
 			},
 			'When chat message received': {
 				main: [
 					[
 						{
-							node: 'PGVector Store',
+							node: 'Vector Store',
 							type: 'main',
 							index: 0,
 						},
 					],
 				],
 			},
-			'Embeddings OpenAI': {
+			'Embeddings Model': {
 				ai_embedding: [
 					[
 						{
-							node: 'PGVector Store',
+							node: 'Vector Store',
 							type: 'ai_embedding',
 							index: 0,
 						},
@@ -1218,7 +1234,7 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 				ai_document: [
 					[
 						{
-							node: 'PGVector Store',
+							node: 'Vector Store',
 							type: 'ai_document',
 							index: 0,
 						},

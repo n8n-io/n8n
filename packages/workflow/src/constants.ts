@@ -101,7 +101,7 @@ export const RESPOND_TO_CHAT_NODE_TYPE = '@n8n/n8n-nodes-langchain.chat';
 export const MEMORY_MANAGER_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryManager';
 export const MEMORY_BUFFER_WINDOW_NODE_TYPE = '@n8n/n8n-nodes-langchain.memoryBufferWindow';
 export const GUARDRAILS_NODE_TYPE = '@n8n/n8n-nodes-langchain.guardrails';
-export const VECTOR_STORE_PGVECTOR_NODE_TYPE = '@n8n/n8n-nodes-langchain.vectorStorePGVector';
+export const VECTOR_STORE_SIMPLE_NODE_TYPE = '@n8n/n8n-nodes-langchain.vectorStoreInMemory';
 export const VECTOR_STORE_TOOL_NODE_TYPE = '@n8n/n8n-nodes-langchain.toolVectorStore';
 export const DOCUMENT_DEFAULT_DATA_LOADER_NODE_TYPE =
 	'@n8n/n8n-nodes-langchain.documentDefaultDataLoader';
