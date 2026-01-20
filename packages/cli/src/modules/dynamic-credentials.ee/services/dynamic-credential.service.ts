@@ -20,6 +20,8 @@ import type {
 } from '../../../credentials/credential-resolution-provider.interface';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
+import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
+import { StaticAuthService } from '@/services/static-auth-service';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -28,6 +30,7 @@ import { CredentialResolutionError } from '../errors/credential-resolution.error
 @Service()
 export class DynamicCredentialService implements ICredentialResolutionProvider {
 	constructor(
+		private readonly dynamicCredentialConfig: DynamicCredentialsConfig,
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
 		private readonly resolverRepository: DynamicCredentialResolverRepository,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
@@ -233,5 +236,15 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		throw new CredentialResolutionError(
 			`Cannot resolve dynamic credentials without execution context for "${credentialsResolveMetadata.name}"`,
 		);
+	}
+
+	/**
+	 * Returns middleware for authenticating dynamic credentials endpoints.
+	 * Uses static token from configuration.
+	 */
+	getDynamicCredentialsEndpointsMiddleware() {
+		const { endpointAuthToken } = this.dynamicCredentialConfig;
+
+		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken, 'x-authorization');
 	}
 }

@@ -1,0 +1,117 @@
+import { LicenseState } from '@n8n/backend-common';
+import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
+import type { CredentialsEntity } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+
+import * as utils from '../shared/utils';
+import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
+import { Telemetry } from '@/telemetry';
+import { saveCredential } from '../shared/db/credentials';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
+import { CredentialsHelper } from '@/credentials-helper';
+
+import { createUser } from '../shared/db/users';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+
+mockInstance(Telemetry);
+
+const licenseMock = mock<LicenseState>();
+licenseMock.isLicensed.mockReturnValue(true);
+Container.set(LicenseState, licenseMock);
+
+process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS = 'true';
+
+mockInstance(DynamicCredentialsConfig, {
+	endpointAuthToken: '',
+	corsOrigin: 'https://app.example.com',
+	corsAllowCredentials: false,
+});
+
+const testServer = utils.setupTestServer({
+	endpointGroups: ['credentials', 'oauth2'],
+	enabledFeatures: ['feat:externalSecrets'],
+	modules: ['dynamic-credentials'],
+});
+
+CredentialsHelper.prototype.applyDefaultsAndOverwrites = async (_, decryptedDataOriginal) =>
+	decryptedDataOriginal;
+
+const setupWorkflow = async () => {
+	const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
+	const resolverService = Container.get(DynamicCredentialResolverService);
+
+	const resolver = await resolverService.create({
+		name: 'Test Resolver',
+		type: 'credential-resolver.stub-1.0',
+		config: { prefix: 'test-' },
+		user: owner,
+	});
+
+	const personalProject = await getPersonalProject(owner);
+
+	const savedCredential = await saveCredential(
+		{
+			name: 'Test Dynamic Credential',
+			type: 'oAuth2Api',
+			isResolvable: true,
+			data: {
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				authUrl: 'https://test.domain/oauth2/auth',
+				accessTokenUrl: 'https://test.domain/oauth2/token',
+				grantType: 'authorizationCode',
+			},
+		},
+		{
+			project: personalProject,
+			role: 'credential:owner',
+		},
+	);
+	return { savedCredential, resolver };
+};
+
+describe('Dynamic Credentials API', () => {
+	let savedCredential: CredentialsEntity;
+	let resolver: DynamicCredentialResolver;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User', 'CredentialsEntity', 'DynamicCredentialResolver']);
+
+		({ savedCredential, resolver } = await setupWorkflow());
+	});
+
+	afterAll(async () => {
+		await testDb.terminate();
+		testServer.httpServer.close();
+	});
+
+	describe('POST /credentials/:id/authorize', () => {
+		describe('when no static auth token is provided', () => {
+			it('should return the authorization URL for a credential', async () => {
+				const response = await testServer.authlessAgent
+					.post(`/credentials/${savedCredential.id}/authorize`)
+					.query({ resolverId: resolver.id })
+					.set('Authorization', 'Bearer test-token')
+					.expect(200);
+
+				expect(response.body.data).toBeDefined();
+				expect(typeof response.body.data).toBe('string');
+				expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+			});
+		});
+	});
+
+	describe('DELETE /credentials/:id/revoke', () => {
+		describe('when no static auth token is provided', () => {
+			it('should revoke a credential', async () => {
+				await testServer.authlessAgent
+					.delete(`/credentials/${savedCredential.id}/revoke`)
+					.set('Authorization', 'Bearer test-token')
+					.query({ resolverId: resolver.id })
+					.expect(204);
+			});
+		});
+	});
+});
