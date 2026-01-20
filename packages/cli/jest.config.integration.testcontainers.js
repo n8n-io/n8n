@@ -3,6 +3,11 @@
  * This starts postgres automatically via testcontainers - no docker-compose needed.
  *
  * Usage: pnpm test:postgres:tc
+ *
+ * Note: TESTCONTAINERS_RYUK_DISABLED=true is set in the npm script because:
+ * 1. Ryuk requires privileged Docker access not available in all CI environments
+ * 2. Containers use withReuse() and are cleaned up in globalTeardown
+ * 3. If tests crash, containers may linger - run `docker ps` to check
  */
 
 /** @type {import('jest').Config} */

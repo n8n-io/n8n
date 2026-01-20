@@ -25,6 +25,7 @@ module.exports = async () => {
 	process.env.DB_POSTGRESDB_PASSWORD = pgResult.meta.password;
 	process.env.DB_POSTGRESDB_SCHEMA = 'alt_schema';
 	process.env.DB_TABLE_PREFIX = 'test_';
+	process.env.DB_POSTGRESDB_POOL_SIZE = '1'; // Detect connection pooling deadlocks
 
 	globalThis.__TESTCONTAINERS_STACK__ = stack;
 
