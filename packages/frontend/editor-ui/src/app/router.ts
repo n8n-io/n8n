@@ -735,7 +735,12 @@ export const routes: RouteRecordRaw[] = [
 				name: VIEWS.WORKER_VIEW,
 				component: WorkerView,
 				meta: {
-					middleware: ['authenticated'],
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'workersView:manage',
+						},
+					},
 				},
 			},
 			{
