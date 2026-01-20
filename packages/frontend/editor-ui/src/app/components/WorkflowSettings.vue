@@ -18,6 +18,7 @@ import {
 	N8nButton,
 	N8nIcon,
 	N8nInput,
+	N8nInputNumber,
 	N8nLink,
 	N8nIconButton,
 	N8nOption,
@@ -409,7 +410,7 @@ const loadWorkflows = async (searchTerm?: string) => {
 	});
 
 	workflowsData.unshift({
-		id: undefined as unknown as string,
+		id: 'DEFAULT',
 		name: i18n.baseText('workflowSettings.noWorkflow'),
 	} as IWorkflowShortResponse);
 
@@ -644,6 +645,9 @@ onMounted(async () => {
 
 	if (workflowSettingsData.timeSavedMode === undefined) {
 		workflowSettingsData.timeSavedMode = 'fixed';
+	}
+	if (workflowSettingsData.errorWorkflow === undefined) {
+		workflowSettingsData.errorWorkflow = 'DEFAULT';
 	}
 	if (workflowSettingsData.timezone === undefined) {
 		workflowSettingsData.timezone = 'DEFAULT';
@@ -1190,13 +1194,15 @@ onBeforeUnmount(() => {
 				<ElRow v-if="workflowSettings.timeSavedMode === 'fixed'">
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved-input']">
-							<N8nInput
+							<N8nInputNumber
 								id="timeSavedPerExecution"
 								v-model="workflowSettings.timeSavedPerExecution"
+								controls-position="right"
+								size="medium"
+								:controls="true"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
-								type="number"
-								min="0"
+								:min="0"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
@@ -1341,13 +1347,10 @@ onBeforeUnmount(() => {
 .time-saved-input {
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--2xs);
 
-	:global(.el-input) {
-		width: var(--spacing--3xl);
-	}
-
-	span {
-		margin-left: var(--spacing--2xs);
+	:global(.el-input-number) {
+		width: var(--spacing--4xl);
 	}
 }
 

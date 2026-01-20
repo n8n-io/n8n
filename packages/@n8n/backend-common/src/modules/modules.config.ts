@@ -13,6 +13,9 @@ export const MODULE_NAMES = [
 	'source-control',
 	'dynamic-credentials',
 	'chat-hub',
+	'sso-oidc',
+	'sso-saml',
+	'log-streaming',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

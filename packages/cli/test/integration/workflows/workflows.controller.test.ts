@@ -3305,6 +3305,24 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
 	});
 
+	test('should not update an archived workflow', async () => {
+		const workflow = await createWorkflowWithHistory({ isArchived: true }, owner);
+
+		const response = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({
+				name: 'Updated Name',
+			})
+			.expect(400);
+
+		expect(response.body.message).toBe('Cannot update an archived workflow.');
+
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.name).toBe(workflow.name);
+		expect(updatedWorkflow!.isArchived).toBe(true);
+	});
+
 	describe('Security: Mass Assignment Protection on Update', () => {
 		test.each([
 			{
@@ -3400,6 +3418,76 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(updatedWorkflow?.versionCounter).not.toBe(999);
 			expect(updatedWorkflow?.isArchived).toBe(false);
 		});
+	});
+
+	test('should remove DEFAULT settings from database and keep non-default and not sent values', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				settings: {
+					errorWorkflow: 'some-workflow-id',
+					timezone: 'America/New_York',
+					saveDataErrorExecution: 'all', // should be kept
+					executionTimeout: 7200,
+				},
+			},
+			owner,
+		);
+
+		const payload = {
+			settings: {
+				// These should be removed
+				errorWorkflow: 'DEFAULT',
+				timezone: 'DEFAULT',
+				saveDataSuccessExecution: 'DEFAULT',
+				saveManualExecutions: 'DEFAULT',
+				saveExecutionProgress: 'DEFAULT',
+				// These should be kept (non-default)
+				executionTimeout: 7200,
+				callerPolicy: 'workflowsFromSameOwner',
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(updatedWorkflow?.settings).toEqual({
+			saveDataErrorExecution: 'all',
+			executionTimeout: 7200,
+			callerPolicy: 'workflowsFromSameOwner',
+		});
+	});
+
+	test('should not wipe existing settings when updating workflow without settings field', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				settings: {
+					errorWorkflow: 'some-workflow-id',
+					timezone: 'America/New_York',
+					saveDataErrorExecution: 'all',
+				},
+			},
+			owner,
+		);
+
+		const payload = {
+			name: 'Updated Name',
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const updatedWorkflow = await workflowRepository.findOneBy({ id: workflow.id });
+
+		expect(updatedWorkflow?.settings).toEqual({
+			errorWorkflow: 'some-workflow-id',
+			timezone: 'America/New_York',
+			saveDataErrorExecution: 'all',
+		});
+		expect(updatedWorkflow?.name).toBe('Updated Name');
 	});
 });
 
@@ -3739,6 +3827,23 @@ describe('POST /workflows/:workflowId/activate', () => {
 			versionId: workflow.versionId,
 			workflowId: workflow.id,
 		});
+	});
+
+	test('should not activate an archived workflow', async () => {
+		const workflow = await createWorkflowWithHistory({ isArchived: true }, owner);
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId })
+			.expect(400);
+
+		expect(response.body.message).toBe('Cannot activate an archived workflow.');
+		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
+
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
+		expect(updatedWorkflow).not.toBeNull();
+		expect(updatedWorkflow!.active).toBe(false);
+		expect(updatedWorkflow!.activeVersionId).toBeNull();
 	});
 });
 

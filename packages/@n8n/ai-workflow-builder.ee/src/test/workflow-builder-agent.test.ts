@@ -56,8 +56,7 @@ import {
 
 describe('WorkflowBuilderAgent', () => {
 	let agent: WorkflowBuilderAgent;
-	let mockLlmSimple: BaseChatModel;
-	let mockLlmComplex: BaseChatModel;
+	let mockLlm: BaseChatModel;
 	let mockLogger: Logger;
 	let mockCheckpointer: MemorySaver;
 	let parsedNodeTypes: INodeTypeDescription[];
@@ -68,14 +67,8 @@ describe('WorkflowBuilderAgent', () => {
 	>;
 
 	beforeEach(() => {
-		mockLlmSimple = mock<BaseChatModel>({
+		mockLlm = mock<BaseChatModel>({
 			_llmType: jest.fn().mockReturnValue('test-llm'),
-			bindTools: jest.fn().mockReturnThis(),
-			invoke: jest.fn(),
-		});
-
-		mockLlmComplex = mock<BaseChatModel>({
-			_llmType: jest.fn().mockReturnValue('test-llm-complex'),
 			bindTools: jest.fn().mockReturnThis(),
 			invoke: jest.fn(),
 		});
@@ -108,8 +101,14 @@ describe('WorkflowBuilderAgent', () => {
 
 		config = {
 			parsedNodeTypes,
-			llmSimpleTask: mockLlmSimple,
-			llmComplexTask: mockLlmComplex,
+			stageLLMs: {
+				supervisor: mockLlm,
+				responder: mockLlm,
+				discovery: mockLlm,
+				builder: mockLlm,
+				configurator: mockLlm,
+				parameterUpdater: mockLlm,
+			},
 			logger: mockLogger,
 			checkpointer: mockCheckpointer,
 		};
@@ -172,7 +171,7 @@ describe('WorkflowBuilderAgent', () => {
 			mockCreateStreamProcessor.mockReturnValue(mockAsyncGenerator);
 
 			// Mock the LLM to return a simple response
-			(mockLlmSimple.invoke as jest.Mock).mockResolvedValue({
+			(mockLlm.invoke as jest.Mock).mockResolvedValue({
 				content: 'Mocked response',
 				tool_calls: [],
 			});
@@ -197,6 +196,43 @@ describe('WorkflowBuilderAgent', () => {
 			}).rejects.toThrow(ApplicationError);
 		});
 
+		it('should handle 401 expired token error from LangChain MODEL_AUTHENTICATION', async () => {
+			// This matches the actual error structure from LangChain when the AI assistant proxy token expires
+			const expiredTokenError = Object.assign(new Error('Expired token'), {
+				status: 401,
+				lc_error_code: 'MODEL_AUTHENTICATION',
+			});
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw expiredTokenError;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(ApplicationError);
+		});
+
+		it('should not treat generic 401 errors as expired token errors', async () => {
+			// A generic 401 without lc_error_code should be rethrown as-is, not converted to ApplicationError
+			const generic401Error = Object.assign(new Error('Unauthorized'), { status: 401 });
+
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw generic401Error;
+				})();
+			});
+
+			await expect(async () => {
+				const generator = agent.chat(mockPayload);
+				await generator.next();
+			}).rejects.toThrow(generic401Error);
+		});
+
 		it('should handle invalid request errors', async () => {
 			const invalidRequestError = Object.assign(new Error('Request failed'), {
 				error: {
@@ -207,12 +243,18 @@ describe('WorkflowBuilderAgent', () => {
 				},
 			});
 
-			(mockLlmSimple.invoke as jest.Mock).mockRejectedValue(invalidRequestError);
+			// Mock the stream processor to throw the invalid request error
+			mockCreateStreamProcessor.mockImplementation(() => {
+				// eslint-disable-next-line require-yield
+				return (async function* () {
+					throw invalidRequestError;
+				})();
+			});
 
 			await expect(async () => {
 				const generator = agent.chat(mockPayload);
 				await generator.next();
-			}).rejects.toThrow(ApplicationError);
+			}).rejects.toThrow(ValidationError);
 		});
 
 		it('should rethrow unknown errors', async () => {

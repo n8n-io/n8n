@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
-import { DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
+import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
 import { WorkflowHistory, WorkflowEntity } from '../entities';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
@@ -78,6 +78,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		endDate: Date,
 		rules: DiffRule[] = [],
 		skipRules: DiffRule[] = [],
+		metaData?: Partial<Record<keyof DiffMetaData, boolean>>,
 	): Promise<{ seen: number; deleted: number }> {
 		const workflows = await this.manager
 			.createQueryBuilder(WorkflowHistory, 'wh')
@@ -94,11 +95,16 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		// Group by workflowId
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
-		const grouped = groupWorkflows<WorkflowHistory>(workflows, rules, [
-			this.makeSkipActiveAndNamedVersionsRule(new Set(publishedVersions.map((x) => x.versionId))),
-			SKIP_RULES.skipDifferentUsers,
-			...skipRules,
-		]);
+		const grouped = groupWorkflows<WorkflowHistory>(
+			workflows,
+			rules,
+			[
+				this.makeSkipActiveAndNamedVersionsRule(new Set(publishedVersions.map((x) => x.versionId))),
+				SKIP_RULES.skipDifferentUsers,
+				...skipRules,
+			],
+			metaData,
+		);
 
 		await this.delete({ versionId: In(grouped.removed.map((x) => x.versionId)) });
 		return { seen: workflows.length, deleted: grouped.removed.length };
