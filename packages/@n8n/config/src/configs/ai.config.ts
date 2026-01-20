@@ -15,6 +15,10 @@ export class AiConfig {
 	@Env('N8N_AI_TIMEOUT_MAX')
 	timeout: number = 3600000;
 
+	/** Whether to allow sending actual parameter data to AI services. */
+	@Env('N8N_AI_ALLOW_SENDING_PARAMETER_VALUES')
+	allowSendingParameterValues: boolean = true;
+
 	get openAiDefaultHeaders(): Record<string, string> {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		return { 'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' };
