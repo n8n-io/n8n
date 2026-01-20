@@ -26,6 +26,7 @@ Container.set(LicenseState, licenseMock);
 mockInstance(DynamicCredentialsConfig, {
 	corsOrigin: 'https://app.example.com',
 	corsAllowCredentials: false,
+	endpointAuthToken: '',
 });
 
 const testServer = utils.setupTestServer({
