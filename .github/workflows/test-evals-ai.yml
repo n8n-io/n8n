@@ -9,26 +9,20 @@ on:
       - 'packages/@n8n/ai-workflow-builder.ee/**/*.prompt.ts'
       - '.github/workflows/test-evals-ai.yml'
       - '.github/workflows/test-evals-ai-reusable.yml'
-  schedule:
-    - cron: '0 22 * * 6'
   workflow_dispatch:
     inputs:
       branch:
         description: 'GitHub branch to test.'
         required: false
         default: 'master'
-      dataset:
-        description: 'LangSmith dataset to use.'
+      spec_repetitions:
+        description: 'Number of repetitions for spec (pairwise) evals.'
         required: false
-        default: 'notion-pairwise-fresh'
-      repetitions:
-        description: 'Number of repetitions to run.'
+        default: '1'
+      spec_judges:
+        description: 'Number of judges for spec (pairwise) evals.'
         required: false
-        default: '3'
-      judges:
-        description: 'Number of judges to use.'
-        required: false
-        default: '3'
+        default: '1'
 
 jobs:
   check-skip:
@@ -101,9 +95,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       branch: ${{ steps.config.outputs.branch }}
-      dataset: ${{ steps.config.outputs.dataset }}
-      repetitions: ${{ steps.config.outputs.repetitions }}
-      judges: ${{ steps.config.outputs.judges }}
+      spec_repetitions: ${{ steps.config.outputs.spec_repetitions }}
+      spec_judges: ${{ steps.config.outputs.spec_judges }}
       experiment_prefix: ${{ steps.config.outputs.experiment_prefix }}
     steps:
       - name: Set configuration based on trigger
@@ -112,42 +105,46 @@ jobs:
           EVENT_NAME="${{ github.event_name }}"
 
           if [ "$EVENT_NAME" = "push" ]; then
-            # Merge to master: lighter config (1 rep, 1 judge)
+            # Merge to master: spec evals use 1 rep, 1 judge
             {
               echo "branch=${{ github.ref_name }}"
-              echo "dataset=notion-pairwise-fresh"
-              echo "repetitions=1"
-              echo "judges=1"
+              echo "spec_repetitions=1"
+              echo "spec_judges=1"
               echo "experiment_prefix="
             } >> "$GITHUB_OUTPUT"
-          elif [ "$EVENT_NAME" = "schedule" ]; then
-            # Scheduled run: full config (3 reps, 3 judges)
-            {
-              echo "branch=master"
-              echo "dataset=prompts-v2"
-              echo "repetitions=3"
-              echo "judges=3"
-              echo "experiment_prefix=CI_scheduled"
-            } >> "$GITHUB_OUTPUT"
           else
-            # Manual dispatch: use provided values
+            # Manual dispatch: use provided values for spec evals
             {
               echo "branch=${{ inputs.branch || 'master' }}"
-              echo "dataset=${{ inputs.dataset || 'workflow-builder-canvas-prompts' }}"
-              echo "repetitions=${{ inputs.repetitions || '3' }}"
-              echo "judges=${{ inputs.judges || '3' }}"
+              echo "spec_repetitions=${{ inputs.spec_repetitions || '1' }}"
+              echo "spec_judges=${{ inputs.spec_judges || '1' }}"
               echo "experiment_prefix=CI_manual"
             } >> "$GITHUB_OUTPUT"
           fi
 
-  run-evals:
-    name: Run Evaluations
+  run-pairwise-evals:
+    name: Run Pairwise (Spec) Evaluations
     needs: determine-config
     uses: ./.github/workflows/test-evals-ai-reusable.yml
     with:
       branch: ${{ needs.determine-config.outputs.branch }}
-      dataset: ${{ needs.determine-config.outputs.dataset }}
-      repetitions: ${{ fromJson(needs.determine-config.outputs.repetitions) }}
-      judges: ${{ fromJson(needs.determine-config.outputs.judges) }}
+      suite: pairwise
+      dataset: notion-pairwise-fresh
+      repetitions: ${{ fromJson(needs.determine-config.outputs.spec_repetitions) }}
+      judges: ${{ fromJson(needs.determine-config.outputs.spec_judges) }}
+      experiment_name_prefix: ${{ needs.determine-config.outputs.experiment_prefix }}
+    secrets: inherit
+
+  run-llm-judge-evals:
+    name: Run LLM Judge (Matrix) Evaluations
+    needs: determine-config
+    uses: ./.github/workflows/test-evals-ai-reusable.yml
+    with:
+      branch: ${{ needs.determine-config.outputs.branch }}
+      suite: llm-judge
+      dataset: workflow-builder-canvas-prompts
+      # Matrix evals always use 3 reps, 3 judges regardless of trigger
+      repetitions: 3
+      judges: 3
       experiment_name_prefix: ${{ needs.determine-config.outputs.experiment_prefix }}
     secrets: inherit

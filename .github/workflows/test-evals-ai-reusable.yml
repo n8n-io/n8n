@@ -7,10 +7,14 @@ on:
         description: 'GitHub branch to test.'
         type: string
         default: 'master'
+      suite:
+        description: 'Evaluation suite to run (pairwise or llm-judge).'
+        type: string
+        default: 'pairwise'
       dataset:
         description: 'LangSmith dataset to use.'
         type: string
-        default: 'notion-pairwise-fresh'
+        required: true
       repetitions:
         description: 'Number of repetitions to run.'
         type: number
@@ -19,6 +23,10 @@ on:
         description: 'Number of judges to use.'
         type: number
         default: 1
+      concurrency:
+        description: 'Max concurrent evaluations.'
+        type: number
+        default: 10
       experiment_name_prefix:
         description: 'Prefix for the experiment name. If empty, will be auto-generated from branch name.'
         type: string
@@ -26,7 +34,7 @@ on:
 
 jobs:
   evals:
-    name: Run Evaluations
+    name: Run ${{ inputs.suite }} Evaluations
     runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
       N8N_AI_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
@@ -88,8 +96,11 @@ jobs:
       - name: Run Evaluations
         working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
         run: |
-          pnpm eval:pairwise:langsmith \
+          pnpm eval \
+            --suite "${{ inputs.suite }}" \
+            --backend langsmith \
             --dataset "${{ inputs.dataset }}" \
             --repetitions ${{ inputs.repetitions }} \
             --judges ${{ inputs.judges }} \
+            --concurrency ${{ inputs.concurrency }} \
             --name "${{ steps.experiment.outputs.name }}"

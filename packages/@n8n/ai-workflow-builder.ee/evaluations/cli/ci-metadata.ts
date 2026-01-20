@@ -3,17 +3,16 @@
  *
  * Provides metadata to distinguish CI runs from local development runs
  * and to track provenance of automated evaluation results.
+ *
+ * Note: Git info (commit SHA, branch) is not included here as LangSmith
+ * automatically tracks it via LANGSMITH_REVISION_ID and LANGSMITH_BRANCH.
  */
 
 export interface CIMetadata {
 	/** Whether this run is from CI or local development */
 	source: 'ci' | 'local';
-	/** The GitHub Actions event that triggered this run (e.g., 'push', 'schedule', 'workflow_dispatch') */
+	/** The GitHub Actions event that triggered this run (e.g., 'push', 'release', 'workflow_dispatch') */
 	trigger?: string;
-	/** The Git commit SHA being evaluated */
-	commitSha?: string;
-	/** The Git branch or tag name */
-	branch?: string;
 	/** The GitHub Actions run ID for linking back to the workflow run */
 	runId?: string;
 }
@@ -34,8 +33,6 @@ export function buildCIMetadata(): CIMetadata {
 	return {
 		source: 'ci',
 		trigger: process.env.GITHUB_EVENT_NAME,
-		commitSha: process.env.GITHUB_SHA,
-		branch: process.env.GITHUB_REF_NAME,
 		runId: process.env.GITHUB_RUN_ID,
 	};
 }
