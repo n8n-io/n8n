@@ -192,6 +192,14 @@
 	--spacing--4xl: 8rem; // 128px
 	--spacing--5xl: 16rem; // 256px
 
+	// Border radius
+	--radius--sm: 2px;
+	--radius--md: 4px;
+	--radius: var(--radius--md); // For retro-compatibility
+	--radius--lg: 8px;
+	--radius--xl: 12px;
+	--radius--full: 99999px;
+
 	// Font family
 	--font-family: InterVariable, sans-serif;
 	--font-family--monospace:
