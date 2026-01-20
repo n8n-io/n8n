@@ -14,6 +14,7 @@ import {
 	type TagRepository,
 	type WorkflowTagMappingRepository,
 	User,
+	type UserRepository,
 	WorkflowEntity,
 	type WorkflowRepository,
 } from '@n8n/db';
@@ -23,15 +24,14 @@ import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
-import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 jest.mock('fast-glob');
 
@@ -59,29 +59,28 @@ describe('SourceControlImportService', () => {
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const variableService = mock<VariablesService>();
 	const variablesRepository = mock<VariablesRepository>();
-	const activeWorkflowManager = mock<ActiveWorkflowManager>();
+	const workflowService = mock<WorkflowService>();
+	const userRepository = mock<UserRepository>();
 	const service = new SourceControlImportService(
 		mockLogger,
 		mock(),
 		variableService,
-		activeWorkflowManager,
 		mock(),
 		projectRepository,
 		projectRelationRepository,
 		tagRepository,
 		sharedWorkflowRepository,
 		mock(),
-		mock(),
+		userRepository,
 		variablesRepository,
 		workflowRepository,
 		workflowTagMappingRepository,
-		mock(),
+		workflowService,
 		mock(),
 		mock(),
 		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 		sourceControlScopedService,
-		mock(),
 		mock(),
 	);
 
@@ -273,7 +272,7 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
-		it('should set new workflows as inactive with null activeVersionId', async () => {
+		it('should set new workflows as inactive', async () => {
 			const mockUserId = 'user-id-123';
 			const mockWorkflowFile = '/mock/workflow1.json';
 			const mockWorkflowData = {
@@ -308,8 +307,8 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+			expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should keep existing inactive workflows inactive', async () => {
@@ -354,21 +353,25 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+			expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
-		it('should reactivate existing active workflows', async () => {
+		it('should preserve existing active workflow active version', async () => {
 			const mockUserId = 'user-id-123';
+			const mockUser = Object.assign(new User(), { id: mockUserId });
 			const mockWorkflowFile = '/mock/workflow1.json';
 			const mockWorkflowData = {
 				id: 'workflow1',
 				name: 'Active Workflow',
 				nodes: [],
 				parentFolderId: null,
+				active: true,
+				activeVersionId: 'v2',
 			};
 			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
 
+			userRepository.findOne.mockResolvedValue(mockUser);
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
 				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
 			);
@@ -377,7 +380,7 @@ describe('SourceControlImportService', () => {
 					id: 'workflow1',
 					name: 'Active Workflow',
 					active: true,
-					activeVersionId: 'version-123',
+					activeVersionId: 'v1',
 				}),
 			]);
 			folderRepository.find.mockResolvedValue([]);
@@ -396,16 +399,17 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({
 					id: 'workflow1',
 					active: true,
-					activeVersionId: 'version-123',
+					activeVersionId: 'v1',
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
-			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'activate');
+			expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should deactivate archived workflows even if they were previously active', async () => {
 			const mockUserId = 'user-id-123';
+			const mockUser = Object.assign(new User(), { id: mockUserId });
 			const mockWorkflowFile = '/mock/workflow1.json';
 			const mockWorkflowData = {
 				id: 'workflow1',
@@ -413,6 +417,8 @@ describe('SourceControlImportService', () => {
 				nodes: [],
 				parentFolderId: null,
 				isArchived: true,
+				active: true,
+				activeVersionId: 'v1',
 			};
 			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
 
@@ -427,6 +433,7 @@ describe('SourceControlImportService', () => {
 					activeVersionId: 'version-123',
 				}),
 			]);
+			userRepository.findOne.mockResolvedValue(mockUser);
 			folderRepository.find.mockResolvedValue([]);
 			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
 			workflowRepository.upsert.mockResolvedValue({
@@ -447,56 +454,369 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
-			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+			expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
+			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
-		it('should handle activation errors gracefully', async () => {
+		describe('autoPublish parameter', () => {
 			const mockUserId = 'user-id-123';
-			const mockWorkflowFile = '/mock/workflow1.json';
-			const mockWorkflowData = {
-				id: 'workflow1',
-				name: 'Workflow with activation error',
-				nodes: [],
-				parentFolderId: null,
-			};
-			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+			const mockUser = Object.assign(new User(), { id: mockUserId });
 
-			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
-				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
-			);
-			workflowRepository.findByIds.mockResolvedValue([
-				Object.assign(new WorkflowEntity(), {
+			beforeEach(() => {
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+					Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+				);
+				folderRepository.find.mockResolvedValue([]);
+				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+				workflowRepository.upsert.mockResolvedValue({
+					identifiers: [{ id: 'workflow1' }],
+					generatedMaps: [],
+					raw: [],
+				});
+				userRepository.findOne.mockResolvedValue(mockUser);
+			});
+
+			it('should preserve existing active state of an active workflow with autoPublish="none"', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					nodes: [],
+					parentFolderId: null,
+					active: true,
+					activeVersionId: 'v2',
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					active: true,
+					activeVersionId: 'v1',
+					versionId: 'v1',
+				});
+
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'none');
+
+				// Should preserve existing active state
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						active: true,
+						activeVersionId: 'v1',
+					}),
+					['id'],
+				);
+				// Should not call activate or deactivate
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should preserve existing active state of an inactive workflow with autoPublish="none"', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					nodes: [],
+					parentFolderId: null,
+					active: true,
+					activeVersionId: 'v1',
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					active: false,
+					activeVersionId: null,
+					versionId: 'v1',
+				});
+
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'none');
+
+				// Should preserve existing active state
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						active: false,
+						activeVersionId: null,
+					}),
+					['id'],
+				);
+				// Should not call activate or deactivate
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should activate new workflows with autoPublish="all"', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'New Workflow',
+					nodes: [],
+					parentFolderId: null,
+					active: false,
+					activeVersionId: null,
+				};
+
+				workflowRepository.findByIds.mockResolvedValue([]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+
+				// Should import as inactive first
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						active: false,
+						activeVersionId: null,
+					}),
+					['id'],
+				);
+
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					mockUser,
+					'workflow1',
+					expect.objectContaining({
+						versionId: expect.any(String),
+					}),
+				);
+			});
+
+			it('should reactivate existing workflows with autoPublish="all"', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Existing Workflow',
+					nodes: [],
+					parentFolderId: null,
+					active: false,
+					activeVersionId: null,
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					active: true,
+					activeVersionId: 'v1',
+					versionId: 'v1',
+				});
+
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+
+				// Should import as inactive first
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						active: false,
+						activeVersionId: null,
+					}),
+					['id'],
+				);
+
+				// Should be deactivated first and then activated
+				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					mockUser,
+					'workflow1',
+					expect.objectContaining({
+						versionId: expect.any(String),
+					}),
+				);
+			});
+
+			it('should activate only previously published workflows with autoPublish="published"', async () => {
+				const mockWorkflowFile1 = '/mock/workflow1.json';
+				const mockWorkflowFile2 = '/mock/workflow2.json';
+				const mockWorkflowData1 = {
+					id: 'workflow1',
+					name: 'Previously Active',
+					nodes: [],
+					parentFolderId: null,
+					active: false,
+					activeVersionId: null,
+				};
+				const mockWorkflowData2 = {
+					id: 'workflow2',
+					name: 'Previously Inactive',
+					nodes: [],
+					parentFolderId: null,
+					active: false,
+					activeVersionId: null,
+				};
+				const existingWorkflow1 = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					activeVersionId: 'v1',
+					versionId: 'v1',
+				});
+				const existingWorkflow2 = Object.assign(new WorkflowEntity(), {
+					id: 'workflow2',
+					activeVersionId: null,
+					versionId: 'v2',
+				});
+
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow1, existingWorkflow2]);
+				fsReadFile
+					.mockResolvedValueOnce(JSON.stringify(mockWorkflowData1))
+					.mockResolvedValueOnce(JSON.stringify(mockWorkflowData2));
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile1, id: 'workflow1' }),
+					mock<SourceControlledFile>({ file: mockWorkflowFile2, id: 'workflow2' }),
+				];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'published');
+
+				// Workflow1 should be deactivated (was previously active) and then activated
+				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					mockUser,
+					'workflow1',
+					expect.any(Object),
+				);
+				// Workflow2 should not be activated (was previously inactive)
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalledWith(
+					mockUser,
+					'workflow2',
+					expect.any(Object),
+				);
+			});
+
+			it('should never activate archived workflows regardless of autoPublish mode', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Archived Workflow',
+					nodes: [],
+					parentFolderId: null,
+					isArchived: true,
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					activeVersionId: 'v1',
+					versionId: 'v1',
+				});
+
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				// Test with 'all' mode
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+
+				// Should deactivate the previously active workflow
+				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
+				// Should NOT activate archived workflow
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+				// Should import as inactive
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						active: false,
+						activeVersionId: null,
+						isArchived: true,
+					}),
+					['id'],
+				);
+			});
+
+			it('should deactivate and reactivate workflow when transitioning versions', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					nodes: [],
+					parentFolderId: null,
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					activeVersionId: 'old-version',
+					versionId: 'old-version',
+				});
+
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'published');
+
+				// Should deactivate old version
+				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
+				// Should import with new version as inactive
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						active: false,
+						activeVersionId: null,
+						versionId: expect.any(String),
+					}),
+					['id'],
+				);
+				// Should activate with new version after history is saved
+				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
+					mockUser,
+					'workflow1',
+					expect.objectContaining({
+						versionId: expect.any(String),
+					}),
+				);
+			});
+
+			it('should handle activation errors gracefully', async () => {
+				const mockUserId = 'user-id-123';
+				const mockUser = Object.assign(new User(), { id: mockUserId });
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
 					id: 'workflow1',
 					name: 'Workflow with activation error',
-					active: true,
-					activeVersionId: 'version-123',
-				}),
-			]);
-			folderRepository.find.mockResolvedValue([]);
-			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
-			workflowRepository.upsert.mockResolvedValue({
-				identifiers: [{ id: 'workflow1' }],
-				generatedMaps: [],
-				raw: [],
+					nodes: [],
+					parentFolderId: null,
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+					Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+				);
+				workflowRepository.findByIds.mockResolvedValue([]);
+				userRepository.findOne.mockResolvedValue(mockUser);
+				folderRepository.find.mockResolvedValue([]);
+				sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+				workflowRepository.upsert.mockResolvedValue({
+					identifiers: [{ id: 'workflow1' }],
+					generatedMaps: [],
+					raw: [],
+				});
+				workflowService.activateWorkflow.mockRejectedValue(new Error('Activation failed'));
+
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+				const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+
+				expect(mockLogger.error).toHaveBeenCalledWith(
+					'Failed to activate workflow workflow1',
+					expect.any(Object),
+				);
+				expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
 			});
-			workflowRepository.update.mockResolvedValue({
-				generatedMaps: [],
-				raw: [],
-				affected: 1,
-			});
-			activeWorkflowManager.add.mockRejectedValue(new Error('Activation failed'));
-
-			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
-
-			const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId);
-
-			expect(mockLogger.error).toHaveBeenCalledWith(
-				'Failed to activate workflow workflow1',
-				expect.any(Object),
-			);
-			expect(workflowRepository.update).toHaveBeenCalled();
-			expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
 		});
 	});
 
