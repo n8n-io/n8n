@@ -43,6 +43,33 @@ interface OidcSession {
 	iat: number;
 }
 
+// Type guards for OIDC validation
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isOidcDiscoveryDocument(value: unknown): value is OidcDiscoveryDocument {
+	if (!isRecord(value)) return false;
+	return (
+		typeof value.issuer === 'string' &&
+		typeof value.jwks_uri === 'string' &&
+		typeof value.authorization_endpoint === 'string' &&
+		typeof value.token_endpoint === 'string'
+	);
+}
+
+function isOidcState(value: unknown): value is OidcState {
+	if (!isRecord(value)) return false;
+	return (
+		typeof value.csrf === 'string' &&
+		typeof value.codeVerifier === 'string' &&
+		typeof value.returnUrl === 'string' &&
+		typeof value.credentialId === 'string' &&
+		typeof value.webhookPath === 'string' &&
+		typeof value.timestamp === 'number'
+	);
+}
+
 // Cache for discovery documents and JWKS
 const discoveryCache = new Map<string, { doc: OidcDiscoveryDocument; expires: number }>();
 const jwksCache = new Map<string, jose.JWTVerifyGetKey>();
@@ -59,9 +86,13 @@ async function getDiscoveryDocument(discoveryUrl: string): Promise<OidcDiscovery
 		throw new Error(`Failed to fetch OIDC discovery document: ${response.statusText}`);
 	}
 
-	const doc = (await response.json()) as OidcDiscoveryDocument;
-	discoveryCache.set(discoveryUrl, { doc, expires: Date.now() + DISCOVERY_CACHE_TTL });
-	return doc;
+	const data: unknown = await response.json();
+	if (!isOidcDiscoveryDocument(data)) {
+		throw new Error('Invalid OIDC discovery document structure');
+	}
+
+	discoveryCache.set(discoveryUrl, { doc: data, expires: Date.now() + DISCOVERY_CACHE_TTL });
+	return data;
 }
 
 async function getJwks(jwksUri: string): Promise<jose.JWTVerifyGetKey> {
@@ -128,25 +159,35 @@ export class OidcCallbackController {
 			}
 
 			// Decode and verify state
-			const stateCookie = req.cookies?.['n8n_oidc_state'] as string | undefined;
-			if (!stateCookie || typeof stateCookie !== 'string') {
+			const stateCookieRaw: unknown = req.cookies?.['n8n_oidc_state'];
+			if (!stateCookieRaw || typeof stateCookieRaw !== 'string') {
 				res.status(401).send('Missing state cookie - session may have expired');
 				return;
 			}
+			const stateCookie: string = stateCookieRaw;
 
 			let state: OidcState;
 			try {
-				state = JSON.parse(Buffer.from(stateCookie, 'base64url').toString()) as OidcState;
+				const parsed: unknown = JSON.parse(Buffer.from(stateCookie, 'base64url').toString());
+				if (!isOidcState(parsed)) {
+					res.status(401).send('Invalid state cookie structure');
+					return;
+				}
+				state = parsed;
 			} catch {
 				res.status(401).send('Invalid state cookie');
 				return;
 			}
 
 			// Verify CSRF token matches
-			const receivedState = JSON.parse(Buffer.from(encodedState, 'base64url').toString()) as {
-				csrf: string;
-			};
-			if (receivedState.csrf !== state.csrf) {
+			const receivedStateParsed: unknown = JSON.parse(
+				Buffer.from(encodedState, 'base64url').toString(),
+			);
+			if (!isRecord(receivedStateParsed) || typeof receivedStateParsed.csrf !== 'string') {
+				res.status(401).send('Invalid state parameter');
+				return;
+			}
+			if (receivedStateParsed.csrf !== state.csrf) {
 				res.status(401).send('State mismatch - possible CSRF attack');
 				return;
 			}
@@ -234,24 +275,19 @@ export class OidcCallbackController {
 				try {
 					const jwks = await getJwks(discovery.jwks_uri);
 
-					// Build verification options - only add issuer/audience if explicitly configured
-					const verifyOptions: jose.JWTVerifyOptions = {};
-
-					// For issuer: use configured value, or skip validation if empty
-					if (oidcConfig.issuer) {
-						verifyOptions.issuer = oidcConfig.issuer;
-					}
-
-					// For audience: use configured value, or skip if empty (Azure AD may use different audience)
-					if (oidcConfig.audience) {
-						verifyOptions.audience = oidcConfig.audience;
-					}
+					// Build verification options with fallbacks from discovery document
+					const verifyOptions: jose.JWTVerifyOptions = {
+						// Use configured issuer or fall back to discovery document issuer
+						issuer: oidcConfig.issuer || discovery.issuer,
+						// Use configured audience or fall back to clientId
+						audience: oidcConfig.audience || oidcConfig.clientId,
+					};
 
 					this.logger.debug('Validating ID token', {
-						configuredIssuer: oidcConfig.issuer || '(not configured - skipping)',
-						configuredAudience: oidcConfig.audience || '(not configured - skipping)',
-						discoveryIssuer: discovery.issuer,
-						clientId: oidcConfig.clientId,
+						configuredIssuer: oidcConfig.issuer || '(using discovery)',
+						configuredAudience: oidcConfig.audience || '(using clientId)',
+						effectiveIssuer: verifyOptions.issuer,
+						effectiveAudience: verifyOptions.audience,
 					});
 
 					const { payload } = await jose.jwtVerify(tokens.id_token, jwks, verifyOptions);

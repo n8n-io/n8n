@@ -16,14 +16,35 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BlockList } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
+import { isOidcDiscoveryDocument, type OidcDiscoveryDocument } from './oidc.typeguards';
 import { formatPrivateKey } from '../../utils/utilities';
 
-// OIDC JWKS cache for performance - stores JWKS clients per discovery URL
+// OIDC cache for performance - stores JWKS clients and discovery documents per URL
 const oidcJwksCache = new Map<string, jose.JWTVerifyGetKey>();
+const oidcDiscoveryCache = new Map<string, { doc: OidcDiscoveryDocument; expires: number }>();
+const DISCOVERY_CACHE_TTL = 3600000; // 1 hour
 
-interface OidcDiscoveryDocument {
-	jwks_uri: string;
-	issuer: string;
+/**
+ * Fetches and caches OIDC discovery document
+ */
+async function getDiscoveryDocument(discoveryUrl: string): Promise<OidcDiscoveryDocument> {
+	const cached = oidcDiscoveryCache.get(discoveryUrl);
+	if (cached && cached.expires > Date.now()) {
+		return cached.doc;
+	}
+
+	const response = await fetch(discoveryUrl);
+	if (!response.ok) {
+		throw new Error(`Failed to fetch OIDC discovery document: ${response.statusText}`);
+	}
+
+	const data: unknown = await response.json();
+	if (!isOidcDiscoveryDocument(data)) {
+		throw new Error('Invalid OIDC discovery document structure');
+	}
+
+	oidcDiscoveryCache.set(discoveryUrl, { doc: data, expires: Date.now() + DISCOVERY_CACHE_TTL });
+	return data;
 }
 
 /**
@@ -31,14 +52,7 @@ interface OidcDiscoveryDocument {
  */
 async function getOidcJwks(discoveryUrl: string): Promise<jose.JWTVerifyGetKey> {
 	if (!oidcJwksCache.has(discoveryUrl)) {
-		const response = await fetch(discoveryUrl);
-		if (!response.ok) {
-			throw new Error(`Failed to fetch OIDC discovery document: ${response.statusText}`);
-		}
-		const discovery = (await response.json()) as OidcDiscoveryDocument;
-		if (!discovery.jwks_uri) {
-			throw new Error('OIDC discovery document missing jwks_uri');
-		}
+		const discovery = await getDiscoveryDocument(discoveryUrl);
 		oidcJwksCache.set(discoveryUrl, jose.createRemoteJWKSet(new URL(discovery.jwks_uri)));
 	}
 	return oidcJwksCache.get(discoveryUrl)!;
@@ -349,6 +363,7 @@ export async function validateWebhookAuthentication(
 		// OIDC authentication - validate Bearer token using IdP's JWKS
 		let oidcConfig: {
 			discoveryUrl: string;
+			clientId?: string;
 			issuer?: string;
 			audience?: string;
 		};
@@ -356,6 +371,7 @@ export async function validateWebhookAuthentication(
 		try {
 			oidcConfig = await ctx.getCredentials<{
 				discoveryUrl: string;
+				clientId?: string;
 				issuer?: string;
 				audience?: string;
 			}>('oidcWebhookAuth');
@@ -375,19 +391,35 @@ export async function validateWebhookAuthentication(
 		}
 
 		try {
+			// Fetch discovery document and JWKS
+			const discovery = await getDiscoveryDocument(oidcConfig.discoveryUrl);
 			const jwks = await getOidcJwks(oidcConfig.discoveryUrl);
 
-			// Build verification options - only add issuer/audience if configured
-			const verifyOptions: jose.JWTVerifyOptions = {};
-			if (oidcConfig.issuer) {
-				verifyOptions.issuer = oidcConfig.issuer;
-			}
-			if (oidcConfig.audience) {
-				verifyOptions.audience = oidcConfig.audience;
-			}
+			// Build verification options with fallbacks from discovery document
+			const verifyOptions: jose.JWTVerifyOptions = {
+				// Use configured issuer or fall back to discovery document issuer
+				issuer: oidcConfig.issuer || discovery.issuer,
+				// Use configured audience or fall back to clientId
+				audience: oidcConfig.audience || oidcConfig.clientId,
+			};
 
 			const { payload } = await jose.jwtVerify(token, jwks, verifyOptions);
-			return payload as IDataObject;
+			// Convert JWTPayload to IDataObject - only include JSON-safe values
+			const result: IDataObject = {};
+			for (const [key, value] of Object.entries(payload)) {
+				if (value === undefined) continue;
+				// JWT claims are JSON values: string, number, boolean, object, array, or null
+				if (
+					typeof value === 'string' ||
+					typeof value === 'number' ||
+					typeof value === 'boolean' ||
+					value === null ||
+					typeof value === 'object'
+				) {
+					result[key] = value;
+				}
+			}
+			return result;
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Token validation failed';
 			throw new WebhookAuthorizationError(403, errorMessage);

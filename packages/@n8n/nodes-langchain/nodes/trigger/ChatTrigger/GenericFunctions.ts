@@ -35,6 +35,26 @@ interface OidcConfig {
 	sessionDurationHours: number;
 }
 
+// Type guards for OIDC validation
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isOidcDiscoveryDocument(value: unknown): value is OidcDiscoveryDocument {
+	if (!isRecord(value)) return false;
+	return (
+		typeof value.issuer === 'string' &&
+		typeof value.jwks_uri === 'string' &&
+		typeof value.authorization_endpoint === 'string' &&
+		typeof value.token_endpoint === 'string'
+	);
+}
+
+function isOidcSession(value: unknown): value is OidcSession {
+	if (!isRecord(value)) return false;
+	return typeof value.sub === 'string' && typeof value.exp === 'number' && typeof value.iat === 'number';
+}
+
 async function getDiscoveryDocument(discoveryUrl: string): Promise<OidcDiscoveryDocument> {
 	const cached = discoveryCache.get(discoveryUrl);
 	if (cached && cached.expires > Date.now()) {
@@ -46,9 +66,13 @@ async function getDiscoveryDocument(discoveryUrl: string): Promise<OidcDiscovery
 		throw new Error(`Failed to fetch OIDC discovery document: ${response.statusText}`);
 	}
 
-	const doc = (await response.json()) as OidcDiscoveryDocument;
-	discoveryCache.set(discoveryUrl, { doc, expires: Date.now() + DISCOVERY_CACHE_TTL });
-	return doc;
+	const data: unknown = await response.json();
+	if (!isOidcDiscoveryDocument(data)) {
+		throw new Error('Invalid OIDC discovery document structure');
+	}
+
+	discoveryCache.set(discoveryUrl, { doc: data, expires: Date.now() + DISCOVERY_CACHE_TTL });
+	return data;
 }
 
 /**
@@ -88,12 +112,16 @@ function verifySession(token: string, secret: string): OidcSession | null {
 			return null;
 		}
 
-		const session = JSON.parse(Buffer.from(payload, 'base64url').toString()) as OidcSession;
-		if (session.exp < Date.now() / 1000) {
+		const parsed: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString());
+		if (!isOidcSession(parsed)) {
 			return null;
 		}
 
-		return session;
+		if (parsed.exp < Date.now() / 1000) {
+			return null;
+		}
+
+		return parsed;
 	} catch {
 		return null;
 	}

@@ -68,7 +68,7 @@ export class OidcWebhookAuth implements ICredentialType {
 			default: '',
 			placeholder: 'https://login.microsoftonline.com/{tenant}/v2.0',
 			description:
-				'Expected issuer (iss) claim value. Leave empty to auto-discover from discovery URL.',
+				'Expected issuer (iss) claim value for token validation. If empty, uses the issuer from the discovery document.',
 		},
 		{
 			displayName: 'Expected Audience',
@@ -77,7 +77,7 @@ export class OidcWebhookAuth implements ICredentialType {
 			default: '',
 			placeholder: 'api://your-app-id',
 			description:
-				'Expected audience (aud) claim. Leave empty to use Client ID as audience (default).',
+				'Expected audience (aud) claim for token validation. If empty, uses the Client ID as the expected audience.',
 		},
 		{
 			displayName: 'Session Secret',

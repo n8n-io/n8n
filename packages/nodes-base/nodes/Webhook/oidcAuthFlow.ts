@@ -2,6 +2,13 @@ import type { Request, Response } from 'express';
 import type { IWebhookFunctions } from 'n8n-workflow';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
 
+import {
+	isOidcDiscoveryDocument,
+	isOidcSession,
+	type OidcDiscoveryDocument,
+	type OidcSession,
+} from './oidc.typeguards';
+
 /**
  * OIDC Authorization Code Flow implementation for browser-based triggers
  * (Form Trigger, Chat Trigger)
@@ -19,22 +26,6 @@ export interface OidcConfig {
 	audience: string;
 	sessionSecret: string;
 	sessionDurationHours: number;
-}
-
-interface OidcDiscoveryDocument {
-	issuer: string;
-	authorization_endpoint: string;
-	token_endpoint: string;
-	jwks_uri: string;
-	userinfo_endpoint?: string;
-}
-
-interface OidcSession {
-	sub: string; // Subject (user ID)
-	email?: string;
-	name?: string;
-	exp: number; // Expiration timestamp
-	iat: number; // Issued at timestamp
 }
 
 // Cache for OIDC discovery documents
@@ -55,9 +46,13 @@ export async function getDiscoveryDocument(discoveryUrl: string): Promise<OidcDi
 		throw new Error(`Failed to fetch OIDC discovery document: ${response.statusText}`);
 	}
 
-	const doc = (await response.json()) as OidcDiscoveryDocument;
-	discoveryCache.set(discoveryUrl, { doc, expires: Date.now() + DISCOVERY_CACHE_TTL });
-	return doc;
+	const data: unknown = await response.json();
+	if (!isOidcDiscoveryDocument(data)) {
+		throw new Error('Invalid OIDC discovery document structure');
+	}
+
+	discoveryCache.set(discoveryUrl, { doc: data, expires: Date.now() + DISCOVERY_CACHE_TTL });
+	return data;
 }
 
 /**
@@ -84,14 +79,17 @@ function verifySession(token: string, secret: string): OidcSession | null {
 			return null;
 		}
 
-		const session = JSON.parse(Buffer.from(payload, 'base64url').toString()) as OidcSession;
-
-		// Check expiration
-		if (session.exp < Date.now() / 1000) {
+		const parsed: unknown = JSON.parse(Buffer.from(payload, 'base64url').toString());
+		if (!isOidcSession(parsed)) {
 			return null;
 		}
 
-		return session;
+		// Check expiration
+		if (parsed.exp < Date.now() / 1000) {
+			return null;
+		}
+
+		return parsed;
 	} catch {
 		return null;
 	}
@@ -210,6 +208,72 @@ export async function redirectToAuthorization(
 // Note: handleOidcCallback has been moved to the centralized OidcCallbackController
 // in packages/cli/src/controllers/oidc-callback.controller.ts
 // This avoids the need to register individual form/webhook URLs as redirect URIs
+
+/**
+ * Generate an OIDC form auth token for POST requests
+ * This token is embedded in the form HTML and sent via x-auth-token header
+ * because JavaScript fetch() doesn't send SameSite=Lax cookies with POST
+ */
+export function generateOidcFormAuthToken(
+	session: OidcSession,
+	webhookPath: string,
+	sessionSecret: string,
+): string {
+	// Token includes: session sub, webhook path, and expiry (same as session)
+	const tokenData = {
+		sub: session.sub,
+		path: normalizeWebhookPath(webhookPath),
+		exp: session.exp,
+	};
+	const payload = Buffer.from(JSON.stringify(tokenData)).toString('base64url');
+	const signature = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+	return `${payload}.${signature}`;
+}
+
+/**
+ * Validate an OIDC form auth token from x-auth-token header
+ */
+export function validateOidcFormAuthToken(
+	token: string | undefined,
+	webhookPath: string,
+	sessionSecret: string,
+): OidcSession | null {
+	if (!token || typeof token !== 'string') return null;
+
+	const parts = token.split('.');
+	if (parts.length !== 2) return null;
+
+	const [payload, signature] = parts;
+	const expectedSignature = createHmac('sha256', sessionSecret).update(payload).digest('base64url');
+
+	if (signature !== expectedSignature) return null;
+
+	try {
+		const tokenData = JSON.parse(Buffer.from(payload, 'base64url').toString());
+		if (typeof tokenData.sub !== 'string' || typeof tokenData.exp !== 'number') {
+			return null;
+		}
+
+		// Verify path matches
+		if (tokenData.path !== normalizeWebhookPath(webhookPath)) {
+			return null;
+		}
+
+		// Check expiration
+		if (tokenData.exp < Date.now() / 1000) {
+			return null;
+		}
+
+		// Return a minimal session object
+		return {
+			sub: tokenData.sub,
+			exp: tokenData.exp,
+			iat: Math.floor(Date.now() / 1000),
+		};
+	} catch {
+		return null;
+	}
+}
 
 /**
  * Get OIDC config from credentials
