@@ -3307,7 +3307,7 @@
 	"workflowSettings.timeSavedPerExecution.tooltip": "Total time savings are summarised in the Overview page.",
 	"workflowSettings.timeSavedPerExecution.minutesSaved": "Minutes saved",
 	"workflowSettings.timeSavedPerExecution.tab.fixed": "Fixed",
-	"workflowSettings.timeSavedPerExecution.tab.conditional": "Conditional",
+	"workflowSettings.timeSavedPerExecution.tab.dynamic": "Dynamic (uses time saved nodes)",
 	"workflowSettings.timeSavedPerExecution.noNodesDetected": "No time saved nodes detected",
 	"workflowSettings.timeSavedPerExecution.noNodesDetected.hint": "Add one or more time saved nodes to calculate time saved dynamically",
 	"workflowSettings.timeSavedPerExecution.nodesDetected": "Active - {count} time saved nodes currently setup",
