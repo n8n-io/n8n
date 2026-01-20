@@ -183,6 +183,40 @@ class Worker {
 	terminate = vi.fn();
 }
 
+class MockMessagePort {
+	onmessage = vi.fn();
+
+	onmessageerror = vi.fn();
+
+	postMessage = vi.fn();
+
+	start = vi.fn();
+
+	close = vi.fn();
+
+	addEventListener = vi.fn();
+
+	removeEventListener = vi.fn();
+
+	dispatchEvent = vi.fn(() => true);
+}
+
+class SharedWorker {
+	port: MockMessagePort;
+
+	onerror = vi.fn();
+
+	constructor(_url: string | URL, _options?: string | WorkerOptions) {
+		this.port = new MockMessagePort();
+	}
+
+	addEventListener = vi.fn();
+
+	removeEventListener = vi.fn();
+
+	dispatchEvent = vi.fn(() => true);
+}
+
 class DataTransfer {
 	private data: Record<string, unknown> = {};
 
@@ -199,6 +233,11 @@ class DataTransfer {
 Object.defineProperty(window, 'Worker', {
 	writable: true,
 	value: Worker,
+});
+
+Object.defineProperty(window, 'SharedWorker', {
+	writable: true,
+	value: SharedWorker,
 });
 
 Object.defineProperty(window, 'DataTransfer', {
