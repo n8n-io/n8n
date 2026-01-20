@@ -81,9 +81,7 @@ onMounted(async () => {
 	<div :class="$style.container" data-test-id="ai">
 		<div :class="$style.header">
 			<N8nHeading size="2xlarge">{{ i18n.baseText('settings.ai') }}</N8nHeading>
-			<N8nInfoTip theme="info" type="note">
-				<span v-n8n-html="aiSettingsDescription"></span>
-			</N8nInfoTip>
+			<N8nText v-n8n-html="aiSettingsDescription" size="small" color="text-light" />
 		</div>
 		<div :class="$style.content">
 			<div :class="$style.checkboxContainer">
@@ -105,14 +103,6 @@ onMounted(async () => {
 				<N8nText :class="$style.checkboxDescription" color="text-base">
 					{{ i18n.baseText('settings.ai.allowSendingParameterValues.description') }}
 				</N8nText>
-				<N8nNotice
-					v-if="!allowSendingParameterValues"
-					type="warning"
-					:closable="false"
-					:class="$style.notice"
-				>
-					{{ i18n.baseText('settings.ai.efficiencyNotice') }}
-				</N8nNotice>
 			</div>
 		</div>
 		<div :class="$style.privacyNote">
@@ -133,7 +123,7 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	gap: var(--spacing--xl);
 }
 
 .header {

@@ -3669,7 +3669,6 @@
 	"settings.ai.allowSendingSchema.description": "Allow n8n to send key names and types of your data. This helps AI understand your data structure without sending values.",
 	"settings.ai.allowSendingParameterValues.label": "Send actual data values",
 	"settings.ai.allowSendingParameterValues.description": "Allow n8n to send real values from your executions which may include sensitive data. Turning this off reduces the acuracy of the AI Assistant and disables AI Workflow Builder.",
-	"settings.ai.efficiencyNotice": "Not sending data values will result in less helpful AI responses and will disable the AI Builder feature.",
 	"settings.ai.privacyNote.heading": "Privacy Note:",
 	"settings.ai.privacyNote.content": "Your data is processed securely and is not used to train our models. These settings will help improve AI accuracy and provide context-aware responses. You can learn more <a href=\"{docsLink}\" target=\"_blank\">here</a>.",
 	"settings.ai.updated.success": "AI settings updated",
