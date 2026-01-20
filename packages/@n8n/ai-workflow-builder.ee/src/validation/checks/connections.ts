@@ -2,6 +2,11 @@ import type { INodeConnections, INodeTypeDescription, NodeConnectionType } from 
 import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import {
+	DATA_TABLE_NODE_TYPE,
+	isDataTableRowColumnOperation,
+	SET_NODE_TYPE,
+} from '@/utils/data-table-helpers';
 import { isSubNode } from '@/utils/node-helpers';
 import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
 import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
@@ -133,6 +138,47 @@ function checkMergeNodeConnections(
 	return issues;
 }
 
+function checkDataTableHasSetNodePredecessor(
+	workflow: SimpleWorkflow,
+	node: SimpleWorkflow['nodes'][number],
+	nodesByName: Map<string, SimpleWorkflow['nodes'][number]>,
+): ProgrammaticViolation[] {
+	if (node.type !== DATA_TABLE_NODE_TYPE) {
+		return [];
+	}
+
+	// Only check for Set node on row column operations (insert, update, upsert)
+	// Read operations (get, getAll) and delete don't need a Set node
+	const operation = (node.parameters?.operation as string) ?? 'insert';
+	if (!isDataTableRowColumnOperation(operation)) {
+		return [];
+	}
+
+	// Check if any predecessor is a Set node
+	const hasSetNodePredecessor = Object.entries(workflow.connections).some(([sourceName, outputs]) =>
+		outputs.main?.some((connections) =>
+			connections?.some((connection) => {
+				if (connection.node !== node.name) return false;
+				const sourceNode = nodesByName.get(sourceName);
+				return sourceNode?.type === SET_NODE_TYPE;
+			}),
+		),
+	);
+
+	if (hasSetNodePredecessor) {
+		return [];
+	}
+
+	return [
+		{
+			name: 'data-table-missing-set-node',
+			type: 'major',
+			description: `Data Table node "${node.name}" uses "${operation}" operation and should have a Set node (Edit Fields) immediately before it to define the columns. Add a Set node and connect it to the Data Table.`,
+			pointsDeducted: 20,
+		},
+	];
+}
+
 function checkSubNodeRootConnections(
 	workflow: SimpleWorkflow,
 	nodeInfo: NodeResolvedConnectionTypesInfo,
@@ -232,6 +278,8 @@ export function validateConnections(
 		violations.push(...checkMergeNodeConnections(nodeInfo, nodeConnections));
 
 		violations.push(...checkSubNodeRootConnections(workflow, nodeInfo, nodesByName));
+
+		violations.push(...checkDataTableHasSetNodePredecessor(workflow, node, nodesByName));
 	}
 
 	return violations;

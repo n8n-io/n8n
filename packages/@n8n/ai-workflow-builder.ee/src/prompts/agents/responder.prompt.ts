@@ -5,6 +5,8 @@
  * Also handles conversational queries and explanations.
  */
 
+import { type DataTableInfo, isDataTableRowColumnOperation } from '@/utils/data-table-helpers';
+
 import { prompt } from '../builder';
 
 const RESPONDER_ROLE = `You are a helpful AI assistant for n8n workflow automation.
@@ -75,27 +77,12 @@ export function buildGeneralErrorGuidance(): string {
 }
 
 /**
- * Column definition with name and type
- */
-interface ColumnDefinition {
-	name: string;
-	type: string;
-}
-
-/**
- * Data table information for guidance generation
- */
-interface DataTableInfo {
-	nodeName: string;
-	tableName: string;
-	columns: ColumnDefinition[];
-	isAutoMapped: boolean;
-	operation?: string;
-}
-
-/**
  * Build guidance for data table creation.
  * Users need to manually create data tables since the AI workflow builder cannot create them automatically.
+ *
+ * For row column operations, column definitions are inferred from the Set node
+ * (n8n-nodes-base.set) that precedes each Data Table node.
+ * For read operations (get, getAll, delete), no column guidance is needed.
  */
 export function buildDataTableCreationGuidance(dataTables: DataTableInfo[]): string {
 	if (dataTables.length === 0) {
@@ -116,22 +103,39 @@ export function buildDataTableCreationGuidance(dataTables: DataTableInfo[]): str
 	parts.push('1. Go to the [Data Tables tab](/home/datatables)');
 
 	for (const table of dataTables) {
-		parts.push(`2. Click "Create Data Table" and name your table \`${table.tableName}\``);
+		const needsColumnDefinitions = isDataTableRowColumnOperation(table.operation);
 
-		if (table.columns.length > 0) {
-			parts.push('3. Add these columns with the following types:');
-			for (const column of table.columns) {
-				parts.push(`   - \`${column.name}\` (${column.type})`);
+		parts.push(
+			`2. Click "Create Data Table" and name it appropriately for the "${table.nodeName}" node`,
+		);
+
+		if (needsColumnDefinitions) {
+			// Column operations need column definitions
+			if (table.columns.length > 0) {
+				parts.push('3. Add these columns with the following types:');
+				for (const column of table.columns) {
+					parts.push(`   - \`${column.name}\` (${column.type})`);
+				}
+				if (table.setNodeName) {
+					parts.push(`   (These columns are defined in the "${table.setNodeName}" node)`);
+				}
+			} else if (table.setNodeName) {
+				parts.push(
+					`3. Add columns matching the fields defined in the "${table.setNodeName}" node. ` +
+						'Open that node to see the field names and types.',
+				);
+			} else {
+				parts.push('3. Add columns based on the data you want to store');
 			}
-		} else if (table.isAutoMapped) {
-			parts.push(
-				`3. Add columns matching the data fields from the node that connects to "${table.nodeName}". ` +
-					'Check the output of the preceding node to determine the column names and appropriate types (text, number, or boolean).',
-			);
 		} else {
-			parts.push('3. Add columns based on the data you want to store');
+			// Read operations just need the table to exist with appropriate columns
+			parts.push(
+				'3. Ensure the table has the columns you want to read/query ' +
+					`(the "${table.nodeName}" node uses the "${table.operation}" operation)`,
+			);
 		}
 
+		parts.push('4. After creating the table, select it in the Data Table node');
 		parts.push('');
 	}
 
