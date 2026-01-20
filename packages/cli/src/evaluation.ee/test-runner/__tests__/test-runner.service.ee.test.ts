@@ -59,6 +59,7 @@ describe('TestRunnerService', () => {
 			testCaseExecutionRepository,
 			errorReporter,
 			executionsConfig,
+			mock(),
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -497,6 +498,7 @@ describe('TestRunnerService', () => {
 				testCaseExecutionRepository,
 				errorReporter,
 				queueModeConfig,
+				mock(),
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -679,6 +681,8 @@ describe('TestRunnerService', () => {
 			// Setup test data
 			const triggerNodeName = 'TriggerNode';
 			const workflow = mock<IWorkflowBase>({
+				id: 'workflow-id',
+				name: 'Test Workflow',
 				nodes: [
 					{
 						id: 'node1',
@@ -807,6 +811,7 @@ describe('TestRunnerService', () => {
 					testCaseExecutionRepository,
 					errorReporter,
 					queueModeConfig,
+					mock(),
 				);
 			});
 
@@ -814,6 +819,8 @@ describe('TestRunnerService', () => {
 				// Setup test data
 				const triggerNodeName = 'TriggerNode';
 				const workflow = mock<IWorkflowBase>({
+					id: 'workflow-id',
+					name: 'Test Workflow',
 					nodes: [
 						{
 							id: 'node1',

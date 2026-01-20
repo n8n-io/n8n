@@ -258,8 +258,7 @@ test.describe('Data Mapping', () => {
 	});
 
 	// There is an issue here sometimes, when dragging to the target it prepends the last value that was in the window even if it was cleared
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('maps expressions to updated fields correctly', async ({ n8n }) => {
+	test.fixme('maps expressions to updated fields correctly @fixme', async ({ n8n }) => {
 		await n8n.start.fromImportedWorkflow('Test_workflow_3.json');
 		await n8n.canvas.openNode('Set');
 
@@ -333,10 +332,10 @@ test.describe('Data Mapping', () => {
 		await expect(n8n.ndv.getParameterTextInput('includeOtherFields')).toBeVisible();
 
 		const includeOtherFieldsInput = n8n.ndv.getParameterTextInput('includeOtherFields');
-		await expect(includeOtherFieldsInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+		await expect(includeOtherFieldsInput).toHaveCSS('outline', /rgb\(90, 76, 194\) dashed/);
 
 		const valueInput = n8n.ndv.getParameterTextInput('value');
-		await expect(valueInput).toHaveCSS('border', /dashed.*rgb\(90, 76, 194\)/);
+		await expect(valueInput).toHaveCSS('outline', /rgb\(90, 76, 194\) dashed/);
 
 		await n8n.page.mouse.up();
 	});
