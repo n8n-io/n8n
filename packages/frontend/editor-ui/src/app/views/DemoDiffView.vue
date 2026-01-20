@@ -11,6 +11,7 @@ const i18n = useI18n();
 
 const oldWorkflow = ref<IWorkflowDb | undefined>(undefined);
 const newWorkflow = ref<IWorkflowDb | undefined>(undefined);
+const tidyUpEnabled = ref(false);
 
 function emitPostMessageReady() {
 	if (window.parent) {
@@ -34,22 +35,14 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 		const json = JSON.parse(messageEvent.data);
 
 		if (json && json.command === 'openDiff') {
-			let oldWf = json.oldWorkflow as IWorkflowDb | undefined;
-			let newWf = json.newWorkflow as IWorkflowDb | undefined;
+			const oldWf = json.oldWorkflow as IWorkflowDb | undefined;
+			const newWf = json.newWorkflow as IWorkflowDb | undefined;
 			const tidyUpOption = json.tidyUp as TidyUpOption | undefined;
 
-			// Apply tidy-up if needed
-			// Note: For now, we just check if tidy-up is needed.
-			// The actual layout will be applied by the canvas after rendering.
-			// TODO: Implement actual tidy-up logic using Dagre layout
-			if (oldWf && shouldTidyUp({ nodes: oldWf.nodes }, tidyUpOption)) {
-				// Tidy-up will be applied by the canvas
-				console.log('Tidy-up requested for old workflow');
-			}
-			if (newWf && shouldTidyUp({ nodes: newWf.nodes }, tidyUpOption)) {
-				// Tidy-up will be applied by the canvas
-				console.log('Tidy-up requested for new workflow');
-			}
+			// Determine if tidy-up should be applied
+			const shouldApplyOld = oldWf && shouldTidyUp({ nodes: oldWf.nodes }, tidyUpOption);
+			const shouldApplyNew = newWf && shouldTidyUp({ nodes: newWf.nodes }, tidyUpOption);
+			tidyUpEnabled.value = !!(shouldApplyOld || shouldApplyNew);
 
 			oldWorkflow.value = oldWf;
 			newWorkflow.value = newWf;
@@ -77,6 +70,7 @@ onUnmounted(() => {
 			:new-workflow="newWorkflow"
 			:old-label="i18n.baseText('workflowDiff.label.before')"
 			:new-label="i18n.baseText('workflowDiff.label.after')"
+			:tidy-up="tidyUpEnabled"
 		/>
 		<div v-else :class="$style.waitingState">
 			<p>{{ i18n.baseText('workflowDiff.waitingForData') }}</p>

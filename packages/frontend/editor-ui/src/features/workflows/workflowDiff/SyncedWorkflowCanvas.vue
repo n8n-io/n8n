@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
 import { useInjectViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
-import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
+import type {
+	CanvasConnection,
+	CanvasEventBusEvents,
+	CanvasNode,
+} from '@/features/workflows/canvas/canvas.types';
 import { useVueFlow } from '@vue-flow/core';
 import { watch } from 'vue';
 import Canvas from '@/features/workflows/canvas/components/Canvas.vue';
+import { createEventBus } from '@n8n/utils/event-bus';
 
 const props = defineProps<{
 	id: string;
 	nodes: CanvasNode[];
 	connections: CanvasConnection[];
+	applyLayout?: boolean;
 }>();
+
+// Create eventBus for this canvas to communicate with Canvas component
+const eventBus = createEventBus<CanvasEventBusEvents>();
 const {
 	setViewport,
 	onViewportChange: onLocalViewportChange,
@@ -19,7 +28,15 @@ const {
 	findNode,
 	addSelectedNodes,
 	onPaneClick,
+	onNodesInitialized,
 } = useVueFlow({ id: props.id });
+
+// Trigger tidy-up after nodes are initialized if applyLayout is true
+onNodesInitialized(() => {
+	if (props.applyLayout) {
+		eventBus.emit('tidyUp', { source: 'import-workflow-data' });
+	}
+});
 
 const { triggerViewportChange, onViewportChange, selectedDetailId, triggerNodeClick } =
 	useInjectViewportSync();
@@ -75,7 +92,7 @@ watch(selectedDetailId, (id) => {
 
 <template>
 	<div style="width: 100%; height: 100%; position: relative">
-		<Canvas :id :nodes :connections :read-only="true" style="width: 100%; height: 100%">
+		<Canvas :id :nodes :connections :read-only="true" :event-bus="eventBus" style="width: 100%; height: 100%">
 			<template #node="{ nodeProps }">
 				<slot name="node" v-bind="{ nodeProps }" />
 			</template>

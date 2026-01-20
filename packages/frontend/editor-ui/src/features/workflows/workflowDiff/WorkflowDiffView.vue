@@ -33,6 +33,7 @@ const props = withDefaults(
 		newWorkflow?: IWorkflowDb;
 		oldLabel?: string;
 		newLabel?: string;
+		tidyUp?: boolean;
 	}>(),
 	{
 		oldLabel: 'Before',
@@ -462,6 +463,7 @@ onMounted(async () => {
 							id="top"
 							:nodes="source.nodes"
 							:connections="source.connections"
+							:apply-layout="tidyUp"
 						>
 							<template #node="{ nodeProps }">
 								<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">
@@ -496,6 +498,7 @@ onMounted(async () => {
 							id="bottom"
 							:nodes="target.nodes"
 							:connections="target.connections"
+							:apply-layout="tidyUp"
 						>
 							<template #node="{ nodeProps }">
 								<Node v-bind="nodeProps" :class="{ [getNodeStatusClass(nodeProps.id)]: true }">

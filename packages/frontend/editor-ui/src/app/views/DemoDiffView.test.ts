@@ -77,12 +77,19 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 // Import after mocks
 import DemoDiffView from './DemoDiffView.vue';
 
+// Capture tidyUp prop from WorkflowDiffView
+let capturedTidyUpProp: boolean | undefined = undefined;
+
 const renderComponent = createComponentRenderer(DemoDiffView, {
 	global: {
 		stubs: {
 			WorkflowDiffView: {
 				template: '<div data-test-id="workflow-diff-view"><slot /></div>',
-				props: ['oldWorkflow', 'newWorkflow', 'oldLabel', 'newLabel'],
+				props: ['oldWorkflow', 'newWorkflow', 'oldLabel', 'newLabel', 'tidyUp'],
+				setup(props: { tidyUp?: boolean }) {
+					capturedTidyUpProp = props.tidyUp;
+					return {};
+				},
 			},
 		},
 	},
@@ -94,6 +101,7 @@ describe('DemoDiffView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
+		capturedTidyUpProp = undefined;
 
 		// Capture the message event handler
 		vi.spyOn(window, 'addEventListener').mockImplementation((type, handler) => {
@@ -230,5 +238,120 @@ describe('DemoDiffView', () => {
 		}
 
 		expect(queryByTestId('workflow-diff-view')).not.toBeInTheDocument();
+	});
+
+	describe('tidyUp prop', () => {
+		const oldWorkflow = {
+			id: 'old-workflow',
+			name: 'Old Workflow',
+			nodes: [],
+			connections: {},
+		};
+
+		const newWorkflow = {
+			id: 'new-workflow',
+			name: 'New Workflow',
+			nodes: [],
+			connections: {},
+		};
+
+		it('should pass tidyUp=true to WorkflowDiffView when tidyUp option is "always"', async () => {
+			const { getByTestId } = renderComponent();
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow,
+							newWorkflow,
+							tidyUp: 'always',
+						}),
+					}),
+				);
+			}
+
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
+			});
+
+			expect(capturedTidyUpProp).toBe(true);
+		});
+
+		it('should pass tidyUp=true when tidyUp is "if-missing" and nodes have no positions', async () => {
+			const { getByTestId } = renderComponent();
+
+			// Workflow nodes without positions
+			const workflowWithoutPositions = {
+				id: 'workflow',
+				name: 'Workflow',
+				nodes: [{ id: '1', name: 'Start', type: 'n8n-nodes-base.start' }],
+				connections: {},
+			};
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow: workflowWithoutPositions,
+							newWorkflow: workflowWithoutPositions,
+							tidyUp: 'if-missing',
+						}),
+					}),
+				);
+			}
+
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
+			});
+
+			expect(capturedTidyUpProp).toBe(true);
+		});
+
+		it('should pass tidyUp=false when tidyUp is "never"', async () => {
+			const { getByTestId } = renderComponent();
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow,
+							newWorkflow,
+							tidyUp: 'never',
+						}),
+					}),
+				);
+			}
+
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
+			});
+
+			expect(capturedTidyUpProp).toBe(false);
+		});
+
+		it('should pass tidyUp=false when tidyUp option is not provided', async () => {
+			const { getByTestId } = renderComponent();
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow,
+							newWorkflow,
+						}),
+					}),
+				);
+			}
+
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
+			});
+
+			expect(capturedTidyUpProp).toBe(false);
+		});
 	});
 });
