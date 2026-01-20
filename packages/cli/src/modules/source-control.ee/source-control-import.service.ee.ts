@@ -478,19 +478,20 @@ export class SourceControlImportService {
 
 		const remoteTables = await Promise.all(
 			dataTableFiles.map(async (file) => {
-				try {
-					const fileContent = await fsReadFile(file, { encoding: 'utf8' });
-					const parsed = jsonParse<ExportableDataTable>(fileContent);
-					return parsed;
-				} catch (error) {
-					this.logger.debug(`Failed to parse data table from file ${file}: ${error.message}`);
-					return undefined;
+				this.logger.debug(`Parsing data table file ${file}`);
+				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
+				const parsed = jsonParse<ExportableDataTable>(fileContent, {
+					fallbackValue: null,
+				});
+				if (!parsed) {
+					this.logger.warn(`Failed to parse data table from file ${file}: invalid JSON format`);
 				}
+				return parsed;
 			}),
 		);
 
-		// Filter out undefined values from failed parses
-		return remoteTables.filter((table): table is ExportableDataTable => table !== undefined);
+		// Filter out null/undefined values from failed parses
+		return remoteTables.filter((table): table is ExportableDataTable => !!table);
 	}
 
 	async getLocalDataTablesFromDb(): Promise<StatusExportableDataTable[]> {
