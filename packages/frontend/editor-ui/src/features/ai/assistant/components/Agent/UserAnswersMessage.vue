@@ -48,7 +48,6 @@ function formatAnswer(answer: PlanMode.QuestionResponse): string {
 <style lang="scss" module>
 .container {
 	background-color: var(--color--neutral-150);
-	border: var(--border);
 	border-radius: var(--radius--lg);
 	padding: var(--spacing--sm);
 }

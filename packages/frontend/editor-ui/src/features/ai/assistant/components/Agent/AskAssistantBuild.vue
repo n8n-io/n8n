@@ -131,6 +131,7 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
+		builderStore.builderMode !== 'plan' &&
 		workflowsStore.workflow.nodes.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
 		!hasErrorAfterUpdate &&
