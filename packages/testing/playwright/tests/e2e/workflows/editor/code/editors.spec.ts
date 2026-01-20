@@ -86,21 +86,26 @@ test.describe('Editors', () => {
 
 		test('should not trigger dirty flag if nothing is changed', async ({ n8n }) => {
 			await n8n.canvas.addNode('Postgres', { action: 'Execute a SQL query' });
-			await n8n.ndv.close();
-
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.ndv.close();
+			});
 
 			await n8n.canvas.openNode('Execute a SQL query');
 			await n8n.ndv.close();
 
-			await expect(n8n.canvas.waitForSaveWorkflowCompleted()).rejects.toThrow();
+			// Should NOT save - expect timeout/rejection
+			await expect(
+				n8n.canvas.withSaveWait(async () => {
+					// No action needed - checking that previous close didn't trigger save
+				}),
+			).rejects.toThrow();
 		});
 
 		test('should trigger dirty flag if query is updated', async ({ n8n }) => {
 			await n8n.canvas.addNode('Postgres', { action: 'Execute a SQL query' });
-			await n8n.ndv.close();
-
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.ndv.close();
+			});
 
 			await n8n.canvas.openNode('Execute a SQL query');
 
@@ -109,9 +114,9 @@ test.describe('Editors', () => {
 			await sqlEditor.fill('SELECT * FROM `testTable`');
 			await n8n.page.keyboard.press('Escape');
 
-			await n8n.ndv.close();
-
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.ndv.close();
+			});
 		});
 
 		test('should allow switching between SQL editors in connected nodes', async ({ n8n }) => {
@@ -170,21 +175,26 @@ test.describe('Editors', () => {
 
 		test('should not trigger dirty flag if nothing is changed', async ({ n8n }) => {
 			await n8n.canvas.addNode('HTML', { action: 'Generate HTML template' });
-			await n8n.ndv.close();
-
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.ndv.close();
+			});
 
 			await n8n.canvas.openNode('HTML');
 			await n8n.ndv.close();
 
-			await expect(n8n.canvas.waitForSaveWorkflowCompleted()).rejects.toThrow();
+			// Should NOT save - expect timeout/rejection
+			await expect(
+				n8n.canvas.withSaveWait(async () => {
+					// No action needed - checking that previous close didn't trigger save
+				}),
+			).rejects.toThrow();
 		});
 
 		test('should trigger dirty flag if query is updated', async ({ n8n }) => {
 			await n8n.canvas.addNode('HTML', { action: 'Generate HTML template' });
-			await n8n.ndv.close();
-
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.ndv.close();
+			});
 
 			await n8n.canvas.openNode('HTML');
 
@@ -194,9 +204,9 @@ test.describe('Editors', () => {
 			await htmlEditor.fill(TEST_ELEMENT_H1);
 			await n8n.page.keyboard.press('Escape');
 
-			await n8n.ndv.close();
-
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.ndv.close();
+			});
 		});
 
 		test('should allow switching between HTML editors in connected nodes', async ({ n8n }) => {

@@ -192,10 +192,10 @@ test.describe('Canvas Zoom Functionality', () => {
 		await n8n.canvas.clickEditorTab();
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 
-		await n8n.canvasComposer.renameNodeViaShortcut(CODE_NODE_DISPLAY_NAME, 'Something else');
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.canvasComposer.renameNodeViaShortcut(CODE_NODE_DISPLAY_NAME, 'Something else');
+		});
 		await expect(n8n.canvas.nodeByName('Something else')).toBeAttached();
-
-		await n8n.canvasComposer.waitForWorkflowSaveAndUrl();
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();
 

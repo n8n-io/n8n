@@ -229,10 +229,9 @@ test.describe('Workflow templates', () => {
 			await n8n.templatesComposer.importFirstTemplate();
 
 			// Execute workflow to trigger autosave (imported templates don't auto-save immediately)
-			await n8n.canvas.hitExecuteWorkflow();
-
-			const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted();
-			const saveResponse = await saveResponsePromise;
+			const saveResponse = await n8n.canvas.withSaveWait(async () => {
+				await n8n.canvas.hitExecuteWorkflow();
+			});
 
 			const requestBody = saveResponse.request().postDataJSON();
 			expect(requestBody.meta.templateId).toBe(TEMPLATE_ID);

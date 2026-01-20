@@ -211,11 +211,11 @@ export class SettingsLogStreamingPage extends BasePage {
 
 		await hostInput.clear();
 		await hostInput.fill(config.host);
-		await this.page.waitForTimeout(200);
+		await this.waitForDebounce(200);
 		await portInput.clear();
 		await portInput.fill(config.port.toString());
 
-		await this.page.waitForTimeout(150);
+		await this.waitForDebounce(150);
 		await this.saveDestination();
 	}
 

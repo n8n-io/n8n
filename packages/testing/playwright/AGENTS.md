@@ -75,9 +75,31 @@ test('test with clean state', async ({ n8n }) => {
 | `@db:reset` tag | Deprecated - CI issues | `test.use()` with unique capability |
 | `n8n.api.signin()` | Session bleeding | `n8n.start.withUser()` |
 | `Date.now()` for IDs | Race conditions | `nanoid()` |
-| `waitForTimeout()` | Flaky | `waitForResponse()`, `toBeVisible()` |
+| `waitForTimeout()` | Flaky | `waitForDebounce()`, `withSaveWait()`, `waitForResponse()` |
 | `.toHaveCount(N)` | Brittle | Named element assertions |
 | Raw `page.goto()` | Bypasses setup | `n8n.navigate.*` methods |
+
+## Debounce Handling
+
+E2E tests run with `N8N_DEBOUNCE_MULTIPLIER=0` (set in `fixtures/base.ts`),
+making all frontend debounced operations immediate. This eliminates timing
+flakiness but requires careful handling of save operations.
+
+**For waiting after user actions:**
+```typescript
+// Use multiplier-aware wait (returns immediately in tests)
+await n8n.waitForDebounce(150);
+
+// For workflow saves, use withSaveWait to avoid race conditions.
+// This sets up the response listener BEFORE the action executes.
+await n8n.canvas.withSaveWait(async () => {
+  await n8n.page.keyboard.press('Escape');
+});
+```
+
+**Why `withSaveWait()` matters:** With 0ms debounce, saves complete instantly.
+If you set up the response listener after triggering the action, the save may
+complete before the listener is ready, causing the test to hang or fail.
 
 ## Code Style
 

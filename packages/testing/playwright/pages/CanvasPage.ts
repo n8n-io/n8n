@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Response } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
 import { BasePage } from './BasePage';
@@ -155,13 +155,22 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async waitForSaveWorkflowCompleted() {
-		return await this.page.waitForResponse(
+	/**
+	 * Execute an action and wait for the workflow save to complete.
+	 * Sets up the response listener BEFORE the action to avoid race conditions
+	 * with 0ms debounce where save could complete before listener is ready.
+	 * @param action - The action that triggers the save (e.g., closing NDV)
+	 * @returns The save response (can be ignored if not needed)
+	 */
+	async withSaveWait(action: () => Promise<void>): Promise<Response> {
+		const responsePromise = this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
 				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
-			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
+			{ timeout: 10000 },
 		);
+		await action();
+		return await responsePromise;
 	}
 
 	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
@@ -974,16 +983,12 @@ export class CanvasPage extends BasePage {
 
 	async hitUndo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+z');
-		// Wait for canvas to redraw after undo
-		// eslint-disable-next-line playwright/no-wait-for-timeout
-		await this.page.waitForTimeout(100);
+		await this.waitForDebounce(100);
 	}
 
 	async hitRedo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+Shift+z');
-		// Wait for canvas to redraw after redo
-		// eslint-disable-next-line playwright/no-wait-for-timeout
-		await this.page.waitForTimeout(100);
+		await this.waitForDebounce(100);
 	}
 
 	async hitSaveWorkflow(): Promise<void> {

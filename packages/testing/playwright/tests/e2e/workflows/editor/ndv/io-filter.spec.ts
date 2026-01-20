@@ -29,10 +29,14 @@ test.describe('Node IO Filter', () => {
 
 		// Search for 'zzz' - filters to 0 items, so no pagination
 		await searchInput.fill('zzz');
+		// Wait for search filter to apply before checking pagination
+		await expect(n8n.ndv.outputPanel.getItemsCount()).toContainText('0 of');
 		await expect(pagination).toBeHidden();
 
 		// Search for 'Reese' - filters to 1 item, no pagination, highlights visible
 		await searchInput.fill('Reese');
+		// Wait for search filter to apply before checking pagination
+		await expect(n8n.ndv.outputPanel.getItemsCount()).toContainText('1 of');
 		await expect(pagination).toBeHidden();
 		await expect(n8n.ndv.outputPanel.getDataContainer().locator('mark').first()).toBeVisible();
 
@@ -71,15 +75,17 @@ test.describe('Node IO Filter', () => {
 
 		// Search for 'Reese' - filters to 1 item (< 25, so no pagination)
 		await inputSearchInput.fill('Reese');
+		// Wait for search filter to apply by checking counter first
+		await expect(getInputCounter()).toContainText('1 of 35 items');
 		await expect(getInputPagination()).toBeHidden();
-		await expect(getInputCounter()).toContainText('of 35 items');
 		await expect(getOutputPagination().locator('li')).toHaveCount(2);
 		await expect(getOutputCounter()).toContainText('35 items');
 
 		// Search for 'zzz' - filters to 0 items, no pagination
 		await inputSearchInput.fill('zzz');
+		// Wait for search filter to apply by checking counter first
+		await expect(getInputCounter()).toContainText('0 of 35 items');
 		await expect(getInputPagination()).toBeHidden();
-		await expect(getInputCounter()).toContainText('of 35 items');
 		await expect(getOutputPagination().locator('li')).toHaveCount(2);
 		await expect(getOutputCounter()).toContainText('35 items');
 
@@ -103,13 +109,16 @@ test.describe('Node IO Filter', () => {
 
 		// Search for 'Reese' - filters to 1 item (< 25, so no pagination)
 		await outputSearchInput.fill('Reese');
+		// Wait for search filter to apply by checking counter first
+		await expect(getOutputCounter()).toContainText('1 of 35 items');
 		await expect(getInputPagination().locator('li')).toHaveCount(2);
 		await expect(getInputCounter()).toContainText('35 items');
 		await expect(getOutputPagination()).toBeHidden();
-		await expect(getOutputCounter()).toContainText('of 35 items');
 
 		// Search for 'zzz' - filters to 0 items, no pagination
 		await outputSearchInput.fill('zzz');
+		// Wait for search filter to apply by checking counter first
+		await expect(getOutputCounter()).toContainText('0 of 35 items');
 		await expect(getInputPagination().locator('li')).toHaveCount(2);
 		await expect(getInputCounter()).toContainText('35 items');
 		await expect(getOutputPagination()).toBeHidden();

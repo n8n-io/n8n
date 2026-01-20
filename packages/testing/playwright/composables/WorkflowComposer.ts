@@ -39,9 +39,9 @@ export class WorkflowComposer {
 	async createWorkflow(workflowName = 'My New Workflow') {
 		await this.n8n.workflows.addResource.workflow();
 		await this.n8n.canvas.setWorkflowName(workflowName);
-		await this.n8n.page.keyboard.press('Enter');
-
-		await this.n8n.canvas.waitForSaveWorkflowCompleted();
+		await this.n8n.canvas.withSaveWait(async () => {
+			await this.n8n.page.keyboard.press('Enter');
+		});
 	}
 
 	/**
@@ -52,9 +52,9 @@ export class WorkflowComposer {
 	async createWorkflowFromSidebar(workflowName = 'My New Workflow') {
 		await this.n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 		await this.n8n.canvas.setWorkflowName(workflowName);
-		await this.n8n.page.keyboard.press('Enter');
-
-		await this.n8n.canvas.waitForSaveWorkflowCompleted();
+		await this.n8n.canvas.withSaveWait(async () => {
+			await this.n8n.page.keyboard.press('Enter');
+		});
 	}
 
 	/**

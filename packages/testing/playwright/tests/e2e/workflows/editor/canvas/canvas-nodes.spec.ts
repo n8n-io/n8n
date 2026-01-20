@@ -40,9 +40,9 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.clickNodePlusEndpoint('Edit Fields3');
 		await n8n.canvas.fillNodeCreatorSearchBar(SWITCH_NODE_NAME);
 		await n8n.canvas.clickNodeCreatorItemName(SWITCH_NODE_NAME);
-		await n8n.page.keyboard.press('Escape');
-
-		await n8n.canvasComposer.waitForWorkflowSaveAndUrl();
+		await n8n.canvasComposer.saveAndGetUrl(async () => {
+			await n8n.page.keyboard.press('Escape');
+		});
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();
 
@@ -97,12 +97,12 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 			n8n.canvas.connectionBetweenNodes('Edit Fields', MERGE_NODE_NAME).first(),
 		).toBeAttached();
 
-		await n8n.canvas.connectNodesByDrag('Edit Fields1', MERGE_NODE_NAME, 0, 1);
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.canvas.connectNodesByDrag('Edit Fields1', MERGE_NODE_NAME, 0, 1);
+		});
 		await expect(
 			n8n.canvas.connectionBetweenNodes('Edit Fields1', MERGE_NODE_NAME).first(),
 		).toBeAttached();
-
-		await n8n.canvasComposer.waitForWorkflowSaveAndUrl();
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();
 

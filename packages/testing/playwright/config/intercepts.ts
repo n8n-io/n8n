@@ -4,6 +4,10 @@ import merge from 'lodash/merge';
 
 const contextSettings = new Map<BrowserContext, Partial<Record<string, unknown>>>();
 
+// Worker-level cache for large static JSON files - persists across tests in the same worker
+// These files don't change between tests and caching them dramatically improves performance
+const staticJsonCache: Record<string, string> = {};
+
 export function setContextSettings(
 	context: BrowserContext,
 	settings: Partial<Record<string, unknown>>,
@@ -120,4 +124,37 @@ export async function setupDefaultInterceptors(target: BrowserContext) {
 			});
 		},
 	);
+
+	// Cache large static JSON files - nodes.json (~2-3MB) and credentials.json
+	// Fetching once per worker and serving from cache dramatically improves test performance
+	const cacheableEndpoints = ['**/types/nodes.json', '**/types/credentials.json'];
+
+	for (const endpoint of cacheableEndpoints) {
+		await target.route(endpoint, async (route: Route) => {
+			const cacheKey = route.request().url();
+			try {
+				if (staticJsonCache[cacheKey]) {
+					// Serve from cache
+					await route.fulfill({
+						status: 200,
+						contentType: 'application/json',
+						body: staticJsonCache[cacheKey],
+					});
+				} else {
+					// First request - fetch and cache
+					const response = await route.fetch();
+					staticJsonCache[cacheKey] = await response.text();
+					await route.fulfill({
+						status: response.status(),
+						headers: response.headers(),
+						contentType: 'application/json',
+						body: staticJsonCache[cacheKey],
+					});
+				}
+			} catch (error) {
+				console.error(`Error in ${endpoint} cache intercept:`, error);
+				await route.continue();
+			}
+		});
+	}
 }

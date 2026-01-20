@@ -44,8 +44,9 @@ test.describe('@isolated', () => {
 			await n8n.workflowSharingModal.save();
 
 			await n8n.navigate.toWorkflow('new');
-			await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Workflow W2');
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Workflow W2');
+			});
 		});
 
 		test('should create C2, share C2 with U1 and U2, as U3', async ({ n8n }) => {
@@ -78,8 +79,9 @@ test.describe('@isolated', () => {
 
 			await n8n.workflows.cards.getWorkflow('Workflow W1').click();
 
-			await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
+			});
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C2');
 			await n8n.ndv.clickBackToCanvasButton();
 
@@ -107,8 +109,9 @@ test.describe('@isolated', () => {
 
 			await n8n.workflows.cards.getWorkflow('Workflow W1').click();
 
-			await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.withSaveWait(async () => {
+				await n8n.canvas.addNode('Airtable', { action: 'Create a record' });
+			});
 			await expect(n8n.ndv.getCredentialSelect()).toHaveValue('Credential C2');
 			await n8n.ndv.clickBackToCanvasButton();
 

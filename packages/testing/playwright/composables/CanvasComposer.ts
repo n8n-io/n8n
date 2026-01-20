@@ -165,19 +165,19 @@ export class CanvasComposer {
 	}
 
 	/**
-	 * Wait for workflow save to complete and URL to be updated with the workflow ID.
+	 * Executes an action that triggers a save and returns the URL after save completes.
 	 * Use this when you need the workflow URL/ID immediately after saving.
+	 * @param action - The action that triggers the save
 	 * @returns The workflow URL after save
 	 */
-	async waitForWorkflowSaveAndUrl(): Promise<string> {
+	async saveAndGetUrl(action: () => Promise<void>): Promise<string> {
 		const isNewWorkflow = this.n8n.page.url().includes('/workflow/new');
 
+		await this.n8n.canvas.withSaveWait(action);
+
 		if (isNewWorkflow) {
-			await this.n8n.canvas.waitForSaveWorkflowCompleted();
 			// Wait for URL to update after response
 			await this.n8n.page.waitForURL(/\/workflow\/[a-zA-Z0-9]+$/);
-		} else {
-			await this.n8n.canvas.waitForSaveWorkflowCompleted();
 		}
 
 		return this.n8n.page.url();

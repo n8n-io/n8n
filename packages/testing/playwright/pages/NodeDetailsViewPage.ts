@@ -618,10 +618,9 @@ export class NodeDetailsViewPage extends BasePage {
 		await input.fill(value);
 	}
 
-	/** Waits for parameter input debounce (100ms) to flush. */
-	async waitForDebounce(): Promise<void> {
-		// eslint-disable-next-line playwright/no-wait-for-timeout
-		await this.page.waitForTimeout(150);
+	/** Waits for parameter input debounce to flush. Multiplier-aware. */
+	override async waitForDebounce(): Promise<void> {
+		await super.waitForDebounce(150);
 	}
 
 	async clickGetBackToCanvas(): Promise<void> {

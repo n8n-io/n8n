@@ -50,7 +50,7 @@ on:
       currents-project-id:
         description: 'Currents project ID for reporting'
         required: false
-        default: 'LRxcNt'
+        default: 'qyhJh8'
         type: string
 
     secrets:

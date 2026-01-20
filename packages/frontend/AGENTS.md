@@ -114,3 +114,28 @@ application. These variables cover colors, spacing, typography, and borders.
 --border-style: solid
 --border: var(--border-width) var(--border-style) var(--color--foreground)
 ```
+
+### Debounce Timing
+
+Use centralized debounce timing from `@/app/constants/durations` instead of
+hardcoding values. This ensures consistent UX and supports test mode where
+debounce can be disabled for E2E tests.
+
+```typescript
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
+
+// Always wrap with getDebounceTime() to support test mode
+useDebounceFn(() => {
+  // debounced action
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
+```
+
+**Available categories:**
+- `UI` - Fast feedback (resize: 50ms, quick: 10ms)
+- `INPUT` - User input (validation: 100ms, text: 200ms, search: 300ms)
+- `API` - Server operations (resource search: 500ms, autosave: 1500ms)
+- `TELEMETRY` - Analytics batching (batch: 2000ms)
+- `COLLABORATION` - Real-time features (activity: 100ms)
+- `CONNECTION` - WebSocket management (disconnect: 500ms)
+
+**Never hardcode debounce values** - always use the centralized constants.

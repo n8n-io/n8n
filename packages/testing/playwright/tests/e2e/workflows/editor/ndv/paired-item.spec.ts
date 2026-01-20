@@ -88,14 +88,14 @@ test.describe('NDV Paired Items', () => {
 		await n8n.ndv.outputPanel.switchDisplayMode('table');
 
 		// Default hover state should have first item from input node highlighted
-		const hoveringItem = n8n.page.locator('[data-test-id="hovering-item"]');
-		await expect(hoveringItem).toContainText('1111');
+		const inputHoveringItem = n8n.ndv.inputPanel.get().locator('[data-test-id="hovering-item"]');
+		await expect(inputHoveringItem).toContainText('1111');
 		await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 
 		// Select different input node and check that the hover state is updated
 		await n8n.ndv.inputPanel.getNodeInputOptions().click();
 		await n8n.page.getByRole('option', { name: 'Set1' }).click();
-		await expect(hoveringItem).toContainText('1000');
+		await expect(inputHoveringItem).toContainText('1000');
 
 		// Hover on input item and verify output hover state
 		await n8n.ndv.inputPanel.getTable().locator('text=1000').hover();
@@ -109,7 +109,7 @@ test.describe('NDV Paired Items', () => {
 		await n8n.page.getByRole('option', { name: 'Sort' }).click();
 		await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
 
-		await expect(hoveringItem).toContainText('1111');
+		await expect(inputHoveringItem).toContainText('1111');
 		await n8n.ndv.inputPanel.getTable().locator('text=1111').hover();
 		await expect(n8n.ndv.outputPanel.get().locator('[data-test-id="hovering-item"]')).toContainText(
 			'1111',

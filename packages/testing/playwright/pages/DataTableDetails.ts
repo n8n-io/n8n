@@ -392,8 +392,7 @@ export class DataTableDetails extends BasePage {
 	async search(query: string) {
 		const searchInput = this.getSearchInput();
 		await searchInput.fill(query);
-		// Wait for debounce
-		await this.page.waitForTimeout(300);
+		await this.waitForDebounce(300);
 		await this.page.getByText('Loading...').waitFor({ state: 'hidden' });
 	}
 

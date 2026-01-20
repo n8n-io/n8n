@@ -32,8 +32,9 @@ test.describe('Workflows', () => {
 		const uniqueIdForCreate = nanoid(8);
 		const workflowName = `Test Workflow ${uniqueIdForCreate}`;
 		await n8n.canvas.setWorkflowName(workflowName);
-		await n8n.page.keyboard.press('Enter');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.page.keyboard.press('Enter');
+		});
 
 		await expect(n8n.notifications.getNotificationByTitle(NOTIFICATIONS.CREATED)).toBeVisible();
 	});

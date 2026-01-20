@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import type { PushMessage } from '@n8n/api-types';
 
 import { STORES } from '@n8n/stores';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import { useSettingsStore } from './settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/app/push-connection/useWebSocketClient';
@@ -95,8 +96,10 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	/**
 	 * Debounce window in ms for disconnect. If pushConnect is called within this
 	 * window (before or after pushDisconnect), the connection is kept.
+	 * Uses centralized config to support test mode (immediate execution in E2E tests).
 	 */
-	const DISCONNECT_DEBOUNCE_MS = 500;
+	const getDisconnectDebounceMs = () =>
+		getDebounceTime(DEBOUNCE_TIME.CONNECTION.WEBSOCKET_DISCONNECT);
 
 	/**
 	 * Tracks whether a connect was recently requested. Used to handle race conditions
@@ -125,7 +128,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		connectIntentTimeout = setTimeout(() => {
 			recentConnectIntent = false;
 			connectIntentTimeout = null;
-		}, DISCONNECT_DEBOUNCE_MS);
+		}, getDisconnectDebounceMs());
 
 		// Cancel any pending disconnect timeout
 		if (disconnectTimeout) {
@@ -158,7 +161,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 			isConnectionRequested.value = false;
 			client.value.disconnect();
 			disconnectTimeout = null;
-		}, DISCONNECT_DEBOUNCE_MS);
+		}, getDisconnectDebounceMs());
 	};
 
 	watch(

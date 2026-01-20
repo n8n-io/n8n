@@ -31,11 +31,11 @@ test.describe('Workflow tags - Tag creation', () => {
 		await n8n.canvas.typeInTagInput(tag3);
 		await n8n.canvas.pressEnterToCreateTag();
 
-		await n8n.canvas.clickOutsideModal();
-
 		// Wait for save to complete first - closing the dropdown triggers a save
 		// which re-renders the tags container
-		await n8n.canvas.waitForSaveWorkflowCompleted();
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.canvas.clickOutsideModal();
+		});
 
 		// After dropdown closes, tags are displayed via WorkflowTagsContainer (workflow-tags)
 		// not the dropdown container, so use getSavedWorkflowTagPills()

@@ -27,8 +27,9 @@ test.describe('Debug mode', () => {
 		await n8n.navigate.toWorkflow('new');
 		await n8n.canvas.addNode('Manual Trigger');
 		await n8n.canvas.addNode('HTTP Request');
-		await n8n.ndv.fillParameterInput('URL', url);
-		await n8n.canvas.waitForSaveWorkflowCompleted();
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.ndv.fillParameterInput('URL', url);
+		});
 		await n8n.ndv.close();
 		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.WORKFLOW_CREATED);
 	}
@@ -36,15 +37,21 @@ test.describe('Debug mode', () => {
 	// Helper function to import execution for debugging
 	async function importExecutionForDebugging(n8n: n8nPage) {
 		await n8n.canvas.clickExecutionsTab();
+		// Must select an execution item before clicking debug button
+		await n8n.executions.clickLastExecutionItem();
+		// Wait for the execution preview iframe to load
+		await n8n.page.getByTestId('workflow-preview-iframe').waitFor({ state: 'visible' });
 		await n8n.executions.clickDebugInEditorButton();
-		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.EXECUTION_IMPORTED);
+		// Wait for navigation to debug mode before closing notification
+		await expect(n8n.page).toHaveURL(/\/debug/);
+		await n8n.notifications.quickClose(NOTIFICATIONS.EXECUTION_IMPORTED);
 	}
 
 	test('should enter debug mode for failed executions', async ({ n8n }) => {
 		await createBasicWorkflow(n8n, URLS.FAILING);
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.PROBLEM_IN_NODE);
 		await importExecutionForDebugging(n8n);
-		expect(n8n.page.url()).toContain('/debug');
+		await expect(n8n.page).toHaveURL(/\/debug/);
 	});
 
 	test('should exit debug mode after successful execution', async ({ n8n }) => {
@@ -53,12 +60,13 @@ test.describe('Debug mode', () => {
 		await importExecutionForDebugging(n8n);
 
 		await n8n.canvas.openNode('HTTP Request');
-		await n8n.ndv.fillParameterInput('URL', URLS.SUCCESS);
-		await n8n.canvas.waitForSaveWorkflowCompleted();
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.ndv.fillParameterInput('URL', URLS.SUCCESS);
+		});
 		await n8n.ndv.close();
 
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(NOTIFICATIONS.SUCCESSFUL);
-		expect(n8n.page.url()).not.toContain('/debug');
+		await expect(n8n.page).not.toHaveURL(/\/debug/);
 	});
 
 	test('should handle pinned data conflicts during execution import', async ({ n8n }) => {
@@ -81,7 +89,7 @@ test.describe('Debug mode', () => {
 		await n8n.executions.clickCopyToEditorButton();
 		await n8n.executions.handlePinnedNodesConfirmation('Unpin');
 
-		expect(n8n.page.url()).toContain('/debug');
+		await expect(n8n.page).toHaveURL(/\/debug/);
 
 		// Verify pinned status
 		const pinnedNodeNames = await n8n.canvas.getPinnedNodeNames();
@@ -100,15 +108,18 @@ test.describe('Debug mode', () => {
 		// Delete node to create mismatch
 		await n8n.canvas.deleteNodeByName('HTTP Request');
 
-		// Try to copy execution and verify error
+		// Try to copy execution and verify error (attemptCopyToEditor waits for /debug URL)
 		await attemptCopyToEditor(n8n);
 		await n8n.notifications.waitForNotificationAndClose(NOTIFICATIONS.DATA_NOT_IMPORTED);
-		expect(n8n.page.url()).toContain('/debug');
 	});
 
 	async function attemptCopyToEditor(n8n: n8nPage) {
 		await n8n.canvas.clickExecutionsTab();
 		await n8n.executions.clickLastExecutionItem();
+		// Wait for the execution preview iframe to load
+		await n8n.page.getByTestId('workflow-preview-iframe').waitFor({ state: 'visible' });
 		await n8n.executions.clickCopyToEditorButton();
+		// Wait for navigation to debug mode
+		await expect(n8n.page).toHaveURL(/\/debug/);
 	}
 });

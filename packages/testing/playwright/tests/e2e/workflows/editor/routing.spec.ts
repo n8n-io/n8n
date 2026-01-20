@@ -57,8 +57,9 @@ test.describe('Routing', () => {
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: false });
 		const ndvUrl = n8n.page.url();
 
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.page.keyboard.press('Escape');
+		});
 
 		await expect(n8n.ndv.getContainer()).toBeHidden();
 
@@ -75,8 +76,9 @@ test.describe('Routing', () => {
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: false });
 		const ndvUrl = n8n.page.url();
 
-		await n8n.page.keyboard.press('Escape');
-		await n8n.canvas.waitForSaveWorkflowCompleted();
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.page.keyboard.press('Escape');
+		});
 
 		await expect(n8n.ndv.getContainer()).toBeHidden();
 
@@ -94,8 +96,14 @@ test.describe('Routing', () => {
 		// Create and save a workflow with a node
 		const workflowName = 'Test Existing Workflow';
 		await n8n.canvas.setWorkflowName(workflowName);
-		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.waitForSaveWorkflowCompleted();
+		// Commit the name change and wait for save (triggered when focus leaves input)
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.page.keyboard.press('Enter');
+		});
+		// Add node and wait for that save
+		await n8n.canvas.withSaveWait(async () => {
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		});
 
 		// Get the workflow ID from the URL
 		const workflowId = n8n.canvas.getWorkflowIdFromUrl();

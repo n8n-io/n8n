@@ -136,6 +136,13 @@ export const test = base.extend<
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 
+		// Set debounce multiplier to 0.5 for faster but stable E2E tests
+		// Using 0 causes race conditions; 0.5 provides half the normal delay
+		// which speeds up tests while maintaining operation ordering
+		await page.addInitScript(() => {
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0.5');
+		});
+
 		const useSeparateApiContext = backendUrl !== frontendUrl;
 
 		if (useSeparateApiContext) {
