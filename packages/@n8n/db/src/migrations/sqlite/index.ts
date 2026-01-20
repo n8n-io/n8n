@@ -130,6 +130,7 @@ import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/17
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { CreateWorkflowPublishedVersionTable1768834754000 } from '../common/1768834754000-CreateWorkflowPublishedVersionTable';
+import { CreateWorkflowPublicationOutboxTable1768912133000 } from '../common/1768912133000-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -265,6 +266,7 @@ const sqliteMigrations: Migration[] = [
 	ExpandModelColumnLength1768402473068,
 	AddStoredAtToExecutionEntity1768557000000,
 	CreateWorkflowPublishedVersionTable1768834754000,
+	CreateWorkflowPublicationOutboxTable1768912133000,
 ];
 
 export { sqliteMigrations };

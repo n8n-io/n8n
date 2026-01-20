@@ -129,6 +129,7 @@ import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIco
 import { AddAgentIdForeignKeys1765886667897 } from '../common/1765886667897-AddAgentIdForeignKeys';
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import { CreateWorkflowPublishedVersionTable1768834754000 } from '../common/1768834754000-CreateWorkflowPublishedVersionTable';
+import { CreateWorkflowPublicationOutboxTable1768912133000 } from '../common/1768912133000-CreateWorkflowPublicationOutboxTable';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -263,4 +264,5 @@ export const mysqlMigrations: Migration[] = [
 	AddAgentIdForeignKeys1765886667897,
 	AddWorkflowVersionIdToExecutionData1765892199653,
 	CreateWorkflowPublishedVersionTable1768834754000,
+	CreateWorkflowPublicationOutboxTable1768912133000,
 ];
