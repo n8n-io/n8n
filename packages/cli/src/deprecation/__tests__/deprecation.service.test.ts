@@ -19,9 +19,7 @@ describe('DeprecationService', () => {
 	beforeEach(() => {
 		// Ignore environment variables coming in from the environment when running
 		// this test suite.
-		process.env = {
-			N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
-		};
+		process.env = {};
 
 		jest.resetAllMocks();
 	});
@@ -71,9 +69,7 @@ describe('DeprecationService', () => {
 		const envVar = 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS';
 
 		beforeEach(() => {
-			process.env = {
-				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
-			};
+			process.env = {};
 		});
 
 		describe('when executions.mode is not queue', () => {
