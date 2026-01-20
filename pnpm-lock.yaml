@@ -1865,6 +1865,9 @@ importers:
       replacestream:
         specifier: 4.0.3
         version: 4.0.3
+      rwlock:
+        specifier: ^5.0.0
+        version: 5.0.0
       samlify:
         specifier: 2.10.0
         version: 2.10.0
@@ -1968,6 +1971,9 @@ importers:
       '@types/replacestream':
         specifier: ^4.0.1
         version: 4.0.1
+      '@types/rwlock':
+        specifier: ^5.0.3
+        version: 5.0.6
       '@types/shelljs':
         specifier: ^0.8.11
         version: 0.8.11
@@ -8844,6 +8850,9 @@ packages:
 
   '@types/rfc2047@2.0.1':
     resolution: {integrity: sha512-slgtykv+XXME7EperkdqfdBBUGcs28ru+a21BK0zOQY4IoxE7tEqvIcvAFAz5DJVxyOmoAUXo30Oxpm3KS+TBQ==}
+
+  '@types/rwlock@5.0.6':
+    resolution: {integrity: sha512-JcjZjGATVC+LoLd910jIEkbSVQpvxRvAhHqIYCl9sf0qvKp+m2ps/WfthQRqWUcE38pgiD6YqEQ5tK4oSNK1XA==}
 
   '@types/sanitize-html@2.11.0':
     resolution: {integrity: sha512-7oxPGNQHXLHE48r/r/qjn7q0hlrs3kL7oZnGj0Wf/h9tj/6ibFyRkNbsDxaBBZ4XUZ0Dx5LGCyDJ04ytSofacQ==}
@@ -16471,6 +16480,9 @@ packages:
 
   rw@1.3.3:
     resolution: {integrity: sha512-PdhdWy89SiZogBLaw42zdeqtRJ//zFd2PgQavcICDUgJT5oW10QCRKbJ6bg4r0/UY2M6BWd5tkxuGFRvCkgfHQ==}
+
+  rwlock@5.0.0:
+    resolution: {integrity: sha512-XgzRqLMfCcm9QfZuPav9cV3Xin5TRcIlp4X/SH3CvB+x5D2AakdlEepfJKDd8ByncvfpcxNWdRZVUl38PS6ZJg==}
 
   rxjs@6.6.7:
     resolution: {integrity: sha512-hTdwr+7yYNIT5n4AMYp85KA6yw2Va0FLa3Rguvbpa4W3I5xynaBZo41cM3XM+4Q6fRMj3sBYIR1VAmZMXYJvRQ==}
@@ -25889,6 +25901,8 @@ snapshots:
   '@types/retry@0.12.0': {}
 
   '@types/rfc2047@2.0.1': {}
+
+  '@types/rwlock@5.0.6': {}
 
   '@types/sanitize-html@2.11.0':
     dependencies:
@@ -35325,6 +35339,8 @@ snapshots:
   rusha@0.8.14: {}
 
   rw@1.3.3: {}
+
+  rwlock@5.0.0: {}
 
   rxjs@6.6.7:
     dependencies:
