@@ -1,6 +1,5 @@
 import { WorkerStatus } from '@n8n/api-types';
 import { OnPubSubEvent } from '@n8n/decorators';
-import { In, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import os from 'node:os';
@@ -8,7 +7,6 @@ import process from 'node:process';
 
 import { N8N_VERSION } from '@/constants';
 import { Push } from '@/push';
-import { RoleService } from '@/services/role.service';
 
 import { JobProcessor } from './job-processor';
 import { Publisher } from './pubsub/publisher.service';
@@ -20,26 +18,20 @@ export class WorkerStatusService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly push: Push,
-		private readonly roleService: RoleService,
-		private readonly userRepository: UserRepository,
 	) {}
 
-	async requestWorkerStatus() {
+	async requestWorkerStatus(requestingUserId: string) {
 		if (this.instanceSettings.instanceType !== 'main') return;
 
-		return await this.publisher.publishCommand({ command: 'get-worker-status' });
+		return await this.publisher.publishCommand({
+			command: 'get-worker-status',
+			payload: { requestingUserId },
+		});
 	}
 
 	@OnPubSubEvent('response-to-get-worker-status', { instanceType: 'main' })
-	async handleWorkerStatusResponse(payload: WorkerStatus) {
-		// Get list of users authorized to view worker status
-		const authorizedUserIds = await this.getAuthorizedUserIds();
-
-		if (authorizedUserIds.length === 0) {
-			return;
-		}
-
-		// Send only to authorized users
+	handleWorkerStatusResponse(payload: WorkerStatus & { requestingUserId: string }) {
+		// Send only to the user who requested worker status
 		this.push.sendToUsers(
 			{
 				type: 'sendWorkerStatusMessage',
@@ -48,35 +40,19 @@ export class WorkerStatusService {
 					status: payload,
 				},
 			},
-			authorizedUserIds,
+			[payload.requestingUserId],
 		);
 	}
 
-	private async getAuthorizedUserIds(): Promise<string[]> {
-		const rolesWithScope = await this.roleService.rolesWithScope('global', 'orchestration:read');
-
-		if (rolesWithScope.length === 0) {
-			return [];
-		}
-
-		const users = await this.userRepository.find({
-			select: ['id'],
-			where: {
-				role: {
-					slug: In(rolesWithScope),
-				},
-			},
-		});
-
-		return users.map((u) => u.id);
-	}
-
 	@OnPubSubEvent('get-worker-status', { instanceType: 'worker' })
-	async publishWorkerResponse() {
+	async publishWorkerResponse(command: { requestingUserId: string }) {
 		await this.publisher.publishWorkerResponse({
 			senderId: this.instanceSettings.hostId,
 			response: 'response-to-get-worker-status',
-			payload: this.generateStatus(),
+			payload: {
+				...this.generateStatus(),
+				requestingUserId: command.requestingUserId,
+			},
 		});
 	}
 
