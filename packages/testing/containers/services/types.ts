@@ -13,6 +13,7 @@ export const SERVICE_NAMES = [
 	'proxy',
 	'taskRunner',
 	'loadBalancer',
+	'cloudflared',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];
