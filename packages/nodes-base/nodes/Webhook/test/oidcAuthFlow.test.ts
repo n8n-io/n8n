@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 import { generateOidcFormAuthToken, validateOidcFormAuthToken } from '../oidcAuthFlow';
 import type { OidcSession } from '../oidc.typeguards';
 
@@ -128,18 +130,40 @@ describe('OIDC Form Auth Token', () => {
 		});
 
 		it('should return null for malformed JSON payload', () => {
+			// Create a valid signature for invalid JSON to test parsing logic
 			const invalidPayload = Buffer.from('not-json').toString('base64url');
-			const signature = 'somesignature';
-			const token = `${invalidPayload}.${signature}`;
+			const validSignature = createHmac('sha256', sessionSecret)
+				.update(invalidPayload)
+				.digest('base64url');
+			const token = `${invalidPayload}.${validSignature}`;
 
 			const result = validateOidcFormAuthToken(token, webhookPath, sessionSecret);
 			expect(result).toBeNull();
 		});
 
 		it('should return null for payload missing required fields', () => {
+			// Create a valid signature for incomplete payload to test field validation
 			const incompletePayload = Buffer.from(JSON.stringify({ sub: 'user' })).toString('base64url');
-			// Note: This will also fail signature check, but tests the parsing logic
-			const result = validateOidcFormAuthToken(`${incompletePayload}.invalid`, webhookPath, sessionSecret);
+			const validSignature = createHmac('sha256', sessionSecret)
+				.update(incompletePayload)
+				.digest('base64url');
+			const token = `${incompletePayload}.${validSignature}`;
+
+			const result = validateOidcFormAuthToken(token, webhookPath, sessionSecret);
+			expect(result).toBeNull();
+		});
+
+		it('should return null for payload with wrong types', () => {
+			// Create payload with wrong field types to test type validation
+			const wrongTypesPayload = Buffer.from(
+				JSON.stringify({ sub: 123, exp: 'not-a-number', path: '/form/test' }),
+			).toString('base64url');
+			const validSignature = createHmac('sha256', sessionSecret)
+				.update(wrongTypesPayload)
+				.digest('base64url');
+			const token = `${wrongTypesPayload}.${validSignature}`;
+
+			const result = validateOidcFormAuthToken(token, webhookPath, sessionSecret);
 			expect(result).toBeNull();
 		});
 	});
