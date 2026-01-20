@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	showAfter: 0,
 	enterable: true,
 	teleported: true,
-	offset: 6,
+	offset: 8,
 	buttons: () => [],
 	justifyButtons: 'flex-end',
 	avoidCollisions: true,
@@ -110,7 +110,7 @@ const handleOpenChange = (open: boolean) => {
 							v-bind="{ ...button.attrs, ...button.listeners }"
 						/>
 					</div>
-					<TooltipArrow :class="$style.arrow" :width="8" :height="4" />
+					<TooltipArrow :class="$style.arrow" :width="6" :height="6" />
 				</TooltipContent>
 			</TooltipPortal>
 		</TooltipRoot>
