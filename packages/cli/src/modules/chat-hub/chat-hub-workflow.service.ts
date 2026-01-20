@@ -856,15 +856,18 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 
 			// Add attachments if within size limit
 			for (const attachment of attachments) {
-				const block = await this.buildContentBlockForAttachment(
+				const blocks = await this.buildContentBlockForAttachment(
 					attachment,
 					currentTotalSize,
 					maxTotalPayloadSize,
 					metadata,
 					'File',
 				);
-				blocks.push(block);
-				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+
+				for (const block of blocks) {
+					blocks.push(block);
+					currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+				}
 			}
 
 			messageValues.push({
@@ -878,15 +881,18 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 
 		for (let i = 0; i < contextFiles.length; i++) {
 			const file = contextFiles[i];
-			const block = await this.buildContentBlockForAttachment(
+			const blocks = await this.buildContentBlockForAttachment(
 				file,
 				currentTotalSize,
 				maxTotalPayloadSize,
 				metadata,
 				`Context file (${i + 1} of ${contextFiles.length})`,
 			);
-			contextFileBlocks.push(block);
-			currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+
+			for (const block of blocks) {
+				contextFileBlocks.push(block);
+				currentTotalSize += block.type === 'text' ? block.text.length : block.image_url.length;
+			}
 		}
 
 		if (contextFileBlocks.length > 0) {
@@ -909,7 +915,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		maxTotalPayloadSize: number,
 		modelMetadata: ChatModelMetadataDto,
 		prefix: string,
-	): Promise<ContentBlock> {
+	): Promise<ContentBlock[]> {
 		class TotalFileSizeExceededError extends Error {}
 		class UnsupportedMimeTypeError extends Error {}
 
@@ -919,10 +925,12 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 			}
 
 			if (attachment.mimeType === 'application/pdf') {
-				return {
-					type: 'text',
-					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \nUse Vector Store Question Tool to query this document`,
-				};
+				return [
+					{
+						type: 'text',
+						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \nUse Vector Store Question Tool to query this document`,
+					},
+				];
 			}
 
 			if (this.isTextFile(attachment.mimeType)) {
@@ -933,10 +941,12 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 					throw new TotalFileSizeExceededError();
 				}
 
-				return {
-					type: 'text',
-					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
-				};
+				return [
+					{
+						type: 'text',
+						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \n${content}`,
+					},
+				];
 			}
 
 			const modality = this.getMimeTypeModality(attachment.mimeType);
@@ -951,20 +961,27 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				throw new TotalFileSizeExceededError();
 			}
 
-			return { type: 'image_url', image_url: url };
+			return [
+				{ type: 'text', text: `${prefix}: ${attachment.fileName ?? 'attachment'}` },
+				{ type: 'image_url', image_url: url },
+			];
 		} catch (e) {
 			if (e instanceof TotalFileSizeExceededError) {
-				return {
-					type: 'text',
-					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
-				};
+				return [
+					{
+						type: 'text',
+						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+					},
+				];
 			}
 
 			if (e instanceof UnsupportedMimeTypeError) {
-				return {
-					type: 'text',
-					text: `${prefix}: ${attachment.fileName ?? 'attachment'}\n(Unsupported file type)`,
-				};
+				return [
+					{
+						type: 'text',
+						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\n(Unsupported file type)`,
+					},
+				];
 			}
 
 			throw e;
