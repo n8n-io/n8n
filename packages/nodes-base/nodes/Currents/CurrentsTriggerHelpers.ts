@@ -23,6 +23,9 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const timestampHeader = req.headers['x-timestamp'] as string | undefined;
 	if (timestampHeader) {
 		const requestTimeMs = parseInt(timestampHeader, 10);
+		if (isNaN(requestTimeMs)) {
+			return false;
+		}
 		const requestTimeSec = Math.floor(requestTimeMs / 1000);
 		const currentTimeSec = Math.floor(Date.now() / 1000);
 		const age = Math.abs(currentTimeSec - requestTimeSec);

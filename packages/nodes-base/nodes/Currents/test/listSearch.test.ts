@@ -107,6 +107,7 @@ describe('Currents listSearch', () => {
 
 			// Should use projectId as name fallback when name is missing
 			expect(result.results).toEqual([
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				{ name: 'proj2', value: 'proj2' }, // projectId used as name
 				{ name: 'Valid Project', value: 'proj1' },
 			]);

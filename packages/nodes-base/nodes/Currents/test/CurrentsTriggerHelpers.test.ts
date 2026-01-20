@@ -72,6 +72,17 @@ describe('CurrentsTriggerHelpers', () => {
 			expect(result).toBe(false);
 		});
 
+		it('should return false when timestamp is invalid/non-numeric', () => {
+			(mockWebhookFunctions.getRequestObject as jest.Mock).mockReturnValue({
+				headers: { 'x-timestamp': 'not-a-number' },
+			});
+			(mockWebhookFunctions.getHeaderData as jest.Mock).mockReturnValue({});
+			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue({});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(false);
+		});
+
 		it('should return true when secret header matches', () => {
 			const nowMs = Date.now();
 

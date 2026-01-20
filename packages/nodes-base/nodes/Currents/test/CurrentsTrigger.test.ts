@@ -61,7 +61,7 @@ describe('CurrentsTrigger', () => {
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
 			expect(result.workflowData).toBeDefined();
-			expect(mockWebhookFunctions.helpers.returnJsonArray).toHaveBeenCalledWith([bodyData]);
+			expect(mockWebhookFunctions.helpers!.returnJsonArray).toHaveBeenCalledWith([bodyData]);
 		});
 
 		it('should acknowledge but not trigger when event does not match', async () => {
@@ -118,7 +118,7 @@ describe('CurrentsTrigger', () => {
 
 			const result = await trigger.webhook.call(mockWebhookFunctions as IWebhookFunctions);
 
-			expect(mockWebhookFunctions.helpers.returnJsonArray).toHaveBeenCalledWith([bodyData]);
+			expect(mockWebhookFunctions.helpers!.returnJsonArray).toHaveBeenCalledWith([bodyData]);
 			expect(result.workflowData).toBeDefined();
 		});
 	});
