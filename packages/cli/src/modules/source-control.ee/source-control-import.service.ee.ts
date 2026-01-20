@@ -477,11 +477,11 @@ export class SourceControlImportService {
 		}
 
 		const remoteTables = await Promise.all(
-			dataTableFiles.map(async (file) => {
+			dataTableFiles.map(async (file): Promise<ExportableDataTable | undefined> => {
 				this.logger.debug(`Parsing data table file ${file}`);
 				const fileContent = await fsReadFile(file, { encoding: 'utf8' });
 				const parsed = jsonParse<ExportableDataTable>(fileContent, {
-					fallbackValue: null,
+					fallbackValue: (() => undefined) as unknown as ExportableDataTable,
 				});
 				if (!parsed) {
 					this.logger.warn(`Failed to parse data table from file ${file}: invalid JSON format`);
