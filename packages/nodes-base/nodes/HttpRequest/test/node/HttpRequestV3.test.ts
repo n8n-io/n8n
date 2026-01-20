@@ -62,6 +62,9 @@ describe('HttpRequestV3', () => {
 				binaryToString: jest.fn((buffer: Buffer) => {
 					return buffer.toString();
 				}),
+				binaryToBuffer: jest.fn((body: Buffer) => {
+					return Buffer.isBuffer(body) ? body : Buffer.from('');
+				}),
 				prepareBinaryData: jest.fn(),
 			},
 			getContext: jest.fn(),
@@ -297,6 +300,109 @@ describe('HttpRequestV3', () => {
 			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
 				'URL parameter must be a string, got number',
 			);
+		});
+	});
+
+	describe('Pagination with maxIdenticalResponses', () => {
+		it('Should throw error after 4 identical responses with default threshold (3)', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+
+			const paginationConfig = {
+				paginationMode: 'updateAParameterInEachRequest',
+				parameters: {
+					parameters: [{ type: 'qs', name: 'Page', value: '={{ $pageCount + 1 }}' }],
+				},
+				paginationCompleteWhen: 'other',
+				completeExpression: '={{ false }}', // Never completes naturally
+				limitPagesFetched: false,
+				maxRequests: 10,
+				requestInterval: 0,
+				// maxIdenticalResponses not provided - should use default of 3
+			};
+
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					case 'options.pagination.pagination':
+						return paginationConfig;
+					default:
+						return undefined;
+				}
+			});
+
+			// Mock the pagination helper to throw the expected error
+			// With default threshold of 3, should stop on 4th identical response
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockRejectedValue(
+				new Error('The returned response was identical 4x, so requests got stopped'),
+			);
+
+			// Should throw error due to identical responses exceeding default threshold
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(
+				/identical.*so requests got stopped/i,
+			);
+		});
+
+		it('Should allow 4 identical responses when maxIdenticalResponses is set to 3', async () => {
+			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
+
+			const paginationConfig = {
+				paginationMode: 'updateAParameterInEachRequest',
+				parameters: {
+					parameters: [{ type: 'qs', name: 'Page', value: '={{ $pageCount + 1 }}' }],
+				},
+				paginationCompleteWhen: 'other',
+				completeExpression: '={{ $pageCount > 3 }}', // Stop after 4 pages
+				limitPagesFetched: true,
+				maxRequests: 4,
+				requestInterval: 0,
+				maxIdenticalResponses: 3, // Stop on 4th identical response
+			};
+
+			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return 'GET';
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'options':
+						return options;
+					case 'options.pagination.pagination':
+						return paginationConfig;
+					default:
+						return undefined;
+				}
+			});
+
+			// Mock successful pagination without error
+			(executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock).mockResolvedValue([
+				{
+					body: Buffer.from(JSON.stringify({ data: 'same data' })),
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				},
+			]);
+
+			// Should NOT throw error because maxIdenticalResponses is 3
+			const result = await node.execute.call(executeFunctions);
+
+			// Verify the execution completed successfully
+			expect(result).toBeDefined();
+			expect(Array.isArray(result)).toBe(true);
+			expect(executeFunctions.helpers.requestWithAuthenticationPaginated).toHaveBeenCalled();
+
+			// Verify that maxIdenticalResponses was passed correctly
+			const callArgs = (executeFunctions.helpers.requestWithAuthenticationPaginated as jest.Mock)
+				.mock.calls[0];
+			expect(callArgs[2].maxIdenticalResponses).toBe(3);
 		});
 	});
 });
