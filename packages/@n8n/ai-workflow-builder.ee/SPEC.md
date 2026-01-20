@@ -329,13 +329,11 @@ function detectPlannerAction(state: ParentGraphState): string {
 ### Phase Definitions
 
 ```typescript
+// Simplified to only the states that represent HITL pause points
 type PlannerPhase =
   | 'idle'                    // No planning in progress
-  | 'analyzing'               // Analyzing initial request
-  | 'waiting_for_answers'     // Q&A UI shown, waiting for user
-  | 'generating_plan'         // Creating initial plan
-  | 'plan_displayed'          // Plan shown, waiting for user action
-  | 'refining_plan';          // User sent refinement message
+  | 'waiting_for_answers'     // Questions displayed, waiting for user
+  | 'plan_displayed';         // Plan displayed, waiting for user action
 ```
 
 ## UI Specification
@@ -550,8 +548,6 @@ export interface PlannerSubgraphState {
   // Q&A phase
   questions: PlannerQuestion[];
   answers: QuestionResponse[];
-  questionPhase: 'analyzing' | 'asking' | 'summarizing' | 'planning' | 'complete';
-  currentQuestionIndex: number;
 
   // Discovery integration
   discoveryContext: DiscoveryContext | null;
@@ -632,11 +628,18 @@ export class PlannerSubgraph implements BaseSubgraph<...> {
   }
 
   transformOutput(result: PlannerSubgraphOutput, parentState: ParentGraphState) {
+    // Derive plannerPhase from questions and plan presence
+    const plannerPhase = result.plan
+      ? 'plan_displayed'
+      : result.questions.length > 0
+        ? 'waiting_for_answers'
+        : 'idle';
+
     return {
       planOutput: result.plan,
       discoveryContext: result.discoveryContext,
       pendingQuestions: result.questions,
-      plannerPhase: result.questionPhase === 'complete' ? 'plan_displayed' : 'waiting_for_answers',
+      plannerPhase,
       coordinationLog: [{
         phase: 'planner',
         status: 'completed',

@@ -97,14 +97,12 @@ export interface PlanOutput {
 
 /**
  * Planner state machine phases for HITL (Human-in-the-Loop) flow.
+ * Simplified to only the states that represent HITL pause points.
  */
 export type PlannerPhase =
 	| 'idle' // No planning in progress
-	| 'analyzing' // Analyzing initial request
-	| 'waiting_for_answers' // Q&A UI shown, waiting for user
-	| 'generating_plan' // Creating initial plan
-	| 'plan_displayed' // Plan shown, waiting for user action
-	| 'refining_plan'; // User sent refinement message
+	| 'waiting_for_answers' // Questions displayed, waiting for user
+	| 'plan_displayed'; // Plan displayed, waiting for user action
 
 /**
  * Input mode for the planner subgraph.
@@ -131,9 +129,6 @@ export interface PlannerSubgraphState {
 
 	/** User's answers to questions */
 	answers: QuestionResponse[];
-
-	/** Current phase in the question flow */
-	questionPhase: 'analyzing' | 'asking' | 'summarizing' | 'planning' | 'complete';
 
 	/** Discovery context from node identification */
 	discoveryContext: DiscoveryContext | null;

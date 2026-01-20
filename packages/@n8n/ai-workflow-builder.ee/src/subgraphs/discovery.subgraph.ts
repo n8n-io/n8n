@@ -42,6 +42,7 @@ import { extractConnectionChangingParameters } from '../tools/utils/connection.u
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata, createPlannerMetadata } from '../types/coordination';
 import type {
+	PlannerPhase,
 	PlannerQuestion,
 	PlanOutput,
 	QuestionResponse,
@@ -84,17 +85,6 @@ const discoveryOutputSchema = z.object({
 		)
 		.describe('List of n8n nodes identified as necessary for the workflow'),
 });
-
-/**
- * Question phase within the discovery/planner flow.
- * Tracks where we are in the Q&A and planning flow.
- */
-export type DiscoveryQuestionPhase =
-	| 'discovery' // Standard discovery mode (no questions)
-	| 'analyzing' // Analyzing the initial request (plan mode)
-	| 'asking' // Questions generated, waiting to emit (plan mode)
-	| 'planning' // Generating the plan (plan mode)
-	| 'complete'; // Done
 
 /**
  * Discovery Subgraph State
@@ -146,12 +136,6 @@ export const DiscoverySubgraphState = Annotation.Root({
 	messages: Annotation<BaseMessage[]>({
 		reducer: (x, y) => x.concat(y),
 		default: () => [],
-	}),
-
-	// Internal: Current phase in the question flow (plan mode)
-	questionPhase: Annotation<DiscoveryQuestionPhase>({
-		reducer: (x, y) => y ?? x,
-		default: () => 'discovery',
 	}),
 
 	// Internal: User's previous questions (for answer context)
@@ -508,10 +492,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const lastMessage = state.messages.at(-1);
 
 		if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls) {
-			return {
-				questions: [],
-				questionPhase: 'complete' as DiscoveryQuestionPhase,
-			};
+			return { questions: [] };
 		}
 
 		const questionsCall = lastMessage.tool_calls.find(
@@ -519,10 +500,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		);
 
 		if (!questionsCall) {
-			return {
-				questions: [],
-				questionPhase: 'complete' as DiscoveryQuestionPhase,
-			};
+			return { questions: [] };
 		}
 
 		// Validate with schema
@@ -531,10 +509,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			this.logger?.error('[Discovery/Planner] Invalid questions schema', {
 				errors: parseResult.error.errors,
 			});
-			return {
-				questions: [],
-				questionPhase: 'complete' as DiscoveryQuestionPhase,
-			};
+			return { questions: [] };
 		}
 
 		const { questions, introMessage } = parseResult.data;
@@ -551,7 +526,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return {
 			questions: plannerQuestions,
 			introMessage: introMessage ?? '',
-			questionPhase: 'asking' as DiscoveryQuestionPhase,
 		};
 	}
 
@@ -562,19 +536,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const lastMessage = state.messages.at(-1);
 
 		if (!lastMessage || !isAIMessage(lastMessage) || !lastMessage.tool_calls) {
-			return {
-				plan: null,
-				questionPhase: 'complete' as DiscoveryQuestionPhase,
-			};
+			return { plan: null };
 		}
 
 		const planCall = lastMessage.tool_calls.find((tc) => tc.name === SUBMIT_PLAN_TOOL.toolName);
 
 		if (!planCall) {
-			return {
-				plan: null,
-				questionPhase: 'complete' as DiscoveryQuestionPhase,
-			};
+			return { plan: null };
 		}
 
 		// Validate with schema
@@ -583,10 +551,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			this.logger?.error('[Discovery/Planner] Invalid plan schema', {
 				errors: parseResult.error.errors,
 			});
-			return {
-				plan: null,
-				questionPhase: 'complete' as DiscoveryQuestionPhase,
-			};
+			return { plan: null };
 		}
 
 		const planData = parseResult.data;
@@ -603,10 +568,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			additionalSpecs: planData.additionalSpecs,
 		};
 
-		return {
-			plan,
-			questionPhase: 'complete' as DiscoveryQuestionPhase,
-		};
+		return { plan };
 	}
 
 	// ========================================================================
@@ -698,7 +660,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			return {
 				nodesFound: [],
 				plan,
-				questionPhase: 'complete' as DiscoveryQuestionPhase,
 			};
 		}
 
@@ -814,7 +775,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return {
 			nodesFound,
 			plan,
-			questionPhase: 'complete' as DiscoveryQuestionPhase,
 		};
 	}
 
@@ -974,12 +934,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		}
 
 		// Plan mode: include planner outputs
-		const { questions, answers, questionPhase, plan, introMessage } = subgraphOutput;
+		const { questions, answers, plan, introMessage } = subgraphOutput;
 
 		// Determine planner phase for parent state
-		let plannerPhase: 'idle' | 'waiting_for_answers' | 'plan_displayed' = 'idle';
+		// Use questions.length to detect if questions were generated (simplified from questionPhase)
+		let plannerPhase: PlannerPhase = 'idle';
 
-		if (questionPhase === 'asking' && questions.length > 0) {
+		if (questions.length > 0 && !plan) {
 			plannerPhase = 'waiting_for_answers';
 		} else if (plan) {
 			plannerPhase = 'plan_displayed';
