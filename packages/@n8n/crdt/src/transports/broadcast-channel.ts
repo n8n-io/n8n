@@ -41,6 +41,8 @@ type ChannelMessage = SyncMessage;
 export class BroadcastChannelTransport implements SyncTransport {
 	private channel: BroadcastChannel | null = null;
 	private receiveHandlers = new Set<ReceiveHandler>();
+	private connectionChangeHandlers = new Set<(connected: boolean) => void>();
+	private errorHandlers = new Set<(error: Error) => void>();
 	private _connected = false;
 	private readonly senderId: string;
 
@@ -78,6 +80,20 @@ export class BroadcastChannelTransport implements SyncTransport {
 		};
 	}
 
+	onConnectionChange(handler: (connected: boolean) => void): Unsubscribe {
+		this.connectionChangeHandlers.add(handler);
+		return () => {
+			this.connectionChangeHandlers.delete(handler);
+		};
+	}
+
+	onError(handler: (error: Error) => void): Unsubscribe {
+		this.errorHandlers.add(handler);
+		return () => {
+			this.errorHandlers.delete(handler);
+		};
+	}
+
 	async connect(): Promise<void> {
 		if (this._connected) {
 			return await Promise.resolve();
@@ -102,6 +118,9 @@ export class BroadcastChannelTransport implements SyncTransport {
 		};
 
 		this._connected = true;
+		for (const handler of this.connectionChangeHandlers) {
+			handler(true);
+		}
 		return await Promise.resolve();
 	}
 
@@ -116,5 +135,8 @@ export class BroadcastChannelTransport implements SyncTransport {
 		}
 
 		this._connected = false;
+		for (const handler of this.connectionChangeHandlers) {
+			handler(false);
+		}
 	}
 }
