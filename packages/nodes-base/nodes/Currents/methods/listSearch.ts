@@ -24,7 +24,7 @@ export async function getProjects(
 				(project.projectId as string)?.toLowerCase().includes(filter.toLowerCase()),
 		)
 		.map((project) => ({
-			name: project.name as string,
+			name: (project.name as string) ?? (project.projectId as string),
 			value: project.projectId as string,
 		}))
 		.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
