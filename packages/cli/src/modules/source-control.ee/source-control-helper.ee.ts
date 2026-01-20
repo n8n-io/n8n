@@ -23,7 +23,6 @@ import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
 import type {
-	DataTableResourceOwner,
 	ExportableDataTable,
 	ExportableDataTableColumn,
 	StatusExportableDataTable,

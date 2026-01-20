@@ -32,7 +32,7 @@ import type {
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
-import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
+import type { StatusResourceOwner } from './types/resource-owner';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';

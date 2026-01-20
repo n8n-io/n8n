@@ -49,7 +49,7 @@ import type { ExportableCredential } from './types/exportable-credential';
 import type { DataTableResourceOwner, ExportableDataTable } from './types/exportable-data-table';
 import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
-import type { RemoteResourceOwner, StatusResourceOwner } from './types/resource-owner';
+import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { ExportableVariable } from './types/exportable-variable';
 

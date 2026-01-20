@@ -536,7 +536,7 @@ export class SourceControlImportService {
 							type: col.type,
 							index: col.index,
 						})),
-					ownedBy: ownedBy,
+					ownedBy,
 					filename: getDataTableExportPath(table.id, this.dataTableExportFolder),
 					createdAt: table.createdAt.toISOString(),
 					updatedAt: table.updatedAt.toISOString(),
