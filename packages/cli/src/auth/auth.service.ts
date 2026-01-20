@@ -85,6 +85,7 @@ export class AuthService {
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/types/node-versions.json',
 			'/mcp-oauth/authorize/',
 
 			// Skip browser ID check for chat hub attachments
@@ -106,7 +107,7 @@ export class AuthService {
 					if (isInvalid) throw new AuthError('Unauthorized');
 
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
-					const mfaEnforced = this.mfaService.isMFAEnforced();
+					const mfaEnforced = await this.mfaService.isMFAEnforced();
 
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
@@ -114,7 +115,16 @@ export class AuthService {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
 						} else {
+							// User doesn't have MFA enabled, but MFA is enforced
+							// They need to set up MFA before accessing most endpoints
 							if (allowUnauthenticated) {
+								// Don't set req.user to avoid giving full access to semi-authenticated users
+								// Instead, set a flag in authInfo to indicate MFA enrollment is required
+								// This allows endpoints to handle this state appropriately (e.g., return public settings)
+								req.authInfo = {
+									usedMfa,
+									mfaEnrollmentRequired: true,
+								};
 								return next();
 							}
 

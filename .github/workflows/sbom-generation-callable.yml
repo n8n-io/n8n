@@ -43,17 +43,10 @@ jobs:
         with:
           ref: ${{ inputs.release_tag_ref }}
 
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - name: Setup Node.js and install dependencies
+        uses: ./.github/actions/setup-nodejs
         with:
-          node-version: 22.x
-
-      - name: Setup corepack and pnpm
-        run: |
-          npm i -g corepack@0.33
-          corepack enable
-
-      - name: Install dependencies for SBOM generation
-        run: pnpm install --frozen-lockfile
+          build-command: ''
 
       - name: Generate CycloneDX SBOM for source code
         uses: anchore/sbom-action@f8bdd1d8ac5e901a77a92f111440fdb1b593736b # v0.20.6
@@ -62,41 +55,27 @@ jobs:
           format: cyclonedx-json
           output-file: sbom-source.cdx.json
 
-      - name: Attest build provenance for source release
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a0 # v3.0.0
-        with:
-          subject-path: './package.json'
-
       - name: Attest SBOM for source release
         uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
           subject-path: './package.json'
           sbom-path: 'sbom-source.cdx.json'
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
-
-      - name: Sign SBOM (keyless)
-        run: |
-          # Sign SBOM using Cosign keyless signing with GitHub OIDC
-          # This provides cryptographic proof of authenticity and integrity
-          cosign sign-blob --yes --output-signature sbom-source.cdx.sig --output-certificate sbom-source.cdx.pem sbom-source.cdx.json
-
-      - name: Attach SBOM files to release
+      - name: Attach SBOM and VEX files to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Upload SBOM files to the existing release
+          # Upload SBOM and VEX files to the existing release
           gh release upload "${{ inputs.release_tag_ref }}" \
             sbom-source.cdx.json \
-            sbom-source.cdx.sig \
-            sbom-source.cdx.pem \
+            vex.openvex.json \
             --clobber
 
           COMPONENT_COUNT=$(jq '.components | length' sbom-source.cdx.json 2>/dev/null || echo "unknown")
-          echo "✅ SBOM workflow completed"
-          echo "📊 SBOM contains $COMPONENT_COUNT components"
-          echo "🛡️ GitHub attestations created for source release"
+          VEX_STATEMENTS=$(jq '.statements | length' vex.openvex.json 2>/dev/null || echo "0")
+          echo "SBOM and VEX attached to release"
+          echo "  - SBOM: $COMPONENT_COUNT components"
+          echo "  - VEX: $VEX_STATEMENTS CVE statements"
 
       - name: Notify Slack on failure
         if: failure()

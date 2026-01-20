@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import type { NeededNodeType } from '@n8n/task-runner';
 import type { Dirent } from 'fs';
-import { readdir } from 'fs/promises';
+import { readdir, readFile } from 'fs/promises';
 import { RoutingNode } from 'n8n-core';
 import type { ExecuteContext } from 'n8n-core';
 import type { INodeType, INodeTypeDescription, INodeTypes, IVersionedNodeType } from 'n8n-workflow';
@@ -26,6 +26,35 @@ export class NodeTypes implements INodeTypes {
 		const { description } = NodeHelpers.getVersionedNodeType(nodeType.type, version);
 
 		return { description: { ...description }, sourcePath: nodeType.sourcePath };
+	}
+
+	/**
+	 * Get a node type description with its translation loaded (if available for the locale).
+	 */
+	async getDescriptionWithTranslation(
+		nodeTypeName: string,
+		version: number,
+		locale: string,
+	): Promise<INodeTypeDescription> {
+		const { description, sourcePath } = this.getWithSourcePath(nodeTypeName, version);
+
+		if (locale !== 'en') {
+			const translationPath = await this.getNodeTranslationPath({
+				nodeSourcePath: sourcePath,
+				longNodeType: description.name,
+				locale,
+			});
+
+			try {
+				const translation = await readFile(translationPath, 'utf8');
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				description.translation = JSON.parse(translation);
+			} catch {
+				// ignore - no translation exists at path
+			}
+		}
+
+		return description;
 	}
 
 	getByName(nodeType: string): INodeType | IVersionedNodeType {

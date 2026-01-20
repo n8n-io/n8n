@@ -42,6 +42,7 @@ export interface ProgrammaticViolation {
 	type: ProgrammaticViolationType;
 	description: string;
 	pointsDeducted: number;
+	metadata?: Record<string, string>;
 }
 
 export interface SingleEvaluatorResult {
@@ -74,7 +75,6 @@ export interface ProgrammaticEvaluationResult {
 export interface ProgrammaticEvaluationInput {
 	generatedWorkflow: SimpleWorkflow;
 	userPrompt?: string;
-	referenceWorkflow?: SimpleWorkflow;
 	referenceWorkflows?: SimpleWorkflow[];
 	preset?: 'strict' | 'standard' | 'lenient';
 }

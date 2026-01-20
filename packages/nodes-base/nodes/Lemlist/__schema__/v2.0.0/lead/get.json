@@ -10,6 +10,9 @@
         "companyName": {
             "type": "string"
         },
+        "contactId": {
+            "type": "string"
+        },
         "email": {
             "type": "string"
         },
@@ -21,7 +24,10 @@
         },
         "lastName": {
             "type": "string"
+        },
+        "linkedinUrl": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }
