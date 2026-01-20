@@ -7,7 +7,7 @@ export class AddDynamicCredentialUserEntryTable1768901721000 implements Reversib
 		await createTable(tableName)
 			.withColumns(
 				column('credential_id').varchar(16).primary.notNull,
-				column('user_id').varchar().primary.notNull,
+				column('user_id').uuid.primary.notNull,
 				column('resolver_id').varchar(16).primary.notNull,
 				column('data').text.notNull,
 			)
