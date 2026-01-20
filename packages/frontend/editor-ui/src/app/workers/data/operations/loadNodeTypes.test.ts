@@ -62,6 +62,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 			db: 1,
 			vfs: null,
 			initPromise: null,
+			version: null,
 			...overrides,
 		};
 	}

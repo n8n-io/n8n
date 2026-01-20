@@ -48,6 +48,7 @@ export interface DataWorkerState {
 	db: number | null;
 	vfs: AccessHandlePoolVFS | null;
 	initPromise: Promise<void> | null;
+	version: string | null;
 }
 
 /**
@@ -66,5 +67,11 @@ export interface QueryResult {
 export interface NodeTypeRow {
 	id: string;
 	data: string;
+	updated_at: string;
+}
+
+export interface MetadataRow {
+	key: string;
+	value: string;
 	updated_at: string;
 }
