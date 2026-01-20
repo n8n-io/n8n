@@ -147,9 +147,10 @@ export class WorkflowPublicationOutboxConsumer {
 			unchanged: diff.unchanged.length,
 		});
 
-		// Remove old triggers
+		// Remove specific nodes that were removed from the published version
 		if (diff.removed.length > 0) {
-			await this.removeTriggersAndPollers(workflowId);
+			const removedNodeIds = diff.removed.map((n) => n.id);
+			await this.activeWorkflowManager.removeNodes(workflowId, removedNodeIds);
 		}
 
 		// Update workflow_published_version table
@@ -161,9 +162,9 @@ export class WorkflowPublicationOutboxConsumer {
 			['workflowId'],
 		);
 
-		// Add new triggers
-		if (diff.added.length > 0 || diff.unchanged.length > 0) {
-			await this.addTriggersAndPollers(workflowId, newPublishedVersion);
+		// Add specific nodes that were added in the new published version
+		if (diff.added.length > 0) {
+			await this.addNodes(workflowId, newPublishedVersion, diff.added);
 		}
 
 		// Mark outbox message as completed
@@ -213,24 +214,12 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	/**
-	 * Remove all triggers and pollers for a workflow.
+	 * Add specific nodes to an active workflow.
 	 */
-	private async removeTriggersAndPollers(workflowId: string): Promise<void> {
-		// This delegates to active-workflow-manager which handles:
-		// - Stopping trigger listeners
-		// - Stopping pollers
-		// - Cleaning up webhooks if needed
-		await this.activeWorkflowManager.removeWorkflowTriggersAndPollers(workflowId);
-
-		this.logger.debug('Removed triggers and pollers', { workflowId });
-	}
-
-	/**
-	 * Add triggers and pollers for a workflow.
-	 */
-	private async addTriggersAndPollers(
+	private async addNodes(
 		workflowId: string,
 		publishedVersion: WorkflowHistory,
+		nodesToAdd: INode[],
 	): Promise<void> {
 		// Create workflow instance from published version
 		const workflow = new Workflow({
@@ -259,13 +248,16 @@ export class WorkflowPublicationOutboxConsumer {
 			workflowSettings: workflowEntity.settings ?? {},
 		});
 
-		// Add triggers and pollers
-		await this.activeWorkflowManager.addTriggersAndPollers(workflowEntity, workflow, {
+		// Add only the specific nodes
+		await this.activeWorkflowManager.addNodes(workflowEntity, workflow, nodesToAdd, {
 			activationMode: 'update',
 			executionMode: 'trigger',
 			additionalData,
 		});
 
-		this.logger.debug('Added triggers and pollers', { workflowId });
+		this.logger.debug('Added nodes to workflow', {
+			workflowId,
+			nodeIds: nodesToAdd.map((n) => n.id),
+		});
 	}
 }

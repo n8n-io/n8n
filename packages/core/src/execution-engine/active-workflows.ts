@@ -77,6 +77,8 @@ export class ActiveWorkflows {
 
 		const triggerResponses: ITriggerResponse[] = [];
 
+		const triggersByNode = new Map<string, ITriggerResponse[]>();
+
 		for (const triggerNode of triggerNodes) {
 			try {
 				const triggerResponse = await this.triggersAndPollers.runTrigger(
@@ -89,6 +91,10 @@ export class ActiveWorkflows {
 				);
 				if (triggerResponse !== undefined) {
 					triggerResponses.push(triggerResponse);
+					// Track triggers by node
+					const nodeTriggers = triggersByNode.get(triggerNode.id) ?? [];
+					nodeTriggers.push(triggerResponse);
+					triggersByNode.set(triggerNode.id, nodeTriggers);
 				}
 			} catch (e) {
 				const error = e instanceof Error ? e : new Error(`${e}`);
@@ -100,7 +106,7 @@ export class ActiveWorkflows {
 			}
 		}
 
-		this.activeWorkflows[workflowId] = { triggerResponses };
+		this.activeWorkflows[workflowId] = { triggerResponses, triggersByNode };
 
 		const pollingNodes = workflow.getPollNodes();
 
@@ -213,6 +219,116 @@ export class ActiveWorkflows {
 		delete this.activeWorkflows[workflowId];
 
 		return true;
+	}
+
+	/**
+	 * Add specific nodes to an already active workflow.
+	 */
+	async addNodes(
+		workflowId: string,
+		workflow: Workflow,
+		nodes: INode[],
+		additionalData: IWorkflowExecuteAdditionalData,
+		mode: WorkflowExecuteMode,
+		activation: WorkflowActivateMode,
+		getTriggerFunctions: IGetExecuteTriggerFunctions,
+		getPollFunctions: IGetExecutePollFunctions,
+	) {
+		if (!this.isActive(workflowId)) {
+			throw new WorkflowActivationError('Cannot add nodes to inactive workflow');
+		}
+
+		const workflowData = this.activeWorkflows[workflowId];
+		const triggersByNode = workflowData.triggersByNode ?? new Map();
+		const triggerResponses = workflowData.triggerResponses ?? [];
+
+		for (const node of nodes) {
+			const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+			// Handle trigger nodes
+			if (nodeType.trigger !== undefined) {
+				const triggerResponse = await this.triggersAndPollers.runTrigger(
+					workflow,
+					node,
+					getTriggerFunctions,
+					additionalData,
+					mode,
+					activation,
+				);
+
+				if (triggerResponse !== undefined) {
+					triggerResponses.push(triggerResponse);
+					const nodeTriggers = triggersByNode.get(node.id) ?? [];
+					nodeTriggers.push(triggerResponse);
+					triggersByNode.set(node.id, nodeTriggers);
+				}
+			}
+
+			// Handle polling nodes
+			if (nodeType.poll !== undefined) {
+				await this.activatePolling(
+					node,
+					workflow,
+					additionalData,
+					getPollFunctions,
+					mode,
+					activation,
+				);
+			}
+		}
+
+		// Update the workflow data
+		this.activeWorkflows[workflowId] = { triggerResponses, triggersByNode };
+
+		this.logger.debug(`Added ${nodes.length} nodes to workflow "${workflowId}"`, {
+			workflowId,
+			nodeIds: nodes.map((n) => n.id),
+		});
+	}
+
+	/**
+	 * Remove specific nodes from an active workflow.
+	 */
+	async removeNodes(workflowId: string, nodeIds: string[]) {
+		if (!this.isActive(workflowId)) {
+			this.logger.warn(`Cannot remove nodes from inactive workflow ID "${workflowId}"`);
+			return;
+		}
+
+		const workflowData = this.activeWorkflows[workflowId];
+		const triggersByNode = workflowData.triggersByNode ?? new Map();
+		const nodeIdSet = new Set(nodeIds);
+
+		// Close triggers for the specified nodes
+		for (const nodeId of nodeIds) {
+			const nodeTriggers = triggersByNode.get(nodeId);
+			if (nodeTriggers) {
+				for (const trigger of nodeTriggers) {
+					await this.closeTrigger(trigger, workflowId);
+				}
+				triggersByNode.delete(nodeId);
+			}
+		}
+
+		// Rebuild the triggerResponses array excluding removed nodes
+		const updatedTriggerResponses: ITriggerResponse[] = [];
+		for (const triggers of triggersByNode.values()) {
+			updatedTriggerResponses.push(...triggers);
+		}
+
+		// Deregister crons for the specified nodes
+		this.scheduledTaskManager.deregisterCronsForNodes(workflowId, nodeIds);
+
+		// Update the workflow data
+		this.activeWorkflows[workflowId] = {
+			triggerResponses: updatedTriggerResponses,
+			triggersByNode,
+		};
+
+		this.logger.debug(`Removed ${nodeIds.length} nodes from workflow "${workflowId}"`, {
+			workflowId,
+			nodeIds,
+		});
 	}
 
 	async removeAllTriggerAndPollerBasedWorkflows() {
