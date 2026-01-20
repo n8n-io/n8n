@@ -6,28 +6,28 @@ export class AddDynamicCredentialUserEntryTable1768901721000 implements Reversib
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
-				column('credential_id').varchar(16).primary.notNull,
-				column('user_id').uuid.primary.notNull,
-				column('resolver_id').varchar(16).primary.notNull,
+				column('credentialId').varchar(16).primary.notNull,
+				column('userId').uuid.primary.notNull,
+				column('resolverId').varchar(16).primary.notNull,
 				column('data').text.notNull,
 			)
-			.withTimestamps.withForeignKey('credential_id', {
+			.withTimestamps.withForeignKey('credentialId', {
 				tableName: 'credentials_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withForeignKey('resolver_id', {
+			.withForeignKey('resolverId', {
 				tableName: 'dynamic_credential_resolver',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withForeignKey('user_id', {
+			.withForeignKey('userId', {
 				tableName: 'user',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withIndexOn(['user_id'])
-			.withIndexOn(['resolver_id']);
+			.withIndexOn(['userId'])
+			.withIndexOn(['resolverId']);
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

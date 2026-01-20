@@ -15,17 +15,17 @@ export class DynamicCredentialUserEntry extends WithTimestamps {
 	}
 
 	@PrimaryColumn({
-		name: 'credential_id',
+		name: 'credentialId',
 	})
 	credentialId: string;
 
 	@PrimaryColumn({
-		name: 'user_id',
+		name: 'userId',
 	})
 	userId: string;
 
 	@PrimaryColumn({
-		name: 'resolver_id',
+		name: 'resolverId',
 	})
 	resolverId: string;
 
@@ -33,14 +33,14 @@ export class DynamicCredentialUserEntry extends WithTimestamps {
 	data: string;
 
 	@ManyToOne(() => CredentialsEntity, { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'credential_id' })
+	@JoinColumn({ name: 'credentialId' })
 	credential: CredentialsEntity;
 
 	@ManyToOne(() => User, { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'user_id' })
+	@JoinColumn({ name: 'userId' })
 	user: User;
 
 	@ManyToOne(() => DynamicCredentialResolver, { onDelete: 'CASCADE' })
-	@JoinColumn({ name: 'resolver_id' })
+	@JoinColumn({ name: 'resolverId' })
 	resolver: DynamicCredentialResolver;
 }
