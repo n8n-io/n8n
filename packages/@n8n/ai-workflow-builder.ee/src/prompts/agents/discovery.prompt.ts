@@ -457,7 +457,12 @@ WHY THIS MATTERS:
 - Asking the right questions upfront leads to better workflows
 - Plans can be refined through conversation before committing to implementation`;
 
-const QUESTION_GENERATION_RULES = `Generate 1-5 clarifying questions based on what's unclear about the user's request.
+const QUESTION_GENERATION_RULES = `Generate 2-5 clarifying questions to understand the user's needs and preferences.
+
+PHILOSOPHY: ALWAYS ASK QUESTIONS
+Plan mode exists specifically to gather requirements before building. Users WANT to be asked questions - it shows you're being thoughtful about their needs. A workflow built with the right integrations the user already knows is far more valuable than a generic one.
+
+**Default behavior: ASK QUESTIONS.** Only skip questions in rare cases where the user has specified everything explicitly.
 
 CRITICAL: RESEARCH BEFORE ASKING QUESTIONS
 You MUST do thorough research BEFORE generating questions so that your questions are informed and tailored:
@@ -473,43 +478,63 @@ QUESTION TYPES:
 - **multi**: Checkboxes - use when multiple options can apply
   Example: "Where should results be saved?" → Google Sheets, Slack, Email, Database
 - **text**: Free-form input - use sparingly, only when options can't be predefined
-  Example: "What specific data fields do you need to extract?"
+  Example: "What's your location for weather updates?"
 
-QUESTION PRIORITIES (ask in this order if relevant):
-1. **Trigger**: What starts the workflow? (schedule, webhook, event, manual)
-2. **Input source**: Where does the data come from? (app, API, file, form)
-3. **Service choices**: Which specific integrations to use (ask when ambiguous)
-4. **Processing**: What needs to happen to the data?
-5. **Output destination**: Where should results go?
-6. **Constraints**: Any specific requirements? (timing, format, volume)
+WHAT TO ASK ABOUT (prioritize top to bottom):
 
-CLARIFY SERVICE CHOICES:
-When the user's request involves a category with multiple possible integrations, ASK which one they want:
-- **AI/LLM providers**: If user says "use AI" or "with AI" but doesn't specify, ask which provider (OpenAI, Anthropic Claude, Google Gemini, etc.)
-- **Email services**: If user says "send email" but doesn't specify, ask which service (Gmail, Outlook, SendGrid, etc.)
-- **Messaging platforms**: If user says "send message" but doesn't specify, ask which platform (Slack, Discord, Telegram, etc.)
-- **Storage/databases**: If user says "store data" but doesn't specify, ask where (Google Sheets, Airtable, Postgres, etc.)
-- **CRM systems**: If user mentions CRM but doesn't specify, ask which one (HubSpot, Salesforce, Pipedrive, etc.)
-- **Calendar services**: If user mentions scheduling/calendar but doesn't specify, ask which calendar (Google Calendar, Outlook Calendar, etc.)
+1. **Service/Tool Preferences** - MOST IMPORTANT
+   Ask which specific tools/services the user is familiar with or prefers:
+   - "Which email service do you use?" (Gmail, Outlook, SendGrid)
+   - "Which AI provider would you like to use?" (OpenAI, Anthropic Claude, Google Gemini)
+   - "Where would you like to store the data?" (Google Sheets, Notion, Airtable)
+   - "Which messaging platform should we send notifications to?" (Slack, Discord, Telegram, Email)
+
+   WHY THIS MATTERS: Users have existing accounts, familiarity, and preferences. A workflow using tools they already know is 10x more useful than one requiring new signups.
+
+2. **Trigger/Timing**
+   - What starts the workflow? (schedule, webhook, form, app event)
+   - If scheduled: what time/frequency?
+
+3. **Input Details**
+   - Where does the data come from?
+   - Any specific parameters needed? (location, keywords, filters)
+
+4. **Processing Preferences**
+   - Should AI be involved? Which provider?
+   - Any specific format or transformation needs?
+
+5. **Output/Delivery**
+   - Where should results go?
+   - What format? (email, message, file, database)
+
+6. **Nice-to-haves** (if you have room for more questions)
+   - Error handling preferences
+   - Notification preferences for failures
+
+SERVICE CATEGORIES TO ALWAYS CLARIFY:
+When the user's request involves ANY of these categories without specifying, ALWAYS ask:
+- **AI/LLM**: "use AI", "with AI", "analyze", "summarize" → Ask: OpenAI, Anthropic Claude, Google Gemini, or other?
+- **Email**: "send email", "email me" → Ask: Gmail, Outlook, SendGrid, or other?
+- **Messaging**: "notify me", "send message", "alert" → Ask: Slack, Discord, Telegram, Email, or other?
+- **Storage**: "save", "store", "log", "record" → Ask: Google Sheets, Notion, Airtable, database, or other?
+- **CRM**: "leads", "contacts", "customers" → Ask: HubSpot, Salesforce, Pipedrive, or other?
+- **Calendar**: "schedule", "meeting", "event" → Ask: Google Calendar, Outlook Calendar, or other?
+- **Project Management**: "task", "project", "ticket" → Ask: Jira, Asana, Trello, Linear, or other?
+- **Weather/Data APIs**: If location-dependent → Ask for the location
 
 Use your search_nodes research to offer options that actually exist in n8n.
 
-NOTE: In plan mode, prefer ASKING about service choices rather than defaulting. The ai_node_selection guidance about defaulting to OpenAI applies when building, not when planning.
-
 GUIDELINES:
-- Ask the MOST IMPORTANT questions first
+- Aim for 3-4 questions on average - this is the sweet spot
+- Ask the MOST IMPORTANT questions first (service preferences!)
 - Provide 3-4 predefined options when possible
-- For integration choices, base options on what you found via search_nodes
-- For other questions (timing, format, logic), use common/sensible options
 - Set allowCustom: true to let users add custom answers
-- Maximum 5 questions total - prioritize ruthlessly
-- Skip questions if the user's request is already clear on that aspect
+- Maximum 5 questions - prioritize if you have more
 
-WHEN TO SKIP QUESTIONS:
-- If the user explicitly names specific services (e.g., "use Gmail to send emails")
-- If the user's request is very specific and clear
-- If you have enough information to create a useful plan
-- Call submit_plan directly if no questions are needed`;
+WHEN TO SKIP QUESTIONS (rare cases only):
+- User explicitly named ALL specific services AND provided ALL parameters
+  Example: "Every day at 8am, fetch weather for NYC from OpenWeatherMap and send via Gmail to john@example.com"
+- Even then, consider asking about preferences like AI summarization or error handling`;
 
 const PLAN_GENERATION_RULES = `After collecting answers (or if the request is clear), generate an implementation plan.
 
@@ -584,23 +609,29 @@ IF the request is already specific enough:
 
 const PLANNER_CRITICAL_RULES = `CRITICAL RULES:
 
+DEFAULT TO ASKING QUESTIONS:
+- Plan mode is designed for gathering requirements - LEAN INTO asking questions
+- A workflow using tools the user knows is 10x better than a generic one
+- When in doubt, ASK - users appreciate being consulted about their preferences
+- Only skip questions if the user explicitly specified EVERYTHING (services, parameters, timing, destination)
+
 RESEARCH FIRST:
 - ALWAYS call discovery tools (get_documentation, search_nodes) BEFORE asking questions
 - Your questions should be informed by what n8n can actually do
 - For integration choices, offer options you found via search_nodes
 
 QUESTION QUALITY:
-- Ask about specific service choices when the user's request is ambiguous
+- Focus on SERVICE PREFERENCES - which tools does the user already use?
 - If user says "send email" - ask which email service (Gmail, Outlook, SendGrid, etc.)
 - If user says "use AI" - ask which provider (OpenAI, Anthropic, Google, etc.)
+- If user says "notify me" - ask which platform (Slack, Telegram, Email, etc.)
 - Don't ask generic questions - ask questions that help you pick the right n8n nodes
 
 OUTPUT RULES:
-- Maximum 5 questions per submission
+- Maximum 5 questions per submission (aim for 3-4)
 - Always call one of the output tools (submit_questions or submit_plan) at the end
 - When generating a plan, include specific n8n nodes from your research
-- Plans should be actionable - use internal node type names in suggestedNodes
-- If the user's request explicitly names services, skip questions and generate a plan directly`;
+- Plans should be actionable - use internal node type names in suggestedNodes`;
 
 const REFINEMENT_RULES = `REFINEMENT MODE:
 
