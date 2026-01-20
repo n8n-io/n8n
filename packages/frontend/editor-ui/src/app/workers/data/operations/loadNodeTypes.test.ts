@@ -10,12 +10,17 @@ vi.mock('@n8n/rest-api-client/api/nodeTypes', () => ({
 	getNodeTypesByIdentifier: vi.fn(),
 }));
 
-const { execWithParamsMock, queryMock } = vi.hoisted(() => ({
-	execWithParamsMock: vi.fn(),
-	queryMock: vi.fn(),
-}));
+const { execWithParamsMock, queryMock, getStoredVersionMock, storeVersionMock } = vi.hoisted(
+	() => ({
+		execWithParamsMock: vi.fn(),
+		queryMock: vi.fn(),
+		getStoredVersionMock: vi.fn(),
+		storeVersionMock: vi.fn(),
+	}),
+);
 
 vi.mock('./query', () => ({
+	exec: vi.fn(),
 	execWithParams: execWithParamsMock,
 	query: queryMock,
 	withTrx: async <T>(_state: unknown, fn: () => Promise<T>): Promise<T> => {
@@ -31,12 +36,18 @@ vi.mock('./query', () => ({
 	},
 }));
 
+vi.mock('./storeVersion', () => ({
+	getStoredVersion: getStoredVersionMock,
+	storeVersion: storeVersionMock,
+}));
+
 import {
 	getNodeTypes,
 	getNodeTypeVersions,
 	getNodeTypesByIdentifier,
 } from '@n8n/rest-api-client/api/nodeTypes';
 import { execWithParams, query } from './query';
+import { getStoredVersion, storeVersion } from './storeVersion';
 
 describe('Data Worker loadNodeTypes Operations', () => {
 	let consoleSpy: {
@@ -49,6 +60,10 @@ describe('Data Worker loadNodeTypes Operations', () => {
 			log: vi.spyOn(console, 'log').mockImplementation(() => {}),
 			error: vi.spyOn(console, 'error').mockImplementation(() => {}),
 		};
+
+		// Default mock behavior: version matches, no clearing needed
+		vi.mocked(getStoredVersion).mockResolvedValue('1.0.0');
+		vi.mocked(storeVersion).mockResolvedValue(undefined);
 	});
 
 	afterEach(() => {
@@ -62,7 +77,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 			db: 1,
 			vfs: null,
 			initPromise: null,
-			version: null,
+			version: '1.0.0',
 			...overrides,
 		};
 	}

@@ -151,25 +151,6 @@ async function initialize({ version }: { version: string }): Promise<void> {
 		}
 
 		state.initialized = true;
-
-		// Check stored version and handle version changes
-		const storedVersion = await getStoredVersionOp(state);
-		console.log('[DataWorker] Stored version:', storedVersion);
-		console.log('[DataWorker] Current version:', version);
-
-		if (storedVersion !== null && storedVersion !== version) {
-			console.log(
-				`[DataWorker] Version changed: ${storedVersion} -> ${version}, clearing node types`,
-			);
-			await state.sqlite3.exec(state.db, 'DELETE FROM nodeTypes');
-			console.log('[DataWorker] Node types cleared');
-		}
-
-		// Update stored version if different
-		if (storedVersion !== version) {
-			await storeVersionOp(state, version);
-		}
-
 		state.version = version;
 	})();
 
