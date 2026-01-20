@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
-import { shouldTidyUp, type TidyUpOption } from '@/features/workflows/workflowDiff/useWorkflowTidyUp';
+import { shouldTidyUp } from '@/features/workflows/workflowDiff/useWorkflowTidyUp';
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
@@ -35,17 +35,9 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 		const json = JSON.parse(messageEvent.data);
 
 		if (json && json.command === 'openDiff') {
-			const oldWf = json.oldWorkflow as IWorkflowDb | undefined;
-			const newWf = json.newWorkflow as IWorkflowDb | undefined;
-			const tidyUpOption = json.tidyUp as TidyUpOption | undefined;
-
-			// Determine if tidy-up should be applied
-			const shouldApplyOld = oldWf && shouldTidyUp({ nodes: oldWf.nodes }, tidyUpOption);
-			const shouldApplyNew = newWf && shouldTidyUp({ nodes: newWf.nodes }, tidyUpOption);
-			tidyUpEnabled.value = !!(shouldApplyOld || shouldApplyNew);
-
-			oldWorkflow.value = oldWf;
-			newWorkflow.value = newWf;
+			oldWorkflow.value = json.oldWorkflow as IWorkflowDb | undefined;
+			newWorkflow.value = json.newWorkflow as IWorkflowDb | undefined;
+			tidyUpEnabled.value = shouldTidyUp(json.tidyUp as boolean | undefined);
 		}
 	} catch (e) {
 		// Ignore malformed messages
