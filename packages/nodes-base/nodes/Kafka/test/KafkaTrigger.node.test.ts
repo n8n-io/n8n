@@ -46,6 +46,18 @@ describe('KafkaTrigger Node', () => {
 				subscribe: mockConsumerSubscribe,
 				run: mockConsumerRun,
 				disconnect: mockConsumerDisconnect,
+				on: jest.fn(() => jest.fn()),
+				events: {
+					CONNECT: 'consumer.connect',
+					GROUP_JOIN: 'consumer.group_join',
+					REQUEST_TIMEOUT: 'consumer.network.request_timeout',
+					RECEIVED_UNSUBSCRIBED_TOPICS: 'consumer.received_unsubscribed_topics',
+					STOP: 'consumer.stop',
+					DISCONNECT: 'consumer.disconnect',
+					COMMIT_OFFSETS: 'consumer.commit_offsets',
+					REBALANCING: 'consumer.rebalancing',
+					CRASH: 'consumer.crash',
+				},
 			}),
 		);
 
@@ -114,6 +126,7 @@ describe('KafkaTrigger Node', () => {
 			maxInFlightRequests: null,
 			sessionTimeout: 30000,
 			heartbeatInterval: 3000,
+			rebalanceTimeout: 600000,
 		});
 
 		expect(mockConsumerConnect).toHaveBeenCalled();
@@ -375,5 +388,202 @@ describe('KafkaTrigger Node', () => {
 
 		deferredPromise?.resolve(mock());
 		await publishPromise;
+	});
+
+	it('should use custom rebalanceTimeout when provided', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						rebalanceTimeout: 300000,
+						sessionTimeout: 20000,
+						heartbeatInterval: 2000,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		expect(mockConsumerCreate).toHaveBeenCalledWith({
+			groupId: 'test-group',
+			maxInFlightRequests: null,
+			sessionTimeout: 20000,
+			heartbeatInterval: 2000,
+			rebalanceTimeout: 300000,
+		});
+	});
+
+	it('should register event listeners on consumer', async () => {
+		const mockOn = jest.fn(() => jest.fn());
+		mockConsumerCreate.mockReturnValueOnce(
+			mock<Consumer>({
+				connect: mockConsumerConnect,
+				subscribe: mockConsumerSubscribe,
+				run: mockConsumerRun,
+				disconnect: mockConsumerDisconnect,
+				on: mockOn,
+				events: {
+					CONNECT: 'consumer.connect',
+					GROUP_JOIN: 'consumer.group_join',
+					REQUEST_TIMEOUT: 'consumer.network.request_timeout',
+					RECEIVED_UNSUBSCRIBED_TOPICS: 'consumer.received_unsubscribed_topics',
+					STOP: 'consumer.stop',
+					DISCONNECT: 'consumer.disconnect',
+					COMMIT_OFFSETS: 'consumer.commit_offsets',
+					REBALANCING: 'consumer.rebalancing',
+					CRASH: 'consumer.crash',
+				},
+			}),
+		);
+
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		// Verify all event listeners are registered
+		expect(mockOn).toHaveBeenCalledTimes(9);
+		expect(mockOn).toHaveBeenCalledWith('consumer.connect', expect.any(Function));
+		expect(mockOn).toHaveBeenCalledWith('consumer.group_join', expect.any(Function));
+		expect(mockOn).toHaveBeenCalledWith('consumer.network.request_timeout', expect.any(Function));
+		expect(mockOn).toHaveBeenCalledWith(
+			'consumer.received_unsubscribed_topics',
+			expect.any(Function),
+		);
+		expect(mockOn).toHaveBeenCalledWith('consumer.stop', expect.any(Function));
+		expect(mockOn).toHaveBeenCalledWith('consumer.disconnect', expect.any(Function));
+		expect(mockOn).toHaveBeenCalledWith('consumer.commit_offsets', expect.any(Function));
+		expect(mockOn).toHaveBeenCalledWith('consumer.rebalancing', expect.any(Function));
+		expect(mockOn).toHaveBeenCalledWith('consumer.crash', expect.any(Function));
+	});
+
+	it('should clean up event listeners on close', async () => {
+		const mockRemoveListener1 = jest.fn();
+		const mockRemoveListener2 = jest.fn();
+		const mockRemoveListener3 = jest.fn();
+		const mockRemoveListener4 = jest.fn();
+		const mockRemoveListener5 = jest.fn();
+		const mockRemoveListener6 = jest.fn();
+		const mockRemoveListener7 = jest.fn();
+		const mockRemoveListener8 = jest.fn();
+		const mockRemoveListener9 = jest.fn();
+
+		const mockOn = jest
+			.fn()
+			.mockReturnValueOnce(mockRemoveListener1)
+			.mockReturnValueOnce(mockRemoveListener2)
+			.mockReturnValueOnce(mockRemoveListener3)
+			.mockReturnValueOnce(mockRemoveListener4)
+			.mockReturnValueOnce(mockRemoveListener5)
+			.mockReturnValueOnce(mockRemoveListener6)
+			.mockReturnValueOnce(mockRemoveListener7)
+			.mockReturnValueOnce(mockRemoveListener8)
+			.mockReturnValueOnce(mockRemoveListener9);
+
+		const mockConsumerStop = jest.fn();
+
+		mockConsumerCreate.mockReturnValueOnce(
+			mock<Consumer>({
+				connect: mockConsumerConnect,
+				subscribe: mockConsumerSubscribe,
+				run: mockConsumerRun,
+				disconnect: mockConsumerDisconnect,
+				stop: mockConsumerStop,
+				on: mockOn,
+				events: {
+					CONNECT: 'consumer.connect',
+					GROUP_JOIN: 'consumer.group_join',
+					REQUEST_TIMEOUT: 'consumer.network.request_timeout',
+					RECEIVED_UNSUBSCRIBED_TOPICS: 'consumer.received_unsubscribed_topics',
+					STOP: 'consumer.stop',
+					DISCONNECT: 'consumer.disconnect',
+					COMMIT_OFFSETS: 'consumer.commit_offsets',
+					REBALANCING: 'consumer.rebalancing',
+					CRASH: 'consumer.crash',
+				},
+			}),
+		);
+
+		const { close } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await close();
+
+		// Verify all event listener removal functions were called
+		expect(mockRemoveListener1).toHaveBeenCalled();
+		expect(mockRemoveListener2).toHaveBeenCalled();
+		expect(mockRemoveListener3).toHaveBeenCalled();
+		expect(mockRemoveListener4).toHaveBeenCalled();
+		expect(mockRemoveListener5).toHaveBeenCalled();
+		expect(mockRemoveListener6).toHaveBeenCalled();
+		expect(mockRemoveListener7).toHaveBeenCalled();
+		expect(mockRemoveListener8).toHaveBeenCalled();
+		expect(mockRemoveListener9).toHaveBeenCalled();
+
+		// Verify consumer was stopped and disconnected
+		expect(mockConsumerStop).toHaveBeenCalled();
+		expect(mockConsumerDisconnect).toHaveBeenCalled();
+	});
+
+	it('should use default values for consumer config when options are not provided', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		expect(mockConsumerCreate).toHaveBeenCalledWith({
+			groupId: 'test-group',
+			maxInFlightRequests: null,
+			sessionTimeout: 30000,
+			heartbeatInterval: 3000,
+			rebalanceTimeout: 600000,
+		});
 	});
 });

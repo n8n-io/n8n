@@ -2745,6 +2745,46 @@ describe('useCanvasOperations', () => {
 				],
 			});
 		});
+
+		it('should update node input issues for both nodes after deleting connection', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			const nodeA = createTestNode({
+				id: 'a',
+				type: 'node',
+				name: 'Node A',
+			});
+
+			const nodeB = createTestNode({
+				id: 'b',
+				type: 'node',
+				name: 'Node B',
+			});
+
+			const connection: Connection = {
+				source: nodeA.id,
+				sourceHandle: `outputs/${NodeConnectionTypes.Main}/0`,
+				target: nodeB.id,
+				targetHandle: `inputs/${NodeConnectionTypes.Main}/0`,
+			};
+
+			workflowsStore.getNodeById.mockReturnValueOnce(nodeA).mockReturnValueOnce(nodeB);
+
+			const updateNodeInputIssuesSpy = vi.fn();
+			const nodeHelpersOriginal = nodeHelpers.useNodeHelpers();
+			vi.spyOn(nodeHelpers, 'useNodeHelpers').mockImplementation(() => ({
+				...nodeHelpersOriginal,
+				updateNodeInputIssues: updateNodeInputIssuesSpy,
+			}));
+
+			const { deleteConnection } = useCanvasOperations();
+			deleteConnection(connection);
+
+			await nextTick();
+
+			expect(updateNodeInputIssuesSpy).toHaveBeenCalledWith(nodeA);
+			expect(updateNodeInputIssuesSpy).toHaveBeenCalledWith(nodeB);
+		});
 	});
 
 	describe('revertDeleteConnection', () => {
@@ -5142,6 +5182,21 @@ describe('useCanvasOperations', () => {
 				query: { templateId: 'template-id' },
 			});
 		});
+
+		it('should not mark UI state as dirty on template import', async () => {
+			const uiStore = mockedStore(useUIStore);
+
+			templatesStore.getFixedWorkflowTemplate = vi.fn().mockReturnValue({
+				id: 'workflow-id',
+				name: 'Template Name',
+				workflow: { nodes: [], connections: {} },
+			});
+
+			const { openWorkflowTemplate } = useCanvasOperations();
+			await openWorkflowTemplate('template-id');
+
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('openWorkflowTempalateFromJSON', () => {
@@ -5185,6 +5240,23 @@ describe('useCanvasOperations', () => {
 					parentFolderId: undefined,
 				},
 			});
+		});
+
+		it('should not mark UI state as dirty on template import', async () => {
+			const uiStore = mockedStore(useUIStore);
+
+			const template: WorkflowDataWithTemplateId = {
+				id: 'workflow-id',
+				name: 'Template Name',
+				nodes: [],
+				connections: {},
+				meta: { templateId: 'template-id' },
+			};
+
+			const { openWorkflowTemplateFromJSON } = useCanvasOperations();
+			await openWorkflowTemplateFromJSON(template);
+
+			expect(uiStore.markStateDirty).not.toHaveBeenCalled();
 		});
 	});
 
