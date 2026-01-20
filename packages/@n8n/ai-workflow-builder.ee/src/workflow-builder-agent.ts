@@ -229,13 +229,6 @@ export class WorkflowBuilderAgent {
 			},
 		});
 
-		// DEBUG: Log what we're sending to the agent
-		console.log('[WorkflowBuilderAgent] createAgentStream:', {
-			mode: payload.mode ?? 'build',
-			messageContent: payload.message.substring(0, 100),
-			messageId: payload.id,
-		});
-
 		const stream = await agent.stream(
 			{
 				messages: [humanMessage],

@@ -185,13 +185,6 @@ function processDiscoveryPlanModeUpdate(update: unknown): StreamOutput | null {
 		  }
 		| undefined;
 
-	console.log('[processDiscoveryPlanModeUpdate] update:', {
-		hasQuestions: !!typed?.pendingQuestions?.length,
-		questionCount: typed?.pendingQuestions?.length ?? 0,
-		hasPlan: !!typed?.planOutput,
-		plannerPhase: typed?.plannerPhase,
-	});
-
 	if (!typed) return null;
 
 	// Emit questions if waiting for answers
@@ -207,10 +200,6 @@ function processDiscoveryPlanModeUpdate(update: unknown): StreamOutput | null {
 				allowCustom: q.allowCustom,
 			})),
 		};
-		console.log(
-			'[processDiscoveryPlanModeUpdate] emitting questions:',
-			questionsChunk.questions.length,
-		);
 		return { messages: [questionsChunk] };
 	}
 
@@ -229,11 +218,6 @@ function processDiscoveryPlanModeUpdate(update: unknown): StreamOutput | null {
 				additionalSpecs: typed.planOutput.additionalSpecs,
 			},
 		};
-		console.log(
-			'[processDiscoveryPlanModeUpdate] emitting plan with',
-			planChunk.plan.steps.length,
-			'steps',
-		);
 		return { messages: [planChunk] };
 	}
 

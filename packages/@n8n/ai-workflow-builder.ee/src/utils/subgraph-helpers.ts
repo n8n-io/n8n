@@ -184,28 +184,11 @@ export async function executeSubgraphTools(
  * Gets the LAST HumanMessage (most recent user request), not the first
  */
 export function extractUserRequest(messages: BaseMessage[], defaultValue = ''): string {
-	// DEBUG: Log what messages we're extracting from
-	console.log('[extractUserRequest] total messages:', messages.length);
-	console.log(
-		'[extractUserRequest] all messages:',
-		messages.map((m, i) => ({
-			index: i,
-			type: m.constructor.name,
-			content: typeof m.content === 'string' ? m.content.substring(0, 60) : '[non-string]',
-		})),
-	);
-
 	// Get the LAST HumanMessage (most recent user request for iteration support)
 	const humanMessages = messages.filter((m) => m instanceof HumanMessage);
-	console.log('[extractUserRequest] humanMessages count:', humanMessages.length);
-
 	const lastUserMessage = humanMessages[humanMessages.length - 1];
-	const result =
-		typeof lastUserMessage?.content === 'string' ? lastUserMessage.content : defaultValue;
 
-	console.log('[extractUserRequest] extracted:', result.substring(0, 100));
-
-	return result;
+	return typeof lastUserMessage?.content === 'string' ? lastUserMessage.content : defaultValue;
 }
 
 /**
