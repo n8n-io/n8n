@@ -189,6 +189,14 @@ function isQuestionsAnswered(questionsMessage: { id: string }): boolean {
 	return false;
 }
 
+/**
+ * Check if a message is the last message in the conversation.
+ */
+function isLastMessage(message: { id: string }): boolean {
+	const messages = builderStore.chatMessages;
+	return messages.length > 0 && messages[messages.length - 1].id === message.id;
+}
+
 async function onUserMessage(content: string) {
 	// Record activity to maintain write lock while building
 	collaborationStore.requestWriteAccess();
@@ -531,6 +539,7 @@ defineExpose({
 					v-else-if="isPlanModePlanMessage(message)"
 					:plan="message.data.plan"
 					:disabled="builderStore.streaming"
+					:show-implement-button="isLastMessage(message)"
 					@implement="onImplementPlan"
 				/>
 				<AnswerSummaryMessage
