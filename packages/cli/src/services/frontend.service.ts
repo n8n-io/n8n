@@ -341,6 +341,7 @@ export class FrontendService {
 			aiCredits: {
 				enabled: false,
 				credits: 0,
+				setup: false,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -490,6 +491,7 @@ export class FrontendService {
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
+			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
 		if (isAiBuilderEnabled) {

@@ -22,6 +22,7 @@ const cloudTrialRequirements: TestRequirements = {
 			aiCredits: {
 				enabled: true,
 				credits: 100,
+				setup: true,
 			},
 			banners: {
 				dismissed: ['V1'], // Prevent V1 banner interference
@@ -48,6 +49,7 @@ const cloudNonTrialRequirements: TestRequirements = {
 			aiCredits: {
 				enabled: true,
 				credits: 100,
+				setup: true,
 			},
 			banners: {
 				dismissed: ['V1'], // Prevent V1 banner interference
