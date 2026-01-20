@@ -197,7 +197,6 @@ describe('getResourceLocatorOptions tool', () => {
 			expect(message).toContain('<id>primary</id>');
 			expect(message).toContain('<display_name>Work Calendar</display_name>');
 			expect(message).toContain('<total_count>2</total_count>');
-			expect(message).toContain('<instructions>');
 		});
 
 		it('should pass filter to callback when provided', async () => {

@@ -624,6 +624,7 @@ export const createNodeTypeWithResourceLocator = (
 	createNodeType({
 		name: nodeName,
 		displayName: overrides.displayName ?? 'Test Resource Node',
+		credentials: overrides.credentials ?? [{ name: 'testApi', required: true }],
 		properties: [
 			{
 				displayName: 'Resource',
