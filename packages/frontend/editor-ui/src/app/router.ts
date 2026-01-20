@@ -367,6 +367,23 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
+		path: '/demo/diff',
+		name: VIEWS.DEMO_DIFF,
+		component: async () => import('./views/DemoDiffView.vue'),
+		meta: {
+			layout: 'demo',
+			middleware: ['authenticated'],
+			middlewareOptions: {
+				authenticated: {
+					bypass: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isPreviewMode;
+					},
+				},
+			},
+		},
+	},
+	{
 		path: '/workflow/:name/:nodeId?',
 		name: VIEWS.WORKFLOW,
 		component: NodeView,

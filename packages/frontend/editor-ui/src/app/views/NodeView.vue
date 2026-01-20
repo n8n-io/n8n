@@ -114,6 +114,10 @@ import {
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
+import {
+	shouldTidyUp,
+	type TidyUpOption,
+} from '@/features/workflows/workflowDiff/useWorkflowTidyUp';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
@@ -1552,6 +1556,12 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = false;
+
+				// Apply tidy-up if requested
+				const tidyUpOption = json.tidyUp as TidyUpOption | undefined;
+				if (shouldTidyUp({ nodes: workflowsStore.allNodes }, tidyUpOption)) {
+					nodeViewEventBus.emit('tidyUp');
+				}
 			} catch (e) {
 				if (window.top) {
 					window.top.postMessage(
