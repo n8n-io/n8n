@@ -37,7 +37,7 @@ import { htmlEditorEventBus } from '@/app/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/app/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useActiveElement, useThrottleFn } from '@vueuse/core';
+import { computedAsync, useActiveElement, useThrottleFn } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
@@ -101,25 +101,16 @@ const inputValue = ref<string>('');
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
-const isDisabled = ref(false);
-const isDisplayed = ref(true);
-let displayResolutionGeneration = 0;
-
-watch(
-	resolvedParameter,
+const displayState = computedAsync(
 	async () => {
-		const currentGeneration = ++displayResolutionGeneration;
-
 		if (!resolvedParameter.value) {
-			isDisabled.value = false;
-			isDisplayed.value = true;
-			return;
+			return { isDisabled: false, isDisplayed: true };
 		}
 
 		const parentPath = resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.');
 
 		// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
-		const disabled =
+		const isDisabled =
 			!!resolvedParameter.value.parameter.disabledOptions &&
 			(await nodeSettingsParameters.shouldDisplayNodeParameter(
 				resolvedParameter.value.node.parameters,
@@ -129,7 +120,7 @@ watch(
 				'disabledOptions',
 			));
 
-		const displayed = await nodeSettingsParameters.shouldDisplayNodeParameter(
+		const isDisplayed = await nodeSettingsParameters.shouldDisplayNodeParameter(
 			resolvedParameter.value.node.parameters,
 			resolvedParameter.value.node,
 			resolvedParameter.value.parameter,
@@ -137,14 +128,13 @@ watch(
 			'displayOptions',
 		);
 
-		// Only update if this is still the latest resolution request
-		if (currentGeneration === displayResolutionGeneration) {
-			isDisabled.value = disabled;
-			isDisplayed.value = displayed;
-		}
+		return { isDisabled, isDisplayed };
 	},
-	{ immediate: true },
+	{ isDisabled: false, isDisplayed: true },
 );
+
+const isDisabled = computed(() => displayState.value.isDisabled);
+const isDisplayed = computed(() => displayState.value.isDisplayed);
 
 const node = computed<INodeUi | undefined>(() => {
 	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {

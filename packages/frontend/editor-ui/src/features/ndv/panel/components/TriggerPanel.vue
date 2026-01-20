@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
+import { computedAsync } from '@vueuse/core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	VIEWS,
@@ -128,19 +129,13 @@ const isWebhookNode = computed(() => {
 	return Boolean(node.value && node.value.type === WEBHOOK_NODE_TYPE);
 });
 
-const webhookHttpMethod = ref<string | undefined>(undefined);
-const webhookTestUrl = ref<string | undefined>(undefined);
-let webhookResolutionGeneration = 0;
-
-watch(
-	[node, nodeType],
+const webhookData = computedAsync(
 	async () => {
-		const currentGeneration = ++webhookResolutionGeneration;
-
 		if (!node.value || !nodeType.value?.webhooks?.length) {
-			webhookHttpMethod.value = undefined;
-			webhookTestUrl.value = undefined;
-			return;
+			return {
+				httpMethod: undefined as string | undefined,
+				testUrl: undefined as string | undefined,
+			};
 		}
 
 		const httpMethod = await workflowHelpers.getWebhookExpressionValue(
@@ -155,19 +150,20 @@ watch(
 			'test',
 		);
 
-		// Only update if this is still the latest resolution request
-		if (currentGeneration === webhookResolutionGeneration) {
-			if (Array.isArray(httpMethod)) {
-				webhookHttpMethod.value = httpMethod.join(', ');
-			} else {
-				webhookHttpMethod.value = httpMethod as string | undefined;
-			}
-
-			webhookTestUrl.value = testUrl;
+		let formattedHttpMethod: string | undefined;
+		if (Array.isArray(httpMethod)) {
+			formattedHttpMethod = httpMethod.join(', ');
+		} else {
+			formattedHttpMethod = httpMethod as string | undefined;
 		}
+
+		return { httpMethod: formattedHttpMethod, testUrl };
 	},
-	{ immediate: true },
+	{ httpMethod: undefined, testUrl: undefined },
 );
+
+const webhookHttpMethod = computed(() => webhookData.value.httpMethod);
+const webhookTestUrl = computed(() => webhookData.value.testUrl);
 
 const isWebhookBasedNode = computed(() => {
 	return Boolean(nodeType.value?.webhooks?.length);

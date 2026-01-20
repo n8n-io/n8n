@@ -45,7 +45,7 @@ import {
 } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
+import { computedAsync, onClickOutside, type VueInstance } from '@vueuse/core';
 import {
 	buildValueFromOverride,
 	isFromAIOverrideValue,
@@ -248,61 +248,37 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	return props.modelValue?.value ?? '';
 });
 
-const urlValue = ref<string | null>(null);
-let urlWatchInvocation = 0;
+const urlValue = computedAsync(async () => {
+	if (isListMode.value && typeof props.modelValue === 'object') {
+		return props.modelValue?.cachedResultUrl ?? null;
+	}
 
-watch(
-	[
-		isListMode,
-		() => props.modelValue,
-		selectedMode,
-		() => props.isValueExpression,
-		() => props.expressionComputedValue,
-		valueToDisplay,
-		currentMode,
-	],
-	async () => {
-		const currentInvocation = ++urlWatchInvocation;
-
-		if (isListMode.value && typeof props.modelValue === 'object') {
-			urlValue.value = props.modelValue?.cachedResultUrl ?? null;
-			return;
+	if (selectedMode.value === 'url') {
+		if (
+			props.isValueExpression &&
+			typeof props.expressionComputedValue === 'string' &&
+			props.expressionComputedValue.startsWith('http')
+		) {
+			return props.expressionComputedValue;
 		}
 
-		if (selectedMode.value === 'url') {
-			if (
-				props.isValueExpression &&
-				typeof props.expressionComputedValue === 'string' &&
-				props.expressionComputedValue.startsWith('http')
-			) {
-				urlValue.value = props.expressionComputedValue;
-				return;
-			}
-
-			if (typeof valueToDisplay.value === 'string' && valueToDisplay.value.startsWith('http')) {
-				urlValue.value = valueToDisplay.value;
-				return;
-			}
+		if (typeof valueToDisplay.value === 'string' && valueToDisplay.value.startsWith('http')) {
+			return valueToDisplay.value;
 		}
+	}
 
-		if (currentMode.value.url) {
-			const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
-			if (typeof value === 'string') {
-				const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
-				const resolved = await workflowHelpers.resolveExpression(expression);
+	if (currentMode.value.url) {
+		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
+		if (typeof value === 'string') {
+			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
+			const resolved = await workflowHelpers.resolveExpression(expression);
 
-				// Discard stale results if a newer invocation has started
-				if (currentInvocation !== urlWatchInvocation) return;
-
-				urlValue.value = typeof resolved === 'string' ? resolved : null;
-				return;
-			}
+			return typeof resolved === 'string' ? resolved : null;
 		}
+	}
 
-		urlValue.value = null;
-	},
-	{ immediate: true },
-);
+	return null;
+}, null);
 
 const currentRequestParams = computed(() => {
 	return {

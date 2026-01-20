@@ -93,9 +93,17 @@ export function useResolvedExpression({
 
 	const debouncedUpdateExpression = debounce(updateExpression, 200);
 
+	let updateExpressionInvocation = 0;
+
 	async function updateExpression() {
+		const currentInvocation = ++updateExpressionInvocation;
+
 		if (isExpression.value) {
 			const resolved = await resolve(expressionLocalResolveCtx.value);
+
+			// Discard stale results if a newer invocation has started
+			if (currentInvocation !== updateExpressionInvocation) return;
+
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
 			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
 		} else {

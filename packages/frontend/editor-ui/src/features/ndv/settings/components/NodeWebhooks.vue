@@ -12,6 +12,7 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import type { INodeUi } from '@/Interface';
 import { computed, ref, watch } from 'vue';
+import { computedAsync } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
@@ -67,8 +68,70 @@ interface WebhookResolvedData {
 	isVisible: boolean;
 }
 
-const resolvedWebhookData = ref<Map<number, WebhookResolvedData>>(new Map());
-let webhookResolutionGeneration = 0;
+const resolvedWebhookData = computedAsync(async () => {
+	// Reference dependencies to ensure reactivity tracking
+	const webhooks = webhooksNode.value;
+	const urlFor = showUrlFor.value;
+	const node = props.node;
+
+	const newData = new Map<number, WebhookResolvedData>();
+
+	for (let index = 0; index < webhooks.length; index++) {
+		const webhook = webhooks[index];
+
+		// Check visibility
+		let isVisible = !webhook.ndvHideUrl;
+		if (typeof webhook.ndvHideUrl === 'string') {
+			const hideUrl = await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
+			isVisible = !hideUrl;
+		}
+
+		// Get URL
+		let url = '';
+		if (node) {
+			url = await workflowHelpers.getWebhookUrl(
+				webhook,
+				node,
+				isProductionOnly.value ? 'production' : urlFor,
+			);
+		}
+
+		// Check if method is visible
+		let isMethodVisible = !webhook.ndvHideMethod;
+		try {
+			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			if (Array.isArray(method) && method.length !== 1) {
+				isMethodVisible = false;
+			} else if (typeof webhook.ndvHideMethod === 'string') {
+				const hideMethod = await workflowHelpers.getWebhookExpressionValue(
+					webhook,
+					'ndvHideMethod',
+				);
+				isMethodVisible = !hideMethod;
+			}
+		} catch (error) {
+			// Keep default isMethodVisible
+		}
+
+		// Get HTTP method
+		let httpMethod = '';
+		try {
+			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
+			httpMethod = Array.isArray(method) ? method[0] : (method as string);
+		} catch (error) {
+			// Keep empty httpMethod
+		}
+
+		newData.set(index, {
+			url,
+			httpMethod,
+			isMethodVisible,
+			isVisible,
+		});
+	}
+
+	return newData;
+}, new Map<number, WebhookResolvedData>());
 
 const visibleWebhookUrls = computed(() => {
 	return webhooksNode.value.filter((_, index) => {
@@ -76,83 +139,6 @@ const visibleWebhookUrls = computed(() => {
 		return data?.isVisible ?? false;
 	});
 });
-
-// Resolve webhook data asynchronously
-watch(
-	[webhooksNode, showUrlFor, () => props.node],
-	async () => {
-		const currentGeneration = ++webhookResolutionGeneration;
-		const newData = new Map<number, WebhookResolvedData>();
-
-		for (let index = 0; index < webhooksNode.value.length; index++) {
-			const webhook = webhooksNode.value[index];
-
-			// Check visibility
-			let isVisible = !webhook.ndvHideUrl;
-			if (typeof webhook.ndvHideUrl === 'string') {
-				const hideUrl = await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
-				isVisible = !hideUrl;
-			}
-
-			// Get URL
-			let url = '';
-			if (props.node) {
-				url = await workflowHelpers.getWebhookUrl(
-					webhook,
-					props.node,
-					isProductionOnly.value ? 'production' : showUrlFor.value,
-				);
-			}
-
-			// Check if method is visible
-			let isMethodVisible = !webhook.ndvHideMethod;
-			try {
-				const method = await workflowHelpers.getWebhookExpressionValue(
-					webhook,
-					'httpMethod',
-					false,
-				);
-				if (Array.isArray(method) && method.length !== 1) {
-					isMethodVisible = false;
-				} else if (typeof webhook.ndvHideMethod === 'string') {
-					const hideMethod = await workflowHelpers.getWebhookExpressionValue(
-						webhook,
-						'ndvHideMethod',
-					);
-					isMethodVisible = !hideMethod;
-				}
-			} catch (error) {
-				// Keep default isMethodVisible
-			}
-
-			// Get HTTP method
-			let httpMethod = '';
-			try {
-				const method = await workflowHelpers.getWebhookExpressionValue(
-					webhook,
-					'httpMethod',
-					false,
-				);
-				httpMethod = Array.isArray(method) ? method[0] : (method as string);
-			} catch (error) {
-				// Keep empty httpMethod
-			}
-
-			newData.set(index, {
-				url,
-				httpMethod,
-				isMethodVisible,
-				isVisible,
-			});
-		}
-
-		// Only update if this is still the latest resolution request
-		if (currentGeneration === webhookResolutionGeneration) {
-			resolvedWebhookData.value = newData;
-		}
-	},
-	{ immediate: true, deep: true },
-);
 
 function getWebhookIndex(webhook: IWebhookDescription): number {
 	return webhooksNode.value.indexOf(webhook);

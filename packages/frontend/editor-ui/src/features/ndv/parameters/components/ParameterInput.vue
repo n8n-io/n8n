@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import { computedAsync, useDebounceFn } from '@vueuse/core';
 
 import get from 'lodash/get';
 
@@ -415,44 +415,35 @@ const expressionDisplayValue = computed(() => {
 	return `${displayValue.value ?? ''}`;
 });
 
-const dependentParametersValues = ref<string | null>(null);
-let dependentParametersResolutionGeneration = 0;
+const dependentParametersValues = computedAsync(async () => {
+	// Reference dependencies to ensure reactivity tracking
+	void ndvStore.activeNode?.parameters;
+	void props.parameter;
+	void props.path;
 
-watch(
-	[() => ndvStore.activeNode?.parameters, () => props.parameter, () => props.path],
-	async () => {
-		const currentGeneration = ++dependentParametersResolutionGeneration;
-		const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
+	const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
-		if (loadOptionsDependsOn === undefined) {
-			dependentParametersValues.value = null;
-			return;
+	if (loadOptionsDependsOn === undefined) {
+		return null;
+	}
+
+	// Get the resolved parameter values of the current node
+	const currentNodeParameters = ndvStore.activeNode?.parameters;
+	try {
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
+
+		const returnValues: string[] = [];
+		for (let parameterPath of loadOptionsDependsOn) {
+			parameterPath = resolveRelativePath(props.path, parameterPath);
+
+			returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
 		}
 
-		// Get the resolved parameter values of the current node
-		const currentNodeParameters = ndvStore.activeNode?.parameters;
-		try {
-			const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
-
-			const returnValues: string[] = [];
-			for (let parameterPath of loadOptionsDependsOn) {
-				parameterPath = resolveRelativePath(props.path, parameterPath);
-
-				returnValues.push(get(resolvedNodeParameters, parameterPath) as string);
-			}
-
-			// Only update if this is still the latest resolution request
-			if (currentGeneration === dependentParametersResolutionGeneration) {
-				dependentParametersValues.value = returnValues.join('|');
-			}
-		} catch {
-			if (currentGeneration === dependentParametersResolutionGeneration) {
-				dependentParametersValues.value = null;
-			}
-		}
-	},
-	{ immediate: true },
-);
+		return returnValues.join('|');
+	} catch {
+		return null;
+	}
+}, null);
 
 const getStringInputType = computed(() => {
 	if (getTypeOption('password') === true) {

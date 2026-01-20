@@ -8,9 +8,9 @@ import {
 	type FilterTypeCombinator,
 	type INode,
 	type NodeParameterValue,
-	type FilterOptionsValue,
 } from 'n8n-workflow';
 import { computed, reactive, watch } from 'vue';
+import { computedAsync } from '@vueuse/core';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	DEFAULT_FILTER_OPTIONS,
@@ -100,37 +100,32 @@ const issues = computed(() => {
 	return ndvStore.activeNode?.issues?.parameters ?? {};
 });
 
-let optionsWatchInvocation = 0;
+const resolvedOptions = computedAsync(async () => {
+	// Reference props.node?.parameters to ensure reactivity tracking
+	void props.node?.parameters;
 
-watch(
-	() => props.node?.parameters,
-	async () => {
-		const currentInvocation = ++optionsWatchInvocation;
+	const typeOptions = props.parameter.typeOptions?.filter;
 
-		const typeOptions = props.parameter.typeOptions?.filter;
+	if (!typeOptions) {
+		return DEFAULT_FILTER_OPTIONS;
+	}
 
-		if (!typeOptions) {
-			return;
-		}
+	try {
+		return {
+			...DEFAULT_FILTER_OPTIONS,
+			...(await resolveParameter(typeOptions as unknown as NodeParameterValue)),
+		};
+	} catch (error) {
+		return DEFAULT_FILTER_OPTIONS;
+	}
+}, DEFAULT_FILTER_OPTIONS);
 
-		let newOptions: FilterOptionsValue = DEFAULT_FILTER_OPTIONS;
-		try {
-			newOptions = {
-				...DEFAULT_FILTER_OPTIONS,
-				...(await resolveParameter(typeOptions as unknown as NodeParameterValue)),
-			};
-		} catch (error) {}
-
-		// Discard stale results if a newer invocation has started
-		if (currentInvocation !== optionsWatchInvocation) return;
-
-		if (!isEqual(state.paramValue.options, newOptions)) {
-			state.paramValue.options = newOptions;
-			debouncedEmitChange();
-		}
-	},
-	{ immediate: true },
-);
+watch(resolvedOptions, (newOptions) => {
+	if (!isEqual(state.paramValue.options, newOptions)) {
+		state.paramValue.options = newOptions;
+		debouncedEmitChange();
+	}
+});
 
 watch(
 	() => props.value,
