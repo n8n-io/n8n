@@ -48,7 +48,10 @@ const onSelect = (type: string): void => {
 </script>
 
 <template>
-	<div :class="{ [$style.wrapper]: true, [$style.stacked]: stacked }" data-test-id="assignment-type-select">
+	<div
+		:class="{ [$style.wrapper]: true, [$style.stacked]: stacked }"
+		data-test-id="assignment-type-select"
+	>
 		<N8nDropdownMenu
 			:items="menuItems"
 			:disabled="isReadOnly"
@@ -60,7 +63,6 @@ const onSelect = (type: string): void => {
 				<Primitive as="button" type="button" :class="$style.trigger" :disabled="isReadOnly">
 					<N8nIcon
 						v-if="selectedType?.icon"
-						:class="$style.icon"
 						:icon="selectedType.icon"
 						color="text-light"
 						size="small"
@@ -68,7 +70,7 @@ const onSelect = (type: string): void => {
 					<span :class="$style.label">{{
 						i18n.baseText(`type.${modelValue}` as BaseTextKey)
 					}}</span>
-					<N8nIcon :class="$style.chevron" icon="chevron-down" color="text-light" size="small" />
+					<N8nIcon icon="chevron-down" color="text-light" size="small" />
 				</Primitive>
 			</template>
 		</N8nDropdownMenu>
@@ -104,51 +106,26 @@ const onSelect = (type: string): void => {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
 	font-family: var(--font-family);
-	line-height: var(--line-height--md);
 	cursor: pointer;
-	white-space: nowrap;
-	text-align: left;
-
-	&:hover:not(:disabled) {
-		background-color: var(--color--background--light-1);
-	}
-
-	&:focus {
-		outline: none;
-		border-color: var(--color--secondary);
-	}
 
 	&:disabled {
 		cursor: not-allowed;
-		background-color: var(--color--background--light-3);
-		color: var(--color--text--tint-1);
+		opacity: 0.6;
 	}
 }
 
-.icon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
 .label {
-	flex-grow: 1;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	flex: 1;
+	text-align: left;
 	font-weight: var(--font-weight--regular);
-}
-
-.chevron {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-	margin-left: auto;
-}
-
-.dropdownContent {
-	z-index: var(--ndv--z);
 }
 
 .selected span {
 	color: var(--color--primary);
 	font-weight: var(--font-weight--bold);
+}
+
+.dropdownContent {
+	z-index: var(--ndv--z);
 }
 </style>
