@@ -1,14 +1,18 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { StorageConfig } from 'n8n-core';
+import { mock } from 'jest-mock-extended';
+import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import fs, { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { CorruptedExecutionDataError, ExecutionDataWriteError } from '../errors';
+import { EXECUTION_DATA_BUNDLE_FILENAME } from '../constants';
+import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
+import { ExecutionDataWriteError } from '../execution-data-write.error';
 import { FsStore } from '../fs-store';
-import type { ExecutionDataPayload, ExecutionRef } from '../types';
+import { createExecutionRef } from '../types';
+import type { ExecutionDataPayload } from '../types';
 import { executionId, payload, ref, workflowId } from './mocks';
 
 jest.unmock('node:fs/promises');
@@ -19,6 +23,7 @@ let storagePath: string;
 beforeAll(async () => {
 	storagePath = await mkdtemp(join(tmpdir(), 'n8n-fs-store-test-'));
 	mockInstance(StorageConfig, { storagePath });
+	mockInstance(ErrorReporter);
 	fsStore = Container.get(FsStore);
 });
 
@@ -38,7 +43,10 @@ afterAll(async () => {
 describe('init', () => {
 	it('should create storage dir if absent', async () => {
 		const customPath = join(storagePath, 'custom-init-dir');
-		const customFsStore = new FsStore({ storagePath: customPath } as StorageConfig);
+		const customFsStore = new FsStore(
+			mock<StorageConfig>({ storagePath: customPath }),
+			Container.get(ErrorReporter),
+		);
 
 		await customFsStore.init();
 
@@ -60,7 +68,7 @@ describe('write', () => {
 			'executions',
 			executionId,
 			'execution_data',
-			'data.json',
+			EXECUTION_DATA_BUNDLE_FILENAME,
 		);
 
 		const content = await fs.readFile(filePath, 'utf-8');
@@ -113,7 +121,7 @@ describe('read', () => {
 	});
 
 	it('should return `null` for non-existent execution', async () => {
-		const result = await fsStore.read({ workflowId, executionId: 'non-existent' });
+		const result = await fsStore.read(createExecutionRef(workflowId, 'non-existent'));
 
 		expect(result).toBeNull();
 	});
@@ -126,7 +134,7 @@ describe('read', () => {
 			'executions',
 			executionId,
 			'execution_data',
-			'data.json',
+			EXECUTION_DATA_BUNDLE_FILENAME,
 		);
 
 		await fs.mkdir(
@@ -153,10 +161,10 @@ describe('delete', () => {
 	});
 
 	it('should delete data for multiple executions', async () => {
-		const refs: ExecutionRef[] = [
-			{ workflowId, executionId: 'exec-1' },
-			{ workflowId, executionId: 'exec-2' },
-			{ workflowId, executionId: 'exec-3' },
+		const refs = [
+			createExecutionRef(workflowId, 'exec-1'),
+			createExecutionRef(workflowId, 'exec-2'),
+			createExecutionRef(workflowId, 'exec-3'),
 		];
 
 		for (const r of refs) {
@@ -181,7 +189,7 @@ describe('delete', () => {
 
 	it('should not throw on deleting a non-existent execution', async () => {
 		await expect(
-			fsStore.delete({ workflowId, executionId: 'non-existent' }),
+			fsStore.delete(createExecutionRef(workflowId, 'non-existent')),
 		).resolves.toBeUndefined();
 	});
 });

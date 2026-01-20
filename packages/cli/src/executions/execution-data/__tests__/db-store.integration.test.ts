@@ -3,6 +3,7 @@ import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { DbStore } from '../db-store';
+import { createExecutionRef } from '../types';
 import type { ExecutionDataPayload } from '../types';
 import { payload, workflowId } from './mocks';
 
@@ -29,11 +30,11 @@ beforeAll(async () => {
 	repository = Container.get(ExecutionDataRepository);
 	executionRepository = Container.get(ExecutionRepository);
 	dbStore = Container.get(DbStore);
+	await createWorkflow({ id: workflowId });
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['ExecutionData', 'ExecutionEntity', 'WorkflowEntity']);
-	await createWorkflow({ id: workflowId });
+	await testDb.truncate(['ExecutionData', 'ExecutionEntity']);
 });
 
 afterAll(async () => {
@@ -43,7 +44,7 @@ afterAll(async () => {
 describe('write', () => {
 	it('should store execution data', async () => {
 		const execution = await createExecution();
-		const ref = { workflowId, executionId: execution.id };
+		const ref = createExecutionRef(workflowId, execution.id);
 
 		await dbStore.write(ref, payload);
 
@@ -54,7 +55,7 @@ describe('write', () => {
 
 	it('should overwrite on duplicate `executionId`', async () => {
 		const execution = await createExecution();
-		const ref = { workflowId, executionId: execution.id };
+		const ref = createExecutionRef(workflowId, execution.id);
 
 		await dbStore.write(ref, payload);
 
@@ -76,7 +77,7 @@ describe('write', () => {
 describe('read', () => {
 	it('should retrieve stored execution data', async () => {
 		const execution = await createExecution();
-		const ref = { workflowId, executionId: execution.id };
+		const ref = createExecutionRef(workflowId, execution.id);
 
 		await dbStore.write(ref, payload);
 
@@ -86,7 +87,7 @@ describe('read', () => {
 	});
 
 	it('should return `null` for non-existent execution', async () => {
-		const result = await dbStore.read({ workflowId, executionId: '999' });
+		const result = await dbStore.read(createExecutionRef(workflowId, '999'));
 
 		expect(result).toBeNull();
 	});
@@ -95,7 +96,7 @@ describe('read', () => {
 describe('delete', () => {
 	it('should delete data for single execution', async () => {
 		const execution = await createExecution();
-		const ref = { workflowId, executionId: execution.id };
+		const ref = createExecutionRef(workflowId, execution.id);
 
 		await dbStore.write(ref, payload);
 
@@ -108,7 +109,7 @@ describe('delete', () => {
 	it('should delete data for multiple executions', async () => {
 		const executions = await Promise.all([createExecution(), createExecution(), createExecution()]);
 
-		const refs = executions.map((e) => ({ workflowId, executionId: e.id }));
+		const refs = executions.map((e) => createExecutionRef(workflowId, e.id));
 
 		for (const ref of refs) {
 			await dbStore.write(ref, payload);
@@ -123,7 +124,7 @@ describe('delete', () => {
 
 	it('should skip deletion on empty array', async () => {
 		const execution = await createExecution();
-		const ref = { workflowId, executionId: execution.id };
+		const ref = createExecutionRef(workflowId, execution.id);
 
 		await dbStore.write(ref, payload);
 
@@ -134,6 +135,6 @@ describe('delete', () => {
 	});
 
 	it('should not throw on deleting a non-existent execution', async () => {
-		await expect(dbStore.delete({ workflowId, executionId: '999' })).resolves.toBeUndefined();
+		await expect(dbStore.delete(createExecutionRef(workflowId, '999'))).resolves.toBeUndefined();
 	});
 });

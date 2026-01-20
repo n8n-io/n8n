@@ -5,6 +5,10 @@ export type ExecutionRef = {
 	executionId: string;
 };
 
+export function createExecutionRef(workflowId: string, executionId: string): ExecutionRef {
+	return { workflowId, executionId };
+}
+
 export type ExecutionDataPayload = {
 	data: string;
 	workflowData: IWorkflowBase;
@@ -12,7 +16,7 @@ export type ExecutionDataPayload = {
 };
 
 export type ExecutionDataBundle = ExecutionDataPayload & {
-	version: number;
+	version: 1;
 };
 
 export interface ExecutionDataStore {

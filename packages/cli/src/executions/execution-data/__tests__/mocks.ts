@@ -1,6 +1,7 @@
 import type { IWorkflowBase } from 'n8n-workflow';
 
-import type { ExecutionDataPayload, ExecutionRef } from '../types';
+import { createExecutionRef } from '../types';
+import type { ExecutionDataPayload } from '../types';
 
 export const workflowId = '123';
 export const executionId = '456';
@@ -23,4 +24,4 @@ export const payload: ExecutionDataPayload = {
 	workflowVersionId: 'version-789',
 };
 
-export const ref: ExecutionRef = { workflowId, executionId };
+export const ref = createExecutionRef(workflowId, executionId);

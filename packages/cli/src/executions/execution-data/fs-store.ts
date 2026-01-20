@@ -1,12 +1,13 @@
-import { assertDir, exists } from '@n8n/backend-common';
+import { assertDir } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { StorageConfig } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { ErrorReporter, StorageConfig } from 'n8n-core';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { EXECUTION_DATA_BUNDLE_VERSION } from './constants';
-import { CorruptedExecutionDataError, ExecutionDataWriteError } from './errors';
+import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
+import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
+import { ExecutionDataWriteError } from './execution-data-write.error';
 import type {
 	ExecutionDataStore,
 	ExecutionRef,
@@ -16,7 +17,10 @@ import type {
 
 @Service()
 export class FsStore implements ExecutionDataStore {
-	constructor(private readonly storageConfig: StorageConfig) {}
+	constructor(
+		private readonly storageConfig: StorageConfig,
+		private readonly errorReporter: ErrorReporter,
+	) {}
 
 	async init() {
 		await assertDir(this.storageConfig.storagePath);
@@ -33,7 +37,7 @@ export class FsStore implements ExecutionDataStore {
 		try {
 			await fs.writeFile(
 				tempPath,
-				JSON.stringify({ ...payload, version: EXECUTION_DATA_BUNDLE_VERSION }),
+				jsonStringify({ ...payload, version: EXECUTION_DATA_BUNDLE_VERSION }),
 				'utf-8',
 			);
 			await fs.rename(tempPath, writePath);
@@ -41,16 +45,22 @@ export class FsStore implements ExecutionDataStore {
 		} catch (error) {
 			throw new ExecutionDataWriteError(ref, error);
 		} finally {
-			if (!success) await fs.rm(tempPath, { force: true });
+			if (!success)
+				await fs.rm(tempPath, { force: true }).catch((e) => this.errorReporter.error(e));
 		}
 	}
 
 	async read(ref: ExecutionRef) {
 		const bundlePath = this.resolveBundlePath(ref);
 
-		if (!(await exists(bundlePath))) return null;
+		let content: string;
 
-		const content = await fs.readFile(bundlePath, 'utf-8');
+		try {
+			content = await fs.readFile(bundlePath, 'utf-8');
+		} catch (error) {
+			if (this.isFileNotFound(error)) return null;
+			throw error;
+		}
 
 		try {
 			return jsonParse<ExecutionDataBundle>(content);
@@ -80,6 +90,16 @@ export class FsStore implements ExecutionDataStore {
 	}
 
 	private resolveBundlePath(ref: ExecutionRef) {
-		return path.join(this.resolveExecutionDir(ref), 'execution_data', 'data.json');
+		return path.join(
+			this.resolveExecutionDir(ref),
+			'execution_data',
+			EXECUTION_DATA_BUNDLE_FILENAME,
+		);
+	}
+
+	private isFileNotFound(error: unknown): error is NodeJS.ErrnoException {
+		return (
+			error !== null && typeof error === 'object' && 'code' in error && error.code === 'ENOENT'
+		);
 	}
 }
