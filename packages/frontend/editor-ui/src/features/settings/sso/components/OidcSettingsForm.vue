@@ -205,7 +205,7 @@ onMounted(async () => {
 				type="text"
 				data-test-id="oidc-discovery-endpoint"
 				placeholder="https://accounts.google.com/.well-known/openid-configuration"
-				@update:model-value="(v: string | number | null) => (discoveryEndpoint = String(v ?? ''))"
+				@update:model-value="(v) => (discoveryEndpoint = v)"
 			/>
 			<small>Paste here your discovery endpoint</small>
 		</div>
@@ -215,7 +215,7 @@ onMounted(async () => {
 				:model-value="clientId"
 				type="text"
 				data-test-id="oidc-client-id"
-				@update:model-value="(v: string | number | null) => (clientId = String(v ?? ''))"
+				@update:model-value="(v) => (clientId = v)"
 			/>
 			<small>The client ID you received when registering your application with your provider</small>
 		</div>
@@ -225,7 +225,7 @@ onMounted(async () => {
 				:model-value="clientSecret"
 				type="password"
 				data-test-id="oidc-client-secret"
-				@update:model-value="(v: string | number | null) => (clientSecret = String(v ?? ''))"
+				@update:model-value="(v) => (clientSecret = v)"
 			/>
 			<small
 				>The client Secret you received when registering your application with your provider</small

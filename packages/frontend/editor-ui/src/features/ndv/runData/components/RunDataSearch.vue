@@ -101,10 +101,9 @@ const debouncedEmitUpdate = debounce(async (value: string) => emit('update:model
 	trailing: true,
 });
 
-const onSearchUpdate = (value: string | number | null) => {
-	const stringValue = String(value ?? '');
-	search.value = stringValue;
-	void debouncedEmitUpdate(stringValue);
+const onSearchUpdate = (value: string) => {
+	search.value = value;
+	void debouncedEmitUpdate(value);
 };
 
 const onFocus = () => {

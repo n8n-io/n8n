@@ -220,11 +220,10 @@ const executionLogicOptions = computed(() => {
 	return executionLogicAllOptions.value.filter((option) => option.key !== 'v2');
 });
 
-const onCallerIdsInput = (str: string | number | null) => {
-	const value = String(str ?? '');
-	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(value)
-		? value
-		: value.replace(/[^a-zA-Z0-9,\s]/g, '');
+const onCallerIdsInput = (str: string) => {
+	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
+		? str
+		: str.replace(/[^a-zA-Z0-9,\s]/g, '');
 };
 
 const closeDialog = () => {
