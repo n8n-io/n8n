@@ -7,7 +7,6 @@ import {
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
-	AiSessionMetadataResponseDto,
 	AiUsageSettingsRequestDto,
 	AiTruncateMessagesRequestDto,
 } from '@n8n/api-types';

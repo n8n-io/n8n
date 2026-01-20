@@ -32,8 +32,6 @@ import {
 import { AiUsageService } from './ai-usage.service';
 import { UrlService } from './url.service';
 
-import { UrlService } from './url.service';
-
 /**
  * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
  */
