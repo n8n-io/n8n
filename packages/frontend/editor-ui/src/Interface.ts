@@ -865,7 +865,8 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
 	| 'custom-roles'
-	| 'main-sidebar';
+	| 'main-sidebar'
+	| 'empty-state-builder-prompt';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
