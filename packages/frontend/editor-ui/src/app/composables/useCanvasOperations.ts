@@ -913,6 +913,12 @@ export function useCanvasOperations() {
 		const lastInteractedWithNodeId = lastInteractedWithNode.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
+
+		const trackOptions = {
+			trackHistory: options.trackHistory,
+			trackBulk: false,
+		};
+
 		// If we have a specific endpoint to connect to
 		if (lastInteractedWithNodeHandle) {
 			const { type: connectionType, mode } = parseCanvasConnectionHandleString(
@@ -927,54 +933,66 @@ export function useCanvasOperations() {
 			});
 
 			if (mode === CanvasConnectionMode.Input) {
-				createConnection({
-					source: nodeId,
-					sourceHandle: nodeHandle,
-					target: lastInteractedWithNodeId,
-					targetHandle: lastInteractedWithNodeHandle,
-				});
+				createConnection(
+					{
+						source: nodeId,
+						sourceHandle: nodeHandle,
+						target: lastInteractedWithNodeId,
+						targetHandle: lastInteractedWithNodeHandle,
+					},
+					trackOptions,
+				);
 			} else {
-				createConnection({
-					source: lastInteractedWithNodeId,
-					sourceHandle: lastInteractedWithNodeHandle,
-					target: nodeId,
-					targetHandle: nodeHandle,
-				});
+				createConnection(
+					{
+						source: lastInteractedWithNodeId,
+						sourceHandle: lastInteractedWithNodeHandle,
+						target: nodeId,
+						targetHandle: nodeHandle,
+					},
+					trackOptions,
+				);
 			}
 		} else {
 			// If a node is last selected then connect between the active and its child ones
 			// Connect active node to the newly created one
-			createConnection({
-				source: lastInteractedWithNodeId,
-				sourceHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionTypes.Main,
-					index: 0,
-				}),
-				target: node.id,
-				targetHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionTypes.Main,
-					index: 0,
-				}),
-			});
-		}
-
-		if (lastInteractedWithNodeConnection) {
-			deleteConnection(lastInteractedWithNodeConnection, { trackHistory: options.trackHistory });
-
-			const targetNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
-			if (targetNode) {
-				createConnection({
-					source: node.id,
+			createConnection(
+				{
+					source: lastInteractedWithNodeId,
 					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: NodeConnectionTypes.Main,
+						index: 0,
+					}),
+					target: node.id,
+					targetHandle: createCanvasConnectionHandleString({
 						mode: CanvasConnectionMode.Input,
 						type: NodeConnectionTypes.Main,
 						index: 0,
 					}),
-					target: lastInteractedWithNodeConnection.target,
-					targetHandle: lastInteractedWithNodeConnection.targetHandle,
-				});
+				},
+				trackOptions,
+			);
+		}
+
+		if (lastInteractedWithNodeConnection) {
+			deleteConnection(lastInteractedWithNodeConnection, trackOptions);
+
+			const targetNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
+			if (targetNode) {
+				createConnection(
+					{
+						source: node.id,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						}),
+						target: lastInteractedWithNodeConnection.target,
+						targetHandle: lastInteractedWithNodeConnection.targetHandle,
+					},
+					trackOptions,
+				);
 			}
 		}
 	}
