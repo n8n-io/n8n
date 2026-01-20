@@ -30,8 +30,73 @@ on:
         default: '3'
 
 jobs:
+  check-skip:
+    name: Check Skip Label
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.check.outputs.should_skip }}
+    steps:
+      - name: Check for no-prompt-changes opt-out
+        id: check
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const SKIP_TAG = '(no-prompt-changes)';
+            const SKIP_LABEL = 'no-prompt-changes';
+
+            // Only check for push events (merges to master)
+            if (context.eventName !== 'push') {
+              core.setOutput('should_skip', 'false');
+              return;
+            }
+
+            // Check commit message for skip tag
+            const commitMessage = context.payload.head_commit?.message || '';
+            if (commitMessage.includes(SKIP_TAG)) {
+              console.log(`Found ${SKIP_TAG} in commit message, skipping evals`);
+              core.setOutput('should_skip', 'true');
+              return;
+            }
+
+            // Find the PR associated with this merge commit
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha
+            });
+
+            if (prs.length === 0) {
+              console.log('No PR found for this commit, running evals');
+              core.setOutput('should_skip', 'false');
+              return;
+            }
+
+            const pr = prs[0];
+            console.log(`PR #${pr.number}: "${pr.title}"`);
+
+            // Check PR title for skip tag
+            if (pr.title.includes(SKIP_TAG)) {
+              console.log(`Found ${SKIP_TAG} in PR title, skipping evals`);
+              core.setOutput('should_skip', 'true');
+              return;
+            }
+
+            // Check PR labels for skip label
+            const labels = pr.labels.map(l => l.name);
+            console.log(`PR labels: ${labels.join(', ') || '(none)'}`);
+
+            if (labels.includes(SKIP_LABEL)) {
+              console.log(`Found ${SKIP_LABEL} label, skipping evals`);
+              core.setOutput('should_skip', 'true');
+            } else {
+              console.log('No skip indicator found, running evals');
+              core.setOutput('should_skip', 'false');
+            }
+
   determine-config:
     name: Determine Configuration
+    needs: check-skip
+    if: needs.check-skip.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     outputs:
       branch: ${{ steps.config.outputs.branch }}
