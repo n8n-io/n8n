@@ -619,6 +619,56 @@ How to handle refinements:
 3. Call submit_plan with the updated plan
 4. Explain what you changed in your response`;
 
+const INCREMENTAL_PLANNING_RULES = `INCREMENTAL PLANNING (when existing workflow nodes are present):
+
+When <existing_workflow_summary> shows nodes already in the workflow, generate an INCREMENTAL plan:
+
+**CRITICAL RULES:**
+1. DO NOT recreate steps for nodes that already exist
+2. ONLY include steps for NEW functionality the user is requesting
+3. Reference existing nodes when your new steps connect to them
+4. Think of your plan as an "addition" to what's already there
+
+**How to structure incremental plans:**
+
+1. **Summary**: Describe the ADDITION/MODIFICATION, not the full workflow
+   - WRONG: "Build a workflow that fetches weather and sends emails"
+   - CORRECT: "Add error handling and fallback notifications to the existing weather workflow"
+
+2. **Trigger**:
+   - If trigger already exists: "Uses existing trigger: [trigger name]"
+   - Only describe new trigger if adding/changing it
+
+3. **Steps**: Only include NEW or MODIFIED steps
+   - Reference existing nodes: "After the existing 'Get Weather' node..."
+   - Number steps starting from where they connect to existing workflow
+   - Include suggestedNodes only for NEW nodes to add
+
+4. **Additional specs**: Focus on how new parts integrate with existing
+
+**Example - Adding error handling to weather workflow:**
+
+Existing workflow: Schedule Trigger → OpenWeatherMap → AI Agent → Gmail
+
+User request: "Add error handling"
+
+INCREMENTAL PLAN:
+- Summary: "Add error handling with fallback email notifications when weather API or AI fails"
+- Trigger: "Uses existing trigger: Schedule Trigger"
+- Steps:
+  1. After OpenWeatherMap: Add If node to check for API errors
+     - If success → continue to existing AI Agent
+     - If error → route to fallback
+  2. Add fallback email notification for weather API failures
+  3. After AI Agent: Add If node to check for AI processing errors
+     - If success → continue to existing Gmail
+     - If error → route to fallback
+  4. Add fallback email notification for AI failures
+
+**When NOT to generate incremental plan:**
+- If user explicitly asks to "recreate", "rebuild", or "start over"
+- If existing workflow is completely unrelated to the new request`;
+
 export interface PlannerPromptOptions {
 	/** Whether workflow examples tool is available */
 	includeExamples?: boolean;
@@ -658,6 +708,7 @@ export function buildPlannerPrompt(options: PlannerPromptOptions = {}): string {
 			.section('available_tools', availableTools)
 			.section('question_rules', QUESTION_GENERATION_RULES)
 			.section('plan_rules', PLAN_GENERATION_RULES)
+			.section('incremental_planning', INCREMENTAL_PLANNING_RULES)
 			.section('process', PLANNER_PROCESS_FLOW)
 			.section('refinement', REFINEMENT_RULES)
 			.section('critical_rules', PLANNER_CRITICAL_RULES)
@@ -696,6 +747,10 @@ export function buildPlannerContextMessage(context: {
 		parts.push('<existing_workflow>');
 		parts.push(context.existingWorkflowSummary);
 		parts.push('</existing_workflow>');
+		parts.push('');
+		parts.push(
+			'IMPORTANT: A workflow already exists. Generate an INCREMENTAL plan that only adds/modifies what the user is requesting. Do NOT recreate existing functionality.',
+		);
 	}
 
 	// User answers (if resuming after questions)
