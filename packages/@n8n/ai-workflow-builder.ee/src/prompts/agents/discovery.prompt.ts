@@ -776,6 +776,28 @@ function determinePlanningScenario(context: {
 	return 'fresh';
 }
 
+// ============================================================================
+// Scenario-specific instruction constants
+// ============================================================================
+
+const INSTRUCTIONS_ANSWERING_WITH_PLAN =
+	"Generate a COMPLETE UNIFIED PLAN that combines the previous plan with the new requirements from the user's answers. This is plan expansion - no workflow exists on canvas yet.";
+
+const INSTRUCTIONS_ANSWERING_FRESH = "Generate a plan based on the user's answers above.";
+
+const INSTRUCTIONS_REFINING_PLAN =
+	'PLAN REFINEMENT: The user is refining the plan before implementation. Generate a COMPLETE UPDATED PLAN that incorporates their requested changes. Include all steps (existing + new) in the updated plan.';
+
+const INSTRUCTIONS_INCREMENTAL =
+	'INCREMENTAL: A workflow already exists on the canvas. Generate only NEW steps that add to the existing workflow. Reference existing nodes when connecting new steps. Do NOT recreate existing functionality.';
+
+/**
+ * Format user answers for the context message.
+ */
+function formatUserAnswers(answers: Array<{ question: string; answer: string }>): string {
+	return answers.map((qa) => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n\n');
+}
+
 /**
  * Build a context message for the planner with user request and existing context.
  */
@@ -785,73 +807,44 @@ export function buildPlannerContextMessage(context: {
 	previousPlan?: string;
 	userAnswers?: Array<{ question: string; answer: string }>;
 }): string {
-	const parts: string[] = [];
-
-	// User request
-	parts.push('<user_request>');
-	parts.push(context.userRequest);
-	parts.push('</user_request>');
-
-	// User answers (if resuming after questions)
-	if (context.userAnswers && context.userAnswers.length > 0) {
-		parts.push('');
-		parts.push('<user_answers>');
-		for (const qa of context.userAnswers) {
-			parts.push(`Q: ${qa.question}`);
-			parts.push(`A: ${qa.answer}`);
-			parts.push('');
-		}
-		parts.push('</user_answers>');
-	}
-
-	// Existing workflow context (if any)
-	if (context.existingWorkflowSummary) {
-		parts.push('');
-		parts.push('<existing_workflow>');
-		parts.push(context.existingWorkflowSummary);
-		parts.push('</existing_workflow>');
-	}
-
-	// Previous plan (if refining)
-	if (context.previousPlan) {
-		parts.push('');
-		parts.push('<previous_plan>');
-		parts.push(context.previousPlan);
-		parts.push('</previous_plan>');
-	}
-
-	// Determine scenario and add appropriate instructions
 	const scenario = determinePlanningScenario({
 		hasExistingWorkflow: !!context.existingWorkflowSummary,
 		hasPreviousPlan: !!context.previousPlan,
 		hasAnswers: (context.userAnswers?.length ?? 0) > 0,
 	});
 
-	// Add scenario-specific instructions
-	switch (scenario) {
-		case 'fresh':
-			// No special instructions - follow standard question/plan flow
-			break;
+	const hasUnimplementedPlan = !!context.previousPlan && !context.existingWorkflowSummary;
 
-		case 'answering_questions':
-			parts.push('');
-			parts.push("Generate a plan based on the user's answers above.");
-			break;
-
-		case 'refining_plan':
-			parts.push('');
-			parts.push(
-				'PLAN REFINEMENT: The user is refining the plan before implementation. Generate a COMPLETE UPDATED PLAN that incorporates their requested changes. Include all steps (existing + new) in the updated plan.',
-			);
-			break;
-
-		case 'incremental_to_workflow':
-			parts.push('');
-			parts.push(
-				'INCREMENTAL: A workflow already exists on the canvas. Generate only NEW steps that add to the existing workflow. Reference existing nodes when connecting new steps. Do NOT recreate existing functionality.',
-			);
-			break;
-	}
-
-	return parts.join('\n');
+	return (
+		prompt()
+			.section('user_request', context.userRequest)
+			.sectionIf(context.userAnswers && context.userAnswers.length > 0, 'user_answers', () =>
+				formatUserAnswers(context.userAnswers!),
+			)
+			.sectionIf(
+				context.existingWorkflowSummary,
+				'existing_workflow',
+				context.existingWorkflowSummary!,
+			)
+			.sectionIf(context.previousPlan, 'previous_plan', () => {
+				const note = hasUnimplementedPlan
+					? '[This plan has NOT been implemented yet - no workflow exists on canvas]\n\n'
+					: '';
+				return note + context.previousPlan;
+			})
+			// Scenario-specific instructions (mutually exclusive conditions)
+			.sectionIf(
+				scenario === 'answering_questions' && hasUnimplementedPlan,
+				'instructions',
+				INSTRUCTIONS_ANSWERING_WITH_PLAN,
+			)
+			.sectionIf(
+				scenario === 'answering_questions' && !hasUnimplementedPlan,
+				'instructions',
+				INSTRUCTIONS_ANSWERING_FRESH,
+			)
+			.sectionIf(scenario === 'refining_plan', 'instructions', INSTRUCTIONS_REFINING_PLAN)
+			.sectionIf(scenario === 'incremental_to_workflow', 'instructions', INSTRUCTIONS_INCREMENTAL)
+			.build()
+	);
 }
