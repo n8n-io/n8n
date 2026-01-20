@@ -1,4 +1,4 @@
-import { NodeVM } from '@n8n/vm2';
+import { NodeVM } from 'vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 

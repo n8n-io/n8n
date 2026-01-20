@@ -84,11 +84,13 @@ export function mapToNodeOperationError(
 		case 'auth':
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server. Authentication failed.',
+				description: error.error.message,
 			});
 		case 'connection':
 		default:
 			return new NodeOperationError(node, error.error, {
 				message: 'Could not connect to your MCP server',
+				description: error.error.message,
 			});
 	}
 }

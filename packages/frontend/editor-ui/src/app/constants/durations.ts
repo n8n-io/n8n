@@ -23,3 +23,5 @@ export const TIME = {
 export const THREE_DAYS_IN_MILLIS = 3 * TIME.DAY;
 export const SEVEN_DAYS_IN_MILLIS = 7 * TIME.DAY;
 export const SIX_MONTHS_IN_MILLIS = 6 * 30 * TIME.DAY;
+
+export const LOADING_ANIMATION_MIN_DURATION = 1000;

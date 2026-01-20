@@ -33,14 +33,14 @@ async function fetchAllTests(apiKey) {
 	let page = 0;
 	let hasMore = true;
 
-	const thirtyDaysAgo = new Date();
-	thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+	const sevenDaysAgo = new Date();
+	sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
 	while (hasMore && page < 200) {
 		const url = new URL(`${CURRENTS_API}/tests/${PROJECT_ID}`);
 		url.searchParams.set('limit', '50');
 		url.searchParams.set('page', page.toString());
-		url.searchParams.set('date_start', thirtyDaysAgo.toISOString());
+		url.searchParams.set('date_start', sevenDaysAgo.toISOString());
 		url.searchParams.set('date_end', new Date().toISOString());
 
 		const res = await fetch(url, {

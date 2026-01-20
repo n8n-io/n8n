@@ -19,6 +19,7 @@ import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 
 const nodeCreatorStore = useNodeCreatorStore();
 const chatPanelStore = useChatPanelStore();
@@ -28,6 +29,7 @@ const templatesStore = useTemplatesStore();
 const router = useRouter();
 const uiStore = useUIStore();
 const templatesDataQualityStore = useTemplatesDataQualityStore();
+const assistantStore = useAssistantStore();
 
 const isChatWindowOpen = computed(
 	() => chatPanelStore.isOpen && chatPanelStore.isBuilderModeActive,
@@ -48,6 +50,11 @@ const onAddFirstStepClick = () => {
 };
 
 async function onBuildWithAIClick() {
+	assistantStore.trackUserOpenedAssistant({
+		source: 'build_with_ai',
+		task: 'placeholder',
+		has_existing_session: !assistantStore.isSessionEnded,
+	});
 	await chatPanelStore.toggle({ mode: 'builder' });
 }
 

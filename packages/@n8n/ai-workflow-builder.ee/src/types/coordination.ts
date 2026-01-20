@@ -71,6 +71,12 @@ export interface ErrorMetadata {
 	failedSubgraph: SubgraphPhase;
 	/** Error message */
 	errorMessage: string;
+	/** Partial builder data when builder hits recursion error (AI-1812) */
+	partialBuilderData?: {
+		nodeCount: number;
+		connectionCount: number;
+		nodeNames: string[];
+	};
 }
 
 export interface StateManagementMetadata {

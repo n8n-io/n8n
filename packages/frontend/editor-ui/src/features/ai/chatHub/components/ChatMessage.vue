@@ -529,10 +529,20 @@ onBeforeMount(() => {
 		}
 
 		& .codeBlockActions {
-			position: absolute;
-			top: 0;
-			right: 0;
-			margin: var(--spacing--2xs);
+			position: sticky;
+			top: var(--spacing--sm);
+			display: flex;
+			justify-content: flex-end;
+			height: 32px;
+			pointer-events: none;
+
+			& > * {
+				pointer-events: auto;
+			}
+		}
+
+		& .codeBlockActions ~ code {
+			margin-top: -32px;
 		}
 
 		& ~ pre {

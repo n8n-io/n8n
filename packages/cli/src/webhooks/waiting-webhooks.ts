@@ -33,6 +33,7 @@ import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { applyCors } from '@/utils/cors.util';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -52,6 +53,14 @@ export class WaitingWebhooks implements IWebhookManager {
 	) {}
 
 	// TODO: implement `getWebhookMethods` for CORS support
+
+	async findAccessControlOptions() {
+		// waiting webhooks do not support cors configuration options
+		// allow all origins because waiting webhook forms are always submitted in cors mode due to sandbox CSP
+		return {
+			allowedOrigins: '*',
+		};
+	}
 
 	protected logReceivedWebhook(method: string, executionId: string) {
 		this.logger.debug(`Received waiting-webhook "${method}" for execution "${executionId}"`);
@@ -169,6 +178,8 @@ export class WaitingWebhooks implements IWebhookManager {
 		}
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
+
+		applyCors(req, res);
 
 		return await this.getWebhookExecutionData({
 			execution,

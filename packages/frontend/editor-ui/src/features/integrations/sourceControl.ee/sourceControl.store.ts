@@ -45,7 +45,7 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		force: boolean;
 	}) => {
 		state.commitMessage = data.commitMessage;
-		await vcApi.pushWorkfolder(rootStore.restApiContext, {
+		return await vcApi.pushWorkfolder(rootStore.restApiContext, {
 			force: data.force,
 			commitMessage: data.commitMessage,
 			fileNames: data.fileNames,

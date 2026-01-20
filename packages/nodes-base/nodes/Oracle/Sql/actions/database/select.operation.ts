@@ -87,6 +87,10 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const queries: QueryWithValues[] = [];
 
+	const conn = await pool.getConnection();
+	const isCDBSupported = conn.oracleServerVersion >= 1200000000;
+	await conn.close();
+
 	for (let i = 0; i < items.length; i++) {
 		const schema = this.getNodeParameter('schema', i, undefined, {
 			extractValue: true,
@@ -102,26 +106,46 @@ export async function execute(
 		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
 
 		let query = '';
-		if (outputColumns.includes('*')) {
-			query = `SELECT * FROM ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`;
-		} else {
-			const quotedColumns = outputColumns.map(quoteSqlIdentifier).join(',');
-			query = `SELECT ${quotedColumns} FROM ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`;
-		}
+		let innerQuery = outputColumns.includes('*')
+			? `SELECT * FROM ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`
+			: `SELECT ${outputColumns.map(quoteSqlIdentifier).join(',')} FROM ${quoteSqlIdentifier(schema)}.${quoteSqlIdentifier(table)}`;
 
+		// Add WHERE clause
 		const whereClauses =
 			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
-		[query, values] = addWhereClauses(query, whereClauses, combineConditions, columnMetaDataObject);
+		[innerQuery, values] = addWhereClauses(
+			innerQuery,
+			whereClauses,
+			combineConditions,
+			columnMetaDataObject,
+		);
 
+		// Add ORDER BY if needed
 		const sortRules =
 			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
-		query = addSortRules(query, sortRules);
+		innerQuery = addSortRules(innerQuery, sortRules);
 
+		// Handle LIMIT / pagination
 		const returnAll = this.getNodeParameter('returnAll', i, false);
 		if (!returnAll) {
 			const limit = this.getNodeParameter('limit', i, 50);
-			query += ` FETCH FIRST ${limit} ROWS ONLY`;
+
+			if (isCDBSupported) {
+				// Oracle 12c+ (FETCH FIRST)
+				query += `${innerQuery} FETCH FIRST ${limit} ROWS ONLY`;
+			} else {
+				if (sortRules.length > 0 || whereClauses.length > 0) {
+					// Wrap inner query to preserve WHERE + ORDER BY
+					query = `SELECT * FROM (${innerQuery}) WHERE ROWNUM <= ${limit}`;
+				} else {
+					// No ORDER BY or WHERE: safe to append ROWNUM inline
+					query = `${innerQuery} WHERE ROWNUM <= ${limit}`;
+				}
+			}
+		} else {
+			// return all: no limit
+			query = innerQuery;
 		}
 
 		const queryWithValues = { query, values };

@@ -741,6 +741,8 @@ export class ChatHubModelsService {
 					role: true,
 					project: {
 						id: true,
+						name: true,
+						type: true,
 						icon: { type: true, value: true },
 					},
 				},
@@ -791,11 +793,15 @@ export class ChatHubModelsService {
 
 		// Find the owner's project (home project)
 		const ownerSharedWorkflow = shared?.find((sw) => sw.role === 'workflow:owner');
+		const ownerProject = ownerSharedWorkflow?.project;
+
+		// Use null for personal projects so the frontend can display a localized label
+		const groupName = ownerProject?.type === 'personal' ? null : (ownerProject?.name ?? null);
 
 		return {
 			name: agentName,
 			description: chatTriggerParams.agentDescription ?? null,
-			icon: ownerSharedWorkflow?.project?.icon ?? null,
+			icon: chatTriggerParams.agentIcon ?? null,
 			model: {
 				provider: 'n8n',
 				workflowId: id,
@@ -810,6 +816,8 @@ export class ChatHubModelsService {
 				available: true,
 				scopes,
 			},
+			groupName,
+			groupIcon: ownerProject?.icon ?? null,
 		};
 	}
 
@@ -842,6 +850,8 @@ export class ChatHubModelsService {
 					createdAt: null,
 					updatedAt: null,
 					metadata,
+					groupName: null,
+					groupIcon: null,
 				},
 			];
 		});

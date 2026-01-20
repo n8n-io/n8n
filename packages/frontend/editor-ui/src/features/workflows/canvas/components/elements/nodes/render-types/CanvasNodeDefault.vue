@@ -286,11 +286,9 @@ function onActivate(event: MouseEvent) {
 				margin-left: calc((var(--canvas-node--height) - var(--node--icon--size) - 4px) / 2);
 			}
 
-			&:not(.running) {
-				.statusIcons {
-					position: static;
-					margin-right: var(--spacing--2xs);
-				}
+			.statusIcons {
+				position: static;
+				margin-right: var(--spacing--2xs);
 			}
 
 			.description {

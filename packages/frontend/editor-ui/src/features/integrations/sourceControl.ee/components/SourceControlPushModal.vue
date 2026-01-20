@@ -730,6 +730,7 @@ onMounted(async () => {
 						width="304px"
 						:content-class="$style['popover-content']"
 						style="align-self: normal"
+						z-index="2000"
 					>
 						<template #trigger>
 							<N8nButton
@@ -836,7 +837,9 @@ onMounted(async () => {
 								:disabled="activeDataSourceFiltered.length === 0"
 								@update:model-value="onToggleSelectAll"
 							>
-								<N8nText> Title </N8nText>
+								<template #label>
+									<N8nText> Title </N8nText>
+								</template>
 							</N8nCheckbox>
 							<N8nInfoTip
 								v-if="filtersApplied"
@@ -886,63 +889,74 @@ onMounted(async () => {
 											:model-value="activeSelection.has(file.id)"
 											@update:model-value="toggleSelected(file.id)"
 										>
-											<span>
-												<N8nText tag="div" bold color="text-dark" :class="[$style.listItemName]">
-													{{ file.name || file.id }}
-												</N8nText>
-												<N8nText
-													v-if="file.updatedAt"
-													tag="p"
-													class="mt-0"
-													color="text-light"
-													size="small"
-												>
-													{{ renderUpdatedAt(file) }}
-												</N8nText>
-											</span>
-											<span :class="[$style.badges]">
-												<N8nBadge
-													v-if="changes.currentWorkflow && file.id === changes.currentWorkflow.id"
-													class="mr-2xs"
-												>
-													Current workflow
-												</N8nBadge>
-												<template
-													v-if="
-														file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
-														file.type === SOURCE_CONTROL_FILE_TYPE.credential
-													"
-												>
-													<ProjectCardBadge
-														v-if="file.project"
-														data-test-id="source-control-push-modal-project-badge"
-														:resource="castProject(file.project)"
-														:resource-type="castType(file.type)"
-														:resource-type-label="
-															i18n.baseText(`generic.${file.type}`).toLowerCase()
-														"
-														:personal-project="projectsStore.personalProject"
-														:show-badge-border="false"
-													/>
-												</template>
-												<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
-													{{ getStatusText(file.status) }}
-												</N8nBadge>
-												<template v-if="isWorkflowDiffsEnabled">
-													<N8nTooltip
-														v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
-														:content="i18n.baseText('workflowDiff.compare')"
-														placement="top"
-													>
-														<N8nIconButton
-															data-test-id="source-control-workflow-diff-button"
-															icon="file-diff"
-															type="secondary"
-															@click="openDiffModal(file.id, file.status)"
-														/>
-													</N8nTooltip>
-												</template>
-											</span>
+											<template #label>
+												<div :class="$style.listItemContent">
+													<span>
+														<N8nText
+															tag="div"
+															bold
+															color="text-dark"
+															:class="[$style.listItemName]"
+														>
+															{{ file.name || file.id }}
+														</N8nText>
+														<N8nText
+															v-if="file.updatedAt"
+															tag="p"
+															class="mt-0"
+															color="text-light"
+															size="small"
+														>
+															{{ renderUpdatedAt(file) }}
+														</N8nText>
+													</span>
+													<span :class="[$style.badges]">
+														<N8nBadge
+															v-if="
+																changes.currentWorkflow && file.id === changes.currentWorkflow.id
+															"
+															class="mr-2xs"
+														>
+															Current workflow
+														</N8nBadge>
+														<template
+															v-if="
+																file.type === SOURCE_CONTROL_FILE_TYPE.workflow ||
+																file.type === SOURCE_CONTROL_FILE_TYPE.credential
+															"
+														>
+															<ProjectCardBadge
+																v-if="file.project"
+																data-test-id="source-control-push-modal-project-badge"
+																:resource="castProject(file.project)"
+																:resource-type="castType(file.type)"
+																:resource-type-label="
+																	i18n.baseText(`generic.${file.type}`).toLowerCase()
+																"
+																:personal-project="projectsStore.personalProject"
+																:show-badge-border="false"
+															/>
+														</template>
+														<N8nBadge :theme="getStatusTheme(file.status)" style="height: 25px">
+															{{ getStatusText(file.status) }}
+														</N8nBadge>
+														<template v-if="isWorkflowDiffsEnabled">
+															<N8nTooltip
+																v-if="file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
+																:content="i18n.baseText('workflowDiff.compare')"
+																placement="top"
+															>
+																<N8nIconButton
+																	data-test-id="source-control-workflow-diff-button"
+																	icon="file-diff"
+																	type="secondary"
+																	@click="openDiffModal(file.id, file.status)"
+																/>
+															</N8nTooltip>
+														</template>
+													</span>
+												</div>
+											</template>
 										</N8nCheckbox>
 									</DynamicScrollerItem>
 								</template>
@@ -1040,6 +1054,14 @@ onMounted(async () => {
 	padding: 10px 16px;
 	margin: 0;
 	border-bottom: var(--border);
+	width: 100%;
+
+	.listItemContent {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		width: 100%;
+	}
 
 	.listItemName {
 		line-clamp: 2;
@@ -1049,18 +1071,6 @@ onMounted(async () => {
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
 		word-wrap: break-word; /* Important for long words! */
-	}
-
-	:global(.el-checkbox__label) {
-		display: flex;
-		width: 100%;
-		justify-content: space-between;
-		align-items: center;
-		gap: 30px;
-	}
-
-	:global(.el-checkbox__inner) {
-		transition: none;
 	}
 }
 

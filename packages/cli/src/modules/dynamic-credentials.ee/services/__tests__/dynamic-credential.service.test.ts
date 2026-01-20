@@ -15,6 +15,7 @@ import type { DynamicCredentialResolverRepository } from '../../database/reposit
 import { CredentialResolutionError } from '../../errors/credential-resolution.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
+import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
@@ -23,6 +24,7 @@ describe('DynamicCredentialService', () => {
 	let mockLoadNodesAndCredentials: jest.Mocked<LoadNodesAndCredentials>;
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockLogger: jest.Mocked<Logger>;
+	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
 
 	const createMockCredentialsMetadata = (overrides: Partial<CredentialResolveMetadata> = {}) =>
 		({
@@ -80,6 +82,28 @@ describe('DynamicCredentialService', () => {
 		metadata: {},
 	});
 
+	const createMockAdditionalData = (
+		executionId: string = 'exec-123',
+		secrets: Record<string, string> = {},
+		executionContext?: IExecutionContext,
+	) => ({
+		executionId,
+		restartExecutionId: undefined,
+		restApiUrl: '',
+		instanceBaseUrl: '',
+		formWaitingBaseUrl: '',
+		webhookBaseUrl: '',
+		webhookWaitingBaseUrl: '',
+		webhookTestBaseUrl: '',
+		currentNodeParameters: undefined,
+		executionTimeoutTimestamp: undefined,
+		userId: 'user-123',
+		variables: {
+			...secrets,
+		},
+		executionContext,
+	});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 
@@ -119,12 +143,57 @@ describe('DynamicCredentialService', () => {
 			type: { name: 'testCredentialType', displayName: 'Test Credential Type', properties: [] },
 		});
 
+		mockExpressionService = {
+			resolve: jest.fn(async (config, canUseExternalSecrets) => {
+				// Simple mock that resolves expressions using global data only (vars, secrets)
+				// Not using runtime data like $execution.id or $execution.mode
+				const resolveValue = (value: unknown): unknown => {
+					if (typeof value !== 'string') return value;
+
+					// Resolve $vars.* expressions (global variables)
+					const varsMatch = value.match(/^=\{\{\$vars\.(\w+)\}\}$/);
+					if (varsMatch) {
+						const varName = varsMatch[1];
+						// Get vars from additionalData in the test context
+						return (global as any).testVars?.[varName] ?? value;
+					}
+
+					// Resolve $secrets expressions (external secrets)
+					const secretsMatch = value.match(/^=\{\{\$secrets\.(\w+)\.(\w+)\}\}$/);
+					if (secretsMatch && canUseExternalSecrets) {
+						const [, provider, secretName] = secretsMatch;
+						// Get secrets from test context
+						return (global as any).testSecrets?.[`${provider}.${secretName}`] ?? value;
+					}
+
+					// Runtime expressions like $execution.id are NOT resolved
+					return value;
+				};
+
+				// Deep resolve all values in config
+				const resolveConfig = (obj: Record<string, unknown>): Record<string, unknown> => {
+					const resolved: Record<string, unknown> = {};
+					for (const [key, value] of Object.entries(obj)) {
+						if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+							resolved[key] = resolveConfig(value as Record<string, unknown>);
+						} else {
+							resolved[key] = resolveValue(value);
+						}
+					}
+					return resolved;
+				};
+
+				return await Promise.resolve(resolveConfig(config));
+			}),
+		} as unknown as jest.Mocked<ResolverConfigExpressionService>;
+
 		service = new DynamicCredentialService(
 			mockResolverRegistry,
 			mockResolverRepository,
 			mockLoadNodesAndCredentials,
 			mockCipher,
 			mockLogger,
+			mockExpressionService,
 		);
 	});
 
@@ -220,6 +289,7 @@ describe('DynamicCredentialService', () => {
 				const resolverEntity = createMockResolverEntity();
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -230,7 +300,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -248,6 +319,7 @@ describe('DynamicCredentialService', () => {
 				const mockResolver = createMockResolver(false); // Will fail
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -258,7 +330,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -280,6 +353,7 @@ describe('DynamicCredentialService', () => {
 				const mockResolver = createMockResolver(false, true); // Throws DataNotFoundError
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -290,7 +364,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -306,14 +381,17 @@ describe('DynamicCredentialService', () => {
 				const credentialsEntity = createMockCredentialsMetadata({
 					resolverId: undefined,
 				});
-				const workflowSettings = {}; // No credentialResolverId
 				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const additionalData = {
+					...createMockAdditionalData('exec-123', {}, executionContext),
+					workflowSettings: {}, // No credentialResolverId
+				};
 
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
-					workflowSettings,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -381,6 +459,7 @@ describe('DynamicCredentialService', () => {
 				const mockResolver = createMockResolver(false); // Will fail
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -391,11 +470,21 @@ describe('DynamicCredentialService', () => {
 					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second invocation: decrypt resolver config
 
 				await expect(
-					service.resolveIfNeeded(credentialsEntity, staticData, executionContext),
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
 				).rejects.toThrow(CredentialResolutionError);
 
 				await expect(
-					service.resolveIfNeeded(credentialsEntity, staticData, executionContext),
+					service.resolveIfNeeded(
+						credentialsEntity,
+						staticData,
+						additionalData.executionContext,
+						undefined,
+					),
 				).rejects.toThrow('Failed to resolve dynamic credentials for "Test Credential"');
 
 				expect(mockLogger.debug).toHaveBeenCalledWith(
@@ -411,6 +500,7 @@ describe('DynamicCredentialService', () => {
 				const resolverEntity = createMockResolverEntity();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				// Static data includes OAuth client config and old token
 				const staticOAuthData: ICredentialDataDecryptedObject = {
@@ -438,7 +528,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticOAuthData,
-					executionContext,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				// Verify merge: static fields preserved, dynamic fields added/overridden
@@ -479,6 +570,7 @@ describe('DynamicCredentialService', () => {
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -486,7 +578,12 @@ describe('DynamicCredentialService', () => {
 					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
 					.mockReturnValueOnce(JSON.stringify(customConfig)); // Second call: decrypt resolver config
 
-				await service.resolveIfNeeded(credentialsEntity, staticData, executionContext);
+				await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					additionalData.executionContext,
+					undefined,
+				);
 
 				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
 					resolverId: resolverEntity.id,
@@ -508,6 +605,7 @@ describe('DynamicCredentialService', () => {
 					},
 				};
 				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -515,7 +613,12 @@ describe('DynamicCredentialService', () => {
 					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
 					.mockReturnValueOnce(JSON.stringify({ prefix: 'test' })); // Second call: decrypt resolver config
 
-				await service.resolveIfNeeded(credentialsEntity, staticData, executionContext);
+				await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					additionalData.executionContext,
+					undefined,
+				);
 
 				expect(mockResolver.getSecret).toHaveBeenCalledWith(
 					'cred-123',
@@ -539,6 +642,7 @@ describe('DynamicCredentialService', () => {
 				const resolverEntity = createMockResolverEntity();
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext(undefined);
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -546,7 +650,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -560,6 +665,7 @@ describe('DynamicCredentialService', () => {
 				const resolverEntity = createMockResolverEntity();
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -568,7 +674,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
+					additionalData.executionContext,
+					undefined,
 				);
 
 				expect(result).toBe(staticData);
@@ -583,6 +690,7 @@ describe('DynamicCredentialService', () => {
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -590,7 +698,12 @@ describe('DynamicCredentialService', () => {
 					.mockReturnValueOnce(JSON.stringify(credentialContext)) // First call: decrypt execution context
 					.mockReturnValueOnce('{}'); // Second call: decrypt resolver config (empty object)
 
-				await service.resolveIfNeeded(credentialsEntity, staticData, executionContext);
+				await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					additionalData.executionContext,
+					undefined,
+				);
 
 				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
 					resolverId: resolverEntity.id,
@@ -605,15 +718,18 @@ describe('DynamicCredentialService', () => {
 				const credentialsEntity = createMockCredentialsMetadata({
 					resolverId: undefined, // No resolver on credential
 				});
-				const workflowSettings = {
-					credentialResolverId: 'workflow-resolver-789',
-				};
 				const resolverEntity = createMockResolverEntity({
 					id: 'workflow-resolver-789',
 				});
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = {
+					...createMockAdditionalData('exec-123', {}, executionContext),
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-789',
+					},
+				};
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -624,8 +740,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
-					workflowSettings,
+					additionalData.executionContext,
+					additionalData.workflowSettings,
 				);
 
 				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
@@ -645,15 +761,18 @@ describe('DynamicCredentialService', () => {
 				const credentialsEntity = createMockCredentialsMetadata({
 					resolverId: 'credential-resolver-456',
 				});
-				const workflowSettings = {
-					credentialResolverId: 'workflow-resolver-789',
-				};
 				const resolverEntity = createMockResolverEntity({
 					id: 'credential-resolver-456',
 				});
 				const mockResolver = createMockResolver();
 				const executionContext = createMockExecutionContext('encrypted-credentials');
 				const credentialContext = createMockCredentialContext();
+				const additionalData = {
+					...createMockAdditionalData('exec-123', {}, executionContext),
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-789',
+					},
+				};
 
 				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
 				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
@@ -664,8 +783,8 @@ describe('DynamicCredentialService', () => {
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
-					workflowSettings,
+					additionalData.executionContext,
+					additionalData.workflowSettings,
 				);
 
 				expect(mockResolverRepository.findOneBy).toHaveBeenCalledWith({
@@ -686,18 +805,21 @@ describe('DynamicCredentialService', () => {
 					resolverId: undefined,
 					resolvableAllowFallback: true,
 				});
-				const workflowSettings = {
-					credentialResolverId: 'workflow-resolver-789',
-				};
 				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const additionalData = {
+					...createMockAdditionalData('exec-123', {}, executionContext),
+					workflowSettings: {
+						credentialResolverId: 'workflow-resolver-789',
+					},
+				};
 
 				mockResolverRepository.findOneBy.mockResolvedValue(null);
 
 				const result = await service.resolveIfNeeded(
 					credentialsEntity,
 					staticData,
-					executionContext,
-					workflowSettings,
+					additionalData.executionContext,
+					additionalData.workflowSettings,
 				);
 
 				expect(result).toBe(staticData);
@@ -708,6 +830,239 @@ describe('DynamicCredentialService', () => {
 						resolverSource: 'workflow',
 					}),
 				);
+			});
+		});
+
+		describe('expression resolution in resolver config', () => {
+			it('should resolve $vars expressions in resolver config', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData(
+					'exec-123',
+					{
+						apiKey: 'secret-api-key-123',
+					},
+					executionContext,
+				);
+
+				// Set up test vars for the mock
+				(global as any).testVars = { apiKey: 'secret-api-key-123' };
+
+				// Resolver config with $vars expression
+				const resolverConfigWithVars = {
+					apiKey: '={{$vars.apiKey}}',
+					prefix: 'cred',
+				};
+
+				const mockResolver = createMockResolver();
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext))
+					.mockReturnValueOnce(JSON.stringify(resolverConfigWithVars));
+
+				await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					additionalData.executionContext,
+					undefined,
+					false,
+				);
+
+				// Verify the resolver was called with resolved config
+				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
+					resolverId: resolverEntity.id,
+					resolverName: resolverEntity.type,
+					configuration: {
+						apiKey: 'secret-api-key-123', // $vars expression resolved
+						prefix: 'cred',
+					},
+				});
+
+				// Cleanup
+				delete (global as any).testVars;
+			});
+
+			it('should resolve $secrets expressions when canUseExternalSecrets is true', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+
+				// Set up test secrets for the mock
+				(global as any).testSecrets = {
+					'infisical.apiToken': 'secret-token-from-infisical',
+				};
+
+				// Resolver config with $secrets expression
+				const resolverConfig = {
+					apiToken: '={{$secrets.infisical.apiToken}}',
+					prefix: 'cred',
+				};
+
+				const mockResolver = createMockResolver();
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext))
+					.mockReturnValueOnce(JSON.stringify(resolverConfig));
+
+				// Test with canUseExternalSecrets = true
+				await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					additionalData.executionContext,
+					undefined,
+					true, // canUseExternalSecrets = true (enables $secrets support)
+				);
+
+				// Verify the resolver was called with resolved config
+				const callArgs = mockResolver.getSecret.mock.calls[0][2];
+				expect(callArgs.configuration.apiToken).toBe('secret-token-from-infisical');
+				expect(callArgs.configuration.prefix).toBe('cred');
+
+				// Cleanup
+				delete (global as any).testSecrets;
+			});
+
+			it('should not resolve $secrets expressions when canUseExternalSecrets is false', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+
+				// Set up test secrets for the mock (but they should NOT be used)
+				(global as any).testSecrets = {
+					'infisical.apiToken': 'secret-token-from-infisical',
+				};
+
+				// Resolver config with $secrets expression
+				const resolverConfig = {
+					apiToken: '={{$secrets.infisical.apiToken}}',
+					prefix: 'cred',
+				};
+
+				const mockResolver = createMockResolver();
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext))
+					.mockReturnValueOnce(JSON.stringify(resolverConfig));
+
+				// Test with canUseExternalSecrets = false
+				await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					additionalData.executionContext,
+					undefined,
+					false, // canUseExternalSecrets = false (disables $secrets support)
+				);
+
+				// Verify the resolver was called with config where $secrets expression is NOT resolved
+				const callArgs = mockResolver.getSecret.mock.calls[0][2];
+				expect(callArgs.configuration.apiToken).toBe('={{$secrets.infisical.apiToken}}');
+				expect(callArgs.configuration.prefix).toBe('cred');
+
+				// Cleanup
+				delete (global as any).testSecrets;
+			});
+
+			it('should resolve only global expressions (not runtime) in resolver config', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData(
+					'exec-789',
+					{
+						envVar: 'env-value',
+					},
+					executionContext,
+				);
+
+				// Set up test vars for the mock
+				(global as any).testVars = { envVar: 'env-value' };
+
+				// Resolver config with multiple expressions (mix of global and runtime)
+				const resolverConfigWithExpressions = {
+					prefix: '={{$execution.id}}', // Runtime expression - NOT resolved
+					envValue: '={{$vars.envVar}}', // Global expression - resolved
+					mode: '={{$execution.mode}}', // Runtime expression - NOT resolved
+					staticValue: 'no-expression',
+				};
+
+				const mockResolver = createMockResolver();
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext))
+					.mockReturnValueOnce(JSON.stringify(resolverConfigWithExpressions));
+
+				await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					additionalData.executionContext,
+					undefined,
+					false,
+				);
+
+				// Verify only global expressions were resolved, runtime expressions remain as-is
+				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
+					resolverId: resolverEntity.id,
+					resolverName: resolverEntity.type,
+					configuration: {
+						prefix: '={{$execution.id}}', // NOT resolved (runtime data)
+						envValue: 'env-value', // Resolved (global data)
+						mode: '={{$execution.mode}}', // NOT resolved (runtime data)
+						staticValue: 'no-expression',
+					},
+				});
+
+				// Cleanup
+				delete (global as any).testVars;
+			});
+
+			it('should skip expression resolution when additionalData is missing', async () => {
+				const credentialsEntity = createMockCredentialsMetadata();
+				const resolverEntity = createMockResolverEntity();
+				const executionContext = createMockExecutionContext('encrypted-credentials');
+				const credentialContext = createMockCredentialContext();
+				const additionalData = createMockAdditionalData('exec-123', {}, executionContext);
+
+				// Resolver config with expression
+				const resolverConfigWithExpression = {
+					prefix: 'cred',
+					executionId: '={{$execution.id}}',
+				};
+
+				const mockResolver = createMockResolver();
+				mockResolverRepository.findOneBy.mockResolvedValue(resolverEntity);
+				mockResolverRegistry.getResolverByTypename.mockReturnValue(mockResolver);
+				mockCipher.decrypt
+					.mockReturnValueOnce(JSON.stringify(credentialContext))
+					.mockReturnValueOnce(JSON.stringify(resolverConfigWithExpression));
+
+				// Call without mode (no expression resolution)
+				await service.resolveIfNeeded(
+					credentialsEntity,
+					staticData,
+					additionalData.executionContext,
+					undefined,
+				);
+
+				// Verify config passed as-is (expression not resolved)
+				expect(mockResolver.getSecret).toHaveBeenCalledWith('cred-123', credentialContext, {
+					resolverId: resolverEntity.id,
+					resolverName: resolverEntity.type,
+					configuration: {
+						prefix: 'cred',
+						executionId: '={{$execution.id}}', // Expression NOT resolved
+					},
+				});
 			});
 		});
 	});

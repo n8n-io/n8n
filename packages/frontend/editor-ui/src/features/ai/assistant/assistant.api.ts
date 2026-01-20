@@ -114,18 +114,6 @@ export async function getAiSessions(
 	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions', body);
 }
 
-export async function getSessionsMetadata(
-	ctx: IRestApiContext,
-	workflowId?: string,
-): Promise<{
-	hasMessages: boolean;
-}> {
-	const body: IDataObject = {
-		workflowId,
-	};
-	return await makeRestApiRequest(ctx, 'POST', '/ai/sessions/metadata', body);
-}
-
 export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
 	creditsQuota: number;
 	creditsClaimed: number;

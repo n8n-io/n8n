@@ -17,7 +17,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import { formatTimestamp, generateVersionName } from '@/features/workflows/workflowHistory/utils';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
@@ -35,8 +34,6 @@ const props = defineProps<{
 const emit = defineEmits<{
 	action: [value: WorkflowHistoryAction];
 }>();
-
-const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {
@@ -90,16 +87,10 @@ const actions = computed(() => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (isDraftPublishEnabled) {
-		if (props.isVersionActive) {
-			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
-		} else {
-			filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
-		}
+	if (props.isVersionActive) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 	} else {
-		filteredActions = filteredActions.filter(
-			(action) => action.value !== 'publish' && action.value !== 'unpublish',
-		);
+		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
 	}
 
 	return filteredActions;
@@ -139,7 +130,7 @@ watch(
 		/>
 		<div v-if="props.workflowVersion" :class="$style.info">
 			<div :class="$style.card">
-				<div v-if="isDraftPublishEnabled" :class="$style.descriptionBox">
+				<div :class="$style.descriptionBox">
 					<N8nTooltip v-if="versionNameDisplay" :content="versionNameDisplay">
 						<N8nText :class="$style.mainLine" bold color="text-dark">{{
 							versionNameDisplay
@@ -156,28 +147,6 @@ watch(
 						</N8nLink>
 					</N8nText>
 				</div>
-				<section v-else :class="$style.textOld">
-					<p>
-						<span :class="$style.label">
-							{{ i18n.baseText('workflowHistory.content.title') }}:
-						</span>
-						<time :datetime="props.workflowVersion.createdAt">{{ formattedCreatedAt }}</time>
-					</p>
-					<p>
-						<span :class="$style.label">
-							{{ i18n.baseText('workflowHistory.content.editedBy') }}:
-						</span>
-						<span>{{ props.workflowVersion.authors }}</span>
-					</p>
-					<p>
-						<span :class="$style.label">
-							{{ i18n.baseText('workflowHistory.content.versionId') }}:
-						</span>
-						<data :value="props.workflowVersion.versionId">{{
-							props.workflowVersion.versionId
-						}}</data>
-					</p>
-				</section>
 				<N8nActionToggle
 					:class="$style.actions"
 					:actions="actions"
@@ -238,51 +207,6 @@ $descriptionBoxMaxWidth: 330px;
 .mainLine {
 	@include mixins.utils-ellipsis;
 	cursor: default;
-}
-
-.textOld {
-	display: flex;
-	flex-direction: column;
-	flex: 1 1 auto;
-
-	p {
-		display: flex;
-		align-items: center;
-		padding: 0;
-		cursor: default;
-
-		&:first-child {
-			padding-top: var(--spacing--3xs);
-			padding-bottom: var(--spacing--4xs);
-			* {
-				margin-top: auto;
-				font-size: var(--font-size--md);
-			}
-		}
-
-		&:last-child {
-			padding-top: var(--spacing--3xs);
-
-			* {
-				font-size: var(--font-size--2xs);
-			}
-		}
-
-		* {
-			max-width: unset;
-			justify-self: unset;
-			white-space: unset;
-			overflow: hidden;
-			text-overflow: unset;
-			padding: 0;
-			font-size: var(--font-size--sm);
-		}
-	}
-}
-
-.label {
-	color: var(--color--text--tint-1);
-	padding-right: var(--spacing--4xs);
 }
 
 .actions {

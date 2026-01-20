@@ -1,0 +1,74 @@
+# Publish security fix from n8n-io/n8n-private to n8n-io/n8n
+#
+# On PR merge to n8n-private's master:
+#
+# 1. Cherrypick the squashed commit onto n8n's master
+# 2. Sync n8n's master onto n8n-private's master
+#
+# Before:
+#   private master: A -- B -- C -- D       (D = security fix)
+#   public master:  A -- B -- C -- E       (E = normal development)
+#
+# After:
+#   private master: A -- B -- C -- E -- D'
+#   public master:  A -- B -- C -- E -- D'
+#
+# On cherrypick conflict:
+#
+# 1. Run "Security: Sync from Public" workflow
+# 2. Rebase your branch: `git checkout fix-123 && git rebase master`
+# 3. Reopen PR and merge again
+
+name: 'Security: Publish fix'
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [master]
+
+jobs:
+  sync-security-fix:
+    if: github.repository == 'n8n-io/n8n-private' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          owner: n8n-io
+          repositories: n8n
+
+      - name: Cherry-pick to public repo
+        run: |
+          COMMIT_TO_PUBLISH=$(git rev-parse HEAD)
+          git remote add public-repo https://x-access-token:${{ steps.generate_token.outputs.token }}@github.com/n8n-io/n8n.git
+          git fetch public-repo master
+          git checkout public-repo/master
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git cherry-pick "$COMMIT_TO_PUBLISH"
+          git push public-repo HEAD:master
+
+      - name: Sync public back to private
+        run: |
+          git fetch public-repo master
+          git push origin public-repo/master:master --force
+
+      - name: Notify on failure
+        if: failure()
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: ${{ job.status }}
+          channel: '#alerts-security'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: 'Security fix cherry-pick failed. Run "Security: Sync from Public" workflow, rebase your branch, reopen PR. (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'

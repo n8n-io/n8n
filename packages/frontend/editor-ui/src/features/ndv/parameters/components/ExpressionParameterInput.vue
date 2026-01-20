@@ -315,12 +315,14 @@ defineExpose({ focus, select });
 }
 
 .droppable {
-	--input--border-color: var(--ndv--droppable-parameter--color);
-	--input--border-right-color: var(--ndv--droppable-parameter--color);
-	--input--border-style: dashed;
+	--input--border-color: transparent;
+	--input--border-right-color: transparent;
 
 	:global(.cm-editor) {
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
+		transition: none;
 	}
 }
 
@@ -332,7 +334,10 @@ defineExpose({ focus, select });
 
 	:global(.cm-editor) {
 		cursor: grabbing !important;
+		border-color: var(--color--success);
 		border-width: 1px;
+		outline: none;
+		transition: none;
 	}
 }
 </style>

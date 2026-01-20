@@ -60,8 +60,9 @@ test.describe('Langchain Integration @capability:proxy', () => {
 	});
 
 	// @AI team to look at this
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Tool Usage Notifications', () => {
+	test.describe('Tool Usage Notifications @fixme', () => {
+		test.fixme();
+
 		test('should show tool info notice if no existing tools were used during execution', async ({
 			n8n,
 		}) => {

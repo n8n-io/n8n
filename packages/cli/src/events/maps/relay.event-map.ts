@@ -44,6 +44,13 @@ export type RelayEventMap = {
 		userId: string | null;
 	};
 
+	'instance-first-production-workflow-failed': {
+		projectId: string;
+		workflowId: string;
+		workflowName: string;
+		userId: string;
+	};
+
 	'first-workflow-data-loaded': {
 		userId: string;
 		workflowId: string;
@@ -123,6 +130,23 @@ export type RelayEventMap = {
 		workflowId: string;
 		userIdSharer: string;
 		userIdList: string[];
+	};
+
+	'workflow-executed': {
+		user?: UserLike;
+		workflowId: string;
+		workflowName: string;
+		executionId: string;
+		source:
+			| 'user-manual'
+			| 'user-retry'
+			| 'webhook'
+			| 'trigger'
+			| 'error'
+			| 'cli'
+			| 'integrated'
+			| 'evaluation'
+			| 'chat';
 	};
 
 	// #endregion
@@ -412,6 +436,12 @@ export type RelayEventMap = {
 		reason: CancellationReason;
 	};
 
+	'execution-deleted': {
+		user: UserLike;
+		executionIds: string[];
+		deleteBefore?: Date;
+	};
+
 	// #endregion
 
 	// #region Project
@@ -532,6 +562,10 @@ export type RelayEventMap = {
 		isValid: boolean;
 		isNew: boolean;
 		errorMessage?: string;
+	};
+
+	'external-secrets-provider-reloaded': {
+		vaultType: string;
 	};
 
 	// #endregion

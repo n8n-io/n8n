@@ -49,7 +49,7 @@ if (!shards || shards < 1) {
  * @returns {{path: string, capabilities: string[]}[]} Array of spec info
  */
 function getSpecsFromPlaywright() {
-	const output = execSync(`pnpm playwright test --list --project="${E2E_PROJECT}"`, {
+	const output = execSync(`pnpm playwright test --list --project="${E2E_PROJECT}" --grep-invert "@fixme"`, {
 		cwd: PLAYWRIGHT_DIR,
 		encoding: 'utf-8',
 		stdio: ['pipe', 'pipe', 'pipe'],

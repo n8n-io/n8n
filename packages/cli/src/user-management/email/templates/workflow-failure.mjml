@@ -1,0 +1,22 @@
+<mjml>
+	<mj-include path="./_common.mjml" />
+	<mj-body>
+		<mj-section padding="0 20px">
+			<mj-column>
+				<mj-include path="./_logo.mjml" />
+				<mj-text>Hi {{firstName}},</mj-text>
+				<mj-text>⚠️ Your workflow "{{workflowName}}" ran into an error.</mj-text>
+				<mj-text>Set up an error workflow now to get instant alerts on Gmail, Slack or any tool of your choice.</mj-text>
+				<mj-button href="{{instanceURL}}/templates/2159">Set up my Error Workflow</mj-button>
+				<mj-text>
+					<ul style="padding-left: 20px; margin: 0;">
+						<li style="margin-bottom: 8px;"><a href="https://www.youtube.com/watch?v=bTF3tACqPRU" style="color: #007bff; text-decoration: none;">Tutorial</a></li>
+						<li><a href="https://docs.n8n.io/flow-logic/error-handling/" style="color: #007bff; text-decoration: none;">Docs</a></li>
+					</ul>
+				</mj-text>
+				<mj-text>Happy automating,<br />The n8n team</mj-text>
+				<mj-include path="./_footer.mjml" />
+			</mj-column>
+		</mj-section>
+	</mj-body>
+</mjml>

@@ -120,6 +120,14 @@ export async function getLastSuccessfulExecution(
 	);
 }
 
+export async function getWorkflowWriteLock(context: IRestApiContext, workflowId: string) {
+	return await makeRestApiRequest<{ userId: string | null }>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/collaboration/write-lock`,
+	);
+}
+
 export async function activateWorkflow(
 	context: IRestApiContext,
 	workflowId: string,

@@ -114,10 +114,12 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					timeout: 60000,
 					maxRetries: 2,
 					configuration: {
 						defaultHeaders,
+						fetchOptions: {
+							dispatcher: {},
+						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
@@ -148,10 +150,12 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					timeout: 60000,
 					maxRetries: 2,
 					configuration: {
 						defaultHeaders,
+						fetchOptions: {
+							dispatcher: {},
+						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
@@ -219,7 +223,6 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					timeout: 60000,
 					maxRetries: 2,
 					configuration: {
 						baseURL: customURL,
@@ -257,12 +260,14 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					timeout: 60000,
 					maxRetries: 2,
 					configuration: {
 						defaultHeaders: {
 							...defaultHeaders,
 							'X-Custom-Header': 'custom-value',
+						},
+						fetchOptions: {
+							dispatcher: {},
 						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
@@ -307,6 +312,9 @@ describe('LmChatOpenAi', () => {
 					maxRetries: 3,
 					configuration: {
 						defaultHeaders,
+						fetchOptions: {
+							dispatcher: {},
+						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {
@@ -371,7 +379,26 @@ describe('LmChatOpenAi', () => {
 			);
 		});
 
-		it('should use default values for timeout and maxRetries when not provided', async () => {
+		it('should use default values for maxRetries when not provided', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			// timeout is now controlled at the undici level via fetchOptions dispatcher
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					maxRetries: 2,
+				}),
+			);
+		});
+
+		it('should set supportsStrictToolCalling to false for OpenAI-compatible backends', async () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
@@ -384,8 +411,7 @@ describe('LmChatOpenAi', () => {
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					timeout: 60000,
-					maxRetries: 2,
+					supportsStrictToolCalling: false,
 				}),
 			);
 		});

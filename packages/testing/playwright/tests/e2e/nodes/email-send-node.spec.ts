@@ -2,7 +2,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: 'email' });
 
-test('EmailSend node sends via SMTP @capability:email', async ({ api, n8n, chaos }) => {
+test('EmailSend node sends via SMTP @capability:email', async ({ api, n8n, n8nContainer }) => {
 	// Sign in to use internal APIs for creating credentials and workflows
 
 	// Create SMTP credential targeting Mailpit
@@ -73,7 +73,7 @@ test('EmailSend node sends via SMTP @capability:email', async ({ api, n8n, chaos
 		'Workflow executed successfully',
 	);
 
-	const msg = await chaos.mail.waitForMessage({ to: toEmail, subject });
+	const msg = await n8nContainer.services.mailpit.waitForMessage({ to: toEmail, subject });
 
 	expect(msg).toBeTruthy();
 });

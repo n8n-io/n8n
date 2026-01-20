@@ -1,0 +1,34 @@
+name: 'Sec: Poutine Scan'
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: GitHub ref to scan.
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  poutine_scan:
+    name: Poutine Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Run Poutine Security Scanner
+        uses: boostsecurityio/poutine-action@84c0a0d32e8d57ae12651222be1eb15351429228 # v0.15.2
+
+      - name: Upload SARIF results
+        uses: github/codeql-action/upload-sarif@48ab28a6f5dbc2a99bf1e0131198dd8f1df78169 # v3.28.0
+        if: always()
+        with:
+          sarif_file: results.sarif

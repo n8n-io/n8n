@@ -5,8 +5,9 @@ import {
 } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 
-// eslint-disable-next-line playwright/no-skipped-test
-test.skip('Workflow Publish', () => {
+test.describe('Workflow Publish @fixme', () => {
+	test.fixme();
+
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});
@@ -30,7 +31,6 @@ test.skip('Workflow Publish', () => {
 	test('should not be able to publish workflow when nodes have errors', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
 		await n8n.canvas.getOpenPublishModalButton().click();
 
@@ -44,7 +44,6 @@ test.skip('Workflow Publish', () => {
 	}) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
-		await n8n.canvas.saveWorkflow();
 
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
 

@@ -179,6 +179,8 @@ export class ActiveExecutions {
 			return;
 		}
 
+		this.logger.debug('Cancelling execution', { executionId, reason: cancellationError.reason });
+
 		const workflowData = execution.executionData.workflowData;
 		this.eventService.emit('execution-cancelled', {
 			executionId,

@@ -1,4 +1,4 @@
-<script setup lang="ts" generic="T = string">
+<script setup lang="ts" generic="T = string, D = never">
 import { useDebounceFn } from '@vueuse/core';
 import {
 	DropdownMenuRoot,
@@ -19,7 +19,7 @@ import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
 
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
+const props = withDefaults(defineProps<DropdownMenuProps<T, D>>(), {
 	placement: 'bottom',
 	trigger: 'click',
 	activatorIcon: () => ({ type: 'icon', value: 'ellipsis' }),
@@ -30,6 +30,7 @@ const props = withDefaults(defineProps<DropdownMenuProps<T>>(), {
 	searchable: false,
 	searchPlaceholder: 'Search...',
 	searchDebounce: 300,
+	emptyText: 'No items',
 });
 
 const emit = defineEmits<{
@@ -39,7 +40,7 @@ const emit = defineEmits<{
 	'submenu:toggle': [itemId: T, open: boolean];
 }>();
 
-const slots = defineSlots<DropdownMenuSlots<T>>();
+const slots = defineSlots<DropdownMenuSlots<T, D>>();
 const $style = useCssModule();
 
 // Handle controlled/uncontrolled state
@@ -264,7 +265,7 @@ defineExpose({ open, close });
 						</template>
 						<template v-else-if="items.length === 0">
 							<slot name="empty">
-								<div :class="$style['empty-state']">No items</div>
+								<div :class="$style['empty-state']">{{ emptyText }}</div>
 							</slot>
 						</template>
 						<template v-else>
@@ -274,15 +275,19 @@ defineExpose({ open, close });
 										v-bind="item"
 										:highlighted="highlightedIndex === index"
 										:sub-menu-open="openSubMenuIndex === index"
+										:divided="item.divided && index > 0"
 										@select="handleItemSelect"
 										@search="handleItemSearch"
 										@update:sub-menu-open="(open: boolean) => handleSubMenuOpenChange(index, open)"
 									>
-										<template v-if="slots['item-leading']" #item-leading="{ ui }">
-											<slot name="item-leading" :item="item" :ui="ui" />
+										<template v-if="slots['item-leading']" #item-leading="slotProps">
+											<slot name="item-leading" v-bind="slotProps" />
 										</template>
-										<template v-if="slots['item-trailing']" #item-trailing="{ ui }">
-											<slot name="item-trailing" :item="item" :ui="ui" />
+										<template v-if="slots['item-label']" #item-label="slotProps">
+											<slot name="item-label" v-bind="slotProps" />
+										</template>
+										<template v-if="slots['item-trailing']" #item-trailing="slotProps">
+											<slot name="item-trailing" v-bind="slotProps" />
 										</template>
 									</N8nDropdownMenuItem>
 								</slot>

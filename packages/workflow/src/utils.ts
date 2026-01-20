@@ -4,6 +4,7 @@ import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
 import { jsonrepair } from 'jsonrepair';
 import merge from 'lodash/merge';
+import path from 'path';
 
 import { ALPHABET } from './constants';
 import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
@@ -464,4 +465,37 @@ export function isCommunityPackageName(packageName: string): boolean {
 
 export function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];
+}
+
+/**
+ * Extracts a safe filename from a path or filename string.
+ *
+ * Handles both Unix and Windows path separators, removing directory
+ * components and null bytes to return just the filename.
+ *
+ * @param fileName - The filename or path to sanitize
+ * @returns The extracted filename without path components
+ *
+ * @example
+ * sanitizeFilename('path/to/file.txt') // returns 'file.txt'
+ * sanitizeFilename('/tmp/upload/doc.pdf') // returns 'doc.pdf'
+ * sanitizeFilename('C:\\Users\\file.txt') // returns 'file.txt'
+ * sanitizeFilename('../../../etc/passwd') // returns 'passwd'
+ */
+export function sanitizeFilename(fileName: string): string {
+	// Normalize to forward slashes first to handle Windows paths on Unix
+	const normalized = fileName.replace(/\\/g, '/');
+
+	// Extract just the filename, stripping all directory components
+	let sanitized = path.basename(normalized);
+
+	// Remove null bytes which could be used for null byte injection attacks
+	sanitized = sanitized.replace(/\0/g, '');
+
+	// If the result is empty or just dots, use a default name
+	if (!sanitized || /^\.+$/.test(sanitized)) {
+		sanitized = 'untitled';
+	}
+
+	return sanitized;
 }

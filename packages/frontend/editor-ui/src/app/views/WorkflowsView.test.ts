@@ -418,6 +418,10 @@ describe('Folders', () => {
 		pinia = createTestingPinia({ initialState });
 		foldersStore = mockedStore(useFoldersStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		settingsStore = mockedStore(useSettingsStore);
+
+		settingsStore.isFoldersFeatureEnabled = true;
+		projectPages = useProjectPages();
 	});
 
 	const TEST_WORKFLOW_RESOURCE: WorkflowListResource = {
@@ -476,6 +480,45 @@ describe('Folders', () => {
 		expect(getByTestId('resources-list-wrapper').querySelectorAll('.listItem')).toHaveLength(2);
 		expect(getByTestId('workflow-card-name')).toHaveTextContent(TEST_WORKFLOW_RESOURCE.name);
 		expect(getByTestId('folder-card-name')).toHaveTextContent(TEST_FOLDER_RESOURCE.name);
+	});
+
+	it('should show "Create folder" button when not in the overview or sharing pages', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		const { getByTestId } = renderComponent({
+			pinia,
+		});
+		await waitAllPromises();
+
+		expect(getByTestId('add-folder-button')).toBeInTheDocument();
+	});
+
+	it('should NOT show "Create folder" button when in overview subpage', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		const { queryByTestId } = renderComponent({
+			pinia,
+		});
+		await waitAllPromises();
+
+		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
+	});
+
+	it('should NOT show "Create folder" button when in shared subpage', async () => {
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
+
+		workflowsStore.fetchWorkflowsPage.mockResolvedValue([TEST_WORKFLOW_RESOURCE]);
+		const { queryByTestId } = renderComponent({
+			pinia,
+		});
+		await waitAllPromises();
+
+		expect(queryByTestId('add-folder-button')).not.toBeInTheDocument();
 	});
 });
 

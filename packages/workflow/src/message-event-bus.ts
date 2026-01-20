@@ -136,10 +136,11 @@ export interface MessageEventBusDestinationSyslogOptions extends MessageEventBus
 	expectedStatusCode?: number;
 	host: string;
 	port?: number;
-	protocol?: 'udp' | 'tcp';
+	protocol?: 'udp' | 'tcp' | 'tls';
 	facility?: number;
 	app_name?: string;
 	eol?: string;
+	tlsCa?: string;
 }
 
 export interface MessageEventBusDestinationSentryOptions extends MessageEventBusDestinationOptions {

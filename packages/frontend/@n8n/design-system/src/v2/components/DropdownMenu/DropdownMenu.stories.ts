@@ -29,7 +29,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Basic: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -60,7 +59,6 @@ export const Basic: Story = {
 };
 
 export const WithCustomTrigger: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu, N8nButton },
 		setup() {
@@ -102,7 +100,6 @@ export const WithCustomTrigger: Story = {
 };
 
 export const EmojiActivator: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -130,7 +127,6 @@ export const EmojiActivator: Story = {
 };
 
 export const WithCheckedItems: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -155,7 +151,6 @@ export const WithCheckedItems: Story = {
 };
 
 export const WithDisabledItems: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -185,7 +180,6 @@ export const WithDisabledItems: Story = {
 };
 
 export const WithBadgesAndShortcuts: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu, N8nBadge, N8nKeyboardShortcut },
 		setup() {
@@ -235,7 +229,6 @@ export const WithBadgesAndShortcuts: Story = {
 };
 
 export const WithCustomLeadingSlot: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu, N8nCheckbox },
 		setup() {
@@ -287,7 +280,6 @@ export const WithCustomLeadingSlot: Story = {
 };
 
 export const LoadingState: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -311,7 +303,6 @@ export const LoadingState: Story = {
 };
 
 export const Placements: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu, N8nButton },
 		setup() {
@@ -354,7 +345,6 @@ export const Placements: Story = {
 };
 
 export const ControlledState: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu, N8nButton },
 		setup() {
@@ -394,7 +384,6 @@ export const ControlledState: Story = {
 };
 
 export const NestedMenu: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -445,7 +434,6 @@ export const NestedMenu: Story = {
 };
 
 export const MoreLevels: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -499,7 +487,6 @@ export const MoreLevels: Story = {
 };
 
 export const SubMenuLoading: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -544,7 +531,6 @@ export const SubMenuLoading: Story = {
 };
 
 export const SearchableRoot: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -600,7 +586,6 @@ export const SearchableRoot: Story = {
 };
 
 export const SearchableRootWithSubmenus: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -699,8 +684,7 @@ export const SearchableRootWithSubmenus: Story = {
 };
 
 export const SearchableSubmenu: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
-	render: (args) => ({
+	render: () => ({
 		components: { DropdownMenu },
 		setup() {
 			const allProjects = [
@@ -774,8 +758,7 @@ export const SearchableSubmenu: Story = {
 };
 
 export const LazyLoadingSubmenu: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
-	render: (args) => ({
+	render: () => ({
 		components: { DropdownMenu },
 		setup() {
 			// Define all possible children upfront (simulates API response)
@@ -889,7 +872,6 @@ export const LazyLoadingSubmenu: Story = {
 };
 
 export const EmptyState: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {
@@ -907,7 +889,6 @@ export const EmptyState: Story = {
 };
 
 export const CustomEmptyState: Story = {
-	// @ts-expect-error generic typed components https://github.com/storybookjs/storybook/issues/24238
 	render: (args) => ({
 		components: { DropdownMenu },
 		setup() {

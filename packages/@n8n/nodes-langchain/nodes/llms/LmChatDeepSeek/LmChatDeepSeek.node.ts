@@ -226,10 +226,14 @@ export class LmChatDeepSeek implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url),
+				dispatcher: getProxyAgent(credentials.url, {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
 			},
 		};
 
@@ -237,7 +241,7 @@ export class LmChatDeepSeek implements INodeType {
 			apiKey: credentials.apiKey,
 			model: modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],

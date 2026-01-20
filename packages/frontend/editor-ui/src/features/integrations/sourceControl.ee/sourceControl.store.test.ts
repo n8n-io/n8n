@@ -201,7 +201,14 @@ describe('useSourceControlStore', () => {
 			};
 
 			const mockPushWorkfolder = vi.mocked(vcApi.pushWorkfolder);
-			mockPushWorkfolder.mockResolvedValue(undefined);
+			mockPushWorkfolder.mockResolvedValue({
+				files: data.fileNames,
+				commit: {
+					hash: 'abc123',
+					message: data.commitMessage,
+					branch: 'main',
+				},
+			});
 
 			await sourceControlStore.pushWorkfolder(data);
 

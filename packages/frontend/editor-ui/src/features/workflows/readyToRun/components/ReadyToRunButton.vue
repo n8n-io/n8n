@@ -8,7 +8,6 @@ import { useProjectPages } from '@/features/collaboration/projects/composables/u
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
-import { useToast } from '@/app/composables/useToast';
 import { useReadyToRunStore } from '../stores/readyToRun.store';
 
 const props = defineProps<{
@@ -17,7 +16,6 @@ const props = defineProps<{
 
 const route = useRoute();
 const i18n = useI18n();
-const toast = useToast();
 const projectPages = useProjectPages();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
@@ -51,8 +49,8 @@ const handleClick = async () => {
 			route.params.folderId as string,
 			projectId,
 		);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('generic.error'));
+	} catch {
+		// Error already shown by store functions
 	}
 };
 </script>

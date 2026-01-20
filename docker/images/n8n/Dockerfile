@@ -1,15 +1,7 @@
 ARG NODE_VERSION=22.21.1
 ARG N8N_VERSION=snapshot
 
-# ==============================================================================
-# STAGE 1: System Dependencies & Base Setup
-# ==============================================================================
-FROM n8nio/base:${NODE_VERSION} AS system-deps
-
-# ==============================================================================
-# STAGE 2: Final Runtime Image
-# ==============================================================================
-FROM system-deps AS runtime
+FROM n8nio/base:${NODE_VERSION}
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
@@ -23,14 +15,12 @@ WORKDIR /home/node
 COPY ./compiled /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-# This version of npm has the fix for glob
-RUN npm install -g npm@11.6.4
-
 RUN cd /usr/local/lib/node_modules/n8n && \
-		npm rebuild sqlite3 && \
-		ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+    npm rebuild sqlite3 && \
+    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
-    chown -R node:node /home/node
+    chown -R node:node /home/node && \
+    rm -rf /root/.npm /tmp/*
 
 EXPOSE 5678/tcp
 USER node

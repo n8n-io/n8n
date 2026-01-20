@@ -1,15 +1,13 @@
 import { CODE_NODE_NAME, MANUAL_TRIGGER_NODE_NAME } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 
-test.use({ capability: 'task-runner' });
-
 /**
- * Task Runner Capability Tests
+ * Task Runner Tests
  *
- * These tests require the task runner container to be running.
- * Use @capability:task-runner tag to ensure they only run in task runner mode.
+ * Task runner is always enabled in all container stacks.
+ * These tests verify code execution functionality.
  */
-test.describe('Task Runner Capability @capability:task-runner', () => {
+test.describe('Task Runner', () => {
 	test('should execute Javascript with task runner enabled', async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);

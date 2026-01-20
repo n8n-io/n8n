@@ -1,5 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryButton from './WorkflowHistoryButton.vue';
+import { setActivePinia, createPinia } from 'pinia';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('vue-router', () => ({
 	useRoute: () => vi.fn(),
@@ -28,6 +30,10 @@ const renderComponent = createComponentRenderer(WorkflowHistoryButton, {
 });
 
 describe('WorkflowHistoryButton', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
 	it('should be disabled if the workflow is new', async () => {
 		const { queryByTestId } = renderComponent({
 			props: {

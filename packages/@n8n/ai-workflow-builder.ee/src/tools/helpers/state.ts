@@ -136,3 +136,16 @@ export function removeConnectionFromWorkflow(
 		],
 	};
 }
+
+/**
+ * Rename a node in the workflow state
+ */
+export function renameNodeInWorkflow(
+	nodeId: string,
+	oldName: string,
+	newName: string,
+): Partial<typeof WorkflowState.State> {
+	return {
+		workflowOperations: [{ type: 'renameNode', nodeId, oldName, newName }],
+	};
+}

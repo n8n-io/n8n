@@ -37,10 +37,10 @@ import * as utils from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import fsp from 'node:fs/promises';
 
-import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
-import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
-import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
-import { SourceControlContext } from '@/environments.ee/source-control/types/source-control-context';
+import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
+import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
+import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import { SourceControlContext } from '@/modules/source-control.ee/types/source-control-context';
 import type { IWorkflowToImport } from '@/interfaces';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { createFolder } from '@test-integration/db/folders';

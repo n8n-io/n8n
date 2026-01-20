@@ -1,0 +1,76 @@
+name: 'Test: Evals AI'
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/@n8n/ai-workflow-builder.ee/**'
+      - '.github/workflows/test-evals-ai.yml'
+  schedule:
+    - cron: '0 22 * * 6'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        required: false
+        default: 'master'
+      dataset:
+        description: 'LangSmith dataset to use.'
+        required: false
+        default: 'workflow-builder-canvas-prompts'
+
+jobs:
+  evals:
+    name: Run Evaluations
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      N8N_AI_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+      LANGSMITH_TRACING: true
+      LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+      LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Select dataset
+        env:
+          DATASET_INPUT: ${{ github.event.inputs.dataset }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          DATASET="workflow-builder-canvas-prompts"
+          if [ "$EVENT_NAME" = "schedule" ]; then
+            DATASET="prompts-v2"
+          elif [ -n "$DATASET_INPUT" ]; then
+            DATASET="$DATASET_INPUT"
+          fi
+          echo "LANGSMITH_DATASET_NAME=$DATASET" >> "$GITHUB_ENV"
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0
+        with:
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3.0.0
+
+      - name: Install Python
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: uv python install 3.11
+
+      - name: Install workflow comparison dependencies
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: just sync-all
+
+      - name: Export Node Types
+        run: |
+          ./packages/cli/bin/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json
+
+      - name: Run Evaluations
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
+        run: |
+          pnpm eval:langsmith --repetitions 3

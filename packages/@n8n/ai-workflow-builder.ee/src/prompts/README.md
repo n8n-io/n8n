@@ -8,7 +8,6 @@ Centralized prompts for the n8n AI Workflow Builder. This directory contains all
 src/prompts/
 ├── index.ts                      # Central exports
 ├── README.md                     # This file
-├── legacy-agent.prompt.ts        # Single-agent mode prompt
 │
 ├── builder/                      # PromptBuilder utility
 │   ├── prompt-builder.ts         # Fluent builder class

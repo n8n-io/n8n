@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
@@ -23,9 +23,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useBecomeTemplateCreatorStore } from '@/app/components/BecomeTemplateCreatorCta/becomeTemplateCreatorStore';
 import { useKeybindings } from '@/app/composables/useKeybindings';
-import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
@@ -39,7 +37,6 @@ import ProjectNavigation from '@/features/collaboration/projects/components/Proj
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 
-const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -56,7 +53,6 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
-const calloutHelpers = useCalloutHelpers();
 const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
 	useSidebarLayout();
 
@@ -64,6 +60,10 @@ const { settingsItems } = useSettingsItems();
 
 // Component data
 const basePath = ref('');
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
+const hasOverflow = ref(false);
+const hasScrolledFromTop = ref(false);
+let resizeObserver: ResizeObserver | null = null;
 
 const showWhatsNewNotification = computed(
 	() =>
@@ -90,18 +90,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
-		// Link to in-app pre-built agent templates, available experiment is enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!isTemplatesExperimentEnabled.value,
-		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
-	},
-	{
 		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
 		id: 'templates',
 		icon: 'package-open',
@@ -117,7 +105,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			templatesStore.hasCustomTemplatesHost &&
 			!isTemplatesExperimentEnabled.value,
 		route: { to: { name: VIEWS.TEMPLATES } },
@@ -130,7 +117,6 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		position: 'bottom',
 		available:
 			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
 			!templatesStore.hasCustomTemplatesHost &&
 			!isTemplatesExperimentEnabled.value,
 		link: {
@@ -221,14 +207,50 @@ const visibleMenuItems = computed<IMenuItem[]>(() =>
 	mainMenuItems.value.filter((item) => item.available !== false),
 );
 
+const checkOverflow = () => {
+	const position = scrollAreaRef.value?.getScrollPosition();
+	if (position && scrollAreaRef.value?.$el) {
+		const element = scrollAreaRef.value.$el as HTMLElement;
+		const hasVerticalOverflow = position.height > element.clientHeight;
+		hasOverflow.value = hasVerticalOverflow;
+		// Check if scrolled from top - only show border if there's overflow AND scrolled
+		hasScrolledFromTop.value = hasVerticalOverflow && position.top > 0;
+	}
+};
+
+// Re-check overflow when sidebar collapse state changes
+watch(isCollapsed, () => {
+	void nextTick(() => {
+		checkOverflow();
+	});
+});
+
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
 
-	becomeTemplateCreatorStore.startMonitoringCta();
+	void nextTick(() => {
+		checkOverflow();
+
+		if (scrollAreaRef.value?.$el) {
+			const element = scrollAreaRef.value.$el as HTMLElement;
+			resizeObserver = new ResizeObserver(() => {
+				checkOverflow();
+			});
+			resizeObserver.observe(element);
+			checkOverflow();
+		}
+	});
+
+	window.addEventListener('resize', checkOverflow);
 });
 
 onBeforeUnmount(() => {
-	becomeTemplateCreatorStore.stopMonitoringCta();
+	if (resizeObserver) {
+		resizeObserver.disconnect();
+		resizeObserver = null;
+	}
+
+	window.removeEventListener('resize', checkOverflow);
 });
 
 const trackHelpItemClick = (itemType: string) => {
@@ -346,20 +368,26 @@ useKeybindings({
 			@collapse="toggleCollapse"
 			@open-command-bar="openCommandBar"
 		/>
-		<N8nScrollArea as-child>
-			<div :class="$style.scrollArea">
+		<div
+			:class="{
+				[$style.scrollAreaWrapper]: true,
+				[$style.scrollAreaWrapperWithBottomBorder]: hasOverflow && !isCollapsed,
+				[$style.scrollAreaWrapperWithTopBorder]: hasScrolledFromTop && !isCollapsed,
+			}"
+		>
+			<N8nScrollArea ref="scrollAreaRef" @scroll-capture="checkOverflow">
 				<ProjectNavigation
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
 				/>
-				<BottomMenu
-					:items="visibleMenuItems"
-					:is-collapsed="isCollapsed"
-					@logout="onLogout"
-					@select="handleSelect"
-				/>
-			</div>
-		</N8nScrollArea>
+			</N8nScrollArea>
+		</div>
+		<BottomMenu
+			:items="visibleMenuItems"
+			:is-collapsed="isCollapsed"
+			@logout="onLogout"
+			@select="handleSelect"
+		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<MainSidebarTrialUpgrade />
 		<TemplateTooltip />
@@ -381,9 +409,20 @@ useKeybindings({
 	}
 }
 
-.scrollArea {
-	height: 100%;
+.scrollAreaWrapper {
+	position: relative;
+	flex: 1;
+	min-height: 0;
 	display: flex;
 	flex-direction: column;
+	padding-top: var(--spacing--2xs);
+}
+
+.scrollAreaWrapperWithBottomBorder {
+	border-bottom: var(--border);
+}
+
+.scrollAreaWrapperWithTopBorder {
+	border-top: var(--border);
 }
 </style>

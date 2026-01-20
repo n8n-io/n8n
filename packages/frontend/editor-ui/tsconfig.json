@@ -32,5 +32,5 @@
 		"useUnknownInCatchVariables": false
 	},
 	"include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.vue"],
-	"exclude": ["src/plugins/codemirror/typescript/worker/**/*.d.ts"]
+	"exclude": ["src/**/*.stories.ts", "src/plugins/codemirror/typescript/worker/**/*.d.ts"]
 }

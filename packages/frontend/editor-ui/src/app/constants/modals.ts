@@ -27,13 +27,14 @@ export const EXTERNAL_SECRETS_PROVIDER_MODAL_KEY = 'externalSecretsProvider';
 export const WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY =
 	'workflowActivationConflictingWebhook';
 export const FROM_AI_PARAMETERS_MODAL_KEY = 'fromAiParameters';
+export const STOP_MANY_EXECUTIONS_MODAL_KEY = 'stopManyExecutions';
 export const WORKFLOW_EXTRACTION_NAME_MODAL_KEY = 'workflowExtractionName';
 export const WHATS_NEW_MODAL_KEY = 'whatsNew';
 export const WORKFLOW_DIFF_MODAL_KEY = 'workflowDiff';
-export const PRE_BUILT_AGENTS_MODAL_KEY = 'preBuiltAgents';
 export const EXPERIMENT_TEMPLATE_RECO_V2_KEY = 'templateRecoV2';
 export const EXPERIMENT_TEMPLATE_RECO_V3_KEY = 'templateRecoV3';
 export const EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY = 'templatesDataQuality';
+export const BINARY_DATA_VIEW_MODAL_KEY = 'binaryDataView';
 export const WORKFLOW_DESCRIPTION_MODAL_KEY = 'workflowDescription';
 export const WORKFLOW_PUBLISH_MODAL_KEY = 'workflowPublish';
 export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';

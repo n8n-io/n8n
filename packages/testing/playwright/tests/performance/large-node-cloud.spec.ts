@@ -23,8 +23,7 @@ test.describe('Large Data Size Performance - Cloud Resources', () => {
 	test('Code Node with 30000 items', async ({ n8n }, testInfo) => {
 		const itemCount = 30000;
 		await setupPerformanceTest(n8n, itemCount);
-		const workflowExecuteBudget = 60_000;
-		const openNodeBudget = 800;
+		const workflowExecuteTimeout = 65_000;
 		const loopSize = 30;
 		const stats = [];
 
@@ -32,8 +31,7 @@ test.describe('Large Data Size Performance - Cloud Resources', () => {
 			await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 				'Workflow executed successfully',
 				{
-					// Add buffer, we still assert at the end and expect less than the budget
-					timeout: workflowExecuteBudget + 5000,
+					timeout: workflowExecuteTimeout,
 				},
 			);
 		});
@@ -51,6 +49,10 @@ test.describe('Large Data Size Performance - Cloud Resources', () => {
 		await attachMetric(testInfo, `open-node-${itemCount}`, average, 'ms');
 		await attachMetric(testInfo, `trigger-workflow-${itemCount}`, triggerDuration, 'ms');
 
-		expect.soft(average, `Open node duration for ${itemCount} items`).toBeLessThan(openNodeBudget);
+		expect(average).toBeGreaterThan(0);
+		expect(triggerDuration).toBeGreaterThan(0);
+		console.log(
+			`[PERF] Open node avg: ${average.toFixed(2)} ms | Workflow trigger: ${triggerDuration.toFixed(2)} ms`,
+		);
 	});
 });

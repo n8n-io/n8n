@@ -16,7 +16,12 @@ import type {
 	IWorkflowBase,
 	IDestinationNode,
 } from 'n8n-workflow';
-import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	NodeConnectionTypes,
+	TelemetryHelpers,
+	BINARY_MODE_COMBINED,
+} from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/app/composables/useToast';
@@ -94,8 +99,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			throw new Error(i18n.baseText('workflowRun.noActiveConnectionToTheServer'));
 		}
 
-		workflowsStore.subWorkflowExecutionError = null;
-
 		// Set the execution as started, but still waiting for the execution to be retrieved
 		workflowState.setActiveExecutionId(null);
 
@@ -151,6 +154,18 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			}
 
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();
+
+			if (
+				rootStore.binaryDataMode === 'default' &&
+				workflowData.settings?.binaryMode === BINARY_MODE_COMBINED
+			) {
+				toast.showMessage({
+					title: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
+					message: i18n.baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
+					type: 'error',
+				});
+				return undefined;
+			}
 
 			const consolidatedData = consolidateRunDataAndStartNodes(
 				directParentNodes,
@@ -378,6 +393,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			return runWorkflowApiResponse;
 		} catch (error) {
+			console.error(error);
 			workflowState.setWorkflowExecutionData(null);
 			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));

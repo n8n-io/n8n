@@ -96,6 +96,21 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 	}
 
+	async hasAnyWorkflowsWithErrorWorkflow(): Promise<boolean> {
+		const qb = this.createQueryBuilder('workflow');
+
+		const dbType = this.globalConfig.database.type;
+
+		if (['postgresdb'].includes(dbType)) {
+			qb.where("workflow.settings ->> 'errorWorkflow' IS NOT NULL");
+		} else if (['mysqldb', 'mariadb', 'sqlite'].includes(dbType)) {
+			qb.where("JSON_EXTRACT(workflow.settings, '$.errorWorkflow') IS NOT NULL");
+		}
+
+		const count = await qb.getCount();
+		return count > 0;
+	}
+
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },

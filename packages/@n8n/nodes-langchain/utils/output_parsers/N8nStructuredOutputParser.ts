@@ -33,7 +33,32 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 		]);
 
 		try {
-			const jsonString = text.includes('```') ? text.split(/```(?:json)?/)[1] : text;
+			// Extract JSON from markdown code fence if present
+			// Use line-based approach to avoid matching backticks inside JSON content
+			let jsonString = text.trim();
+
+			// Look for markdown code fence by finding lines that start with ```
+			const lines = jsonString.split('\n');
+			let fenceStartIndex = -1;
+			let fenceEndIndex = -1;
+
+			for (let i = 0; i < lines.length; i++) {
+				const trimmedLine = lines[i].trim();
+				// Opening fence: line starting with ``` optionally followed by language identifier
+				if (fenceStartIndex === -1 && trimmedLine.match(/^```(?:json)?$/)) {
+					fenceStartIndex = i;
+				} else if (fenceStartIndex !== -1 && trimmedLine === '```') {
+					// Closing fence: line with just ```
+					fenceEndIndex = i;
+					break;
+				}
+			}
+
+			// If we found both opening and closing fences, extract the content between them
+			if (fenceStartIndex !== -1 && fenceEndIndex !== -1) {
+				jsonString = lines.slice(fenceStartIndex + 1, fenceEndIndex).join('\n');
+			}
+
 			const json = JSON.parse(jsonString.trim());
 			const parsed = await this.schema.parseAsync(json);
 

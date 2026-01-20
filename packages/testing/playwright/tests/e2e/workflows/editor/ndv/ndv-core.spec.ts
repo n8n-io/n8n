@@ -104,16 +104,6 @@ test.describe('NDV', () => {
 		await expect(n8n.ndv.getNodeRunErrorDescription()).toBeVisible();
 	});
 
-	test('should save workflow using keyboard shortcut from NDV', async ({ n8n }) => {
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.canvas.addNode('Edit Fields (Set)', { closeNDV: false });
-		await expect(n8n.ndv.getContainer()).toBeVisible();
-
-		await n8n.page.keyboard.press('ControlOrMeta+s');
-
-		await expect(n8n.canvas.getWorkflowSaveButton()).toBeHidden();
-	});
-
 	test('webhook should fallback to webhookId if path is empty', async ({ n8n }) => {
 		await n8n.canvas.addNode('Webhook', { closeNDV: false });
 

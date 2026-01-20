@@ -62,11 +62,13 @@ describe('Credential Resolvers API', () => {
 				name: 'Resolver 1',
 				type: 'credential-resolver.stub-1.0',
 				config: { prefix: 'test1-' },
+				user: owner,
 			});
 			await service.create({
 				name: 'Resolver 2',
 				type: 'credential-resolver.stub-1.0',
 				config: { prefix: 'test2-' },
+				user: owner,
 			});
 
 			const response = await ownerAgent.get('/credential-resolvers').expect(200);
@@ -159,6 +161,7 @@ describe('Credential Resolvers API', () => {
 				name: 'Test Resolver',
 				type: 'credential-resolver.stub-1.0',
 				config: { prefix: 'test-' },
+				user: owner,
 			});
 
 			const response = await ownerAgent.get(`/credential-resolvers/${resolver.id}`).expect(200);
@@ -181,6 +184,7 @@ describe('Credential Resolvers API', () => {
 				name: 'Original Name',
 				type: 'credential-resolver.stub-1.0',
 				config: { prefix: 'test-' },
+				user: owner,
 			});
 
 			const response = await ownerAgent
@@ -205,6 +209,7 @@ describe('Credential Resolvers API', () => {
 				name: 'Test Resolver',
 				type: 'credential-resolver.stub-1.0',
 				config: { prefix: 'test-' },
+				user: owner,
 			});
 
 			const response = await ownerAgent.delete(`/credential-resolvers/${resolver.id}`).expect(200);

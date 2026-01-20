@@ -139,6 +139,10 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		await providerInstance.update();
 		this.broadcastReload();
 		this.logger.debug(`Updated provider ${provider}`);
+
+		this.eventService.emit('external-secrets-provider-reloaded', {
+			vaultType: provider,
+		});
 	}
 
 	// ========================================
@@ -206,7 +210,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 		const errorState = {
 			success: false,
-			testState: 'error',
+			testState: 'error' as const,
 		};
 
 		const result = await this.providerLifecycle.initialize(provider, testSettings);
@@ -216,6 +220,12 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		}
 
 		try {
+			// Connect the provider to authenticate before testing
+			const connectResult = await this.providerLifecycle.connect(result.provider);
+			if (!connectResult.success) {
+				return { ...errorState, error: connectResult.error?.message };
+			}
+
 			const [success, error] = await result.provider.test();
 			const currentSettings = await this.settingsStore.getProvider(provider);
 			const testState = this.determineTestState(success, currentSettings?.connected ?? false);

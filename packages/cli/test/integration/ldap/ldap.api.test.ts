@@ -88,6 +88,11 @@ test('Chat user role should not be able to access ldap routes', async () => {
 });
 
 describe('PUT /ldap/config', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.put('/ldap/config').expect(403);
+	});
+
 	test('route should validate payload', async () => {
 		const invalidValuePayload = {
 			...LDAP_DEFAULT_CONFIGURATION,
@@ -168,23 +173,35 @@ describe('PUT /ldap/config', () => {
 	});
 });
 
-test('GET /ldap/config route should retrieve current configuration', async () => {
-	const validPayload = {
-		...LDAP_DEFAULT_CONFIGURATION,
-		loginEnabled: true,
-		loginLabel: '',
-	};
+describe('GET /ldap/config', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.get('/ldap/config').expect(403);
+	});
 
-	let response = await authOwnerAgent.put('/ldap/config').send(validPayload);
-	expect(response.statusCode).toBe(200);
-	expect(getCurrentAuthenticationMethod()).toBe('ldap');
+	test('route should retrieve current configuration', async () => {
+		const validPayload = {
+			...LDAP_DEFAULT_CONFIGURATION,
+			loginEnabled: true,
+			loginLabel: '',
+		};
 
-	response = await authOwnerAgent.get('/ldap/config');
+		let response = await authOwnerAgent.put('/ldap/config').send(validPayload);
+		expect(response.statusCode).toBe(200);
+		expect(getCurrentAuthenticationMethod()).toBe('ldap');
 
-	expect(response.body.data).toMatchObject(validPayload);
+		response = await authOwnerAgent.get('/ldap/config');
+
+		expect(response.body.data).toMatchObject(validPayload);
+	});
 });
 
 describe('POST /ldap/test-connection', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.post('/ldap/test-connection').expect(403);
+	});
+
 	test('route should success', async () => {
 		jest.spyOn(LdapService.prototype, 'testConnection').mockResolvedValue();
 
@@ -204,6 +221,11 @@ describe('POST /ldap/test-connection', () => {
 });
 
 describe('POST /ldap/sync', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.post('/ldap/sync').expect(403);
+	});
+
 	beforeEach(async () => {
 		const ldapConfig = await createLdapConfig({
 			ldapIdAttribute: 'uid',
@@ -539,26 +561,33 @@ describe('POST /ldap/sync', () => {
 	});
 });
 
-test('GET /ldap/sync should return paginated synchronizations', async () => {
-	for (let i = 0; i < 2; i++) {
-		await saveLdapSynchronization({
-			created: 0,
-			scanned: 0,
-			updated: 0,
-			disabled: 0,
-			startedAt: new Date(),
-			endedAt: new Date(),
-			status: 'success',
-			error: '',
-			runMode: 'dry',
-		});
-	}
+describe('GET /ldap/sync', () => {
+	test('should not allow access without license', async () => {
+		testServer.license.disable('feat:ldap');
+		await authOwnerAgent.get('/ldap/sync').expect(403);
+	});
 
-	let response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=0');
-	expect(response.body.data.length).toBe(1);
+	test('should return paginated synchronizations', async () => {
+		for (let i = 0; i < 2; i++) {
+			await saveLdapSynchronization({
+				created: 0,
+				scanned: 0,
+				updated: 0,
+				disabled: 0,
+				startedAt: new Date(),
+				endedAt: new Date(),
+				status: 'success',
+				error: '',
+				runMode: 'dry',
+			});
+		}
 
-	response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=1');
-	expect(response.body.data.length).toBe(1);
+		let response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=0');
+		expect(response.body.data.length).toBe(1);
+
+		response = await authOwnerAgent.get('/ldap/sync?perPage=1&page=1');
+		expect(response.body.data.length).toBe(1);
+	});
 });
 
 describe('POST /login', () => {
