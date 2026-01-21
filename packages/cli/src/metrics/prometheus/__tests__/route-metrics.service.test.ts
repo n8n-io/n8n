@@ -1,10 +1,12 @@
 import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { EndpointsConfig, PrometheusMetricsConfig } from '@n8n/config';
+import { PrometheusMetricsConfig } from '@n8n/config';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
+
+import type { PathResolvingService } from '@/services/path-resolving.service';
 
 import { PrometheusRouteMetricsService } from '../route-metrics.service';
 
@@ -21,14 +23,15 @@ describe('PrometheusRouteMetricsService', () => {
 		includeApiMethodLabel: false,
 		includeApiStatusCodeLabel: false,
 	});
-	const endpointsConfig = mockInstance(EndpointsConfig, {
-		rest: 'rest',
-		webhook: 'webhook',
-		webhookWaiting: 'webhook-waiting',
-		webhookTest: 'webhook-test',
-		form: 'form',
-		formWaiting: 'form-waiting',
-		formTest: 'form-test',
+	const pathResolvingService = mock<PathResolvingService>({
+		getBasePath: () => '/',
+		resolveRestEndpoint: () => '/rest',
+		resolveWebhookEndpoint: () => '/webhook',
+		resolveWebhookWaitingEndpoint: () => '/webhook-waiting',
+		resolveWebhookTestEndpoint: () => '/webhook-test',
+		resolveFormEndpoint: () => '/form',
+		resolveFormWaitingEndpoint: () => '/form-waiting',
+		resolveFormTestEndpoint: () => '/form-test',
 	});
 	const app = mock<express.Application>();
 	let service: PrometheusRouteMetricsService;
@@ -42,7 +45,7 @@ describe('PrometheusRouteMetricsService', () => {
 			includeApiMethodLabel: false,
 			includeApiStatusCodeLabel: false,
 		});
-		service = new PrometheusRouteMetricsService(config, endpointsConfig);
+		service = new PrometheusRouteMetricsService(config, pathResolvingService);
 		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
 	});

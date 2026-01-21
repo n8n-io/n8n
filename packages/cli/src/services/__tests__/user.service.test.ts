@@ -26,6 +26,7 @@ import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
 import type { License } from '@/license';
 import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
@@ -47,7 +48,10 @@ describe('UserService', () => {
 		editorBaseUrl: '',
 		webhookUrl: '',
 	});
-	const urlService = new UrlService(globalConfig);
+	const urlService = new UrlService(
+		globalConfig,
+		mock<PathResolvingService>({ getBasePath: () => '/' }),
+	);
 	const manager = mock<EntityManager>();
 	const userRepository = mockInstance(UserRepository, {
 		manager,
