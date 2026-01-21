@@ -137,7 +137,29 @@ describe('v2/components/Button', () => {
 				expect(wrapper.container.querySelector('n8n-icon-stub')).toBeInTheDocument();
 			});
 
-			it('should have pointer-events none when loading', () => {
+			it('should be disabled while loading', async () => {
+				const handleClick = vi.fn();
+				const wrapper = render(Button, {
+					props: { loading: true, onClick: handleClick },
+					slots: { default: 'Button' },
+					global: { stubs },
+				});
+
+				const button = wrapper.getByRole('button');
+				expect(button).toBeDisabled();
+				expect(button).toHaveAttribute('aria-disabled', 'true');
+
+				// Verify clicks are blocked
+				await userEvent.click(button);
+				expect(handleClick).not.toHaveBeenCalled();
+
+				// Verify keyboard activation is also blocked
+				button.focus();
+				await userEvent.keyboard('{Enter}');
+				expect(handleClick).not.toHaveBeenCalled();
+			});
+
+			it('applies loading CSS class to wrapper element', () => {
 				const wrapper = render(Button, {
 					props: { loading: true },
 					slots: { default: 'Button' },
