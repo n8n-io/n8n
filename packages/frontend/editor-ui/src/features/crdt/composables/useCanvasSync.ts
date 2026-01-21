@@ -34,10 +34,13 @@ function toVueFlowNode(node: WorkflowNode): Node {
 
 /**
  * Transform WorkflowEdge to Vue Flow Edge format.
+ * Uses 'crdt-edge' type for custom edge rendering.
+ * Connection type is derived from sourceHandle in CrdtEdge component.
  */
 function toVueFlowEdge(edge: WorkflowEdge): Edge {
 	return {
 		id: edge.id,
+		type: 'crdt-edge',
 		source: edge.source,
 		target: edge.target,
 		sourceHandle: edge.sourceHandle,

@@ -2,20 +2,34 @@
 import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
+import type { Connection } from '@vue-flow/core';
 import { VueFlow, useVueFlow } from '@vue-flow/core';
 import { MiniMap } from '@vue-flow/minimap';
-import { computed, markRaw, onMounted } from 'vue';
+import { computed, markRaw, onMounted, ref } from 'vue';
 import { useCanvasAwareness } from '../composables/useCanvasAwareness';
 import { useCanvasSync } from '../composables/useCanvasSync';
 import { useWorkflowAwarenessInject } from '../composables/useWorkflowAwareness';
 import { useWorkflowDoc } from '../composables/useWorkflowSync';
 import CollaboratorCursors from './CollaboratorCursors.vue';
+import CrdtArrowHeadMarker from './CrdtArrowHeadMarker.vue';
+import CrdtEdge from './CrdtEdge.vue';
 import CrdtTestNode from './CrdtTestNode.vue';
 
 // Register custom node types with Vue Flow
 const nodeTypes = {
 	'crdt-node': markRaw(CrdtTestNode),
 };
+
+// Register custom edge types with Vue Flow
+const edgeTypes = {
+	'crdt-edge': markRaw(CrdtEdge),
+};
+
+// Arrow head marker ID for edge rendering
+const arrowHeadMarkerId = 'crdt-arrow-head';
+
+// Track hovered edges for visual feedback
+const edgesHoveredById = ref<Record<string, boolean>>({});
 
 // Get injected document
 const doc = useWorkflowDoc();
@@ -67,6 +81,16 @@ onMounted(() => {
 
 // Zoom for cursor size compensation (inverse scale)
 const zoom = computed(() => instance.viewport.value.zoom);
+
+/**
+ * Handle edge deletion from edge toolbar.
+ * Removes edge from both Vue Flow and CRDT document.
+ */
+function onEdgeDelete(connection: Connection) {
+	const edgeId = `[${connection.source}/${connection.sourceHandle ?? ''}][${connection.target}/${connection.targetHandle ?? ''}]`;
+	doc.removeEdge(edgeId);
+	instance.removeEdges([edgeId]);
+}
 </script>
 
 <template>
@@ -76,6 +100,7 @@ const zoom = computed(() => instance.viewport.value.zoom);
 			:nodes="initialNodes"
 			:edges="initialEdges"
 			:node-types="nodeTypes"
+			:edge-types="edgeTypes"
 			:is-valid-connection="isValidConnection"
 			:delete-key-code="['Backspace', 'Delete']"
 			snap-to-grid
@@ -84,13 +109,28 @@ const zoom = computed(() => instance.viewport.value.zoom);
 			pan-on-scroll
 			:min-zoom="0"
 			:max-zoom="4"
-			edges-selectable
+			:edges-selectable="false"
 			:apply-default="false"
+			@edge-mouse-enter="edgesHoveredById[$event.edge.id] = true"
+			@edge-mouse-leave="edgesHoveredById[$event.edge.id] = false"
 		>
+			<!-- Custom edge rendering with arrow markers -->
+			<template #edge-crdt-edge="edgeProps">
+				<CrdtEdge
+					v-bind="edgeProps"
+					:marker-end="`url(#${arrowHeadMarkerId})`"
+					:hovered="edgesHoveredById[edgeProps.id]"
+					@delete="onEdgeDelete"
+				/>
+			</template>
+
 			<!-- Cursors rendered inside viewport (like React Flow's edgelabel-renderer) -->
 			<template #zoom-pane>
 				<CollaboratorCursors :collaborators="awareness.collaborators" :zoom="zoom" />
 			</template>
+
+			<!-- Arrow head marker definition -->
+			<CrdtArrowHeadMarker :id="arrowHeadMarkerId" />
 
 			<slot name="canvas-background" v-bind="{ viewport: instance.viewport }">
 				<CanvasBackground :viewport="instance.viewport.value" :striped="false" />
