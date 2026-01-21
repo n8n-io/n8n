@@ -102,8 +102,8 @@ const saveButtonLabel = computed(() =>
 		: i18n.baseText('chatHub.agent.editor.save'),
 );
 
-const acceptedMimeTypes = computed(() =>
-	createMimeTypes(selectedAgent.value?.metadata.inputModalities ?? []),
+const acceptedMimeTypes = computed(
+	() => `${createMimeTypes(selectedAgent.value?.metadata.inputModalities ?? [])},application/pdf`,
 );
 
 const isValid = computed(

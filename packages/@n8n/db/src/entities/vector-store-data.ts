@@ -1,6 +1,6 @@
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
-import { BinaryColumn, JsonColumn, WithTimestamps } from './abstract-entity';
+import { dbType, JsonColumn, WithTimestamps } from './abstract-entity';
 
 @Entity()
 export class VectorStoreData extends WithTimestamps {
@@ -11,8 +11,11 @@ export class VectorStoreData extends WithTimestamps {
 	@Index()
 	memoryKey: string;
 
-	@BinaryColumn()
-	vector: Buffer;
+	// We use 'text'/'blob' for TypeORM compatibility, migrations create the actual vector type
+	@Column({
+		type: dbType === 'postgresdb' ? 'text' : 'blob',
+	})
+	vector: string | Buffer;
 
 	@Column('text')
 	content: string;

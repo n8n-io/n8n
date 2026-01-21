@@ -308,9 +308,17 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 	}
 
 	/**
-	 * Serialize vector for storage (convert float array to buffer)
+	 * Serialize vector for storage
+	 * - PostgreSQL: string format for pgvector "[x,y,z]"
+	 * - SQLite: binary buffer for sqlite-vec
 	 */
-	private serializeVector(vector: number[]): Buffer {
+	private serializeVector(vector: number[]): string | Buffer {
+		if (dbType === 'postgresdb') {
+			// pgvector expects string format
+			return `[${vector.join(',')}]`;
+		}
+
+		// sqlite-vec expects binary buffer
 		const buffer = Buffer.allocUnsafe(vector.length * 4);
 		for (let i = 0; i < vector.length; i++) {
 			buffer.writeFloatLE(vector[i], i * 4);

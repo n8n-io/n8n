@@ -69,7 +69,7 @@ export class ChatHubAgentService {
 		user: User,
 		chatProvider: ChatHubLLMProvider,
 		chatCredentialId: string,
-	): Promise<{ provider: ChatHubLLMProvider; credentialId: string }> {
+	): Promise<{ provider: ChatHubLLMProvider; credentialId: string } | null> {
 		// Check if the chat provider supports embeddings
 		if (EMBEDDINGS_NODE_TYPE_MAP[chatProvider]) {
 			return {
@@ -112,9 +112,7 @@ export class ChatHubAgentService {
 			}
 		}
 
-		throw new BadRequestError(
-			`No embedding provider available. The selected model provider '${chatProvider}' does not support embeddings, and no alternative embedding provider is configured in settings.`,
-		);
+		return null;
 	}
 
 	async getAgentsByUserId(userId: string): Promise<ChatHubAgent[]> {
@@ -133,9 +131,11 @@ export class ChatHubAgentService {
 		// Ensure user has access to the credential being saved
 		await this.chatHubCredentialsService.ensureCredentialAccess(user, data.credentialId);
 
-		// Determine which embedding provider to use
-		const { provider: embeddingProvider, credentialId: embeddingCredentialId } =
-			await this.determineEmbeddingProvider(user, data.provider, data.credentialId);
+		const embeddingProvider = await this.determineEmbeddingProvider(
+			user,
+			data.provider,
+			data.credentialId,
+		);
 
 		const id = uuidv4();
 		const files: IBinaryData[] = [];
@@ -156,8 +156,8 @@ export class ChatHubAgentService {
 			model: data.model,
 			tools: data.tools,
 			files,
-			embeddingProvider,
-			embeddingCredentialId,
+			embeddingProvider: embeddingProvider?.provider ?? null,
+			embeddingCredentialId: embeddingProvider?.credentialId ?? null,
 		});
 
 		this.logger.debug(`Chat agent created: ${id} by user ${user.id}`);
@@ -202,27 +202,30 @@ export class ChatHubAgentService {
 
 		// Track if we need to recreate embeddings
 		let needsEmbeddingRecreation = false;
-		let newEmbeddingProvider: ChatHubLLMProvider | undefined;
-		let newEmbeddingCredentialId: string | undefined;
+		let newEmbeddingProvider: ChatHubLLMProvider | null = null;
+		let newEmbeddingCredentialId: string | null = null;
 
 		// If provider or credential changes, update embedding provider too
 		if (updates.provider !== undefined || updates.credentialId !== undefined) {
 			const newProvider = updates.provider ?? existingAgent.provider;
 			const newCredentialId = (updates.credentialId ?? existingAgent.credentialId)!;
 
-			const { provider: embeddingProvider, credentialId: embeddingCredentialId } =
-				await this.determineEmbeddingProvider(user, newProvider, newCredentialId);
+			const embeddingProvider = await this.determineEmbeddingProvider(
+				user,
+				newProvider,
+				newCredentialId,
+			);
 
 			// Check if embedding provider actually changed (not just credential)
 			// Only provider change affects embedding dimensions
 			if (embeddingProvider !== existingAgent.embeddingProvider) {
 				needsEmbeddingRecreation = true;
-				newEmbeddingProvider = embeddingProvider;
-				newEmbeddingCredentialId = embeddingCredentialId;
+				newEmbeddingProvider = embeddingProvider?.provider ?? null;
+				newEmbeddingCredentialId = embeddingProvider?.credentialId ?? null;
 			}
 
-			updateData.embeddingProvider = embeddingProvider;
-			updateData.embeddingCredentialId = embeddingCredentialId;
+			updateData.embeddingProvider = embeddingProvider?.provider ?? null;
+			updateData.embeddingCredentialId = embeddingProvider?.credentialId ?? null;
 		}
 		if (updates.files !== undefined) {
 			const existingFiles = existingAgent.files;

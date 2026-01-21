@@ -54,28 +54,10 @@ export class VectorStoreDataService {
 		}
 
 		if (dbType === 'postgresdb') {
-			// Allow persistence even without pgvector, using fallback mode
-			return true;
-		}
-
-		// Other database types not supported
-		return false;
-	}
-
-	/**
-	 * Check if native vector similarity search is available
-	 */
-	hasNativeVectorSupport(): boolean {
-		const { type: dbType } = this.databaseConfig;
-
-		if (dbType === 'sqlite') {
-			return this.sqliteHasVectorSupport;
-		}
-
-		if (dbType === 'postgresdb') {
 			return this.postgresHasVectorSupport;
 		}
 
+		// Other database types not supported
 		return false;
 	}
 
