@@ -17,13 +17,6 @@ export class ExternalSecretsModule implements ModuleInterface {
 		externalSecretsProxy.setManager(externalSecretsManager);
 	}
 
-	async entities() {
-		const { ExternalSecretsProvider } = await import(
-			'./database/entities/external-secrets-provider.entity'
-		);
-		return [ExternalSecretsProvider];
-	}
-
 	@OnShutdown()
 	async shutdown() {
 		const { ExternalSecretsManager } = await import('./external-secrets-manager.ee');

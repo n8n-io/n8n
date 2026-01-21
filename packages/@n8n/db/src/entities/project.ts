@@ -3,6 +3,7 @@ import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Relation } from '@n8n
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
+import type { SharedSecretsProviderConnection } from './shared-secrets-provider-connection';
 import type { SharedWorkflow } from './shared-workflow';
 import { User } from './user';
 import type { Variables } from './variables';
@@ -29,6 +30,9 @@ export class Project extends WithTimestampsAndStringId {
 
 	@OneToMany('SharedWorkflow', 'project')
 	sharedWorkflows: SharedWorkflow[];
+
+	@OneToMany('SharedSecretsProviderConnection', 'project')
+	sharedSecretsProviderConnections: SharedSecretsProviderConnection[];
 
 	@OneToMany('Variables', 'project')
 	variables: Variables[];
