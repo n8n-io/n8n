@@ -1,8 +1,7 @@
 import { Container } from '@n8n/di';
-import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
+import { createBodyKeyedRateLimiter } from '../rate-limit';
 import { Get, Post, Put, Patch, Delete } from '../route';
 import type { Controller } from '../types';
 
@@ -46,23 +45,17 @@ describe('Route Decorators', () => {
 		it('should accept and apply route options', () => {
 			const middleware = () => {};
 
-			class TestBodyDto extends Z.class({
-				email: z.string(),
-			}) {}
-
 			class TestController {
 				@decorator('/test', {
 					middlewares: [middleware],
 					usesTemplates: true,
 					skipAuth: true,
 					ipRateLimit: { limit: 10, windowMs: 60000 },
-					keyedRateLimit: {
+					keyedRateLimit: createBodyKeyedRateLimiter<{ email: string }>({
 						limit: 10,
 						windowMs: 60000,
-						source: 'body',
-						dto: TestBodyDto,
 						field: 'email',
-					},
+					}),
 				})
 				testMethod() {}
 			}
@@ -80,7 +73,6 @@ describe('Route Decorators', () => {
 				limit: 10,
 				windowMs: 60000,
 				source: 'body',
-				dto: TestBodyDto,
 				field: 'email',
 			});
 		});

@@ -15,6 +15,8 @@ import {
 	Licensed,
 	RestController,
 	RootLevelController,
+	createBodyKeyedRateLimiter,
+	createUserKeyedRateLimiter,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import express, { json } from 'express';
@@ -50,7 +52,7 @@ describe('ControllerRegistry', () => {
 			globalConfig,
 			metadata,
 			lastActiveAtService,
-			new RateLimitService(mock()),
+			new RateLimitService(),
 		).activate(app);
 		agent = testAgent(app);
 	});
@@ -99,12 +101,11 @@ describe('ControllerRegistry', () => {
 		class TestController {
 			@Post('/body-keyed', {
 				skipAuth: true,
-				keyedRateLimit: {
+				keyedRateLimit: createBodyKeyedRateLimiter<TestBodyDto>({
 					limit: 3,
 					windowMs: 60_000,
-					source: 'body',
 					field: 'email',
-				},
+				}),
 			})
 			bodyKeyed(@Body _body: TestBodyDto) {
 				return { ok: true };
@@ -208,13 +209,11 @@ describe('ControllerRegistry', () => {
 		class TestController {
 			@Post('/numeric-keyed', {
 				skipAuth: true,
-				keyedRateLimit: {
+				keyedRateLimit: createBodyKeyedRateLimiter<TestNumericDto>({
 					limit: 3,
 					windowMs: 60_000,
-					source: 'body',
-					dto: TestNumericDto,
 					field: 'userId',
-				},
+				}),
 			})
 			numericKeyed(@Body _body: TestNumericDto) {
 				return { ok: true };
@@ -251,11 +250,10 @@ describe('ControllerRegistry', () => {
 		// @ts-expect-error tsc complains about unused class
 		class TestController {
 			@Post('/user-keyed', {
-				keyedRateLimit: {
+				keyedRateLimit: createUserKeyedRateLimiter({
 					limit: 3,
 					windowMs: 60_000,
-					source: 'user',
-				},
+				}),
 			})
 			bodyKeyed(@Body _body: { email: string }) {
 				return { ok: true };
