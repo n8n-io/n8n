@@ -26,6 +26,7 @@ const SUPPORTED_PARAMETER_TYPES = [
 	'dateTime',
 	'color',
 	'json',
+	'resourceLocator',
 ];
 
 /**

@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, provide } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useI18n } from '@n8n/i18n';
-import type { NodeParameterValueType } from 'n8n-workflow';
+import type { NodeParameterValueType, Workflow } from 'n8n-workflow';
 import type { NodeRequiredParameters, ParameterKey } from '../templates.types';
+import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
 import { N8nHeading } from '@n8n/design-system';
 import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
@@ -20,16 +24,51 @@ const emit = defineEmits<{
 }>();
 
 const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
+const environmentsStore = useEnvironmentsStore();
 const i18n = useI18n();
 
 const nodeType = computed(() => nodeTypesStore.getNodeType(props.nodeParameters.nodeType));
 
-const allParametersFilled = computed(() => {
-	return props.nodeParameters.parameters.every((param) => {
-		const value = props.parameterValues[param.key] ?? param.currentValue;
-		return value !== undefined && value !== '' && value !== null;
-	});
+const node = computed(() => workflowsStore.getNodeByName(props.nodeParameters.nodeName));
+
+const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+
+/**
+ * Provides expression resolution context for ParameterInputFull and its children
+ * (including ResourceLocator) when rendered outside of NDV.
+ */
+const expressionResolveCtx = computed<ExpressionLocalResolveContext | undefined>(() => {
+	if (!node.value) {
+		return undefined;
+	}
+
+	const nodeName = node.value.name;
+
+	// Find input node for expression resolution
+	const inputs = workflowObject.value.getParentNodesByDepth(nodeName, 1);
+	const inputNode =
+		inputs.length > 0
+			? {
+					name: inputs[0].name,
+					branchIndex: inputs[0].indicies[0] ?? 0,
+					runIndex: 0,
+				}
+			: undefined;
+
+	return {
+		localResolve: true,
+		envVars: environmentsStore.variablesAsObject,
+		workflow: workflowObject.value,
+		execution: workflowsStore.workflowExecutionData,
+		nodeName,
+		additionalKeys: {},
+		inputNode,
+		connections: workflowsStore.connectionsBySourceNode,
+	};
 });
+
+provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 </script>
 
 <template>
