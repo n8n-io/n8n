@@ -123,6 +123,15 @@ const isConfigurationNode = computed((): boolean => {
 });
 
 /**
+ * Check if this is a configurable node (has non-main inputs).
+ * Configurable nodes (like AI Agent) render their label inside the node body.
+ */
+const isConfigurableNode = computed((): boolean => {
+	const inputs = inputHandles.value;
+	return inputs.some((input) => input.type !== 'main');
+});
+
+/**
  * Check if a handle type is "main" (horizontal flow: left/right).
  * Non-main types use vertical flow (top/bottom).
  */
@@ -336,6 +345,7 @@ const selectedByCollaborator = computed(() => {
 			'crdt-node--selected-by-collaborator': selectedByCollaborator,
 			'crdt-node--trigger': isTriggerNode,
 			'crdt-node--configuration': isConfigurationNode,
+			'crdt-node--configurable': isConfigurableNode,
 		}"
 		:style="selectedByCollaborator ? { '--collaborator--color': selectedByCollaborator.color } : {}"
 	>
@@ -483,6 +493,36 @@ const selectedByCollaborator = computed(() => {
 /* Configuration nodes - pill-shaped (fully rounded ends) */
 .crdt-node--configuration {
 	border-radius: 50%;
+}
+
+/* Configurable nodes - label renders inside the node body */
+.crdt-node--configurable {
+	--node--icon--size: 30px;
+
+	justify-content: flex-start;
+	padding-left: calc(40px - (var(--node--icon--size)) / 2 - var(--border-width, 1px));
+
+	.description {
+		top: unset;
+		position: relative;
+		margin-top: 0;
+		margin-left: var(--spacing--xs);
+		margin-right: var(--spacing--xs);
+		width: auto;
+		min-width: unset;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		flex-grow: 1;
+		flex-shrink: 1;
+	}
+
+	.label {
+		text-align: left;
+	}
+
+	.subtitle {
+		text-align: left;
+	}
 }
 
 /* Handle styles - transparent container like production CanvasHandleRenderer */
