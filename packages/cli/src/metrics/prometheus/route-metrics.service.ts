@@ -1,10 +1,12 @@
-import { EndpointsConfig, PrometheusMetricsConfig } from '@n8n/config';
+import { PrometheusMetricsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { assert } from 'n8n-workflow';
 import promClient, { Gauge } from 'prom-client';
+
+import { PathResolvingService } from '@/services/path-resolving.service';
 
 import type { PrometheusMetricsCollector } from './base';
 
@@ -16,7 +18,7 @@ import type { PrometheusMetricsCollector } from './base';
 export class PrometheusRouteMetricsService implements PrometheusMetricsCollector {
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
-		private readonly endpointsConfig: EndpointsConfig,
+		private readonly pathResolvingService: PathResolvingService,
 	) {}
 
 	get enabled(): boolean {
@@ -48,16 +50,21 @@ export class PrometheusRouteMetricsService implements PrometheusMetricsCollector
 			httpDurationMetricName: `${this.config.prefix}http_request_duration_seconds`,
 		});
 
+		// Resolve paths through PathResolvingService so metrics also cover
+		// deployments hosted under a custom base path
+		const basePath = this.pathResolvingService.getBasePath();
+		const apiPath = basePath === '/' ? '/api/' : `${basePath}/api/`;
+
 		app.use(
 			[
-				'/api/',
-				`/${this.endpointsConfig.rest}/`,
-				`/${this.endpointsConfig.webhook}/`,
-				`/${this.endpointsConfig.webhookWaiting}/`,
-				`/${this.endpointsConfig.webhookTest}/`,
-				`/${this.endpointsConfig.form}/`,
-				`/${this.endpointsConfig.formWaiting}/`,
-				`/${this.endpointsConfig.formTest}/`,
+				apiPath,
+				`${this.pathResolvingService.resolveRestEndpoint()}/`,
+				`${this.pathResolvingService.resolveWebhookEndpoint()}/`,
+				`${this.pathResolvingService.resolveWebhookWaitingEndpoint()}/`,
+				`${this.pathResolvingService.resolveWebhookTestEndpoint()}/`,
+				`${this.pathResolvingService.resolveFormEndpoint()}/`,
+				`${this.pathResolvingService.resolveFormWaitingEndpoint()}/`,
+				`${this.pathResolvingService.resolveFormTestEndpoint()}/`,
 			],
 			async (req, res, next) => {
 				gauge.set(DateTime.now().toUnixInteger());

@@ -19,6 +19,7 @@ import { v4 as uuid } from 'uuid';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
@@ -39,7 +40,10 @@ describe('UserService', () => {
 		editorBaseUrl: '',
 		webhookUrl: '',
 	});
-	const urlService = new UrlService(globalConfig);
+	const urlService = new UrlService(
+		globalConfig,
+		mock<PathResolvingService>({ getBasePath: () => '/' }),
+	);
 	const manager = mock<EntityManager>();
 	const userRepository = mockInstance(UserRepository, {
 		manager,
