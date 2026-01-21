@@ -135,7 +135,6 @@ import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/17
 import { AddChatMessageIndices1766068346315 } from '../common/1766068346315-AddChatMessageIndices';
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
-import { CreateExternalSecretsProviderTable1768840933000 } from '../common/1768840933000-CreateExternalSecretsProviderTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -276,5 +275,4 @@ export const postgresMigrations: Migration[] = [
 	ChangeWorkflowStatisticsFKToNoAction1767018516000,
 	ExpandModelColumnLength1768402473068,
 	AddStoredAtToExecutionEntity1768557000000,
-	CreateExternalSecretsProviderTable1768840933000,
 ];
