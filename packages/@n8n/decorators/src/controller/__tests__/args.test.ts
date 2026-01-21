@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { vi } from 'vitest';
 
 import { Body, Query, Param } from '../args';
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
@@ -8,7 +9,7 @@ describe('Args Decorators', () => {
 	let controllerRegistryMetadata: ControllerRegistryMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		controllerRegistryMetadata = new ControllerRegistryMetadata();
 		Container.set(ControllerRegistryMetadata, controllerRegistryMetadata);

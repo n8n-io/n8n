@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { vi } from 'vitest';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { RestController } from '../rest-controller';
@@ -8,7 +9,7 @@ describe('@RestController Decorator', () => {
 	let controllerRegistryMetadata: ControllerRegistryMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.reset();
 
 		controllerRegistryMetadata = new ControllerRegistryMetadata();

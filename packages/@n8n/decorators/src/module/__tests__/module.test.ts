@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { vi } from 'vitest';
 
 import type { ModuleInterface } from '../module';
 import { BackendModule } from '../module';
@@ -8,7 +9,7 @@ describe('@BackendModule decorator', () => {
 	let moduleMetadata: ModuleMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		moduleMetadata = new ModuleMetadata();
 		Container.set(ModuleMetadata, moduleMetadata);

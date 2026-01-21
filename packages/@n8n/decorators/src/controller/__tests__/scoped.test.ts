@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+import { vi } from 'vitest';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { GlobalScope, ProjectScope } from '../scoped';
@@ -9,7 +10,7 @@ describe('Scope Decorators', () => {
 	let controllerRegistryMetadata: ControllerRegistryMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		controllerRegistryMetadata = new ControllerRegistryMetadata();
 		Container.set(ControllerRegistryMetadata, controllerRegistryMetadata);

@@ -11,9 +11,9 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -23,8 +23,11 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@swc/core": "^1.10.14",
     "@types/express": "catalog:",
-    "@types/lodash": "catalog:"
+    "@types/lodash": "catalog:",
+    "vite-plugin-swc-transform": "^1.0.3",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "@n8n/constants": "workspace:*",

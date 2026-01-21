@@ -1,4 +1,5 @@
 import { Container } from '@n8n/di';
+import { vi } from 'vitest';
 import { z } from 'zod';
 
 import { Command } from '../command';
@@ -8,7 +9,7 @@ describe('@Command decorator', () => {
 	let commandMetadata: CommandMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		Container.reset();
 
 		commandMetadata = new CommandMetadata();

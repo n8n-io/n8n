@@ -1,4 +1,5 @@
 import { Container, Service } from '@n8n/di';
+import { vi } from 'vitest';
 
 import { OnShutdown } from '../on-shutdown';
 import { ShutdownMetadata } from '../shutdown-metadata';
@@ -9,7 +10,7 @@ describe('OnShutdown', () => {
 	beforeEach(() => {
 		shutdownMetadata = new ShutdownMetadata();
 		Container.set(ShutdownMetadata, shutdownMetadata);
-		jest.spyOn(shutdownMetadata, 'register');
+		vi.spyOn(shutdownMetadata, 'register');
 	});
 
 	it('should register a methods that is decorated with OnShutdown', () => {

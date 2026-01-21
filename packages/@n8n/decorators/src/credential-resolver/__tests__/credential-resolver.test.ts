@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import type { ICredentialContext, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { vi } from 'vitest';
 
 import type { CredentialResolverConfiguration, ICredentialResolver } from '../credential-resolver';
 import {
@@ -11,7 +12,7 @@ describe('@CredentialResolver decorator', () => {
 	let resolverMetadata: CredentialResolverEntryMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		resolverMetadata = new CredentialResolverEntryMetadata();
 		Container.set(CredentialResolverEntryMetadata, resolverMetadata);

@@ -1,5 +1,6 @@
 import type { BooleanLicenseFeature } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { vi } from 'vitest';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { Licensed } from '../licensed';
@@ -9,7 +10,7 @@ describe('@Licensed Decorator', () => {
 	let controllerRegistryMetadata: ControllerRegistryMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		controllerRegistryMetadata = new ControllerRegistryMetadata();
 		Container.set(ControllerRegistryMetadata, controllerRegistryMetadata);

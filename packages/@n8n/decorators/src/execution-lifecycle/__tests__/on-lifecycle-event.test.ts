@@ -1,4 +1,5 @@
 import { Container, Service } from '@n8n/di';
+import { vi } from 'vitest';
 
 import { NonMethodError } from '../../errors';
 import { LifecycleMetadata } from '../lifecycle-metadata';
@@ -10,7 +11,7 @@ describe('OnLifecycleEvent', () => {
 	beforeEach(() => {
 		lifecycleMetadata = new LifecycleMetadata();
 		Container.set(LifecycleMetadata, lifecycleMetadata);
-		jest.spyOn(lifecycleMetadata, 'register');
+		vi.spyOn(lifecycleMetadata, 'register');
 	});
 
 	it('should register a method decorated with OnLifecycleEvent', () => {
