@@ -18,7 +18,7 @@ import {
 
 const TOOL_NAME = 'get_resource_locator_options';
 const DISPLAY_TITLE = 'Fetching resource options';
-const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_TIMEOUT_MS = 10000;
 
 /**
  * Schema for get resource locator options input
