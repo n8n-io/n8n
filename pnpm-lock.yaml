@@ -316,6 +316,10 @@ overrides:
   qs@6: 6.14.1
   '@smithy/config-resolver': '>=4.4.0'
   '@rudderstack/rudder-sdk-node@<=3.0.0': 3.0.0
+  diff: 8.0.3
+  undici@6: ^6.23.0
+  undici@7: ^7.18.2
+  tar: ^7.5.3
 
 patchedDependencies:
   '@lezer/highlight':
@@ -1233,7 +1237,7 @@ importers:
         version: 1.0.1(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 1.0.5(43cd0b9ca6a69e4bd7bb100334a2019b)
+        version: 1.0.5(aaf2dd98ddfff4f561ccd27ca0800556)
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1321,6 +1325,9 @@ importers:
       cheerio:
         specifier: 1.0.0
         version: 1.0.0
+      chromadb:
+        specifier: ^3.0.15
+        version: 3.2.0
       cohere-ai:
         specifier: 7.14.0
         version: 7.14.0(encoding@0.1.13)
@@ -1400,8 +1407,8 @@ importers:
         specifier: 3.0.3
         version: 3.0.3
       undici:
-        specifier: ^6.21.0
-        version: 6.21.3
+        specifier: ^6.23.0
+        version: 6.23.0
       vm2:
         specifier: 'catalog:'
         version: 3.10.2
@@ -1887,8 +1894,8 @@ importers:
         specifier: 5.0.1
         version: 5.0.1(express@5.1.0)
       undici:
-        specifier: ^7.16.0
-        version: 7.16.0
+        specifier: ^7.18.2
+        version: 7.18.2
       uuid:
         specifier: 'catalog:'
         version: 10.0.0
@@ -2620,9 +2627,24 @@ importers:
       '@n8n/chat':
         specifier: workspace:*
         version: link:../chat
+      '@n8n/composables':
+        specifier: workspace:*
+        version: link:../composables
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../design-system
+      '@n8n/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@n8n/stores':
+        specifier: workspace:*
+        version: link:../stores
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../../../@n8n/utils
+      pinia:
+        specifier: catalog:frontend
+        version: 2.2.4(typescript@5.9.2)(vue@3.5.26(typescript@5.9.2))
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@5.9.2)
@@ -2774,9 +2796,6 @@ importers:
       '@sentry/vue':
         specifier: catalog:frontend
         version: 9.42.1(pinia@2.2.4(typescript@5.9.2)(vue@3.5.26(typescript@5.9.2)))(vue@3.5.26(typescript@5.9.2))
-      '@sqlite.org/sqlite-wasm':
-        specifier: 3.50.4-build1
-        version: 3.50.4-build1
       '@types/semver':
         specifier: ^7.7.0
         version: 7.7.0
@@ -2939,6 +2958,9 @@ importers:
       vuedraggable:
         specifier: 4.1.0
         version: 4.1.0(vue@3.5.26(typescript@5.9.2))
+      wa-sqlite:
+        specifier: github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7
+        version: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7
       web-tree-sitter:
         specifier: 0.24.3
         version: 0.24.3
@@ -5674,6 +5696,10 @@ packages:
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
     engines: {node: '>=12'}
 
+  '@isaacs/fs-minipass@4.0.1':
+    resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
+    engines: {node: '>=18.0.0'}
+
   '@istanbuljs/load-nyc-config@1.1.0':
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
     engines: {node: '>=8'}
@@ -8225,10 +8251,6 @@ packages:
     resolution: {integrity: sha512-4aUIteuyxtBUhVdiQqcDhKFitwfd9hqoSDYY2KRXiWtgoWJ9Bmise+KfEPDiVHWeJepvF8xJO9/9+WDIciMFFw==}
     engines: {node: '>=18.0.0'}
 
-  '@sqlite.org/sqlite-wasm@3.50.4-build1':
-    resolution: {integrity: sha512-Qig2Wso7gPkU1PtXwFzndh+CTRzrIFxVGqv6eCetjU7YqxlHItj+GvQYwYTppCRgAPawtRN/4AJcEgB9xDHGug==}
-    hasBin: true
-
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
@@ -10341,6 +10363,47 @@ packages:
     resolution: {integrity: sha512-bIomtDF5KGpdogkLd9VspvFzk9KfpyyGlS8YFVZl7TGPBHL5snIOnxeshwVgPteQ9b4Eydl+pVbIyE1DcvCWgQ==}
     engines: {node: '>=10'}
 
+  chownr@3.0.0:
+    resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
+    engines: {node: '>=18'}
+
+  chromadb-js-bindings-darwin-arm64@1.2.0:
+    resolution: {integrity: sha512-CZ44yAQ5ny6sn279jeOBMGseVHg9/GNNA6kAiEl6g0MqD3MhaauuROkiF2Rw6FSoup1MzuIeBvzg3yLoojFXSQ==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [darwin]
+
+  chromadb-js-bindings-darwin-x64@1.2.0:
+    resolution: {integrity: sha512-QGH9aP3EtmozRZHtzPU650Ta6+QJdJUUsM0x781i9zWASMZzmtleu+57FuDLpXNch0OV9AkmPVlLzBYOPw3N2Q==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [darwin]
+
+  chromadb-js-bindings-linux-arm64-gnu@1.2.0:
+    resolution: {integrity: sha512-dIKKXN0vW7JNg0da/oueLooxZkc7rd6rcN5eb/Fx8K2Tx9r8SM+8vmqm2weF3DzgJkGGiwU8QyE68KU564o/7Q==}
+    engines: {node: '>= 10'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  chromadb-js-bindings-linux-x64-gnu@1.2.0:
+    resolution: {integrity: sha512-0E65eSuWICoD2jhQ+ZLi5Me08+VxICG0f5lZ4ceiMPXTemc60QmkmhtKQVK5lEhqRWu2CLSYXqlusnD5qEoa1Q==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  chromadb-js-bindings-win32-x64-msvc@1.2.0:
+    resolution: {integrity: sha512-1gmVdgw/spSSYvbc7Ogms9FXf+Zad41Cp7Enqfvrp7m9qQ+Nz4NqZINfOEX5OVzPHEj6cfXA11NdGeNHTPPHOg==}
+    engines: {node: '>= 10'}
+    cpu: [x64]
+    os: [win32]
+
+  chromadb@3.2.0:
+    resolution: {integrity: sha512-PtyHAWgtKVuD2YQ0/tFZU/q0vzmAdngDJNJPZJpB3tlwD8PZJNB4Lms3KGEDvq09cGQiMwZc7fo91MR/GLN4OA==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   chromatic@13.3.4:
     resolution: {integrity: sha512-TR5rvyH0ESXobBB3bV8jc87AEAFQC7/n+Eb4XWhJz6hW3YNxIQPVjcbgLv+a4oKHEl1dUBueWSoIQsOVGTd+RQ==}
     hasBin: true
@@ -11211,20 +11274,8 @@ packages:
     resolution: {integrity: sha512-EjePK1srD3P08o2j4f0ExnylqRs5B9tJjcp9t1krH2qRi8CCdsYfwe9JgSLurFBWwq4uOlipzfk5fHNvwFKr8Q==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
 
-  diff@4.0.2:
-    resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}
-    engines: {node: '>=0.3.1'}
-
-  diff@5.0.0:
-    resolution: {integrity: sha512-/VTCrvm5Z0JGty/BWHljh+BAiw3IK+2j87NGMu8Nwc/f48WoDAC395uomO9ZD117ZOBaHmkX1oyLvkVM/aIT3w==}
-    engines: {node: '>=0.3.1'}
-
-  diff@5.2.0:
-    resolution: {integrity: sha512-uIFDxqpRZGZ6ThOk84hEfqWoHx2devRFvpTZcTHur85vImfaxUbTW9Ryh4CpCuDnToOP1CEtXKIgytHBPVff5A==}
-    engines: {node: '>=0.3.1'}
-
-  diff@8.0.2:
-    resolution: {integrity: sha512-sSuxWU5j5SR9QQji/o2qMvqRNYRDOcBTgsJ/DeCf4iSN4gW+gNMXM7wFIP+fdXZxoNiAnHUTGjCr+TSWXdRDKg==}
+  diff@8.0.3:
+    resolution: {integrity: sha512-qejHi7bcSD4hQAZE0tNAawRK1ZtafHDmMTMkrrIGgSLl7hTnQHmKCeB45xAcbfTqK2zowkM3j3bHt/4b/ARbYQ==}
     engines: {node: '>=0.3.1'}
 
   diffie-hellman@5.0.3:
@@ -14093,10 +14144,6 @@ packages:
     resolution: {integrity: sha512-zobTr7akeGHnv7eBOXcRgMeCP6+uyYsczwmeRCauvpvaAltgNyTbLH/+VaEAPUeWBT+1GuNmz4wC/6jtQzbbVA==}
     engines: {node: '>=12'}
 
-  luxon@3.5.0:
-    resolution: {integrity: sha512-rh+Zjr6DNfUYR3bPwJEnuwDdqMbxZW7LOQfUN4B54+Cl+0o5zaU9RJ6bcidfDtC1cWCZXQ+nvX8bf6bAji37QQ==}
-    engines: {node: '>=12'}
-
   luxon@3.7.2:
     resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
     engines: {node: '>=12'}
@@ -14402,10 +14449,6 @@ packages:
     resolution: {integrity: sha512-fNzuVyifolSLFL4NzpF+wEF4qrgqaaKX0haXPQEdQ7NKAN+WecoKMHV09YcuL/DHxrUsYQOK3MiuDf7Ip2OXfQ==}
     engines: {node: '>=8'}
 
-  minipass@5.0.0:
-    resolution: {integrity: sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ==}
-    engines: {node: '>=8'}
-
   minipass@7.1.2:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
@@ -14413,6 +14456,10 @@ packages:
   minizlib@2.1.2:
     resolution: {integrity: sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg==}
     engines: {node: '>= 8'}
+
+  minizlib@3.1.0:
+    resolution: {integrity: sha512-KZxYo1BUkWD2TVFLr0MQoM8vUUigWD3LlD83a/75BqC+4qE0Hb1Vo5v1FgcfaNXvfXzr+5EhQ6ing/CaBijTlw==}
+    engines: {node: '>= 18'}
 
   miragejs@0.1.48:
     resolution: {integrity: sha512-MGZAq0Q3OuRYgZKvlB69z4gLN4G3PvgC4A2zhkCXCXrLD5wm2cCnwNB59xOBVA+srZ0zEes6u+VylcPIkB4SqA==}
@@ -15908,7 +15955,6 @@ packages:
     resolution: {integrity: sha512-gv6vLGcmAOg96/fgo3d9tvA4dJNZL3fMyBqVRrGxQ+Q/o4k9QzbJ3NQF9cOO/71wRodoXhaPgphvMFU68qVAJQ==}
     deprecated: |-
       You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
       (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
 
   qrcode.vue@3.3.4:
@@ -17162,9 +17208,9 @@ packages:
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
 
-  tar@6.2.1:
-    resolution: {integrity: sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A==}
-    engines: {node: '>=10'}
+  tar@7.5.3:
+    resolution: {integrity: sha512-ENg5JUHUm2rDD7IvKNFGzyElLXNjachNLp6RaGf4+JOgxXHkqA+gq81ZAMCUmtMtqBsoU62lcp6S27g1LCYGGQ==}
+    engines: {node: '>=18'}
 
   tarn@3.0.2:
     resolution: {integrity: sha512-51LAVKUSZSVfI05vjPESNc5vwqqZpbXCsU+/+wxlOrUjk2SnFTt97v9ZgQrD4YmxYW1Px6w2KjaDitCfkvgxMQ==}
@@ -17750,16 +17796,12 @@ packages:
     resolution: {integrity: sha512-raqeBD6NQK4SkWhQzeYKd1KmIG6dllBOTt55Rmkt4HtI9mwdWtJljnrXjAFUBLTSN67HWrOIZ3EPF4kjUw80Bg==}
     engines: {node: '>=14.0'}
 
-  undici@6.21.3:
-    resolution: {integrity: sha512-gBLkYIlEnSp8pFbT64yFgGE6UIB9tAkhukC23PmMDCe5Nd+cRqKxSjw5y54MK2AZMgZfJWMaNE4nYUHgi1XEOw==}
+  undici@6.23.0:
+    resolution: {integrity: sha512-VfQPToRA5FZs/qJxLIinmU59u0r7LXqoJkCzinq3ckNJp3vKEh7jTWN589YQ5+aoAC/TGRLyJLCPKcLQbM8r9g==}
     engines: {node: '>=18.17'}
 
-  undici@7.10.0:
-    resolution: {integrity: sha512-u5otvFBOBZvmdjWLVW+5DAc9Nkq8f24g0O9oY7qw2JVIF1VocIFoyz9JFkuVOS2j41AufeO0xnlweJ2RLT8nGw==}
-    engines: {node: '>=20.18.1'}
-
-  undici@7.16.0:
-    resolution: {integrity: sha512-QEg3HPMll0o3t2ourKwOeUAZ159Kn9mx5pnzHRQO8+Wixmh88YdZRiIwat0iNzNNXn0yoEtXJqFpyW7eM8BV7g==}
+  undici@7.18.2:
+    resolution: {integrity: sha512-y+8YjDFzWdQlSE9N5nzKMT3g4a5UBX1HKowfdXh0uvAnTaqqwqB92Jt4UXBAeKekDs5IaDKyJFR4X1gYVCgXcw==}
     engines: {node: '>=20.18.1'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
@@ -18308,6 +18350,10 @@ packages:
     resolution: {integrity: sha512-o8qghlI8NZHU1lLPrpi2+Uq7abh4GGPpYANlalzWxyWteJOCsr/P+oPBA49TOLu5FTZO4d3F9MnWJfiMo4BkmA==}
     engines: {node: '>=18'}
 
+  wa-sqlite@https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7:
+    resolution: {tarball: https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7}
+    version: 1.0.9
+
   walkdir@0.4.1:
     resolution: {integrity: sha512-3eBwRyEln6E1MSzcxcVpQIhRG8Q1jLvEqRmCZqS3dsfXEDR/AhOF4d+jHg1qvDCpYaVRZjENPQyrVxAkQqxPgQ==}
     engines: {node: '>=6.0.0'}
@@ -18633,6 +18679,10 @@ packages:
 
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
+
+  yallist@5.0.0:
+    resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
+    engines: {node: '>=18'}
 
   yaml-ast-parser@0.0.43:
     resolution: {integrity: sha512-2PTINUwsRqSd+s8XxKaJWQlUuEMHJQyEuh2edBbW8KNJz0SJPwUSD2zRWqezFEdN7IzAgeuYHFUCF7o8zRdZ0A==}
@@ -21585,7 +21635,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.3))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -22184,6 +22234,10 @@ snapshots:
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
 
+  '@isaacs/fs-minipass@4.0.1':
+    dependencies:
+      minipass: 7.1.2
+
   '@istanbuljs/load-nyc-config@1.1.0':
     dependencies:
       camelcase: 5.3.1
@@ -22629,7 +22683,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@1.0.5(43cd0b9ca6a69e4bd7bb100334a2019b)':
+  '@langchain/community@1.0.5(aaf2dd98ddfff4f561ccd27ca0800556)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.57.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@17.2.3)(encoding@0.1.13)(openai@6.9.1(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -22666,6 +22720,7 @@ snapshots:
       '@xata.io/client': 0.28.4(typescript@5.9.2)
       '@zilliz/milvus2-sdk-node': 2.5.7
       cheerio: 1.0.0
+      chromadb: 3.2.0
       cohere-ai: 7.14.0(encoding@0.1.13)
       crypto-js: 4.2.0
       d3-dsv: 2.0.0
@@ -23035,7 +23090,7 @@ snapshots:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 1.1.1
-      undici: 7.16.0
+      undici: 7.18.2
 
   '@n8n_io/riot-tmpl@4.0.1':
     dependencies:
@@ -23639,7 +23694,7 @@ snapshots:
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       typescript: 5.9.2
-      undici: 6.21.3
+      undici: 6.23.0
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -25107,8 +25162,6 @@ snapshots:
   '@smithy/uuid@1.1.0':
     dependencies:
       tslib: 2.8.1
-
-  '@sqlite.org/sqlite-wasm@3.50.4-build1': {}
 
   '@standard-schema/spec@1.1.0': {}
 
@@ -26680,7 +26733,7 @@ snapshots:
 
   accepts@2.0.0:
     dependencies:
-      mime-types: 3.0.1
+      mime-types: 3.0.2
       negotiator: 1.0.0
 
   acorn-globals@7.0.1:
@@ -27104,6 +27157,11 @@ snapshots:
   aws4@1.11.0: {}
 
   axe-core@4.7.2: {}
+
+  axios-retry@4.5.0(axios@1.12.0(debug@4.4.3)):
+    dependencies:
+      axios: 1.12.0(debug@4.4.3)
+      is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.12.0):
     dependencies:
@@ -27562,7 +27620,7 @@ snapshots:
       promise-inflight: 1.0.1
       rimraf: 3.0.2
       ssri: 8.0.1
-      tar: 6.2.1
+      tar: 7.5.3
       unique-filename: 1.1.1
     transitivePeerDependencies:
       - bluebird
@@ -27735,7 +27793,7 @@ snapshots:
       parse5: 7.1.2
       parse5-htmlparser2-tree-adapter: 7.0.0
       parse5-parser-stream: 7.1.2
-      undici: 6.21.3
+      undici: 6.23.0
       whatwg-mimetype: 4.0.0
 
   cheerio@1.0.0-rc.12:
@@ -27763,7 +27821,35 @@ snapshots:
 
   chownr@1.1.4: {}
 
-  chownr@2.0.0: {}
+  chownr@2.0.0:
+    optional: true
+
+  chownr@3.0.0: {}
+
+  chromadb-js-bindings-darwin-arm64@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-darwin-x64@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-linux-arm64-gnu@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-linux-x64-gnu@1.2.0:
+    optional: true
+
+  chromadb-js-bindings-win32-x64-msvc@1.2.0:
+    optional: true
+
+  chromadb@3.2.0:
+    dependencies:
+      semver: 7.7.3
+    optionalDependencies:
+      chromadb-js-bindings-darwin-arm64: 1.2.0
+      chromadb-js-bindings-darwin-x64: 1.2.0
+      chromadb-js-bindings-linux-arm64-gnu: 1.2.0
+      chromadb-js-bindings-linux-x64-gnu: 1.2.0
+      chromadb-js-bindings-win32-x64-msvc: 1.2.0
 
   chromatic@13.3.4: {}
 
@@ -28154,7 +28240,7 @@ snapshots:
 
   cron-parser@4.9.0:
     dependencies:
-      luxon: 3.5.0
+      luxon: 3.7.2
 
   cron@4.4.0:
     dependencies:
@@ -28642,14 +28728,7 @@ snapshots:
 
   diff-sequences@29.6.3: {}
 
-  diff@4.0.2:
-    optional: true
-
-  diff@5.0.0: {}
-
-  diff@5.2.0: {}
-
-  diff@8.0.2: {}
+  diff@8.0.3: {}
 
   diffie-hellman@5.0.3:
     dependencies:
@@ -29958,6 +30037,7 @@ snapshots:
   fs-minipass@2.1.0:
     dependencies:
       minipass: 3.3.6
+    optional: true
 
   fs.realpath@1.0.0: {}
 
@@ -30128,7 +30208,7 @@ snapshots:
       node-fetch-native: 1.6.6
       nypm: 0.5.4
       pathe: 2.0.3
-      tar: 6.2.1
+      tar: 7.5.3
 
   github-buttons@2.29.1: {}
 
@@ -30592,7 +30672,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30602,7 +30682,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0)
+      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -32437,8 +32517,6 @@ snapshots:
 
   luxon@3.4.4: {}
 
-  luxon@3.5.0: {}
-
   luxon@3.7.2: {}
 
   lz-string@1.5.0: {}
@@ -32756,10 +32834,9 @@ snapshots:
   minipass@3.3.6:
     dependencies:
       yallist: 4.0.0
+    optional: true
 
   minipass@4.2.8: {}
-
-  minipass@5.0.0: {}
 
   minipass@7.1.2: {}
 
@@ -32767,6 +32844,11 @@ snapshots:
     dependencies:
       minipass: 3.3.6
       yallist: 4.0.0
+    optional: true
+
+  minizlib@3.1.0:
+    dependencies:
+      minipass: 7.1.2
 
   miragejs@0.1.48:
     dependencies:
@@ -33115,7 +33197,7 @@ snapshots:
       browser-stdout: 1.3.1
       chokidar: 4.0.3
       debug: 4.4.3(supports-color@8.1.1)
-      diff: 5.2.0
+      diff: 8.0.3
       escape-string-regexp: 4.0.0
       find-up: 5.0.0
       glob: 8.1.0
@@ -33139,7 +33221,7 @@ snapshots:
       browser-stdout: 1.3.1
       chokidar: 4.0.3
       debug: 4.3.3(supports-color@8.1.1)
-      diff: 5.0.0
+      diff: 8.0.3
       escape-string-regexp: 4.0.0
       find-up: 5.0.0
       glob: 7.2.3
@@ -33437,7 +33519,7 @@ snapshots:
       npmlog: 6.0.2
       rimraf: 3.0.2
       semver: 7.7.3
-      tar: 6.2.1
+      tar: 7.5.3
       which: 2.0.2
     transitivePeerDependencies:
       - bluebird
@@ -35033,7 +35115,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0):
+  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
     dependencies:
       axios: 1.12.0
 
@@ -35387,7 +35469,7 @@ snapshots:
       etag: 1.8.1
       fresh: 2.0.0
       http-errors: 2.0.0
-      mime-types: 3.0.1
+      mime-types: 3.0.2
       ms: 2.1.3
       on-finished: 2.4.1
       range-parser: 1.2.1
@@ -35797,7 +35879,7 @@ snapshots:
       bindings: 1.5.0
       node-addon-api: 7.1.0
       prebuild-install: 7.1.3
-      tar: 6.2.1
+      tar: 7.5.3
     optionalDependencies:
       node-gyp: 8.4.1
     transitivePeerDependencies:
@@ -36320,14 +36402,13 @@ snapshots:
       fast-fifo: 1.3.2
       streamx: 2.22.1
 
-  tar@6.2.1:
+  tar@7.5.3:
     dependencies:
-      chownr: 2.0.0
-      fs-minipass: 2.1.0
-      minipass: 5.0.0
-      minizlib: 2.1.2
-      mkdirp: 1.0.4
-      yallist: 4.0.0
+      '@isaacs/fs-minipass': 4.0.1
+      chownr: 3.0.0
+      minipass: 7.1.2
+      minizlib: 3.1.0
+      yallist: 5.0.0
 
   tarn@3.0.2: {}
 
@@ -36402,7 +36483,7 @@ snapshots:
       ssh-remote-port-forward: 1.0.4
       tar-fs: 2.1.4
       tmp: 0.2.4
-      undici: 7.10.0
+      undici: 7.18.2
     transitivePeerDependencies:
       - supports-color
 
@@ -36633,7 +36714,7 @@ snapshots:
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
-      diff: 4.0.2
+      diff: 8.0.3
       make-error: 1.3.6
       typescript: 5.9.2
       v8-compile-cache-lib: 3.0.1
@@ -36652,7 +36733,7 @@ snapshots:
       acorn-walk: 8.3.4
       arg: 4.1.3
       create-require: 1.1.1
-      diff: 4.0.2
+      diff: 8.0.3
       make-error: 1.3.6
       typescript: 5.9.2
       v8-compile-cache-lib: 3.0.1
@@ -36698,7 +36779,7 @@ snapshots:
       ansis: 4.2.0
       cac: 6.7.14
       chokidar: 4.0.3
-      diff: 8.0.2
+      diff: 8.0.3
       empathic: 2.0.0
       hookable: 5.5.3
       obug: 2.1.1
@@ -36831,7 +36912,7 @@ snapshots:
     dependencies:
       content-type: 1.0.5
       media-typer: 1.1.0
-      mime-types: 3.0.1
+      mime-types: 3.0.2
 
   type-of-is@3.5.1: {}
 
@@ -36967,11 +37048,9 @@ snapshots:
     dependencies:
       '@fastify/busboy': 2.1.1
 
-  undici@6.21.3: {}
+  undici@6.23.0: {}
 
-  undici@7.10.0: {}
-
-  undici@7.16.0: {}
+  undici@7.18.2: {}
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
@@ -37158,7 +37237,7 @@ snapshots:
 
   v-code-diff@1.13.1(patch_hash=21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9)(vue@3.5.26(typescript@5.9.2)):
     dependencies:
-      diff: 5.2.0
+      diff: 8.0.3
       diff-match-patch: 1.0.5
       highlight.js: 11.11.1
       vue: 3.5.26(typescript@5.9.2)
@@ -37545,6 +37624,8 @@ snapshots:
     dependencies:
       xml-name-validator: 5.0.0
 
+  wa-sqlite@https://codeload.github.com/rhashimoto/wa-sqlite/tar.gz/779219540f66cecaa159da32b3b8936697ba10a7: {}
+
   walkdir@0.4.1: {}
 
   walker@1.0.8:
@@ -37902,6 +37983,8 @@ snapshots:
   yallist@3.1.1: {}
 
   yallist@4.0.0: {}
+
+  yallist@5.0.0: {}
 
   yaml-ast-parser@0.0.43: {}
 
