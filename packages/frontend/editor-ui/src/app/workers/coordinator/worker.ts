@@ -32,12 +32,17 @@ import {
 	getTabCount as getTabCountOp,
 } from './operations/query';
 import { loadNodeTypes as loadNodeTypesOp } from './operations/loadNodeTypes';
+import {
+	storeVersion as storeVersionOp,
+	getStoredVersion as getStoredVersionOp,
+} from './operations/storeVersion';
 import { initialize as initializeOp } from './initialize';
 
 const state: CoordinatorState = {
 	tabs: new Map(),
 	activeTabId: null,
 	initialized: false,
+	version: null,
 };
 
 // ============================================================================
@@ -61,9 +66,11 @@ const coordinatorApi = {
 
 	/**
 	 * Initialize the database (routes to active tab's worker)
+	 *
+	 * @param options.version - The current n8n version from settings
 	 */
-	async initialize(): Promise<void> {
-		await initializeOp(state);
+	async initialize({ version }: { version: string }): Promise<void> {
+		await initializeOp(state, { version });
 	},
 
 	/**
@@ -113,6 +120,20 @@ const coordinatorApi = {
 	 */
 	async loadNodeTypes(baseUrl: string): Promise<void> {
 		await loadNodeTypesOp(state, baseUrl);
+	},
+
+	/**
+	 * Store the n8n version (routes to active tab's worker)
+	 */
+	async storeVersion(version: string): Promise<void> {
+		await storeVersionOp(state, version);
+	},
+
+	/**
+	 * Get the stored n8n version (routes to active tab's worker)
+	 */
+	async getStoredVersion(): Promise<string | null> {
+		return await getStoredVersionOp(state);
 	},
 };
 

@@ -32,6 +32,16 @@ export const databaseSchema: DatabaseSchema = {
 				);
 			`,
 		},
+		metadata: {
+			name: 'metadata',
+			schema: `
+				CREATE TABLE IF NOT EXISTS metadata (
+					key TEXT PRIMARY KEY,
+					value TEXT NOT NULL,
+					updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+				);
+			`,
+		},
 	},
 } as const;
 

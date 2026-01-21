@@ -7,8 +7,12 @@ describe('Data Worker Database Schema', () => {
 			expect(databaseSchema.tables).toHaveProperty('nodeTypes');
 		});
 
-		it('should have exactly 1 table', () => {
-			expect(Object.keys(databaseSchema.tables)).toHaveLength(1);
+		it('should have exactly 2 tables', () => {
+			expect(Object.keys(databaseSchema.tables)).toHaveLength(2);
+		});
+
+		it('should have metadata table defined', () => {
+			expect(databaseSchema.tables).toHaveProperty('metadata');
 		});
 
 		describe('nodeTypes table', () => {
@@ -37,9 +41,9 @@ describe('Data Worker Database Schema', () => {
 			expect(Array.isArray(schemas)).toBe(true);
 		});
 
-		it('should return 1 schema (one for each table)', () => {
+		it('should return 2 schemas (one for each table)', () => {
 			const schemas = getAllTableSchemas();
-			expect(schemas).toHaveLength(1);
+			expect(schemas).toHaveLength(2);
 		});
 
 		it('should return strings containing CREATE TABLE statements', () => {

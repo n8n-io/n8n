@@ -26,6 +26,10 @@ import {
 	queryWithParams as queryWithParamsOp,
 	close as closeOp,
 } from './operations/query';
+import {
+	storeVersion as storeVersionOp,
+	getStoredVersion as getStoredVersionOp,
+} from './operations/storeVersion';
 import type { DataWorkerState, QueryResult, SQLiteAPI, SQLiteParam } from './types';
 
 export type { DataWorkerState, QueryResult, SQLiteAPI, SQLiteParam } from './types';
@@ -36,6 +40,7 @@ const state: DataWorkerState = {
 	db: null,
 	vfs: null,
 	initPromise: null,
+	version: null,
 };
 
 const DB_NAME = 'n8n';
@@ -80,8 +85,10 @@ function databaseAlreadyExists(): boolean {
 
 /**
  * Initialize the SQLite database with OPFS persistence
+ *
+ * @param options.version - The current n8n version from settings
  */
-async function initialize(): Promise<void> {
+async function initialize({ version }: { version: string }): Promise<void> {
 	// Return cached promise if initialization is already in progress
 	if (state.initPromise) {
 		return await state.initPromise;
@@ -144,6 +151,7 @@ async function initialize(): Promise<void> {
 		}
 
 		state.initialized = true;
+		state.version = version;
 	})();
 
 	try {
@@ -199,6 +207,20 @@ async function loadNodeTypes(baseUrl: string): Promise<void> {
 	await loadNodeTypesOp(state, baseUrl);
 }
 
+/**
+ * Store the n8n version in the database
+ */
+async function storeVersion(version: string): Promise<void> {
+	await storeVersionOp(state, version);
+}
+
+/**
+ * Get the stored n8n version from the database
+ */
+async function getStoredVersion(): Promise<string | null> {
+	return await getStoredVersionOp(state);
+}
+
 // Export the worker API
 export const dataWorkerApi = {
 	initialize,
@@ -208,6 +230,8 @@ export const dataWorkerApi = {
 	close,
 	isInitialized,
 	loadNodeTypes,
+	storeVersion,
+	getStoredVersion,
 };
 
 export type DataWorkerApi = typeof dataWorkerApi;
