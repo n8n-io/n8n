@@ -27,6 +27,7 @@ import {
 	addFormResponseDataToReturnItem,
 	validateSafeRedirectUrl,
 } from '../utils/utils';
+import { isIpWhitelisted } from '../../Webhook/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -2777,9 +2778,6 @@ describe('FormTrigger, prepareFormData - Default Value', () => {
 
 describe('FormTrigger IP Whitelist', () => {
 	describe('isIpWhitelisted (reused from Webhook)', () => {
-		// Import the function from Webhook utils for testing
-		const { isIpWhitelisted } = require('../../Webhook/utils');
-
 		it('should return true if whitelist is undefined', () => {
 			expect(isIpWhitelisted(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
 		});
