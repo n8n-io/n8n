@@ -44,6 +44,16 @@ describe('RoleCacheService', () => {
 				scopes: ['workflow:read', 'workflow:update', 'credential:read'],
 			},
 		},
+		externalSecretsProvider: {
+			'externalSecretsProvider:owner': {
+				scopes: [
+					'externalSecretsProvider:read',
+					'externalSecretsProvider:update',
+					'externalSecretsProvider:delete',
+					'externalSecretsProvider:sync',
+				],
+			},
+		},
 	};
 
 	beforeEach(() => {
@@ -83,6 +93,19 @@ describe('RoleCacheService', () => {
 			expect(result).toContain('credential:owner');
 			expect(result).not.toContain('project:admin');
 			expect(result).not.toContain('workflow:owner');
+		});
+
+		it('should return externalSecretsProvider roles matching required scopes', async () => {
+			cacheService.get.mockResolvedValue(mockRoleScopeMap);
+
+			const result = await roleCacheService.getRolesWithAllScopes('externalSecretsProvider', [
+				'externalSecretsProvider:read',
+				'externalSecretsProvider:sync',
+			]);
+
+			expect(result).toContain('externalSecretsProvider:owner');
+			expect(result).not.toContain('credential:owner');
+			expect(result).not.toContain('project:admin');
 		});
 
 		it('should exclude roles missing any required scope', async () => {
