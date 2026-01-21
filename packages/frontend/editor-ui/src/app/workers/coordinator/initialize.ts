@@ -4,11 +4,19 @@ import type { CoordinatorState } from './types';
 /**
  * Ensure the coordinator is initialized before performing operations
  *
+ * Uses the stored version from state if already initialized, otherwise
+ * requires the version to be provided.
+ *
  * @param state - The coordinator state
  */
 export async function ensureInitialized(state: CoordinatorState): Promise<void> {
 	if (!state.initialized) {
-		await initialize(state);
+		if (!state.version) {
+			throw new Error(
+				'[Coordinator] Cannot auto-initialize without version. Call initialize({ version }) first.',
+			);
+		}
+		await initialize(state, { version: state.version });
 	}
 }
 
@@ -20,9 +28,16 @@ export async function ensureInitialized(state: CoordinatorState): Promise<void> 
  * whether it has successfully initialized with the current active worker.
  *
  * @param state - The coordinator state
+ * @param options.version - The current n8n version from settings
  */
-export async function initialize(state: CoordinatorState): Promise<void> {
+export async function initialize(
+	state: CoordinatorState,
+	{ version }: { version: string },
+): Promise<void> {
 	console.log('[Coordinator] Initialize requested');
+
+	// Store the version in state for future ensureInitialized calls
+	state.version = version;
 
 	if (state.initialized) {
 		console.log('[Coordinator] Already initialized');
@@ -30,7 +45,7 @@ export async function initialize(state: CoordinatorState): Promise<void> {
 	}
 
 	const worker = getRequiredActiveDataWorker(state);
-	await worker.initialize();
+	await worker.initialize({ version });
 	state.initialized = true;
 	console.log('[Coordinator] Initialization complete');
 }
