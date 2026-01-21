@@ -1,6 +1,7 @@
-import { SecretsProviderConnection } from '@n8n/db/src/entities/secrets-provider-connection';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
+
+import { SecretsProviderConnection } from '../entities';
 
 @Service()
 export class SecretsProviderConnectionRepository extends Repository<SecretsProviderConnection> {

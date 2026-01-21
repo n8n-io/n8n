@@ -72,6 +72,8 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	SecretsProviderConnection,
+	SharedSecretsProviderConnection,
 };
 
 export const entities = {
