@@ -559,7 +559,7 @@ export class ChatHubService {
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 		return await this.chatHubWorkflowService.createChatWorkflow(
-			user.id,
+			user,
 			sessionId,
 			projectId,
 			history,

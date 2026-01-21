@@ -318,34 +318,6 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		return buffer;
 	}
 
-	/**
-	 * Deserialize vector from storage (convert buffer to float array)
-	 */
-	private deserializeVector(buffer: Buffer): number[] {
-		const vector: number[] = [];
-		for (let i = 0; i < buffer.length; i += 4) {
-			vector.push(buffer.readFloatLE(i));
-		}
-		return vector;
-	}
-
-	/**
-	 * Compute cosine similarity between two vectors
-	 */
-	private cosineSimilarity(a: number[], b: number[]): number {
-		let dotProduct = 0;
-		let normA = 0;
-		let normB = 0;
-
-		for (let i = 0; i < a.length; i++) {
-			dotProduct += a[i] * b[i];
-			normA += a[i] * a[i];
-			normB += b[i] * b[i];
-		}
-
-		return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-	}
-
 	private getTableName(name: string): string {
 		const { tablePrefix } = this.databaseConfig;
 		return this.manager.connection.driver.escape(`${tablePrefix}${name}`);

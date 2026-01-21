@@ -1,5 +1,6 @@
 import {
 	ChatHubConversationModel,
+	chatHubLLMProviderSchema,
 	ChatSessionId,
 	type ChatHubBaseLLMModel,
 	type ChatHubInputModality,
@@ -14,6 +15,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 	ExecutionRepository,
+	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
@@ -59,6 +61,9 @@ import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ActiveExecutions } from '@/active-executions';
 import { InstanceSettings } from 'n8n-core';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
+import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -70,10 +75,59 @@ export class ChatHubWorkflowService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
+		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 	) {}
 
+	/**
+	 * Finds a usable embeddings provider from chat provider settings.
+	 * Returns the provider and credential ID if found, or null if none available.
+	 * Also checks if the user has permission to use the credential.
+	 */
+	private async findUsableEmbeddingsProvider(user: User): Promise<{
+		provider: ChatHubLLMProvider;
+		credentialId: string;
+	} | null> {
+		const allSettings = await this.chatHubSettingsService.getAllProviderSettings();
+
+		// Find a provider that supports embeddings and has credentials configured in settings
+		for (const provider of chatHubLLMProviderSchema.options) {
+			const settings = allSettings[provider];
+
+			// Check if provider supports embeddings
+			if (!EMBEDDINGS_NODE_TYPE_MAP[provider]) {
+				continue;
+			}
+
+			// Check if provider is enabled
+			if (!settings.enabled) {
+				continue;
+			}
+
+			// Check if provider has credentials configured in the settings
+			if (!settings.credentialId) {
+				continue;
+			}
+
+			// Check if user has permission to use this credential
+			try {
+				await this.chatHubCredentialsService.ensureCredentialAccess(user, settings.credentialId);
+			} catch {
+				// User doesn't have access to this credential, try next provider
+				continue;
+			}
+
+			return {
+				provider,
+				credentialId: settings.credentialId,
+			};
+		}
+
+		return null;
+	}
+
 	async createChatWorkflow(
-		userId: string,
+		user: User,
 		sessionId: ChatSessionId,
 		projectId: string,
 		history: ChatHubMessage[],
@@ -94,11 +148,11 @@ export class ChatHubWorkflowService {
 	}> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
 			this.logger.debug(
-				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
+				`Creating chat workflow for user ${user.id} and session ${sessionId}, provider ${model.provider}`,
 			);
 
 			const { nodes, connections, executionData } = await this.buildChatWorkflow({
-				userId,
+				user,
 				sessionId,
 				history,
 				humanMessage,
@@ -283,7 +337,7 @@ export class ChatHubWorkflowService {
 	}
 
 	private async buildChatWorkflow({
-		userId,
+		user,
 		sessionId,
 		history,
 		humanMessage,
@@ -295,7 +349,7 @@ export class ChatHubWorkflowService {
 		tools,
 		agentId,
 	}: {
-		userId: string;
+		user: User;
 		sessionId: ChatSessionId;
 		history: ChatHubMessage[];
 		humanMessage: string;
@@ -321,7 +375,7 @@ export class ChatHubWorkflowService {
 
 		const vectorStoreNodes =
 			shouldIncludeVectorStoreTool && agentId
-				? this.buildVectorStoreNodes(userId, agentId, pdfFiles, model, credentials)
+				? await this.buildVectorStoreNodes(user, agentId, pdfFiles, model, credentials)
 				: [];
 
 		const nodes: INode[] = [
@@ -478,7 +532,7 @@ export class ChatHubWorkflowService {
 				nodeExecutionStack,
 			},
 			manualData: {
-				userId,
+				userId: user.id,
 			},
 		});
 
@@ -1075,28 +1129,54 @@ Respond the title only:`,
 		return 'file';
 	}
 
-	private buildVectorStoreNodes(
-		userId: string,
+	private async buildVectorStoreNodes(
+		user: User,
 		agentId: string,
 		pdfFiles: IBinaryData[],
 		model: ChatHubBaseLLMModel,
 		credentials: INodeCredentials,
-	): INode[] {
-		const embeddingsModelNode = this.buildEmbeddingsModelNode(model, credentials);
-		const vectorStoreNode = this.buildVectorStoreNode(userId, agentId);
+	): Promise<INode[]> {
+		const embeddingsModelNode = await this.buildEmbeddingsModelNode(
+			user,
+			model.provider,
+			credentials,
+		);
+		const vectorStoreNode = this.buildVectorStoreNode(user.id, agentId);
 		const vectorStoreQuestionToolNode = this.buildVectorStoreQuestionToolNode(pdfFiles);
 
 		return [embeddingsModelNode, vectorStoreNode, vectorStoreQuestionToolNode];
 	}
 
-	private buildEmbeddingsModelNode(
-		model: ChatHubBaseLLMModel,
+	private async buildEmbeddingsModelNode(
+		user: User,
+		provider: ChatHubLLMProvider,
 		credentials: INodeCredentials,
-	): INode {
-		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[model.provider];
+	): Promise<INode> {
+		let embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[provider];
+		let embeddingsCredentials = credentials;
+
 		if (!embeddingsNodeType) {
+			// Try to find a usable embeddings provider from settings
+			const fallbackProvider = await this.findUsableEmbeddingsProvider(user);
+
+			if (fallbackProvider) {
+				embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[fallbackProvider.provider]!;
+				const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[fallbackProvider.provider];
+				embeddingsCredentials = {
+					[credentialType]: {
+						id: fallbackProvider.credentialId,
+						name: credentialType,
+					},
+				};
+				this.logger.debug(
+					`Using fallback embeddings provider '${fallbackProvider.provider}' instead of '${provider}'`,
+				);
+			}
+		}
+
+		if (!embeddingsCredentials || !embeddingsNodeType) {
 			throw new BadRequestError(
-				`Embeddings are not supported for provider '${model.provider}'. Please select a different model provider that supports embeddings.`,
+				`Embeddings are not supported for provider '${provider}'. Please select a different model provider that supports embeddings.`,
 			);
 		}
 
@@ -1109,7 +1189,7 @@ Respond the title only:`,
 			position: [800, 720],
 			id: uuidv4(),
 			name: NODE_NAMES.EMBEDDINGS_MODEL,
-			credentials,
+			credentials: embeddingsCredentials,
 		};
 	}
 
@@ -1152,7 +1232,7 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 	}
 
 	async createDocumentsInsertionWorkflow(
-		userId: string,
+		user: User,
 		agentId: string,
 		projectId: string,
 		attachments: IBinaryData[],
@@ -1160,13 +1240,6 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 		credentials: INodeCredentials,
 		trx: EntityManager,
 	) {
-		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[provider];
-		if (!embeddingsNodeType) {
-			throw new BadRequestError(
-				`Embeddings are not supported for provider '${provider}'. Please select a different model provider that supports embeddings.`,
-			);
-		}
-
 		const triggerNode: INode = {
 			parameters: {
 				options: {
@@ -1182,15 +1255,9 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 		};
 
 		const embeddingsNode: INode = {
-			parameters: {
-				options: {},
-			},
-			type: embeddingsNodeType.name,
-			typeVersion: embeddingsNodeType.version,
+			...(await this.buildEmbeddingsModelNode(user, provider, credentials)),
 			position: [128, 464],
-			id: uuidv4(),
 			name: 'Embeddings Model',
-			credentials,
 		};
 
 		const nodes: INode[] = [
@@ -1199,7 +1266,7 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 					mode: 'insert',
 					memoryKey: {
 						__rl: true,
-						value: this.getAgentMemoryKey(userId, agentId),
+						value: this.getAgentMemoryKey(user.id, agentId),
 						mode: 'list',
 						cachedResultName: '',
 					},
@@ -1330,7 +1397,7 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 						nodeExecutionStack,
 					},
 					manualData: {
-						userId,
+						userId: user.id,
 					},
 				}),
 			};

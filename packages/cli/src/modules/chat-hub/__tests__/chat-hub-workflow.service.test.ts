@@ -11,6 +11,9 @@ import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
+import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
+import type { UserRepository } from '@n8n/db';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -36,6 +39,9 @@ describe('ChatHubWorkflowService', () => {
 		const activeExecutions = mock<ActiveExecutions>();
 		const instanceSettings = mock<InstanceSettings>();
 		const executionRepository = mock<ExecutionRepository>();
+		const chatHubSettingsService = mock<ChatHubSettingsService>();
+		const chatHubCredentialsService = mock<ChatHubCredentialsService>();
+		const userRepository = mock<UserRepository>();
 
 		service = new ChatHubWorkflowService(
 			logger,
@@ -45,6 +51,8 @@ describe('ChatHubWorkflowService', () => {
 			activeExecutions,
 			instanceSettings,
 			executionRepository,
+			chatHubSettingsService,
+			chatHubCredentialsService,
 		);
 
 		// Mock repository methods
@@ -82,6 +90,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -136,6 +145,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -201,6 +211,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -247,6 +258,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -302,6 +314,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -361,6 +374,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -443,6 +457,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -520,6 +535,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -578,6 +594,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4-turbo' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
@@ -625,6 +642,7 @@ describe('ChatHubWorkflowService', () => {
 					{ provider: 'openai', model: 'gpt-4' },
 					undefined,
 					[],
+					null,
 					'UTC',
 				);
 
