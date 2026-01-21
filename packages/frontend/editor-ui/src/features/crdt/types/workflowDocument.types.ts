@@ -151,6 +151,15 @@ export interface WorkflowDocument {
 	/** Remove a node by ID */
 	removeNode(nodeId: string): void;
 
+	/**
+	 * Remove multiple nodes and edges in a single atomic transaction.
+	 * Also adds any reconnection edges (for node deletion with auto-reconnect).
+	 * @param nodeIds - Node IDs to remove
+	 * @param edgeIds - Edge IDs to remove
+	 * @param reconnections - New edges to add (for reconnecting around deleted nodes)
+	 */
+	removeNodesAndEdges(nodeIds: string[], edgeIds: string[], reconnections: WorkflowEdge[]): void;
+
 	/** Update node positions (batch) */
 	updateNodePositions(updates: NodePositionChange[]): void;
 

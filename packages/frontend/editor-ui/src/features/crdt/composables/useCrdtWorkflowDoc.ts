@@ -1,6 +1,13 @@
 import { computed, onScopeDispose } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { CRDTDoc, CRDTMap, DeepChange, ChangeOrigin, CRDTAwareness } from '@n8n/crdt';
+import type {
+	CRDTDoc,
+	CRDTMap,
+	DeepChange,
+	ChangeOrigin,
+	CRDTAwareness,
+	TransactionBatch,
+} from '@n8n/crdt';
 import { isMapChange, ChangeOrigin as CO, seedValueDeep, toJSON, setNestedValue } from '@n8n/crdt';
 import { useCRDTSync } from './useCRDTSync';
 import type {
@@ -66,9 +73,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	const edgeRemovedHook = createEventHook<string>();
 	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes (any origin)
 
-	// Cleanup functions for map subscriptions
-	let unsubscribeNodesChange: (() => void) | null = null;
-	let unsubscribeEdgesChange: (() => void) | null = null;
+	// Cleanup function for transaction batch subscription
+	let unsubscribeTransactionBatch: (() => void) | null = null;
 
 	// --- Helpers ---
 
@@ -238,19 +244,24 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	crdt.onReady((crdtDoc) => {
 		doc = crdtDoc;
 
-		const nodesMap = doc.getMap('nodes');
-		const edgesMap = doc.getMap('edges');
+		// Subscribe to batched changes from both nodes and edges maps.
+		// This fires once per transaction with all changes batched together,
+		// ensuring nodes are processed before edges (avoiding "source or target missing" errors).
+		unsubscribeTransactionBatch = doc.onTransactionBatch(
+			['nodes', 'edges'],
+			(batch: TransactionBatch) => {
+				const nodeChanges = batch.changes.get('nodes') ?? [];
+				const edgeChanges = batch.changes.get('edges') ?? [];
 
-		// Subscribe to deep changes on nodes map
-		// Local add needs Vue Flow update; remote changes need Vue Flow update
-		unsubscribeNodesChange = nodesMap.onDeepChange((changes, origin) => {
-			handleChanges(changes, origin);
-		});
-
-		// Subscribe to edge changes
-		unsubscribeEdgesChange = edgesMap.onDeepChange((changes, origin) => {
-			handleEdgeChanges(changes, origin);
-		});
+				// Process nodes first, then edges - all from the same transaction
+				if (nodeChanges.length > 0) {
+					handleChanges(nodeChanges, batch.origin);
+				}
+				if (edgeChanges.length > 0) {
+					handleEdgeChanges(edgeChanges, batch.origin);
+				}
+			},
+		);
 	});
 
 	// --- Data Access ---
@@ -368,6 +379,50 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		// No hook trigger - Vue Flow already removed the node before calling this
 	}
 
+	/**
+	 * Remove multiple nodes and edges in a single atomic transaction.
+	 * Also adds any reconnection edges (for node deletion with auto-reconnect).
+	 */
+	function removeNodesAndEdges(
+		nodeIds: string[],
+		edgeIds: string[],
+		reconnections: WorkflowEdge[],
+	): void {
+		if (!doc) return;
+		if (nodeIds.length === 0 && edgeIds.length === 0 && reconnections.length === 0) return;
+
+		doc.transact(() => {
+			// Add reconnection edges first (so undo will remove them last)
+			if (reconnections.length > 0) {
+				const edgesMap = doc!.getMap('edges');
+				for (const edge of reconnections) {
+					const crdtEdge = doc!.createMap();
+					crdtEdge.set('source', edge.source);
+					crdtEdge.set('target', edge.target);
+					crdtEdge.set('sourceHandle', edge.sourceHandle);
+					crdtEdge.set('targetHandle', edge.targetHandle);
+					edgesMap.set(edge.id, crdtEdge);
+				}
+			}
+
+			// Remove old edges
+			if (edgeIds.length > 0) {
+				const edgesMap = doc!.getMap('edges');
+				for (const edgeId of edgeIds) {
+					edgesMap.delete(edgeId);
+				}
+			}
+
+			// Remove nodes
+			if (nodeIds.length > 0) {
+				const nodesMap = doc!.getMap('nodes');
+				for (const nodeId of nodeIds) {
+					nodesMap.delete(nodeId);
+				}
+			}
+		});
+	}
+
 	function updateNodePositions(updates: NodePositionChange[]): void {
 		if (!doc || updates.length === 0) return;
 
@@ -468,10 +523,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	}
 
 	function disconnect(): void {
-		unsubscribeNodesChange?.();
-		unsubscribeNodesChange = null;
-		unsubscribeEdgesChange?.();
-		unsubscribeEdgesChange = null;
+		unsubscribeTransactionBatch?.();
+		unsubscribeTransactionBatch = null;
 		crdt.disconnect();
 		doc = null;
 	}
@@ -504,6 +557,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		addNodes,
 		addNodesAndEdges,
 		removeNode,
+		removeNodesAndEdges,
 		updateNodePositions,
 		updateNodeParams,
 		updateNodeParamAtPath,

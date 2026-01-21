@@ -250,7 +250,6 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 		if (isSynced) {
 			state.value = 'ready';
 			if (currentDoc) {
-				console.log('[useCRDTSync] Doc synced, triggering onReady...');
 				// Trigger onReady FIRST so consumers can access doc.getMap('nodes') etc.
 				// This ensures the types exist in yDoc.share before undo manager is created.
 				void readyHook.trigger(currentDoc);
@@ -264,12 +263,13 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 				// The Yjs UndoManager scopes to types that exist at creation time,
 				// so we need the 'nodes' map to be accessed first
 				if (!currentUndoManager) {
-					console.log('[useCRDTSync] Creating undo manager...');
 					currentUndoManager = currentDoc.createUndoManager({ captureTimeout: 500 });
-					console.log('[useCRDTSync] Undo manager created, subscribing to stack changes...');
+					// Clear any initialization artifacts from the undo stack.
+					// During sync, accessing maps via getMap() may create transactions
+					// that get captured by the undo manager before it fully initializes.
+					currentUndoManager.clear();
 					unsubscribeUndoStackChange = currentUndoManager.onStackChange(
 						(event: UndoStackChangeEvent) => {
-							console.log('[useCRDTSync] Stack change:', event);
 							canUndo.value = event.canUndo;
 							canRedo.value = event.canRedo;
 						},
@@ -284,9 +284,11 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 
 	/**
 	 * Handle local document updates - send to transport for broadcast.
+	 * Broadcasts both local changes and undo/redo operations to other users.
+	 * Only filters out remote changes (to avoid echo).
 	 */
 	function handleDocUpdate(update: Uint8Array, origin: ChangeOrigin): void {
-		if (origin !== ChangeOrigin.local || !transport?.connected) return;
+		if (origin === ChangeOrigin.remote || !transport?.connected) return;
 		transport.send(encodeMessage(MESSAGE_SYNC, update));
 	}
 

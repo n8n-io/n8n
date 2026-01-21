@@ -9,6 +9,7 @@ export type {
 	ArrayChangeEvent,
 	DeepChangeEvent,
 	DeepChange,
+	TransactionBatch,
 	CRDTArray,
 	CRDTMap,
 	CRDTDoc,

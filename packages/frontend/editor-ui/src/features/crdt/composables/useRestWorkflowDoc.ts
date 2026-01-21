@@ -200,6 +200,19 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		nodesCache.value = nodesCache.value.filter((n) => n.id !== nodeId);
 	}
 
+	function removeNodesAndEdges(
+		nodeIds: string[],
+		edgeIds: string[],
+		reconnections: WorkflowEdge[],
+	): void {
+		// Add reconnection edges first, then remove old edges and nodes
+		edgesCache.value = [
+			...edgesCache.value.filter((e) => !edgeIds.includes(e.id)),
+			...reconnections,
+		];
+		nodesCache.value = nodesCache.value.filter((n) => !nodeIds.includes(n.id));
+	}
+
 	function updateNodePositions(updates: NodePositionChange[]): void {
 		if (updates.length === 0) return;
 
@@ -264,6 +277,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		addNodes,
 		addNodesAndEdges,
 		removeNode,
+		removeNodesAndEdges,
 		updateNodePositions,
 		updateNodeParams,
 		addEdge,
