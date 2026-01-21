@@ -26,6 +26,7 @@ export interface CoordinatorState {
 	tabs: Map<string, TabConnection>;
 	activeTabId: string | null;
 	initialized: boolean;
+	version: string | null;
 }
 
 /**

@@ -441,7 +441,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getPublishedIndicator(): Locator {
-		return this.page.getByTestId('workflow-active-version-indicator');
+		return this.page.getByRole('button', { name: 'Published' });
 	}
 
 	getLoadingMask(): Locator {

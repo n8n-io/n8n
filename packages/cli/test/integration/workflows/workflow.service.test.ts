@@ -15,6 +15,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -29,6 +30,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
+import { WebhookService } from '@/webhooks/webhook.service';
 
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
@@ -38,6 +40,7 @@ let workflowHistoryService: WorkflowHistoryService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
+const webhookServiceMock = mockInstance(WebhookService);
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -70,12 +73,14 @@ beforeAll(async () => {
 		workflowPublishHistoryRepository,
 		workflowValidationService,
 		nodeTypes,
+		webhookServiceMock,
 	);
 });
 
 beforeEach(() => {
 	workflowValidationService.validateForActivation.mockReturnValue({ isValid: true });
 	workflowValidationService.validateSubWorkflowReferences.mockResolvedValue({ isValid: true });
+	webhookServiceMock.findWebhookConflicts.mockResolvedValue([]);
 });
 
 afterEach(async () => {
@@ -220,6 +225,168 @@ describe('activateWorkflow()', () => {
 			versionId: newVersionId,
 			userId: owner.id,
 		});
+	});
+
+	test('should throw an error when webhook conflicts were found', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		webhookServiceMock.findWebhookConflicts.mockResolvedValue([
+			{
+				trigger: {
+					id: '',
+					name: '',
+					typeVersion: 0,
+					type: '',
+					position: [1, 2],
+					parameters: {},
+				},
+				conflict: {
+					webhookId: 'some-id',
+					webhookPath: 'some-path',
+					workflowId: 'workflow-123',
+					method: 'GET',
+				},
+			},
+		]);
+
+		await expect(
+			workflowService.activateWorkflow(owner, workflow.id, {
+				versionId: newVersionId,
+			}),
+		).rejects.toThrow('There is a conflict with one of the webhooks.');
+	});
+
+	test('should use nodes from correct workflow version when checking conflicts and versionId is passed', async () => {
+		const owner = await createOwner();
+		const oldVersionId = uuid();
+		const oldNodes: INode[] = [
+			{
+				id: '123',
+				webhookId: 'version1',
+				name: 'test',
+				typeVersion: 0,
+				type: '',
+				position: [1, 2],
+				parameters: {},
+			},
+			{
+				id: '345',
+				webhookId: 'version1-2',
+				name: 'test2',
+				typeVersion: 0,
+				type: '',
+				position: [1, 2],
+				parameters: {},
+			},
+		];
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: oldNodes,
+				versionId: oldVersionId,
+			},
+			owner,
+		);
+
+		const newVersionId = uuid();
+		const newNodes: INode[] = [
+			{
+				id: '123',
+				webhookId: 'version2',
+				name: '',
+				typeVersion: 0,
+				type: '',
+				position: [1, 2],
+				parameters: {},
+			},
+		];
+		await workflowService.update(
+			owner,
+			{
+				nodes: newNodes,
+			} as WorkflowEntity,
+			workflow.id,
+		);
+		await createWorkflowHistoryItem(workflow.id, {
+			versionId: newVersionId,
+			nodes: [
+				{
+					id: '123',
+					webhookId: 'version2',
+					name: 'newNode',
+					typeVersion: 0,
+					type: '',
+					position: [1, 2],
+					parameters: {},
+				},
+			],
+		});
+
+		await workflowService.activateWorkflow(owner, workflow.id, {
+			versionId: oldVersionId,
+		});
+
+		expect(webhookServiceMock.findWebhookConflicts.mock.calls[0][0].nodes).toEqual(
+			oldNodes.reduce((res, node) => ({ ...res, [node.name]: node }), {}),
+		);
+	});
+
+	test('should use nodes from latest workflow version when checking conflicts and no versionId is passed', async () => {
+		const owner = await createOwner();
+		const oldNodes: INode[] = [
+			{
+				id: '123',
+				webhookId: 'version1',
+				name: 'test',
+				typeVersion: 0,
+				type: '',
+				position: [1, 2],
+				parameters: {},
+			},
+			{
+				id: '345',
+				webhookId: 'version1-2',
+				name: 'test2',
+				typeVersion: 0,
+				type: '',
+				position: [1, 2],
+				parameters: {},
+			},
+		];
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: oldNodes,
+				versionId: uuid(),
+			},
+			owner,
+		);
+
+		const newNodes: INode[] = [
+			{
+				id: '123',
+				webhookId: 'version2',
+				name: 'newNode',
+				typeVersion: 0,
+				type: '',
+				position: [1, 2],
+				parameters: {},
+			},
+		];
+		await workflowService.update(
+			owner,
+			{
+				nodes: newNodes,
+			} as WorkflowEntity,
+			workflow.id,
+		);
+
+		await workflowService.activateWorkflow(owner, workflow.id, {});
+
+		expect(webhookServiceMock.findWebhookConflicts.mock.calls[0][0].nodes).toEqual(
+			newNodes.reduce((res, node) => ({ ...res, [node.name]: node }), {}),
+		);
 	});
 
 	test('should not activate workflow if validation fails and keep old active version', async () => {
