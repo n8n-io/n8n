@@ -60,7 +60,7 @@ export interface ProgrammaticChecksResult {
 	tools: ProgrammaticViolation[];
 	fromAi: ProgrammaticViolation[];
 	credentials: ProgrammaticViolation[];
-	webhookResponse: ProgrammaticViolation[];
+	nodeUsage: ProgrammaticViolation[];
 }
 
 export interface ProgrammaticEvaluationResult {
@@ -72,7 +72,7 @@ export interface ProgrammaticEvaluationResult {
 	tools: SingleEvaluatorResult;
 	fromAi: SingleEvaluatorResult;
 	credentials: SingleEvaluatorResult;
-	webhookResponse: SingleEvaluatorResult;
+	nodeUsage: SingleEvaluatorResult;
 	similarity: SingleEvaluatorResult | null;
 }
 

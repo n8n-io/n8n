@@ -2,7 +2,7 @@ import { getChildNodes } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-import type { ProgrammaticViolation } from '../types';
+import type { ProgrammaticViolation } from '../../types';
 
 const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
@@ -11,8 +11,7 @@ const RESPOND_TO_WEBHOOK_NODE_TYPE = 'n8n-nodes-base.respondToWebhook';
  * Gets the responseMode from a webhook node's parameters
  */
 function getResponseMode(node: SimpleWorkflow['nodes'][0]): string | undefined {
-	const params = node.parameters ?? {};
-	return params.responseMode as string | undefined;
+	return node.parameters?.responseMode as string | undefined;
 }
 
 /**

@@ -5,11 +5,12 @@ export function calculateOverallScore(
 ): number {
 	// Base weights for when similarity is not available
 	const baseWeights = {
-		connections: 0.25,
-		trigger: 0.25,
-		agentPrompt: 0.2,
-		tools: 0.2,
-		fromAi: 0.1,
+		connections: 0.22,
+		trigger: 0.22,
+		agentPrompt: 0.18,
+		tools: 0.18,
+		fromAi: 0.08,
+		nodeUsage: 0.12,
 	};
 
 	// If similarity is available, adjust weights to include it
@@ -19,11 +20,12 @@ export function calculateOverallScore(
 	if (evaluatorResults.similarity) {
 		// Rebalance weights to include similarity (20% weight)
 		weights = {
-			connections: 0.2,
-			trigger: 0.2,
-			agentPrompt: 0.16,
-			tools: 0.16,
-			fromAi: 0.08,
+			connections: 0.18,
+			trigger: 0.18,
+			agentPrompt: 0.14,
+			tools: 0.14,
+			fromAi: 0.06,
+			nodeUsage: 0.1,
 			similarity: 0.2,
 		};
 		applicableCategories = Object.keys(evaluatorResults).filter(

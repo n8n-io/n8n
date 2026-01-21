@@ -1,7 +1,8 @@
 import type { IConnections, INodeParameters } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
-import { validateWebhookResponse } from '@/validation/checks/webhook-response';
+
+import { validateWebhookResponse } from './webhook-response';
 
 interface WebhookNodeOptions {
 	name?: string;
@@ -269,6 +270,20 @@ describe('validateWebhookResponse', () => {
 			const violations = validateWebhookResponse(workflow);
 
 			expect(violations).toHaveLength(0);
+		});
+
+		it('should handle workflow with undefined connections', () => {
+			const workflow = {
+				name: 'Test Workflow',
+				nodes: [createWebhookNode({ responseMode: 'responseNode' }), createRespondToWebhookNode()],
+				connections: undefined as unknown as IConnections,
+			} as SimpleWorkflow;
+
+			const violations = validateWebhookResponse(workflow);
+
+			// Should flag because connections is undefined, so no RespondToWebhook is connected
+			expect(violations).toHaveLength(1);
+			expect(violations[0].name).toBe('webhook-response-mode-missing-respond-node');
 		});
 	});
 });
