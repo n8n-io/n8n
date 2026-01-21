@@ -32,6 +32,7 @@ const props = defineProps<{
 	modalName: string;
 	data: {
 		afterInvite?: () => Promise<void>;
+		initialRole?: InvitableRoleName;
 	};
 }>();
 
@@ -50,7 +51,7 @@ const formBus = createFormEventBus();
 const modalBus = createEventBus();
 const config = ref<IFormInputs | null>();
 const emails = ref('');
-const role = ref<InvitableRoleName>(ROLE.Member);
+const role = ref<InvitableRoleName>(props.data.initialRole ?? ROLE.Member);
 const showInviteUrls = ref<IInviteResponse[] | null>(null);
 const loading = ref(false);
 
@@ -319,7 +320,7 @@ onMounted(() => {
 		},
 		{
 			name: 'role',
-			initialValue: ROLE.Member,
+			initialValue: props.data.initialRole ?? ROLE.Member,
 			properties: {
 				label: i18n.baseText('auth.role'),
 				required: true,

@@ -52,6 +52,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasRole } from '@/app/utils/rbac/checks';
 
 const router = useRouter();
 const route = useRoute();
@@ -85,6 +86,13 @@ const canSelectTools = computed(
 	() =>
 		selectedModel.value?.model.provider === 'custom-agent' ||
 		!!selectedModel.value?.metadata.capabilities.functionCalling,
+);
+
+const showWelcomeScreen = computed(
+	() =>
+		chatStore.sessionsReady &&
+		(chatStore.sessions.ids?.length ?? 0) === 0 &&
+		(!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser'])),
 );
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
@@ -624,6 +632,7 @@ function onFilesDropped(files: File[]) {
 		</div>
 
 		<ChatConversationHeader
+			v-if="!showWelcomeScreen"
 			ref="headerRef"
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
@@ -644,9 +653,11 @@ function onFilesDropped(files: File[]) {
 		>
 			<div :class="$style.scrollable" ref="scrollable">
 				<ChatStarter
-					v-if="isNewSession"
+					v-if="showWelcomeScreen"
 					:class="$style.starter"
 					:is-mobile-device="isMobileDevice"
+					:show-welcome-screen="showWelcomeScreen"
+					@start-new-chat="inputRef?.focus()"
 				/>
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
@@ -678,7 +689,7 @@ function onFilesDropped(files: File[]) {
 					/>
 				</div>
 
-				<div :class="$style.promptContainer">
+				<div v-if="!showWelcomeScreen" :class="$style.promptContainer">
 					<N8nIconButton
 						v-if="!arrivedState.bottom && !isNewSession"
 						type="secondary"
