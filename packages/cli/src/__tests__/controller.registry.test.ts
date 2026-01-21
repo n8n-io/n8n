@@ -10,12 +10,14 @@ import {
 	ControllerRegistryMetadata,
 	Param,
 	Get,
+	Post,
+	Body,
 	Licensed,
 	RestController,
 	RootLevelController,
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import express from 'express';
+import express, { json } from 'express';
 import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
 
@@ -23,6 +25,7 @@ import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
 import type { License } from '@/license';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
+import { RateLimitService } from '@/services/rate-limit.service';
 import type { SuperAgentTest } from '@test-integration/types';
 
 describe('ControllerRegistry', () => {
@@ -37,6 +40,7 @@ describe('ControllerRegistry', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 		const app = express();
+		app.use(json());
 		authService.createAuthMiddleware.mockImplementation(() => authMiddleware);
 		new ControllerRegistry(
 			license,
@@ -44,11 +48,12 @@ describe('ControllerRegistry', () => {
 			globalConfig,
 			metadata,
 			lastActiveAtService,
+			new RateLimitService(mock()),
 		).activate(app);
 		agent = testAgent(app);
 	});
 
-	describe('Rate limiting', () => {
+	describe('IP-based rate limiting', () => {
 		@RestController('/test')
 		// @ts-expect-error tsc complains about unused class
 		class TestController {
@@ -57,7 +62,7 @@ describe('ControllerRegistry', () => {
 				return { ok: true };
 			}
 
-			@Get('/rate-limited', { rateLimit: true })
+			@Get('/rate-limited', { ipRateLimit: true })
 			rateLimited() {
 				return { ok: true };
 			}
@@ -79,6 +84,91 @@ describe('ControllerRegistry', () => {
 				await agent.get('/rest/test/rate-limited').expect(200);
 			}
 			await agent.get('/rest/test/rate-limited').expect(429);
+		});
+	});
+
+	describe('Body-based keyed rate limiting', () => {
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Post('/body-keyed', {
+				skipAuth: true,
+				keyedRateLimit: {
+					limit: 3,
+					windowMs: 60_000,
+					source: 'body',
+					field: 'email',
+				},
+			})
+			bodyKeyed(@Body _body: { email: string }) {
+				return { ok: true };
+			}
+		}
+
+		beforeAll(() => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		test.each([null, undefined, [''], {}])(
+			'should not rate limit when keyed value is %s',
+			async (identifier) => {
+				for (let i = 0; i < 5; i++) {
+					await agent.post('/rest/test/body-keyed').send({ email: identifier }).expect(200);
+				}
+			},
+		);
+
+		it('should apply keyed rate limiting based on request body field', async () => {
+			const email = 'test@example.com';
+
+			for (let i = 0; i < 3; i++) {
+				await agent.post('/rest/test/body-keyed').send({ email }).expect(200);
+			}
+
+			await agent.post('/rest/test/body-keyed').send({ email }).expect(429);
+
+			await agent.post('/rest/test/body-keyed').send({ email: 'other@example.com' }).expect(200);
+		});
+	});
+
+	describe('User-based keyed rate limiting', () => {
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Post('/user-keyed', {
+				keyedRateLimit: {
+					limit: 3,
+					windowMs: 60_000,
+					source: 'user',
+				},
+			})
+			bodyKeyed(@Body _body: { email: string }) {
+				return { ok: true };
+			}
+		}
+
+		beforeEach(() => {
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = { id: 'user-1' };
+				next();
+			});
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('should apply keyed rate limiting based on user id', async () => {
+			for (let i = 0; i < 3; i++) {
+				await agent.post('/rest/test/user-keyed').send({}).expect(200);
+			}
+
+			await agent.post('/rest/test/user-keyed').send({}).expect(429);
+
+			authMiddleware.mockImplementation(async (req, _res, next) => {
+				req.user = { id: 'user-2' };
+				next();
+			});
+
+			await agent.post('/rest/test/user-keyed').send({}).expect(200);
 		});
 	});
 
