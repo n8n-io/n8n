@@ -36,13 +36,13 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'4637',
 	// '4678' - now passes after handleFanOut NodeChain fix
 	'4685',
-	'4721',
-	'4723',
+	// '4721', - now passes after shared fan-out target fix
+	// '4723', - now passes after shared fan-out target fix
 	'4767',
 	'4807',
 	'4827',
 	'4833',
-	'4846',
+	// '4846', - now passes after shared fan-out target fix
 	'4849',
 	'4868',
 	// '4912', - now passes after multiple triggers/convergence fixes
@@ -53,17 +53,17 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'5024',
 	'5045',
 	'5139',
-	'5163', // key mismatch (Merge vs Send Analysis)
+	// '5163', - now passes after shared fan-out target fix (was: key mismatch Merge vs Send Analysis)
 	'5258',
 	'5374', // has both a cycle AND a convergence pattern (Webflow+GoogleSheets1 → NoOp) that breaks roundtrip
 	// '5375', - now passes after multiple triggers/convergence fixes
 	// '5385', - now passes after multiple triggers/convergence fixes
-	'5434',
+	// '5434', - now passes after shared fan-out target fix
 	'5435',
 	'5449',
 	'5453',
 	'5523',
-	'5608',
+	// '5608', - now passes after shared fan-out target fix
 	'5611',
 	// '5617', - now passes after multiple triggers/convergence fixes
 	// '5618', - now passes after multiple triggers/convergence fixes
@@ -79,12 +79,12 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'5694',
 	// '5707', - now passes after multiple triggers/convergence fixes
 	// '5711', - now passes after multiple triggers/convergence fixes
-	'5734',
+	'5734', // still has connection source mismatch
 	'5741',
 	'5751',
 	// '5755', - now passes after multiple triggers/convergence fixes
-	'5779',
-	'5786',
+	// '5779', - now passes after shared fan-out target fix
+	// '5786', - now passes after shared fan-out target fix
 	// '5787' - now passes after handleFanOut NodeChain fix
 	'5789',
 	'5795',
@@ -92,10 +92,10 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '5798', - now passes after multiple triggers/convergence fixes
 	// '5799', - now passes after multiple triggers/convergence fixes
 	// '5808' - now passes after nested composite fix
-	'5817', // key mismatch (Merge vs Send email)
-	'5820',
+	// '5817', - now passes after shared fan-out target fix (was: key mismatch Merge vs Send email)
+	// '5820', - now passes after shared fan-out target fix
 	// '5832', - now passes after multiple triggers/convergence fixes
-	'5835',
+	// '5835', - now passes after shared fan-out target fix
 	'5841',
 	'5842',
 	'5851', // parse fixed, but connection mismatch (nodes: 13 vs 13, conns: 10 vs 9)
@@ -110,9 +110,9 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '6524' - now passes after handleFanOut NodeChain fix
 	'6535',
 	// '6538' - now passes after convergence pattern fix
-	'6542',
+	'6542', // still has connection source mismatch
 	// '6765', - now passes after multiple triggers/convergence fixes
-	'6771',
+	// '6771', - now passes after shared fan-out target fix
 	'6897',
 	'6993', // parse fixed, but connection mismatch (nodes: 32 vs 32, conns: 32 vs 31)
 	// '7130', - now passes after multiple triggers/convergence fixes
@@ -176,7 +176,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'12325',
 	// '12452', - now passes after multiple triggers/convergence fixes
 	'12462',
-	'12536',
+	// '12536', - now passes after shared fan-out target fix
 	'12645',
 	// '12739', - now passes after multiple triggers/convergence fixes
 ]);

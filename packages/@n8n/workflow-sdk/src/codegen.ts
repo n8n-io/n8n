@@ -640,6 +640,149 @@ function generateVarName(nodeName: string | null | undefined): string {
 }
 
 /**
+ * Check if targetNode is reachable from startNode by following the chain.
+ */
+function isNodeReachableFrom(
+	startNodeName: string,
+	targetNodeName: string,
+	nodeInfoMap: Map<string, NodeInfo>,
+	addedNodes: Set<string>,
+): boolean {
+	const visited = new Set<string>();
+	const stack = [startNodeName];
+
+	while (stack.length > 0) {
+		const current = stack.pop()!;
+		if (current === targetNodeName) return true;
+		if (visited.has(current)) continue;
+		visited.add(current);
+
+		const currentInfo = nodeInfoMap.get(current);
+		if (!currentInfo || currentInfo.isSubnodeOf) continue;
+
+		for (const [, targets] of currentInfo.outgoingConnections) {
+			for (const target of targets) {
+				if (!visited.has(target.to) && !addedNodes.has(target.to)) {
+					stack.push(target.to);
+				}
+			}
+		}
+	}
+	return false;
+}
+
+/**
+ * Generate a node call with chain, but use shared variable references for certain nodes.
+ * Handles IF/Switch nodes' multi-output structure properly.
+ */
+function generateNodeCallWithChainUsingSharedVars(
+	startInfo: NodeInfo,
+	nodeInfoMap: Map<string, NodeInfo>,
+	addedNodes: Set<string>,
+	sharedVars: Map<string, string>,
+	cycleNodeVars?: Map<string, string>,
+): string {
+	// Handle IF node specially - check if any branch connects to shared var
+	if (isIfNode(startInfo.node)) {
+		const outputs = startInfo.outgoingConnections;
+		const trueTargets = outputs.get(0) ?? [];
+		const falseTargets = outputs.get(1) ?? [];
+
+		// Check if either branch connects to a shared variable
+		const trueToShared = trueTargets.length > 0 && sharedVars.has(trueTargets[0].to);
+		const falseToShared = falseTargets.length > 0 && sharedVars.has(falseTargets[0].to);
+
+		if (trueToShared || falseToShared) {
+			// Generate ifBranch with appropriate branches
+			const trueCall = trueToShared ? sharedVars.get(trueTargets[0].to)! : 'null';
+			const falseCall = falseToShared ? sharedVars.get(falseTargets[0].to)! : 'null';
+
+			const configParts: string[] = [];
+			if (startInfo.node.typeVersion != null) {
+				configParts.push(`version: ${startInfo.node.typeVersion}`);
+			}
+			if (startInfo.node.parameters && Object.keys(startInfo.node.parameters).length > 0) {
+				configParts.push(`parameters: ${formatValue(startInfo.node.parameters, 2)}`);
+			}
+			if (startInfo.node.name !== 'IF') {
+				configParts.push(`name: '${escapeString(startInfo.node.name)}'`);
+			}
+			const configStr = configParts.length > 0 ? `, { ${configParts.join(', ')} }` : '';
+			return `ifBranch([${trueCall}, ${falseCall}]${configStr})`;
+		}
+	}
+
+	// Handle Switch node specially
+	if (isSwitchNode(startInfo.node)) {
+		const outputs = Array.from(startInfo.outgoingConnections.entries()).sort(([a], [b]) => a - b);
+		const hasSharedTarget = outputs.some(
+			([, targets]) => targets.length > 0 && sharedVars.has(targets[0].to),
+		);
+
+		if (hasSharedTarget) {
+			const caseCalls: string[] = [];
+			for (const [, targets] of outputs) {
+				if (targets.length === 0) {
+					caseCalls.push('null');
+				} else if (sharedVars.has(targets[0].to)) {
+					caseCalls.push(sharedVars.get(targets[0].to)!);
+				} else {
+					caseCalls.push('null');
+				}
+			}
+
+			const configParts: string[] = [];
+			if (startInfo.node.typeVersion != null) {
+				configParts.push(`version: ${startInfo.node.typeVersion}`);
+			}
+			if (startInfo.node.parameters && Object.keys(startInfo.node.parameters).length > 0) {
+				configParts.push(`parameters: ${formatValue(startInfo.node.parameters, 2)}`);
+			}
+			if (startInfo.node.name !== 'Switch') {
+				configParts.push(`name: '${escapeString(startInfo.node.name)}'`);
+			}
+			const configStr = configParts.length > 0 ? `, { ${configParts.join(', ')} }` : '';
+			return `switchCase([${caseCalls.join(', ')}]${configStr})`;
+		}
+	}
+
+	let call = generateNodeCall(startInfo.node, nodeInfoMap);
+	let currentInfo: NodeInfo | undefined = startInfo;
+
+	while (currentInfo) {
+		const outputs = Array.from(currentInfo.outgoingConnections.entries());
+		if (outputs.length !== 1) break;
+
+		const [, outputTargets] = outputs[0];
+		if (outputTargets.length !== 1) break;
+
+		const target = outputTargets[0];
+		const targetInfo = nodeInfoMap.get(target.to);
+		if (!targetInfo || targetInfo.isSubnodeOf) break;
+
+		// If target is a shared variable, reference it and stop
+		if (sharedVars.has(target.to)) {
+			call += `.then(${sharedVars.get(target.to)})`;
+			break;
+		}
+
+		// If target is already added, check for cycle variable
+		if (addedNodes.has(target.to)) {
+			if (cycleNodeVars?.has(target.to)) {
+				call += `.then(${cycleNodeVars.get(target.to)})`;
+			}
+			break;
+		}
+
+		addedNodes.add(target.to);
+		call += `.then(${generateNodeCall(targetInfo.node, nodeInfoMap)})`;
+		currentInfo = targetInfo;
+	}
+
+	return call;
+}
+
+/**
  * Generates the chain of nodes following from a starting node.
  */
 function generateChain(
@@ -886,24 +1029,113 @@ function generateChain(
 			}
 
 			// Not a merge pattern - generate .then([a, b]) for fan-out with inline chains
-			const targetCalls: string[] = [];
+			// But first check if any target is downstream of another target (shared node pattern)
+			// e.g., Settings -> [Send Typing, Merge] where Send Typing -> Merge
+			// In this case, Merge should be a variable so both branches can reference it
 
+			// Find targets that are also downstream of other targets
+			const sharedTargets = new Map<string, string>(); // nodeName -> varName
 			for (const target of targets) {
 				const targetInfo = nodeInfoMap.get(target.to);
 				if (!targetInfo || addedNodes.has(target.to) || targetInfo.isSubnodeOf) continue;
 
+				// Check if this target is reachable from any other target
+				for (const otherTarget of targets) {
+					if (otherTarget.to === target.to) continue;
+					const otherInfo = nodeInfoMap.get(otherTarget.to);
+					if (!otherInfo || addedNodes.has(otherTarget.to) || otherInfo.isSubnodeOf) continue;
+
+					// Check if target.to is reachable from otherTarget.to
+					if (isNodeReachableFrom(otherTarget.to, target.to, nodeInfoMap, addedNodes)) {
+						// target.to is a shared node - generate it as a variable
+						if (!sharedTargets.has(target.to)) {
+							sharedTargets.set(target.to, generateVarName(target.to));
+							// Also add to cycleNodeVars so other code paths can reference it
+							if (cycleNodeVars) {
+								cycleNodeVars.set(target.to, generateVarName(target.to));
+							}
+						}
+					}
+				}
+			}
+
+			// Generate variable declarations for shared targets BEFORE the workflow chain
+			// We need to insert these at the beginning of lines array
+			if (sharedTargets.size > 0) {
+				const varLines: string[] = [];
+				for (const [nodeName, varName] of sharedTargets) {
+					const nodeInfo = nodeInfoMap.get(nodeName);
+					if (!nodeInfo) continue;
+					addedNodes.add(nodeName);
+					// Generate the shared node as a simple node() call with its downstream chain
+					// Don't use generateNodeCallWithChain because it would wrap merge nodes in merge([...])
+					let chainCall = generateNodeCall(nodeInfo.node, nodeInfoMap);
+					// Follow downstream chain
+					let currentInfo: NodeInfo | undefined = nodeInfo;
+					while (currentInfo) {
+						const nodeOutputs = Array.from(currentInfo.outgoingConnections.entries());
+						if (nodeOutputs.length !== 1) break;
+						const [, nodeTargets] = nodeOutputs[0];
+						if (nodeTargets.length !== 1) break;
+						const nextTarget = nodeTargets[0];
+						const nextInfo = nodeInfoMap.get(nextTarget.to);
+						if (!nextInfo || nextInfo.isSubnodeOf || addedNodes.has(nextTarget.to)) break;
+						addedNodes.add(nextTarget.to);
+						chainCall += `.then(${generateNodeCall(nextInfo.node, nodeInfoMap)})`;
+						currentInfo = nextInfo;
+					}
+					varLines.push(`const ${varName} = ${chainCall};`);
+				}
+				// Insert at the beginning (after any existing variable declarations)
+				// Find the position of "return workflow(" to insert before it
+				const workflowLineIdx = lines.findIndex((l) => l.includes('return workflow('));
+				if (workflowLineIdx >= 0) {
+					lines.splice(workflowLineIdx, 0, '// Shared fan-out target nodes', ...varLines, '');
+				}
+			}
+
+			const targetCalls: string[] = [];
+
+			for (const target of targets) {
+				const targetInfo = nodeInfoMap.get(target.to);
+				if (!targetInfo || targetInfo.isSubnodeOf) continue;
+
+				// If this target is a shared node, just reference the variable
+				if (sharedTargets.has(target.to)) {
+					targetCalls.push(sharedTargets.get(target.to)!);
+					continue;
+				}
+
+				// Skip if already added (but not a shared target variable)
+				if (addedNodes.has(target.to)) continue;
+
 				addedNodes.add(target.to);
 				// Generate full chain for each target
-				targetCalls.push(
-					generateNodeCallWithChain(
-						targetInfo,
-						nodeInfoMap,
-						addedNodes,
-						undefined,
-						undefined,
-						cycleNodeVars,
-					),
-				);
+				// Use the shared vars function only if there are shared targets to reference
+				if (sharedTargets.size > 0) {
+					targetCalls.push(
+						generateNodeCallWithChainUsingSharedVars(
+							targetInfo,
+							nodeInfoMap,
+							addedNodes,
+							sharedTargets,
+							cycleNodeVars,
+						),
+					);
+				} else {
+					// No shared targets - use the full generateNodeCallWithChain which has
+					// proper handling for Switch/IF/Merge nodes
+					targetCalls.push(
+						generateNodeCallWithChain(
+							targetInfo,
+							nodeInfoMap,
+							addedNodes,
+							undefined,
+							undefined,
+							cycleNodeVars,
+						),
+					);
+				}
 			}
 
 			if (targetCalls.length > 0) {
@@ -1132,6 +1364,9 @@ function findConvergenceNodes(
 /**
  * Find if multiple fan-out targets all converge at the same merge node.
  * Returns the merge node name if all targets converge, or null otherwise.
+ *
+ * NOTE: Returns null if any target IS the merge node directly. In that case,
+ * the fan-out pattern should be used instead to preserve the direct connection.
  */
 function findFanOutMergeConvergence(
 	targets: Array<{ to: string; inputIndex: number }>,
@@ -1144,6 +1379,13 @@ function findFanOutMergeConvergence(
 	for (const target of targets) {
 		const targetInfo = nodeInfoMap.get(target.to);
 		if (!targetInfo || addedNodes.has(target.to) || targetInfo.isSubnodeOf) continue;
+
+		// If any target IS a merge node directly, don't use this pattern.
+		// The direct-to-merge connection would be lost if we try to use the
+		// fan-out-to-merge convergence pattern. Fall back to regular fan-out.
+		if (isMergeNode(targetInfo.node)) {
+			return null;
+		}
 
 		// Don't treat IF, Switch, or SplitInBatches as simple chain nodes
 		// These have semantic multi-output structure that must be preserved
@@ -1296,6 +1538,10 @@ function generateChainUpToMerge(
 /**
  * Generate a merge() call for a Merge node.
  * Returns the merge call string, or null if pattern doesn't match.
+ *
+ * When the merge node is encountered as part of a chain (i.e., all sources
+ * are already added to the workflow), returns a simple node() call instead
+ * of the merge([...]) composite, since the connections are already established.
  */
 function generateMergeCall(
 	mergeInfo: NodeInfo,
@@ -1329,13 +1575,23 @@ function generateMergeCall(
 	// Sort by input index
 	sources.sort((a, b) => a.inputIndex - b.inputIndex);
 
+	// If ALL sources are already added, the connections to the merge are
+	// already established by the current chain. Just return a simple node()
+	// call for the merge instead of the merge([...]) composite.
+	const newSources = sources.filter((s) => !s.alreadyAdded);
+	if (newSources.length === 0) {
+		// All sources already in chain - emit merge as regular node
+		return generateNodeCall(mergeInfo.node, nodeInfoMap);
+	}
+
 	// Mark source nodes as added (those that weren't already)
 	for (const source of sources) {
 		addedNodes.add(source.node.name);
 	}
 
-	// Generate the merge call
-	const branchCalls = sources.map((s) => generateNodeCall(s.node, nodeInfoMap));
+	// Generate the merge call with only NEW sources as branches
+	// Already-added sources have their connections established by the chain
+	const branchCalls = newSources.map((s) => generateNodeCall(s.node, nodeInfoMap));
 	const configParts: string[] = [];
 
 	// Always include version to preserve original node version

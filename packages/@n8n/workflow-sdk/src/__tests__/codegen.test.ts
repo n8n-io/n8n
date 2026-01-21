@@ -2392,4 +2392,84 @@ describe('Multiple triggers', () => {
 		// SharedNode must connect to EndNode
 		expect(parsed.connections['SharedNode'].main[0][0].node).toBe('EndNode');
 	});
+
+	it('should preserve merge downstream connection when fan-out includes direct merge connection', () => {
+		// This tests the pattern where a node fans out to both a Merge node directly
+		// AND to another node that also connects to the Merge. The Merge then connects downstream.
+		// Pattern:
+		//   Settings -> [Send Typing action, Merge[0]]
+		//   Send Typing action -> Merge[1]
+		//   Merge -> AI Agent
+		// This is the failing pattern from workflow 5163.
+		const workflow: WorkflowJSON = {
+			id: 'merge-downstream-test',
+			name: 'Merge Downstream Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Settings',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Send Typing',
+					type: 'n8n-nodes-base.telegram',
+					typeVersion: 1,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 2.1,
+					position: [400, 0],
+					parameters: { mode: 'chooseBranch' },
+				},
+				{
+					id: '5',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Settings', type: 'main', index: 0 }]] },
+				Settings: {
+					main: [
+						[
+							{ node: 'Send Typing', type: 'main', index: 0 },
+							{ node: 'Merge', type: 'main', index: 0 },
+						],
+					],
+				},
+				'Send Typing': { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+				Merge: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Verify all nodes present
+		expect(parsed.nodes).toHaveLength(5);
+
+		// CRITICAL: Verify Merge -> AI Agent connection is preserved
+		expect(parsed.connections['Merge']).toBeDefined();
+		expect(parsed.connections['Merge'].main[0]).toBeDefined();
+		expect(parsed.connections['Merge'].main[0][0].node).toBe('AI Agent');
+	});
 });
