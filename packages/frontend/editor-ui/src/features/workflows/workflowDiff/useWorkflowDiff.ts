@@ -31,11 +31,17 @@ function createWorkflowRefs(
 	watchEffect(() => {
 		const workflowValue = workflowRef.value;
 		if (workflowValue) {
-			workflowObjectRef.value = createWorkflowObject(
-				workflowValue.nodes,
-				workflowValue.connections,
-			);
-			workflowNodes.value = workflowValue.nodes;
+			// Ensure all nodes have IDs before passing to canvas mapping
+			// External sources (like postMessage) may provide nodes without IDs
+			const nodesWithIds = workflowValue.nodes.map((node) => {
+				if (!node.id) {
+					return { ...node, id: window.crypto.randomUUID() };
+				}
+				return node;
+			});
+
+			workflowObjectRef.value = createWorkflowObject(nodesWithIds, workflowValue.connections);
+			workflowNodes.value = nodesWithIds;
 			workflowConnections.value = workflowValue.connections;
 		}
 	});
