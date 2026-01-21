@@ -1591,3 +1591,300 @@ describe('parseWorkflowCode with splitInBatches', () => {
 		expect(processItem).toBeDefined();
 	});
 });
+
+describe('cycle detection and variable generation', () => {
+	it('should detect simple cycle and generate variable declaration', () => {
+		// Simple cycle: A → B → A
+		const json: WorkflowJSON = {
+			id: 'cycle-test',
+			name: 'Simple Cycle',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-a',
+					name: 'Node A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-b',
+					name: 'Node B',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Node A', type: 'main', index: 0 }]] },
+				'Node A': { main: [[{ node: 'Node B', type: 'main', index: 0 }]] },
+				'Node B': { main: [[{ node: 'Node A', type: 'main', index: 0 }]] }, // Cycle back to A
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have cycle variable declaration comment
+		expect(code).toContain('// Cycle target nodes');
+
+		// Should have variable declaration for Node A (the cycle target)
+		expect(code).toContain('const node_a = node({');
+
+		// Should reference the variable in the chain
+		expect(code).toContain('.then(node_a)');
+	});
+
+	it('should detect cycle to IF node and generate correct structure', () => {
+		// Polling loop pattern: Trigger → IF → [true: Done, false: Wait → IF (cycle)]
+		const json: WorkflowJSON = {
+			id: 'if-cycle-test',
+			name: 'IF Cycle',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'Check Status',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'done-1',
+					name: 'Done',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: 'wait-1',
+					name: 'Wait',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [400, 100],
+					parameters: { amount: 5 },
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Check Status', type: 'main', index: 0 }]] },
+				'Check Status': {
+					main: [
+						[{ node: 'Done', type: 'main', index: 0 }], // true branch
+						[{ node: 'Wait', type: 'main', index: 0 }], // false branch
+					],
+				},
+				Wait: { main: [[{ node: 'Check Status', type: 'main', index: 0 }]] }, // Cycle!
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have cycle variable declaration for the IF node
+		expect(code).toContain('// Cycle target nodes');
+		expect(code).toContain('const check_status = node({');
+		expect(code).toContain("type: 'n8n-nodes-base.if'");
+
+		// Should connect to the IF node variable
+		expect(code).toContain('.then(check_status)');
+
+		// Should have branch array after IF node
+		expect(code).toContain('.then([');
+
+		// Should reference cycle variable at the end of the false branch chain
+		// The pattern should be: wait node .then(check_status)
+		expect(code).toMatch(/\.then\(check_status\)\s*\]\)/);
+	});
+
+	it('should handle longer cycle chain', () => {
+		// Longer cycle: A → B → C → A
+		const json: WorkflowJSON = {
+			id: 'long-cycle-test',
+			name: 'Long Cycle',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-a',
+					name: 'Node A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-b',
+					name: 'Node B',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-c',
+					name: 'Node C',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Node A', type: 'main', index: 0 }]] },
+				'Node A': { main: [[{ node: 'Node B', type: 'main', index: 0 }]] },
+				'Node B': { main: [[{ node: 'Node C', type: 'main', index: 0 }]] },
+				'Node C': { main: [[{ node: 'Node A', type: 'main', index: 0 }]] }, // Cycle back to A
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have cycle variable declaration for Node A
+		expect(code).toContain('// Cycle target nodes');
+		expect(code).toContain('const node_a = node({');
+
+		// Should reference the variable at the end of the chain
+		expect(code).toContain('.then(node_a)');
+
+		// Verify structure: the chain should be node_a → B → C → node_a
+		// B and C should be in the chain, not as separate variables
+		expect(code).toMatch(/\.then\(node\(\{[^}]*name: 'Node B'/);
+		expect(code).toMatch(/\.then\(node\(\{[^}]*name: 'Node C'/);
+	});
+
+	it('should not generate cycle variables for non-cycle workflows', () => {
+		// Simple linear workflow with no cycles
+		const json: WorkflowJSON = {
+			id: 'no-cycle-test',
+			name: 'No Cycle',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-1',
+					name: 'Node 1',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-2',
+					name: 'Node 2',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Node 1', type: 'main', index: 0 }]] },
+				'Node 1': { main: [[{ node: 'Node 2', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should NOT have cycle variable declaration comment
+		expect(code).not.toContain('// Cycle target nodes');
+
+		// Should NOT have const declarations at the top (only return workflow...)
+		expect(code.trim()).toMatch(/^return workflow\(/);
+	});
+
+	it('should roundtrip a cycle workflow correctly', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'roundtrip-cycle',
+			name: 'Roundtrip Cycle Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'Check',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'done-1',
+					name: 'Success',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: 'retry-1',
+					name: 'Retry',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Check', type: 'main', index: 0 }]] },
+				Check: {
+					main: [
+						[{ node: 'Success', type: 'main', index: 0 }],
+						[{ node: 'Retry', type: 'main', index: 0 }],
+					],
+				},
+				Retry: { main: [[{ node: 'Check', type: 'main', index: 0 }]] }, // Cycle!
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(4);
+		expect(parsedJson.nodes.map((n) => n.name).sort()).toEqual(
+			['Check', 'Retry', 'Success', 'Trigger'].sort(),
+		);
+
+		// Verify connections including the cycle
+		expect(parsedJson.connections['Trigger']).toBeDefined();
+		expect(parsedJson.connections['Check']).toBeDefined();
+		expect(parsedJson.connections['Retry']).toBeDefined();
+
+		// The cycle connection Retry → Check should be preserved
+		expect(parsedJson.connections['Retry']?.main[0]?.[0]?.node).toBe('Check');
+	});
+});
