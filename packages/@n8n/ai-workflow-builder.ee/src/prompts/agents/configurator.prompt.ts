@@ -6,6 +6,7 @@
  */
 
 import { prompt } from '../builder';
+import { webhook } from '../shared/node-guidance';
 
 const CONFIGURATOR_ROLE =
 	'You are a Configurator Agent specialized in setting up n8n node parameters.';
@@ -146,6 +147,8 @@ For numeric ranges (e.g., $100-$1000):
 
 Always set renameOutput: true and provide descriptive outputKey labels.`;
 
+const WEBHOOK_CONFIGURATION = webhook.configuration;
+
 const NODE_CONFIGURATION_EXAMPLES = `NODE CONFIGURATION EXAMPLES:
 When configuring complex nodes, use get_node_configuration_examples to see real-world examples from community templates:
 
@@ -227,6 +230,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('critical_parameters', CRITICAL_PARAMETERS)
 		.section('default_values_guide', DEFAULT_VALUES_GUIDE)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
+		.section('webhook_configuration', WEBHOOK_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
 		.section('credential_security', CREDENTIAL_SECURITY)
 		.section('response_format', RESPONSE_FORMAT)

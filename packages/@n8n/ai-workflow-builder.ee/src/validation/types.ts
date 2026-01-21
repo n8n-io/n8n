@@ -31,6 +31,8 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'workflow-similarity-evaluation-failed',
 	'http-request-hardcoded-credentials',
 	'set-node-credential-field',
+	'webhook-response-mode-missing-respond-node',
+	'webhook-response-mode-mismatch',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
@@ -58,6 +60,7 @@ export interface ProgrammaticChecksResult {
 	tools: ProgrammaticViolation[];
 	fromAi: ProgrammaticViolation[];
 	credentials: ProgrammaticViolation[];
+	webhookResponse: ProgrammaticViolation[];
 }
 
 export interface ProgrammaticEvaluationResult {
@@ -69,6 +72,7 @@ export interface ProgrammaticEvaluationResult {
 	tools: SingleEvaluatorResult;
 	fromAi: SingleEvaluatorResult;
 	credentials: SingleEvaluatorResult;
+	webhookResponse: SingleEvaluatorResult;
 	similarity: SingleEvaluatorResult | null;
 }
 
