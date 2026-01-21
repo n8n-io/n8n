@@ -152,6 +152,9 @@ test.describe('Workflow Diff Demo', () => {
 	test('renders diff view with only new workflow (creation scenario)', async ({ n8n }) => {
 		await n8n.page.goto('/workflows/demo/diff');
 
+		// Wait for the page to be ready (component mounted with event listener active)
+		await expect(n8n.page.getByText('Waiting for workflow data...')).toBeVisible();
+
 		// Send postMessage with only newWorkflow (simulating workflow creation)
 		await n8n.page.evaluate(
 			({ newWf }) => {
@@ -175,6 +178,9 @@ test.describe('Workflow Diff Demo', () => {
 
 	test('renders diff view with only old workflow (deletion scenario)', async ({ n8n }) => {
 		await n8n.page.goto('/workflows/demo/diff');
+
+		// Wait for the page to be ready (component mounted with event listener active)
+		await expect(n8n.page.getByText('Waiting for workflow data...')).toBeVisible();
 
 		// Send postMessage with only oldWorkflow (simulating workflow deletion)
 		await n8n.page.evaluate(
@@ -200,6 +206,9 @@ test.describe('Workflow Diff Demo', () => {
 	test('applies tidy up when tidyUp option is true', async ({ n8n }) => {
 		await n8n.page.goto('/workflows/demo/diff');
 
+		// Wait for the page to be ready (component mounted with event listener active)
+		await expect(n8n.page.getByText('Waiting for workflow data...')).toBeVisible();
+
 		// Send postMessage with tidyUp: true
 		await n8n.page.evaluate(
 			({ oldWf, newWf }) => {
@@ -224,8 +233,8 @@ test.describe('Workflow Diff Demo', () => {
 			n8n.page.getByRole('heading', { name: /Test Workflow/, exact: false }),
 		).toBeVisible();
 
-		// The canvas areas should be visible (indicates the diff view is rendered)
-		await expect(n8n.page.locator('canvas').first()).toBeVisible();
+		// The Changes button should be visible (part of the diff view header)
+		await expect(n8n.page.getByRole('button', { name: /Changes/ })).toBeVisible();
 	});
 
 	test('ignores malformed postMessage data', async ({ n8n }) => {
