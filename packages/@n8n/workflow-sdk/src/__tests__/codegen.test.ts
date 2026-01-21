@@ -2023,3 +2023,171 @@ describe('SplitInBatches multi-output handling', () => {
 		expect(parsed.connections['Done'].main[0][0].node).toBe('Final');
 	});
 });
+
+describe('Fan-out pattern handling', () => {
+	it('should preserve all fan-out connections from same output', () => {
+		// Fan-out: one output connects to multiple targets
+		// All targets must be preserved in the .then([a, b]) array
+		const workflow: WorkflowJSON = {
+			id: 'fanout-test',
+			name: 'Fan-out Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Source',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'TargetA',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'TargetB',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, 100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Source', type: 'main', index: 0 }]] },
+				Source: {
+					main: [
+						[
+							{ node: 'TargetA', type: 'main', index: 0 },
+							{ node: 'TargetB', type: 'main', index: 0 }, // Fan-out: same output, 2 targets
+						],
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Both fan-out targets must be connected
+		expect(parsed.connections['Source']).toBeDefined();
+		expect(parsed.connections['Source'].main[0]).toHaveLength(2);
+		const targetNodes = parsed.connections['Source'].main[0]
+			.map((c: { node: string }) => c.node)
+			.sort();
+		expect(targetNodes).toEqual(['TargetA', 'TargetB']);
+	});
+
+	it('should preserve fan-out when branches converge at Merge', () => {
+		// Fan-out pattern that converges at a Merge node (workflow 5711 pattern)
+		// Source fans out to PathA and PathB, both eventually merge
+		const workflow: WorkflowJSON = {
+			id: 'fanout-merge-test',
+			name: 'Fan-out Merge Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'FanOutSource',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'PathA',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'PathB',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'ProcessA',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [600, -100],
+					parameters: {},
+				},
+				{
+					id: '6',
+					name: 'ProcessB',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [600, 100],
+					parameters: {},
+				},
+				{
+					id: '7',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					position: [800, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'FanOutSource', type: 'main', index: 0 }]] },
+				FanOutSource: {
+					main: [
+						[
+							{ node: 'PathA', type: 'main', index: 0 },
+							{ node: 'PathB', type: 'main', index: 0 }, // Fan-out
+						],
+					],
+				},
+				PathA: { main: [[{ node: 'ProcessA', type: 'main', index: 0 }]] },
+				PathB: { main: [[{ node: 'ProcessB', type: 'main', index: 0 }]] },
+				ProcessA: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				ProcessB: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Fan-out must preserve both paths
+		expect(parsed.connections['FanOutSource']).toBeDefined();
+		expect(parsed.connections['FanOutSource'].main[0]).toHaveLength(2);
+		const fanOutTargets = parsed.connections['FanOutSource'].main[0]
+			.map((c: { node: string }) => c.node)
+			.sort();
+		expect(fanOutTargets).toEqual(['PathA', 'PathB']);
+
+		// Both paths must connect to their downstream nodes
+		expect(parsed.connections['PathA'].main[0][0].node).toBe('ProcessA');
+		expect(parsed.connections['PathB'].main[0][0].node).toBe('ProcessB');
+
+		// Both must converge at Merge
+		expect(parsed.connections['ProcessA'].main[0][0].node).toBe('Merge');
+		expect(parsed.connections['ProcessB'].main[0][0].node).toBe('Merge');
+	});
+});

@@ -942,9 +942,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Add all branch nodes (with subnodes) with correct input index connections
 		branches.forEach((branchNode, branchIndex) => {
-			this.addNodeWithSubnodes(newNodes, branchNode);
+			// Use addBranchToGraph to properly handle NodeChains
+			// It returns the HEAD node name (entry point of the branch)
+			const headNodeName = this.addBranchToGraph(newNodes, branchNode);
 
-			// Connect from current node to each branch
+			// Connect from current node to the HEAD of each branch
 			if (this._currentNode) {
 				const currentGraphNode = newNodes.get(this._currentNode);
 				if (currentGraphNode) {
@@ -952,19 +954,21 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					const outputConnections = mainConns.get(this._currentOutput) || [];
 					mainConns.set(this._currentOutput, [
 						...outputConnections,
-						{ node: branchNode.name, type: 'main', index: 0 },
+						{ node: headNodeName, type: 'main', index: 0 },
 					]);
 					currentGraphNode.connections.set('main', mainConns);
 				}
 			}
 
-			// Connect each branch to the merge node at the correct INPUT INDEX
-			const branchGraphNode = newNodes.get(branchNode.name)!;
-			const branchMainConns = branchGraphNode.connections.get('main') || new Map();
-			branchMainConns.set(0, [
+			// Connect the TAIL of each branch to the merge node at the correct INPUT INDEX
+			// For NodeChains, tail is the last node; for single nodes, it's the node itself
+			const tailNodeName = isNodeChain(branchNode) ? branchNode.tail.name : branchNode.name;
+			const tailGraphNode = newNodes.get(tailNodeName)!;
+			const tailMainConns = tailGraphNode.connections.get('main') || new Map();
+			tailMainConns.set(0, [
 				{ node: mergeComposite.mergeNode.name, type: 'main', index: branchIndex },
 			]);
-			branchGraphNode.connections.set('main', branchMainConns);
+			tailGraphNode.connections.set('main', tailMainConns);
 		});
 
 		// Add the merge node
