@@ -20,7 +20,7 @@ const greetings = computed(() => {
 
 <template>
 	<div :class="[$style.starter, { [$style.isMobileDevice]: isMobileDevice }]">
-		<N8nHeading tag="h2" bold size="xlarge">
+		<N8nHeading tag="h2" bold size="2xlarge">
 			{{ greetings }}
 		</N8nHeading>
 	</div>

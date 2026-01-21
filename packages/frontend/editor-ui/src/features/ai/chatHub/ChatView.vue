@@ -748,15 +748,15 @@ function onFilesDropped(files: File[]) {
 
 .messageList {
 	width: 100%;
-	max-width: 55rem;
+	max-width: 78ch;
 	min-height: 100%;
 	align-self: center;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
-	padding-top: 30px;
+	gap: var(--spacing--xl);
+	padding-top: var(--spacing--2xl);
 	padding-bottom: 200px;
-	padding-inline: 64px;
+	padding-inline: var(--spacing--xl);
 
 	.isMobileDevice & {
 		padding-inline: var(--spacing--md);

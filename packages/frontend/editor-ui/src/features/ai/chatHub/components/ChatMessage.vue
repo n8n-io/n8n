@@ -346,7 +346,9 @@ onBeforeMount(() => {
 							:href="attachment.downloadUrl"
 						/>
 					</div>
-					<div v-if="message.type === 'human'">{{ message.content }}</div>
+					<div :class="$style.messageContent" v-if="message.type === 'human'">
+						{{ message.content }}
+					</div>
 					<VueMarkdown
 						v-else
 						:key="markdown.forceReRenderKey.value"
@@ -379,7 +381,9 @@ onBeforeMount(() => {
 			v-if="hoveredCodeBlockActions && hoveredCodeBlockContent"
 			:to="hoveredCodeBlockActions"
 		>
-			<CopyButton :content="hoveredCodeBlockContent" />
+			<div :class="$style.codeBlockActions">
+				<CopyButton :content="hoveredCodeBlockContent" />
+			</div>
 		</Teleport>
 	</div>
 </template>
@@ -388,6 +392,15 @@ onBeforeMount(() => {
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
+}
+
+.messageContent {
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
+}
+
+.codeBlockActions > * {
+	margin-top: -2px;
 }
 
 .avatar {
@@ -453,7 +466,7 @@ onBeforeMount(() => {
 .chatMessageMarkdown {
 	display: block;
 	box-sizing: border-box;
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 
 	// Base spacing rhythm between sibling elements
 	> * + * {
@@ -468,14 +481,16 @@ onBeforeMount(() => {
 		margin-bottom: 0;
 	}
 
-	& * {
-		font-size: var(--font-size--sm);
+	// Paragraphs and normal text
+	p,
+	li {
+		font-size: var(--font-size--md);
 		line-height: var(--line-height--xl);
+		margin: var(--spacing--sm) 0;
 	}
 
-	// Paragraphs
-	p {
-		margin: var(--spacing--sm) 0;
+	li {
+		margin: 0;
 	}
 
 	// Headings - with scroll margin for anchor navigation
@@ -524,12 +539,14 @@ onBeforeMount(() => {
 	// Strong/bold text
 	strong,
 	b {
+		font-size: var(--font-size--md);
 		color: var(--color--text--shade-1);
 		font-weight: var(--font-weight--bold);
 	}
 
 	// Links
 	a:not(:where(h1, h2, h3, h4, h5, h6) *) {
+		font-size: var(--font-size--md);
 		color: var(--color--text--shade-1);
 		font-weight: var(--font-weight--medium);
 		text-decoration: underline;
@@ -551,13 +568,11 @@ onBeforeMount(() => {
 	:not(pre) > code {
 		font-family: var(--font-family--monospace);
 		font-weight: var(--font-weight--medium);
-		color: var(--color--text--shade-1);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--lg);
+		background-color: var(--chat--message--pre--background);
+		border-radius: var(--radius--sm);
 		font-variant-ligatures: none;
-
-		&::before,
-		&::after {
-			content: '`';
-		}
 	}
 
 	// Code in headings
@@ -622,6 +637,7 @@ onBeforeMount(() => {
 
 	// Blockquotes
 	blockquote {
+		font-size: var(--font-size--md);
 		font-style: italic;
 		border-left: var(--spacing--4xs) solid var(--color--foreground--shade-1);
 		padding-left: var(--spacing--sm);
@@ -650,33 +666,27 @@ onBeforeMount(() => {
 
 	// Ordered lists
 	ol {
-		padding-left: var(--spacing--lg);
+		padding-left: 0;
 		list-style-type: decimal;
+		list-style-position: inside;
 		margin: var(--spacing--sm) 0;
 
-		li {
-			padding-left: var(--spacing--xs);
-		}
-
 		li + li {
-			margin-top: var(--spacing--2xs);
+			margin-top: var(--spacing--xs);
 		}
 
 		li::marker {
-			font-weight: var(--font-weight--bold);
-			color: var(--color--text--shade-1);
+			font-family: var(--font-family--monospace);
+			color: var(--color--text);
 		}
 	}
 
 	// Unordered lists
 	ul {
-		padding-left: var(--spacing--lg);
+		padding-left: 0;
 		list-style-type: disc;
+		list-style-position: inside;
 		margin: var(--spacing--sm) 0;
-
-		li {
-			padding-left: var(--spacing--xs);
-		}
 
 		li + li {
 			margin-top: var(--spacing--2xs);
@@ -694,6 +704,7 @@ onBeforeMount(() => {
 	ol ul {
 		margin-top: var(--spacing--2xs);
 		margin-bottom: 0;
+		padding-left: var(--spacing--lg);
 	}
 
 	// Tables
@@ -705,7 +716,7 @@ onBeforeMount(() => {
 	table {
 		width: 100%;
 		table-layout: auto;
-		margin: var(--spacing--lg) 0;
+		margin: var(--spacing--sm) 0;
 		font-size: var(--font-size--sm);
 		line-height: var(--line-height--lg);
 	}
