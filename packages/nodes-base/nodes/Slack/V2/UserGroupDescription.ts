@@ -13,6 +13,11 @@ export const userGroupOperations: INodeProperties[] = [
 		},
 		options: [
 			{
+				name: 'Add Users',
+				value: 'updateUsers',
+				action: 'Add users to a user group',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				action: 'Create a user group',
@@ -41,11 +46,6 @@ export const userGroupOperations: INodeProperties[] = [
 				name: 'Update',
 				value: 'update',
 				action: 'Update a user group',
-			},
-			{
-				name: 'Add Users',
-				value: 'updateUsers',
-				action: 'Add users to a user group',
 			},
 		],
 		default: 'create',
