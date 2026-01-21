@@ -4,6 +4,7 @@ import type { CredentialsEntity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import nock from 'nock';
 
 import * as utils from '../shared/utils';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
@@ -44,8 +45,13 @@ const setupWorkflow = async () => {
 
 	const resolver = await resolverService.create({
 		name: 'Test Resolver',
-		type: 'credential-resolver.stub-1.0',
-		config: { prefix: 'test-' },
+		type: 'credential-resolver.oauth2-1.0',
+		config: {
+			metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			validation: 'oauth2-introspection',
+		},
 		user: owner,
 	});
 
@@ -77,12 +83,37 @@ describe('Dynamic Credentials API', () => {
 	let resolver: DynamicCredentialResolver;
 
 	beforeAll(async () => {
+		// Mock OAuth metadata endpoint for resolver validation
+		nock.cleanAll();
+		nock('https://auth.example.com')
+			.persist()
+			.get('/.well-known/openid-configuration')
+			.reply(200, {
+				issuer: 'https://auth.example.com',
+				introspection_endpoint: 'https://auth.example.com/oauth/introspect',
+				introspection_endpoint_auth_methods_supported: [
+					'client_secret_basic',
+					'client_secret_post',
+				],
+			});
+
+		// Mock OAuth introspection endpoint for identity validation
+		nock('https://auth.example.com')
+			.persist()
+			.post('/oauth/introspect')
+			.reply(200, {
+				active: true,
+				sub: 'user-123',
+				exp: Math.floor(Date.now() / 1000) + 3600,
+			});
+
 		await testDb.truncate(['User', 'CredentialsEntity', 'DynamicCredentialResolver']);
 
 		({ savedCredential, resolver } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
+		nock.cleanAll();
 		await testDb.terminate();
 		testServer.httpServer.close();
 	});
