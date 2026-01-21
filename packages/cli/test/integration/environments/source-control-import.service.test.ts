@@ -1126,6 +1126,7 @@ describe('SourceControlImportService', () => {
 		}
 
 		it('should remove tags from workflows when they are removed in source control', async () => {
+			const user = await getGlobalOwner();
 			const teamProject = await createTeamProject('Team 1');
 			const workflow1 = await createWorkflowWithHistory(
 				{ id: 'workflow-1', name: 'Workflow 1' },
@@ -1141,7 +1142,7 @@ describe('SourceControlImportService', () => {
 			expect(await getMappingsForWorkflow(workflow1.id)).toHaveLength(2);
 
 			setupTagsFileMock([{ tagId: 'tag-1', workflowId: 'workflow-1' }]);
-			await service.importTagsFromWorkFolder(createTagsCandidate());
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
 
 			const finalMappings = await getMappingsForWorkflow(workflow1.id);
 			expect(finalMappings).toHaveLength(1);
@@ -1152,6 +1153,7 @@ describe('SourceControlImportService', () => {
 		});
 
 		it('should only delete mappings for workflows present in the imported data', async () => {
+			const user = await getGlobalOwner();
 			const teamProject = await createTeamProject('Team 1');
 			const [workflow1, workflow2] = await Promise.all([
 				createWorkflowWithHistory({ id: 'workflow-1', name: 'Workflow 1' }, teamProject),
@@ -1167,7 +1169,7 @@ describe('SourceControlImportService', () => {
 			await assignTagToWorkflow(tag1, workflow2);
 
 			setupTagsFileMock([{ tagId: 'tag-1', workflowId: 'workflow-1' }]);
-			await service.importTagsFromWorkFolder(createTagsCandidate());
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
 
 			const workflow1Mappings = await getMappingsForWorkflow(workflow1.id);
 			expect(workflow1Mappings).toHaveLength(1);
@@ -1176,6 +1178,49 @@ describe('SourceControlImportService', () => {
 			const workflow2Mappings = await getMappingsForWorkflow(workflow2.id);
 			expect(workflow2Mappings).toHaveLength(1);
 			expect(workflow2Mappings[0].tagId).toBe('tag-1');
+		});
+
+		it('should remove all tags from a workflow when it ends up with zero tags', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const workflow1 = await createWorkflowWithHistory(
+				{ id: 'workflow-1', name: 'Workflow 1' },
+				teamProject,
+			);
+			const [tag1, tag2] = await Promise.all([
+				createTag({ id: 'tag-1', name: 'Tag 1' }),
+				createTag({ id: 'tag-2', name: 'Tag 2' }),
+			]);
+
+			await assignTagToWorkflow(tag1, workflow1);
+			await assignTagToWorkflow(tag2, workflow1);
+			expect(await getMappingsForWorkflow(workflow1.id)).toHaveLength(2);
+
+			// First, the tags file is read
+			fsReadFile.mockResolvedValueOnce(JSON.stringify({ tags: standardTags, mappings: [] }));
+
+			// Then workflow files are read via getRemoteVersionIdsFromFiles
+			const mockWorkflowFile = '/mock/workflows/workflow-1.json';
+			globMock.mockResolvedValueOnce([mockWorkflowFile]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					id: 'workflow-1',
+					name: 'Workflow 1',
+					nodes: [],
+					connections: {},
+					versionId: '1',
+				}),
+			);
+
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			// All mappings should be removed
+			const finalMappings = await getMappingsForWorkflow(workflow1.id);
+			expect(finalMappings).toHaveLength(0);
+
+			// Tags themselves should still exist
+			const tagsInDb = await tagRepository.find();
+			expect(tagsInDb).toHaveLength(2);
 		});
 	});
 
