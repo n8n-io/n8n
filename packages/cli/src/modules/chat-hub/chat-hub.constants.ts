@@ -8,6 +8,8 @@ export const STREAM_CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 	'canceled',
 	'crashed',
+	'unknown',
+	'waiting',
 	'error',
 	'success',
 ] as const satisfies ExecutionStatus[];
