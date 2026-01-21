@@ -129,41 +129,31 @@ const isWebhookNode = computed(() => {
 	return Boolean(node.value && node.value.type === WEBHOOK_NODE_TYPE);
 });
 
-const webhookData = computedAsync(
-	async () => {
-		if (!node.value || !nodeType.value?.webhooks?.length) {
-			return {
-				httpMethod: undefined as string | undefined,
-				testUrl: undefined as string | undefined,
-			};
-		}
+const webhookHttpMethod = computedAsync(async () => {
+	if (!node.value || !nodeType.value?.webhooks?.length) {
+		return undefined;
+	}
 
-		const httpMethod = await workflowHelpers.getWebhookExpressionValue(
-			nodeType.value.webhooks[0],
-			'httpMethod',
-			false,
-		);
+	const httpMethod = await workflowHelpers.getWebhookExpressionValue(
+		nodeType.value.webhooks[0],
+		'httpMethod',
+		false,
+	);
 
-		const testUrl = await workflowHelpers.getWebhookUrl(
-			nodeType.value.webhooks[0],
-			node.value,
-			'test',
-		);
+	if (Array.isArray(httpMethod)) {
+		return httpMethod.join(', ');
+	}
 
-		let formattedHttpMethod: string | undefined;
-		if (Array.isArray(httpMethod)) {
-			formattedHttpMethod = httpMethod.join(', ');
-		} else {
-			formattedHttpMethod = httpMethod as string | undefined;
-		}
+	return httpMethod as string | undefined;
+}, undefined);
 
-		return { httpMethod: formattedHttpMethod, testUrl };
-	},
-	{ httpMethod: undefined, testUrl: undefined },
-);
+const webhookTestUrl = computedAsync(async () => {
+	if (!node.value || !nodeType.value?.webhooks?.length) {
+		return undefined;
+	}
 
-const webhookHttpMethod = computed(() => webhookData.value.httpMethod);
-const webhookTestUrl = computed(() => webhookData.value.testUrl);
+	return await workflowHelpers.getWebhookUrl(nodeType.value.webhooks[0], node.value, 'test');
+}, undefined);
 
 const isWebhookBasedNode = computed(() => {
 	return Boolean(nodeType.value?.webhooks?.length);
