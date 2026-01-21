@@ -1,6 +1,5 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-utils';
-import type { CredentialsEntity } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
 	WorkflowRepository,
@@ -9,17 +8,17 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import type { INode } from 'n8n-workflow';
 import nock from 'nock';
 import { v4 as uuid } from 'uuid';
-import type { INode } from 'n8n-workflow';
 
-import * as utils from '../shared/utils';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { Telemetry } from '@/telemetry';
-import { createCredentials } from '../shared/db/credentials';
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 
+import { createCredentials } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
+import * as utils from '../shared/utils';
 
 mockInstance(Telemetry);
 
@@ -107,7 +106,6 @@ const setupWorkflow = async () => {
 
 describe('Workflow Status API', () => {
 	let savedWorkflow: WorkflowEntity;
-	let savedCredential: CredentialsEntity;
 
 	beforeAll(async () => {
 		// Mock OAuth metadata endpoint for resolver validation
@@ -142,7 +140,7 @@ describe('Workflow Status API', () => {
 			'DynamicCredentialResolver',
 		]);
 
-		({ savedWorkflow, savedCredential } = await setupWorkflow());
+		({ savedWorkflow } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
