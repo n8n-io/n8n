@@ -1055,6 +1055,14 @@ export class ActiveWorkflowManager {
 			additionalData: IWorkflowExecuteAdditionalData;
 		},
 	) {
+		this.logger.debug(`Adding ${nodes.length} nodes to workflow ${formatWorkflow(dbWorkflow)}`, {
+			workflowId: workflow.id,
+			nodeIds: nodes.map((n) => n.id),
+			nodeTypes: nodes.map((n) => n.type),
+			activationMode,
+			executionMode,
+		});
+
 		const getTriggerFunctions = this.getExecuteTriggerFunctions(
 			dbWorkflow,
 			additionalData,
@@ -1080,21 +1088,38 @@ export class ActiveWorkflowManager {
 			getPollFunctions,
 		);
 
-		this.logger.debug(`Added ${nodes.length} nodes to workflow ${formatWorkflow(dbWorkflow)}`);
+		this.logger.debug(
+			`Successfully added ${nodes.length} nodes to workflow ${formatWorkflow(dbWorkflow)}`,
+			{
+				workflowId: workflow.id,
+				nodeIds: nodes.map((n) => n.id),
+			},
+		);
 	}
 
 	/**
 	 * Remove specific trigger/poller nodes from an active workflow.
 	 */
 	async removeNodes(workflowId: WorkflowId, nodeIds: string[]) {
-		if (!this.activeWorkflows.isActive(workflowId)) return;
-
-		await this.activeWorkflows.removeNodes(workflowId, nodeIds);
-
-		this.logger.debug(`Removed ${nodeIds.length} nodes from workflow "${workflowId}"`, {
+		this.logger.debug(`Removing ${nodeIds.length} nodes from workflow "${workflowId}"`, {
 			workflowId,
 			nodeIds,
 		});
+
+		if (!this.activeWorkflows.isActive(workflowId)) {
+			this.logger.debug(`Workflow "${workflowId}" is not active, skipping node removal`);
+			return;
+		}
+
+		await this.activeWorkflows.removeNodes(workflowId, nodeIds);
+
+		this.logger.debug(
+			`Successfully removed ${nodeIds.length} nodes from workflow "${workflowId}"`,
+			{
+				workflowId,
+				nodeIds,
+			},
+		);
 	}
 
 	async removeActivationError(workflowId: WorkflowId) {

@@ -90,6 +90,8 @@ export type PubSubCommandMap = {
 		pushRef: string;
 	};
 
+	'workflow-publish-wake-up': never;
+
 	// #endregion
 };
 
