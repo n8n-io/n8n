@@ -31,7 +31,7 @@ export interface RateLimiterLimits {
 /**
  * Configuration for extracting a key from the request body.
  * @example
- * { source: 'body', field: 'email' }
+ * { source: 'body', dto: LoginRequestDto, field: 'email' }
  */
 export interface BodyKeyedRateLimiterConfig extends RateLimiterLimits {
 	/** How to extract key from request */

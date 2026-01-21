@@ -1,4 +1,6 @@
 import { Container } from '@n8n/di';
+import { z } from 'zod';
+import { Z } from 'zod-class';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
 import { Get, Post, Put, Patch, Delete } from '../route';
@@ -44,13 +46,23 @@ describe('Route Decorators', () => {
 		it('should accept and apply route options', () => {
 			const middleware = () => {};
 
+			class TestBodyDto extends Z.class({
+				email: z.string(),
+			}) {}
+
 			class TestController {
 				@decorator('/test', {
 					middlewares: [middleware],
 					usesTemplates: true,
 					skipAuth: true,
 					ipRateLimit: { limit: 10, windowMs: 60000 },
-					keyedRateLimit: { limit: 10, windowMs: 60000, source: 'body', field: 'email' },
+					keyedRateLimit: {
+						limit: 10,
+						windowMs: 60000,
+						source: 'body',
+						dto: TestBodyDto,
+						field: 'email',
+					},
 				})
 				testMethod() {}
 			}
@@ -64,10 +76,11 @@ describe('Route Decorators', () => {
 			expect(routeMetadata.usesTemplates).toBe(true);
 			expect(routeMetadata.skipAuth).toBe(true);
 			expect(routeMetadata.ipRateLimit).toEqual({ limit: 10, windowMs: 60000 });
-			expect(routeMetadata.keyedRateLimit).toEqual({
+			expect(routeMetadata.keyedRateLimit).toMatchObject({
 				limit: 10,
 				windowMs: 60000,
 				source: 'body',
+				dto: TestBodyDto,
 				field: 'email',
 			});
 		});

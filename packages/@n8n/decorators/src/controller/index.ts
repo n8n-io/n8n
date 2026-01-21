@@ -13,5 +13,7 @@ export type {
 	Method,
 	RateLimiterLimits,
 	KeyedRateLimiterConfig,
+	BodyKeyedRateLimiterConfig,
+	UserKeyedRateLimiterConfig,
 	StaticRouterMetadata,
 } from './types';

@@ -78,6 +78,7 @@ catalog:
   xml2js: 0.6.2
   xss: 1.0.15
   zod: 3.25.67
+  zod-class: 0.0.16
   zod-to-json-schema: 3.23.3
 
 catalogs:

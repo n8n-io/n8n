@@ -20,6 +20,8 @@ import { Container } from '@n8n/di';
 import express, { json } from 'express';
 import { mock } from 'jest-mock-extended';
 import { agent as testAgent } from 'supertest';
+import { z } from 'zod';
+import { Z } from 'zod-class';
 
 import type { AuthService } from '@/auth/auth.service';
 import { ControllerRegistry } from '@/controller.registry';
@@ -88,6 +90,10 @@ describe('ControllerRegistry', () => {
 	});
 
 	describe('Body-based keyed rate limiting', () => {
+		class TestBodyDto extends Z.class({
+			email: z.string().max(20),
+		}) {}
+
 		@RestController('/test')
 		// @ts-expect-error tsc complains about unused class
 		class TestController {
@@ -100,7 +106,7 @@ describe('ControllerRegistry', () => {
 					field: 'email',
 				},
 			})
-			bodyKeyed(@Body _body: { email: string }) {
+			bodyKeyed(@Body _body: TestBodyDto) {
 				return { ok: true };
 			}
 		}
@@ -114,7 +120,7 @@ describe('ControllerRegistry', () => {
 			'should not rate limit when keyed value is %s',
 			async (identifier) => {
 				for (let i = 0; i < 5; i++) {
-					await agent.post('/rest/test/body-keyed').send({ email: identifier }).expect(200);
+					await agent.post('/rest/test/body-keyed').send({ email: identifier }).expect(400);
 				}
 			},
 		);
@@ -129,6 +135,114 @@ describe('ControllerRegistry', () => {
 			await agent.post('/rest/test/body-keyed').send({ email }).expect(429);
 
 			await agent.post('/rest/test/body-keyed').send({ email: 'other@example.com' }).expect(200);
+		});
+
+		it('should not rate limit when the value does not match the schema', async () => {
+			const tooLongEmail = 'a'.repeat(21);
+
+			for (let i = 0; i < 4; i++) {
+				await agent.post('/rest/test/body-keyed').send({ email: tooLongEmail }).expect(400);
+			}
+		});
+
+		it('should not rate limit when no body is sent', async () => {
+			for (let i = 0; i < 5; i++) {
+				await agent.post('/rest/test/body-keyed').expect(400);
+			}
+		});
+
+		it('should not rate limit when the field is missing from body', async () => {
+			for (let i = 0; i < 5; i++) {
+				await agent.post('/rest/test/body-keyed').send({}).expect(400);
+			}
+
+			for (let i = 0; i < 5; i++) {
+				await agent.post('/rest/test/body-keyed').send({ other: 'value' }).expect(400);
+			}
+		});
+
+		it('should not rate limit when numeric value fails string schema validation', async () => {
+			for (let i = 0; i < 5; i++) {
+				await agent.post('/rest/test/body-keyed').send({ email: 123 }).expect(400);
+			}
+		});
+
+		it('should rate limit empty string if it passes schema validation', async () => {
+			const emptyEmail = '';
+
+			for (let i = 0; i < 3; i++) {
+				await agent.post('/rest/test/body-keyed').send({ email: emptyEmail }).expect(200);
+			}
+
+			await agent.post('/rest/test/body-keyed').send({ email: emptyEmail }).expect(429);
+		});
+
+		it('should maintain separate rate limit counters for different identifiers', async () => {
+			const email1 = 'user1@example.com';
+			const email2 = 'user2@example.com';
+			const email3 = 'user3@example.com';
+
+			// Each email should have its own counter
+			await agent.post('/rest/test/body-keyed').send({ email: email1 }).expect(200); // email1: 1
+			await agent.post('/rest/test/body-keyed').send({ email: email2 }).expect(200); // email2: 1
+			await agent.post('/rest/test/body-keyed').send({ email: email1 }).expect(200); // email1: 2
+			await agent.post('/rest/test/body-keyed').send({ email: email3 }).expect(200); // email3: 1
+			await agent.post('/rest/test/body-keyed').send({ email: email1 }).expect(200); // email1: 3
+
+			// email1 should be rate limited now
+			await agent.post('/rest/test/body-keyed').send({ email: email1 }).expect(429);
+
+			// But email2 and email3 should still work
+			await agent.post('/rest/test/body-keyed').send({ email: email2 }).expect(200); // email2: 2
+			await agent.post('/rest/test/body-keyed').send({ email: email3 }).expect(200); // email3: 2
+		});
+	});
+
+	describe('Body-based keyed rate limiting with numeric field', () => {
+		class TestNumericDto extends Z.class({
+			userId: z.number(),
+		}) {}
+
+		@RestController('/test')
+		// @ts-expect-error tsc complains about unused class
+		class TestController {
+			@Post('/numeric-keyed', {
+				skipAuth: true,
+				keyedRateLimit: {
+					limit: 3,
+					windowMs: 60_000,
+					source: 'body',
+					dto: TestNumericDto,
+					field: 'userId',
+				},
+			})
+			numericKeyed(@Body _body: TestNumericDto) {
+				return { ok: true };
+			}
+		}
+
+		beforeAll(() => {
+			authMiddleware.mockImplementation(async (_req, _res, next) => next());
+			lastActiveAtService.middleware.mockImplementation(async (_req, _res, next) => next());
+		});
+
+		it('should apply keyed rate limiting based on numeric field', async () => {
+			const userId = 12345;
+
+			for (let i = 0; i < 3; i++) {
+				await agent.post('/rest/test/numeric-keyed').send({ userId }).expect(200);
+			}
+
+			await agent.post('/rest/test/numeric-keyed').send({ userId }).expect(429);
+
+			// Different numeric ID should work
+			await agent.post('/rest/test/numeric-keyed').send({ userId: 67890 }).expect(200);
+		});
+
+		it('should not rate limit when string value fails numeric schema validation', async () => {
+			for (let i = 0; i < 5; i++) {
+				await agent.post('/rest/test/numeric-keyed').send({ userId: 'not-a-number' }).expect(400);
+			}
 		});
 	});
 

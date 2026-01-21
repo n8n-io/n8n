@@ -54,6 +54,7 @@ export class PasswordResetController {
 		keyedRateLimit: {
 			limit: 3,
 			source: 'body',
+			dto: ForgotPasswordRequestDto,
 			field: 'email' satisfies keyof ForgotPasswordRequestDto,
 		},
 	})

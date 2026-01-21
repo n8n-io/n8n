@@ -210,6 +210,7 @@ export class InvitationController {
 			limit: 10,
 			windowMs: 1 * Time.minutes.toMilliseconds,
 			source: 'body',
+			dto: AcceptInvitationRequestDto,
 			field: 'inviterId' satisfies keyof AcceptInvitationRequestDto,
 		},
 	})

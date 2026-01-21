@@ -24,7 +24,9 @@
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
-    "@types/lodash": "catalog:"
+    "@types/lodash": "catalog:",
+    "zod": "catalog:",
+    "zod-class": "catalog:"
   },
   "dependencies": {
     "@n8n/constants": "workspace:*",
