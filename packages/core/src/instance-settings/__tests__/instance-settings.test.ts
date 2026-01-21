@@ -201,6 +201,18 @@ describe('InstanceSettings', () => {
 		});
 	});
 
+	describe('generatedTypesDir', () => {
+		it('should return the path to the generated types directory', () => {
+			const encryptionKey = 'test_key';
+			mockFs.existsSync.mockReturnValueOnce(true);
+			mockFs.readFileSync.mockReturnValueOnce(JSON.stringify({ encryptionKey }));
+
+			const settings = createInstanceSettings({ encryptionKey });
+
+			expect(settings.generatedTypesDir).toEqual('/test/.n8n/generated-types');
+		});
+	});
+
 	describe('isDocker', () => {
 		it('should return true if /.dockerenv exists', () => {
 			mockFs.existsSync.mockImplementation((path) => path === '/.dockerenv');

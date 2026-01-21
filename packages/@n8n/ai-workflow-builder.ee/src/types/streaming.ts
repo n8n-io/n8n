@@ -23,7 +23,15 @@ export interface ToolProgressChunk {
 export interface WorkflowUpdateChunk {
 	role: 'assistant';
 	type: 'workflow-updated';
+	/** JSON-stringified workflow */
 	codeSnippet: string;
+	/** Optional source code that generated the workflow (e.g., TypeScript SDK code) */
+	sourceCode?: string;
+	/** Token usage statistics from the generation */
+	tokenUsage?: {
+		inputTokens: number;
+		outputTokens: number;
+	};
 }
 
 /**
