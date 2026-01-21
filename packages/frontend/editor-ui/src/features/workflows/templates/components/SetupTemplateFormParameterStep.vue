@@ -9,6 +9,7 @@ import type { NodeParameterValueType } from 'n8n-workflow';
 import type { NodeRequiredParameters, ParameterKey } from '../templates.types';
 
 import { N8nHeading } from '@n8n/design-system';
+import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
 
 const props = defineProps<{
 	order: number;
@@ -52,11 +53,24 @@ const allParametersFilled = computed(() => {
 		</p>
 
 		<div :class="$style.parameters">
-			<SimpleParameterInput
+			<!-- <SimpleParameterInput
 				v-for="param in nodeParameters.parameters"
 				:key="param.key"
 				:parameter="param.parameter"
 				:value="parameterValues[param.key] ?? param.currentValue"
+				@update:value="emit('parameterChanged', { parameterKey: param.key, value: $event })"
+			/> -->
+			<ParameterInputFull
+				v-for="param in nodeParameters.parameters"
+				:key="param.key"
+				:parameter="param.parameter"
+				:hide-issues="false"
+				:value="parameterValues[param.key] ?? param.currentValue"
+				:path="`parameters.${param.key}`"
+				:is-read-only="false"
+				:hide-label="false"
+				:node-values="parameterValues"
+				:show-delete="false"
 				@update:value="emit('parameterChanged', { parameterKey: param.key, value: $event })"
 			/>
 		</div>

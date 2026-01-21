@@ -64,17 +64,6 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				typeVersion: 2,
 			},
 			{
-				id: 'd4e5f6a7-b8c9-0123-defa-456789012345',
-				name: 'Process Blocks',
-				type: 'n8n-nodes-base.function',
-				position: [1360, 280],
-				parameters: {
-					functionCode:
-						'let returnData = {\n  json: {\n    toDelete: false,\n    pageID: $node["SplitInBatches"].json["id"],\n  }\n};\n\nif (!items[0].json.id) {\n  returnData.json.toDelete = true;\n  return [returnData];\n}\n\nfor (item of items) {\n  \n  let toDelete = false;\n\n  let type = item.json.type;\n  let data = item.json[type];\n\n  if (!toDelete) {\n    if (data.text.length == 0) {\n      toDelete = true;\n    } else {\n      returnData.json.toDelete = false;\n      break;\n    }\n  }\n\n  returnData.json.toDelete = toDelete;\n}\n\nreturn [returnData];',
-				},
-				typeVersion: 1,
-			},
-			{
 				id: 'e5f6a7b8-c9d0-1234-efab-567890123456',
 				name: 'SplitInBatches',
 				type: 'n8n-nodes-base.splitInBatches',
@@ -82,17 +71,6 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				parameters: {
 					options: {},
 					batchSize: 1,
-				},
-				typeVersion: 1,
-			},
-			{
-				id: 'f6a7b8c9-d0e1-2345-fabc-678901234567',
-				name: 'Check for empty properties',
-				type: 'n8n-nodes-base.function',
-				position: [600, 300],
-				parameters: {
-					functionCode:
-						'for (item of items) {\n\n  let toDelete = false;\n  for (const key in item.json.properties) {\n    let type = item.json.properties[key].type;\n    let data = item.json.properties[key][type];\n    \n    if (!data || data.length == 0) {\n      toDelete = true;\n    } else {\n      toDelete = false;\n      break;\n    }\n  }\n\n  item.json.toDelete = toDelete;\n}\n\nreturn items;',
 				},
 				typeVersion: 1,
 			},
@@ -173,6 +151,105 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				id: 'feeb3fe1-2f49-46e8-a851-ece761e8fc67',
 				name: 'HTTP Request',
 			},
+			{
+				id: '62cc6d3d-53cd-43f7-ad59-c556d061b4cd',
+				name: 'Get many events',
+				type: 'n8n-nodes-base.googleCalendar',
+				typeVersion: 1.3,
+				parameters: {
+					operation: 'getAll',
+					calendar: {
+						__rl: true,
+						mode: 'list',
+						value: '',
+					},
+					timeMin: '[DateTime: 2026-01-21T07:45:39.029-05:00]',
+					timeMax: '[DateTime: 2026-01-28T07:45:39.029-05:00]',
+					options: {},
+				},
+				position: [2352, 784],
+				credentials: {
+					googleCalendarOAuth2Api: {
+						id: 'e71zldqTHabI3yUa',
+						name: 'Google Calendar account',
+					},
+				},
+			},
+			{
+				id: '7da75fc6-6e0d-4790-96c6-04ec4b984690',
+				name: 'Get a report',
+				type: 'n8n-nodes-base.googleAnalytics',
+				typeVersion: 2,
+				parameters: {
+					propertyId: {
+						__rl: true,
+						mode: 'list',
+						value: '',
+					},
+					dateRange: 'custom',
+					metricsGA4: {
+						metricValues: [{}],
+					},
+					dimensionsGA4: {
+						dimensionValues: [{}],
+					},
+					additionalFields: {},
+				},
+				position: [2048, 896],
+			},
+			{
+				id: '1e9c79b7-bf42-47f9-8fb1-83b6c006f6ac',
+				type: 'n8n-nodes-base.discourse',
+				name: 'Create a category',
+				typeVersion: 1,
+				parameters: {
+					resource: 'category',
+				},
+				position: [1296, 784],
+			},
+			{
+				id: '499b7695-48df-41d5-aa15-05a45f5d8636',
+				name: 'Create a message',
+				type: 'n8n-nodes-base.googleChat',
+				typeVersion: 1,
+				parameters: {
+					jsonParameters: true,
+					additionalFields: {},
+				},
+				position: [2080, 736],
+				webhookId: 'ab0d8d0b-aefa-4dc3-b656-99a454a6b34d',
+			},
+			{
+				id: '91d3d939-1c57-4f63-9fd6-d704a2578cf7',
+				name: 'HTML',
+				type: 'n8n-nodes-base.html',
+				typeVersion: 1.2,
+				parameters: {},
+				position: [1584, 640],
+			},
+			{
+				id: '6d4891da-3e66-4c61-ae44-27a6b4205a26',
+				name: 'Code in Python',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
+				parameters: {
+					language: 'pythonNative',
+					pythonCode:
+						'# Loop over input items and add a new field called \'my_new_field\' to the JSON of each one\nfor item in _items:\n  item["json"]["my_new_field"] = 1\nreturn _items',
+				},
+				position: [1968, 1024],
+			},
+			{
+				id: 'bc1137ac-39c5-4deb-bd91-40f9e49ee4bd',
+				name: 'Code in JavaScript',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
+				parameters: {
+					jsCode:
+						"// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();",
+				},
+				position: [192, 0],
+			},
 		],
 		settings: {},
 		connections: {
@@ -188,22 +265,6 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 					[
 						{
 							node: 'HTTP Request',
-							type: 'main',
-							index: 0,
-						},
-					],
-				],
-			},
-			'Process Blocks': {
-				main: [
-					[
-						{
-							node: 'If toDelete',
-							type: 'main',
-							index: 0,
-						},
-						{
-							node: 'SplitInBatches',
 							type: 'main',
 							index: 0,
 						},
@@ -236,7 +297,7 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				main: [
 					[
 						{
-							node: 'Process Blocks',
+							node: 'If toDelete',
 							type: 'main',
 							index: 0,
 						},
@@ -269,17 +330,6 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				main: [
 					[
 						{
-							node: 'Check for empty properties',
-							type: 'main',
-							index: 0,
-						},
-					],
-				],
-			},
-			'Check for empty properties': {
-				main: [
-					[
-						{
 							node: 'If Empty Properties',
 							type: 'main',
 							index: 0,
@@ -302,14 +352,7 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 			{
 				name: 'Logic',
 				description: 'Logical operations and data processing',
-				nodes: [
-					'Check for empty properties',
-					'If Empty Properties',
-					'If toDelete',
-					'Process Blocks',
-					'SplitInBatches',
-					'Get Page Blocks',
-				],
+				nodes: ['If Empty Properties', 'If toDelete', 'SplitInBatches', 'Get Page Blocks'],
 			},
 			{
 				name: 'Actions',

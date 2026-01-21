@@ -17,7 +17,16 @@ import type {
  * Complex types like fixedCollection, resourceLocator, etc. are excluded
  * as they require the full NDV experience.
  */
-const SUPPORTED_PARAMETER_TYPES = ['string', 'number', 'boolean', 'options', 'multiOptions'];
+const SUPPORTED_PARAMETER_TYPES = [
+	'string',
+	'number',
+	'boolean',
+	'options',
+	'multiOptions',
+	'dateTime',
+	'color',
+	'json',
+];
 
 /**
  * Creates a unique key for a parameter based on node name and parameter name.
@@ -44,8 +53,8 @@ export const getNodeRequiredParameters = <TNode extends BaseNode>(
 	}
 
 	return nodeType.properties.filter((prop) => {
-		// Only required parameters
-		if (!prop.required) return false;
+		// Only required parameters and [FOR NOW] parameters that require editors
+		if (!prop.required && !prop.typeOptions?.editor) return false;
 
 		// Only supported simple types
 		if (!SUPPORTED_PARAMETER_TYPES.includes(prop.type)) return false;
