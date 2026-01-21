@@ -15,6 +15,7 @@ describe('roles store', () => {
 			global: [],
 			credential: [],
 			workflow: [],
+			externalSecretsProvider: [],
 			project: [
 				{
 					displayName: 'Project Admin',
