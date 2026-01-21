@@ -103,6 +103,7 @@ export interface ITemplatesWorkflowResponse extends ITemplatesWorkflow, IWorkflo
 	image: ITemplatesImage[];
 	categories: ITemplatesCategory[];
 	workflowInfo: ITemplatesWorkflowInfo;
+	readyToDemo?: boolean;
 }
 
 /**

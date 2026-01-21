@@ -10,6 +10,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { I18nT } from 'vue-i18n';
 
 import { N8nActionDropdown, N8nButton, N8nText, type ActionDropdownItem } from '@n8n/design-system';
+
 const emit = defineEmits<{
 	mouseenter: [event: MouseEvent];
 	mouseleave: [event: MouseEvent];
@@ -25,6 +26,7 @@ const props = defineProps<{
 	disabled?: boolean;
 	hideTooltip?: boolean;
 	label?: string;
+	hideIcon?: boolean;
 	size?: 'small' | 'medium' | 'large';
 	includeChatTrigger?: boolean;
 	getNodeType: (type: string, typeVersion: number) => INodeTypeDescription | null;
@@ -91,7 +93,7 @@ function getNodeTypeByName(name: string): INodeTypeDescription | null {
 				:loading="executing"
 				:disabled="disabled"
 				:size="size ?? 'large'"
-				icon="flask-conical"
+				:icon="props.hideIcon ? undefined : 'flask-conical'"
 				type="primary"
 				data-test-id="execute-workflow-button"
 				@mouseenter="$emit('mouseenter', $event)"

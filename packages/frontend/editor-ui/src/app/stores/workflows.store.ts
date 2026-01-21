@@ -1100,6 +1100,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		dataPinningEventBus.emit('pin-data', { [payload.node.name]: storedPinData });
 	}
 
+	function unpinAllData() {
+		const nodeNames = Object.keys(workflow.value.pinData ?? {});
+		const now = Date.now();
+		for (const md of Object.values(nodeMetadata.value)) {
+			md.pinnedDataLastRemovedAt = now;
+		}
+
+		workflow.value.pinData = undefined;
+		workflowObject.value.setPinData(undefined);
+
+		uiStore.markStateDirty();
+
+		dataPinningEventBus.emit('unpin-data', {
+			nodeNames,
+		});
+	}
+
 	function unpinData(payload: { node: INodeUi }): void {
 		const nodeName = payload.node.name;
 
@@ -2056,6 +2073,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setParentFolder,
 		setWorkflow,
 		pinData,
+		unpinAllData,
 		unpinData,
 		addConnection,
 		removeConnection,

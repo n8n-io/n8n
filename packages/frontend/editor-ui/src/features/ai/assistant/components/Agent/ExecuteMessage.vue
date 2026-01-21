@@ -197,8 +197,8 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 onBeforeUnmount(() => {
 	stopExecutionWatcher();
 });
+// here
 </script>
-
 <template>
 	<div
 		ref="containerRef"

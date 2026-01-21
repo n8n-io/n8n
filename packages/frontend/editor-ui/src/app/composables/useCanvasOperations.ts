@@ -2691,10 +2691,12 @@ export function useCanvasOperations() {
 		id,
 		name,
 		workflow,
+		readyToDemo,
 	}: {
 		id: string | number;
 		name?: string;
 		workflow: IWorkflowTemplate['workflow'] | WorkflowDataWithTemplateId;
+		readyToDemo?: boolean;
 	}) {
 		const convertedNodes = workflow.nodes?.map(workflowsStore.convertTemplateNodeToNodeUi);
 
@@ -2704,6 +2706,7 @@ export function useCanvasOperations() {
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
+		workflowState.setReadyToDemo(readyToDemo ?? false);
 	}
 
 	function tryToOpenSubworkflowInNewTab(nodeId: string): boolean {

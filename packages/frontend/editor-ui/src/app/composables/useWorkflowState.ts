@@ -232,6 +232,10 @@ export function useWorkflowState() {
 		dataPinningEventBus.emit('pin-data', validPinData);
 	}
 
+	function setReadyToDemo(readyToDemo: boolean) {
+		workflowStateStore.readyToDemo = readyToDemo;
+	}
+
 	////
 	// Execution
 	////
@@ -494,6 +498,7 @@ export function useWorkflowState() {
 		setWorkflowMetadata,
 		addToWorkflowMetadata,
 		setWorkflowPinData,
+		setReadyToDemo,
 
 		// Execution
 		markExecutionAsStopped,
