@@ -13,6 +13,7 @@ import { Push } from '@/push';
 import { SSEPush } from '@/push/sse.push';
 import type { WebSocketPushRequest, SSEPushRequest, PushResponse } from '@/push/types';
 import { WebSocketPush } from '@/push/websocket.push';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 
 import type { PushConfig } from '../push.config';
 
@@ -44,8 +45,9 @@ describe('Push', () => {
 	});
 
 	describe('setupPushServer', () => {
-		const basePath = '';
-		const restEndpoint = 'rest';
+		const pathResolvingService = mock<PathResolvingService>({
+			resolveRestEndpoint: (path: string = '') => `/rest${path ? `/${path}` : ''}`,
+		});
 		const app = mock<Application>();
 		const server = mock<Server>();
 		// @ts-expect-error `vi.spyOn` typings don't allow `constructor`
@@ -56,7 +58,7 @@ describe('Push', () => {
 				config.backend = 'sse';
 				push = new Push(config, mock(), logger, mock(), mock());
 
-				push.setupPushServer(basePath, restEndpoint, server, app);
+				push.setupPushServer(pathResolvingService, server, app);
 
 				expect(wssSpy).not.toHaveBeenCalled();
 				expect(server.on).not.toHaveBeenCalled();
@@ -77,7 +79,7 @@ describe('Push', () => {
 					return wsServer;
 				} as never);
 
-				push.setupPushServer(basePath, restEndpoint, server, app);
+				push.setupPushServer(pathResolvingService, server, app);
 
 				expect(wssSpy).toHaveBeenCalledWith({ noServer: true });
 				const onUpgradeCaptor = captor<typeof onUpgrade>();

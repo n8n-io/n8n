@@ -16,6 +16,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { PathResolvingService } from '@/services/path-resolving.service';
 
 import { validateOriginHeaders } from './origin-validator';
 import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
@@ -67,11 +68,18 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/** Sets up the main express app to upgrade websocket connections */
-	setupPushServer(basePath: string, restEndpoint: string, server: Server, app: Application) {
+	setupPushServer(pathResolvingService: PathResolvingService, server: Server, app: Application) {
 		if (this.useWebSockets) {
 			const wsServer = new WSServer({ noServer: true });
+			const pushEndpoint = pathResolvingService.resolveRestEndpoint('push');
+
 			server.on('upgrade', (request: WebSocketPushRequest, socket, upgradeHead) => {
-				if (parseUrl(request.url).pathname === `${basePath}/${restEndpoint}/push`) {
+				this.logger.debug(`Upgrade request: ${request.url}`);
+				this.logger.debug(`Push endpoint: ${pushEndpoint}`);
+				this.logger.debug(`Pathname: ${parseUrl(request.url).pathname}`);
+
+				if (parseUrl(request.url).pathname?.includes(pushEndpoint)) {
+					this.logger.debug(`Upgrading websocket connection for ${request.url}`);
 					wsServer.handleUpgrade(request, socket, upgradeHead, (ws) => {
 						request.ws = ws;
 
@@ -91,9 +99,9 @@ export class Push extends TypedEmitter<PushEvents> {
 	}
 
 	/** Sets up the push endpoint that the frontend connects to. */
-	setupPushHandler(basePath: string, restEndpoint: string, app: Application) {
+	setupPushHandler(pathResolvingService: PathResolvingService, app: Application) {
 		app.use(
-			`${basePath}/${restEndpoint}/push`,
+			pathResolvingService.resolveRestEndpoint('push'),
 
 			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
 			(req, res) => {
