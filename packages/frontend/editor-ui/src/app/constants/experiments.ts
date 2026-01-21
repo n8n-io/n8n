@@ -66,6 +66,12 @@ export const EXECUTION_LOGIC_V2_EXPERIMENT = {
 
 export const TAMPER_PROOF_INVITE_LINKS = createExperiment('061_tamper_proof_invite_links');
 
+export const RESOURCE_CENTER_EXPERIMENT = createExperiment('063_resource_center_0', {
+	control: 'control',
+	variantResources: 'variant-resources',
+	variantInspiration: 'variant-inspiration',
+});
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -76,6 +82,7 @@ export const EXPERIMENTS_TO_TRACK = [
 	UPGRADE_PLAN_CTA_EXPERIMENT.name,
 	AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
+	RESOURCE_CENTER_EXPERIMENT.name,
 	EXECUTION_LOGIC_V2_EXPERIMENT.name,
 	COLLECTION_OVERHAUL_EXPERIMENT.name,
 	TAMPER_PROOF_INVITE_LINKS.name,
