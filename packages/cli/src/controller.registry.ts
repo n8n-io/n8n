@@ -1,6 +1,5 @@
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { inProduction } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { inProduction, Logger } from '@n8n/backend-common';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
@@ -14,6 +13,7 @@ import type { ZodClass } from 'zod-class';
 
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { LastActiveAtService } from './services/last-active-at.service';
+import { PathResolvingService } from './services/path-resolving.service';
 
 import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
@@ -23,13 +23,17 @@ import { send } from '@/response-helper';
 
 @Service()
 export class ControllerRegistry {
+	private readonly logger: Logger;
+
 	constructor(
 		private readonly license: License,
 		private readonly authService: AuthService,
-		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,
-	) {}
+		private readonly pathResolvingService: PathResolvingService,
+	) {
+		this.logger = Container.get(Logger);
+	}
 
 	activate(app: Application) {
 		for (const controllerClass of this.metadata.controllerClasses) {
@@ -41,10 +45,17 @@ export class ControllerRegistry {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
-		const basePath = metadata.registerOnRootPath
-			? metadata.basePath
-			: `/${this.globalConfig.endpoints.rest}/${metadata.basePath}`;
-		const prefix = basePath.replace(/\/+/g, '/').replace(/\/$/, '');
+
+		const controllerPath = metadata.registerOnRootPath
+			? this.pathResolvingService.resolveEndpoint(metadata.basePath)
+			: this.pathResolvingService.resolveRestEndpoint(metadata.basePath);
+
+		const prefix = controllerPath
+			.replace(/\/+/g, '/')
+			.replace(/\/$/, '');
+
+		this.logger.debug(`Controller prefix: ${prefix} (controller: ${controllerClass.name})`);
+
 		app.use(prefix === '' ? '/' : prefix, router);
 
 		const controller = Container.get(controllerClass) as Controller;

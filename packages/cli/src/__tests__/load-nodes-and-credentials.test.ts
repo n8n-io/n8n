@@ -37,23 +37,28 @@ describe('LoadNodesAndCredentials', () => {
 		});
 
 		it('should return undefined if the loader for the package is not found', () => {
-			const result = instance.resolveIcon('unknownPackage', '/icons/unknownPackage/icon.png');
+			const result = instance.resolveIcon('', 'unknownPackage', '/icons/unknownPackage/icon.png');
 			expect(result).toBeUndefined();
 		});
 
 		it('should return undefined if the resolved file path is outside the loader directory', () => {
-			const result = instance.resolveIcon('package1', '/some/other/path/icon.png');
+			const result = instance.resolveIcon('', 'package1', '/some/other/path/icon.png');
 			expect(result).toBeUndefined();
 		});
 
 		it('should return the file path if the file is within the loader directory', () => {
-			const result = instance.resolveIcon('package1', '/icons/package1/icon.png');
+			const result = instance.resolveIcon('', 'package1', '/icons/package1/icon.png');
 			expect(result).toBe('/icons/package1/icon.png');
 		});
 
 		it('should return undefined if the URL is outside the package directory', () => {
-			const result = instance.resolveIcon('package1', '/icons/package1/../../../etc/passwd');
+			const result = instance.resolveIcon('', 'package1', '/icons/package1/../../../etc/passwd');
 			expect(result).toBeUndefined();
+		});
+
+		it('should handle basePath correctly', () => {
+			const result = instance.resolveIcon('/test', 'package1', '/test/icons/package1/icon.png');
+			expect(result).toBe('/icons/package1/icon.png');
 		});
 	});
 

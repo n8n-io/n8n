@@ -10,6 +10,7 @@ import validator from 'validator';
 import YAML from 'yamljs';
 
 import { License } from '@/license';
+import { PathResolvingService } from '@/services/path-resolving.service';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UrlService } from '@/services/url.service';
 
@@ -19,13 +20,15 @@ async function createApiRouter(
 	handlersDirectory: string,
 	publicApiEndpoint: string,
 ): Promise<Router> {
-	const n8nPath = Container.get(GlobalConfig).path;
-	const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
+	const pathResolvingService = Container.get(PathResolvingService);
+	const basePath = pathResolvingService.getBasePath();
+	const swaggerDocument: JsonObject = YAML.load(openApiSpecPath);
 	// add the server depending on the config so the user can interact with the API
 	// from the Swagger UI
+
 	swaggerDocument.server = [
 		{
-			url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
+			url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}`,
 		},
 	];
 	const apiController = express.Router();
@@ -35,13 +38,16 @@ async function createApiRouter(
 		const swaggerThemePath = path.join(__dirname, 'swagger-theme.css');
 		const swaggerThemeCss = await fs.readFile(swaggerThemePath, { encoding: 'utf-8' });
 
+		// Construct favicon path with proper base path
+		const faviconPath = basePath === '/' ? '/favicon.ico' : `${basePath}/favicon.ico`;
+
 		apiController.use(
 			`/${publicApiEndpoint}/${version}/docs`,
 			serveFiles(swaggerDocument),
 			setup(swaggerDocument, {
 				customCss: swaggerThemeCss,
 				customSiteTitle: 'n8n Public API UI',
-				customfavIcon: `${n8nPath}favicon.ico`,
+				customfavIcon: faviconPath,
 			}),
 		);
 	}
@@ -104,15 +110,22 @@ async function createApiRouter(
 	return apiController;
 }
 
+const overrideOpenApiSpec = async (openApiSpecPath: string, publicApiEndpoint: string, version: string) => {
+	const swaggerDocument: JsonObject = YAML.load(openApiSpecPath);
+	swaggerDocument.servers[0].url = `/${publicApiEndpoint}/${version}`;
+
+	await fs.writeFile(openApiSpecPath, YAML.stringify(swaggerDocument));
+}
+
 export const loadPublicApiVersions = async (
 	publicApiEndpoint: string,
 ): Promise<{ apiRouters: express.Router[]; apiLatestVersion: number }> => {
 	const folders = await fs.readdir(__dirname);
 	const versions = folders.filter((folderName) => folderName.startsWith('v'));
-
 	const apiRouters = await Promise.all(
 		versions.map(async (version) => {
 			const openApiPath = path.join(__dirname, version, 'openapi.yml');
+			await overrideOpenApiSpec(openApiPath, publicApiEndpoint, version);
 			return await createApiRouter(version, openApiPath, __dirname, publicApiEndpoint);
 		}),
 	);

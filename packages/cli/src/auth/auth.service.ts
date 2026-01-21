@@ -82,7 +82,7 @@ export class AuthService {
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
 			`/${restEndpoint}/oauth1-credential/callback`,
 			`/${restEndpoint}/oauth2-credential/callback`,
-
+			
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
@@ -148,7 +148,8 @@ export class AuthService {
 	}
 
 	clearCookie(res: Response) {
-		res.clearCookie(AUTH_COOKIE_NAME);
+		// Clear cookie with the same path it was set with
+		res.clearCookie(AUTH_COOKIE_NAME, { path: this.urlService.basePath });
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
@@ -186,6 +187,8 @@ export class AuthService {
 			httpOnly: true,
 			sameSite: samesite,
 			secure,
+			// Scope the cookie to the base path so it's only sent for requests under this path
+			path: this.urlService.basePath,
 		});
 	}
 
@@ -229,7 +232,8 @@ export class AuthService {
 
 		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
 		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+
+		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.some(skipEndpoint => endpoint.includes(skipEndpoint))) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
