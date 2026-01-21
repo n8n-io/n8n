@@ -2,7 +2,6 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import {
 	createTeamProject,
 	createWorkflowWithHistory,
-	linkUserToProject,
 	mockInstance,
 	testDb,
 } from '@n8n/backend-test-utils';
@@ -10,13 +9,10 @@ import {
 	CredentialsEntity,
 	CredentialsRepository,
 	GLOBAL_ADMIN_ROLE,
-	GLOBAL_MEMBER_ROLE,
 	type Project,
 	ProjectRepository,
 	SharedCredentialsRepository,
-	TagRepository,
 	type User,
-	WorkflowTagMappingRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
@@ -46,8 +42,6 @@ describe('SourceControlExportService Integration', () => {
 	let credentialsRepository: CredentialsRepository;
 	let sharedCredentialsRepository: SharedCredentialsRepository;
 	let projectRepository: ProjectRepository;
-	let tagRepository: TagRepository;
-	let workflowTagMappingRepository: WorkflowTagMappingRepository;
 
 	// Mocked functions
 	let mockFsWriteFile: jest.MockedFunction<typeof fsWriteFile>;
@@ -60,8 +54,6 @@ describe('SourceControlExportService Integration', () => {
 		credentialsRepository = Container.get(CredentialsRepository);
 		sharedCredentialsRepository = Container.get(SharedCredentialsRepository);
 		projectRepository = Container.get(ProjectRepository);
-		tagRepository = Container.get(TagRepository);
-		workflowTagMappingRepository = Container.get(WorkflowTagMappingRepository);
 
 		// Create test user
 		testUser = await createUser({ role: GLOBAL_ADMIN_ROLE });
@@ -545,13 +537,13 @@ describe('SourceControlExportService Integration', () => {
 				([filePath]) => filePath === tagsFilePath(),
 			);
 			if (!writeCall) {
-				throw new Error(`No write call found for tags file`);
+				throw new Error('No write call found for tags file');
 			}
 			return JSON.parse(writeCall[1] as string);
 		}
 
 		async function exportTags() {
-			return exportService.exportTagsToWorkFolder(new SourceControlContext(testUser));
+			return await exportService.exportTagsToWorkFolder(new SourceControlContext(testUser));
 		}
 
 		it('should export tags and mappings across multiple teams', async () => {
@@ -634,7 +626,7 @@ describe('SourceControlExportService Integration', () => {
 				createTag({ id: 'tag3', name: 'Tag 3' }),
 			]);
 
-			await Promise.all(tags.map((tag) => assignTagToWorkflow(tag, workflow)));
+			await Promise.all(tags.map(async (tag) => await assignTagToWorkflow(tag, workflow)));
 
 			const result = await exportTags();
 
