@@ -3,7 +3,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
@@ -72,11 +71,9 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 
 describe('WorkflowPublishModal', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
-	let uiStore: MockedStore<typeof useUIStore>;
 
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
-		uiStore = mockedStore(useUIStore);
 
 		workflowsStore.workflow = {
 			id: 'workflow-1',
