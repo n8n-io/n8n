@@ -624,14 +624,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Build the IF node connections to its branches
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add branch nodes (either can be null for single-branch patterns)
+		// Add branch nodes (may be NodeChain or single nodes)
 		if (composite.trueBranch) {
-			this.addNodeWithSubnodes(nodes, composite.trueBranch);
-			ifMainConns.set(0, [{ node: composite.trueBranch.name, type: 'main', index: 0 }]);
+			const trueBranchHead = this.addBranchToGraph(nodes, composite.trueBranch);
+			ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
 		}
 		if (composite.falseBranch) {
-			this.addNodeWithSubnodes(nodes, composite.falseBranch);
-			ifMainConns.set(1, [{ node: composite.falseBranch.name, type: 'main', index: 0 }]);
+			const falseBranchHead = this.addBranchToGraph(nodes, composite.falseBranch);
+			ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
 		}
 
 		// Add the IF node with connections to branches
@@ -934,9 +934,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	): string {
 		// Check if the branch is a NodeChain
 		if (isNodeChain(branch)) {
-			// Add all nodes from the chain
+			// Add all nodes from the chain, handling composites that may have been chained
 			for (const chainNode of branch.allNodes) {
-				this.addNodeWithSubnodes(nodes, chainNode);
+				// Check if chainNode is a composite (can happen via chain.then(ifBranch(...)))
+				if (this.isSwitchCaseComposite(chainNode)) {
+					this.addSwitchCaseNodes(nodes, chainNode as unknown as SwitchCaseComposite);
+				} else if (this.isIfBranchComposite(chainNode)) {
+					this.addIfBranchNodes(nodes, chainNode as unknown as IfBranchComposite);
+				} else if (this.isMergeComposite(chainNode)) {
+					this.addMergeNodes(nodes, chainNode as unknown as MergeComposite);
+				} else {
+					this.addNodeWithSubnodes(nodes, chainNode);
+				}
 			}
 
 			// Process connections declared on the chain (from .then() calls)

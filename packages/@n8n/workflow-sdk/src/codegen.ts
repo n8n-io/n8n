@@ -692,6 +692,9 @@ function generateMergeCall(
  * This is used for branch nodes in ifBranch() and switchCase() to include
  * the entire downstream chain inline.
  *
+ * Recursively handles IF, Switch, and Merge nodes to prevent them from
+ * becoming disconnected.
+ *
  * @returns The node call string with chained .then() calls for downstream nodes
  */
 function generateNodeCallWithChain(
@@ -722,12 +725,40 @@ function generateNodeCallWithChain(
 		// Stop if target not found, already added, or is a subnode
 		if (!targetInfo || addedNodes.has(target.to) || targetInfo.isSubnodeOf) break;
 
-		// Don't follow into composite patterns (IF, Switch, Merge)
-		if (
-			isIfNode(targetInfo.node) ||
-			isSwitchNode(targetInfo.node) ||
-			isMergeNode(targetInfo.node)
-		) {
+		// Handle composite patterns recursively (IF, Switch, Merge)
+		if (isIfNode(targetInfo.node)) {
+			const ifResult = generateIfBranchCall(targetInfo, nodeInfoMap, addedNodes);
+			if (ifResult) {
+				addedNodes.add(target.to);
+				call += `.then(${ifResult.call})`;
+				// Continue from the IF node to see if there's more downstream
+				currentInfo = targetInfo;
+				continue;
+			}
+			break;
+		}
+
+		if (isSwitchNode(targetInfo.node)) {
+			const switchResult = generateSwitchCaseCall(targetInfo, nodeInfoMap, addedNodes);
+			if (switchResult) {
+				addedNodes.add(target.to);
+				call += `.then(${switchResult.call})`;
+				// Continue from the Switch node
+				currentInfo = targetInfo;
+				continue;
+			}
+			break;
+		}
+
+		if (isMergeNode(targetInfo.node)) {
+			const mergeCall = generateMergeCall(targetInfo, nodeInfoMap, addedNodes);
+			if (mergeCall) {
+				addedNodes.add(target.to);
+				call += `.then(${mergeCall})`;
+				// Continue from the Merge node
+				currentInfo = targetInfo;
+				continue;
+			}
 			break;
 		}
 
