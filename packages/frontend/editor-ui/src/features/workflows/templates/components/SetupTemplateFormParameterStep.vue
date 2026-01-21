@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import IconSuccess from './IconSuccess.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import type { NodeParameterValueType } from 'n8n-workflow';
@@ -52,13 +51,6 @@ const allParametersFilled = computed(() => {
 		</p>
 
 		<div :class="$style.parameters">
-			<!-- <SimpleParameterInput
-				v-for="param in nodeParameters.parameters"
-				:key="param.key"
-				:parameter="param.parameter"
-				:value="parameterValues[param.key] ?? param.currentValue"
-				@update:value="emit('parameterChanged', { parameterKey: param.key, value: $event })"
-			/> -->
 			<ParameterInputFull
 				v-for="param in nodeParameters.parameters"
 				:key="param.key"
@@ -73,13 +65,6 @@ const allParametersFilled = computed(() => {
 				@update="emit('parameterChanged', { parameterKey: param.key, value: $event.value })"
 			/>
 		</div>
-
-		<IconSuccess
-			:class="{
-				[$style.parameterOk]: true,
-				[$style.invisible]: !allParametersFilled,
-			}"
-		/>
 	</li>
 </template>
 
