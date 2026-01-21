@@ -157,19 +157,11 @@ describe('Workflow Status API', () => {
 				const response = await testServer.authlessAgent
 					.get(`/workflows/${savedWorkflow.id}/execution-status`)
 					.set('Authorization', 'Bearer test-token')
-					.expect(200);
+					.expect(400);
 
-				expect(response.body.data).toMatchObject({
-					workflowId: savedWorkflow.id,
-					readyToExecute: expect.any(Boolean),
-					credentials: expect.arrayContaining([
-						expect.objectContaining({
-							credentialId: savedCredential.id,
-							credentialName: savedCredential.name,
-							credentialType: savedCredential.type,
-							credentialStatus: expect.any(String),
-						}),
-					]),
+				expect(response.body).toMatchObject({
+					message:
+						'You must provide an endpoint auth token to access dynamic credentials external endpoints.',
 				});
 			});
 		});
