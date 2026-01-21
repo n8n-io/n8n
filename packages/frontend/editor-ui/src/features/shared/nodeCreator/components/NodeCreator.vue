@@ -14,8 +14,10 @@ import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import type { NodeTypeSelectedPayload } from '@/Interface';
+import type { NodeTypeSelectedPayload, SimplifiedNodeType } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';
+import { useNodeGovernanceStore } from '@/features/settings/nodeGovernance/nodeGovernance.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { N8nIconButton } from '@n8n/design-system';
 // elements that should not trigger onClickOutside
@@ -42,6 +44,8 @@ const chatPanelStore = useChatPanelStore();
 
 const { setShowScrim, setActions, setMergeNodes } = useNodeCreatorStore();
 const { generateMergedNodesAndActions } = useActionsGenerator();
+const nodeGovernanceStore = useNodeGovernanceStore();
+const projectsStore = useProjectsStore();
 
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
@@ -140,16 +144,41 @@ registerKeyHook('NodeCreatorCloseTab', {
 	handler: () => emit('closeNodeCreator'),
 });
 
+// Helper to augment nodes with governance status
+function augmentNodesWithGovernance(nodes: SimplifiedNodeType[]): SimplifiedNodeType[] {
+	return nodes.map((node) => {
+		const governanceStatus = nodeGovernanceStore.getGovernanceForNode(node.name);
+		if (governanceStatus) {
+			return {
+				...node,
+				governance: governanceStatus,
+			};
+		}
+		return node;
+	});
+}
+
 watch(
 	() => ({
 		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
 		nodeTypes: useNodeTypesStore().visibleNodeTypes,
+		governanceStatus: nodeGovernanceStore.nodeGovernanceStatus,
 	}),
-	({ nodeTypes, httpOnlyCredentials }) => {
+	async ({ nodeTypes, httpOnlyCredentials }) => {
 		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
 
+		// Fetch governance status for all node types if needed
+		const currentProjectId = projectsStore.currentProjectId;
+		if (currentProjectId && !nodeGovernanceStore.governanceStatusLoaded) {
+			const nodeTypeNames = mergedNodes.map((n) => n.name);
+			await nodeGovernanceStore.fetchNodeGovernanceStatus(currentProjectId, nodeTypeNames);
+		}
+
+		// Augment nodes with governance status
+		const nodesWithGovernance = augmentNodesWithGovernance(mergedNodes);
+
 		setActions(actions);
-		setMergeNodes(mergedNodes);
+		setMergeNodes(nodesWithGovernance);
 	},
 	{ immediate: true },
 );

@@ -6,6 +6,7 @@ import type {
 	NodeGovernancePolicy,
 	NodeCategory,
 	NodeAccessRequest,
+	GovernanceStatus,
 } from './nodeGovernance.api';
 
 export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
@@ -18,6 +19,9 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 	const myRequests = ref<NodeAccessRequest[]>([]);
 	const loading = ref(false);
 	const error = ref<string | null>(null);
+	// Per-node governance status cache (keyed by nodeType)
+	const nodeGovernanceStatus = ref<Record<string, GovernanceStatus>>({});
+	const governanceStatusLoaded = ref(false);
 
 	// Getters
 	const globalPolicies = computed(() =>
@@ -172,6 +176,37 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 		return response.request;
 	}
 
+	async function fetchNodeGovernanceStatus(projectId: string, nodeTypes: string[]) {
+		if (nodeTypes.length === 0) {
+			return;
+		}
+
+		try {
+			const response = await nodeGovernanceApi.getNodeGovernanceStatus(
+				rootStore.restApiContext,
+				projectId,
+				nodeTypes,
+			);
+			nodeGovernanceStatus.value = {
+				...nodeGovernanceStatus.value,
+				...response.governance,
+			};
+			governanceStatusLoaded.value = true;
+		} catch (e) {
+			// Silently fail - governance is optional
+			console.warn('Failed to fetch node governance status:', e);
+		}
+	}
+
+	function getGovernanceForNode(nodeType: string): GovernanceStatus | undefined {
+		return nodeGovernanceStatus.value[nodeType];
+	}
+
+	function clearGovernanceStatus() {
+		nodeGovernanceStatus.value = {};
+		governanceStatusLoaded.value = false;
+	}
+
 	return {
 		// State
 		policies,
@@ -180,6 +215,8 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 		myRequests,
 		loading,
 		error,
+		nodeGovernanceStatus,
+		governanceStatusLoaded,
 		// Getters
 		globalPolicies,
 		projectPolicies,
@@ -201,5 +238,8 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 		fetchMyRequests,
 		createAccessRequest,
 		reviewRequest,
+		fetchNodeGovernanceStatus,
+		getGovernanceForNode,
+		clearGovernanceStatus,
 	};
 });
