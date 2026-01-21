@@ -183,9 +183,6 @@ catalogs:
     xss:
       specifier: 1.0.15
       version: 1.0.15
-    zod-class:
-      specifier: 0.0.16
-      version: 0.0.16
     zod-to-json-schema:
       specifier: 3.23.3
       version: 3.23.3
@@ -551,7 +548,7 @@ importers:
         specifier: 3.25.67
         version: 3.25.67
       zod-class:
-        specifier: 'catalog:'
+        specifier: 0.0.16
         version: 0.0.16(zod@3.25.67)
     devDependencies:
       '@n8n/config':
