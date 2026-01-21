@@ -94,6 +94,29 @@ async function fetchWorkflow(id: number): Promise<WorkflowResponse> {
 }
 
 /**
+ * Get list of workflow IDs from manifest that are missing their JSON files
+ */
+function getMissingWorkflowIds(): number[] {
+	if (!fs.existsSync(MANIFEST_PATH)) {
+		return [];
+	}
+
+	const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf-8')) as Manifest;
+	const missing: number[] = [];
+
+	for (const entry of manifest.workflows) {
+		if (!entry.success) continue;
+
+		const filePath = path.join(FIXTURES_DIR, `${entry.id}.json`);
+		if (!fs.existsSync(filePath)) {
+			missing.push(entry.id);
+		}
+	}
+
+	return missing;
+}
+
+/**
  * Check if fixtures are already downloaded and available
  */
 export function fixturesExist(): boolean {
@@ -108,16 +131,30 @@ export function fixturesExist(): boolean {
 		return false;
 	}
 
-	// Check if at least some fixture files exist
-	const sampleIds = successfulWorkflows.slice(0, 5).map((w) => w.id);
-	for (const id of sampleIds) {
-		const filePath = path.join(FIXTURES_DIR, `${id}.json`);
-		if (!fs.existsSync(filePath)) {
-			return false;
-		}
+	// Check if ALL workflow files exist (not just a sample)
+	const missing = getMissingWorkflowIds();
+	return missing.length === 0;
+}
+
+/**
+ * Download missing workflow files that are listed in the manifest
+ * @throws FixtureDownloadError if API is unreachable or returns errors
+ */
+async function downloadMissingFromManifest(): Promise<void> {
+	const missingIds = getMissingWorkflowIds();
+	if (missingIds.length === 0) {
+		return;
 	}
 
-	return true;
+	for (const id of missingIds) {
+		const data = await fetchWorkflow(id);
+
+		if (data?.data?.attributes) {
+			const { workflow } = data.data.attributes;
+			const outputPath = path.join(FIXTURES_DIR, `${id}.json`);
+			fs.writeFileSync(outputPath, JSON.stringify(workflow, null, 2));
+		}
+	}
 }
 
 /**
@@ -216,10 +253,14 @@ export async function downloadFixtures(targetCount: number = 100): Promise<void>
  * @throws FixtureDownloadError if download fails
  */
 export async function ensureFixtures(): Promise<void> {
+	// First, download any missing files from the existing manifest
+	await downloadMissingFromManifest();
+
 	if (fixturesExist()) {
 		return;
 	}
 
+	// If still missing fixtures (no manifest or need more), download fresh
 	await downloadFixtures();
 
 	if (!fixturesExist()) {
