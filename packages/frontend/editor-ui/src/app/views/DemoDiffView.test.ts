@@ -78,8 +78,10 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 // Import after mocks
 import DemoDiffView from './DemoDiffView.vue';
 
-// Capture tidyUp prop from WorkflowDiffView
+// Capture props from WorkflowDiffView
 let capturedTidyUpProp: boolean | undefined = undefined;
+let capturedSourceLabel: string | undefined = undefined;
+let capturedTargetLabel: string | undefined = undefined;
 
 const renderComponent = createComponentRenderer(DemoDiffView, {
 	global: {
@@ -87,8 +89,10 @@ const renderComponent = createComponentRenderer(DemoDiffView, {
 			WorkflowDiffView: {
 				template: '<div data-test-id="workflow-diff-view"><slot /></div>',
 				props: ['sourceWorkflow', 'targetWorkflow', 'sourceLabel', 'targetLabel', 'tidyUp'],
-				setup(props: { tidyUp?: boolean }) {
+				setup(props: { tidyUp?: boolean; sourceLabel?: string; targetLabel?: string }) {
 					capturedTidyUpProp = props.tidyUp;
+					capturedSourceLabel = props.sourceLabel;
+					capturedTargetLabel = props.targetLabel;
 					return {};
 				},
 			},
@@ -103,6 +107,8 @@ describe('DemoDiffView', () => {
 		vi.clearAllMocks();
 		createTestingPinia();
 		capturedTidyUpProp = undefined;
+		capturedSourceLabel = undefined;
+		capturedTargetLabel = undefined;
 
 		// Capture the message event handler
 		vi.spyOn(window, 'addEventListener').mockImplementation((type, handler) => {
@@ -204,6 +210,10 @@ describe('DemoDiffView', () => {
 			const diffView = getByTestId('workflow-diff-view');
 			expect(diffView).toBeInTheDocument();
 		});
+
+		// Assert the i18n keys for labels are passed to WorkflowDiffView
+		expect(capturedSourceLabel).toBe('workflowDiff.label.before');
+		expect(capturedTargetLabel).toBe('workflowDiff.label.after');
 	});
 
 	it('should ignore non-openDiff commands', () => {

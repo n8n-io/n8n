@@ -79,7 +79,7 @@ export function useWorkflowDiffUI(options: UseWorkflowDiffUIOptions) {
 			typeof tag === 'string' ? tag : tag.name,
 		);
 
-		if (sourceTags.join('') !== targetTags.join('')) {
+		if (JSON.stringify(sourceTags) !== JSON.stringify(targetTags)) {
 			settings.push({
 				name: 'tags',
 				before: JSON.stringify(sourceTags, null, 2),

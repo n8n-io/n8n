@@ -50,8 +50,8 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				return;
 			}
 
-			sourceWorkflow.value = json.oldWorkflow as IWorkflowDb | undefined;
-			targetWorkflow.value = json.newWorkflow as IWorkflowDb | undefined;
+			sourceWorkflow.value = json.oldWorkflow ?? undefined;
+			targetWorkflow.value = json.newWorkflow ?? undefined;
 			tidyUpEnabled.value = json.tidyUp === true;
 		}
 	} catch (e) {
