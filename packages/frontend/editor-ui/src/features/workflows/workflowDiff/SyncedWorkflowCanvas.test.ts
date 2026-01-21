@@ -184,10 +184,12 @@ describe('SyncedWorkflowCanvas', () => {
 				capturedTidyUpHandler(layoutResult);
 			}
 
-			// Verify updateNode was called for each node with correct positions
+			// Verify updateNode was called for each node with positions offset
+			// so the leftmost topmost node (node-1) is at origin {0, 0}
+			// node-1 was at {100, 50}, so offset is {-100, -50}
 			expect(updateNodeSpy).toHaveBeenCalledTimes(2);
-			expect(updateNodeSpy).toHaveBeenCalledWith('node-1', { position: { x: 100, y: 50 } });
-			expect(updateNodeSpy).toHaveBeenCalledWith('node-2', { position: { x: 300, y: 150 } });
+			expect(updateNodeSpy).toHaveBeenCalledWith('node-1', { position: { x: 0, y: 0 } });
+			expect(updateNodeSpy).toHaveBeenCalledWith('node-2', { position: { x: 200, y: 100 } });
 		});
 	});
 });

@@ -41,9 +41,23 @@ onNodesInitialized(() => {
 });
 
 // Apply calculated positions when Canvas emits tidy-up event
+// Shift all nodes so the leftmost topmost node is at origin {x: 0, y: 0}
+// This ensures both canvases in the diff view have aligned anchor nodes
 function onTidyUp({ result }: CanvasLayoutEvent) {
+	// Find leftmost topmost node from result (sort by Y, then X)
+	const sortedResultNodes = [...result.nodes].sort((a, b) => {
+		const yDiff = a.y - b.y;
+		return yDiff === 0 ? a.x - b.x : yDiff;
+	});
+	const anchorNode = sortedResultNodes[0];
+
+	// Calculate offset to position anchor at origin
+	const offsetX = anchorNode ? -anchorNode.x : 0;
+	const offsetY = anchorNode ? -anchorNode.y : 0;
+
+	// Apply positions with offset
 	result.nodes.forEach(({ id, x, y }) => {
-		updateNode(id, { position: { x, y } });
+		updateNode(id, { position: { x: x + offsetX, y: y + offsetY } });
 	});
 }
 
