@@ -17,24 +17,24 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'3066',
 	'3121',
 	// '3514' - now passes after switch case downstream chain fix
-	'3586',
-	'3770',
+	// '3586' - now passes after convergence pattern fix
+	// '3770' - now passes after fan-out pattern fix
 	'3790',
 	'3904',
 	'4005',
 	'4247',
 	'4295',
-	'4365',
+	// '4365' - now passes after convergence pattern fix
 	'4366',
 	'4400',
-	'4457',
-	'4478',
+	'4457', // cycle to IF node (Help Responder → Command Router) - cannot represent in SDK
+	// '4478' - now passes after convergence pattern fix
 	'4506',
 	'4557',
 	'4573',
 	'4600',
 	'4637',
-	'4678',
+	// '4678' - now passes after handleFanOut NodeChain fix
 	'4685',
 	'4721',
 	'4723',
@@ -47,15 +47,15 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'4868',
 	'4912',
 	// '4949' - now passes after switch case downstream chain fix
-	'4967',
+	// '4967' - now passes after convergence pattern fix
 	'4975',
-	'4987',
+	// '4987' - now passes after convergence pattern fix
 	'5024',
 	'5045',
 	'5139',
 	'5163',
 	'5258',
-	'5374',
+	'5374', // cycle to IF node (Is it good enough? → Content writer loop) - cannot represent in SDK
 	'5375',
 	'5385',
 	'5434',
@@ -68,56 +68,56 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'5617',
 	'5618',
 	'5626',
-	'5656',
-	'5670',
-	'5676',
+	// '5656' - now passes after convergence pattern fix
+	// '5670' - now passes after fan-out pattern fix
+	// '5676' - now passes after convergence pattern fix
 	'5677',
 	'5682',
-	'5683',
+	'5683', // connection mismatch (stricter test comparison)
 	'5690',
 	'5691',
 	'5694',
 	'5707',
-	'5711',
+	'5711', // connection mismatch (stricter test comparison)
 	'5734',
 	'5741',
 	'5751',
 	'5755',
 	'5779',
 	'5786',
-	'5787',
+	// '5787' - now passes after handleFanOut NodeChain fix
 	'5789',
 	'5795',
 	'5796',
 	'5798',
 	'5799',
-	'5808',
+	// '5808' - now passes after nested composite fix
 	'5817',
 	'5820',
 	'5832',
 	'5835',
 	'5841',
 	'5842',
-	'5851',
-	'5857',
-	'5906',
+	'5851', // parse fixed, but connection mismatch (nodes: 13 vs 13, conns: 10 vs 9)
+	// '5857' - now passes after fan-out pattern fix
+	// '5906' - now passes after convergence pattern fix
 	'5910',
 	'5938',
 	'5979',
 	'6027',
 	'6067',
 	'6150',
-	'6524',
+	// '6524' - now passes after handleFanOut NodeChain fix
 	'6535',
-	'6538',
+	// '6538' - now passes after convergence pattern fix
 	'6542',
 	'6765',
 	'6771',
 	'6897',
-	'6993',
+	'6993', // parse fixed, but connection mismatch (nodes: 32 vs 32, conns: 32 vs 31)
 	'7130',
 	'7154',
-	'7156',
+	// '7156' - now passes after handleFanOut NodeChain fix
 	'7423',
 	'7455',
 	'7601',
@@ -129,23 +129,23 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'8022',
 	'8210',
 	'8237',
-	'8428',
+	'8428', // connection mismatch (stricter test comparison)
 	'8500',
 	'8591',
 	'8644',
 	'8721',
 	'9200',
 	'9437',
-	'9549',
+	// '9549' - now passes after fan-out pattern fix
 	'9576',
 	'9605',
 	'9801',
 	'9814',
 	'9867',
-	'9876',
+	'9876', // connection mismatch (stricter test comparison)
 	'9986',
 	'9999',
-	'10132',
+	'10132', // parse fixed, but connection mismatch (nodes: 24 vs 24, conns: 26 vs 22)
 	'10139',
 	'10174',
 	'10196',
@@ -154,7 +154,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'10420',
 	'10427',
 	'10476',
-	'10566',
+	'10566', // polling loop (Wait → IF) - cycle to IF node cannot be represented in SDK
 	'10640',
 	'10729',
 	'10889',
@@ -163,7 +163,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'11158',
 	'11290',
 	'11294',
-	'11366',
+	'11366', // connection mismatch (stricter test comparison)
 	'11466',
 	'11532',
 	'11572',
@@ -439,6 +439,95 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['IF']).toBeDefined();
 		expect(parsedJson.connections['IF']!.main[0]![0]!.node).toBe('True Branch');
 		expect(parsedJson.connections['IF']!.main[1]![0]!.node).toBe('False Branch');
+	});
+
+	it('should preserve connections when both IF branches converge to the same node', () => {
+		// This tests the branch convergence pattern:
+		// IF node has two branches (True and False), both leading to the same downstream node
+		// The generated code should create the convergence node as a variable and reference it
+		// in both branches to preserve both connections
+		const originalJson: WorkflowJSON = {
+			id: 'branch-convergence-test',
+			name: 'Branch Convergence Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'true-1',
+					name: 'True Path',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: 'false-1',
+					name: 'False Path',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: 'converge-1',
+					name: 'Convergence Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [600, 0],
+					parameters: { mode: 'manual' },
+				},
+			],
+			connections: {
+				Trigger: {
+					main: [[{ node: 'IF', type: 'main', index: 0 }]],
+				},
+				IF: {
+					main: [
+						[{ node: 'True Path', type: 'main', index: 0 }],
+						[{ node: 'False Path', type: 'main', index: 0 }],
+					],
+				},
+				// Both branches converge to the same node
+				'True Path': {
+					main: [[{ node: 'Convergence Node', type: 'main', index: 0 }]],
+				},
+				'False Path': {
+					main: [[{ node: 'Convergence Node', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(5);
+
+		// Verify IF connections to branch nodes
+		expect(parsedJson.connections['IF']).toBeDefined();
+		expect(parsedJson.connections['IF']!.main[0]![0]!.node).toBe('True Path');
+		expect(parsedJson.connections['IF']!.main[1]![0]!.node).toBe('False Path');
+
+		// CRITICAL: Verify BOTH branches connect to the convergence node
+		expect(parsedJson.connections['True Path']).toBeDefined();
+		expect(parsedJson.connections['True Path']!.main[0]![0]!.node).toBe('Convergence Node');
+
+		expect(parsedJson.connections['False Path']).toBeDefined();
+		expect(parsedJson.connections['False Path']!.main[0]![0]!.node).toBe('Convergence Node');
 	});
 
 	it('should preserve connections for switch case with downstream chain', () => {

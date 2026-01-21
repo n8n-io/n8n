@@ -1,18 +1,19 @@
 import { v4 as uuid } from 'uuid';
-import type {
-	NodeInstance,
-	TriggerInstance,
-	NodeConfig,
-	NodeInput,
-	TriggerInput,
-	StickyNoteConfig,
-	PlaceholderValue,
-	NewCredentialValue,
-	DeclaredConnection,
-	NodeChain,
-	MergeComposite,
-	SwitchCaseComposite,
-	IfBranchComposite,
+import {
+	isNodeChain,
+	type NodeInstance,
+	type TriggerInstance,
+	type NodeConfig,
+	type NodeInput,
+	type TriggerInput,
+	type StickyNoteConfig,
+	type PlaceholderValue,
+	type NewCredentialValue,
+	type DeclaredConnection,
+	type NodeChain,
+	type MergeComposite,
+	type SwitchCaseComposite,
+	type IfBranchComposite,
 } from './types/base';
 
 /**
@@ -152,9 +153,21 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		for (const t of targets) {
 			this._connections.push({ target: t, outputIndex });
 		}
+
+		// Helper to extract all nodes from a target (handles NodeChain targets)
+		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
+			if (isNodeChain(t)) {
+				return t.allNodes;
+			}
+			return [t as NodeInstance<string, string, unknown>];
+		};
+
+		// Flatten all targets (some may be NodeChains with multiple nodes)
+		const allTargetNodes = targets.flatMap(flattenTarget);
+
 		// Return chain with last target as tail (for type compatibility)
 		const lastTarget = targets[targets.length - 1];
-		return new NodeChainImpl(this, lastTarget, [this, ...targets]);
+		return new NodeChainImpl(this, lastTarget, [this, ...allTargetNodes]);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
@@ -261,6 +274,17 @@ class NodeChainImpl<
 	): NodeChain<THead, T> {
 		const targets = Array.isArray(target) ? target : [target];
 
+		// Helper to extract all nodes from a target (handles NodeChain targets)
+		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
+			if (isNodeChain(t)) {
+				return t.allNodes;
+			}
+			return [t as NodeInstance<string, string, unknown>];
+		};
+
+		// Flatten all targets (some may be NodeChains with multiple nodes)
+		const allTargetNodes = targets.flatMap(flattenTarget);
+
 		// Check if the tail is a composite - if so, get its output node
 		const outputNode = getCompositeOutputNode(this.tail);
 		if (outputNode) {
@@ -269,14 +293,14 @@ class NodeChainImpl<
 			// The connection will be resolved by the workflow-builder when processing the chain.
 			// For now, we just add the targets to allNodes and return the new chain.
 			const lastTarget = targets[targets.length - 1];
-			return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...targets]);
+			return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...allTargetNodes]);
 		}
 
 		// Connect tail to all targets (use the tail's then method which handles connections)
 		this.tail.then(targets, outputIndex);
 		// Return chain with last target as tail
 		const lastTarget = targets[targets.length - 1];
-		return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...targets]);
+		return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...allTargetNodes]);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
