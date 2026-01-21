@@ -9,6 +9,7 @@ import {
 	CHAT_WORKFLOW_AGENTS_VIEW,
 	CHAT_PERSONAL_AGENTS_VIEW,
 } from '@/features/ai/chatHub/constants';
+import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import {
 	N8nButton,
@@ -41,6 +42,7 @@ const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
+const { claimCredits } = useFreeAiCredits();
 
 const isAdvancedPermissionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
@@ -54,6 +56,7 @@ const showInviteButton = computed(() => hasInvitePermission.value);
 const isInviteDisabled = computed(() => !isAdvancedPermissionsEnabled.value);
 
 function handleStartNewChat() {
+	void claimCredits();
 	emit('startNewChat');
 }
 
