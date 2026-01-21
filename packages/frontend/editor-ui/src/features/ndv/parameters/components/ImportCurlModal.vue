@@ -33,8 +33,8 @@ onMounted(() => {
 	});
 });
 
-function onInput(value: string | number | null): void {
-	curlCommand.value = String(value ?? '');
+function onInput(value: string): void {
+	curlCommand.value = value;
 }
 
 function closeDialog(): void {

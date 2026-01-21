@@ -465,8 +465,8 @@ const debouncedSearch = useDebounceFn(() => {
 	membersTableState.value.page = 0; // Reset to first page on search
 }, 300);
 
-const onSearch = (value: string | number | null) => {
-	search.value = String(value ?? '');
+const onSearch = (value: string) => {
+	search.value = value;
 	void debouncedSearch();
 };
 

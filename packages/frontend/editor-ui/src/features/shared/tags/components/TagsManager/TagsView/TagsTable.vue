@@ -85,8 +85,8 @@ const apply = (): void => {
 	emit('applyOperation');
 };
 
-const onNewNameChange = (name: string | number | null): void => {
-	emit('newNameChange', String(name ?? ''));
+const onNewNameChange = (name: string): void => {
+	emit('newNameChange', name);
 };
 
 const focusOnInput = (): void => {

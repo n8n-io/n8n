@@ -140,8 +140,8 @@ onMounted(() => {
 	}
 });
 
-function onInput(value: string | number | null): void {
-	label.value = String(value ?? '');
+function onInput(value: string): void {
+	label.value = value;
 }
 
 function onScopeSelectionChanged(scopes: ApiKeyScope[]) {
