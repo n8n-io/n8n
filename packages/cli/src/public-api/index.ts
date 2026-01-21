@@ -22,7 +22,7 @@ async function createApiRouter(
 ): Promise<Router> {
 	const pathResolvingService = Container.get(PathResolvingService);
 	const basePath = pathResolvingService.getBasePath();
-	const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
+	const swaggerDocument: JsonObject = YAML.load(openApiSpecPath);
 	// add the server depending on the config so the user can interact with the API
 	// from the Swagger UI
 
@@ -111,7 +111,7 @@ async function createApiRouter(
 }
 
 const overrideOpenApiSpec = async (openApiSpecPath: string, publicApiEndpoint: string, version: string) => {
-	const swaggerDocument = YAML.load(openApiSpecPath) as JsonObject;
+	const swaggerDocument: JsonObject = YAML.load(openApiSpecPath);
 	swaggerDocument.servers[0].url = `/${publicApiEndpoint}/${version}`;
 
 	await fs.writeFile(openApiSpecPath, YAML.stringify(swaggerDocument));

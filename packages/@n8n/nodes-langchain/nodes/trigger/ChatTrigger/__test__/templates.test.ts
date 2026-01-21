@@ -15,7 +15,8 @@ describe('ChatTrigger Templates Security', () => {
 		allowedFilesMimeTypes: '',
 		customCss: '',
 		enableStreaming: false,
-		basePath: '/',
+		instanceBaseUrl: '/',
+		initialMessages: '',
 	};
 
 	describe('XSS Prevention in initialMessages', () => {
@@ -331,25 +332,27 @@ describe('ChatTrigger Templates Security', () => {
 	});
 
 	describe('BasePath functionality', () => {
-		it('should use custom basePath in redirect URL', () => {
+		it('should use custom instanceBaseUrl in redirect URL', () => {
 			const customBasePath = '/custom/path/';
 			const result = createPage({
 				...defaultParams,
-				basePath: customBasePath,
+				instanceBaseUrl: customBasePath,
 				authentication: 'n8nUserAuth',
 			});
 
-			// Should contain the custom basePath in the redirect URL
+			// Should contain the custom instanceBaseUrl in the redirect URL
 			expect(result).toContain(`window.location.href = '${customBasePath}signin?redirect='`);
 		});
 
-		it('should use default basePath when not provided', () => {
+		it('should use default instanceBaseUrl when not provided', () => {
+			// Create params without instanceBaseUrl to test default behavior
+			const { instanceBaseUrl: _, ...paramsWithoutBaseUrl } = defaultParams;
 			const result = createPage({
-				...defaultParams,
+				...paramsWithoutBaseUrl,
 				authentication: 'n8nUserAuth',
 			});
 
-			// Should contain the default basePath in the redirect URL
+			// When instanceBaseUrl is not provided, it should default to '/'
 			expect(result).toContain(`window.location.href = '/signin?redirect='`);
 		});
 

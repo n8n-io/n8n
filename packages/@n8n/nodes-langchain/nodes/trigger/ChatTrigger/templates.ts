@@ -35,7 +35,7 @@ export function getSanitizedI18nConfig(config: Record<string, string>): Record<s
 }
 export function createPage({
 	instanceId,
-	instanceBaseUrl,
+	instanceBaseUrl = '/',
 	webhookUrl,
 	showWelcomeScreen,
 	loadPreviousSession,
