@@ -1,4 +1,4 @@
-import { ChatOpenAI } from '@langchain/openai';
+import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -10,6 +10,7 @@ import {
 import type { LemonadeApiCredentialsType } from '../../../credentials/LemonadeApi.credentials';
 
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getProxyAgent } from '@utils/httpProxyAgent';
 
 import { lemonadeModel, lemonadeOptions, lemonadeDescription } from '../LMLemonade/description';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
@@ -90,7 +91,7 @@ export class LmChatLemonade implements INodeType {
 		}
 
 		// Build configuration object like official OpenAI node
-		const configuration: any = {
+		const configuration: ClientOptions = {
 			baseURL: credentials.baseUrl,
 		};
 
@@ -100,6 +101,10 @@ export class LmChatLemonade implements INodeType {
 				Authorization: `Bearer ${credentials.apiKey}`,
 			};
 		}
+
+		configuration.fetchOptions = {
+			dispatcher: getProxyAgent(configuration.baseURL ?? '', {}),
+		};
 
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey || 'lemonade-placeholder-key',

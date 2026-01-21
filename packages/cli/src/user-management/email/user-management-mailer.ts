@@ -26,7 +26,8 @@ type TemplateName =
 	| 'workflow-deactivated'
 	| 'workflow-shared'
 	| 'credentials-shared'
-	| 'project-shared';
+	| 'project-shared'
+	| 'workflow-failure';
 
 @Service()
 export class UserManagementMailer {
@@ -74,6 +75,32 @@ export class UserManagementMailer {
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
 			body: template({ ...this.basePayload, ...passwordResetData }),
+		});
+	}
+
+	async workflowFailure(data: {
+		email: string;
+		firstName?: string;
+		workflowId: string;
+		workflowName: string;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const workflowUrl = `${baseUrl}/workflow/${data.workflowId}`;
+
+		const template = await this.getTemplate('workflow-failure');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: '⚠️ Your workflow failed. Get alerts next time',
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName ?? 'there',
+				workflowId: data.workflowId,
+				workflowName: data.workflowName,
+				workflowUrl,
+				instanceURL: baseUrl,
+			}),
 		});
 	}
 
