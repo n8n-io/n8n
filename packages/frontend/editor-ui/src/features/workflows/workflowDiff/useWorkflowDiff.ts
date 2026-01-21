@@ -54,6 +54,14 @@ function createWorkflowDiff(
 	workflowConnections: Ref<IConnections>,
 	workflowObjectRef: Ref<Workflow>,
 ) {
+	// Call useCanvasMapping at setup time, not inside computed
+	// This is required because useCanvasMapping uses inject() internally
+	const { nodes, connections } = useCanvasMapping({
+		nodes: workflowNodes,
+		connections: workflowConnections,
+		workflowObject: workflowObjectRef,
+	});
+
 	return computed(() => {
 		if (!workflowRef.value) {
 			return {
@@ -62,12 +70,6 @@ function createWorkflowDiff(
 				connections: [],
 			};
 		}
-
-		const { nodes, connections } = useCanvasMapping({
-			nodes: workflowNodes,
-			connections: workflowConnections,
-			workflowObject: workflowObjectRef,
-		});
 
 		return {
 			workflow: workflowRef,
