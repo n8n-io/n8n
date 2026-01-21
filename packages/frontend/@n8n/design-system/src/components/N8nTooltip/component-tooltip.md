@@ -4,7 +4,6 @@ Displays contextual information when users hover over, focus on, or tap an eleme
 
 - **Component Name:** N8nTooltip
 - **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=252-3284&m=dev)
-- **Element+ Component:** [ElTooltip](https://element-plus.org/en-US/component/tooltip.html)
 - **Reka UI Component:** [Tooltip](https://reka-ui.com/docs/components/tooltip)
 - **Nuxt UI Component:** [Tooltip](https://ui.nuxt.com/docs/components/tooltip)
 
@@ -21,6 +20,10 @@ Displays contextual information when users hover over, focus on, or tap an eleme
 - `enterable?: boolean` - Whether the mouse can enter the tooltip content area. Default: `true`
 - `teleported?: boolean` - Whether to append the tooltip to the body. Default: `true`
 - `offset?: number` - Offset of the tooltip from the trigger element (in pixels). Default: `6`
+- `buttons?: IN8nButton[]` - Array of action buttons to render below tooltip content.
+- `justifyButtons?: Justify` - Flex justify-content for buttons container. Default: `'flex-end'`
+- `avoidCollisions?: boolean` - Whether to avoid collisions with viewport boundaries (flip/shift). Default: `true`
+- `contentClass?: string` - Additional CSS class for the tooltip content.
 
 **Slots**
 
@@ -123,6 +126,75 @@ const showTooltip = ref(false)
     placement="top"
   >
     <span>{{ showTooltip ? 'Tooltip enabled' : 'Tooltip disabled' }}</span>
+  </N8nTooltip>
+</template>
+```
+
+**Tooltip with buttons:**
+```typescript
+<script setup lang="ts">
+import { N8nTooltip } from '@n8n/design-system'
+
+const handleAction = () => {
+  console.log('Action clicked!')
+}
+
+const buttons = [
+  {
+    attrs: { label: 'Learn more', type: 'secondary', size: 'mini' },
+    listeners: { onClick: handleAction },
+  },
+]
+</script>
+
+<template>
+  <N8nTooltip
+    content="This feature requires additional setup"
+    :buttons="buttons"
+    placement="top"
+  >
+    <span>Hover for more info</span>
+  </N8nTooltip>
+</template>
+```
+
+**Tooltip with custom class:**
+```typescript
+<script setup lang="ts">
+import { N8nTooltip } from '@n8n/design-system'
+</script>
+
+<template>
+  <N8nTooltip
+    content="This tooltip has custom styling"
+    content-class="my-custom-tooltip"
+    placement="top"
+  >
+    <span>Hover me</span>
+  </N8nTooltip>
+</template>
+
+<style>
+.my-custom-tooltip {
+  max-width: 300px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+</style>
+```
+
+**Tooltip without collision avoidance:**
+```typescript
+<script setup lang="ts">
+import { N8nTooltip } from '@n8n/design-system'
+</script>
+
+<template>
+  <N8nTooltip
+    content="This tooltip won't flip or shift"
+    :avoid-collisions="false"
+    placement="top"
+  >
+    <span>Hover me</span>
   </N8nTooltip>
 </template>
 ```

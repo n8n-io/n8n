@@ -29,7 +29,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSelectedCredentialName(): Locator {
-		return this.getModelSelectorButton().locator('span');
+		return this.getModelSelectorButton().locator('span.n8n-text').first();
 	}
 
 	getChatInput(): Locator {
@@ -81,7 +81,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getToolsButton(): Locator {
-		return this.page.locator('[class*="toolsButton"]');
+		return this.page.getByTestId('chat-tools-button');
 	}
 
 	getOpenWorkflowButton(): Locator {

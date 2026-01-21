@@ -14,12 +14,7 @@ const i18n = useI18n();
 </script>
 
 <template>
-	<N8nTooltip
-		:visible="visible"
-		:show-arrow="true"
-		trigger="manual"
-		popper-class="ask-mode-coachmark-popper"
-	>
+	<N8nTooltip :visible="visible" :content-class="$style.content">
 		<template #content>
 			<div :class="$style.header">
 				<span :class="$style.title">{{ i18n.baseText('aiAssistant.coachmark.title') }}</span>
@@ -72,10 +67,8 @@ const i18n = useI18n();
 		background-color: var(--color--primary--shade-1);
 	}
 }
-</style>
 
-<style lang="scss">
-.ask-mode-coachmark-popper {
+.content {
 	width: 289px;
 }
 </style>
