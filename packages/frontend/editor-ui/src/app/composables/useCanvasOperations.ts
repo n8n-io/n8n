@@ -2728,7 +2728,6 @@ export function useCanvasOperations() {
 		if ('modules' in workflow && workflow.modules) {
 			workflowsStore.setModules(workflow.modules);
 		}
-		await addNodes(convertedNodes ?? []);
 		await addNodes(convertedNodes ?? [], { keepPristine: true });
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
