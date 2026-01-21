@@ -10,11 +10,19 @@ const planData = { ...basePlanData, expirationDate: fiveDaysFromNow.toJSON() };
 const cloudTrialRequirements: TestRequirements = {
 	config: {
 		settings: {
+			publicApi: {
+				enabled: false,
+				latestVersion: 1,
+				path: 'api',
+				swaggerUi: { enabled: false },
+			},
 			deployment: { type: 'cloud' },
 			n8nMetadata: { userId: '1' },
+
 			aiCredits: {
 				enabled: true,
 				credits: 100,
+				setup: true,
 			},
 			banners: {
 				dismissed: ['V1'], // Prevent V1 banner interference
@@ -41,6 +49,7 @@ const cloudNonTrialRequirements: TestRequirements = {
 			aiCredits: {
 				enabled: true,
 				credits: 100,
+				setup: true,
 			},
 			banners: {
 				dismissed: ['V1'], // Prevent V1 banner interference
@@ -139,7 +148,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 			await n8n.page.reload();
 
-			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).not.toBeVisible();
+			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).toBeHidden();
 		});
 	});
 

@@ -11,20 +11,20 @@ jest.mock('openid-client', () => ({
 
 import type { OidcConfigDto } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
 const real_odic_client = jest.requireActual('openid-client');
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/sso.ee/oidc/constants';
-import { OidcService } from '@/sso.ee/oidc/oidc.service.ee';
-import { createUser } from '@test-integration/db/users';
-import { UserError } from 'n8n-workflow';
-import { JwtService } from '@/services/jwt.service';
-import { GlobalConfig } from '@n8n/config';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
+import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
+import { JwtService } from '@/services/jwt.service';
+import { createUser } from '@test-integration/db/users';
 
 beforeAll(async () => {
 	await testDb.init();

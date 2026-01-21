@@ -111,7 +111,10 @@ const mainTooltipContent = computed(() => {
 	}
 
 	if (props.isVersionActive) {
-		return i18n.baseText('workflowHistory.item.publishedBy');
+		const hasUser = !!getPublishedUserName(lastPublishInfo.value?.userId);
+		return hasUser
+			? i18n.baseText('workflowHistory.item.publishedBy')
+			: i18n.baseText('workflowHistory.item.active');
 	}
 
 	if (props.index === 0 && !props.isVersionActive) {
@@ -119,7 +122,10 @@ const mainTooltipContent = computed(() => {
 	}
 
 	if (versionPublishInfo.value) {
-		return `${i18n.baseText('workflowHistory.item.publishedBy')}`;
+		const hasUser = !!getPublishedUserName(versionPublishInfo.value?.userId);
+		return hasUser
+			? i18n.baseText('workflowHistory.item.publishedBy')
+			: i18n.baseText('workflowHistory.item.active');
 	}
 
 	return formattedCreatedAt.value;
@@ -206,7 +212,10 @@ onMounted(() => {
 				<template v-if="mainTooltipUser">
 					{{ mainTooltipUser }}
 				</template>
-				<span v-if="mainTooltipFormattedDate">{{ ', ' + mainTooltipFormattedDate }}</span>
+				<template v-if="mainTooltipFormattedDate">
+					<template v-if="mainTooltipUser">, </template>
+					{{ mainTooltipFormattedDate }}
+				</template>
 			</div>
 		</template>
 		<li

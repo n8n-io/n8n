@@ -211,11 +211,19 @@ export function useCanvasOperations() {
 
 	function tidyUp(
 		{ result, source, target }: CanvasLayoutEvent,
-		{ trackEvents = true }: { trackEvents?: boolean } = {},
+		{
+			trackEvents = true,
+			trackHistory = true,
+			trackBulk = true,
+		}: {
+			trackEvents?: boolean;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
+		} = {},
 	) {
 		updateNodesPosition(
 			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
-			{ trackBulk: true, trackHistory: true },
+			{ trackBulk, trackHistory },
 		);
 
 		if (trackEvents) {
@@ -315,13 +323,17 @@ export function useCanvasOperations() {
 		replaceNodeParameters(nodeId, newParameters, currentParameters);
 	}
 
+	/**
+	 * Rename a node and update all references (connections, expressions, pinData, etc.)
+	 * @returns `true` if rename succeeded, `false` if it failed or was skipped
+	 */
 	async function renameNode(
 		currentName: string,
 		newName: string,
-		{ trackHistory = false, trackBulk = true } = {},
-	) {
+		{ trackHistory = false, trackBulk = true, showErrorToast = true } = {},
+	): Promise<boolean> {
 		if (currentName === newName) {
-			return;
+			return false;
 		}
 
 		if (trackHistory && trackBulk) {
@@ -335,12 +347,14 @@ export function useCanvasOperations() {
 		try {
 			workflow.renameNode(currentName, newName);
 		} catch (error) {
-			toast.showMessage({
-				type: 'error',
-				title: error.message,
-				message: error.description,
-			});
-			return;
+			if (showErrorToast) {
+				toast.showMessage({
+					type: 'error',
+					title: error.message,
+					message: error.description,
+				});
+			}
+			return false;
 		}
 
 		if (trackHistory) {
@@ -361,6 +375,8 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
+
+		return true;
 	}
 
 	async function revertRenameNode(currentName: string, previousName: string) {
@@ -897,6 +913,12 @@ export function useCanvasOperations() {
 		const lastInteractedWithNodeId = lastInteractedWithNode.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
+
+		const trackOptions = {
+			trackHistory: options.trackHistory,
+			trackBulk: false,
+		};
+
 		// If we have a specific endpoint to connect to
 		if (lastInteractedWithNodeHandle) {
 			const { type: connectionType, mode } = parseCanvasConnectionHandleString(
@@ -911,54 +933,66 @@ export function useCanvasOperations() {
 			});
 
 			if (mode === CanvasConnectionMode.Input) {
-				createConnection({
-					source: nodeId,
-					sourceHandle: nodeHandle,
-					target: lastInteractedWithNodeId,
-					targetHandle: lastInteractedWithNodeHandle,
-				});
+				createConnection(
+					{
+						source: nodeId,
+						sourceHandle: nodeHandle,
+						target: lastInteractedWithNodeId,
+						targetHandle: lastInteractedWithNodeHandle,
+					},
+					trackOptions,
+				);
 			} else {
-				createConnection({
-					source: lastInteractedWithNodeId,
-					sourceHandle: lastInteractedWithNodeHandle,
-					target: nodeId,
-					targetHandle: nodeHandle,
-				});
+				createConnection(
+					{
+						source: lastInteractedWithNodeId,
+						sourceHandle: lastInteractedWithNodeHandle,
+						target: nodeId,
+						targetHandle: nodeHandle,
+					},
+					trackOptions,
+				);
 			}
 		} else {
 			// If a node is last selected then connect between the active and its child ones
 			// Connect active node to the newly created one
-			createConnection({
-				source: lastInteractedWithNodeId,
-				sourceHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionTypes.Main,
-					index: 0,
-				}),
-				target: node.id,
-				targetHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionTypes.Main,
-					index: 0,
-				}),
-			});
-		}
-
-		if (lastInteractedWithNodeConnection) {
-			deleteConnection(lastInteractedWithNodeConnection, { trackHistory: options.trackHistory });
-
-			const targetNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
-			if (targetNode) {
-				createConnection({
-					source: node.id,
+			createConnection(
+				{
+					source: lastInteractedWithNodeId,
 					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: NodeConnectionTypes.Main,
+						index: 0,
+					}),
+					target: node.id,
+					targetHandle: createCanvasConnectionHandleString({
 						mode: CanvasConnectionMode.Input,
 						type: NodeConnectionTypes.Main,
 						index: 0,
 					}),
-					target: lastInteractedWithNodeConnection.target,
-					targetHandle: lastInteractedWithNodeConnection.targetHandle,
-				});
+				},
+				trackOptions,
+			);
+		}
+
+		if (lastInteractedWithNodeConnection) {
+			deleteConnection(lastInteractedWithNodeConnection, trackOptions);
+
+			const targetNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
+			if (targetNode) {
+				createConnection(
+					{
+						source: node.id,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						}),
+						target: lastInteractedWithNodeConnection.target,
+						targetHandle: lastInteractedWithNodeConnection.targetHandle,
+					},
+					trackOptions,
+				);
 			}
 		}
 	}
@@ -1443,7 +1477,22 @@ export function useCanvasOperations() {
 				editableWorkflowObject.value,
 				candidate.name,
 			);
-			downstream.forEach((name) => candidateNames.add(name));
+			downstream
+				// Filter the downstream nodes to find candidates that need to be shifted right.
+				.filter((name) => {
+					const node = workflowsStore.getNodeByName(name);
+					if (!node) {
+						return false;
+					}
+					const nodeRightEdge = node.position[0] + DEFAULT_NODE_SIZE[0];
+
+					// Check if the current node visually overlaps with, or is entirely to the right of,
+					// the new insertion point (insertX).
+					const overlapsOrIsToTheRight = nodeRightEdge > insertX || node.position[0] >= insertX;
+
+					return overlapsOrIsToTheRight;
+				})
+				.forEach((name) => candidateNames.add(name));
 		}
 
 		// Step 3: Get all candidate regular nodes (they overlap with or are downstream of insertion)
@@ -1769,6 +1818,11 @@ export function useCanvasOperations() {
 
 		workflowsStore.removeConnection({
 			connection: mappedConnection,
+		});
+
+		void nextTick(() => {
+			nodeHelpers.updateNodeInputIssues(sourceNode);
+			nodeHelpers.updateNodeInputIssues(targetNode);
 		});
 
 		if (trackHistory) {
@@ -2309,17 +2363,14 @@ export function useCanvasOperations() {
 						nodeNames.add(newName);
 					}
 
-					// Generate new webhookId if workflow already contains a node with the same webhookId
+					// Generate new webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						const isDuplicate = Object.values(workflowsStore.workflowObject.nodes).some(
-							(n) => n.webhookId === node.webhookId,
-						);
-						if (isDuplicate) {
+						if (node.webhookId) {
 							nodeHelpers.assignWebhookId(node);
 
 							if (node.parameters.path) {
 								node.parameters.path = node.webhookId;
-							} else if ((node.parameters.options as IDataObject).path) {
+							} else if ((node.parameters.options as IDataObject)?.path) {
 								(node.parameters.options as IDataObject).path = node.webhookId;
 							}
 						}
@@ -2673,7 +2724,7 @@ export function useCanvasOperations() {
 		if (workflow.connections) {
 			workflowsStore.setConnections(workflow.connections);
 		}
-		await addNodes(convertedNodes ?? []);
+		await addNodes(convertedNodes ?? [], { keepPristine: true });
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
 	}
@@ -2842,8 +2893,6 @@ export function useCanvasOperations() {
 			workflowState.setWorkflowId(route.params.name);
 		}
 
-		uiStore.markStateDirty();
-
 		canvasStore.stopLoading();
 
 		void externalHooks.run('template.open', {
@@ -2890,8 +2939,6 @@ export function useCanvasOperations() {
 			workflow,
 		});
 
-		uiStore.markStateDirty();
-
 		canvasStore.stopLoading();
 
 		fitView();
@@ -2929,6 +2976,7 @@ export function useCanvasOperations() {
 		cutNodes,
 		duplicateNodes,
 		getNodesToSave,
+		getNodesToShift,
 		revertDeleteNode,
 		addConnections,
 		createConnection,

@@ -199,6 +199,23 @@ describe('AssignmentCollection.vue', () => {
 		expect(getAssignmentType(assignments[4])).toEqual('Array');
 	});
 
+	it('can infer binary type for binary-like objects', async () => {
+		const { getByTestId, findAllByTestId } = renderComponent();
+		const dropArea = getByTestId('drop-area');
+
+		const binaryValue = {
+			mimeType: 'image/png',
+			data: 'base64data',
+		};
+
+		await dropAssignment({ key: 'binaryKey', value: binaryValue, dropArea });
+
+		const assignments = await findAllByTestId('assignment');
+
+		expect(assignments.length).toBe(1);
+		expect(getAssignmentType(assignments[0])).toEqual('Binary Data');
+	});
+
 	describe('defaultType prop', () => {
 		it('should use string as default type when no defaultType is specified', async () => {
 			const { getByTestId, findAllByTestId } = renderComponent();
