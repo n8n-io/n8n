@@ -315,7 +315,7 @@ const innerBootstrapScript = `
 
 export function createPage({
 	instanceId,
-	instanceBaseUrl,
+	instanceBaseUrl = '/',
 	webhookUrl,
 	showWelcomeScreen,
 	loadPreviousSession,
