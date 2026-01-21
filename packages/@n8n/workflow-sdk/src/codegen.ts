@@ -164,6 +164,14 @@ function isSwitchNode(node: NodeJSON): boolean {
 }
 
 /**
+ * Determines if a node is a SplitInBatches node.
+ * SplitInBatches has 2 outputs: done (0) and loop (1).
+ */
+function isSplitInBatchesNode(node: NodeJSON): boolean {
+	return node.type === 'n8n-nodes-base.splitInBatches';
+}
+
+/**
  * Determines if a node has error output enabled (onError: 'continueErrorOutput')
  */
 function hasErrorOutput(node: NodeJSON): boolean {
@@ -682,13 +690,17 @@ function generateChain(
 					const varName = cycleNodeVars.get(target.to)!;
 					addedNodes.add(target.to);
 
-					// For IF/Switch cycle targets, first connect to the node, then generate branches
-					if (isIfNode(targetInfo.node) || isSwitchNode(targetInfo.node)) {
+					// For IF/Switch/SplitInBatches cycle targets, first connect to the node, then generate branches
+					if (
+						isIfNode(targetInfo.node) ||
+						isSwitchNode(targetInfo.node) ||
+						isSplitInBatchesNode(targetInfo.node)
+					) {
 						const outputs = Array.from(targetInfo.outgoingConnections.entries()).sort(
 							([a], [b]) => a - b,
 						);
 						if (outputs.length > 0) {
-							// First connect to the IF/Switch node
+							// First connect to the IF/Switch/SplitInBatches node
 							lines.push(`  .then(${varName})`);
 							// Then generate branches as array
 							const branchCalls: string[] = [];
@@ -707,6 +719,9 @@ function generateChain(
 										} else {
 											branchCalls.push('null');
 										}
+									} else if (branchTarget.to === targetInfo.node.name) {
+										// Self-loop (SplitInBatches loop back) - use variable reference
+										branchCalls.push(varName);
 									} else {
 										addedNodes.add(branchTarget.to);
 										branchCalls.push(
@@ -1352,9 +1367,7 @@ function generateNodeCallWithChain(
 
 		// For IF/Switch cycle targets, generate branches using .then([branch1, branch2]) syntax
 		if (isIfNode(startInfo.node) || isSwitchNode(startInfo.node)) {
-			const outputs = Array.from(startInfo.outgoingConnections.entries()).sort(
-				([a], [b]) => a - b,
-			);
+			const outputs = Array.from(startInfo.outgoingConnections.entries()).sort(([a], [b]) => a - b);
 			if (outputs.length > 0) {
 				const branchCalls: string[] = [];
 				const newProcessingStack = new Set(processingStack);

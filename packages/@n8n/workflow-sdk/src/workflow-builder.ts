@@ -892,11 +892,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		const newNodes = new Map(this._nodes);
 
-		// Check if current node is an IF or Switch node for branch-style connections
+		// Check if current node is an IF, Switch, or SplitInBatches node for branch-style connections
+		// These nodes have multiple outputs where each array element maps to a different output index
 		const currentGraphNode = this._currentNode ? newNodes.get(this._currentNode) : undefined;
 		const isBranchingNode =
 			currentGraphNode?.instance.type === 'n8n-nodes-base.if' ||
-			currentGraphNode?.instance.type === 'n8n-nodes-base.switch';
+			currentGraphNode?.instance.type === 'n8n-nodes-base.switch' ||
+			currentGraphNode?.instance.type === 'n8n-nodes-base.splitInBatches';
 
 		// Add all target nodes and connect them to the current node
 		nodes.forEach((node, index) => {
@@ -907,7 +909,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Connect from current node to the head of this target (branch)
 			if (this._currentNode && currentGraphNode) {
 				const mainConns = currentGraphNode.connections.get('main') || new Map();
-				// For IF/Switch nodes, each array element uses incrementing output index
+				// For IF/Switch/SplitInBatches nodes, each array element uses incrementing output index
 				// For regular nodes, all targets use the same currentOutput (fan-out)
 				const outputIndex = isBranchingNode ? index : this._currentOutput;
 				const outputConnections = mainConns.get(outputIndex) || [];

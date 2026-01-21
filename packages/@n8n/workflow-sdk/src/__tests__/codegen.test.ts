@@ -1888,3 +1888,138 @@ describe('cycle detection and variable generation', () => {
 		expect(parsedJson.connections['Retry']?.main[0]?.[0]?.node).toBe('Check');
 	});
 });
+
+describe('SplitInBatches multi-output handling', () => {
+	it('should preserve both outputs of SplitInBatches node', () => {
+		// SplitInBatches has 2 outputs:
+		// - Output 0: "done" (all items processed)
+		// - Output 1: "loop" (continue processing)
+		// Both must be preserved in roundtrip
+		const workflow: WorkflowJSON = {
+			id: 'sib-test',
+			name: 'SplitInBatches Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Loop',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Process',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Done',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				Loop: {
+					main: [
+						[{ node: 'Done', type: 'main', index: 0 }], // output 0: done
+						[{ node: 'Process', type: 'main', index: 0 }], // output 1: loop
+					],
+				},
+				Process: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] }, // cycle back
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Both outputs must be connected
+		expect(parsed.connections['Loop']).toBeDefined();
+		expect(parsed.connections['Loop'].main[0][0].node).toBe('Done');
+		expect(parsed.connections['Loop'].main[1][0].node).toBe('Process');
+		// Cycle back must exist
+		expect(parsed.connections['Process'].main[0][0].node).toBe('Loop');
+	});
+
+	it('should preserve chains after both SplitInBatches outputs', () => {
+		// When nodes are chained after each SplitInBatches output,
+		// both chains must be preserved
+		const workflow: WorkflowJSON = {
+			id: 'sib-chain-test',
+			name: 'SplitInBatches Chain Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Loop',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Process',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Done',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'Final',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [600, -100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				Loop: {
+					main: [
+						[{ node: 'Done', type: 'main', index: 0 }],
+						[{ node: 'Process', type: 'main', index: 0 }],
+					],
+				},
+				Process: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				Done: { main: [[{ node: 'Final', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Chain after done output must be preserved
+		expect(parsed.connections['Done'].main[0][0].node).toBe('Final');
+	});
+});
