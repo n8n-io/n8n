@@ -4,6 +4,7 @@ import type { User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import nock from 'nock';
 
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
@@ -48,6 +49,23 @@ describe('Credential Resolvers API', () => {
 
 	beforeEach(async () => {
 		await repository.delete({});
+		nock.cleanAll();
+		// Mock OAuth metadata endpoint for resolver validation
+		nock('https://auth.example.com')
+			.persist()
+			.get('/.well-known/openid-configuration')
+			.reply(200, {
+				issuer: 'https://auth.example.com',
+				introspection_endpoint: 'https://auth.example.com/oauth/introspect',
+				introspection_endpoint_auth_methods_supported: [
+					'client_secret_basic',
+					'client_secret_post',
+				],
+			});
+	});
+
+	afterEach(() => {
+		nock.cleanAll();
 	});
 
 	describe('GET /credential-resolvers', () => {

@@ -9,6 +9,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import nock from 'nock';
 import { v4 as uuid } from 'uuid';
 import type { INode } from 'n8n-workflow';
 
@@ -38,6 +39,23 @@ const testServer = utils.setupTestServer({
 	endpointGroups: ['credentials'],
 	enabledFeatures: ['feat:externalSecrets'],
 	modules: ['dynamic-credentials'],
+});
+
+// Mock OAuth metadata endpoint for resolver validation
+beforeEach(() => {
+	nock.cleanAll();
+	nock('https://auth.example.com')
+		.persist()
+		.get('/.well-known/openid-configuration')
+		.reply(200, {
+			issuer: 'https://auth.example.com',
+			introspection_endpoint: 'https://auth.example.com/oauth/introspect',
+			introspection_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
+		});
+});
+
+afterEach(() => {
+	nock.cleanAll();
 });
 
 const setupWorkflow = async () => {

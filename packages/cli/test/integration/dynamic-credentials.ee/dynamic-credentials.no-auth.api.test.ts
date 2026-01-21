@@ -4,6 +4,7 @@ import type { CredentialsEntity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import nock from 'nock';
 
 import * as utils from '../shared/utils';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
@@ -37,6 +38,23 @@ const testServer = utils.setupTestServer({
 
 CredentialsHelper.prototype.applyDefaultsAndOverwrites = async (_, decryptedDataOriginal) =>
 	decryptedDataOriginal;
+
+// Mock OAuth metadata endpoint for resolver validation
+beforeEach(() => {
+	nock.cleanAll();
+	nock('https://auth.example.com')
+		.persist()
+		.get('/.well-known/openid-configuration')
+		.reply(200, {
+			issuer: 'https://auth.example.com',
+			introspection_endpoint: 'https://auth.example.com/oauth/introspect',
+			introspection_endpoint_auth_methods_supported: ['client_secret_basic', 'client_secret_post'],
+		});
+});
+
+afterEach(() => {
+	nock.cleanAll();
+});
 
 const setupWorkflow = async () => {
 	const owner = await createUser({ role: GLOBAL_OWNER_ROLE });
