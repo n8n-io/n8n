@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type {
 	CredentialSharingRole,
+	ExternalSecretsProviderSharingRole,
 	GlobalRole,
 	ProjectRole,
 	Scope,
@@ -10,6 +11,7 @@ import {
 	CREDENTIALS_SHARING_OWNER_SCOPES,
 	CREDENTIALS_SHARING_USER_SCOPES,
 } from './scopes/credential-sharing-scopes.ee';
+import { EXTERNAL_SECRETS_PROVIDER_SHARING_OWNER_SCOPES } from './scopes/external-secrets-provider-sharing-scopes.ee';
 import {
 	GLOBAL_OWNER_SCOPES,
 	GLOBAL_ADMIN_SCOPES,
@@ -53,9 +55,17 @@ export const WORKFLOW_SHARING_SCOPE_MAP: Record<WorkflowSharingRole, Scope[]> = 
 	'workflow:editor': WORKFLOW_SHARING_EDITOR_SCOPES,
 };
 
+export const EXTERNAL_SECRETS_PROVIDER_SHARING_SCOPE_MAP: Record<
+	ExternalSecretsProviderSharingRole,
+	Scope[]
+> = {
+	'externalSecretsProvider:owner': EXTERNAL_SECRETS_PROVIDER_SHARING_OWNER_SCOPES,
+};
+
 export const ALL_ROLE_MAPS = {
 	global: GLOBAL_SCOPE_MAP,
 	project: PROJECT_SCOPE_MAP,
 	credential: CREDENTIALS_SHARING_SCOPE_MAP,
 	workflow: WORKFLOW_SHARING_SCOPE_MAP,
+	externalSecretsProvider: EXTERNAL_SECRETS_PROVIDER_SHARING_SCOPE_MAP,
 } as const;

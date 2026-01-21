@@ -24,6 +24,9 @@ interface RoleScopeMap {
 	workflow?: {
 		[roleSlug: string]: RoleInfo;
 	};
+	externalSecretsProvider?: {
+		[roleSlug: string]: RoleInfo;
+	};
 }
 
 @Service()
@@ -63,7 +66,7 @@ export class RoleCacheService {
 	 * Get roles with all specified scopes (with caching)
 	 */
 	async getRolesWithAllScopes(
-		namespace: 'global' | 'project' | 'credential' | 'workflow',
+		namespace: 'global' | 'project' | 'credential' | 'workflow' | 'externalSecretsProvider',
 		requiredScopes: Scope[],
 		em?: EntityManager,
 	): Promise<string[]> {

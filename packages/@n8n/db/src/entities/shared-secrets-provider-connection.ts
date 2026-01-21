@@ -1,4 +1,4 @@
-import { CredentialSharingRole } from '@n8n/permissions';
+import { ExternalSecretsProviderSharingRole } from '@n8n/permissions';
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
@@ -8,7 +8,7 @@ import { SecretsProviderConnection } from './secrets-provider-connection';
 @Entity()
 export class SharedSecretsProviderConnection extends WithTimestamps {
 	@Column({ type: 'varchar' })
-	role: CredentialSharingRole;
+	role: ExternalSecretsProviderSharingRole;
 
 	@ManyToOne('SecretsProviderConnection', 'shared')
 	secretsProviderConnection: SecretsProviderConnection;

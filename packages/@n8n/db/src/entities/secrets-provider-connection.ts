@@ -18,7 +18,6 @@ export class SecretsProviderConnection extends WithTimestampsAndStringId {
 
 	/**
 	 * Whether the secrets provider connection is available for use by all projects.
-	 *
 	 */
 	@Column({ default: false })
 	isGlobal: boolean;

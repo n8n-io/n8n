@@ -4,6 +4,7 @@ import type { RESOURCES, API_KEY_RESOURCES } from './constants.ee';
 import type {
 	assignableGlobalRoleSchema,
 	credentialSharingRoleSchema,
+	externalSecretsProviderSharingRoleSchema,
 	globalRoleSchema,
 	Role,
 	systemProjectRoleSchema,
@@ -59,6 +60,9 @@ export type GlobalRole = z.infer<typeof globalRoleSchema>;
 export type AssignableGlobalRole = z.infer<typeof assignableGlobalRoleSchema>;
 export type CredentialSharingRole = z.infer<typeof credentialSharingRoleSchema>;
 export type WorkflowSharingRole = z.infer<typeof workflowSharingRoleSchema>;
+export type ExternalSecretsProviderSharingRole = z.infer<
+	typeof externalSecretsProviderSharingRoleSchema
+>;
 export type TeamProjectRole = z.infer<typeof teamRoleSchema>;
 export type ProjectRole = z.infer<typeof systemProjectRoleSchema>;
 export type AssignableProjectRole = z.infer<typeof assignableProjectRoleSchema>;
@@ -76,13 +80,19 @@ export function isAssignableProjectRoleSlug(slug: string): slug is AssignablePro
 }
 
 /** Union of all possible role types in the system */
-export type AllRoleTypes = GlobalRole | ProjectRole | WorkflowSharingRole | CredentialSharingRole;
+export type AllRoleTypes =
+	| GlobalRole
+	| ProjectRole
+	| WorkflowSharingRole
+	| CredentialSharingRole
+	| ExternalSecretsProviderSharingRole;
 
 export type AllRolesMap = {
 	global: Role[];
 	project: Role[];
 	credential: Role[];
 	workflow: Role[];
+	externalSecretsProvider: Role[];
 };
 
 export type DbScope = {
