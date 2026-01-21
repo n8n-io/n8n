@@ -17,8 +17,10 @@ import { Project } from './project';
 import { ProjectRelation } from './project-relation';
 import { Role } from './role';
 import { Scope } from './scope';
+import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
+import { SharedSecretsProviderConnection } from './shared-secrets-provider-connection';
 import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
@@ -107,4 +109,6 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	SecretsProviderConnection,
+	SharedSecretsProviderConnection,
 };
