@@ -164,6 +164,27 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return Math.ceil(differenceInDays);
 	});
 
+	const trialTimeLeft = computed((): { count: number; unit: 'days' | 'hours' | 'minutes' } => {
+		if (!state.data?.expirationDate) {
+			return { count: 0, unit: 'days' };
+		}
+
+		const msLeft = new Date(state.data.expirationDate).valueOf() - new Date().valueOf();
+		if (msLeft <= 0) {
+			return { count: 0, unit: 'minutes' };
+		}
+
+		const hours = msLeft / (1000 * 60 * 60);
+
+		if (hours < 1) {
+			return { count: Math.ceil(msLeft / (1000 * 60)), unit: 'minutes' };
+		} else if (hours < 24) {
+			return { count: Math.ceil(hours), unit: 'hours' };
+		} else {
+			return { count: Math.ceil(hours / 24), unit: 'days' };
+		}
+	});
+
 	const startPollingInstanceUsageData = () => {
 		const interval = setInterval(async () => {
 			try {
@@ -231,6 +252,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		state,
 		usageLeft,
 		trialDaysLeft,
+		trialTimeLeft,
 		userIsTrialing,
 		currentPlanData,
 		currentUsageData,
