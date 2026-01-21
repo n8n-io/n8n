@@ -62,7 +62,7 @@ export function usePushConnection({
 	async function processEvent(event: PushMessage) {
 		switch (event.type) {
 			case 'browserApi':
-				return await browserApi(event);
+				return browserApi(event);
 			case 'testWebhookDeleted':
 				return await testWebhookDeleted(event, options);
 			case 'testWebhookReceived':

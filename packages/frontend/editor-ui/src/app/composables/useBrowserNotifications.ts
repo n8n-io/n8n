@@ -100,7 +100,7 @@ export function useBrowserNotifications(options: UseBrowserNotificationsOptions 
 	 */
 	async function requestPermission({
 		force = false,
-	}: { force?: boolean }): Promise<PermissionRequestResult> {
+	}: { force?: boolean } = {}): Promise<PermissionRequestResult> {
 		refreshPermissionState();
 
 		if (permissionState.value === 'granted') {

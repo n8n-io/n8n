@@ -93,7 +93,6 @@ export class BrowserNotification implements INodeType {
 			},
 		});
 
-		// Return items with notification info appended
 		return [
 			items.map((item) => ({
 				...item,
