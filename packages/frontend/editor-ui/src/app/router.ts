@@ -367,9 +367,9 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/demo/diff',
+		path: '/workflows/demo/diff',
 		name: VIEWS.DEMO_DIFF,
-		component: async () => import('./views/DemoDiffView.vue'),
+		component: async () => await import('@/app/views/DemoDiffView.vue'),
 		meta: {
 			layout: 'demo',
 			middleware: ['authenticated'],
