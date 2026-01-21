@@ -713,6 +713,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		nodes: Map<string, GraphNode>,
 		nodeInstance: NodeInstance<string, string, unknown>,
 	): void {
+		// Skip if node already exists - don't overwrite existing connections
+		// This is important for cycle targets that are processed multiple times
+		if (nodes.has(nodeInstance.name)) {
+			return;
+		}
+
 		// Add the main node
 		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
 		connectionsMap.set('main', new Map());
@@ -873,6 +879,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	/**
 	 * Handle fan-out pattern - connects current node to multiple target nodes
 	 * Supports NodeChain targets (e.g., workflow.then([x1, fb, linkedin.then(sheets)]))
+	 *
+	 * For IF/Switch nodes, each array element maps to a different output index (branching).
+	 * For regular nodes, all targets connect from the same output (fan-out).
 	 */
 	private handleFanOut<N extends NodeInstance<string, string, unknown>>(
 		nodes: N[],
@@ -883,26 +892,32 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		const newNodes = new Map(this._nodes);
 
+		// Check if current node is an IF or Switch node for branch-style connections
+		const currentGraphNode = this._currentNode ? newNodes.get(this._currentNode) : undefined;
+		const isBranchingNode =
+			currentGraphNode?.instance.type === 'n8n-nodes-base.if' ||
+			currentGraphNode?.instance.type === 'n8n-nodes-base.switch';
+
 		// Add all target nodes and connect them to the current node
-		for (const node of nodes) {
+		nodes.forEach((node, index) => {
 			// Use addBranchToGraph to handle NodeChains properly
 			// This returns the head node name for connection
 			const headNodeName = this.addBranchToGraph(newNodes, node);
 
 			// Connect from current node to the head of this target (branch)
-			if (this._currentNode) {
-				const currentGraphNode = newNodes.get(this._currentNode);
-				if (currentGraphNode) {
-					const mainConns = currentGraphNode.connections.get('main') || new Map();
-					const outputConnections = mainConns.get(this._currentOutput) || [];
-					mainConns.set(this._currentOutput, [
-						...outputConnections,
-						{ node: headNodeName, type: 'main', index: 0 },
-					]);
-					currentGraphNode.connections.set('main', mainConns);
-				}
+			if (this._currentNode && currentGraphNode) {
+				const mainConns = currentGraphNode.connections.get('main') || new Map();
+				// For IF/Switch nodes, each array element uses incrementing output index
+				// For regular nodes, all targets use the same currentOutput (fan-out)
+				const outputIndex = isBranchingNode ? index : this._currentOutput;
+				const outputConnections = mainConns.get(outputIndex) || [];
+				mainConns.set(outputIndex, [
+					...outputConnections,
+					{ node: headNodeName, type: 'main', index: 0 },
+				]);
+				currentGraphNode.connections.set('main', mainConns);
 			}
-		}
+		});
 
 		// Set the last node in the array as the current node (for continued chaining)
 		// For NodeChains, use the tail node name

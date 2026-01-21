@@ -27,7 +27,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '4365' - now passes after convergence pattern fix
 	'4366',
 	'4400',
-	'4457', // cycle to IF node (Help Responder → Command Router) - cannot represent in SDK
+	// '4457', // cycle to IF node (Help Responder → Command Router) - now passes with cycle support
 	// '4478' - now passes after convergence pattern fix
 	'4506',
 	'4557',
@@ -55,7 +55,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'5139',
 	'5163',
 	'5258',
-	'5374', // cycle to IF node (Is it good enough? → Content writer loop) - cannot represent in SDK
+	'5374', // has both a cycle AND a convergence pattern (Webflow+GoogleSheets1 → NoOp) that breaks roundtrip
 	'5375',
 	'5385',
 	'5434',
@@ -154,7 +154,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'10420',
 	'10427',
 	'10476',
-	'10566', // polling loop (Wait → IF) - cycle to IF node cannot be represented in SDK
+	// '10566', // polling loop (Wait → IF) - now passes with cycle support
 	'10640',
 	'10729',
 	'10889',
@@ -617,6 +617,98 @@ describe('parseWorkflowCode', () => {
 		// Case B Node should connect to Case B Downstream
 		expect(parsedJson.connections['Case B Node']).toBeDefined();
 		expect(parsedJson.connections['Case B Node']!.main[0]![0]!.node).toBe('Case B Downstream');
+	});
+
+	it('should preserve cycle connections in polling loop pattern (Wait → IF)', () => {
+		// This tests the polling loop pattern where a node cycles back to an IF node:
+		// Trigger → Job Complete? (IF)
+		//             ↓ true          ↓ false
+		//         Get Dataset    Check Status → Wait → Job Complete? (CYCLE!)
+		//
+		// The cycle Wait → Job Complete? must be preserved in the roundtrip.
+		const originalJson: WorkflowJSON = {
+			id: 'polling-loop-test',
+			name: 'Polling Loop Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'Job Complete?',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'done-1',
+					name: 'Get Dataset',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [400, -100],
+					parameters: { url: 'https://api.example.com/dataset' },
+				},
+				{
+					id: 'check-1',
+					name: 'Check Status',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [400, 100],
+					parameters: { url: 'https://api.example.com/status' },
+				},
+				{
+					id: 'wait-1',
+					name: 'Wait',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [600, 100],
+					parameters: { amount: 5 },
+				},
+			],
+			connections: {
+				Trigger: {
+					main: [[{ node: 'Job Complete?', type: 'main', index: 0 }]],
+				},
+				'Job Complete?': {
+					main: [
+						[{ node: 'Get Dataset', type: 'main', index: 0 }], // true branch
+						[{ node: 'Check Status', type: 'main', index: 0 }], // false branch
+					],
+				},
+				'Check Status': {
+					main: [[{ node: 'Wait', type: 'main', index: 0 }]],
+				},
+				// CRITICAL: This is the cycle - Wait connects back to the IF node
+				Wait: {
+					main: [[{ node: 'Job Complete?', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(5);
+
+		// Verify IF node connections
+		expect(parsedJson.connections['Job Complete?']).toBeDefined();
+		expect(parsedJson.connections['Job Complete?']!.main[0]![0]!.node).toBe('Get Dataset');
+		expect(parsedJson.connections['Job Complete?']!.main[1]![0]!.node).toBe('Check Status');
+
+		// Verify Check Status → Wait connection
+		expect(parsedJson.connections['Check Status']).toBeDefined();
+		expect(parsedJson.connections['Check Status']!.main[0]![0]!.node).toBe('Wait');
+
+		// CRITICAL: Verify the CYCLE connection Wait → Job Complete? is preserved
+		expect(parsedJson.connections['Wait']).toBeDefined();
+		expect(parsedJson.connections['Wait']!.main[0]![0]!.node).toBe('Job Complete?');
 	});
 
 	describe('escapes node references in single-quoted strings', () => {

@@ -352,10 +352,6 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 		const nodeInfo = nodeInfoMap.get(nodeName);
 		if (!nodeInfo || nodeInfo.isSubnodeOf || isStickyNote(nodeInfo.node)) continue;
 
-		// Skip IF and Switch nodes - they're composite patterns that need special handling
-		// via processingStack in generateIfBranchCall/generateSwitchCaseCall
-		if (isIfNode(nodeInfo.node) || isSwitchNode(nodeInfo.node)) continue;
-
 		const varName = generateVarName(nodeName);
 		cycleNodeVars.set(nodeName, varName);
 
@@ -633,7 +629,8 @@ function generateChain(
 				}
 
 				// Check if target is an IF node with both branches - use ifBranch() composite
-				if (isIfNode(targetInfo.node)) {
+				// BUT if the IF node is a cycle target, use variable reference instead
+				if (isIfNode(targetInfo.node) && !cycleNodeVars?.has(target.to)) {
 					const ifResult = generateIfBranchCall(
 						targetInfo,
 						nodeInfoMap,
@@ -657,7 +654,8 @@ function generateChain(
 				}
 
 				// Check if target is a Switch node with outputs - use switchCase() composite
-				if (isSwitchNode(targetInfo.node)) {
+				// BUT if the Switch node is a cycle target, use variable reference instead
+				if (isSwitchNode(targetInfo.node) && !cycleNodeVars?.has(target.to)) {
 					const switchResult = generateSwitchCaseCall(
 						targetInfo,
 						nodeInfoMap,
@@ -682,9 +680,56 @@ function generateChain(
 				// Check if target is a cycle target node - use variable reference
 				if (cycleNodeVars?.has(target.to)) {
 					const varName = cycleNodeVars.get(target.to)!;
-					lines.push(`  .then(${varName})`);
 					addedNodes.add(target.to);
-					generateChain(targetInfo, nodeInfoMap, addedNodes, lines, depth, cycleNodeVars);
+
+					// For IF/Switch cycle targets, first connect to the node, then generate branches
+					if (isIfNode(targetInfo.node) || isSwitchNode(targetInfo.node)) {
+						const outputs = Array.from(targetInfo.outgoingConnections.entries()).sort(
+							([a], [b]) => a - b,
+						);
+						if (outputs.length > 0) {
+							// First connect to the IF/Switch node
+							lines.push(`  .then(${varName})`);
+							// Then generate branches as array
+							const branchCalls: string[] = [];
+							for (const [_outputIndex, branchTargets] of outputs) {
+								if (branchTargets.length === 0) {
+									branchCalls.push('null');
+								} else {
+									const branchTarget = branchTargets[0];
+									const branchInfo = nodeInfoMap.get(branchTarget.to);
+									if (!branchInfo || branchInfo.isSubnodeOf) {
+										branchCalls.push('null');
+									} else if (addedNodes.has(branchTarget.to)) {
+										// Branch target already added - check if it's a cycle target
+										if (cycleNodeVars?.has(branchTarget.to)) {
+											branchCalls.push(cycleNodeVars.get(branchTarget.to)!);
+										} else {
+											branchCalls.push('null');
+										}
+									} else {
+										addedNodes.add(branchTarget.to);
+										branchCalls.push(
+											generateNodeCallWithChain(
+												branchInfo,
+												nodeInfoMap,
+												addedNodes,
+												undefined,
+												new Set([targetInfo.node.name]),
+												cycleNodeVars,
+											),
+										);
+									}
+								}
+							}
+							lines.push(`  .then([${branchCalls.join(', ')}])`);
+						} else {
+							lines.push(`  .then(${varName})`);
+						}
+					} else {
+						lines.push(`  .then(${varName})`);
+						generateChain(targetInfo, nodeInfoMap, addedNodes, lines, depth, cycleNodeVars);
+					}
 					return;
 				}
 
@@ -1251,9 +1296,15 @@ function generateNodeCallWithChain(
 		return `/* cycle: ${startInfo.node.name} */`;
 	}
 
+	// For IF/Switch nodes that are cycle targets, we can't use ifBranch/switchCase
+	// because those create new nodes. Instead, use the variable reference and
+	// let the branches be connected via .then([...]) syntax.
+	// This is handled below by the cycleNodeVars check at line ~1295.
+
 	// Check if the START node itself is a composite pattern (IF, Switch, Merge)
 	// If so, generate the composite call instead of a regular node call
-	if (isIfNode(startInfo.node)) {
+	// BUT skip this if the node is a cycle target (we use variable reference instead)
+	if (isIfNode(startInfo.node) && !cycleNodeVars?.has(startInfo.node.name)) {
 		const ifResult = generateIfBranchCall(
 			startInfo,
 			nodeInfoMap,
@@ -1267,7 +1318,7 @@ function generateNodeCallWithChain(
 		}
 	}
 
-	if (isSwitchNode(startInfo.node)) {
+	if (isSwitchNode(startInfo.node) && !cycleNodeVars?.has(startInfo.node.name)) {
 		const switchResult = generateSwitchCaseCall(
 			startInfo,
 			nodeInfoMap,
@@ -1298,6 +1349,51 @@ function generateNodeCallWithChain(
 	let call: string;
 	if (cycleNodeVars?.has(startInfo.node.name)) {
 		call = cycleNodeVars.get(startInfo.node.name)!;
+
+		// For IF/Switch cycle targets, generate branches using .then([branch1, branch2]) syntax
+		if (isIfNode(startInfo.node) || isSwitchNode(startInfo.node)) {
+			const outputs = Array.from(startInfo.outgoingConnections.entries()).sort(
+				([a], [b]) => a - b,
+			);
+			if (outputs.length > 0) {
+				const branchCalls: string[] = [];
+				const newProcessingStack = new Set(processingStack);
+				newProcessingStack.add(startInfo.node.name);
+
+				for (const [_outputIndex, targets] of outputs) {
+					if (targets.length === 0) {
+						branchCalls.push('null');
+					} else {
+						const target = targets[0];
+						const targetInfo = nodeInfoMap.get(target.to);
+						if (!targetInfo || targetInfo.isSubnodeOf) {
+							branchCalls.push('null');
+						} else if (addedNodes.has(target.to)) {
+							// Target already added - check if it's a cycle target
+							if (cycleNodeVars?.has(target.to)) {
+								branchCalls.push(cycleNodeVars.get(target.to)!);
+							} else {
+								branchCalls.push('null');
+							}
+						} else {
+							addedNodes.add(target.to);
+							branchCalls.push(
+								generateNodeCallWithChain(
+									targetInfo,
+									nodeInfoMap,
+									addedNodes,
+									convergenceCtx,
+									newProcessingStack,
+									cycleNodeVars,
+								),
+							);
+						}
+					}
+				}
+				call += `.then([${branchCalls.join(', ')}])`;
+			}
+			return call;
+		}
 	} else {
 		call = generateNodeCall(startInfo.node, nodeInfoMap);
 	}
