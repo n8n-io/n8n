@@ -146,6 +146,7 @@
     "isbot": "3.6.13",
     "json-diff": "1.0.6",
     "jsonschema": "1.4.1",
+    "jose": "catalog:",
     "jsonwebtoken": "catalog:",
     "ldapts": "4.2.6",
     "lodash": "catalog:",

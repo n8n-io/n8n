@@ -236,6 +236,7 @@
     "jsdom": "23.0.1",
     "langchain": "1.2.3",
     "@langchain/classic": "1.0.5",
+    "jose": "catalog:",
     "lodash": "catalog:",
     "mammoth": "1.11.0",
     "mime-types": "catalog:",

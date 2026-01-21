@@ -46,6 +46,15 @@ export const credentialsProperty = (
 			},
 		},
 	},
+	{
+		name: 'oidcWebhookAuth',
+		required: true,
+		displayOptions: {
+			show: {
+				[propertyName]: ['oidcAuth'],
+			},
+		},
+	},
 ];
 
 export const authenticationProperty = (propertyName = 'authentication'): INodeProperties => ({
@@ -68,6 +77,11 @@ export const authenticationProperty = (propertyName = 'authentication'): INodePr
 		{
 			name: 'None',
 			value: 'none',
+		},
+		{
+			name: 'OIDC Auth',
+			value: 'oidcAuth',
+			description: 'Validate Bearer token using OIDC/OAuth2 provider (Azure AD, Okta)',
 		},
 	],
 	default: 'none',

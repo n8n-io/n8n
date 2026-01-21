@@ -1,5 +1,6 @@
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
+import * as jose from 'jose';
 import jwt from 'jsonwebtoken';
 import { WorkflowConfigurationError } from 'n8n-workflow';
 import type {
@@ -15,7 +16,47 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BlockList } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
+import { isOidcDiscoveryDocument, type OidcDiscoveryDocument } from './oidc.typeguards';
 import { formatPrivateKey } from '../../utils/utilities';
+
+// OIDC cache for performance - stores JWKS clients and discovery documents per URL
+const oidcJwksCache = new Map<string, jose.JWTVerifyGetKey>();
+const oidcDiscoveryCache = new Map<string, { doc: OidcDiscoveryDocument; expires: number }>();
+const DISCOVERY_CACHE_TTL = 3600000; // 1 hour
+
+/**
+ * Fetches and caches OIDC discovery document
+ */
+async function getDiscoveryDocument(discoveryUrl: string): Promise<OidcDiscoveryDocument> {
+	const cached = oidcDiscoveryCache.get(discoveryUrl);
+	if (cached && cached.expires > Date.now()) {
+		return cached.doc;
+	}
+
+	const response = await fetch(discoveryUrl);
+	if (!response.ok) {
+		throw new Error(`Failed to fetch OIDC discovery document: ${response.statusText}`);
+	}
+
+	const data: unknown = await response.json();
+	if (!isOidcDiscoveryDocument(data)) {
+		throw new Error('Invalid OIDC discovery document structure');
+	}
+
+	oidcDiscoveryCache.set(discoveryUrl, { doc: data, expires: Date.now() + DISCOVERY_CACHE_TTL });
+	return data;
+}
+
+/**
+ * Fetches and caches JWKS for OIDC token validation
+ */
+async function getOidcJwks(discoveryUrl: string): Promise<jose.JWTVerifyGetKey> {
+	if (!oidcJwksCache.has(discoveryUrl)) {
+		const discovery = await getDiscoveryDocument(discoveryUrl);
+		oidcJwksCache.set(discoveryUrl, jose.createRemoteJWKSet(new URL(discovery.jwks_uri)));
+	}
+	return oidcJwksCache.get(discoveryUrl)!;
+}
 
 export type WebhookParameters = {
 	httpMethod: string | string[];
@@ -317,6 +358,71 @@ export async function validateWebhookAuthentication(
 			}) as IDataObject;
 		} catch (error) {
 			throw new WebhookAuthorizationError(403, error.message);
+		}
+	} else if (authentication === 'oidcAuth') {
+		// OIDC authentication - validate Bearer token using IdP's JWKS
+		let oidcConfig: {
+			discoveryUrl: string;
+			clientId?: string;
+			issuer?: string;
+			audience?: string;
+		};
+
+		try {
+			oidcConfig = await ctx.getCredentials<{
+				discoveryUrl: string;
+				clientId?: string;
+				issuer?: string;
+				audience?: string;
+			}>('oidcWebhookAuth');
+		} catch {
+			throw new WebhookAuthorizationError(500, 'No OIDC authentication data defined on node!');
+		}
+
+		if (!oidcConfig?.discoveryUrl) {
+			throw new WebhookAuthorizationError(500, 'OIDC configuration incomplete - Discovery URL required');
+		}
+
+		const authHeader = req.headers.authorization;
+		const token = authHeader?.split(' ')[1];
+
+		if (!token) {
+			throw new WebhookAuthorizationError(401, 'No Bearer token provided');
+		}
+
+		try {
+			// Fetch discovery document and JWKS
+			const discovery = await getDiscoveryDocument(oidcConfig.discoveryUrl);
+			const jwks = await getOidcJwks(oidcConfig.discoveryUrl);
+
+			// Build verification options with fallbacks from discovery document
+			const verifyOptions: jose.JWTVerifyOptions = {
+				// Use configured issuer or fall back to discovery document issuer
+				issuer: oidcConfig.issuer || discovery.issuer,
+				// Use configured audience or fall back to clientId
+				audience: oidcConfig.audience || oidcConfig.clientId,
+			};
+
+			const { payload } = await jose.jwtVerify(token, jwks, verifyOptions);
+			// Convert JWTPayload to IDataObject - only include JSON-safe values
+			const result: IDataObject = {};
+			for (const [key, value] of Object.entries(payload)) {
+				if (value === undefined) continue;
+				// JWT claims are JSON values: string, number, boolean, object, array, or null
+				if (
+					typeof value === 'string' ||
+					typeof value === 'number' ||
+					typeof value === 'boolean' ||
+					value === null ||
+					typeof value === 'object'
+				) {
+					result[key] = value;
+				}
+			}
+			return result;
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Token validation failed';
+			throw new WebhookAuthorizationError(403, errorMessage);
 		}
 	}
 }

@@ -2,7 +2,7 @@ import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 const validOptions = ['notSupported', 'memory', 'manually'] as const;
-export type AuthenticationChatOption = 'none' | 'basicAuth' | 'n8nUserAuth';
+export type AuthenticationChatOption = 'none' | 'basicAuth' | 'n8nUserAuth' | 'oidcAuth';
 export type LoadPreviousSessionChatOption = (typeof validOptions)[number];
 
 function isValidLoadPreviousSessionOption(value: unknown): value is LoadPreviousSessionChatOption {

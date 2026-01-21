@@ -26,6 +26,13 @@ import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
+import {
+	generateOidcFormAuthToken,
+	getOidcConfig,
+	hasValidSession,
+	redirectToAuthorization,
+	validateOidcFormAuthToken,
+} from '../../Webhook/oidcAuthFlow';
 import { generateFormPostBasicAuthToken, validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
@@ -592,26 +599,77 @@ export async function formWebhook(
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
 
-	try {
-		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
-			throw new WebhookAuthorizationError(403);
+	// Check for bot blocking
+	if (options.ignoreBots && isbot(req.headers['user-agent'])) {
+		res.status(403).send('Forbidden');
+		return { noWebhookResponse: true };
+	}
+
+	// Handle OIDC authentication flow
+	const authentication: string = String(context.getNodeParameter(authProperty, 'none'));
+	const method = req.method;
+
+	// Store OIDC auth token for forms (generated on GET, used on POST)
+	let oidcFormAuthToken: string | undefined;
+
+	if (authentication === 'oidcAuth' && node.typeVersion > 1) {
+		const webhookPath = req.path;
+		const { config: oidcConfig, credentialId } = await getOidcConfig(context);
+
+		if (method === 'POST') {
+			// For POST requests, validate via x-auth-token header
+			// (because JavaScript fetch() doesn't send SameSite=Lax cookies)
+			const headers = context.getHeaderData();
+			const authToken = headers['x-auth-token'];
+			const tokenSession = validateOidcFormAuthToken(
+				typeof authToken === 'string' ? authToken : undefined,
+				webhookPath,
+				oidcConfig.sessionSecret,
+			);
+
+			if (!tokenSession) {
+				res.status(401).json({
+					error: 'Session expired',
+					message: 'Your session has expired. Please refresh the page to re-authenticate.',
+				});
+				return { noWebhookResponse: true };
+			}
+			// Token is valid - continue to process form submission
+		} else {
+			// For GET requests, validate via session cookie (works with navigation)
+			const session = hasValidSession(req, webhookPath, oidcConfig.sessionSecret);
+
+		if (!session) {
+			// No valid session - redirect to IdP for login
+			const forwardedProto = req.headers['x-forwarded-proto'];
+			const protocol = typeof forwardedProto === 'string' ? forwardedProto : 'http';
+			const forwardedHost = req.headers['x-forwarded-host'];
+			const host = typeof forwardedHost === 'string' ? forwardedHost : req.headers.host;
+			const originalUrl = `${protocol}://${host}${req.originalUrl || req.url}`;
+
+				await redirectToAuthorization(res, oidcConfig, webhookPath, originalUrl, credentialId);
+				return { noWebhookResponse: true };
+			}
+
+			// Generate auth token for the form's POST request
+			oidcFormAuthToken = generateOidcFormAuthToken(session, webhookPath, oidcConfig.sessionSecret);
 		}
-		if (node.typeVersion > 1) {
+	} else if (node.typeVersion > 1 && authentication !== 'none') {
+		// Handle Basic Auth
+		try {
 			await validateWebhookAuthentication(context, authProperty);
+		} catch (error) {
+			if (error instanceof WebhookAuthorizationError) {
+				res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+				res.status(401).send();
+				return { noWebhookResponse: true };
+			}
+			throw error;
 		}
-	} catch (error) {
-		if (error instanceof WebhookAuthorizationError) {
-			res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
-			res.status(401).send();
-			return { noWebhookResponse: true };
-		}
-		throw error;
 	}
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
-
-	const method = context.getRequestObject().method;
 
 	validateResponseModeConfiguration(context);
 
@@ -659,7 +717,12 @@ export async function formWebhook(
 
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
-			authToken = await generateFormPostBasicAuthToken(context, authProperty);
+			// Use OIDC form auth token if OIDC is enabled, otherwise use basic auth token
+			if (oidcFormAuthToken) {
+				authToken = oidcFormAuthToken;
+			} else {
+				authToken = await generateFormPostBasicAuthToken(context, authProperty);
+			}
 		}
 
 		renderForm({

@@ -21,7 +21,7 @@ import type {
 import * as a from 'node:assert';
 
 import { cssVariables } from './constants';
-import { validateAuth } from './GenericFunctions';
+import { handleOidcAuth, validateAuth } from './GenericFunctions';
 import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption } from './types';
 
@@ -265,6 +265,15 @@ export class ChatTrigger extends Node {
 					},
 				},
 			},
+			{
+				name: 'oidcWebhookAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['oidcAuth'],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -372,6 +381,11 @@ export class ChatTrigger extends Node {
 					{
 						name: 'None',
 						value: 'none',
+					},
+					{
+						name: 'OIDC Auth',
+						value: 'oidcAuth',
+						description: 'Validate Bearer token using OIDC/OAuth2 provider (Azure AD, Okta)',
 					},
 				],
 				default: 'none',
@@ -751,17 +765,33 @@ export class ChatTrigger extends Node {
 		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
 
-		try {
-			await validateAuth(ctx);
-		} catch (error) {
-			if (error) {
-				res.writeHead((error as IDataObject).responseCode as number, {
-					'www-authenticate': 'Basic realm="Webhook"',
-				});
-				res.end((error as IDataObject).message as string);
+		// Handle OIDC authentication flow (redirects, callbacks)
+		const authentication = ctx.getNodeParameter('authentication', 'none') as string;
+		if (authentication === 'oidcAuth') {
+			const oidcResult = await handleOidcAuth(ctx);
+			if (oidcResult.handled) {
+				// Response was already sent (redirect or error)
 				return { noWebhookResponse: true };
 			}
-			throw error;
+			if (!oidcResult.authenticated) {
+				res.status(401).send('Authentication required');
+				return { noWebhookResponse: true };
+			}
+			// User is authenticated via OIDC session, continue
+		} else {
+			// Handle other authentication methods (Basic Auth, n8n User Auth)
+			try {
+				await validateAuth(ctx);
+			} catch (error) {
+				if (error) {
+					res.writeHead((error as IDataObject).responseCode as number, {
+						'www-authenticate': 'Basic realm="Webhook"',
+					});
+					res.end((error as IDataObject).message as string);
+					return { noWebhookResponse: true };
+				}
+				throw error;
+			}
 		}
 		if (nodeMode === 'hostedChat') {
 			// Show the chat on GET request
@@ -776,7 +806,8 @@ export class ChatTrigger extends Node {
 				const authentication = ctx.getNodeParameter('authentication') as
 					| 'none'
 					| 'basicAuth'
-					| 'n8nUserAuth';
+					| 'n8nUserAuth'
+					| 'oidcAuth';
 				const initialMessagesRaw = ctx.getNodeParameter('initialMessages', '');
 				assertParamIsString('initialMessage', initialMessagesRaw, ctx.getNode());
 				const instanceId = ctx.getInstanceId();
