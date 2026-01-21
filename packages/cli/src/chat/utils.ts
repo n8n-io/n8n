@@ -6,7 +6,6 @@ import {
 	RESPOND_TO_WEBHOOK_NODE_TYPE,
 	SEND_AND_WAIT_OPERATION,
 	CHAT_TOOL_NODE_TYPE,
-	CHAT_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
 const AI_TOOL = 'ai_tool';
@@ -70,35 +69,4 @@ export function shouldResumeImmediately(lastNode: INode) {
 	}
 
 	return false;
-}
-
-/**
- * Check if the chat trigger has `responseMode` set to `responseNodes` and the
- * workflow is missing chat nodes connected to the trigger.
- * @param execution
- * @returns true if the workflow is missing chat nodes and `responseMode` is
- * `responseNodes`
- */
-export function workflowIsMissingChatNodes(execution: IExecutionResponse) {
-	const chatTriggerNode = execution.workflowData?.nodes?.find(
-		(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
-	);
-	if (!chatTriggerNode) {
-		return false;
-	}
-
-	const options = chatTriggerNode.parameters?.options as {
-		responseMode: string;
-	};
-	if (options?.responseMode !== 'responseNodes') {
-		return false;
-	}
-
-	const responseNodes = execution.workflowData?.nodes?.filter(
-		(node) =>
-			node.type === CHAT_NODE_TYPE ||
-			node.type === CHAT_TOOL_NODE_TYPE ||
-			node.type === RESPOND_TO_WEBHOOK_NODE_TYPE,
-	);
-	return !responseNodes?.length;
 }
