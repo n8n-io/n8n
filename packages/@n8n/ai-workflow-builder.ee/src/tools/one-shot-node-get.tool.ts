@@ -139,7 +139,11 @@ function getNodeVersions(nodeId: string, generatedTypesDir?: string): string[] {
  * Get the file path for a node ID, optionally for a specific version
  * If no version specified, returns the latest version
  */
-function getNodeFilePath(nodeId: string, version?: string, generatedTypesDir?: string): string | null {
+function getNodeFilePath(
+	nodeId: string,
+	version?: string,
+	generatedTypesDir?: string,
+): string | null {
 	const parsed = parseNodeId(nodeId);
 	if (!parsed) {
 		debugLog('Could not get file path - parsing failed', { nodeId });
@@ -210,6 +214,19 @@ function getNodeTypeDefinition(
 	error?: string;
 } {
 	debugLog('Getting type definition for node', { nodeId, version, generatedTypesDir });
+
+	// Check if the types directory exists
+	const nodesPath = getGeneratedNodesPath(generatedTypesDir);
+	if (!existsSync(nodesPath)) {
+		const errorMsg = generatedTypesDir
+			? `Node types directory not found at '${nodesPath}'. Types may not have been generated yet.`
+			: `Node types not found. The generated types directory does not exist. Ensure the application has started properly and types have been generated.`;
+		return {
+			nodeId,
+			content: '',
+			error: errorMsg,
+		};
+	}
 
 	const filePath = getNodeFilePath(nodeId, version, generatedTypesDir);
 
