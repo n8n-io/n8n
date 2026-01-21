@@ -169,8 +169,8 @@ describe('validateWebhookResponse', () => {
 				expect(violations).toHaveLength(1);
 				expect(violations[0]).toMatchObject({
 					name: 'webhook-response-mode-mismatch',
-					type: 'minor',
-					pointsDeducted: 20,
+					type: 'critical',
+					pointsDeducted: 50,
 				});
 				expect(violations[0].description).toContain(`responseMode='${expectedInDescription}'`);
 			},

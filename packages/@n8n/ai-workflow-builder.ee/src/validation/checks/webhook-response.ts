@@ -78,9 +78,9 @@ export function validateWebhookResponse(workflow: SimpleWorkflow): ProgrammaticV
 		if (hasConnectedResponder && responseMode !== 'responseNode') {
 			violations.push({
 				name: 'webhook-response-mode-mismatch',
-				type: 'minor',
+				type: 'critical',
 				description: `Webhook "${webhookNode.name}" has a "Respond to Webhook" node connected downstream but responseMode='${responseMode ?? 'undefined'}'. The responseMode must be 'responseNode' for the Respond to Webhook node to work.`,
-				pointsDeducted: 20,
+				pointsDeducted: 50,
 				metadata: {
 					webhookNodeName: webhookNode.name,
 					webhookNodeId: webhookNode.id,
