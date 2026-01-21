@@ -25,7 +25,7 @@ export async function storeVersion(state: DataWorkerState, version: string): Pro
 
 	await execWithParams(
 		state,
-		'INSERT OR REPLACE INTO metadata (key, value, updated_at) VALUES (?, ?, datetime("now"))',
+		"INSERT OR REPLACE INTO metadata (key, value, updated_at) VALUES (?, ?, datetime('now'))",
 		[VERSION_KEY, version],
 	);
 

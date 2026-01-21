@@ -69,9 +69,3 @@ export interface NodeTypeRow {
 	data: string;
 	updated_at: string;
 }
-
-export interface MetadataRow {
-	key: string;
-	value: string;
-	updated_at: string;
-}

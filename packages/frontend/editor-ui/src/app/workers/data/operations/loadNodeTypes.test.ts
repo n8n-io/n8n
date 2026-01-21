@@ -173,18 +173,18 @@ describe('Data Worker loadNodeTypes Operations', () => {
 				// Should insert for each version with parameterized queries
 				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-					['n8n-nodes-base.multiVersion@1', expect.any(String), 'now'],
+					"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+					['n8n-nodes-base.multiVersion@1', expect.any(String)],
 				);
 				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-					['n8n-nodes-base.multiVersion@2', expect.any(String), 'now'],
+					"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+					['n8n-nodes-base.multiVersion@2', expect.any(String)],
 				);
 				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-					['n8n-nodes-base.multiVersion@3', expect.any(String), 'now'],
+					"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+					['n8n-nodes-base.multiVersion@3', expect.any(String)],
 				);
 			});
 
@@ -207,8 +207,8 @@ describe('Data Worker loadNodeTypes Operations', () => {
 				// With parameterized queries, single quotes are handled by the database driver
 				expect(execWithParams).toHaveBeenCalledWith(
 					state,
-					'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-					['n8n-nodes-base.test@1', expect.stringContaining("It's a test node"), 'now'],
+					"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+					['n8n-nodes-base.test@1', expect.stringContaining("It's a test node")],
 				);
 			});
 		});

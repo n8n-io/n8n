@@ -71,8 +71,8 @@ async function upsertNodeType(
 ): Promise<void> {
 	await execWithParams(
 		state,
-		'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-		[id, JSON.stringify(nodeType), 'now'],
+		"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+		[id, JSON.stringify(nodeType)],
 	);
 }
 
