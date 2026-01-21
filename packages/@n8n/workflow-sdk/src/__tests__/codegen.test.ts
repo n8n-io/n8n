@@ -2191,3 +2191,145 @@ describe('Fan-out pattern handling', () => {
 		expect(parsed.connections['ProcessB'].main[0][0].node).toBe('Merge');
 	});
 });
+
+describe('IF branches feeding into Merge', () => {
+	it('should preserve both IF branches when they feed into same Merge node', () => {
+		// Pattern: IF true and false branches both connect to Merge
+		const workflow: WorkflowJSON = {
+			id: 'if-merge-test',
+			name: 'IF Merge Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'TrueNode',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'FalseNode',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
+				IF: {
+					main: [
+						[{ node: 'TrueNode', type: 'main', index: 0 }], // output 0 (true)
+						[{ node: 'FalseNode', type: 'main', index: 0 }], // output 1 (false)
+					],
+				},
+				TrueNode: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				FalseNode: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Both IF branches must exist
+		expect(parsed.connections['IF']).toBeDefined();
+		expect(parsed.connections['IF'].main[0][0].node).toBe('TrueNode');
+		expect(parsed.connections['IF'].main[1][0].node).toBe('FalseNode');
+		// Both branches must connect to Merge
+		expect(parsed.connections['TrueNode'].main[0][0].node).toBe('Merge');
+		expect(parsed.connections['FalseNode'].main[0][0].node).toBe('Merge');
+	});
+
+	it('should preserve IF false-only branch connecting to Merge', () => {
+		// Pattern from workflow 4557: IF only has false branch, which connects to Merge
+		// Output 0 (true) is empty, output 1 (false) connects to Merge input 1
+		const workflow: WorkflowJSON = {
+			id: 'if-false-merge-test',
+			name: 'IF False to Merge Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Source',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [400, 0],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Source', type: 'main', index: 0 }]] },
+				Source: {
+					main: [
+						[
+							{ node: 'IF', type: 'main', index: 0 },
+							{ node: 'Merge', type: 'main', index: 0 }, // fan-out to Merge input 0
+						],
+					],
+				},
+				IF: {
+					main: [
+						[], // output 0 (true) - empty
+						[{ node: 'Merge', type: 'main', index: 1 }], // output 1 (false) -> Merge input 1
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// IF false branch must connect to Merge
+		expect(parsed.connections['IF']).toBeDefined();
+		expect(parsed.connections['IF'].main[1]).toBeDefined();
+		expect(parsed.connections['IF'].main[1][0].node).toBe('Merge');
+	});
+});

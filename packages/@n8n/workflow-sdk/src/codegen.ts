@@ -947,6 +947,16 @@ function detectMergePattern(
 		const targetInfo = nodeInfoMap.get(target.to);
 		if (!targetInfo || addedNodes.has(target.to)) return null;
 
+		// Don't treat IF, Switch, or SplitInBatches as simple merge branches
+		// These nodes have semantic multi-output structure that should be preserved
+		if (
+			isIfNode(targetInfo.node) ||
+			isSwitchNode(targetInfo.node) ||
+			isSplitInBatchesNode(targetInfo.node)
+		) {
+			return null;
+		}
+
 		// Check if this target has exactly one output that goes to a merge node
 		const targetOutputs = Array.from(targetInfo.outgoingConnections.entries());
 		if (targetOutputs.length !== 1) return null;
@@ -1087,6 +1097,16 @@ function findFanOutMergeConvergence(
 		const targetInfo = nodeInfoMap.get(target.to);
 		if (!targetInfo || addedNodes.has(target.to) || targetInfo.isSubnodeOf) continue;
 
+		// Don't treat IF, Switch, or SplitInBatches as simple chain nodes
+		// These have semantic multi-output structure that must be preserved
+		if (
+			isIfNode(targetInfo.node) ||
+			isSwitchNode(targetInfo.node) ||
+			isSplitInBatchesNode(targetInfo.node)
+		) {
+			return null;
+		}
+
 		// Follow the chain from this target
 		let currentInfo: NodeInfo | undefined = targetInfo;
 		let foundMerge = false;
@@ -1096,6 +1116,16 @@ function findFanOutMergeConvergence(
 			if (isMergeNode(currentInfo.node)) {
 				mergeNodes.add(currentInfo.node.name);
 				foundMerge = true;
+				break;
+			}
+
+			// Don't follow through IF, Switch, or SplitInBatches nodes
+			// These have semantic multi-output structure
+			if (
+				isIfNode(currentInfo.node) ||
+				isSwitchNode(currentInfo.node) ||
+				isSplitInBatchesNode(currentInfo.node)
+			) {
 				break;
 			}
 
