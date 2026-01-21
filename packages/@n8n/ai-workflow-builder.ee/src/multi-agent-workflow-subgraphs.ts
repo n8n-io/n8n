@@ -1,5 +1,5 @@
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import { StateGraph, END, START, type MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -29,7 +29,7 @@ import {
 	handleCreateWorkflowName,
 	handleDeleteMessages,
 } from './utils/state-modifier';
-import type { BuilderFeatureFlags } from './workflow-builder-agent';
+import type { BuilderFeatureFlags, StageLLMs } from './workflow-builder-agent';
 
 /**
  * Maps routing decisions to graph node names.
@@ -47,8 +47,8 @@ function routeToNode(next: string): string {
 
 export interface MultiAgentSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
-	llmSimpleTask: BaseChatModel;
-	llmComplexTask: BaseChatModel;
+	/** Per-stage LLM configuration */
+	stageLLMs: StageLLMs;
 	logger?: Logger;
 	instanceUrl?: string;
 	checkpointer?: MemorySaver;
@@ -60,7 +60,8 @@ export interface MultiAgentSubgraphConfig {
 }
 
 /**
- * Creates a subgraph node handler with standardized error handling
+ * Creates a subgraph node handler with standardized error handling.
+ * Accepts RunnableConfig as second parameter to propagate callbacks for tracing.
  */
 function createSubgraphNodeHandler<
 	TSubgraph extends BaseSubgraph<unknown, Record<string, unknown>, Record<string, unknown>>,
@@ -71,10 +72,15 @@ function createSubgraphNodeHandler<
 	logger?: Logger,
 	recursionLimit?: number,
 ) {
-	return async (state: typeof ParentGraphState.State) => {
+	return async (state: typeof ParentGraphState.State, config?: RunnableConfig) => {
 		try {
 			const input = subgraph.transformInput(state);
-			const result = await compiledGraph.invoke(input, { recursionLimit });
+			// Merge parent config (callbacks, metadata) with recursionLimit
+			const invokeConfig: RunnableConfig = {
+				...config,
+				recursionLimit,
+			};
+			const result = await compiledGraph.invoke(input, invokeConfig);
 			const output = subgraph.transformOutput(result, state);
 
 			return output;
@@ -122,7 +128,7 @@ function createSubgraphNodeHandler<
 export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraphConfig) {
 	const {
 		parsedNodeTypes,
-		llmComplexTask,
+		stageLLMs,
 		logger,
 		instanceUrl,
 		checkpointer,
@@ -131,30 +137,31 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		onGenerationSuccess,
 	} = config;
 
-	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
-	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
+	const supervisorAgent = new SupervisorAgent({ llm: stageLLMs.supervisor });
+	const responderAgent = new ResponderAgent({ llm: stageLLMs.responder });
 
 	// Create subgraph instances
 	const discoverySubgraph = new DiscoverySubgraph();
 	const builderSubgraph = new BuilderSubgraph();
 	const configuratorSubgraph = new ConfiguratorSubgraph();
 
-	// Compile subgraphs
+	// Compile subgraphs with per-stage LLMs
 	const compiledDiscovery = discoverySubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: stageLLMs.discovery,
 		logger,
 		featureFlags,
 	});
 	const compiledBuilder = builderSubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: stageLLMs.builder,
 		logger,
 		featureFlags,
 	});
 	const compiledConfigurator = configuratorSubgraph.create({
 		parsedNodeTypes,
-		llm: llmComplexTask,
+		llm: stageLLMs.configurator,
+		llmParameterUpdater: stageLLMs.parameterUpdater,
 		logger,
 		instanceUrl,
 		featureFlags,
@@ -164,27 +171,35 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	return (
 		new StateGraph(ParentGraphState)
 			// Add Supervisor Node (only used for initial routing)
-			.addNode('supervisor', async (state) => {
-				const routing = await supervisorAgent.invoke({
-					messages: state.messages,
-					workflowJSON: state.workflowJSON,
-					coordinationLog: state.coordinationLog,
-					previousSummary: state.previousSummary,
-				});
+			// Accepts config as second param to propagate callbacks for tracing
+			.addNode('supervisor', async (state, config) => {
+				const routing = await supervisorAgent.invoke(
+					{
+						messages: state.messages,
+						workflowJSON: state.workflowJSON,
+						coordinationLog: state.coordinationLog,
+						previousSummary: state.previousSummary,
+					},
+					config,
+				);
 
 				return {
 					nextPhase: routing.next,
 				};
 			})
 			// Add Responder Node (synthesizes final user-facing response)
-			.addNode('responder', async (state) => {
-				const response = await responderAgent.invoke({
-					messages: state.messages,
-					coordinationLog: state.coordinationLog,
-					discoveryContext: state.discoveryContext,
-					workflowJSON: state.workflowJSON,
-					previousSummary: state.previousSummary,
-				});
+			// Accepts config as second param to propagate callbacks for tracing
+			.addNode('responder', async (state, config) => {
+				const response = await responderAgent.invoke(
+					{
+						messages: state.messages,
+						coordinationLog: state.coordinationLog,
+						discoveryContext: state.discoveryContext,
+						workflowJSON: state.workflowJSON,
+						previousSummary: state.previousSummary,
+					},
+					config,
+				);
 
 				// Call success callback only when generation completed without errors
 				if (onGenerationSuccess && !hasErrorInLog(state.coordinationLog)) {
@@ -212,25 +227,27 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				nextPhase: determineStateAction(state, autoCompactThresholdTokens),
 			}))
 			.addNode('cleanup_dangling', (state) => handleCleanupDangling(state.messages, logger))
-			.addNode('compact_messages', async (state) => {
+			.addNode('compact_messages', async (state, config) => {
 				const isAutoCompact = state.messages[state.messages.length - 1]?.content !== '/compact';
 				return await handleCompactMessages(
 					state.messages,
 					state.previousSummary ?? '',
-					llmComplexTask,
+					stageLLMs.responder,
 					isAutoCompact,
+					config,
 				);
 			})
 			.addNode('delete_messages', (state) => handleDeleteMessages(state.messages))
 			.addNode('clear_error_state', (state) => handleClearErrorState(state.coordinationLog, logger))
 			.addNode(
 				'create_workflow_name',
-				async (state) =>
+				async (state, config) =>
 					await handleCreateWorkflowName(
 						state.messages,
 						state.workflowJSON,
-						llmComplexTask,
+						stageLLMs.responder,
 						logger,
+						config,
 					),
 			)
 			// Add Subgraph Nodes (using helper to reduce duplication)

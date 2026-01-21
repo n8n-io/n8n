@@ -110,8 +110,14 @@ describe('Multi-Agent Error Handling - Integration Tests (AI-1812)', () => {
 			// Don't use checkpointer for this test - we're just testing error message
 			const graph = createMultiAgentWorkflowWithSubgraphs({
 				parsedNodeTypes,
-				llmSimpleTask: llm,
-				llmComplexTask: llm,
+				stageLLMs: {
+					supervisor: llm,
+					responder: llm,
+					discovery: llm,
+					builder: llm,
+					configurator: llm,
+					parameterUpdater: llm,
+				},
 				logger: mockLogger,
 			});
 

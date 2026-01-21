@@ -116,6 +116,31 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	/**
+	 * Set tags on a workflow via API
+	 * @param workflowId - The workflow ID
+	 * @param tagIds - Array of tag IDs to assign to the workflow
+	 */
+	async setTags(workflowId: string, tagIds: string[]): Promise<void> {
+		const getResponse = await this.api.request.get(`/rest/workflows/${workflowId}`);
+		if (!getResponse.ok()) {
+			throw new TestError(`Failed to get workflow: ${await getResponse.text()}`);
+		}
+		const workflowData = await getResponse.json();
+		const workflow = workflowData.data ?? workflowData;
+
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: {
+				versionId: workflow.versionId,
+				tags: tagIds,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to set workflow tags: ${await response.text()}`);
+		}
+	}
+
 	/** Makes workflow unique by updating name, IDs, and webhook paths. */
 	private makeWorkflowUnique(
 		workflow: Partial<IWorkflowBase>,

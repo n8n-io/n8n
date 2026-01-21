@@ -45,6 +45,17 @@ vi.mock('./ExecuteMessage.vue', () => ({
 	}),
 }));
 
+// Mock NotificationPermissionBanner component
+vi.mock('./NotificationPermissionBanner.vue', () => ({
+	default: defineComponent({
+		name: 'NotificationPermissionBanner',
+		setup() {
+			return () =>
+				h('div', { 'data-test-id': 'notification-permission-banner' }, 'Notification Banner');
+		},
+	}),
+}));
+
 // Mock AskAssistantChat component
 vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', () => ({
 	default: defineComponent({
@@ -98,6 +109,8 @@ vi.mock('@n8n/design-system/components/AskAssistantChat/AskAssistantChat.vue', (
 								}),
 							]
 						: null,
+					// Render inputHeader slot if it exists (for notification banner)
+					slots.inputHeader?.(),
 					// Render messagesFooter slot if it exists
 					slots.messagesFooter?.(),
 				]);
@@ -180,6 +193,16 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	}),
 }));
 
+// Mock useBrowserNotifications
+const mockCanPrompt = { value: true };
+vi.mock('@/app/composables/useBrowserNotifications', () => ({
+	useBrowserNotifications: () => ({
+		canPrompt: mockCanPrompt,
+		requestPermission: vi.fn().mockResolvedValue({ permission: 'granted', wasRequested: true }),
+		recordDismissal: vi.fn(),
+	}),
+}));
+
 // Mock useDocumentVisibility
 let onDocumentVisibleCallback: (() => void) | null = null;
 vi.mock('@/app/composables/useDocumentVisibility', () => ({
@@ -208,6 +231,7 @@ describe('AskAssistantBuild', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		onDocumentVisibleCallback = null;
+		mockCanPrompt.value = true;
 
 		// Reset the updateWorkflow mock before each test
 		updateWorkflowMock.mockReset();
@@ -1458,6 +1482,89 @@ describe('AskAssistantBuild', () => {
 
 			// Verify clearDoneIndicatorTitle was called
 			expect(builderStore.clearDoneIndicatorTitle).toHaveBeenCalled();
+		});
+	});
+
+	describe('notification banner visibility', () => {
+		it('should not show notification banner before streaming starts', async () => {
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [],
+			});
+			mockCanPrompt.value = true;
+
+			const { queryByTestId } = renderComponent();
+
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
+		});
+
+		it('should show notification banner when streaming starts and canPrompt is true', async () => {
+			mockCanPrompt.value = true;
+
+			const { queryByTestId } = renderComponent();
+
+			// Start streaming
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+		});
+
+		it('should not show notification banner when streaming starts but canPrompt is false', async () => {
+			mockCanPrompt.value = false;
+
+			const { queryByTestId } = renderComponent();
+
+			// Start streaming
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
+		});
+
+		it('should keep notification banner visible after streaming ends', async () => {
+			mockCanPrompt.value = true;
+
+			const { queryByTestId } = renderComponent();
+
+			// Start streaming - banner should appear
+			builderStore.$patch({ streaming: true });
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+
+			// End streaming - banner should remain visible
+			builderStore.$patch({ streaming: false });
+			await flushPromises();
+
+			expect(queryByTestId('notification-permission-banner')).toBeInTheDocument();
+		});
+
+		it('should not show notification banner for existing chat sessions without streaming', async () => {
+			// Simulate returning to an existing chat session with messages but no streaming
+			builderStore.$patch({
+				streaming: false,
+				chatMessages: [
+					{ id: '1', role: 'user', type: 'text', content: 'Create a workflow' },
+					{
+						id: '2',
+						role: 'assistant',
+						type: 'workflow-updated',
+						codeSnippet: JSON.stringify({ nodes: [], connections: {} }),
+					},
+				],
+			});
+			builderStore.hasMessages = true;
+			mockCanPrompt.value = true;
+
+			const { queryByTestId } = renderComponent();
+
+			await flushPromises();
+
+			// Banner should NOT be shown since streaming hasn't started in this session
+			expect(queryByTestId('notification-permission-banner')).not.toBeInTheDocument();
 		});
 	});
 });

@@ -494,6 +494,11 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 /**
@@ -541,6 +546,12 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 export interface PaginationOptions {
@@ -1312,6 +1323,25 @@ export interface IPairedItemData {
 	sourceOverwrite?: ISourceData;
 }
 
+export const ChatNodeMessageType = {
+	WITH_BUTTONS: 'with-buttons',
+} as const;
+
+export type ChatNodeMessageButtonType = 'primary' | 'secondary';
+
+export type ChatNodeMessageWithButtons = {
+	type: typeof ChatNodeMessageType.WITH_BUTTONS;
+	text: string;
+	blockUserInput: boolean;
+	buttons: Array<{
+		text: string;
+		link: string;
+		type: ChatNodeMessageButtonType;
+	}>;
+};
+
+export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
@@ -1340,7 +1370,7 @@ export interface INodeExecutionData {
 	 * See example in
 	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
 	 */
-	sendMessage?: string;
+	sendMessage?: ChatNodeMessage;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it
@@ -2529,6 +2559,7 @@ export interface ITaskMetadata {
 	 * tools to access data from nodes earlier in the workflow chain via $() expressions.
 	 */
 	preserveSourceOverwrite?: boolean;
+	preservedSourceOverwrite?: ISourceData;
 	/**
 	 * Indicates that this node execution is resuming from a previous pause (e.g., AI agent
 	 * resuming after tool execution). When true, the nodeExecuteBefore hook is skipped to
@@ -2803,7 +2834,7 @@ export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BI
 
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
-	errorWorkflow?: string;
+	errorWorkflow?: 'DEFAULT' | string;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;

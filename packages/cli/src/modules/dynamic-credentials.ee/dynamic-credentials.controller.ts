@@ -1,4 +1,4 @@
-import { Delete, Post, RestController } from '@n8n/decorators';
+import { Delete, Options, Post, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -8,9 +8,10 @@ import { CreateCsrfStateData, OauthService } from '@/oauth/oauth.service';
 import { CredentialsEntity } from '@n8n/db';
 import { DynamicCredentialResolverRepository } from './database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverRegistry } from './services';
-import { getBearerToken } from './utils';
+import { getBearerToken, getDynamicCredentialMiddlewares } from './utils';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
+import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 
 @RestController('/credentials')
 export class DynamicCredentialsController {
@@ -20,6 +21,7 @@ export class DynamicCredentialsController {
 		private readonly resolverRepository: DynamicCredentialResolverRepository,
 		private readonly resolverRegistry: DynamicCredentialResolverRegistry,
 		private readonly cipher: Cipher,
+		private readonly dynamicCredentialCorsService: DynamicCredentialCorsService,
 	) {}
 
 	private async findCredentialToUse(credentialId: string): Promise<CredentialsEntity> {
@@ -29,7 +31,10 @@ export class DynamicCredentialsController {
 			throw new NotFoundError('Credential not found');
 		}
 
-		if (!credential.type.includes('OAuth2') && !credential.type.includes('OAuth1')) {
+		if (
+			!credential.type.toLowerCase().includes('oauth2') &&
+			!credential.type.toLowerCase().includes('oauth1')
+		) {
 			throw new BadRequestError('Credential type not supported');
 		}
 		return credential;
@@ -57,8 +62,19 @@ export class DynamicCredentialsController {
 		return { resolver, resolverEntity };
 	}
 
-	@Delete('/:id/revoke', { skipAuth: true })
+	/**
+	 * OPTIONS /credentials/:id/revoke
+	 *
+	 * Handles CORS preflight requests
+	 */
+	@Options('/:id/revoke', { skipAuth: true })
+	handlePreflightCredentialRevoke(req: Request, res: Response): void {
+		this.dynamicCredentialCorsService.preflightHandler(req, res, ['delete', 'options']);
+	}
+
+	@Delete('/:id/revoke', { skipAuth: true, middlewares: getDynamicCredentialMiddlewares() })
 	async revokeCredential(req: Request, res: Response): Promise<void> {
+		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['delete', 'options']);
 		const token = getBearerToken(req);
 		const credential = await this.findCredentialToUse(req.params.id);
 
@@ -87,8 +103,19 @@ export class DynamicCredentialsController {
 		res.status(204).send(); // 204 No Content indicates successful deletion
 	}
 
-	@Post('/:id/authorize', { skipAuth: true })
-	async authorizeCredential(req: Request, _res: Response): Promise<string> {
+	/**
+	 * OPTIONS /credentials/:id/authorize
+	 *
+	 * Handles CORS preflight requests
+	 */
+	@Options('/:id/authorize', { skipAuth: true })
+	handlePreflightCredentialAuthorize(req: Request, res: Response): void {
+		this.dynamicCredentialCorsService.preflightHandler(req, res, ['post', 'options']);
+	}
+
+	@Post('/:id/authorize', { skipAuth: true, middlewares: getDynamicCredentialMiddlewares() })
+	async authorizeCredential(req: Request, res: Response): Promise<string> {
+		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['post', 'options']);
 		const token = getBearerToken(req);
 		const credential = await this.findCredentialToUse(req.params.id);
 
@@ -117,11 +144,11 @@ export class DynamicCredentialsController {
 			},
 		];
 
-		if (credential.type.includes('OAuth2')) {
+		if (credential.type.toLowerCase().includes('oauth2')) {
 			return await this.oauthService.generateAOauth2AuthUri(...callerData);
 		}
 
-		if (credential.type.includes('OAuth1')) {
+		if (credential.type.toLowerCase().includes('oauth1')) {
 			return await this.oauthService.generateAOauth1AuthUri(...callerData);
 		}
 

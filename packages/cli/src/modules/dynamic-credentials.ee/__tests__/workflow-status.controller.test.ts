@@ -1,18 +1,24 @@
 import { mock } from 'jest-mock-extended';
 import type { Request, Response } from 'express';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { DynamicCredentialCorsService } from '../services/dynamic-credential-cors.service';
 import { WorkflowStatusController } from '../workflow-status.controller';
 import type { CredentialResolverWorkflowService } from '../services/credential-resolver-workflow.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
 import type { UrlService } from '@/services/url.service';
 import type { GlobalConfig } from '@n8n/config';
 
+jest.mock('../utils', () => ({
+	getBearerToken: jest.requireActual('../utils').getBearerToken,
+	getDynamicCredentialMiddlewares: jest.fn(() => undefined),
+}));
+
 describe('WorkflowStatusController', () => {
 	let controller: WorkflowStatusController;
 	let mockService: jest.Mocked<CredentialResolverWorkflowService>;
 	let mockUrlService: jest.Mocked<UrlService>;
 	let mockGlobalConfig: jest.Mocked<GlobalConfig>;
+	let mockDynamicCredentialCorsService: jest.Mocked<DynamicCredentialCorsService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -31,7 +37,17 @@ describe('WorkflowStatusController', () => {
 			},
 		} as unknown as jest.Mocked<GlobalConfig>;
 
-		controller = new WorkflowStatusController(mockService, mockUrlService, mockGlobalConfig);
+		mockDynamicCredentialCorsService = {
+			applyCorsHeadersIfEnabled: jest.fn(),
+			preflightHandler: jest.fn(),
+		} as unknown as jest.Mocked<DynamicCredentialCorsService>;
+
+		controller = new WorkflowStatusController(
+			mockService,
+			mockUrlService,
+			mockGlobalConfig,
+			mockDynamicCredentialCorsService,
+		);
 	});
 
 	describe('checkWorkflowForExecution', () => {
