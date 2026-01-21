@@ -53,12 +53,11 @@ function loadTestWorkflows(): TestWorkflow[] {
 	// Load downloaded workflows
 	loadWorkflowsFromDir(DOWNLOADED_FIXTURES_DIR, workflows);
 
-	if (workflows.length === 0) {
-		throw new Error('No test workflows loaded. Check that fixtures were downloaded correctly.');
-	}
-
 	return workflows;
 }
+
+// Load workflows at file parse time for individual test generation
+const workflows = loadTestWorkflows();
 
 describe('parseWorkflowCode', () => {
 	it('should parse a simple generated workflow back to JSON', () => {
@@ -1036,10 +1035,8 @@ return { json: { result } };\`
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {
-	let workflows: TestWorkflow[] = [];
-
+	// Download fixtures if needed (runs once before all tests in this file)
 	beforeAll(async () => {
-		// Download fixtures if they don't exist - fails test if API is unreachable
 		try {
 			await ensureFixtures();
 		} catch (error) {
@@ -1051,175 +1048,156 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 			}
 			throw error;
 		}
-
-		// Load workflows after fixtures are available
-		workflows = loadTestWorkflows();
 	}, 120000); // 2 minute timeout for downloading fixtures
 
-	describe('generateWorkflowCode -> parseWorkflowCode roundtrip', () => {
-		// Note: We can't use forEach with dynamic test generation when loading is async
-		// Instead, we use a single test that iterates through all workflows
-		it('should roundtrip all workflows', () => {
+	if (workflows.length === 0) {
+		it('should have fixtures available (run tests again after download)', () => {
+			// This test only runs if no workflows were loaded at parse time
+			// After beforeAll downloads them, re-running tests should work
 			expect(workflows.length).toBeGreaterThan(0);
-
-			for (const { id, name, json, nodeCount } of workflows) {
-				// Generate TypeScript code
-				const code = generateWorkflowCode(json);
-
-				// Parse back to JSON
-				const parsedJson = parseWorkflowCode(code);
-
-				// Verify basic structure (handle missing id/name gracefully)
-				// Some n8n.io workflow templates don't have id/name at root level
-				expect(parsedJson.id ?? '').toBe(json.id ?? '');
-				expect(parsedJson.name ?? '').toBe(json.name ?? '');
-
-				// Debug: log node counts if they don't match
-				if (parsedJson.nodes.length !== json.nodes.length) {
-					const originalNames = new Set(json.nodes.map((n) => n.name));
-					const parsedNames = new Set(parsedJson.nodes.map((n) => n.name));
-					const missing = [...originalNames].filter((n) => !parsedNames.has(n));
-					const extra = [...parsedNames].filter((n) => !originalNames.has(n));
-					console.log(`Node count mismatch for ${id}:`);
-					console.log(`  Original: ${json.nodes.length}, Parsed: ${parsedJson.nodes.length}`);
-					if (missing.length) console.log(`  Missing nodes:`, missing);
-					if (extra.length) console.log(`  Extra nodes:`, extra);
-				}
-				expect(parsedJson.nodes).toHaveLength(json.nodes.length);
-
-				// Verify all nodes are present by name
-				// Skip nodes with undefined names - they get generated names after roundtrip
-				for (const originalNode of json.nodes) {
-					if (originalNode.name === undefined) continue;
-					const parsedNode = parsedJson.nodes.find((n) => n.name === originalNode.name);
-					expect(parsedNode).toBeDefined();
-
-					if (parsedNode) {
-						// Type and version should match
-						expect(parsedNode.type).toBe(originalNode.type);
-						expect(parsedNode.typeVersion).toBe(originalNode.typeVersion);
-
-						// Parameters should be deeply equal
-						// Treat {} and undefined as equivalent (codegen doesn't output empty params)
-						// For sticky notes, treat content: '' as equivalent to no content
-						const normalizeParams = (p: unknown, nodeType: string) => {
-							if (!p || typeof p !== 'object') return p;
-							const obj = p as Record<string, unknown>;
-							if (Object.keys(obj).length === 0) return undefined;
-							// For sticky notes, normalize empty content
-							if (nodeType === 'n8n-nodes-base.stickyNote' && obj.content === '') {
-								const { content, ...rest } = obj;
-								return Object.keys(rest).length === 0 ? undefined : rest;
-							}
-							return p;
-						};
-						expect(normalizeParams(parsedNode.parameters, parsedNode.type)).toEqual(
-							normalizeParams(originalNode.parameters, originalNode.type),
-						);
-
-						// Credentials should match (if any)
-						// Treat {} and undefined as equivalent (codegen doesn't output empty creds)
-						if (originalNode.credentials && Object.keys(originalNode.credentials).length > 0) {
-							expect(parsedNode.credentials).toEqual(originalNode.credentials);
-						}
-					}
-				}
-
-				// Verify settings (if any)
-				if (json.settings && Object.keys(json.settings).length > 0) {
-					expect(parsedJson.settings).toEqual(json.settings);
-				}
-
-				// Verify connection structure
-				// AI connection types (ai_tool, ai_languageModel, ai_memory, ai_outputParser, etc.)
-				// ARE now preserved through codegen roundtrip using subnode factory functions
-				const filterEmptyConnections = (conns: Record<string, unknown>) => {
-					const result: Record<string, unknown> = {};
-					for (const [nodeName, nodeConns] of Object.entries(conns)) {
-						const nonEmptyTypes: Record<string, unknown> = {};
-						for (const [connType, outputs] of Object.entries(
-							nodeConns as Record<string, unknown[]>,
-						)) {
-							const nonEmptyOutputs = (outputs || []).filter(
-								(arr: unknown) => Array.isArray(arr) && arr.length > 0,
-							);
-							if (nonEmptyOutputs.length > 0) {
-								nonEmptyTypes[connType] = outputs;
-							}
-						}
-						if (Object.keys(nonEmptyTypes).length > 0) {
-							result[nodeName] = nonEmptyTypes;
-						}
-					}
-					return result;
-				};
-
-				// Check if workflow has complex patterns that codegen cannot preserve:
-				// - Merge nodes (multiple nodes connecting to same merge)
-				// - Fan-in (multiple source nodes connecting to the same target)
-				// - Fan-out (single output going to multiple nodes)
-				// - Multi-output branching (IF nodes with chained nodes after branches)
-				const hasMergeNode = json.nodes.some((n) => n.type === 'n8n-nodes-base.merge');
-
-				// Check for fan-in: multiple nodes connecting to the same target
-				const targetInputCounts = new Map<string, number>();
-				for (const nodeConns of Object.values(json.connections)) {
-					for (const outputs of Object.values(nodeConns)) {
-						if (!Array.isArray(outputs)) continue;
-						for (const targets of outputs) {
-							if (!Array.isArray(targets)) continue;
-							for (const target of targets) {
-								const count = targetInputCounts.get(target.node) || 0;
-								targetInputCounts.set(target.node, count + 1);
-							}
-						}
-					}
-				}
-				const hasFanIn = [...targetInputCounts.values()].some((count) => count > 1);
-
-				const hasFanOut = Object.values(json.connections).some((nodeConns) =>
-					Object.values(nodeConns).some(
-						(outputs) =>
-							Array.isArray(outputs) &&
-							outputs.some((targets) => Array.isArray(targets) && targets.length > 1),
-					),
-				);
-				// Check for nodes with multiple outputs (IF, Switch, etc.) that have chains after
-				const hasMultiOutputBranching = Object.values(json.connections).some((nodeConns) =>
-					Object.values(nodeConns).some(
-						(outputs) =>
-							Array.isArray(outputs) &&
-							outputs.length > 1 &&
-							outputs.some((targets) => Array.isArray(targets) && targets.length > 0),
-					),
-				);
-
-				// Check for connection keys that don't match any node name
-				const nodeNames = new Set(json.nodes.map((n) => n.name));
-				const orphanedConnectionKeys = Object.keys(json.connections).filter(
-					(key) => !nodeNames.has(key),
-				);
-
-				// Only verify connections for simple workflows:
-				// - No Merge nodes (complex fan-in patterns cannot be preserved)
-				// - No fan-in (multiple sources to same target cannot be preserved)
-				// - No fan-out (single output to multiple nodes cannot be preserved)
-				// - No multi-output branching (IF chains cannot be preserved correctly)
-				// - No orphaned connection keys (data quality issues)
-				// Note: AI connections ARE now preserved via subnode factory functions
-				if (
-					!hasMergeNode &&
-					!hasFanIn &&
-					!hasFanOut &&
-					!hasMultiOutputBranching &&
-					orphanedConnectionKeys.length === 0
-				) {
-					const filteredOriginal = filterEmptyConnections(json.connections);
-					const filteredParsed = filterEmptyConnections(parsedJson.connections);
-
-					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
-				}
-			}
 		});
-	});
+	} else {
+		describe('generateWorkflowCode -> parseWorkflowCode roundtrip', () => {
+			// Helper function for normalizing parameters
+			const normalizeParams = (p: unknown, nodeType: string) => {
+				if (!p || typeof p !== 'object') return p;
+				const obj = p as Record<string, unknown>;
+				if (Object.keys(obj).length === 0) return undefined;
+				if (nodeType === 'n8n-nodes-base.stickyNote' && obj.content === '') {
+					const { content, ...rest } = obj;
+					return Object.keys(rest).length === 0 ? undefined : rest;
+				}
+				return p;
+			};
+
+			// Helper function for filtering empty connections
+			const filterEmptyConnections = (conns: Record<string, unknown>) => {
+				const result: Record<string, unknown> = {};
+				for (const [nodeName, nodeConns] of Object.entries(conns)) {
+					const nonEmptyTypes: Record<string, unknown> = {};
+					for (const [connType, outputs] of Object.entries(
+						nodeConns as Record<string, unknown[]>,
+					)) {
+						const nonEmptyOutputs = (outputs || []).filter(
+							(arr: unknown) => Array.isArray(arr) && arr.length > 0,
+						);
+						if (nonEmptyOutputs.length > 0) {
+							nonEmptyTypes[connType] = outputs;
+						}
+					}
+					if (Object.keys(nonEmptyTypes).length > 0) {
+						result[nodeName] = nonEmptyTypes;
+					}
+				}
+				return result;
+			};
+
+			// Generate individual test for each workflow
+			workflows.forEach(({ id, name, json, nodeCount }) => {
+				it(`should roundtrip workflow ${id}: "${name}" (${nodeCount} nodes)`, () => {
+					// Generate TypeScript code
+					const code = generateWorkflowCode(json);
+
+					// Parse back to JSON
+					const parsedJson = parseWorkflowCode(code);
+
+					// Verify basic structure
+					expect(parsedJson.id ?? '').toBe(json.id ?? '');
+					expect(parsedJson.name ?? '').toBe(json.name ?? '');
+
+					// Verify node count
+					if (parsedJson.nodes.length !== json.nodes.length) {
+						const originalNames = new Set(json.nodes.map((n) => n.name));
+						const parsedNames = new Set(parsedJson.nodes.map((n) => n.name));
+						const missing = [...originalNames].filter((n) => !parsedNames.has(n));
+						const extra = [...parsedNames].filter((n) => !originalNames.has(n));
+						console.log(`Node count mismatch for ${id}:`);
+						console.log(`  Original: ${json.nodes.length}, Parsed: ${parsedJson.nodes.length}`);
+						if (missing.length) console.log(`  Missing nodes:`, missing);
+						if (extra.length) console.log(`  Extra nodes:`, extra);
+					}
+					expect(parsedJson.nodes).toHaveLength(json.nodes.length);
+
+					// Verify all nodes are present by name
+					for (const originalNode of json.nodes) {
+						if (originalNode.name === undefined) continue;
+						const parsedNode = parsedJson.nodes.find((n) => n.name === originalNode.name);
+						expect(parsedNode).toBeDefined();
+
+						if (parsedNode) {
+							expect(parsedNode.type).toBe(originalNode.type);
+							expect(parsedNode.typeVersion).toBe(originalNode.typeVersion);
+							expect(normalizeParams(parsedNode.parameters, parsedNode.type)).toEqual(
+								normalizeParams(originalNode.parameters, originalNode.type),
+							);
+
+							if (originalNode.credentials && Object.keys(originalNode.credentials).length > 0) {
+								expect(parsedNode.credentials).toEqual(originalNode.credentials);
+							}
+						}
+					}
+
+					// Verify settings
+					if (json.settings && Object.keys(json.settings).length > 0) {
+						expect(parsedJson.settings).toEqual(json.settings);
+					}
+
+					// Check for complex patterns that codegen cannot preserve
+					const hasMergeNode = json.nodes.some((n) => n.type === 'n8n-nodes-base.merge');
+
+					const targetInputCounts = new Map<string, number>();
+					for (const nodeConns of Object.values(json.connections)) {
+						for (const outputs of Object.values(nodeConns)) {
+							if (!Array.isArray(outputs)) continue;
+							for (const targets of outputs) {
+								if (!Array.isArray(targets)) continue;
+								for (const target of targets) {
+									const count = targetInputCounts.get(target.node) || 0;
+									targetInputCounts.set(target.node, count + 1);
+								}
+							}
+						}
+					}
+					const hasFanIn = [...targetInputCounts.values()].some((count) => count > 1);
+
+					const hasFanOut = Object.values(json.connections).some((nodeConns) =>
+						Object.values(nodeConns).some(
+							(outputs) =>
+								Array.isArray(outputs) &&
+								outputs.some((targets) => Array.isArray(targets) && targets.length > 1),
+						),
+					);
+
+					const hasMultiOutputBranching = Object.values(json.connections).some((nodeConns) =>
+						Object.values(nodeConns).some(
+							(outputs) =>
+								Array.isArray(outputs) &&
+								outputs.length > 1 &&
+								outputs.some((targets) => Array.isArray(targets) && targets.length > 0),
+						),
+					);
+
+					const nodeNames = new Set(json.nodes.map((n) => n.name));
+					const orphanedConnectionKeys = Object.keys(json.connections).filter(
+						(key) => !nodeNames.has(key),
+					);
+
+					// Only verify connections for simple workflows
+					if (
+						!hasMergeNode &&
+						!hasFanIn &&
+						!hasFanOut &&
+						!hasMultiOutputBranching &&
+						orphanedConnectionKeys.length === 0
+					) {
+						const filteredOriginal = filterEmptyConnections(json.connections);
+						const filteredParsed = filterEmptyConnections(parsedJson.connections);
+						expect(Object.keys(filteredParsed).sort()).toEqual(
+							Object.keys(filteredOriginal).sort(),
+						);
+					}
+				});
+			});
+		});
+	}
 });

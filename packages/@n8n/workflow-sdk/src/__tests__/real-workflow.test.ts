@@ -66,18 +66,15 @@ function loadTestWorkflows(): TestWorkflow[] {
 	// Load downloaded workflows
 	loadWorkflowsFromDir(DOWNLOADED_FIXTURES_DIR, workflows);
 
-	if (workflows.length === 0) {
-		throw new Error('No test workflows loaded. Check that fixtures were downloaded correctly.');
-	}
-
 	return workflows;
 }
 
-describe('Real Workflow Round-Trip', () => {
-	let workflows: TestWorkflow[] = [];
+// Load workflows at file parse time for individual test generation
+const workflows = loadTestWorkflows();
 
+describe('Real Workflow Round-Trip', () => {
+	// Download fixtures if needed
 	beforeAll(async () => {
-		// Download fixtures if they don't exist - fails test if API is unreachable
 		try {
 			await ensureFixtures();
 		} catch (error) {
@@ -89,173 +86,150 @@ describe('Real Workflow Round-Trip', () => {
 			}
 			throw error;
 		}
+	}, 120000);
 
-		// Load workflows after fixtures are available
-		workflows = loadTestWorkflows();
-	}, 120000); // 2 minute timeout for downloading fixtures
-
-	describe('fromJSON().toJSON() round-trip', () => {
-		it('should round-trip all workflows', () => {
+	if (workflows.length === 0) {
+		it('should have fixtures available (run tests again after download)', () => {
 			expect(workflows.length).toBeGreaterThan(0);
-
-			for (const { id, name, json, nodeCount } of workflows) {
-				// Import the workflow
-				const wf = workflow.fromJSON(json);
-
-				// Export back to JSON
-				const exported = wf.toJSON();
-
-				// Generate TypeScript SDK representation (gitignored)
-				writeGeneratedTsFile(id, json);
-
-				// Verify node count matches
-				expect(exported.nodes.length).toBe(json.nodes.length);
-
-				// Check for duplicate IDs (data quality issue in some workflows)
-				const idCounts = new Map<string, number>();
-				for (const node of json.nodes) {
-					idCounts.set(node.id, (idCounts.get(node.id) || 0) + 1);
-				}
-				const hasDuplicateIds = [...idCounts.values()].some((count) => count > 1);
-
-				// Verify all original nodes are present
-				for (const originalNode of json.nodes) {
-					// If IDs are duplicated (e.g., all empty string), use name for matching
-					const exportedNode = hasDuplicateIds
-						? exported.nodes.find((n) => n.name === originalNode.name)
-						: exported.nodes.find((n) => n.id === originalNode.id);
-					expect(exportedNode).toBeDefined();
-
-					if (exportedNode) {
-						// Verify node type
-						expect(exportedNode.type).toBe(originalNode.type);
-
-						// Verify node name
-						expect(exportedNode.name).toBe(originalNode.name);
-
-						// Verify position
-						expect(exportedNode.position).toEqual(originalNode.position);
-
-						// Verify type version
-						expect(exportedNode.typeVersion).toBe(originalNode.typeVersion);
-
-						// Verify parameters are preserved
-						expect(exportedNode.parameters).toEqual(originalNode.parameters);
-
-						// Verify credentials are preserved (if any)
-						if (originalNode.credentials) {
-							expect(exportedNode.credentials).toEqual(originalNode.credentials);
-						}
+		});
+	} else {
+		// Helper function for filtering empty connections
+		const filterEmptyConnections = (conns: Record<string, unknown>) => {
+			const result: Record<string, unknown> = {};
+			for (const [nodeName, nodeConns] of Object.entries(conns)) {
+				const nonEmptyTypes: Record<string, unknown> = {};
+				for (const [connType, outputs] of Object.entries(nodeConns as Record<string, unknown[]>)) {
+					const nonEmptyOutputs = (outputs || []).filter(
+						(arr: unknown) => Array.isArray(arr) && arr.length > 0,
+					);
+					if (nonEmptyOutputs.length > 0) {
+						nonEmptyTypes[connType] = outputs;
 					}
 				}
+				if (Object.keys(nonEmptyTypes).length > 0) {
+					result[nodeName] = nonEmptyTypes;
+				}
+			}
+			return result;
+		};
 
-				// Verify connection structure is preserved
-				// Filter out empty connections (nodes with empty arrays) for comparison
-				// as these are semantically equivalent to having no connections
-				const filterEmptyConnections = (conns: Record<string, unknown>) => {
-					const result: Record<string, unknown> = {};
-					for (const [nodeName, nodeConns] of Object.entries(conns)) {
-						const nonEmptyTypes: Record<string, unknown> = {};
-						for (const [connType, outputs] of Object.entries(
-							nodeConns as Record<string, unknown[]>,
-						)) {
-							const nonEmptyOutputs = (outputs || []).filter(
-								(arr: unknown) => Array.isArray(arr) && arr.length > 0,
-							);
-							if (nonEmptyOutputs.length > 0) {
-								nonEmptyTypes[connType] = outputs;
+		describe('fromJSON().toJSON() round-trip', () => {
+			workflows.forEach(({ id, name, json, nodeCount }) => {
+				it(`should round-trip workflow ${id}: "${name}" (${nodeCount} nodes)`, () => {
+					const wf = workflow.fromJSON(json);
+					const exported = wf.toJSON();
+
+					writeGeneratedTsFile(id, json);
+
+					expect(exported.nodes.length).toBe(json.nodes.length);
+
+					const idCounts = new Map<string, number>();
+					for (const node of json.nodes) {
+						idCounts.set(node.id, (idCounts.get(node.id) || 0) + 1);
+					}
+					const hasDuplicateIds = [...idCounts.values()].some((count) => count > 1);
+
+					for (const originalNode of json.nodes) {
+						const exportedNode = hasDuplicateIds
+							? exported.nodes.find((n) => n.name === originalNode.name)
+							: exported.nodes.find((n) => n.id === originalNode.id);
+						expect(exportedNode).toBeDefined();
+
+						if (exportedNode) {
+							expect(exportedNode.type).toBe(originalNode.type);
+							expect(exportedNode.name).toBe(originalNode.name);
+							expect(exportedNode.position).toEqual(originalNode.position);
+							expect(exportedNode.typeVersion).toBe(originalNode.typeVersion);
+							expect(exportedNode.parameters).toEqual(originalNode.parameters);
+
+							if (originalNode.credentials) {
+								expect(exportedNode.credentials).toEqual(originalNode.credentials);
 							}
 						}
-						if (Object.keys(nonEmptyTypes).length > 0) {
-							result[nodeName] = nonEmptyTypes;
+					}
+
+					const filteredOriginal = filterEmptyConnections(json.connections);
+					const filteredExported = filterEmptyConnections(exported.connections);
+
+					const nodeNames = new Set(json.nodes.map((n) => n.name));
+					const orphanedConnectionKeys = Object.keys(json.connections).filter(
+						(key) => !nodeNames.has(key),
+					);
+
+					if (orphanedConnectionKeys.length === 0) {
+						expect(Object.keys(filteredExported).sort()).toEqual(
+							Object.keys(filteredOriginal).sort(),
+						);
+
+						for (const nodeName of Object.keys(filteredOriginal)) {
+							expect(filteredExported[nodeName]).toEqual(filteredOriginal[nodeName]);
 						}
 					}
-					return result;
-				};
+				});
+			});
+		});
 
-				const filteredOriginal = filterEmptyConnections(json.connections);
-				const filteredExported = filterEmptyConnections(exported.connections);
+		describe('node retrieval', () => {
+			workflows.forEach(({ id, name, json }) => {
+				it(`should retrieve all nodes by name in workflow ${id}: "${name}"`, () => {
+					const wf = workflow.fromJSON(json);
 
-				// Check for connection keys that don't match any node name (data quality issue)
-				// This can happen due to encoding mismatches in original workflow files
-				const nodeNames = new Set(json.nodes.map((n) => n.name));
-				const orphanedConnectionKeys = Object.keys(json.connections).filter(
-					(key) => !nodeNames.has(key),
-				);
-
-				// Only verify connections if all connection keys match node names
-				if (orphanedConnectionKeys.length === 0) {
-					const originalConnectionKeys = Object.keys(filteredOriginal);
-					const exportedConnectionKeys = Object.keys(filteredExported);
-					expect(exportedConnectionKeys.sort()).toEqual(originalConnectionKeys.sort());
-
-					// Verify each connection (only non-empty ones)
-					for (const nodeName of originalConnectionKeys) {
-						const originalConns = filteredOriginal[nodeName];
-						const exportedConns = filteredExported[nodeName];
-						expect(exportedConns).toEqual(originalConns);
+					for (const node of json.nodes) {
+						const retrieved = wf.getNode(node.name);
+						expect(retrieved).toBeDefined();
+						if (retrieved) {
+							expect(retrieved.config.name).toBe(node.name);
+						}
 					}
-				}
+				});
+			});
+		});
+
+		describe('settings preservation', () => {
+			const workflowsWithSettings = workflows.filter((w) => w.json.settings);
+			workflowsWithSettings.forEach(({ id, name, json }) => {
+				it(`should preserve settings in workflow ${id}: "${name}"`, () => {
+					const wf = workflow.fromJSON(json);
+					const exported = wf.toJSON();
+					expect(exported.settings).toEqual(json.settings);
+				});
+			});
+
+			if (workflowsWithSettings.length === 0) {
+				it('should have no workflows with settings', () => {
+					expect(workflowsWithSettings.length).toBe(0);
+				});
 			}
 		});
-	});
 
-	describe('node retrieval', () => {
-		it('should retrieve all nodes by name in all workflows', () => {
-			expect(workflows.length).toBeGreaterThan(0);
+		describe('pinData preservation', () => {
+			const workflowsWithPinData = workflows.filter(
+				(w) => w.json.pinData && Object.keys(w.json.pinData).length > 0,
+			);
+			workflowsWithPinData.forEach(({ id, name, json }) => {
+				it(`should preserve pinData in workflow ${id}: "${name}"`, () => {
+					const wf = workflow.fromJSON(json);
+					const exported = wf.toJSON();
+					expect(exported.pinData).toEqual(json.pinData);
+				});
+			});
 
-			for (const { id, name, json } of workflows) {
-				const wf = workflow.fromJSON(json);
-
-				for (const node of json.nodes) {
-					const retrieved = wf.getNode(node.name);
-					expect(retrieved).toBeDefined();
-					if (retrieved) {
-						expect(retrieved.config.name).toBe(node.name);
-					}
-				}
+			if (workflowsWithPinData.length === 0) {
+				it('should have no workflows with pinData', () => {
+					expect(workflowsWithPinData.length).toBe(0);
+				});
 			}
 		});
-	});
-
-	describe('settings preservation', () => {
-		it('should preserve settings in all workflows', () => {
-			for (const { id, name, json } of workflows) {
-				if (!json.settings) continue;
-
-				const wf = workflow.fromJSON(json);
-				const exported = wf.toJSON();
-
-				expect(exported.settings).toEqual(json.settings);
-			}
-		});
-	});
-
-	describe('pinData preservation', () => {
-		it('should preserve pinData in all workflows', () => {
-			for (const { id, name, json } of workflows) {
-				if (!json.pinData || Object.keys(json.pinData).length === 0) continue;
-
-				const wf = workflow.fromJSON(json);
-				const exported = wf.toJSON();
-
-				expect(exported.pinData).toEqual(json.pinData);
-			}
-		});
-	});
+	}
 });
 
 describe('Real Workflow Patterns', () => {
-	let workflows: TestWorkflow[] = [];
-
 	beforeAll(async () => {
 		await ensureFixtures();
-		workflows = loadTestWorkflows();
 	}, 120000);
 
 	it('should handle AI agent workflows with subnodes', () => {
 		expect(workflows.length).toBeGreaterThan(0);
-		// Find AI agent workflow (1954)
 		const aiWorkflow = workflows.find((w) => w.id === '1954');
 		if (!aiWorkflow) {
 			console.warn('AI agent workflow (1954) not found in fixtures');
@@ -265,7 +239,6 @@ describe('Real Workflow Patterns', () => {
 		const wf = workflow.fromJSON(aiWorkflow.json);
 		const exported = wf.toJSON();
 
-		// Verify AI-specific connection types are preserved
 		const connectionTypes = new Set<string>();
 		for (const nodeConnections of Object.values(exported.connections)) {
 			for (const connType of Object.keys(nodeConnections)) {
@@ -273,10 +246,8 @@ describe('Real Workflow Patterns', () => {
 			}
 		}
 
-		// AI workflows have special connection types
 		expect(connectionTypes.has('main') || connectionTypes.size > 0).toBe(true);
 
-		// Check for AI connection types if present
 		const hasAiConnections =
 			connectionTypes.has('ai_tool') ||
 			connectionTypes.has('ai_memory') ||
@@ -290,7 +261,6 @@ describe('Real Workflow Patterns', () => {
 				}
 			}
 
-			// If original had AI connections, verify they're preserved
 			if (
 				originalTypes.has('ai_tool') ||
 				originalTypes.has('ai_memory') ||
@@ -302,7 +272,6 @@ describe('Real Workflow Patterns', () => {
 	});
 
 	it('should handle multi-node workflows', () => {
-		// Find a workflow with many nodes
 		const complexWorkflow = workflows.find((w) => w.nodeCount >= 10);
 		if (!complexWorkflow) {
 			console.warn('No complex workflow (10+ nodes) found in fixtures');
@@ -316,7 +285,6 @@ describe('Real Workflow Patterns', () => {
 	});
 
 	it('should handle workflows with credentials', () => {
-		// Find any workflow with credentials
 		const workflowWithCreds = workflows.find((w) =>
 			w.json.nodes.some((n) => n.credentials && Object.keys(n.credentials).length > 0),
 		);
@@ -329,7 +297,6 @@ describe('Real Workflow Patterns', () => {
 		const wf = workflow.fromJSON(workflowWithCreds.json);
 		const exported = wf.toJSON();
 
-		// Verify credentials are preserved
 		for (const originalNode of workflowWithCreds.json.nodes) {
 			if (originalNode.credentials && Object.keys(originalNode.credentials).length > 0) {
 				const exportedNode = exported.nodes.find((n) => n.id === originalNode.id);
@@ -340,11 +307,8 @@ describe('Real Workflow Patterns', () => {
 });
 
 describe('Expression Preservation', () => {
-	let workflows: TestWorkflow[] = [];
-
 	beforeAll(async () => {
 		await ensureFixtures();
-		workflows = loadTestWorkflows();
 	}, 120000);
 
 	function extractExpressions(json: WorkflowJSON): string[] {
@@ -367,18 +331,16 @@ describe('Expression Preservation', () => {
 		return expressions.sort();
 	}
 
-	it('should preserve all expressions in round-trip', () => {
-		expect(workflows.length).toBeGreaterThan(0);
+	workflows.forEach(({ id, name, json }) => {
+		const expressions = extractExpressions(json);
+		if (expressions.length === 0) return;
 
-		for (const { id, json } of workflows) {
-			const originalExpressions = extractExpressions(json);
-			if (originalExpressions.length === 0) continue;
-
+		it(`should preserve expressions in workflow ${id}: "${name}"`, () => {
 			const wf = workflow.fromJSON(json);
 			const exported = wf.toJSON();
 			const exportedExpressions = extractExpressions(exported);
 
-			expect(exportedExpressions).toEqual(originalExpressions);
-		}
+			expect(exportedExpressions).toEqual(expressions);
+		});
 	});
 });
