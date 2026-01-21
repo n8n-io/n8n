@@ -361,11 +361,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 		// Check if credential can use external secrets for expression resolution
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(nodeCredentials);
 
-		/**
-		 * We skip dynamic credentials resolution when no credentials context is present.
-		 * This helps workflow developers to run workflows with static credentials.
-		 */
-		if (additionalData.executionContext?.credentials !== undefined) {
+		if (
+			DynamicCredentialsProxy.shouldBeResolved(credentialsEntity, additionalData.executionContext)
+		) {
 			// Resolve dynamic credentials if configured (EE feature)
 			decryptedDataOriginal = await this.dynamicCredentialsProxy.resolveIfNeeded(
 				{

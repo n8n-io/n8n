@@ -24,3 +24,5 @@ export class DynamicCredentialsConfig {
 	@Env('N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN')
 	endpointAuthToken: string = '';
 }
+
+export const DYNAMIC_CREDENTIALS_ALLOWED_NODE_TYPES = ['n8n-nodes-base.webhook', 'webhook'];

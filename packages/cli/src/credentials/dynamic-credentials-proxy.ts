@@ -18,6 +18,8 @@ import type {
 	CredentialStoreMetadata,
 	IDynamicCredentialStorageProvider,
 } from './dynamic-credential-storage.interface';
+import { DYNAMIC_CREDENTIALS_ALLOWED_NODE_TYPES } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
+import { ICredentialsDb } from '@n8n/db';
 
 @Service()
 export class DynamicCredentialsProxy
@@ -59,6 +61,29 @@ export class DynamicCredentialsProxy
 			workflowSettings,
 			canUseExternalSecrets,
 		);
+	}
+
+	/**
+	 * We skip dynamic credentials resolution when the credential is not resolvable or the trigger node type is not allowed.
+	 * This helps workflow developers to run workflows with static credentials.
+	 * @param credentialsEntity - The credentials entity
+	 * @param executionContext - The execution context
+	 * @returns True if the credential should be resolved, false otherwise
+	 */
+	static shouldBeResolved(
+		credentialsEntity: ICredentialsDb,
+		executionContext?: IExecutionContext,
+	): boolean {
+		if (!credentialsEntity.isResolvable) {
+			return false;
+		}
+		if (
+			!executionContext?.triggerNode?.type ||
+			!DYNAMIC_CREDENTIALS_ALLOWED_NODE_TYPES.includes(executionContext.triggerNode.type)
+		) {
+			return false;
+		}
+		return true;
 	}
 
 	async storeIfNeeded(
