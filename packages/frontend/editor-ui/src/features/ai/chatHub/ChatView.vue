@@ -53,6 +53,7 @@ import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
+import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 
 const router = useRouter();
 const route = useRoute();
@@ -70,6 +71,10 @@ const inputRef = useTemplateRef('inputRef');
 const scrollableRef = useTemplateRef('scrollable');
 
 const welcomeScreenDismissed = ref(false);
+const showCreditsClaimedCallout = ref(false);
+const hasAttemptedAutoClaim = ref(false);
+
+const { userCanClaimOpenAiCredits, aiCreditsQuota, claimCredits } = useFreeAiCredits();
 
 const scrollableSize = useElementSize(scrollableRef);
 
@@ -431,6 +436,35 @@ watch(
 	{ immediate: true },
 );
 
+// Auto-claim free AI credits if available when user lands on chat without credentials
+watch(
+	[welcomeScreenDismissed, userCanClaimOpenAiCredits, messagingState, () => chatStore.agentsReady],
+	async ([dismissed, canClaim, state, ready]) => {
+		if (!canClaim || hasAttemptedAutoClaim.value) return;
+
+		const shouldClaim = dismissed || (ready && state === 'missingCredentials');
+		if (shouldClaim) {
+			hasAttemptedAutoClaim.value = true;
+			const success = await claimCredits('chatHubAutoClaim');
+			if (success) {
+				showCreditsClaimedCallout.value = true;
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+// Hide credits callout when user sends their first message
+watch(chatMessages, (messages) => {
+	if (messages.length > 0) {
+		showCreditsClaimedCallout.value = false;
+	}
+});
+
+function handleDismissCreditsCallout() {
+	showCreditsClaimedCallout.value = false;
+}
+
 async function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
@@ -714,12 +748,15 @@ function onFilesDropped(files: File[]) {
 						:messaging-state="messagingState"
 						:is-tools-selectable="canSelectTools"
 						:is-new-session="isNewSession"
+						:show-credits-claimed-callout="showCreditsClaimedCallout"
+						:ai-credits-quota="String(aiCreditsQuota)"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
 						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
 						@edit-agent="handleEditAgent"
+						@dismiss-credits-callout="handleDismissCreditsCallout"
 					/>
 				</div>
 			</div>

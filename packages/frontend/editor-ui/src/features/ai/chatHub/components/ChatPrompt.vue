@@ -3,7 +3,14 @@ import { useToast } from '@/app/composables/useToast';
 import { providerDisplayNames, TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nIcon,
+	N8nInput,
+	N8nText,
+	N8nTooltip,
+	N8nCallout,
+} from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -20,6 +27,8 @@ const { selectedModel, selectedTools, messagingState } = defineProps<{
 	isToolsSelectable: boolean;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
+	showCreditsClaimedCallout: boolean;
+	aiCreditsQuota: string;
 }>();
 
 const emit = defineEmits<{
@@ -29,6 +38,7 @@ const emit = defineEmits<{
 	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
 	editAgent: [agentId: string];
+	dismissCreditsCallout: [];
 }>();
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
@@ -248,6 +258,32 @@ defineExpose({
 					</template>
 				</I18nT>
 			</N8nText>
+
+			<N8nCallout
+				v-if="showCreditsClaimedCallout"
+				icon="info"
+				theme="secondary"
+				:class="$style.creditsCallout"
+			>
+				<N8nText>{{ i18n.baseText('freeAi.credits.callout.success.chatHub.beginning') }}</N8nText>
+				<N8nText bold>{{
+					i18n.baseText('freeAi.credits.callout.success.chatHub.credits', {
+						interpolate: { amount: aiCreditsQuota },
+					})
+				}}</N8nText>
+				<N8nText>{{ i18n.baseText('freeAi.credits.callout.success.chatHub.end') }}</N8nText>
+
+				<template #trailingContent>
+					<N8nIcon
+						icon="x"
+						title="Dismiss"
+						size="medium"
+						type="secondary"
+						@click="emit('dismissCreditsCallout')"
+					/>
+				</template>
+			</N8nCallout>
+
 			<input
 				ref="fileInputRef"
 				type="file"
@@ -257,7 +293,10 @@ defineExpose({
 				@change="handleFileSelect"
 			/>
 
-			<div :class="$style.inputWrapper" @click="handleClickInputWrapper">
+			<div
+				:class="[{ [$style.calloutVisible]: showCreditsClaimedCallout }, $style.inputWrapper]"
+				@click="handleClickInputWrapper"
+			>
 				<div v-if="attachments.length > 0" :class="$style.attachments">
 					<ChatFile
 						v-for="(file, index) in attachments"
@@ -388,13 +427,24 @@ defineExpose({
 	}
 }
 
+.creditsCallout {
+	width: 100%;
+	padding: var(--spacing--sm);
+	border-radius: 16px 16px 0 0;
+	box-shadow: 0 10px 24px 0 #00000010;
+}
+
+.closeButton {
+	margin-left: var(--spacing--sm);
+}
+
 .fileInput {
 	display: none;
 }
 
 .inputWrapper {
 	width: 100%;
-	border-radius: 16px !important;
+	border-radius: 16px;
 	padding: 16px;
 	box-shadow: 0 10px 24px 0 #00000010;
 	background-color: var(--color--background--light-3);
@@ -416,6 +466,10 @@ defineExpose({
 		background-color: transparent !important;
 		border: none !important;
 		padding: 0 !important;
+	}
+
+	&.calloutVisible {
+		border-radius: 0 0 16px 16px;
 	}
 }
 

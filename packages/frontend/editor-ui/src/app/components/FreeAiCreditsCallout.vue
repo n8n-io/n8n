@@ -48,7 +48,7 @@ const showCallout = computed(() => {
 });
 
 const onClaimCreditsClicked = async () => {
-	const success = await claimCredits();
+	const success = await claimCredits('freeAiCreditsCallout');
 	if (success) {
 		showSuccessCallout.value = true;
 	}

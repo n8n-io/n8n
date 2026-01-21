@@ -23,11 +23,10 @@ export function useFreeAiCredits() {
 
 	const aiCreditsQuota = computed(() => settingsStore.aiCreditsQuota);
 
-	const userHasOpenAiCredentialAlready = computed(
-		() =>
-			credentialsStore.allCredentials.filter(
-				(credential) => credential.type === OPEN_AI_API_CREDENTIAL_TYPE,
-			).length > 0,
+	const userHasOpenAiCredentialAlready = computed(() =>
+		credentialsStore.allCredentials.some(
+			(credential) => credential.type === OPEN_AI_API_CREDENTIAL_TYPE,
+		),
 	);
 
 	const userHasClaimedAiCreditsAlready = computed(
@@ -41,7 +40,9 @@ export function useFreeAiCredits() {
 			!userHasClaimedAiCreditsAlready.value,
 	);
 
-	async function claimCredits(): Promise<boolean> {
+	async function claimCredits(
+		source: 'chatHubAutoClaim' | 'freeAiCreditsCallout',
+	): Promise<boolean> {
 		if (!userCanClaimOpenAiCredits.value) {
 			return false;
 		}
@@ -55,7 +56,7 @@ export function useFreeAiCredits() {
 				usersStore.currentUser.settings.userClaimedAiCredits = true;
 			}
 
-			telemetry.track('User claimed OpenAI credits');
+			telemetry.track('User claimed OpenAI credits', { source });
 
 			return true;
 		} catch (e) {
