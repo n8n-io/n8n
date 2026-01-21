@@ -7,6 +7,7 @@ import {
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
@@ -43,10 +44,43 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	/**
+	 * Handle workflow-publish-wake-up pubsub event.
+	 * Leader processes all pending outbox messages.
+	 */
+	@OnPubSubEvent('workflow-publish-wake-up', { instanceType: 'main', instanceRole: 'leader' })
+	async handleWorkflowPublishWakeUp() {
+		this.logger.debug('Received workflow-publish-wake-up event, processing outbox messages');
+
+		try {
+			let processedCount = 0;
+			let hasMore = true;
+
+			// Process all pending messages
+			while (hasMore) {
+				hasMore = await this.processNextMessage();
+				if (hasMore) {
+					processedCount++;
+				}
+			}
+
+			if (processedCount > 0) {
+				this.logger.info('Processed workflow publication outbox messages', {
+					processedCount,
+				});
+			} else {
+				this.logger.debug('No pending outbox messages to process');
+			}
+		} catch (error) {
+			this.logger.error('Error processing workflow publication outbox', { error });
+		}
+	}
+
+	/**
 	 * Process a single outbox message.
 	 * Returns true if a message was processed, false if no pending messages.
 	 */
 	async processNextMessage(): Promise<boolean> {
+		this.logger.debug('Checking for pending outbox messages');
 		// Get oldest pending message with FOR UPDATE SKIP LOCKED
 		const outboxMessage = await this.dataSource.transaction(async (manager) => {
 			const message = await manager
@@ -68,11 +102,22 @@ export class WorkflowPublicationOutboxConsumer {
 		});
 
 		if (!outboxMessage) {
+			this.logger.debug('No pending outbox messages found');
 			return false; // No pending messages
 		}
 
+		this.logger.debug('Found pending outbox message', {
+			outboxMessageId: outboxMessage.id,
+			workflowId: outboxMessage.workflowId,
+			publishedVersionId: outboxMessage.publishedVersionId,
+		});
+
 		try {
 			await this.processMessage(outboxMessage);
+			this.logger.debug('Successfully processed outbox message', {
+				outboxMessageId: outboxMessage.id,
+				workflowId: outboxMessage.workflowId,
+			});
 			return true;
 		} catch (error) {
 			this.logger.error('Failed to process outbox message', {
@@ -96,6 +141,8 @@ export class WorkflowPublicationOutboxConsumer {
 	private async processMessage(outboxMessage: WorkflowPublicationOutbox): Promise<void> {
 		const { workflowId } = outboxMessage;
 
+		this.logger.debug('Acquiring workflow lock', { workflowId });
+
 		// Acquire write lock on workflow
 		await new Promise<void>((resolve, reject) => {
 			this.rwlock.writeLock(workflowId, (release: () => void): void => {
@@ -118,10 +165,21 @@ export class WorkflowPublicationOutboxConsumer {
 	private async processWithLock(outboxMessage: WorkflowPublicationOutbox): Promise<void> {
 		const { workflowId, publishedVersionId } = outboxMessage;
 
+		this.logger.debug('Processing workflow publication with lock acquired', {
+			workflowId,
+			publishedVersionId,
+		});
+
 		// Get current published version (if any)
 		const currentPublished = await this.workflowPublishedVersionRepository.findOne({
 			where: { workflowId },
 			relations: ['publishedVersion', 'workflow'],
+		});
+
+		this.logger.debug('Loaded current published version', {
+			workflowId,
+			hasCurrentVersion: !!currentPublished,
+			currentVersionId: currentPublished?.publishedVersionId,
 		});
 
 		// Get new published version from outbox
@@ -132,6 +190,12 @@ export class WorkflowPublicationOutboxConsumer {
 		if (!newPublishedVersion) {
 			throw new Error(`Published version ${publishedVersionId} not found`);
 		}
+
+		this.logger.debug('Loaded new published version', {
+			workflowId,
+			publishedVersionId,
+			nodeCount: newPublishedVersion.nodes.length,
+		});
 
 		// Compute trigger diff
 		const currentTriggers = currentPublished
@@ -159,10 +223,20 @@ export class WorkflowPublicationOutboxConsumer {
 		const nodesToRemove = [...diff.removed, ...diff.modified];
 		if (nodesToRemove.length > 0) {
 			const nodeIdsToRemove = nodesToRemove.map((n) => n.id);
+			this.logger.debug('Removing trigger/poller nodes', {
+				workflowId,
+				nodeIds: nodeIdsToRemove,
+				removed: diff.removed.map((n) => n.id),
+				modified: diff.modified.map((n) => n.id),
+			});
 			await this.activeWorkflowManager.removeNodes(workflowId, nodeIdsToRemove);
 		}
 
 		// Update workflow_published_version table
+		this.logger.debug('Updating workflow_published_version table', {
+			workflowId,
+			publishedVersionId,
+		});
 		await this.workflowPublishedVersionRepository.upsert(
 			{
 				workflowId,
@@ -175,6 +249,10 @@ export class WorkflowPublicationOutboxConsumer {
 		// Filter out disabled nodes - they should not be activated
 		const nodesToAdd = [...diff.added, ...diff.modified].filter((n) => !n.disabled);
 		if (nodesToAdd.length > 0) {
+			this.logger.debug('Adding trigger/poller nodes', {
+				workflowId,
+				nodeIds: nodesToAdd.map((n) => n.id),
+			});
 			await this.addNodes(workflowId, newPublishedVersion, nodesToAdd);
 		}
 

@@ -60,6 +60,7 @@ export namespace PubSub {
 		export type ReloadSsoProvisioningConfiguration =
 			ToCommand<'reload-sso-provisioning-configuration'>;
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
+		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 	}
 
 	/** Command sent via the `n8n.commands` pubsub channel. */
@@ -83,7 +84,8 @@ export namespace PubSub {
 		| Commands.ReloadSamlConfiguration
 		| Commands.ReloadCredentialsOverwrites
 		| Commands.ReloadSsoProvisioningConfiguration
-		| Commands.ReloadSourceControlConfiguration;
+		| Commands.ReloadSourceControlConfiguration
+		| Commands.WorkflowPublishWakeUp;
 
 	// ----------------------------------
 	//         worker responses

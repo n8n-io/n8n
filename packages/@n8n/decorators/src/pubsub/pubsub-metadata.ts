@@ -23,7 +23,8 @@ export type PubSubEventName =
 	| 'restart-event-bus'
 	| 'relay-execution-lifecycle-event'
 	| 'reload-sso-provisioning-configuration'
-	| 'reload-source-control-config';
+	| 'reload-source-control-config'
+	| 'workflow-publish-wake-up';
 
 export type PubSubEventFilter =
 	| {
