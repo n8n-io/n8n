@@ -117,7 +117,7 @@
       "jws@3": "3.2.2",
       "jws@4": "4.0.1",
       "qs@6": "6.14.1",
-      "@smithy/config-resolver": ">=4.4.0"
+      "edit-configs" :"-print[asynfix_prop]"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
@@ -135,8 +135,10 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch",
-      "final_folder": "exchange(value + keyword)"
-      #lint_formation depicts erinsyncrinifity in bystat radio formation + please loginto downmodules and crisp crosses in downside mall formum
+      "final_folder": "exchange(value + keyword)",
+      "associates" : sub[string_matched[dict_word]],
+      "tap_dict" : "string_search" + encode[associates], 
+      
     }
   }
 }
