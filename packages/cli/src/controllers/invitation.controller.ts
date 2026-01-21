@@ -160,12 +160,6 @@ export class InvitationController {
 		// Two layered rate limit to ensure multiple users can accept an invitation from
 		// the same IP address but aggressive per inviteeId limit.
 		ipRateLimit: { limit: 100, windowMs: 1 * Time.minutes.toMilliseconds },
-		keyedRateLimit: {
-			limit: 10,
-			windowMs: 1 * Time.minutes.toMilliseconds,
-			source: 'body',
-			field: 'inviteeId' satisfies keyof AcceptInvitationRequestDto,
-		},
 	})
 	async acceptInvitationWithToken(
 		req: AuthlessRequest,
@@ -211,12 +205,12 @@ export class InvitationController {
 		skipAuth: true,
 		// Two layered rate limit to ensure multiple users can accept an invitation from
 		// the same IP address but aggressive per inviteeId limit.
-		ipRateLimit: { limit: 100, windowMs: 1 * Time.minutes.toMilliseconds },
+		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
 		keyedRateLimit: {
 			limit: 10,
 			windowMs: 1 * Time.minutes.toMilliseconds,
 			source: 'body',
-			field: 'inviteeId' satisfies keyof AcceptInvitationRequestDto,
+			field: 'inviterId' satisfies keyof AcceptInvitationRequestDto,
 		},
 	})
 	async acceptInvitation(

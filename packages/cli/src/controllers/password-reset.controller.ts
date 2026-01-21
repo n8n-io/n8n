@@ -50,7 +50,7 @@ export class PasswordResetController {
 	 */
 	@Post('/forgot-password', {
 		skipAuth: true,
-		ipRateLimit: { limit: 100, windowMs: 1 * Time.minutes.toMilliseconds },
+		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
 		keyedRateLimit: {
 			limit: 3,
 			source: 'body',

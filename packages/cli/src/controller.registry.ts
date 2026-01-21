@@ -167,7 +167,7 @@ export class ControllerRegistry {
 				`User-based rate limiting is only supported for authenticated endpoints. Route: ${JSON.stringify(route)}`,
 			);
 
-			// Separate ifs itentionally to prevent configuration errors in development
+			// Separate ifs intentionally to prevent configuration errors in development
 			if (inProduction) {
 				middlewares.push(
 					this.rateLimitService.createKeyedRateLimitMiddleware(route.keyedRateLimit),

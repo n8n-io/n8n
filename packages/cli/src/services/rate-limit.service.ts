@@ -54,10 +54,12 @@ export class RateLimitService {
 
 		if (source === 'body') {
 			const body = req.body;
-			const value = body[config.field];
+			if (!body) {
+				return 'skip:no-body';
+			}
 
-			// Only consider string or number values
-			if (value === '' || (typeof value !== 'string' && typeof value !== 'number')) {
+			const value = body[config.field];
+			if (typeof value !== 'string' && typeof value !== 'number') {
 				return 'skip:no-identifier';
 			}
 
