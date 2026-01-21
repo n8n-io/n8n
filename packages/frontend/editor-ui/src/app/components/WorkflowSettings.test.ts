@@ -312,9 +312,9 @@ describe('WorkflowSettingsVue', () => {
 
 		const timeSavedPerExecutionInput = getByTestId(
 			'workflow-settings-time-saved-per-execution',
-		).querySelector('input[type="number"]')!;
+		)?.querySelector('input[type="number"]');
 
-		await userEvent.type(timeSavedPerExecutionInput, '10');
+		await userEvent.type(timeSavedPerExecutionInput as Element, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
 
 		await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -336,10 +336,10 @@ describe('WorkflowSettingsVue', () => {
 
 		const timeSavedPerExecutionInput = getByTestId(
 			'workflow-settings-time-saved-per-execution',
-		).querySelector('input[type="number"]')!;
+		)?.querySelector('input[type="number"]');
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
-		await userEvent.clear(timeSavedPerExecutionInput);
+		await userEvent.clear(timeSavedPerExecutionInput as Element);
 		expect(timeSavedPerExecutionInput).not.toHaveValue();
 
 		await userEvent.click(getByRole('button', { name: 'Save' }));

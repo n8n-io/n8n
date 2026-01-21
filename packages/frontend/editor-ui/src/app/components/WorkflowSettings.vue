@@ -571,8 +571,8 @@ const toggleAvailableInMCP = () => {
 	workflowSettings.value.availableInMCP = !workflowSettings.value.availableInMCP;
 };
 
-const updateTimeSavedPerExecution = (value: string | number | null) => {
-	const numValue = parseInt(String(value ?? ''), 10);
+const updateTimeSavedPerExecution = (value: string) => {
+	const numValue = parseInt(value, 10);
 	workflowSettings.value.timeSavedPerExecution = isNaN(numValue)
 		? undefined
 		: numValue < 0
@@ -1101,7 +1101,6 @@ onBeforeUnmount(() => {
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								:model-value="timeoutHMS.hours"
 								:min="0"
-								type="number"
 								@update:model-value="(value: string) => setTheTimeout('hours', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.hours') }}</template>
@@ -1113,7 +1112,6 @@ onBeforeUnmount(() => {
 								:model-value="timeoutHMS.minutes"
 								:min="0"
 								:max="60"
-								type="number"
 								@update:model-value="(value: string) => setTheTimeout('minutes', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.minutes') }}</template>
@@ -1125,7 +1123,6 @@ onBeforeUnmount(() => {
 								:model-value="timeoutHMS.seconds"
 								:min="0"
 								:max="60"
-								type="number"
 								@update:model-value="(value: string) => setTheTimeout('seconds', value)"
 							>
 								<template #append>{{ i18n.baseText('workflowSettings.seconds') }}</template>

@@ -29,8 +29,8 @@ const onAddNew = () => {
 	emit('createEnable');
 };
 
-const onSearchChange = (value: string) => {
-	emit('searchChange', value);
+const onSearchChange = (search: string) => {
+	emit('searchChange', search);
 };
 </script>
 
