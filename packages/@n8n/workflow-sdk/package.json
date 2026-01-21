@@ -7,6 +7,7 @@
 			"types": "./dist/index.d.ts",
 			"default": "./dist/index.js"
 		},
+		"./package.json": "./package.json",
 		"./scripts/generate-types": {
 			"types": "./scripts/generate-types.ts",
 			"default": "./scripts/generate-types.ts"
