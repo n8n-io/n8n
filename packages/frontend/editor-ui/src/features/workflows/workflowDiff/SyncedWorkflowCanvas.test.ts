@@ -43,7 +43,7 @@ const emitSpy = vi.fn();
 // Mock Canvas component to capture eventBus and emit handler
 vi.mock('@/features/workflows/canvas/components/Canvas.vue', () => ({
 	default: defineComponent({
-		name: 'Canvas',
+		name: 'MockedCanvas',
 		props: ['id', 'nodes', 'connections', 'readOnly', 'eventBus'],
 		emits: ['tidy-up'],
 		setup(props, { emit }) {

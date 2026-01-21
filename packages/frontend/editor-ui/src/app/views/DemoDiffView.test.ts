@@ -11,7 +11,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@n8n/i18n')>();
+	const actual = (await importOriginal()) as typeof import('@n8n/i18n');
 	return {
 		...actual,
 		useI18n: () => ({
