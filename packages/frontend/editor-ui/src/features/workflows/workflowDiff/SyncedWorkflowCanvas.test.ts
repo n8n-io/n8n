@@ -5,8 +5,9 @@ import { render } from '@testing-library/vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.types';
 
-// Mock useVueFlow - capture onNodesInitialized callback
+// Mock useVueFlow - capture onNodesInitialized callback and updateNode spy
 let nodesInitializedCallback: (() => void) | null = null;
+const updateNodeSpy = vi.fn();
 
 vi.mock('@vue-flow/core', () => ({
 	useVueFlow: vi.fn(() => ({
@@ -20,7 +21,7 @@ vi.mock('@vue-flow/core', () => ({
 		onNodesInitialized: (cb: () => void) => {
 			nodesInitializedCallback = cb;
 		},
-		updateNode: vi.fn(),
+		updateNode: updateNodeSpy,
 	})),
 }));
 
@@ -34,16 +35,18 @@ vi.mock('@/features/workflows/workflowDiff/useViewportSync', () => ({
 	}),
 }));
 
-// Capture eventBus from Canvas component props
+// Capture eventBus from Canvas component props and tidy-up handler
 let capturedEventBus: EventBus<CanvasEventBusEvents> | null = null;
+let capturedTidyUpHandler: ((event: unknown) => void) | null = null;
 const emitSpy = vi.fn();
 
-// Mock Canvas component to capture eventBus
+// Mock Canvas component to capture eventBus and emit handler
 vi.mock('@/features/workflows/canvas/components/Canvas.vue', () => ({
 	default: defineComponent({
 		name: 'Canvas',
 		props: ['id', 'nodes', 'connections', 'readOnly', 'eventBus'],
-		setup(props) {
+		emits: ['tidy-up'],
+		setup(props, { emit }) {
 			if (props.eventBus) {
 				capturedEventBus = props.eventBus as EventBus<CanvasEventBusEvents>;
 				// Spy on the emit method
@@ -53,22 +56,21 @@ vi.mock('@/features/workflows/canvas/components/Canvas.vue', () => ({
 					return originalEmit(...args);
 				}) as typeof originalEmit;
 			}
+			// Capture the tidy-up handler by exposing a way to trigger it
+			capturedTidyUpHandler = (event: unknown) => emit('tidy-up', event);
 			return () => h('div', { 'data-test-id': 'canvas-mock' });
 		},
 	}),
 }));
 
-vi.mock(
-	'@/features/workflows/canvas/components/elements/background/CanvasBackground.vue',
-	() => ({
-		default: defineComponent({
-			name: 'CanvasBackground',
-			setup() {
-				return () => h('div');
-			},
-		}),
+vi.mock('@/features/workflows/canvas/components/elements/background/CanvasBackground.vue', () => ({
+	default: defineComponent({
+		name: 'CanvasBackground',
+		setup() {
+			return () => h('div');
+		},
 	}),
-);
+}));
 
 // Import after mocks
 import SyncedWorkflowCanvas from './SyncedWorkflowCanvas.vue';
@@ -78,7 +80,9 @@ describe('SyncedWorkflowCanvas', () => {
 		vi.clearAllMocks();
 		nodesInitializedCallback = null;
 		capturedEventBus = null;
+		capturedTidyUpHandler = null;
 		emitSpy.mockClear();
+		updateNodeSpy.mockClear();
 		createTestingPinia();
 	});
 
@@ -151,6 +155,39 @@ describe('SyncedWorkflowCanvas', () => {
 
 			// Verify tidyUp event was NOT emitted
 			expect(emitSpy).not.toHaveBeenCalled();
+		});
+
+		it('should apply calculated positions via updateNode when Canvas emits tidy-up event', () => {
+			render(SyncedWorkflowCanvas, {
+				props: {
+					id: 'test-canvas',
+					nodes: [],
+					connections: [],
+					applyLayout: true,
+				},
+			});
+
+			// Simulate Canvas emitting tidy-up with calculated positions
+			const layoutResult = {
+				result: {
+					boundingBox: { x: 0, y: 0, width: 500, height: 300 },
+					nodes: [
+						{ id: 'node-1', x: 100, y: 50 },
+						{ id: 'node-2', x: 300, y: 150 },
+					],
+				},
+				source: 'import-workflow-data',
+				target: 'all',
+			};
+
+			if (capturedTidyUpHandler) {
+				capturedTidyUpHandler(layoutResult);
+			}
+
+			// Verify updateNode was called for each node with correct positions
+			expect(updateNodeSpy).toHaveBeenCalledTimes(2);
+			expect(updateNodeSpy).toHaveBeenCalledWith('node-1', { position: { x: 100, y: 50 } });
+			expect(updateNodeSpy).toHaveBeenCalledWith('node-2', { position: { x: 300, y: 150 } });
 		});
 	});
 });

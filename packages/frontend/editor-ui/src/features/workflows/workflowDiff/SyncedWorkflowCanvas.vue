@@ -6,6 +6,7 @@ import type {
 	CanvasEventBusEvents,
 	CanvasNode,
 } from '@/features/workflows/canvas/canvas.types';
+import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useVueFlow } from '@vue-flow/core';
 import { watch } from 'vue';
 import Canvas from '@/features/workflows/canvas/components/Canvas.vue';
@@ -29,6 +30,7 @@ const {
 	addSelectedNodes,
 	onPaneClick,
 	onNodesInitialized,
+	updateNode,
 } = useVueFlow({ id: props.id });
 
 // Trigger tidy-up after nodes are initialized if applyLayout is true
@@ -37,6 +39,13 @@ onNodesInitialized(() => {
 		eventBus.emit('tidyUp', { source: 'import-workflow-data' });
 	}
 });
+
+// Apply calculated positions when Canvas emits tidy-up event
+function onTidyUp({ result }: CanvasLayoutEvent) {
+	result.nodes.forEach(({ id, x, y }) => {
+		updateNode(id, { position: { x, y } });
+	});
+}
 
 const { triggerViewportChange, onViewportChange, selectedDetailId, triggerNodeClick } =
 	useInjectViewportSync();
@@ -92,7 +101,15 @@ watch(selectedDetailId, (id) => {
 
 <template>
 	<div style="width: 100%; height: 100%; position: relative">
-		<Canvas :id :nodes :connections :read-only="true" :event-bus="eventBus" style="width: 100%; height: 100%">
+		<Canvas
+			:id
+			:nodes
+			:connections
+			:read-only="true"
+			:event-bus="eventBus"
+			style="width: 100%; height: 100%"
+			@tidy-up="onTidyUp"
+		>
 			<template #node="{ nodeProps }">
 				<slot name="node" v-bind="{ nodeProps }" />
 			</template>

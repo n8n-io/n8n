@@ -1556,7 +1556,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 
 				// Apply tidy-up if requested
 				if (shouldTidyUp(json.tidyUp as boolean | undefined)) {
-					nodeViewEventBus.emit('tidyUp');
+					canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
 				}
 			} catch (e) {
 				if (window.top) {
