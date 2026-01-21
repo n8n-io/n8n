@@ -85,7 +85,7 @@ const renderComponent = createComponentRenderer(DemoDiffView, {
 		stubs: {
 			WorkflowDiffView: {
 				template: '<div data-test-id="workflow-diff-view"><slot /></div>',
-				props: ['oldWorkflow', 'newWorkflow', 'oldLabel', 'newLabel', 'tidyUp'],
+				props: ['sourceWorkflow', 'targetWorkflow', 'sourceLabel', 'targetLabel', 'tidyUp'],
 				setup(props: { tidyUp?: boolean }) {
 					capturedTidyUpProp = props.tidyUp;
 					return {};
@@ -131,10 +131,7 @@ describe('DemoDiffView', () => {
 		const postMessageSpy = vi.spyOn(window.parent, 'postMessage');
 		renderComponent();
 
-		expect(postMessageSpy).toHaveBeenCalledWith(
-			expect.stringContaining('n8nReady'),
-			'*',
-		);
+		expect(postMessageSpy).toHaveBeenCalledWith(expect.stringContaining('n8nReady'), '*');
 	});
 
 	it('should handle openDiff command and pass workflows to WorkflowDiffView', async () => {
@@ -240,6 +237,108 @@ describe('DemoDiffView', () => {
 		expect(queryByTestId('workflow-diff-view')).not.toBeInTheDocument();
 	});
 
+	describe('input validation', () => {
+		it('should reject message when oldWorkflow is missing nodes property', async () => {
+			const { queryByTestId } = renderComponent();
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow: { id: 'invalid', name: 'Invalid', connections: {} },
+							newWorkflow: { id: 'new', name: 'New', nodes: [], connections: {} },
+						}),
+					}),
+				);
+			}
+
+			// Wait for any potential Vue updates, then verify component did NOT render
+			await new Promise((r) => setTimeout(r, 50));
+			expect(queryByTestId('workflow-diff-view')).not.toBeInTheDocument();
+		});
+
+		it('should reject message when newWorkflow is missing connections property', async () => {
+			const { queryByTestId } = renderComponent();
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow: { id: 'old', name: 'Old', nodes: [], connections: {} },
+							newWorkflow: { id: 'invalid', name: 'Invalid', nodes: [] },
+						}),
+					}),
+				);
+			}
+
+			// Wait for any potential Vue updates, then verify component did NOT render
+			await new Promise((r) => setTimeout(r, 50));
+			expect(queryByTestId('workflow-diff-view')).not.toBeInTheDocument();
+		});
+
+		it('should reject message when workflow is not an object', async () => {
+			const { queryByTestId } = renderComponent();
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow: 'not an object',
+							newWorkflow: { id: 'new', name: 'New', nodes: [], connections: {} },
+						}),
+					}),
+				);
+			}
+
+			// Wait for any potential Vue updates, then verify component did NOT render
+			await new Promise((r) => setTimeout(r, 50));
+			expect(queryByTestId('workflow-diff-view')).not.toBeInTheDocument();
+		});
+
+		it('should accept valid workflows with nodes and connections', async () => {
+			const { getByTestId } = renderComponent();
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow: { id: 'old', name: 'Old', nodes: [], connections: {} },
+							newWorkflow: { id: 'new', name: 'New', nodes: [], connections: {} },
+						}),
+					}),
+				);
+			}
+
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
+			});
+		});
+
+		it('should allow undefined workflows (partial diff)', async () => {
+			const { getByTestId } = renderComponent();
+
+			if (messageHandler) {
+				messageHandler(
+					new MessageEvent('message', {
+						data: JSON.stringify({
+							command: 'openDiff',
+							oldWorkflow: undefined,
+							newWorkflow: { id: 'new', name: 'New', nodes: [], connections: {} },
+						}),
+					}),
+				);
+			}
+
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
+			});
+		});
+	});
+
 	describe('tidyUp prop', () => {
 		const oldWorkflow = {
 			id: 'old-workflow',
@@ -255,7 +354,7 @@ describe('DemoDiffView', () => {
 			connections: {},
 		};
 
-		it('should pass tidyUp=true to WorkflowDiffView when tidyUp option is "always"', async () => {
+		it('should pass tidyUp=true to WorkflowDiffView when tidyUp option is true', async () => {
 			const { getByTestId } = renderComponent();
 
 			if (messageHandler) {
@@ -265,7 +364,7 @@ describe('DemoDiffView', () => {
 							command: 'openDiff',
 							oldWorkflow,
 							newWorkflow,
-							tidyUp: 'always',
+							tidyUp: true,
 						}),
 					}),
 				);
@@ -278,38 +377,7 @@ describe('DemoDiffView', () => {
 			expect(capturedTidyUpProp).toBe(true);
 		});
 
-		it('should pass tidyUp=true when tidyUp is "if-missing" and nodes have no positions', async () => {
-			const { getByTestId } = renderComponent();
-
-			// Workflow nodes without positions
-			const workflowWithoutPositions = {
-				id: 'workflow',
-				name: 'Workflow',
-				nodes: [{ id: '1', name: 'Start', type: 'n8n-nodes-base.start' }],
-				connections: {},
-			};
-
-			if (messageHandler) {
-				messageHandler(
-					new MessageEvent('message', {
-						data: JSON.stringify({
-							command: 'openDiff',
-							oldWorkflow: workflowWithoutPositions,
-							newWorkflow: workflowWithoutPositions,
-							tidyUp: 'if-missing',
-						}),
-					}),
-				);
-			}
-
-			await vi.waitFor(() => {
-				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
-			});
-
-			expect(capturedTidyUpProp).toBe(true);
-		});
-
-		it('should pass tidyUp=false when tidyUp is "never"', async () => {
+		it('should pass tidyUp=false when tidyUp option is false', async () => {
 			const { getByTestId } = renderComponent();
 
 			if (messageHandler) {
@@ -319,7 +387,7 @@ describe('DemoDiffView', () => {
 							command: 'openDiff',
 							oldWorkflow,
 							newWorkflow,
-							tidyUp: 'never',
+							tidyUp: false,
 						}),
 					}),
 				);

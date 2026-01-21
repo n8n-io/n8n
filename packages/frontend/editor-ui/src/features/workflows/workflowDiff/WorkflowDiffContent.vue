@@ -161,19 +161,7 @@ function getEdgeStatusClass(id: string) {
 }
 
 .sourceBadge {
-	position: absolute;
-	top: 12px;
-	left: 12px;
-	z-index: 1;
-	border-radius: 4px;
-	border: 1px solid var(--color--foreground--tint-1);
-	background: var(--color--foreground--tint-2);
-	display: flex;
-	height: 30px;
-	padding: 0 12px;
-	align-items: center;
-	gap: 8px;
-	align-self: stretch;
+	composes: sourceBadge from './workflowDiff.module.scss';
 }
 
 .emptyWorkflow {
@@ -184,134 +172,33 @@ function getEdgeStatusClass(id: string) {
 	justify-content: center;
 }
 
-/* Node status styles */
-.deleted,
-.added,
-.modified {
-	position: relative;
-	&::before {
-		position: absolute;
-		top: 0;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		border-radius: 4px;
-		color: var(--color--text--tint-3);
-		font-family: Inter, var(--font-family);
-		font-size: 10px;
-		font-weight: 700;
-		z-index: 1;
-		width: 16px;
-		height: 16px;
-		display: inline-flex;
-		justify-content: center;
-		align-items: center;
-	}
-}
-
+/* Node status styles - composed from shared module */
 .deleted {
-	--canvas-node--color--background: var(--diff--color--deleted--faint);
-	--canvas-node--border-color: var(--diff--color--deleted);
-	--sticky--color--background: var(--diff--color--deleted--faint);
-	--sticky--border-color: var(--diff--color--deleted);
-
-	:global(> div) {
-		--canvas-node--border-width: 2px;
-	}
-
-	&::before {
-		content: 'D';
-		background-color: var(--diff--color--deleted);
-	}
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--deleted);
-		border: none;
-	}
-
-	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff--color--deleted) !important;
-	}
+	composes: deleted from './workflowDiff.module.scss';
 }
 
 .added {
-	--canvas-node--border-color: var(--diff--color--new);
-	--canvas-node--color--background: var(--diff--color--new--faint);
-	--sticky--color--background: var(--diff--color--new--faint);
-	--sticky--border-color: var(--diff--color--new);
-	position: relative;
-
-	:global(> div) {
-		--canvas-node--border-width: 2px;
-	}
-
-	&::before {
-		content: 'N';
-		background-color: var(--diff--color--new);
-	}
-
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--new);
-		border: none;
-	}
-
-	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff--color--new) !important;
-	}
+	composes: added from './workflowDiff.module.scss';
 }
 
 .equal {
-	opacity: 0.5;
-	position: relative;
-	pointer-events: none;
-	cursor: default;
-	--sticky--color--background: rgba(126, 129, 134, 0.2);
-	--canvas-node--icon-color: var(--color--foreground--shade-2);
-	--sticky--border-color: var(--color--foreground--shade-2);
-	&:deep(img) {
-		filter: contrast(0) grayscale(100%);
-	}
+	composes: equal from './workflowDiff.module.scss';
 }
 
 .modified {
-	--canvas-node--border-width: 2px;
-	--canvas-node--border-color: var(--diff--color--modified);
-	--canvas-node--color--background: var(--diff--color--modified--faint);
-	--sticky--color--background: var(--diff--color--modified--faint);
-	--sticky--border-color: var(--diff--color--modified);
-	position: relative;
-
-	:global(> div) {
-		--canvas-node--border-width: 2px;
-	}
-
-	&::before {
-		content: 'M';
-		background-color: var(--diff--color--modified);
-	}
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--modified);
-		border: none;
-	}
-
-	:global([class*='disabled']) {
-		--canvas-node--border-color: var(--diff--color--modified) !important;
-	}
+	composes: modified from './workflowDiff.module.scss';
 }
 
-/* Edge status styles */
+/* Edge status styles - composed from shared module */
 .edge-deleted {
-	--canvas-edge--color: var(--diff--color--deleted);
-	--edge--color--highlight: var(--diff--color--deleted--light);
+	composes: edge-deleted from './workflowDiff.module.scss';
 }
 
 .edge-added {
-	--canvas-edge--color: var(--diff--color--new);
-	--edge--color--highlight: var(--diff--color--new--light);
+	composes: edge-added from './workflowDiff.module.scss';
 }
 
 .edge-equal {
-	opacity: 0.5;
+	composes: edge-equal from './workflowDiff.module.scss';
 }
 </style>

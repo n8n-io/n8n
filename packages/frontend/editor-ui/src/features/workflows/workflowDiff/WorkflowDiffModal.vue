@@ -541,19 +541,7 @@ function setSelectedDetailId(
 }
 
 .sourceBadge {
-	position: absolute;
-	top: 12px;
-	left: 12px;
-	z-index: 1;
-	border-radius: 4px;
-	border: 1px solid var(--color--foreground--tint-1);
-	background: var(--color--foreground--tint-2);
-	display: flex;
-	height: 30px;
-	padding: 0 12px;
-	align-items: center;
-	gap: 8px;
-	align-self: stretch;
+	composes: sourceBadge from './workflowDiff.module.scss';
 }
 
 .tabs {

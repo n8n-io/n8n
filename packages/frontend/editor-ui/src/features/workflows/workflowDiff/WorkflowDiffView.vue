@@ -26,15 +26,15 @@ import {
 
 const props = withDefaults(
 	defineProps<{
-		oldWorkflow?: IWorkflowDb;
-		newWorkflow?: IWorkflowDb;
-		oldLabel?: string;
-		newLabel?: string;
+		sourceWorkflow?: IWorkflowDb;
+		targetWorkflow?: IWorkflowDb;
+		sourceLabel?: string;
+		targetLabel?: string;
 		tidyUp?: boolean;
 	}>(),
 	{
-		oldLabel: 'Before',
-		newLabel: 'After',
+		sourceLabel: 'Before',
+		targetLabel: 'After',
 	},
 );
 
@@ -45,8 +45,8 @@ const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => removeWorkflowExecutionData(props.oldWorkflow)),
-	computed(() => removeWorkflowExecutionData(props.newWorkflow)),
+	computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
+	computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
 );
 
 // Use shared composable for UI logic
@@ -65,8 +65,8 @@ const {
 	modifiers,
 	setSelectedDetailId,
 } = useWorkflowDiffUI({
-	sourceWorkflow: computed(() => props.oldWorkflow),
-	targetWorkflow: computed(() => props.newWorkflow),
+	sourceWorkflow: computed(() => props.sourceWorkflow),
+	targetWorkflow: computed(() => props.targetWorkflow),
 	nodesDiff,
 	connectionsDiff,
 	selectedDetailId,
@@ -93,7 +93,7 @@ onMounted(async () => {
 		<div :class="$style.header">
 			<div :class="$style.headerLeft">
 				<N8nHeading tag="h4" size="medium">
-					{{ oldWorkflow?.name || newWorkflow?.name }}
+					{{ sourceWorkflow?.name || targetWorkflow?.name }}
 				</N8nHeading>
 			</div>
 
@@ -255,10 +255,10 @@ onMounted(async () => {
 			:source-connections="source.connections"
 			:target-nodes="target.nodes"
 			:target-connections="target.connections"
-			:source-label="oldLabel"
-			:target-label="newLabel"
-			:source-exists="!!oldWorkflow"
-			:target-exists="!!newWorkflow"
+			:source-label="sourceLabel"
+			:target-label="targetLabel"
+			:source-exists="!!sourceWorkflow"
+			:target-exists="!!targetWorkflow"
 			:selected-node="selectedNode"
 			:node-diffs="nodeDiffs"
 			:is-source-workflow-new="isSourceWorkflowNew"

@@ -124,14 +124,14 @@ describe('WorkflowDiffView', () => {
 			},
 		});
 
-		const oldWorkflow = createMockWorkflow('old-workflow', 'Old Workflow');
-		const newWorkflow = createMockWorkflow('new-workflow', 'New Workflow');
+		const sourceWorkflow = createMockWorkflow('source-workflow', 'Source Workflow');
+		const targetWorkflow = createMockWorkflow('target-workflow', 'Target Workflow');
 
 		it('should pass applyLayout=true to both SyncedWorkflowCanvas when tidyUp is true', () => {
 			render(WorkflowDiffView, {
 				props: {
-					oldWorkflow,
-					newWorkflow,
+					sourceWorkflow,
+					targetWorkflow,
 					tidyUp: true,
 				},
 			});
@@ -143,8 +143,8 @@ describe('WorkflowDiffView', () => {
 		it('should pass applyLayout=false to both SyncedWorkflowCanvas when tidyUp is false', () => {
 			render(WorkflowDiffView, {
 				props: {
-					oldWorkflow,
-					newWorkflow,
+					sourceWorkflow,
+					targetWorkflow,
 					tidyUp: false,
 				},
 			});
@@ -156,8 +156,8 @@ describe('WorkflowDiffView', () => {
 		it('should pass applyLayout as falsy when tidyUp is undefined', () => {
 			render(WorkflowDiffView, {
 				props: {
-					oldWorkflow,
-					newWorkflow,
+					sourceWorkflow,
+					targetWorkflow,
 				},
 			});
 

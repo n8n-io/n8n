@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
-import { shouldTidyUp } from '@/features/workflows/workflowDiff/useWorkflowTidyUp';
 import type { IWorkflowDb } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useI18n } from '@n8n/i18n';
@@ -9,9 +8,20 @@ import { useI18n } from '@n8n/i18n';
 const rootStore = useRootStore();
 const i18n = useI18n();
 
-const oldWorkflow = ref<IWorkflowDb | undefined>(undefined);
-const newWorkflow = ref<IWorkflowDb | undefined>(undefined);
+const sourceWorkflow = ref<IWorkflowDb | undefined>(undefined);
+const targetWorkflow = ref<IWorkflowDb | undefined>(undefined);
 const tidyUpEnabled = ref(false);
+
+/**
+ * Validates that an object has the minimum required workflow structure.
+ * Allows undefined (for partial diffs) but rejects malformed objects.
+ */
+function isValidWorkflow(obj: unknown): obj is IWorkflowDb | undefined {
+	if (obj === undefined || obj === null) {
+		return true;
+	}
+	return typeof obj === 'object' && 'nodes' in obj && 'connections' in obj;
+}
 
 function emitPostMessageReady() {
 	if (window.parent) {
@@ -35,9 +45,14 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 		const json = JSON.parse(messageEvent.data);
 
 		if (json && json.command === 'openDiff') {
-			oldWorkflow.value = json.oldWorkflow as IWorkflowDb | undefined;
-			newWorkflow.value = json.newWorkflow as IWorkflowDb | undefined;
-			tidyUpEnabled.value = shouldTidyUp(json.tidyUp as boolean | undefined);
+			// Validate workflow structures before accepting the message
+			if (!isValidWorkflow(json.oldWorkflow) || !isValidWorkflow(json.newWorkflow)) {
+				return;
+			}
+
+			sourceWorkflow.value = json.oldWorkflow as IWorkflowDb | undefined;
+			targetWorkflow.value = json.newWorkflow as IWorkflowDb | undefined;
+			tidyUpEnabled.value = json.tidyUp === true;
 		}
 	} catch (e) {
 		// Ignore malformed messages
@@ -57,11 +72,11 @@ onUnmounted(() => {
 <template>
 	<div :class="$style.demoDiffView">
 		<WorkflowDiffView
-			v-if="oldWorkflow || newWorkflow"
-			:old-workflow="oldWorkflow"
-			:new-workflow="newWorkflow"
-			:old-label="i18n.baseText('workflowDiff.label.before')"
-			:new-label="i18n.baseText('workflowDiff.label.after')"
+			v-if="sourceWorkflow || targetWorkflow"
+			:source-workflow="sourceWorkflow"
+			:target-workflow="targetWorkflow"
+			:source-label="i18n.baseText('workflowDiff.label.before')"
+			:target-label="i18n.baseText('workflowDiff.label.after')"
 			:tidy-up="tidyUpEnabled"
 		/>
 		<div v-else :class="$style.waitingState">

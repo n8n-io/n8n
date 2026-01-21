@@ -114,7 +114,6 @@ import {
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
-import { shouldTidyUp } from '@/features/workflows/workflowDiff/useWorkflowTidyUp';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
@@ -1555,7 +1554,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				isExecutionPreview.value = false;
 
 				// Apply tidy-up if requested
-				if (shouldTidyUp(json.tidyUp as boolean | undefined)) {
+				if (json.tidyUp === true) {
 					canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
 				}
 			} catch (e) {
