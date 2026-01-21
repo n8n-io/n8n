@@ -322,9 +322,9 @@ export class WebhookService {
 		for (const { node, webhooks } of checkEntries) {
 			for (const webhook of webhooks) {
 				const webhookKey = webhookToKey(webhook);
-				if (processedWebhooks.has(webhookKey)) {
+				const conflict = processedWebhooks.get(webhookKey)!;
+				if (conflict) {
 					// another node with the same webhook was already processed
-					const conflict = processedWebhooks.get(webhookKey)!;
 					conflicts.push({
 						trigger: node,
 						conflict: {

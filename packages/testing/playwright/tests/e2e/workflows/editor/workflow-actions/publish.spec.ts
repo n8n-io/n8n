@@ -105,7 +105,7 @@ test.describe('Workflow Publish', () => {
 
 			await expect(
 				api.workflows.activate(workflowId2, createdWorkflow2.versionId!),
-			).rejects.toThrow();
+			).rejects.toThrow('There is a conflict with one of the webhooks');
 		});
 
 		test('Rejects publishing a workflow containing local conflicts', async ({ api }) => {
@@ -115,9 +115,9 @@ test.describe('Workflow Publish', () => {
 			);
 			cleanupWorkflowIds.push(workflowId);
 
-			await expect(
-				api.workflows.activate(workflowId, createdWorkflow.versionId!),
-			).rejects.toThrow();
+			await expect(api.workflows.activate(workflowId, createdWorkflow.versionId!)).rejects.toThrow(
+				'There is a conflict with one of the webhooks',
+			);
 		});
 	});
 });
