@@ -23,10 +23,10 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@swc/core": "^1.10.14",
+    "@swc/core": "catalog:",
     "@types/express": "catalog:",
     "@types/lodash": "catalog:",
-    "vite-plugin-swc-transform": "^1.0.3",
+    "vite-plugin-swc-transform": "catalog:",
     "vitest": "catalog:"
   },
   "dependencies": {

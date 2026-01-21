@@ -1,10 +1,11 @@
 import { Container } from '@n8n/di';
+import { vi } from 'vitest';
 
 import { GlobalConfig } from '../src/index';
 
 beforeEach(() => {
 	Container.reset();
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 const originalEnv = process.env;

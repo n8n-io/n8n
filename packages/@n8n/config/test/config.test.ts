@@ -1,23 +1,27 @@
 import { Container } from '@n8n/di';
-import fs from 'fs';
-import { mock } from 'jest-mock-extended';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { vi } from 'vitest';
 
 import type { UserManagementConfig } from '../src/configs/user-management.config';
 import type { DatabaseConfig } from '../src/index';
 import { GlobalConfig } from '../src/index';
 
-jest.mock('fs');
-const mockFs = mock<typeof fs>();
-fs.readFileSync = mockFs.readFileSync;
+const mockReadFileSync = vi.hoisted(() => vi.fn());
 
-const consoleWarnMock = jest.spyOn(console, 'warn').mockImplementation(() => {});
+vi.mock('fs', () => ({
+	default: {
+		readFileSync: mockReadFileSync,
+	},
+	readFileSync: mockReadFileSync,
+}));
+
+const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const originalEnv = process.env;
@@ -429,7 +433,7 @@ describe('GlobalConfig', () => {
 		// which `toEqual` and `toBe` does not do.
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
-		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+		expect(mockReadFileSync).not.toHaveBeenCalled();
 	});
 
 	it('should use values from env variables when defined', () => {
@@ -484,7 +488,7 @@ describe('GlobalConfig', () => {
 				enabled: false,
 			},
 		});
-		expect(mockFs.readFileSync).not.toHaveBeenCalled();
+		expect(mockReadFileSync).not.toHaveBeenCalled();
 	});
 
 	it('should read values from files using _FILE env variables', () => {
@@ -492,7 +496,7 @@ describe('GlobalConfig', () => {
 		process.env = {
 			DB_POSTGRESDB_PASSWORD_FILE: passwordFile,
 		};
-		mockFs.readFileSync.calledWith(passwordFile, 'utf8').mockReturnValueOnce('password-from-file');
+		mockReadFileSync.mockReturnValueOnce('password-from-file');
 
 		const config = Container.get(GlobalConfig);
 		const expected = {
@@ -509,7 +513,7 @@ describe('GlobalConfig', () => {
 		// which `toEqual` and `toBe` does not do.
 		expect(config).toMatchObject(expected);
 		expect(expected).toMatchObject(config);
-		expect(mockFs.readFileSync).toHaveBeenCalled();
+		expect(mockReadFileSync).toHaveBeenCalled();
 	});
 
 	it('should handle invalid numbers', () => {

@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { Container, Service } from '../di';
 
 @Service()
@@ -42,7 +44,7 @@ class ConcreteService extends AbstractService {
 
 describe('DI Container', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 	});
 
@@ -161,7 +163,7 @@ describe('DI Container', () => {
 		});
 
 		it('should handle factory with dependencies', () => {
-			const factory = jest.fn().mockReturnValue({});
+			const factory = vi.fn().mockReturnValue({});
 
 			@Service({ factory })
 			class FactoryWithDependencies {

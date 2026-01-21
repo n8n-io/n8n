@@ -1,11 +1,12 @@
 import { Container } from '@n8n/di';
+import { vi } from 'vitest';
 
 import { UserManagementConfig } from '../user-management.config';
 
 describe('UserManagementConfig', () => {
 	beforeEach(() => {
 		Container.reset();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const originalEnv = process.env;
@@ -14,7 +15,7 @@ describe('UserManagementConfig', () => {
 	});
 
 	test('with refresh timout > session, sets refresh timout to `0`', () => {
-		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		process.env = {
 			N8N_USER_MANAGEMENT_JWT_DURATION_HOURS: '1',
@@ -32,7 +33,7 @@ describe('UserManagementConfig', () => {
 	});
 
 	test('with refresh timout == session, sets refresh timout to `0`', () => {
-		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		process.env = {
 			N8N_USER_MANAGEMENT_JWT_DURATION_HOURS: '1',
@@ -50,7 +51,7 @@ describe('UserManagementConfig', () => {
 	});
 
 	test('with refresh timout < session, keeps refresh timout intact', () => {
-		const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+		const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 		process.env = {
 			N8N_USER_MANAGEMENT_JWT_DURATION_HOURS: '10',
