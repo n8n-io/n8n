@@ -21,7 +21,8 @@ describe('DynamicCredentialCorsService', () => {
 		mockConfig = {
 			corsOrigin: '',
 			corsAllowCredentials: false,
-		};
+			endpointAuthToken: '',
+		} as unknown as jest.Mocked<DynamicCredentialsConfig>;
 
 		statusSpy = jest.fn().mockReturnThis();
 		endSpy = jest.fn();
