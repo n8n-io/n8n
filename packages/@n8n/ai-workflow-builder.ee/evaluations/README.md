@@ -441,3 +441,71 @@ From `packages/@n8n/ai-workflow-builder.ee`:
 ```bash
 pnpm test:eval
 ```
+
+## CI Integration
+
+### Automated Eval Runs
+
+Evaluations run automatically via GitHub Actions:
+
+| Trigger | Reps | Judges | Dataset | When |
+|---------|------|--------|---------|------|
+| Push to master | 1 | 1 | `workflow-builder-canvas-prompts` | On changes to `ai-workflow-builder.ee/` |
+| Scheduled | 3 | 3 | `prompts-v2` | Saturdays 22:00 UTC |
+| Minor release | 2 | 3 | `workflow-builder-canvas-prompts` | On `vX.Y.0` releases |
+| Manual dispatch | Configurable | Configurable | Configurable | Via GitHub Actions UI |
+
+### Skipping Evals on Merge
+
+To skip eval runs when merging a PR that doesn't affect prompts/AI behavior, use any of:
+
+- **PR label**: Add `no-prompt-changes` label to the PR
+- **PR title**: Include `(no-prompt-changes)` in the PR title
+- **Commit message**: Include `(no-prompt-changes)` in the merge commit message
+
+### Experiment Naming Convention
+
+LangSmith experiments follow this naming pattern:
+
+| Source | Format | Example |
+|--------|--------|---------|
+| Branch with ticket | `{TICKET-ID}_{YYYY_MM_DD}` | `AI-1234_2026_01_20` |
+| Branch without ticket | `CI_{branch}_{YYYY_MM_DD}` | `CI_master_2026_01_20` |
+| Scheduled run | `CI_scheduled_{YYYY_MM_DD}` | `CI_scheduled_2026_01_20` |
+| Minor release | `CI_vX.Y_{YYYY_MM_DD}` | `CI_v1.70_2026_01_20` |
+| Manual dispatch | `CI_manual_{YYYY_MM_DD}` | `CI_manual_2026_01_20` |
+
+### CI Metadata
+
+All LangSmith experiments include metadata to distinguish CI runs from local development:
+
+```json
+{
+  "source": "ci",
+  "trigger": "push",
+  "commitSha": "abc123...",
+  "branch": "master",
+  "runId": "12345678"
+}
+```
+
+Local runs show `"source": "local"` with no other CI fields.
+
+### Debug Dataset
+
+For faster iteration during development, use a minimal dataset:
+
+```bash
+# Use the debug dataset with a single example
+pnpm eval:langsmith --dataset "workflow-builder-debug-single" --name "debug-run" --verbose
+```
+
+To create your own debug dataset in LangSmith:
+1. Go to LangSmith → Datasets
+2. Create a new dataset with 1-3 representative examples
+3. Use it with `--dataset "your-debug-dataset"`
+
+This is useful for:
+- Testing workflow changes quickly
+- Debugging evaluator issues
+- Validating CI workflow changes locally
