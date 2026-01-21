@@ -27,7 +27,7 @@ import {
 	addFormResponseDataToReturnItem,
 	validateSafeRedirectUrl,
 } from '../utils/utils';
-import { isIpWhitelisted } from '../../Webhook/utils';
+import { isIpAllowed } from '../../Webhook/utils';
 
 describe('FormTrigger, parseFormDescription', () => {
 	it('should remove HTML tags and truncate to 150 characters', () => {
@@ -2777,40 +2777,40 @@ describe('FormTrigger, prepareFormData - Default Value', () => {
 });
 
 describe('FormTrigger IP Whitelist', () => {
-	describe('isIpWhitelisted (reused from Webhook)', () => {
+	describe('isIpAllowed (reused from Webhook)', () => {
 		it('should return true if whitelist is undefined', () => {
-			expect(isIpWhitelisted(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
+			expect(isIpAllowed(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
 		});
 
 		it('should return true if whitelist is an empty string', () => {
-			expect(isIpWhitelisted('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
+			expect(isIpAllowed('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
 		});
 
 		it('should allow IP in whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.1', [], '192.168.1.1')).toBe(true);
+			expect(isIpAllowed('192.168.1.1', [], '192.168.1.1')).toBe(true);
 		});
 
 		it('should block IP not in whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.1', [], '192.168.1.2')).toBe(false);
+			expect(isIpAllowed('192.168.1.1', [], '192.168.1.2')).toBe(false);
 		});
 
 		it('should support CIDR notation', () => {
-			expect(isIpWhitelisted('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
-			expect(isIpWhitelisted('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
 		});
 
 		it('should support comma-separated mixed entries', () => {
-			expect(isIpWhitelisted('127.0.0.1, 192.168.1.0/24', [], '192.168.1.100')).toBe(true);
-			expect(isIpWhitelisted('127.0.0.1, 192.168.1.0/24', [], '10.0.0.1')).toBe(false);
+			expect(isIpAllowed('127.0.0.1, 192.168.1.0/24', [], '192.168.1.100')).toBe(true);
+			expect(isIpAllowed('127.0.0.1, 192.168.1.0/24', [], '10.0.0.1')).toBe(false);
 		});
 
 		it('should handle IPv6 addresses', () => {
-			expect(isIpWhitelisted('::1', [], '::1')).toBe(true);
-			expect(isIpWhitelisted('::1', [], '::2')).toBe(false);
+			expect(isIpAllowed('::1', [], '::1')).toBe(true);
+			expect(isIpAllowed('::1', [], '::2')).toBe(false);
 		});
 
 		it('should check both direct IP and proxy IPs', () => {
-			expect(isIpWhitelisted('192.168.1.1', ['192.168.1.1', '10.0.0.1'], '10.0.0.2')).toBe(true);
+			expect(isIpAllowed('192.168.1.1', ['192.168.1.1', '10.0.0.1'], '10.0.0.2')).toBe(true);
 		});
 	});
 });

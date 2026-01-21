@@ -78,7 +78,7 @@ const descriptionV1: INodeTypeDescription = {
 					default: 'Your response has been recorded',
 				},
 				{
-					displayName: 'IP(s) Whitelist',
+					displayName: 'IP(s) Allowlist',
 					name: 'ipWhitelist',
 					type: 'string',
 					placeholder: 'e.g. 127.0.0.1, 192.168.1.0/24',

@@ -28,7 +28,7 @@ import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
 import {
 	generateFormPostBasicAuthToken,
-	isIpWhitelisted,
+	isIpAllowed,
 	validateWebhookAuthentication,
 } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
@@ -597,10 +597,10 @@ export async function formWebhook(
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
 
-	// Check IP whitelist first (before bot detection and authentication)
-	if (!isIpWhitelisted(options.ipWhitelist, req.ips, req.ip)) {
+	// Check IP allowlist first (before bot detection and authentication)
+	if (!isIpAllowed(options.ipWhitelist, req.ips, req.ip)) {
 		res.writeHead(403);
-		res.end('IP is not whitelisted to access this form!');
+		res.end('IP is not allowed to access this form!');
 		return { noWebhookResponse: true };
 	}
 

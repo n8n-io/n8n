@@ -127,20 +127,20 @@ export const setupOutputConnection = (
 	};
 };
 
-export const isIpWhitelisted = (
-	whitelist: string | string[] | undefined,
+export const isIpAllowed = (
+	allowlist: string | string[] | undefined,
 	ips: string[],
 	ip?: string,
 ) => {
-	if (whitelist === undefined || whitelist === '') {
+	if (allowlist === undefined || allowlist === '') {
 		return true;
 	}
 
-	if (!Array.isArray(whitelist)) {
-		whitelist = whitelist.split(',').map((entry) => entry.trim());
+	if (!Array.isArray(allowlist)) {
+		allowlist = allowlist.split(',').map((entry) => entry.trim());
 	}
 
-	const allowList = getAllowList(whitelist);
+	const allowList = getAllowList(allowlist);
 
 	// Check the primary IP address with proper family detection
 	if (ip) {
@@ -163,10 +163,10 @@ export const isIpWhitelisted = (
 	return false;
 };
 
-const getAllowList = (whitelist: string[]) => {
+const getAllowList = (allowlist: string[]) => {
 	const allowList = new BlockList();
 
-	for (const entry of whitelist) {
+	for (const entry of allowlist) {
 		try {
 			// Check if entry is in CIDR notation (contains /)
 			if (entry.includes('/')) {
