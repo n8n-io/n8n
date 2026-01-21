@@ -78,11 +78,16 @@ let eventService: EventService;
 let folderListMissingRole: Role;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
+beforeAll(async () => {
+	await utils.initNodeTypes();
+});
+
 beforeEach(async () => {
 	await testDb.truncate([
 		'SharedWorkflow',
 		'ProjectRelation',
 		'Folder',
+		'WebhookEntity',
 		'WorkflowEntity',
 		'WorkflowHistory',
 		'WorkflowPublishHistory',

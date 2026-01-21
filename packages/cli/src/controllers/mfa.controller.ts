@@ -84,7 +84,12 @@ export class MFAController {
 		};
 	}
 
-	@Post('/enable', { rateLimit: true, allowSkipMFA: true })
+	@Post('/enable', {
+		allowSkipMFA: true,
+		keyedRateLimit: {
+			source: 'user',
+		},
+	})
 	async activateMFA(req: MFA.Activate, res: Response) {
 		const { mfaCode = null } = req.body;
 		const { id, mfaEnabled } = req.user;
@@ -122,7 +127,12 @@ export class MFAController {
 		this.authService.issueCookie(res, updatedUser, verified, req.browserId);
 	}
 
-	@Post('/disable', { rateLimit: true })
+	@Post('/disable', {
+		ipRateLimit: true,
+		keyedRateLimit: {
+			source: 'user',
+		},
+	})
 	async disableMFA(req: MFA.Disable, res: Response) {
 		const { id: userId } = req.user;
 
@@ -163,7 +173,12 @@ export class MFAController {
 		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 	}
 
-	@Post('/verify', { rateLimit: true, allowSkipMFA: true })
+	@Post('/verify', {
+		allowSkipMFA: true,
+		keyedRateLimit: {
+			source: 'user',
+		},
+	})
 	async verifyMFA(req: MFA.Verify) {
 		const { id } = req.user;
 		const { mfaCode } = req.body;
