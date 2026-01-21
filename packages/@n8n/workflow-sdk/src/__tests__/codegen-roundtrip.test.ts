@@ -1142,60 +1142,9 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						expect(parsedJson.settings).toEqual(json.settings);
 					}
 
-					// Check for complex patterns that codegen cannot preserve
-					const hasMergeNode = json.nodes.some((n) => n.type === 'n8n-nodes-base.merge');
-
-					const targetInputCounts = new Map<string, number>();
-					for (const nodeConns of Object.values(json.connections)) {
-						for (const outputs of Object.values(nodeConns)) {
-							if (!Array.isArray(outputs)) continue;
-							for (const targets of outputs) {
-								if (!Array.isArray(targets)) continue;
-								for (const target of targets) {
-									const count = targetInputCounts.get(target.node) || 0;
-									targetInputCounts.set(target.node, count + 1);
-								}
-							}
-						}
-					}
-					const hasFanIn = [...targetInputCounts.values()].some((count) => count > 1);
-
-					const hasFanOut = Object.values(json.connections).some((nodeConns) =>
-						Object.values(nodeConns).some(
-							(outputs) =>
-								Array.isArray(outputs) &&
-								outputs.some((targets) => Array.isArray(targets) && targets.length > 1),
-						),
-					);
-
-					const hasMultiOutputBranching = Object.values(json.connections).some((nodeConns) =>
-						Object.values(nodeConns).some(
-							(outputs) =>
-								Array.isArray(outputs) &&
-								outputs.length > 1 &&
-								outputs.some((targets) => Array.isArray(targets) && targets.length > 0),
-						),
-					);
-
-					const nodeNames = new Set(json.nodes.map((n) => n.name));
-					const orphanedConnectionKeys = Object.keys(json.connections).filter(
-						(key) => !nodeNames.has(key),
-					);
-
-					// Only verify connections for simple workflows
-					if (
-						!hasMergeNode &&
-						!hasFanIn &&
-						!hasFanOut &&
-						!hasMultiOutputBranching &&
-						orphanedConnectionKeys.length === 0
-					) {
-						const filteredOriginal = filterEmptyConnections(json.connections);
-						const filteredParsed = filterEmptyConnections(parsedJson.connections);
-						expect(Object.keys(filteredParsed).sort()).toEqual(
-							Object.keys(filteredOriginal).sort(),
-						);
-					}
+					const filteredOriginal = filterEmptyConnections(json.connections);
+					const filteredParsed = filterEmptyConnections(parsedJson.connections);
+					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
 				});
 			});
 		});
