@@ -20,7 +20,12 @@ import {
 	type ChatRequest,
 	Session,
 } from './chat-service.types';
-import { getLastNodeExecuted, getMessage, shouldResumeImmediately } from './utils';
+import {
+	getLastNodeExecuted,
+	getMessage,
+	shouldResumeImmediately,
+	workflowIsMissingChatNodes,
+} from './utils';
 
 const CHECK_FOR_RESPONSE_INTERVAL = 3000;
 const DRAIN_TIMEOUT = 50;
@@ -39,6 +44,11 @@ const N8N_HEARTBEAT = 'n8n|heartbeat';
  * frontend did acknowledge the heartbeat
  */
 const N8N_HEARTBEAT_ACK = 'n8n|heartbeat-ack';
+
+/**
+ * send message to frontend that no chat nodes are connected to the trigger
+ */
+const N8N_NO_CHAT_NODES = 'n8n|no-chat-nodes';
 
 function closeConnection(ws: WebSocket) {
 	if (ws.readyState !== WebSocket.OPEN) return;
@@ -85,12 +95,18 @@ export class ChatService {
 			return;
 		}
 
-		const execution = await this.executionManager.checkIfExecutionExists(executionId);
-
+		const execution = await this.executionManager.findExecution(executionId);
 		if (!execution) {
 			ws.send(`Execution with id "${executionId}" does not exist`);
 			ws.close(1008);
 			return;
+		}
+
+		// only send message if the execution is manual to show the warning
+		if (execution.mode === 'manual') {
+			if (workflowIsMissingChatNodes(execution)) {
+				ws.send(N8N_NO_CHAT_NODES);
+			}
 		}
 
 		ws.isAlive = true;

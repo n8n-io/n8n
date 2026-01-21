@@ -23,12 +23,15 @@ import {
 	shouldBlockUserInput,
 } from '@n8n/chat/utils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useToast } from '@/app/composables/useToast';
 
 type IntegratedChat = Omit<Chat, 'sendMessage'> & {
 	sendMessage: (text: string, files: File[]) => Promise<void>;
 };
 
 const ChatSymbol = 'Chat' as unknown as InjectionKey<IntegratedChat>;
+
+const toast = useToast();
 
 interface ChatState {
 	currentSessionId: Ref<string>;
@@ -194,6 +197,14 @@ export function useChatState(isReadOnly: boolean): ChatState {
 				ws.value.onmessage = (event) => {
 					if (event.data === 'n8n|heartbeat') {
 						ws.value?.send('n8n|heartbeat-ack');
+						return;
+					}
+					if (event.data === 'n8n|no-chat-nodes') {
+						// TODO: i18n, description?
+						toast.showMessage({
+							title: 'The workflow does not have any Chat nodes',
+							type: 'warning',
+						});
 						return;
 					}
 					if (event.data === 'n8n|continue') {
