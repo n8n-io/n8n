@@ -354,16 +354,38 @@ const selectedByCollaborator = computed(() => {
 				:class="handle.classes"
 				:style="handle.offsetStyle"
 			>
-				<CanvasHandleDot
-					v-if="handle.isMain"
-					:class="['handle-render', handle.positionClass]"
-					handle-classes="target"
-				/>
-				<CanvasHandleDiamond
-					v-else
-					:class="['handle-render', handle.positionClass]"
-					handle-classes="target"
-				/>
+				<template v-if="handle.isMain">
+					<div
+						v-if="handle.displayName"
+						:class="[
+							'handle-label',
+							'handle-label--main-input',
+							{ 'handle-label--required': handle.required },
+						]"
+					>
+						{{ handle.displayName }}
+					</div>
+					<CanvasHandleDot
+						:class="['handle-render', handle.positionClass]"
+						handle-classes="target"
+					/>
+				</template>
+				<template v-else>
+					<div
+						v-if="handle.displayName"
+						:class="[
+							'handle-label',
+							'handle-label--non-main-input',
+							{ 'handle-label--required': handle.required },
+						]"
+					>
+						{{ handle.displayName }}
+					</div>
+					<CanvasHandleDiamond
+						:class="['handle-render', handle.positionClass]"
+						handle-classes="target"
+					/>
+				</template>
 			</Handle>
 		</template>
 
@@ -389,16 +411,35 @@ const selectedByCollaborator = computed(() => {
 			:class="handle.classes"
 			:style="handle.offsetStyle"
 		>
-			<CanvasHandleDot
-				v-if="handle.isMain"
-				:class="['handle-render', handle.positionClass]"
-				handle-classes="source"
-			/>
-			<CanvasHandleDiamond
-				v-else
-				:class="['handle-render', handle.positionClass]"
-				handle-classes="source"
-			/>
+			<template v-if="handle.isMain">
+				<div
+					v-if="handle.displayName"
+					:class="[
+						'handle-label',
+						'handle-label--main-output',
+						{ 'handle-label--required': handle.required },
+					]"
+				>
+					{{ handle.displayName }}
+				</div>
+				<CanvasHandleDot :class="['handle-render', handle.positionClass]" handle-classes="source" />
+			</template>
+			<template v-else>
+				<div
+					v-if="handle.displayName"
+					:class="[
+						'handle-label',
+						'handle-label--non-main-output',
+						{ 'handle-label--required': handle.required },
+					]"
+				>
+					{{ handle.displayName }}
+				</div>
+				<CanvasHandleDiamond
+					:class="['handle-render', handle.positionClass]"
+					handle-classes="source"
+				/>
+			</template>
 		</Handle>
 
 		<!-- Collaborator selection indicator -->
@@ -528,5 +569,57 @@ const selectedByCollaborator = computed(() => {
 	max-width: 100px;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* Handle labels */
+.handle-label {
+	position: absolute;
+	font-size: var(--font-size--2xs);
+	color: var(--canvas--label--color);
+	background: var(--canvas--label--color--background);
+	white-space: nowrap;
+	text-align: center;
+	z-index: 1;
+}
+
+/* Main input labels (left handles) - label appears to the LEFT of the handle */
+.handle-label--main-input {
+	top: 50%;
+	left: calc(var(--spacing--xs) * -1);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1)) translate(-100%, 0);
+	transform-origin: center left;
+	color: var(--color--foreground--shade-2);
+}
+
+/* Main output labels (right handles) - label appears to the LEFT of the handle (inside node area) */
+.handle-label--main-output {
+	top: 50%;
+	left: var(--spacing--md);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1));
+	transform-origin: center left;
+}
+
+/* Non-main input labels (bottom handles) - label appears BELOW the handle */
+.handle-label--non-main-input {
+	top: var(--spacing--lg);
+	left: 50%;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
+}
+
+/* Non-main output labels (top handles) - label appears ABOVE the handle */
+.handle-label--non-main-output {
+	top: calc(-1 * var(--spacing--lg));
+	left: 50%;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	transform: translate(-50%, 0) scale(var(--canvas-zoom-compensation-factor, 1));
+}
+
+/* Required indicator asterisk */
+.handle-label--required::after {
+	content: '*';
+	color: var(--color--danger);
 }
 </style>

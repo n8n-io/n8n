@@ -269,9 +269,9 @@ export class CRDTWebSocketService {
 				const rawInputs = NodeHelpers.getNodeInputs(workflow, node, nodeTypeDescription);
 				inputs = this.normalizeHandles(rawInputs, 'inputs');
 
-				// Compute outputs
+				// Compute outputs - pass outputNames for main output labels (e.g., "true"/"false" for If node)
 				const rawOutputs = NodeHelpers.getNodeOutputs(workflow, node, nodeTypeDescription);
-				outputs = this.normalizeHandles(rawOutputs, 'outputs');
+				outputs = this.normalizeHandles(rawOutputs, 'outputs', nodeTypeDescription.outputNames);
 
 				// Compute subtitle
 				subtitle = this.computeNodeSubtitle(workflow, node, nodeTypeDescription);
@@ -289,17 +289,23 @@ export class CRDTWebSocketService {
 	/**
 	 * Normalize raw inputs/outputs into ComputedHandle format.
 	 * Handles both simple string types and full configuration objects.
+	 *
+	 * @param rawHandles - Raw input/output configurations
+	 * @param mode - 'inputs' or 'outputs'
+	 * @param endpointNames - Optional names for main endpoints (e.g., outputNames like "true"/"false" for If node)
 	 */
 	private normalizeHandles(
 		rawHandles: Array<NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration>,
 		mode: 'inputs' | 'outputs',
+		endpointNames: string[] = [],
 	): ComputedHandle[] {
 		const handles: ComputedHandle[] = [];
 
 		// Group by type to compute correct indices
 		const byType = new Map<string, number>();
 
-		for (const raw of rawHandles) {
+		for (let endpointIndex = 0; endpointIndex < rawHandles.length; endpointIndex++) {
+			const raw = rawHandles[endpointIndex];
 			// Normalize to object form
 			const config = typeof raw === 'string' ? { type: raw } : (raw as INodeInputConfiguration);
 
@@ -307,12 +313,16 @@ export class CRDTWebSocketService {
 			const currentIndex = byType.get(type) ?? 0;
 			byType.set(type, currentIndex + 1);
 
+			// Use displayName from config, or fall back to endpointNames for main type handles
+			const displayName =
+				config.displayName ?? (typeof raw === 'string' ? endpointNames[endpointIndex] : undefined);
+
 			handles.push({
 				handleId: `${mode}/${type}/${currentIndex}`,
 				type,
 				mode,
 				index: currentIndex,
-				displayName: config.displayName,
+				displayName,
 				required: config.required,
 				maxConnections: config.maxConnections,
 			});
@@ -422,7 +432,11 @@ export class CRDTWebSocketService {
 					const newInputs = this.normalizeHandles(rawInputs, 'inputs');
 
 					const rawOutputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType.description);
-					const newOutputs = this.normalizeHandles(rawOutputs, 'outputs');
+					const newOutputs = this.normalizeHandles(
+						rawOutputs,
+						'outputs',
+						nodeType.description.outputNames,
+					);
 
 					// Update handles in CRDT
 					this.updateHandlesInCRDT(doc, nodeMap, 'inputs', newInputs);

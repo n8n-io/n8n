@@ -177,7 +177,7 @@ function edgesToIConnections(edges: CRDTEdge[], nodeNameById: Map<string, string
 		connections[sourceName][sourceType][sourceIndex] ??= [];
 
 		// Add the connection
-		connections[sourceName][sourceType][sourceIndex]!.push({
+		connections[sourceName][sourceType][sourceIndex].push({
 			node: targetName,
 			type: targetType,
 			index: targetIndex,
