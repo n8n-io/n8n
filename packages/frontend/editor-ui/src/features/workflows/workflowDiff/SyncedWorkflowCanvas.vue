@@ -40,24 +40,34 @@ onNodesInitialized(() => {
 	}
 });
 
+/**
+ * Calculate the offset needed to shift nodes so the topmost-leftmost node is at origin.
+ * Finds the anchor node (smallest Y, then smallest X) and returns the negative of its position.
+ */
+function calculateOriginOffset(nodes: Array<{ x: number; y: number }>): { x: number; y: number } {
+	if (nodes.length === 0) return { x: 0, y: 0 };
+
+	let minX = nodes[0].x;
+	let minY = nodes[0].y;
+
+	for (const node of nodes) {
+		if (node.y < minY || (node.y === minY && node.x < minX)) {
+			minX = node.x;
+			minY = node.y;
+		}
+	}
+
+	return { x: -minX, y: -minY };
+}
+
 // Apply calculated positions when Canvas emits tidy-up event
 // Shift all nodes so the leftmost topmost node is at origin {x: 0, y: 0}
 // This ensures both canvases in the diff view have aligned anchor nodes
 function onTidyUp({ result }: CanvasLayoutEvent) {
-	// Find leftmost topmost node from result (sort by Y, then X)
-	const sortedResultNodes = [...result.nodes].sort((a, b) => {
-		const yDiff = a.y - b.y;
-		return yDiff === 0 ? a.x - b.x : yDiff;
-	});
-	const anchorNode = sortedResultNodes[0];
+	const offset = calculateOriginOffset(result.nodes);
 
-	// Calculate offset to position anchor at origin
-	const offsetX = anchorNode ? -anchorNode.x : 0;
-	const offsetY = anchorNode ? -anchorNode.y : 0;
-
-	// Apply positions with offset
 	result.nodes.forEach(({ id, x, y }) => {
-		updateNode(id, { position: { x: x + offsetX, y: y + offsetY } });
+		updateNode(id, { position: { x: x + offset.x, y: y + offset.y } });
 	});
 }
 
