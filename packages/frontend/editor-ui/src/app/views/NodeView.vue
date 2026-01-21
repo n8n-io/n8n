@@ -1902,6 +1902,9 @@ watch(
 	() => uiStore.dirtyStateSetCount,
 	(dirtyStateSetCount) => {
 		if (dirtyStateSetCount > 0) {
+			// Skip write access and auto-save in demo mode
+			if (isDemoRoute.value) return;
+
 			collaborationStore.requestWriteAccess();
 
 			// Trigger auto-save (debounced) for writers only
