@@ -374,6 +374,53 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 	const stickyNotes: NodeInfo[] = [];
 	const orphanNodes: NodeInfo[] = [];
 
+	// First pass: identify triggers
+	for (const info of nodeInfoMap.values()) {
+		if (isTriggerNode(info.node)) {
+			triggers.push(info);
+		}
+	}
+
+	// Detect nodes that are targets of multiple triggers (shared entry points)
+	// These need variable declarations so subsequent triggers can reference them
+	const sharedNodeVars = new Map<string, string>();
+	const sharedVarLines: string[] = [];
+
+	// Count how many triggers connect to each node
+	const triggerTargetCount = new Map<string, number>();
+	for (const triggerInfo of triggers) {
+		const outputs = triggerInfo.outgoingConnections.get(0);
+		if (outputs) {
+			for (const target of outputs) {
+				const count = triggerTargetCount.get(target.to) ?? 0;
+				triggerTargetCount.set(target.to, count + 1);
+			}
+		}
+	}
+
+	// Create variables for nodes targeted by multiple triggers
+	for (const [nodeName, count] of triggerTargetCount.entries()) {
+		if (count > 1) {
+			const nodeInfo = nodeInfoMap.get(nodeName);
+			if (!nodeInfo || nodeInfo.isSubnodeOf || isStickyNote(nodeInfo.node)) continue;
+
+			const varName = generateVarName(nodeName);
+			sharedNodeVars.set(nodeName, varName);
+			cycleNodeVars.set(nodeName, varName); // Add to cycleNodeVars so generateChain can use it
+
+			// Generate just the node call (without chain - chain handled in main flow from first trigger)
+			const nodeCall = generateNodeCall(nodeInfo.node, nodeInfoMap);
+			sharedVarLines.push(`const ${varName} = ${nodeCall};`);
+		}
+	}
+
+	// Add shared node variable declarations before cycle variables (or as separate section)
+	if (sharedVarLines.length > 0) {
+		lines.push('// Shared entry point nodes (targeted by multiple triggers)');
+		lines.push(...sharedVarLines);
+		lines.push('');
+	}
+
 	for (const info of nodeInfoMap.values()) {
 		if (isStickyNote(info.node)) {
 			stickyNotes.push(info);
@@ -381,7 +428,8 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 			// Skip subnodes - they will be included in their parent's config
 			continue;
 		} else if (isTriggerNode(info.node)) {
-			triggers.push(info);
+			// Triggers already collected in first pass above
+			continue;
 		} else if (info.incomingConnections.length === 0) {
 			orphanNodes.push(info);
 		}

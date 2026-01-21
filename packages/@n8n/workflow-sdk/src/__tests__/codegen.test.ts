@@ -2266,7 +2266,7 @@ describe('IF branches feeding into Merge', () => {
 	});
 
 	it('should preserve IF false-only branch connecting to Merge', () => {
-		// Pattern from workflow 4557: IF only has false branch, which connects to Merge
+		// Pattern: IF only has false branch, which connects to Merge
 		// Output 0 (true) is empty, output 1 (false) connects to Merge input 1
 		const workflow: WorkflowJSON = {
 			id: 'if-false-merge-test',
@@ -2331,5 +2331,65 @@ describe('IF branches feeding into Merge', () => {
 		expect(parsed.connections['IF']).toBeDefined();
 		expect(parsed.connections['IF'].main[1]).toBeDefined();
 		expect(parsed.connections['IF'].main[1][0].node).toBe('Merge');
+	});
+});
+
+describe('Multiple triggers', () => {
+	it('should preserve all trigger connections when multiple triggers connect to same node', () => {
+		// Pattern from workflow 2519: two triggers both connect to the same first node
+		const workflow: WorkflowJSON = {
+			id: 'multi-trigger-test',
+			name: 'Multiple Triggers Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'TriggerA',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, -100],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'TriggerB',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [0, 100],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'SharedNode',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'EndNode',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				TriggerA: { main: [[{ node: 'SharedNode', type: 'main', index: 0 }]] },
+				TriggerB: { main: [[{ node: 'SharedNode', type: 'main', index: 0 }]] },
+				SharedNode: { main: [[{ node: 'EndNode', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Both triggers must have connections to SharedNode
+		expect(parsed.connections['TriggerA']).toBeDefined();
+		expect(parsed.connections['TriggerA'].main[0][0].node).toBe('SharedNode');
+		expect(parsed.connections['TriggerB']).toBeDefined();
+		expect(parsed.connections['TriggerB'].main[0][0].node).toBe('SharedNode');
+		// SharedNode must connect to EndNode
+		expect(parsed.connections['SharedNode'].main[0][0].node).toBe('EndNode');
 	});
 });
