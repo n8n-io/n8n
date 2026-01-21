@@ -21,10 +21,8 @@ jobs:
           # Check if it's a minor release (e.g., v1.2.0, not v1.2.1)
           if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.0$ ]]; then
             echo "is_minor=true" >> "$GITHUB_OUTPUT"
-            # Extract version without patch (e.g., v1.2.0 -> v1.2)
-            VERSION="${TAG%.0}"
-            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-            echo "Minor release detected: $VERSION"
+            echo "version=$TAG" >> "$GITHUB_OUTPUT"
+            echo "Minor release detected: $TAG"
           else
             echo "is_minor=false" >> "$GITHUB_OUTPUT"
             echo "version=" >> "$GITHUB_OUTPUT"
