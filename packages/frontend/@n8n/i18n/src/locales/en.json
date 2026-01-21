@@ -2960,6 +2960,7 @@
 	"settings.sourceControl.modals.pull.description.learnMore": "More info",
 	"settings.sourceControl.modals.pull.buttons.cancel": "@:_reusableBaseText.cancel",
 	"settings.sourceControl.modals.pull.buttons.save": "Pull and override",
+	"settings.sourceControl.modals.pull.dataTablesWarning": "The following data table has schema changes. Column removal will cause data loss that cannot be recovered: | The following data table has schema changes. Column removal will cause data loss that cannot be recovered: | The following {count} data tables have schema changes. Column removal will cause data loss that cannot be recovered:",
 	"settings.sourceControl.modals.disconnect.title": "Disconnect Git repository",
 	"settings.sourceControl.modals.disconnect.message": "Please confirm you want to disconnect this n8n instance from the Git repository",
 	"settings.sourceControl.modals.disconnect.confirm": "Disconnect Git",

@@ -33,6 +33,7 @@ import {
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
+	N8nNotice,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -157,6 +158,29 @@ const sortedDataTables = computed(() =>
 		['asc', 'desc'],
 	),
 );
+
+// Data tables with schema conflicts (columns will be lost)
+const conflictedDataTables = computed(() => {
+	return filteredDataTables.value.filter((dt) => {
+		// For pull operations, show warning for modified data tables with conflicts
+		// (schema changes) not for deleted data tables (entire table removed)
+		return dt.conflict === true && dt.status === 'modified';
+	});
+});
+
+const hasDataTableConflicts = computed(() => conflictedDataTables.value.length > 0);
+
+const dataTableWarningContent = computed(() => {
+	if (!hasDataTableConflicts.value) return '';
+
+	const message = i18n.baseText('settings.sourceControl.modals.pull.dataTablesWarning', {
+		interpolate: { count: conflictedDataTables.value.length },
+	});
+
+	const tableList = conflictedDataTables.value.map((dt) => `<li>${dt.name}</li>`).join('');
+
+	return `${message}<ul>${tableList}</ul>`;
+});
 
 // Active data source based on tab
 const activeDataSourceFiltered = computed(() => {
@@ -453,6 +477,12 @@ onMounted(() => {
 				<N8nText bold size="medium">Additional changes to be pulled:</N8nText>
 				<N8nText size="small">{{ otherFilesText }}</N8nText>
 			</div>
+			<N8nNotice
+				v-if="hasDataTableConflicts"
+				theme="warning"
+				:compact="false"
+				:content="dataTableWarningContent"
+			/>
 			<div :class="$style.footer">
 				<N8nButton type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
