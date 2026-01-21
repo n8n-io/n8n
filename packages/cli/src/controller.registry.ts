@@ -1,5 +1,5 @@
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { GlobalConfig } from '@n8n/config';
+import { inProduction, Logger } from '@n8n/backend-common';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type {
@@ -20,6 +20,7 @@ import { AbstractServer } from './abstract-server';
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { LastActiveAtService } from './services/last-active-at.service';
 import { RateLimitService } from './services/rate-limit.service';
+import { PathResolvingService } from './services/path-resolving.service';
 
 import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
@@ -27,19 +28,22 @@ import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { send } from '@/response-helper';
 import { CorsService } from './services/cors-service';
-import { inProduction } from '@n8n/backend-common';
 import { isAuthenticatedRequest } from '@n8n/db';
 
 @Service()
 export class ControllerRegistry {
+	private readonly logger: Logger;
+
 	constructor(
 		private readonly license: License,
 		private readonly authService: AuthService,
-		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,
 		private readonly rateLimitService: RateLimitService,
-	) {}
+		private readonly pathResolvingService: PathResolvingService,
+	) {
+		this.logger = Container.get(Logger);
+	}
 
 	activate(app: Application) {
 		for (const controllerClass of this.metadata.controllerClasses) {
@@ -51,12 +55,15 @@ export class ControllerRegistry {
 		const metadata = this.metadata.getControllerMetadata(controllerClass);
 
 		const router = Router({ mergeParams: true });
-		const basePath = metadata.registerOnRootPath
-			? metadata.basePath
-			: `${this.globalConfig.path}/${this.globalConfig.endpoints.rest}/${metadata.basePath}`
-			.replace(/\/+/g, '/')
-			.replace(/\/$/, '');
-		const prefix = basePath.replace(/\/+/g, '/').replace(/\/$/, '');
+
+		const controllerPath = metadata.registerOnRootPath
+			? this.pathResolvingService.resolveEndpoint(metadata.basePath)
+			: this.pathResolvingService.resolveRestEndpoint(metadata.basePath);
+
+		const prefix = controllerPath.replace(/\/+/g, '/').replace(/\/$/, '');
+
+		this.logger.debug(`Controller prefix: ${prefix} (controller: ${controllerClass.name})`);
+
 		app.use(prefix === '' ? '/' : prefix, router);
 
 		const controller = Container.get(controllerClass) as Controller;

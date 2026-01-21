@@ -72,37 +72,29 @@ export class AuthService {
 		private readonly mfaService: MfaService,
 	) {
 		const restEndpoint = globalConfig.endpoints.rest;
-		let basePath = globalConfig.path;
-		if (basePath.endsWith('/')) {
-			basePath = basePath.slice(0, -1);
-		}
-		if (basePath.length > 0 && !basePath.startsWith('/')) {
-			basePath = '/' + basePath;
-		}
-
 		this.skipBrowserIdCheckEndpoints = [
 			// we need to exclude push endpoint because we can't send custom header on websocket requests
 			// TODO: Implement a custom handshake for push, to avoid having to send any data on querystring or headers
-			`${basePath}/${restEndpoint}/push`,
+			`/${restEndpoint}/push`,
 
 			// We need to exclude binary-data downloading endpoint because we can't send custom headers on `<embed>` tags
-			`${basePath}/${restEndpoint}/binary-data/`,
+			`/${restEndpoint}/binary-data/`,
 
 			// oAuth callback urls aren't called by the frontend. therefore we can't send custom header on these requests
-			`${basePath}/${restEndpoint}/oauth1-credential/callback`,
-			`${basePath}/${restEndpoint}/oauth2-credential/callback`,
-			
+			`/${restEndpoint}/oauth1-credential/callback`,
+			`/${restEndpoint}/oauth2-credential/callback`,
+
 			// Skip browser ID check for type files
-			`${basePath}/types/nodes.json`,
-			`${basePath}/types/credentials.json`,
-			`${basePath}/types/node-versions.json`,
-			`${basePath}/mcp-oauth/authorize/`,
+			'/types/nodes.json',
+			'/types/credentials.json',
+			'/types/node-versions.json',
+			'/mcp-oauth/authorize/',
 
 			// Skip browser ID check for chat hub attachments
-			`${basePath}/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
+			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 
 			// Skip browser ID check for Instance AI SSE endpoint — EventSource can't send custom headers
-			`${basePath}/${restEndpoint}/instance-ai/events/:threadId`,
+			`/${restEndpoint}/instance-ai/events/:threadId`,
 		];
 	}
 
@@ -195,7 +187,8 @@ export class AuthService {
 	}
 
 	clearCookie(res: Response) {
-		res.clearCookie(AUTH_COOKIE_NAME);
+		// Clear cookie with the same path it was set with
+		res.clearCookie(AUTH_COOKIE_NAME, { path: this.urlService.basePath });
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {
@@ -236,6 +229,8 @@ export class AuthService {
 			httpOnly: true,
 			sameSite: cookieOverrides?.sameSite ?? samesite,
 			secure: cookieOverrides?.secure ?? secure,
+			// Scope the cookie to the base path so it's only sent for requests under this path
+			path: this.urlService.basePath,
 		});
 	}
 
@@ -300,7 +295,10 @@ export class AuthService {
 		endpoint: string,
 		method: string,
 	) {
-		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.some((skipEndpoint) => endpoint.includes(skipEndpoint))) {
+		if (
+			method === 'GET' &&
+			this.skipBrowserIdCheckEndpoints.some((skipEndpoint) => endpoint.includes(skipEndpoint))
+		) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
