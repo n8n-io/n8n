@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
+import type { EditableCallbackParams, ICellRendererParams } from 'ag-grid-community';
 import { useDataTableColumns } from './useDataTableColumns';
 import type { DataTableColumn } from '@/features/core/dataTable/dataTable.types';
 import { ADD_ROW_ROW_ID } from '@/features/core/dataTable/constants';
@@ -405,7 +406,7 @@ describe('useDataTableColumns', () => {
 			const normalParams = { data: { id: 'row1' } };
 			expect(typeof colDef.editable).toBe('function');
 			if (typeof colDef.editable === 'function') {
-				expect(colDef.editable(normalParams as any)).toBe(false);
+				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(false);
 			}
 		});
 
@@ -433,7 +434,7 @@ describe('useDataTableColumns', () => {
 			const normalParams = { data: { id: 'row1' } };
 			expect(typeof colDef.editable).toBe('function');
 			if (typeof colDef.editable === 'function') {
-				expect(colDef.editable(normalParams as any)).toBe(true);
+				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(true);
 			}
 		});
 
@@ -511,7 +512,7 @@ describe('useDataTableColumns', () => {
 			// The cellRendererSelector should return the AddRowButton with disabled: true
 			// when the row value is the ADD_ROW_ROW_ID constant
 			if (idColumn?.cellRendererSelector) {
-				const addRowParams = { value: ADD_ROW_ROW_ID } as any;
+				const addRowParams = { value: ADD_ROW_ROW_ID } as ICellRendererParams;
 				const result = idColumn.cellRendererSelector(addRowParams);
 				expect(result).toBeDefined();
 				if (result && 'params' in result) {
@@ -546,7 +547,7 @@ describe('useDataTableColumns', () => {
 			// The cellRendererSelector should return the AddRowButton with disabled: false
 			// when the row value is the ADD_ROW_ROW_ID constant
 			if (idColumn?.cellRendererSelector) {
-				const addRowParams = { value: ADD_ROW_ROW_ID } as any;
+				const addRowParams = { value: ADD_ROW_ROW_ID } as ICellRendererParams;
 				const result = idColumn.cellRendererSelector(addRowParams);
 				expect(result).toBeDefined();
 				if (result && 'params' in result) {
@@ -620,7 +621,7 @@ describe('useDataTableColumns', () => {
 			const normalParams = { data: { id: 'row1' } };
 			expect(typeof colDef.editable).toBe('function');
 			if (typeof colDef.editable === 'function') {
-				expect(colDef.editable(normalParams as any)).toBe(true);
+				expect(colDef.editable(normalParams as EditableCallbackParams)).toBe(true);
 			}
 
 			// Menu actions should be enabled by default

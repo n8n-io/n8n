@@ -1127,7 +1127,7 @@ describe('SourceControlPushModal', () => {
 
 			// Ensure dt-2 is NOT in the payload
 			const callArgs = sourceControlStore.pushWorkfolder.mock.calls[0][0];
-			const dt2InPayload = callArgs.fileNames.some((f: any) => f.id === 'dt-2');
+			const dt2InPayload = callArgs.fileNames.some((f: SourceControlledFile) => f.id === 'dt-2');
 			expect(dt2InPayload).toBe(false);
 		});
 	});

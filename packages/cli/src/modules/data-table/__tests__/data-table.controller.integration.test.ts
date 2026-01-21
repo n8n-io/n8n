@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { DataTable, DataTableCreateColumnSchema } from '@n8n/api-types';
+import type { DataTableCreateColumnSchema } from '@n8n/api-types';
 import {
 	createTeamProject,
 	getPersonalProject,
@@ -23,6 +23,7 @@ import type { SourceControlPreferences } from '@/modules/source-control.ee/types
 
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
+import { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { mockDataTableSizeValidator } from './test-helpers';
 
