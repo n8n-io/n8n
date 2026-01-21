@@ -20,6 +20,7 @@ interface TriggerDiff {
 	added: INode[];
 	removed: INode[];
 	unchanged: INode[];
+	modified: INode[];
 }
 
 /**
@@ -145,11 +146,20 @@ export class WorkflowPublicationOutboxConsumer {
 			added: diff.added.length,
 			removed: diff.removed.length,
 			unchanged: diff.unchanged.length,
+			modified: diff.modified.length,
 		});
 
-		// Remove old triggers
-		if (diff.removed.length > 0) {
-			await this.removeTriggersAndPollers(workflowId);
+		// Handle removed and modified nodes
+		// Note: For modified nodes, we remove-then-add rather than update in-place because:
+		// 1. In-place updates are complex and trigger-type specific (e.g., changing Kafka topic
+		//    vs heartbeat interval have different semantics)
+		// 2. This introduces a brief window of unavailability, BUT it's still a strict improvement
+		//    over the current approach which deactivates the entire workflow during publication
+		// 3. We accept this trade-off for now and can revisit per-trigger-type optimizations later
+		const nodesToRemove = [...diff.removed, ...diff.modified];
+		if (nodesToRemove.length > 0) {
+			const nodeIdsToRemove = nodesToRemove.map((n) => n.id);
+			await this.activeWorkflowManager.removeNodes(workflowId, nodeIdsToRemove);
 		}
 
 		// Update workflow_published_version table
@@ -161,9 +171,11 @@ export class WorkflowPublicationOutboxConsumer {
 			['workflowId'],
 		);
 
-		// Add new triggers
-		if (diff.added.length > 0 || diff.unchanged.length > 0) {
-			await this.addTriggersAndPollers(workflowId, newPublishedVersion);
+		// Handle added and modified nodes
+		// Filter out disabled nodes - they should not be activated
+		const nodesToAdd = [...diff.added, ...diff.modified].filter((n) => !n.disabled);
+		if (nodesToAdd.length > 0) {
+			await this.addNodes(workflowId, newPublishedVersion, nodesToAdd);
 		}
 
 		// Mark outbox message as completed
@@ -202,35 +214,75 @@ export class WorkflowPublicationOutboxConsumer {
 	 * Compute diff between current and new trigger nodes.
 	 */
 	private computeTriggerDiff(currentTriggers: INode[], newTriggers: INode[]): TriggerDiff {
-		const currentIds = new Set(currentTriggers.map((n) => n.id));
-		const newIds = new Set(newTriggers.map((n) => n.id));
+		const currentById = new Map(currentTriggers.map((n) => [n.id, n]));
+		const newById = new Map(newTriggers.map((n) => [n.id, n]));
 
-		const added = newTriggers.filter((n) => !currentIds.has(n.id));
-		const removed = currentTriggers.filter((n) => !newIds.has(n.id));
-		const unchanged = newTriggers.filter((n) => currentIds.has(n.id));
+		const added: INode[] = [];
+		const removed: INode[] = [];
+		const unchanged: INode[] = [];
+		const modified: INode[] = [];
 
-		return { added, removed, unchanged };
+		// Find added and modified nodes
+		for (const newNode of newTriggers) {
+			const currentNode = currentById.get(newNode.id);
+
+			if (!currentNode) {
+				// Node is new
+				added.push(newNode);
+			} else if (this.hasNodeConfigChanged(currentNode, newNode)) {
+				// Node exists but configuration changed
+				modified.push(newNode);
+			} else {
+				// Node unchanged
+				unchanged.push(newNode);
+			}
+		}
+
+		// Find removed nodes
+		for (const currentNode of currentTriggers) {
+			if (!newById.has(currentNode.id)) {
+				removed.push(currentNode);
+			}
+		}
+
+		return { added, removed, unchanged, modified };
 	}
 
 	/**
-	 * Remove all triggers and pollers for a workflow.
+	 * Check if a node's configuration has changed in a way that affects execution.
+	 * Compares type, typeVersion, parameters, credentials, and disabled status.
 	 */
-	private async removeTriggersAndPollers(workflowId: string): Promise<void> {
-		// This delegates to active-workflow-manager which handles:
-		// - Stopping trigger listeners
-		// - Stopping pollers
-		// - Cleaning up webhooks if needed
-		await this.activeWorkflowManager.removeWorkflowTriggersAndPollers(workflowId);
+	private hasNodeConfigChanged(oldNode: INode, newNode: INode): boolean {
+		// Compare type and version
+		if (oldNode.type !== newNode.type || oldNode.typeVersion !== newNode.typeVersion) {
+			return true;
+		}
 
-		this.logger.debug('Removed triggers and pollers', { workflowId });
+		// Compare disabled status
+		if (oldNode.disabled !== newNode.disabled) {
+			return true;
+		}
+
+		// Compare parameters (deep comparison)
+		if (JSON.stringify(oldNode.parameters) !== JSON.stringify(newNode.parameters)) {
+			return true;
+		}
+
+		// Compare credentials
+		if (JSON.stringify(oldNode.credentials) !== JSON.stringify(newNode.credentials)) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
-	 * Add triggers and pollers for a workflow.
+	 * Add specific nodes to an active workflow.
 	 */
-	private async addTriggersAndPollers(
+	private async addNodes(
 		workflowId: string,
 		publishedVersion: WorkflowHistory,
+		nodesToAdd: INode[],
 	): Promise<void> {
 		// Create workflow instance from published version
 		const workflow = new Workflow({
@@ -259,13 +311,16 @@ export class WorkflowPublicationOutboxConsumer {
 			workflowSettings: workflowEntity.settings ?? {},
 		});
 
-		// Add triggers and pollers
-		await this.activeWorkflowManager.addTriggersAndPollers(workflowEntity, workflow, {
+		// Add only the specific nodes
+		await this.activeWorkflowManager.addNodes(workflowEntity, workflow, nodesToAdd, {
 			activationMode: 'update',
 			executionMode: 'trigger',
 			additionalData,
 		});
 
-		this.logger.debug('Added triggers and pollers', { workflowId });
+		this.logger.debug('Added nodes to workflow', {
+			workflowId,
+			nodeIds: nodesToAdd.map((n) => n.id),
+		});
 	}
 }

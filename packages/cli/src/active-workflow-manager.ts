@@ -1038,6 +1038,65 @@ export class ActiveWorkflowManager {
 		return true;
 	}
 
+	/**
+	 * Add specific trigger/poller nodes to an already active workflow.
+	 */
+	async addNodes(
+		dbWorkflow: WorkflowEntity,
+		workflow: Workflow,
+		nodes: INode[],
+		{
+			activationMode,
+			executionMode,
+			additionalData,
+		}: {
+			activationMode: WorkflowActivateMode;
+			executionMode: WorkflowExecuteMode;
+			additionalData: IWorkflowExecuteAdditionalData;
+		},
+	) {
+		const getTriggerFunctions = this.getExecuteTriggerFunctions(
+			dbWorkflow,
+			additionalData,
+			executionMode,
+			activationMode,
+		);
+
+		const getPollFunctions = this.getExecutePollFunctions(
+			dbWorkflow,
+			additionalData,
+			executionMode,
+			activationMode,
+		);
+
+		await this.activeWorkflows.addNodes(
+			workflow.id,
+			workflow,
+			nodes,
+			additionalData,
+			executionMode,
+			activationMode,
+			getTriggerFunctions,
+			getPollFunctions,
+		);
+
+		this.logger.debug(`Added ${nodes.length} nodes to workflow ${formatWorkflow(dbWorkflow)}`);
+	}
+
+	/**
+	 * Remove specific trigger/poller nodes from an active workflow.
+	 */
+	async removeNodes(workflowId: WorkflowId, nodeIds: string[]) {
+		if (!this.activeWorkflows.isActive(workflowId)) return;
+
+		await this.activeWorkflows.removeNodes(workflowId, nodeIds);
+
+		this.logger.debug(`Removed ${nodeIds.length} nodes from workflow "${workflowId}"`, {
+			workflowId,
+			nodeIds,
+		});
+	}
+
 	async removeActivationError(workflowId: WorkflowId) {
 		await this.activationErrorsService.deregister(workflowId);
 	}

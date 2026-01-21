@@ -127,6 +127,38 @@ export class ScheduledTaskManager {
 		});
 	}
 
+	deregisterCronsForNodes(workflowId: string, nodeIds: string[]) {
+		const workflowCrons = this.cronsByWorkflow.get(workflowId);
+
+		if (!workflowCrons || workflowCrons.size === 0) return;
+
+		const summaries: string[] = [];
+		const nodeIdSet = new Set(nodeIds);
+
+		// Find and stop crons for the specified nodes
+		for (const [key, cron] of workflowCrons.entries()) {
+			if (nodeIdSet.has(cron.ctx.nodeId)) {
+				summaries.push(cron.summary);
+				void cron.job.stop();
+				workflowCrons.delete(key);
+			}
+		}
+
+		// If all crons for this workflow are gone, remove the workflow entry
+		if (workflowCrons.size === 0) {
+			this.cronsByWorkflow.delete(workflowId);
+		}
+
+		if (summaries.length > 0) {
+			this.logger.info('Deregistered crons for specific nodes', {
+				workflowId,
+				nodeIds,
+				crons: summaries,
+				instanceRole: this.instanceSettings.instanceRole,
+			});
+		}
+	}
+
 	deregisterAllCrons() {
 		for (const workflowId of this.cronsByWorkflow.keys()) {
 			this.deregisterCrons(workflowId);

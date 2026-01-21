@@ -18,6 +18,10 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 
 export interface IWorkflowData {
 	triggerResponses?: ITriggerResponse[];
+	/**
+	 * Maps node IDs to their trigger responses for granular node management
+	 */
+	triggersByNode?: Map<string, ITriggerResponse[]>;
 }
 
 export type ExtendedValidationResult = ValidationResult & { fieldName?: string };
