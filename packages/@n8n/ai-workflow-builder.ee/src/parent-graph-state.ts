@@ -98,12 +98,6 @@ export const ParentGraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Intro message before questions (from planner)
-	introMessage: Annotation<string>({
-		reducer: (x, y) => y ?? x,
-		default: () => '',
-	}),
-
 	// Generated plan output
 	planOutput: Annotation<PlanOutput | null>({
 		reducer: (x, y) => y ?? x,

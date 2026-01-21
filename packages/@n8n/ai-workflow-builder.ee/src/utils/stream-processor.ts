@@ -62,6 +62,7 @@ const SKIPPED_NODES = [
 	'auto_compact_messages',
 	'configurator_subgraph',
 	'discovery_subgraph',
+	'planner_subgraph',
 	'builder_subgraph',
 ];
 
@@ -71,6 +72,7 @@ const SKIPPED_NODES = [
  */
 const SKIPPED_SUBGRAPH_PREFIXES = [
 	'discovery_subgraph',
+	'planner_subgraph',
 	'builder_subgraph',
 	'configurator_subgraph',
 ];
@@ -271,6 +273,12 @@ function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput 
 	// Discovery subgraph emits questions or plan in plan mode
 	if (nodeUpdate.discovery_subgraph) {
 		const result = processDiscoveryPlanModeUpdate(nodeUpdate.discovery_subgraph);
+		if (result) return result;
+	}
+
+	// Planner subgraph emits questions or plan
+	if (nodeUpdate.planner_subgraph) {
+		const result = processDiscoveryPlanModeUpdate(nodeUpdate.planner_subgraph);
 		if (result) return result;
 	}
 
