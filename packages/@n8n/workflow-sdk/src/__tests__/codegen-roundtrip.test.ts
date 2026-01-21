@@ -159,7 +159,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'10729',
 	'10889',
 	'11047',
-	'11049',
+	// '11049' - now passes after composite .then() fix
 	'11158',
 	'11290',
 	'11294',

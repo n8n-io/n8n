@@ -27,6 +27,7 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 	readonly config: NodeConfig;
 	readonly id: string;
 	readonly name: string;
+	private _connections: DeclaredConnection[] = [];
 
 	constructor(config?: IfBranchConfig) {
 		this.version = config?.version != null ? String(config.version) : '2.3';
@@ -43,10 +44,35 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		_target: T | T[],
-		_outputIndex?: number,
+		target: T | T[],
+		outputIndex: number = 0,
 	): NodeChain<NodeInstance<'n8n-nodes-base.if', string, unknown>, T> {
-		throw new Error('IF node connections are managed by IfBranchComposite');
+		const targets = Array.isArray(target) ? target : [target];
+		for (const t of targets) {
+			this._connections.push({ target: t, outputIndex });
+		}
+		// Return a chain-like object that proxies to the last target
+		const lastTarget = targets[targets.length - 1];
+		const self = this;
+		return {
+			_isChain: true,
+			head: this,
+			tail: lastTarget,
+			allNodes: [this, ...targets],
+			type: lastTarget.type,
+			version: lastTarget.version,
+			config: lastTarget.config,
+			id: lastTarget.id,
+			name: lastTarget.name,
+			_outputType: lastTarget._outputType,
+			update: lastTarget.update.bind(lastTarget),
+			then: lastTarget.then.bind(lastTarget),
+			onError: function <H extends NodeInstance<string, string, unknown>>(handler: H) {
+				lastTarget.onError(handler);
+				return this;
+			},
+			getConnections: () => [...self._connections, ...lastTarget.getConnections()],
+		} as unknown as NodeChain<NodeInstance<'n8n-nodes-base.if', string, unknown>, T>;
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {
@@ -54,7 +80,7 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 	}
 
 	getConnections(): DeclaredConnection[] {
-		return [];
+		return [...this._connections];
 	}
 }
 

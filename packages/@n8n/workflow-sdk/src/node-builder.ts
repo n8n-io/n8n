@@ -10,7 +10,65 @@ import type {
 	NewCredentialValue,
 	DeclaredConnection,
 	NodeChain,
+	MergeComposite,
+	SwitchCaseComposite,
+	IfBranchComposite,
 } from './types/base';
+
+/**
+ * Check if value is a MergeComposite
+ */
+function isMergeComposite(value: unknown): value is MergeComposite {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'mergeNode' in value &&
+		'branches' in value &&
+		Array.isArray((value as MergeComposite).branches)
+	);
+}
+
+/**
+ * Check if value is a SwitchCaseComposite
+ */
+function isSwitchCaseComposite(value: unknown): value is SwitchCaseComposite {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'switchNode' in value &&
+		'cases' in value &&
+		Array.isArray((value as SwitchCaseComposite).cases)
+	);
+}
+
+/**
+ * Check if value is an IfBranchComposite
+ */
+function isIfBranchComposite(value: unknown): value is IfBranchComposite {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'ifNode' in value &&
+		'trueBranch' in value &&
+		'falseBranch' in value
+	);
+}
+
+/**
+ * Get the output node from a composite (the node that should receive connections)
+ */
+function getCompositeOutputNode(value: unknown): NodeInstance<string, string, unknown> | null {
+	if (isMergeComposite(value)) {
+		return value.mergeNode;
+	}
+	if (isSwitchCaseComposite(value)) {
+		return value.switchNode;
+	}
+	if (isIfBranchComposite(value)) {
+		return value.ifNode;
+	}
+	return null;
+}
 
 /**
  * Generate a human-readable name from a node type
@@ -202,6 +260,18 @@ class NodeChainImpl<
 		outputIndex: number = 0,
 	): NodeChain<THead, T> {
 		const targets = Array.isArray(target) ? target : [target];
+
+		// Check if the tail is a composite - if so, get its output node
+		const outputNode = getCompositeOutputNode(this.tail);
+		if (outputNode) {
+			// For composites, the output node (mergeNode, switchNode, ifNode) doesn't support
+			// .then() directly, so we need to track the connection manually.
+			// The connection will be resolved by the workflow-builder when processing the chain.
+			// For now, we just add the targets to allNodes and return the new chain.
+			const lastTarget = targets[targets.length - 1];
+			return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...targets]);
+		}
+
 		// Connect tail to all targets (use the tail's then method which handles connections)
 		this.tail.then(targets, outputIndex);
 		// Return chain with last target as tail

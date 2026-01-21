@@ -702,6 +702,29 @@ function generateNodeCallWithChain(
 	nodeInfoMap: Map<string, NodeInfo>,
 	addedNodes: Set<string>,
 ): string {
+	// Check if the START node itself is a composite pattern (IF, Switch, Merge)
+	// If so, generate the composite call instead of a regular node call
+	if (isIfNode(startInfo.node)) {
+		const ifResult = generateIfBranchCall(startInfo, nodeInfoMap, addedNodes);
+		if (ifResult) {
+			return ifResult.call;
+		}
+	}
+
+	if (isSwitchNode(startInfo.node)) {
+		const switchResult = generateSwitchCaseCall(startInfo, nodeInfoMap, addedNodes);
+		if (switchResult) {
+			return switchResult.call;
+		}
+	}
+
+	if (isMergeNode(startInfo.node)) {
+		const mergeCall = generateMergeCall(startInfo, nodeInfoMap, addedNodes);
+		if (mergeCall) {
+			return mergeCall;
+		}
+	}
+
 	let call = generateNodeCall(startInfo.node, nodeInfoMap);
 
 	// Get downstream nodes (single output, single target chains only)
