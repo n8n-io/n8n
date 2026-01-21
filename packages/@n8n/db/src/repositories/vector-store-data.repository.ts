@@ -2,7 +2,6 @@ import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import { generateNanoId } from '../utils/generators';
-import * as sqliteVec from 'sqlite-vec';
 
 import { VectorStoreData } from '../entities';
 import { dbType } from '../entities/abstract-entity';
@@ -19,34 +18,11 @@ export interface VectorSearchResult {
 
 @Service()
 export class VectorStoreDataRepository extends Repository<VectorStoreData> {
-	private sqliteVecLoaded = false;
-
 	constructor(
 		dataSource: DataSource,
 		private readonly databaseConfig: DatabaseConfig,
 	) {
 		super(VectorStoreData, dataSource.manager);
-	}
-
-	/**
-	 * Ensure sqlite-vec extension is loaded on the current connection
-	 */
-	private async ensureSqliteVecLoaded(): Promise<void> {
-		if (this.sqliteVecLoaded || dbType !== 'sqlite') {
-			return;
-		}
-
-		try {
-			const driver = this.manager.connection.driver as any;
-			if (driver.databaseConnection) {
-				sqliteVec.load(driver.databaseConnection);
-				this.sqliteVecLoaded = true;
-				console.log('[VectorStore] sqlite-vec extension loaded on repository connection');
-			}
-		} catch (error) {
-			console.error('[VectorStore] Failed to load sqlite-vec:', error);
-			throw error;
-		}
 	}
 
 	/**
@@ -174,9 +150,6 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
-		// Ensure sqlite-vec is loaded before running vector queries
-		await this.ensureSqliteVecLoaded();
-
 		const tableName = this.getTableName('vector_store_data');
 		const memoryKeyCol = this.getColumnName('memoryKey');
 		const vectorCol = this.getColumnName('vector');

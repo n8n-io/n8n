@@ -1,0 +1,37 @@
+diff --git a/driver/sqlite-pooled/SqliteLibrary.js b/driver/sqlite-pooled/SqliteLibrary.js
+index b6bac75527e3517b5efb5fde4d73a80e1b545e3b..b48cb57d5c5f3696108a7cf22cdc7bf46251c7b4 100644
+--- a/driver/sqlite-pooled/SqliteLibrary.js
++++ b/driver/sqlite-pooled/SqliteLibrary.js
+@@ -84,6 +84,17 @@ class SqliteLibrary {
+         // working properly. this also makes onDelete to work with sqlite.
+         await run(`PRAGMA foreign_keys = ON`);
+         await this.attachDatabases(databaseConnection);
++        // Load SQLite extensions if provided
++        if (this.options.extensions && Array.isArray(this.options.extensions)) {
++            for (const extensionLoader of this.options.extensions) {
++                try {
++                    extensionLoader(databaseConnection);
++                } catch (error) {
++                    console.error('[TypeORM] Failed to load SQLite extension:', error);
++                    throw error;
++                }
++            }
++        }
+         return databaseConnection;
+     }
+     async destroyDatabaseConnection(dbConnection) {
+diff --git a/driver/sqlite-pooled/SqlitePooledConnectionOptions.d.ts b/driver/sqlite-pooled/SqlitePooledConnectionOptions.d.ts
+index c9ecc366a8bf884d15dec4031e02a345efc02cdb..13904eed8bc2bcb4d74d5ea09bc16b2aec355898 100644
+--- a/driver/sqlite-pooled/SqlitePooledConnectionOptions.d.ts
++++ b/driver/sqlite-pooled/SqlitePooledConnectionOptions.d.ts
+@@ -47,4 +47,10 @@ export interface SqlitePooledConnectionOptions extends AbstractSqliteConnectionO
+      * How many milliseconds to wait when closing a connection.
+      */
+     readonly destroyTimeout: number;
++    /**
++     * Array of SQLite extension loading functions to be called on each new connection.
++     * Each function receives the database connection and should call loadExtension or similar.
++     * Example: [(db) => sqliteVec.load(db)]
++     */
++    readonly extensions?: Array<(db: any) => void>;
+ }

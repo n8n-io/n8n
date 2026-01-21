@@ -9,6 +9,7 @@ import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-p
 import { UserError } from 'n8n-workflow';
 import type { TlsOptions } from 'node:tls';
 import path from 'path';
+import * as sqliteVec from 'sqlite-vec';
 
 import { entities } from '../entities';
 import { mysqlMigrations } from '../migrations/mysqldb';
@@ -92,6 +93,12 @@ export class DbConnectionOptions {
 				enableWAL: true,
 				acquireTimeout: 60_000,
 				destroyTimeout: 5_000,
+				extensions: [
+					(db) => {
+						sqliteVec.load(db);
+						console.log('[sqlite-vec] Extension loaded on connection via TypeORM extensions');
+					},
+				],
 				...commonOptions,
 			};
 		} else {
