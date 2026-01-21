@@ -54,7 +54,6 @@ export class AuthController {
 			limit: 5,
 			windowMs: 1 * Time.minutes.toMilliseconds,
 			source: 'body',
-			dto: LoginRequestDto,
 			field: 'emailOrLdapLoginId' satisfies keyof LoginRequestDto,
 		},
 	})
