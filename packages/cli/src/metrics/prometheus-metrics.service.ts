@@ -16,6 +16,7 @@ import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
+import { PathResolvingService } from '@/services/path-resolving.service';
 
 import type { Includes, MetricCategory, MetricLabel } from './types';
 
@@ -29,6 +30,7 @@ export class PrometheusMetricsService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
+		private readonly pathResolvingService: PathResolvingService,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
@@ -168,16 +170,20 @@ export class PrometheusMetricsService {
 
 		activityGauge.set(DateTime.now().toUnixInteger());
 
+		// Use PathResolvingService to get the correct paths with basePath
+		const basePath = this.pathResolvingService.getBasePath();
+		const apiPath = basePath === '/' ? '/api/' : `${basePath}/api/`;
+
 		app.use(
 			[
-				'/api/',
-				`/${this.globalConfig.endpoints.rest}/`,
-				`/${this.globalConfig.endpoints.webhook}/`,
-				`/${this.globalConfig.endpoints.webhookWaiting}/`,
-				`/${this.globalConfig.endpoints.webhookTest}/`,
-				`/${this.globalConfig.endpoints.form}/`,
-				`/${this.globalConfig.endpoints.formWaiting}/`,
-				`/${this.globalConfig.endpoints.formTest}/`,
+				apiPath,
+				`${this.pathResolvingService.resolveRestEndpoint('')}/`,
+				`${this.pathResolvingService.resolveWebhookEndpoint('')}/`,
+				`${this.pathResolvingService.resolveWebhookWaitingEndpoint('')}/`,
+				`${this.pathResolvingService.resolveWebhookTestEndpoint('')}/`,
+				`${this.pathResolvingService.resolveFormEndpoint('')}/`,
+				`${this.pathResolvingService.resolveFormWaitingEndpoint('')}/`,
+				`${this.pathResolvingService.resolveFormTestEndpoint('')}/`,
 			],
 			async (req, res, next) => {
 				activityGauge.set(DateTime.now().toUnixInteger());

@@ -15,6 +15,7 @@ describe('ChatTrigger Templates Security', () => {
 		allowedFilesMimeTypes: '',
 		customCss: '',
 		enableStreaming: false,
+		basePath: '/',
 	};
 
 	describe('XSS Prevention in initialMessages', () => {
@@ -326,6 +327,40 @@ describe('ChatTrigger Templates Security', () => {
 			expect(result.count).toBe('123');
 			expect(result.enabled).toBe('');
 			expect(result.obj).toBe('');
+		});
+	});
+
+	describe('BasePath functionality', () => {
+		it('should use custom basePath in redirect URL', () => {
+			const customBasePath = '/custom/path/';
+			const result = createPage({
+				...defaultParams,
+				basePath: customBasePath,
+				authentication: 'n8nUserAuth',
+			});
+
+			// Should contain the custom basePath in the redirect URL
+			expect(result).toContain(`window.location.href = '${customBasePath}signin?redirect='`);
+		});
+
+		it('should use default basePath when not provided', () => {
+			const result = createPage({
+				...defaultParams,
+				authentication: 'n8nUserAuth',
+			});
+
+			// Should contain the default basePath in the redirect URL
+			expect(result).toContain(`window.location.href = '/signin?redirect='`);
+		});
+
+		it('should properly encode redirect URL', () => {
+			const result = createPage({
+				...defaultParams,
+				authentication: 'n8nUserAuth',
+			});
+
+			// Should use encodeURIComponent for the redirect parameter
+			expect(result).toContain('encodeURIComponent(window.location.href)');
 		});
 	});
 });
