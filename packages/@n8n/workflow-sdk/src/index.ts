@@ -82,9 +82,6 @@ export type {
 	IConnections,
 } from './types/base';
 
-// Generated node types
-export * from './types/generated';
-
 // Type guard for NodeChain
 export { isNodeChain } from './types/base';
 
@@ -138,3 +135,9 @@ export {
 // Code generation
 export { generateWorkflowCode } from './codegen';
 export { parseWorkflowCode } from './parse-workflow-code';
+
+// Embedded SDK API content (for runtime use without disk reads)
+export { SDK_API_CONTENT } from './types/sdk-api-content';
+
+// Type generation utilities (for runtime type generation in CLI)
+export * from './generate-types';

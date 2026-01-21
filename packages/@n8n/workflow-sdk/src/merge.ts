@@ -7,6 +7,7 @@ import type {
 	NodeConfig,
 	DeclaredConnection,
 	NodeChain,
+	IDataObject,
 } from './types/base';
 
 /**
@@ -30,7 +31,7 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 		this.name = config?.name ?? 'Merge';
 		// Build parameters - only include mode/numberInputs if explicitly provided or needed
 		const baseParams = config?.parameters ?? {};
-		const params: Record<string, unknown> = { ...baseParams };
+		const params: IDataObject = { ...baseParams };
 
 		// If mode is provided, set numberInputs (auto-calculated from branches)
 		if (mode !== undefined) {

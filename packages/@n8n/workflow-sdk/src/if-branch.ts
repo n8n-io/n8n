@@ -5,13 +5,13 @@ import type {
 	NodeConfig,
 	DeclaredConnection,
 	NodeChain,
+	IDataObject,
 } from './types/base';
-import type { IfV23Config } from './types/generated/nodes/n8n-nodes-base/if';
 
 /**
  * Extended config for IF branch that includes version and id
  */
-export interface IfBranchConfig extends NodeConfig<IfV23Config> {
+export interface IfBranchConfig extends NodeConfig<IDataObject> {
 	/** Node version (defaults to 2.3) */
 	version?: number | string;
 	/** Node ID (auto-generated if omitted) */
@@ -39,7 +39,7 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 	}
 
 	update(config: Partial<NodeConfig>): NodeInstance<'n8n-nodes-base.if', string, unknown> {
-		return new IfNodeInstance({ ...this.config, ...config } as NodeConfig<IfV23Config>);
+		return new IfNodeInstance({ ...this.config, ...config } as IfBranchConfig);
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(

@@ -2,11 +2,22 @@
 	"name": "@n8n/workflow-sdk",
 	"version": "0.1.0",
 	"description": "TypeScript SDK for programmatically creating n8n workflows",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./scripts/generate-types": {
+			"types": "./scripts/generate-types.ts",
+			"default": "./scripts/generate-types.ts"
+		}
+	},
 	"scripts": {
 		"clean": "rimraf dist .turbo",
 		"dev": "pnpm watch",
 		"typecheck": "tsc --noEmit",
-		"build": "tsc -p tsconfig.build.json",
+		"embed-sdk-api": "npx tsx scripts/embed-sdk-api.ts",
+		"build": "pnpm embed-sdk-api && tsc -p tsconfig.build.json",
 		"format": "biome format --write .",
 		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",
@@ -15,7 +26,7 @@
 		"test": "jest",
 		"test:unit": "jest",
 		"test:dev": "jest --watch",
-		"generate-types": "npx tsx scripts/generate-types.ts",
+		"generate-types": "npx tsx src/generate-types/generate-types.ts",
 		"fetch-workflows": "npx tsx scripts/fetch-test-workflows.ts"
 	},
 	"main": "dist/index.js",

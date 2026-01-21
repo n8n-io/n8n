@@ -43,7 +43,7 @@ class SplitInBatchesNodeInstance
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		_target: T,
+		_target: T | T[],
 		_outputIndex?: number,
 	): NodeChain<NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>, T> {
 		throw new Error('SplitInBatches node connections are managed by SplitInBatchesBuilder');

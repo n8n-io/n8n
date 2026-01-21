@@ -27,15 +27,15 @@ import * as path from 'path';
 // Configuration
 // =============================================================================
 
-const NODES_BASE_TYPES = path.resolve(__dirname, '../../../nodes-base/dist/types/nodes.json');
+const NODES_BASE_TYPES = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
 const NODES_LANGCHAIN_TYPES = path.resolve(
 	__dirname,
-	'../../nodes-langchain/dist/types/nodes.json',
+	'../../../nodes-langchain/dist/types/nodes.json',
 );
-const OUTPUT_PATH = path.resolve(__dirname, '../src/types/generated');
+const OUTPUT_PATH = path.resolve(__dirname, '../types/generated');
 
 // Path to nodes-base dist for finding output schemas
-const NODES_BASE_DIST = path.resolve(__dirname, '../../../nodes-base/dist/nodes');
+const NODES_BASE_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
 
 // Discriminator fields that create operation-specific parameter sets
 const DISCRIMINATOR_FIELDS = [

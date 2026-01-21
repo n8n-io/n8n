@@ -12,6 +12,7 @@ import type { MfaService } from '@/mfa/mfa.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
+import type { NodeTypeGeneratorService } from '@/services/node-type-generator.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
 import type { OwnershipService } from '../ownership.service';
@@ -153,6 +154,10 @@ describe('FrontendService', () => {
 		hasInstanceOwner: jest.fn().mockReturnValue(false),
 	});
 
+	const nodeTypeGeneratorService = mock<NodeTypeGeneratorService>({
+		generateIfNeeded: jest.fn().mockResolvedValue(false),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -179,6 +184,7 @@ describe('FrontendService', () => {
 				moduleRegistry,
 				mfaService,
 				ownershipService,
+				nodeTypeGeneratorService,
 			),
 			license,
 		};

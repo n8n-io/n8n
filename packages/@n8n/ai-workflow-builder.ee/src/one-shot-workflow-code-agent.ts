@@ -7,8 +7,6 @@
  * POC with extensive debug logging for development.
  */
 
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
 import { inspect } from 'node:util';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
@@ -17,8 +15,7 @@ import type { StructuredToolInterface } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
-import { parseWorkflowCode } from '@n8n/workflow-sdk';
-import { validateWorkflow } from '@n8n/workflow-sdk';
+import { parseWorkflowCode, validateWorkflow, SDK_API_CONTENT } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { NodeTypeParser } from './utils/node-type-parser';
@@ -89,19 +86,13 @@ function debugLog(context: string, message: string, data?: Record<string, unknow
 }
 
 /**
- * Read the SDK API reference file for the prompt.
- * Uses sdk-api.ts which contains only what the LLM needs to generate workflow code.
- * Internal implementation details (WorkflowJSON, IConnections, etc.) are excluded.
+ * Get the SDK API reference for the prompt.
+ * Uses SDK_API_CONTENT which is embedded at build time to avoid disk reads.
+ * Contains only what the LLM needs to generate workflow code.
  */
-function readSdkSourceFile(): string {
-	debugLog('INIT', 'Reading SDK API reference file...');
-	// Resolve path to workflow-sdk package
-	const workflowSdkPath = dirname(require.resolve('@n8n/workflow-sdk/package.json'));
-	const sdkApiPath = join(workflowSdkPath, 'src', 'types', 'sdk-api.ts');
-	debugLog('INIT', 'SDK API file path', { workflowSdkPath, sdkApiPath });
-	const content = readFileSync(sdkApiPath, 'utf-8');
-	debugLog('INIT', 'SDK API file loaded', { contentLength: content.length });
-	return content;
+function getSdkSourceCode(): string {
+	debugLog('INIT', 'Using embedded SDK API content', { contentLength: SDK_API_CONTENT.length });
+	return SDK_API_CONTENT;
 }
 
 /**
@@ -125,6 +116,11 @@ export interface OneShotWorkflowCodeAgentConfig {
 	nodeTypes: INodeTypeDescription[];
 	/** Optional logger */
 	logger?: Logger;
+	/**
+	 * Path to the generated types directory (from InstanceSettings.generatedTypesDir).
+	 * If not provided, falls back to workflow-sdk static types.
+	 */
+	generatedTypesDir?: string;
 }
 
 /**
@@ -152,11 +148,11 @@ export class OneShotWorkflowCodeAgent {
 		this.llm = config.llm;
 		this.nodeTypeParser = new NodeTypeParser(config.nodeTypes);
 		this.logger = config.logger;
-		this.sdkSourceCode = readSdkSourceFile();
+		this.sdkSourceCode = getSdkSourceCode();
 
 		// Create tools
 		const searchTool = createOneShotNodeSearchTool(this.nodeTypeParser);
-		const getTool = createOneShotNodeGetTool();
+		const getTool = createOneShotNodeGetTool({ generatedTypesDir: config.generatedTypesDir });
 		this.tools = [searchTool, getTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
 
