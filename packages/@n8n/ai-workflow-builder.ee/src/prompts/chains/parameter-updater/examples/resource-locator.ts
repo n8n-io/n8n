@@ -43,7 +43,7 @@ Current Parameters:
   "otherOptions": {}
 }
 
-Requested Changes: Send to general channel
+Requested Changes: Set channel to general (ID: C0A45D6GBLD)
 
 Expected Output:
 {
@@ -154,7 +154,7 @@ Current Parameters:
   }
 }
 
-Requested Changes: Use the "Customer Database" spreadsheet
+Requested Changes: Use the "Customer Database" (ID: 9XYZ789DEF) spreadsheet
 
 Expected Output:
 {
