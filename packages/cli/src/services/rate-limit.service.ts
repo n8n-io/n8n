@@ -5,6 +5,12 @@ import type { Request, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import assert from 'node:assert';
 import { ErrorReporter } from 'n8n-core';
+import { Time } from '@n8n/constants';
+
+const defaultLimits: Required<RateLimiterLimits> = {
+	limit: 5,
+	windowMs: 5 * Time.minutes.toMilliseconds,
+};
 
 /**
  * Service for creating rate limiters for endpoints. We use a 2 layered approach
@@ -26,8 +32,8 @@ export class RateLimitService {
 		if (typeof rateLimit === 'boolean') rateLimit = {};
 
 		return expressRateLimit({
-			limit: rateLimit.limit,
-			windowMs: rateLimit.windowMs,
+			limit: rateLimit.limit ?? defaultLimits.limit,
+			windowMs: rateLimit.windowMs ?? defaultLimits.windowMs,
 			message: { message: 'Too many requests' },
 		});
 	}
@@ -38,8 +44,8 @@ export class RateLimitService {
 	 */
 	createKeyedRateLimitMiddleware(config: KeyedRateLimiterConfig): RequestHandler {
 		return expressRateLimit({
-			windowMs: config.windowMs,
-			limit: config.limit,
+			limit: config.limit ?? defaultLimits.limit,
+			windowMs: config.windowMs ?? defaultLimits.windowMs,
 			keyGenerator: (req: Request) => this.extractReqIdentifier(req, config),
 			skip: (req: Request) => {
 				const identifier = this.extractReqIdentifier(req, config);
