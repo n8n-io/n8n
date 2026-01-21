@@ -2,8 +2,9 @@ import type {
 	ChatHubUpdateAgentRequest,
 	ChatHubCreateAgentRequest,
 	ChatModelDto,
+	ChatHubLLMProvider,
 } from '@n8n/api-types';
-import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
+import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubLLMProviderSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
 import { VectorStoreDataRepository } from '@n8n/db';
@@ -15,12 +16,13 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ChatHubAgent, IChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import { getModelMetadata } from './chat-hub.constants';
+import { EMBEDDINGS_NODE_TYPE_MAP, getModelMetadata } from './chat-hub.constants';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { type IBinaryData, type INodeCredentials } from 'n8n-workflow';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 
 @Service()
 export class ChatHubAgentService {
@@ -32,6 +34,7 @@ export class ChatHubAgentService {
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly vectorStoreDataRepository: VectorStoreDataRepository,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
 	) {}
 
 	async getAgentsByUserIdAsModels(userId: string): Promise<ChatModelDto[]> {
@@ -57,6 +60,63 @@ export class ChatHubAgentService {
 		};
 	}
 
+	/**
+	 * Determines which embedding provider to use for the agent.
+	 * If the agent's chat provider supports embeddings, use it.
+	 * Otherwise, find a usable embedding provider from settings that the user has access to.
+	 */
+	private async determineEmbeddingProvider(
+		user: User,
+		chatProvider: ChatHubLLMProvider,
+		chatCredentialId: string,
+	): Promise<{ provider: ChatHubLLMProvider; credentialId: string }> {
+		// Check if the chat provider supports embeddings
+		if (EMBEDDINGS_NODE_TYPE_MAP[chatProvider]) {
+			return {
+				provider: chatProvider,
+				credentialId: chatCredentialId,
+			};
+		}
+
+		// Chat provider doesn't support embeddings, find a fallback from settings
+		const allSettings = await this.chatHubSettingsService.getAllProviderSettings();
+
+		for (const provider of chatHubLLMProviderSchema.options) {
+			const settings = allSettings[provider];
+
+			// Check if provider supports embeddings
+			if (!EMBEDDINGS_NODE_TYPE_MAP[provider]) {
+				continue;
+			}
+
+			// Check if provider is enabled
+			if (!settings.enabled) {
+				continue;
+			}
+
+			// Check if provider has credentials configured in the settings
+			if (!settings.credentialId) {
+				continue;
+			}
+
+			// Check if user has permission to use this credential
+			try {
+				await this.chatHubCredentialsService.ensureCredentialAccess(user, settings.credentialId);
+				return {
+					provider,
+					credentialId: settings.credentialId,
+				};
+			} catch {
+				// User doesn't have access to this credential, try next provider
+				continue;
+			}
+		}
+
+		throw new BadRequestError(
+			`No embedding provider available. The selected model provider '${chatProvider}' does not support embeddings, and no alternative embedding provider is configured in settings.`,
+		);
+	}
+
 	async getAgentsByUserId(userId: string): Promise<ChatHubAgent[]> {
 		return await this.chatAgentRepository.getManyByUserId(userId);
 	}
@@ -72,6 +132,10 @@ export class ChatHubAgentService {
 	async createAgent(user: User, data: ChatHubCreateAgentRequest): Promise<ChatHubAgent> {
 		// Ensure user has access to the credential being saved
 		await this.chatHubCredentialsService.ensureCredentialAccess(user, data.credentialId);
+
+		// Determine which embedding provider to use
+		const { provider: embeddingProvider, credentialId: embeddingCredentialId } =
+			await this.determineEmbeddingProvider(user, data.provider, data.credentialId);
 
 		const id = uuidv4();
 		const files: IBinaryData[] = [];
@@ -92,6 +156,8 @@ export class ChatHubAgentService {
 			model: data.model,
 			tools: data.tools,
 			files,
+			embeddingProvider,
+			embeddingCredentialId,
 		});
 
 		this.logger.debug(`Chat agent created: ${id} by user ${user.id}`);
@@ -133,6 +199,31 @@ export class ChatHubAgentService {
 		if (updates.provider !== undefined) updateData.provider = updates.provider;
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
 		if (updates.tools !== undefined) updateData.tools = updates.tools;
+
+		// Track if we need to recreate embeddings
+		let needsEmbeddingRecreation = false;
+		let newEmbeddingProvider: ChatHubLLMProvider | undefined;
+		let newEmbeddingCredentialId: string | undefined;
+
+		// If provider or credential changes, update embedding provider too
+		if (updates.provider !== undefined || updates.credentialId !== undefined) {
+			const newProvider = updates.provider ?? existingAgent.provider;
+			const newCredentialId = (updates.credentialId ?? existingAgent.credentialId)!;
+
+			const { provider: embeddingProvider, credentialId: embeddingCredentialId } =
+				await this.determineEmbeddingProvider(user, newProvider, newCredentialId);
+
+			// Check if embedding provider actually changed (not just credential)
+			// Only provider change affects embedding dimensions
+			if (embeddingProvider !== existingAgent.embeddingProvider) {
+				needsEmbeddingRecreation = true;
+				newEmbeddingProvider = embeddingProvider;
+				newEmbeddingCredentialId = embeddingCredentialId;
+			}
+
+			updateData.embeddingProvider = embeddingProvider;
+			updateData.embeddingCredentialId = embeddingCredentialId;
+		}
 		if (updates.files !== undefined) {
 			const existingFiles = existingAgent.files;
 			const updatedFiles: IBinaryData[] = [];
@@ -192,6 +283,22 @@ export class ChatHubAgentService {
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
+		// If embedding provider changed, recreate all embeddings
+		if (needsEmbeddingRecreation && newEmbeddingProvider && newEmbeddingCredentialId) {
+			this.logger.debug(
+				`Embedding provider changed for agent ${id}, recreating all embeddings with provider ${newEmbeddingProvider}`,
+			);
+
+			// Delete all existing embeddings
+			await this.deleteDocuments(user.id, id);
+
+			// Re-insert all PDF files with new embedding provider
+			const pdfFiles = agent.files.filter((f) => f.mimeType === 'application/pdf');
+			if (pdfFiles.length > 0) {
+				await this.insertDocuments(user, agent, pdfFiles);
+			}
+		}
+
 		this.logger.debug(`Chat agent updated: ${id} by user ${user.id}`);
 		return agent;
 	}
@@ -217,15 +324,17 @@ export class ChatHubAgentService {
 			return;
 		}
 
-		if (!agent.credentialId) {
+		if (!agent.embeddingProvider || !agent.embeddingCredentialId) {
 			throw new BadRequestError(
-				'Agent must have credentials configured to insert documents for RAG',
+				'Agent must have embedding provider configured to insert documents for RAG',
 			);
 		}
 
+		// Use the agent's stored embedding provider
+		const embeddingCredentialType = PROVIDER_CREDENTIAL_TYPE_MAP[agent.embeddingProvider];
 		const credentials: INodeCredentials = {
-			[PROVIDER_CREDENTIAL_TYPE_MAP[agent.provider]]: {
-				id: agent.credentialId,
+			[embeddingCredentialType]: {
+				id: agent.embeddingCredentialId,
 				name: '',
 			},
 		};
@@ -234,11 +343,11 @@ export class ChatHubAgentService {
 			async (trx) => {
 				const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 				return await this.chatHubWorkflowService.createDocumentsInsertionWorkflow(
-					user.id,
+					user,
 					agent.id,
 					project.id,
 					files,
-					agent.provider,
+					agent.embeddingProvider!,
 					credentials,
 					trx,
 				);

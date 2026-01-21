@@ -535,6 +535,8 @@ export class ChatHubService {
 			[],
 			null,
 			timeZone,
+			null,
+			null,
 			trx,
 		);
 	}
@@ -552,6 +554,8 @@ export class ChatHubService {
 		contextFiles: IBinaryData[],
 		agentId: string | null,
 		timeZone: string,
+		agentEmbeddingProvider: ChatHubLLMProvider | null,
+		agentEmbeddingCredentialId: string | null,
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
@@ -572,6 +576,8 @@ export class ChatHubService {
 			tools,
 			agentId,
 			timeZone,
+			agentEmbeddingProvider,
+			agentEmbeddingCredentialId,
 			trx,
 		);
 	}
@@ -631,6 +637,8 @@ export class ChatHubService {
 			agent.files,
 			agent.id,
 			timeZone,
+			agent.embeddingProvider,
+			agent.embeddingCredentialId,
 			trx,
 		);
 	}

@@ -11,9 +11,6 @@ import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ChatHubAgentRepository } from '../chat-hub-agent.repository';
-import type { ChatHubSettingsService } from '../chat-hub.settings.service';
-import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
-import type { UserRepository } from '@n8n/db';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -39,9 +36,6 @@ describe('ChatHubWorkflowService', () => {
 		const activeExecutions = mock<ActiveExecutions>();
 		const instanceSettings = mock<InstanceSettings>();
 		const executionRepository = mock<ExecutionRepository>();
-		const chatHubSettingsService = mock<ChatHubSettingsService>();
-		const chatHubCredentialsService = mock<ChatHubCredentialsService>();
-		const userRepository = mock<UserRepository>();
 
 		service = new ChatHubWorkflowService(
 			logger,
@@ -51,8 +45,6 @@ describe('ChatHubWorkflowService', () => {
 			activeExecutions,
 			instanceSettings,
 			executionRepository,
-			chatHubSettingsService,
-			chatHubCredentialsService,
 		);
 
 		// Mock repository methods
@@ -77,9 +69,10 @@ describe('ChatHubWorkflowService', () => {
 		describe('message history handling', () => {
 			it('should handle empty history', async () => {
 				const mockHistory: ChatHubMessage[] = [];
+				const mockUser = { id: 'user-123' } as any;
 
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -92,6 +85,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -133,8 +128,9 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [message1, message2, message3];
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -147,6 +143,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -199,8 +197,9 @@ describe('ChatHubWorkflowService', () => {
 				const mockImageBuffer = Buffer.from('fake-image-data', 'base64');
 				binaryDataService.getAsBuffer.mockResolvedValue(mockImageBuffer);
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -213,6 +212,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
@@ -246,8 +247,9 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -260,6 +262,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -302,8 +306,9 @@ describe('ChatHubWorkflowService', () => {
 				const mockImageBuffer = Buffer.from('fake-image-data-1', 'base64');
 				binaryDataService.getAsBuffer.mockResolvedValue(mockImageBuffer);
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -316,6 +321,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
@@ -362,8 +369,9 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -376,6 +384,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -445,8 +455,9 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [message1, message2, message3];
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -459,6 +470,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -523,8 +536,9 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage, mockMessage2];
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -537,6 +551,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(
@@ -582,8 +598,9 @@ describe('ChatHubWorkflowService', () => {
 				// Mock getAsBuffer to return the text content
 				binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from(textContent, 'utf-8'));
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -596,6 +613,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
@@ -630,8 +649,9 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
+				const mockUser = { id: 'user-123' } as any;
 				const result = await service.createChatWorkflow(
-					'user-123',
+					mockUser,
 					'session-456',
 					'project-789',
 					mockHistory,
@@ -644,6 +664,8 @@ describe('ChatHubWorkflowService', () => {
 					[],
 					null,
 					'UTC',
+					null,
+					null,
 				);
 
 				const restoreMemoryNode = result.workflowData.nodes.find(

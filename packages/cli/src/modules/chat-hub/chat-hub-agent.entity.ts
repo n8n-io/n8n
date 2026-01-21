@@ -17,6 +17,8 @@ export interface IChatHubAgent {
 	model: string;
 	tools: INode[];
 	files: IBinaryData[];
+	embeddingProvider: ChatHubLLMProvider | null;
+	embeddingCredentialId: string | null;
 }
 
 @Entity({ name: 'chat_hub_agents' })
@@ -97,4 +99,17 @@ export class ChatHubAgent extends WithTimestamps {
 	 */
 	@JsonColumn({ default: '[]' })
 	files: IBinaryData[];
+
+	/**
+	 * The embedding provider used for the agent's files.
+	 * This ensures query embeddings use the same provider as document embeddings.
+	 */
+	@Column({ type: 'varchar', length: 16, nullable: true })
+	embeddingProvider: ChatHubLLMProvider | null;
+
+	/**
+	 * ID of the credential used for the embedding provider.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	embeddingCredentialId: string | null;
 }

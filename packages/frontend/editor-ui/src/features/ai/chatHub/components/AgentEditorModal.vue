@@ -24,6 +24,7 @@ import {
 	N8nInputLabel,
 	N8nIcon,
 	N8nText,
+	N8nCallout,
 } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
@@ -31,7 +32,7 @@ import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
-import { VECTOR_STORE_SIMPLE_NODE_TYPE, type IBinaryData, type INode } from 'n8n-workflow';
+import { type IBinaryData, type INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import {
 	personalAgentDefaultIcon,
@@ -123,6 +124,21 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
+
+const hasPdfFiles = computed(() => {
+	return files.value.some((file) => file.mimeType === 'application/pdf');
+});
+
+const isProviderChanging = computed(() => {
+	if (!isEditMode.value || !customAgent.value || !selectedModel.value) {
+		return false;
+	}
+	return customAgent.value.provider !== selectedModel.value.provider;
+});
+
+const shouldShowReindexWarning = computed(() => {
+	return isEditMode.value && hasPdfFiles.value && isProviderChanging.value;
+});
 
 modalBus.value.once('opened', () => {
 	isOpened.value = true;
@@ -485,6 +501,15 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 						</div>
 					</N8nInputLabel>
 				</div>
+
+				<N8nCallout
+					v-if="shouldShowReindexWarning"
+					theme="warning"
+					icon="info"
+					:class="$style.reindexWarning"
+				>
+					{{ i18n.baseText('chatHub.agent.editor.reindexWarning') }}
+				</N8nCallout>
 
 				<N8nInputLabel input-name="agent-files" label="Files" :required="false">
 					<input

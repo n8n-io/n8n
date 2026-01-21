@@ -343,6 +343,7 @@
 	"chatHub.agent.editor.systemPrompt.placeholder": "Enter system prompt",
 	"chatHub.agent.editor.model.label": "Model",
 	"chatHub.agent.editor.tools.label": "Tools",
+	"chatHub.agent.editor.reindexWarning": "Changing the model provider will re-index all attached PDF files with the new provider's embeddings. This may take some time depending on the number and size of files.",
 	"chatHub.agent.editor.loading": "Loading agent...",
 	"chatHub.agent.editor.saving": "Saving...",
 	"chatHub.agent.editor.save": "Save",
