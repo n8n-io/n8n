@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { truncate } from '@n8n/utils/string/truncate';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -174,7 +175,7 @@ function handleUpgradeClick() {
 			<template v-if="selectedAgent">
 				<N8nText size="large">{{ i18n.baseText('chatHub.chat.greeting') }}</N8nText>
 				<ChatAgentAvatar :agent="selectedAgent" size="md" :class="$style.icon" />
-				<N8nText size="large" bold>{{ selectedAgent.name }}</N8nText>
+				<N8nText size="large" bold>{{ truncate(selectedAgent.name, 40) }}</N8nText>
 			</template>
 			<template v-else>
 				<N8nText size="large">{{ i18n.baseText('chatHub.chat.greeting.fallback') }}</N8nText>
