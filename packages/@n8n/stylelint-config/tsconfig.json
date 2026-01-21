@@ -11,7 +11,8 @@
 		"declaration": true,
 		"declarationMap": true,
 		"downlevelIteration": true,
-		"skipLibCheck": true
+		"skipLibCheck": true,
+		"types": ["vitest/globals"]
 	},
 	"include": ["src/**/*"],
 	"exclude": ["dist", "node_modules", "**/*.test.ts"]

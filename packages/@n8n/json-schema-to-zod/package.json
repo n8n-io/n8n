@@ -28,9 +28,9 @@
     "build:esm": "tsc -p tsconfig.esm.json && node postesm.cjs",
     "build": "rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm",
     "dry": "pnpm run build && pnpm pub --dry-run",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:watch": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest"
   },
   "keywords": [
     "zod",
@@ -64,7 +64,9 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/json-schema": "^7.0.15",
+    "vitest": "catalog:",
     "zod": "catalog:"
   }
 }

@@ -1,4 +1,5 @@
 import nock from 'nock';
+import { vi } from 'vitest';
 
 import { ClientOAuth2, type ClientOAuth2Options } from '@/client-oauth2';
 import { ClientOAuth2Token } from '@/client-oauth2-token';
@@ -15,7 +16,7 @@ describe('CredentialsFlow', () => {
 		nock.restore();
 	});
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	describe('#getToken', () => {
 		const createAuthClient = ({

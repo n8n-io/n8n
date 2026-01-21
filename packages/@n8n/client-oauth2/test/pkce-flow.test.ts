@@ -1,4 +1,5 @@
 import nock from 'nock';
+import { vi } from 'vitest';
 
 import { ClientOAuth2 } from '@/client-oauth2';
 import { ClientOAuth2Token } from '@/client-oauth2-token';
@@ -15,7 +16,7 @@ describe('PKCE Flow', () => {
 		nock.restore();
 	});
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	describe('PKCE Authorization Code Flow', () => {
 		const createPkceClient = (clientSecret?: string) =>

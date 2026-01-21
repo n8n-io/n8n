@@ -1,5 +1,6 @@
 import axios from 'axios';
 import nock from 'nock';
+import { vi } from 'vitest';
 
 import { ClientOAuth2, ResponseError } from '@/client-oauth2';
 import { ERROR_RESPONSES } from '@/constants';
@@ -62,7 +63,7 @@ describe('ClientOAuth2', () => {
 				}),
 			});
 
-			const axiosSpy = jest.spyOn(axios, 'request');
+			const axiosSpy = vi.spyOn(axios, 'request');
 
 			await makeTokenCall();
 

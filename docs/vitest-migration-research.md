@@ -785,3 +785,117 @@ export default defineConfig({
 1. **Simple packages first** - Build confidence, establish patterns
 2. **Decorator packages** - Use SWC template from `@n8n/decorators`
 3. **Large packages last** - `nodes-base`, `core`, `cli`
+
+---
+
+## In-Progress: `@n8n/core` Package Migration
+
+> **Status**: 🔄 In Progress
+> **Last Updated**: 2026-01-21
+> **Tests**: 524 passed, 19 failed, 16 skipped (559 total)
+
+### Summary
+
+The `core` package is the largest backend package with ~560 tests. Migration is progressing well with most tests passing.
+
+### Completed Steps
+
+1. ✅ **Vitest configuration** - Created `vitest.config.ts` with SWC decorator support
+2. ✅ **@n8n/tournament alias** - Added alias to use compiled JS (`dist/index.js`) to avoid TS parsing errors
+3. ✅ **DI container mocks** - Added `InstanceSettings`, `InstanceSettingsConfig`, `SecurityConfig`, `TaskRunnersConfig` to `setup-mocks.ts`
+4. ✅ **Global fs mock** - Added `vi.mock('node:fs')` to `setup-mocks.ts` before importing `InstanceSettings` to allow tests to override
+5. ✅ **instance-settings.test.ts** - Fixed 24 tests by removing duplicate vi.mock and using global mock
+6. ✅ **jest.fn() → vi.fn()** - Replaced remaining Jest references
+
+### Key Configuration Files
+
+**vitest.config.ts:**
+```typescript
+import { resolve } from 'path';
+import swcTransform from 'vite-plugin-swc-transform';
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  resolve: {
+    alias: [
+      { find: /^@\/(.*)/, replacement: resolve(__dirname, 'src/$1') },
+      { find: /^@test\/(.*)/, replacement: resolve(__dirname, 'test/$1') },
+      // Force @n8n/tournament to use compiled JS (has TS source as module entry)
+      { find: '@n8n/tournament', replacement: '@n8n/tournament/dist/index.js' },
+    ],
+  },
+  test: {
+    silent: true,
+    globals: true,
+    environment: 'node',
+    setupFiles: ['./test/setup-mocks.ts'],
+    globalSetup: ['./test/setup.ts'],
+    server: {
+      deps: {
+        // Inline workspace packages to ensure SWC transforms them with decorator metadata
+        inline: [/@n8n\//],
+      },
+    },
+  },
+  plugins: [
+    swcTransform({
+      include: [/\.ts$/, /node_modules[\\/]@n8n[\\/]/],
+      swcOptions: {
+        jsc: {
+          parser: { syntax: 'typescript', decorators: true },
+          transform: {
+            legacyDecorator: true,
+            decoratorMetadata: true,
+            useDefineForClassFields: false,
+          },
+          target: 'es2022',
+        },
+        module: { type: 'es6' },
+      },
+    }) as any,
+  ],
+});
+```
+
+**setup-mocks.ts key additions:**
+```typescript
+// Mock node:fs globally BEFORE importing InstanceSettings
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn().mockReturnValue(true),
+  readFileSync: vi.fn().mockReturnValue('{}'),
+  writeFileSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  statSync: vi.fn().mockReturnValue({ mode: 0o600 }),
+  chmodSync: vi.fn(),
+}));
+
+// Then import and mock InstanceSettings for DI
+import { InstanceSettings } from '@/instance-settings';
+const mockInstanceSettings = { /* ... properties ... */ };
+Container.set(InstanceSettings, mockInstanceSettings);
+```
+
+### Remaining Issues (19 failed tests + 1 error)
+
+| Issue | Test File(s) | Cause | Fix |
+|-------|-------------|-------|-----|
+| Unhandled Promise.reject | `error-reporter.test.ts` | Test case creates `Promise.reject()` during collection | Wrap in function or use `expect().rejects` |
+| Unknown failures | Various | Need to identify | Run individual tests to diagnose |
+
+### Lessons Learned
+
+1. **vi.mock hoisting**: When `vi.mock()` is in a test file, it's hoisted above imports. But if `setup-mocks.ts` imports the same module first, that import wins. Solution: mock in setup file.
+
+2. **vitest-mock-extended limitations**: Can't wrap native modules like `fs` with `mock()` because of read-only properties. Use `vi.mocked()` instead.
+
+3. **`.calledWith()` pattern**: This is a vitest-mock-extended feature. When using `vi.mocked()`, replace with `mockImplementation()` that checks arguments.
+
+4. **DI decorator metadata**: The `server.deps.inline` option ensures @n8n/* packages are transformed by SWC with decorator metadata.
+
+### Next Steps
+
+1. Fix `error-reporter.test.ts` unhandled Promise rejection
+2. Identify and fix remaining 19 test failures
+3. Investigate 16 skipped tests (likely DI-related)
+4. Run full suite and verify all pass
+5. Remove Jest dependencies from package.json

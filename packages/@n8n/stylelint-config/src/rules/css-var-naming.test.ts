@@ -1,5 +1,7 @@
-import { lint } from 'stylelint';
+import stylelint from 'stylelint';
 import plugin from './css-var-naming';
+
+const { lint } = stylelint;
 
 const config = {
 	plugins: [plugin],

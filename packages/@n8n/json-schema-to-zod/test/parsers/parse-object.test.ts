@@ -432,25 +432,24 @@ describe('parseObject', () => {
 			},
 		});
 
-		expect(run(result, { b: 'hello', x: true })).toEqual({
-			success: false,
-			error: new ZodError([
-				{
-					code: 'invalid_type',
-					expected: 'string',
-					received: 'undefined',
-					path: ['a'],
-					message: 'Required',
-				},
-				{
-					code: 'invalid_type',
-					expected: 'number',
-					received: 'string',
-					path: ['b'],
-					message: 'Expected number, received string',
-				},
-			]),
-		});
+		const propertiesResult = run(result, { b: 'hello', x: true });
+		expect(propertiesResult.success).toBe(false);
+		expect(propertiesResult.error?.issues).toEqual([
+			{
+				code: 'invalid_type',
+				expected: 'string',
+				received: 'undefined',
+				path: ['a'],
+				message: 'Required',
+			},
+			{
+				code: 'invalid_type',
+				expected: 'number',
+				received: 'string',
+				path: ['b'],
+				message: 'Expected number, received string',
+			},
+		]);
 	});
 
 	test('Functional tests - properties and additionalProperties', () => {
@@ -474,32 +473,31 @@ describe('parseObject', () => {
 
 		expect(result).toMatchZod(expected);
 
-		expect(run(result, { b: 'hello', x: 'true' })).toEqual({
-			success: false,
-			error: new ZodError([
-				{
-					code: 'invalid_type',
-					expected: 'string',
-					received: 'undefined',
-					path: ['a'],
-					message: 'Required',
-				},
-				{
-					code: 'invalid_type',
-					expected: 'number',
-					received: 'string',
-					path: ['b'],
-					message: 'Expected number, received string',
-				},
-				{
-					code: 'invalid_type',
-					expected: 'boolean',
-					received: 'string',
-					path: ['x'],
-					message: 'Expected boolean, received string',
-				},
-			]),
-		});
+		const additionalPropsResult = run(result, { b: 'hello', x: 'true' });
+		expect(additionalPropsResult.success).toBe(false);
+		expect(additionalPropsResult.error?.issues).toEqual([
+			{
+				code: 'invalid_type',
+				expected: 'string',
+				received: 'undefined',
+				path: ['a'],
+				message: 'Required',
+			},
+			{
+				code: 'invalid_type',
+				expected: 'number',
+				received: 'string',
+				path: ['b'],
+				message: 'Expected number, received string',
+			},
+			{
+				code: 'invalid_type',
+				expected: 'boolean',
+				received: 'string',
+				path: ['x'],
+				message: 'Expected boolean, received string',
+			},
+		]);
 	});
 
 	test('Functional tests - properties and single-item patternProperties', () => {
@@ -549,18 +547,17 @@ describe('parseObject', () => {
 			data: { a: 'a', b: 2, '.': [] },
 		});
 
-		expect(run(result, { a: 'a', b: 2, '.': '[]' })).toEqual({
-			success: false,
-			error: new ZodError([
-				{
-					code: 'invalid_type',
-					expected: 'array',
-					received: 'string',
-					path: ['.'],
-					message: 'Expected array, received string',
-				},
-			]),
-		});
+		const patternPropsResult = run(result, { a: 'a', b: 2, '.': '[]' });
+		expect(patternPropsResult.success).toBe(false);
+		expect(patternPropsResult.error?.issues).toEqual([
+			{
+				code: 'invalid_type',
+				expected: 'array',
+				received: 'string',
+				path: ['.'],
+				message: 'Expected array, received string',
+			},
+		]);
 	});
 
 	test('Functional tests - properties, additionalProperties and patternProperties', () => {
@@ -713,29 +710,28 @@ describe('parseObject', () => {
 
 		expect(result).toMatchZod(expected);
 
-		expect(run(result, { x: true, '.': [], ',': [] })).toEqual({
-			success: false,
-			error: new ZodError([
-				{
-					path: [','],
-					code: 'custom',
-					message: 'Invalid input: Key matching regex /,/ must match schema',
-					params: {
-						issues: [
-							{
-								code: 'too_small',
-								minimum: 1,
-								type: 'array',
-								inclusive: true,
-								exact: false,
-								message: 'Array must contain at least 1 element(s)',
-								path: [],
-							},
-						],
-					},
+		const additionalPatternResult = run(result, { x: true, '.': [], ',': [] });
+		expect(additionalPatternResult.success).toBe(false);
+		expect(additionalPatternResult.error?.issues).toEqual([
+			{
+				path: [','],
+				code: 'custom',
+				message: 'Invalid input: Key matching regex /,/ must match schema',
+				params: {
+					issues: [
+						{
+							code: 'too_small',
+							minimum: 1,
+							type: 'array',
+							inclusive: true,
+							exact: false,
+							message: 'Array must contain at least 1 element(s)',
+							path: [],
+						},
+					],
 				},
-			]),
-		});
+			},
+		]);
 	});
 
 	test('Functional tests - single-item patternProperties', () => {
@@ -818,29 +814,28 @@ describe('parseObject', () => {
 			data: { '.': [] },
 		});
 
-		expect(run(result, { ',': [] })).toEqual({
-			success: false,
-			error: new ZodError([
-				{
-					path: [','],
-					code: 'custom',
-					message: 'Invalid input: Key matching regex /,/ must match schema',
-					params: {
-						issues: [
-							{
-								code: 'too_small',
-								minimum: 1,
-								type: 'array',
-								inclusive: true,
-								exact: false,
-								message: 'Array must contain at least 1 element(s)',
-								path: [],
-							},
-						],
-					},
+		const patternOnlyResult = run(result, { ',': [] });
+		expect(patternOnlyResult.success).toBe(false);
+		expect(patternOnlyResult.error?.issues).toEqual([
+			{
+				path: [','],
+				code: 'custom',
+				message: 'Invalid input: Key matching regex /,/ must match schema',
+				params: {
+					issues: [
+						{
+							code: 'too_small',
+							minimum: 1,
+							type: 'array',
+							inclusive: true,
+							exact: false,
+							message: 'Array must contain at least 1 element(s)',
+							path: [],
+						},
+					],
 				},
-			]),
-		});
+			},
+		]);
 
 		expect(result).toMatchZod(expected);
 	});

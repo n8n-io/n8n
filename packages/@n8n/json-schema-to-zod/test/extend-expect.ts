@@ -1,10 +1,20 @@
 import type { z } from 'zod';
+import { expect } from 'vitest';
+
+interface CustomMatchers<R = unknown> {
+	toMatchZod(expected: z.ZodTypeAny): R;
+}
+
+declare module 'vitest' {
+	interface Assertion<T = unknown> extends CustomMatchers<T> {}
+	interface AsymmetricMatchersContaining extends CustomMatchers {}
+}
 
 expect.extend({
-	toMatchZod(this: jest.MatcherContext, actual: z.ZodTypeAny, expected: z.ZodTypeAny) {
+	toMatchZod(actual: z.ZodTypeAny, expected: z.ZodTypeAny) {
 		const actualSerialized = JSON.stringify(actual._def, null, 2);
 		const expectedSerialized = JSON.stringify(expected._def, null, 2);
-		const pass = this.equals(actualSerialized, expectedSerialized);
+		const pass = actualSerialized === expectedSerialized;
 
 		return {
 			pass,

@@ -6,7 +6,8 @@
 		"strict": true,
 		"noEmit": true,
 		"skipLibCheck": true,
-		"esModuleInterop": true
+		"esModuleInterop": true,
+		"types": ["vitest/globals"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"]
 }
