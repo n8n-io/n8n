@@ -219,8 +219,10 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			if (rest.length === 0) {
 				hasEdgeChange = true;
 
-				if (change.action === 'add' && needsUIUpdate(origin)) {
-					// Add: remote/undoRedo only (local edge added directly by onConnect handler)
+				if (change.action === 'add') {
+					// Add: trigger for ALL origins (local, remote, undoRedo)
+					// Unlike onConnect which adds edges to Vue Flow directly,
+					// addNodesAndEdges() adds edges only to CRDT, so Vue Flow needs the event
 					const crdtEdge = edgesMap.get(edgeId) as CRDTMap<unknown> | undefined;
 					if (crdtEdge) {
 						const edge = crdtEdgeToWorkflowEdge(edgeId, crdtEdge);

@@ -314,6 +314,7 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 	});
 
 	// --- Local → Document: Connection creation ---
+	// Only add to CRDT - Vue Flow update happens via onEdgeAdded event
 	const unsubConnect = instance.onConnect((connection) => {
 		const edgeId = createEdgeId(
 			connection.source,
@@ -325,18 +326,7 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 		const sourceHandle = connection.sourceHandle ?? 'outputs/main/0';
 		const targetHandle = connection.targetHandle ?? 'inputs/main/0';
 
-		// Add to Vue Flow
-		instance.addEdges([
-			{
-				id: edgeId,
-				source: connection.source,
-				target: connection.target,
-				sourceHandle,
-				targetHandle,
-			},
-		]);
-
-		// Add to CRDT
+		// Add to CRDT only - Vue Flow will be updated via onEdgeAdded event
 		doc.addEdge({
 			id: edgeId,
 			source: connection.source,
@@ -375,8 +365,8 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 		});
 	});
 
-	// --- Remote/Undo → Vue Flow: Edge events ---
-	// These fire after node events within the same transaction (batched at CRDT layer).
+	// --- All Origins → Vue Flow: Edge events ---
+	// These fire for ALL origins (local, remote, undoRedo) after node events within the same transaction.
 	// Use nextTick to ensure Vue has rendered the nodes before adding edges.
 	const { off: offEdgeAdded } = doc.onEdgeAdded((edge) => {
 		void nextTick(() => {
