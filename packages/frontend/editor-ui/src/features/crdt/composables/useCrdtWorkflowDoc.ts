@@ -19,6 +19,7 @@ import type {
 	NodeHandlesChange,
 	NodeSizeChange,
 	NodeSubtitleChange,
+	NodeDisabledChange,
 	ComputedHandle,
 } from '../types/workflowDocument.types';
 import type { WorkflowAwarenessState } from '../types/awareness.types';
@@ -71,6 +72,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	const nodeHandlesHook = createEventHook<NodeHandlesChange>();
 	const nodeSizeHook = createEventHook<NodeSizeChange>();
 	const nodeSubtitleHook = createEventHook<NodeSubtitleChange>();
+	const nodeDisabledHook = createEventHook<NodeDisabledChange>();
 	const edgeAddedHook = createEventHook<WorkflowEdge>();
 	const edgeRemovedHook = createEventHook<string>();
 	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes (any origin)
@@ -113,6 +115,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		const size = rawSize ? (toJSON(rawSize) as [number, number]) : undefined;
 		// Subtitle is server-computed
 		const subtitle = crdtNode.get('subtitle') as string | undefined;
+		// Disabled state
+		const disabled = crdtNode.get('disabled') as boolean | undefined;
 
 		return {
 			id,
@@ -125,6 +129,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			outputs,
 			size,
 			subtitle,
+			disabled,
 		};
 	}
 
@@ -196,6 +201,13 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 					if (crdtNode) {
 						const subtitle = crdtNode.get('subtitle') as string | undefined;
 						void nodeSubtitleHook.trigger({ nodeId, subtitle });
+					}
+				} else if (prop === 'disabled') {
+					// Disabled state changed - trigger for all origins (local changes need UI update too)
+					const crdtNode = nodesMap.get(nodeId) as CRDTMap<unknown> | undefined;
+					if (crdtNode) {
+						const disabled = (crdtNode.get('disabled') as boolean) ?? false;
+						void nodeDisabledHook.trigger({ nodeId, disabled });
 					}
 				} else if (needsUIUpdate(origin)) {
 					// Other property changes: only update UI for remote/undoRedo
@@ -325,6 +337,9 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			crdtNode.set('typeVersion', node.typeVersion);
 			// Deep seed parameters for fine-grained conflict resolution
 			crdtNode.set('parameters', seedValueDeep(doc!, node.parameters));
+			if (node.disabled !== undefined) {
+				crdtNode.set('disabled', node.disabled);
+			}
 			nodesMap.set(node.id, crdtNode);
 		});
 		// Hook triggers via onDeepChange subscription (handles both local + remote)
@@ -344,6 +359,9 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 				crdtNode.set('typeVersion', node.typeVersion);
 				// Deep seed parameters for fine-grained conflict resolution
 				crdtNode.set('parameters', seedValueDeep(doc!, node.parameters));
+				if (node.disabled !== undefined) {
+					crdtNode.set('disabled', node.disabled);
+				}
 				nodesMap.set(node.id, crdtNode);
 			}
 		});
@@ -365,6 +383,9 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 					crdtNode.set('type', node.type);
 					crdtNode.set('typeVersion', node.typeVersion);
 					crdtNode.set('parameters', seedValueDeep(doc!, node.parameters));
+					if (node.disabled !== undefined) {
+						crdtNode.set('disabled', node.disabled);
+					}
 					nodesMap.set(node.id, crdtNode);
 				}
 			}
@@ -498,6 +519,20 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		return crdtNode.get('parameters') as CRDTMap<unknown> | undefined;
 	}
 
+	/**
+	 * Set the disabled state of a node.
+	 */
+	function setNodeDisabled(nodeId: string, disabled: boolean): void {
+		if (!doc) return;
+
+		doc.transact(() => {
+			const crdtNode = getCrdtNode(nodeId);
+			if (crdtNode) {
+				crdtNode.set('disabled', disabled);
+			}
+		});
+	}
+
 	// --- Edge Mutations ---
 
 	/**
@@ -575,6 +610,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		updateNodePositions,
 		updateNodeParams,
 		updateNodeParamAtPath,
+		setNodeDisabled,
 		getNodeParametersMap,
 		addEdge,
 		removeEdge,
@@ -585,6 +621,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		onNodeHandlesChange: nodeHandlesHook.on,
 		onNodeSizeChange: nodeSizeHook.on,
 		onNodeSubtitleChange: nodeSubtitleHook.on,
+		onNodeDisabledChange: nodeDisabledHook.on,
 		onEdgeAdded: edgeAddedHook.on,
 		onEdgeRemoved: edgeRemovedHook.on,
 		onEdgesChanged: edgesChangedHook.on,

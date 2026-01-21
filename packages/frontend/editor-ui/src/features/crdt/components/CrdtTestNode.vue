@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
@@ -10,6 +11,8 @@ import { computed, onScopeDispose, shallowRef, triggerRef, watch } from 'vue';
 import { useWorkflowDoc } from '../composables';
 import { useWorkflowAwarenessOptional } from '../composables/useWorkflowAwareness';
 import type { ComputedHandle } from '../types/workflowDocument.types';
+
+const i18n = useI18n();
 
 const doc = useWorkflowDoc();
 const nodeTypesStore = useNodeTypesStore();
@@ -70,6 +73,7 @@ const initialNode = doc.findNode(props.id);
 const inputHandles = shallowRef<ComputedHandle[]>(initialNode?.inputs ?? []);
 const outputHandles = shallowRef<ComputedHandle[]>(initialNode?.outputs ?? []);
 const subtitle = shallowRef<string | undefined>(initialNode?.subtitle);
+const disabled = shallowRef<boolean>(initialNode?.disabled ?? false);
 
 // Subscribe to handle changes (not position/params)
 const { off: offHandles } = doc.onNodeHandlesChange(({ nodeId, inputs, outputs }) => {
@@ -88,9 +92,17 @@ const { off: offSubtitle } = doc.onNodeSubtitleChange(({ nodeId, subtitle: newSu
 	}
 });
 
+// Subscribe to disabled state changes
+const { off: offDisabled } = doc.onNodeDisabledChange(({ nodeId, disabled: newDisabled }) => {
+	if (nodeId === props.id) {
+		disabled.value = newDisabled;
+	}
+});
+
 onScopeDispose(() => {
 	offHandles();
 	offSubtitle();
+	offDisabled();
 });
 
 const nodeType = computed(() => {
@@ -336,6 +348,24 @@ const mappedOutputHandles = computed((): MappedHandle[] => {
 });
 
 /**
+ * Whether the strike-through line should be visible.
+ * Shown for disabled nodes with exactly 1 main input and 1 main output.
+ * Configuration nodes (pill-shaped) don't show strike-through.
+ */
+const isStrikethroughVisible = computed(() => {
+	if (!disabled.value) return false;
+
+	// Configuration nodes (pill-shaped, with non-main outputs) don't show strike-through
+	if (isConfigurationNode.value) return false;
+
+	const mainInputs = inputHandles.value.filter((h) => h.type === 'main');
+	const mainOutputs = outputHandles.value.filter((h) => h.type === 'main');
+
+	// Must have exactly 1 main input and 1 main output
+	return mainInputs.length === 1 && mainOutputs.length === 1;
+});
+
+/**
  * Find collaborator who has this node selected (if any).
  * Uses O(1) lookup via the reverse index instead of iterating all collaborators.
  */
@@ -354,6 +384,7 @@ const selectedByCollaborator = computed(() => {
 			'crdt-node--trigger': isTriggerNode,
 			'crdt-node--configuration': isConfigurationNode,
 			'crdt-node--configurable': isConfigurableNode,
+			'crdt-node--disabled': disabled,
 		}"
 		:style="selectedByCollaborator ? { '--collaborator--color': selectedByCollaborator.color } : {}"
 	>
@@ -428,12 +459,13 @@ const selectedByCollaborator = computed(() => {
 		</template>
 
 		<!-- Node content -->
-		<NodeIcon v-if="icon" :icon-source="icon" :size="30" :shrink="false" />
+		<NodeIcon v-if="icon" :icon-source="icon" :size="30" :shrink="false" :disabled="disabled" />
 		<span v-else>{{ data.label }}</span>
 
 		<!-- Description (title & subtitle) -->
 		<div class="description">
 			<div v-if="data.label" class="label">{{ data.label }}</div>
+			<div v-if="disabled" class="disabled-label">({{ i18n.baseText('node.disabled') }})</div>
 			<div v-if="subtitle" class="subtitle">{{ subtitle }}</div>
 		</div>
 
@@ -505,6 +537,9 @@ const selectedByCollaborator = computed(() => {
 		<div v-if="selectedByCollaborator" class="collaborator-indicator">
 			<span class="collaborator-name">{{ selectedByCollaborator.name }}</span>
 		</div>
+
+		<!-- Strike-through line for disabled nodes (only for single main input/output) -->
+		<div v-if="isStrikethroughVisible" class="disabled-strike-through" />
 	</div>
 </template>
 
@@ -572,6 +607,25 @@ const selectedByCollaborator = computed(() => {
 	.subtitle {
 		text-align: left;
 	}
+
+	.disabled-label {
+		text-align: left;
+	}
+}
+
+/* Disabled nodes - different border color */
+.crdt-node--disabled {
+	border-color: var(--color--foreground);
+}
+
+/* Strike-through line for disabled nodes (matches CanvasNodeDisabledStrikeThrough.vue) */
+.disabled-strike-through {
+	border: 1px solid var(--color--foreground--shade-1);
+	position: absolute;
+	top: calc(50% - 1px);
+	left: -4px;
+	width: calc(100% + 8px);
+	pointer-events: none;
 }
 
 /* Handle styles - transparent container like production CanvasHandleRenderer */
@@ -613,7 +667,8 @@ const selectedByCollaborator = computed(() => {
 	pointer-events: none;
 }
 
-.label {
+.label,
+.disabled-label {
 	font-size: var(--font-size--md);
 	text-align: center;
 	text-overflow: ellipsis;

@@ -13,6 +13,7 @@ import type {
 	NodeHandlesChange,
 	NodeSizeChange,
 	NodeSubtitleChange,
+	NodeDisabledChange,
 } from '../types/workflowDocument.types';
 
 export interface UseRestWorkflowDocOptions {
@@ -70,6 +71,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 			type: node.type,
 			typeVersion: node.typeVersion,
 			parameters: node.parameters,
+			disabled: node.disabled,
 		};
 	}
 
@@ -236,6 +238,15 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		}
 	}
 
+	function setNodeDisabled(nodeId: string, disabled: boolean): void {
+		const idx = nodesCache.value.findIndex((n) => n.id === nodeId);
+		if (idx !== -1) {
+			const updated = [...nodesCache.value];
+			updated[idx] = { ...updated[idx], disabled };
+			nodesCache.value = updated;
+		}
+	}
+
 	function findNode(nodeId: string): WorkflowNode | undefined {
 		return nodesCache.value.find((n) => n.id === nodeId);
 	}
@@ -248,6 +259,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 	const nodeHandlesHook = createEventHook<NodeHandlesChange>();
 	const nodeSizeHook = createEventHook<NodeSizeChange>();
 	const nodeSubtitleHook = createEventHook<NodeSubtitleChange>();
+	const nodeDisabledHook = createEventHook<NodeDisabledChange>();
 	const edgeAddedHook = createEventHook<WorkflowEdge>();
 	const edgeRemovedHook = createEventHook<string>();
 	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes
@@ -282,6 +294,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		removeNodesAndEdges,
 		updateNodePositions,
 		updateNodeParams,
+		setNodeDisabled,
 		addEdge,
 		removeEdge,
 		onNodeAdded: nodeAddedHook.on,
@@ -291,6 +304,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		onNodeHandlesChange: nodeHandlesHook.on,
 		onNodeSizeChange: nodeSizeHook.on,
 		onNodeSubtitleChange: nodeSubtitleHook.on,
+		onNodeDisabledChange: nodeDisabledHook.on,
 		onEdgeAdded: edgeAddedHook.on,
 		onEdgeRemoved: edgeRemovedHook.on,
 		onEdgesChanged: edgesChangedHook.on,

@@ -48,6 +48,8 @@ export interface WorkflowNode {
 	size?: [number, number];
 	/** Pre-computed subtitle from server (expression-resolved) */
 	subtitle?: string;
+	/** Whether the node is disabled (won't execute) */
+	disabled?: boolean;
 }
 
 /**
@@ -102,6 +104,12 @@ export interface NodeSizeChange {
 export interface NodeSubtitleChange {
 	nodeId: string;
 	subtitle: string | undefined;
+}
+
+/** Node disabled state change event payload */
+export interface NodeDisabledChange {
+	nodeId: string;
+	disabled: boolean;
 }
 
 /**
@@ -183,6 +191,13 @@ export interface WorkflowDocument {
 	 */
 	updateNodeParamAtPath?(nodeId: string, path: string[], value: unknown): void;
 
+	/**
+	 * Set the disabled state of a node.
+	 * @param nodeId - The node ID
+	 * @param disabled - Whether the node should be disabled
+	 */
+	setNodeDisabled(nodeId: string, disabled: boolean): void;
+
 	// --- Edge Mutations ---
 
 	/**
@@ -221,6 +236,9 @@ export interface WorkflowDocument {
 
 	/** Subscribe to node subtitle changes (recomputed by server) */
 	onNodeSubtitleChange: EventHookOn<NodeSubtitleChange>;
+
+	/** Subscribe to node disabled state changes */
+	onNodeDisabledChange: EventHookOn<NodeDisabledChange>;
 
 	/** Subscribe to edge additions (remote/undo only - for Vue Flow sync) */
 	onEdgeAdded: EventHookOn<WorkflowEdge>;
