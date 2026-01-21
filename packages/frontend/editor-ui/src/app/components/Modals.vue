@@ -66,7 +66,9 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
+import { NODE_ACCESS_REQUEST_MODAL_KEY } from '@/features/settings/nodeGovernance/nodeGovernance.constants';
 import AboutModal from '@/app/components/AboutModal.vue';
+import NodeAccessRequestModal from '@/features/settings/nodeGovernance/components/NodeAccessRequestModal.vue';
 import ActivationModal from '@/app/components/ActivationModal.vue';
 import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
 import NewAssistantSessionModal from '@/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue';
@@ -452,6 +454,12 @@ import CredentialResolverEditModal from '@/app/components/CredentialResolverEdit
 		<ModalRoot :name="CREDENTIAL_RESOLVER_EDIT_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<CredentialResolverEditModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="NODE_ACCESS_REQUEST_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<NodeAccessRequestModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 
