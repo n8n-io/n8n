@@ -46,9 +46,27 @@ export function useSecretsCompletions() {
 			}));
 		}
 
+		const optionGroup1Label = 'Global';
+		const optionsGroup1 = options
+			.map((option) => ({
+				...option,
+				section: optionGroup1Label,
+			}))
+			.map(addVarType);
+
+		// TODO: include mock project secrets here
+		const optionGroup2Label = 'Veggies';
+		const optionsGroup2 = [
+			{
+				label: 'Potatoe',
+				info: 'healthy veggie',
+				section: optionGroup2Label,
+			},
+		];
+
 		return {
 			from: preCursor.from,
-			options: options.map(addVarType),
+			options: [...optionsGroup1, ...optionsGroup2],
 		};
 	};
 
