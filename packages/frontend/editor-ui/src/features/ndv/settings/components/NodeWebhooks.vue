@@ -60,37 +60,28 @@ const webhooksNode = computed(() => {
 	);
 });
 
-// Resolved webhook visibility (whether the webhook URL should be shown)
-const resolvedWebhookVisibility = computedAsync(async () => {
-	const webhooks = webhooksNode.value;
-	const result = new Map<number, boolean>();
+interface WebhookDisplayData {
+	webhook: IWebhookDescription;
+	url: string;
+	httpMethod: string;
+	isMethodVisible: boolean;
+}
 
-	for (let index = 0; index < webhooks.length; index++) {
-		const webhook = webhooks[index];
-		let isVisible = !webhook.ndvHideUrl;
-
-		if (typeof webhook.ndvHideUrl === 'string') {
-			const hideUrl = await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
-			isVisible = !hideUrl;
-		}
-
-		result.set(index, isVisible);
-	}
-
-	return result;
-}, new Map<number, boolean>());
-
-// Resolved webhook URLs
-const resolvedWebhookUrls = computedAsync(async () => {
-	const webhooks = webhooksNode.value;
+const visibleWebhookUrls = computedAsync(async () => {
 	const urlFor = showUrlFor.value;
 	const node = props.node;
-	const result = new Map<number, string>();
+	const result: WebhookDisplayData[] = [];
 
-	for (let index = 0; index < webhooks.length; index++) {
-		const webhook = webhooks[index];
+	for (const webhook of webhooksNode.value) {
+		// Check visibility
+		let isVisible = !webhook.ndvHideUrl;
+		if (typeof webhook.ndvHideUrl === 'string') {
+			isVisible = !(await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl'));
+		}
+		if (!isVisible) continue;
+
+		// Get URL
 		let url = '';
-
 		if (node) {
 			url = await workflowHelpers.getWebhookUrl(
 				webhook,
@@ -99,88 +90,36 @@ const resolvedWebhookUrls = computedAsync(async () => {
 			);
 		}
 
-		result.set(index, url);
-	}
-
-	return result;
-}, new Map<number, string>());
-
-// Resolved webhook method visibility
-const resolvedWebhookMethodVisibility = computedAsync(async () => {
-	const webhooks = webhooksNode.value;
-	const result = new Map<number, boolean>();
-
-	for (let index = 0; index < webhooks.length; index++) {
-		const webhook = webhooks[index];
+		// Check method visibility
 		let isMethodVisible = !webhook.ndvHideMethod;
-
 		try {
 			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
 			if (Array.isArray(method) && method.length !== 1) {
 				isMethodVisible = false;
 			} else if (typeof webhook.ndvHideMethod === 'string') {
-				const hideMethod = await workflowHelpers.getWebhookExpressionValue(
+				isMethodVisible = !(await workflowHelpers.getWebhookExpressionValue(
 					webhook,
 					'ndvHideMethod',
-				);
-				isMethodVisible = !hideMethod;
+				));
 			}
 		} catch {
-			// Keep default isMethodVisible
+			// Keep default
 		}
 
-		result.set(index, isMethodVisible);
-	}
-
-	return result;
-}, new Map<number, boolean>());
-
-// Resolved webhook HTTP methods
-const resolvedWebhookHttpMethods = computedAsync(async () => {
-	const webhooks = webhooksNode.value;
-	const result = new Map<number, string>();
-
-	for (let index = 0; index < webhooks.length; index++) {
-		const webhook = webhooks[index];
+		// Get HTTP method
 		let httpMethod = '';
-
 		try {
 			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
 			httpMethod = Array.isArray(method) ? method[0] : (method as string);
 		} catch {
-			// Keep empty httpMethod
+			// Keep empty
 		}
 
-		result.set(index, httpMethod);
+		result.push({ webhook, url, httpMethod, isMethodVisible });
 	}
 
 	return result;
-}, new Map<number, string>());
-
-const visibleWebhookUrls = computed(() => {
-	return webhooksNode.value.filter((_, index) => {
-		return resolvedWebhookVisibility.value.get(index) ?? false;
-	});
-});
-
-function getWebhookIndex(webhook: IWebhookDescription): number {
-	return webhooksNode.value.indexOf(webhook);
-}
-
-function getWebhookUrlDisplay(webhook: IWebhookDescription): string {
-	const index = getWebhookIndex(webhook);
-	return resolvedWebhookUrls.value.get(index) ?? '';
-}
-
-function isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
-	const index = getWebhookIndex(webhook);
-	return resolvedWebhookMethodVisibility.value.get(index) ?? false;
-}
-
-function getWebhookHttpMethod(webhook: IWebhookDescription): string {
-	const index = getWebhookIndex(webhook);
-	return resolvedWebhookHttpMethods.value.get(index) ?? '';
-}
+}, []);
 
 const baseText = computed(() => {
 	const nodeType = props.nodeTypeDescription?.name;
@@ -235,9 +174,8 @@ const baseText = computed(() => {
 	}
 });
 
-function copyWebhookUrl(webhookData: IWebhookDescription): void {
-	const webhookUrl = getWebhookUrlDisplay(webhookData);
-	void clipboard.copy(webhookUrl);
+function copyWebhookUrl(item: WebhookDisplayData): void {
+	void clipboard.copy(item.url);
 
 	toast.showMessage({
 		title: baseText.value.copyTitle,
@@ -283,26 +221,26 @@ watch(
 				</div>
 
 				<N8nTooltip
-					v-for="(webhook, index) in visibleWebhookUrls"
+					v-for="(item, index) in visibleWebhookUrls"
 					:key="index"
 					class="item"
 					:content="baseText.clickToCopy"
 					placement="left"
 				>
-					<div v-if="isWebhookMethodVisible(webhook)" class="webhook-wrapper">
+					<div v-if="item.isMethodVisible" class="webhook-wrapper">
 						<div class="http-field">
-							<div class="http-method">{{ getWebhookHttpMethod(webhook) }}<br /></div>
+							<div class="http-method">{{ item.httpMethod }}<br /></div>
 						</div>
 						<div class="url-field">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-								{{ getWebhookUrlDisplay(webhook) }}<br />
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+								{{ item.url }}<br />
 							</div>
 						</div>
 					</div>
 					<div v-else class="webhook-wrapper">
 						<div class="url-field-full-width">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(webhook)">
-								{{ getWebhookUrlDisplay(webhook) }}<br />
+							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+								{{ item.url }}<br />
 							</div>
 						</div>
 					</div>
