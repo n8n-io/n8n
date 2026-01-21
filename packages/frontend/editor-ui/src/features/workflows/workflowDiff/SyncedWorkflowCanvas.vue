@@ -63,12 +63,17 @@ function calculateOriginOffset(nodes: Array<{ x: number; y: number }>): { x: num
 // Apply calculated positions when Canvas emits tidy-up event
 // Shift all nodes so the leftmost topmost node is at origin {x: 0, y: 0}
 // This ensures both canvases in the diff view have aligned anchor nodes
-function onTidyUp({ result }: CanvasLayoutEvent) {
+async function onTidyUp({ result }: CanvasLayoutEvent) {
 	const offset = calculateOriginOffset(result.nodes);
 
 	result.nodes.forEach(({ id, x, y }) => {
 		updateNode(id, { position: { x: x + offset.x, y: y + offset.y } });
 	});
+
+	// Zoom to fit after positions are updated
+	setTimeout(() => {
+		void fitView({ padding: 1 });
+	}, 100);
 }
 
 const { triggerViewportChange, onViewportChange, selectedDetailId, triggerNodeClick } =
