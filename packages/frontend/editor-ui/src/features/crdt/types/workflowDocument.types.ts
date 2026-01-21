@@ -46,6 +46,8 @@ export interface WorkflowNode {
 	outputs?: ComputedHandle[];
 	/** Pre-computed node size [width, height] from server */
 	size?: [number, number];
+	/** Pre-computed subtitle from server (expression-resolved) */
+	subtitle?: string;
 }
 
 /**
@@ -94,6 +96,12 @@ export interface NodeHandlesChange {
 export interface NodeSizeChange {
 	nodeId: string;
 	size: [number, number];
+}
+
+/** Node subtitle change event payload (recomputed by server) */
+export interface NodeSubtitleChange {
+	nodeId: string;
+	subtitle: string | undefined;
 }
 
 /**
@@ -210,6 +218,9 @@ export interface WorkflowDocument {
 
 	/** Subscribe to node size changes (recomputed when handles change) */
 	onNodeSizeChange: EventHookOn<NodeSizeChange>;
+
+	/** Subscribe to node subtitle changes (recomputed by server) */
+	onNodeSubtitleChange: EventHookOn<NodeSubtitleChange>;
 
 	/** Subscribe to edge additions (remote/undo only - for Vue Flow sync) */
 	onEdgeAdded: EventHookOn<WorkflowEdge>;

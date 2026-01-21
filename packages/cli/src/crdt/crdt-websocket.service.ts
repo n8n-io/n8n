@@ -19,6 +19,8 @@ import type {
 	INode,
 	INodeInputConfiguration,
 	INodeOutputConfiguration,
+	INodePropertyOptions,
+	INodeTypeDescription,
 	IWorkflowBase,
 	NodeConnectionType,
 } from 'n8n-workflow';
@@ -250,7 +252,7 @@ export class CRDTWebSocketService {
 	}
 
 	/**
-	 * Compute input and output handles for all nodes in a workflow.
+	 * Compute input and output handles and subtitle for all nodes in a workflow.
 	 * Uses NodeHelpers.getNodeInputs/getNodeOutputs which can evaluate expressions.
 	 */
 	private computeNodeHandles(workflow: Workflow, nodes: INode[]): NodeSeedData[] {
@@ -260,6 +262,7 @@ export class CRDTWebSocketService {
 
 			let inputs: ComputedHandle[] = [];
 			let outputs: ComputedHandle[] = [];
+			let subtitle: string | undefined;
 
 			if (nodeTypeDescription) {
 				// Compute inputs
@@ -269,12 +272,16 @@ export class CRDTWebSocketService {
 				// Compute outputs
 				const rawOutputs = NodeHelpers.getNodeOutputs(workflow, node, nodeTypeDescription);
 				outputs = this.normalizeHandles(rawOutputs, 'outputs');
+
+				// Compute subtitle
+				subtitle = this.computeNodeSubtitle(workflow, node, nodeTypeDescription);
 			}
 
 			return {
 				...node,
 				inputs,
 				outputs,
+				subtitle,
 			} as NodeSeedData;
 		});
 	}
@@ -294,10 +301,7 @@ export class CRDTWebSocketService {
 
 		for (const raw of rawHandles) {
 			// Normalize to object form
-			const config =
-				typeof raw === 'string'
-					? { type: raw as NodeConnectionType }
-					: (raw as INodeInputConfiguration);
+			const config = typeof raw === 'string' ? { type: raw } : (raw as INodeInputConfiguration);
 
 			const type = config.type;
 			const currentIndex = byType.get(type) ?? 0;
@@ -315,6 +319,54 @@ export class CRDTWebSocketService {
 		}
 
 		return handles;
+	}
+
+	/**
+	 * Compute subtitle for a node using the same logic as frontend useNodeHelpers.
+	 * Priority: notesInFlow > nodeType.subtitle expression > operation display name
+	 */
+	private computeNodeSubtitle(
+		workflow: Workflow,
+		node: INode,
+		nodeType: INodeTypeDescription,
+	): string | undefined {
+		// 1. Notes in flow
+		if (node.notesInFlow && node.notes) {
+			return node.notes;
+		}
+
+		// 2. Node type subtitle expression
+		if (nodeType.subtitle !== undefined) {
+			try {
+				return workflow.expression.getSimpleParameterValue(
+					node,
+					nodeType.subtitle,
+					'internal',
+					{},
+					undefined,
+					undefined,
+				) as string | undefined;
+			} catch {
+				// Expression evaluation failed, fall through
+			}
+		}
+
+		// 3. Operation parameter display name
+		if (node.parameters?.operation !== undefined) {
+			const operation = node.parameters.operation as string;
+			const operationProp = nodeType.properties?.find((p) => p.name === 'operation');
+			if (operationProp?.options) {
+				const option = operationProp.options.find(
+					(o) => (o as INodePropertyOptions).value === operation,
+				);
+				if (option) {
+					return (option as INodePropertyOptions).name;
+				}
+			}
+			return operation;
+		}
+
+		return undefined;
 	}
 
 	/**
@@ -379,6 +431,14 @@ export class CRDTWebSocketService {
 					// Compute and store node size based on updated handles
 					const size = calculateNodeSize({ inputs: newInputs, outputs: newOutputs });
 					nodeMap.set('size', [size.width, size.height]);
+
+					// Recompute subtitle
+					const newSubtitle = this.computeNodeSubtitle(workflow, node, nodeType.description);
+					if (newSubtitle !== undefined) {
+						nodeMap.set('subtitle', newSubtitle);
+					} else {
+						nodeMap.delete('subtitle');
+					}
 				}
 			});
 		});

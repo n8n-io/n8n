@@ -18,6 +18,7 @@ import type {
 	NodeParamsChange,
 	NodeHandlesChange,
 	NodeSizeChange,
+	NodeSubtitleChange,
 	ComputedHandle,
 } from '../types/workflowDocument.types';
 import type { WorkflowAwarenessState } from '../types/awareness.types';
@@ -69,6 +70,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	const nodeParamsHook = createEventHook<NodeParamsChange>();
 	const nodeHandlesHook = createEventHook<NodeHandlesChange>();
 	const nodeSizeHook = createEventHook<NodeSizeChange>();
+	const nodeSubtitleHook = createEventHook<NodeSubtitleChange>();
 	const edgeAddedHook = createEventHook<WorkflowEdge>();
 	const edgeRemovedHook = createEventHook<string>();
 	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes (any origin)
@@ -109,6 +111,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		// Size is stored as [width, height] tuple
 		const rawSize = crdtNode.get('size');
 		const size = rawSize ? (toJSON(rawSize) as [number, number]) : undefined;
+		// Subtitle is server-computed
+		const subtitle = crdtNode.get('subtitle') as string | undefined;
 
 		return {
 			id,
@@ -120,6 +124,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			inputs,
 			outputs,
 			size,
+			subtitle,
 		};
 	}
 
@@ -184,6 +189,13 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 							? (toJSON(rawSize) as [number, number])
 							: [96, 96];
 						void nodeSizeHook.trigger({ nodeId, size });
+					}
+				} else if (prop === 'subtitle') {
+					// Subtitle is server-computed, always trigger UI update
+					const crdtNode = nodesMap.get(nodeId) as CRDTMap<unknown> | undefined;
+					if (crdtNode) {
+						const subtitle = crdtNode.get('subtitle') as string | undefined;
+						void nodeSubtitleHook.trigger({ nodeId, subtitle });
 					}
 				} else if (needsUIUpdate(origin)) {
 					// Other property changes: only update UI for remote/undoRedo
@@ -572,6 +584,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		onNodeParamsChange: nodeParamsHook.on,
 		onNodeHandlesChange: nodeHandlesHook.on,
 		onNodeSizeChange: nodeSizeHook.on,
+		onNodeSubtitleChange: nodeSubtitleHook.on,
 		onEdgeAdded: edgeAddedHook.on,
 		onEdgeRemoved: edgeRemovedHook.on,
 		onEdgesChanged: edgesChangedHook.on,

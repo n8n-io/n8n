@@ -62,7 +62,6 @@ function updateConnectionCounts(): void {
 updateConnectionCounts();
 
 // Watch connectedEdges and update counts with change detection
-// (auto-cleaned up by Vue when component unmounts)
 watch(connectedEdges, updateConnectionCounts, { flush: 'sync' });
 
 // Get initial node data (static - for type/icon)
@@ -70,8 +69,9 @@ const initialNode = doc.findNode(props.id);
 
 const inputHandles = shallowRef<ComputedHandle[]>(initialNode?.inputs ?? []);
 const outputHandles = shallowRef<ComputedHandle[]>(initialNode?.outputs ?? []);
+const subtitle = shallowRef<string | undefined>(initialNode?.subtitle);
 
-// Subscribe only to handle changes (not position/params)
+// Subscribe to handle changes (not position/params)
 const { off: offHandles } = doc.onNodeHandlesChange(({ nodeId, inputs, outputs }) => {
 	if (nodeId === props.id) {
 		inputHandles.value = inputs;
@@ -81,8 +81,16 @@ const { off: offHandles } = doc.onNodeHandlesChange(({ nodeId, inputs, outputs }
 	}
 });
 
+// Subscribe to subtitle changes from server
+const { off: offSubtitle } = doc.onNodeSubtitleChange(({ nodeId, subtitle: newSubtitle }) => {
+	if (nodeId === props.id) {
+		subtitle.value = newSubtitle;
+	}
+});
+
 onScopeDispose(() => {
 	offHandles();
+	offSubtitle();
 });
 
 const nodeType = computed(() => {
@@ -286,6 +294,12 @@ const selectedByCollaborator = computed(() => {
 		<NodeIcon v-if="icon" :icon-source="icon" :size="30" :shrink="false" />
 		<span v-else>{{ data.label }}</span>
 
+		<!-- Description (title & subtitle) -->
+		<div class="description">
+			<div v-if="data.label" class="label">{{ data.label }}</div>
+			<div v-if="subtitle" class="subtitle">{{ subtitle }}</div>
+		</div>
+
 		<!-- Output handles (main = right, non-main = top) -->
 		<Handle
 			v-for="handle in mappedOutputHandles"
@@ -364,6 +378,45 @@ const selectedByCollaborator = computed(() => {
 /* Right handles (main outputs) */
 .crdt-handle--right {
 	cursor: crosshair;
+}
+
+/* Description (title & subtitle) below the node */
+.description {
+	top: 100%;
+	position: absolute;
+	width: 100%;
+	min-width: calc(100% * 2);
+	margin-top: var(--spacing--2xs);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	pointer-events: none;
+}
+
+.label {
+	font-size: var(--font-size--md);
+	text-align: center;
+	text-overflow: ellipsis;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--sm);
+}
+
+.subtitle {
+	width: 100%;
+	text-align: center;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--xs);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	line-height: var(--line-height--sm);
+	font-weight: var(--font-weight--regular);
 }
 
 .collaborator-indicator {

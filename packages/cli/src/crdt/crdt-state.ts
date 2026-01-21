@@ -44,13 +44,15 @@ export interface ComputedHandle {
 }
 
 /**
- * Node data for seeding, including pre-computed handles.
+ * Node data for seeding, including pre-computed handles and subtitle.
  */
 export interface NodeSeedData {
 	id: string;
 	name: string;
 	inputs?: ComputedHandle[];
 	outputs?: ComputedHandle[];
+	/** Pre-computed subtitle from expression evaluation */
+	subtitle?: string;
 	[key: string]: unknown;
 }
 
