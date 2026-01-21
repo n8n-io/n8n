@@ -6,7 +6,7 @@ import CanvasHandleDiamond from '@/features/workflows/canvas/components/elements
 import CanvasHandleDot from '@/features/workflows/canvas/components/elements/handles/render-types/parts/CanvasHandleDot.vue';
 import type { NodeProps } from '@vue-flow/core';
 import { Handle, Position, useNode } from '@vue-flow/core';
-import { computed, onScopeDispose, shallowRef, triggerRef } from 'vue';
+import { computed, onScopeDispose, shallowRef, triggerRef, watch } from 'vue';
 import { useWorkflowDoc } from '../composables';
 import { useWorkflowAwarenessOptional } from '../composables/useWorkflowAwareness';
 import type { ComputedHandle } from '../types/workflowDocument.types';
@@ -17,9 +17,53 @@ const awareness = useWorkflowAwarenessOptional();
 
 const props = defineProps<NodeProps>();
 
-// Use Vue Flow's built-in node composable for efficient edge tracking
-// This provides a reactive ComputedRef<GraphEdge[]> that Vue Flow maintains internally
+// Use Vue Flow's useNode for O(1) edge lookups (only edges connected to this node)
 const { connectedEdges } = useNode(props.id);
+
+/**
+ * Connection counts per handle, stored as a shallowRef.
+ * Updated from Vue Flow's connectedEdges but with change detection
+ * to prevent re-renders when counts haven't actually changed.
+ */
+const connectionCounts = shallowRef<Map<string, number>>(new Map());
+
+/**
+ * Calculate connection counts from Vue Flow's connectedEdges.
+ * Only updates the ref if counts actually changed.
+ */
+function updateConnectionCounts(): void {
+	const edges = connectedEdges.value;
+	const newCounts = new Map<string, number>();
+
+	for (const edge of edges) {
+		if (edge.sourceHandle) {
+			newCounts.set(edge.sourceHandle, (newCounts.get(edge.sourceHandle) ?? 0) + 1);
+		}
+		if (edge.targetHandle) {
+			newCounts.set(edge.targetHandle, (newCounts.get(edge.targetHandle) ?? 0) + 1);
+		}
+	}
+
+	// Only trigger reactivity if counts actually changed
+	const oldCounts = connectionCounts.value;
+	if (newCounts.size !== oldCounts.size) {
+		connectionCounts.value = newCounts;
+		return;
+	}
+	for (const [key, value] of newCounts) {
+		if (oldCounts.get(key) !== value) {
+			connectionCounts.value = newCounts;
+			return;
+		}
+	}
+}
+
+// Initialize connection counts
+updateConnectionCounts();
+
+// Watch connectedEdges and update counts with change detection
+// (auto-cleaned up by Vue when component unmounts)
+watch(connectedEdges, updateConnectionCounts, { flush: 'sync' });
 
 // Get initial node data (static - for type/icon)
 const initialNode = doc.findNode(props.id);
@@ -103,24 +147,17 @@ function calculateOffsetStyle(
 }
 
 /**
- * Count connections for a specific handle from Vue Flow's connectedEdges.
- * Uses Vue Flow's reactive edge tracking instead of manual CRDT edge filtering.
+ * Get connection count for a specific handle from the stable counts map.
+ * This avoids re-filtering edges on every access.
  */
-function countHandleConnections(handleId: string, mode: 'inputs' | 'outputs'): number {
-	const edges = connectedEdges.value;
-	if (mode === 'outputs') {
-		// Count edges where this node is the source with this handle
-		return edges.filter((e) => e.sourceHandle === handleId).length;
-	} else {
-		// Count edges where this node is the target with this handle
-		return edges.filter((e) => e.targetHandle === handleId).length;
-	}
+function getHandleConnectionCount(handleId: string): number {
+	return connectionCounts.value.get(handleId) ?? 0;
 }
 
 /**
  * Pre-compute handles with all template values to avoid re-renders.
  * This prevents re-renders during drag by avoiding function calls in template.
- * Uses Vue Flow's reactive connectedEdges so connectivity updates automatically.
+ * Uses memoized connection counts so only changes to THIS node's edges trigger updates.
  */
 const mappedInputHandles = computed((): MappedHandle[] => {
 	const handles = inputHandles.value;
@@ -132,8 +169,8 @@ const mappedInputHandles = computed((): MappedHandle[] => {
 		const group = isMain ? mainHandles : nonMainHandles;
 		const indexInGroup = group.findIndex((h) => h.handleId === handle.handleId);
 
-		// Check if max connections reached using Vue Flow's edge tracking
-		const currentConnections = countHandleConnections(handle.handleId, 'inputs');
+		// Check if max connections reached using memoized connection counts
+		const currentConnections = getHandleConnectionCount(handle.handleId);
 		const limitReached =
 			handle.maxConnections !== undefined && currentConnections >= handle.maxConnections;
 
@@ -173,8 +210,8 @@ const mappedOutputHandles = computed((): MappedHandle[] => {
 		const group = isMain ? mainHandles : nonMainHandles;
 		const indexInGroup = group.findIndex((h) => h.handleId === handle.handleId);
 
-		// Check if max connections reached using Vue Flow's edge tracking
-		const currentConnections = countHandleConnections(handle.handleId, 'outputs');
+		// Check if max connections reached using memoized connection counts
+		const currentConnections = getHandleConnectionCount(handle.handleId);
 		const limitReached =
 			handle.maxConnections !== undefined && currentConnections >= handle.maxConnections;
 
