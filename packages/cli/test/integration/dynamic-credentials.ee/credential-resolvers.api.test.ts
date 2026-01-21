@@ -60,14 +60,24 @@ describe('Credential Resolvers API', () => {
 			// Create resolvers using service
 			await service.create({
 				name: 'Resolver 1',
-				type: 'credential-resolver.stub-1.0',
-				config: { prefix: 'test1-' },
+				type: 'credential-resolver.oauth2-1.0',
+				config: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client-id-1',
+					clientSecret: 'test-client-secret-1',
+					validation: 'oauth2-introspection',
+				},
 				user: owner,
 			});
 			await service.create({
 				name: 'Resolver 2',
-				type: 'credential-resolver.stub-1.0',
-				config: { prefix: 'test2-' },
+				type: 'credential-resolver.oauth2-1.0',
+				config: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client-id-2',
+					clientSecret: 'test-client-secret-2',
+					validation: 'oauth2-introspection',
+				},
 				user: owner,
 			});
 
@@ -77,7 +87,7 @@ describe('Credential Resolvers API', () => {
 			expect(response.body.data[0]).toMatchObject({
 				id: expect.any(String),
 				name: 'Resolver 1',
-				type: 'credential-resolver.stub-1.0',
+				type: 'credential-resolver.oauth2-1.0',
 			});
 		});
 
@@ -93,15 +103,12 @@ describe('Credential Resolvers API', () => {
 			expect(response.body.data).toBeInstanceOf(Array);
 			expect(response.body.data.length).toBeGreaterThan(0);
 
-			// Verify the stub resolver is present
-			const stubResolver = response.body.data.find(
-				(type: { name: string }) => type.name === 'credential-resolver.stub-1.0',
-			);
-			expect(stubResolver).toBeDefined();
-			expect(stubResolver).toMatchObject({
-				name: 'credential-resolver.stub-1.0',
-				displayName: 'Stub Resolver',
-				description: 'A stub credential resolver for testing purposes',
+			// Verify resolver types have required fields
+			const resolverType = response.body.data[0];
+			expect(resolverType).toMatchObject({
+				name: expect.any(String),
+				displayName: expect.any(String),
+				description: expect.any(String),
 				options: expect.any(Array),
 			});
 		});
@@ -115,8 +122,13 @@ describe('Credential Resolvers API', () => {
 		it('should create a resolver', async () => {
 			const payload = {
 				name: 'Test Resolver',
-				type: 'credential-resolver.stub-1.0',
-				config: { prefix: 'test-' },
+				type: 'credential-resolver.oauth2-1.0',
+				config: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client-id',
+					clientSecret: 'test-client-secret',
+					validation: 'oauth2-introspection',
+				},
 			};
 
 			const response = await ownerAgent.post('/credential-resolvers').send(payload).expect(200);
@@ -124,9 +136,14 @@ describe('Credential Resolvers API', () => {
 			expect(response.body.data).toMatchObject({
 				id: expect.any(String),
 				name: 'Test Resolver',
-				type: 'credential-resolver.stub-1.0',
+				type: 'credential-resolver.oauth2-1.0',
 			});
-			expect(response.body.data.decryptedConfig).toEqual({ prefix: 'test-' });
+			expect(response.body.data.decryptedConfig).toMatchObject({
+				metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				validation: 'oauth2-introspection',
+			});
 
 			// Verify it was actually created
 			const resolvers = await repository.find();
@@ -147,8 +164,13 @@ describe('Credential Resolvers API', () => {
 		it('should reject access for members', async () => {
 			const payload = {
 				name: 'Test Resolver',
-				type: 'credential-resolver.stub-1.0',
-				config: { prefix: 'test-' },
+				type: 'credential-resolver.oauth2-1.0',
+				config: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client-id',
+					clientSecret: 'test-client-secret',
+					validation: 'oauth2-introspection',
+				},
 			};
 
 			await memberAgent.post('/credential-resolvers').send(payload).expect(403);
@@ -159,8 +181,13 @@ describe('Credential Resolvers API', () => {
 		it('should return a specific resolver', async () => {
 			const resolver = await service.create({
 				name: 'Test Resolver',
-				type: 'credential-resolver.stub-1.0',
-				config: { prefix: 'test-' },
+				type: 'credential-resolver.oauth2-1.0',
+				config: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client-id',
+					clientSecret: 'test-client-secret',
+					validation: 'oauth2-introspection',
+				},
 				user: owner,
 			});
 
@@ -169,7 +196,7 @@ describe('Credential Resolvers API', () => {
 			expect(response.body.data).toMatchObject({
 				id: resolver.id,
 				name: 'Test Resolver',
-				type: 'credential-resolver.stub-1.0',
+				type: 'credential-resolver.oauth2-1.0',
 			});
 		});
 
@@ -182,8 +209,13 @@ describe('Credential Resolvers API', () => {
 		it('should update resolver name', async () => {
 			const resolver = await service.create({
 				name: 'Original Name',
-				type: 'credential-resolver.stub-1.0',
-				config: { prefix: 'test-' },
+				type: 'credential-resolver.oauth2-1.0',
+				config: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client-id',
+					clientSecret: 'test-client-secret',
+					validation: 'oauth2-introspection',
+				},
 				user: owner,
 			});
 
@@ -207,8 +239,13 @@ describe('Credential Resolvers API', () => {
 		it('should delete a resolver', async () => {
 			const resolver = await service.create({
 				name: 'Test Resolver',
-				type: 'credential-resolver.stub-1.0',
-				config: { prefix: 'test-' },
+				type: 'credential-resolver.oauth2-1.0',
+				config: {
+					metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+					clientId: 'test-client-id',
+					clientSecret: 'test-client-secret',
+					validation: 'oauth2-introspection',
+				},
 				user: owner,
 			});
 

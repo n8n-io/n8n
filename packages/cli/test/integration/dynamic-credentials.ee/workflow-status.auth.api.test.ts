@@ -46,8 +46,13 @@ const setupWorkflow = async () => {
 
 	const resolver = await resolverService.create({
 		name: 'Test Resolver',
-		type: 'credential-resolver.stub-1.0',
-		config: { prefix: 'test-' },
+		type: 'credential-resolver.oauth2-1.0',
+		config: {
+			metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			validation: 'oauth2-introspection',
+		},
 		user: owner,
 	});
 
