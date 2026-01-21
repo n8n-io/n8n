@@ -128,6 +128,21 @@ const {
 	selectedDetailId,
 });
 
+function getWorkflowLabel(isRemote: boolean): string {
+	return isRemote
+		? i18n.baseText('workflowDiff.remote', {
+				interpolate: { branchName: sourceControlStore.preferences.branchName },
+			})
+		: i18n.baseText('workflowDiff.local');
+}
+
+const sourceLabel = computed(() =>
+	getWorkflowLabel(sourceWorkFlow.value.state.value?.remote ?? false),
+);
+const targetLabel = computed(() =>
+	getWorkflowLabel(targetWorkFlow.value.state.value?.remote ?? false),
+);
+
 // Navigation with telemetry
 function nextNodeChange() {
 	telemetry.track('User iterated over changes', {
@@ -442,20 +457,8 @@ function setSelectedDetailId(
 				:source-connections="source.connections"
 				:target-nodes="target.nodes"
 				:target-connections="target.connections"
-				:source-label="
-					sourceWorkFlow.state.value?.remote
-						? i18n.baseText('workflowDiff.remote', {
-								interpolate: { branchName: sourceControlStore.preferences.branchName },
-							})
-						: i18n.baseText('workflowDiff.local')
-				"
-				:target-label="
-					targetWorkFlow.state.value?.remote
-						? i18n.baseText('workflowDiff.remote', {
-								interpolate: { branchName: sourceControlStore.preferences.branchName },
-							})
-						: i18n.baseText('workflowDiff.local')
-				"
+				:source-label="sourceLabel"
+				:target-label="targetLabel"
 				:source-exists="!!sourceWorkFlow.state.value?.workflow"
 				:target-exists="!!targetWorkFlow.state.value?.workflow"
 				:selected-node="selectedNode"
@@ -473,13 +476,7 @@ function setSelectedDetailId(
 						:class="$style.sourceBadge"
 					>
 						<N8nIcon v-if="sourceWorkFlow.state.value.remote" icon="git-branch" />
-						{{
-							sourceWorkFlow.state.value.remote
-								? i18n.baseText('workflowDiff.remote', {
-										interpolate: { branchName: sourceControlStore.preferences.branchName },
-									})
-								: i18n.baseText('workflowDiff.local')
-						}}
+						{{ sourceLabel }}
 					</N8nText>
 				</template>
 				<template #sourceEmptyText>
@@ -502,13 +499,7 @@ function setSelectedDetailId(
 						:class="$style.sourceBadge"
 					>
 						<N8nIcon v-if="targetWorkFlow.state.value.remote" icon="git-branch" />
-						{{
-							targetWorkFlow.state.value.remote
-								? i18n.baseText('workflowDiff.remote', {
-										interpolate: { branchName: sourceControlStore.preferences.branchName },
-									})
-								: i18n.baseText('workflowDiff.local')
-						}}
+						{{ targetLabel }}
 					</N8nText>
 				</template>
 				<template #targetEmptyText>

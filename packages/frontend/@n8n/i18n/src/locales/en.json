@@ -4262,6 +4262,7 @@
 	"workflowDiff.label.before": "Before",
 	"workflowDiff.label.after": "After",
 	"workflowDiff.waitingForData": "Waiting for workflow data...",
+	"workflowDiff.error.loadNodeTypes": "Could not load node types",
 	"commandBar.placeholder": "Type a command or search...",
 	"commandBar.noResults": "No results found",
 	"commandBar.sections.recent": "Recent",

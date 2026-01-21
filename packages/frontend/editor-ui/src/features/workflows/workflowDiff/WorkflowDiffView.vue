@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useToast } from '@/app/composables/useToast';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
 import WorkflowDiffContent from '@/features/workflows/workflowDiff/WorkflowDiffContent.vue';
@@ -43,6 +44,7 @@ const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync(
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
 const i18n = useI18n();
+const toast = useToast();
 
 const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
 	computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
@@ -84,7 +86,11 @@ onNodeClick((nodeId: string) => {
 });
 
 onMounted(async () => {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	try {
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowDiff.error.loadNodeTypes'));
+	}
 });
 </script>
 
