@@ -26,6 +26,7 @@ import {
 	isSamlCurrentAuthenticationMethod,
 	isSsoCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
+import { Time } from '@n8n/constants';
 
 @RestController()
 export class AuthController {
@@ -41,7 +42,21 @@ export class AuthController {
 	) {}
 
 	/** Log in a user */
-	@Post('/login', { skipAuth: true, rateLimit: true })
+	@Post('/login', {
+		skipAuth: true,
+		// Two layered rate limit to ensure multiple users can login from the same
+		// IP address but aggressive per email limit.
+		ipRateLimit: {
+			limit: 1000,
+			windowMs: 5 * Time.minutes.toMilliseconds,
+		},
+		keyedRateLimit: {
+			limit: 5,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+			source: 'body',
+			field: 'emailOrLdapLoginId' satisfies keyof LoginRequestDto,
+		},
+	})
 	async login(
 		req: AuthlessRequest,
 		res: Response,
