@@ -253,8 +253,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 				if (!responseNodes?.length) {
 					toast.showMessage({
-						title: 'The workflow does not have any Chat nodes',
-						message: 'Please add at least one Chat node or Chat Tool node to the workflow',
+						title: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.title'),
+						message: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.description'),
 						type: 'warning',
 					});
 				}
