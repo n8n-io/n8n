@@ -12,7 +12,8 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { shallowRef, watch, computed } from 'vue';
+import { shallowRef, watch } from 'vue';
+import { computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 

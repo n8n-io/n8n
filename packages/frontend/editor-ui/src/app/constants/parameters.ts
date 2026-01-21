@@ -1,5 +1,5 @@
 import { SWITCH_NODE_TYPE } from './nodeTypes';
-import type { IconName } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
 
 export const DATA_TYPE_ICON_MAP = {
 	['string']: 'type',
@@ -9,7 +9,7 @@ export const DATA_TYPE_ICON_MAP = {
 	array: 'list',
 	object: 'box',
 	file: 'file',
-} as const satisfies Record<string, IconName>;
+} satisfies Record<string, IconName>;
 
 export const MAPPING_PARAMS = [
 	'$binary',

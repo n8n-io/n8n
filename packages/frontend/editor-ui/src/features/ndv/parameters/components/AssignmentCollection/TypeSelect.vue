@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { ASSIGNMENT_TYPES } from './constants';
 import { computed } from 'vue';
-import { type IconName } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 interface Props {

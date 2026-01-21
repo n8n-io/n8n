@@ -12,7 +12,7 @@ import { useI18n } from '@n8n/i18n';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import type { IconColor } from '@n8n/design-system';
 import { type IAccordionItem } from '@n8n/design-system/components/N8nInfoAccordion/InfoAccordion.vue';
-import { type IconName } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import { N8nInfoAccordion, N8nLink, N8nTooltip } from '@n8n/design-system';
 interface IWorkflowSaveSettings {

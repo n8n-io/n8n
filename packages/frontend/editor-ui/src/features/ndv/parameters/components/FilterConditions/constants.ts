@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import type { FilterConditionValue, FilterOptionsValue } from 'n8n-workflow';
 import type { FilterOperator, FilterOperatorGroup } from './types';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';

@@ -11,7 +11,7 @@ import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
-import { type IconName } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import {

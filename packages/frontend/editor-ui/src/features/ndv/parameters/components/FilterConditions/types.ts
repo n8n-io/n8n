@@ -1,4 +1,4 @@
-import type { IconName } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { FilterConditionValue, FilterOperatorValue } from 'n8n-workflow';
 

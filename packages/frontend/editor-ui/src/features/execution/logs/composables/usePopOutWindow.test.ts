@@ -1,3 +1,4 @@
+/* eslint-disable vue/one-component-per-file */
 import { computed, defineComponent, h, ref } from 'vue';
 import { usePopOutWindow } from './usePopOutWindow';
 import { waitFor } from '@testing-library/vue';

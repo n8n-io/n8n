@@ -12,7 +12,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
-import { updatedIconSet, type IconName } from '@n8n/design-system';
+import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 type ProjectIcon = IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 

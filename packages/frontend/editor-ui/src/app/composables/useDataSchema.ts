@@ -23,7 +23,7 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 import { ref } from 'vue';
-import { type IconName } from '@n8n/design-system';
+import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 
 export function useDataSchema() {
@@ -354,7 +354,7 @@ const icons = {
 	bigint: 'calculator',
 	symbol: 'sun',
 	['undefined']: 'ban',
-} as const satisfies Record<string, IconName>;
+} satisfies Record<string, IconName>;
 
 const getIconBySchemaType = (type: Schema['type']): IconName => icons[type];
 

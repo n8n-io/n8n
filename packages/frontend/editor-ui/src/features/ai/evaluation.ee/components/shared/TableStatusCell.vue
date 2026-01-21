@@ -80,11 +80,8 @@ function getErrorTooltip(column: TestTableColumn<T>, row: T): string | undefined
 }
 
 function getErrorTooltipUrl(column: TestTableColumn<T>, row: T): string | undefined {
-	if (hasError(row)) {
-		const route = column.errorRoute?.(row);
-		if (route) {
-			return router.resolve(route).href;
-		}
+	if (hasError(row) && column.errorRoute?.(row)) {
+		return router.resolve(column.errorRoute(row)!).href;
 	}
 
 	return undefined;
