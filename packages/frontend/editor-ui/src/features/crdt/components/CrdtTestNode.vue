@@ -222,6 +222,14 @@ function getHandleConnectionCount(handleId: string): number {
 }
 
 /**
+ * Check if a handle has any connections.
+ * Used to determine if we should show the plus button on output handles.
+ */
+function isHandleConnected(handleId: string): boolean {
+	return getHandleConnectionCount(handleId) > 0;
+}
+
+/**
  * Pre-compute handles with all template values to avoid re-renders.
  * This prevents re-renders during drag by avoiding function calls in template.
  * Uses memoized connection counts so only changes to THIS node's edges trigger updates.
@@ -395,6 +403,26 @@ const selectedByCollaborator = computed(() => {
 						:class="['handle-render', handle.positionClass]"
 						handle-classes="target"
 					/>
+					<!-- Inline plus button for non-main inputs (bottom position, extends downward) -->
+					<svg
+						v-if="!isHandleConnected(handle.handleId)"
+						class="handle-plus handle-plus--bottom"
+						viewBox="0 0 24 70"
+						width="24"
+						height="70"
+					>
+						<line class="handle-plus-line" x1="12" y1="0" x2="12" y2="47" stroke-width="2" />
+						<g class="handle-plus-button" transform="translate(0, 46)">
+							<rect x="2" y="2" width="20" height="20" stroke-width="2" rx="4" />
+							<path
+								stroke="currentColor"
+								stroke-width="1.5"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M8 12h8m-4-4v8"
+							/>
+						</g>
+					</svg>
 				</template>
 			</Handle>
 		</template>
@@ -433,6 +461,26 @@ const selectedByCollaborator = computed(() => {
 					{{ handle.displayName }}
 				</div>
 				<CanvasHandleDot :class="['handle-render', handle.positionClass]" handle-classes="source" />
+				<!-- Inline plus button (avoids useCanvas dependency from CanvasHandlePlus) -->
+				<svg
+					v-if="!isHandleConnected(handle.handleId)"
+					class="handle-plus"
+					viewBox="0 0 70 24"
+					width="70"
+					height="24"
+				>
+					<line class="handle-plus-line" x1="0" y1="12" x2="47" y2="12" stroke-width="2" />
+					<g class="handle-plus-button" transform="translate(46, 0)">
+						<rect x="2" y="2" width="20" height="20" stroke-width="2" rx="4" />
+						<path
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							d="M8 12h8m-4-4v8"
+						/>
+					</g>
+				</svg>
 			</template>
 			<template v-else>
 				<div
@@ -449,6 +497,7 @@ const selectedByCollaborator = computed(() => {
 					:class="['handle-render', handle.positionClass]"
 					handle-classes="source"
 				/>
+				<!-- Non-main outputs (configuration nodes) don't have plus buttons in production -->
 			</template>
 		</Handle>
 
@@ -661,5 +710,46 @@ const selectedByCollaborator = computed(() => {
 .handle-label--required::after {
 	content: '*';
 	color: var(--color--danger);
+}
+
+/* Handle plus line and button */
+.handle-plus {
+	position: absolute;
+	left: 100%;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	transform: scale(var(--canvas-zoom-compensation-factor, 1));
+	transform-origin: center left;
+}
+
+.handle-plus--bottom {
+	left: 50%;
+	top: 100%;
+	bottom: auto;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	transform: translateX(-50%) scale(var(--canvas-zoom-compensation-factor, 1));
+	transform-origin: top center;
+}
+
+.handle-plus-line {
+	stroke: light-dark(var(--color--neutral-300), var(--color--neutral-700));
+}
+
+.handle-plus-button {
+	color: light-dark(var(--color--neutral-700), var(--color--neutral-250));
+	cursor: pointer;
+
+	rect {
+		stroke: light-dark(var(--color--neutral-200), var(--color--neutral-850));
+		fill: light-dark(var(--color--neutral-200), var(--color--neutral-850));
+	}
+
+	&:hover {
+		color: light-dark(var(--color--neutral-850), var(--color--neutral-150));
+
+		rect {
+			stroke: light-dark(var(--color--neutral-250), var(--color--neutral-800));
+			fill: light-dark(var(--color--neutral-250), var(--color--neutral-800));
+		}
+	}
 }
 </style>
