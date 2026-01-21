@@ -36,6 +36,8 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		localStorage.getItem(DYNAMIC_TRIAL_BANNER_DISMISSED_KEY) === 'true',
 	);
 
+	const now = ref<number>(Date.now());
+
 	const reset = () => {
 		currentUserCloudInfo.value = null;
 		state.data = null;
@@ -169,7 +171,7 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 			return { count: 0, unit: 'days' };
 		}
 
-		const msLeft = new Date(state.data.expirationDate).valueOf() - new Date().valueOf();
+		const msLeft = new Date(state.data.expirationDate).valueOf() - now.value;
 		if (msLeft <= 0) {
 			return { count: 0, unit: 'minutes' };
 		}
@@ -187,10 +189,11 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 	const startPollingInstanceUsageData = () => {
 		const interval = setInterval(async () => {
+			now.value = Date.now();
 			try {
 				await getInstanceCurrentUsage();
 				if (trialExpired.value || allExecutionsUsed.value) {
-					clearTimeout(interval);
+					clearInterval(interval);
 					return;
 				}
 			} catch {}
