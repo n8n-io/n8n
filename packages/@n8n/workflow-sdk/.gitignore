@@ -1,0 +1,7 @@
+# Test fixtures downloaded from n8n.io API (run `pnpm fetch-workflows` to download)
+# Exclude workflow JSON files but keep manifest.json
+test-fixtures/real-workflows/*.json
+!test-fixtures/real-workflows/manifest.json
+
+# Generated TypeScript files from test runs
+test-fixtures/real-workflows/*.generated.ts

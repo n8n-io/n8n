@@ -1,0 +1,1593 @@
+import { generateWorkflowCode } from '../codegen';
+import { parseWorkflowCode } from '../parse-workflow-code';
+import type { WorkflowJSON } from '../types/base';
+
+describe('generateWorkflowCode', () => {
+	it('should generate valid TypeScript for a simple workflow', () => {
+		const json: WorkflowJSON = {
+			id: 'test-123',
+			name: 'My Test Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: {
+						rule: { interval: [{ field: 'hours', hour: 9 }] },
+					},
+				},
+				{
+					id: 'node-2',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: {
+						url: 'https://api.example.com/data',
+						method: 'GET',
+					},
+				},
+			],
+			connections: {
+				'Schedule Trigger': {
+					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+				},
+			},
+			settings: {
+				timezone: 'America/New_York',
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have workflow declaration
+		expect(code).toContain("workflow('test-123', 'My Test Workflow'");
+
+		// Should have settings
+		expect(code).toContain("timezone: 'America/New_York'");
+
+		// Should have trigger node with object format
+		expect(code).toContain("trigger({ type: 'n8n-nodes-base.scheduleTrigger', version: 1.1");
+
+		// Should have regular node with object format
+		expect(code).toContain("node({ type: 'n8n-nodes-base.httpRequest', version: 4.2");
+
+		// Should have connection chain
+		expect(code).toContain('.add(');
+		expect(code).toContain('.then(');
+	});
+
+	it('should generate code for nodes with credentials', () => {
+		const json: WorkflowJSON = {
+			id: 'cred-test',
+			name: 'Credentials Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.2,
+					position: [0, 0],
+					parameters: { channel: '#general' },
+					credentials: {
+						slackApi: { id: 'cred-123', name: 'My Slack' },
+					},
+				},
+			],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain('credentials:');
+		expect(code).toContain("slackApi: { id: 'cred-123', name: 'My Slack' }");
+	});
+
+	it('should generate code for sticky notes', () => {
+		const json: WorkflowJSON = {
+			id: 'sticky-test',
+			name: 'Sticky Test',
+			nodes: [
+				{
+					id: 'sticky-1',
+					name: 'Sticky Note',
+					type: 'n8n-nodes-base.stickyNote',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {
+						content: '## Documentation\n\nThis is a note.',
+						color: 4,
+						width: 300,
+						height: 200,
+					},
+				},
+			],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain("sticky('## Documentation\\n\\nThis is a note.'");
+		expect(code).toContain('color: 4');
+	});
+
+	it('should handle IF branching with ifBranch() composite', () => {
+		const json: WorkflowJSON = {
+			id: 'branch-test',
+			name: 'Branch Test',
+			nodes: [
+				{
+					id: 'if-1',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'true-1',
+					name: 'True Handler',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [200, -100],
+					parameters: {},
+				},
+				{
+					id: 'false-1',
+					name: 'False Handler',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [200, 100],
+					parameters: {},
+				},
+			],
+			connections: {
+				IF: {
+					main: [
+						[{ node: 'True Handler', type: 'main', index: 0 }],
+						[{ node: 'False Handler', type: 'main', index: 0 }],
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should use ifBranch() composite instead of .output()
+		expect(code).toContain('ifBranch(');
+		expect(code).not.toContain('.output(0)');
+		expect(code).not.toContain('.output(1)');
+	});
+
+	it('should handle single-branch IF nodes', () => {
+		const json: WorkflowJSON = {
+			id: 'single-branch-test',
+			name: 'Single Branch Test',
+			nodes: [
+				{
+					id: 'if-1',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'true-1',
+					name: 'True Handler',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [200, -100],
+					parameters: {},
+				},
+			],
+			connections: {
+				IF: {
+					main: [[{ node: 'True Handler', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should use ifBranch() with null for missing branch
+		expect(code).toContain('ifBranch(');
+		expect(code).toContain('null');
+	});
+
+	it('should roundtrip single-branch IF node with downstream connections', () => {
+		// This reproduces the bug from workflow 5895: IF node with only true branch,
+		// and the true branch node has downstream connections that get lost
+		const originalJson: WorkflowJSON = {
+			id: 'single-branch-roundtrip',
+			name: 'Single Branch Roundtrip Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2.2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'true-1',
+					name: 'True Branch',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 0],
+					parameters: { mode: 'manual' },
+				},
+				{
+					id: 'downstream-1',
+					name: 'Downstream Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [600, 0],
+					parameters: { url: 'https://api.example.com' },
+				},
+				{
+					id: 'downstream-2',
+					name: 'Final Node',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [800, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'IF', type: 'main', index: 0 }]],
+				},
+				IF: {
+					// Only true branch (output 0) is connected, no false branch
+					main: [[{ node: 'True Branch', type: 'main', index: 0 }]],
+				},
+				'True Branch': {
+					main: [[{ node: 'Downstream Node', type: 'main', index: 0 }]],
+				},
+				'Downstream Node': {
+					main: [[{ node: 'Final Node', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		// Generate code and parse back
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are preserved
+		expect(parsedJson.nodes).toHaveLength(originalJson.nodes.length);
+
+		// Critical: verify downstream connections from True Branch are preserved
+		const trueBranchConns = parsedJson.connections['True Branch'];
+		expect(trueBranchConns).toBeDefined();
+		expect(trueBranchConns!.main[0][0].node).toBe('Downstream Node');
+
+		const downstreamConns = parsedJson.connections['Downstream Node'];
+		expect(downstreamConns).toBeDefined();
+		expect(downstreamConns!.main[0][0].node).toBe('Final Node');
+	});
+
+	it('should escape special characters in strings', () => {
+		const json: WorkflowJSON = {
+			id: 'escape-test',
+			name: "Workflow with 'quotes' and\nnewlines",
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Code',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {
+						jsCode: "const x = 'hello';\nreturn x;",
+					},
+				},
+			],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should properly escape
+		expect(code).toContain("\\'quotes\\'");
+		expect(code).toContain('\\n');
+	});
+
+	it('should generate code starting with return keyword', () => {
+		const json: WorkflowJSON = {
+			id: 'test-return',
+			name: 'Test Return',
+			nodes: [],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toMatch(/^return workflow\(/);
+		expect(code).not.toContain('const wf =');
+	});
+
+	it('should not end with semicolon', () => {
+		const json: WorkflowJSON = {
+			id: 'test-no-semi',
+			name: 'Test No Semicolon',
+			nodes: [],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code.trim()).not.toMatch(/;$/);
+	});
+});
+
+// =============================================================================
+// AI Subnode Codegen Tests
+// =============================================================================
+
+describe('generateWorkflowCode with AI subnodes', () => {
+	it('should generate subnode config for AI agent with model', () => {
+		const json: WorkflowJSON = {
+			id: 'ai-agent-test',
+			name: 'AI Agent with Model',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [200, 0],
+					parameters: {
+						promptType: 'define',
+						text: 'Hello, how can I help?',
+					},
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [200, 200],
+					parameters: {
+						model: 'gpt-4',
+					},
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+				},
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should NOT have standalone model node as .add() call
+		expect(code).not.toMatch(/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.lmChatOpenAi'/);
+
+		// Should have subnode config with languageModel factory
+		expect(code).toContain('subnodes:');
+		expect(code).toContain('model: languageModel(');
+		expect(code).toContain("type: '@n8n/n8n-nodes-langchain.lmChatOpenAi'");
+	});
+
+	it('should generate subnode config for AI agent with multiple subnodes', () => {
+		const json: WorkflowJSON = {
+			id: 'ai-multi-subnode',
+			name: 'AI Agent with Multiple Subnodes',
+			nodes: [
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [0, 200],
+					parameters: { model: 'gpt-4' },
+				},
+				{
+					id: 'tool-1',
+					name: 'Code Tool',
+					type: '@n8n/n8n-nodes-langchain.toolCode',
+					typeVersion: 1.1,
+					position: [0, 300],
+					parameters: { code: 'return "test"' },
+				},
+				{
+					id: 'tool-2',
+					name: 'Calculator Tool',
+					type: '@n8n/n8n-nodes-langchain.toolCalculator',
+					typeVersion: 1,
+					position: [0, 400],
+					parameters: {},
+				},
+				{
+					id: 'memory-1',
+					name: 'Buffer Memory',
+					type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+					typeVersion: 1.2,
+					position: [0, 500],
+					parameters: { contextWindowLength: 5 },
+				},
+			],
+			connections: {
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+				'Code Tool': {
+					ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+				},
+				'Calculator Tool': {
+					ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+				},
+				'Buffer Memory': {
+					ai_memory: [[{ node: 'AI Agent', type: 'ai_memory', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have all subnodes in config
+		expect(code).toContain('subnodes:');
+		expect(code).toContain('model: languageModel(');
+		expect(code).toContain('memory: memory(');
+		expect(code).toContain('tools: [');
+		expect(code).toContain('tool(');
+
+		// Should NOT have standalone subnode .add() calls
+		expect(code).not.toMatch(/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.lmChatOpenAi'/);
+		expect(code).not.toMatch(/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.toolCode'/);
+		expect(code).not.toMatch(
+			/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.memoryBufferWindow'/,
+		);
+	});
+
+	it('should handle output parser subnode', () => {
+		const json: WorkflowJSON = {
+			id: 'output-parser-test',
+			name: 'Agent with Output Parser',
+			nodes: [
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [0, 200],
+					parameters: {},
+				},
+				{
+					id: 'parser-1',
+					name: 'Structured Parser',
+					type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+					typeVersion: 1,
+					position: [0, 300],
+					parameters: { schemaType: 'manual' },
+				},
+			],
+			connections: {
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+				'Structured Parser': {
+					ai_outputParser: [[{ node: 'AI Agent', type: 'ai_outputParser', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain('outputParser: outputParser(');
+	});
+
+	it('should roundtrip AI connections correctly', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'ai-roundtrip',
+			name: 'AI Roundtrip Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [200, 0],
+					parameters: { promptType: 'auto' },
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [200, 200],
+					parameters: { model: 'gpt-4' },
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+				},
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		};
+
+		// Generate code and parse back
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify AI connections are preserved
+		expect(parsedJson.connections['OpenAI Model']).toBeDefined();
+		expect(parsedJson.connections['OpenAI Model'].ai_languageModel).toBeDefined();
+		expect(parsedJson.connections['OpenAI Model'].ai_languageModel[0][0].node).toBe('AI Agent');
+		expect(parsedJson.connections['OpenAI Model'].ai_languageModel[0][0].type).toBe(
+			'ai_languageModel',
+		);
+	});
+
+	it('should preserve disconnected AI nodes with their subnodes', () => {
+		// Workflow with a disconnected AI agent that has a model subnode
+		const json: WorkflowJSON = {
+			id: 'disconnected-ai-test',
+			name: 'Disconnected AI Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: { url: 'https://api.example.com' },
+				},
+				// Disconnected AI Agent (not connected to the trigger chain)
+				{
+					id: 'agent-1',
+					name: 'Disconnected AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [0, 300],
+					parameters: { promptType: 'auto' },
+				},
+				// Model subnode connected to the disconnected agent
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [0, 500],
+					parameters: { model: 'gpt-4' },
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+				},
+				// AI connection - model is subnode of the disconnected agent
+				'OpenAI Model': {
+					ai_languageModel: [
+						[{ node: 'Disconnected AI Agent', type: 'ai_languageModel', index: 0 }],
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should include the disconnected AI agent
+		expect(code).toContain('Disconnected AI Agent');
+		// Should include the model subnode embedded in the agent's config
+		expect(code).toContain('subnodes:');
+		expect(code).toContain('model: languageModel(');
+	});
+
+	it('should roundtrip disconnected AI nodes correctly', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'disconnected-ai-roundtrip',
+			name: 'Disconnected AI Roundtrip Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: { url: 'https://api.example.com' },
+				},
+				// Disconnected AI Agent
+				{
+					id: 'agent-1',
+					name: 'Disconnected Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [0, 300],
+					parameters: { promptType: 'auto' },
+				},
+				// Model subnode
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [0, 500],
+					parameters: { model: 'gpt-4' },
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+				},
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'Disconnected Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		};
+
+		// Generate code and parse back
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are preserved
+		expect(parsedJson.nodes).toHaveLength(originalJson.nodes.length);
+
+		// Verify the agent node exists
+		const agentNode = parsedJson.nodes.find((n) => n.name === 'Disconnected Agent');
+		expect(agentNode).toBeDefined();
+
+		// Verify the model node exists
+		const modelNode = parsedJson.nodes.find((n) => n.name === 'OpenAI Model');
+		expect(modelNode).toBeDefined();
+
+		// Verify AI connection is preserved
+		const modelConns = parsedJson.connections['OpenAI Model'];
+		expect(modelConns).toBeDefined();
+		expect(modelConns.ai_languageModel).toBeDefined();
+	});
+
+	it('should handle embedding subnode for vector store', () => {
+		const json: WorkflowJSON = {
+			id: 'embedding-test',
+			name: 'Vector Store with Embedding',
+			nodes: [
+				{
+					id: 'vs-1',
+					name: 'Pinecone Store',
+					type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: { indexName: 'test' },
+				},
+				{
+					id: 'emb-1',
+					name: 'OpenAI Embeddings',
+					type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+					typeVersion: 1,
+					position: [0, 200],
+					parameters: { model: 'text-embedding-ada-002' },
+				},
+			],
+			connections: {
+				'OpenAI Embeddings': {
+					ai_embedding: [[{ node: 'Pinecone Store', type: 'ai_embedding', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain('embedding: embedding(');
+	});
+
+	describe('complex connection patterns', () => {
+		it('should generate .then([a, b]) for fan-out patterns', () => {
+			const json: WorkflowJSON = {
+				id: 'fan-out-test',
+				name: 'Fan-Out Workflow',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'source-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: { url: 'https://api.example.com' },
+					},
+					{
+						id: 'target-1',
+						name: 'Process A',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, -100],
+						parameters: { jsCode: 'return items' },
+					},
+					{
+						id: 'target-2',
+						name: 'Process B',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 100],
+						parameters: { jsCode: 'return items' },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+					},
+					'HTTP Request': {
+						main: [
+							[
+								{ node: 'Process A', type: 'main', index: 0 },
+								{ node: 'Process B', type: 'main', index: 0 },
+							],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(json);
+
+			// Should use .then([a, b]) syntax for fan-out
+			expect(code).toContain('.then([');
+			// Both target nodes should be in the array
+			expect(code).toMatch(/\.then\(\[\s*node\(/);
+		});
+
+		it('should roundtrip fan-out patterns correctly', () => {
+			const originalJson: WorkflowJSON = {
+				id: 'fan-out-roundtrip',
+				name: 'Fan-Out Roundtrip Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'source-1',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 0],
+						parameters: { url: 'https://api.example.com' },
+					},
+					{
+						id: 'target-1',
+						name: 'Process A',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, -100],
+						parameters: { jsCode: 'return items' },
+					},
+					{
+						id: 'target-2',
+						name: 'Process B',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 100],
+						parameters: { jsCode: 'return items' },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+					},
+					'HTTP Request': {
+						main: [
+							[
+								{ node: 'Process A', type: 'main', index: 0 },
+								{ node: 'Process B', type: 'main', index: 0 },
+							],
+						],
+					},
+				},
+			};
+
+			// Generate code and parse back
+			const code = generateWorkflowCode(originalJson);
+			const parsedJson = parseWorkflowCode(code);
+
+			// Verify all nodes are preserved
+			expect(parsedJson.nodes).toHaveLength(originalJson.nodes.length);
+
+			// Verify fan-out connections are preserved
+			const httpConnections = parsedJson.connections['HTTP Request'];
+			expect(httpConnections).toBeDefined();
+			expect(httpConnections.main[0]).toHaveLength(2);
+			expect(httpConnections.main[0].map((c) => c.node).sort()).toEqual(['Process A', 'Process B']);
+		});
+
+		it('should generate merge() for fan-in patterns', () => {
+			const json: WorkflowJSON = {
+				id: 'merge-test',
+				name: 'Merge Workflow',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'source-1',
+						name: 'Source 1',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, -100],
+						parameters: { url: 'https://api1.example.com' },
+					},
+					{
+						id: 'source-2',
+						name: 'Source 2',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [200, 100],
+						parameters: { url: 'https://api2.example.com' },
+					},
+					{
+						id: 'merge-1',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3.2,
+						position: [400, 0],
+						parameters: { mode: 'append' },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [
+							[
+								{ node: 'Source 1', type: 'main', index: 0 },
+								{ node: 'Source 2', type: 'main', index: 0 },
+							],
+						],
+					},
+					'Source 1': {
+						main: [[{ node: 'Merge', type: 'main', index: 0 }]],
+					},
+					'Source 2': {
+						main: [[{ node: 'Merge', type: 'main', index: 1 }]],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(json);
+
+			// Should use merge() function instead of regular node()
+			expect(code).toContain('merge(');
+			// Should include the source nodes in the merge array
+			expect(code).toMatch(/merge\s*\(\s*\[/);
+		});
+
+		it('should generate ifBranch() for IF node patterns', () => {
+			const json: WorkflowJSON = {
+				id: 'if-test',
+				name: 'IF Workflow',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'if-1',
+						name: 'IF',
+						type: 'n8n-nodes-base.if',
+						typeVersion: 2.3,
+						position: [200, 0],
+						parameters: {
+							conditions: {
+								conditions: [{ leftValue: '={{ $json.value }}', rightValue: 100 }],
+							},
+						},
+					},
+					{
+						id: 'true-1',
+						name: 'True Path',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, -100],
+					},
+					{
+						id: 'false-1',
+						name: 'False Path',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 100],
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'IF', type: 'main', index: 0 }]],
+					},
+					IF: {
+						main: [
+							[{ node: 'True Path', type: 'main', index: 0 }],
+							[{ node: 'False Path', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(json);
+
+			// Should use ifBranch() function
+			expect(code).toContain('ifBranch(');
+			// Should include both true and false branches
+			expect(code).toMatch(/ifBranch\s*\(\s*\[/);
+		});
+
+		it('should generate switchCase() for Switch node patterns', () => {
+			const json: WorkflowJSON = {
+				id: 'switch-test',
+				name: 'Switch Workflow',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+					},
+					{
+						id: 'switch-1',
+						name: 'Switch',
+						type: 'n8n-nodes-base.switch',
+						typeVersion: 3.4,
+						position: [200, 0],
+						parameters: { mode: 'rules' },
+					},
+					{
+						id: 'case-0',
+						name: 'Case 0',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, -100],
+					},
+					{
+						id: 'case-1',
+						name: 'Case 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0],
+					},
+					{
+						id: 'case-2',
+						name: 'Case 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 100],
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Switch', type: 'main', index: 0 }]],
+					},
+					Switch: {
+						main: [
+							[{ node: 'Case 0', type: 'main', index: 0 }],
+							[{ node: 'Case 1', type: 'main', index: 0 }],
+							[{ node: 'Case 2', type: 'main', index: 0 }],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(json);
+
+			// Should use switchCase() function
+			expect(code).toContain('switchCase(');
+			// Should include all case branches
+			expect(code).toMatch(/switchCase\s*\(\s*\[/);
+		});
+	});
+});
+
+describe('parseWorkflowCode with template literals in jsCode', () => {
+	it('should throw a helpful error when code has syntax errors', () => {
+		// This code has an unclosed template literal - missing the closing backtick
+		// before the newline in the subject line
+		const malformedCode = `return workflow('test', 'Test')
+  .add(node({
+    type: 'n8n-nodes-base.code',
+    version: 2,
+    config: {
+      parameters: {
+        jsCode: \`return { subject: \\\`Hello
+\` }\`
+      }
+    }
+  }))`;
+
+		// The parser should throw with a helpful error message
+		expect(() => parseWorkflowCode(malformedCode)).toThrow(/syntax/i);
+	});
+
+	it('should parse code with nested template literals in jsCode parameter', () => {
+		// This code has template literals inside the jsCode that contain ${} expressions
+		// and was generated by an LLM - the parser must handle this correctly
+		const code = `return workflow('IH8D5PUFd8JhwyZP8Ng0g', 'My workflow 15')
+  .add(trigger({
+    type: 'n8n-nodes-base.scheduleTrigger',
+    version: 1.3,
+    config: {
+      name: 'Every Monday Morning',
+      parameters: {
+        rule: {
+          interval: [{
+            field: 'weeks',
+            weeksInterval: 1,
+            triggerAtDay: [1], // Monday
+            triggerAtHour: 9,
+            triggerAtMinute: 0
+          }]
+        }
+      },
+      position: [240, 300]
+    }
+  }))
+  .then(node({
+    type: 'n8n-nodes-base.gmail',
+    version: 2.2,
+    config: {
+      name: 'Get Weekend Emails',
+      parameters: {
+        resource: 'message',
+        operation: 'getAll',
+        returnAll: false,
+        limit: 50,
+        simple: true,
+        filters: {
+          receivedAfter: '={{ $now.minus({ days: 3 }).toISO() }}' // Last 3 days (Fri-Sun)
+        },
+        options: {
+          includeSpamTrash: false
+        }
+      },
+      position: [540, 300]
+    }
+  }))
+  .then(node({
+    type: '@n8n/n8n-nodes-langchain.agent',
+    version: 3.1,
+    config: {
+      name: 'Analyze Emails with GPT-4',
+      parameters: {
+        promptType: 'define',
+        text: \`You are an email analysis assistant. Analyze the following emails and extract:
+
+1. **Action Items**: Tasks that require my attention or response
+2. **Priorities**: Urgent or important emails that need immediate action
+3. **Summary**: Brief overview of each important email
+
+Format your response as a structured summary with clear sections:
+- High Priority Action Items
+- Medium Priority Items
+- General Updates
+
+Emails to analyze:
+{{ $json.emails }}
+
+Provide a clear, organized summary that I can quickly review.\`,
+        options: {}
+      },
+      subnodes: {
+        model: node({
+          type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+          version: 1.3,
+          config: {
+            name: 'GPT-4 Mini Model',
+            parameters: {
+              model: 'gpt-4o-mini',
+              options: {
+                temperature: 0.3 // Lower temperature for more focused analysis
+              }
+            }
+          }
+        })
+      },
+      position: [840, 300]
+    }
+  }))
+  .then(node({
+    type: 'n8n-nodes-base.code',
+    version: 2,
+    config: {
+      name: 'Format Email Summary',
+      parameters: {
+        mode: 'runOnceForAllItems',
+        jsCode: \`// Get the AI analysis from the previous node
+const aiResponse = $input.first().json;
+const emailCount = $('Get Weekend Emails').all().length;
+
+// Format the email body
+const emailBody = \\\`
+Hi there,
+
+Here's your weekend email summary for Monday, \\\${new Date().toLocaleDateString()}:
+
+📧 Total Emails Received: \\\${emailCount}
+
+---
+
+\\\${aiResponse.output || aiResponse.text || 'No analysis available'}
+
+---
+
+This summary was automatically generated by your n8n workflow.
+
+Have a productive week!
+\\\`;
+
+return [{
+  json: {
+    subject: \\\`📬 Weekend Email Summary - \\\${new Date().toLocaleDateString()}\\\`,
+    body: emailBody,
+    emailCount: emailCount
+  }
+}];\`
+      },
+      position: [1140, 300]
+    }
+  }))
+  .then(node({
+    type: 'n8n-nodes-base.gmail',
+    version: 2.2,
+    config: {
+      name: 'Send Summary Email',
+      parameters: {
+        resource: 'message',
+        operation: 'send',
+        sendTo: '={{ $json.myEmail }}', // You'll need to set this to your email
+        subject: '={{ $json.subject }}',
+        emailType: 'text',
+        message: '={{ $json.body }}',
+        options: {}
+      },
+      position: [1440, 300]
+    }
+  }))`;
+
+		// This should NOT throw a parsing error
+		const workflow = parseWorkflowCode(code);
+
+		expect(workflow.id).toBe('IH8D5PUFd8JhwyZP8Ng0g');
+		expect(workflow.name).toBe('My workflow 15');
+
+		// Should have all nodes
+		expect(workflow.nodes.length).toBeGreaterThan(0);
+
+		// Should have the schedule trigger
+		const scheduleTrigger = workflow.nodes.find((n) => n.name === 'Every Monday Morning');
+		expect(scheduleTrigger).toBeDefined();
+
+		// Should have the code node
+		const codeNode = workflow.nodes.find((n) => n.name === 'Format Email Summary');
+		expect(codeNode).toBeDefined();
+
+		// The jsCode should contain the nested template literal content
+		const jsCode = (codeNode?.parameters?.jsCode as string) || '';
+		expect(jsCode).toContain('const emailBody =');
+		expect(jsCode).toContain('Weekend Email Summary');
+	});
+
+	it('should auto-escape n8n runtime variables like $today', () => {
+		// When jsCode is defined as a template literal with unescaped ${$today},
+		// the parser now auto-escapes it to prevent "$today is not defined" errors
+		const codeWithUnescapedVars = `return workflow('test', 'Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [0, 0] } }))
+  .then(node({
+    type: 'n8n-nodes-base.code',
+    version: 2,
+    config: {
+      parameters: {
+        jsCode: \`return { date: \${$today} };\`
+      },
+      position: [200, 0]
+    }
+  }))`;
+
+		// Should now work - variables are auto-escaped
+		const workflow = parseWorkflowCode(codeWithUnescapedVars);
+		const codeNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.code');
+
+		// The jsCode should contain the literal ${$today}
+		const jsCode = (codeNode?.parameters?.jsCode as string) || '';
+		expect(jsCode).toContain('${$today}');
+	});
+
+	it('should parse jsCode with properly escaped n8n runtime variables', () => {
+		// To preserve ${$today} as a literal string in jsCode, escape it as \${$today}
+		const codeWithEscapedVars = `return workflow('test', 'Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [0, 0] } }))
+  .then(node({
+    type: 'n8n-nodes-base.code',
+    version: 2,
+    config: {
+      parameters: {
+        jsCode: \`return { date: \\\${$today}, now: \\\${$now} };\`
+      },
+      position: [200, 0]
+    }
+  }))`;
+
+		// This should work - the escaped expressions become literal strings
+		const workflow = parseWorkflowCode(codeWithEscapedVars);
+		const codeNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.code');
+		expect(codeNode).toBeDefined();
+
+		// The jsCode should contain the literal ${$today} and ${$now} strings
+		const jsCode = (codeNode?.parameters?.jsCode as string) || '';
+		expect(jsCode).toContain('${$today}');
+		expect(jsCode).toContain('${$now}');
+	});
+});
+
+describe('multiple triggers / disconnected chains', () => {
+	it('should preserve all nodes when workflow has multiple disconnected trigger chains', () => {
+		// This is a workflow with two independent trigger chains:
+		// - Trigger A -> Node A1 -> Node A2
+		// - Trigger B -> Node B1 -> Node B2
+		// Both chains should be fully traversed in codegen roundtrip
+		const originalJson: WorkflowJSON = {
+			id: 'multi-trigger-test',
+			name: 'Multiple Trigger Chains',
+			nodes: [
+				// First chain
+				{
+					id: 'trigger-a',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: { rule: { interval: [{ field: 'hours', hour: 9 }] } },
+				},
+				{
+					id: 'node-a1',
+					name: 'HTTP Request A',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: { url: 'https://api-a.example.com' },
+				},
+				{
+					id: 'node-a2',
+					name: 'Process A',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [400, 0],
+					parameters: { jsCode: 'return items' },
+				},
+				// Second chain - completely independent
+				{
+					id: 'trigger-b',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [0, 300],
+					parameters: { path: 'webhook-b' },
+				},
+				{
+					id: 'node-b1',
+					name: 'HTTP Request B',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 300],
+					parameters: { url: 'https://api-b.example.com' },
+				},
+				{
+					id: 'node-b2',
+					name: 'Process B',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 2,
+					position: [400, 300],
+					parameters: { jsCode: 'return items' },
+				},
+			],
+			connections: {
+				'Schedule Trigger': {
+					main: [[{ node: 'HTTP Request A', type: 'main', index: 0 }]],
+				},
+				'HTTP Request A': {
+					main: [[{ node: 'Process A', type: 'main', index: 0 }]],
+				},
+				Webhook: {
+					main: [[{ node: 'HTTP Request B', type: 'main', index: 0 }]],
+				},
+				'HTTP Request B': {
+					main: [[{ node: 'Process B', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		// Generate code and parse back
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify ALL nodes from both chains are preserved
+		expect(parsedJson.nodes).toHaveLength(originalJson.nodes.length);
+
+		// Check all node names exist
+		const nodeNames = parsedJson.nodes.map((n) => n.name);
+		expect(nodeNames).toContain('Schedule Trigger');
+		expect(nodeNames).toContain('HTTP Request A');
+		expect(nodeNames).toContain('Process A');
+		expect(nodeNames).toContain('Webhook');
+		expect(nodeNames).toContain('HTTP Request B');
+		expect(nodeNames).toContain('Process B');
+	});
+
+	it('should preserve nodes from all trigger chains even with AI subnodes', () => {
+		// Complex case: multiple triggers where one chain has AI agent with subnodes
+		const originalJson: WorkflowJSON = {
+			id: 'multi-trigger-ai-test',
+			name: 'Multiple Triggers with AI',
+			nodes: [
+				// First chain - simple
+				{
+					id: 'trigger-1',
+					name: 'Schedule Trigger',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'http-1',
+					name: 'HTTP Request',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: { url: 'https://api.example.com' },
+				},
+				// Second chain - with AI agent
+				{
+					id: 'trigger-2',
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [0, 300],
+					parameters: { path: 'ai-webhook' },
+				},
+				{
+					id: 'agent-1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [200, 300],
+					parameters: { promptType: 'auto' },
+				},
+				{
+					id: 'model-1',
+					name: 'OpenAI Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					typeVersion: 1.2,
+					position: [200, 500],
+					parameters: { model: 'gpt-4' },
+				},
+			],
+			connections: {
+				'Schedule Trigger': {
+					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+				},
+				Webhook: {
+					main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+				},
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		};
+
+		// Generate code and parse back
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify ALL nodes preserved including AI nodes
+		expect(parsedJson.nodes).toHaveLength(originalJson.nodes.length);
+
+		const nodeNames = parsedJson.nodes.map((n) => n.name);
+		expect(nodeNames).toContain('Schedule Trigger');
+		expect(nodeNames).toContain('HTTP Request');
+		expect(nodeNames).toContain('Webhook');
+		expect(nodeNames).toContain('AI Agent');
+		expect(nodeNames).toContain('OpenAI Model');
+	});
+});
+
+describe('parseWorkflowCode with splitInBatches', () => {
+	it('should parse code that uses splitInBatches() function', () => {
+		// This is the type of code the LLM might generate using splitInBatches
+		const code = `return workflow('test-sib', 'Split In Batches Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [0, 0] } }))
+  .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: { assignments: { assignments: [{ name: 'items', type: 'array', value: '[1,2,3,4,5]' }] } }, position: [200, 0], name: 'Generate Items' } }))
+  .then(
+    splitInBatches({ parameters: { batchSize: 2 } })
+      .done().then(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [600, 0], name: 'Done Processing' } }))
+      .each().then(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [600, 200], name: 'Process Batch' } })).loop()
+  )`;
+
+		// This should NOT throw "splitInBatches is not defined"
+		const workflow = parseWorkflowCode(code);
+
+		expect(workflow.id).toBe('test-sib');
+		expect(workflow.name).toBe('Split In Batches Test');
+		expect(workflow.nodes.length).toBeGreaterThan(0);
+
+		// Should have the Split In Batches node
+		const sibNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
+		expect(sibNode).toBeDefined();
+	});
+
+	it('should parse splitInBatches code that ends with .loop().done().then() chain', () => {
+		// This code ends with .done().then() chain, which returns a DoneChainImpl
+		// instead of SplitInBatchesBuilderImpl - the workflow builder must handle both
+		const code = `return workflow('IH8D5PUFd8JhwyZP8Ng0g', 'My workflow 15')
+  .add(trigger({
+    type: 'n8n-nodes-base.scheduleTrigger',
+    version: 1.3,
+    config: {
+      name: 'Every Night at 8pm',
+      parameters: {
+        rule: {
+          interval: [{
+            field: 'hours',
+            hoursInterval: 24,
+            triggerAtHour: 20
+          }]
+        }
+      },
+      position: [240, 300]
+    }
+  }))
+  .then(node({
+    type: 'n8n-nodes-base.httpRequest',
+    version: 4.3,
+    config: {
+      name: 'Fetch AI News from NewsAPI',
+      parameters: {
+        method: 'GET',
+        url: 'https://newsapi.org/v2/everything'
+      },
+      position: [540, 300]
+    }
+  }))
+  .then(node({
+    type: 'n8n-nodes-base.code',
+    version: 2,
+    config: {
+      name: 'Extract Top 5 Articles',
+      parameters: {
+        mode: 'runOnceForAllItems',
+        jsCode: 'return [];'
+      },
+      position: [840, 300]
+    }
+  }))
+  .then(splitInBatches({
+    parameters: { batchSize: 1 },
+    name: 'Process Each Article',
+    position: [1140, 300]
+  })
+    .each()
+    .then(node({
+      type: 'n8n-nodes-base.set',
+      version: 3.4,
+      config: {
+        name: 'Process Item',
+        parameters: { mode: 'manual' },
+        position: [1440, 200]
+      }
+    }))
+    .loop()
+    .done()
+    .then(node({
+      type: 'n8n-nodes-base.code',
+      version: 2,
+      config: {
+        name: 'Prepare Message',
+        parameters: { mode: 'runOnceForAllItems', jsCode: 'return [];' },
+        position: [2040, 300]
+      }
+    }))
+    .then(node({
+      type: 'n8n-nodes-base.set',
+      version: 3.4,
+      config: {
+        name: 'Final Output',
+        parameters: { mode: 'manual' },
+        position: [2340, 300]
+      }
+    }))
+  )`;
+
+		// This should NOT throw "Cannot read properties of undefined (reading 'subnodes')"
+		const workflow = parseWorkflowCode(code);
+
+		expect(workflow.id).toBe('IH8D5PUFd8JhwyZP8Ng0g');
+		expect(workflow.name).toBe('My workflow 15');
+
+		// Should have the Split In Batches node
+		const sibNode = workflow.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
+		expect(sibNode).toBeDefined();
+		expect(sibNode?.name).toBe('Process Each Article');
+
+		// Should have both done chain and each chain nodes
+		const prepareMessage = workflow.nodes.find((n) => n.name === 'Prepare Message');
+		const processItem = workflow.nodes.find((n) => n.name === 'Process Item');
+		expect(prepareMessage).toBeDefined();
+		expect(processItem).toBeDefined();
+	});
+});

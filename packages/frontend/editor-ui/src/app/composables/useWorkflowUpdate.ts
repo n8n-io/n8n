@@ -297,6 +297,9 @@ export function useWorkflowUpdate() {
 		options?: UpdateWorkflowOptions,
 	): Promise<UpdateWorkflowResult> {
 		try {
+			console.log('--- workflow ---');
+			console.log(workflowData);
+			console.log('------');
 			// Apply default credentials to incoming nodes BEFORE adding to store
 			setDefaultCredentialsOnNodes(workflowData.nodes ?? []);
 
@@ -308,6 +311,14 @@ export function useWorkflowUpdate() {
 			const newNodeIds = addedNodes.map((n) => n.id);
 			await updateConnections(workflowData.connections ?? {});
 			updateWorkflowNameIfNeeded(workflowData.name, options?.isInitialGeneration);
+
+			// Merge pin data from workflow data with existing pin data
+			if (workflowData.pinData) {
+				workflowsStore.setWorkflowPinData({
+					...workflowsStore.workflow.pinData,
+					...workflowData.pinData,
+				});
+			}
 
 			builderStore.setBuilderMadeEdits(true);
 

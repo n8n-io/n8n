@@ -1,0 +1,510 @@
+{
+	"fetchedAt": "2026-01-21T06:53:15.635Z",
+	"workflows": [
+		{
+			"id": 6270,
+			"name": "Build your first AI agent",
+			"success": true
+		},
+		{
+			"id": 5819,
+			"name": "🤖 Build an interactive AI agent with chat interface and multiple tools",
+			"success": true
+		},
+		{
+			"id": 10000,
+			"name": "Auto-create TikTok videos with VEED.io AI avatars, ElevenLabs & GPT-4",
+			"success": true
+		},
+		{
+			"id": 7639,
+			"name": "Talk to your Google Sheets using ChatGPT-5",
+			"success": true
+		},
+		{
+			"id": 5035,
+			"name": "Generate & auto-post AI videos to social media with Veo3 and Blotato",
+			"success": true
+		},
+		{
+			"id": 8500,
+			"name": "Jarvis: productivity AI agent for tasks, calendar, email & expense using MCPs",
+			"success": true
+		},
+		{
+			"id": 6281,
+			"name": "Unknown",
+			"success": false
+		},
+		{
+			"id": 7756,
+			"name": "Nutrition tracker & meal logger with Telegram, Gemini AI and Google Sheets",
+			"success": true
+		},
+		{
+			"id": 5148,
+			"name": "Local chatbot with retrieval augmented generation (RAG)",
+			"success": true
+		},
+		{
+			"id": 5110,
+			"name": "Create & upload AI-generated ASMR YouTube Shorts with Seedance, Fal AI, and GPT-4",
+			"success": true
+		},
+		{
+			"id": 7990,
+			"name": "Receipt scanning & analysis workflow",
+			"success": true
+		},
+		{
+			"id": 12345,
+			"name": "Scrape physician profiles from BrowserAct into Google Sheets and notify Slack",
+			"success": true
+		},
+		{
+			"id": 5962,
+			"name": "Track SEO keyword rankings with Bright Data MCP and GPT-4o AI analysis",
+			"success": true
+		},
+		{
+			"id": 4846,
+			"name": "Generate AI videos with Google Veo3, save to Google Drive and upload to YouTube",
+			"success": true
+		},
+		{
+			"id": 5271,
+			"name": "🎓 Learn n8n expressions with an interactive step-by-step tutorial for beginners",
+			"success": true
+		},
+		{
+			"id": 5755,
+			"name": "Transform old photos into animated videos with FLUX & Kling AI for social media",
+			"success": true
+		},
+		{
+			"id": 2519,
+			"name": "Fetch live ETF metrics from JustETF to Excel with one-click updates",
+			"success": true
+		},
+		{
+			"id": 9867,
+			"name": "Transform long videos into viral shorts with AI and schedule to social media using Whisper & Gemini",
+			"success": true
+		},
+		{
+			"id": 4827,
+			"name": "AI-powered WhatsApp chatbot for text, voice, images, and PDF with RAG",
+			"success": true
+		},
+		{
+			"id": 10358,
+			"name": "Automate AI video creation & multi-platform publishing with GPT-4, Veo 3.1 & Blotato",
+			"success": true
+		},
+		{
+			"id": 5338,
+			"name": "Generate AI viral videos with Seedance and upload to TikTok, YouTube & Instagram",
+			"success": true
+		},
+		{
+			"id": 9437,
+			"name": "Course recommendation system for surveys with data tables and GPT-4.1-Mini",
+			"success": true
+		},
+		{
+			"id": 5170,
+			"name": "🎓 Learn JSON basics with an interactive step-by-step tutorial for beginners",
+			"success": true
+		},
+		{
+			"id": 12462,
+			"name": "Create AI product images and marketing videos with NanoBanana Pro, Veo 3.1 and Blotato",
+			"success": true
+		},
+		{
+			"id": 9200,
+			"name": "Automate & publish video ad campaigns with NanoBanana, Seedream, GPT-4o, Veo 3",
+			"success": true
+		},
+		{
+			"id": 6287,
+			"name": "Email support agent w/ Gemini & GPT fallback using Gmail + Google Sheets",
+			"success": true
+		},
+		{
+			"id": 4968,
+			"name": "Automated LinkedIn content creation with GPT-4 and DALL-E for scheduled posts",
+			"success": true
+		},
+		{
+			"id": 5906,
+			"name": "Automated job applications & status tracking with LinkedIn, Indeed & Google Sheets",
+			"success": true
+		},
+		{
+			"id": 5678,
+			"name": "Automate email filtering & AI summarization. 100% free & effective, works 7/24",
+			"success": true
+		},
+		{
+			"id": 11572,
+			"name": "Aggregate news articles from NewsAPI, Mediastack & CurrentsAPI into database",
+			"success": true
+		},
+		{
+			"id": 11204,
+			"name": "Create AI viral videos using NanoBanana 2 PRO & VEO3.1 and publish via Blotato",
+			"success": true
+		},
+		{
+			"id": 6067,
+			"name": "Auto-generate SEO blog posts with Perplexity, GPT, Leonardo & WordPress",
+			"success": true
+		},
+		{
+			"id": 9383,
+			"name": "Automated law firm lead management & scheduling with AI, Jotform & Calendar",
+			"success": true
+		},
+		{
+			"id": 8428,
+			"name": "Create viral ads with AI: NanoBanana & publish on socials via upload-post",
+			"success": true
+		},
+		{
+			"id": 7156,
+			"name": "Get started with Google Sheets in n8n",
+			"success": true
+		},
+		{
+			"id": 8022,
+			"name": "Auto-generate virtual AI try-on images for WooCommerce with Gemini Nano Banana",
+			"success": true
+		},
+		{
+			"id": 5010,
+			"name": "RAG Starter Template using Simple Vector Stores, Form trigger and OpenAI",
+			"success": true
+		},
+		{
+			"id": 4110,
+			"name": "Clone viral TikToks with AI avatars & auto-post to 9 platforms using Perplexity & Blotato",
+			"success": true
+		},
+		{
+			"id": 4966,
+			"name": "Customer support WhatsApp bot with Google Docs knowledge base and Gemini AI",
+			"success": true
+		},
+		{
+			"id": 8549,
+			"name": "Nano banana AI product image creator via WhatsApp",
+			"success": true
+		},
+		{
+			"id": 4722,
+			"name": "Gmail AI Email Manager",
+			"success": true
+		},
+		{
+			"id": 5691,
+			"name": "Generate personalized sales emails with LinkedIn data & Claude 3.7 via OpenRouter",
+			"success": true
+		},
+		{
+			"id": 5948,
+			"name": "Automated competitor pricing monitor with Bright Data MCP & OpenAI",
+			"success": true
+		},
+		{
+			"id": 7423,
+			"name": "Lead generation agent",
+			"success": true
+		},
+		{
+			"id": 5677,
+			"name": "Extract & transform HackerNews data to Google Docs using Gemini 2.0 flash",
+			"success": true
+		},
+		{
+			"id": 10566,
+			"name": "Process large documents with OCR using SubworkflowAI and Gemini",
+			"success": true
+		},
+		{
+			"id": 10174,
+			"name": "PPC campaign intelligence & optimization with Google Ads, Sheets & Slack",
+			"success": true
+		},
+		{
+			"id": 12325,
+			"name": "Create & track LinkedIn posts with Google Sheets, GPT-5.1, Unsplash, and Sona",
+			"success": true
+		},
+		{
+			"id": 8093,
+			"name": "Ai-powered degree audit system with Google Sheets and GPT-5",
+			"success": true
+		},
+		{
+			"id": 9814,
+			"name": "Personalized email outreach with LinkedIn & Crunchbase data and Gemini AI review",
+			"success": true
+		},
+		{
+			"id": 9576,
+			"name": "Generate AI videos with Sora2 Pro, save to Google Drive and upload to YouTube",
+			"success": true
+		},
+		{
+			"id": 6841,
+			"name": "Automate weekly Hollywood film briefing via Tavily and Gemini",
+			"success": true
+		},
+		{
+			"id": 6524,
+			"name": "Automate AI news videos to social media with GPT-4o & HeyGen and Postiz",
+			"success": true
+		},
+		{
+			"id": 5626,
+			"name": "Free AI image generator - n8n automation workflow with Gemini/ChatGPT",
+			"success": true
+		},
+		{
+			"id": 5449,
+			"name": "Automate sales cold calling pipeline with Apify, GPT-4o, and WhatsApp",
+			"success": true
+		},
+		{
+			"id": 9429,
+			"name": "Automated phone receptionist for scheduling with Twilio, ElevenLabs & Claude AI",
+			"success": true
+		},
+		{
+			"id": 5683,
+			"name": "One-click YouTube shorts generator with Leonardo AI, GPT and ElevenLabs",
+			"success": true
+		},
+		{
+			"id": 8597,
+			"name": "Build your first AI agent with ChatGPT-5",
+			"success": true
+		},
+		{
+			"id": 5690,
+			"name": "Extract and store YouTube video comments in Google Sheets",
+			"success": true
+		},
+		{
+			"id": 10427,
+			"name": "Analyze Facebook Ads & send insights to Google Sheets with Gemini AI",
+			"success": true
+		},
+		{
+			"id": 4352,
+			"name": "AI-powered multi-social media post automation: Google Trends & Perplexity AI",
+			"success": true
+		},
+		{
+			"id": 8591,
+			"name": "AI personal assistant for Google Tasks",
+			"success": true
+		},
+		{
+			"id": 5796,
+			"name": "Create AI news avatar videos with Dumpling AI, GPT-4o and HeyGen",
+			"success": true
+		},
+		{
+			"id": 10531,
+			"name": "AI-driven inventory management with OpenAI forecasting & ERP integration",
+			"success": true
+		},
+		{
+			"id": 9626,
+			"name": "Build a knowledge base chatbot with Jotform, RAG Supabase, Together AI & Gemini",
+			"success": true
+		},
+		{
+			"id": 7177,
+			"name": "Pharmacy inventory alerts for low stock & expiring medicine with Google Sheets",
+			"success": true
+		},
+		{
+			"id": 5979,
+			"name": "Automated content marketing intelligence with OpenAI, Ahrefs & multi-platform integration",
+			"success": true
+		},
+		{
+			"id": 4600,
+			"name": "🤖 AI content generation for auto service 🚘 automate your social media📲!",
+			"success": true
+		},
+		{
+			"id": 10640,
+			"name": "Scrape Google Maps business leads with Apify & GPT-4 email extraction",
+			"success": true
+		},
+		{
+			"id": 9277,
+			"name": "Automate Google Classroom with Gemini AI: Topics, assignments & student tracking",
+			"success": true
+		},
+		{
+			"id": 5523,
+			"name": "Evaluate tool usage accuracy in multi-agent AI workflows using evaluation nodes",
+			"success": true
+		},
+		{
+			"id": 3066,
+			"name": "✨🤖Automate Multi-Platform Social Media Content Creation with AI",
+			"success": true
+		},
+		{
+			"id": 10420,
+			"name": "Automated daily financial analysis from Loyverse POS with Google Sheets & email",
+			"success": true
+		},
+		{
+			"id": 5398,
+			"name": "AI Assistant which answers questions with a RAG MCP and a Search Engine MCP",
+			"success": true
+		},
+		{
+			"id": 5835,
+			"name": "Create low-cost AI videos with Veo3 fast and upload to YouTube & TikTok",
+			"success": true
+		},
+		{
+			"id": 8095,
+			"name": "Email new leads from Google Sheets via Outlook on a schedule",
+			"success": true
+		},
+		{
+			"id": 4484,
+			"name": "Build a voice AI chatbot with ElevenLabs and InfraNodus knowledge experts",
+			"success": true
+		},
+		{
+			"id": 9801,
+			"name": "Summarize meeting transcripts with GPT-4 & sentiment analysis for Gmail",
+			"success": true
+		},
+		{
+			"id": 7467,
+			"name": "LeadBot autopilot — chat-to-lead for Salesforce",
+			"success": true
+		},
+		{
+			"id": 6765,
+			"name": "Scheduled Instagram auto-liker with Phantombuster, GPT-4o & cookie rotation",
+			"success": true
+		},
+		{
+			"id": 5799,
+			"name": "Generate ad image variations using GPT-4, Dumpling AI & Google Drive",
+			"success": true
+		},
+		{
+			"id": 5817,
+			"name": "Build a weekly AI trend alerter with arXiv and Weaviate",
+			"success": true
+		},
+		{
+			"id": 4723,
+			"name": "AI Personal Assistant",
+			"success": true
+		},
+		{
+			"id": 10889,
+			"name": "Auto Generate Descriptive Node Names with AI for Workflow Readability",
+			"success": true
+		},
+		{
+			"id": 8237,
+			"name": "Personal life manager with Telegram, Google services & voice-enabled AI",
+			"success": true
+		},
+		{
+			"id": 7163,
+			"name": "Automate hyper-personalized email outreach with AI, Gmail & Google Sheets",
+			"success": true
+		},
+		{
+			"id": 5857,
+			"name": "Multimodal chat assistant with GPT-4o for text, images, and PDFs",
+			"success": true
+		},
+		{
+			"id": 5856,
+			"name": "Generate personalized cold email openers from LinkedIn posts with GPT-4o",
+			"success": true
+		},
+		{
+			"id": 5228,
+			"name": "Generate video from prompt using Vertex AI Veo 3 and upload to Google Drive",
+			"success": true
+		},
+		{
+			"id": 7422,
+			"name": "Amazon affiliate marketing automation",
+			"success": true
+		},
+		{
+			"id": 5832,
+			"name": "Qualify & reach out to B2B leads with Groq AI, Apollo, Gmail & Sheets",
+			"success": true
+		},
+		{
+			"id": 5711,
+			"name": "Automated stock trading with AI: integrating Alpaca and Google Sheets",
+			"success": true
+		},
+		{
+			"id": 11724,
+			"name": "Generate news digest videos from WordPress to YouTube with Shotstack",
+			"success": true
+		},
+		{
+			"id": 4557,
+			"name": "Intelligent email organization with AI-powered content classification for Gmail",
+			"success": true
+		},
+		{
+			"id": 5541,
+			"name": "Track AI agent token usage and estimate costs in Google Sheets",
+			"success": true
+		},
+		{
+			"id": 5385,
+			"name": "Lead generation system: Google Maps to email scraper with Google Sheets export",
+			"success": true
+		},
+		{
+			"id": 6480,
+			"name": "PDF invoice data extraction & tracking with Google Drive, Claude AI & Telegram",
+			"success": true
+		},
+		{
+			"id": 10212,
+			"name": "Generate Funny AI Videos with Sora 2 and Auto-Publish to TikTok",
+			"success": true
+		},
+		{
+			"id": 5938,
+			"name": "AI-powered lead research & personalized email generation with Groq & Google Sheets",
+			"success": true
+		},
+		{
+			"id": 5881,
+			"name": "Automate restaurant customer service with WhatsApp and Llama AI chatbot",
+			"success": true
+		},
+		{
+			"id": 5881,
+			"name": "Automate restaurant customer service with WhatsApp and Llama AI chatbot",
+			"success": true
+		}
+	]
+}

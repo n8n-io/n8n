@@ -10,10 +10,12 @@ import type { StageModels } from '../support/environment.js';
 
 export type EvaluationSuite = 'llm-judge' | 'pairwise' | 'programmatic' | 'similarity';
 export type EvaluationBackend = 'local' | 'langsmith';
+export type AgentType = 'multi-agent' | 'one-shot';
 
 export interface EvaluationArgs {
 	suite: EvaluationSuite;
 	backend: EvaluationBackend;
+	agent: AgentType;
 
 	verbose: boolean;
 	repetitions: number;
@@ -73,6 +75,7 @@ const cliSchema = z
 	.object({
 		suite: z.enum(['llm-judge', 'pairwise', 'programmatic', 'similarity']).default('llm-judge'),
 		backend: z.enum(['local', 'langsmith']).default('local'),
+		agent: z.enum(['one-shot', 'multi-agent']).default('one-shot'),
 
 		verbose: z.boolean().default(false),
 		repetitions: z.coerce.number().int().positive().default(DEFAULTS.REPETITIONS),
@@ -144,6 +147,12 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		desc: 'Evaluation suite (llm-judge|pairwise|programmatic|similarity)',
 	},
 	'--backend': { key: 'backend', kind: 'string', group: 'eval', desc: 'Backend (local|langsmith)' },
+	'--agent': {
+		key: 'agent',
+		kind: 'string',
+		group: 'eval',
+		desc: 'Agent type (one-shot|multi-agent)',
+	},
 	'--max-examples': {
 		key: 'maxExamples',
 		kind: 'string',
@@ -509,6 +518,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 	return {
 		suite: parsed.suite,
 		backend: parsed.backend,
+		agent: parsed.agent,
 		verbose: parsed.verbose,
 		repetitions: parsed.repetitions,
 		concurrency: parsed.concurrency,

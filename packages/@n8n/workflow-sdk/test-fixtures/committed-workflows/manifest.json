@@ -1,0 +1,10 @@
+{
+	"description": "Manually committed test workflows (not downloaded from API)",
+	"workflows": [
+		{
+			"id": 0,
+			"name": "Multi-Agent Research Report",
+			"success": true
+		}
+	]
+}
