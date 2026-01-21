@@ -21,6 +21,11 @@ import { searchModels } from './methods/loadModels';
 import type { ModelOptions } from './types';
 import { Container } from '@n8n/di';
 import { AiConfig } from '@n8n/config';
+import { BinaryDataToContentBlockFnKey } from '../../agents/Agent/agents/ToolsAgent/V3/types';
+import {
+	defaultBinaryDataToContentBlock,
+	isPdfFile,
+} from '../../agents/Agent/agents/ToolsAgent/common';
 
 const INCLUDE_JSON_WARNING: INodeProperties = {
 	displayName:
@@ -74,7 +79,7 @@ export class LmChatOpenAi implements INodeType {
 		name: 'lmChatOpenAi',
 		icon: { light: 'file:openAiLight.svg', dark: 'file:openAiLight.dark.svg' },
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'For advanced usage with an AI chain',
 		defaults: {
 			name: 'OpenAI Chat Model',
@@ -826,6 +831,27 @@ export class LmChatOpenAi implements INodeType {
 					tools,
 				};
 			}
+		}
+
+		if (version >= 1.4) {
+			// Add PDF support for >= 1.4
+			model[BinaryDataToContentBlockFnKey] = async (ctx, data) => {
+				if (isPdfFile(data.mimeType)) {
+					const bufferData = data.id
+						? Buffer.from(
+								await ctx.helpers.binaryToBuffer(await ctx.helpers.getBinaryStream(data.id)),
+							).toString('base64')
+						: data.data.replace(/^base64,/, '');
+
+					return {
+						type: 'input_file',
+						file_data: `data:${data.mimeType};base64,${bufferData}`,
+						filename: data.fileName ?? '',
+					};
+				}
+
+				return await defaultBinaryDataToContentBlock(ctx, data);
+			};
 		}
 
 		return {
