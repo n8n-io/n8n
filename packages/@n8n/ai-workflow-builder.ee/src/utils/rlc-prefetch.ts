@@ -128,9 +128,7 @@ export function detectRLCParametersForPrefetch(
 			// if the parameter appears to be a primary resource selector
 			const isRequired = property.required === true;
 			const isPrimaryResource =
-				property.name.toLowerCase().includes('id') ||
-				property.name.toLowerCase().includes('name') ||
-				property.name === 'resource';
+				property.name.toLowerCase().includes('id') || property.name.toLowerCase().includes('name');
 
 			if (!isRequired && !isPrimaryResource) continue;
 
