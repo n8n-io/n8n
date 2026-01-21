@@ -38,6 +38,9 @@ export class InstanceSettings {
 	/** The path to the folder containing installed nodes (like community nodes) */
 	readonly nodesDownloadDir = path.join(this.n8nFolder, 'nodes');
 
+	/** The path to the folder containing generated types for the workflow SDK */
+	readonly generatedTypesDir = path.join(this.n8nFolder, 'generated-types');
+
 	private readonly settingsFile = path.join(this.n8nFolder, 'config');
 
 	readonly enforceSettingsFilePermissions = this.loadEnforceSettingsFilePermissionsFlag();

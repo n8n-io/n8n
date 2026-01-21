@@ -135,3 +135,9 @@ export {
 // Code generation
 export { generateWorkflowCode } from './codegen';
 export { parseWorkflowCode } from './parse-workflow-code';
+
+// Embedded SDK API content (for runtime use without disk reads)
+export { SDK_API_CONTENT } from './types/sdk-api-content';
+
+// Type generation utilities (for runtime type generation in CLI)
+export * from './generate-types';

@@ -310,12 +310,12 @@ const mockTriggerNode: NodeTypeDescription = {
 
 describe('generate-types', () => {
 	// Import the module - will fail until implemented
-	let generateTypes: typeof import('../../scripts/generate-types');
+	let generateTypes: typeof import('../generate-types/generate-types');
 
 	beforeAll(async () => {
 		// Dynamic import to handle module not existing yet
 		try {
-			generateTypes = await import('../../scripts/generate-types');
+			generateTypes = await import('../generate-types/generate-types');
 		} catch {
 			// Module doesn't export functions yet - tests will fail as expected in TDD
 		}

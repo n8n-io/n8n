@@ -36,11 +36,20 @@ function debugLog(message: string, data?: Record<string, unknown>): void {
 
 /**
  * Get the path to the generated nodes directory
+ * Uses either a custom path (from InstanceSettings.generatedTypesDir) or falls back to
+ * the static types in workflow-sdk for development/testing.
  */
-function getGeneratedNodesPath(): string {
+function getGeneratedNodesPath(customGeneratedTypesDir?: string): string {
+	if (customGeneratedTypesDir) {
+		const nodesPath = join(customGeneratedTypesDir, 'nodes');
+		debugLog('Using custom generated nodes path', { customGeneratedTypesDir, nodesPath });
+		return nodesPath;
+	}
+
+	// Fallback to workflow-sdk static types for development/testing
 	const workflowSdkPath = dirname(require.resolve('@n8n/workflow-sdk/package.json'));
 	const nodesPath = join(workflowSdkPath, 'src', 'types', 'generated', 'nodes');
-	debugLog('Generated nodes path', { workflowSdkPath, nodesPath });
+	debugLog('Using workflow-sdk generated nodes path', { workflowSdkPath, nodesPath });
 	return nodesPath;
 }
 
@@ -87,14 +96,14 @@ function parseNodeId(nodeId: string): { packageName: string; nodeName: string } 
  * Get available versions for a node
  * Returns array of version strings like ['v34', 'v2'] sorted by version descending
  */
-function getNodeVersions(nodeId: string): string[] {
+function getNodeVersions(nodeId: string, generatedTypesDir?: string): string[] {
 	const parsed = parseNodeId(nodeId);
 	if (!parsed) {
 		debugLog('Could not get versions - parsing failed', { nodeId });
 		return [];
 	}
 
-	const nodesPath = getGeneratedNodesPath();
+	const nodesPath = getGeneratedNodesPath(generatedTypesDir);
 	const nodeDir = join(nodesPath, parsed.packageName, parsed.nodeName);
 
 	if (!existsSync(nodeDir)) {
@@ -130,14 +139,14 @@ function getNodeVersions(nodeId: string): string[] {
  * Get the file path for a node ID, optionally for a specific version
  * If no version specified, returns the latest version
  */
-function getNodeFilePath(nodeId: string, version?: string): string | null {
+function getNodeFilePath(nodeId: string, version?: string, generatedTypesDir?: string): string | null {
 	const parsed = parseNodeId(nodeId);
 	if (!parsed) {
 		debugLog('Could not get file path - parsing failed', { nodeId });
 		return null;
 	}
 
-	const nodesPath = getGeneratedNodesPath();
+	const nodesPath = getGeneratedNodesPath(generatedTypesDir);
 	const nodeDir = join(nodesPath, parsed.packageName, parsed.nodeName);
 
 	if (!existsSync(nodeDir)) {
@@ -149,7 +158,7 @@ function getNodeFilePath(nodeId: string, version?: string): string | null {
 
 	// If no version specified, find the latest version
 	if (!targetVersion) {
-		const versions = getNodeVersions(nodeId);
+		const versions = getNodeVersions(nodeId, generatedTypesDir);
 		if (versions.length === 0) {
 			debugLog('No versions found for node', { nodeId });
 			return null;
@@ -192,6 +201,7 @@ function getNodeFilePath(nodeId: string, version?: string): string | null {
 function getNodeTypeDefinition(
 	nodeId: string,
 	version?: string,
+	generatedTypesDir?: string,
 ): {
 	nodeId: string;
 	version?: string;
@@ -199,12 +209,12 @@ function getNodeTypeDefinition(
 	availableVersions?: string[];
 	error?: string;
 } {
-	debugLog('Getting type definition for node', { nodeId, version });
+	debugLog('Getting type definition for node', { nodeId, version, generatedTypesDir });
 
-	const filePath = getNodeFilePath(nodeId, version);
+	const filePath = getNodeFilePath(nodeId, version, generatedTypesDir);
 
 	if (!filePath) {
-		const availableVersions = getNodeVersions(nodeId);
+		const availableVersions = getNodeVersions(nodeId, generatedTypesDir);
 		if (availableVersions.length > 0) {
 			return {
 				nodeId,
@@ -257,16 +267,28 @@ function getNodeTypeDefinition(
 type NodeRequest = string | { nodeId: string; version?: string };
 
 /**
+ * Options for creating the node get tool
+ */
+export interface OneShotNodeGetToolOptions {
+	/**
+	 * Path to the generated types directory (from InstanceSettings.generatedTypesDir).
+	 * If not provided, falls back to workflow-sdk static types.
+	 */
+	generatedTypesDir?: string;
+}
+
+/**
  * Create the simplified node get tool for one-shot agent
  * Accepts a list of node IDs (with optional versions) and returns all type definitions in a single call
  */
-export function createOneShotNodeGetTool() {
-	debugLog('Creating get_nodes tool');
+export function createOneShotNodeGetTool(options: OneShotNodeGetToolOptions = {}) {
+	const { generatedTypesDir } = options;
+	debugLog('Creating get_nodes tool', { generatedTypesDir });
 
 	return tool(
 		async (input: { nodeIds: NodeRequest[] }) => {
 			debugLog('========== GET_NODES TOOL INVOKED ==========');
-			debugLog('Input', { nodeIds: input.nodeIds, count: input.nodeIds.length });
+			debugLog('Input', { nodeIds: input.nodeIds, count: input.nodeIds.length, generatedTypesDir });
 
 			const results: string[] = [];
 			const errors: string[] = [];
@@ -276,7 +298,7 @@ export function createOneShotNodeGetTool() {
 				const nodeId = typeof nodeRequest === 'string' ? nodeRequest : nodeRequest.nodeId;
 				const version = typeof nodeRequest === 'string' ? undefined : nodeRequest.version;
 
-				const result = getNodeTypeDefinition(nodeId, version);
+				const result = getNodeTypeDefinition(nodeId, version, generatedTypesDir);
 				if (result.error) {
 					errors.push(result.error);
 				} else {

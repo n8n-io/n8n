@@ -5,3 +5,11 @@ test-fixtures/real-workflows/*.json
 
 # Generated TypeScript files from test runs
 test-fixtures/real-workflows/*.generated.ts
+
+# Generated SDK API content (regenerated at build time via `pnpm embed-sdk-api`)
+src/types/sdk-api-content.ts
+
+# Compiled JS files from scripts (should use tsx to run directly)
+scripts/*.js
+scripts/*.js.map
+scripts/*.d.ts

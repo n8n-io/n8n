@@ -36,6 +36,7 @@ export class AiWorkflowBuilderService {
 		private readonly n8nVersion?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
+		private readonly generatedTypesDir?: string,
 	) {
 		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
@@ -189,6 +190,7 @@ export class AiWorkflowBuilderService {
 				featureFlags: featureFlags ?? {},
 			},
 			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
+			generatedTypesDir: this.generatedTypesDir,
 		});
 
 		return { agent };
