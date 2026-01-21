@@ -131,6 +131,37 @@ function isMainType(type: string): boolean {
 }
 
 /**
+ * Minimum number of non-main input slots to show.
+ * This ensures consistent spacing on nodes like AI Agent.
+ */
+const NODE_MIN_INPUT_ITEMS_COUNT = 4;
+
+/**
+ * Inserts spacers (null values) between required and optional endpoints.
+ * This ensures a minimum number of slots are shown for consistent positioning.
+ * Matches the production behavior in canvas.utils.ts.
+ */
+function insertSpacersBetweenEndpoints<T>(
+	endpoints: T[],
+	requiredEndpointsCount = 0,
+): Array<T | null> {
+	const endpointsWithSpacers: Array<T | null> = [...endpoints];
+	const optionalNonMainInputsCount = endpointsWithSpacers.length - requiredEndpointsCount;
+	const spacerCount =
+		NODE_MIN_INPUT_ITEMS_COUNT - requiredEndpointsCount - optionalNonMainInputsCount;
+
+	// Insert `null` in between required non-main inputs and non-required non-main inputs
+	// to separate them visually if there are less than `minEndpointsCount` inputs in total
+	if (endpointsWithSpacers.length < NODE_MIN_INPUT_ITEMS_COUNT) {
+		for (let i = 0; i < spacerCount; i++) {
+			endpointsWithSpacers.splice(requiredEndpointsCount + i, 0, null);
+		}
+	}
+
+	return endpointsWithSpacers;
+}
+
+/**
  * Handle with pre-computed values to avoid re-renders.
  * By pre-computing these in a computed property, we avoid calling
  * functions in the template which causes re-renders.
@@ -185,46 +216,65 @@ function getHandleConnectionCount(handleId: string): number {
  * Pre-compute handles with all template values to avoid re-renders.
  * This prevents re-renders during drag by avoiding function calls in template.
  * Uses memoized connection counts so only changes to THIS node's edges trigger updates.
+ *
+ * Non-main inputs include spacers to maintain consistent positioning (matching production).
  */
-const mappedInputHandles = computed((): MappedHandle[] => {
+const mappedInputHandles = computed((): Array<MappedHandle | null> => {
 	const handles = inputHandles.value;
 	const mainHandles = handles.filter((h) => isMainType(h.type));
 	const nonMainHandles = handles.filter((h) => !isMainType(h.type));
 
-	return handles.map((handle) => {
-		const isMain = isMainType(handle.type);
-		const group = isMain ? mainHandles : nonMainHandles;
-		const indexInGroup = group.findIndex((h) => h.handleId === handle.handleId);
+	// Separate required and optional non-main handles
+	const requiredNonMain = nonMainHandles.filter((h) => h.required);
+	const optionalNonMain = nonMainHandles.filter((h) => !h.required);
 
-		// Check if max connections reached using memoized connection counts
+	// Insert spacers between required and optional non-main handles
+	const nonMainWithSpacers = insertSpacersBetweenEndpoints(
+		[...requiredNonMain, ...optionalNonMain],
+		requiredNonMain.length,
+	);
+
+	// Map main handles
+	const mappedMain: MappedHandle[] = mainHandles.map((handle, indexInGroup) => {
 		const currentConnections = getHandleConnectionCount(handle.handleId);
 		const limitReached =
 			handle.maxConnections !== undefined && currentConnections >= handle.maxConnections;
 
-		// Input handles:
-		// - Main inputs: can only END connections (not start)
-		// - Non-main inputs (ai_tool, model, etc.): can both start and end (bidirectional)
-		const connectableStart = !limitReached && !isMain;
-		const connectableEnd = !limitReached;
-
-		// Pre-compute position and classes to avoid template function calls
-		const position = isMain ? Position.Left : Position.Bottom;
-		const positionClass = isMain ? 'left' : 'bottom';
-		const classes = isMain
-			? ['crdt-handle', 'crdt-handle--left']
-			: ['crdt-handle', 'crdt-handle--bottom', 'crdt-handle--non-main'];
-
 		return {
 			...handle,
-			isMain,
-			offsetStyle: calculateOffsetStyle(indexInGroup, group.length, isMain),
-			position,
-			positionClass,
-			classes,
-			connectableStart,
-			connectableEnd,
+			isMain: true,
+			offsetStyle: calculateOffsetStyle(indexInGroup, mainHandles.length, true),
+			position: Position.Left,
+			positionClass: 'left' as const,
+			classes: ['crdt-handle', 'crdt-handle--left'],
+			connectableStart: false, // Main inputs can only END connections
+			connectableEnd: !limitReached,
 		};
 	});
+
+	// Map non-main handles with spacers (null entries remain null)
+	const mappedNonMain: Array<MappedHandle | null> = nonMainWithSpacers.map(
+		(handle, indexInGroup) => {
+			if (handle === null) return null;
+
+			const currentConnections = getHandleConnectionCount(handle.handleId);
+			const limitReached =
+				handle.maxConnections !== undefined && currentConnections >= handle.maxConnections;
+
+			return {
+				...handle,
+				isMain: false,
+				offsetStyle: calculateOffsetStyle(indexInGroup, nonMainWithSpacers.length, false),
+				position: Position.Bottom,
+				positionClass: 'bottom' as const,
+				classes: ['crdt-handle', 'crdt-handle--bottom', 'crdt-handle--non-main'],
+				connectableStart: !limitReached, // Non-main inputs can start connections
+				connectableEnd: !limitReached,
+			};
+		},
+	);
+
+	return [...mappedMain, ...mappedNonMain];
 });
 
 const mappedOutputHandles = computed((): MappedHandle[] => {
@@ -289,29 +339,33 @@ const selectedByCollaborator = computed(() => {
 		}"
 		:style="selectedByCollaborator ? { '--collaborator--color': selectedByCollaborator.color } : {}"
 	>
-		<!-- Input handles (main = left, non-main = bottom) -->
-		<Handle
-			v-for="handle in mappedInputHandles"
-			:id="handle.handleId"
-			:key="handle.handleId"
-			type="target"
-			:position="handle.position"
-			:connectable-start="handle.connectableStart"
-			:connectable-end="handle.connectableEnd"
-			:class="handle.classes"
-			:style="handle.offsetStyle"
+		<!-- Input handles (main = left, non-main = bottom with spacers) -->
+		<template
+			v-for="(handle, index) in mappedInputHandles"
+			:key="handle?.handleId ?? `spacer-${index}`"
 		>
-			<CanvasHandleDot
-				v-if="handle.isMain"
-				:class="['handle-render', handle.positionClass]"
-				handle-classes="target"
-			/>
-			<CanvasHandleDiamond
-				v-else
-				:class="['handle-render', handle.positionClass]"
-				handle-classes="target"
-			/>
-		</Handle>
+			<Handle
+				v-if="handle !== null"
+				:id="handle.handleId"
+				type="target"
+				:position="handle.position"
+				:connectable-start="handle.connectableStart"
+				:connectable-end="handle.connectableEnd"
+				:class="handle.classes"
+				:style="handle.offsetStyle"
+			>
+				<CanvasHandleDot
+					v-if="handle.isMain"
+					:class="['handle-render', handle.positionClass]"
+					handle-classes="target"
+				/>
+				<CanvasHandleDiamond
+					v-else
+					:class="['handle-render', handle.positionClass]"
+					handle-classes="target"
+				/>
+			</Handle>
+		</template>
 
 		<!-- Node content -->
 		<NodeIcon v-if="icon" :icon-source="icon" :size="30" :shrink="false" />
