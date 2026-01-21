@@ -1,10 +1,7 @@
 import type { CommunityNodeType } from '@n8n/api-types';
-import { Logger, inProduction, inTest } from '@n8n/backend-common';
+import { Logger, inProduction } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
-import { readFileSync } from 'fs';
-import { writeFile, rename } from 'fs/promises';
-import { join } from 'path';
 
 import {
 	getCommunityNodeTypes,
@@ -30,14 +27,6 @@ export class CommunityNodeTypesService {
 		private communityPackagesService: CommunityPackagesService,
 	) {}
 
-	async init() {
-		if (this.communityNodeTypes.size > 0) return;
-		this.logger.debug('Initializing community node types...');
-
-		const environment = this.detectEnvironment();
-		this.hydrateNodeTypes(environment);
-	}
-
 	private async detectUpdates(environment: 'staging' | 'production'): Promise<number[]> {
 		const communityNodesMetadata = await getCommunityNodesMetadata(environment);
 
@@ -61,30 +50,18 @@ export class CommunityNodeTypesService {
 		return typesToUpdate;
 	}
 
-	private hydrateNodeTypes(environment: 'staging' | 'production' = 'production') {
-		const filePath = join(__dirname, 'data', `${environment}-node-types.json`);
-		try {
-			const fileContent = readFileSync(filePath, 'utf-8');
-			const nodeTypes: StrapiCommunityNodeType[] = JSON.parse(fileContent);
-			this.setCommunityNodeTypes(nodeTypes);
-		} catch (error) {
-			this.logger.error(
-				`Failed to hydrate community node types from ${environment} file: ${ensureError(error).message}`,
-			);
-		}
-	}
-
 	private async fetchNodeTypes() {
 		try {
 			// Cloud sets ENVIRONMENT to 'production' or 'staging' depending on the environment
 			const environment = this.detectEnvironment();
 
-			if (this.communityNodeTypes.size === 0) {
-				this.hydrateNodeTypes(environment);
-			}
-
 			let data: StrapiCommunityNodeType[] = [];
 			if (this.config.enabled && this.config.verifiedEnabled) {
+				if (this.communityNodeTypes.size === 0) {
+					data = await getCommunityNodeTypes(environment);
+					this.updateCommunityNodeTypes(data);
+					return;
+				}
 				const typesToUpdate = await this.detectUpdates(environment);
 
 				if (!typesToUpdate.length) {
@@ -128,26 +105,6 @@ export class CommunityNodeTypesService {
 		for (const nodeType of nodeTypes) {
 			this.communityNodeTypes.set(nodeType.name, nodeType);
 		}
-
-		if (!inTest) {
-			this.persistNodeTypesToFile(nodeTypes).catch((error) => {
-				this.logger.error('Failed to persist community node types to file', {
-					error: ensureError(error),
-				});
-			});
-		}
-	}
-
-	private async persistNodeTypesToFile(nodeTypes: StrapiCommunityNodeType[]) {
-		if (nodeTypes.length === 0) return;
-
-		const environment = this.detectEnvironment();
-		const filePath = join(__dirname, 'data', `${environment}-node-types.json`);
-		const tempFilePath = `${filePath}.tmp`;
-		const jsonContent = JSON.stringify(Array.from(this.communityNodeTypes.values()));
-
-		await writeFile(tempFilePath, jsonContent, 'utf-8');
-		await rename(tempFilePath, filePath);
 	}
 
 	private updateRequired() {

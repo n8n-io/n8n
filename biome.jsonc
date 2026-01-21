@@ -15,8 +15,7 @@
 			"**/pnpm-lock.yaml",
 			"**/CHANGELOG.md",
 			"**/cl100k_base.json",
-			"**/o200k_base.json",
-			"**/community-packages/data/*.json"
+			"**/o200k_base.json"
 		]
 	},
 	"formatter": {
