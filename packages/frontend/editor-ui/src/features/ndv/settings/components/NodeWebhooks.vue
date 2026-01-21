@@ -60,34 +60,37 @@ const webhooksNode = computed(() => {
 	);
 });
 
-// Store resolved webhook data
-interface WebhookResolvedData {
-	url: string;
-	httpMethod: string;
-	isMethodVisible: boolean;
-	isVisible: boolean;
-}
-
-const resolvedWebhookData = computedAsync(async () => {
-	// Reference dependencies to ensure reactivity tracking
+// Resolved webhook visibility (whether the webhook URL should be shown)
+const resolvedWebhookVisibility = computedAsync(async () => {
 	const webhooks = webhooksNode.value;
-	const urlFor = showUrlFor.value;
-	const node = props.node;
-
-	const newData = new Map<number, WebhookResolvedData>();
+	const result = new Map<number, boolean>();
 
 	for (let index = 0; index < webhooks.length; index++) {
 		const webhook = webhooks[index];
-
-		// Check visibility
 		let isVisible = !webhook.ndvHideUrl;
+
 		if (typeof webhook.ndvHideUrl === 'string') {
 			const hideUrl = await workflowHelpers.getWebhookExpressionValue(webhook, 'ndvHideUrl');
 			isVisible = !hideUrl;
 		}
 
-		// Get URL
+		result.set(index, isVisible);
+	}
+
+	return result;
+}, new Map<number, boolean>());
+
+// Resolved webhook URLs
+const resolvedWebhookUrls = computedAsync(async () => {
+	const webhooks = webhooksNode.value;
+	const urlFor = showUrlFor.value;
+	const node = props.node;
+	const result = new Map<number, string>();
+
+	for (let index = 0; index < webhooks.length; index++) {
+		const webhook = webhooks[index];
 		let url = '';
+
 		if (node) {
 			url = await workflowHelpers.getWebhookUrl(
 				webhook,
@@ -96,8 +99,21 @@ const resolvedWebhookData = computedAsync(async () => {
 			);
 		}
 
-		// Check if method is visible
+		result.set(index, url);
+	}
+
+	return result;
+}, new Map<number, string>());
+
+// Resolved webhook method visibility
+const resolvedWebhookMethodVisibility = computedAsync(async () => {
+	const webhooks = webhooksNode.value;
+	const result = new Map<number, boolean>();
+
+	for (let index = 0; index < webhooks.length; index++) {
+		const webhook = webhooks[index];
 		let isMethodVisible = !webhook.ndvHideMethod;
+
 		try {
 			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
 			if (Array.isArray(method) && method.length !== 1) {
@@ -109,34 +125,41 @@ const resolvedWebhookData = computedAsync(async () => {
 				);
 				isMethodVisible = !hideMethod;
 			}
-		} catch (error) {
+		} catch {
 			// Keep default isMethodVisible
 		}
 
-		// Get HTTP method
+		result.set(index, isMethodVisible);
+	}
+
+	return result;
+}, new Map<number, boolean>());
+
+// Resolved webhook HTTP methods
+const resolvedWebhookHttpMethods = computedAsync(async () => {
+	const webhooks = webhooksNode.value;
+	const result = new Map<number, string>();
+
+	for (let index = 0; index < webhooks.length; index++) {
+		const webhook = webhooks[index];
 		let httpMethod = '';
+
 		try {
 			const method = await workflowHelpers.getWebhookExpressionValue(webhook, 'httpMethod', false);
 			httpMethod = Array.isArray(method) ? method[0] : (method as string);
-		} catch (error) {
+		} catch {
 			// Keep empty httpMethod
 		}
 
-		newData.set(index, {
-			url,
-			httpMethod,
-			isMethodVisible,
-			isVisible,
-		});
+		result.set(index, httpMethod);
 	}
 
-	return newData;
-}, new Map<number, WebhookResolvedData>());
+	return result;
+}, new Map<number, string>());
 
 const visibleWebhookUrls = computed(() => {
 	return webhooksNode.value.filter((_, index) => {
-		const data = resolvedWebhookData.value.get(index);
-		return data?.isVisible ?? false;
+		return resolvedWebhookVisibility.value.get(index) ?? false;
 	});
 });
 
@@ -146,17 +169,17 @@ function getWebhookIndex(webhook: IWebhookDescription): number {
 
 function getWebhookUrlDisplay(webhook: IWebhookDescription): string {
 	const index = getWebhookIndex(webhook);
-	return resolvedWebhookData.value.get(index)?.url ?? '';
+	return resolvedWebhookUrls.value.get(index) ?? '';
 }
 
 function isWebhookMethodVisible(webhook: IWebhookDescription): boolean {
 	const index = getWebhookIndex(webhook);
-	return resolvedWebhookData.value.get(index)?.isMethodVisible ?? false;
+	return resolvedWebhookMethodVisibility.value.get(index) ?? false;
 }
 
 function getWebhookHttpMethod(webhook: IWebhookDescription): string {
 	const index = getWebhookIndex(webhook);
-	return resolvedWebhookData.value.get(index)?.httpMethod ?? '';
+	return resolvedWebhookHttpMethods.value.get(index) ?? '';
 }
 
 const baseText = computed(() => {
