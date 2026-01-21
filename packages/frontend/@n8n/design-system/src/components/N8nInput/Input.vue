@@ -386,8 +386,7 @@ defineExpose({ focus, blur, select });
 }
 
 .focused {
-	border-color: var(--color--secondary);
-	box-shadow: 0 0 0 2px var(--color--secondary--tint-2);
+	box-shadow: 0 0 0 1px var(--color--secondary) inset;
 }
 
 .disabled {
