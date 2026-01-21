@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import IconSuccess from './IconSuccess.vue';
-import SimpleParameterInput from './SimpleParameterInput.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import type { NodeParameterValueType } from 'n8n-workflow';
@@ -71,7 +70,7 @@ const allParametersFilled = computed(() => {
 				:hide-label="false"
 				:node-values="parameterValues"
 				:show-delete="false"
-				@update:value="emit('parameterChanged', { parameterKey: param.key, value: $event })"
+				@update="emit('parameterChanged', { parameterKey: param.key, value: $event.value })"
 			/>
 		</div>
 
