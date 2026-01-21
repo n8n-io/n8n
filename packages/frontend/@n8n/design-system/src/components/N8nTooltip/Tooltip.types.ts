@@ -1,3 +1,5 @@
+import type { IN8nButton } from '../../types';
+
 export type Placement =
 	| 'top'
 	| 'top-start'
@@ -11,6 +13,18 @@ export type Placement =
 	| 'right'
 	| 'right-start'
 	| 'right-end';
+
+export type Justify =
+	| 'flex-start'
+	| 'flex-end'
+	| 'start'
+	| 'end'
+	| 'left'
+	| 'right'
+	| 'center'
+	| 'space-between'
+	| 'space-around'
+	| 'space-evenly';
 
 export interface N8nTooltipProps {
 	/** Text content for the tooltip. Supports HTML (sanitized for security). */
@@ -29,6 +43,14 @@ export interface N8nTooltipProps {
 	teleported?: boolean;
 	/** Offset of the tooltip from the trigger element (in pixels) */
 	offset?: number;
+	/** Array of action buttons to render below tooltip content */
+	buttons?: IN8nButton[];
+	/** Flex justify-content for buttons container */
+	justifyButtons?: Justify;
+	/** Whether to avoid collisions with viewport boundaries (flip/shift). Default: true */
+	avoidCollisions?: boolean;
+	/** Additional CSS class for the tooltip content */
+	contentClass?: string;
 }
 
 export interface N8nTooltipSlots {
