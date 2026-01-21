@@ -1,0 +1,42 @@
+name: Backport PRs
+
+on:
+  pull_request:
+    types: [closed]
+  issue_comment:
+    types: [created]
+
+jobs:
+  backport:
+    name: Create backport PRs
+    runs-on: ubuntu-latest
+
+    if: >
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.merged
+      ) || (
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        startsWith(github.event.comment.body, '/backport')
+      )
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create backport PRs
+        uses: korthout/backport-action@v3
+        with:
+          pull_description: |-
+            # Description
+            Backport of #${pull_number} to `${target_branch}`.
+
+            relates to ${issue_refs}
+            # Original description
+            ${pull_description}
+          pull_title: ${pull_title} (backport ${target_branch})
+          add_author_as_assignee: true
+          copy_assignees: true
+          experimental: >
+            {
+              "conflict_resolution": "draft_commit_conflicts"
+            }
