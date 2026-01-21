@@ -929,9 +929,6 @@ importers:
       zod:
         specifier: 3.25.67
         version: 3.25.67
-      zod-class:
-        specifier: 'catalog:'
-        version: 0.0.16(zod@3.25.67)
 
   packages/@n8n/di:
     dependencies:
