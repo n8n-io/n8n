@@ -82,9 +82,6 @@ export type {
 	IConnections,
 } from './types/base';
 
-// Generated node types
-export * from './types/generated';
-
 // Type guard for NodeChain
 export { isNodeChain } from './types/base';
 

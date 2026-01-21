@@ -377,7 +377,7 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		_target: T,
+		_target: T | T[],
 		_outputIndex?: number,
 	): NodeChain<NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>, T> {
 		throw new Error('Sticky notes do not support connections');
