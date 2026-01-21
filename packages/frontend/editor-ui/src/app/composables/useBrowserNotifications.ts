@@ -98,7 +98,9 @@ export function useBrowserNotifications(options: UseBrowserNotificationsOptions 
 	 *
 	 * @returns Result with permission state and whether request was actually made
 	 */
-	async function requestPermission(): Promise<PermissionRequestResult> {
+	async function requestPermission({
+		force = false,
+	}: { force?: boolean }): Promise<PermissionRequestResult> {
 		refreshPermissionState();
 
 		if (permissionState.value === 'granted') {
@@ -109,7 +111,7 @@ export function useBrowserNotifications(options: UseBrowserNotificationsOptions 
 			return { permission: 'denied', wasRequested: false };
 		}
 
-		if (isInCooldown.value || hasExceededMaxDismissals.value) {
+		if ((isInCooldown.value || hasExceededMaxDismissals.value) && !force) {
 			return { permission: permissionState.value, wasRequested: false };
 		}
 

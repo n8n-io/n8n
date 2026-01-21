@@ -3,6 +3,7 @@ import type { PushMessage } from '@n8n/api-types';
 
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import {
+	browserApi,
 	builderCreditsUpdated,
 	testWebhookDeleted,
 	testWebhookReceived,
@@ -60,6 +61,8 @@ export function usePushConnection({
 	 */
 	async function processEvent(event: PushMessage) {
 		switch (event.type) {
+			case 'browserApi':
+				return await browserApi(event);
 			case 'testWebhookDeleted':
 				return await testWebhookDeleted(event, options);
 			case 'testWebhookReceived':

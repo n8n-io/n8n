@@ -1,3 +1,4 @@
+import type { BrowserApiPushMessage } from './browser-api';
 import type { BuilderCreditsPushMessage } from './builder-credits';
 import type { CollaborationPushMessage } from './collaboration';
 import type { DebugPushMessage } from './debug';
@@ -8,6 +9,7 @@ import type { WorkerPushMessage } from './worker';
 import type { WorkflowPushMessage } from './workflow';
 
 export type PushMessage =
+	| BrowserApiPushMessage
 	| ExecutionPushMessage
 	| WorkflowPushMessage
 	| HotReloadPushMessage
