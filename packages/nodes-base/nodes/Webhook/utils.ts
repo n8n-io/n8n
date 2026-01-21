@@ -12,7 +12,7 @@ import type {
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { BlockList } from 'node:net';
+import { BlockList, isIPv6 } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
@@ -142,11 +142,21 @@ export const isIpWhitelisted = (
 
 	const allowList = getAllowList(whitelist);
 
-	if (allowList.check(ip ?? '')) {
-		return true;
+	// Check the primary IP address with proper family detection
+	if (ip) {
+		const ipFamily = isIPv6(ip) ? 'ipv6' : 'ipv4';
+		if (allowList.check(ip, ipFamily)) {
+			return true;
+		}
 	}
 
-	if (ips.some((ipEntry) => allowList.check(ipEntry))) {
+	// Check proxy IPs with proper family detection
+	if (
+		ips.some((ipEntry) => {
+			const ipFamily = isIPv6(ipEntry) ? 'ipv6' : 'ipv4';
+			return allowList.check(ipEntry, ipFamily);
+		})
+	) {
 		return true;
 	}
 
@@ -158,7 +168,37 @@ const getAllowList = (whitelist: string[]) => {
 
 	for (const entry of whitelist) {
 		try {
-			allowList.addAddress(entry);
+			// Check if entry is in CIDR notation (contains /)
+			if (entry.includes('/')) {
+				const [network, prefixStr] = entry.split('/');
+				const prefix = parseInt(prefixStr, 10);
+
+				// Validate prefix is a number
+				if (isNaN(prefix)) {
+					continue;
+				}
+
+				// Detect IP type (IPv4 vs IPv6)
+				const type = network.includes(':') ? 'ipv6' : 'ipv4';
+
+				// Validate prefix range
+				const maxPrefix = type === 'ipv4' ? 32 : 128;
+				if (prefix < 0 || prefix > maxPrefix) {
+					continue;
+				}
+
+				allowList.addSubnet(network, prefix, type);
+			} else {
+				// Single IP address
+				// Note: IPv6 addresses need to use addSubnet() with /128 in Node.js BlockList
+				// because addAddress() throws "Invalid socket address" for IPv6
+				const type = entry.includes(':') ? 'ipv6' : 'ipv4';
+				if (type === 'ipv6') {
+					allowList.addSubnet(entry, 128, type);
+				} else {
+					allowList.addAddress(entry);
+				}
+			}
 		} catch {
 			// Ignore invalid entries
 		}

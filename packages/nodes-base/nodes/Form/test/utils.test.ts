@@ -2774,3 +2774,45 @@ describe('FormTrigger, prepareFormData - Default Value', () => {
 		expect(result.formFields[0].defaultValue).toBe('');
 	});
 });
+
+describe('FormTrigger IP Whitelist', () => {
+	describe('isIpWhitelisted (reused from Webhook)', () => {
+		// Import the function from Webhook utils for testing
+		const { isIpWhitelisted } = require('../../Webhook/utils');
+
+		it('should return true if whitelist is undefined', () => {
+			expect(isIpWhitelisted(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		});
+
+		it('should return true if whitelist is an empty string', () => {
+			expect(isIpWhitelisted('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		});
+
+		it('should allow IP in whitelist', () => {
+			expect(isIpWhitelisted('192.168.1.1', [], '192.168.1.1')).toBe(true);
+		});
+
+		it('should block IP not in whitelist', () => {
+			expect(isIpWhitelisted('192.168.1.1', [], '192.168.1.2')).toBe(false);
+		});
+
+		it('should support CIDR notation', () => {
+			expect(isIpWhitelisted('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
+			expect(isIpWhitelisted('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
+		});
+
+		it('should support comma-separated mixed entries', () => {
+			expect(isIpWhitelisted('127.0.0.1, 192.168.1.0/24', [], '192.168.1.100')).toBe(true);
+			expect(isIpWhitelisted('127.0.0.1, 192.168.1.0/24', [], '10.0.0.1')).toBe(false);
+		});
+
+		it('should handle IPv6 addresses', () => {
+			expect(isIpWhitelisted('::1', [], '::1')).toBe(true);
+			expect(isIpWhitelisted('::1', [], '::2')).toBe(false);
+		});
+
+		it('should check both direct IP and proxy IPs', () => {
+			expect(isIpWhitelisted('192.168.1.1', ['192.168.1.1', '10.0.0.1'], '10.0.0.2')).toBe(true);
+		});
+	});
+});

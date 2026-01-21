@@ -166,6 +166,15 @@ const descriptionV2: INodeTypeDescription = {
 					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
 				},
 				{
+					displayName: 'IP(s) Whitelist',
+					name: 'ipWhitelist',
+					type: 'string',
+					placeholder: 'e.g. 127.0.0.1, 192.168.1.0/24',
+					default: '',
+					description:
+						'Comma-separated list of allowed IP addresses or CIDR ranges. Leave empty to allow all IPs.',
+				},
+				{
 					...useWorkflowTimezone,
 					default: false,
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",

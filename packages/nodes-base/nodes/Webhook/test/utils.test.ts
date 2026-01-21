@@ -277,6 +277,35 @@ describe('Webhook Utils', () => {
 				true,
 			);
 		});
+
+		it('should support IPv4 CIDR notation', () => {
+			expect(isIpWhitelisted('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
+			expect(isIpWhitelisted('192.168.1.0/24', [], '192.168.1.255')).toBe(true);
+			expect(isIpWhitelisted('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
+		});
+
+		it('should support IPv6 CIDR notation', () => {
+			expect(isIpWhitelisted('2001:db8::/32', [], '2001:db8::1')).toBe(true);
+			expect(isIpWhitelisted('2001:db8::/32', [], '2001:db9::1')).toBe(false);
+		});
+
+		it('should support mixed single IPs and CIDR ranges', () => {
+			expect(isIpWhitelisted('127.0.0.1, 192.168.0.0/16', [], '192.168.100.50')).toBe(true);
+			expect(isIpWhitelisted('127.0.0.1, 192.168.0.0/16', [], '10.0.0.1')).toBe(false);
+			expect(isIpWhitelisted('127.0.0.1, 192.168.0.0/16', [], '127.0.0.1')).toBe(true);
+		});
+
+		it('should handle invalid CIDR notation gracefully', () => {
+			expect(isIpWhitelisted('192.168.1.0/abc', [], '192.168.1.1')).toBe(false);
+			expect(isIpWhitelisted('192.168.1.0/99', [], '192.168.1.1')).toBe(false);
+			expect(isIpWhitelisted('invalid/24', [], '192.168.1.1')).toBe(false);
+		});
+
+		it('should handle /32 and /128 CIDR (single IP)', () => {
+			expect(isIpWhitelisted('192.168.1.1/32', [], '192.168.1.1')).toBe(true);
+			expect(isIpWhitelisted('192.168.1.1/32', [], '192.168.1.2')).toBe(false);
+			expect(isIpWhitelisted('::1/128', [], '::1')).toBe(true);
+		});
 	});
 
 	describe('checkResponseModeConfiguration', () => {
