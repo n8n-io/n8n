@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, OneToMany } from '@n8n/typeorm';
 
 import { DateTimeColumn, WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedSecretsProviderConnection } from './shared-secrets-provider-connection';
@@ -7,7 +7,7 @@ export type SecretsProviderConnectionState = 'connected' | 'tested' | 'initializ
 
 @Entity()
 export class SecretsProviderConnection extends WithTimestampsAndStringId {
-	@PrimaryColumn()
+	@Column({ unique: true })
 	name: string;
 
 	@Column({ nullable: true })
@@ -16,10 +16,17 @@ export class SecretsProviderConnection extends WithTimestampsAndStringId {
 	@Column()
 	type: string;
 
+	/**
+	 * Whether the secrets provider connection is available for use by all projects.
+	 *
+	 */
+	@Column({ default: false })
+	isGlobal: boolean;
+
 	@OneToMany('SharedSecretsProviderConnection', 'secretsProviderConnection')
 	shared: SharedSecretsProviderConnection[];
 
-	@Column('text')
+	@Column()
 	settings: string;
 
 	@Column({ default: false })

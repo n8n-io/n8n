@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 
 import { SecretsProviderConnection } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
-import { SecretsProviderConnectionRepository } from '../secrets-provider-connection.repository';
+import { SecretsProviderConnectionRepository } from '../secrets-provider-connection.repository.ee';
 
 describe('SecretsProviderConnectionRepository', () => {
 	const entityManager = mockEntityManager(SecretsProviderConnection);
