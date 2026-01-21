@@ -12,13 +12,8 @@ import pLimit from 'p-limit';
 import type { SimpleWorkflow } from '@/types/workflow';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
-import {
-	argsToStageModels,
-	getDefaultDatasetName,
-	getDefaultExperimentName,
-	parseEvaluationArgs,
-} from './argument-parser';
-import { buildCIMetadata } from './ci-metadata';
+import { consumeGenerator, getChatPayload } from '../harness/evaluation-helpers';
+import { createLogger } from '../harness/logger';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
@@ -32,12 +27,18 @@ import {
 	type EvaluationContext,
 } from '../index';
 import {
+	argsToStageModels,
+	getDefaultDatasetName,
+	getDefaultExperimentName,
+	parseEvaluationArgs,
+} from './argument-parser';
+import { buildCIMetadata } from './ci-metadata';
+import {
 	loadTestCasesFromCsv,
 	loadDefaultTestCases,
 	getDefaultTestCaseIds,
 } from './csv-prompt-loader';
-import { consumeGenerator, getChatPayload } from '../harness/evaluation-helpers';
-import { createLogger } from '../harness/logger';
+import { sendWebhookNotification } from './webhook';
 import { generateRunId, isWorkflowStateValues } from '../langsmith/types';
 import { EVAL_TYPES, EVAL_USERS } from '../support/constants';
 import { setupTestEnvironment, createAgent, type ResolvedStageLLMs } from '../support/environment';
@@ -230,7 +231,23 @@ export async function runV2Evaluation(): Promise<void> {
 				};
 
 	// Run evaluation
-	await runEvaluation(config);
+	const summary = await runEvaluation(config);
+
+	if (args.webhookUrl) {
+		const dataset =
+			args.backend === 'langsmith'
+				? (args.datasetName ?? getDefaultDatasetName(args.suite))
+				: 'local-dataset';
+
+		await sendWebhookNotification({
+			webhookUrl: args.webhookUrl,
+			summary,
+			dataset,
+			suite: args.suite,
+			metadata: { ...buildCIMetadata() },
+			logger,
+		});
+	}
 
 	// Always exit 0 on successful completion - pass/fail is informational, not an error
 	process.exit(0);
