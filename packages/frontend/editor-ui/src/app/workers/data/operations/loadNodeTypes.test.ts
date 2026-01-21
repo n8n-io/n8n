@@ -10,19 +10,25 @@ vi.mock('@n8n/rest-api-client/api/nodeTypes', () => ({
 	getNodeTypesByIdentifier: vi.fn(),
 }));
 
-const { execWithParamsMock, queryMock, getStoredVersionMock, storeVersionMock } = vi.hoisted(
-	() => ({
-		execWithParamsMock: vi.fn(),
-		queryMock: vi.fn(),
-		getStoredVersionMock: vi.fn(),
-		storeVersionMock: vi.fn(),
-	}),
-);
+const {
+	execWithParamsMock,
+	queryMock,
+	queryWithParamsMock,
+	getStoredVersionMock,
+	storeVersionMock,
+} = vi.hoisted(() => ({
+	execWithParamsMock: vi.fn(),
+	queryMock: vi.fn(),
+	queryWithParamsMock: vi.fn(),
+	getStoredVersionMock: vi.fn(),
+	storeVersionMock: vi.fn(),
+}));
 
 vi.mock('./query', () => ({
 	exec: vi.fn(),
 	execWithParams: execWithParamsMock,
 	query: queryMock,
+	queryWithParams: queryWithParamsMock,
 	withTrx: async <T>(_state: unknown, fn: () => Promise<T>): Promise<T> => {
 		await execWithParamsMock(_state, 'BEGIN TRANSACTION', []);
 		try {
@@ -46,7 +52,7 @@ import {
 	getNodeTypeVersions,
 	getNodeTypesByIdentifier,
 } from '@n8n/rest-api-client/api/nodeTypes';
-import { execWithParams, query } from './query';
+import { execWithParams, query, queryWithParams } from './query';
 import { getStoredVersion, storeVersion } from './storeVersion';
 
 describe('Data Worker loadNodeTypes Operations', () => {
@@ -334,7 +340,7 @@ describe('Data Worker loadNodeTypes Operations', () => {
 	describe('getNodeType', () => {
 		it('should return null when node type is not found', async () => {
 			const state = createMockState();
-			vi.mocked(query).mockResolvedValueOnce(createQueryResult([]));
+			vi.mocked(queryWithParams).mockResolvedValueOnce(createQueryResult([]));
 
 			const result = await getNodeType(state, 'nonexistent', 1);
 
@@ -345,7 +351,9 @@ describe('Data Worker loadNodeTypes Operations', () => {
 			const state = createMockState();
 			const mockNodeType = createMockNodeType({ name: 'n8n-nodes-base.test', version: 1 });
 
-			vi.mocked(query).mockResolvedValueOnce(createQueryResult([[JSON.stringify(mockNodeType)]]));
+			vi.mocked(queryWithParams).mockResolvedValueOnce(
+				createQueryResult([[JSON.stringify(mockNodeType)]]),
+			);
 
 			const result = await getNodeType(state, 'n8n-nodes-base.test', 1);
 
@@ -354,13 +362,14 @@ describe('Data Worker loadNodeTypes Operations', () => {
 
 		it('should query with correct node type ID format', async () => {
 			const state = createMockState();
-			vi.mocked(query).mockResolvedValueOnce(createQueryResult([]));
+			vi.mocked(queryWithParams).mockResolvedValueOnce(createQueryResult([]));
 
 			await getNodeType(state, 'n8n-nodes-base.myNode', 2);
 
-			expect(query).toHaveBeenCalledWith(
+			expect(queryWithParams).toHaveBeenCalledWith(
 				state,
-				"SELECT data FROM nodeTypes WHERE id = 'n8n-nodes-base.myNode@2'",
+				'SELECT data FROM nodeTypes WHERE id = ?',
+				['n8n-nodes-base.myNode@2'],
 			);
 		});
 	});

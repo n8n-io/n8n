@@ -16,7 +16,7 @@ import {
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { DataWorkerState } from '../types';
-import { exec, execWithParams, query, withTrx } from './query';
+import { exec, execWithParams, query, queryWithParams, withTrx } from './query';
 import { getStoredVersion, storeVersion } from './storeVersion';
 
 /**
@@ -220,7 +220,7 @@ export async function getNodeType(
 	version: number,
 ): Promise<INodeTypeDescription | null> {
 	const id = getNodeTypeId(name, version);
-	const result = await query(state, `SELECT data FROM nodeTypes WHERE id = '${id}'`);
+	const result = await queryWithParams(state, 'SELECT data FROM nodeTypes WHERE id = ?', [id]);
 
 	if (result.rows.length === 0) {
 		return null;
