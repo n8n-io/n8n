@@ -1,4 +1,4 @@
-import { ModuleRegistry } from '@n8n/backend-common';
+import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { DatabaseConfig, InstanceSettingsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
@@ -23,6 +23,7 @@ export class DbConnectionOptions {
 		private readonly config: DatabaseConfig,
 		private readonly instanceSettingsConfig: InstanceSettingsConfig,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly logger: Logger,
 	) {}
 
 	getOverrides(dbType: 'postgresdb' | 'mysqldb') {
@@ -94,10 +95,19 @@ export class DbConnectionOptions {
 				acquireTimeout: 60_000,
 				destroyTimeout: 5_000,
 				extensions: [
-					(db) => {
-						sqliteVec.load(db);
-						console.log('[sqlite-vec] Extension loaded on connection via TypeORM extensions');
-					},
+					(db) =>
+						sqliteVec.load({
+							loadExtension: (fileName, _entrypoint) =>
+								// sqlite3 doesn't seem to accept entrypoint, which might become problematic if we load more extensions
+								// https://sqlite.org/loadext.html
+								db.loadExtension(fileName, (error) => {
+									if (error) {
+										this.logger.error('Could not load sqlite-vec', { error });
+									} else {
+										this.logger.debug('Extension sqlite-vec loaded');
+									}
+								}),
+						}),
 				],
 				...commonOptions,
 			};
