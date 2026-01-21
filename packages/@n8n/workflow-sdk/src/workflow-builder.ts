@@ -603,9 +603,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const switchMainConns = new Map<number, ConnectionTarget[]>();
 
 		// Add all case nodes and build connections from switch to each case
+		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
 		composite.cases.forEach((caseNode, index) => {
-			this.addNodeWithSubnodes(nodes, caseNode);
-			switchMainConns.set(index, [{ node: caseNode.name, type: 'main', index: 0 }]);
+			const caseHeadName = this.addBranchToGraph(nodes, caseNode);
+			switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
 		});
 
 		// Add the switch node with connections to cases
@@ -1043,9 +1044,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const mainConns = new Map<number, ConnectionTarget[]>();
 
 		// Add each case node (with subnodes) and connect from switch at correct output index
+		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
 		composite.cases.forEach((caseNode, index) => {
-			this.addNodeWithSubnodes(newNodes, caseNode);
-			mainConns.set(index, [{ node: caseNode.name, type: 'main', index: 0 }]);
+			const caseHeadName = this.addBranchToGraph(newNodes, caseNode);
+			mainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
 		});
 
 		// Add Switch node with all case connections

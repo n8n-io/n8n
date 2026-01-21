@@ -869,7 +869,7 @@ function generateSwitchCaseCall(
 	// Need at least one output
 	if (outputs.length === 0) return null;
 
-	// Collect case nodes in order
+	// Collect case nodes in order, including their downstream chains
 	const caseCalls: string[] = [];
 	const caseNames: string[] = [];
 	for (const [_outputIndex, targets] of outputs) {
@@ -878,9 +878,11 @@ function generateSwitchCaseCall(
 		const targetInfo = nodeInfoMap.get(target.to);
 		if (!targetInfo) continue;
 
-		caseCalls.push(generateNodeCall(targetInfo.node, nodeInfoMap));
-		caseNames.push(target.to);
+		// Mark this case node as added before generating its chain
 		addedNodes.add(target.to);
+		// Generate the case node WITH its downstream chain (not just a single node)
+		caseCalls.push(generateNodeCallWithChain(targetInfo, nodeInfoMap, addedNodes));
+		caseNames.push(target.to);
 	}
 
 	if (caseCalls.length === 0) return null;

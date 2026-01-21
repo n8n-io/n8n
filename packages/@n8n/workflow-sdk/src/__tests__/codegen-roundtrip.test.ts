@@ -16,7 +16,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'2896',
 	'3066',
 	'3121',
-	'3514',
+	// '3514' - now passes after switch case downstream chain fix
 	'3586',
 	'3770',
 	'3790',
@@ -46,7 +46,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'4849',
 	'4868',
 	'4912',
-	'4949',
+	// '4949' - now passes after switch case downstream chain fix
 	'4967',
 	'4975',
 	'4987',
@@ -439,6 +439,95 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['IF']).toBeDefined();
 		expect(parsedJson.connections['IF']!.main[0]![0]!.node).toBe('True Branch');
 		expect(parsedJson.connections['IF']!.main[1]![0]!.node).toBe('False Branch');
+	});
+
+	it('should preserve connections for switch case with downstream chain', () => {
+		// This test reproduces the issue where nodes downstream of switch case branches
+		// get incorrectly chained to the switch composite instead of their specific branch
+		const originalJson: WorkflowJSON = {
+			id: 'switch-chain-test',
+			name: 'Switch Chain Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'switch-1',
+					name: 'Switch',
+					type: 'n8n-nodes-base.switch',
+					typeVersion: 3.2,
+					position: [200, 0],
+					parameters: {
+						rules: {
+							values: [
+								{ outputKey: 'Case A', conditions: {} },
+								{ outputKey: 'Case B', conditions: {} },
+							],
+						},
+					},
+				},
+				{
+					id: 'case-a-1',
+					name: 'Case A Node',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: 'case-b-1',
+					name: 'Case B Node',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: 'case-b-2',
+					name: 'Case B Downstream',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [600, 100],
+					parameters: { mode: 'manual' },
+				},
+			],
+			connections: {
+				Trigger: {
+					main: [[{ node: 'Switch', type: 'main', index: 0 }]],
+				},
+				Switch: {
+					main: [
+						[{ node: 'Case A Node', type: 'main', index: 0 }],
+						[{ node: 'Case B Node', type: 'main', index: 0 }],
+					],
+				},
+				// This is the critical connection: Case B Node -> Case B Downstream
+				'Case B Node': {
+					main: [[{ node: 'Case B Downstream', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(5);
+
+		// Verify Switch connections to case branches
+		expect(parsedJson.connections['Switch']).toBeDefined();
+		expect(parsedJson.connections['Switch']!.main[0]![0]!.node).toBe('Case A Node');
+		expect(parsedJson.connections['Switch']!.main[1]![0]!.node).toBe('Case B Node');
+
+		// CRITICAL: Verify the downstream connection is preserved
+		// Case B Node should connect to Case B Downstream
+		expect(parsedJson.connections['Case B Node']).toBeDefined();
+		expect(parsedJson.connections['Case B Node']!.main[0]![0]!.node).toBe('Case B Downstream');
 	});
 
 	describe('escapes node references in single-quoted strings', () => {
