@@ -111,11 +111,10 @@ export function detectRLCParametersForPrefetch(
 			continue; // Skip - can't fetch without required credentials
 		}
 
-		// Track if we've already found an RLC parameter for this node
-		// We only fetch the first (root) one to avoid dependent parameter issues
-		let foundRLCForNode = false;
-
 		// Check each property for resourceLocator type
+		// Only fetch the first (root) RLC parameter per node to avoid dependent parameter issues
+		// Dependent parameters (like sheetName depending on documentId) should be fetched
+		// by the agent after setting the root parameter
 		for (const property of nodeType.properties) {
 			if (property.type !== 'resourceLocator') continue;
 
@@ -136,12 +135,6 @@ export function detectRLCParametersForPrefetch(
 			const currentValue = node.parameters?.[property.name];
 			if (!isRLCValueEmpty(currentValue)) continue;
 
-			// Only add the first empty RLC parameter per node (the root one)
-			// Dependent parameters (like sheetName depending on documentId)
-			// should be fetched by the agent after setting the root parameter
-			if (foundRLCForNode) continue;
-			foundRLCForNode = true;
-
 			result.push({
 				nodeId: node.id,
 				nodeName: node.name,
@@ -150,6 +143,7 @@ export function detectRLCParametersForPrefetch(
 				parameterPath: property.name,
 				searchMethod,
 			});
+			break;
 		}
 	}
 
