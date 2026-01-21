@@ -7,7 +7,6 @@ import { DataSource } from '@n8n/typeorm';
 import { BinaryDataConfig, ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError, ensureError, OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
-import * as sqliteVec from 'sqlite-vec';
 
 import { DbConnectionOptions } from './db-connection-options';
 import { wrapMigration } from '../migrations/migration-helpers';
@@ -75,40 +74,6 @@ export class DbConnection {
 				this.logger.warn(
 					`Failed to set \`max_allowed_packet\` to ${maxAllowedPacket} bytes on your MySQL server. ` +
 						`Please set \`max_allowed_packet\` to at least ${this.binaryDataConfig.dbMaxFileSize} MiB in your MySQL server configuration.`,
-				);
-			}
-		}
-
-		this.logger.info(`Database type detected: ${options.type}`);
-
-		// sqlite-vec extension is now loaded automatically via TypeORM extensions option
-		// for sqlite-pooled connections. For regular sqlite, load it directly.
-		if (options.type === 'sqlite') {
-			try {
-				const driver = this.dataSource.driver as {
-					databaseConnection?: { loadExtension: (file: string, entrypoint?: string) => void };
-				};
-
-				this.logger.info('Loading sqlite-vec extension on regular sqlite connection');
-
-				if (!driver.databaseConnection) {
-					throw new Error('No database connection found on driver');
-				}
-
-				if (!driver.databaseConnection.loadExtension) {
-					throw new Error('loadExtension method not available on database connection');
-				}
-
-				sqliteVec.load(driver.databaseConnection);
-				this.logger.info('sqlite-vec extension loaded successfully');
-			} catch (error) {
-				const err = ensureError(error);
-				this.logger.error(
-					'Failed to load sqlite-vec extension. Vector store persistence may not work correctly.',
-					{
-						error: err.message,
-						stack: err.stack,
-					},
 				);
 			}
 		}
