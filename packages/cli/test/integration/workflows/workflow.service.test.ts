@@ -73,6 +73,7 @@ beforeAll(async () => {
 		workflowValidationService,
 		nodeTypes,
 		Container.get(DataSource),
+		mock(), // publisher
 	);
 });
 

@@ -83,17 +83,21 @@ export class WorkflowPublicationOutboxConsumer {
 		this.logger.debug('Checking for pending outbox messages');
 		// Get oldest pending message with FOR UPDATE SKIP LOCKED
 		const outboxMessage = await this.dataSource.transaction(async (manager) => {
-			const message = await manager
-				.createQueryBuilder(WorkflowPublicationOutbox, 'outbox')
-				.setLock('pessimistic_write', undefined, ['skipLocked'])
-				.where('outbox.status = :status', { status: 'pending' })
-				.orderBy('outbox.createdAt', 'ASC')
-				.limit(1)
-				.getOne();
+			// Use raw SQL for SKIP LOCKED support (TypeORM query builder doesn't support it)
+			const results = await manager.query(
+				`SELECT * FROM workflow_publication_outbox
+				WHERE status = $1
+				ORDER BY "createdAt" ASC
+				LIMIT 1
+				FOR UPDATE SKIP LOCKED`,
+				['pending'],
+			);
 
-			if (!message) {
+			if (!results || results.length === 0) {
 				return null;
 			}
+
+			const message = results[0];
 
 			// Mark as in_progress
 			await manager.update(WorkflowPublicationOutbox, message.id, { status: 'in_progress' });
