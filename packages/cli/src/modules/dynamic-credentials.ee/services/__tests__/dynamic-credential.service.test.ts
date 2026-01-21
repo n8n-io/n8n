@@ -16,6 +16,8 @@ import { CredentialResolutionError } from '../../errors/credential-resolution.er
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialService } from '../dynamic-credential.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
+import { StaticAuthService } from '@/services/static-auth-service';
+import type { DynamicCredentialsConfig } from '../../dynamic-credentials.config';
 
 describe('DynamicCredentialService', () => {
 	let service: DynamicCredentialService;
@@ -25,6 +27,13 @@ describe('DynamicCredentialService', () => {
 	let mockCipher: jest.Mocked<Cipher>;
 	let mockLogger: jest.Mocked<Logger>;
 	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
+	let mockDynamicCredentialConfig: jest.Mocked<DynamicCredentialsConfig>;
+
+	beforeEach(() => {
+		mockDynamicCredentialConfig = {
+			endpointAuthToken: 'test-token',
+		} as unknown as jest.Mocked<DynamicCredentialsConfig>;
+	});
 
 	const createMockCredentialsMetadata = (overrides: Partial<CredentialResolveMetadata> = {}) =>
 		({
@@ -40,7 +49,7 @@ describe('DynamicCredentialService', () => {
 		({
 			id: 'resolver-456',
 			name: 'test-resolver',
-			type: 'stub-resolver-1.0',
+			type: 'test-resolver-1.0',
 			config: 'encrypted-resolver-config', // Simulates encrypted config
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -53,7 +62,7 @@ describe('DynamicCredentialService', () => {
 		customData?: ICredentialDataDecryptedObject,
 	): jest.Mocked<ICredentialResolver> => ({
 		metadata: {
-			name: 'stub-resolver-1.0',
+			name: 'test-resolver-1.0',
 			description: 'Test resolver',
 		},
 		getSecret: jest.fn().mockImplementation(async () => {
@@ -188,6 +197,7 @@ describe('DynamicCredentialService', () => {
 		} as unknown as jest.Mocked<ResolverConfigExpressionService>;
 
 		service = new DynamicCredentialService(
+			mockDynamicCredentialConfig,
 			mockResolverRegistry,
 			mockResolverRepository,
 			mockLoadNodesAndCredentials,
@@ -1063,6 +1073,25 @@ describe('DynamicCredentialService', () => {
 						executionId: '={{$execution.id}}', // Expression NOT resolved
 					},
 				});
+			});
+		});
+
+		describe('getDynamicCredentialsEndpointsMiddleware', () => {
+			it('should call the static auth middleware with the correct token', () => {
+				const getStaticAuthMiddlewareSpy = jest.spyOn(StaticAuthService, 'getStaticAuthMiddleware');
+				mockDynamicCredentialConfig.endpointAuthToken = 'test-token';
+				service = new DynamicCredentialService(
+					mockDynamicCredentialConfig,
+					mockResolverRegistry,
+					mockResolverRepository,
+					mockLoadNodesAndCredentials,
+					mockCipher,
+					mockLogger,
+					mockExpressionService,
+				);
+				service.getDynamicCredentialsEndpointsMiddleware();
+				expect(getStaticAuthMiddlewareSpy).toHaveBeenCalledWith('test-token', 'x-authorization');
+				getStaticAuthMiddlewareSpy.mockRestore();
 			});
 		});
 	});

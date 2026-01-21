@@ -147,3 +147,59 @@ declare module 'virtual:node-popularity-data' {
 	}>;
 	export default data;
 }
+
+/**
+ * wa-sqlite AccessHandlePoolVFS module declaration
+ * This VFS uses the Origin Private File System (OPFS) Access Handle Pool
+ * @see https://github.com/rhashimoto/wa-sqlite
+ */
+declare module 'wa-sqlite/src/examples/AccessHandlePoolVFS.js' {
+	export class AccessHandlePoolVFS implements SQLiteVFS {
+		name: string;
+		mxPathName?: number;
+
+		/** Create a new AccessHandlePoolVFS instance */
+		static create(name: string, module: unknown): Promise<AccessHandlePoolVFS>;
+
+		/** Close the VFS and release resources */
+		close(): Promise<void>;
+
+		/** Check if a file exists (synchronous access check) */
+		jAccess(name: string, flags: number, pResOut: DataView): number;
+
+		// SQLiteVFS interface methods
+		isReady(): boolean | Promise<boolean>;
+		xClose(fileId: number): number | Promise<number>;
+		xRead(
+			fileId: number,
+			pData: number,
+			iAmt: number,
+			iOffsetLo: number,
+			iOffsetHi: number,
+		): number | Promise<number>;
+		xWrite(
+			fileId: number,
+			pData: number,
+			iAmt: number,
+			iOffsetLo: number,
+			iOffsetHi: number,
+		): number | Promise<number>;
+		xTruncate(fileId: number, iSizeLo: number, iSizeHi: number): number | Promise<number>;
+		xSync(fileId: number, flags: number): number | Promise<number>;
+		xFileSize(fileId: number, pSize64: number): number | Promise<number>;
+		xLock(fileId: number, flags: number): number | Promise<number>;
+		xUnlock(fileId: number, flags: number): number | Promise<number>;
+		xCheckReservedLock(fileId: number, pResOut: number): number | Promise<number>;
+		xFileControl(fileId: number, flags: number, pOut: number): number | Promise<number>;
+		xDeviceCharacteristics(fileId: number): number | Promise<number>;
+		xOpen(
+			pVfs: number,
+			zName: number,
+			pFile: number,
+			flags: number,
+			pOutFlags: number,
+		): number | Promise<number>;
+		xDelete(pVfs: number, zName: number, syncDir: number): number | Promise<number>;
+		xAccess(pVfs: number, zName: number, flags: number, pResOut: number): number | Promise<number>;
+	}
+}

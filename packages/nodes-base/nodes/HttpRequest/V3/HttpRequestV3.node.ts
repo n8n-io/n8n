@@ -59,7 +59,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4, 4.1, 4.2, 4.3],
+			version: [3, 4, 4.1, 4.2, 4.3, 4.4],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#0004F5',
@@ -315,6 +315,7 @@ export class HttpRequestV3 implements INodeType {
 					queryParameterArrays,
 					response,
 					lowercaseHeaders,
+					sendCredentialsOnCrossOriginRedirect,
 				} = this.getNodeParameter('options', itemIndex, {}) as {
 					batching: { batch: { batchSize: number; batchInterval: number } };
 					proxy: string;
@@ -331,6 +332,7 @@ export class HttpRequestV3 implements INodeType {
 					};
 					redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
 					lowercaseHeaders: boolean;
+					sendCredentialsOnCrossOriginRedirect?: boolean;
 				};
 
 				responseFileName = response?.response?.outputPropertyName;
@@ -351,6 +353,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
+				const defaultSendCredentialsOnCrossOriginRedirect = nodeVersion < 4.4;
 				requestOptions = {
 					headers: {},
 					method: requestMethod,
@@ -359,6 +362,8 @@ export class HttpRequestV3 implements INodeType {
 					rejectUnauthorized: !allowUnauthorizedCerts || false,
 					followRedirect: false,
 					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect:
+						sendCredentialsOnCrossOriginRedirect ?? defaultSendCredentialsOnCrossOriginRedirect,
 				};
 
 				if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {

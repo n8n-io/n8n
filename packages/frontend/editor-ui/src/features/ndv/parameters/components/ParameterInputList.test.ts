@@ -1,14 +1,14 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { mockedStore } from '@/__tests__/utils';
 import {
 	createTestWorkflowObject,
 	createTestNode,
 	createMockNodeTypes,
 	mockLoadedNodeType,
 } from '@/__tests__/mocks';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 
@@ -46,7 +46,6 @@ import {
 	TEST_NODE_VALUES,
 	TEST_NODE_WITH_ISSUES,
 	FIXED_COLLECTION_PARAMETERS,
-	TEST_ISSUE,
 } from './ParameterInputList.test.constants';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
@@ -133,9 +132,9 @@ describe('ParameterInputList', () => {
 		expect(getAllByTestId('suspense-stub')).toHaveLength(FIXED_COLLECTION_PARAMETERS.length);
 	});
 
-	it('renders fixed collection inputs correctly with issues', () => {
+	it('renders fixed collection inputs correctly with issues', async () => {
 		ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-		const { getByText, getByTestId } = renderComponent({
+		const { getByText, getByTestId, container } = renderComponent({
 			props: {
 				parameters: TEST_PARAMETERS,
 				nodeValues: TEST_NODE_VALUES,
@@ -150,7 +149,14 @@ describe('ParameterInputList', () => {
 		expect(
 			getByTestId(`${FIXED_COLLECTION_PARAMETERS[0].name}-parameter-input-issues-container`),
 		).toBeInTheDocument();
-		expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+
+		// Verify issue icon is present and tooltip shows issue text on hover
+		const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
+		if (!issueIcon) throw new Error('Issue icon not found');
+		expect(issueIcon).toBeInTheDocument();
+
+		await hoverTooltipTrigger(issueIcon);
+		await waitFor(() => expect(getTooltip()).toHaveTextContent('At least 1 field is required.'));
 	});
 
 	it('renders notice correctly', () => {
@@ -1110,16 +1116,22 @@ describe('ParameterInputList', () => {
 	 * Tests issue icons, tooltips, and hiddenIssuesInputs functionality.
 	 */
 	describe('Issues Display', () => {
-		it('should display issues for fixedCollection parameters', () => {
+		it('should display issues for fixedCollection parameters', async () => {
 			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { getByText } = renderComponent({
+			const { container } = renderComponent({
 				props: {
 					parameters: TEST_PARAMETERS,
 					nodeValues: TEST_NODE_VALUES,
 				},
 			});
 
-			expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+			// Verify issue icon is present and tooltip shows issue text on hover
+			const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
+			if (!issueIcon) throw new Error('Issue icon not found');
+			expect(issueIcon).toBeInTheDocument();
+
+			await hoverTooltipTrigger(issueIcon);
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('At least 1 field is required.'));
 		});
 
 		it('should display issue icon in label for supported parameter types', () => {
@@ -1135,9 +1147,9 @@ describe('ParameterInputList', () => {
 			expect(issueIcon).toBeInTheDocument();
 		});
 
-		it('should not display issues when parameter is in hiddenIssuesInputs', () => {
+		it('should not display issues when parameter is in hiddenIssuesInputs', async () => {
 			ndvStore.activeNode = TEST_NODE_WITH_ISSUES;
-			const { getByText } = renderComponent({
+			const { container } = renderComponent({
 				props: {
 					parameters: TEST_PARAMETERS,
 					nodeValues: TEST_NODE_VALUES,
@@ -1147,7 +1159,13 @@ describe('ParameterInputList', () => {
 
 			// Issue text still appears because hiddenIssuesInputs is passed to child component
 			// The actual hiding logic is in the child component (ParameterInputFull)
-			expect(getByText(TEST_ISSUE)).toBeInTheDocument();
+			// Verify issue icon is present and tooltip shows issue text on hover
+			const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
+			if (!issueIcon) throw new Error('Issue icon not found');
+			expect(issueIcon).toBeInTheDocument();
+
+			await hoverTooltipTrigger(issueIcon);
+			await waitFor(() => expect(getTooltip()).toHaveTextContent('At least 1 field is required.'));
 		});
 	});
 
