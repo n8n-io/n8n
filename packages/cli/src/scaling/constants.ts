@@ -16,6 +16,7 @@ export const WORKER_RESPONSE_PUBSUB_CHANNEL = 'n8n.worker-response';
 export const SELF_SEND_COMMANDS = new Set<PubSub.Command['command']>([
 	'add-webhooks-triggers-and-pollers',
 	'remove-triggers-and-pollers',
+	'workflow-publish-wake-up',
 ]);
 
 /**
@@ -26,4 +27,5 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'add-webhooks-triggers-and-pollers',
 	'remove-triggers-and-pollers',
 	'relay-execution-lifecycle-event',
+	'workflow-publish-wake-up',
 ]);

@@ -65,6 +65,7 @@ import '@/webhooks/webhooks.controller';
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
+import { WorkflowPublicationOutboxConsumer } from './workflows/workflow-publication-outbox-consumer.service';
 
 @Service()
 export class Server extends AbstractServer {
@@ -212,6 +213,9 @@ export class Server extends AbstractServer {
 		await handleMfaDisable();
 
 		await this.registerAdditionalControllers();
+
+		// Initialize workflow publication outbox consumer
+		Container.get(WorkflowPublicationOutboxConsumer);
 
 		// Reinitialize the PubSubRegistry
 		Container.get(PubSubRegistry).init();

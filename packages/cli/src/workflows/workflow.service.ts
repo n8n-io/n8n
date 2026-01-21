@@ -17,6 +17,7 @@ import {
 	WorkflowPublishHistoryRepository,
 	WorkflowEntity,
 	WorkflowPublishedVersion,
+	WorkflowPublicationOutbox,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -52,6 +53,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -81,6 +83,7 @@ export class WorkflowService {
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly dataSource: DataSource,
+		private readonly publisher: Publisher,
 	) {}
 
 	async getMany(
@@ -511,6 +514,7 @@ export class WorkflowService {
 	 * @param publicApi - Whether this is called from the public API (affects event emission)
 	 * @returns The activated workflow
 	 */
+	// eslint-disable-next-line complexity
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
@@ -570,15 +574,17 @@ export class WorkflowService {
 		this._validateNodes(workflowId, versionToActivate.nodes);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
-		if (wasActive) {
-			await this.activeWorkflowManager.remove(workflowId);
+		if (!this.globalConfig.workflows.useWorkflowPublicationService) {
+			if (wasActive) {
+				await this.activeWorkflowManager.remove(workflowId);
+			}
 		}
 
 		const activationMode = wasActive ? 'update' : 'activate';
 
 		// Feature flag check for workflow publication service
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
-			// New transactional path: update both workflow_entity and workflow_published_version
+			// New transactional path: update workflow_entity and insert into outbox
 			await this.dataSource.transaction(async (manager) => {
 				await manager.update(WorkflowEntity, workflowId, {
 					activeVersionId: versionIdToActivate,
@@ -587,13 +593,23 @@ export class WorkflowService {
 					updatedAt: workflow.updatedAt,
 				});
 
-				await manager.getRepository(WorkflowPublishedVersion).upsert(
-					{
-						workflowId,
-						publishedVersionId: versionIdToActivate,
-					},
-					['workflowId'],
-				);
+				// Insert into outbox for async processing by the leader
+				await manager.insert(WorkflowPublicationOutbox, {
+					id: uuid(),
+					workflowId,
+					publishedVersionId: versionIdToActivate,
+					status: 'pending',
+				});
+			});
+
+			// Publish wake-up event to trigger outbox consumer (outside transaction)
+			await this.publisher.publishCommand({
+				command: 'workflow-publish-wake-up',
+			});
+
+			this.logger.debug('Published workflow activation to outbox', {
+				workflowId,
+				publishedVersionId: versionIdToActivate,
 			});
 		} else {
 			// Existing non-transactional path
@@ -621,13 +637,15 @@ export class WorkflowService {
 			publicApi,
 		});
 
-		await this._addToActiveWorkflowManager(
-			user,
-			workflowId,
-			workflowForActivation,
-			activationMode,
-			publicApi,
-		);
+		if (!this.globalConfig.workflows.useWorkflowPublicationService) {
+			await this._addToActiveWorkflowManager(
+				user,
+				workflowId,
+				workflowForActivation,
+				activationMode,
+				publicApi,
+			);
+		}
 
 		if (options?.name !== undefined || options?.description !== undefined) {
 			const updateFields: WorkflowHistoryUpdate = {};
