@@ -42,6 +42,7 @@ import { mainSystemTasks } from '@/scheduling/system-tasks/main-system-tasks';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
 import { Server } from '@/server';
 import { JwtService } from '@/services/jwt.service';
+import { PathResolvingService } from '@/services/path-resolving.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
 import { UrlService } from '@/services/url.service';
@@ -160,7 +161,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
-		const n8nPath = this.globalConfig.path;
+		const pathResolvingService = Container.get(PathResolvingService);
+		const n8nPath = pathResolvingService.getBasePath();
+		// For template replacements, we need the path with trailing slash for proper asset URLs
+		const n8nPathWithSlash = n8nPath.endsWith('/') ? n8nPath : `${n8nPath}/`;
 		const hooksUrls = this.globalConfig.externalFrontendHooksUrls;
 
 		let scriptsString = '';
@@ -181,9 +185,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				const streams = [
 					createReadStream(filePath, 'utf-8'),
 					replaceStream('%CONFIG_TAGS%', this.generateConfigTags(), { ignoreCase: false }),
-					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
-					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPath, { ignoreCase: false }),
-					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPath, { ignoreCase: false }),
+					replaceStream('/{{BASE_PATH}}/', n8nPathWithSlash, { ignoreCase: false }),
+					replaceStream('/%7B%7BBASE_PATH%7D%7D/', n8nPathWithSlash, { ignoreCase: false }),
+					replaceStream('/%257B%257BBASE_PATH%257D%257D/', n8nPathWithSlash, { ignoreCase: false }),
 				];
 				if (filePath.endsWith('index.html')) {
 					streams.push(

@@ -9,6 +9,7 @@ export type { ModuleName } from './modules/modules.config';
 export { ModulesConfig } from './modules/modules.config';
 export {
 	isContainedWithin,
+	normalizeBasePath,
 	safeJoinPath,
 	pathComponents,
 	pathSegmentsBetween,
