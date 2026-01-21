@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { defineComponent, h, ref, computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { render } from '@testing-library/vue';
+import type * as I18nModule from '@n8n/i18n';
 
 // Capture applyLayout prop from SyncedWorkflowCanvas
 let capturedApplyLayoutProps: { top: boolean | undefined; bottom: boolean | undefined } = {
@@ -53,7 +54,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = (await importOriginal()) as typeof import('@n8n/i18n');
+	const actual = (await importOriginal()) as typeof I18nModule;
 	return {
 		...actual,
 		useI18n: () => ({
