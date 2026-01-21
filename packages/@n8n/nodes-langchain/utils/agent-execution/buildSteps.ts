@@ -223,7 +223,7 @@ export function buildSteps(
 			// When content is an array (thinking mode), tool_use blocks are in the content array
 			const aiMessageOptions: {
 				content: typeof messageContent;
-				tool_calls?: (typeof toolCall)[];
+				tool_calls?: Array<typeof toolCall>;
 				additional_kwargs?: Record<string, unknown>;
 			} = {
 				content: messageContent,
