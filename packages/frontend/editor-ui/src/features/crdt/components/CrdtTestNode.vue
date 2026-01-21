@@ -104,6 +104,25 @@ const icon = computed(() => {
 });
 
 /**
+ * Check if this is a trigger node (has 'trigger' in its group).
+ * Trigger nodes get asymmetric rounded corners (rounded left side).
+ */
+const isTriggerNode = computed((): boolean => {
+	if (!nodeType.value) return false;
+	return nodeType.value.group?.includes('trigger') ?? false;
+});
+
+/**
+ * Check if this is a configuration node (has non-main outputs).
+ * Configuration nodes are pill-shaped (fully rounded).
+ */
+const isConfigurationNode = computed((): boolean => {
+	const outputs = outputHandles.value;
+	if (outputs.length === 0) return false;
+	return outputs.some((output) => output.type !== 'main');
+});
+
+/**
  * Check if a handle type is "main" (horizontal flow: left/right).
  * Non-main types use vertical flow (top/bottom).
  */
@@ -263,7 +282,11 @@ const selectedByCollaborator = computed(() => {
 <template>
 	<div
 		class="crdt-node"
-		:class="{ 'crdt-node--selected-by-collaborator': selectedByCollaborator }"
+		:class="{
+			'crdt-node--selected-by-collaborator': selectedByCollaborator,
+			'crdt-node--trigger': isTriggerNode,
+			'crdt-node--configuration': isConfigurationNode,
+		}"
 		:style="selectedByCollaborator ? { '--collaborator--color': selectedByCollaborator.color } : {}"
 	>
 		<!-- Input handles (main = left, non-main = bottom) -->
@@ -333,6 +356,8 @@ const selectedByCollaborator = computed(() => {
 
 <style lang="scss" scoped>
 .crdt-node {
+	--trigger-node--radius: 36px;
+
 	position: relative;
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
@@ -352,6 +377,17 @@ const selectedByCollaborator = computed(() => {
 	box-shadow:
 		0 0 0 2px var(--collaborator--color),
 		0 0 8px var(--collaborator--color);
+}
+
+/* Trigger nodes - asymmetric rounded corners (rounded left side) */
+.crdt-node--trigger {
+	border-radius: var(--trigger-node--radius) var(--radius--lg) var(--radius--lg)
+		var(--trigger-node--radius);
+}
+
+/* Configuration nodes - pill-shaped (fully rounded ends) */
+.crdt-node--configuration {
+	border-radius: 50%;
 }
 
 /* Handle styles - transparent container like production CanvasHandleRenderer */
