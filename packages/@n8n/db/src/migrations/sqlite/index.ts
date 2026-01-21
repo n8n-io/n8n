@@ -130,6 +130,7 @@ import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/17
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
+import { AddNodeGovernanceTables1768981346000 } from '../common/1768981346000-AddNodeGovernanceTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -265,6 +266,7 @@ const sqliteMigrations: Migration[] = [
 	ExpandModelColumnLength1768402473068,
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
+	AddNodeGovernanceTables1768981346000,
 ];
 
 export { sqliteMigrations };

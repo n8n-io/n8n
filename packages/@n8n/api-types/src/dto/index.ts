@@ -128,3 +128,16 @@ export {
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
+
+// Node Governance
+export {
+	CreatePolicyDto,
+	UpdatePolicyDto,
+	CreateCategoryDto,
+	UpdateCategoryDto,
+	CategoryAssignmentDto,
+	BulkCategoryAssignmentDto,
+	CreateAccessRequestDto,
+	ReviewAccessRequestDto,
+	GetNodeGovernanceQueryDto,
+} from './node-governance';

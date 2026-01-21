@@ -136,6 +136,7 @@ import { AddChatMessageIndices1766068346315 } from '../common/1766068346315-AddC
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
+import { AddNodeGovernanceTables1768981346000 } from '../common/1768981346000-AddNodeGovernanceTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -277,4 +278,5 @@ export const postgresMigrations: Migration[] = [
 	ExpandModelColumnLength1768402473068,
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
+	AddNodeGovernanceTables1768981346000,
 ];
