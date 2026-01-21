@@ -81,6 +81,9 @@ import {
 	ChatTriggerResponseMode,
 	NonStreamingResponseMode,
 	PreparedChatWorkflow,
+	type VectorStoreSearchOptions,
+	type MessageRecord,
+	type ChatInput,
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
@@ -210,9 +213,8 @@ export class ChatHubService {
 					credentials,
 					model,
 					history,
-					message,
+					{ message, attachments: processedAttachments },
 					tools,
-					processedAttachments,
 					tz,
 					trx,
 				);
@@ -373,9 +375,8 @@ export class ChatHubService {
 						credentials,
 						model,
 						history,
-						message,
+						{ message, attachments },
 						session.tools,
-						attachments,
 						tz,
 						trx,
 					);
@@ -459,9 +460,8 @@ export class ChatHubService {
 					credentials,
 					model,
 					history,
-					message,
+					{ message, attachments },
 					session.tools,
-					attachments,
 					tz,
 					trx,
 				);
@@ -492,21 +492,13 @@ export class ChatHubService {
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		history: ChatHubMessage[],
-		message: string,
+		input: ChatInput,
 		tools: INode[],
-		attachments: IBinaryData[],
 		timeZone: string,
 		trx: EntityManager,
 	) {
 		if (model.provider === 'n8n') {
-			return await this.prepareWorkflowAgentWorkflow(
-				user,
-				sessionId,
-				model.workflowId,
-				message,
-				attachments,
-				trx,
-			);
+			return await this.prepareWorkflowAgentWorkflow(user, sessionId, model.workflowId, input, trx);
 		}
 
 		if (model.provider === 'custom-agent') {
@@ -515,8 +507,7 @@ export class ChatHubService {
 				user,
 				sessionId,
 				history,
-				message,
-				attachments,
+				input,
 				timeZone,
 				trx,
 			);
@@ -527,15 +518,10 @@ export class ChatHubService {
 			sessionId,
 			credentials,
 			model,
-			history,
-			message,
-			undefined,
+			await this.chatHubWorkflowService.buildMessageValuesWithAttachments(history, model, []),
+			input,
+			this.chatHubWorkflowService.getBaseSystemMessage(timeZone),
 			tools,
-			attachments,
-			[],
-			null,
-			timeZone,
-			null,
 			null,
 			trx,
 		);
@@ -546,16 +532,11 @@ export class ChatHubService {
 		sessionId: ChatSessionId,
 		credentials: INodeCredentials,
 		model: ChatHubBaseLLMModel,
-		history: ChatHubMessage[],
-		message: string,
-		systemMessage: string | undefined,
+		history: MessageRecord[],
+		input: ChatInput,
+		systemMessage: string,
 		tools: INode[],
-		attachments: IBinaryData[],
-		contextFiles: IBinaryData[],
-		agentId: string | null,
-		timeZone: string,
-		agentEmbeddingProvider: ChatHubLLMProvider | null,
-		agentEmbeddingCredentialId: string | null,
+		vectorStoreSearch: VectorStoreSearchOptions | null,
 		trx: EntityManager,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
@@ -563,21 +544,16 @@ export class ChatHubService {
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 
 		return await this.chatHubWorkflowService.createChatWorkflow(
-			user,
+			user.id,
 			sessionId,
 			projectId,
 			history,
-			message,
-			attachments,
-			contextFiles,
+			input,
 			credentials,
 			model,
 			systemMessage,
 			tools,
-			agentId,
-			timeZone,
-			agentEmbeddingProvider,
-			agentEmbeddingCredentialId,
+			vectorStoreSearch,
 			trx,
 		);
 	}
@@ -587,8 +563,7 @@ export class ChatHubService {
 		user: User,
 		sessionId: ChatSessionId,
 		history: ChatHubMessage[],
-		message: string,
-		attachments: IBinaryData[],
+		input: ChatInput,
 		timeZone: string,
 		trx: EntityManager,
 	) {
@@ -629,16 +604,23 @@ export class ChatHubService {
 			sessionId,
 			credentials,
 			model,
-			history,
-			message,
+			await this.chatHubWorkflowService.buildMessageValuesWithAttachments(
+				history,
+				model,
+				agent.files,
+			),
+			input,
 			systemMessage,
 			tools,
-			attachments,
-			agent.files,
-			agent.id,
-			timeZone,
-			agent.embeddingProvider,
-			agent.embeddingCredentialId,
+			agent.embeddingProvider &&
+				agent.embeddingCredentialId &&
+				agent.files.some((c) => c.mimeType === 'application/pdf')
+				? {
+						embeddingCredentialId: agent.embeddingCredentialId,
+						embeddingProvider: agent.embeddingProvider,
+						memoryKey: this.chatHubAgentService.getAgentMemoryKey(user.id, agent.id),
+					}
+				: null,
 			trx,
 		);
 	}
@@ -647,8 +629,7 @@ export class ChatHubService {
 		user: User,
 		sessionId: ChatSessionId,
 		workflowId: string,
-		message: string,
-		attachments: IBinaryData[],
+		input: ChatInput,
 		trx: EntityManager,
 	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -718,8 +699,7 @@ export class ChatHubService {
 		const nodeExecutionStack = this.chatHubWorkflowService.prepareExecutionData(
 			chatTrigger,
 			sessionId,
-			message,
-			attachments,
+			input,
 		);
 
 		const executionData = createRunExecutionData({

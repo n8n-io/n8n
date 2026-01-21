@@ -4,7 +4,7 @@ import type {
 	ChatModelDto,
 	ChatHubLLMProvider,
 } from '@n8n/api-types';
-import { PROVIDER_CREDENTIAL_TYPE_MAP, chatHubLLMProviderSchema } from '@n8n/api-types';
+import { chatHubLLMProviderSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { EntityManager, User } from '@n8n/db';
 import { VectorStoreDataRepository } from '@n8n/db';
@@ -18,7 +18,7 @@ import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import { EMBEDDINGS_NODE_TYPE_MAP, getModelMetadata } from './chat-hub.constants';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { type IBinaryData, type INodeCredentials } from 'n8n-workflow';
+import { type IBinaryData } from 'n8n-workflow';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -322,36 +322,35 @@ export class ChatHubAgentService {
 		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
 	}
 
+	getAgentMemoryKey(userId: string, agentId: string): string {
+		return `agent-files-${userId}-${agentId}`;
+	}
+
 	private async insertDocuments(user: User, agent: ChatHubAgent, files: IBinaryData[]) {
 		if (files.length === 0) {
 			return;
 		}
 
-		if (!agent.embeddingProvider || !agent.embeddingCredentialId) {
+		const { embeddingCredentialId, embeddingProvider } = agent;
+
+		if (!embeddingProvider || !embeddingCredentialId) {
 			throw new BadRequestError(
 				'Agent must have embedding provider configured to insert documents for RAG',
 			);
 		}
-
-		// Use the agent's stored embedding provider
-		const embeddingCredentialType = PROVIDER_CREDENTIAL_TYPE_MAP[agent.embeddingProvider];
-		const credentials: INodeCredentials = {
-			[embeddingCredentialType]: {
-				id: agent.embeddingCredentialId,
-				name: '',
-			},
-		};
 
 		const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
 			async (trx) => {
 				const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
 				return await this.chatHubWorkflowService.createDocumentsInsertionWorkflow(
 					user,
-					agent.id,
 					project.id,
 					files,
-					agent.embeddingProvider!,
-					credentials,
+					{
+						embeddingProvider,
+						embeddingCredentialId,
+						memoryKey: this.getAgentMemoryKey(user.id, agent.id),
+					},
 					trx,
 				);
 			},
@@ -374,7 +373,7 @@ export class ChatHubAgentService {
 	}
 
 	private async deleteDocuments(userId: string, agentId: string): Promise<void> {
-		const memoryKey = this.chatHubWorkflowService.getAgentMemoryKey(userId, agentId);
+		const memoryKey = this.getAgentMemoryKey(userId, agentId);
 
 		// Delete all embeddings for this agent from the vector store
 		await this.vectorStoreDataRepository.clearStore(memoryKey);
@@ -393,7 +392,7 @@ export class ChatHubAgentService {
 			return;
 		}
 
-		const memoryKey = this.chatHubWorkflowService.getAgentMemoryKey(userId, agentId);
+		const memoryKey = this.getAgentMemoryKey(userId, agentId);
 
 		// Delete embeddings for specific files from the vector store
 		const deletedCount = await this.vectorStoreDataRepository.deleteByFileNames(

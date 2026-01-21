@@ -3,7 +3,6 @@ import {
 	ChatSessionId,
 	type ChatHubBaseLLMModel,
 	type ChatHubInputModality,
-	type ChatHubLLMProvider,
 	type ChatModelMetadataDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -53,7 +52,13 @@ import {
 	NODE_NAMES,
 	PROVIDER_NODE_TYPE_MAP,
 } from './chat-hub.constants';
-import { MessageRecord, type ContentBlock, type ChatTriggerResponseMode } from './chat-hub.types';
+import {
+	MessageRecord,
+	type ContentBlock,
+	type ChatTriggerResponseMode,
+	type VectorStoreSearchOptions,
+	type ChatInput,
+} from './chat-hub.types';
 import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
@@ -75,21 +80,16 @@ export class ChatHubWorkflowService {
 	) {}
 
 	async createChatWorkflow(
-		user: User,
+		userId: string,
 		sessionId: ChatSessionId,
 		projectId: string,
-		history: ChatHubMessage[],
-		humanMessage: string,
-		attachments: IBinaryData[],
-		contextFiles: IBinaryData[],
+		history: MessageRecord[],
+		input: ChatInput,
 		credentials: INodeCredentials,
 		model: ChatHubBaseLLMModel,
-		systemMessage: string | undefined,
+		systemMessage: string,
 		tools: INode[],
-		agentId: string | null,
-		timeZone: string,
-		agentEmbeddingProvider: ChatHubLLMProvider | null,
-		agentEmbeddingCredentialId: string | null,
+		vectorStoreSearch: VectorStoreSearchOptions | null,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -98,23 +98,19 @@ export class ChatHubWorkflowService {
 	}> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
 			this.logger.debug(
-				`Creating chat workflow for user ${user.id} and session ${sessionId}, provider ${model.provider}`,
+				`Creating chat workflow for user ${userId} and session ${sessionId}, provider ${model.provider}`,
 			);
 
 			const { nodes, connections, executionData } = await this.buildChatWorkflow({
-				user,
+				userId,
 				sessionId,
 				history,
-				humanMessage,
-				attachments,
-				contextFiles,
+				input,
 				credentials,
 				model,
-				systemMessage: systemMessage ?? this.getBaseSystemMessage(timeZone),
+				systemMessage,
 				tools,
-				agentId,
-				agentEmbeddingProvider,
-				agentEmbeddingCredentialId,
+				vectorStoreSearch,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -214,8 +210,7 @@ export class ChatHubWorkflowService {
 	prepareExecutionData(
 		triggerNode: INode,
 		sessionId: string,
-		message: string,
-		attachments: IBinaryData[],
+		{ message, attachments }: ChatInput,
 	): IExecuteData[] {
 		// Attachments are already processed (id field populated) by the caller
 		return [
@@ -289,59 +284,33 @@ export class ChatHubWorkflowService {
 	}
 
 	private async buildChatWorkflow({
-		user,
+		userId,
 		sessionId,
 		history,
-		humanMessage,
-		attachments,
-		contextFiles,
+		input,
 		credentials,
 		model,
 		systemMessage,
 		tools,
-		agentId,
-		agentEmbeddingProvider,
-		agentEmbeddingCredentialId,
+		vectorStoreSearch,
 	}: {
-		user: User;
+		userId: string;
 		sessionId: ChatSessionId;
-		history: ChatHubMessage[];
-		humanMessage: string;
-		attachments: IBinaryData[];
-		contextFiles: IBinaryData[];
+		history: MessageRecord[];
+		input: ChatInput;
 		credentials: INodeCredentials;
 		model: ChatHubBaseLLMModel;
 		systemMessage: string;
 		tools: INode[];
-		agentId: string | null;
-		agentEmbeddingProvider: ChatHubLLMProvider | null;
-		agentEmbeddingCredentialId: string | null;
+		vectorStoreSearch: VectorStoreSearchOptions | null;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
 		const modelNode = this.buildModelNode(credentials, model);
 		const memoryNode = this.buildMemoryNode(20);
-		const restoreMemoryNode = await this.buildRestoreMemoryNode(history, model, contextFiles);
+		const restoreMemoryNode = await this.buildRestoreMemoryNode(history);
 		const clearMemoryNode = this.buildClearMemoryNode();
 		const mergeNode = this.buildMergeNode();
-		const pdfFiles = contextFiles.filter((c) => c.mimeType === 'application/pdf');
-
-		// Find vector store tool in tools array
-		const shouldIncludeVectorStoreTool = pdfFiles.length > 0;
-
-		const vectorStoreNodes =
-			shouldIncludeVectorStoreTool &&
-			agentId &&
-			agentEmbeddingProvider &&
-			agentEmbeddingCredentialId
-				? this.buildVectorStoreNodes(
-						user.id,
-						agentId,
-						pdfFiles,
-						agentEmbeddingProvider,
-						agentEmbeddingCredentialId,
-					)
-				: [];
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -351,13 +320,11 @@ export class ChatHubWorkflowService {
 			restoreMemoryNode,
 			clearMemoryNode,
 			mergeNode,
-			...vectorStoreNodes,
+			...(vectorStoreSearch ? this.buildVectorStoreNodes(vectorStoreSearch) : []),
 		];
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
-		// Filter out vector store tools from regular tools (they're handled specially above)
-		const regularTools = tools.filter((tool) => tool.type !== VECTOR_STORE_SIMPLE_NODE_TYPE);
-		const distinctTools = regularTools.map((tool, i) => {
+		const distinctTools = tools.map((tool, i) => {
 			// Spread out the tool nodes so that they don't overlap on the canvas
 			const position = [
 				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
@@ -399,7 +366,7 @@ export class ChatHubWorkflowService {
 				[NodeConnectionTypes.AiLanguageModel]: [
 					[
 						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
-						...(shouldIncludeVectorStoreTool
+						...(vectorStoreSearch
 							? [
 									{
 										node: NODE_NAMES.VECTOR_STORE_QUESTION_TOOL,
@@ -446,7 +413,7 @@ export class ChatHubWorkflowService {
 
 				return acc;
 			}, {}),
-			...(shouldIncludeVectorStoreTool
+			...(vectorStoreSearch
 				? {
 						[NODE_NAMES.EMBEDDINGS_MODEL]: {
 							[NodeConnectionTypes.AiEmbedding]: [
@@ -485,19 +452,14 @@ export class ChatHubWorkflowService {
 				: {}),
 		};
 
-		const nodeExecutionStack = this.prepareExecutionData(
-			chatTriggerNode,
-			sessionId,
-			humanMessage,
-			attachments,
-		);
+		const nodeExecutionStack = this.prepareExecutionData(chatTriggerNode, sessionId, input);
 
 		const executionData = createRunExecutionData({
 			executionData: {
 				nodeExecutionStack,
 			},
 			manualData: {
-				userId: user.id,
+				userId,
 			},
 		});
 
@@ -580,6 +542,7 @@ export class ChatHubWorkflowService {
 		};
 	}
 
+	// TODO: move to chat-hub service
 	getSystemMessageMetadata(timeZone: string) {
 		const now = inE2ETests ? DateTime.fromISO('2025-01-15T12:00:00.000Z') : DateTime.now();
 		const isoTime = now.setZone(timeZone).toISO({ includeOffset: true });
@@ -609,7 +572,7 @@ GOOD: "Hello! How can I help you?"
 `;
 	}
 
-	private getBaseSystemMessage(timeZone: string) {
+	getBaseSystemMessage(timeZone: string) {
 		return `You are a helpful assistant.
 
 ${this.getSystemMessageMetadata(timeZone)}`;
@@ -799,17 +762,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		};
 	}
 
-	private async buildRestoreMemoryNode(
-		history: ChatHubMessage[],
-		model: ChatHubBaseLLMModel,
-		contextFiles: IBinaryData[],
-	): Promise<INode> {
-		const messageValues = await this.buildMessageValuesWithAttachments(
-			history,
-			model,
-			contextFiles,
-		);
-
+	private async buildRestoreMemoryNode(messageValues: MessageRecord[]): Promise<INode> {
 		return {
 			parameters: {
 				mode: 'insert',
@@ -826,7 +779,8 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		};
 	}
 
-	private async buildMessageValuesWithAttachments(
+	// TODO: move to chat-hub service
+	async buildMessageValuesWithAttachments(
 		history: ChatHubMessage[],
 		model: ChatHubBaseLLMModel,
 		contextFiles: IBinaryData[],
@@ -1094,43 +1048,27 @@ Respond the title only:`,
 		return 'file';
 	}
 
-	private buildVectorStoreNodes(
-		userId: string,
-		agentId: string,
-		pdfFiles: IBinaryData[],
-		agentEmbeddingProvider: ChatHubLLMProvider,
-		agentEmbeddingCredentialId: string,
-	): INode[] {
-		// Use the agent's stored embedding provider (must be set at agent creation time)
-		const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[agentEmbeddingProvider];
-		const embeddingsCredentials: INodeCredentials = {
-			[credentialType]: {
-				id: agentEmbeddingCredentialId,
-				name: credentialType,
-			},
-		};
-
-		const embeddingsModelNode = this.buildEmbeddingsModelNode(
-			agentEmbeddingProvider,
-			embeddingsCredentials,
-		);
-		const vectorStoreNode = this.buildVectorStoreNode(userId, agentId);
-		const vectorStoreQuestionToolNode = this.buildVectorStoreQuestionToolNode(pdfFiles);
+	private buildVectorStoreNodes(options: VectorStoreSearchOptions): INode[] {
+		const embeddingsModelNode = this.buildEmbeddingsModelNode(options);
+		const vectorStoreNode = this.buildVectorStoreNode(options.memoryKey);
+		const vectorStoreQuestionToolNode = this.buildVectorStoreQuestionToolNode();
 
 		return [embeddingsModelNode, vectorStoreNode, vectorStoreQuestionToolNode];
 	}
 
-	private buildEmbeddingsModelNode(
-		provider: ChatHubLLMProvider,
-		credentials: INodeCredentials,
-	): INode {
-		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[provider];
+	private buildEmbeddingsModelNode({
+		embeddingProvider,
+		embeddingCredentialId,
+	}: VectorStoreSearchOptions): INode {
+		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[embeddingProvider];
 
 		if (!embeddingsNodeType) {
 			throw new BadRequestError(
-				`Embeddings are not supported for provider '${provider}'. Please configure an embedding provider for this agent.`,
+				`Embeddings are not supported for provider '${embeddingProvider}'. Please configure an embedding provider for this agent.`,
 			);
 		}
+
+		const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[embeddingProvider];
 
 		return {
 			parameters: {
@@ -1141,21 +1079,22 @@ Respond the title only:`,
 			position: [800, 720],
 			id: uuidv4(),
 			name: NODE_NAMES.EMBEDDINGS_MODEL,
-			credentials,
+			credentials: {
+				[credentialType]: {
+					id: embeddingCredentialId,
+					name: credentialType,
+				},
+			},
 		};
 	}
 
-	getAgentMemoryKey(userId: string, agentId: string): string {
-		return `agent-files-${userId}-${agentId}`;
-	}
-
-	private buildVectorStoreNode(userId: string, agentId: string): INode {
+	private buildVectorStoreNode(memoryKey: string): INode {
 		return {
 			parameters: {
 				mode: 'retrieve',
 				memoryKey: {
 					__rl: true,
-					value: this.getAgentMemoryKey(userId, agentId),
+					value: memoryKey,
 					cachedResultName: '',
 				},
 				enablePersistence: true,
@@ -1168,12 +1107,10 @@ Respond the title only:`,
 		};
 	}
 
-	private buildVectorStoreQuestionToolNode(pdfFiles: IBinaryData[]): INode {
+	private buildVectorStoreQuestionToolNode(): INode {
 		return {
 			parameters: {
-				description: `Use this tool to query following context files:
-${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
-`,
+				description: 'Use this tool to query context files',
 			},
 			type: VECTOR_STORE_TOOL_NODE_TYPE,
 			typeVersion: 1.1,
@@ -1185,11 +1122,9 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 
 	async createDocumentsInsertionWorkflow(
 		user: User,
-		agentId: string,
 		projectId: string,
 		attachments: IBinaryData[],
-		provider: ChatHubLLMProvider,
-		credentials: INodeCredentials,
+		vectorStoreSearch: VectorStoreSearchOptions,
 		trx: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -1210,7 +1145,7 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 		};
 
 		const embeddingsNode: INode = {
-			...this.buildEmbeddingsModelNode(provider, credentials),
+			...this.buildEmbeddingsModelNode(vectorStoreSearch),
 			position: [128, 464],
 			name: 'Embeddings Model',
 		};
@@ -1221,7 +1156,7 @@ ${pdfFiles.map((f) => `- ${f.fileName ?? 'unnamed file'}`).join('\n')}
 					mode: 'insert',
 					memoryKey: {
 						__rl: true,
-						value: this.getAgentMemoryKey(user.id, agentId),
+						value: vectorStoreSearch.memoryKey,
 						mode: 'list',
 						cachedResultName: '',
 					},
