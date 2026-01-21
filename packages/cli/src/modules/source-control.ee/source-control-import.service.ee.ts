@@ -537,10 +537,7 @@ export class SourceControlImportService {
 		return { tags: [], mappings: [] };
 	}
 
-	async getLocalTagsAndMappingsFromDb(context: SourceControlContext): Promise<{
-		tags: TagEntity[];
-		mappings: WorkflowTagMapping[];
-	}> {
+	async getLocalTagsAndMappingsFromDb(context: SourceControlContext): Promise<ExportableTags> {
 		const localTags = await this.tagRepository.find({
 			select: ['id', 'name'],
 		});
