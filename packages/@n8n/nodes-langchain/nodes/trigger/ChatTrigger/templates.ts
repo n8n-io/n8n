@@ -61,7 +61,7 @@ export function getSanitizedCustomCss(customCss: string): string {
 
 export function createPage({
 	instanceId,
-	instanceBaseUrl,
+	instanceBaseUrl = '/',
 	webhookUrl,
 	showWelcomeScreen,
 	loadPreviousSession,
