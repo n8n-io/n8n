@@ -327,7 +327,9 @@ onBeforeMount(() => {
 							:href="attachment.downloadUrl"
 						/>
 					</div>
-					<div v-if="message.type === 'human'">{{ message.content }}</div>
+					<div v-if="message.type === 'human'" :class="$style.messageContent">
+						{{ message.content }}
+					</div>
 					<ChatMarkdownChunk
 						v-for="(chunk, index) in messageChunks"
 						v-else
@@ -353,11 +355,19 @@ onBeforeMount(() => {
 		</div>
 	</div>
 </template>
-
 <style lang="scss" module>
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
+}
+
+.messageContent {
+	font-size: var(--font-size--md);
+	line-height: var(--line-height--xl);
+}
+
+.codeBlockActions > * {
+	margin-top: -2px;
 }
 
 .avatar {
