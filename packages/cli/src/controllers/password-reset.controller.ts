@@ -28,6 +28,7 @@ import {
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { Time } from '@n8n/constants';
 
 @RestController()
 export class PasswordResetController {
@@ -47,7 +48,15 @@ export class PasswordResetController {
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password', { skipAuth: true, rateLimit: { limit: 3 } })
+	@Post('/forgot-password', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+		keyedRateLimit: {
+			limit: 3,
+			source: 'body',
+			field: 'email' satisfies keyof ForgotPasswordRequestDto,
+		},
+	})
 	async forgotPassword(
 		_req: AuthlessRequest,
 		_res: Response,
@@ -162,7 +171,10 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and update password.
 	 */
-	@Post('/change-password', { skipAuth: true })
+	@Post('/change-password', {
+		skipAuth: true,
+		ipRateLimit: true,
+	})
 	async changePassword(
 		req: AuthlessRequest,
 		res: Response,

@@ -165,7 +165,11 @@ export class MeController {
 	/**
 	 * Update the logged-in user's password.
 	 */
-	@Patch('/password', { rateLimit: true })
+	@Patch('/password', {
+		keyedRateLimit: {
+			source: 'user',
+		},
+	})
 	async updatePassword(
 		req: AuthenticatedRequest,
 		res: Response,

@@ -15,7 +15,7 @@ export interface CorsOptions {
 	maxAge?: number;
 }
 
-export interface RateLimit {
+export interface RateLimiterLimits {
 	/**
 	 * The maximum number of requests to allow during the `window` before rate limiting the client.
 	 * @default 5
@@ -27,6 +27,30 @@ export interface RateLimit {
 	 */
 	windowMs?: number;
 }
+
+/**
+ * Configuration for extracting a key from the request body.
+ * @example
+ * { source: 'body', field: 'email' }
+ */
+export interface BodyKeyedRateLimiterConfig extends RateLimiterLimits {
+	/** How to extract key from request */
+	source: 'body';
+	/** The field name in the request body to use as the key */
+	field: string;
+}
+
+/**
+ * Configuration for extracting a key from the authenticated user.
+ * @example
+ * { source: 'user' }
+ */
+export interface UserKeyedRateLimiterConfig extends RateLimiterLimits {
+	/** How to extract key from request */
+	source: 'user';
+}
+
+export type KeyedRateLimiterConfig = BodyKeyedRateLimiterConfig | UserKeyedRateLimiterConfig;
 
 export type HandlerName = string;
 
@@ -45,7 +69,10 @@ export interface RouteMetadata {
 	allowSkipMFA: boolean;
 	apiKeyAuth: boolean;
 	cors?: Partial<CorsOptions> | true;
-	rateLimit?: boolean | RateLimit;
+	/** Whether to apply IP-based rate limiting to the route */
+	ipRateLimit?: boolean | RateLimiterLimits;
+	/** Whether to apply keyed rate limiting to the route */
+	keyedRateLimit?: KeyedRateLimiterConfig;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
 	args: Arg[];
@@ -66,7 +93,8 @@ export type StaticRouterMetadata = {
 		| 'allowSkipPreviewAuth'
 		| 'allowSkipMFA'
 		| 'middlewares'
-		| 'rateLimit'
+		| 'ipRateLimit'
+		| 'keyedRateLimit'
 		| 'licenseFeature'
 		| 'accessScope'
 	>

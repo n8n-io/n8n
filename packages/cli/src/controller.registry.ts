@@ -1,19 +1,25 @@
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
-import type { AccessScope, Controller, RateLimit, StaticRouterMetadata } from '@n8n/decorators';
+import type {
+	AccessScope,
+	Controller,
+	RateLimiterLimits,
+	StaticRouterMetadata,
+	KeyedRateLimiterConfig,
+} from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
 import type { Application, Request, Response, RequestHandler } from 'express';
-import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import { UnexpectedError } from 'n8n-workflow';
+import assert from 'node:assert';
 import type { ZodClass } from 'zod-class';
 
 import { NotFoundError } from './errors/response-errors/not-found.error';
 import { LastActiveAtService } from './services/last-active-at.service';
+import { RateLimitService } from './services/rate-limit.service';
 
 import { AuthService } from '@/auth/auth.service';
 import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
@@ -21,6 +27,7 @@ import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { send } from '@/response-helper';
 import { CorsService } from './services/cors-service';
+import { inProduction } from '@n8n/backend-common';
 
 @Service()
 export class ControllerRegistry {
@@ -30,6 +37,7 @@ export class ControllerRegistry {
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: ControllerRegistryMetadata,
 		private readonly lastActiveAtService: LastActiveAtService,
+		private readonly rateLimitService: RateLimitService,
 	) {}
 
 	activate(app: Application) {
@@ -122,7 +130,8 @@ export class ControllerRegistry {
 			skipAuth?: boolean;
 			allowSkipMFA?: boolean;
 			allowSkipPreviewAuth?: boolean;
-			rateLimit?: boolean | RateLimit;
+			ipRateLimit?: boolean | RateLimiterLimits;
+			keyedRateLimit?: KeyedRateLimiterConfig;
 			licenseFeature?: BooleanLicenseFeature;
 			accessScope?: AccessScope;
 			middlewares?: RequestHandler[];
@@ -131,8 +140,14 @@ export class ControllerRegistry {
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
 
-		if (inProduction && route.rateLimit) {
-			middlewares.push(this.createRateLimitMiddleware(route.rateLimit));
+		// LAYER 1: IP-based rate limiting (always before auth)
+		if (inProduction && route.ipRateLimit) {
+			middlewares.push(this.rateLimitService.createIpRateLimitMiddleware(route.ipRateLimit));
+		}
+
+		// LAYER 2a: Keyed rate limiting with body source (BEFORE auth)
+		if (inProduction && route.keyedRateLimit?.source === 'body') {
+			middlewares.push(this.rateLimitService.createKeyedRateLimitMiddleware(route.keyedRateLimit));
 		}
 
 		if (!route.skipAuth) {
@@ -143,6 +158,21 @@ export class ControllerRegistry {
 				}),
 				this.lastActiveAtService.middleware.bind(this.lastActiveAtService) as RequestHandler,
 			);
+		}
+
+		// LAYER 2b: User-based rate limiting with user source (AFTER auth)
+		if (route.keyedRateLimit?.source === 'user') {
+			assert(
+				!route.skipAuth,
+				`User-based rate limiting is only supported for authenticated endpoints. Route: ${JSON.stringify(route)}`,
+			);
+
+			// Separate ifs intentionally to prevent configuration errors in development
+			if (inProduction) {
+				middlewares.push(
+					this.rateLimitService.createKeyedRateLimitMiddleware(route.keyedRateLimit),
+				);
+			}
 		}
 
 		if (route.licenseFeature) {
@@ -160,15 +190,6 @@ export class ControllerRegistry {
 		}
 
 		return middlewares;
-	}
-
-	private createRateLimitMiddleware(rateLimit: true | RateLimit): RequestHandler {
-		if (typeof rateLimit === 'boolean') rateLimit = {};
-		return expressRateLimit({
-			windowMs: rateLimit.windowMs,
-			limit: rateLimit.limit,
-			message: { message: 'Too many requests' },
-		});
 	}
 
 	private createLicenseMiddleware(feature: BooleanLicenseFeature): RequestHandler {
