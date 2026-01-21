@@ -87,6 +87,10 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const ResourceCenterView = async () =>
+	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
+const ResourceCenterSectionView = async () =>
+	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -217,6 +221,22 @@ export const routes: RouteRecordRaw[] = [
 			} else {
 				next();
 			}
+		},
+	},
+	{
+		path: '/resource-center',
+		name: VIEWS.RESOURCE_CENTER,
+		component: ResourceCenterView,
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/resource-center/section/:sectionId',
+		name: VIEWS.RESOURCE_CENTER_SECTION,
+		component: ResourceCenterSectionView,
+		meta: {
+			middleware: ['authenticated'],
 		},
 	},
 	{
