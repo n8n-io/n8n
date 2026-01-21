@@ -87,6 +87,7 @@ const {
 
 const selection = useDataTableSelection({
 	gridApi: agGrid.gridApi,
+	readOnly: computed(() => props.readOnly ?? false),
 });
 
 const dataTableOperations = useDataTableOperations({
@@ -187,7 +188,7 @@ defineExpose({
 				:theme="n8nTheme"
 				:suppress-drag-leave-hides-columns="true"
 				:loading="dataTableOperations.contentLoading.value"
-				:row-selection="props.readOnly ? undefined : selection.rowSelection"
+				:row-selection="selection.rowSelection"
 				:get-row-id="(params: GetRowIdParams) => String(params.data.id)"
 				:stop-editing-when-cells-lose-focus="true"
 				:undo-redo-cell-editing="true"

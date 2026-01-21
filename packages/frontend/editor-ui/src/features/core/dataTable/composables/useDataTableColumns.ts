@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 import type {
 	AddColumnResponse,
@@ -42,7 +42,7 @@ export const useDataTableColumns = ({
 	onAddRowClick,
 	onAddColumn,
 	isTextEditorOpen,
-	readOnly,
+	readOnly = computed(() => false),
 }: {
 	onDeleteColumn: (columnId: string) => void;
 	onRenameColumn: (columnId: string, columnName: string) => void;
@@ -63,7 +63,7 @@ export const useDataTableColumns = ({
 			headerName: col.name,
 			sortable: true,
 			editable: (params) =>
-				!readOnly?.value &&
+				!readOnly.value &&
 				params.data?.id !== ADD_ROW_ROW_ID &&
 				!isOversizedValue(params.data?.[col.name]),
 			resizable: true,
@@ -72,7 +72,8 @@ export const useDataTableColumns = ({
 			headerComponentParams: {
 				onDelete: onDeleteColumn,
 				onRename: onRenameColumn,
-				allowMenuActions: !readOnly?.value,
+				allowMenuActions: !readOnly.value,
+				readOnly: readOnly.value,
 			},
 			cellEditorPopup: false,
 			cellDataType: mapToAGCellType(col.type),
@@ -160,7 +161,7 @@ export const useDataTableColumns = ({
 						if (params.value === ADD_ROW_ROW_ID) {
 							return {
 								component: AddRowButton,
-								params: { onClick: onAddRowClick, disabled: readOnly?.value ?? false },
+								params: { onClick: onAddRowClick, disabled: readOnly.value },
 							};
 						}
 						return undefined;
@@ -202,7 +203,7 @@ export const useDataTableColumns = ({
 					resizable: false,
 					flex: 1,
 					headerComponent: AddColumnButton,
-					headerComponentParams: { onAddColumn, disabled: readOnly?.value ?? false },
+					headerComponentParams: { onAddColumn, disabled: readOnly.value },
 				},
 			),
 		];
