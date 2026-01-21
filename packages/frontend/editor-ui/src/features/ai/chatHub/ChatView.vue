@@ -69,6 +69,8 @@ const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
 const scrollableRef = useTemplateRef('scrollable');
 
+const welcomeScreenDismissed = ref(false);
+
 const scrollableSize = useElementSize(scrollableRef);
 
 const sessionId = computed<string>(() =>
@@ -90,6 +92,7 @@ const canSelectTools = computed(
 
 const showWelcomeScreen = computed(
 	() =>
+		!welcomeScreenDismissed.value &&
 		chatStore.sessionsReady &&
 		(chatStore.sessions.ids?.length ?? 0) === 0 &&
 		(!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser'])),
@@ -651,13 +654,17 @@ function onFilesDropped(files: File[]) {
 			as-child
 			:class="$style.scrollArea"
 		>
-			<div :class="$style.scrollable" ref="scrollable">
+			<div ref="scrollable" :class="$style.scrollable">
 				<ChatStarter
-					v-if="showWelcomeScreen"
+					v-if="isNewSession"
 					:class="$style.starter"
 					:is-mobile-device="isMobileDevice"
 					:show-welcome-screen="showWelcomeScreen"
-					@start-new-chat="inputRef?.focus()"
+					:selected-agent="selectedModel"
+					@start-new-chat="
+						welcomeScreenDismissed = true;
+						inputRef?.focus();
+					"
 				/>
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
@@ -737,7 +744,7 @@ function onFilesDropped(files: File[]) {
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: start;
-	gap: var(--spacing--2xl);
+	gap: var(--spacing--xl);
 
 	.isNewSession & {
 		justify-content: center;

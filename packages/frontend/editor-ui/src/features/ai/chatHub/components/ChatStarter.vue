@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -24,27 +23,23 @@ import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { ROLE } from '@n8n/api-types';
+import { type ChatModelDto, ROLE } from '@n8n/api-types';
+import ChatAgentAvatar from './ChatAgentAvatar.vue';
 
-defineProps<{ isMobileDevice: boolean; showWelcomeScreen: boolean }>();
+defineProps<{
+	isMobileDevice: boolean;
+	showWelcomeScreen: boolean;
+	selectedAgent: ChatModelDto | null;
+}>();
 
 const emit = defineEmits<{
 	startNewChat: [];
 }>();
 
-const userStore = useUsersStore();
 const uiStore = useUIStore();
 const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
-
-const greetings = computed(() => {
-	const name =
-		userStore.currentUser?.firstName ??
-		userStore.currentUser?.fullName ??
-		i18n.baseText('chatHub.chat.greeting.fallback');
-	return i18n.baseText('chatHub.chat.greeting', { interpolate: { name } });
-});
 
 const isAdvancedPermissionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
@@ -175,11 +170,16 @@ function handleUpgradeClick() {
 			</div>
 		</template>
 
-		<template v-else>
-			<N8nHeading tag="h2" bold size="xlarge">
-				{{ greetings }}
-			</N8nHeading>
-		</template>
+		<div v-else :class="$style.greetings">
+			<template v-if="selectedAgent">
+				<N8nText size="large">{{ i18n.baseText('chatHub.chat.greeting') }}</N8nText>
+				<ChatAgentAvatar :agent="selectedAgent" size="md" :class="$style.icon" />
+				<N8nText size="large" bold>{{ selectedAgent.name }}</N8nText>
+			</template>
+			<template v-else>
+				<N8nText size="large">{{ i18n.baseText('chatHub.chat.greeting.fallback') }}</N8nText>
+			</template>
+		</div>
 	</div>
 </template>
 
@@ -202,7 +202,7 @@ function handleUpgradeClick() {
 
 .cardGrid {
 	display: flex;
-	max-width: 900px;
+	max-width: 700px;
 
 	@include mixins.breakpoint('sm-and-down') {
 		flex-direction: column;
@@ -276,5 +276,16 @@ function handleUpgradeClick() {
 	display: flex;
 	gap: var(--spacing--sm);
 	justify-content: center;
+}
+
+.icon {
+	flex-shrink: 0;
+	margin-block: -4px;
+}
+
+.greetings {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 </style>
