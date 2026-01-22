@@ -100,7 +100,14 @@ describe('WaitingWebhooks', () => {
 		await expect(promise).rejects.toThrowError(ConflictError);
 	});
 
-	describe('validateToken', () => {
+	describe('findAccessControlOptions', () => {
+		it('should return * as allowed origins', async () => {
+			const options = await waitingWebhooks.findAccessControlOptions();
+			expect(options).toEqual({ allowedOrigins: '*' });
+		});
+	});
+
+	describe('validateSignatureInRequest', () => {
 		const EXAMPLE_HOST = 'example.com';
 		const VALID_TOKEN = 'a'.repeat(64); // 32 bytes hex = 64 chars
 

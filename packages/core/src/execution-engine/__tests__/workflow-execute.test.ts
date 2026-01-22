@@ -1,7 +1,3 @@
-// Disable task runners until we have fixed the "run test workflows" test
-// to mock the Code Node execution
-process.env.N8N_RUNNERS_ENABLED = 'false';
-
 // NOTE: Diagrams in this file have been created with https://asciiflow.com/#/
 // If you update the tests, please update the diagrams as well.
 // If you add a test, please create a new diagram.
@@ -45,6 +41,7 @@ import {
 	NodeHelpers,
 	NodeOperationError,
 	Workflow,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -2618,6 +2615,86 @@ describe('WorkflowExecute', () => {
 		});
 	});
 
+	describe('convertBinaryData integration', () => {
+		test('should call convertBinaryData with workflow settings during node execution', async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const nodeWithBinary = createNodeData({ name: 'nodeWithBinary' });
+
+			const binaryData = {
+				data: Buffer.from('test').toString('base64'),
+				mimeType: 'text/plain',
+				fileName: 'test.txt',
+			};
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					return [[{ json: { result: 'success' }, binary: { file: binaryData } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, nodeWithBinary)
+				.addConnections({ from: trigger, to: nodeWithBinary })
+				.toWorkflow({
+					id: 'test-workflow-id',
+					name: 'test-workflow',
+					nodeTypes,
+					active: false,
+					settings: {
+						executionOrder: 'v1',
+						binaryMode: BINARY_MODE_COMBINED,
+					},
+				});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			additionalData.executionId = 'test-execution-id';
+
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			// Spy on convertBinaryData
+			const convertBinaryDataModule = await import('../../utils/convert-binary-data');
+			const convertBinaryDataSpy = jest.spyOn(convertBinaryDataModule, 'convertBinaryData');
+
+			// ACT
+			await workflowExecute.run(workflow, trigger, {
+				nodeName: nodeWithBinary.name,
+				mode: 'inclusive',
+			});
+			await waitPromise.promise;
+
+			// ASSERT
+			// convertBinaryData is called multiple times during execution (once per node)
+			// Verify it was called with the correct workflow ID, execution ID, and binary mode
+			expect(convertBinaryDataSpy).toHaveBeenCalled();
+
+			// Check that at least one call had the binary data before transformation
+			const callsWithBinary = convertBinaryDataSpy.mock.calls.filter(
+				(call) =>
+					call[0] === 'test-workflow-id' &&
+					call[1] === 'test-execution-id' &&
+					call[3] === BINARY_MODE_COMBINED,
+			);
+
+			expect(callsWithBinary.length).toBeGreaterThan(0);
+			expect(callsWithBinary[0][0]).toBe('test-workflow-id');
+			expect(callsWithBinary[0][1]).toBe('test-execution-id');
+			expect(callsWithBinary[0][3]).toBe(BINARY_MODE_COMBINED);
+		});
+	});
+
 	describe('Cancellation', () => {
 		test('should update only running task statuses to cancelled when workflow is cancelled', () => {
 			// Arrange - create a workflow with some nodes
@@ -2770,6 +2847,257 @@ describe('WorkflowExecute', () => {
 			expect(workflowExecute.timedOut).toBe(true);
 			expect(result.status).toBe('canceled');
 			expect(result.data.resultData.error?.name).toBe('TimeoutExecutionCancelledError');
+		});
+	});
+
+	describe('resolveSourceOverwrite integration', () => {
+		test('should preserve sourceOverwrite when metadata.preserveSourceOverwrite is true and item has sourceOverwrite', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const toolNode = createNodeData({ name: 'tool' });
+
+			const sourceOverwriteData = {
+				previousNode: 'OriginalNode',
+				previousNodeOutput: 1,
+				previousNodeRun: 2,
+			};
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: sourceOverwriteData,
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					expect(items[0].pairedItem).toHaveProperty('sourceOverwrite');
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, toolNode)
+				.addConnections({ from: trigger, to: toolNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: toolNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: true,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+		});
+
+		test('should use preservedSourceOverwrite from metadata when present', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const toolNode = createNodeData({ name: 'tool' });
+
+			const preservedSourceData = {
+				previousNode: 'PreservedNode',
+				previousNodeOutput: 3,
+				previousNodeRun: 4,
+			};
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: {
+							previousNode: 'DifferentNode',
+							previousNodeOutput: 0,
+							previousNodeRun: 0,
+						},
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					const pairedItem = items[0].pairedItem;
+					if (typeof pairedItem === 'object' && 'sourceOverwrite' in pairedItem) {
+						expect(pairedItem.sourceOverwrite).toEqual(preservedSourceData);
+					}
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, toolNode)
+				.addConnections({ from: trigger, to: toolNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: toolNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: true,
+								preservedSourceOverwrite: preservedSourceData,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
+		});
+
+		test('should not preserve sourceOverwrite when preserveSourceOverwrite is false', async () => {
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const regularNode = createNodeData({ name: 'regular' });
+
+			const inputData: INodeExecutionData[] = [
+				{
+					json: { data: 'test' },
+					pairedItem: {
+						item: 0,
+						sourceOverwrite: {
+							previousNode: 'SomeNode',
+							previousNodeOutput: 1,
+							previousNodeRun: 1,
+						},
+					},
+				},
+			];
+
+			const nodeType = mock<INodeType>({
+				description: {
+					name: 'test',
+					displayName: 'test',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute(this: IExecuteFunctions) {
+					const items = this.getInputData();
+					const pairedItem = items[0].pairedItem;
+					if (typeof pairedItem === 'object') {
+						expect(pairedItem).not.toHaveProperty('sourceOverwrite');
+					}
+					return [[{ json: { result: 'success' } }]];
+				},
+			});
+
+			const nodeTypes = mock<INodeTypes>();
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, regularNode)
+				.addConnections({ from: trigger, to: regularNode })
+				.toWorkflow({ name: 'test', nodeTypes, active: false });
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: regularNode,
+							data: { main: [inputData] },
+							source: {
+								main: [{ previousNode: 'trigger', previousNodeOutput: 0, previousNodeRun: 0 }],
+							},
+							metadata: {
+								preserveSourceOverwrite: false,
+							},
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			await workflowExecute.processRunExecutionData(workflow);
+			const result = await waitPromise.promise;
+
+			expect(result.finished).toBe(true);
 		});
 	});
 });

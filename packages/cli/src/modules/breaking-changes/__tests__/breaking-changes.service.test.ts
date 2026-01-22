@@ -1,6 +1,6 @@
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
@@ -19,6 +19,7 @@ describe('BreakingChangeService', () => {
 	const logger = mockLogger();
 
 	let workflowRepository: jest.Mocked<WorkflowRepository>;
+	let workflowStatisticsRepository: jest.Mocked<WorkflowStatisticsRepository>;
 	let ruleRegistry: RuleRegistry;
 	let cacheService: jest.Mocked<CacheService>;
 	let service: BreakingChangeService;
@@ -27,6 +28,7 @@ describe('BreakingChangeService', () => {
 		jest.clearAllMocks();
 
 		workflowRepository = mock<WorkflowRepository>();
+		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
 		ruleRegistry = new RuleRegistry(logger);
 		cacheService = mock<CacheService>();
 
@@ -38,12 +40,16 @@ describe('BreakingChangeService', () => {
 			return undefined;
 		});
 
+		// Mock statistics repository to return empty array (tests focus on breaking change detection, not statistics)
+		workflowStatisticsRepository.find.mockResolvedValue([]);
+
 		// Spy on registerRules to prevent automatic registration in constructor
 		jest.spyOn(BreakingChangeService.prototype, 'registerRules').mockImplementation(() => {});
 
 		service = new BreakingChangeService(
 			ruleRegistry,
 			workflowRepository,
+			workflowStatisticsRepository,
 			cacheService,
 			logger,
 			mock<ErrorReporter>(),

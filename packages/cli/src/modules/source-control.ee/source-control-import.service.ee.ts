@@ -25,7 +25,6 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import glob from 'fast-glob';
@@ -61,7 +60,6 @@ import {
 	getWorkflowExportPath,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type {
 	ExportableCredential,
 	StatusExportableCredential,
@@ -77,6 +75,7 @@ import type {
 } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,
@@ -771,13 +770,6 @@ export class SourceControlImportService {
 			// If the workflow should be active (was active before and not archived),
 			// reactivate it with the new version
 			if (importedWorkflow.activeVersionId && !importedWorkflow.isArchived) {
-				// Publish the new version - this updates activeVersionId and active flag
-				// This ensures the workflow runs the new pulled version
-				this.logger.debug(
-					`Publishing workflow id ${existingWorkflow.id} with new version ${newVersionId}`,
-				);
-				await this.workflowRepository.publishVersion(existingWorkflow.id, newVersionId);
-
 				// Activate the workflow with the new published version
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');

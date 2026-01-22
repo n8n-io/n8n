@@ -97,6 +97,7 @@ import IconLucideCrosshair from '~icons/lucide/crosshair';
 import IconLucideDatabase from '~icons/lucide/database';
 import IconLucideDoorOpen from '~icons/lucide/door-open';
 import IconLucideDot from '~icons/lucide/dot';
+import IconLucideDownload from '~icons/lucide/download';
 import IconLucideEarth from '~icons/lucide/earth';
 import IconLucideEllipsis from '~icons/lucide/ellipsis';
 import IconLucideEllipsisVertical from '~icons/lucide/ellipsis-vertical';
@@ -227,8 +228,10 @@ import IconLucideVolume2 from '~icons/lucide/volume-2';
 import IconLucideVolumeX from '~icons/lucide/volume-x';
 import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
+import IconLucideWorkflow from '~icons/lucide/workflow';
 import IconLucideWrench from '~icons/lucide/wrench';
 import IconLucideX from '~icons/lucide/x';
+import IconLucideYoutube from '~icons/lucide/youtube';
 import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
@@ -546,6 +549,7 @@ export const updatedIconSet = {
 	database: IconLucideDatabase,
 	'door-open': IconLucideDoorOpen,
 	dot: IconLucideDot,
+	download: IconLucideDownload,
 	earth: IconLucideEarth,
 	ellipsis: IconLucideEllipsis,
 	'ellipsis-vertical': IconLucideEllipsisVertical,
@@ -675,8 +679,10 @@ export const updatedIconSet = {
 	'volume-x': IconLucideVolumeX,
 	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
+	workflow: IconLucideWorkflow,
 	wrench: IconLucideWrench,
 	x: IconLucideX,
+	youtube: IconLucideYoutube,
 	zap: IconLucideZap,
 	'zoom-in': IconLucideZoomIn,
 	'zoom-out': IconLucideZoomOut,

@@ -7,7 +7,15 @@ export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'head' | 'opt
 
 export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
 
-export interface RateLimit {
+export interface CorsOptions {
+	allowedOrigins: string[];
+	allowedMethods: Method[];
+	allowedHeaders: string[];
+	allowCredentials?: boolean;
+	maxAge?: number;
+}
+
+export interface RateLimiterLimits {
 	/**
 	 * The maximum number of requests to allow during the `window` before rate limiting the client.
 	 * @default 5
@@ -19,6 +27,30 @@ export interface RateLimit {
 	 */
 	windowMs?: number;
 }
+
+/**
+ * Configuration for extracting a key from the request body.
+ * @example
+ * { source: 'body', field: 'email' }
+ */
+export interface BodyKeyedRateLimiterConfig extends RateLimiterLimits {
+	/** How to extract key from request */
+	source: 'body';
+	/** The field name in the request body to use as the key */
+	field: string;
+}
+
+/**
+ * Configuration for extracting a key from the authenticated user.
+ * @example
+ * { source: 'user' }
+ */
+export interface UserKeyedRateLimiterConfig extends RateLimiterLimits {
+	/** How to extract key from request */
+	source: 'user';
+}
+
+export type KeyedRateLimiterConfig = BodyKeyedRateLimiterConfig | UserKeyedRateLimiterConfig;
 
 export type HandlerName = string;
 
@@ -36,7 +68,11 @@ export interface RouteMetadata {
 	allowSkipPreviewAuth: boolean;
 	allowSkipMFA: boolean;
 	apiKeyAuth: boolean;
-	rateLimit?: boolean | RateLimit;
+	cors?: Partial<CorsOptions> | true;
+	/** Whether to apply IP-based rate limiting to the route */
+	ipRateLimit?: boolean | RateLimiterLimits;
+	/** Whether to apply keyed rate limiting to the route */
+	keyedRateLimit?: KeyedRateLimiterConfig;
 	licenseFeature?: BooleanLicenseFeature;
 	accessScope?: AccessScope;
 	args: Arg[];
@@ -57,7 +93,8 @@ export type StaticRouterMetadata = {
 		| 'allowSkipPreviewAuth'
 		| 'allowSkipMFA'
 		| 'middlewares'
-		| 'rateLimit'
+		| 'ipRateLimit'
+		| 'keyedRateLimit'
 		| 'licenseFeature'
 		| 'accessScope'
 	>
