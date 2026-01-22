@@ -127,8 +127,9 @@ export function useChatHubMarkdownOptions(
 		};
 
 		const mathPlugin = (vueMarkdownItInstance: MarkdownIt) => {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const katexPlugin = (markdownItKatex as any).default ?? markdownItKatex;
+			const katexPlugin =
+				(markdownItKatex as typeof markdownItKatex & { default?: typeof markdownItKatex })
+					.default ?? markdownItKatex;
 			vueMarkdownItInstance.use(katexPlugin, { throwOnError: false });
 		};
 
