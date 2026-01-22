@@ -139,6 +139,7 @@ const props = withDefaults(
 		keyBindings?: boolean;
 		loading?: boolean;
 		suppressInteraction?: boolean;
+		hideControls?: boolean;
 	}>(),
 	{
 		id: 'canvas',
@@ -151,6 +152,7 @@ const props = withDefaults(
 		keyBindings: true,
 		loading: false,
 		suppressInteraction: false,
+		hideControls: false,
 	},
 );
 
@@ -1071,6 +1073,7 @@ defineExpose({
 		</Transition>
 
 		<CanvasControlButtons
+			v-if="!hideControls"
 			data-test-id="canvas-controls"
 			:class="$style.canvasControls"
 			:position="controlsPosition"
