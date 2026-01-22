@@ -193,6 +193,7 @@ import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
+import IconLucideShieldHalf from '~icons/lucide/shield-half';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
@@ -647,6 +648,7 @@ export const updatedIconSet = {
 	server: IconLucideServer,
 	share: IconLucideShare,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
+	'shield-half': IconLucideShieldHalf,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,
