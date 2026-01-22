@@ -12,7 +12,6 @@ import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
 
-import { AuthenticationHandler } from '@/auth/auth-handler.registry';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
@@ -48,7 +47,7 @@ import {
 } from './helpers.ee';
 
 @Service()
-export class LdapService implements AuthenticationHandler {
+export class LdapService {
 	private client: Client | undefined;
 
 	private syncTimer: NodeJS.Timeout | undefined = undefined;
@@ -489,27 +488,6 @@ export class LdapService implements AuthenticationHandler {
 	private getUsersToDisable(remoteAdUsers: LdapUser[], localLdapIds: string[]): string[] {
 		const remoteAdUserIds = remoteAdUsers.map((adUser) => adUser[this.config.ldapIdAttribute]);
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
-	}
-
-	/**
-	 * Check if this handler can handle LDAP authentication
-	 */
-	canHandle(authenticationMethod: string): boolean {
-		return authenticationMethod === 'ldap';
-	}
-
-	/**
-	 * Get the provider type for LDAP
-	 */
-	getProviderType(): string {
-		return 'ldap';
-	}
-
-	/**
-	 * Check if LDAP login is currently enabled
-	 */
-	isLoginEnabled(): boolean {
-		return this.config?.loginEnabled ?? false;
 	}
 
 	async handleLogin(loginId: string, password: string): Promise<User | undefined> {
