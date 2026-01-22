@@ -63,8 +63,12 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			credentialsResolveMetadata.resolverId ?? workflowSettings?.credentialResolverId;
 
 		// Not resolvable - return static credentials
-		if (!credentialsResolveMetadata.isResolvable || !resolverId) {
+		if (!credentialsResolveMetadata.isResolvable) {
 			return staticData;
+		}
+
+		if (!resolverId) {
+			return this.handleMissingResolver(credentialsResolveMetadata, staticData, resolverId);
 		}
 
 		// Load resolver configuration
@@ -202,7 +206,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	private handleMissingResolver(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		staticData: ICredentialDataDecryptedObject,
-		resolverId: string,
+		resolverId?: string,
 	): ICredentialDataDecryptedObject {
 		if (credentialsResolveMetadata.resolvableAllowFallback) {
 			this.logger.debug('Resolver not found, falling back to static credentials', {
@@ -215,7 +219,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 
 		throw new CredentialResolutionError(
-			`Resolver "${resolverId}" not found for credential "${credentialsResolveMetadata.name}"`,
+			`Resolver "${resolverId ?? 'unknown'}" not found for credential "${credentialsResolveMetadata.name}"`,
 		);
 	}
 
