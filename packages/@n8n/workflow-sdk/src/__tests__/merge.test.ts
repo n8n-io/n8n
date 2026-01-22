@@ -77,6 +77,108 @@ describe('Merge', () => {
 		});
 	});
 
+	describe('merge() with pre-declared node', () => {
+		it('should accept a pre-declared node instance as second argument', () => {
+			// Pre-declare a merge node
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: {
+					name: 'My Merge',
+					parameters: { numberInputs: 2 },
+				},
+			});
+
+			const branch1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Branch 1' },
+			});
+			const branch2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Branch 2' },
+			});
+
+			// Pass the pre-declared node as second argument
+			const m = merge([branch1, branch2], mergeNode);
+
+			// Should use the pre-declared node, not create a new one
+			expect(m.mergeNode).toBe(mergeNode);
+			expect(m.mergeNode.name).toBe('My Merge');
+			expect(m.branches).toHaveLength(2);
+		});
+
+		it('should support chaining after merge with pre-declared node', () => {
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Pre-declared Merge' },
+			});
+
+			const branch1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Branch 1' },
+			});
+			const branch2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Branch 2' },
+			});
+			const downstream = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Downstream' },
+			});
+
+			// This pattern is used in generated code
+			const m = merge([branch1, branch2], mergeNode);
+			const chain = m.then(downstream);
+
+			expect(chain.tail.name).toBe('Downstream');
+		});
+
+		it('should work in workflow builder with pre-declared merge node', () => {
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: { name: 'Pre-declared Merge' },
+			});
+
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const branch1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Branch 1' },
+			});
+			const branch2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Branch 2' },
+			});
+			const downstream = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Downstream' },
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.then(merge([branch1, branch2], mergeNode))
+				.then(downstream);
+
+			const json = wf.toJSON();
+
+			// Should have: trigger, branch1, branch2, merge, downstream = 5 nodes
+			expect(json.nodes).toHaveLength(5);
+
+			// The merge node should be the pre-declared one
+			const foundMerge = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(foundMerge?.name).toBe('Pre-declared Merge');
+		});
+	});
+
 	describe('workflow integration', () => {
 		it('should integrate merge with workflow builder', () => {
 			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });

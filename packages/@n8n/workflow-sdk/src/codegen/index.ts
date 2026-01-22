@@ -62,5 +62,5 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 	const tree = buildCompositeTree(graph);
 
 	// Phase 4: Generate code
-	return generateCode(tree, json);
+	return generateCode(tree, json, graph);
 }

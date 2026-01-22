@@ -5,15 +5,8 @@
  * graph where connections use meaningful names instead of indices.
  */
 
-import type { WorkflowJSON, NodeJSON, IDataObject } from '../types/base';
-import type {
-	SemanticGraph,
-	SemanticNode,
-	SemanticConnection,
-	SourceInfo,
-	SubnodeConnection,
-	AiConnectionType,
-} from './types';
+import type { WorkflowJSON, NodeJSON } from '../types/base';
+import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
 import { getOutputName, getInputName } from './semantic-registry';
 
@@ -133,6 +126,7 @@ function parseAiConnections(
 
 /**
  * Identify root nodes (triggers and orphans)
+ * Excludes subnodes - they are part of their parent node's config
  */
 function identifyRoots(graph: SemanticGraph): string[] {
 	const roots: string[] = [];
@@ -147,8 +141,20 @@ function identifyRoots(graph: SemanticGraph): string[] {
 		}
 	}
 
+	// Collect all subnode names (they should not be roots)
+	const subnodeNames = new Set<string>();
+	for (const [, node] of graph.nodes) {
+		for (const subnode of node.subnodes) {
+			subnodeNames.add(subnode.subnodeName);
+		}
+	}
+
 	// Roots are triggers OR nodes without incoming connections
+	// Exclude subnodes - they're part of their parent's config
 	for (const [name, node] of graph.nodes) {
+		if (subnodeNames.has(name)) {
+			continue; // Skip subnodes
+		}
 		if (node.annotations.isTrigger || !hasIncomingConnections.has(name)) {
 			roots.push(name);
 		}

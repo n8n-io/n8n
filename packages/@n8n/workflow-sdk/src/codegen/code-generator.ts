@@ -4,8 +4,8 @@
  * Generates LLM-friendly SDK code from a composite tree.
  */
 
-import type { WorkflowJSON, IDataObject } from '../types/base';
-import type { SemanticNode } from './types';
+import type { WorkflowJSON } from '../types/base';
+import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
 import type {
 	CompositeTree,
 	CompositeNode,
@@ -25,6 +25,7 @@ interface GenerationContext {
 	indent: number;
 	generatedVars: Set<string>;
 	variableNodes: Map<string, SemanticNode>; // Nodes that are declared as variables
+	graph: SemanticGraph; // Full graph for looking up subnodes
 }
 
 /**
@@ -176,6 +177,143 @@ function isTriggerType(type: string): boolean {
 }
 
 /**
+ * Map AI connection types to their config key names
+ */
+const AI_CONNECTION_TO_CONFIG_KEY: Record<AiConnectionType, string> = {
+	ai_languageModel: 'model',
+	ai_memory: 'memory',
+	ai_tool: 'tools', // plural - can have multiple
+	ai_outputParser: 'outputParser',
+	ai_embedding: 'embedding',
+	ai_vectorStore: 'vectorStore',
+	ai_retriever: 'retriever',
+	ai_document: 'documentLoader',
+	ai_textSplitter: 'textSplitter',
+};
+
+/**
+ * Map AI connection types to their builder function names
+ */
+const AI_CONNECTION_TO_BUILDER: Record<AiConnectionType, string> = {
+	ai_languageModel: 'languageModel',
+	ai_memory: 'memory',
+	ai_tool: 'tool',
+	ai_outputParser: 'outputParser',
+	ai_embedding: 'embedding',
+	ai_vectorStore: 'vectorStore',
+	ai_retriever: 'retriever',
+	ai_document: 'documentLoader',
+	ai_textSplitter: 'textSplitter',
+};
+
+/**
+ * AI connection types that can have multiple items (arrays)
+ */
+const AI_ARRAY_TYPES = new Set<AiConnectionType>(['ai_tool']);
+
+/**
+ * Generate a subnode builder call (languageModel, tool, memory, etc.)
+ * Recursively includes nested subnodes if the subnode itself has subnodes.
+ */
+function generateSubnodeCall(
+	subnodeNode: SemanticNode,
+	builderName: string,
+	ctx: GenerationContext,
+): string {
+	const parts: string[] = [];
+
+	parts.push(`type: '${subnodeNode.type}'`);
+	parts.push(`version: ${subnodeNode.json.typeVersion}`);
+
+	const configParts: string[] = [];
+
+	const defaultName = generateDefaultNodeName(subnodeNode.type);
+	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
+		configParts.push(`name: '${escapeString(subnodeNode.json.name)}'`);
+	}
+
+	if (subnodeNode.json.parameters && Object.keys(subnodeNode.json.parameters).length > 0) {
+		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters)}`);
+	}
+
+	if (subnodeNode.json.credentials) {
+		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials)}`);
+	}
+
+	const pos = subnodeNode.json.position;
+	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
+	}
+
+	// Recursively include nested subnodes if this subnode has its own subnodes
+	const nestedSubnodesConfig = generateSubnodesConfigForNode(subnodeNode, ctx);
+	if (nestedSubnodesConfig) {
+		configParts.push(`subnodes: ${nestedSubnodesConfig}`);
+	}
+
+	if (configParts.length > 0) {
+		parts.push(`config: { ${configParts.join(', ')} }`);
+	} else {
+		parts.push(`config: {}`);
+	}
+
+	return `${builderName}({ ${parts.join(', ')} })`;
+}
+
+/**
+ * Generate subnodes config object for a specific node (used for recursion)
+ */
+function generateSubnodesConfigForNode(node: SemanticNode, ctx: GenerationContext): string | null {
+	if (node.subnodes.length === 0) {
+		return null;
+	}
+
+	// Group subnodes by connection type
+	const grouped = new Map<AiConnectionType, SemanticNode[]>();
+
+	for (const sub of node.subnodes) {
+		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
+		if (!subnodeNode) continue;
+
+		const existing = grouped.get(sub.connectionType) ?? [];
+		existing.push(subnodeNode);
+		grouped.set(sub.connectionType, existing);
+	}
+
+	// Generate config entries
+	const entries: string[] = [];
+
+	for (const [connType, subnodeNodes] of grouped) {
+		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
+		const builderName = AI_CONNECTION_TO_BUILDER[connType];
+
+		if (AI_ARRAY_TYPES.has(connType)) {
+			// Array type (tools)
+			const calls = subnodeNodes.map((n) => generateSubnodeCall(n, builderName, ctx));
+			entries.push(`${configKey}: [${calls.join(', ')}]`);
+		} else {
+			// Single item type (model, memory, etc.)
+			if (subnodeNodes.length > 0) {
+				entries.push(`${configKey}: ${generateSubnodeCall(subnodeNodes[0], builderName, ctx)}`);
+			}
+		}
+	}
+
+	if (entries.length === 0) {
+		return null;
+	}
+
+	return `{ ${entries.join(', ')} }`;
+}
+
+/**
+ * Generate subnodes config object for a node with AI subnodes
+ */
+function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): string | null {
+	return generateSubnodesConfigForNode(node, ctx);
+}
+
+/**
  * Generate node config object
  */
 function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string {
@@ -208,6 +346,12 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 
+	// Include subnodes config if this node has AI subnodes
+	const subnodesConfig = generateSubnodesConfig(node, ctx);
+	if (subnodesConfig) {
+		configParts.push(`subnodes: ${subnodesConfig}`);
+	}
+
 	// Always include config (required by parser), even if empty
 	if (configParts.length > 0) {
 		parts.push(`${innerIndent}config: { ${configParts.join(', ')} }`);
@@ -227,6 +371,55 @@ function generateNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): strin
 		return toVarName(nodeName);
 	}
 	return generateNodeConfig(node, ctx);
+}
+
+/**
+ * Generate flat config object for composite functions (ifBranch, merge, switchCase, splitInBatches).
+ * These expect { name?, version?, parameters?, credentials?, position? } directly,
+ * not the { type, version, config: { ... } } format used by node().
+ */
+function generateFlatNodeConfig(node: SemanticNode): string {
+	const parts: string[] = [];
+
+	// These functions have name, version, parameters, credentials, position at the TOP level
+	// (not nested in a config object like node())
+
+	if (node.json.typeVersion != null) {
+		parts.push(`version: ${node.json.typeVersion}`);
+	}
+
+	const defaultName = generateDefaultNodeName(node.type);
+	if (node.json.name && node.json.name !== defaultName) {
+		parts.push(`name: '${escapeString(node.json.name)}'`);
+	}
+
+	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
+		parts.push(`parameters: ${formatValue(node.json.parameters)}`);
+	}
+
+	if (node.json.credentials) {
+		parts.push(`credentials: ${formatValue(node.json.credentials)}`);
+	}
+
+	// Include position if non-zero
+	const pos = node.json.position;
+	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+		parts.push(`position: [${pos[0]}, ${pos[1]}]`);
+	}
+
+	return `{ ${parts.join(', ')} }`;
+}
+
+/**
+ * Generate flat node config or variable reference for composite functions.
+ * Used by ifBranch, merge, switchCase, and splitInBatches.
+ */
+function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
+	const nodeName = node.json.name;
+	if (nodeName && ctx.variableNodes.has(nodeName)) {
+		return toVarName(nodeName);
+	}
+	return generateFlatNodeConfig(node);
 }
 
 /**
@@ -334,7 +527,8 @@ function generateIfBranch(ifBranch: IfBranchCompositeNode, ctx: GenerationContex
 		: 'null';
 
 	// Use variable reference if IF node is already declared as a variable
-	const config = generateNodeOrVarRef(ifBranch.ifNode, ctx);
+	// ifBranch expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
+	const config = generateFlatNodeOrVarRef(ifBranch.ifNode, ctx);
 
 	return `ifBranch([${trueBranchCode}, ${falseBranchCode}], ${config})`;
 }
@@ -350,7 +544,8 @@ function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: Generation
 		.join(', ');
 
 	// Use variable reference if switch node is already declared as a variable
-	const config = generateNodeOrVarRef(switchCase.switchNode, ctx);
+	// switchCase expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
+	const config = generateFlatNodeOrVarRef(switchCase.switchNode, ctx);
 
 	return `switchCase([${casesCode}], ${config})`;
 }
@@ -364,7 +559,8 @@ function generateMerge(merge: MergeCompositeNode, ctx: GenerationContext): strin
 	const branchesCode = merge.branches.map((b) => generateComposite(b, innerCtx)).join(', ');
 
 	// Use variable reference if merge node is already declared as a variable
-	const config = generateNodeOrVarRef(merge.mergeNode, ctx);
+	// merge expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
+	const config = generateFlatNodeOrVarRef(merge.mergeNode, ctx);
 
 	return `merge([${branchesCode}], ${config})`;
 }
@@ -375,7 +571,8 @@ function generateMerge(merge: MergeCompositeNode, ctx: GenerationContext): strin
 function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 	// Use variable reference if SIB node is already declared as a variable
-	const config = generateNodeOrVarRef(sib.sibNode, ctx);
+	// splitInBatches expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
+	const config = generateFlatNodeOrVarRef(sib.sibNode, ctx);
 
 	let code = `splitInBatches(${config})`;
 
@@ -495,11 +692,16 @@ function flattenToWorkflowCalls(
  * @param json - Original workflow JSON (for metadata)
  * @returns Generated SDK code
  */
-export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
+export function generateCode(
+	tree: CompositeTree,
+	json: WorkflowJSON,
+	graph: SemanticGraph,
+): string {
 	const ctx: GenerationContext = {
 		indent: 0,
 		generatedVars: new Set(),
 		variableNodes: tree.variables,
+		graph,
 	};
 
 	const lines: string[] = [];

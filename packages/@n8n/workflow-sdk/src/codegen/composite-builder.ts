@@ -10,7 +10,6 @@ import type {
 	CompositeTree,
 	CompositeNode,
 	LeafNode,
-	ChainNode,
 	VariableReference,
 	IfBranchCompositeNode,
 	SwitchCaseCompositeNode,
@@ -137,14 +136,6 @@ function getAllFirstOutputTargets(node: SemanticNode): string[] {
 		}
 	}
 	return [];
-}
-
-/**
- * Get the first output connection target (for single-output following)
- */
-function getFirstOutput(node: SemanticNode): string | null {
-	const targets = getAllFirstOutputTargets(node);
-	return targets.length > 0 ? targets[0] : null;
 }
 
 /**

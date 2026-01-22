@@ -10,7 +10,7 @@ function generateFromWorkflow(json: WorkflowJSON): string {
 	const graph = buildSemanticGraph(json);
 	annotateGraph(graph);
 	const tree = buildCompositeTree(graph);
-	return generateCode(tree, json);
+	return generateCode(tree, json, graph);
 }
 
 describe('code-generator', () => {
@@ -783,6 +783,174 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain("name: 'My Custom Note'");
+			});
+		});
+
+		describe('AI subnodes', () => {
+			it('generates subnodes config with languageModel() calls', () => {
+				const json: WorkflowJSON = {
+					id: 'ai-subnodes-test',
+					name: 'AI Subnodes Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.7,
+							position: [200, 0],
+							parameters: {
+								promptType: 'auto',
+								text: 'Hello',
+							},
+						},
+						{
+							id: '3',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1.2,
+							position: [200, 200],
+							parameters: {
+								model: 'gpt-4',
+							},
+							credentials: {
+								openAiApi: { name: 'OpenAI', id: 'cred-123' },
+							},
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+						'OpenAI Model': {
+							ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should generate subnodes config with languageModel() call
+				expect(code).toContain('subnodes:');
+				expect(code).toContain('model: languageModel(');
+				expect(code).toContain("type: '@n8n/n8n-nodes-langchain.lmChatOpenAi'");
+			});
+
+			it('generates subnodes config with tool() calls for multiple tools', () => {
+				const json: WorkflowJSON = {
+					id: 'ai-tools-test',
+					name: 'AI Tools Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.7,
+							position: [200, 0],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [200, 200],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Code Tool',
+							type: '@n8n/n8n-nodes-langchain.toolCode',
+							typeVersion: 1.1,
+							position: [200, 300],
+							parameters: { code: 'return 1' },
+						},
+						{
+							id: '5',
+							name: 'Calculator',
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							typeVersion: 1,
+							position: [200, 400],
+							parameters: {},
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+						'OpenAI Model': {
+							ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						'Code Tool': {
+							ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+						},
+						Calculator: {
+							ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should generate subnodes config with tools array
+				expect(code).toContain('subnodes:');
+				expect(code).toContain('model: languageModel(');
+				expect(code).toContain('tools: [');
+				expect(code).toContain('tool(');
+				// Should have multiple tool() calls
+				expect(code.match(/tool\(/g)?.length).toBeGreaterThanOrEqual(2);
+			});
+
+			it('generates memory() call for memory subnodes', () => {
+				const json: WorkflowJSON = {
+					id: 'ai-memory-test',
+					name: 'AI Memory Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.7,
+							position: [200, 0],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Buffer Memory',
+							type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+							typeVersion: 1.2,
+							position: [200, 200],
+							parameters: { contextWindowLength: 5 },
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+						'Buffer Memory': {
+							ai_memory: [[{ node: 'AI Agent', type: 'ai_memory', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain('subnodes:');
+				expect(code).toContain('memory: memory(');
 			});
 		});
 

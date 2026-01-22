@@ -141,6 +141,21 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 }
 
 /**
+ * Check if an object is a NodeInstance (has type, version, config, then method)
+ */
+function isNodeInstance(obj: unknown): obj is NodeInstance<string, string, unknown> {
+	return (
+		obj !== null &&
+		typeof obj === 'object' &&
+		'type' in obj &&
+		'version' in obj &&
+		'config' in obj &&
+		'then' in obj &&
+		typeof (obj as NodeInstance<string, string, unknown>).then === 'function'
+	);
+}
+
+/**
  * Internal merge composite implementation
  */
 class MergeCompositeImpl<TBranches extends NodeInstance<string, string, unknown>[]>
@@ -175,13 +190,46 @@ class MergeCompositeImpl<TBranches extends NodeInstance<string, string, unknown>
 }
 
 /**
+ * Merge composite implementation that wraps an existing node instance
+ */
+class MergeCompositeWithExistingNode<TBranches extends NodeInstance<string, string, unknown>[]>
+	implements MergeComposite<TBranches>
+{
+	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
+	readonly branches: TBranches;
+	readonly mode: MergeMode;
+
+	constructor(
+		branches: TBranches,
+		existingNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>,
+	) {
+		this.branches = branches;
+		this.mergeNode = existingNode;
+		// Extract mode from the existing node's config if available
+		const params = existingNode.config.parameters as { mode?: MergeMode } | undefined;
+		this.mode = params?.mode ?? 'append';
+	}
+
+	/**
+	 * Chain a downstream node to the merge output.
+	 * Delegates to the mergeNode's then() method to declare the connection.
+	 */
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[],
+		outputIndex: number = 0,
+	): NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T> {
+		return this.mergeNode.then(target, outputIndex);
+	}
+}
+
+/**
  * Create a merge composite for parallel branch execution
  *
  * When used with workflow.then(), this creates parallel branches that
  * all execute from the previous node and then merge into a single stream.
  *
  * @param branches - Array of nodes that will execute in parallel
- * @param config - Merge configuration
+ * @param configOrNode - Merge configuration OR a pre-declared merge node instance
  * @returns A merge composite that can be passed to workflow.then()
  *
  * @example
@@ -198,11 +246,26 @@ class MergeCompositeImpl<TBranches extends NodeInstance<string, string, unknown>
  * // trigger -> api1 ─┐
  * //         -> api2 ─┼─> merge -> processResults
  * //         -> api3 ─┘
+ *
+ * // Using a pre-declared merge node:
+ * const mergeNode = node({ type: 'n8n-nodes-base.merge', ... });
+ * workflow('id', 'Test')
+ *   .add(trigger(...))
+ *   .then(merge([api1, api2], mergeNode))
+ *   .then(processResults);
  * ```
  */
 export function merge<TBranches extends NodeInstance<string, string, unknown>[]>(
 	branches: TBranches,
-	config: MergeConfig = {},
+	configOrNode: MergeConfig | NodeInstance<'n8n-nodes-base.merge', string, unknown> = {},
 ): MergeComposite<TBranches> {
-	return new MergeCompositeImpl(branches, config);
+	// Check if the second argument is a NodeInstance (pre-declared merge node)
+	if (isNodeInstance(configOrNode) && configOrNode.type === 'n8n-nodes-base.merge') {
+		return new MergeCompositeWithExistingNode(
+			branches,
+			configOrNode as NodeInstance<'n8n-nodes-base.merge', string, unknown>,
+		);
+	}
+	// Otherwise, treat it as a MergeConfig
+	return new MergeCompositeImpl(branches, configOrNode as MergeConfig);
 }

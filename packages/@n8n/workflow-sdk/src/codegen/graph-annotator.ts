@@ -6,7 +6,7 @@
  * - isConvergencePoint: Node is reachable from multiple branches
  */
 
-import type { SemanticGraph, SemanticNode } from './types';
+import type { SemanticGraph } from './types';
 
 /**
  * Detect cycles in the graph using DFS and mark cycle targets
