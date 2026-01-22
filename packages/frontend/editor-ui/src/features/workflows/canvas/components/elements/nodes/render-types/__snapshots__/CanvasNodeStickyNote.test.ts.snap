@@ -18,7 +18,7 @@ exports[`CanvasNodeStickyNote > should render node correctly 1`] = `
     </div>
   </div>
   <div class="sticky-textarea" style="display: none;">
-    <div class="inputContainer large">
+    <div class="n8n-input inputContainer large">
       <!-- Prepend slot (outside input container, before) -->
       <!--v-if-->
       <!-- Prefix slot -->
