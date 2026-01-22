@@ -41,7 +41,7 @@ describe('DynamicCredentialStorageService', () => {
 		({
 			id: 'resolver-456',
 			name: 'test-resolver',
-			type: 'stub-resolver-1.0',
+			type: 'test-resolver-1.0',
 			config: 'encrypted-config',
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -50,7 +50,7 @@ describe('DynamicCredentialStorageService', () => {
 
 	const createMockResolver = (): jest.Mocked<ICredentialResolver> => ({
 		metadata: {
-			name: 'stub-resolver-1.0',
+			name: 'test-resolver-1.0',
 			description: 'Test resolver',
 		},
 		getSecret: jest.fn(),

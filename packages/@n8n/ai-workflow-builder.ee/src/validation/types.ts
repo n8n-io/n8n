@@ -33,6 +33,7 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'set-node-credential-field',
 	'webhook-response-mode-missing-respond-node',
 	'webhook-response-mode-mismatch',
+	'data-table-missing-set-node',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
