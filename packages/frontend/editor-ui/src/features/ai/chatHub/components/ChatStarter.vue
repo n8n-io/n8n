@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { truncate } from '@n8n/utils/string/truncate';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -25,7 +24,7 @@ import { I18nT } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { type ChatModelDto, ROLE } from '@n8n/api-types';
-import ChatAgentAvatar from './ChatAgentAvatar.vue';
+import ChatGreetings from './ChatGreetings.vue';
 
 defineProps<{
 	isMobileDevice: boolean;
@@ -68,119 +67,111 @@ function handleUpgradeClick() {
 
 <template>
 	<div :class="[$style.starter, { [$style.isMobileDevice]: isMobileDevice }]">
-		<template v-if="showWelcomeScreen">
-			<div :class="$style.header">
-				<N8nHeading tag="h2" bold size="xlarge">
-					{{ i18n.baseText('chatHub.welcome.header') }}
-				</N8nHeading>
-				<N8nText size="large" color="text-light">
-					{{ i18n.baseText('chatHub.welcome.subtitle') }}
-				</N8nText>
-			</div>
+		<Transition name="welcome-fade" mode="out-in">
+			<div v-if="showWelcomeScreen" key="welcome" :class="$style.welcomeContent">
+				<div :class="$style.header">
+					<N8nHeading tag="h2" bold size="xlarge">
+						{{ i18n.baseText('chatHub.welcome.header') }}
+					</N8nHeading>
+					<N8nText size="large" color="text-light">
+						{{ i18n.baseText('chatHub.welcome.subtitle') }}
+					</N8nText>
+				</div>
 
-			<div :class="$style.cardGrid">
-				<RouterLink
-					:to="{ name: CHAT_WORKFLOW_AGENTS_VIEW }"
-					:class="[$style.cardWrapper, $style.cardFirst]"
-					data-test-id="welcome-card-workflow-agents"
-				>
-					<N8nCard :class="$style.card" hoverable>
-						<div :class="$style.cardHeader">
-							<N8nIcon icon="robot" size="large" color="text-dark" />
-							<N8nText bold>{{
-								i18n.baseText('chatHub.welcome.card.workflowAgents.title')
-							}}</N8nText>
-						</div>
-						<N8nText size="small" color="text-light">{{
-							i18n.baseText('chatHub.welcome.card.workflowAgents.description')
-						}}</N8nText>
-					</N8nCard>
-				</RouterLink>
-
-				<RouterLink
-					:to="{ name: CHAT_PERSONAL_AGENTS_VIEW }"
-					:class="[$style.cardWrapper, $style.cardMiddle]"
-					data-test-id="welcome-card-personal-agents"
-				>
-					<N8nCard :class="$style.card" hoverable>
-						<div :class="$style.cardHeader">
-							<N8nIcon icon="message-square" size="large" color="text-dark" />
-							<N8nText bold>{{
-								i18n.baseText('chatHub.welcome.card.personalAgents.title')
-							}}</N8nText>
-						</div>
-						<N8nText size="small" color="text-light">{{
-							i18n.baseText('chatHub.welcome.card.personalAgents.description')
-						}}</N8nText>
-					</N8nCard>
-				</RouterLink>
-
-				<div
-					:class="[$style.cardWrapper, $style.cardLast]"
-					data-test-id="welcome-card-base-models"
-					@click="handleStartNewChat"
-				>
-					<N8nCard :class="$style.card" hoverable>
-						<div :class="$style.cardHeader">
-							<div :class="$style.providerIcons">
-								<CredentialIcon credential-type-name="openAiApi" :size="20" />
-								<CredentialIcon credential-type-name="anthropicApi" :size="20" />
-								<CredentialIcon credential-type-name="googlePalmApi" :size="20" />
+				<div :class="$style.cardGrid">
+					<RouterLink
+						:to="{ name: CHAT_WORKFLOW_AGENTS_VIEW }"
+						:class="[$style.cardWrapper, $style.cardFirst]"
+						data-test-id="welcome-card-workflow-agents"
+					>
+						<N8nCard :class="$style.card" hoverable>
+							<div :class="$style.cardHeader">
+								<N8nIcon icon="robot" size="large" color="text-dark" />
+								<N8nText bold>{{
+									i18n.baseText('chatHub.welcome.card.workflowAgents.title')
+								}}</N8nText>
 							</div>
-							<N8nText bold>{{ i18n.baseText('chatHub.welcome.card.baseModels.title') }}</N8nText>
-						</div>
-						<N8nText size="small" color="text-light">{{
-							i18n.baseText('chatHub.welcome.card.baseModels.description')
-						}}</N8nText>
-					</N8nCard>
+							<N8nText size="small" color="text-light">{{
+								i18n.baseText('chatHub.welcome.card.workflowAgents.description')
+							}}</N8nText>
+						</N8nCard>
+					</RouterLink>
+
+					<RouterLink
+						:to="{ name: CHAT_PERSONAL_AGENTS_VIEW }"
+						:class="[$style.cardWrapper, $style.cardMiddle]"
+						data-test-id="welcome-card-personal-agents"
+					>
+						<N8nCard :class="$style.card" hoverable>
+							<div :class="$style.cardHeader">
+								<N8nIcon icon="message-square" size="large" color="text-dark" />
+								<N8nText bold>{{
+									i18n.baseText('chatHub.welcome.card.personalAgents.title')
+								}}</N8nText>
+							</div>
+							<N8nText size="small" color="text-light">{{
+								i18n.baseText('chatHub.welcome.card.personalAgents.description')
+							}}</N8nText>
+						</N8nCard>
+					</RouterLink>
+
+					<div
+						:class="[$style.cardWrapper, $style.cardLast]"
+						data-test-id="welcome-card-base-models"
+						@click="handleStartNewChat"
+					>
+						<N8nCard :class="$style.card" hoverable>
+							<div :class="$style.cardHeader">
+								<div :class="$style.providerIcons">
+									<CredentialIcon credential-type-name="openAiApi" :size="20" />
+									<CredentialIcon credential-type-name="anthropicApi" :size="20" />
+									<CredentialIcon credential-type-name="googlePalmApi" :size="20" />
+								</div>
+								<N8nText bold>{{ i18n.baseText('chatHub.welcome.card.baseModels.title') }}</N8nText>
+							</div>
+							<N8nText size="small" color="text-light">{{
+								i18n.baseText('chatHub.welcome.card.baseModels.description')
+							}}</N8nText>
+						</N8nCard>
+					</div>
+				</div>
+
+				<div :class="$style.buttonGroup">
+					<N8nButton
+						type="primary"
+						size="medium"
+						icon="plus"
+						data-test-id="welcome-start-new-chat"
+						@click="handleStartNewChat"
+					>
+						{{ i18n.baseText('chatHub.welcome.button.startNewChat') }}
+					</N8nButton>
+
+					<N8nTooltip v-if="showInviteButton" :disabled="!isInviteDisabled">
+						<template #content>
+							<I18nT keypath="chatHub.welcome.inviteUpgrade.tooltip" scope="global">
+								<template #link>
+									<N8nLink size="small" @click="handleUpgradeClick">
+										{{ i18n.baseText('generic.upgrade') }}
+									</N8nLink>
+								</template>
+							</I18nT>
+						</template>
+						<N8nButton
+							type="secondary"
+							size="medium"
+							icon="users"
+							:disabled="isInviteDisabled"
+							data-test-id="welcome-invite-chat-users"
+							@click="handleInviteUsers"
+						>
+							{{ i18n.baseText('chatHub.welcome.button.inviteChatUsers') }}
+						</N8nButton>
+					</N8nTooltip>
 				</div>
 			</div>
-
-			<div :class="$style.buttonGroup">
-				<N8nButton
-					type="primary"
-					size="medium"
-					icon="plus"
-					data-test-id="welcome-start-new-chat"
-					@click="handleStartNewChat"
-				>
-					{{ i18n.baseText('chatHub.welcome.button.startNewChat') }}
-				</N8nButton>
-
-				<N8nTooltip v-if="showInviteButton" :disabled="!isInviteDisabled">
-					<template #content>
-						<I18nT keypath="chatHub.welcome.inviteUpgrade.tooltip" scope="global">
-							<template #link>
-								<N8nLink size="small" @click="handleUpgradeClick">
-									{{ i18n.baseText('generic.upgrade') }}
-								</N8nLink>
-							</template>
-						</I18nT>
-					</template>
-					<N8nButton
-						type="secondary"
-						size="medium"
-						icon="users"
-						:disabled="isInviteDisabled"
-						data-test-id="welcome-invite-chat-users"
-						@click="handleInviteUsers"
-					>
-						{{ i18n.baseText('chatHub.welcome.button.inviteChatUsers') }}
-					</N8nButton>
-				</N8nTooltip>
-			</div>
-		</template>
-
-		<div v-else :class="$style.greetings">
-			<template v-if="selectedAgent">
-				<N8nText size="large">{{ i18n.baseText('chatHub.chat.greeting') }}</N8nText>
-				<ChatAgentAvatar :agent="selectedAgent" size="md" :class="$style.icon" />
-				<N8nText size="large" bold>{{ truncate(selectedAgent.name, 40) }}</N8nText>
-			</template>
-			<template v-else>
-				<N8nText size="large">{{ i18n.baseText('chatHub.chat.greeting.fallback') }}</N8nText>
-			</template>
-		</div>
+			<ChatGreetings v-else key="greetings" :selected-agent="selectedAgent" />
+		</Transition>
 	</div>
 </template>
 
@@ -279,14 +270,22 @@ function handleUpgradeClick() {
 	justify-content: center;
 }
 
-.icon {
-	flex-shrink: 0;
-	margin-block: -4px;
+.welcomeContent {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--xl);
+}
+</style>
+
+<style lang="scss">
+.welcome-fade-enter-active,
+.welcome-fade-leave-active {
+	transition: opacity 0.2s ease;
 }
 
-.greetings {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
+.welcome-fade-enter-from,
+.welcome-fade-leave-to {
+	opacity: 0;
 }
 </style>
