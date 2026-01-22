@@ -18,6 +18,7 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { McpSettingsService } from './mcp.settings.service';
 import { OAuthSessionService } from './oauth-session.service';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
@@ -35,6 +36,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		private readonly tokenService: McpOAuthTokenService,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
 		private readonly userConsentRepository: UserConsentRepository,
+		private readonly mcpSettingsService: McpSettingsService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -94,6 +96,20 @@ export class McpOAuthService implements OAuthServerProvider {
 		this.logger.debug('Starting OAuth authorization', { clientId: client.client_id });
 
 		try {
+			// Validate redirect URI against global whitelist (only if whitelist is configured)
+			const allowedUris = await this.mcpSettingsService.getAllowedRedirectUris();
+			if (allowedUris.length > 0 && !allowedUris.includes(params.redirectUri)) {
+				this.logger.warn('Invalid redirect URI attempted', {
+					clientId: client.client_id,
+					attemptedUri: params.redirectUri,
+				});
+				res.status(400).json({
+					error: 'invalid_request',
+					error_description: 'Redirect URI not in allowed list',
+				});
+				return;
+			}
+
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,
 				redirectUri: params.redirectUri,
