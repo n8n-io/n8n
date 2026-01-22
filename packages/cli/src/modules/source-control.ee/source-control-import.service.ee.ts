@@ -798,7 +798,7 @@ export class SourceControlImportService {
 	}
 
 	private async deactivateImportedWorkflow(workflowId: string, userId: string): Promise<boolean> {
-		const user = await this.userRepository.findOne({ where: { id: userId } });
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 		if (!user) {
 			this.logger.error(`User ${userId} not found, cannot deactivate workflow ${workflowId}`);
 			return false;
@@ -817,7 +817,7 @@ export class SourceControlImportService {
 
 	private async activateImportedWorkflow(importedWorkflow: IWorkflowToImport, userId: string) {
 		const versionId = importedWorkflow.versionId!;
-		const user = await this.userRepository.findOne({ where: { id: userId } });
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 		if (!user) {
 			this.logger.error(
 				`User ${userId} not found, cannot activate workflow ${importedWorkflow.id}`,
