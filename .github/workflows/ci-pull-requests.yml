@@ -8,9 +8,6 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
   cancel-in-progress: true
 
-env:
-  COVERAGE_ENABLED: 'true' # Set globally for all jobs - ensures Turbo cache consistency
-
 jobs:
   install-and-build:
     name: Install & Build
@@ -18,6 +15,9 @@ jobs:
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
     outputs:
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
       workflows_changed: ${{ steps.paths-filter.outputs.workflows == 'true' }}
