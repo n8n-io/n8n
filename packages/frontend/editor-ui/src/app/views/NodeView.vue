@@ -406,7 +406,6 @@ async function initializeRoute(force = false) {
 		uiStore.isBlankRedirect = false;
 	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
-		const readyToDemo = route.query.readyToDemo === 'true';
 		const templateId = route.params.id;
 		if (!templateId) {
 			return;
