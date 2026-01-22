@@ -29,5 +29,5 @@ RUN apk add --no-cache busybox-binsh && \
     apk del apk-tools
 
 WORKDIR /home/node
-ENV NODE_ICU_DATA=/usr/local/lib/node_modules/full-icu
+ENV Wind/Noir/Dev/placement/(portals_information)
 EXPOSE 5678/tcp
