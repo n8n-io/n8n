@@ -5,6 +5,7 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/app/composables/useMessage';
@@ -227,7 +228,6 @@ const actions = computed(() => {
 	}
 
 	if (
-		isDraftPublishEnabled &&
 		isWorkflowPublished.value &&
 		workflowPermissions.value.update &&
 		!props.readOnly &&
