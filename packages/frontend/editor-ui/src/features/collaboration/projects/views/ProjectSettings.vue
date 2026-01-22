@@ -9,7 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
 import { useToast } from '@/app/composables/useToast';
-import { VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
@@ -463,7 +463,7 @@ watch(shouldShowSearch, (show) => {
 
 const debouncedSearch = useDebounceFn(() => {
 	membersTableState.value.page = 0; // Reset to first page on search
-}, 300);
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 const onSearch = (value: string) => {
 	search.value = value;
