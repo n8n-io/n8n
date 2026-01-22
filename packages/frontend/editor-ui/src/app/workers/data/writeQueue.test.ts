@@ -151,14 +151,16 @@ describe('WriteQueue', () => {
 			let concurrentOperations = 0;
 			let maxConcurrent = 0;
 
-			const operations = Array.from({ length: 5 }, (_, i) =>
-				queue.enqueue(null, async () => {
-					concurrentOperations++;
-					maxConcurrent = Math.max(maxConcurrent, concurrentOperations);
-					await new Promise((r) => setTimeout(r, 10));
-					concurrentOperations--;
-					return i;
-				}),
+			const operations = Array.from(
+				{ length: 5 },
+				async (_, i) =>
+					await queue.enqueue(null, async () => {
+						concurrentOperations++;
+						maxConcurrent = Math.max(maxConcurrent, concurrentOperations);
+						await new Promise((r) => setTimeout(r, 10));
+						concurrentOperations--;
+						return i;
+					}),
 			);
 
 			await Promise.all(operations);
@@ -210,14 +212,16 @@ describe('WriteQueue', () => {
 			let concurrentOperations = 0;
 			let maxConcurrent = 0;
 
-			const operations = Array.from({ length: 5 }, (_, i) =>
-				queue.enqueue('SELECT * FROM users', async () => {
-					concurrentOperations++;
-					maxConcurrent = Math.max(maxConcurrent, concurrentOperations);
-					await new Promise((r) => setTimeout(r, 10));
-					concurrentOperations--;
-					return i;
-				}),
+			const operations = Array.from(
+				{ length: 5 },
+				async (_, i) =>
+					await queue.enqueue('SELECT * FROM users', async () => {
+						concurrentOperations++;
+						maxConcurrent = Math.max(maxConcurrent, concurrentOperations);
+						await new Promise((r) => setTimeout(r, 10));
+						concurrentOperations--;
+						return i;
+					}),
 			);
 
 			await Promise.all(operations);
@@ -236,9 +240,9 @@ describe('WriteQueue', () => {
 				resolveFirst = r;
 			});
 
-			const enqueued = queue.enqueue(null, () => firstOperation);
-			queue.enqueue(null, async () => 'second');
-			queue.enqueue(null, async () => 'third');
+			const enqueued = queue.enqueue(null, async () => await firstOperation);
+			void queue.enqueue(null, async () => 'second');
+			void queue.enqueue(null, async () => 'third');
 
 			// First operation is processing, 2 are queued
 			expect(queue.getQueueLength()).toBe(2);
@@ -259,7 +263,7 @@ describe('WriteQueue', () => {
 				resolveOperation = r;
 			});
 
-			const enqueued = queue.enqueue(null, () => operation);
+			const enqueued = queue.enqueue(null, async () => await operation);
 
 			expect(queue.isProcessing()).toBe(true);
 
