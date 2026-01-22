@@ -88,6 +88,7 @@ const sizeClass = computed(() => sizes[props.size]);
 
 // Classes for password type (PostHog privacy)
 const containerClasses = computed(() => [
+	'n8n-input', // Global class for backwards compatibility
 	$style.inputContainer,
 	sizeClass.value,
 	{
