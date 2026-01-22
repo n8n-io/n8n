@@ -1591,3 +1591,1010 @@ describe('parseWorkflowCode with splitInBatches', () => {
 		expect(processItem).toBeDefined();
 	});
 });
+
+describe('cycle detection and variable generation', () => {
+	it('should detect simple cycle and generate variable declaration', () => {
+		// Simple cycle: A → B → A
+		const json: WorkflowJSON = {
+			id: 'cycle-test',
+			name: 'Simple Cycle',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-a',
+					name: 'Node A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-b',
+					name: 'Node B',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Node A', type: 'main', index: 0 }]] },
+				'Node A': { main: [[{ node: 'Node B', type: 'main', index: 0 }]] },
+				'Node B': { main: [[{ node: 'Node A', type: 'main', index: 0 }]] }, // Cycle back to A
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have cycle variable declaration comment
+		expect(code).toContain('// Cycle target nodes');
+
+		// Should have variable declaration for Node A (the cycle target)
+		expect(code).toContain('const node_a = node({');
+
+		// Should reference the variable in the chain
+		expect(code).toContain('.then(node_a)');
+	});
+
+	it('should detect cycle to IF node and generate correct structure', () => {
+		// Polling loop pattern: Trigger → IF → [true: Done, false: Wait → IF (cycle)]
+		const json: WorkflowJSON = {
+			id: 'if-cycle-test',
+			name: 'IF Cycle',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'Check Status',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'done-1',
+					name: 'Done',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: 'wait-1',
+					name: 'Wait',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [400, 100],
+					parameters: { amount: 5 },
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Check Status', type: 'main', index: 0 }]] },
+				'Check Status': {
+					main: [
+						[{ node: 'Done', type: 'main', index: 0 }], // true branch
+						[{ node: 'Wait', type: 'main', index: 0 }], // false branch
+					],
+				},
+				Wait: { main: [[{ node: 'Check Status', type: 'main', index: 0 }]] }, // Cycle!
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have cycle variable declaration for the IF node
+		expect(code).toContain('// Cycle target nodes');
+		expect(code).toContain('const check_status = node({');
+		expect(code).toContain("type: 'n8n-nodes-base.if'");
+
+		// Should connect to the IF node variable
+		expect(code).toContain('.then(check_status)');
+
+		// Should have branch array after IF node
+		expect(code).toContain('.then([');
+
+		// Should reference cycle variable at the end of the false branch chain
+		// The pattern should be: wait node .then(check_status)
+		expect(code).toMatch(/\.then\(check_status\)\s*\]\)/);
+	});
+
+	it('should handle longer cycle chain', () => {
+		// Longer cycle: A → B → C → A
+		const json: WorkflowJSON = {
+			id: 'long-cycle-test',
+			name: 'Long Cycle',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-a',
+					name: 'Node A',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-b',
+					name: 'Node B',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-c',
+					name: 'Node C',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Node A', type: 'main', index: 0 }]] },
+				'Node A': { main: [[{ node: 'Node B', type: 'main', index: 0 }]] },
+				'Node B': { main: [[{ node: 'Node C', type: 'main', index: 0 }]] },
+				'Node C': { main: [[{ node: 'Node A', type: 'main', index: 0 }]] }, // Cycle back to A
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should have cycle variable declaration for Node A
+		expect(code).toContain('// Cycle target nodes');
+		expect(code).toContain('const node_a = node({');
+
+		// Should reference the variable at the end of the chain
+		expect(code).toContain('.then(node_a)');
+
+		// Verify structure: the chain should be node_a → B → C → node_a
+		// B and C should be in the chain, not as separate variables
+		expect(code).toMatch(/\.then\(node\(\{[^}]*name: 'Node B'/);
+		expect(code).toMatch(/\.then\(node\(\{[^}]*name: 'Node C'/);
+	});
+
+	it('should not generate cycle variables for non-cycle workflows', () => {
+		// Simple linear workflow with no cycles
+		const json: WorkflowJSON = {
+			id: 'no-cycle-test',
+			name: 'No Cycle',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-1',
+					name: 'Node 1',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'node-2',
+					name: 'Node 2',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Node 1', type: 'main', index: 0 }]] },
+				'Node 1': { main: [[{ node: 'Node 2', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		// Should NOT have cycle variable declaration comment
+		expect(code).not.toContain('// Cycle target nodes');
+
+		// Should NOT have const declarations at the top (only return workflow...)
+		expect(code.trim()).toMatch(/^return workflow\(/);
+	});
+
+	it('should roundtrip a cycle workflow correctly', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'roundtrip-cycle',
+			name: 'Roundtrip Cycle Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'Check',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'done-1',
+					name: 'Success',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: 'retry-1',
+					name: 'Retry',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Check', type: 'main', index: 0 }]] },
+				Check: {
+					main: [
+						[{ node: 'Success', type: 'main', index: 0 }],
+						[{ node: 'Retry', type: 'main', index: 0 }],
+					],
+				},
+				Retry: { main: [[{ node: 'Check', type: 'main', index: 0 }]] }, // Cycle!
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(4);
+		expect(parsedJson.nodes.map((n) => n.name).sort()).toEqual(
+			['Check', 'Retry', 'Success', 'Trigger'].sort(),
+		);
+
+		// Verify connections including the cycle
+		expect(parsedJson.connections['Trigger']).toBeDefined();
+		expect(parsedJson.connections['Check']).toBeDefined();
+		expect(parsedJson.connections['Retry']).toBeDefined();
+
+		// The cycle connection Retry → Check should be preserved
+		expect(parsedJson.connections['Retry']?.main[0]?.[0]?.node).toBe('Check');
+	});
+});
+
+describe('SplitInBatches multi-output handling', () => {
+	it('should preserve both outputs of SplitInBatches node', () => {
+		// SplitInBatches has 2 outputs:
+		// - Output 0: "done" (all items processed)
+		// - Output 1: "loop" (continue processing)
+		// Both must be preserved in roundtrip
+		const workflow: WorkflowJSON = {
+			id: 'sib-test',
+			name: 'SplitInBatches Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Loop',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Process',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Done',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				Loop: {
+					main: [
+						[{ node: 'Done', type: 'main', index: 0 }], // output 0: done
+						[{ node: 'Process', type: 'main', index: 0 }], // output 1: loop
+					],
+				},
+				Process: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] }, // cycle back
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Both outputs must be connected
+		expect(parsed.connections['Loop']).toBeDefined();
+		expect(parsed.connections['Loop'].main[0][0].node).toBe('Done');
+		expect(parsed.connections['Loop'].main[1][0].node).toBe('Process');
+		// Cycle back must exist
+		expect(parsed.connections['Process'].main[0][0].node).toBe('Loop');
+	});
+
+	it('should preserve chains after both SplitInBatches outputs', () => {
+		// When nodes are chained after each SplitInBatches output,
+		// both chains must be preserved
+		const workflow: WorkflowJSON = {
+			id: 'sib-chain-test',
+			name: 'SplitInBatches Chain Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Loop',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Process',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Done',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'Final',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [600, -100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				Loop: {
+					main: [
+						[{ node: 'Done', type: 'main', index: 0 }],
+						[{ node: 'Process', type: 'main', index: 0 }],
+					],
+				},
+				Process: { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+				Done: { main: [[{ node: 'Final', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Chain after done output must be preserved
+		expect(parsed.connections['Done'].main[0][0].node).toBe('Final');
+	});
+});
+
+describe('Fan-out pattern handling', () => {
+	it('should preserve all fan-out connections from same output', () => {
+		// Fan-out: one output connects to multiple targets
+		// All targets must be preserved in the .then([a, b]) array
+		const workflow: WorkflowJSON = {
+			id: 'fanout-test',
+			name: 'Fan-out Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Source',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'TargetA',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'TargetB',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, 100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Source', type: 'main', index: 0 }]] },
+				Source: {
+					main: [
+						[
+							{ node: 'TargetA', type: 'main', index: 0 },
+							{ node: 'TargetB', type: 'main', index: 0 }, // Fan-out: same output, 2 targets
+						],
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Both fan-out targets must be connected
+		expect(parsed.connections['Source']).toBeDefined();
+		expect(parsed.connections['Source'].main[0]).toHaveLength(2);
+		const targetNodes = parsed.connections['Source'].main[0]
+			.map((c: { node: string }) => c.node)
+			.sort();
+		expect(targetNodes).toEqual(['TargetA', 'TargetB']);
+	});
+
+	it('should preserve fan-out when branches converge at Merge', () => {
+		// Fan-out pattern that converges at a Merge node (workflow 5711 pattern)
+		// Source fans out to PathA and PathB, both eventually merge
+		const workflow: WorkflowJSON = {
+			id: 'fanout-merge-test',
+			name: 'Fan-out Merge Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'FanOutSource',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'PathA',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'PathB',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'ProcessA',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [600, -100],
+					parameters: {},
+				},
+				{
+					id: '6',
+					name: 'ProcessB',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [600, 100],
+					parameters: {},
+				},
+				{
+					id: '7',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					position: [800, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'FanOutSource', type: 'main', index: 0 }]] },
+				FanOutSource: {
+					main: [
+						[
+							{ node: 'PathA', type: 'main', index: 0 },
+							{ node: 'PathB', type: 'main', index: 0 }, // Fan-out
+						],
+					],
+				},
+				PathA: { main: [[{ node: 'ProcessA', type: 'main', index: 0 }]] },
+				PathB: { main: [[{ node: 'ProcessB', type: 'main', index: 0 }]] },
+				ProcessA: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				ProcessB: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Fan-out must preserve both paths
+		expect(parsed.connections['FanOutSource']).toBeDefined();
+		expect(parsed.connections['FanOutSource'].main[0]).toHaveLength(2);
+		const fanOutTargets = parsed.connections['FanOutSource'].main[0]
+			.map((c: { node: string }) => c.node)
+			.sort();
+		expect(fanOutTargets).toEqual(['PathA', 'PathB']);
+
+		// Both paths must connect to their downstream nodes
+		expect(parsed.connections['PathA'].main[0][0].node).toBe('ProcessA');
+		expect(parsed.connections['PathB'].main[0][0].node).toBe('ProcessB');
+
+		// Both must converge at Merge
+		expect(parsed.connections['ProcessA'].main[0][0].node).toBe('Merge');
+		expect(parsed.connections['ProcessB'].main[0][0].node).toBe('Merge');
+	});
+});
+
+describe('IF branches feeding into Merge', () => {
+	it('should preserve both IF branches when they feed into same Merge node', () => {
+		// Pattern: IF true and false branches both connect to Merge
+		const workflow: WorkflowJSON = {
+			id: 'if-merge-test',
+			name: 'IF Merge Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'TrueNode',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'FalseNode',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
+				IF: {
+					main: [
+						[{ node: 'TrueNode', type: 'main', index: 0 }], // output 0 (true)
+						[{ node: 'FalseNode', type: 'main', index: 0 }], // output 1 (false)
+					],
+				},
+				TrueNode: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				FalseNode: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Both IF branches must exist
+		expect(parsed.connections['IF']).toBeDefined();
+		expect(parsed.connections['IF'].main[0][0].node).toBe('TrueNode');
+		expect(parsed.connections['IF'].main[1][0].node).toBe('FalseNode');
+		// Both branches must connect to Merge
+		expect(parsed.connections['TrueNode'].main[0][0].node).toBe('Merge');
+		expect(parsed.connections['FalseNode'].main[0][0].node).toBe('Merge');
+	});
+
+	it('should preserve IF false-only branch connecting to Merge', () => {
+		// Pattern: IF only has false branch, which connects to Merge
+		// Output 0 (true) is empty, output 1 (false) connects to Merge input 1
+		const workflow: WorkflowJSON = {
+			id: 'if-false-merge-test',
+			name: 'IF False to Merge Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Source',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [400, 0],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Source', type: 'main', index: 0 }]] },
+				Source: {
+					main: [
+						[
+							{ node: 'IF', type: 'main', index: 0 },
+							{ node: 'Merge', type: 'main', index: 0 }, // fan-out to Merge input 0
+						],
+					],
+				},
+				IF: {
+					main: [
+						[], // output 0 (true) - empty
+						[{ node: 'Merge', type: 'main', index: 1 }], // output 1 (false) -> Merge input 1
+					],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// IF false branch must connect to Merge
+		expect(parsed.connections['IF']).toBeDefined();
+		expect(parsed.connections['IF'].main[1]).toBeDefined();
+		expect(parsed.connections['IF'].main[1][0].node).toBe('Merge');
+	});
+});
+
+describe('Multiple triggers', () => {
+	it('should preserve all trigger connections when multiple triggers connect to same node', () => {
+		// Pattern from workflow 2519: two triggers both connect to the same first node
+		const workflow: WorkflowJSON = {
+			id: 'multi-trigger-test',
+			name: 'Multiple Triggers Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'TriggerA',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, -100],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'TriggerB',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					position: [0, 100],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'SharedNode',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'EndNode',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				TriggerA: { main: [[{ node: 'SharedNode', type: 'main', index: 0 }]] },
+				TriggerB: { main: [[{ node: 'SharedNode', type: 'main', index: 0 }]] },
+				SharedNode: { main: [[{ node: 'EndNode', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Both triggers must have connections to SharedNode
+		expect(parsed.connections['TriggerA']).toBeDefined();
+		expect(parsed.connections['TriggerA'].main[0][0].node).toBe('SharedNode');
+		expect(parsed.connections['TriggerB']).toBeDefined();
+		expect(parsed.connections['TriggerB'].main[0][0].node).toBe('SharedNode');
+		// SharedNode must connect to EndNode
+		expect(parsed.connections['SharedNode'].main[0][0].node).toBe('EndNode');
+	});
+
+	it('should preserve merge downstream connection when fan-out includes direct merge connection', () => {
+		// This tests the pattern where a node fans out to both a Merge node directly
+		// AND to another node that also connects to the Merge. The Merge then connects downstream.
+		// Pattern:
+		//   Settings -> [Send Typing action, Merge[0]]
+		//   Send Typing action -> Merge[1]
+		//   Merge -> AI Agent
+		// This is the failing pattern from workflow 5163.
+		const workflow: WorkflowJSON = {
+			id: 'merge-downstream-test',
+			name: 'Merge Downstream Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Settings',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Send Typing',
+					type: 'n8n-nodes-base.telegram',
+					typeVersion: 1,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 2.1,
+					position: [400, 0],
+					parameters: { mode: 'chooseBranch' },
+				},
+				{
+					id: '5',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1.7,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Settings', type: 'main', index: 0 }]] },
+				Settings: {
+					main: [
+						[
+							{ node: 'Send Typing', type: 'main', index: 0 },
+							{ node: 'Merge', type: 'main', index: 0 },
+						],
+					],
+				},
+				'Send Typing': { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+				Merge: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Verify all nodes present
+		expect(parsed.nodes).toHaveLength(5);
+
+		// CRITICAL: Verify Merge -> AI Agent connection is preserved
+		expect(parsed.connections['Merge']).toBeDefined();
+		expect(parsed.connections['Merge'].main[0]).toBeDefined();
+		expect(parsed.connections['Merge'].main[0][0].node).toBe('AI Agent');
+	});
+});
+
+describe('SplitInBatches with IF branch converging to Merge (workflow 6993 pattern)', () => {
+	it('should preserve all connections in SplitInBatches loop with IF->Merge convergence', () => {
+		// Pattern from workflow 6993:
+		// Loop Over Items[0] -> (done, empty)
+		// Loop Over Items[1] -> Company website exists (IF)
+		// Company website exists[0] (true) -> Scrape -> Set Fields -> Merge[0]
+		// Company website exists[1] (false) -> Merge[1]
+		// Merge -> Message Generator -> Upsert -> Loop Over Items (back to loop)
+		const workflow: WorkflowJSON = {
+			id: 'sib-if-merge-test',
+			name: 'SplitInBatches IF Merge Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Loop Over Items',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Company website exists',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Scrape & Summarize',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [600, 0],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'Set Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [800, 0],
+					parameters: {},
+				},
+				{
+					id: '6',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [1000, 100],
+					parameters: {},
+				},
+				{
+					id: '7',
+					name: 'Message Generator',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1200, 100],
+					parameters: {},
+				},
+				{
+					id: '8',
+					name: 'Supabase Upsert',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1400, 100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]] },
+				'Loop Over Items': {
+					main: [
+						[], // output 0: done (empty in this test)
+						[{ node: 'Company website exists', type: 'main', index: 0 }], // output 1: loop
+					],
+				},
+				'Company website exists': {
+					main: [
+						[{ node: 'Scrape & Summarize', type: 'main', index: 0 }], // true branch
+						[{ node: 'Merge', type: 'main', index: 1 }], // false branch directly to Merge
+					],
+				},
+				'Scrape & Summarize': { main: [[{ node: 'Set Fields', type: 'main', index: 0 }]] },
+				'Set Fields': { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				Merge: { main: [[{ node: 'Message Generator', type: 'main', index: 0 }]] },
+				'Message Generator': { main: [[{ node: 'Supabase Upsert', type: 'main', index: 0 }]] },
+				'Supabase Upsert': { main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Verify all nodes present
+		expect(parsed.nodes).toHaveLength(8);
+
+		// CRITICAL: Verify Loop Over Items[1] -> Company website exists connection
+		expect(parsed.connections['Loop Over Items']).toBeDefined();
+		expect(parsed.connections['Loop Over Items'].main[1]).toBeDefined();
+		expect(parsed.connections['Loop Over Items'].main[1][0].node).toBe('Company website exists');
+
+		// CRITICAL: Verify IF branches are connected
+		expect(parsed.connections['Company website exists']).toBeDefined();
+		expect(parsed.connections['Company website exists'].main[0][0].node).toBe('Scrape & Summarize');
+		expect(parsed.connections['Company website exists'].main[1][0].node).toBe('Merge');
+
+		// CRITICAL: Verify the chain continues from Merge
+		expect(parsed.connections['Merge']).toBeDefined();
+		expect(parsed.connections['Merge'].main[0][0].node).toBe('Message Generator');
+
+		// CRITICAL: Verify the loop back connection
+		expect(parsed.connections['Supabase Upsert']).toBeDefined();
+		expect(parsed.connections['Supabase Upsert'].main[0][0].node).toBe('Loop Over Items');
+	});
+});

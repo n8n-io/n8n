@@ -281,6 +281,37 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const node = nodeOrComposite as N;
 		const newNodes = new Map(this._nodes);
 
+		// Check if node already exists in the workflow (cycle connection)
+		const existingNode = newNodes.has(node.name);
+
+		if (existingNode) {
+			// Node already exists - just add the connection, don't re-add the node
+			if (this._currentNode) {
+				const currentGraphNode = newNodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const mainConns = currentGraphNode.connections.get('main') || new Map();
+					const outputConnections = mainConns.get(this._currentOutput) || [];
+					// Check for duplicate connections
+					const alreadyConnected = outputConnections.some(
+						(c: { node: string }) => c.node === node.name,
+					);
+					if (!alreadyConnected) {
+						mainConns.set(this._currentOutput, [
+							...outputConnections,
+							{ node: node.name, type: 'main', index: 0 },
+						]);
+						currentGraphNode.connections.set('main', mainConns);
+					}
+				}
+			}
+
+			return this.clone({
+				nodes: newNodes,
+				currentNode: node.name,
+				currentOutput: 0,
+			});
+		}
+
 		// Add the new node and its subnodes
 		this.addNodeWithSubnodes(newNodes, node);
 
@@ -535,10 +566,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 	/**
 	 * Resolve the target node name from a connection target.
-	 * Handles both NodeInstance and composites (SwitchCaseComposite, IfBranchComposite, MergeComposite).
+	 * Handles NodeInstance, NodeChain, and composites (SwitchCaseComposite, IfBranchComposite, MergeComposite).
 	 */
 	private resolveTargetNodeName(target: unknown): string | undefined {
 		if (target === null || typeof target !== 'object') return undefined;
+
+		// Check for NodeChain - return the head's name (where connections enter the chain)
+		if (isNodeChain(target)) {
+			return target.head.name;
+		}
 
 		// Check for SwitchCaseComposite
 		if (this.isSwitchCaseComposite(target)) {
@@ -677,6 +713,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		nodes: Map<string, GraphNode>,
 		nodeInstance: NodeInstance<string, string, unknown>,
 	): void {
+		// Skip if node already exists - don't overwrite existing connections
+		// This is important for cycle targets that are processed multiple times
+		if (nodes.has(nodeInstance.name)) {
+			return;
+		}
+
 		// Add the main node
 		const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
 		connectionsMap.set('main', new Map());
@@ -836,6 +878,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 	/**
 	 * Handle fan-out pattern - connects current node to multiple target nodes
+	 * Supports NodeChain targets (e.g., workflow.then([x1, fb, linkedin.then(sheets)]))
+	 *
+	 * For IF/Switch nodes, each array element maps to a different output index (branching).
+	 * For regular nodes, all targets connect from the same output (fan-out).
 	 */
 	private handleFanOut<N extends NodeInstance<string, string, unknown>>(
 		nodes: N[],
@@ -846,32 +892,54 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		const newNodes = new Map(this._nodes);
 
+		// Check if current node is an IF, Switch, or SplitInBatches node for branch-style connections
+		// These nodes have multiple outputs where each array element maps to a different output index
+		const currentGraphNode = this._currentNode ? newNodes.get(this._currentNode) : undefined;
+		const isBranchingNode =
+			currentGraphNode?.instance.type === 'n8n-nodes-base.if' ||
+			currentGraphNode?.instance.type === 'n8n-nodes-base.switch' ||
+			currentGraphNode?.instance.type === 'n8n-nodes-base.splitInBatches';
+
 		// Add all target nodes and connect them to the current node
-		for (const node of nodes) {
-			// Add the new node and its subnodes
-			this.addNodeWithSubnodes(newNodes, node);
-
-			// Connect from current node to this target
-			if (this._currentNode) {
-				const currentGraphNode = newNodes.get(this._currentNode);
-				if (currentGraphNode) {
-					const mainConns = currentGraphNode.connections.get('main') || new Map();
-					const outputConnections = mainConns.get(this._currentOutput) || [];
-					mainConns.set(this._currentOutput, [
-						...outputConnections,
-						{ node: node.name, type: 'main', index: 0 },
-					]);
-					currentGraphNode.connections.set('main', mainConns);
-				}
+		nodes.forEach((node, index) => {
+			// Skip null values (empty branches for IF/Switch/SplitInBatches outputs)
+			// but preserve the index for correct output mapping
+			if (node === null) {
+				return;
 			}
-		}
 
-		// Set the last node in the array as the current node (for continued chaining)
-		const lastNode = nodes[nodes.length - 1];
+			// Use addBranchToGraph to handle NodeChains properly
+			// This returns the head node name for connection
+			const headNodeName = this.addBranchToGraph(newNodes, node);
+
+			// Connect from current node to the head of this target (branch)
+			if (this._currentNode && currentGraphNode) {
+				const mainConns = currentGraphNode.connections.get('main') || new Map();
+				// For IF/Switch/SplitInBatches nodes, each array element uses incrementing output index
+				// For regular nodes, all targets use the same currentOutput (fan-out)
+				const outputIndex = isBranchingNode ? index : this._currentOutput;
+				const outputConnections = mainConns.get(outputIndex) || [];
+				mainConns.set(outputIndex, [
+					...outputConnections,
+					{ node: headNodeName, type: 'main', index: 0 },
+				]);
+				currentGraphNode.connections.set('main', mainConns);
+			}
+		});
+
+		// Set the last non-null node in the array as the current node (for continued chaining)
+		// For NodeChains, use the tail node name (if tail is not null)
+		const nonNullNodes = nodes.filter((n): n is NonNullable<typeof n> => n !== null);
+		const lastNode = nonNullNodes[nonNullNodes.length - 1];
+		const lastNodeName = lastNode
+			? isNodeChain(lastNode)
+				? (lastNode.tail?.name ?? this._currentNode)
+				: lastNode.name
+			: this._currentNode;
 
 		return this.clone({
 			nodes: newNodes,
-			currentNode: lastNode.name,
+			currentNode: lastNodeName,
 			currentOutput: 0,
 		});
 	}
@@ -885,9 +953,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Add all branch nodes (with subnodes) with correct input index connections
 		branches.forEach((branchNode, branchIndex) => {
-			this.addNodeWithSubnodes(newNodes, branchNode);
+			// Use addBranchToGraph to properly handle NodeChains
+			// It returns the HEAD node name (entry point of the branch)
+			const headNodeName = this.addBranchToGraph(newNodes, branchNode);
 
-			// Connect from current node to each branch
+			// Connect from current node to the HEAD of each branch
 			if (this._currentNode) {
 				const currentGraphNode = newNodes.get(this._currentNode);
 				if (currentGraphNode) {
@@ -895,19 +965,25 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					const outputConnections = mainConns.get(this._currentOutput) || [];
 					mainConns.set(this._currentOutput, [
 						...outputConnections,
-						{ node: branchNode.name, type: 'main', index: 0 },
+						{ node: headNodeName, type: 'main', index: 0 },
 					]);
 					currentGraphNode.connections.set('main', mainConns);
 				}
 			}
 
-			// Connect each branch to the merge node at the correct INPUT INDEX
-			const branchGraphNode = newNodes.get(branchNode.name)!;
-			const branchMainConns = branchGraphNode.connections.get('main') || new Map();
-			branchMainConns.set(0, [
+			// Connect the TAIL of each branch to the merge node at the correct INPUT INDEX
+			// For NodeChains, tail is the last node; for single nodes, it's the node itself
+			// Handle case where tail could be null (from [null, node] array syntax)
+			const tailNodeName = isNodeChain(branchNode) ? branchNode.tail?.name : branchNode.name;
+			if (!tailNodeName) {
+				return; // Skip branches with null tail
+			}
+			const tailGraphNode = newNodes.get(tailNodeName)!;
+			const tailMainConns = tailGraphNode.connections.get('main') || new Map();
+			tailMainConns.set(0, [
 				{ node: mergeComposite.mergeNode.name, type: 'main', index: branchIndex },
 			]);
-			branchGraphNode.connections.set('main', branchMainConns);
+			tailGraphNode.connections.set('main', tailMainConns);
 		});
 
 		// Add the merge node
@@ -937,6 +1013,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (isNodeChain(branch)) {
 			// Add all nodes from the chain, handling composites that may have been chained
 			for (const chainNode of branch.allNodes) {
+				// Skip null values (can occur when .then([null, node]) is used)
+				if (chainNode === null) {
+					continue;
+				}
+
 				// Check if chainNode is a composite (can happen via chain.then(ifBranch(...)))
 				if (this.isSwitchCaseComposite(chainNode)) {
 					this.addSwitchCaseNodes(nodes, chainNode as unknown as SwitchCaseComposite);
@@ -955,6 +1036,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				// Find the source node in the chain that declared this connection
 				// by looking for the node whose .then() was called
 				for (const chainNode of branch.allNodes) {
+					// Skip null values (from array syntax like [null, node])
+					if (chainNode === null) {
+						continue;
+					}
 					if (typeof chainNode.getConnections === 'function') {
 						const nodeConns = chainNode.getConnections();
 						if (nodeConns.some((c) => c.target === target && c.outputIndex === outputIndex)) {
@@ -980,6 +1065,21 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Return the head node name (first node in the chain)
 			return branch.head.name;
 		} else {
+			// Check if this is a composite that needs special handling
+			if (this.isSwitchCaseComposite(branch)) {
+				this.addSwitchCaseNodes(nodes, branch as unknown as SwitchCaseComposite);
+				// Return the switch node name (the head of this composite)
+				return (branch as unknown as SwitchCaseComposite).switchNode.name;
+			} else if (this.isIfBranchComposite(branch)) {
+				this.addIfBranchNodes(nodes, branch as unknown as IfBranchComposite);
+				// Return the IF node name (the head of this composite)
+				return (branch as unknown as IfBranchComposite).ifNode.name;
+			} else if (this.isMergeComposite(branch)) {
+				this.addMergeNodes(nodes, branch as unknown as MergeComposite);
+				// Return the merge node name (the head of this composite)
+				return (branch as unknown as MergeComposite).mergeNode.name;
+			}
+
 			// Single node - add it and return its name
 			this.addNodeWithSubnodes(nodes, branch);
 			return branch.name;

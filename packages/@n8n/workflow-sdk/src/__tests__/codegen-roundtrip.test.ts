@@ -11,174 +11,174 @@ import {
 } from './fixtures-download';
 
 const SKIP_WORKFLOWS = new Set<string>([
-	'2519',
+	// '2519', - now passes after multiple triggers fix
 	'2878',
 	'2896',
 	'3066',
 	'3121',
 	// '3514' - now passes after switch case downstream chain fix
-	'3586',
-	'3770',
+	// '3586' - now passes after convergence pattern fix
+	// '3770' - now passes after fan-out pattern fix
 	'3790',
-	'3904',
-	'4005',
-	'4247',
+	// '3904', - now passes after multiple triggers/convergence fixes
+	// '4005', - now passes after multiple triggers/convergence fixes
+	// '4247', - now passes after multiple triggers/convergence fixes
 	'4295',
-	'4365',
+	// '4365' - now passes after convergence pattern fix
 	'4366',
-	'4400',
-	'4457',
-	'4478',
-	'4506',
+	// '4400', - now passes after multiple triggers/convergence fixes
+	// '4457', // cycle to IF node (Help Responder → Command Router) - now passes with cycle support
+	// '4478' - now passes after convergence pattern fix
+	// '4506', - now passes after multiple triggers/convergence fixes
 	'4557',
-	'4573',
+	// '4573', - now passes after multiple triggers/convergence fixes
 	'4600',
 	'4637',
-	'4678',
+	// '4678' - now passes after handleFanOut NodeChain fix
 	'4685',
-	'4721',
-	'4723',
+	// '4721', - now passes after shared fan-out target fix
+	// '4723', - now passes after shared fan-out target fix
 	'4767',
 	'4807',
 	'4827',
 	'4833',
-	'4846',
+	// '4846', - now passes after shared fan-out target fix
 	'4849',
 	'4868',
-	'4912',
+	// '4912', - now passes after multiple triggers/convergence fixes
 	// '4949' - now passes after switch case downstream chain fix
-	'4967',
+	// '4967' - now passes after convergence pattern fix
 	'4975',
-	'4987',
+	// '4987' - now passes after convergence pattern fix
 	'5024',
 	'5045',
 	'5139',
-	'5163',
+	// '5163', - now passes after shared fan-out target fix (was: key mismatch Merge vs Send Analysis)
 	'5258',
-	'5374',
-	'5375',
-	'5385',
-	'5434',
+	'5374', // has both a cycle AND a convergence pattern (Webflow+GoogleSheets1 → NoOp) that breaks roundtrip
+	// '5375', - now passes after multiple triggers/convergence fixes
+	// '5385', - now passes after multiple triggers/convergence fixes
+	// '5434', - now passes after shared fan-out target fix
 	'5435',
 	'5449',
 	'5453',
 	'5523',
-	'5608',
+	// '5608', - now passes after shared fan-out target fix
 	'5611',
-	'5617',
-	'5618',
-	'5626',
-	'5656',
-	'5670',
-	'5676',
-	'5677',
-	'5682',
-	'5683',
-	'5690',
-	'5691',
-	'5694',
-	'5707',
-	'5711',
-	'5734',
+	// '5617', - now passes after multiple triggers/convergence fixes
+	// '5618', - now passes after multiple triggers/convergence fixes
+	// '5626', - now passes after multiple triggers/convergence fixes
+	// '5656' - now passes after convergence pattern fix
+	// '5670' - now passes after fan-out pattern fix
+	// '5676' - now passes after convergence pattern fix
+	// '5677', - now passes after multiple triggers/convergence fixes
+	// '5682', - now passes after multiple triggers/convergence fixes
+	// '5683', - now passes after multiple triggers/convergence fixes
+	// '5690', - now passes after multiple triggers/convergence fixes
+	// '5691', - now passes after multiple triggers/convergence fixes
+	// '5694', - now passes after IF/Merge convergence and cycle-back fixes
+	// '5707', - now passes after multiple triggers/convergence fixes
+	// '5711', - now passes after multiple triggers/convergence fixes
+	'5734', // still has connection source mismatch
 	'5741',
 	'5751',
-	'5755',
-	'5779',
-	'5786',
-	'5787',
+	// '5755', - now passes after multiple triggers/convergence fixes
+	// '5779', - now passes after shared fan-out target fix
+	// '5786', - now passes after shared fan-out target fix
+	// '5787' - now passes after handleFanOut NodeChain fix
 	'5789',
 	'5795',
-	'5796',
-	'5798',
-	'5799',
-	'5808',
-	'5817',
-	'5820',
-	'5832',
-	'5835',
+	// '5796', - now passes after multiple triggers/convergence fixes
+	// '5798', - now passes after multiple triggers/convergence fixes
+	// '5799', - now passes after multiple triggers/convergence fixes
+	// '5808' - now passes after nested composite fix
+	// '5817', - now passes after shared fan-out target fix (was: key mismatch Merge vs Send email)
+	// '5820', - now passes after shared fan-out target fix
+	// '5832', - now passes after multiple triggers/convergence fixes
+	// '5835', - now passes after shared fan-out target fix
 	'5841',
 	'5842',
-	'5851',
-	'5857',
-	'5906',
-	'5910',
-	'5938',
+	// '5851', - now passes after IF/Merge convergence and cycle-back fixes
+	// '5857' - now passes after fan-out pattern fix
+	// '5906' - now passes after convergence pattern fix
+	// '5910', - now passes after multiple triggers/convergence fixes
+	// '5938', - now passes after multiple triggers/convergence fixes
 	'5979',
-	'6027',
-	'6067',
+	// '6027', - now passes after multiple triggers/convergence fixes
+	// '6067', - now passes after multiple triggers/convergence fixes
 	'6150',
-	'6524',
+	// '6524' - now passes after handleFanOut NodeChain fix
 	'6535',
-	'6538',
-	'6542',
-	'6765',
-	'6771',
-	'6897',
-	'6993',
-	'7130',
+	// '6538' - now passes after convergence pattern fix
+	'6542', // still has connection source mismatch
+	// '6765', - now passes after multiple triggers/convergence fixes
+	// '6771', - now passes after shared fan-out target fix
+	// '6897', - now passes after IF/Merge convergence and cycle-back fixes
+	// '6993', - now passes after IF/Merge convergence and cycle-back fixes
+	// '7130', - now passes after multiple triggers/convergence fixes
 	'7154',
-	'7156',
-	'7423',
+	// '7156' - now passes after handleFanOut NodeChain fix
+	// '7423', - now passes after multiple triggers/convergence fixes
 	'7455',
-	'7601',
+	// '7601', - now passes after multiple triggers/convergence fixes
 	'7701',
 	'7756',
 	'7945',
 	'7946',
 	'7957',
-	'8022',
-	'8210',
-	'8237',
-	'8428',
-	'8500',
+	// '8022', - now passes after multiple triggers/convergence fixes
+	// '8210', - now passes after multiple triggers/convergence fixes
+	// '8237', - now passes after multiple triggers/convergence fixes
+	// '8428', - now passes after multiple triggers/convergence fixes
+	// '8500', - now passes after multiple triggers/convergence fixes
 	'8591',
-	'8644',
-	'8721',
+	// '8644', - now passes after multiple triggers/convergence fixes
+	// '8721', - now passes after multiple triggers/convergence fixes
 	'9200',
-	'9437',
-	'9549',
-	'9576',
+	// '9437', - now passes after multiple triggers/convergence fixes
+	// '9549' - now passes after fan-out pattern fix
+	// '9576', - now passes after multiple triggers/convergence fixes
 	'9605',
-	'9801',
+	// '9801', - now passes after IF/Merge convergence and cycle-back fixes
 	'9814',
-	'9867',
-	'9876',
-	'9986',
-	'9999',
-	'10132',
-	'10139',
+	// '9867', - now passes after multiple triggers/convergence fixes
+	// '9876', - now passes after multiple triggers/convergence fixes
+	// '9986', - now passes after multiple triggers/convergence fixes
+	// '9999', - now passes after multiple triggers/convergence fixes
+	'10132', // parse fixed, but connection mismatch (nodes: 24 vs 24, conns: 26 vs 22)
+	// '10139', - now passes after multiple triggers/convergence fixes
 	'10174',
 	'10196',
-	'10212',
-	'10290',
+	// '10212', - now passes after multiple triggers/convergence fixes
+	// '10290', - now passes after multiple triggers/convergence fixes
 	'10420',
 	'10427',
 	'10476',
-	'10566',
-	'10640',
+	// '10566', // polling loop (Wait → IF) - now passes with cycle support
+	// '10640', - now passes after multiple triggers/convergence fixes
 	'10729',
 	'10889',
-	'11047',
+	// '11047', - now passes after multiple triggers/convergence fixes
 	// '11049' - now passes after composite .then() fix
-	'11158',
-	'11290',
-	'11294',
-	'11366',
+	// '11158', - now passes after multiple triggers/convergence fixes
+	// '11290', - now passes after multiple triggers/convergence fixes
+	// '11294', - now passes after multiple triggers/convergence fixes
+	'11366', // connection mismatch (stricter test comparison)
 	'11466',
-	'11532',
+	// '11532', - now passes after multiple triggers/convergence fixes
 	'11572',
 	'11617',
 	'11637',
 	'11724',
-	'12202',
-	'12253',
+	// '12202', - now passes after multiple triggers/convergence fixes
+	// '12253', - now passes after multiple triggers/convergence fixes
 	'12299',
 	'12325',
-	'12452',
+	// '12452', - now passes after multiple triggers/convergence fixes
 	'12462',
-	'12536',
+	// '12536', - now passes after shared fan-out target fix
 	'12645',
-	'12739',
+	// '12739', - now passes after multiple triggers/convergence fixes
 ]);
 
 interface TestWorkflow {
@@ -441,6 +441,95 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['IF']!.main[1]![0]!.node).toBe('False Branch');
 	});
 
+	it('should preserve connections when both IF branches converge to the same node', () => {
+		// This tests the branch convergence pattern:
+		// IF node has two branches (True and False), both leading to the same downstream node
+		// The generated code should create the convergence node as a variable and reference it
+		// in both branches to preserve both connections
+		const originalJson: WorkflowJSON = {
+			id: 'branch-convergence-test',
+			name: 'Branch Convergence Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'true-1',
+					name: 'True Path',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: 'false-1',
+					name: 'False Path',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: 'converge-1',
+					name: 'Convergence Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [600, 0],
+					parameters: { mode: 'manual' },
+				},
+			],
+			connections: {
+				Trigger: {
+					main: [[{ node: 'IF', type: 'main', index: 0 }]],
+				},
+				IF: {
+					main: [
+						[{ node: 'True Path', type: 'main', index: 0 }],
+						[{ node: 'False Path', type: 'main', index: 0 }],
+					],
+				},
+				// Both branches converge to the same node
+				'True Path': {
+					main: [[{ node: 'Convergence Node', type: 'main', index: 0 }]],
+				},
+				'False Path': {
+					main: [[{ node: 'Convergence Node', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(5);
+
+		// Verify IF connections to branch nodes
+		expect(parsedJson.connections['IF']).toBeDefined();
+		expect(parsedJson.connections['IF']!.main[0]![0]!.node).toBe('True Path');
+		expect(parsedJson.connections['IF']!.main[1]![0]!.node).toBe('False Path');
+
+		// CRITICAL: Verify BOTH branches connect to the convergence node
+		expect(parsedJson.connections['True Path']).toBeDefined();
+		expect(parsedJson.connections['True Path']!.main[0]![0]!.node).toBe('Convergence Node');
+
+		expect(parsedJson.connections['False Path']).toBeDefined();
+		expect(parsedJson.connections['False Path']!.main[0]![0]!.node).toBe('Convergence Node');
+	});
+
 	it('should preserve connections for switch case with downstream chain', () => {
 		// This test reproduces the issue where nodes downstream of switch case branches
 		// get incorrectly chained to the switch composite instead of their specific branch
@@ -528,6 +617,98 @@ describe('parseWorkflowCode', () => {
 		// Case B Node should connect to Case B Downstream
 		expect(parsedJson.connections['Case B Node']).toBeDefined();
 		expect(parsedJson.connections['Case B Node']!.main[0]![0]!.node).toBe('Case B Downstream');
+	});
+
+	it('should preserve cycle connections in polling loop pattern (Wait → IF)', () => {
+		// This tests the polling loop pattern where a node cycles back to an IF node:
+		// Trigger → Job Complete? (IF)
+		//             ↓ true          ↓ false
+		//         Get Dataset    Check Status → Wait → Job Complete? (CYCLE!)
+		//
+		// The cycle Wait → Job Complete? must be preserved in the roundtrip.
+		const originalJson: WorkflowJSON = {
+			id: 'polling-loop-test',
+			name: 'Polling Loop Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'if-1',
+					name: 'Job Complete?',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: 'done-1',
+					name: 'Get Dataset',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [400, -100],
+					parameters: { url: 'https://api.example.com/dataset' },
+				},
+				{
+					id: 'check-1',
+					name: 'Check Status',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [400, 100],
+					parameters: { url: 'https://api.example.com/status' },
+				},
+				{
+					id: 'wait-1',
+					name: 'Wait',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [600, 100],
+					parameters: { amount: 5 },
+				},
+			],
+			connections: {
+				Trigger: {
+					main: [[{ node: 'Job Complete?', type: 'main', index: 0 }]],
+				},
+				'Job Complete?': {
+					main: [
+						[{ node: 'Get Dataset', type: 'main', index: 0 }], // true branch
+						[{ node: 'Check Status', type: 'main', index: 0 }], // false branch
+					],
+				},
+				'Check Status': {
+					main: [[{ node: 'Wait', type: 'main', index: 0 }]],
+				},
+				// CRITICAL: This is the cycle - Wait connects back to the IF node
+				Wait: {
+					main: [[{ node: 'Job Complete?', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(5);
+
+		// Verify IF node connections
+		expect(parsedJson.connections['Job Complete?']).toBeDefined();
+		expect(parsedJson.connections['Job Complete?']!.main[0]![0]!.node).toBe('Get Dataset');
+		expect(parsedJson.connections['Job Complete?']!.main[1]![0]!.node).toBe('Check Status');
+
+		// Verify Check Status → Wait connection
+		expect(parsedJson.connections['Check Status']).toBeDefined();
+		expect(parsedJson.connections['Check Status']!.main[0]![0]!.node).toBe('Wait');
+
+		// CRITICAL: Verify the CYCLE connection Wait → Job Complete? is preserved
+		expect(parsedJson.connections['Wait']).toBeDefined();
+		expect(parsedJson.connections['Wait']!.main[0]![0]!.node).toBe('Job Complete?');
 	});
 
 	describe('escapes node references in single-quoted strings', () => {
