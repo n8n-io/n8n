@@ -113,7 +113,11 @@ import {
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	injectWorkflowState,
+	useOptionalDocumentKey,
+	useDocumentWorkflowState,
+} from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
@@ -165,6 +169,11 @@ export function useCanvasOperations() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
+
+	// Document-aware workflow state for multi-workflow support
+	// When documentKey is available (provided by NodeView), use document-aware methods
+	const documentKey = useOptionalDocumentKey();
+	const documentWorkflowState = documentKey ? useDocumentWorkflowState(documentKey) : undefined;
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
@@ -198,10 +207,24 @@ export function useCanvasOperations() {
 
 	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
 
-	const editableWorkflow = computed<IWorkflowDb>(() => workflowsStore.workflow);
-	const editableWorkflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	// Use document-aware workflow data when documentKey is available, otherwise fall back to singleton
+	const editableWorkflow = computed<IWorkflowDb>(() => {
+		if (documentWorkflowState?.workflow.value) {
+			return documentWorkflowState.workflow.value;
+		}
+		return workflowsStore.workflow;
+	});
+	const editableWorkflowObject = computed(() => {
+		if (documentWorkflowState?.workflowObject.value) {
+			return documentWorkflowState.workflowObject.value as Workflow;
+		}
+		return workflowsStore.workflowObject as Workflow;
+	});
 
 	const triggerNodes = computed<INodeUi[]>(() => {
+		if (documentKey?.value) {
+			return workflowsStore.getDocumentWorkflowTriggerNodes(documentKey.value);
+		}
 		return workflowsStore.workflowTriggerNodes;
 	});
 

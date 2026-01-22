@@ -1,4 +1,4 @@
-import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey, DocumentKeySymbol } from '@/app/constants';
 import type {
 	DocumentKey,
 	INewWorkflowData,
@@ -851,3 +851,25 @@ export function useDocumentWorkflowState(documentKey: Ref<DocumentKey>) {
 }
 
 export type DocumentWorkflowState = ReturnType<typeof useDocumentWorkflowState>;
+
+/**
+ * Injects the document key from the component tree.
+ * Must be used within a component that has provided the documentKey via DocumentKeySymbol.
+ * @throws Error if used outside of a document context
+ */
+export function useDocumentKey(): Ref<DocumentKey> {
+	const key = inject<Ref<DocumentKey>>(DocumentKeySymbol);
+	if (!key) {
+		throw new Error('useDocumentKey must be used within a document context (NodeView)');
+	}
+	return key;
+}
+
+/**
+ * Optionally injects the document key from the component tree.
+ * Returns undefined if not within a document context.
+ * Use this when you need to support both document-aware and singleton modes.
+ */
+export function useOptionalDocumentKey(): Ref<DocumentKey> | undefined {
+	return inject<Ref<DocumentKey> | undefined>(DocumentKeySymbol);
+}

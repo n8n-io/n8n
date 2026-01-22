@@ -22,11 +22,12 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsStore, createDocumentKey } from '@/app/stores/workflows.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import type {
 	AddedNodesAndConnections,
+	DocumentKey,
 	INodeUi,
 	IWorkflowDb,
 	NodeCreatorOpenSource,
@@ -64,6 +65,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
+	DocumentKeySymbol,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -215,6 +217,19 @@ const workflowState = useWorkflowState();
 // Initialize activity detection for collaboration
 useActivityDetection();
 provide(WorkflowStateKey, workflowState);
+
+// Provide document key for multi-workflow support
+// The document key is computed from the workflow ID (from route) and defaults to 'latest' version
+const documentKey = computed<DocumentKey>(() => {
+	// Use the route workflow ID if available, otherwise use the store workflow ID
+	const id = route.params.name
+		? Array.isArray(route.params.name)
+			? route.params.name[0]
+			: route.params.name
+		: workflowsStore.workflowId;
+	return createDocumentKey(id || '', 'latest');
+});
+provide(DocumentKeySymbol, documentKey);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
