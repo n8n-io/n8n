@@ -312,6 +312,10 @@ class NodeChainImpl<
 		// Aggregate connections from all nodes in the chain
 		const allConnections: DeclaredConnection[] = [];
 		for (const node of this.allNodes) {
+			// Skip null values (can occur when .then([null, node]) is used for multi-output nodes)
+			if (node === null) {
+				continue;
+			}
 			// Skip composites (SwitchCaseComposite, etc.) which don't have getConnections
 			if (typeof node.getConnections === 'function') {
 				allConnections.push(...node.getConnections());

@@ -902,6 +902,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Add all target nodes and connect them to the current node
 		nodes.forEach((node, index) => {
+			// Skip null values (empty branches for IF/Switch/SplitInBatches outputs)
+			// but preserve the index for correct output mapping
+			if (node === null) {
+				return;
+			}
+
 			// Use addBranchToGraph to handle NodeChains properly
 			// This returns the head node name for connection
 			const headNodeName = this.addBranchToGraph(newNodes, node);
@@ -921,10 +927,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			}
 		});
 
-		// Set the last node in the array as the current node (for continued chaining)
-		// For NodeChains, use the tail node name
-		const lastNode = nodes[nodes.length - 1];
-		const lastNodeName = isNodeChain(lastNode) ? lastNode.tail.name : lastNode.name;
+		// Set the last non-null node in the array as the current node (for continued chaining)
+		// For NodeChains, use the tail node name (if tail is not null)
+		const nonNullNodes = nodes.filter((n): n is NonNullable<typeof n> => n !== null);
+		const lastNode = nonNullNodes[nonNullNodes.length - 1];
+		const lastNodeName = lastNode
+			? isNodeChain(lastNode)
+				? (lastNode.tail?.name ?? this._currentNode)
+				: lastNode.name
+			: this._currentNode;
 
 		return this.clone({
 			nodes: newNodes,
@@ -962,7 +973,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 			// Connect the TAIL of each branch to the merge node at the correct INPUT INDEX
 			// For NodeChains, tail is the last node; for single nodes, it's the node itself
-			const tailNodeName = isNodeChain(branchNode) ? branchNode.tail.name : branchNode.name;
+			// Handle case where tail could be null (from [null, node] array syntax)
+			const tailNodeName = isNodeChain(branchNode) ? branchNode.tail?.name : branchNode.name;
+			if (!tailNodeName) {
+				return; // Skip branches with null tail
+			}
 			const tailGraphNode = newNodes.get(tailNodeName)!;
 			const tailMainConns = tailGraphNode.connections.get('main') || new Map();
 			tailMainConns.set(0, [
@@ -998,6 +1013,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (isNodeChain(branch)) {
 			// Add all nodes from the chain, handling composites that may have been chained
 			for (const chainNode of branch.allNodes) {
+				// Skip null values (can occur when .then([null, node]) is used)
+				if (chainNode === null) {
+					continue;
+				}
+
 				// Check if chainNode is a composite (can happen via chain.then(ifBranch(...)))
 				if (this.isSwitchCaseComposite(chainNode)) {
 					this.addSwitchCaseNodes(nodes, chainNode as unknown as SwitchCaseComposite);
@@ -1016,6 +1036,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				// Find the source node in the chain that declared this connection
 				// by looking for the node whose .then() was called
 				for (const chainNode of branch.allNodes) {
+					// Skip null values (from array syntax like [null, node])
+					if (chainNode === null) {
+						continue;
+					}
 					if (typeof chainNode.getConnections === 'function') {
 						const nodeConns = chainNode.getConnections();
 						if (nodeConns.some((c) => c.target === target && c.outputIndex === outputIndex)) {

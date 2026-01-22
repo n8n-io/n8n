@@ -76,7 +76,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '5683', - now passes after multiple triggers/convergence fixes
 	// '5690', - now passes after multiple triggers/convergence fixes
 	// '5691', - now passes after multiple triggers/convergence fixes
-	'5694',
+	// '5694', - now passes after IF/Merge convergence and cycle-back fixes
 	// '5707', - now passes after multiple triggers/convergence fixes
 	// '5711', - now passes after multiple triggers/convergence fixes
 	'5734', // still has connection source mismatch
@@ -98,7 +98,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '5835', - now passes after shared fan-out target fix
 	'5841',
 	'5842',
-	'5851', // parse fixed, but connection mismatch (nodes: 13 vs 13, conns: 10 vs 9)
+	// '5851', - now passes after IF/Merge convergence and cycle-back fixes
 	// '5857' - now passes after fan-out pattern fix
 	// '5906' - now passes after convergence pattern fix
 	// '5910', - now passes after multiple triggers/convergence fixes
@@ -113,8 +113,8 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'6542', // still has connection source mismatch
 	// '6765', - now passes after multiple triggers/convergence fixes
 	// '6771', - now passes after shared fan-out target fix
-	'6897',
-	'6993', // parse fixed, but connection mismatch (nodes: 32 vs 32, conns: 32 vs 31)
+	// '6897', - now passes after IF/Merge convergence and cycle-back fixes
+	// '6993', - now passes after IF/Merge convergence and cycle-back fixes
 	// '7130', - now passes after multiple triggers/convergence fixes
 	'7154',
 	// '7156' - now passes after handleFanOut NodeChain fix
@@ -139,7 +139,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '9549' - now passes after fan-out pattern fix
 	// '9576', - now passes after multiple triggers/convergence fixes
 	'9605',
-	'9801',
+	// '9801', - now passes after IF/Merge convergence and cycle-back fixes
 	'9814',
 	// '9867', - now passes after multiple triggers/convergence fixes
 	// '9876', - now passes after multiple triggers/convergence fixes

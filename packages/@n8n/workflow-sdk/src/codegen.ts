@@ -893,9 +893,14 @@ function generateChain(
 						if (outputs.length > 0) {
 							// First connect to the IF/Switch/SplitInBatches node
 							lines.push(`  .then(${varName})`);
-							// Then generate branches as array
+
+							// Find the max output index to ensure we generate nulls for empty outputs
+							const maxOutputIndex = Math.max(...outputs.map(([idx]) => idx));
+
+							// Then generate branches as array, including nulls for empty outputs
 							const branchCalls: string[] = [];
-							for (const [_outputIndex, branchTargets] of outputs) {
+							for (let outputIndex = 0; outputIndex <= maxOutputIndex; outputIndex++) {
+								const branchTargets = targetInfo.outgoingConnections.get(outputIndex) ?? [];
 								if (branchTargets.length === 0) {
 									branchCalls.push('null');
 								} else {
@@ -1536,6 +1541,119 @@ function generateChainUpToMerge(
 }
 
 /**
+ * Generate a convergence node WITH its downstream chain.
+ *
+ * This is specifically for convergence nodes (nodes reachable from multiple branches).
+ * For Merge nodes: generates as simple node() call, NOT merge([...]).
+ * The sources will connect via .then(convergenceVar) from the branch chains.
+ *
+ * This is different from generateNodeCallWithChain which would call generateMergeCall
+ * and try to inline the sources, which is wrong for convergence patterns.
+ */
+function generateConvergenceNodeWithChain(
+	startInfo: NodeInfo,
+	nodeInfoMap: Map<string, NodeInfo>,
+	addedNodes: Set<string>,
+	processingStack?: Set<string>,
+	cycleNodeVars?: Map<string, string>,
+): string {
+	// Start with the node as a simple node() call (even for Merge nodes)
+	let call = generateNodeCall(startInfo.node, nodeInfoMap);
+
+	// Follow the downstream chain
+	let currentInfo: NodeInfo | undefined = startInfo;
+
+	while (currentInfo) {
+		const outputs = Array.from(currentInfo.outgoingConnections.entries());
+
+		// Stop if no outputs or multiple outputs (branching)
+		if (outputs.length !== 1) break;
+
+		const [_outputIndex, targets] = outputs[0];
+
+		// Stop if no targets or multiple targets (fan-out)
+		if (targets.length !== 1) break;
+
+		const target = targets[0];
+		const targetInfo = nodeInfoMap.get(target.to);
+
+		// Stop if target not found or is a subnode
+		if (!targetInfo || targetInfo.isSubnodeOf) break;
+
+		// Check if this is a cycle target node - if so, reference the variable
+		if (addedNodes.has(target.to)) {
+			if (cycleNodeVars?.has(target.to)) {
+				const varName = cycleNodeVars.get(target.to)!;
+				call += `.then(${varName})`;
+			}
+			break;
+		}
+
+		// Check if processing stack has this node (cycle detection)
+		if (processingStack?.has(target.to)) {
+			if (cycleNodeVars?.has(target.to)) {
+				call += `.then(${cycleNodeVars.get(target.to)!})`;
+			}
+			break;
+		}
+
+		// Handle composite patterns (IF, Switch, Merge) in downstream
+		if (isIfNode(targetInfo.node)) {
+			const ifResult = generateIfBranchCall(
+				targetInfo,
+				nodeInfoMap,
+				addedNodes,
+				undefined,
+				processingStack,
+				cycleNodeVars,
+			);
+			if (ifResult) {
+				addedNodes.add(target.to);
+				call += `.then(${ifResult.call})`;
+				currentInfo = targetInfo;
+				continue;
+			}
+			break;
+		}
+
+		if (isSwitchNode(targetInfo.node)) {
+			const switchResult = generateSwitchCaseCall(
+				targetInfo,
+				nodeInfoMap,
+				addedNodes,
+				processingStack,
+				cycleNodeVars,
+			);
+			if (switchResult) {
+				addedNodes.add(target.to);
+				call += `.then(${switchResult.call})`;
+				currentInfo = targetInfo;
+				continue;
+			}
+			break;
+		}
+
+		if (isMergeNode(targetInfo.node)) {
+			const mergeCall = generateMergeCall(targetInfo, nodeInfoMap, addedNodes);
+			if (mergeCall) {
+				addedNodes.add(target.to);
+				call += `.then(${mergeCall})`;
+				currentInfo = targetInfo;
+				continue;
+			}
+			break;
+		}
+
+		// Add regular node to chain
+		addedNodes.add(target.to);
+		call += `.then(${generateNodeCall(targetInfo.node, nodeInfoMap)})`;
+		currentInfo = targetInfo;
+	}
+
+	return call;
+}
+
+/**
  * Generate a merge() call for a Merge node.
  * Returns the merge call string, or null if pattern doesn't match.
  *
@@ -1645,6 +1763,14 @@ function generateNodeCallWithChain(
 		return `/* cycle: ${startInfo.node.name} */`;
 	}
 
+	// IMPORTANT: Check if the START node is a convergence node FIRST
+	// This must come BEFORE composite pattern checks (IF, Switch, Merge)
+	// because convergence nodes should reference their variable, not be regenerated
+	if (convergenceCtx?.convergenceVars.has(startInfo.node.name)) {
+		const varName = convergenceCtx.convergenceVars.get(startInfo.node.name)!;
+		return varName;
+	}
+
 	// For IF/Switch nodes that are cycle targets, we can't use ifBranch/switchCase
 	// because those create new nodes. Instead, use the variable reference and
 	// let the branches be connected via .then([...]) syntax.
@@ -1685,12 +1811,6 @@ function generateNodeCallWithChain(
 		if (mergeCall) {
 			return mergeCall;
 		}
-	}
-
-	// Check if the START node is a convergence node - if so, reference its variable
-	if (convergenceCtx?.convergenceVars.has(startInfo.node.name)) {
-		const varName = convergenceCtx.convergenceVars.get(startInfo.node.name)!;
-		return varName;
 	}
 
 	// Check if the START node is a cycle target node - if so, use variable reference
@@ -1860,12 +1980,75 @@ function generateNodeCallWithChain(
 		}
 
 		// Check if this is a cycle target node - if so, reference the variable
-		// This preserves backward edges in polling loops
-		if (addedNodes.has(target.to)) {
-			if (cycleNodeVars?.has(target.to)) {
-				const varName = cycleNodeVars.get(target.to)!;
-				call += `.then(${varName})`;
+		// This check must come BEFORE the addedNodes check because on first encounter
+		// of a cycle target, we want to use its variable reference, not generate a new node
+		if (cycleNodeVars?.has(target.to)) {
+			const varName = cycleNodeVars.get(target.to)!;
+			call += `.then(${varName})`;
+
+			// Check if this is a CYCLE BACK (node already processed) or FIRST ENCOUNTER
+			// If already added, the branches were already generated - just use the variable reference
+			const alreadyProcessed = addedNodes.has(target.to);
+
+			// Mark as added to prevent re-processing
+			addedNodes.add(target.to);
+
+			// For IF/Switch/SplitInBatches cycle targets on FIRST encounter, also generate their branches
+			// Skip branch generation if cycling back (already processed)
+			if (
+				!alreadyProcessed &&
+				(isIfNode(targetInfo.node) ||
+					isSwitchNode(targetInfo.node) ||
+					isSplitInBatchesNode(targetInfo.node))
+			) {
+				const outputs = Array.from(targetInfo.outgoingConnections.entries()).sort(
+					([a], [b]) => a - b,
+				);
+				if (outputs.length > 0) {
+					// Find the max output index to ensure we generate nulls for empty outputs
+					const maxOutputIndex = Math.max(...outputs.map(([idx]) => idx));
+
+					const branchCalls: string[] = [];
+					for (let outputIndex = 0; outputIndex <= maxOutputIndex; outputIndex++) {
+						const branchTargets = targetInfo.outgoingConnections.get(outputIndex) ?? [];
+						if (branchTargets.length === 0) {
+							branchCalls.push('null');
+						} else {
+							const branchTarget = branchTargets[0];
+							const branchInfo = nodeInfoMap.get(branchTarget.to);
+							if (!branchInfo || branchInfo.isSubnodeOf) {
+								branchCalls.push('null');
+							} else if (addedNodes.has(branchTarget.to)) {
+								if (cycleNodeVars?.has(branchTarget.to)) {
+									branchCalls.push(cycleNodeVars.get(branchTarget.to)!);
+								} else {
+									branchCalls.push('null');
+								}
+							} else if (branchTarget.to === targetInfo.node.name) {
+								branchCalls.push(varName);
+							} else {
+								addedNodes.add(branchTarget.to);
+								branchCalls.push(
+									generateNodeCallWithChain(
+										branchInfo,
+										nodeInfoMap,
+										addedNodes,
+										convergenceCtx,
+										new Set([targetInfo.node.name]),
+										cycleNodeVars,
+									),
+								);
+							}
+						}
+					}
+					call += `.then([${branchCalls.join(', ')}])`;
+				}
 			}
+			break;
+		}
+
+		// Check if already processed (for non-cycle nodes)
+		if (addedNodes.has(target.to)) {
 			break;
 		}
 
@@ -2017,12 +2200,13 @@ function generateIfBranchCall(
 		addedNodes.add(nodeName);
 
 		// Generate the convergence node WITH its downstream chain
-		// This ensures the full chain from the convergence point is included
-		const chainCall = generateNodeCallWithChain(
+		// For Merge convergence nodes: generate as simple node() with downstream chain
+		// (NOT using merge([...]) which would inline the sources)
+		// The sources will connect to this variable via .then(varName)
+		const chainCall = generateConvergenceNodeWithChain(
 			nodeInfo,
 			nodeInfoMap,
 			addedNodes,
-			undefined,
 			processingStack,
 			cycleNodeVars,
 		);

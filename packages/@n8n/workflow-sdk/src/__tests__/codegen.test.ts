@@ -2473,3 +2473,128 @@ describe('Multiple triggers', () => {
 		expect(parsed.connections['Merge'].main[0][0].node).toBe('AI Agent');
 	});
 });
+
+describe('SplitInBatches with IF branch converging to Merge (workflow 6993 pattern)', () => {
+	it('should preserve all connections in SplitInBatches loop with IF->Merge convergence', () => {
+		// Pattern from workflow 6993:
+		// Loop Over Items[0] -> (done, empty)
+		// Loop Over Items[1] -> Company website exists (IF)
+		// Company website exists[0] (true) -> Scrape -> Set Fields -> Merge[0]
+		// Company website exists[1] (false) -> Merge[1]
+		// Merge -> Message Generator -> Upsert -> Loop Over Items (back to loop)
+		const workflow: WorkflowJSON = {
+			id: 'sib-if-merge-test',
+			name: 'SplitInBatches IF Merge Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Loop Over Items',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Company website exists',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'Scrape & Summarize',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [600, 0],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'Set Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [800, 0],
+					parameters: {},
+				},
+				{
+					id: '6',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [1000, 100],
+					parameters: {},
+				},
+				{
+					id: '7',
+					name: 'Message Generator',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1200, 100],
+					parameters: {},
+				},
+				{
+					id: '8',
+					name: 'Supabase Upsert',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1400, 100],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]] },
+				'Loop Over Items': {
+					main: [
+						[], // output 0: done (empty in this test)
+						[{ node: 'Company website exists', type: 'main', index: 0 }], // output 1: loop
+					],
+				},
+				'Company website exists': {
+					main: [
+						[{ node: 'Scrape & Summarize', type: 'main', index: 0 }], // true branch
+						[{ node: 'Merge', type: 'main', index: 1 }], // false branch directly to Merge
+					],
+				},
+				'Scrape & Summarize': { main: [[{ node: 'Set Fields', type: 'main', index: 0 }]] },
+				'Set Fields': { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				Merge: { main: [[{ node: 'Message Generator', type: 'main', index: 0 }]] },
+				'Message Generator': { main: [[{ node: 'Supabase Upsert', type: 'main', index: 0 }]] },
+				'Supabase Upsert': { main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Verify all nodes present
+		expect(parsed.nodes).toHaveLength(8);
+
+		// CRITICAL: Verify Loop Over Items[1] -> Company website exists connection
+		expect(parsed.connections['Loop Over Items']).toBeDefined();
+		expect(parsed.connections['Loop Over Items'].main[1]).toBeDefined();
+		expect(parsed.connections['Loop Over Items'].main[1][0].node).toBe('Company website exists');
+
+		// CRITICAL: Verify IF branches are connected
+		expect(parsed.connections['Company website exists']).toBeDefined();
+		expect(parsed.connections['Company website exists'].main[0][0].node).toBe('Scrape & Summarize');
+		expect(parsed.connections['Company website exists'].main[1][0].node).toBe('Merge');
+
+		// CRITICAL: Verify the chain continues from Merge
+		expect(parsed.connections['Merge']).toBeDefined();
+		expect(parsed.connections['Merge'].main[0][0].node).toBe('Message Generator');
+
+		// CRITICAL: Verify the loop back connection
+		expect(parsed.connections['Supabase Upsert']).toBeDefined();
+		expect(parsed.connections['Supabase Upsert'].main[0][0].node).toBe('Loop Over Items');
+	});
+});
