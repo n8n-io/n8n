@@ -26,7 +26,6 @@ interface Pagination {
 }
 
 export interface PaginationRequestOptions {
-	includeEntryId?: boolean;
 	throwOnError?: boolean;
 }
 
@@ -50,7 +49,6 @@ export async function paginatedRequest<T>(
 ): Promise<T[]> {
 	let returnData: T[] = [];
 	let responseData: T[] | undefined = [];
-	const { includeEntryId } = options || {};
 
 	do {
 		let response;
@@ -68,12 +66,11 @@ export async function paginatedRequest<T>(
 				`Error while fetching community nodes: ${(error as Error).message}`,
 			);
 			if (options?.throwOnError) throw error;
+
 			break;
 		}
 
-		responseData = response?.data?.data?.map((item) =>
-			includeEntryId ? { id: item.id, ...item.attributes } : item.attributes,
-		);
+		responseData = response?.data?.data?.map((item) => ({ id: item.id, ...item.attributes }));
 
 		if (!responseData?.length) break;
 

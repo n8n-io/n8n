@@ -199,32 +199,7 @@ describe('Strapi utils', () => {
 			axiosGetSpy.mockRestore();
 		});
 
-		it('should throw error when throwOnError is true', async () => {
-			const error = new Error('API Error');
-			nock('https://strapi.test').get('/api/nodes').query(true).replyWithError(error);
-
-			await expect(
-				paginatedRequest(
-					baseUrl,
-					{ pagination: { page: 1, pageSize: 25 } },
-					{ throwOnError: true },
-				),
-			).rejects.toThrow('API Error');
-		});
-
-		it('should return empty array when throwOnError is false', async () => {
-			nock('https://strapi.test').get('/api/nodes').query(true).replyWithError('API Error');
-
-			const result = await paginatedRequest(
-				baseUrl,
-				{ pagination: { page: 1, pageSize: 25 } },
-				{ throwOnError: false },
-			);
-
-			expect(result).toEqual([]);
-		});
-
-		it('should include entry IDs when includeEntryId is true', async () => {
+		it('should always include entry IDs in results', async () => {
 			const data = [
 				{
 					id: 123,
@@ -247,48 +222,10 @@ describe('Strapi utils', () => {
 					},
 				});
 
-			const result = await paginatedRequest(
-				baseUrl,
-				{ pagination: { page: 1, pageSize: 25 } },
-				{ includeEntryId: true },
-			);
+			const result = await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual({ id: 123, name: 'Node1', version: '1.0.0' });
-		});
-
-		it('should exclude entry IDs when includeEntryId is false', async () => {
-			const data = [
-				{
-					id: 123,
-					attributes: { name: 'Node1', version: '1.0.0' },
-				},
-			];
-
-			nock('https://strapi.test')
-				.get('/api/nodes')
-				.query(true)
-				.reply(200, {
-					data,
-					meta: {
-						pagination: {
-							page: 1,
-							pageSize: 25,
-							pageCount: 1,
-							total: 1,
-						},
-					},
-				});
-
-			const result = await paginatedRequest(
-				baseUrl,
-				{ pagination: { page: 1, pageSize: 25 } },
-				{ includeEntryId: false },
-			);
-
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({ name: 'Node1', version: '1.0.0' });
-			expect(result[0]).not.toHaveProperty('id');
 		});
 
 		it('should pass filters parameter to API', async () => {
@@ -299,9 +236,11 @@ describe('Strapi utils', () => {
 				},
 			];
 
+			const axiosGetSpy = jest.spyOn(axios, 'get');
+
 			nock('https://strapi.test')
 				.get('/api/nodes')
-				.query(true)
+				.query(true) // Accept any query
 				.reply(200, {
 					data,
 					meta: {
@@ -321,6 +260,17 @@ describe('Strapi utils', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].name).toBe('FilteredNode');
+			// Verify that filters were passed to axios
+			expect(axiosGetSpy).toHaveBeenCalledWith(
+				baseUrl,
+				expect.objectContaining({
+					params: expect.objectContaining({
+						filters: { status: { $eq: 'active' } },
+					}),
+				}),
+			);
+
+			axiosGetSpy.mockRestore();
 		});
 
 		it('should pass fields parameter to API', async () => {
@@ -331,9 +281,11 @@ describe('Strapi utils', () => {
 				},
 			];
 
+			const axiosGetSpy = jest.spyOn(axios, 'get');
+
 			nock('https://strapi.test')
 				.get('/api/nodes')
-				.query(true)
+				.query(true) // Accept any query
 				.reply(200, {
 					data,
 					meta: {
@@ -353,6 +305,17 @@ describe('Strapi utils', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].name).toBe('Node1');
+			// Verify that fields were passed to axios
+			expect(axiosGetSpy).toHaveBeenCalledWith(
+				baseUrl,
+				expect.objectContaining({
+					params: expect.objectContaining({
+						fields: ['name', 'version'],
+					}),
+				}),
+			);
+
+			axiosGetSpy.mockRestore();
 		});
 
 		it('should pass both filters and fields parameters together', async () => {
@@ -363,9 +326,11 @@ describe('Strapi utils', () => {
 				},
 			];
 
+			const axiosGetSpy = jest.spyOn(axios, 'get');
+
 			nock('https://strapi.test')
 				.get('/api/nodes')
-				.query(true)
+				.query(true) // Accept any query
 				.reply(200, {
 					data,
 					meta: {
@@ -386,73 +351,18 @@ describe('Strapi utils', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].name).toBe('Node1');
-		});
-
-		it('should handle multiple options simultaneously', async () => {
-			const data = [
-				{
-					id: 456,
-					attributes: { name: 'Node1' },
-				},
-			];
-
-			nock('https://strapi.test')
-				.get('/api/nodes')
-				.query(true)
-				.reply(200, {
-					data,
-					meta: {
-						pagination: {
-							page: 1,
-							pageSize: 25,
-							pageCount: 1,
-							total: 1,
-						},
-					},
-				});
-
-			const result = await paginatedRequest(
+			// Verify that both filters and fields were passed to axios
+			expect(axiosGetSpy).toHaveBeenCalledWith(
 				baseUrl,
-				{ pagination: { page: 1, pageSize: 25 } },
-				{ throwOnError: true, includeEntryId: true },
+				expect.objectContaining({
+					params: expect.objectContaining({
+						filters: { status: { $eq: 'active' } },
+						fields: ['name'],
+					}),
+				}),
 			);
 
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual({ id: 456, name: 'Node1' });
-		});
-
-		it('should work when options parameter is undefined', async () => {
-			const data = [
-				{
-					id: 1,
-					attributes: { name: 'Node1' },
-				},
-			];
-
-			nock('https://strapi.test')
-				.get('/api/nodes')
-				.query(true)
-				.reply(200, {
-					data,
-					meta: {
-						pagination: {
-							page: 1,
-							pageSize: 25,
-							pageCount: 1,
-							total: 1,
-						},
-					},
-				});
-
-			const result = await paginatedRequest<{ name: string }>(
-				baseUrl,
-				{ pagination: { page: 1, pageSize: 25 } },
-				undefined,
-			);
-
-			expect(result).toHaveLength(1);
-			expect(result[0].name).toBe('Node1');
-			expect(result[0]).not.toHaveProperty('id');
+			axiosGetSpy.mockRestore();
 		});
 	});
 

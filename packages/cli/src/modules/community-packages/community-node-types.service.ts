@@ -7,6 +7,7 @@ import {
 	getCommunityNodeTypes,
 	getCommunityNodesMetadata,
 	StrapiCommunityNodeType,
+	type CommunityNodesMetadata,
 } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
@@ -27,11 +28,23 @@ export class CommunityNodeTypesService {
 		private communityPackagesService: CommunityPackagesService,
 	) {}
 
-	private async detectUpdates(environment: 'staging' | 'production'): Promise<number[]> {
-		const communityNodesMetadata = await getCommunityNodesMetadata(environment);
+	private async detectUpdates(
+		environment: 'staging' | 'production',
+	): Promise<{ typesToUpdate?: number[]; scheduleRetry?: boolean }> {
+		let communityNodesMetadata: CommunityNodesMetadata[] = [];
+		try {
+			communityNodesMetadata = await getCommunityNodesMetadata(environment);
+		} catch (error) {
+			this.logger.error('Failed to fetch community nodes metadata', {
+				error: ensureError(error),
+			});
+			return { scheduleRetry: true };
+		}
 
 		const typesToUpdate: number[] = [];
+		const metadataNames = new Set(communityNodesMetadata.map((entry) => entry.name));
 
+		// Detect updates and new entries
 		for (const entry of communityNodesMetadata) {
 			const nodeType = this.communityNodeTypes.get(entry.name);
 
@@ -47,7 +60,17 @@ export class CommunityNodeTypesService {
 			}
 		}
 
-		return typesToUpdate;
+		// Detect and remove deleted entries
+		for (const [name, nodeType] of this.communityNodeTypes.entries()) {
+			if (!metadataNames.has(name)) {
+				this.logger.debug(
+					`Detected removal of community node type: name - ${name}; id - ${nodeType.id};`,
+				);
+				this.communityNodeTypes.delete(name);
+			}
+		}
+
+		return { typesToUpdate };
 	}
 
 	private async fetchNodeTypes() {
@@ -62,10 +85,15 @@ export class CommunityNodeTypesService {
 					this.updateCommunityNodeTypes(data);
 					return;
 				}
-				const typesToUpdate = await this.detectUpdates(environment);
+				const { typesToUpdate, scheduleRetry } = await this.detectUpdates(environment);
 
-				if (!typesToUpdate.length) {
-					this.updateCommunityNodeTypes(data);
+				if (scheduleRetry) {
+					this.setTimestampForRetry();
+					return;
+				}
+
+				if (!typesToUpdate?.length) {
+					this.lastUpdateTimestamp = Date.now();
 					return;
 				}
 

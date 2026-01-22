@@ -85,6 +85,48 @@ describe('CommunityNodeTypesService', () => {
 			await (service as any).fetchNodeTypes();
 			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
 		});
+
+		it('should call setTimestampForRetry when detectUpdates returns scheduleRetry', async () => {
+			// Set up initial state so detectUpdates is called
+			(service as any).communityNodeTypes.set('node-1', {
+				name: 'node-1',
+				packageName: 'package-1',
+				npmVersion: '1.0.0',
+			});
+
+			const detectUpdatesSpy = jest
+				.spyOn(service as any, 'detectUpdates')
+				.mockResolvedValue({ scheduleRetry: true });
+			const setTimestampForRetrySpy = jest.spyOn(service as any, 'setTimestampForRetry');
+
+			await (service as any).fetchNodeTypes();
+
+			expect(detectUpdatesSpy).toHaveBeenCalled();
+			expect(setTimestampForRetrySpy).toHaveBeenCalled();
+		});
+
+		it('should not call setTimestampForRetry when detectUpdates returns typesToUpdate', async () => {
+			// Set up initial state so detectUpdates is called
+			(service as any).communityNodeTypes.set('node-1', {
+				name: 'node-1',
+				packageName: 'package-1',
+				npmVersion: '1.0.0',
+			});
+
+			getCommunityNodeTypes.mockResolvedValue([
+				{ name: 'node-1', packageName: 'package-1', npmVersion: '1.1.0' },
+			]);
+
+			const detectUpdatesSpy = jest
+				.spyOn(service as any, 'detectUpdates')
+				.mockResolvedValue({ typesToUpdate: [1] });
+			const setTimestampForRetrySpy = jest.spyOn(service as any, 'setTimestampForRetry');
+
+			await (service as any).fetchNodeTypes();
+
+			expect(detectUpdatesSpy).toHaveBeenCalled();
+			expect(setTimestampForRetrySpy).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('updateCommunityNodeTypes', () => {
@@ -342,7 +384,7 @@ describe('CommunityNodeTypesService', () => {
 
 			const result = await (service as any).detectUpdates('production');
 
-			expect(result).toEqual([3]);
+			expect(result).toEqual({ typesToUpdate: [3] });
 			expect(loggerMock.debug).toHaveBeenCalledWith(
 				expect.stringContaining('Detected update for community node type: name - node-3'),
 			);
@@ -355,7 +397,7 @@ describe('CommunityNodeTypesService', () => {
 
 			const result = await (service as any).detectUpdates('production');
 
-			expect(result).toEqual([1]);
+			expect(result).toEqual({ typesToUpdate: [1] });
 			expect(loggerMock.debug).toHaveBeenCalledWith(expect.stringContaining('npmVersion - 1.1.0'));
 		});
 
@@ -366,13 +408,13 @@ describe('CommunityNodeTypesService', () => {
 
 			const result = await (service as any).detectUpdates('production');
 
-			expect(result).toEqual([2]);
+			expect(result).toEqual({ typesToUpdate: [2] });
 			expect(loggerMock.debug).toHaveBeenCalledWith(
 				expect.stringContaining('updatedAt - 2024-01-05'),
 			);
 		});
 
-		it('should return empty array when all nodes are current', async () => {
+		it('should return empty typesToUpdate when all nodes are current', async () => {
 			getCommunityNodesMetadata.mockResolvedValue([
 				{ id: 1, name: 'node-1', npmVersion: '1.0.0', updatedAt: '2024-01-01' },
 				{ id: 2, name: 'node-2', npmVersion: '2.0.0', updatedAt: '2024-01-02' },
@@ -380,8 +422,55 @@ describe('CommunityNodeTypesService', () => {
 
 			const result = await (service as any).detectUpdates('production');
 
-			expect(result).toEqual([]);
+			expect(result).toEqual({ typesToUpdate: [] });
 			expect(loggerMock.debug).not.toHaveBeenCalled();
+		});
+
+		it('should detect and remove deleted node types from cache', async () => {
+			getCommunityNodesMetadata.mockResolvedValue([
+				{ id: 1, name: 'node-1', npmVersion: '1.0.0', updatedAt: '2024-01-01' },
+				// node-2 is missing from metadata, should be removed
+			]);
+
+			const result = await (service as any).detectUpdates('production');
+
+			expect(result).toEqual({ typesToUpdate: [] });
+			expect((service as any).communityNodeTypes.has('node-2')).toBe(false);
+			expect((service as any).communityNodeTypes.has('node-1')).toBe(true);
+			expect(loggerMock.debug).toHaveBeenCalledWith(
+				expect.stringContaining('Detected removal of community node type: name - node-2'),
+			);
+		});
+
+		it('should return scheduleRetry when getCommunityNodesMetadata throws error', async () => {
+			getCommunityNodesMetadata.mockRejectedValue(new Error('API error'));
+
+			const result = await (service as any).detectUpdates('production');
+
+			expect(result).toEqual({ scheduleRetry: true });
+			expect(loggerMock.error).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to fetch community nodes metadata'),
+				expect.objectContaining({ error: expect.any(Error) }),
+			);
+		});
+
+		it('should handle both updates and deletions in same call', async () => {
+			getCommunityNodesMetadata.mockResolvedValue([
+				{ id: 1, name: 'node-1', npmVersion: '1.1.0', updatedAt: '2024-01-01' }, // updated
+				// node-2 is missing, should be removed
+			]);
+
+			const result = await (service as any).detectUpdates('production');
+
+			expect(result).toEqual({ typesToUpdate: [1] });
+			expect((service as any).communityNodeTypes.has('node-2')).toBe(false);
+			expect((service as any).communityNodeTypes.has('node-1')).toBe(true);
+			expect(loggerMock.debug).toHaveBeenCalledWith(
+				expect.stringContaining('Detected update for community node type'),
+			);
+			expect(loggerMock.debug).toHaveBeenCalledWith(
+				expect.stringContaining('Detected removal of community node type: name - node-2'),
+			);
 		});
 	});
 

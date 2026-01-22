@@ -18,16 +18,12 @@ describe('community-node-types-utils', () => {
 
 			await getCommunityNodeTypes('production');
 
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(
-				'https://api.n8n.io/api/community-nodes',
-				{
-					pagination: {
-						page: 1,
-						pageSize: 25,
-					},
+			expect(mockPaginatedRequest).toHaveBeenCalledWith('https://api.n8n.io/api/community-nodes', {
+				pagination: {
+					page: 1,
+					pageSize: 25,
 				},
-				undefined,
-			);
+			});
 		});
 
 		it('should call paginatedRequest with correct URL for staging', async () => {
@@ -43,7 +39,6 @@ describe('community-node-types-utils', () => {
 						pageSize: 25,
 					},
 				},
-				undefined,
 			);
 		});
 
@@ -57,57 +52,14 @@ describe('community-node-types-utils', () => {
 
 			await getCommunityNodeTypes('production', qs);
 
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(
-				'https://api.n8n.io/api/community-nodes',
-				{
-					filters: { packageName: { $eq: 'test-package' } },
-					fields: ['name', 'version'],
-					pagination: {
-						page: 1,
-						pageSize: 25,
-					},
+			expect(mockPaginatedRequest).toHaveBeenCalledWith('https://api.n8n.io/api/community-nodes', {
+				filters: { packageName: { $eq: 'test-package' } },
+				fields: ['name', 'version'],
+				pagination: {
+					page: 1,
+					pageSize: 25,
 				},
-				undefined,
-			);
-		});
-
-		it('should pass options to paginatedRequest', async () => {
-			mockPaginatedRequest.mockResolvedValue([]);
-
-			await getCommunityNodeTypes('production', {}, { throwOnError: true });
-
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(
-				'https://api.n8n.io/api/community-nodes',
-				{
-					pagination: {
-						page: 1,
-						pageSize: 25,
-					},
-				},
-				{ throwOnError: true },
-			);
-		});
-
-		it('should pass both query string and options to paginatedRequest', async () => {
-			mockPaginatedRequest.mockResolvedValue([]);
-
-			const qs = {
-				filters: { isOfficialNode: { $eq: true } },
-			};
-
-			await getCommunityNodeTypes('staging', qs, { throwOnError: true, includeEntryId: false });
-
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(
-				'https://api-staging.n8n.io/api/community-nodes',
-				{
-					filters: { isOfficialNode: { $eq: true } },
-					pagination: {
-						page: 1,
-						pageSize: 25,
-					},
-				},
-				{ throwOnError: true, includeEntryId: false },
-			);
+			});
 		});
 
 		it('should return data from paginatedRequest', async () => {
@@ -138,7 +90,7 @@ describe('community-node-types-utils', () => {
 						pageSize: 500,
 					},
 				},
-				{ includeEntryId: true },
+				{ throwOnError: true },
 			);
 		});
 
@@ -156,7 +108,7 @@ describe('community-node-types-utils', () => {
 						pageSize: 500,
 					},
 				},
-				{ includeEntryId: true },
+				{ throwOnError: true },
 			);
 		});
 
@@ -188,16 +140,6 @@ describe('community-node-types-utils', () => {
 				}),
 				expect.any(Object),
 			);
-		});
-
-		it('should always include entry ID in options', async () => {
-			mockPaginatedRequest.mockResolvedValue([]);
-
-			await getCommunityNodesMetadata('staging');
-
-			expect(mockPaginatedRequest).toHaveBeenCalledWith(expect.any(String), expect.any(Object), {
-				includeEntryId: true,
-			});
 		});
 
 		it('should return metadata from paginatedRequest', async () => {

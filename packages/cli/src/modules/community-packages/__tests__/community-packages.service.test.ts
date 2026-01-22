@@ -867,18 +867,20 @@ describe('CommunityPackagesService', () => {
 
 			process.env.ENVIRONMENT = 'staging';
 
-			await communityPackagesService.checkForMissingPackages();
+			try {
+				await communityPackagesService.checkForMissingPackages();
 
-			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {
-				filters: { packageName: { $in: ['package-1'] } },
-				fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
-			});
-
-			// Restore original environment
-			if (originalEnv === undefined) {
-				delete process.env.ENVIRONMENT;
-			} else {
-				process.env.ENVIRONMENT = originalEnv;
+				expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {
+					filters: { packageName: { $in: ['package-1'] } },
+					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+				});
+			} finally {
+				// Restore original environment
+				if (originalEnv === undefined) {
+					delete process.env.ENVIRONMENT;
+				} else {
+					process.env.ENVIRONMENT = originalEnv;
+				}
 			}
 		});
 	});
