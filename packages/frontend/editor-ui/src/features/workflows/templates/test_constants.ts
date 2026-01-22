@@ -282,6 +282,16 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				},
 				position: [928, 720],
 			},
+			{
+				id: '3014b2c8-8886-49c2-8b08-f1a155d50905',
+				name: 'Execute Workflow',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.3,
+				parameters: {
+					options: {},
+				},
+				position: [1168, 624],
+			},
 		],
 		settings: {},
 		connections: {

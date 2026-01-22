@@ -23,6 +23,7 @@ export const PARAMETER_INPUT_TYPES = [
 	'color',
 	'json',
 	'resourceLocator',
+	'workflowSelector',
 ];
 
 // Parameter types that have their own custom components
@@ -58,7 +59,8 @@ export const getNodeRequiredParameters = <TNode extends BaseNode>(
 		// TESTING: For now, we also include:
 		// 	- Parameters that require editors
 		//  - Assignment parameters (from the Set node)
-		if (!prop.required && !prop.typeOptions?.editor && prop.type !== 'assignmentCollection')
+		const TEST_PARAMETER_TYPES = ['assignmentCollection', 'workflowSelector'];
+		if (!prop.required && !prop.typeOptions?.editor && !TEST_PARAMETER_TYPES.includes(prop.type))
 			return false;
 
 		// Only supported simple types
