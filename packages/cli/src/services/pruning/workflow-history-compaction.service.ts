@@ -94,7 +94,7 @@ export class WorkflowHistoryCompactionService {
 			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds <
 				this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds
 		) {
-			this.logger.info('Skipping workflow history trimming as pruneAge < trimmingMinimumAge');
+			this.logger.debug('Skipping workflow history trimming as pruneAge < trimmingMinimumAge');
 			return;
 		}
 
@@ -141,7 +141,7 @@ export class WorkflowHistoryCompactionService {
 
 	private async trimLongRunningHistories(): Promise<void> {
 		if (this.isTrimmingHistories) {
-			this.logger.warn('Skipping trimming as there is already a running iteration');
+			this.logger.debug('Skipping trimming as there is already a running iteration');
 			return;
 		}
 		this.isTrimmingHistories = true;
@@ -176,7 +176,7 @@ export class WorkflowHistoryCompactionService {
 
 	private async optimizeHistories(): Promise<void> {
 		if (this.isOptimizingHistories) {
-			this.logger.warn('Skipping recent optimization as there is already a running iteration');
+			this.logger.debug('Skipping recent optimization as there is already a running iteration');
 			return;
 		}
 		this.isOptimizingHistories = true;
@@ -213,7 +213,7 @@ export class WorkflowHistoryCompactionService {
 		const startIso = startDate.toISOString();
 		const endIso = endDate.toISOString();
 
-		this.logger.info('Starting workflow history compaction', {
+		this.logger.debug('Starting workflow history compaction', {
 			dateRange: { start: startIso, end: endIso },
 			config: this.config,
 		});
@@ -271,7 +271,7 @@ export class WorkflowHistoryCompactionService {
 		}
 
 		const durationMs = Date.now() - compactionStartTime;
-		this.logger.info('Workflow history compaction complete', {
+		this.logger.debug('Workflow history compaction complete', {
 			workflowsProcessed: workflowIds.length,
 			totalVersionsSeen,
 			totalVersionsDeleted,
