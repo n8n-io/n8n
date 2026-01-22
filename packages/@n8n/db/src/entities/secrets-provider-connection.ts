@@ -10,7 +10,7 @@ export class SecretsProviderConnection extends WithTimestampsAndStringId {
 	@Column({ unique: true })
 	name: string;
 
-	@Column({ type: 'varchar', nullable: true })
+	@Column({ nullable: true })
 	displayName: string | null;
 
 	@Column()
