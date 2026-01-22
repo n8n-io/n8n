@@ -435,5 +435,131 @@ describe('composite-builder', () => {
 				expect(tree.variables.size).toBe(0);
 			});
 		});
+
+		describe('orphaned nodes', () => {
+			it('includes disconnected nodes that are not reachable from any root', () => {
+				// Workflow with a trigger chain AND a completely disconnected node
+				const json: WorkflowJSON = {
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Process',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'Disconnected',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [300, 300],
+							// No connections at all - truly orphaned
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Process', type: 'main', index: 0 }]] },
+						// Disconnected has no connections
+					},
+				};
+
+				const graph = prepareGraph(json);
+				const tree = buildCompositeTree(graph);
+
+				// Should have 2 roots: the main chain AND the disconnected node
+				expect(tree.roots).toHaveLength(2);
+
+				// Find all node names in the tree
+				const nodeNames: string[] = [];
+				function collectNodeNames(node: unknown) {
+					if (!node || typeof node !== 'object') return;
+					const n = node as { kind?: string; node?: { name: string }; nodes?: unknown[] };
+					if (n.kind === 'leaf' && n.node) {
+						nodeNames.push(n.node.name);
+					} else if (n.kind === 'chain' && n.nodes) {
+						n.nodes.forEach(collectNodeNames);
+					}
+				}
+				tree.roots.forEach(collectNodeNames);
+
+				// All 3 nodes should be present
+				expect(nodeNames).toContain('Trigger');
+				expect(nodeNames).toContain('Process');
+				expect(nodeNames).toContain('Disconnected');
+			});
+
+			it('includes all nodes in a disconnected component (not just the first node)', () => {
+				// Workflow with main trigger chain AND a disconnected component (A -> B)
+				// where B has incoming connections but isn't reachable from the main trigger
+				const json: WorkflowJSON = {
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Process',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'DisconnectedRoot',
+							type: 'n8n-nodes-base.noOp', // Not a trigger but no incoming connections
+							typeVersion: 1,
+							position: [0, 200],
+						},
+						{
+							id: '4',
+							name: 'DisconnectedLeaf',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [100, 200],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Process', type: 'main', index: 0 }]] },
+						DisconnectedRoot: { main: [[{ node: 'DisconnectedLeaf', type: 'main', index: 0 }]] },
+					},
+				};
+
+				const graph = prepareGraph(json);
+				const tree = buildCompositeTree(graph);
+
+				// Find all node names in the tree
+				const nodeNames: string[] = [];
+				function collectNodeNames(node: unknown) {
+					if (!node || typeof node !== 'object') return;
+					const n = node as { kind?: string; node?: { name: string }; nodes?: unknown[] };
+					if (n.kind === 'leaf' && n.node) {
+						nodeNames.push(n.node.name);
+					} else if (n.kind === 'chain' && n.nodes) {
+						n.nodes.forEach(collectNodeNames);
+					}
+				}
+				tree.roots.forEach(collectNodeNames);
+
+				// All 4 nodes should be present
+				expect(nodeNames).toContain('Trigger');
+				expect(nodeNames).toContain('Process');
+				expect(nodeNames).toContain('DisconnectedRoot');
+				expect(nodeNames).toContain('DisconnectedLeaf');
+				expect(nodeNames).toHaveLength(4);
+			});
+		});
 	});
 });

@@ -720,6 +720,48 @@ describe('code-generator', () => {
 				// Should NOT have name since "Manual Trigger" matches default for "manualTrigger"
 				expect(code).not.toContain("name: 'Manual Trigger'");
 			});
+
+			it('always includes name for composite nodes like IF (even if matching default)', () => {
+				// The parser's ifBranch defaults to "IF", but the codegen default is "If"
+				// We must always include the name for composite nodes to ensure roundtrip works
+				const json: WorkflowJSON = {
+					id: 'if-name-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'If', // Matches codegen default but not parser default
+							type: 'n8n-nodes-base.if',
+							typeVersion: 2.2,
+							position: [100, 0],
+							parameters: { conditions: {} },
+						},
+						{
+							id: '3',
+							name: 'TrueHandler',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 0],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'If', type: 'main', index: 0 }]] },
+						If: { main: [[{ node: 'TrueHandler', type: 'main', index: 0 }]] },
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// IF node must always include its name in the config for roundtrip
+				expect(code).toContain("name: 'If'");
+			});
 		});
 
 		describe('position tracking', () => {

@@ -404,8 +404,11 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 		parts.push(`version: ${node.json.typeVersion}`);
 	}
 
-	const defaultName = generateDefaultNodeName(node.type);
-	if (node.json.name && node.json.name !== defaultName) {
+	// ALWAYS include name for composite nodes (ifBranch, merge, switchCase, splitInBatches)
+	// because the parser's hardcoded defaults ("IF", "Merge", "Switch", "Split In Batches")
+	// don't match what generateDefaultNodeName() computes from the node type.
+	// Without this, roundtrip fails with name mismatches.
+	if (node.json.name) {
 		parts.push(`name: '${escapeString(node.json.name)}'`);
 	}
 
