@@ -445,7 +445,7 @@ function generateStickyCall(node: SemanticNode): string {
 	const content = escapeString((node.json.parameters?.content as string) ?? '');
 	const options: string[] = [];
 
-	// Always include name for sticky notes (parser generates unique names otherwise)
+	// Only include name if it's truthy - parser will generate unique names for unnamed sticky notes
 	if (node.json.name) {
 		options.push(`name: '${escapeString(node.json.name)}'`);
 	}

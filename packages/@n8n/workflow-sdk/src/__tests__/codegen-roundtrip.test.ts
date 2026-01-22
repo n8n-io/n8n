@@ -11,174 +11,29 @@ import {
 } from './fixtures-download';
 
 const SKIP_WORKFLOWS = new Set<string>([
-	// '2519', - now passes after multiple triggers fix
-	// '2878', - now passes after merge composite downstream connection fix
-	'2896',
-	'3066',
-	'3121',
-	// '3514' - now passes after switch case downstream chain fix
-	// '3586' - now passes after convergence pattern fix
-	// '3770' - now passes after fan-out pattern fix
-	'3790',
-	// '3904', - now passes after multiple triggers/convergence fixes
-	// '4005', - now passes after multiple triggers/convergence fixes
-	// '4247', - now passes after multiple triggers/convergence fixes
-	// '4295', - now passes after orphaned connection filter fix (original workflow has connection from non-existent 'Start' node)
-	// '4365' - now passes after convergence pattern fix
-	'4366',
-	// '4400', - now passes after multiple triggers/convergence fixes
-	// '4457', // cycle to IF node (Help Responder → Command Router) - now passes with cycle support
-	// '4478' - now passes after convergence pattern fix
-	// '4506', - now passes after multiple triggers/convergence fixes
-	'4557',
-	// '4573', - now passes after multiple triggers/convergence fixes
-	// '4600', - now passes after orphaned connection filter fix (original workflow has connection from non-existent node)
-	'4637',
-	// '4678' - now passes after handleFanOut NodeChain fix
-	'4685',
-	// '4721', - now passes after shared fan-out target fix
-	// '4723', - now passes after shared fan-out target fix
-	'4767',
-	'4807',
-	'4827',
-	// '4833', - now passes after sequential polling loop fix
-	// '4846', - now passes after shared fan-out target fix
-	// '4849', - now passes after sequential polling loop fix
-	'4868',
-	// '4912', - now passes after multiple triggers/convergence fixes
-	// '4949' - now passes after switch case downstream chain fix
-	// '4967' - now passes after convergence pattern fix
-	'4975',
-	// '4987' - now passes after convergence pattern fix
-	'5024',
-	'5045',
-	'5139',
-	// '5163', - now passes after shared fan-out target fix (was: key mismatch Merge vs Send Analysis)
-	'5258',
-	'5374', // has both a cycle AND a convergence pattern (Webflow+GoogleSheets1 → NoOp) that breaks roundtrip
-	// '5375', - now passes after multiple triggers/convergence fixes
-	// '5385', - now passes after multiple triggers/convergence fixes
-	// '5434', - now passes after shared fan-out target fix
-	'5435',
-	'5449',
-	'5453',
-	'5523',
-	// '5608', - now passes after shared fan-out target fix
-	'5611',
-	// '5617', - now passes after multiple triggers/convergence fixes
-	// '5618', - now passes after multiple triggers/convergence fixes
-	// '5626', - now passes after multiple triggers/convergence fixes
-	// '5656' - now passes after convergence pattern fix
-	// '5670' - now passes after fan-out pattern fix
-	// '5676' - now passes after convergence pattern fix
-	// '5677', - now passes after multiple triggers/convergence fixes
-	// '5682', - now passes after multiple triggers/convergence fixes
-	// '5683', - now passes after multiple triggers/convergence fixes
-	// '5690', - now passes after multiple triggers/convergence fixes
-	// '5691', - now passes after multiple triggers/convergence fixes
-	// '5694', - now passes after IF/Merge convergence and cycle-back fixes
-	// '5707', - now passes after multiple triggers/convergence fixes
-	// '5711', - now passes after multiple triggers/convergence fixes
-	'5734', // still has connection source mismatch
-	// '5741', - now passes after sequential polling loop fix
-	'5751',
-	// '5755', - now passes after multiple triggers/convergence fixes
-	// '5779', - now passes after shared fan-out target fix
-	// '5786', - now passes after shared fan-out target fix
-	// '5787' - now passes after handleFanOut NodeChain fix
-	'5789',
-	// '5795', - now passes after sequential polling loop fix
-	// '5796', - now passes after multiple triggers/convergence fixes
-	// '5798', - now passes after multiple triggers/convergence fixes
-	// '5799', - now passes after multiple triggers/convergence fixes
-	// '5808' - now passes after nested composite fix
-	// '5817', - now passes after shared fan-out target fix (was: key mismatch Merge vs Send email)
-	// '5820', - now passes after shared fan-out target fix
-	// '5832', - now passes after multiple triggers/convergence fixes
-	// '5835', - now passes after shared fan-out target fix
-	'5841',
-	'5842',
-	// '5851', - now passes after IF/Merge convergence and cycle-back fixes
-	// '5857' - now passes after fan-out pattern fix
-	// '5906' - now passes after convergence pattern fix
-	// '5910', - now passes after multiple triggers/convergence fixes
-	// '5938', - now passes after multiple triggers/convergence fixes
-	'5979',
-	// '6027', - now passes after multiple triggers/convergence fixes
-	// '6067', - now passes after multiple triggers/convergence fixes
-	'6150',
-	// '6524' - now passes after handleFanOut NodeChain fix
-	'6535',
-	// '6538' - now passes after convergence pattern fix
-	'6542', // still has connection source mismatch
-	// '6765', - now passes after multiple triggers/convergence fixes
-	// '6771', - now passes after shared fan-out target fix
-	// '6897', - now passes after IF/Merge convergence and cycle-back fixes
-	// '6993', - now passes after IF/Merge convergence and cycle-back fixes
-	// '7130', - now passes after multiple triggers/convergence fixes
-	'7154',
-	// '7156' - now passes after handleFanOut NodeChain fix
-	// '7423', - now passes after multiple triggers/convergence fixes
-	'7455',
-	// '7601', - now passes after multiple triggers/convergence fixes
-	'7701',
-	// '7756', - now passes after sequential polling loop fix
-	'7945',
-	'7946',
-	'7957',
-	// '8022', - now passes after multiple triggers/convergence fixes
-	// '8210', - now passes after multiple triggers/convergence fixes
-	// '8237', - now passes after multiple triggers/convergence fixes
-	// '8428', - now passes after multiple triggers/convergence fixes
-	// '8500', - now passes after multiple triggers/convergence fixes
-	'8591',
-	// '8644', - now passes after multiple triggers/convergence fixes
-	// '8721', - now passes after multiple triggers/convergence fixes
-	// '9200', - now passes after merge composite downstream connection fix
-	// '9437', - now passes after multiple triggers/convergence fixes
-	// '9549' - now passes after fan-out pattern fix
-	// '9576', - now passes after multiple triggers/convergence fixes
-	'9605',
-	// '9801', - now passes after IF/Merge convergence and cycle-back fixes
-	'9814',
-	// '9867', - now passes after multiple triggers/convergence fixes
-	// '9876', - now passes after multiple triggers/convergence fixes
-	// '9986', - now passes after multiple triggers/convergence fixes
-	// '9999', - now passes after multiple triggers/convergence fixes
-	'10132', // parse fixed, but connection mismatch (nodes: 24 vs 24, conns: 26 vs 22)
-	// '10139', - now passes after multiple triggers/convergence fixes
-	'10174',
-	'10196',
-	// '10212', - now passes after multiple triggers/convergence fixes
-	// '10290', - now passes after multiple triggers/convergence fixes
-	'10420',
-	'10427',
-	'10476',
-	// '10566', // polling loop (Wait → IF) - now passes with cycle support
-	// '10640', - now passes after multiple triggers/convergence fixes
-	'10729',
-	'10889',
-	// '11047', - now passes after multiple triggers/convergence fixes
-	// '11049' - now passes after composite .then() fix
-	// '11158', - now passes after multiple triggers/convergence fixes
-	// '11290', - now passes after multiple triggers/convergence fixes
-	// '11294', - now passes after multiple triggers/convergence fixes
-	'11366', // connection mismatch (stricter test comparison)
-	// '11466', - now passes after MergeNodeInstance.then() composite target fix
-	// '11532', - now passes after multiple triggers/convergence fixes
-	// '11572', - now passes after sequential polling loop fix
-	'11617',
-	'11637',
-	'11724',
-	// '12202', - now passes after multiple triggers/convergence fixes
-	// '12253', - now passes after multiple triggers/convergence fixes
-	'12299',
-	'12325',
-	// '12452', - now passes after multiple triggers/convergence fixes
-	'12462',
-	// '12536', - now passes after shared fan-out target fix
-	// '12645', - now passes after merge composite downstream connection fix
-	// '12739', - now passes after multiple triggers/convergence fixes
+	'2896', // node count 21 vs 15
+	'3066', // node count 57 vs 53
+	'4366', // node count 38 vs 37
+	'4557', // node count 18 vs 17
+	'4685', // node count 55 vs 53
+	'4807', // node count 14 vs 12
+	'4868', // connection source mismatch (missing "On new file in Google Drive")
+	'4975', // node count 65 vs 53
+	'5258', // node count 21 vs 19
+	'5435', // node count 28 vs 26
+	'5449', // connection source mismatch
+	'5523', // node count 15 vs 14
+	'5611', // node count 28 vs 24
+	'5734', // connection source mismatch
+	'5841', // connection source mismatch
+	'6150', // node count 24 vs 20
+	'6542', // connection source mismatch
+	'7455', // node count 102 vs 100
+	'7945', // node count 37 vs 27
+	'7946', // node count 17 vs 15
+	'10132', // syntax error during parse
+	'10196', // node count 23 vs 14
+	'10476', // node count 31 vs 19
 ]);
 
 interface TestWorkflow {

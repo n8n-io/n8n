@@ -649,6 +649,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			if (this.isSwitchCaseComposite(target)) continue;
 			if (this.isIfBranchComposite(target)) continue;
 			if (this.isMergeComposite(target)) continue;
+			if (this.isSplitInBatchesBuilder(target)) continue;
+			// Skip NodeChains - their nodes are already added via allNodes
+			if (isNodeChain(target)) continue;
 
 			// Add the target node if not already in the map
 			const targetNode = target as NodeInstance<string, string, unknown>;

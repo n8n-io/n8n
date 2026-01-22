@@ -177,8 +177,18 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 	};
 
 	// Phase 1: Create nodes
+	// Generate unique names for nodes with undefined names to prevent Map key collisions
+	const unnamedCounters = new Map<string, number>();
 	for (const nodeJson of json.nodes) {
-		graph.nodes.set(nodeJson.name, createSemanticNode(nodeJson));
+		let nodeName = nodeJson.name;
+		if (nodeName === undefined || nodeName === '') {
+			// Generate a unique name based on type, preserving the undefined/empty name in json
+			const typeSuffix = nodeJson.type.split('.').pop() ?? 'node';
+			const counter = (unnamedCounters.get(typeSuffix) ?? 0) + 1;
+			unnamedCounters.set(typeSuffix, counter);
+			nodeName = `__unnamed_${typeSuffix}_${counter}__`;
+		}
+		graph.nodes.set(nodeName, createSemanticNode(nodeJson));
 	}
 
 	// Phase 2: Parse connections
