@@ -33,6 +33,7 @@ const ALL_ROLES_SET = ALL_ROLES.global.concat(
 	ALL_ROLES.project,
 	ALL_ROLES.credential,
 	ALL_ROLES.workflow,
+	ALL_ROLES.externalSecretsProvider,
 );
 
 beforeAll(async () => {
