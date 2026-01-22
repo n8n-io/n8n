@@ -120,9 +120,7 @@ test.describe('Workflows', () => {
 		await n8n.canvas.nodeCreator.selectItem('Webhook');
 		await n8n.page.keyboard.press('Escape');
 
-		// Save and publish the workflow
-		await n8n.canvas.saveWorkflow();
-
+		// Publish the workflow
 		await n8n.canvas.publishWorkflow();
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 
