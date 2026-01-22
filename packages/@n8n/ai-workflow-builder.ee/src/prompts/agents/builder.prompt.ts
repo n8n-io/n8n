@@ -118,19 +118,105 @@ When calling connect_nodes for AI sub-nodes:
 - targetNodeName: The AI Agent (or Vector Store, Document Loader)
 - connectionType: The appropriate ai_* type
 
-AI Connection Examples (SOURCE → TARGET [connectionType]):
-- OpenAI Chat Model → AI Agent [ai_languageModel]
-- Calculator Tool → AI Agent [ai_tool]
-- HTTP Request Tool → AI Agent [ai_tool]
-- Window Buffer Memory → AI Agent [ai_memory]
-- Structured Output Parser → AI Agent [ai_outputParser]
-- Token Splitter → Default Data Loader [ai_textSplitter]
-- Default Data Loader → Vector Store [ai_document]
-- Embeddings OpenAI → Vector Store [ai_embedding]
-- Vector Store (retrieve-as-tool mode) → AI Agent [ai_tool]
-
 The AI Agent only has ONE "main" output for regular data flow.
-All inputs to the AI Agent come FROM sub-nodes via ai_* connection types.`;
+All inputs to the AI Agent come FROM sub-nodes via ai_* connection types.
+
+Note: The connect_nodes tool will auto-detect connection types - see tool description for examples.`;
+
+const AI_CONNECTION_PATTERNS = `CRITICAL: AI NODES REQUIRE MANDATORY SUB-NODE CONNECTIONS
+
+The following nodes CANNOT function without their required ai_* inputs being connected:
+
+**AI Agent** (@n8n/n8n-nodes-langchain.agent):
+- MANDATORY: ai_languageModel - Must have a Chat Model connected (e.g., OpenAI Chat Model, Anthropic Chat Model)
+- OPTIONAL: ai_tool, ai_memory, ai_outputParser
+
+**Basic LLM Chain** (@n8n/n8n-nodes-langchain.chainLlm):
+- MANDATORY: ai_languageModel - Must have a Chat Model connected
+- OPTIONAL: ai_memory, ai_outputParser
+
+**Vector Store** (in insert/load modes):
+- MANDATORY: ai_embedding - Must have an Embeddings node connected (e.g., OpenAI Embeddings)
+- CONDITIONAL: ai_document (required in insert mode)
+
+**Question and Answer Chain** (@n8n/n8n-nodes-langchain.chainRetrievalQa):
+- MANDATORY: ai_languageModel - Must have a Chat Model connected
+- MANDATORY: ai_retriever - Must have a Retriever node connected
+
+**Vector Store Tool** (@n8n/n8n-nodes-langchain.toolVectorStore):
+- MANDATORY: ai_vectorStore - Must have a Vector Store connected
+- MANDATORY: ai_languageModel - Must have a Chat Model connected
+
+## Connection Patterns
+
+**Pattern 1: Simple AI Agent**
+What: Basic conversational AI that responds to user input using only its language model capabilities.
+When to use: Simple Q&A chatbots, text generation, summarization, or any task where the AI just needs to process text without external data or actions.
+Example prompts: "Create a chatbot", "Summarize incoming emails", "Generate product descriptions"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> A[AI Agent]
+    CM[OpenAI Chat Model] -.ai_languageModel.-> A
+    A --> OUT[Output Node]
+\`\`\`
+
+**Pattern 2: AI Agent with Tools**
+What: AI Agent enhanced with tools that let it perform actions (calculations, API calls, database queries) and memory to maintain conversation context.
+When to use: When the AI needs to DO things (not just respond), access external systems, perform calculations, or remember previous interactions.
+Example prompts: "Create an assistant that can search the web and do math", "Build a bot that can create calendar events", "Assistant that remembers conversation history"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> A[AI Agent]
+    CM[Chat Model] -.ai_languageModel.-> A
+    TOOL1[Calculator Tool] -.ai_tool.-> A
+    TOOL2[HTTP Request Tool] -.ai_tool.-> A
+    MEM[Window Buffer Memory] -.ai_memory.-> A
+    A --> OUT[Output]
+\`\`\`
+
+**Pattern 3: RAG Pipeline (Vector Store Insert)**
+What: Ingestion pipeline that processes documents, splits them into chunks, generates embeddings, and stores them in a vector database for later retrieval.
+When to use: Building a knowledge base from documents (PDFs, web pages, files). This is the "indexing" or "loading" phase of RAG - run this BEFORE querying.
+Example prompts: "Index my company documents", "Load PDFs into a knowledge base", "Store website content for later search"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> VS[Vector Store<br/>mode: insert]
+    EMB[OpenAI Embeddings] -.ai_embedding.-> VS
+    DL[Default Data Loader] -.ai_document.-> VS
+    TS[Token Text Splitter] -.ai_textSplitter.-> DL
+\`\`\`
+
+**Pattern 4: RAG Query with AI Agent**
+What: AI Agent that can search a vector database to find relevant information before responding, grounding its answers in your custom data.
+When to use: "Chat with your documents" scenarios - when the AI needs to answer questions using information from a previously indexed knowledge base.
+Example prompts: "Answer questions about my documentation", "Chat with uploaded PDFs", "Search knowledge base and respond"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> A[AI Agent]
+    CM[Chat Model] -.ai_languageModel.-> A
+    VS[Vector Store<br/>mode: retrieve-as-tool] -.ai_tool.-> A
+    EMB[Embeddings] -.ai_embedding.-> VS
+\`\`\`
+
+**Pattern 5: Multi-Agent System**
+What: Hierarchical agent setup where a main "supervisor" agent delegates specialized tasks to sub-agents, each with their own capabilities.
+When to use: Complex workflows requiring different expertise (research agent + writing agent), task decomposition, or when one agent needs to orchestrate multiple specialized agents.
+Example prompts: "Create a team of agents", "Supervisor that delegates to specialists", "Research agent that calls a coding agent"
+\`\`\`mermaid
+graph TD
+    T[Trigger] --> MAIN[Main AI Agent]
+    CM1[Chat Model 1] -.ai_languageModel.-> MAIN
+    SUB[AI Agent Tool] -.ai_tool.-> MAIN
+    CM2[Chat Model 2] -.ai_languageModel.-> SUB
+\`\`\`
+
+## Validation Checklist
+1. Every AI Agent has a Chat Model connected via ai_languageModel
+2. Every Vector Store has Embeddings connected via ai_embedding
+3. All sub-nodes (Chat Models, Tools, Memory) are connected to their target nodes
+4. Sub-nodes connect TO parent nodes, not FROM them
+
+REMEMBER: Every AI Agent MUST have a Chat Model. Never create an AI Agent without also creating and connecting a Chat Model.`;
 
 const BRANCHING = `If two nodes (B and C) are both connected to the same output of a node (A), both will execute (with the same data). Whether B or C executes first is determined by their position on the canvas: the highest one executes first. Execution happens depth-first, i.e. any downstream nodes connected to the higher node will execute before the lower node is executed.
 Nodes that route the flow (e.g. if, switch) apply their conditions independently to each input item. They may route different items to different branches in the same execution.`;
@@ -411,6 +497,7 @@ export function buildBuilderPrompt(): string {
 		.section('resource_operation_pattern', RESOURCE_OPERATION_PATTERN)
 		.section('structured_output_parser_guidance', STRUCTURED_OUTPUT_PARSER)
 		.section('node_connections_understanding', AI_CONNECTIONS)
+		.section('ai_connection_patterns', AI_CONNECTION_PATTERNS)
 		.section('branching', BRANCHING)
 		.section('merging', MERGING)
 		.section('agent_node_distinction', AGENT_NODE_DISTINCTION)
