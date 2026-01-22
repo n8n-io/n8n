@@ -207,9 +207,14 @@ const AI_CONNECTION_TO_BUILDER: Record<AiConnectionType, string> = {
 };
 
 /**
- * AI connection types that can have multiple items (arrays)
+ * AI connection types that are ALWAYS arrays (even with single item)
  */
-const AI_ARRAY_TYPES = new Set<AiConnectionType>(['ai_tool']);
+const AI_ALWAYS_ARRAY_TYPES = new Set<AiConnectionType>(['ai_tool']);
+
+/**
+ * AI connection types that can be single or array (array only when multiple)
+ */
+const AI_OPTIONAL_ARRAY_TYPES = new Set<AiConnectionType>(['ai_languageModel']);
 
 /**
  * Generate a subnode builder call (languageModel, tool, memory, etc.)
@@ -287,15 +292,23 @@ function generateSubnodesConfigForNode(node: SemanticNode, ctx: GenerationContex
 		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
 		const builderName = AI_CONNECTION_TO_BUILDER[connType];
 
-		if (AI_ARRAY_TYPES.has(connType)) {
-			// Array type (tools)
-			const calls = subnodeNodes.map((n) => generateSubnodeCall(n, builderName, ctx));
+		if (subnodeNodes.length === 0) continue;
+
+		const calls = subnodeNodes.map((n) => generateSubnodeCall(n, builderName, ctx));
+
+		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
+			// Always array type (tools) - generate as array even for single item
 			entries.push(`${configKey}: [${calls.join(', ')}]`);
-		} else {
-			// Single item type (model, memory, etc.)
-			if (subnodeNodes.length > 0) {
-				entries.push(`${configKey}: ${generateSubnodeCall(subnodeNodes[0], builderName, ctx)}`);
+		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
+			// Optional array type (model) - single if one, array if multiple
+			if (subnodeNodes.length === 1) {
+				entries.push(`${configKey}: ${calls[0]}`);
+			} else {
+				entries.push(`${configKey}: [${calls.join(', ')}]`);
 			}
+		} else {
+			// Single item type (memory, etc.)
+			entries.push(`${configKey}: ${calls[0]}`);
 		}
 	}
 
