@@ -47,6 +47,8 @@ import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkfl
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
 import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-ChangeDefaultForIdInUserTable';
 import { ConvertAgentIdToUuid1765804780000 } from './1765804780000-ConvertAgentIdToUuid';
+import { ExpandInsightsWorkflowIdLength1766500000000 } from './1766500000000-ExpandInsightsWorkflowIdLength';
+import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -131,6 +133,9 @@ import { AddAgentIdForeignKeys1765886667897 } from '../common/1765886667897-AddA
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
 import { AddChatMessageIndices1766068346315 } from '../common/1766068346315-AddChatMessageIndices';
+import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
+import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
+import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -267,4 +272,9 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowVersionIdToExecutionData1765892199653,
 	AddWorkflowPublishScopeToProjectRoles1766064542000,
 	AddChatMessageIndices1766068346315,
+	ExpandInsightsWorkflowIdLength1766500000000,
+	ChangeWorkflowStatisticsFKToNoAction1767018516000,
+	ExpandModelColumnLength1768402473068,
+	AddStoredAtToExecutionEntity1768557000000,
+	AddDynamicCredentialUserEntryTable1768901721000,
 ];

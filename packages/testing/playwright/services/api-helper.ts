@@ -7,10 +7,12 @@ import {
 	INSTANCE_OWNER_CREDENTIALS,
 	INSTANCE_MEMBER_CREDENTIALS,
 	INSTANCE_ADMIN_CREDENTIALS,
+	INSTANCE_CHAT_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
@@ -24,13 +26,14 @@ export interface LoginResponseData {
 	[key: string]: unknown;
 }
 
-export type UserRole = 'owner' | 'admin' | 'member';
+export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
 export type TestState = 'fresh' | 'reset' | 'signin-only';
 
 const AUTH_TAGS = {
 	ADMIN: '@auth:admin',
 	OWNER: '@auth:owner',
 	MEMBER: '@auth:member',
+	CHAT: '@auth:chat',
 	NONE: '@auth:none',
 } as const;
 
@@ -50,6 +53,8 @@ export class ApiHelpers {
 	roles: RoleApiHelper;
 	sourceControl: SourceControlApiHelper;
 
+	publicApi: PublicApiHelper;
+
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
@@ -61,6 +66,8 @@ export class ApiHelpers {
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
 		this.sourceControl = new SourceControlApiHelper(this);
+
+		this.publicApi = new PublicApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
@@ -135,6 +142,7 @@ export class ApiHelpers {
 				owner: INSTANCE_OWNER_CREDENTIALS,
 				members: INSTANCE_MEMBER_CREDENTIALS,
 				admin: INSTANCE_ADMIN_CREDENTIALS,
+				chat: INSTANCE_CHAT_CREDENTIALS,
 			},
 		});
 
@@ -367,6 +375,16 @@ export class ApiHelpers {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Delete all log streaming destinations.
+	 */
+	async deleteAllLogStreamingDestinations(): Promise<void> {
+		const destinations = await this.getLogStreamingDestinations();
+		for (const destination of destinations) {
+			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
 	// ===== PRIVATE METHODS =====
 
 	private async loginAndSetCookies(
@@ -413,6 +431,8 @@ export class ApiHelpers {
 					throw new TestError(`No member credentials found for index ${memberIndex}`);
 				}
 				return INSTANCE_MEMBER_CREDENTIALS[memberIndex];
+			case 'chat':
+				return INSTANCE_CHAT_CREDENTIALS;
 			default:
 				throw new TestError(`Unknown role: ${role as string}`);
 		}
@@ -436,6 +456,7 @@ export class ApiHelpers {
 		if (lowerTags.includes(AUTH_TAGS.ADMIN.toLowerCase())) return 'admin';
 		if (lowerTags.includes(AUTH_TAGS.OWNER.toLowerCase())) return 'owner';
 		if (lowerTags.includes(AUTH_TAGS.MEMBER.toLowerCase())) return 'member';
+		if (lowerTags.includes(AUTH_TAGS.CHAT.toLowerCase())) return 'chat';
 		if (lowerTags.includes(AUTH_TAGS.NONE.toLowerCase())) return null;
 		return 'owner';
 	}

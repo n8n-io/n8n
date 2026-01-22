@@ -27,10 +27,6 @@ export class CanvasPage extends BasePage {
 		this.page.getByRole('dialog').filter({ hasText: 'Convert' }),
 	);
 
-	saveWorkflowButton(): Locator {
-		return this.page.getByRole('button', { name: 'Save' });
-	}
-
 	nodeCreatorItemByName(text: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(text, { exact: true });
 	}
@@ -82,10 +78,6 @@ export class CanvasPage extends BasePage {
 
 	async clickNodeCreatorPlusButton(): Promise<void> {
 		await this.clickByTestId('node-creator-plus-button');
-	}
-
-	async clickSaveWorkflowButton(): Promise<void> {
-		await this.saveWorkflowButton().click();
 	}
 
 	async fillNodeCreatorSearchBar(text: string): Promise<void> {
@@ -163,14 +155,13 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async saveWorkflow(): Promise<void> {
-		const responsePromise = this.page.waitForResponse(
+	async waitForSaveWorkflowCompleted() {
+		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
 				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
+			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
 		);
-		await this.clickSaveWorkflowButton();
-		await responsePromise;
 	}
 
 	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
@@ -437,10 +428,6 @@ export class CanvasPage extends BasePage {
 		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag.selected');
 	}
 
-	getWorkflowSaveButton(): Locator {
-		return this.page.getByTestId('workflow-save-button');
-	}
-
 	getOpenPublishModalButton(): Locator {
 		return this.page.getByTestId('workflow-open-publish-modal-button');
 	}
@@ -454,7 +441,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getPublishedIndicator(): Locator {
-		return this.page.getByTestId('workflow-active-version-indicator');
+		return this.page.getByRole('button', { name: 'Published' });
 	}
 
 	getLoadingMask(): Locator {
@@ -987,10 +974,16 @@ export class CanvasPage extends BasePage {
 
 	async hitUndo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+z');
+		// Wait for canvas to redraw after undo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitRedo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+Shift+z');
+		// Wait for canvas to redraw after redo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitSaveWorkflow(): Promise<void> {

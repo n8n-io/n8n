@@ -39,7 +39,7 @@ export async function requestAllFiles(
 		)) as IAirtopResponseWithFiles;
 		// add files to the array
 		if (responseData.data?.files && Array.isArray(responseData.data?.files)) {
-			files.push(...responseData.data.files);
+			files.push.apply(files, responseData.data.files);
 		}
 		// check if there are more files
 		hasMore = Boolean(responseData.data?.pagination?.hasMore);

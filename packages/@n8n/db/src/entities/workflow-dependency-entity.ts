@@ -11,7 +11,12 @@ import {
 import { WithCreatedAt } from './abstract-entity';
 import type { WorkflowEntity } from './workflow-entity';
 
-export type DependencyType = 'credentialId' | 'nodeType' | 'webhookPath' | 'workflowCall';
+export type DependencyType =
+	| 'credentialId'
+	| 'nodeType'
+	| 'webhookPath'
+	| 'workflowCall'
+	| 'workflowIndexed';
 
 @Entity({ name: 'workflow_dependency' })
 export class WorkflowDependency extends WithCreatedAt {
@@ -34,7 +39,7 @@ export class WorkflowDependency extends WithCreatedAt {
 
 	/**
 	 * The type of the dependency.
-	 * credentialId | nodeType | webhookPath | workflowCall
+	 * credentialId | nodeType | webhookPath | workflowCall | workflowIndexed
 	 */
 	@Column({ length: 32 })
 	@Index()

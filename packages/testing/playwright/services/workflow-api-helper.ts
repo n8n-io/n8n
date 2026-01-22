@@ -90,6 +90,57 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async archive(workflowId: string) {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/archive`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to archive workflow: ${await response.text()}`);
+		}
+	}
+
+	async delete(workflowId: string) {
+		const response = await this.api.request.delete(`/rest/workflows/${workflowId}`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to delete workflow: ${await response.text()}`);
+		}
+	}
+
+	async transfer(workflowId: string, destinationProjectId: string) {
+		const response = await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
+			data: { destinationProjectId },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to transfer workflow: ${await response.text()}`);
+		}
+	}
+
+	/**
+	 * Set tags on a workflow via API
+	 * @param workflowId - The workflow ID
+	 * @param tagIds - Array of tag IDs to assign to the workflow
+	 */
+	async setTags(workflowId: string, tagIds: string[]): Promise<void> {
+		const getResponse = await this.api.request.get(`/rest/workflows/${workflowId}`);
+		if (!getResponse.ok()) {
+			throw new TestError(`Failed to get workflow: ${await getResponse.text()}`);
+		}
+		const workflowData = await getResponse.json();
+		const workflow = workflowData.data ?? workflowData;
+
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: {
+				versionId: workflow.versionId,
+				tags: tagIds,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to set workflow tags: ${await response.text()}`);
+		}
+	}
+
 	/** Makes workflow unique by updating name, IDs, and webhook paths. */
 	private makeWorkflowUnique(
 		workflow: Partial<IWorkflowBase>,
@@ -156,11 +207,21 @@ export class WorkflowApiHelper {
 	/** Imports a workflow from file, making it unique for testing. */
 	async importWorkflowFromFile(
 		fileName: string,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			transform?: (workflow: Partial<IWorkflowBase>) => Partial<IWorkflowBase>;
+		},
 	): Promise<WorkflowImportResult> {
 		const filePath = resolveFromRoot('workflows', fileName);
 		const fileContent = readFileSync(filePath, 'utf8');
-		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+		let workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+
+		// Apply transform if provided
+		if (options?.transform) {
+			workflowDefinition = options.transform(workflowDefinition) as IWorkflowBase;
+		}
 
 		return await this.importWorkflowFromDefinition(workflowDefinition, options);
 	}
@@ -179,7 +240,9 @@ export class WorkflowApiHelper {
 
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
-		if (workflowId) params.set('workflowId', workflowId);
+		if (workflowId) {
+			params.set('filter', JSON.stringify({ workflowId }));
+		}
 		params.set('limit', limit.toString());
 		const response = await this.api.request.get('/rest/executions', { params });
 
@@ -207,7 +270,11 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
-	async waitForExecution(workflowId: string, timeoutMs = 10000): Promise<ExecutionListResponse> {
+	async waitForExecution(
+		workflowId: string,
+		timeoutMs = 10000,
+		mode: 'manual' | 'webhook' | 'trigger' | 'integrated' = 'webhook',
+	): Promise<ExecutionListResponse> {
 		const initialExecutions = await this.getExecutions(workflowId, 50);
 		const initialCount = initialExecutions.length;
 		const startTime = Date.now();
@@ -219,7 +286,8 @@ export class WorkflowApiHelper {
 				for (const execution of executions.slice(0, executions.length - initialCount)) {
 					const isCompleted = execution.status === 'success' || execution.status === 'error';
 					const isCorrectWorkflow = execution.workflowId === workflowId;
-					if (isCompleted && isCorrectWorkflow) {
+					const isCorrectMode = execution.mode === mode;
+					if (isCompleted && isCorrectWorkflow && isCorrectMode) {
 						return execution;
 					}
 				}
@@ -228,7 +296,8 @@ export class WorkflowApiHelper {
 			for (const execution of executions) {
 				const isCompleted = execution.status === 'success' || execution.status === 'error';
 				const isCorrectWorkflow = execution.workflowId === workflowId;
-				if (isCompleted && isCorrectWorkflow && execution.mode === 'webhook') {
+				const isCorrectMode = execution.mode === mode;
+				if (isCompleted && isCorrectWorkflow && isCorrectMode) {
 					const executionTime = new Date(
 						execution.startedAt ?? execution.createdAt ?? Date.now(),
 					).getTime();
