@@ -6,6 +6,7 @@ import { workflow } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import * as Helpers from './helpers';
+import { ExpressionReservedVariableError } from '../src/errors/expression-reserved-variable.error';
 import { ExpressionError } from '../src/errors/expression.error';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import type { INodeExecutionData } from '../src/interfaces';
@@ -422,6 +423,32 @@ describe('Expression', () => {
 				})()}}`;
 
 				expect(() => evaluate(payload)).toThrow();
+			});
+
+			it('should block `___n8n_data` shadowing attempt', () => {
+				const payload = `={{(() => {
+					const ___n8n_data = {__sanitize: a => a};
+					return ({})['const'+'ructor']['const'+'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should block `__sanitize` variable declaration', () => {
+				const payload = `={{(() => {
+					const __sanitize = a => a;
+					return 1;
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should block `___n8n_data` as function parameter', () => {
+				const payload = `={{((___n8n_data) => {
+					return 1;
+				})({})}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
 			});
 		});
 	});

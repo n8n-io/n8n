@@ -11,6 +11,7 @@ import {
 	ExpressionClassExtensionError,
 	ExpressionComputedDestructuringError,
 	ExpressionDestructuringError,
+	ExpressionWithStatementError,
 } from '../src/errors';
 
 const tournament = new Tournament(
@@ -470,6 +471,51 @@ describe('PrototypeSanitizer', () => {
 					},
 				);
 			}).toThrowError(ExpressionComputedDestructuringError);
+		});
+	});
+
+	describe('`with` statement', () => {
+		it('should not allow `with` statements', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { with({}) { return 1; } })() }}', { __sanitize: sanitizer });
+			}).toThrowError(ExpressionWithStatementError);
+		});
+
+		it('should not allow constructor access via `with` statement', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (function(){ var constructor = 123; with(function(){}){ return constructor("return 1")() } })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionWithStatementError);
+		});
+
+		it('should not allow RCE via with statement', () => {
+			expect(() => {
+				tournament.execute(
+					"{{ (function(){ var constructor = 123; with(function(){}){ return constructor(\"return process.mainModule.require('child_process').execSync('env').toString().trim()\")() } })() }}",
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionWithStatementError);
+		});
+
+		it('should not allow nested `with` statements', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { with({a:1}) { with({b:2}) { return a + b; } } })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(ExpressionWithStatementError);
+		});
+
+		it('should not allow `with` statement accessing prototype chain', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { with(Object) { return getPrototypeOf({}); } })() }}', {
+					__sanitize: sanitizer,
+					Object,
+				});
+			}).toThrowError(ExpressionWithStatementError);
 		});
 	});
 });
