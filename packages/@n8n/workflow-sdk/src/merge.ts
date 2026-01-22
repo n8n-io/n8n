@@ -110,6 +110,33 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 		// Return a chain-like object that proxies to the last target
 		const lastTarget = actualTargets[actualTargets.length - 1];
 		const self = this;
+
+		// Defensive check: ensure lastTarget has required methods
+		// This can fail if the target is malformed or is a composite without proper methods
+		if (
+			!lastTarget ||
+			typeof lastTarget.update !== 'function' ||
+			typeof lastTarget.then !== 'function'
+		) {
+			// Fall back to returning self as the chain endpoint
+			return {
+				_isChain: true,
+				head: this,
+				tail: this,
+				allNodes: [this, ...actualTargets.filter(Boolean)],
+				type: this.type,
+				version: this.version,
+				config: this.config,
+				id: this.id,
+				name: this.name,
+				_outputType: undefined,
+				update: this.update.bind(this),
+				then: this.then.bind(this),
+				onError: this.onError.bind(this),
+				getConnections: () => self._connections,
+			} as unknown as NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T>;
+		}
+
 		return {
 			_isChain: true,
 			head: this,
