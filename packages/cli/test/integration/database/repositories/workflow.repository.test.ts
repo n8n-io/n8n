@@ -357,6 +357,166 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('findWorkflowsWithNodeType', () => {
+		it('should return workflows that have the specified node type in workflow_dependency', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Workflow 1: Has chat trigger node type
+			const workflow1 = await createWorkflow({ versionCounter: 1 });
+			const dependencies1 = new WorkflowDependencies(workflow1.id, 1);
+			dependencies1.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.chatTrigger',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow1.id, dependencies1);
+
+			// Workflow 2: Has HTTP request node type (different)
+			const workflow2 = await createWorkflow({ versionCounter: 1 });
+			const dependencies2 = new WorkflowDependencies(workflow2.id, 1);
+			dependencies2.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
+
+			// Workflow 3: Also has chat trigger node type
+			const workflow3 = await createWorkflow({ versionCounter: 1 });
+			const dependencies3 = new WorkflowDependencies(workflow3.id, 1);
+			dependencies3.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.chatTrigger',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow3.id, dependencies3);
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(2);
+			const workflowIds = workflows.map((w) => w.id);
+			expect(workflowIds).toContain(workflow1.id);
+			expect(workflowIds).toContain(workflow3.id);
+			expect(workflowIds).not.toContain(workflow2.id);
+		});
+
+		it('should return workflows matching any of the specified node types', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			// Workflow 1: Has chat trigger
+			const workflow1 = await createWorkflow({ versionCounter: 1 });
+			const dependencies1 = new WorkflowDependencies(workflow1.id, 1);
+			dependencies1.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.chatTrigger',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow1.id, dependencies1);
+
+			// Workflow 2: Has webhook trigger
+			const workflow2 = await createWorkflow({ versionCounter: 1 });
+			const dependencies2 = new WorkflowDependencies(workflow2.id, 1);
+			dependencies2.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.webhook',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
+
+			// Workflow 3: Has neither
+			const workflow3 = await createWorkflow({ versionCounter: 1 });
+			const dependencies3 = new WorkflowDependencies(workflow3.id, 1);
+			dependencies3.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.set',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow3.id, dependencies3);
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+				'n8n-nodes-base.webhook',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(2);
+			const workflowIds = workflows.map((w) => w.id);
+			expect(workflowIds).toContain(workflow1.id);
+			expect(workflowIds).toContain(workflow2.id);
+			expect(workflowIds).not.toContain(workflow3.id);
+		});
+
+		it('should return empty array when no workflows match', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
+
+			const workflow = await createWorkflow({ versionCounter: 1 });
+			const dependencies = new WorkflowDependencies(workflow.id, 1);
+			dependencies.add({
+				dependencyType: 'nodeType',
+				dependencyKey: 'n8n-nodes-base.httpRequest',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(0);
+		});
+
+		it('should return empty array when workflow_dependency table is empty', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			await createWorkflow({ versionCounter: 1 });
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(0);
+		});
+	});
+
 	describe('hasAnyWorkflowsWithErrorWorkflow', () => {
 		it('should return false when no workflows have error workflow configured', async () => {
 			const workflowRepository = Container.get(WorkflowRepository);
