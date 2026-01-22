@@ -43,3 +43,10 @@ export interface SecretProviderConnection {
 	createdAt: string;
 	properties?: ExternalSecretsProviderProperty[];
 }
+
+export interface SecretProviderType {
+	type: string;
+	displayName: string;
+	icon: string;
+	properties: ExternalSecretsProviderProperty[];
+}

@@ -3,11 +3,11 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { N8nActionBox, N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useSecretsProviders } from '../composables/useSecretsProviders';
-import ExternalSecretsProviderImage from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderImage.ee.vue';
+import SecretsProviderImage from './SecretsProviderImage.ee.vue';
 
 const i18n = useI18n();
 const secretsProviders = useSecretsProviders();
-const supportedProviders = computed(() => secretsProviders.providers.value);
+const supportedProviders = computed(() => secretsProviders.providerTypes.value);
 
 const emit = defineEmits<{
 	addSecretsStore: [];
@@ -38,7 +38,7 @@ function animateRight() {
 
 onMounted(() => {
 	if (secretsProviders.isEnterpriseExternalSecretsEnabled.value) {
-		void secretsProviders.fetchProviders();
+		void secretsProviders.fetchProviderTypes();
 	}
 
 	// Start staggered animation for side icons
@@ -72,7 +72,7 @@ function onAddSecretsStore() {
 			<div :class="$style.iconCardContainer">
 				<!-- Left icon - animated -->
 				<div v-if="supportedProviders?.[leftIconIndex]" :class="$style.iconCard">
-					<ExternalSecretsProviderImage
+					<SecretsProviderImage
 						:provider="supportedProviders?.[leftIconIndex]"
 						:class="[$style.providerLogo, { [$style.fading]: leftFading }]"
 					/>
@@ -83,7 +83,7 @@ function onAddSecretsStore() {
 				</div>
 				<!-- Right icon - animated -->
 				<div v-if="supportedProviders?.[rightIconIndex]" :class="$style.iconCard">
-					<ExternalSecretsProviderImage
+					<SecretsProviderImage
 						:provider="supportedProviders?.[rightIconIndex]"
 						:class="[$style.providerLogo, { [$style.fading]: rightFading }]"
 					/>

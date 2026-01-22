@@ -1,34 +1,40 @@
 import { computed, ref } from 'vue';
-import type { ExternalSecretsProvider, SecretProviderConnection } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderType } from '@n8n/api-types';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import * as secretsProviderApi from '@n8n/rest-api-client';
-import { mockGetSecretProviderConnections } from './useSecretsProviders.mock';
+import {
+	mockGetSecretProviderConnections,
+	mockGetSecretProviderTypes,
+} from './useSecretsProviders.mock';
 
-// TODO: Set to false when backend API is ready and remove mock file
-const USE_MOCK_API = true;
-
-export function useSecretsProviders() {
+export function useSecretsProviders(options?: { useMockApi?: boolean }) {
+	// TODO: Set to false when backend API is ready and remove mock file
+	const USE_MOCK_API = options?.useMockApi ?? true;
 	const settingsStore = useSettingsStore();
 	const rootStore = useRootStore();
 	const rbacStore = useRBACStore();
 
-	const providers = ref<ExternalSecretsProvider[]>([]);
+	const providerTypes = ref<SecretProviderType[]>([]);
 	const secrets = ref<Record<string, string[]>>({});
 	const activeConnections = ref<SecretProviderConnection[]>([]);
-	const isLoadingProviders = ref(false);
+	const isLoadingProviderTypes = ref(false);
 	const isLoadingActiveConnections = ref(false);
 
-	async function fetchProviders() {
-		isLoadingProviders.value = true;
+	async function fetchProviderTypes() {
+		isLoadingProviderTypes.value = true;
 		try {
-			providers.value = await secretsProviderApi.getExternalSecretsProviders(
-				rootStore.restApiContext,
-			);
+			if (USE_MOCK_API) {
+				providerTypes.value = await mockGetSecretProviderTypes();
+			} else {
+				providerTypes.value = await secretsProviderApi.getSecretProviderTypes(
+					rootStore.restApiContext,
+				);
+			}
 		} finally {
-			isLoadingProviders.value = false;
+			isLoadingProviderTypes.value = false;
 		}
 	}
 
@@ -43,9 +49,9 @@ export function useSecretsProviders() {
 				activeConnections.value = await mockGetSecretProviderConnections();
 			} else {
 				// TODO: Update when backend API returns SecretProviderConnection[]
-				activeConnections.value = (await secretsProviderApi.getSecretProviderConnections(
+				activeConnections.value = await secretsProviderApi.getSecretProviderConnections(
 					rootStore.restApiContext,
-				)) as unknown as SecretProviderConnection[];
+				);
 			}
 		} catch {
 			activeConnections.value = [];
@@ -54,7 +60,9 @@ export function useSecretsProviders() {
 		}
 	}
 
-	const isLoading = computed(() => isLoadingProviders.value || isLoadingActiveConnections.value);
+	const isLoading = computed(
+		() => isLoadingProviderTypes.value || isLoadingActiveConnections.value,
+	);
 
 	const isEnterpriseExternalSecretsEnabled = computed(
 		() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets],
@@ -67,8 +75,8 @@ export function useSecretsProviders() {
 	});
 
 	return {
-		providers: computed(() => providers.value),
-		fetchProviders,
+		providerTypes: computed(() => providerTypes.value),
+		fetchProviderTypes,
 		activeProviders,
 		fetchActiveConnections,
 		isLoading,

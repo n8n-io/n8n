@@ -138,7 +138,7 @@ export type {
 	SecretProviderConnection,
 	SecretProviderConnectionSecret,
 	SecretProviderConnectionSettings,
-	SecretProviderConnectionProject,
+	SecretProviderType,
 } from './schemas/external-secrets.schema';
 
 export {

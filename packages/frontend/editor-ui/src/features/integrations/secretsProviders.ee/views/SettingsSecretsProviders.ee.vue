@@ -25,12 +25,12 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 
-onMounted(() => {
+onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.secretsProviderConnections.title'));
 	if (!secretsProviders.isEnterpriseExternalSecretsEnabled.value) return;
 	try {
-		void secretsProviders.fetchProviders();
-		void secretsProviders.fetchActiveConnections();
+		await secretsProviders.fetchProviderTypes();
+		await secretsProviders.fetchActiveConnections();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
 	}

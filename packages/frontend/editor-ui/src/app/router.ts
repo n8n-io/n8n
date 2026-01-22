@@ -79,7 +79,7 @@ const SettingsExternalSecrets = async () => {
 
 	if (check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
 		return await import(
-			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.vue'
+			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
 		);
 	}
 

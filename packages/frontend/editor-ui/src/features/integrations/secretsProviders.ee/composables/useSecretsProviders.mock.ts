@@ -1,10 +1,48 @@
-import type { SecretProviderConnection } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderType } from '@n8n/api-types';
+
+/**
+ * Mock data for secret provider types
+ */
+export const MOCK_PROVIDER_TYPES: SecretProviderType[] = [
+	{
+		type: 'awsSecretsManager',
+		displayName: 'AWS Secrets Manager',
+		icon: 'awsSecretsManager',
+		properties: [],
+	},
+	{
+		type: 'gcpSecretsManager',
+		displayName: 'GCP Secrets Manager',
+		icon: 'gcpSecretsManager',
+		properties: [],
+	},
+	{
+		type: 'azureKeyVault',
+		displayName: 'Azure Key Vault',
+		icon: 'azureKeyVault',
+		properties: [],
+	},
+	{
+		type: 'vault',
+		displayName: 'HashiCorp Vault',
+		icon: 'vault',
+		properties: [],
+	},
+];
+
+/**
+ * Mock function to simulate fetching secret provider types
+ */
+export async function mockGetSecretProviderTypes(): Promise<SecretProviderType[]> {
+	// Simulate network delay
+	await new Promise((resolve) => setTimeout(resolve, 300));
+	return MOCK_PROVIDER_TYPES;
+}
 
 /**
  * Mock data for secrets provider connections
  * TODO: Remove this file when backend API is ready
  */
-
 export const MOCK_ACTIVE_CONNECTIONS: SecretProviderConnection[] = [
 	{
 		id: 'OFUbXqIigpUhTiOy',
@@ -25,6 +63,8 @@ export const MOCK_ACTIVE_CONNECTIONS: SecretProviderConnection[] = [
 				type: 'icon',
 				value: 'layers',
 			},
+			createdAt: new Date('2024-01-20T14:45:00Z').toISOString(),
+			updatedAt: new Date('2024-01-20T14:45:00Z').toISOString(),
 		},
 		secretsCount: 2,
 		secrets: [
@@ -58,6 +98,8 @@ export const MOCK_ACTIVE_CONNECTIONS: SecretProviderConnection[] = [
 				type: 'icon',
 				value: 'test-tube',
 			},
+			createdAt: new Date('2024-01-20T14:45:00Z').toISOString(),
+			updatedAt: new Date('2024-01-20T14:45:00Z').toISOString(),
 		},
 		secretsCount: 5,
 		secrets: [

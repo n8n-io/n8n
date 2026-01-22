@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, toRef } from 'vue';
-import ExternalSecretsProviderImage from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderImage.ee.vue';
-import { N8nActionToggle, N8nCard, N8nText } from '@n8n/design-system';
+import SecretsProviderImage from './SecretsProviderImage.ee.vue';
+import { N8nActionToggle, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
 import type { SecretProviderConnection } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 import { isDateObject } from '@/app/utils/typeGuards';
@@ -22,26 +22,20 @@ const formattedDate = computed(() => {
 	).toFormat('dd LLL yyyy');
 });
 
-// Adapter to convert SecretProviderConnection to ExternalSecretsProvider format for the image component
-const providerForImage = computed(() => ({
-	name: provider.value.type,
-	displayName: provider.value.displayName,
-	icon: provider.value.type,
-	connected: provider.value.enabled,
-	connectedAt: provider.value.createdAt,
-	state: provider.value.state,
-}));
-
 const actionDropdownOptions = computed(() => []);
 </script>
 
 <template>
 	<N8nCard hoverable>
 		<template #prepend>
-			<ExternalSecretsProviderImage :class="$style.providerImage" :provider="providerForImage" />
+			<SecretsProviderImage
+				:class="$style.providerImage"
+				:provider="provider"
+				data-test-id="secrets-provider-image"
+			/>
 		</template>
 		<template #header>
-			<N8nText tag="h2" bold>{{ provider.name }}</N8nText>
+			<N8nHeading tag="h2" bold>{{ provider.name }}</N8nHeading>
 		</template>
 		<template #default>
 			<N8nText v-if="provider.enabled" color="text-light" size="small">
@@ -51,11 +45,17 @@ const actionDropdownOptions = computed(() => []);
 				|
 				<span>
 					{{
-						i18n.baseText('settings.externalSecrets.card.secretsCount', {
-							interpolate: {
-								count: `${provider.secretsCount}`,
-							},
-						})
+						provider.secretsCount === 1
+							? i18n.baseText('settings.externalSecrets.card.secretCount', {
+									interpolate: {
+										count: `${provider.secretsCount}`,
+									},
+								})
+							: i18n.baseText('settings.externalSecrets.card.secretsCount', {
+									interpolate: {
+										count: `${provider.secretsCount}`,
+									},
+								})
 					}}
 				</span>
 				|

@@ -70,7 +70,11 @@ function goToUpgrade() {
 			<template #description>
 				<I18nT keypath="settings.externalSecrets.actionBox.description" scope="global">
 					<template #link>
-						<a :href="i18n.baseText('settings.externalSecrets.docs')" target="_blank">
+						<a
+							:href="i18n.baseText('settings.externalSecrets.docs')"
+							target="_blank"
+							rel="noopener noreferrer"
+						>
 							{{ i18n.baseText('settings.externalSecrets.actionBox.description.link') }}
 						</a>
 					</template>
