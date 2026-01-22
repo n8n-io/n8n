@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
+import { createBodyKeyedRateLimiter } from '../rate-limit';
 import { Get, Post, Put, Patch, Delete } from '../route';
 import type { Controller } from '../types';
 
@@ -50,7 +51,11 @@ describe('Route Decorators', () => {
 					usesTemplates: true,
 					skipAuth: true,
 					ipRateLimit: { limit: 10, windowMs: 60000 },
-					keyedRateLimit: { limit: 10, windowMs: 60000, source: 'body', field: 'email' },
+					keyedRateLimit: createBodyKeyedRateLimiter<{ email: string }>({
+						limit: 10,
+						windowMs: 60000,
+						field: 'email',
+					}),
 				})
 				testMethod() {}
 			}
@@ -64,7 +69,7 @@ describe('Route Decorators', () => {
 			expect(routeMetadata.usesTemplates).toBe(true);
 			expect(routeMetadata.skipAuth).toBe(true);
 			expect(routeMetadata.ipRateLimit).toEqual({ limit: 10, windowMs: 60000 });
-			expect(routeMetadata.keyedRateLimit).toEqual({
+			expect(routeMetadata.keyedRateLimit).toMatchObject({
 				limit: 10,
 				windowMs: 60000,
 				source: 'body',

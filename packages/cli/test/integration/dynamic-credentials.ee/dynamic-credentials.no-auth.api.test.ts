@@ -120,28 +120,32 @@ describe('Dynamic Credentials API', () => {
 
 	describe('POST /credentials/:id/authorize', () => {
 		describe('when no static auth token is provided', () => {
-			it('should return the authorization URL for a credential', async () => {
+			it('should return a 500 Internal Server Error', async () => {
 				const response = await testServer.authlessAgent
 					.post(`/credentials/${savedCredential.id}/authorize`)
 					.query({ resolverId: resolver.id })
 					.set('Authorization', 'Bearer test-token')
-					.expect(200);
+					.expect(500);
 
-				expect(response.body.data).toBeDefined();
-				expect(typeof response.body.data).toBe('string');
-				expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+				expect(response.body.message).toBe(
+					'Dynamic credentials configuration is invalid. Check server logs for details.',
+				);
 			});
 		});
 	});
 
 	describe('DELETE /credentials/:id/revoke', () => {
 		describe('when no static auth token is provided', () => {
-			it('should revoke a credential', async () => {
-				await testServer.authlessAgent
+			it('should return a 500 Internal Server Error', async () => {
+				const response = await testServer.authlessAgent
 					.delete(`/credentials/${savedCredential.id}/revoke`)
 					.set('Authorization', 'Bearer test-token')
 					.query({ resolverId: resolver.id })
-					.expect(204);
+					.expect(500);
+
+				expect(response.body.message).toBe(
+					'Dynamic credentials configuration is invalid. Check server logs for details.',
+				);
 			});
 		});
 	});
