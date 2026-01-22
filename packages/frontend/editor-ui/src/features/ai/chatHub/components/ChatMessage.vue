@@ -9,7 +9,7 @@ import { computed, onBeforeMount, ref, useCssModule, useTemplateRef, watch } fro
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
-import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
+import { unflattenModel, splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
@@ -72,6 +72,15 @@ const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 const textareaRef = useTemplateRef('textarea');
 const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
 const messageContent = computed(() => message.content);
+
+const messageChunks = computed(() => {
+	// Handle error case with no content
+	if (message.status === 'error' && !message.content) {
+		return [i18n.baseText('chatHub.message.error.unknown')];
+	}
+
+	return splitMarkdownIntoChunks(message.content).filter((chunk) => chunk.trim() !== '');
+});
 
 const speech = useSpeechSynthesis(messageContent, {
 	pitch: 1,
@@ -348,14 +357,11 @@ onBeforeMount(() => {
 					</div>
 					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
+						v-for="(chunk, index) in messageChunks"
 						v-else
-						:key="markdown.forceReRenderKey.value"
+						:key="`${markdown.forceReRenderKey.value}-${index}`"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-						:source="
-							message.status === 'error' && !message.content
-								? i18n.baseText('chatHub.message.error.unknown')
-								: message.content
-						"
+						:source="chunk"
 						:options="markdown.options"
 						:plugins="markdown.plugins.value"
 					/>
