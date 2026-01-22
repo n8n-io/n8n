@@ -7,6 +7,12 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { ResponderAgent } from './agents/responder.agent';
 import { SupervisorAgent } from './agents/supervisor.agent';
 import {
+	configureNodeWorker,
+	createDispatchConfigWorkers,
+	createPrepareConfigDispatchNode,
+	createValidateParallelConfigNode,
+} from './nodes';
+import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_BUILDER_ITERATIONS,
 	MAX_CONFIGURATOR_ITERATIONS,

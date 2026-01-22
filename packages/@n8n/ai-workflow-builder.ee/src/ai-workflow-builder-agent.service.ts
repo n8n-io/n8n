@@ -113,9 +113,15 @@ export class AiWorkflowBuilderService {
 			}
 
 			// If base URL is not set, use environment variables
-			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
+			const anthropicClaude = await anthropicClaudeSonnet45({
 				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 			});
+			// const anthropicClaude = await anthropicClaudeOpus45({
+			// 	apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+			// });
+			// const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
+			// 	apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
+			// });
 
 			return { anthropicClaude };
 		} catch (error) {

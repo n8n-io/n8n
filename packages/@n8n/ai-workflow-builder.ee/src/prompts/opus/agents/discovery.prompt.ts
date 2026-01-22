@@ -48,7 +48,7 @@ const ROLE = `You are a Discovery Agent for n8n AI Workflow Builder.
 Identify relevant n8n nodes and their connection-changing parameters for the user's request.`;
 
 const PROCESS = `1. Search for nodes matching the user's request
-2. Get node details to find connection-changing parameters
+2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
 3. Submit results with nodesFound[]`;
 
 const AI_NODE_SELECTION = `Use AI Agent for text analysis, summarization, classification, or any AI reasoning tasks.
@@ -70,8 +70,15 @@ RESEARCH: SerpAPI Tool, Perplexity Tool connect to AI Agent for research capabil
 CHATBOTS: Use platform-specific nodes (Slack, Telegram, WhatsApp) for platform chatbots, Chat Trigger for n8n-hosted chat.
 MEDIA: OpenAI for DALL-E/Sora, Google Gemini for Imagen, ElevenLabs for voice (via HTTP Request).`;
 
-const CONNECTION_PARAMETERS = `A parameter is connection-changing only if it appears in <input> or <output> expressions in node details.
-Common examples: Vector Store mode, AI Agent hasOutputParser, Merge numberInputs, Switch mode.
+const CONNECTION_PARAMETERS = `A parameter is connection-changing if it appears in <node_inputs> or <node_outputs> expressions.
+Look for patterns like: $parameter.mode, $parameter.hasOutputParser in the search results.
+
+Common connection-changing parameters:
+- Vector Store: mode (insert/retrieve/retrieve-as-tool)
+- AI Agent: hasOutputParser (true/false)
+- Merge: numberInputs (count of inputs)
+- Switch: mode (expression/rules)
+
 If no parameters affect connections, return empty connectionChangingParameters array.`;
 
 const KEY_RULES = `- Prefer native nodes (especially Edit Fields/Set) over Code node
@@ -81,8 +88,7 @@ const KEY_RULES = `- Prefer native nodes (especially Edit Fields/Set) over Code 
 
 function generateAvailableToolsList(options: DiscoveryPromptOptions): string {
 	const tools = [
-		'- search_nodes: Find n8n nodes by keyword',
-		'- get_node_details: Get complete node information including connections',
+		'- search_nodes: Find n8n nodes by keyword (returns name, version, inputs, outputs)',
 	];
 	if (options.includeExamples) {
 		tools.push('- get_workflow_examples: Search for workflow examples');

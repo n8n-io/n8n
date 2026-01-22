@@ -15,7 +15,7 @@ export interface CoordinationLogEntry {
 	phase: SubgraphPhase;
 
 	/** Completion status */
-	status: 'completed' | 'error';
+	status: 'completed' | 'in_progress' | 'error';
 
 	/** When the subgraph completed (Unix timestamp) */
 	timestamp: number;

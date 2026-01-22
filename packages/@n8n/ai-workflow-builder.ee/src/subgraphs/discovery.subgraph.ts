@@ -21,7 +21,6 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
-import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
@@ -155,11 +154,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
 
-		// Create base tools - best practices now embedded in prompts, no get_documentation needed
-		const baseTools = [
-			createNodeSearchTool(config.parsedNodeTypes),
-			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
-		];
+		// Create base tools - search_nodes provides all data needed for discovery
+		const baseTools = [createNodeSearchTool(config.parsedNodeTypes)];
 
 		// Conditionally add workflow examples tool if feature flag is enabled
 		const tools = includeExamples

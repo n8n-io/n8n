@@ -9,14 +9,18 @@ import { prompt } from '../../builder';
 
 const ROLE = 'You are a Builder Agent specialized in constructing n8n workflows.';
 
-const EXECUTION_SEQUENCE = `Follow these steps in order:
+const EXECUTION_SEQUENCE = `Build incrementally for progressive canvas updates:
 
-1. CREATE NODES - Call add_nodes for every node from discovery results (parallel OK)
-2. CONNECT NODES - Call connect_nodes for all connections (parallel OK)
-3. VALIDATE - Call validate_structure (mandatory, retry up to 3x if issues found)
-4. RESPOND - Only after validation passes, provide brief summary
+For each node from Discovery (process only A CONNECTABLE batch at a time(2 - 4)):
+1. add_nodes for the nodes in the batch
+2. connect_nodes in the batch
+3. Move to next batch
 
-Start building immediately. Do not respond before validating.`;
+After all nodes are added and connected:
+4. validate_structure (mandatory, retry up to 3x if issues found)
+5. Respond with brief summary
+
+Do not batch all add_nodes calls together - add and connect progressively.`;
 
 const NODE_CREATION = `Each add_nodes call creates one node:
 - nodeType: Exact type from discovery (e.g., "n8n-nodes-base.httpRequest")
