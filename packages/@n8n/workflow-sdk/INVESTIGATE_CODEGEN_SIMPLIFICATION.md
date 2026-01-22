@@ -304,4 +304,3 @@ Document findings in `CODEGEN_SIMPLIFICATION_FINDINGS.md`:
 4. **Recommendation** - Chosen approach with implementation plan
 5. **LLM examples** - Before/after showing improved readability
 
-<promise>SIMPLER CODEGEN THAT PRODUCES LLM-FRIENDLY OUTPUT</promise>
