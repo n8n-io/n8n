@@ -2923,7 +2923,7 @@
 	"settings.sourceControl.modals.pull.autoPublish.options.none": "None",
 	"settings.sourceControl.modals.pull.autoPublish.options.published": "Only currently published",
 	"settings.sourceControl.modals.pull.autoPublish.options.all": "All",
-	"settings.sourceControl.modals.pull.autoPublishing": "Auto-publishing",
+	"settings.sourceControl.modals.pull.autoPublishing": "Will be auto-published",
 	"settings.sourceControl.modals.pull.willBeArchived": "Will be archived",
 	"settings.sourceControl.modals.pull.buttons.cancel": "@:_reusableBaseText.cancel",
 	"settings.sourceControl.modals.pull.buttons.save": "Pull and override",
