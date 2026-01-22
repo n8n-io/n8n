@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import { useResizeObserver } from '@vueuse/core';
 import {
 	ref,
@@ -10,8 +11,6 @@ import {
 	onBeforeUnmount,
 	useAttrs,
 } from 'vue';
-
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
 import type { InputProps, InputEmits, InputSlots, InputSize } from './Input.types';
 
