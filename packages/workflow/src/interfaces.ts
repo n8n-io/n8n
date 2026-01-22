@@ -2393,6 +2393,14 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 		mode: 'test' | 'production';
 		resumeUrl: string;
 		resumeFormUrl: string;
+		memoryUsage: {
+			heapUsedMb: string | number;
+			heapTotalMb: string | number;
+			externalMb: string | number;
+			rssMb: string | number;
+			arrayBuffersMb: string | number;
+			heapUsedPercentage: string | number;
+		};
 		customData?: {
 			set(key: string, value: string): void;
 			setAll(obj: Record<string, string>): void;
