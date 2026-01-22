@@ -19,6 +19,7 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { ErrorReporter } from 'n8n-core';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -36,6 +37,7 @@ import {
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { createJitterMiddleware } from '@/middlewares';
 
 @RestController()
 export class PasswordResetController {
@@ -50,6 +52,7 @@ export class PasswordResetController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	/**
@@ -62,6 +65,7 @@ export class PasswordResetController {
 			limit: 3,
 			field: 'email',
 		}),
+		middlewares: [createJitterMiddleware({ minMs: 200, maxMs: 1000 })],
 	})
 	async forgotPassword(
 		_req: AuthlessRequest,
@@ -153,7 +157,9 @@ export class PasswordResetController {
 			this.eventService.emit('user-password-reset-request-click', { user });
 		} catch (error) {
 			// Catch any unexpected errors to prevent information leakage
-			this.logger.error('Unexpected error in forgot password endpoint', { error });
+			this.errorReporter.error(
+				new Error('Unexpected error in forgot password endpoint', { cause: error }),
+			);
 		}
 	}
 
