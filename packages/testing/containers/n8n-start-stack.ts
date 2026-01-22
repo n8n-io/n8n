@@ -49,6 +49,7 @@ ${colors.yellow}Options:${colors.reset}
   --oidc            Enable OIDC testing with Keycloak (requires PostgreSQL)
   --observability   Enable observability stack (VictoriaLogs + VictoriaMetrics + Vector)
   --tracing         Enable tracing stack (n8n-tracer + Jaeger) for workflow visualization
+  --kafka           Enable Kafka broker for message queue trigger testing
   --tunnel          Enable Cloudflare Tunnel for public URL (via trycloudflare.com)
   --mailpit         Enable Mailpit for email testing
   --mains <n>       Number of main instances (default: 1)
@@ -130,6 +131,7 @@ async function main() {
 			oidc: { type: 'boolean' },
 			observability: { type: 'boolean' },
 			tracing: { type: 'boolean' },
+			kafka: { type: 'boolean' },
 			tunnel: { type: 'boolean' },
 			mailpit: { type: 'boolean' },
 			mains: { type: 'string' },
@@ -153,6 +155,7 @@ async function main() {
 	if (values.oidc) services.push('keycloak');
 	if (values.observability) services.push('victoriaLogs', 'victoriaMetrics', 'vector');
 	if (values.tracing) services.push('tracing');
+	if (values.kafka) services.push('kafka');
 	if (values.tunnel) services.push('cloudflared');
 	if (values.mailpit) services.push('mailpit');
 
