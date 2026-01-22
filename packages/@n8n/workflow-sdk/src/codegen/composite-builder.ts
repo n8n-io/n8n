@@ -95,10 +95,20 @@ function toVarName(nodeName: string): string {
 	// Convert to camelCase and sanitize for JS variable name
 	let varName = nodeName
 		.replace(/[^a-zA-Z0-9]/g, '_')
-		.replace(/^(\d)/, '_$1')
 		.replace(/_+/g, '_')
-		.replace(/^_|_$/g, '')
+		.replace(/_$/g, '') // Only remove trailing underscore, not leading
 		.replace(/^([A-Z])/, (c) => c.toLowerCase());
+
+	// If starts with digit, prefix with underscore
+	if (/^\d/.test(varName)) {
+		varName = '_' + varName;
+	}
+
+	// Remove leading underscore only if followed by letter (not digit)
+	// This preserves _2nd... but removes _Foo...
+	if (/^_[a-zA-Z]/.test(varName)) {
+		varName = varName.slice(1);
+	}
 
 	// Avoid reserved keywords
 	if (RESERVED_KEYWORDS.has(varName)) {
@@ -137,6 +147,35 @@ function getAllFirstOutputTargets(node: SemanticNode): string[] {
 		}
 	}
 	return [];
+}
+
+/**
+ * Get all output connection targets from ALL output slots
+ * This is needed for nodes with multiple independent output slots (like classifiers)
+ */
+function getAllOutputTargets(node: SemanticNode): string[] {
+	const targets: string[] = [];
+	for (const [, connections] of node.outputs) {
+		for (const conn of connections) {
+			if (!targets.includes(conn.target)) {
+				targets.push(conn.target);
+			}
+		}
+	}
+	return targets;
+}
+
+/**
+ * Check if a node has multiple output slots (not just multiple targets on one slot)
+ */
+function hasMultipleOutputSlots(node: SemanticNode): boolean {
+	let nonEmptySlots = 0;
+	for (const [, connections] of node.outputs) {
+		if (connections.length > 0) {
+			nonEmptySlots++;
+		}
+	}
+	return nonEmptySlots > 1;
 }
 
 /**
@@ -371,7 +410,11 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 
 	// Check if there's a chain continuation (single output to non-composite target)
 	if (compositeType === undefined) {
-		const nextTargets = getAllFirstOutputTargets(node);
+		// For nodes with multiple output slots (like classifiers), get all targets from all slots
+		// For regular fan-out on a single slot, just get first slot targets
+		const nextTargets = hasMultipleOutputSlots(node)
+			? getAllOutputTargets(node)
+			: getAllFirstOutputTargets(node);
 
 		if (nextTargets.length > 1) {
 			// Fan-out: check if this leads to a merge pattern
@@ -413,9 +456,16 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 			const fanOutBranches: CompositeNode[] = [];
 			for (const targetName of nextTargets) {
 				const targetNode = ctx.graph.nodes.get(targetName);
-				if (targetNode && !ctx.visited.has(targetName)) {
-					const branchComposite = buildFromNode(targetName, ctx);
-					fanOutBranches.push(branchComposite);
+				if (targetNode) {
+					if (ctx.visited.has(targetName)) {
+						// Target already visited - use variable reference to preserve connection
+						// This is crucial for multi-trigger workflows where triggers share targets
+						ctx.variables.set(targetName, targetNode);
+						fanOutBranches.push(createVarRef(targetName));
+					} else {
+						const branchComposite = buildFromNode(targetName, ctx);
+						fanOutBranches.push(branchComposite);
+					}
 				}
 			}
 			if (fanOutBranches.length > 0) {

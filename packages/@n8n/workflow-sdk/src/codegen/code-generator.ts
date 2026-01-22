@@ -682,10 +682,20 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 function toVarName(nodeName: string): string {
 	let varName = nodeName
 		.replace(/[^a-zA-Z0-9]/g, '_')
-		.replace(/^(\d)/, '_$1')
 		.replace(/_+/g, '_')
-		.replace(/^_|_$/g, '')
+		.replace(/_$/g, '') // Only remove trailing underscore, not leading
 		.replace(/^([A-Z])/, (c) => c.toLowerCase());
+
+	// If starts with digit, prefix with underscore
+	if (/^\d/.test(varName)) {
+		varName = '_' + varName;
+	}
+
+	// Remove leading underscore only if followed by letter (not digit)
+	// This preserves _2nd... but removes _Foo...
+	if (/^_[a-zA-Z]/.test(varName)) {
+		varName = varName.slice(1);
+	}
 
 	// Avoid reserved keywords
 	if (RESERVED_KEYWORDS.has(varName)) {

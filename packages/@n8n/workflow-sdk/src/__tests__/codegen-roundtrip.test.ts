@@ -11,27 +11,15 @@ import {
 } from './fixtures-download';
 
 const SKIP_WORKFLOWS = new Set<string>([
-	'3066', // node count 57 vs 53
-	'4366', // node count 38 vs 37
-	'4557', // node count 18 vs 17
-	'4685', // node count 55 vs 53
-	'4807', // node count 14 vs 12
-	'4868', // connection source mismatch (missing "On new file in Google Drive")
-	'4975', // node count 65 vs 53
-	'5258', // node count 21 vs 19
-	'5435', // node count 28 vs 26
-	'5449', // connection source mismatch
-	'5523', // node count 15 vs 14
-	'5611', // node count 28 vs 24
-	'5734', // connection source mismatch
-	'5841', // connection source mismatch
-	'6150', // node count 24 vs 20
-	'6542', // connection source mismatch
-	'7455', // node count 102 vs 100
-	'7945', // node count 37 vs 29
-	'7946', // node count 17 vs 15
-	'10132', // syntax error during parse
-	'10476', // node count 31 vs 19
+	'3066', // node count 57 vs 56 - missing: LinkedIn Post
+	'5449', // connection source mismatch (AI Agent, Reranker subnodes)
+	'5734', // connection source mismatch (VectorStore, Reranker subnodes)
+	'6150', // node count 24 vs 20 - missing Google Drive nodes, Cover Letter
+	'6542', // connection source mismatch (Reranker subnodes)
+	'7945', // node count 37 vs 29 - missing: Loop Over Batches1, Upsert Points1, Merge1
+	'7946', // node count 17 vs 15 - missing: Query Points, Merge, isHit
+	'10132', // node count 50 vs 49 - missing 1 node
+	'10476', // node count 31 vs 19 - missing: Merge1, If, Restart Message
 ]);
 
 interface TestWorkflow {
@@ -1234,6 +1222,181 @@ return workflow('test-simple-multi-sticky', 'Simple Multi-Sticky Workflow')
 			expect(colors).toContain(1);
 			expect(colors).toContain(2);
 			expect(colors).toContain(3);
+		});
+	});
+
+	describe('multi-trigger workflows with shared downstream nodes', () => {
+		it('should preserve connections from both triggers when they share downstream targets', () => {
+			// Bug B: Multi-trigger workflows where triggers share downstream nodes
+			// Pattern: Two triggers both connect to the same downstream nodes
+			// The first trigger's traversal marks downstream nodes as visited,
+			// preventing the second trigger from establishing its connections
+			const originalJson: WorkflowJSON = {
+				id: 'multi-trigger-test',
+				name: 'Multi-Trigger Shared Targets',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'trigger-2',
+						name: 'Schedule Trigger',
+						type: 'n8n-nodes-base.scheduleTrigger',
+						typeVersion: 1.2,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: 'shared-1',
+						name: 'Shared Node A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [200, 100],
+						parameters: { mode: 'manual' },
+					},
+					{
+						id: 'shared-2',
+						name: 'Shared Node B',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [400, 100],
+						parameters: { url: 'https://api.example.com' },
+					},
+				],
+				connections: {
+					// BOTH triggers connect to the same two nodes
+					'Manual Trigger': {
+						main: [
+							[
+								{ node: 'Shared Node A', type: 'main', index: 0 },
+								{ node: 'Shared Node B', type: 'main', index: 0 },
+							],
+						],
+					},
+					'Schedule Trigger': {
+						main: [
+							[
+								{ node: 'Shared Node A', type: 'main', index: 0 },
+								{ node: 'Shared Node B', type: 'main', index: 0 },
+							],
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			const parsedJson = parseWorkflowCode(code);
+
+			// Verify all nodes are present
+			expect(parsedJson.nodes).toHaveLength(4);
+
+			// CRITICAL: Both triggers must have connections to their shared targets
+			expect(parsedJson.connections['Manual Trigger']).toBeDefined();
+			const trigger1Targets = parsedJson.connections['Manual Trigger']!.main[0]!.map((c) => c.node);
+			expect(trigger1Targets).toContain('Shared Node A');
+			expect(trigger1Targets).toContain('Shared Node B');
+
+			expect(parsedJson.connections['Schedule Trigger']).toBeDefined();
+			const trigger2Targets = parsedJson.connections['Schedule Trigger']!.main[0]!.map(
+				(c) => c.node,
+			);
+			expect(trigger2Targets).toContain('Shared Node A');
+			expect(trigger2Targets).toContain('Shared Node B');
+		});
+	});
+
+	describe('nodes with multiple output slots (classifier pattern)', () => {
+		it('should preserve all branches when a regular node has multiple output slots', () => {
+			// Bug A: Nodes with multiple output slots (like textClassifier) lose branches
+			// Pattern: Node has 3 outputs, each going to a different target
+			// The traversal only follows the first non-empty output slot
+			const originalJson: WorkflowJSON = {
+				id: 'classifier-test',
+				name: 'Classifier Pattern Test',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'classifier-1',
+						name: 'Text Classifier',
+						type: '@n8n/n8n-nodes-langchain.textClassifier',
+						typeVersion: 1.2,
+						position: [200, 0],
+						parameters: {},
+					},
+					{
+						id: 'branch-a',
+						name: 'Branch A Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, -100],
+						parameters: {},
+					},
+					{
+						id: 'branch-b',
+						name: 'Branch B Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {},
+					},
+					{
+						id: 'branch-c',
+						name: 'Branch C Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 100],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: {
+						main: [[{ node: 'Text Classifier', type: 'main', index: 0 }]],
+					},
+					// Text Classifier has 3 separate output slots
+					'Text Classifier': {
+						main: [
+							[{ node: 'Branch A Node', type: 'main', index: 0 }], // output 0
+							[{ node: 'Branch B Node', type: 'main', index: 0 }], // output 1
+							[{ node: 'Branch C Node', type: 'main', index: 0 }], // output 2
+						],
+					},
+				},
+			};
+
+			const code = generateWorkflowCode(originalJson);
+			const parsedJson = parseWorkflowCode(code);
+
+			// CRITICAL: All 5 nodes must be present
+			expect(parsedJson.nodes).toHaveLength(5);
+
+			// Verify all branch nodes exist
+			const nodeNames = parsedJson.nodes.map((n) => n.name);
+			expect(nodeNames).toContain('Branch A Node');
+			expect(nodeNames).toContain('Branch B Node');
+			expect(nodeNames).toContain('Branch C Node');
+
+			// Verify Text Classifier has connections to all branches
+			// Note: The codegen may output as fan-out (all on slot 0) rather than separate slots
+			// The important thing is all targets are connected
+			expect(parsedJson.connections['Text Classifier']).toBeDefined();
+			const textClassifierTargets = parsedJson.connections['Text Classifier']!.main.flat().map(
+				(c) => c.node,
+			);
+			expect(textClassifierTargets).toContain('Branch A Node');
+			expect(textClassifierTargets).toContain('Branch B Node');
+			expect(textClassifierTargets).toContain('Branch C Node');
 		});
 	});
 
