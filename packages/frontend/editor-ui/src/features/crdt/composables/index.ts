@@ -21,3 +21,6 @@ export {
 	useWorkflowAwarenessOptional,
 } from './useWorkflowAwareness';
 export type { UseWorkflowAwarenessOptions } from './useWorkflowAwareness';
+
+// CRDT-backed WorkflowState for parameter editing
+export { useCrdtWorkflowState } from './useCrdtWorkflowState';

@@ -117,6 +117,16 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		const subtitle = crdtNode.get('subtitle') as string | undefined;
 		// Disabled state
 		const disabled = crdtNode.get('disabled') as boolean | undefined;
+		// Node settings (top-level properties)
+		const alwaysOutputData = crdtNode.get('alwaysOutputData') as boolean | undefined;
+		const executeOnce = crdtNode.get('executeOnce') as boolean | undefined;
+		const retryOnFail = crdtNode.get('retryOnFail') as boolean | undefined;
+		const maxTries = crdtNode.get('maxTries') as number | undefined;
+		const waitBetweenTries = crdtNode.get('waitBetweenTries') as number | undefined;
+		const onError = crdtNode.get('onError') as string | undefined;
+		const notes = crdtNode.get('notes') as string | undefined;
+		const notesInFlow = crdtNode.get('notesInFlow') as boolean | undefined;
+		const color = crdtNode.get('color') as string | undefined;
 
 		return {
 			id,
@@ -130,6 +140,15 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 			size,
 			subtitle,
 			disabled,
+			alwaysOutputData,
+			executeOnce,
+			retryOnFail,
+			maxTries,
+			waitBetweenTries,
+			onError,
+			notes,
+			notesInFlow,
+			color,
 		};
 	}
 
@@ -533,6 +552,33 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		});
 	}
 
+	/**
+	 * Set a top-level node setting (e.g., alwaysOutputData, executeOnce).
+	 * Use for node properties that are NOT in node.parameters.
+	 */
+	function setNodeSetting(nodeId: string, key: string, value: unknown): void {
+		if (!doc) return;
+
+		doc.transact(() => {
+			const crdtNode = getCrdtNode(nodeId);
+			if (crdtNode) {
+				if (value === undefined || value === null) {
+					crdtNode.delete(key);
+				} else {
+					crdtNode.set(key, value);
+				}
+			}
+		});
+	}
+
+	/**
+	 * Get the raw CRDT map for a node (for subscribing to all changes).
+	 * Returns undefined if node doesn't exist.
+	 */
+	function getNodeCrdtMap(nodeId: string): CRDTMap<unknown> | undefined {
+		return getCrdtNode(nodeId);
+	}
+
 	// --- Edge Mutations ---
 
 	/**
@@ -611,7 +657,9 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		updateNodeParams,
 		updateNodeParamAtPath,
 		setNodeDisabled,
+		setNodeSetting,
 		getNodeParametersMap,
+		getNodeCrdtMap,
 		addEdge,
 		removeEdge,
 		onNodeAdded: nodeAddedHook.on,

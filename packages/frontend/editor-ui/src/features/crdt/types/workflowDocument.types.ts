@@ -50,6 +50,25 @@ export interface WorkflowNode {
 	subtitle?: string;
 	/** Whether the node is disabled (won't execute) */
 	disabled?: boolean;
+	// Node settings (top-level properties, not in parameters)
+	/** Always output data even when empty */
+	alwaysOutputData?: boolean;
+	/** Execute only once (not per input item) */
+	executeOnce?: boolean;
+	/** Retry on failure */
+	retryOnFail?: boolean;
+	/** Max retry attempts */
+	maxTries?: number;
+	/** Wait time between retries in ms */
+	waitBetweenTries?: number;
+	/** Error handling behavior */
+	onError?: string;
+	/** Node notes */
+	notes?: string;
+	/** Show notes in flow view */
+	notesInFlow?: boolean;
+	/** Node color */
+	color?: string;
 }
 
 /**
@@ -270,4 +289,17 @@ export interface WorkflowDocument {
 	 * Returns undefined if node doesn't exist or if using REST document.
 	 */
 	getNodeParametersMap?(nodeId: string): CRDTMap<unknown> | undefined;
+
+	/**
+	 * Get the raw CRDT map for a node (CRDT only).
+	 * Useful for subscribing to all node changes (parameters + settings).
+	 * Returns undefined if node doesn't exist or if using REST document.
+	 */
+	getNodeCrdtMap?(nodeId: string): CRDTMap<unknown> | undefined;
+
+	/**
+	 * Set a top-level node setting (e.g., alwaysOutputData, executeOnce).
+	 * Use for node properties that are NOT in node.parameters.
+	 */
+	setNodeSetting?(nodeId: string, key: string, value: unknown): void;
 }
