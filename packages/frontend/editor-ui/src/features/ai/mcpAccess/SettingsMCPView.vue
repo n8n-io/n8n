@@ -468,7 +468,7 @@ onMounted(async () => {
 	padding: var(--spacing--sm);
 	background-color: var(--color--background--light-2);
 	border-radius: var(--radius);
-	border-left: 3px solid var(--color--primary);
+	border-left: calc(var(--border-width) * 3) solid var(--color--primary);
 }
 
 .error-message {
