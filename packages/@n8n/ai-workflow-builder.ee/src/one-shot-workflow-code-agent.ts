@@ -232,6 +232,12 @@ export class OneShotWorkflowCodeAgent {
 			let sourceCode: string | null = null;
 
 			while (iteration < MAX_AGENT_ITERATIONS) {
+				if (consecutiveParseErrors >= 3) {
+					// Two consecutive parsing errors - fail
+					debugLog('CHAT', 'Three consecutive parsing errors - failing');
+					throw new Error('Failed to parse workflow code after 3 consecutive attempts.');
+				}
+
 				iteration++;
 				debugLog('CHAT', `========== ITERATION ${iteration} ==========`);
 
@@ -351,14 +357,6 @@ export class OneShotWorkflowCodeAgent {
 								errorMessage,
 							});
 
-							if (consecutiveParseErrors >= 3) {
-								// Two consecutive parsing errors - fail
-								debugLog('CHAT', 'Three consecutive parsing errors - failing');
-								throw new Error(
-									`Failed to parse workflow code after 3 consecutive attempts. Last error: ${errorMessage}`,
-								);
-							}
-
 							// First parsing error - send error back to agent for correction
 							debugLog('CHAT', 'First parsing error - sending error back to agent for correction');
 							messages.push(
@@ -369,6 +367,7 @@ export class OneShotWorkflowCodeAgent {
 							finalResult = null; // Reset so we can try again
 						}
 					} else {
+						consecutiveParseErrors++;
 						debugLog(
 							'CHAT',
 							'Could not parse structured output, continuing loop for another response...',
