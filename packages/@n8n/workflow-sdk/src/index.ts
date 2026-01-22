@@ -80,6 +80,11 @@ export type {
 	NodeInputConnections,
 	INodeConnections,
 	IConnections,
+	// $fromAI types for tool nodes
+	FromAIArgumentType,
+	ToolConfigContext,
+	ToolConfigInput,
+	ToolInput,
 } from './types/base';
 
 // Type guard for NodeChain
@@ -117,7 +122,13 @@ export { switchCase } from './switch-case';
 export { splitInBatches } from './split-in-batches';
 
 // Expression utilities
-export { serializeExpression, parseExpression, isExpression, expr } from './expression';
+export {
+	serializeExpression,
+	parseExpression,
+	isExpression,
+	expr,
+	createFromAIExpression,
+} from './expression';
 
 // Code helpers
 export { runOnceForAllItems, runOnceForEachItem } from './code-helpers';
