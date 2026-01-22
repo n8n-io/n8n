@@ -30,6 +30,7 @@ import {
 	storeVersion as storeVersionOp,
 	getStoredVersion as getStoredVersionOp,
 } from './operations/storeVersion';
+import { createWriteQueue } from './writeQueue';
 import type { DataWorkerState, QueryResult, SQLiteAPI, SQLiteParam } from './types';
 
 export type { DataWorkerState, QueryResult, SQLiteAPI, SQLiteParam } from './types';
@@ -42,6 +43,9 @@ const state: DataWorkerState = {
 	initPromise: null,
 	version: null,
 };
+
+// Write queue to serialize write operations and prevent race conditions
+const writeQueue = createWriteQueue();
 
 const DB_NAME = 'n8n';
 const VFS_NAME = 'n8n-opfs';
@@ -166,30 +170,34 @@ async function initialize({ version }: { version: string }): Promise<void> {
 
 /**
  * Execute a SQL statement (for INSERT, UPDATE, DELETE, CREATE, etc.)
+ * Queued to prevent concurrent write operations from interleaving.
  */
 async function exec(sql: string): Promise<void> {
-	await execOp(state, sql);
+	return await writeQueue.enqueue(sql, async () => await execOp(state, sql));
 }
 
 /**
- * Execute a SQL query and return results (for SELECT)
+ * Execute a SQL query and return results
+ * Automatically queued if the SQL is a write operation (INSERT, UPDATE, DELETE, etc.)
  */
 async function query(sql: string): Promise<QueryResult> {
-	return await queryOp(state, sql);
+	return await writeQueue.enqueue(sql, async () => await queryOp(state, sql));
 }
 
 /**
  * Execute a SQL query with bound parameters
+ * Automatically queued if the SQL is a write operation (INSERT, UPDATE, DELETE, etc.)
  */
 async function queryWithParams(sql: string, params: SQLiteParam[] = []): Promise<QueryResult> {
-	return await queryWithParamsOp(state, sql, params);
+	return await writeQueue.enqueue(sql, async () => await queryWithParamsOp(state, sql, params));
 }
 
 /**
  * Close the database connection
+ * Queued to ensure all pending writes complete before closing.
  */
 async function close(): Promise<void> {
-	await closeOp(state);
+	return await writeQueue.enqueue(null, async () => await closeOp(state));
 }
 
 /**
@@ -202,16 +210,18 @@ function isInitialized(): boolean {
 /**
  * Load node types from the server and sync with the local database
  * This runs entirely within the worker (fetch + SQL operations)
+ * Queued to prevent concurrent write operations from interleaving.
  */
 async function loadNodeTypes(baseUrl: string): Promise<void> {
-	await loadNodeTypesOp(state, baseUrl);
+	return await writeQueue.enqueue(null, async () => await loadNodeTypesOp(state, baseUrl));
 }
 
 /**
  * Store the n8n version in the database
+ * Queued to prevent concurrent write operations from interleaving.
  */
 async function storeVersion(version: string): Promise<void> {
-	await storeVersionOp(state, version);
+	return await writeQueue.enqueue(null, async () => await storeVersionOp(state, version));
 }
 
 /**
