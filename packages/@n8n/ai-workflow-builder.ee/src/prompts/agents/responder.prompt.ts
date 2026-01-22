@@ -85,68 +85,50 @@ export function buildGeneralErrorGuidance(): string {
 
 /**
  * Build guidance for data table creation.
- * Users need to manually create data tables since the AI workflow builder cannot create them automatically.
- *
- * For row column operations, column definitions are inferred from the Set node
- * (n8n-nodes-base.set) that precedes each Data Table node.
- * For read operations (get, getAll, delete), no column guidance is needed.
+ * Data tables must be created manually - the AI workflow builder cannot create them automatically.
  */
 export function buildDataTableCreationGuidance(dataTables: DataTableInfo[]): string {
 	if (dataTables.length === 0) {
 		return '';
 	}
 
-	const parts: string[] = ['**Data Table Setup Required:**'];
-	parts.push(
-		'The workflow uses Data Table nodes, but data tables must be created manually. ' +
-			'Do NOT tell the user that data tables will be created automatically.',
-	);
+	const tableGuidance = dataTables.map((table) => {
+		const isColumnOperation = isDataTableRowColumnOperation(table.operation);
+		const columnInfo = buildColumnInfo(table, isColumnOperation);
+		return `- **${table.nodeName}** (${table.operation}): ${columnInfo}`;
+	});
 
-	parts.push('');
-	parts.push('Include the following steps in your response to the user:');
-	parts.push('');
-	parts.push('## Steps to Create Data Tables');
-	parts.push('');
-	parts.push('1. Go to the [Data Tables tab](/home/datatables)');
+	return prompt({ format: 'markdown' })
+		.section(
+			'Data Table Setup Required',
+			`Data tables must be created manually before the workflow can run.
+Do NOT tell the user that data tables will be created automatically.
 
-	for (const table of dataTables) {
-		const needsColumnDefinitions = isDataTableRowColumnOperation(table.operation);
+Go to the [Data Tables tab](/home/datatables) to create the required tables:
 
-		parts.push(
-			`2. Click "Create Data Table" and name it appropriately for the "${table.nodeName}" node`,
-		);
+${tableGuidance.join('\n')}
 
-		if (needsColumnDefinitions) {
-			// Column operations need column definitions
-			if (table.columns.length > 0) {
-				parts.push('3. Add these columns with the following types:');
-				for (const column of table.columns) {
-					parts.push(`   - \`${column.name}\` (${column.type})`);
-				}
-				if (table.setNodeName) {
-					parts.push(`   (These columns are defined in the "${table.setNodeName}" node)`);
-				}
-			} else if (table.setNodeName) {
-				parts.push(
-					`3. Add columns matching the fields defined in the "${table.setNodeName}" node. ` +
-						'Open that node to see the field names and types.',
-				);
-			} else {
-				parts.push('3. Add columns based on the data you want to store');
-			}
-		} else {
-			// Read operations just need the table to exist with appropriate columns
-			parts.push(
-				'3. Ensure the table has the columns you want to read/query ' +
-					`(the "${table.nodeName}" node uses the "${table.operation}" operation)`,
-			);
-		}
+After creating each table, select it in the corresponding Data Table node.`,
+		)
+		.build();
+}
 
-		parts.push('4. After creating the table, select it in the Data Table node');
-		parts.push('');
+function buildColumnInfo(table: DataTableInfo, isColumnOperation: boolean): string {
+	if (!isColumnOperation) {
+		return `Ensure the table has columns for reading/querying (uses "${table.operation}" operation)`;
 	}
 
-	return parts.join('\n');
+	if (table.columns.length > 0) {
+		const columnList = table.columns.map((c) => `\`${c.name}\` (${c.type})`).join(', ');
+		const source = table.setNodeName ? ` (from "${table.setNodeName}" node)` : '';
+		return `Add columns: ${columnList}${source}`;
+	}
+
+	if (table.setNodeName) {
+		return `Add columns matching the fields in the "${table.setNodeName}" node`;
+	}
+
+	return 'Add columns based on the data you want to store';
 }
 
 export function buildResponderPrompt(): string {
