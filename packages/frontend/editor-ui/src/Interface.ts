@@ -266,6 +266,13 @@ export interface IWorkflowDb {
 	checksum?: string;
 }
 
+/**
+ * Document key format for identifying workflow documents.
+ * Format: `{workflowId}@{version}` where version is either 'latest' or a specific version ID.
+ * 'latest' represents the current working version being edited.
+ */
+export type DocumentKey = `${string}@${'latest' | string}`;
+
 // For workflow list we don't need the full workflow data
 export type BaseResource = {
 	id: string;

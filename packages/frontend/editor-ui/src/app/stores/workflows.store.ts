@@ -10,6 +10,7 @@ import {
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import type {
+	DocumentKey,
 	INodeMetadata,
 	INodeUi,
 	IStartRunData,
@@ -116,6 +117,41 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 	...defaults,
 });
 
+/**
+ * Creates a document key from a workflow ID and optional version.
+ * @param id The workflow ID
+ * @param version The version (defaults to 'latest')
+ * @returns A DocumentKey in the format `{id}@{version}`
+ */
+export function createDocumentKey(id: string, version: string = 'latest'): DocumentKey {
+	return `${id}@${version}` as DocumentKey;
+}
+
+/**
+ * Parses a document key into its component parts.
+ * @param key The document key to parse
+ * @returns An object with id and version properties
+ */
+export function parseDocumentKey(key: DocumentKey): { id: string; version: string } {
+	const atIndex = key.lastIndexOf('@');
+	if (atIndex === -1) {
+		return { id: key, version: 'latest' };
+	}
+	return {
+		id: key.slice(0, atIndex),
+		version: key.slice(atIndex + 1),
+	};
+}
+
+/**
+ * Checks if a document key represents the latest version.
+ * @param key The document key to check
+ * @returns True if the key represents the latest version
+ */
+export function isLatestVersion(key: DocumentKey): boolean {
+	return key.endsWith('@latest');
+}
+
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
@@ -148,6 +184,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const executionWaitingForWebhook = ref(false);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
 	const nodeMetadata = ref<NodeMetadataMap>({});
+
+	// Document-based storage for multi-workflow support
+	// Key format: `{workflowId}@{version}` where version is 'latest' or a specific version ID
+	const documentWorkflowsById = ref<Record<DocumentKey, IWorkflowDb>>({});
+	const documentWorkflowObjectsById = ref<Record<DocumentKey, Workflow>>({});
+	const documentNodeMetadataById = ref<Record<DocumentKey, NodeMetadataMap>>({});
+	// Tracks which documents are new (not yet saved to the backend)
+	// This is set via ?new=true query param in NodeView and cleared on save
+	const isNewDocumentById = ref<Record<DocumentKey, boolean>>({});
+
 	const isInDebugMode = ref(false);
 	const chatMessages = ref<string[]>([]);
 	const chatPartialExecutionDestinationNode = ref<string | null>(null);
@@ -551,6 +597,674 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	// when the workflow replaces the node-parameters.
 	function getNodes(): INodeUi[] {
 		return workflow.value.nodes.map((node) => ({ ...node }));
+	}
+
+	////
+	// Document management functions for multi-workflow support
+	////
+
+	/**
+	 * Gets a workflow document by its document key.
+	 * @param key The document key (format: `{workflowId}@{version}`)
+	 * @returns The workflow document or undefined if not found
+	 */
+	function getDocumentWorkflow(key: DocumentKey): IWorkflowDb | undefined {
+		return documentWorkflowsById.value[key];
+	}
+
+	/**
+	 * Gets a workflow object (Workflow instance) by its document key.
+	 * @param key The document key
+	 * @returns The workflow object or undefined if not found
+	 */
+	function getDocumentWorkflowObject(key: DocumentKey): Workflow | undefined {
+		return documentWorkflowObjectsById.value[key];
+	}
+
+	/**
+	 * Gets node metadata by its document key.
+	 * @param key The document key
+	 * @returns The node metadata map or undefined if not found
+	 */
+	function getDocumentNodeMetadata(key: DocumentKey): NodeMetadataMap | undefined {
+		return documentNodeMetadataById.value[key];
+	}
+
+	/**
+	 * Checks if a document exists in the store.
+	 * @param key The document key
+	 * @returns True if the document exists
+	 */
+	function hasDocument(key: DocumentKey): boolean {
+		return key in documentWorkflowsById.value;
+	}
+
+	/**
+	 * Sets a workflow document in the store and creates the corresponding workflow object.
+	 * @param key The document key
+	 * @param workflowData The workflow data to set
+	 */
+	function setDocument(key: DocumentKey, workflowData: IWorkflowDb): void {
+		documentWorkflowsById.value[key] = workflowData;
+
+		// Create the corresponding workflow object
+		const nodeTypes = getNodeTypes();
+		documentWorkflowObjectsById.value[key] = new Workflow({
+			id: workflowData.id || undefined,
+			name: workflowData.name,
+			nodes: workflowData.nodes,
+			connections: workflowData.connections,
+			active: false,
+			nodeTypes,
+			settings: workflowData.settings ?? { ...defaults.settings },
+			pinData: workflowData.pinData,
+		});
+
+		// Initialize empty node metadata if not present
+		if (!documentNodeMetadataById.value[key]) {
+			documentNodeMetadataById.value[key] = {};
+		}
+	}
+
+	/**
+	 * Removes a document from all maps.
+	 * @param key The document key to remove
+	 */
+	function removeDocument(key: DocumentKey): void {
+		delete documentWorkflowsById.value[key];
+		delete documentWorkflowObjectsById.value[key];
+		delete documentNodeMetadataById.value[key];
+		delete isNewDocumentById.value[key];
+	}
+
+	////
+	// Document-aware property accessors
+	// These functions provide access to document properties by DocumentKey
+	////
+
+	function getDocumentWorkflowName(key: DocumentKey): string {
+		return documentWorkflowsById.value[key]?.name ?? '';
+	}
+
+	function getDocumentWorkflowId(key: DocumentKey): string {
+		return documentWorkflowsById.value[key]?.id ?? '';
+	}
+
+	function getDocumentWorkflowVersionId(key: DocumentKey): string {
+		return documentWorkflowsById.value[key]?.versionId ?? '';
+	}
+
+	function getDocumentWorkflowSettings(key: DocumentKey): IWorkflowSettings {
+		return documentWorkflowsById.value[key]?.settings ?? { ...defaults.settings };
+	}
+
+	function getDocumentWorkflowTags(key: DocumentKey): string[] {
+		return (documentWorkflowsById.value[key]?.tags as string[]) ?? [];
+	}
+
+	function isDocumentNewWorkflow(key: DocumentKey): boolean {
+		return isNewDocumentById.value[key] === true;
+	}
+
+	/**
+	 * Marks a document as new (not yet saved to the backend).
+	 * Call this when creating a new workflow via ?new=true query param.
+	 */
+	function setDocumentIsNew(key: DocumentKey, isNew: boolean): void {
+		if (isNew) {
+			isNewDocumentById.value[key] = true;
+		} else {
+			delete isNewDocumentById.value[key];
+		}
+	}
+
+	function isDocumentWorkflowActive(key: DocumentKey): boolean {
+		return documentWorkflowsById.value[key]?.activeVersionId !== null;
+	}
+
+	function getDocumentWorkflowTriggerNodes(key: DocumentKey): INodeUi[] {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return [];
+		return doc.nodes.filter((node: INodeUi) => {
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			return nodeType && nodeType.group.includes('trigger');
+		});
+	}
+
+	function documentHasWebhookNode(key: DocumentKey): boolean {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return false;
+		return !!doc.nodes.find((node: INodeUi) => !!node.webhookId);
+	}
+
+	function getDocumentAllConnections(key: DocumentKey): IConnections {
+		return documentWorkflowsById.value[key]?.connections ?? {};
+	}
+
+	function getDocumentAllNodes(key: DocumentKey): INodeUi[] {
+		return documentWorkflowsById.value[key]?.nodes ?? [];
+	}
+
+	function getDocumentCanvasNames(key: DocumentKey): Set<string> {
+		const nodes = getDocumentAllNodes(key);
+		return new Set(nodes.map((n) => n.name));
+	}
+
+	function getDocumentNodesByName(key: DocumentKey): Record<string, INodeUi> {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return {};
+		return doc.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
+			acc[node.name] = node;
+			return acc;
+		}, {});
+	}
+
+	function getDocumentPinnedWorkflowData(key: DocumentKey): IPinData | undefined {
+		return documentWorkflowsById.value[key]?.pinData;
+	}
+
+	////
+	// Document-aware node/connection access functions
+	////
+
+	function getDocumentNodeByName(key: DocumentKey, nodeName: string): INodeUi | null {
+		const nodesByName = getDocumentNodesByName(key);
+		return workflowUtils.getNodeByName(nodesByName, nodeName);
+	}
+
+	function getDocumentNodeById(key: DocumentKey, nodeId: string): INodeUi | undefined {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return undefined;
+		return doc.nodes.find((node) => node.id === nodeId);
+	}
+
+	function getDocumentNodesByIds(key: DocumentKey, nodeIds: string[]): INodeUi[] {
+		return nodeIds.map((id) => getDocumentNodeById(key, id)).filter(isPresent);
+	}
+
+	function getDocumentOutgoingConnectionsByNodeName(
+		key: DocumentKey,
+		nodeName: string,
+	): INodeConnections {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return {};
+		if (doc.connections.hasOwnProperty(nodeName)) {
+			return doc.connections[nodeName] as unknown as INodeConnections;
+		}
+		return {};
+	}
+
+	function getDocumentIncomingConnectionsByNodeName(
+		key: DocumentKey,
+		nodeName: string,
+	): INodeConnections {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return {};
+		const connectionsByDest = workflowUtils.mapConnectionsByDestination(doc.connections);
+		if (connectionsByDest.hasOwnProperty(nodeName)) {
+			return connectionsByDest[nodeName] as unknown as INodeConnections;
+		}
+		return {};
+	}
+
+	function documentNodeHasOutputConnection(key: DocumentKey, nodeName: string): boolean {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return false;
+		return doc.connections.hasOwnProperty(nodeName);
+	}
+
+	function isDocumentNodeInOutgoingNodeConnections(
+		key: DocumentKey,
+		rootNodeName: string,
+		searchNodeName: string,
+		depth = -1,
+	): boolean {
+		if (depth === 0) return false;
+		const firstNodeConnections = getDocumentOutgoingConnectionsByNodeName(key, rootNodeName);
+		if (!firstNodeConnections?.main?.[0]) return false;
+
+		const connections = firstNodeConnections.main[0];
+		if (connections.some((node) => node.node === searchNodeName)) return true;
+
+		return connections.some((node) =>
+			isDocumentNodeInOutgoingNodeConnections(key, node.node, searchNodeName, depth - 1),
+		);
+	}
+
+	function findDocumentNodeByPartialId(key: DocumentKey, partialId: string): INodeUi | undefined {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return undefined;
+		return doc.nodes.find((node) => node.id.startsWith(partialId));
+	}
+
+	function getDocumentPartialIdForNode(key: DocumentKey, fullId: string): string {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return fullId;
+		for (let length = 6; length < fullId.length; ++length) {
+			const partialId = fullId.slice(0, length);
+			if (doc.nodes.filter((x) => x.id.startsWith(partialId)).length === 1) {
+				return partialId;
+			}
+		}
+		return fullId;
+	}
+
+	function findDocumentRootWithMainConnection(key: DocumentKey, nodeName: string): string | null {
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (!workflowObj) return null;
+
+		const children = workflowObj.getChildNodes(nodeName, 'ALL');
+
+		for (let i = children.length - 1; i >= 0; i--) {
+			const childName = children[i];
+			const parentNodes = workflowObj.getParentNodes(childName, NodeConnectionTypes.Main);
+
+			if (parentNodes.length > 0) {
+				return childName;
+			}
+		}
+
+		return null;
+	}
+
+	function getDocumentNodes(key: DocumentKey): INodeUi[] {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return [];
+		return doc.nodes.map((node) => ({ ...node }));
+	}
+
+	function createDocumentWorkflowObject(
+		key: DocumentKey,
+		nodes: INodeUi[],
+		connections: IConnections,
+		copyData?: boolean,
+	): Workflow {
+		const nodeTypes = getNodeTypes();
+		const doc = documentWorkflowsById.value[key];
+
+		return new Workflow({
+			id: doc?.id || undefined,
+			name: doc?.name ?? '',
+			nodes: copyData ? deepCopy(nodes) : nodes,
+			connections: copyData ? deepCopy(connections) : connections,
+			active: false,
+			nodeTypes,
+			settings: doc?.settings ?? { ...defaults.settings },
+			pinData: doc?.pinData,
+		});
+	}
+
+	function cloneDocumentWorkflowObject(key: DocumentKey): Workflow {
+		const nodes = getDocumentNodes(key);
+		const connections = getDocumentAllConnections(key);
+		return createDocumentWorkflowObject(key, nodes, connections);
+	}
+
+	////
+	// Document-aware mutation functions
+	////
+
+	function resetDocumentWorkflow(key: DocumentKey): void {
+		const emptyWorkflow = createEmptyWorkflow();
+		setDocument(key, emptyWorkflow);
+	}
+
+	function setDocumentNodes(key: DocumentKey, nodes: INodeUi[]): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+		doc.nodes = nodes;
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setNodes(nodes);
+		}
+	}
+
+	function setDocumentConnections(key: DocumentKey, connections: IConnections): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+		doc.connections = connections;
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setConnections(connections);
+		}
+	}
+
+	function addDocumentNode(key: DocumentKey, nodeData: INodeUi): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		if (!nodeData.hasOwnProperty('name')) {
+			return;
+		}
+
+		// Initialize nodes array if needed
+		if (!Array.isArray(doc.nodes)) {
+			doc.nodes = [];
+		}
+
+		doc.nodes.push(nodeData);
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setNodes(doc.nodes);
+		}
+
+		// Initialize node metadata
+		const metadata = documentNodeMetadataById.value[key];
+		if (metadata && !metadata[nodeData.name]) {
+			metadata[nodeData.name] = {} as INodeMetadata;
+		}
+	}
+
+	function removeDocumentNode(key: DocumentKey, node: INodeUi): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		// Remove node metadata
+		const metadata = documentNodeMetadataById.value[key];
+		if (metadata && node.name in metadata) {
+			delete metadata[node.name];
+		}
+
+		// Remove from pinData
+		if (doc.pinData?.hasOwnProperty(node.name)) {
+			const { [node.name]: _removedPinData, ...remainingPinData } = doc.pinData;
+			doc.pinData = remainingPinData;
+		}
+
+		for (let i = 0; i < doc.nodes.length; i++) {
+			if (doc.nodes[i].name === node.name) {
+				doc.nodes = [...doc.nodes.slice(0, i), ...doc.nodes.slice(i + 1)];
+				const workflowObj = documentWorkflowObjectsById.value[key];
+				if (workflowObj) {
+					workflowObj.setNodes(doc.nodes);
+				}
+				return;
+			}
+		}
+	}
+
+	function addDocumentConnection(key: DocumentKey, data: { connection: IConnection[] }): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		if (data.connection.length !== 2) {
+			return;
+		}
+
+		const sourceData: IConnection = data.connection[0];
+		const destinationData: IConnection = data.connection[1];
+
+		if (!doc.connections.hasOwnProperty(sourceData.node)) {
+			doc.connections[sourceData.node] = {};
+		}
+
+		if (!doc.connections[sourceData.node].hasOwnProperty(sourceData.type)) {
+			doc.connections[sourceData.node] = {
+				...doc.connections[sourceData.node],
+				[sourceData.type]: [],
+			};
+		}
+
+		if (doc.connections[sourceData.node][sourceData.type].length < sourceData.index + 1) {
+			for (
+				let i = doc.connections[sourceData.node][sourceData.type].length;
+				i <= sourceData.index;
+				i++
+			) {
+				doc.connections[sourceData.node][sourceData.type].push([]);
+			}
+		}
+
+		// Check if the same connection exists already
+		const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
+		let propertyName: keyof IConnection;
+		let connectionExists = false;
+
+		const nodeConnections = doc.connections[sourceData.node][sourceData.type];
+		const connectionsToCheck = nodeConnections[sourceData.index];
+
+		if (connectionsToCheck) {
+			connectionLoop: for (const existingConnection of connectionsToCheck) {
+				for (propertyName of checkProperties) {
+					if (existingConnection[propertyName] !== destinationData[propertyName]) {
+						continue connectionLoop;
+					}
+				}
+				connectionExists = true;
+				break;
+			}
+		}
+
+		// Add the new connection if it does not exist already
+		if (!connectionExists) {
+			nodeConnections[sourceData.index] = nodeConnections[sourceData.index] ?? [];
+			const connections = nodeConnections[sourceData.index];
+			if (connections) {
+				connections.push(destinationData);
+			}
+		}
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setConnections(doc.connections);
+		}
+	}
+
+	function removeDocumentConnection(key: DocumentKey, data: { connection: IConnection[] }): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		const sourceData = data.connection[0];
+		const destinationData = data.connection[1];
+
+		if (!doc.connections.hasOwnProperty(sourceData.node)) return;
+		if (!doc.connections[sourceData.node].hasOwnProperty(sourceData.type)) return;
+		if (doc.connections[sourceData.node][sourceData.type].length < sourceData.index + 1) return;
+
+		const connections = doc.connections[sourceData.node][sourceData.type][sourceData.index];
+		if (!connections) return;
+
+		doc.connections[sourceData.node][sourceData.type][sourceData.index] = connections.filter(
+			(conn) =>
+				!(
+					conn.node === destinationData.node &&
+					conn.type === destinationData.type &&
+					conn.index === destinationData.index
+				),
+		);
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setConnections(doc.connections);
+		}
+	}
+
+	function removeAllDocumentNodeConnection(
+		key: DocumentKey,
+		node: INodeUi,
+		options: { preserveInputConnections?: boolean; preserveOutputConnections?: boolean } = {},
+	): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		// Remove output connections
+		if (!options.preserveOutputConnections && doc.connections.hasOwnProperty(node.name)) {
+			delete doc.connections[node.name];
+		}
+
+		// Remove input connections
+		if (!options.preserveInputConnections) {
+			for (const sourceNode in doc.connections) {
+				for (const type in doc.connections[sourceNode]) {
+					for (let index = 0; index < doc.connections[sourceNode][type].length; index++) {
+						const connections = doc.connections[sourceNode][type][index];
+						if (connections) {
+							doc.connections[sourceNode][type][index] = connections.filter(
+								(conn) => conn.node !== node.name,
+							);
+						}
+					}
+				}
+			}
+		}
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setConnections(doc.connections);
+		}
+	}
+
+	function pinDocumentData(
+		key: DocumentKey,
+		payload: { node: INodeUi; data: INodeExecutionData[] },
+	): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		const nodeName = payload.node.name;
+
+		if (!doc.pinData) {
+			doc.pinData = {};
+		}
+
+		// Store pin data with proper structure
+		const storedPinData = payload.data.map((item) => {
+			if (!isJsonKeyObject(item)) {
+				return { json: item };
+			}
+			return item;
+		});
+
+		doc.pinData[nodeName] = storedPinData;
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setPinData(doc.pinData);
+		}
+
+		// Update node metadata
+		const metadata = documentNodeMetadataById.value[key];
+		if (metadata) {
+			if (!metadata[nodeName]) {
+				metadata[nodeName] = {} as INodeMetadata;
+			}
+			metadata[nodeName].pinnedDataLastUpdatedAt = Date.now();
+		}
+
+		dataPinningEventBus.emit('pin-data', { [nodeName]: storedPinData });
+	}
+
+	function unpinDocumentData(key: DocumentKey, payload: { node: INodeUi }): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc || !doc.pinData) return;
+
+		const nodeName = payload.node.name;
+
+		const { [nodeName]: _, ...pinData } = doc.pinData;
+		doc.pinData = pinData;
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setPinData(pinData);
+		}
+
+		// Update node metadata
+		const metadata = documentNodeMetadataById.value[key];
+		if (metadata && metadata[nodeName]) {
+			metadata[nodeName].pinnedDataLastRemovedAt = Date.now();
+		}
+
+		dataPinningEventBus.emit('unpin-data', { nodeNames: [nodeName] });
+	}
+
+	function setDocumentWorkflowPinData(key: DocumentKey, data: IPinData = {}): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		// Ensure all pin data items have the proper { json: ... } structure
+		const validPinData = Object.keys(data).reduce((accu, nodeName) => {
+			accu[nodeName] = data[nodeName].map((item) => {
+				if (!isJsonKeyObject(item)) {
+					return { json: item };
+				}
+				return item;
+			});
+			return accu;
+		}, {} as IPinData);
+
+		doc.pinData = validPinData;
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setPinData(validPinData);
+		}
+	}
+
+	function setDocumentWorkflowSettings(key: DocumentKey, settings: IWorkflowSettings): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		doc.settings = settings as IWorkflowDb['settings'];
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.setSettings(settings);
+		}
+	}
+
+	function setDocumentWorkflowName(key: DocumentKey, name: string): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		doc.name = name;
+
+		const workflowObj = documentWorkflowObjectsById.value[key];
+		if (workflowObj) {
+			workflowObj.name = name;
+		}
+
+		// Update in workflowsById if present
+		const { id } = parseDocumentKey(key);
+		if (id && workflowsById.value[id]) {
+			workflowsById.value[id].name = name;
+		}
+	}
+
+	function setDocumentWorkflowVersionId(
+		key: DocumentKey,
+		versionId: string,
+		checksum?: string,
+	): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		doc.versionId = versionId;
+		if (checksum) {
+			doc.checksum = checksum;
+		}
+	}
+
+	function setDocumentUsedCredentials(key: DocumentKey, data: IUsedCredential[]): void {
+		const doc = documentWorkflowsById.value[key];
+		if (!doc) return;
+
+		doc.usedCredentials = data;
+	}
+
+	function setDocumentNodePristine(key: DocumentKey, nodeName: string, isPristine: boolean): void {
+		const metadata = documentNodeMetadataById.value[key];
+		if (!metadata) return;
+
+		if (!metadata[nodeName]) {
+			metadata[nodeName] = { pristine: isPristine };
+		} else {
+			metadata[nodeName].pristine = isPristine;
+		}
+
+		if (!isPristine) {
+			metadata[nodeName].parametersLastUpdatedAt = Date.now();
+		}
 	}
 
 	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
@@ -1967,6 +2681,65 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		executionWaitingForWebhook,
 		workflowsById,
 		nodeMetadata,
+		// Document-based storage for multi-workflow support
+		documentWorkflowsById,
+		documentWorkflowObjectsById,
+		documentNodeMetadataById,
+		isNewDocumentById,
+		// Document management functions
+		getDocumentWorkflow,
+		getDocumentWorkflowObject,
+		getDocumentNodeMetadata,
+		hasDocument,
+		setDocument,
+		removeDocument,
+		setDocumentIsNew,
+		// Document-aware property accessors
+		getDocumentWorkflowName,
+		getDocumentWorkflowId,
+		getDocumentWorkflowVersionId,
+		getDocumentWorkflowSettings,
+		getDocumentWorkflowTags,
+		isDocumentNewWorkflow,
+		isDocumentWorkflowActive,
+		getDocumentWorkflowTriggerNodes,
+		documentHasWebhookNode,
+		getDocumentAllConnections,
+		getDocumentAllNodes,
+		getDocumentCanvasNames,
+		getDocumentNodesByName,
+		getDocumentPinnedWorkflowData,
+		// Document-aware node/connection access functions
+		getDocumentNodeByName,
+		getDocumentNodeById,
+		getDocumentNodesByIds,
+		getDocumentOutgoingConnectionsByNodeName,
+		getDocumentIncomingConnectionsByNodeName,
+		documentNodeHasOutputConnection,
+		isDocumentNodeInOutgoingNodeConnections,
+		findDocumentNodeByPartialId,
+		getDocumentPartialIdForNode,
+		findDocumentRootWithMainConnection,
+		getDocumentNodes,
+		createDocumentWorkflowObject,
+		cloneDocumentWorkflowObject,
+		// Document-aware mutation functions
+		resetDocumentWorkflow,
+		setDocumentNodes,
+		setDocumentConnections,
+		addDocumentNode,
+		removeDocumentNode,
+		addDocumentConnection,
+		removeDocumentConnection,
+		removeAllDocumentNodeConnection,
+		pinDocumentData,
+		unpinDocumentData,
+		setDocumentWorkflowPinData,
+		setDocumentWorkflowSettings,
+		setDocumentWorkflowName,
+		setDocumentWorkflowVersionId,
+		setDocumentUsedCredentials,
+		setDocumentNodePristine,
 		isInDebugMode,
 		chatMessages,
 		chatPartialExecutionDestinationNode,

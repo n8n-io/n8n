@@ -1,5 +1,6 @@
 import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
 import type {
+	DocumentKey,
 	INewWorkflowData,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -15,15 +16,18 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import {
+	type IConnection,
 	type INodeIssueData,
 	type INodeIssueObjectProperty,
 	NodeHelpers,
 	type IDataObject,
+	type INodeExecutionData,
 	type INodeParameters,
 	type IWorkflowSettings,
 	type IPinData,
+	type IConnections,
 } from 'n8n-workflow';
-import { inject } from 'vue';
+import { computed, inject, type Ref } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty, isJsonKeyObject } from '@/app/utils/typesUtils';
@@ -530,3 +534,320 @@ export function injectWorkflowState() {
 		true,
 	);
 }
+
+////
+// Document-aware workflow state composable
+// This composable provides document-key-aware access to workflow state
+// for multi-workflow support
+////
+
+export function useDocumentWorkflowState(documentKey: Ref<DocumentKey>) {
+	const ws = useWorkflowsStore();
+	const uiStore = useUIStore();
+
+	// Computed helpers to get current document data
+	const workflow = computed(() => ws.documentWorkflowsById[documentKey.value]);
+	const workflowObject = computed(() => ws.documentWorkflowObjectsById[documentKey.value]);
+	const nodeMetadata = computed(() => ws.documentNodeMetadataById[documentKey.value]);
+
+	// Property accessors
+	const workflowName = computed(() => ws.getDocumentWorkflowName(documentKey.value));
+	const workflowId = computed(() => ws.getDocumentWorkflowId(documentKey.value));
+	const workflowVersionId = computed(() => ws.getDocumentWorkflowVersionId(documentKey.value));
+	const workflowSettings = computed(() => ws.getDocumentWorkflowSettings(documentKey.value));
+	const workflowTags = computed(() => ws.getDocumentWorkflowTags(documentKey.value));
+	const isNewWorkflow = computed(() => ws.isDocumentNewWorkflow(documentKey.value));
+	const isWorkflowActive = computed(() => ws.isDocumentWorkflowActive(documentKey.value));
+	const allConnections = computed(() => ws.getDocumentAllConnections(documentKey.value));
+	const allNodes = computed(() => ws.getDocumentAllNodes(documentKey.value));
+	const canvasNames = computed(() => ws.getDocumentCanvasNames(documentKey.value));
+	const nodesByName = computed(() => ws.getDocumentNodesByName(documentKey.value));
+	const pinnedWorkflowData = computed(() => ws.getDocumentPinnedWorkflowData(documentKey.value));
+
+	function setWorkflowName(data: { newName: string; setStateDirty: boolean }) {
+		if (data.setStateDirty) {
+			uiStore.markStateDirty();
+		}
+		ws.setDocumentWorkflowName(documentKey.value, data.newName);
+	}
+
+	function removeAllConnections(data: { setStateDirty: boolean }): void {
+		if (data?.setStateDirty) {
+			uiStore.markStateDirty();
+		}
+		ws.setDocumentConnections(documentKey.value, {});
+	}
+
+	function removeAllNodes(data: { setStateDirty: boolean; removePinData: boolean }): void {
+		if (data.setStateDirty) {
+			uiStore.markStateDirty();
+		}
+
+		if (data.removePinData) {
+			ws.setDocumentWorkflowPinData(documentKey.value, {});
+		}
+
+		ws.setDocumentNodes(documentKey.value, []);
+		// Clear node metadata
+		ws.documentNodeMetadataById[documentKey.value] = {};
+	}
+
+	function setWorkflowSettings(workflowSettings: IWorkflowSettings) {
+		ws.setDocumentWorkflowSettings(documentKey.value, workflowSettings);
+	}
+
+	function setWorkflowTagIds(tags: string[]) {
+		const doc = ws.documentWorkflowsById[documentKey.value];
+		if (doc) {
+			doc.tags = tags;
+		}
+	}
+
+	function setWorkflowPinData(data: IPinData = {}) {
+		const validPinData = Object.keys(data).reduce((accu, nodeName) => {
+			accu[nodeName] = data[nodeName].map((item) => {
+				if (!isJsonKeyObject(item)) {
+					return { json: item };
+				}
+				return item;
+			});
+			return accu;
+		}, {} as IPinData);
+
+		ws.setDocumentWorkflowPinData(documentKey.value, validPinData);
+		dataPinningEventBus.emit('pin-data', validPinData);
+	}
+
+	// Node operations
+	function getNodeByName(nodeName: string): INodeUi | null {
+		return ws.getDocumentNodeByName(documentKey.value, nodeName);
+	}
+
+	function getNodeById(nodeId: string): INodeUi | undefined {
+		return ws.getDocumentNodeById(documentKey.value, nodeId);
+	}
+
+	function addNode(nodeData: INodeUi): void {
+		ws.addDocumentNode(documentKey.value, nodeData);
+	}
+
+	function removeNode(node: INodeUi): void {
+		ws.removeDocumentNode(documentKey.value, node);
+	}
+
+	function addConnection(data: { connection: IConnection[] }): void {
+		ws.addDocumentConnection(documentKey.value, data);
+	}
+
+	function removeConnection(data: { connection: IConnection[] }): void {
+		ws.removeDocumentConnection(documentKey.value, data);
+	}
+
+	function removeAllNodeConnection(
+		node: INodeUi,
+		options?: { preserveInputConnections?: boolean; preserveOutputConnections?: boolean },
+	): void {
+		ws.removeAllDocumentNodeConnection(documentKey.value, node, options);
+	}
+
+	function pinData(payload: { node: INodeUi; data: INodeExecutionData[] }): void {
+		ws.pinDocumentData(documentKey.value, payload);
+	}
+
+	function unpinData(payload: { node: INodeUi }): void {
+		ws.unpinDocumentData(documentKey.value, payload);
+	}
+
+	function setNodePristine(nodeName: string, isPristine: boolean): void {
+		ws.setDocumentNodePristine(documentKey.value, nodeName, isPristine);
+	}
+
+	function setNodes(nodes: INodeUi[]): void {
+		ws.setDocumentNodes(documentKey.value, nodes);
+	}
+
+	function setConnections(connections: IConnections): void {
+		ws.setDocumentConnections(documentKey.value, connections);
+	}
+
+	/**
+	 * Update node by index within the document.
+	 * @returns `true` if the object was changed
+	 */
+	function updateNodeAtIndex(nodeIndex: number, nodeData: Partial<INodeUi>): boolean {
+		const doc = ws.documentWorkflowsById[documentKey.value];
+		if (!doc || nodeIndex === -1) return false;
+
+		const node = doc.nodes[nodeIndex];
+		if (!node) return false;
+
+		const existingData = pick<Partial<INodeUi>>(node, Object.keys(nodeData));
+		const changed = !isEqual(existingData, nodeData);
+
+		if (changed) {
+			Object.assign(node, nodeData);
+			doc.nodes[nodeIndex] = node;
+			const workflowObj = ws.documentWorkflowObjectsById[documentKey.value];
+			if (workflowObj) {
+				workflowObj.setNodes(doc.nodes);
+			}
+		}
+
+		return changed;
+	}
+
+	function setNodeParameters(updateInformation: IUpdateInformation, append?: boolean): void {
+		const doc = ws.documentWorkflowsById[documentKey.value];
+		if (!doc) return;
+
+		const nodeIndex = doc.nodes.findIndex((node) => node.name === updateInformation.name);
+
+		if (nodeIndex === -1) {
+			throw new Error(
+				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
+			);
+		}
+
+		const { name, parameters } = doc.nodes[nodeIndex];
+
+		const newParameters =
+			!!append && isObject(updateInformation.value)
+				? { ...parameters, ...updateInformation.value }
+				: updateInformation.value;
+
+		const changed = updateNodeAtIndex(nodeIndex, {
+			parameters: newParameters as INodeParameters,
+		});
+
+		if (changed) {
+			uiStore.markStateDirty();
+			const metadata = ws.documentNodeMetadataById[documentKey.value];
+			if (metadata && metadata[name]) {
+				metadata[name].parametersLastUpdatedAt = Date.now();
+			}
+		}
+	}
+
+	function setNodeValue(updateInformation: IUpdateInformation): void {
+		const doc = ws.documentWorkflowsById[documentKey.value];
+		if (!doc) return;
+
+		const nodeIndex = doc.nodes.findIndex((node) => node.name === updateInformation.name);
+
+		if (nodeIndex === -1 || !updateInformation.key) {
+			throw new Error(
+				`Node with the name "${updateInformation.name}" could not be found to set parameter.`,
+			);
+		}
+
+		const changed = updateNodeAtIndex(nodeIndex, {
+			[updateInformation.key]: updateInformation.value,
+		});
+
+		if (changed) {
+			uiStore.markStateDirty();
+		}
+
+		const excludeKeys = ['position', 'notes', 'notesInFlow'];
+
+		if (changed && !excludeKeys.includes(updateInformation.key)) {
+			const metadata = ws.documentNodeMetadataById[documentKey.value];
+			if (metadata && metadata[doc.nodes[nodeIndex].name]) {
+				metadata[doc.nodes[nodeIndex].name].parametersLastUpdatedAt = Date.now();
+			}
+		}
+	}
+
+	function setNodePositionById(id: string, position: INodeUi['position']): void {
+		const node = getNodeById(id);
+		if (!node) return;
+		setNodeValue({ name: node.name, key: 'position', value: position });
+	}
+
+	function updateNodeById(nodeId: string, nodeData: Partial<INodeUi>): boolean {
+		const doc = ws.documentWorkflowsById[documentKey.value];
+		if (!doc) return false;
+
+		const nodeIndex = doc.nodes.findIndex((node) => node.id === nodeId);
+		if (nodeIndex === -1) return false;
+		return updateNodeAtIndex(nodeIndex, nodeData);
+	}
+
+	function setNodeIssue(nodeIssueData: INodeIssueData): void {
+		const doc = ws.documentWorkflowsById[documentKey.value];
+		if (!doc) return;
+
+		const nodeIndex = doc.nodes.findIndex((node) => node.name === nodeIssueData.node);
+		if (nodeIndex === -1) return;
+
+		const node = doc.nodes[nodeIndex];
+
+		if (nodeIssueData.value === null) {
+			if (node.issues?.[nodeIssueData.type] === undefined) return;
+
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			const { [nodeIssueData.type]: _removedNodeIssue, ...remainingNodeIssues } = node.issues;
+			updateNodeAtIndex(nodeIndex, { issues: remainingNodeIssues });
+		} else {
+			updateNodeAtIndex(nodeIndex, {
+				issues: {
+					...node.issues,
+					[nodeIssueData.type]: nodeIssueData.value as INodeIssueObjectProperty,
+				},
+			});
+		}
+	}
+
+	return {
+		// Document data
+		workflow,
+		workflowObject,
+		nodeMetadata,
+
+		// Property accessors
+		workflowName,
+		workflowId,
+		workflowVersionId,
+		workflowSettings,
+		workflowTags,
+		isNewWorkflow,
+		isWorkflowActive,
+		allConnections,
+		allNodes,
+		canvasNames,
+		nodesByName,
+		pinnedWorkflowData,
+
+		// Workflow operations
+		setWorkflowName,
+		removeAllConnections,
+		removeAllNodes,
+		setWorkflowSettings,
+		setWorkflowTagIds,
+		setWorkflowPinData,
+
+		// Node operations
+		getNodeByName,
+		getNodeById,
+		addNode,
+		removeNode,
+		addConnection,
+		removeConnection,
+		removeAllNodeConnection,
+		pinData,
+		unpinData,
+		setNodePristine,
+		setNodes,
+		setConnections,
+
+		// Node modification
+		updateNodeAtIndex,
+		setNodeParameters,
+		setNodeValue,
+		setNodePositionById,
+		updateNodeById,
+		setNodeIssue,
+	};
+}
+
+export type DocumentWorkflowState = ReturnType<typeof useDocumentWorkflowState>;
