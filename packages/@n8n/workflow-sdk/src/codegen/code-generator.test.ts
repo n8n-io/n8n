@@ -454,5 +454,78 @@ describe('code-generator', () => {
 				expect(code).toMatch(/return workflow\('undefined-settings', 'Undefined Settings'\)$/m);
 			});
 		});
+
+		describe('string escaping', () => {
+			it('escapes single quotes in workflow name', () => {
+				const json: WorkflowJSON = {
+					id: 'escape-test',
+					name: "It's a test",
+					nodes: [],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("'It\\'s a test'");
+			});
+
+			it('escapes backslashes in workflow name', () => {
+				const json: WorkflowJSON = {
+					id: 'escape-test',
+					name: 'Path\\to\\file',
+					nodes: [],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("'Path\\\\to\\\\file'");
+			});
+
+			it('escapes newlines in node name', () => {
+				const json: WorkflowJSON = {
+					id: 'escape-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Line1\nLine2',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("name: 'Line1\\nLine2'");
+			});
+
+			it('escapes single quotes in parameter values', () => {
+				const json: WorkflowJSON = {
+					id: 'escape-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Node',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {
+								message: "Hello, it's me",
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("message: 'Hello, it\\'s me'");
+			});
+		});
 	});
 });

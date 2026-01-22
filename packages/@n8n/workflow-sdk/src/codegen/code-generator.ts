@@ -34,12 +34,23 @@ function getIndent(ctx: GenerationContext): string {
 }
 
 /**
+ * Escape a string for use in generated code
+ */
+function escapeString(str: string): string {
+	return str
+		.replace(/\\/g, '\\\\')
+		.replace(/'/g, "\\'")
+		.replace(/\n/g, '\\n')
+		.replace(/\r/g, '\\r');
+}
+
+/**
  * Format a value for code output
  */
 function formatValue(value: unknown): string {
 	if (value === null) return 'null';
 	if (value === undefined) return 'undefined';
-	if (typeof value === 'string') return `'${value.replace(/'/g, "\\'")}'`;
+	if (typeof value === 'string') return `'${escapeString(value)}'`;
 	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 	if (Array.isArray(value)) {
 		return `[${value.map(formatValue).join(', ')}]`;
@@ -74,7 +85,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	const configParts: string[] = [];
 
 	if (node.json.name && node.json.name !== 'Node') {
-		configParts.push(`name: '${node.json.name}'`);
+		configParts.push(`name: '${escapeString(node.json.name)}'`);
 	}
 
 	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
@@ -319,8 +330,8 @@ export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
 	}
 
 	// Generate workflow call
-	const workflowId = json.id ?? 'workflow-id';
-	const workflowName = json.name;
+	const workflowId = escapeString(json.id ?? 'workflow-id');
+	const workflowName = escapeString(json.name);
 
 	// Include settings if present
 	const settingsStr =
