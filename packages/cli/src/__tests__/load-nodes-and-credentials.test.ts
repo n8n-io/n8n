@@ -827,8 +827,8 @@ describe('LoadNodesAndCredentials', () => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const hookValues = (hookProperty as any).options?.[0]?.values as INodeProperties[];
 
-			// Should have: hookName selector + isAllowedToFail + 2 options from first hook = 4 values
-			expect(hookValues).toHaveLength(4);
+			// Should have: hookName selector + 2 options from first hook = 3 values
+			expect(hookValues).toHaveLength(3);
 
 			// Verify hookName selector with both hook options
 			expect(hookValues[0].name).toBe('hookName');
@@ -839,22 +839,17 @@ describe('LoadNodesAndCredentials', () => {
 			expect(hookNameOptions[0].value).toBe('credentials.bearerToken');
 			expect(hookNameOptions[1].value).toBe('credentials.apiKey');
 
-			// Verify isAllowedToFail field
-			expect(hookValues[1].name).toBe('isAllowedToFail');
-			expect(hookValues[1].type).toBe('boolean');
-			expect(hookValues[1].default).toBe(false);
-
 			// Verify first option has display condition
-			expect(hookValues[2].name).toBe('removeFromItem');
-			expect(hookValues[2].displayOptions).toEqual({
+			expect(hookValues[1].name).toBe('removeFromItem');
+			expect(hookValues[1].displayOptions).toEqual({
 				show: {
 					hookName: ['credentials.bearerToken'],
 				},
 			});
 
 			// Verify second option merges existing displayOptions with hookName
-			expect(hookValues[3].name).toBe('advancedOption');
-			expect(hookValues[3].displayOptions).toEqual({
+			expect(hookValues[2].name).toBe('advancedOption');
+			expect(hookValues[2].displayOptions).toEqual({
 				show: {
 					someOtherField: ['value'],
 					hookName: ['credentials.bearerToken'],

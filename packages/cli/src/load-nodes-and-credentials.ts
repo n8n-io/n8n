@@ -378,13 +378,6 @@ export class LoadNodesAndCredentials {
 				description: 'Select which context establishment hook to use',
 				required: true,
 			},
-			{
-				displayName: 'Allow Failure',
-				name: 'isAllowedToFail',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to continue workflow execution if this hook fails',
-			},
 		];
 
 		// Add all hook-specific options with display conditions
