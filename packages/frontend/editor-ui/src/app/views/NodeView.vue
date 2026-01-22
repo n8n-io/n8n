@@ -1213,7 +1213,7 @@ const isTemplateDemoMode = computed(
 	() =>
 		!exitedDemoMode.value &&
 		!!templateId.value &&
-		!!useTemplatesStore().getFullTemplateById(templateId.value)?.workflow,
+		!!useTemplatesStore().getFullTemplateById(templateId.value)?.readyToDemo,
 );
 function onExitDemo() {
 	workflowsStore.unpinAllData();
