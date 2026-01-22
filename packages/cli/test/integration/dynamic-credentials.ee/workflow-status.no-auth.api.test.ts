@@ -151,15 +151,14 @@ describe('Workflow Status API', () => {
 
 	describe('GET /workflows/:workflowId/execution-status', () => {
 		describe('when no static auth token is provided', () => {
-			it('should return the execution status of a workflow', async () => {
+			it('should return a 500 Internal Server Error', async () => {
 				const response = await testServer.authlessAgent
 					.get(`/workflows/${savedWorkflow.id}/execution-status`)
 					.set('Authorization', 'Bearer test-token')
-					.expect(400);
+					.expect(500);
 
 				expect(response.body).toMatchObject({
-					message:
-						'You must provide an endpoint auth token to access dynamic credentials external endpoints.',
+					message: 'Dynamic credentials configuration is invalid. Check server logs for details.',
 				});
 			});
 		});

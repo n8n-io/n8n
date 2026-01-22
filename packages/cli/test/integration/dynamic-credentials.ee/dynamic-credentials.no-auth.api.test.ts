@@ -120,15 +120,15 @@ describe('Dynamic Credentials API', () => {
 
 	describe('POST /credentials/:id/authorize', () => {
 		describe('when no static auth token is provided', () => {
-			it('should return a 400 Bad Request', async () => {
+			it('should return a 500 Internal Server Error', async () => {
 				const response = await testServer.authlessAgent
 					.post(`/credentials/${savedCredential.id}/authorize`)
 					.query({ resolverId: resolver.id })
 					.set('Authorization', 'Bearer test-token')
-					.expect(400);
+					.expect(500);
 
 				expect(response.body.message).toBe(
-					'You must provide an endpoint auth token to access dynamic credentials external endpoints.',
+					'Dynamic credentials configuration is invalid. Check server logs for details.',
 				);
 			});
 		});
@@ -136,15 +136,15 @@ describe('Dynamic Credentials API', () => {
 
 	describe('DELETE /credentials/:id/revoke', () => {
 		describe('when no static auth token is provided', () => {
-			it('should return a 400 Bad Request', async () => {
+			it('should return a 500 Internal Server Error', async () => {
 				const response = await testServer.authlessAgent
 					.delete(`/credentials/${savedCredential.id}/revoke`)
 					.set('Authorization', 'Bearer test-token')
 					.query({ resolverId: resolver.id })
-					.expect(400);
+					.expect(500);
 
 				expect(response.body.message).toBe(
-					'You must provide an endpoint auth token to access dynamic credentials external endpoints.',
+					'Dynamic credentials configuration is invalid. Check server logs for details.',
 				);
 			});
 		});

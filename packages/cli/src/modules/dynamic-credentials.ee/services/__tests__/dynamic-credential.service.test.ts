@@ -1099,10 +1099,9 @@ describe('DynamicCredentialService', () => {
 
 				middleware(mockReq, mockRes, mockNext);
 
-				expect(mockRes.status).toHaveBeenCalledWith(400);
+				expect(mockRes.status).toHaveBeenCalledWith(500);
 				expect(mockRes.json).toHaveBeenCalledWith({
-					message:
-						'You must provide an endpoint auth token to access dynamic credentials external endpoints.',
+					message: 'Dynamic credentials configuration is invalid. Check server logs for details.',
 				});
 				expect(mockNext).not.toHaveBeenCalled();
 			});
