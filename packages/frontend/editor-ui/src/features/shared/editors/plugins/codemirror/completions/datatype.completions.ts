@@ -1221,14 +1221,16 @@ export const secretOptions = (base: string) => {
 
 	try {
 		resolved = Expression.resolveWithoutWorkflow(`{{ ${base} }}`, {
-			$secrets: externalSecretsStore.secretsAsObject,
+			$secrets: {
+				...externalSecretsStore.secretsAsObject,
+				...externalSecretsStore.projectSecretsAsObject,
+			},
 		});
 	} catch {
 		return [];
 	}
 
 	if (resolved === null) return [];
-
 	try {
 		if (typeof resolved !== 'object') {
 			return [];
@@ -1260,17 +1262,25 @@ export const secretOptions = (base: string) => {
 export const secretProvidersOptions = () => {
 	const externalSecretsStore = useExternalSecretsStore();
 
-	return Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
-		createCompletionOption({
+	const externalSecretProviderToOption = (provider: string, type: 'global' | 'project') => {
+		return createCompletionOption({
 			name: provider,
 			doc: {
 				name: provider,
 				returnType: 'Object',
+				section: type, // TODO: translate this
 				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
 				docURL: i18n.baseText('settings.externalSecrets.docs'),
 			},
-		}),
+		});
+	};
+	const globalSecretProviders = Object.keys(externalSecretsStore.secretsAsObject).map((provider) =>
+		externalSecretProviderToOption(provider, 'global'),
 	);
+	const projectSecretProviders = Object.keys(externalSecretsStore.projectSecretsAsObject).map(
+		(provider) => externalSecretProviderToOption(provider, 'project'),
+	);
+	return globalSecretProviders.concat(projectSecretProviders);
 };
 
 /**

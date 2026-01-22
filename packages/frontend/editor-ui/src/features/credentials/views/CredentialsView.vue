@@ -112,6 +112,21 @@ const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
 });
 
+const onTeamProjectId = computed<string | null>(() => {
+	const projectId = route?.params?.projectId;
+	if (!projectId) {
+		return null;
+	}
+	if (typeof projectId !== 'string') {
+		return null;
+	}
+	if (projectId === projectsStore.personalProject?.id) {
+		// assuming the external secret store cannot be shared with a personal project
+		return null;
+	}
+	return projectId;
+});
+
 const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
 };
@@ -198,6 +213,12 @@ const initialize = async () => {
 		overview.isProjectsSubPage &&
 		route?.params?.projectId === projectsStore.personalProject?.id;
 
+	// this ensures that the data for secrets is there when user types secret expressions
+	const externalSecretRequests = [externalSecretsStore.fetchGlobalSecrets()];
+	if (onTeamProjectId.value) {
+		externalSecretRequests.push(externalSecretsStore.fetchProjectSecrets(onTeamProjectId.value));
+	}
+
 	const loadPromises = [
 		credentialsStore.fetchAllCredentials(
 			route?.params?.projectId as string | undefined,
@@ -206,7 +227,7 @@ const initialize = async () => {
 			!isPersonalView, // don't include global credentials if personal
 		),
 		credentialsStore.fetchCredentialTypes(false),
-		externalSecretsStore.fetchAllSecrets(),
+		...externalSecretRequests,
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 	];

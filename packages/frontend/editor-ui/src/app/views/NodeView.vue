@@ -351,7 +351,8 @@ async function initializeData() {
 		}
 
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
-			promises.push(externalSecretsStore.fetchAllSecrets());
+			promises.push(externalSecretsStore.fetchGlobalSecrets());
+			// TODO: fetch project secrets using externalSecretsStore.fetchProjectSecrets(projectId)
 		}
 
 		return promises;
