@@ -38,7 +38,9 @@ export class MfaService {
 
 	private async loadMFASettings() {
 		const value = (await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING))?.value;
-		await this.cacheService.set(MFA_CACHE_KEY, value);
+		this.cacheService.set(MFA_CACHE_KEY, value).catch((err) => {
+			this.logger.warn('Failed to cache MFA setting', { error: err });
+		});
 		return value === 'true';
 	}
 
