@@ -41,10 +41,8 @@ const i18n = useI18n();
 }
 
 .el-popper.custom-tooltip-width {
-	// line-height: 1.5;
-	min-width: 290px;
 	padding: 0;
-	max-width: 290px; /* Adjust to your desired width */
+	max-width: 290px;
 	width: auto;
 }
 </style>

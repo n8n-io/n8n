@@ -198,6 +198,7 @@ onBeforeUnmount(() => {
 	stopExecutionWatcher();
 });
 </script>
+
 <template>
 	<div
 		ref="containerRef"
