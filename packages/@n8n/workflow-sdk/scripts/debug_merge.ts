@@ -2,7 +2,7 @@ const { generateWorkflowCode } = require('../src/codegen');
 const { parseWorkflowCode } = require('../src/parse-workflow-code');
 const fs = require('fs');
 
-const id = '12645';
+const id = '3790';
 const json = JSON.parse(fs.readFileSync('test-fixtures/real-workflows/' + id + '.json'));
 const code = generateWorkflowCode(json);
 

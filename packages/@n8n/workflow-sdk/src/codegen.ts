@@ -1809,7 +1809,50 @@ function generateNodeCallWithChain(
 	if (isMergeNode(startInfo.node)) {
 		const mergeCall = generateMergeCall(startInfo, nodeInfoMap, addedNodes);
 		if (mergeCall) {
-			return mergeCall;
+			// Don't return immediately - continue processing downstream chain
+			// The downstream chain will be added via the while loop below
+			let call = mergeCall;
+			let currentInfo: NodeInfo | undefined = startInfo;
+
+			while (currentInfo) {
+				const outputs = Array.from(currentInfo.outgoingConnections.entries());
+
+				// Stop if no outputs or multiple outputs (branching)
+				if (outputs.length !== 1) break;
+
+				const [_outputIndex, targets] = outputs[0];
+
+				// Stop if no targets
+				if (targets.length === 0) break;
+
+				// Stop if multiple targets (fan-out) from merge
+				if (targets.length > 1) break;
+
+				const target = targets[0];
+				const targetInfo = nodeInfoMap.get(target.to);
+
+				// Stop if target doesn't exist, is a subnode, or already added
+				if (!targetInfo || targetInfo.isSubnodeOf || addedNodes.has(target.to)) break;
+
+				// Add the target to the chain
+				addedNodes.add(target.to);
+
+				// Generate the target node call with its downstream chain
+				const targetCall = generateNodeCallWithChain(
+					targetInfo,
+					nodeInfoMap,
+					addedNodes,
+					convergenceCtx,
+					processingStack,
+					cycleNodeVars,
+				);
+				call += `.then(${targetCall})`;
+
+				// Move to the next node in the chain (handled by recursive call)
+				break;
+			}
+
+			return call;
 		}
 	}
 

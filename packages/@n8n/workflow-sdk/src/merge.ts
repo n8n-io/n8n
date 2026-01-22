@@ -121,6 +121,17 @@ class MergeCompositeImpl<TBranches extends NodeInstance<string, string, unknown>
 			parameters: config.parameters,
 		});
 	}
+
+	/**
+	 * Chain a downstream node to the merge output.
+	 * Delegates to the mergeNode's then() method to declare the connection.
+	 */
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[],
+		outputIndex: number = 0,
+	): NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T> {
+		return this.mergeNode.then(target, outputIndex);
+	}
 }
 
 /**
