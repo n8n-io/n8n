@@ -3,14 +3,13 @@ import {
 	createCanvasProvide,
 } from '@/features/workflows/canvas/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
-import { TEMPLATES_URLS, VIEWS, EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/app/constants';
+import { TEMPLATES_URLS, VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { setActivePinia } from 'pinia';
 import * as vueRouter from 'vue-router';
 import CanvasNodeAddNodes from './CanvasNodeAddNodes.vue';
@@ -56,8 +55,7 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let templatesStore: ReturnType<typeof useTemplatesStore>;
-let uiStore: ReturnType<typeof useUIStore>;
-let templatesDataQualityStore: ReturnType<typeof useTemplatesDataQualityStore>;
+let recommendedTemplatesStore: ReturnType<typeof useRecommendedTemplatesStore>;
 let router: ReturnType<typeof vueRouter.useRouter>;
 
 const renderComponent = createComponentRenderer(CanvasNodeAddNodes, {
@@ -76,8 +74,7 @@ describe('CanvasNodeAddNodes', () => {
 		router = vueRouter.useRouter();
 		settingsStore = useSettingsStore();
 		templatesStore = useTemplatesStore();
-		uiStore = useUIStore();
-		templatesDataQualityStore = useTemplatesDataQualityStore();
+		recommendedTemplatesStore = useRecommendedTemplatesStore();
 
 		window.open = vi.fn();
 	});
@@ -124,7 +121,7 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should track user click', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
+			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
 
 			const { getByTestId } = renderComponent({
 				global: {
@@ -138,28 +135,6 @@ describe('CanvasNodeAddNodes', () => {
 			await userEvent.click(link);
 
 			expect(trackTemplatesClick).toHaveBeenCalledWith(TemplateClickSource.emptyWorkflowLink);
-		});
-
-		it('should open modal when templates data quality is enabled', async () => {
-			settingsStore.settings.templates = { enabled: true, host: '' };
-			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => true);
-			uiStore.openModal = vi.fn();
-			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
-				get: vi.fn(() => false),
-			});
-
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasNodeProvide(),
-					},
-				},
-			});
-
-			const link = getByTestId('canvas-template-link');
-			await userEvent.click(link);
-
-			expect(uiStore.openModal).toHaveBeenCalledWith(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
 		});
 
 		it('should navigate to templates view when custom host is configured', async () => {
@@ -184,7 +159,7 @@ describe('CanvasNodeAddNodes', () => {
 
 		it('should open window to template repository when no custom host and feature disabled', async () => {
 			settingsStore.settings.templates = { enabled: true, host: '' };
-			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
+			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
 			Object.defineProperty(templatesStore, 'hasCustomTemplatesHost', {
 				get: vi.fn(() => false),
 			});
