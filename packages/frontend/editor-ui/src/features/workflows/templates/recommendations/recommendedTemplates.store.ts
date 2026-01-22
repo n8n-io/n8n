@@ -1,34 +1,23 @@
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { TEMPLATES_DATA_QUALITY_EXPERIMENT, VIEWS } from '@/app/constants';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { VIEWS } from '@/app/constants';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { defineStore } from 'pinia';
-import batch1TemplateIds from '../data/batch1TemplateIds.json';
-import batch2TemplateIds from '../data/batch2TemplateIds.json';
-import batch3TemplateIds from '../data/batch3TemplateIds.json';
+import templateIds from './data/recommendedTemplateIds.json';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
+import sampleSize from 'lodash/sampleSize';
 
-const NUMBER_OF_TEMPLATES = 6;
+export const NUMBER_OF_TEMPLATES = 6;
 
-export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', () => {
+export const useRecommendedTemplatesStore = defineStore('recommendedTemplates', () => {
 	const telemetry = useTelemetry();
-	const posthogStore = usePostHog();
 	const templatesStore = useTemplatesStore();
 	const settingsStore = useSettingsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
 	const isFeatureEnabled = () => {
-		return (
-			settingsStore.isTemplatesEnabled &&
-			(posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-				TEMPLATES_DATA_QUALITY_EXPERIMENT.variant1 ||
-				posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-					TEMPLATES_DATA_QUALITY_EXPERIMENT.variant2 ||
-				posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-					TEMPLATES_DATA_QUALITY_EXPERIMENT.variant3)
-		);
+		return settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost;
 	};
 
 	async function getTemplateData(templateId: number): Promise<ITemplatesWorkflowFull | null> {
@@ -40,25 +29,8 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 	}
 
 	function getRandomTemplateIds(): number[] {
-		const ids =
-			posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-			TEMPLATES_DATA_QUALITY_EXPERIMENT.variant1
-				? batch1TemplateIds
-				: posthogStore.getVariant(TEMPLATES_DATA_QUALITY_EXPERIMENT.name) ===
-						TEMPLATES_DATA_QUALITY_EXPERIMENT.variant2
-					? batch2TemplateIds
-					: batch3TemplateIds;
-		const result: number[] = [];
-		const picked = new Set<number>();
-		const count = Math.min(NUMBER_OF_TEMPLATES, ids.length);
-		while (result.length < count) {
-			const index = Math.floor(Math.random() * ids.length);
-			if (!picked.has(index)) {
-				picked.add(index);
-				result.push(ids[index]);
-			}
-		}
-		return result;
+		const count = Math.min(NUMBER_OF_TEMPLATES, templateIds.length);
+		return sampleSize(templateIds, count);
 	}
 
 	function trackTemplateTileClick(templateId: number) {
@@ -74,7 +46,7 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 		});
 	}
 
-	async function loadExperimentTemplates(): Promise<ITemplatesWorkflowFull[]> {
+	async function loadRecommendedTemplates(): Promise<ITemplatesWorkflowFull[]> {
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
 
 		const ids = getRandomTemplateIds();
@@ -96,6 +68,6 @@ export const useTemplatesDataQualityStore = defineStore('templatesDataQuality', 
 		getTemplateRoute,
 		trackTemplateTileClick,
 		trackTemplateShown,
-		loadExperimentTemplates,
+		loadRecommendedTemplates,
 	};
 });

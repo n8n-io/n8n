@@ -1576,6 +1576,11 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = false;
+
+				// Apply tidy-up if requested
+				if (json.tidyUp === true) {
+					canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+				}
 			} catch (e) {
 				if (window.top) {
 					window.top.postMessage(
@@ -1920,6 +1925,9 @@ watch(
 	() => uiStore.dirtyStateSetCount,
 	(dirtyStateSetCount) => {
 		if (dirtyStateSetCount > 0) {
+			// Skip write access and auto-save in demo mode
+			if (isDemoRoute.value) return;
+
 			collaborationStore.requestWriteAccess();
 
 			// Trigger auto-save (debounced) for writers only
