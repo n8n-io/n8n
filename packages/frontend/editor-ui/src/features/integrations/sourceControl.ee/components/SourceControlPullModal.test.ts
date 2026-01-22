@@ -379,4 +379,263 @@ describe('SourceControlPullModal', () => {
 
 		expect(getByText(/Projects \(2\)/)).toBeInTheDocument();
 	});
+
+	describe('auto-publish badges', () => {
+		it('should not show any badges when "None" is selected', () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-1',
+					name: 'Published Workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'remote',
+					conflict: true,
+					file: '/workflows/workflow-1.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: true,
+				},
+				{
+					id: 'workflow-2',
+					name: 'New Workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/workflows/workflow-2.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: false,
+				},
+			];
+
+			const { queryByText, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			// "None" is selected by default
+			const noneButton = getByText('None');
+			expect(noneButton.closest('.n8n-radio-button')).toHaveAttribute('aria-checked', 'true');
+
+			expect(queryByText('Will be auto-published')).not.toBeInTheDocument();
+		});
+
+		it('should show badges for all non-deleted workflows when "All" is selected', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-1',
+					name: 'Published Workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'remote',
+					conflict: true,
+					file: '/workflows/workflow-1.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: true,
+				},
+				{
+					id: 'workflow-2',
+					name: 'New Workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/workflows/workflow-2.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: false,
+				},
+				{
+					id: 'workflow-3',
+					name: 'Unpublished Modified Workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'remote',
+					conflict: true,
+					file: '/workflows/workflow-3.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: false,
+				},
+			];
+
+			const { getAllByText, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			const allButton = getByText('All');
+			await userEvent.click(allButton);
+
+			await waitFor(() => {
+				// All 3 workflows should show badges
+				const autoPublishBadges = getAllByText('Will be auto-published');
+				expect(autoPublishBadges).toHaveLength(3);
+			});
+		});
+
+		it('should show badges only for published existing workflows when "Only currently published" is selected', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-1',
+					name: 'Published Workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'remote',
+					conflict: true,
+					file: '/workflows/workflow-1.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: true,
+				},
+				{
+					id: 'workflow-2',
+					name: 'New Workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/workflows/workflow-2.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: false,
+				},
+				{
+					id: 'workflow-3',
+					name: 'Unpublished Modified Workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'remote',
+					conflict: true,
+					file: '/workflows/workflow-3.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: false,
+				},
+			];
+
+			const { getAllByText, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			const publishedButton = getByText('Only currently published');
+			await userEvent.click(publishedButton);
+
+			await waitFor(() => {
+				// Only 1 workflow (the published modified one) should show badge
+				const autoPublishBadges = getAllByText('Will be auto-published');
+				expect(autoPublishBadges).toHaveLength(1);
+			});
+		});
+
+		it('should not show badges for deleted workflows even when "All" is selected', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-1',
+					name: 'Deleted Workflow',
+					type: 'workflow',
+					status: 'deleted',
+					location: 'remote',
+					conflict: false,
+					file: '/workflows/workflow-1.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: true,
+				},
+				{
+					id: 'workflow-2',
+					name: 'New Workflow',
+					type: 'workflow',
+					status: 'created',
+					location: 'remote',
+					conflict: false,
+					file: '/workflows/workflow-2.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: false,
+				},
+			];
+
+			const { getAllByText, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			const allButton = getByText('All');
+			await userEvent.click(allButton);
+
+			await waitFor(() => {
+				// Only 1 badge (for the new workflow, not the deleted one)
+				const autoPublishBadges = getAllByText('Will be auto-published');
+				expect(autoPublishBadges).toHaveLength(1);
+			});
+
+			expect(getByText('Deleted Workflow')).toBeInTheDocument();
+			expect(getByText('New Workflow')).toBeInTheDocument();
+		});
+
+		it('should not show badges for archived workflows even when "All" is selected', async () => {
+			const status: SourceControlledFile[] = [
+				{
+					id: 'workflow-1',
+					name: 'Archived Workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'remote',
+					conflict: true,
+					file: '/workflows/workflow-1.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: true,
+					isNowArchived: true, // Archived in remote
+				},
+				{
+					id: 'workflow-2',
+					name: 'Active Workflow',
+					type: 'workflow',
+					status: 'modified',
+					location: 'remote',
+					conflict: true,
+					file: '/workflows/workflow-2.json',
+					updatedAt: '2025-01-09T13:12:24.586Z',
+					wasPublished: true,
+					isNowArchived: false,
+				},
+			];
+
+			const { getAllByText, getByText } = renderModal({
+				pinia,
+				props: {
+					data: {
+						eventBus,
+						status,
+					},
+				},
+			});
+
+			const allButton = getByText('All');
+			await userEvent.click(allButton);
+
+			await waitFor(() => {
+				// Only 1 badge (for the active workflow, not the archived one)
+				const autoPublishBadges = getAllByText('Will be auto-published');
+				expect(autoPublishBadges).toHaveLength(1);
+			});
+
+			expect(getByText('Archived Workflow')).toBeInTheDocument();
+			expect(getByText('Active Workflow')).toBeInTheDocument();
+		});
+	});
 });

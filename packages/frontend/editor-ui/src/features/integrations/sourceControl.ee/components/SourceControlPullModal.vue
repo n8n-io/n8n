@@ -178,6 +178,7 @@ const sortedWorkflows = computed(() => {
 		...file,
 		willBeAutoPublished:
 			file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+			file.status !== 'deleted' &&
 			shouldActivateWorkflow({
 				isNewWorkflow: file.status === 'created',
 				wasPublished: file.wasPublished ?? false,
