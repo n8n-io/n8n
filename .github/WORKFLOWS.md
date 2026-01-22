@@ -9,6 +9,7 @@ Complete reference for n8n's `.github/` folder.
 ```
 .github/
 ├── WORKFLOWS.md                          # This document
+├── CI-TELEMETRY.md                       # Telemetry & metrics guide
 ├── CODEOWNERS                            # Team ownership for PR reviews
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
@@ -25,6 +26,7 @@ Complete reference for n8n's `.github/` folder.
 │   ├── trim-fe-packageJson.js            # Strip frontend devDeps
 │   ├── ensure-provenance-fields.mjs      # Add license/author fields
 │   ├── validate-docs-links.js            # Check documentation URLs
+│   ├── send-build-stats.mjs              # Turbo build telemetry → webhook
 │   └── docker/
 │       ├── docker-tags.mjs               # Generate image tags
 │       └── docker-config.mjs             # Build context config
@@ -454,6 +456,19 @@ Scripts in `.github/scripts/`:
 | Script                  | Purpose           | Called By                 |
 |-------------------------|-------------------|---------------------------|
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
+| `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
+
+---
+
+## Telemetry
+
+CI metrics are collected via webhooks to n8n, then stored in BigQuery for analysis.
+
+See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
+- Common data points (git, CI context, runner info)
+- Existing implementations (build stats, container stack)
+- How to add new telemetry
+- BigQuery schema patterns and queries
 
 ---
 
