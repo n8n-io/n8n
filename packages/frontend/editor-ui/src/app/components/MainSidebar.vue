@@ -7,6 +7,7 @@ import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
+	RESOURCE_CENTER_EXPERIMENT,
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
@@ -29,12 +30,14 @@ import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import MainSidebarTrialUpgrade from '@/app/components/MainSidebarTrialUpgrade.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
+import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 
 const cloudPlanStore = useCloudPlanStore();
@@ -47,6 +50,7 @@ const workflowsStore = useWorkflowsStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const templatesDataQualityStore = useTemplatesDataQualityStore();
+const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
 const router = useRouter();
@@ -81,6 +85,16 @@ const isTemplatesExperimentEnabled = computed(() => {
 	);
 });
 
+const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
+
+const resourceCenterLabel = computed(() => {
+	const variant = resourceCenterStore.getCurrentVariant();
+	if (variant === RESOURCE_CENTER_EXPERIMENT.variantInspiration) {
+		return i18n.baseText('experiments.resourceCenter.sidebar.inspiration');
+	}
+	return i18n.baseText('experiments.resourceCenter.sidebar');
+});
+
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
@@ -90,12 +104,24 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
+		// Resource Center - replaces Templates when experiment is enabled
+		id: 'resource-center',
+		icon: 'lightbulb',
+		label: resourceCenterLabel.value,
+		position: 'bottom',
+		available: isResourceCenterEnabled.value,
+		route: { to: { name: VIEWS.RESOURCE_CENTER } },
+	},
+	{
 		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
+		available:
+			settingsStore.isTemplatesEnabled &&
+			isTemplatesExperimentEnabled.value &&
+			!isResourceCenterEnabled.value,
 	},
 	{
 		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
@@ -106,7 +132,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!isTemplatesExperimentEnabled.value &&
+			!isResourceCenterEnabled.value,
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
@@ -118,7 +145,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available:
 			settingsStore.isTemplatesEnabled &&
 			!templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
+			!isTemplatesExperimentEnabled.value &&
+			!isResourceCenterEnabled.value,
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
@@ -277,6 +305,10 @@ function openCommandBar(event: MouseEvent) {
 
 const handleSelect = (key: string) => {
 	switch (key) {
+		case 'resource-center': {
+			resourceCenterStore.markResourceCenterTooltipDismissed();
+			break;
+		}
 		case 'templates':
 			if (templatesDataQualityStore.isFeatureEnabled()) {
 				uiStore.openModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
@@ -391,6 +423,7 @@ useKeybindings({
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<MainSidebarTrialUpgrade />
 		<TemplateTooltip />
+		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>
 

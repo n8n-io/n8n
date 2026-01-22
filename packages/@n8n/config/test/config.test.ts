@@ -101,7 +101,6 @@ describe('GlobalConfig', () => {
 			},
 			tablePrefix: '',
 			type: 'sqlite',
-			isLegacySqlite: false,
 			pingIntervalSeconds: 2,
 		} as DatabaseConfig,
 		credentials: {
@@ -415,10 +414,11 @@ describe('GlobalConfig', () => {
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
 			batchSize: 100,
-			compactingMinimumAgeHours: 3,
-			compactingTimeWindowHours: 2,
-			compactOnStartUp: false,
-			minimumTimeBetweenSessionsMs: 20 * 60 * 1000,
+			optimizingMinimumAgeHours: 3,
+			optimizingTimeWindowHours: 2,
+			trimmingMinimumAgeDays: 7,
+			trimmingTimeWindowDays: 2,
+			trimOnStartUp: false,
 		},
 	};
 
