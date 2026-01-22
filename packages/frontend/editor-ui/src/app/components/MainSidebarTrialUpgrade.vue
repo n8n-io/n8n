@@ -16,19 +16,21 @@ const isVisible = computed(() => {
 	return cloudPlanStore.userIsTrialing && cloudPlanStore.isTrialUpgradeOnSidebar;
 });
 
-const trialDaysLeft = computed(() => -1 * cloudPlanStore.trialDaysLeft);
+const trialTimeLeft = computed(() => cloudPlanStore.trialTimeLeft);
 
 const trialMessage = computed(() => {
-	return locale.baseText('generic.trial.message', {
-		adjustToNumber: trialDaysLeft.value,
-		interpolate: { count: String(trialDaysLeft.value) },
+	const { count, unit } = trialTimeLeft.value;
+	return locale.baseText(`generic.trial.message.${unit}`, {
+		adjustToNumber: count,
+		interpolate: { count: String(count) },
 	});
 });
 
 const tooltipContent = computed(() => {
-	return locale.baseText('generic.trial.tooltip', {
-		adjustToNumber: trialDaysLeft.value,
-		interpolate: { count: String(trialDaysLeft.value) },
+	const { count, unit } = trialTimeLeft.value;
+	return locale.baseText(`generic.trial.tooltip.${unit}`, {
+		adjustToNumber: count,
+		interpolate: { count: String(count) },
 	});
 });
 
