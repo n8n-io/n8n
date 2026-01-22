@@ -8,7 +8,6 @@ import {
 } from '@n8n/decorators';
 import { createContext, Script } from 'node:vm';
 import { z } from 'zod';
-import { DYNAMIC_CREDENTIALS_ALLOWED_NODE_TYPES } from '../dynamic-credentials.config';
 
 const HttpHeaderExtractorOptionsSchema = z.object({
 	headerName: z.string().default('authorization'),
@@ -98,7 +97,7 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 	};
 
 	isApplicableToTriggerNode(nodeType: string): boolean {
-		return DYNAMIC_CREDENTIALS_ALLOWED_NODE_TYPES.includes(nodeType);
+		return nodeType === 'n8n-nodes-base.webhook' || nodeType === 'webhook';
 	}
 
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {

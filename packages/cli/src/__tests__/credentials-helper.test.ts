@@ -585,10 +585,6 @@ describe('CredentialsHelper', () => {
 				establishedAt: Date.now(),
 				source: 'manual' as const,
 				credentials: 'encrypted-credential-context',
-				triggerNode: {
-					name: 'Webhook',
-					type: 'webhook',
-				},
 			},
 			workflowSettings: {
 				executionTimeout: 300,
@@ -608,7 +604,7 @@ describe('CredentialsHelper', () => {
 			name: 'Test Credentials',
 			type: credentialType,
 			data: cipher.encrypt({ apiKey: 'static-key' }),
-			isResolvable: true,
+			isResolvable: false,
 			resolvableAllowFallback: false,
 		} as CredentialsEntity;
 
@@ -639,7 +635,7 @@ describe('CredentialsHelper', () => {
 				{
 					id: mockCredentialEntity.id,
 					name: mockCredentialEntity.name,
-					isResolvable: true,
+					isResolvable: false,
 					type: 'testApi',
 					resolverId: undefined,
 					resolvableAllowFallback: false,
@@ -688,15 +684,19 @@ describe('CredentialsHelper', () => {
 			expect(call[4]).toBe(false); // canUseExternalSecrets
 		});
 
-		test('should skip resolution when credential is not resolvable', async () => {
-			// Use a non-resolvable credential for this test
-			const nonResolvableCredential = {
-				...mockCredentialEntity,
-				isResolvable: false,
-			} as unknown as CredentialsEntity;
-			credentialsRepository.findOneByOrFail.mockResolvedValue(nonResolvableCredential);
+		test('should skip resolution when credentialResolutionProvider is not set', async () => {
+			// Create a new proxy instance without provider
+			const proxyWithoutProvider = new DynamicCredentialsProxy(mockLogger);
+			const helperWithoutProvider = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				mock(),
+				mock(),
+				proxyWithoutProvider,
+			);
 
-			const result = await credentialsHelper.getDecrypted(
+			const result = await helperWithoutProvider.getDecrypted(
 				mockAdditionalData,
 				nodeCredentials,
 				credentialType,
@@ -750,7 +750,7 @@ describe('CredentialsHelper', () => {
 			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
-		test('should skip resolution when trigger node type is not allowed', async () => {
+		test('should skip resolution when credentials context is missing', async () => {
 			dynamicCredentialProxy.setResolverProvider(mockCredentialResolutionProvider);
 			mockCredentialResolutionProvider.resolveIfNeeded.mockResolvedValue({ apiKey: 'resolved' });
 
@@ -760,11 +760,8 @@ describe('CredentialsHelper', () => {
 					version: 1,
 					establishedAt: Date.now(),
 					source: 'manual' as const,
-					triggerNode: {
-						name: 'Webhook',
-						type: 'not-allowed',
-					},
-				} as any,
+					// credentials is undefined
+				},
 			};
 
 			const result = await credentialsHelper.getDecrypted(
@@ -776,7 +773,9 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
+			// Resolution should not happen when credentials context is missing
 			expect(mockCredentialResolutionProvider.resolveIfNeeded).not.toHaveBeenCalled();
+			// Should return static decrypted data
 			expect(result).toEqual({ apiKey: 'static-key' });
 		});
 
