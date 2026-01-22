@@ -46,10 +46,12 @@ export async function createEngineRequests(
 			let thinkingContent: string | undefined;
 			let thinkingType: 'thinking' | 'redacted_thinking' | undefined;
 			let thinkingSignature: string | undefined;
+		// Extract reasoning_content from AIMessage (for DeepSeek)
+			let reasoningContent: string | undefined;
 
 			if (toolCall.messageLog && Array.isArray(toolCall.messageLog)) {
 				for (const message of toolCall.messageLog) {
-					// Check if message has content that could contain thought_signature or thinking blocks
+					// Check if message has content that could contain thought_signature, thinking blocks, or reasoning_content
 					if (message && typeof message === 'object' && 'content' in message) {
 						const content = message.content;
 						// Content can be string or array of content blocks
@@ -72,8 +74,11 @@ export async function createEngineRequests(
 									thinkingType = 'redacted_thinking';
 								}
 							}
+						} else if (message && 'reasoning_content' in message && typeof message.reasoning_content === 'string') {
+							// DeepSeek reasoning_content field
+							reasoningContent = message.reasoning_content;
 						}
-						if (thoughtSignature || thinkingContent) break;
+						if (thoughtSignature || thinkingContent || reasoningContent) break;
 					}
 				}
 			}
@@ -96,6 +101,11 @@ export async function createEngineRequests(
 							thinkingContent,
 							thinkingType,
 							thinkingSignature,
+						},
+					}),
+					...(reasoningContent && {
+						deepseek: {
+							reasoningContent,
 						},
 					}),
 				},

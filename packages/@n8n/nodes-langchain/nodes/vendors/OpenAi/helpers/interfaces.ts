@@ -53,22 +53,23 @@ export type ChatCompletion = {
 	object: string;
 	created: number;
 	model: string;
-	choices: Array<{
-		index: number;
-		message: {
-			role: string;
-			content: string;
-			tool_calls?: Array<{
-				id: string;
-				type: 'function';
-				function: {
-					name: string;
-					arguments: string;
-				};
-			}>;
-		};
-		finish_reason?: 'tool_calls';
-	}>;
+		choices: Array<{
+			index: number;
+			message: {
+				role: string;
+				content: string;
+				reasoning_content?: string;
+				tool_calls?: Array<{
+					id: string;
+					type: 'function';
+					function: {
+						name: string;
+						arguments: string;
+					};
+				}>;
+			};
+			finish_reason?: 'tool_calls';
+		}>;
 	usage: {
 		prompt_tokens: number;
 		completion_tokens: number;
