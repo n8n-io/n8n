@@ -1,5 +1,4 @@
 import { test, expect } from '../../../fixtures/base';
-import nonTrialPlanData from '../../../fixtures/plan-data-non-trial.json';
 import basePlanData from '../../../fixtures/plan-data-trial.json';
 import type { n8nPage } from '../../../pages/n8nPage';
 import type { TestRequirements } from '../../../Types';
