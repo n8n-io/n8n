@@ -50,6 +50,10 @@ export const ExtractDateDescription: INodeProperties[] = [
 				value: 'day',
 			},
 			{
+				name: 'Day Of Week',
+				value: 'dayOfWeek',
+			},
+			{
 				name: 'Hour',
 				value: 'hour',
 			},

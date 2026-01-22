@@ -211,10 +211,19 @@ export class DateTimeV2 implements INodeType {
 				} else if (operation === 'extractDate') {
 					const date = this.getNodeParameter('date', i) as string | DateTime;
 					const outputFieldName = this.getNodeParameter('outputFieldName', i) as string;
-					const part = this.getNodeParameter('part', i) as keyof DateTime | 'week';
-
+					const part = this.getNodeParameter('part', i) as keyof DateTime | 'week' | 'dayOfWeek';
 					const parsedDate = parseDate.call(this, date, { timezone: workflowTimezone });
-					const selectedPart = part === 'week' ? parsedDate.weekNumber : parsedDate.get(part);
+
+					let selectedPart: string | number;
+
+					if (part === 'week') {
+						selectedPart = parsedDate.weekNumber;
+					} else if (part === 'dayOfWeek') {
+						selectedPart = parsedDate.weekdayLong;
+					} else {
+						selectedPart = parsedDate.get(part);
+					}
+
 					item.json[outputFieldName] = selectedPart;
 					returnData.push(item);
 				}
