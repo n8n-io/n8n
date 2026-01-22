@@ -64,7 +64,6 @@ async function onClickTemplatesLink() {
 			placement="top"
 			:visible="isTooltipVisible"
 			:disabled="nodeCreatorStore.showScrim"
-			:popper-class="$style.tooltip"
 			:show-after="700"
 		>
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">

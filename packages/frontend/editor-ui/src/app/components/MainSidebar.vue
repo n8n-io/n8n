@@ -24,6 +24,9 @@ import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import MainSidebarTrialUpgrade from '@/app/components/MainSidebarTrialUpgrade.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
+import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
+import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
+import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants';
 
 const cloudPlanStore = useCloudPlanStore();
 const rootStore = useRootStore();
@@ -32,6 +35,7 @@ const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
+const resourceCenterStore = useResourceCenterStore();
 
 const i18n = useI18n();
 const router = useRouter();
@@ -58,6 +62,16 @@ const showWhatsNewNotification = computed(
 		),
 );
 
+const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
+
+const resourceCenterLabel = computed(() => {
+	const variant = resourceCenterStore.getCurrentVariant();
+	if (variant === RESOURCE_CENTER_EXPERIMENT.variantInspiration) {
+		return i18n.baseText('experiments.resourceCenter.sidebar.inspiration');
+	}
+	return i18n.baseText('experiments.resourceCenter.sidebar');
+});
+
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
@@ -67,12 +81,24 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		available: settingsStore.isCloudDeployment && hasPermission(['instanceOwner']),
 	},
 	{
-		// Link to in-app templates, available if custom templates host is configured
+		// Resource Center - replaces Templates when experiment is enabled
+		id: 'resource-center',
+		icon: 'lightbulb',
+		label: resourceCenterLabel.value,
+		position: 'bottom',
+		available: isResourceCenterEnabled.value,
+		route: { to: { name: VIEWS.RESOURCE_CENTER } },
+	},
+	{
+		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && templatesStore.hasCustomTemplatesHost,
+		available:
+			settingsStore.isTemplatesEnabled &&
+			templatesStore.hasCustomTemplatesHost &&
+			!isResourceCenterEnabled.value,
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
@@ -81,7 +107,10 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
 		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && !templatesStore.hasCustomTemplatesHost,
+		available:
+			settingsStore.isTemplatesEnabled &&
+			!templatesStore.hasCustomTemplatesHost &&
+			!isResourceCenterEnabled.value,
 		link: {
 			href: templatesStore.websiteTemplateRepositoryURL,
 			target: '_blank',
@@ -240,6 +269,10 @@ function openCommandBar(event: MouseEvent) {
 
 const handleSelect = (key: string) => {
 	switch (key) {
+		case 'resource-center': {
+			resourceCenterStore.markResourceCenterTooltipDismissed();
+			break;
+		}
 		case 'about': {
 			trackHelpItemClick('about');
 			uiStore.openModal(ABOUT_MODAL_KEY);
@@ -332,6 +365,7 @@ useKeybindings({
 		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<MainSidebarTrialUpgrade />
+		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>
 

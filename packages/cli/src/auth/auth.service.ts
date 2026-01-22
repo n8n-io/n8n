@@ -85,6 +85,7 @@ export class AuthService {
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/types/node-versions.json',
 			'/mcp-oauth/authorize/',
 
 			// Skip browser ID check for chat hub attachments
@@ -106,7 +107,7 @@ export class AuthService {
 					if (isInvalid) throw new AuthError('Unauthorized');
 
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
-					const mfaEnforced = this.mfaService.isMFAEnforced();
+					const mfaEnforced = await this.mfaService.isMFAEnforced();
 
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
