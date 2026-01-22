@@ -4,7 +4,6 @@ import { Service } from '@n8n/di';
 import type { DataSourceOptions, LoggerOptions } from '@n8n/typeorm';
 import type { MysqlConnectionOptions } from '@n8n/typeorm/driver/mysql/MysqlConnectionOptions';
 import type { PostgresConnectionOptions } from '@n8n/typeorm/driver/postgres/PostgresConnectionOptions';
-import type { SqliteConnectionOptions } from '@n8n/typeorm/driver/sqlite/SqliteConnectionOptions';
 import type { SqlitePooledConnectionOptions } from '@n8n/typeorm/driver/sqlite-pooled/SqlitePooledConnectionOptions';
 import { UserError } from 'n8n-workflow';
 import type { TlsOptions } from 'node:tls';
@@ -77,47 +76,35 @@ export class DbConnectionOptions {
 		};
 	}
 
-	private getSqliteConnectionOptions(): SqliteConnectionOptions | SqlitePooledConnectionOptions {
+	private getSqliteConnectionOptions(): SqlitePooledConnectionOptions {
 		const { sqlite: sqliteConfig } = this.config;
 		const { n8nFolder } = this.instanceSettingsConfig;
 
-		const commonOptions = {
+		return {
+			type: 'sqlite-pooled',
+			poolSize: sqliteConfig.poolSize,
+			enableWAL: true,
+			acquireTimeout: 60_000,
+			destroyTimeout: 5_000,
 			...this.getCommonOptions(),
 			database: path.resolve(n8nFolder, sqliteConfig.database),
 			migrations: sqliteMigrations,
+			extensions: [
+				(db) =>
+					sqliteVec.load({
+						loadExtension: (fileName, _entrypoint) =>
+							// sqlite3 doesn't seem to accept entrypoint, which might become problematic if we load more extensions
+							// https://sqlite.org/loadext.html
+							db.loadExtension(fileName, (error) => {
+								if (error) {
+									this.logger.error('Could not load sqlite-vec', { error });
+								} else {
+									this.logger.debug('Extension sqlite-vec loaded');
+								}
+							}),
+					}),
+			],
 		};
-
-		if (sqliteConfig.poolSize > 0) {
-			return {
-				type: 'sqlite-pooled',
-				poolSize: sqliteConfig.poolSize,
-				enableWAL: true,
-				acquireTimeout: 60_000,
-				destroyTimeout: 5_000,
-				extensions: [
-					(db) =>
-						sqliteVec.load({
-							loadExtension: (fileName, _entrypoint) =>
-								// sqlite3 doesn't seem to accept entrypoint, which might become problematic if we load more extensions
-								// https://sqlite.org/loadext.html
-								db.loadExtension(fileName, (error) => {
-									if (error) {
-										this.logger.error('Could not load sqlite-vec', { error });
-									} else {
-										this.logger.debug('Extension sqlite-vec loaded');
-									}
-								}),
-						}),
-				],
-				...commonOptions,
-			};
-		} else {
-			return {
-				type: 'sqlite',
-				enableWAL: sqliteConfig.enableWAL,
-				...commonOptions,
-			};
-		}
 	}
 
 	private getPostgresConnectionOptions(): PostgresConnectionOptions {

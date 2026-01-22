@@ -14,6 +14,7 @@ import type { SimpleWorkflow } from '@/types/workflow';
 
 // Store mocks for dependencies
 const mockParseEvaluationArgs = jest.fn();
+const mockArgsToStageModels = jest.fn();
 const mockSetupTestEnvironment = jest.fn();
 const mockCreateAgent = jest.fn();
 const mockGenerateRunId = jest.fn();
@@ -30,6 +31,7 @@ const mockCreatePairwiseEvaluator = jest.fn();
 // Mock all external modules
 jest.mock('../cli/argument-parser', () => ({
 	parseEvaluationArgs: (): unknown => mockParseEvaluationArgs(),
+	argsToStageModels: (...args: unknown[]): unknown => mockArgsToStageModels(...args),
 	getDefaultDatasetName: (suite: unknown): unknown =>
 		suite === 'pairwise' ? 'notion-pairwise-workflows' : 'workflow-builder-canvas-prompts',
 	getDefaultExperimentName: (suite: unknown): unknown =>
@@ -98,9 +100,19 @@ function createMockArgs(overrides: Record<string, unknown> = {}) {
 
 /** Helper to create mock environment */
 function createMockEnvironment() {
+	const mockLlm = mock<BaseChatModel>();
 	return {
 		parsedNodeTypes: [] as INodeTypeDescription[],
-		llm: mock<BaseChatModel>(),
+		llms: {
+			default: mockLlm,
+			supervisor: mockLlm,
+			responder: mockLlm,
+			discovery: mockLlm,
+			builder: mockLlm,
+			configurator: mockLlm,
+			parameterUpdater: mockLlm,
+			judge: mockLlm,
+		},
 		lsClient: mock<Client>(),
 	};
 }
@@ -147,6 +159,7 @@ describe('CLI', () => {
 
 		// Setup default mocks
 		mockParseEvaluationArgs.mockReturnValue(createMockArgs());
+		mockArgsToStageModels.mockReturnValue({ default: 'claude-sonnet-4.5' });
 		mockSetupTestEnvironment.mockResolvedValue(createMockEnvironment());
 		mockCreateAgent.mockReturnValue(createMockAgentInstance());
 		mockGenerateRunId.mockReturnValue('test-run-id');

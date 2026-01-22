@@ -14,6 +14,8 @@ export const MODULE_NAMES = [
 	'dynamic-credentials',
 	'chat-hub',
 	'sso-oidc',
+	'sso-saml',
+	'log-streaming',
 	'vector-store',
 ] as const;
 

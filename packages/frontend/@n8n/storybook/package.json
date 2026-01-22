@@ -10,7 +10,12 @@
   },
   "dependencies": {
     "@n8n/chat": "workspace:*",
+    "@n8n/composables": "workspace:*",
     "@n8n/design-system": "workspace:*",
+    "@n8n/i18n": "workspace:*",
+    "@n8n/stores": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "pinia": "catalog:frontend",
     "vue": "catalog:frontend",
     "vue-tsc": "catalog:frontend"
   },

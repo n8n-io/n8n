@@ -432,14 +432,6 @@ export interface ITimeoutHMS {
 	seconds: number;
 }
 
-export type WorkflowTitleStatus =
-	| 'EXECUTING'
-	| 'IDLE'
-	| 'ERROR'
-	| 'DEBUG'
-	| 'AI_BUILDING'
-	| 'AI_DONE';
-
 export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
 
 export type ActionsRecord<T extends SimplifiedNodeType[]> = {

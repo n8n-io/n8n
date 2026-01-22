@@ -1,10 +1,11 @@
+export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-by-identifier.dto';
+
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export { AiBuilderChatRequestDto } from './ai/ai-build-request.dto';
 export { AiApplySuggestionRequestDto } from './ai/ai-apply-suggestion-request.dto';
 export { AiFreeCreditsRequestDto } from './ai/ai-free-credits-request.dto';
 export { AiSessionRetrievalRequestDto } from './ai/ai-session-retrieval-request.dto';
-export { AiSessionMetadataResponseDto } from './ai/ai-session-metadata-response.dto';
 export { AiTruncateMessagesRequestDto } from './ai/ai-truncate-messages-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
@@ -81,6 +82,16 @@ export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
+
+export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
+export {
+	CreateDestinationDto,
+	type WebhookDestination,
+	type SentryDestination,
+	type SyslogDestination,
+} from './log-streaming/create-destination.dto';
+export { TestDestinationQueryDto } from './log-streaming/test-destination-query.dto';
+export { DeleteDestinationQueryDto } from './log-streaming/delete-destination-query.dto';
 
 export { PaginationDto } from './pagination/pagination.dto';
 export {
