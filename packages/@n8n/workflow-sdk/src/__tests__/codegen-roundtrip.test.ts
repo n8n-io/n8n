@@ -11,7 +11,6 @@ import {
 } from './fixtures-download';
 
 const SKIP_WORKFLOWS = new Set<string>([
-	'2896', // node count 21 vs 15
 	'3066', // node count 57 vs 53
 	'4366', // node count 38 vs 37
 	'4557', // node count 18 vs 17
@@ -29,10 +28,9 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'6150', // node count 24 vs 20
 	'6542', // connection source mismatch
 	'7455', // node count 102 vs 100
-	'7945', // node count 37 vs 27
+	'7945', // node count 37 vs 29
 	'7946', // node count 17 vs 15
 	'10132', // syntax error during parse
-	'10196', // node count 23 vs 14
 	'10476', // node count 31 vs 19
 ]);
 
