@@ -26,7 +26,7 @@ describe('CanvasEdgeToolbar', () => {
 
 	describe('tooltip text on hover', () => {
 		it('should show "Add" tooltip when hovering over add button for Main connection', async () => {
-			const { getByTestId, getByRole } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					type: NodeConnectionTypes.Main,
 					targetNode: createCanvasGraphNode(),
@@ -37,13 +37,13 @@ describe('CanvasEdgeToolbar', () => {
 			const addButton = getByTestId('add-connection-button');
 			await userEvent.hover(addButton);
 
-			const tooltip = getByRole('tooltip');
+			const tooltip = getByTestId('tooltip-content');
 			expect(tooltip).toBeVisible();
 			expect(tooltip).toHaveTextContent('Add');
 		});
 
 		it('should show "Add human review step" tooltip when hovering over add button for AiTool connection', async () => {
-			const { getByTestId, getByRole } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					type: NodeConnectionTypes.AiTool,
 					targetNode: createCanvasGraphNode({
@@ -62,13 +62,13 @@ describe('CanvasEdgeToolbar', () => {
 			const addButton = getByTestId('add-connection-button');
 			await userEvent.hover(addButton);
 
-			const tooltip = getByRole('tooltip');
+			const tooltip = getByTestId('tooltip-content');
 			expect(tooltip).toBeVisible();
 			expect(tooltip).toHaveTextContent('Add human review step');
 		});
 
 		it('should show "Delete" tooltip when hovering over delete button', async () => {
-			const { getByTestId, getByRole } = renderComponent({
+			const { getByTestId } = renderComponent({
 				props: {
 					type: NodeConnectionTypes.Main,
 					targetNode: createCanvasGraphNode(),
@@ -79,7 +79,7 @@ describe('CanvasEdgeToolbar', () => {
 			const deleteButton = getByTestId('delete-connection-button');
 			await userEvent.hover(deleteButton);
 
-			const tooltip = getByRole('tooltip');
+			const tooltip = getByTestId('tooltip-content');
 			expect(tooltip).toBeVisible();
 			expect(tooltip).toHaveTextContent('Delete');
 		});
