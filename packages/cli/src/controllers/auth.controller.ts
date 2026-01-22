@@ -98,7 +98,7 @@ export class AuthController {
 				usedAuthenticationMethod = 'email';
 			} else {
 				const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
-				user = await Container.get(LdapService).handleLogin(emailOrLdapLoginId, password);
+				user = await Container.get(LdapService).handleLdapLogin(emailOrLdapLoginId, password);
 			}
 		} else {
 			user = await handleEmailLogin(emailOrLdapLoginId, password);

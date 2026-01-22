@@ -1523,7 +1523,7 @@ describe('LdapService', () => {
 
 				await ldapService.init();
 
-				const result = await ldapService.handleLogin('jdoe', 'password');
+				const result = await ldapService.handleLdapLogin('jdoe', 'password');
 				expect(result).toEqual(mockUser);
 			});
 
@@ -1535,7 +1535,7 @@ describe('LdapService', () => {
 
 				await ldapService.init();
 
-				const result = await ldapService.handleLogin('jdoe', 'password');
+				const result = await ldapService.handleLdapLogin('jdoe', 'password');
 				expect(result).toBeUndefined();
 			});
 		});

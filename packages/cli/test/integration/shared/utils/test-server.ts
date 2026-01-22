@@ -212,12 +212,7 @@ export const setupTestServer = ({
 						const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
 						await import('@/modules/ldap.ee/ldap.controller.ee');
 						testServer.license.enable('feat:ldap');
-						const ldapService = Container.get(LdapService);
-						await ldapService.init();
-
-						// Register the LDAP authentication handler
-						const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
-						Container.get(AuthHandlerRegistry).registerHandler(ldapService);
+						await Container.get(LdapService).init();
 						break;
 					}
 
