@@ -1268,7 +1268,7 @@ export const secretProvidersOptions = () => {
 			doc: {
 				name: provider,
 				returnType: 'Object',
-				section: type, // TODO: translate this
+				section: i18n.baseText(`codeNodeEditor.completer.$secrets.type.${type}`),
 				description: i18n.baseText('codeNodeEditor.completer.$secrets.provider'),
 				docURL: i18n.baseText('settings.externalSecrets.docs'),
 			},

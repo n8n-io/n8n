@@ -557,6 +557,8 @@
 	"codeNodeEditor.completer.$secrets": "The secrets from an <a target=\"_blank\" href=\"https://docs.n8n.io/external-secrets/\">external secrets vault</a>, if configured. Secret values are never displayed to the user. Only available in credential fields.",
 	"codeNodeEditor.completer.$secrets.provider": "External secrets providers connected to this n8n instance.",
 	"codeNodeEditor.completer.$secrets.provider.varName": "External secrets connected to this n8n instance. All secrets evaluate to strings.",
+	"codeNodeEditor.completer.$secrets.type.project": "Project secrets",
+	"codeNodeEditor.completer.$secrets.type.global": "Global secrets",
 	"codeNodeEditor.completer.$workflow": "Information about the current workflow",
 	"codeNodeEditor.completer.$workflow.active": "Whether the workflow is active",
 	"codeNodeEditor.completer.$workflow.id": "The workflow ID. Can also be found in the workflow's URL.",
