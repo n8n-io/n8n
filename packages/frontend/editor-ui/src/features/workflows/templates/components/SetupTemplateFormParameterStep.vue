@@ -12,6 +12,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
 import { N8nHeading } from '@n8n/design-system';
 import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
+import { PARAMETER_INPUT_TYPES } from '../composables/useParameterSetupState';
 
 const props = defineProps<{
 	order: number;
@@ -90,19 +91,21 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 		</p>
 
 		<div :class="$style.parameters">
-			<ParameterInputFull
-				v-for="param in nodeParameters.parameters"
-				:key="param.key"
-				:parameter="param.parameter"
-				:hide-issues="false"
-				:value="parameterValues[param.key] ?? param.currentValue"
-				:path="`parameters.${param.key}`"
-				:is-read-only="false"
-				:hide-label="false"
-				:node-values="parameterValues"
-				:show-delete="false"
-				@update="emit('parameterChanged', { parameterKey: param.key, value: $event.value })"
-			/>
+			<div v-for="param in nodeParameters.parameters" :key="param.key">
+				<ParameterInputFull
+					v-if="PARAMETER_INPUT_TYPES.includes(param.parameter.type)"
+					:parameter="param.parameter"
+					:hide-issues="false"
+					:value="parameterValues[param.key] ?? param.currentValue"
+					:path="`parameters.${param.key}`"
+					:is-read-only="false"
+					:hide-label="false"
+					:node-values="parameterValues"
+					:show-delete="false"
+					@update="emit('parameterChanged', { parameterKey: param.key, value: $event.value })"
+				/>
+				<div v-else>🚧 REQUIRES CUSTOM COMPONENT</div>
+			</div>
 		</div>
 	</li>
 </template>

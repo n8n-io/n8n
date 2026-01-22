@@ -12,12 +12,8 @@ import type {
 	RequiredParameterUsage,
 } from '../templates.types';
 
-/**
- * Parameter types supported in the simplified setup form.
- * Complex types like fixedCollection, resourceLocator, etc. are excluded
- * as they require the full NDV experience.
- */
-const SUPPORTED_PARAMETER_TYPES = [
+// Parameter types rendered using the ParemeterInputFull component
+export const PARAMETER_INPUT_TYPES = [
 	'string',
 	'number',
 	'boolean',
@@ -28,6 +24,11 @@ const SUPPORTED_PARAMETER_TYPES = [
 	'json',
 	'resourceLocator',
 ];
+
+// Parameter types that have their own custom components
+export const CUSTOM_COMPONENT_TYPES: string[] = [];
+
+export const SUPPORTED_PARAMETER_TYPES = [...PARAMETER_INPUT_TYPES, ...CUSTOM_COMPONENT_TYPES];
 
 /**
  * Creates a unique key for a parameter based on node name and parameter name.
