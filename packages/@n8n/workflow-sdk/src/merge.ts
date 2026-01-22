@@ -64,17 +64,57 @@ class MergeNodeInstance implements NodeInstance<'n8n-nodes-base.merge', string, 
 		outputIndex: number = 0,
 	): NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T> {
 		const targets = Array.isArray(target) ? target : [target];
+
+		// Helper to extract the actual node from a composite or target
+		const getActualNode = (t: unknown): NodeInstance<string, string, unknown> | null => {
+			if (t === null || t === undefined) return null;
+			// Check if target is a MergeComposite (has mergeNode and branches)
+			if (typeof t === 'object' && 'mergeNode' in t && 'branches' in t) {
+				return (t as MergeComposite<NodeInstance<string, string, unknown>[]>).mergeNode;
+			}
+			return t as NodeInstance<string, string, unknown>;
+		};
+
+		// Process targets, extracting actual nodes from composites
+		const actualTargets: NodeInstance<string, string, unknown>[] = [];
 		for (const t of targets) {
-			this._connections.push({ target: t, outputIndex });
+			const actualNode = getActualNode(t);
+			if (actualNode) {
+				this._connections.push({ target: actualNode, outputIndex });
+				actualTargets.push(actualNode);
+			}
 		}
+
+		// Handle empty targets case
+		if (actualTargets.length === 0) {
+			// Return a minimal chain-like object that proxies back to self
+			const self = this;
+			return {
+				_isChain: true,
+				head: this,
+				tail: this,
+				allNodes: [this],
+				type: this.type,
+				version: this.version,
+				config: this.config,
+				id: this.id,
+				name: this.name,
+				_outputType: undefined,
+				update: this.update.bind(this),
+				then: this.then.bind(this),
+				onError: this.onError.bind(this),
+				getConnections: () => self._connections,
+			} as unknown as NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T>;
+		}
+
 		// Return a chain-like object that proxies to the last target
-		const lastTarget = targets[targets.length - 1];
+		const lastTarget = actualTargets[actualTargets.length - 1];
 		const self = this;
 		return {
 			_isChain: true,
 			head: this,
 			tail: lastTarget,
-			allNodes: [this, ...targets],
+			allNodes: [this, ...actualTargets],
 			type: lastTarget.type,
 			version: lastTarget.version,
 			config: lastTarget.config,

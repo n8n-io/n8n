@@ -1712,7 +1712,18 @@ function generateMergeCall(
 
 	// Generate the merge call with only NEW sources as branches
 	// Already-added sources have their connections established by the chain
-	const branchCalls = newSources.map((s) => generateNodeCall(s.node, nodeInfoMap));
+	// If a source is itself a merge node, recursively generate a merge call for it
+	const branchCalls = newSources.map((s) => {
+		const sourceInfo = nodeInfoMap.get(s.node.name);
+		if (sourceInfo && isMergeNode(s.node)) {
+			// Recursively generate merge call for nested merge nodes
+			const nestedMergeCall = generateMergeCall(sourceInfo, nodeInfoMap, addedNodes);
+			if (nestedMergeCall) {
+				return nestedMergeCall;
+			}
+		}
+		return generateNodeCall(s.node, nodeInfoMap);
+	});
 	const configParts: string[] = [];
 
 	// Always include version to preserve original node version

@@ -164,7 +164,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '11290', - now passes after multiple triggers/convergence fixes
 	// '11294', - now passes after multiple triggers/convergence fixes
 	'11366', // connection mismatch (stricter test comparison)
-	'11466',
+	// '11466', - now passes after MergeNodeInstance.then() composite target fix
 	// '11532', - now passes after multiple triggers/convergence fixes
 	// '11572', - now passes after sequential polling loop fix
 	'11617',

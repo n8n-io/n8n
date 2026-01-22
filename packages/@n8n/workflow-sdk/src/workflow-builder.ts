@@ -251,11 +251,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrComposite: N | N[] | MergeComposite | IfBranchComposite | SwitchCaseComposite,
+		nodeOrComposite: N | N[] | MergeComposite | IfBranchComposite | SwitchCaseComposite | NodeChain,
 	): WorkflowBuilder {
 		// Handle array of nodes (fan-out pattern)
 		if (Array.isArray(nodeOrComposite)) {
 			return this.handleFanOut(nodeOrComposite);
+		}
+
+		// Handle NodeChain (e.g., node().then().then())
+		// This must come before composite checks since chains have composite-like properties
+		if (isNodeChain(nodeOrComposite)) {
+			return this.handleNodeChain(nodeOrComposite);
 		}
 
 		// Handle merge composite
@@ -693,14 +699,51 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		});
 
 		// Add all branch nodes with connections TO the merge node at different input indices
-		const branches = composite.branches as NodeInstance<string, string, unknown>[];
+		// Branches can be NodeInstance, NodeChain, or nested MergeComposite
+		const branches = composite.branches;
 		branches.forEach((branch, index) => {
+			// Handle nested MergeComposite (from merge([merge([...]), ...]) pattern)
+			if (this.isMergeComposite(branch)) {
+				const nestedComposite = branch as unknown as MergeComposite;
+				// Recursively add the nested merge's nodes
+				this.addMergeNodes(nodes, nestedComposite);
+
+				// Connect the nested merge's output to this merge's input
+				const nestedMergeNode = nodes.get(nestedComposite.mergeNode.name);
+				if (nestedMergeNode) {
+					const mainConns = nestedMergeNode.connections.get('main') || new Map();
+					mainConns.set(0, [{ node: composite.mergeNode.name, type: 'main', index }]);
+					nestedMergeNode.connections.set('main', mainConns);
+				}
+				return;
+			}
+
+			// Handle NodeChain branches
+			if (isNodeChain(branch)) {
+				// Add all nodes from the chain
+				this.addBranchToGraph(nodes, branch);
+
+				// Connect the tail of the chain to this merge
+				const tailName = (branch as NodeChain).tail?.name;
+				if (tailName) {
+					const tailNode = nodes.get(tailName);
+					if (tailNode) {
+						const mainConns = tailNode.connections.get('main') || new Map();
+						mainConns.set(0, [{ node: composite.mergeNode.name, type: 'main', index }]);
+						tailNode.connections.set('main', mainConns);
+					}
+				}
+				return;
+			}
+
+			// Regular node branch
+			const branchNode = branch as NodeInstance<string, string, unknown>;
 			const branchMainConns = new Map<number, ConnectionTarget[]>();
 			branchMainConns.set(0, [{ node: composite.mergeNode.name, type: 'main', index }]);
 			const branchConns = new Map<string, Map<number, ConnectionTarget[]>>();
 			branchConns.set('main', branchMainConns);
-			nodes.set(branch.name, {
-				instance: branch,
+			nodes.set(branchNode.name, {
+				instance: branchNode,
 				connections: branchConns,
 			});
 		});
@@ -941,6 +984,44 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			nodes: newNodes,
 			currentNode: lastNodeName,
 			currentOutput: 0,
+		});
+	}
+
+	/**
+	 * Handle a NodeChain passed to workflow.then()
+	 * This is used when chained node calls are passed directly, e.g., workflow.then(node().then().then())
+	 */
+	private handleNodeChain(chain: NodeChain): WorkflowBuilder {
+		const newNodes = new Map(this._nodes);
+
+		// Add the head node and connect from current workflow position
+		const headNodeName = this.addBranchToGraph(newNodes, chain);
+
+		// Connect from current workflow node to the head of the chain
+		if (this._currentNode) {
+			const currentGraphNode = newNodes.get(this._currentNode);
+			if (currentGraphNode) {
+				const mainConns = currentGraphNode.connections.get('main') || new Map();
+				const outputConnections = mainConns.get(this._currentOutput) || [];
+				mainConns.set(this._currentOutput, [
+					...outputConnections,
+					{ node: headNodeName, type: 'main', index: 0 },
+				]);
+				currentGraphNode.connections.set('main', mainConns);
+			}
+		}
+
+		// Collect pinData from the chain
+		const chainPinData = this.collectPinDataFromChain(chain);
+
+		// Set current node to the tail of the chain
+		const tailName = chain.tail?.name ?? headNodeName;
+
+		return this.clone({
+			nodes: newNodes,
+			currentNode: tailName,
+			currentOutput: 0,
+			pinData: chainPinData,
 		});
 	}
 
