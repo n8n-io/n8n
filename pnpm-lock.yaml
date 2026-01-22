@@ -923,6 +923,9 @@ importers:
       '@types/lodash':
         specifier: 'catalog:'
         version: 4.17.17
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/di:
     dependencies:
