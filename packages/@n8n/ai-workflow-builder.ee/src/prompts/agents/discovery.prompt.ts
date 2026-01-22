@@ -166,7 +166,6 @@ const TECHNIQUE_CLARIFICATIONS = `Common distinctions to get right:
 
 Technique selection rules:
 - Select ALL techniques that apply (most workflows use 2-4)
-- Maximum 5 techniques
 - Only select techniques you're confident apply`;
 
 const CONNECTION_PARAMETERS = `A parameter is connection-changing ONLY IF it appears in <input> or <output> expressions within <node_details>.
