@@ -143,16 +143,13 @@ async function initialize({ version }: { version: string }): Promise<void> {
 		console.log('[DataWorker] VFS name:', VFS_NAME);
 		console.log('[DataWorker] Database name:', DB_NAME);
 
-		if (!databaseExists) {
-			console.log('[DataWorker] Creating tables...');
-			const tableSchemas = getAllTableSchemas();
-			for (const schema of tableSchemas) {
-				await state.sqlite3.exec(state.db, schema);
-			}
-			console.log('[DataWorker] Tables created successfully');
-		} else {
-			console.log('[DataWorker] Skipping table creation - database already exists');
+		// Always run table schemas - they use IF NOT EXISTS so this is safe
+		console.log('[DataWorker] Ensuring tables exist...');
+		const tableSchemas = getAllTableSchemas();
+		for (const schema of tableSchemas) {
+			await state.sqlite3.exec(state.db, schema);
 		}
+		console.log('[DataWorker] Tables ready');
 
 		state.initialized = true;
 		state.version = version;
