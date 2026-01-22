@@ -112,10 +112,7 @@ const resolvedAdditionalExpressionData = computed(() => {
 		$vars: environmentsStore.variablesAsObject,
 		...(externalSecretsStore.isEnterpriseExternalSecretsEnabled && props.isForCredential
 			? {
-					$secrets: {
-						...externalSecretsStore.secretsAsObject,
-						...externalSecretsStore.projectSecretsAsObject,
-					},
+					$secrets: externalSecretsStore.globalAndProjectSecretsAsObject,
 				}
 			: {}),
 		...props.additionalExpressionData,

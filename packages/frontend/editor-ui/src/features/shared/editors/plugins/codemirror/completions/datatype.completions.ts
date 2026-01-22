@@ -1221,10 +1221,7 @@ export const secretOptions = (base: string) => {
 
 	try {
 		resolved = Expression.resolveWithoutWorkflow(`{{ ${base} }}`, {
-			$secrets: {
-				...externalSecretsStore.secretsAsObject,
-				...externalSecretsStore.projectSecretsAsObject,
-			},
+			$secrets: externalSecretsStore.globalAndProjectSecretsAsObject,
 		});
 	} catch {
 		return [];

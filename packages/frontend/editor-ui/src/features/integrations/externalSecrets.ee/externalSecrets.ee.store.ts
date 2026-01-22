@@ -85,6 +85,15 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		transformSecretsToNestedObject(projectSecrets.value),
 	);
 
+	/**
+	 * Combined secrets from both global and project scopes.
+	 * Note: The backend enforces that provider names are unique across scopes, preventing conflicts.
+	 */
+	const globalAndProjectSecretsAsObject = computed(() => ({
+		...secretsAsObject.value,
+		...projectSecretsAsObject.value,
+	}));
+
 	async function fetchGlobalSecrets() {
 		if (rbacStore.hasScope('externalSecret:list')) {
 			try {
@@ -186,6 +195,7 @@ export const useExternalSecretsStore = defineStore('externalSecrets', () => {
 		connectionState,
 		secretsAsObject,
 		projectSecretsAsObject,
+		globalAndProjectSecretsAsObject,
 		isEnterpriseExternalSecretsEnabled,
 		fetchGlobalSecrets,
 		fetchProjectSecrets,
