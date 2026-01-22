@@ -1044,6 +1044,9 @@ function generateChain(
 				const targetInfo = nodeInfoMap.get(target.to);
 				if (!targetInfo || addedNodes.has(target.to) || targetInfo.isSubnodeOf) continue;
 
+				// Skip if already declared as a shared entry point (from multiple triggers) or cycle target
+				if (cycleNodeVars?.has(target.to)) continue;
+
 				// Check if this target is reachable from any other target
 				for (const otherTarget of targets) {
 					if (otherTarget.to === target.to) continue;
