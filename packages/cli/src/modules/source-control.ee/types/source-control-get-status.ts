@@ -1,10 +1,10 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 import type { StatusExportableCredential } from './exportable-credential';
 import type { ExportableFolder } from './exportable-folders';
 import type { ExportableProjectWithFileName } from './exportable-project';
+import type { ExportableTagEntity, ExportableWorkflowTagMapping } from './exportable-tags';
 import type { ExportableVariable } from './exportable-variable';
 import type { SourceControlWorkflowVersionId } from './source-control-workflow-version-id';
 
@@ -20,11 +20,11 @@ export interface SourceControlGetStatusVerboseResult {
 	varMissingInLocal: ExportableVariable[];
 	varMissingInRemote: ExportableVariable[];
 	varModifiedInEither: ExportableVariable[];
-	tagsMissingInLocal: TagEntity[];
-	tagsMissingInRemote: TagEntity[];
-	tagsModifiedInEither: TagEntity[];
-	mappingsMissingInLocal: WorkflowTagMapping[];
-	mappingsMissingInRemote: WorkflowTagMapping[];
+	tagsMissingInLocal: ExportableTagEntity[];
+	tagsMissingInRemote: ExportableTagEntity[];
+	tagsModifiedInEither: ExportableTagEntity[];
+	mappingsMissingInLocal: ExportableWorkflowTagMapping[];
+	mappingsMissingInRemote: ExportableWorkflowTagMapping[];
 	foldersMissingInLocal: ExportableFolder[];
 	foldersMissingInRemote: ExportableFolder[];
 	foldersModifiedInEither: ExportableFolder[];
