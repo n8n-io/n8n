@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Workflow Editor UI for n8n",
   "main": "index.js",
   "type": "module",
@@ -50,7 +50,6 @@
     "@n8n/utils": "workspace:*",
     "@replit/codemirror-indentation-markers": "^6.5.3",
     "@sentry/vue": "catalog:frontend",
-    "@sqlite.org/sqlite-wasm": "3.50.4-build1",
     "@types/semver": "^7.7.0",
     "@typescript/vfs": "^1.6.0",
     "@vue-flow/background": "1.3.2",
@@ -105,6 +104,7 @@
     "vue-virtual-scroller": "2.0.0-beta.8",
     "vue3-touch-events": "^4.1.3",
     "vuedraggable": "4.1.0",
+    "wa-sqlite": "github:rhashimoto/wa-sqlite#779219540f66cecaa159da32b3b8936697ba10a7",
     "web-tree-sitter": "0.24.3",
     "xss": "catalog:"
   },

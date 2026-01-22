@@ -164,7 +164,9 @@ type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptions
  * @param context - The context.
  * @returns the Redis client for the node.
  */
-export async function getRedisClient(context: IFunctionsContext) {
+export async function getRedisClient(
+	context: IFunctionsContext,
+): Promise<ReturnType<typeof createClient> | null> {
 	const credentials = await context.getCredentials(REDIS_CREDENTIALS);
 
 	// Create client configuration object

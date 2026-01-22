@@ -146,6 +146,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideLoader2 from '~icons/lucide/loader2';
 import IconLucideLock from '~icons/lucide/lock';
 import IconLucideLogIn from '~icons/lucide/log-in';
 import IconLucideLogOut from '~icons/lucide/log-out';
@@ -192,6 +193,7 @@ import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
+import IconLucideShieldHalf from '~icons/lucide/shield-half';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
@@ -228,8 +230,10 @@ import IconLucideVolume2 from '~icons/lucide/volume-2';
 import IconLucideVolumeX from '~icons/lucide/volume-x';
 import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
+import IconLucideWorkflow from '~icons/lucide/workflow';
 import IconLucideWrench from '~icons/lucide/wrench';
 import IconLucideX from '~icons/lucide/x';
+import IconLucideYoutube from '~icons/lucide/youtube';
 import IconLucideZap from '~icons/lucide/zap';
 import IconLucideZoomIn from '~icons/lucide/zoom-in';
 import IconLucideZoomOut from '~icons/lucide/zoom-out';
@@ -644,6 +648,7 @@ export const updatedIconSet = {
 	server: IconLucideServer,
 	share: IconLucideShare,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
+	'shield-half': IconLucideShieldHalf,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,
@@ -677,11 +682,14 @@ export const updatedIconSet = {
 	'volume-x': IconLucideVolumeX,
 	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
+	workflow: IconLucideWorkflow,
 	wrench: IconLucideWrench,
 	x: IconLucideX,
+	youtube: IconLucideYoutube,
 	zap: IconLucideZap,
 	'zoom-in': IconLucideZoomIn,
 	'zoom-out': IconLucideZoomOut,
+	loader: IconLucideLoader2,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward

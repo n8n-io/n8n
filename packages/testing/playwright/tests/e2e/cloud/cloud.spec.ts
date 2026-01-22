@@ -22,6 +22,7 @@ const cloudTrialRequirements: TestRequirements = {
 			aiCredits: {
 				enabled: true,
 				credits: 100,
+				setup: true,
 			},
 			banners: {
 				dismissed: ['V1'], // Prevent V1 banner interference
@@ -48,6 +49,7 @@ const cloudNonTrialRequirements: TestRequirements = {
 			aiCredits: {
 				enabled: true,
 				credits: 100,
+				setup: true,
 			},
 			banners: {
 				dismissed: ['V1'], // Prevent V1 banner interference
@@ -73,12 +75,6 @@ const setupCloudTest = async (
 ) => {
 	await setupRequirements(requirements);
 	await n8n.page.waitForLoadState();
-};
-
-const createProjectAndNavigate = async (n8n: n8nPage) => {
-	await n8n.goHome();
-	const { projectId } = await n8n.projectComposer.createProject();
-	await n8n.page.goto(`projects/${projectId}/workflows`);
 };
 
 test.describe('Cloud @db:reset @auth:owner', () => {
@@ -171,49 +167,6 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			await n8n.page.waitForLoadState();
 
 			await expect(n8n.settingsPersonal.getUpgradeCta()).toBeVisible();
-		});
-	});
-
-	test.describe('Easy AI workflow experiment', () => {
-		test('should not show option to take you to the easy AI workflow if experiment is control', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'control' });
-
-			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
-			await createProjectAndNavigate(n8n);
-
-			await expect(n8n.workflows.getEasyAiWorkflowCard()).toBeHidden();
-		});
-
-		test('should show option to take you to the easy AI workflow if experiment is variant', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
-
-			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
-			await createProjectAndNavigate(n8n);
-
-			await expect(n8n.workflows.getEasyAiWorkflowCard()).toBeVisible();
-		});
-
-		test('should show default instructions if free AI credits experiment is control', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
-
-			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
-			await createProjectAndNavigate(n8n);
-
-			await n8n.workflows.clickEasyAiWorkflowCard();
-
-			await n8n.page.waitForLoadState();
-
-			const firstSticky = n8n.canvas.sticky.getStickies().first();
-			await expect(firstSticky).toContainText('Start by saying');
 		});
 	});
 });
