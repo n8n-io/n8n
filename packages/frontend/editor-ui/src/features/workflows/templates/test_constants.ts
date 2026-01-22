@@ -250,6 +250,38 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				},
 				position: [192, 0],
 			},
+			{
+				id: 'b83e1a20-c13a-49ac-8beb-7f2ba2bae9c4',
+				name: 'Edit Fields',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3.4,
+				parameters: {
+					assignments: {
+						assignments: [
+							{
+								id: 'f0992132-ffe9-4ab2-9255-010e96003bf7',
+								name: 'name',
+								value: '',
+								type: 'string',
+							},
+							{
+								id: 'a76fa292-a5d3-4a75-8d97-17a3d12c1f76',
+								name: 'age',
+								value: 0,
+								type: 'number',
+							},
+							{
+								id: '37eacdfd-3493-4d4a-a466-6c2b19a029aa',
+								name: 'isActive',
+								value: false,
+								type: 'boolean',
+							},
+						],
+					},
+					options: {},
+				},
+				position: [928, 720],
+			},
 		],
 		settings: {},
 		connections: {

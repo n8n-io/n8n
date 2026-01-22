@@ -12,6 +12,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
 import { N8nHeading } from '@n8n/design-system';
 import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
+import AssignmentCollection from '@/features/ndv/parameters/components/AssignmentCollection/AssignmentCollection.vue';
 import { PARAMETER_INPUT_TYPES } from '../composables/useParameterSetupState';
 
 const props = defineProps<{
@@ -91,6 +92,7 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 		</p>
 
 		<div :class="$style.parameters">
+			<!-- TODO: Check if there is a better way to render these: -->
 			<div v-for="param in nodeParameters.parameters" :key="param.key">
 				<ParameterInputFull
 					v-if="PARAMETER_INPUT_TYPES.includes(param.parameter.type)"
@@ -104,7 +106,22 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 					:show-delete="false"
 					@update="emit('parameterChanged', { parameterKey: param.key, value: $event.value })"
 				/>
-				<div v-else>🚧 REQUIRES CUSTOM COMPONENT</div>
+				<div v-else>
+					<!-- TODO: Remove 'Add Field' option, check how to display only selected fields -->
+					<AssignmentCollection
+						v-if="param.parameter.type === 'assignmentCollection'"
+						:parameter="param.parameter"
+						:value="parameterValues[param.key] ?? param.currentValue"
+						:path="`parameters.${param.key}`"
+						:node="node"
+						:is-read-only="false"
+						:default-type="param.parameter.typeOptions?.assignment?.defaultType"
+						:disable-type="param.parameter.typeOptions?.assignment?.disableType"
+						@value-changed="
+							emit('parameterChanged', { parameterKey: param.key, value: $event.value })
+						"
+					/>
+				</div>
 			</div>
 		</div>
 	</li>

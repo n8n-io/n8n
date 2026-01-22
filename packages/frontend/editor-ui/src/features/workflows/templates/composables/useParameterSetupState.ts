@@ -26,7 +26,7 @@ export const PARAMETER_INPUT_TYPES = [
 ];
 
 // Parameter types that have their own custom components
-export const CUSTOM_COMPONENT_TYPES: string[] = [];
+export const CUSTOM_COMPONENT_TYPES = ['assignmentCollection'];
 
 export const SUPPORTED_PARAMETER_TYPES = [...PARAMETER_INPUT_TYPES, ...CUSTOM_COMPONENT_TYPES];
 
@@ -43,7 +43,6 @@ export const keyFromNodeAndParam = (nodeName: string, paramName: string): Parame
  * - supported parameter types
  * - displayOptions conditions
  * - excludes credentialsSelect type
- * - excludes parameters with remote options loading
  */
 export const getNodeRequiredParameters = <TNode extends BaseNode>(
 	nodeTypeProvider: NodeTypeProvider,
@@ -55,8 +54,12 @@ export const getNodeRequiredParameters = <TNode extends BaseNode>(
 	}
 
 	return nodeType.properties.filter((prop) => {
-		// Only required parameters and [FOR NOW] parameters that require editors
-		if (!prop.required && !prop.typeOptions?.editor) return false;
+		// Only required parameters
+		// TESTING: For now, we also include:
+		// 	- Parameters that require editors
+		//  - Assignment parameters (from the Set node)
+		if (!prop.required && !prop.typeOptions?.editor && prop.type !== 'assignmentCollection')
+			return false;
 
 		// Only supported simple types
 		if (!SUPPORTED_PARAMETER_TYPES.includes(prop.type)) return false;
