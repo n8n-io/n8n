@@ -21,6 +21,28 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
+export interface ITemplateState {
+	categories: ITemplatesCategory[];
+	collections: { [id: string]: ITemplatesCollection };
+	workflows: { [id: string]: ITemplatesWorkflow | ITemplatesWorkflowFull };
+	workflowSearches: {
+		[search: string]: {
+			workflowIds: string[];
+			totalWorkflows: number;
+			loadingMore?: boolean;
+			categories?: ITemplatesCategory[];
+		};
+	};
+	collectionSearches: {
+		[search: string]: {
+			collectionIds: string[];
+		};
+	};
+	currentSessionId: string;
+	previousSessionId: string;
+	currentN8nPath: string;
+}
+
 const TEMPLATES_PAGE_SIZE = 20;
 
 function getSearchKey(query: ITemplatesQuery): string {

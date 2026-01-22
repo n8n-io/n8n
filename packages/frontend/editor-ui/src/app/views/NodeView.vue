@@ -113,6 +113,7 @@ import {
 } from '@/app/utils/nodeViewUtils';
 import CanvasStopCurrentExecutionButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopCurrentExecutionButton.vue';
 import CanvasStopWaitingForWebhookButton from '@/features/workflows/canvas/components/elements/buttons/CanvasStopWaitingForWebhookButton.vue';
+import DemoModeTooltip from '@/features/workflows/canvas/components/elements/DemoModeTooltip.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { useClipboard } from '@/app/composables/useClipboard';
@@ -146,9 +147,7 @@ import {
 	N8nCallout,
 	N8nCanvasThinkingPill,
 	N8nCanvasCollaborationPill,
-	N8nTooltip,
 	N8nButton,
-	N8nText,
 } from '@n8n/design-system';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 
@@ -2149,25 +2148,12 @@ onBeforeUnmount(() => {
 				<LazySetupWorkflowCredentialsButton :class="$style.setupCredentialsButtonWrapper" />
 			</Suspense>
 			<div v-if="!isCanvasReadOnly || isTemplateDemoMode" :class="$style.executionButtons">
-				<N8nTooltip
+				<DemoModeTooltip
 					v-if="isRunWorkflowButtonVisible"
-					:visible="
-						isTemplateDemoMode &&
-						isCanvasInteractable /** this happens to match showing an overlay which is what we care about */ &&
-						!hideDemoTooltip
-					"
-					placement="top"
-					popper-class="$style.customTooltipWidth"
+					:is-template-demo-mode="isTemplateDemoMode"
+					:hide-demo-tooltip="hideDemoTooltip"
+					:is-canvas-interactable="isCanvasInteractable"
 				>
-					<template #content>
-						<N8nText :bold="true" size="small">{{
-							i18n.baseText('template.readyToDemo.tooltip.title')
-						}}</N8nText>
-						<div
-							v-n8n-html="i18n.baseText('template.readyToDemo.tooltip.content')"
-							:class="$style.demoTemplateContent"
-						/>
-					</template>
 					<CanvasRunWorkflowButton
 						:waiting-for-webhook="isExecutionWaitingForWebhook"
 						:disabled="isExecutionDisabled"
@@ -2188,7 +2174,7 @@ onBeforeUnmount(() => {
 						"
 						@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
 					/>
-				</N8nTooltip>
+				</DemoModeTooltip>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton
 						v-if="isLogsPanelOpen"
@@ -2362,18 +2348,5 @@ onBeforeUnmount(() => {
 	top: 50%;
 	transform: translate(-50%, -50%);
 	z-index: 10;
-}
-
-.demoTemplateContent {
-	padding-top: 4px;
-	line-height: 16px;
-}
-
-.el-popper.custom-tooltip-width {
-	// line-height: 1.5;
-	min-width: 290px;
-	padding: 0px;
-	max-width: 290px; /* Adjust to your desired width */
-	width: auto;
 }
 </style>
