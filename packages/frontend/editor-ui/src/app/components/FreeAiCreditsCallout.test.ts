@@ -130,7 +130,9 @@ describe('FreeAiCreditsCallout', () => {
 		await fireEvent.click(claimButton);
 
 		expect(credentialsStore.claimFreeAiCredits).toHaveBeenCalledWith('test-project-id');
-		expect(useTelemetry().track).toHaveBeenCalledWith('User claimed OpenAI credits');
+		expect(useTelemetry().track).toHaveBeenCalledWith('User claimed OpenAI credits', {
+			source: 'freeAiCreditsCallout',
+		});
 		assertUserClaimedCredits();
 	});
 

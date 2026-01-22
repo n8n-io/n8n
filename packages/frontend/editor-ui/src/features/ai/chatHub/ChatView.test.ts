@@ -214,7 +214,13 @@ describe('ChatView', () => {
 		it('displays greeting message', async () => {
 			const rendered = renderComponent({ pinia });
 
-			expect(await rendered.findByText('Hello, Test!')).toBeInTheDocument();
+			const greetingText = await rendered.findByText('Start a chat with');
+			expect(greetingText).toBeInTheDocument();
+
+			// Find the agent name within the greetings container
+			const greetingsContainer = greetingText.closest('.greetings') as HTMLElement;
+			expect(greetingsContainer).not.toBeNull();
+			expect(within(greetingsContainer).getByText('GPT-4')).toBeInTheDocument();
 		});
 
 		it('preselects agent from agentId query parameter', async () => {
