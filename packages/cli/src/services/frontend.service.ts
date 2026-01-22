@@ -378,11 +378,13 @@ export class FrontendService {
 		this.writeStaticJSON('nodes', nodes);
 		this.writeStaticJSON('credentials', credentials);
 
-		// Generate SDK types for the AI workflow builder
+		// Generate SDK types for the AI workflow builder (must complete before startup)
 		const nodesJsonPath = path.join(staticCacheDir, 'types/nodes.json');
-		void this.nodeTypeGeneratorService.generateIfNeeded(nodesJsonPath).catch((error) => {
+		try {
+			await this.nodeTypeGeneratorService.generateIfNeeded(nodesJsonPath);
+		} catch (error) {
 			this.logger.warn('Failed to generate SDK node types', { error });
-		});
+		}
 	}
 
 	async getSettings(): Promise<FrontendSettings> {

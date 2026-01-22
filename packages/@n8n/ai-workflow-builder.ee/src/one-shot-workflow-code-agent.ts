@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 /**
  * One-Shot Workflow Code Agent
  *
@@ -31,7 +32,7 @@ import type {
 import type { ChatPayload } from './workflow-builder-agent';
 
 /** Maximum iterations for the agentic loop to prevent infinite loops */
-const MAX_AGENT_ITERATIONS = 50;
+const MAX_AGENT_ITERATIONS = 25;
 
 /** Claude Sonnet 4.5 pricing per million tokens (USD) */
 const SONNET_4_5_PRICING = {
@@ -231,6 +232,12 @@ export class OneShotWorkflowCodeAgent {
 			let sourceCode: string | null = null;
 
 			while (iteration < MAX_AGENT_ITERATIONS) {
+				if (consecutiveParseErrors >= 3) {
+					// Two consecutive parsing errors - fail
+					debugLog('CHAT', 'Three consecutive parsing errors - failing');
+					throw new Error('Failed to parse workflow code after 3 consecutive attempts.');
+				}
+
 				iteration++;
 				debugLog('CHAT', `========== ITERATION ${iteration} ==========`);
 
@@ -310,7 +317,8 @@ export class OneShotWorkflowCodeAgent {
 				} else {
 					// No tool calls - try to parse as final response
 					debugLog('CHAT', 'No tool calls, attempting to parse final response...');
-					finalResult = this.parseStructuredOutput(response);
+					const parseResult = this.parseStructuredOutput(response);
+					finalResult = parseResult.result;
 
 					if (finalResult) {
 						debugLog('CHAT', 'Final result parsed successfully', {
@@ -349,14 +357,6 @@ export class OneShotWorkflowCodeAgent {
 								errorMessage,
 							});
 
-							if (consecutiveParseErrors >= 3) {
-								// Two consecutive parsing errors - fail
-								debugLog('CHAT', 'Three consecutive parsing errors - failing');
-								throw new Error(
-									`Failed to parse workflow code after 3 consecutive attempts. Last error: ${errorMessage}`,
-								);
-							}
-
 							// First parsing error - send error back to agent for correction
 							debugLog('CHAT', 'First parsing error - sending error back to agent for correction');
 							messages.push(
@@ -367,14 +367,16 @@ export class OneShotWorkflowCodeAgent {
 							finalResult = null; // Reset so we can try again
 						}
 					} else {
+						consecutiveParseErrors++;
 						debugLog(
 							'CHAT',
 							'Could not parse structured output, continuing loop for another response...',
+							{ parseError: parseResult.error },
 						);
-						// Add a follow-up message to encourage structured output
+						// Add a follow-up message with the error to help the LLM correct its response
 						messages.push(
 							new HumanMessage(
-								'Please provide your response as a JSON object with a workflowCode field containing the complete TypeScript SDK code.',
+								`Could not parse your response: ${parseResult.error}\n\nPlease provide your response as a JSON object with a workflowCode field containing the complete TypeScript SDK code.`,
 							),
 						);
 					}
@@ -595,13 +597,16 @@ export class OneShotWorkflowCodeAgent {
 
 	/**
 	 * Parse structured output from an AI message
-	 * Returns null if the message doesn't contain valid structured output
+	 * Returns object with result or error information
 	 */
-	private parseStructuredOutput(message: AIMessage): WorkflowCodeOutput | null {
+	private parseStructuredOutput(message: AIMessage): {
+		result: WorkflowCodeOutput | null;
+		error: string | null;
+	} {
 		const content = this.extractTextContent(message);
 		if (!content) {
 			debugLog('PARSE_OUTPUT', 'No text content to parse');
-			return null;
+			return { result: null, error: 'No text content found in response' };
 		}
 
 		debugLog('PARSE_OUTPUT', 'Attempting to parse structured output', {
@@ -618,7 +623,11 @@ export class OneShotWorkflowCodeAgent {
 
 		if (!jsonMatch) {
 			debugLog('PARSE_OUTPUT', 'No JSON found in content');
-			return null;
+			return {
+				result: null,
+				error:
+					'No JSON object with workflowCode field found in response. Please wrap your response in a JSON code block.',
+			};
 		}
 
 		try {
@@ -631,12 +640,13 @@ export class OneShotWorkflowCodeAgent {
 				workflowCodeLength: result.workflowCode.length,
 			});
 
-			return result;
+			return { result, error: null };
 		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 			debugLog('PARSE_OUTPUT', 'Failed to parse JSON', {
-				error: error instanceof Error ? error.message : String(error),
+				error: errorMessage,
 			});
-			return null;
+			return { result: null, error: `Failed to parse JSON: ${errorMessage}` };
 		}
 	}
 
