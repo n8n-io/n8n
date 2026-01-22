@@ -160,34 +160,6 @@ async function getCompletion(
 	return null;
 }
 
-function getCompletionSync(
-	state: EditorState,
-	pos: number,
-	filter: (completion: Completion) => boolean,
-): Completion | null {
-	const context = new CompletionContext(state, pos, true);
-	const sources = state.languageDataAt<
-		(context: CompletionContext) => CompletionResult | Promise<CompletionResult | null>
-	>('autocomplete', pos);
-
-	for (const source of sources) {
-		const result = source(context);
-
-		// For synchronous cursor tooltips, we can only use sync results
-		// Async results will be handled by the effect-based tooltip update
-		if (result instanceof Promise) {
-			continue;
-		}
-
-		const options = result?.options.filter(filter);
-		if (options && options.length > 0) {
-			return options[0];
-		}
-	}
-
-	return null;
-}
-
 const isInfoBoxRenderer = (
 	info: string | ((completion: Completion) => CompletionInfo | Promise<CompletionInfo>) | undefined,
 ): info is ReturnType<typeof createInfoBoxRenderer> => {
@@ -250,19 +222,7 @@ function getTooltipContext(state: EditorState): TooltipContext | null {
 	}
 }
 
-function getInfoBoxTooltipSync(state: EditorState): Tooltip | null {
-	const ctx = getTooltipContext(state);
-	if (!ctx) return null;
-
-	const completion = getCompletionSync(
-		ctx.state,
-		ctx.globalPosition,
-		(c) => c.label === ctx.methodName,
-	);
-	return completionToTooltip(completion, ctx.head, { argIndex: ctx.argIndex });
-}
-
-async function getInfoBoxTooltipAsync(state: EditorState): Promise<Tooltip | null> {
+async function getInfoBoxTooltip(state: EditorState): Promise<Tooltip | null> {
 	const ctx = getTooltipContext(state);
 	if (!ctx) return null;
 
@@ -283,7 +243,7 @@ const cursorInfoBoxTooltip = StateField.define<{
 	create(state) {
 		const ctx = getTooltipContext(state);
 		return {
-			tooltip: getInfoBoxTooltipSync(state),
+			tooltip: null,
 			contextKey: ctx ? `${ctx.globalPosition}:${ctx.methodName}` : null,
 		};
 	},
@@ -313,10 +273,12 @@ const cursorInfoBoxTooltip = StateField.define<{
 		const ctx = getTooltipContext(tr.state);
 		const newContextKey = ctx ? `${ctx.globalPosition}:${ctx.methodName}` : null;
 
-		return {
-			tooltip: getInfoBoxTooltipSync(tr.state),
-			contextKey: newContextKey,
-		};
+		// Context changed - clear tooltip, ViewPlugin will load new one async
+		if (newContextKey !== value.contextKey) {
+			return { tooltip: null, contextKey: newContextKey };
+		}
+
+		return value;
 	},
 
 	provide: (f) => showTooltip.compute([f], (state) => state.field(f).tooltip),
@@ -344,7 +306,7 @@ const asyncTooltipLoader = ViewPlugin.define((view) => {
 		const load = { key: contextKey, aborted: false };
 		pendingLoad = load;
 
-		const tooltip = await getInfoBoxTooltipAsync(view.state);
+		const tooltip = await getInfoBoxTooltip(view.state);
 
 		// Only dispatch if not aborted and context is still the same
 		if (!load.aborted && view.state.field(cursorInfoBoxTooltip, false)?.contextKey === contextKey) {
