@@ -300,6 +300,11 @@ const isNewWorkflowRoute = computed(() => {
 	return route.query.new === 'true';
 });
 
+// Check if canvas controls should be hidden (e.g., for workflow preview thumbnails)
+const hideCanvasControls = computed(() => {
+	return route.query.hideControls === 'true';
+});
+
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
@@ -596,7 +601,14 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
-function onTidyUp(event: CanvasLayoutEvent, options?: { trackEvents?: boolean }) {
+function onTidyUp(
+	event: CanvasLayoutEvent,
+	options?: {
+		trackEvents?: boolean;
+		trackHistory?: boolean;
+		trackBulk?: boolean;
+	},
+) {
 	tidyUp(event, options);
 }
 
@@ -1545,6 +1557,11 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = false;
+
+				// Apply tidy-up if requested
+				if (json.tidyUp === true) {
+					canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+				}
 			} catch (e) {
 				if (window.top) {
 					window.top.postMessage(
@@ -1889,6 +1906,9 @@ watch(
 	() => uiStore.dirtyStateSetCount,
 	(dirtyStateSetCount) => {
 		if (dirtyStateSetCount > 0) {
+			// Skip write access and auto-save in demo mode
+			if (isDemoRoute.value) return;
+
 			collaborationStore.requestWriteAccess();
 
 			// Trigger auto-save (debounced) for writers only
@@ -2065,6 +2085,7 @@ onBeforeUnmount(() => {
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
+			:hide-controls="hideCanvasControls"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

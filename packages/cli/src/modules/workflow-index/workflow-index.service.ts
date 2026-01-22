@@ -9,6 +9,9 @@ import { EventService } from '@/events/event.service';
 // A safety limit to prevent infinite loops in indexing.
 const LOOP_LIMIT = 1_000_000_000;
 
+// Placeholder key for workflows with no dependencies.
+const WORKFLOW_INDEXED_PLACEHOLDER_KEY = '__INDEXED__';
+
 /**
  * Service for managing the workflow dependency index. The index tracks dependencies such as node types,
  * credentials, workflow calls, and webhook paths used by each workflow. The service builds the index on server start
@@ -99,6 +102,15 @@ export class WorkflowIndexService {
 			this.addWorkflowCallDependencies(node, dependencyUpdates);
 			this.addWebhookPathDependencies(node, dependencyUpdates);
 		});
+
+		// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
+		if (dependencyUpdates.dependencies.length === 0) {
+			dependencyUpdates.add({
+				dependencyType: 'workflowIndexed',
+				dependencyKey: WORKFLOW_INDEXED_PLACEHOLDER_KEY,
+				dependencyInfo: null,
+			});
+		}
 
 		let updated: boolean;
 		try {

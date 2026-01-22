@@ -159,6 +159,110 @@ describe('SourceControlGitService', () => {
 		});
 	});
 
+	describe('ensureBranchSetup', () => {
+		describe('when current branch matches target branch', () => {
+			it('should not modify anything', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'main' } as never);
+				gitService.git = git;
+
+				const fetchSpy = jest.spyOn(gitService, 'fetch');
+				const checkoutSpy = jest.spyOn(git, 'checkout');
+
+				// Call private method using type assertion
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(fetchSpy).not.toHaveBeenCalled();
+				expect(checkoutSpy).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when current branch does not match target branch', () => {
+			it('should checkout and track the target branch from remote', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['main', 'develop'],
+				});
+
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(git.checkout).toHaveBeenCalledWith('main');
+				expect(git.branch).toHaveBeenCalledWith(['--set-upstream-to=origin/main', 'main']);
+			});
+
+			it('should not checkout if target branch does not exist on remote', async () => {
+				const gitService = new SourceControlGitService(mock(), mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['develop', 'feature'],
+				});
+
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(git.checkout).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when fetch fails', () => {
+			it('should log warning and return without failing', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				gitService.git = git;
+
+				const fetchError = new Error('Network error');
+				jest.spyOn(gitService, 'fetch').mockRejectedValue(fetchError);
+
+				// Should not throw
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to fetch during branch setup recovery',
+					{ error: fetchError },
+				);
+				expect(git.checkout).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when checkout fails', () => {
+			it('should log warning and not throw', async () => {
+				const mockLogger = mock<any>();
+				const gitService = new SourceControlGitService(mockLogger, mock(), mock());
+				const git = mock<SimpleGit>();
+				git.branch.mockResolvedValue({ current: 'master' } as never);
+				git.checkout.mockRejectedValue(new Error('Checkout failed'));
+				gitService.git = git;
+
+				jest.spyOn(gitService, 'fetch').mockResolvedValue({} as never);
+				jest.spyOn(gitService, 'getBranches').mockResolvedValue({
+					currentBranch: 'master',
+					branches: ['main'],
+				});
+
+				// Should not throw
+				await (gitService as any).ensureBranchSetup('main');
+
+				expect(mockLogger.warn).toHaveBeenCalledWith(
+					'Failed to checkout branch during recovery',
+					expect.objectContaining({ targetBranch: 'main' }),
+				);
+			});
+		});
+	});
+
 	describe('setGitCommand', () => {
 		it('should setup git client for https connection', async () => {
 			const credentials = { username: 'testuser', password: 'testpass' };
@@ -225,9 +329,123 @@ describe('SourceControlGitService', () => {
 
 			expect(mockGitInstance.env).toHaveBeenCalledWith(
 				'GIT_SSH_COMMAND',
-				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=no -i "private-key"',
+				'ssh -o UserKnownHostsFile=".ssh/known_hosts" -o StrictHostKeyChecking=accept-new -i "private-key"',
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith('GIT_TERMINAL_PROMPT', '0');
+		});
+
+		describe('proxy configuration', () => {
+			const originalEnv = process.env;
+
+			beforeEach(() => {
+				process.env = { ...originalEnv };
+				delete process.env.HTTP_PROXY;
+				delete process.env.HTTPS_PROXY;
+				delete process.env.http_proxy;
+				delete process.env.https_proxy;
+				delete process.env.NO_PROXY;
+				delete process.env.no_proxy;
+				delete process.env.ALL_PROXY;
+				delete process.env.all_proxy;
+				(simpleGit as jest.Mock).mockClear();
+			});
+
+			afterEach(() => {
+				process.env = originalEnv;
+			});
+
+			it('should add http.proxy config when HTTPS_PROXY is set for https repository', async () => {
+				const credentials = { username: 'testuser', password: 'testpass' };
+				const repositoryUrl = 'https://github.com/user/repo.git';
+				const proxyUrl = 'http://proxy.company.com:8080';
+
+				process.env.HTTPS_PROXY = proxyUrl;
+
+				mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl,
+				} as never);
+				mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+					credentials,
+				);
+
+				await sourceControlGitService.setGitCommand();
+
+				// Git uses http.proxy for both HTTP and HTTPS URLs
+				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
+				expect(simpleGitCalls.length).toBeGreaterThan(0);
+				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config;
+				expect(lastCallConfig).toContain(`http.proxy=${proxyUrl}`);
+			});
+
+			it('should add http.proxy config when HTTP_PROXY is set for http repository', async () => {
+				const credentials = { username: 'testuser', password: 'testpass' };
+				const repositoryUrl = 'http://internal-git.company.com/repo.git';
+				const proxyUrl = 'http://proxy.company.com:8080';
+
+				process.env.HTTP_PROXY = proxyUrl;
+
+				mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl,
+				} as never);
+				mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+					credentials,
+				);
+
+				await sourceControlGitService.setGitCommand();
+
+				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
+				expect(simpleGitCalls.length).toBeGreaterThan(0);
+				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config;
+				expect(lastCallConfig).toContain(`http.proxy=${proxyUrl}`);
+			});
+
+			it('should not add proxy config when no proxy environment variables are set', async () => {
+				const credentials = { username: 'testuser', password: 'testpass' };
+				const repositoryUrl = 'https://github.com/user/repo.git';
+
+				mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl,
+				} as never);
+				mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+					credentials,
+				);
+
+				await sourceControlGitService.setGitCommand();
+
+				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
+				expect(simpleGitCalls.length).toBeGreaterThan(0);
+				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config as string[];
+				const hasProxyConfig = lastCallConfig.some((c: string) => c.includes('proxy='));
+				expect(hasProxyConfig).toBe(false);
+			});
+
+			it('should respect NO_PROXY and not add proxy config when repository matches', async () => {
+				const credentials = { username: 'testuser', password: 'testpass' };
+				const repositoryUrl = 'https://github.com/user/repo.git';
+				const proxyUrl = 'http://proxy.company.com:8080';
+
+				process.env.HTTPS_PROXY = proxyUrl;
+				process.env.NO_PROXY = 'github.com';
+
+				mockSourceControlPreferencesService.getPreferences.mockReturnValue({
+					connectionType: 'https',
+					repositoryUrl,
+				} as never);
+				mockSourceControlPreferencesService.getDecryptedHttpsCredentials.mockResolvedValue(
+					credentials,
+				);
+
+				await sourceControlGitService.setGitCommand();
+
+				const simpleGitCalls = (simpleGit as jest.Mock).mock.calls;
+				expect(simpleGitCalls.length).toBeGreaterThan(0);
+				const lastCallConfig = simpleGitCalls[simpleGitCalls.length - 1][0].config as string[];
+				const hasProxyConfig = lastCallConfig.some((c: string) => c.includes('proxy='));
+				expect(hasProxyConfig).toBe(false);
+			});
 		});
 	});
 
@@ -355,7 +573,7 @@ describe('SourceControlGitService', () => {
 				);
 				expect(mockGitInstance.env).toHaveBeenCalledWith(
 					'GIT_SSH_COMMAND',
-					expect.stringContaining('StrictHostKeyChecking=no'),
+					expect.stringContaining('StrictHostKeyChecking=accept-new'),
 				);
 			});
 
