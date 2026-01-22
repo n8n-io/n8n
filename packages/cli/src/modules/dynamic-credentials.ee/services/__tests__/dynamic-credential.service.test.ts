@@ -49,7 +49,7 @@ describe('DynamicCredentialService', () => {
 		({
 			id: 'resolver-456',
 			name: 'test-resolver',
-			type: 'stub-resolver-1.0',
+			type: 'test-resolver-1.0',
 			config: 'encrypted-resolver-config', // Simulates encrypted config
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -62,7 +62,7 @@ describe('DynamicCredentialService', () => {
 		customData?: ICredentialDataDecryptedObject,
 	): jest.Mocked<ICredentialResolver> => ({
 		metadata: {
-			name: 'stub-resolver-1.0',
+			name: 'test-resolver-1.0',
 			description: 'Test resolver',
 		},
 		getSecret: jest.fn().mockImplementation(async () => {
