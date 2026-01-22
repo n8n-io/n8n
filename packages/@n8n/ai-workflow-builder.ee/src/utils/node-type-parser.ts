@@ -9,6 +9,8 @@
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeSearchEngine } from '../tools/engines/node-search-engine';
+import { extractResourceOperations } from './resource-operation-extractor';
+import { extractModeDiscriminator } from '../tools/utils/discriminator-utils';
 
 export interface ParsedNodeType {
 	id: string;
@@ -16,6 +18,25 @@ export interface ParsedNodeType {
 	description: string;
 	version: number;
 	isTrigger: boolean;
+}
+
+/**
+ * Discriminator information for a node
+ * Used to indicate what parameters are needed for get_nodes
+ */
+export interface NodeDiscriminatorInfo {
+	type: 'resource_operation' | 'mode';
+	resources?: Array<{ value: string; operations: string[] }>;
+	modes?: string[];
+}
+
+/**
+ * Node with discriminator information for prompt generation
+ */
+export interface NodeWithDiscriminators {
+	id: string;
+	displayName: string;
+	discriminators?: NodeDiscriminatorInfo;
 }
 
 /**
@@ -120,6 +141,110 @@ export class NodeTypeParser {
 			core: core.sort(),
 			ai: ai.sort(),
 			other: other.sort(),
+		};
+	}
+
+	/**
+	 * Get discriminator info for a node type
+	 * Returns resource/operation info, mode info, or undefined
+	 */
+	private getDiscriminatorInfo(nodeType: INodeTypeDescription): NodeDiscriminatorInfo | undefined {
+		// Get the primary version
+		const version = Array.isArray(nodeType.version) ? nodeType.version[0] : nodeType.version;
+
+		// Check for resource/operation pattern
+		const resourceOps = extractResourceOperations(nodeType, version);
+		if (resourceOps && resourceOps.resources.length > 0) {
+			const resources = resourceOps.resources
+				.filter((r) => r.value !== '__CUSTOM_API_CALL__')
+				.map((r) => ({
+					value: r.value,
+					operations: r.operations
+						.filter((op) => op.value !== '__CUSTOM_API_CALL__')
+						.map((op) => op.value),
+				}));
+
+			if (resources.length > 0) {
+				return { type: 'resource_operation', resources };
+			}
+		}
+
+		// Check for mode pattern
+		const modeInfo = extractModeDiscriminator(nodeType, version);
+		if (modeInfo && modeInfo.modes.length > 0) {
+			return { type: 'mode', modes: modeInfo.modes };
+		}
+
+		return undefined;
+	}
+
+	/**
+	 * Get all node IDs grouped by category with discriminator information
+	 * Returns nodes with their resource/operation or mode discriminators
+	 */
+	getNodeIdsByCategoryWithDiscriminators(): {
+		triggers: NodeWithDiscriminators[];
+		core: NodeWithDiscriminators[];
+		ai: NodeWithDiscriminators[];
+		other: NodeWithDiscriminators[];
+	} {
+		const triggers: NodeWithDiscriminators[] = [];
+		const core: NodeWithDiscriminators[] = [];
+		const ai: NodeWithDiscriminators[] = [];
+		const other: NodeWithDiscriminators[] = [];
+
+		// Common core nodes that should be in prompt cache
+		const coreNodeNames = new Set([
+			'n8n-nodes-base.httpRequest',
+			'n8n-nodes-base.set',
+			'n8n-nodes-base.code',
+			'n8n-nodes-base.if',
+			'n8n-nodes-base.switch',
+			'n8n-nodes-base.merge',
+			'n8n-nodes-base.splitInBatches',
+			'n8n-nodes-base.function',
+			'n8n-nodes-base.functionItem',
+			'n8n-nodes-base.wait',
+			'n8n-nodes-base.noOp',
+			'n8n-nodes-base.respondToWebhook',
+		]);
+
+		// Process each unique node name (take latest version)
+		const seenNodes = new Set<string>();
+
+		for (const nodeType of this.nodeTypes) {
+			// Skip if we've already seen this node name
+			if (seenNodes.has(nodeType.name)) {
+				continue;
+			}
+			seenNodes.add(nodeType.name);
+
+			const nodeId = nodeType.name;
+			const discriminators = this.getDiscriminatorInfo(nodeType);
+
+			const nodeWithDisc: NodeWithDiscriminators = {
+				id: nodeId,
+				displayName: nodeType.displayName,
+				discriminators,
+			};
+
+			// Categorize the node
+			if (this.isTriggerNode(nodeType)) {
+				triggers.push(nodeWithDisc);
+			} else if (nodeId.startsWith('@n8n/n8n-nodes-langchain')) {
+				ai.push(nodeWithDisc);
+			} else if (coreNodeNames.has(nodeId)) {
+				core.push(nodeWithDisc);
+			} else {
+				other.push(nodeWithDisc);
+			}
+		}
+
+		return {
+			triggers: triggers.sort((a, b) => a.id.localeCompare(b.id)),
+			core: core.sort((a, b) => a.id.localeCompare(b.id)),
+			ai: ai.sort((a, b) => a.id.localeCompare(b.id)),
+			other: other.sort((a, b) => a.id.localeCompare(b.id)),
 		};
 	}
 
