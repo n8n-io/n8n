@@ -19,7 +19,7 @@ export class WorkflowHistoryCompactionConfig {
 	 * and `optimizingMinimumAgeHours`
 
 	 */
-	optimizingMinimumAgeHours: number = 1;
+	optimizingMinimumAgeHours: number = 3;
 
 	/**
 	 * The time window we consider when optimizing versions.
