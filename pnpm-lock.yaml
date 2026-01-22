@@ -262,7 +262,7 @@ catalogs:
       specifier: ^10.1.11
       version: 10.1.11
     '@storybook/addon-themes':
-      specifier: 10.1.11
+      specifier: ^10.1.11
       version: 10.1.11
     '@storybook/addon-vitest':
       specifier: ^10.1.11
@@ -17852,13 +17852,8 @@ packages:
     resolution: {integrity: sha512-VfQPToRA5FZs/qJxLIinmU59u0r7LXqoJkCzinq3ckNJp3vKEh7jTWN589YQ5+aoAC/TGRLyJLCPKcLQbM8r9g==}
     engines: {node: '>=18.17'}
 
-<<<<<<< HEAD
   undici@7.18.2:
     resolution: {integrity: sha512-y+8YjDFzWdQlSE9N5nzKMT3g4a5UBX1HKowfdXh0uvAnTaqqwqB92Jt4UXBAeKekDs5IaDKyJFR4X1gYVCgXcw==}
-=======
-  undici@7.16.0:
-    resolution: {integrity: sha512-QEg3HPMll0o3t2ourKwOeUAZ159Kn9mx5pnzHRQO8+Wixmh88YdZRiIwat0iNzNNXn0yoEtXJqFpyW7eM8BV7g==}
->>>>>>> 32799afeab (Update PR with trigger and producer test)
     engines: {node: '>=20.18.1'}
 
   unicode-canonical-property-names-ecmascript@2.0.1:
@@ -21707,7 +21702,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.3))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -27236,6 +27231,11 @@ snapshots:
   aws4@1.11.0: {}
 
   axe-core@4.7.2: {}
+
+  axios-retry@4.5.0(axios@1.12.0(debug@4.4.3)):
+    dependencies:
+      axios: 1.12.0(debug@4.4.3)
+      is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.12.0):
     dependencies:
@@ -36549,29 +36549,6 @@ snapshots:
       glob: 10.5.0
       minimatch: 9.0.5
 
-<<<<<<< HEAD
-  testcontainers@11.0.3:
-    dependencies:
-      '@balena/dockerignore': 1.0.2
-      '@types/dockerode': 3.3.42
-      archiver: 7.0.1
-      async-lock: 1.4.1
-      byline: 5.0.0
-      debug: 4.4.1(supports-color@8.1.1)
-      docker-compose: 1.2.0
-      dockerode: 4.0.7
-      get-port: 7.1.0
-      proper-lockfile: 4.1.2
-      properties-reader: 2.3.0
-      ssh-remote-port-forward: 1.0.4
-      tar-fs: 2.1.4
-      tmp: 0.2.4
-      undici: 7.18.2
-    transitivePeerDependencies:
-      - supports-color
-
-=======
->>>>>>> 32799afeab (Update PR with trigger and producer test)
   testcontainers@11.11.0:
     dependencies:
       '@balena/dockerignore': 1.0.2
@@ -36588,7 +36565,7 @@ snapshots:
       ssh-remote-port-forward: 1.0.4
       tar-fs: 2.1.4
       tmp: 0.2.4
-      undici: 7.16.0
+      undici: 7.18.2
     transitivePeerDependencies:
       - supports-color
 
@@ -37155,11 +37132,7 @@ snapshots:
 
   undici@6.23.0: {}
 
-<<<<<<< HEAD
   undici@7.18.2: {}
-=======
-  undici@7.16.0: {}
->>>>>>> 32799afeab (Update PR with trigger and producer test)
 
   unicode-canonical-property-names-ecmascript@2.0.1: {}
 
