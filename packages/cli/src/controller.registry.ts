@@ -110,7 +110,10 @@ export class ControllerRegistry {
 				return await controller[handlerName](...args);
 			};
 
-			const middlewares = this.buildMiddlewares(route, controllerMiddlewares);
+			const bodyArgIdx = route.args.findIndex((arg) => arg?.type === 'body');
+			const bodyArgType = bodyArgIdx !== -1 ? (argTypes[bodyArgIdx] as ZodClass) : undefined;
+
+			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
 						await handler(req, res);
@@ -137,6 +140,7 @@ export class ControllerRegistry {
 			middlewares?: RequestHandler[];
 		},
 		controllerMiddlewares: RequestHandler[],
+		bodyDtoClass?: ZodClass,
 	): RequestHandler[] {
 		const middlewares: RequestHandler[] = [];
 
@@ -147,7 +151,17 @@ export class ControllerRegistry {
 
 		// LAYER 2a: Keyed rate limiting with body source (BEFORE auth)
 		if (inProduction && route.keyedRateLimit?.source === 'body') {
-			middlewares.push(this.rateLimitService.createKeyedRateLimitMiddleware(route.keyedRateLimit));
+			assert(
+				bodyDtoClass,
+				'Body argument type (@Body decorator) is required for body-based rate limiting',
+			);
+
+			middlewares.push(
+				this.rateLimitService.createBodyKeyedRateLimitMiddleware(
+					bodyDtoClass,
+					route.keyedRateLimit,
+				),
+			);
 		}
 
 		if (!route.skipAuth) {
@@ -170,7 +184,7 @@ export class ControllerRegistry {
 			// Separate ifs intentionally to prevent configuration errors in development
 			if (inProduction) {
 				middlewares.push(
-					this.rateLimitService.createKeyedRateLimitMiddleware(route.keyedRateLimit),
+					this.rateLimitService.createUserKeyedRateLimitMiddleware(route.keyedRateLimit),
 				);
 			}
 		}

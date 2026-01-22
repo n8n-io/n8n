@@ -2,7 +2,14 @@ import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
-import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	createBodyKeyedRateLimiter,
+	Get,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
@@ -50,12 +57,11 @@ export class AuthController {
 			limit: 1000,
 			windowMs: 5 * Time.minutes.toMilliseconds,
 		},
-		keyedRateLimit: {
+		keyedRateLimit: createBodyKeyedRateLimiter<LoginRequestDto>({
 			limit: 5,
 			windowMs: 1 * Time.minutes.toMilliseconds,
-			source: 'body',
-			field: 'emailOrLdapLoginId' satisfies keyof LoginRequestDto,
-		},
+			field: 'emailOrLdapLoginId',
+		}),
 	})
 	async login(
 		req: AuthlessRequest,
