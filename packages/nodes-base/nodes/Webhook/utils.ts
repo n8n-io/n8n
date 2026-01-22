@@ -190,14 +190,8 @@ const getAllowList = (allowlist: string[]) => {
 				allowList.addSubnet(network, prefix, type);
 			} else {
 				// Single IP address
-				// Note: IPv6 addresses need to use addSubnet() with /128 in Node.js BlockList
-				// because addAddress() throws "Invalid socket address" for IPv6
 				const type = entry.includes(':') ? 'ipv6' : 'ipv4';
-				if (type === 'ipv6') {
-					allowList.addSubnet(entry, 128, type);
-				} else {
-					allowList.addAddress(entry);
-				}
+				allowList.addAddress(entry, type);
 			}
 		} catch {
 			// Ignore invalid entries
