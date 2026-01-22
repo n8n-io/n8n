@@ -272,7 +272,7 @@ describe('useSourceControlStore', () => {
 
 			const result = await sourceControlStore.getAggregatedStatus();
 
-			expect(mockGetAggregatedStatus).toHaveBeenCalledWith({});
+			expect(mockGetAggregatedStatus).toHaveBeenCalledWith({}, undefined);
 			expect(result).toEqual(mockStatus);
 		});
 	});
