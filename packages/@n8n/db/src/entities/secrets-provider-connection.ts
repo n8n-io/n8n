@@ -57,5 +57,5 @@ export class SecretsProviderConnection extends WithTimestampsAndStringId {
 	 * This describes an intent rather than a state.
 	 */
 	@Column({ default: false })
-	enabled: boolean;
+	isEnabled: boolean;
 }
