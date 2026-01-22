@@ -97,25 +97,25 @@ describe('Queue', () => {
 
 	describe('enqueue', () => {
 		it('should execute a single operation and return its result', async () => {
-			const result = await queue.enqueue(null, async () => 'test result');
+			const result = await queue.enqueue(async () => 'test result');
 			expect(result).toBe('test result');
 		});
 
 		it('should execute write operations in order', async () => {
 			const executionOrder: number[] = [];
 
-			const promise1 = queue.enqueue(null, async () => {
+			const promise1 = queue.enqueue(async () => {
 				await new Promise((r) => setTimeout(r, 50));
 				executionOrder.push(1);
 				return 1;
 			});
 
-			const promise2 = queue.enqueue(null, async () => {
+			const promise2 = queue.enqueue(async () => {
 				executionOrder.push(2);
 				return 2;
 			});
 
-			const promise3 = queue.enqueue(null, async () => {
+			const promise3 = queue.enqueue(async () => {
 				executionOrder.push(3);
 				return 3;
 			});
@@ -127,20 +127,20 @@ describe('Queue', () => {
 		});
 
 		it('should handle errors without blocking subsequent operations', async () => {
-			const promise1 = queue.enqueue(null, async () => {
+			const promise1 = queue.enqueue(async () => {
 				throw new Error('Operation 1 failed');
 			});
 
-			const promise2 = queue.enqueue(null, async () => 'success');
+			const promise2 = queue.enqueue(async () => 'success');
 
 			await expect(promise1).rejects.toThrow('Operation 1 failed');
 			await expect(promise2).resolves.toBe('success');
 		});
 
 		it('should properly type the return value', async () => {
-			const numberResult = await queue.enqueue(null, async () => 42);
-			const stringResult = await queue.enqueue(null, async () => 'hello');
-			const objectResult = await queue.enqueue(null, async () => ({ foo: 'bar' }));
+			const numberResult = await queue.enqueue(async () => 42);
+			const stringResult = await queue.enqueue(async () => 'hello');
+			const objectResult = await queue.enqueue(async () => ({ foo: 'bar' }));
 
 			expect(numberResult).toBe(42);
 			expect(stringResult).toBe('hello');
@@ -154,7 +154,7 @@ describe('Queue', () => {
 			const operations = Array.from(
 				{ length: 5 },
 				async (_, i) =>
-					await queue.enqueue(null, async () => {
+					await queue.enqueue(async () => {
 						concurrentOperations++;
 						maxConcurrent = Math.max(maxConcurrent, concurrentOperations);
 						await new Promise((r) => setTimeout(r, 10));
@@ -170,16 +170,22 @@ describe('Queue', () => {
 		it('should queue INSERT operations', async () => {
 			const executionOrder: number[] = [];
 
-			const promise1 = queue.enqueue('INSERT INTO users VALUES (1)', async () => {
-				await new Promise((r) => setTimeout(r, 30));
-				executionOrder.push(1);
-				return 1;
-			});
+			const promise1 = queue.enqueue(
+				async () => {
+					await new Promise((r) => setTimeout(r, 30));
+					executionOrder.push(1);
+					return 1;
+				},
+				{ sql: 'INSERT INTO users VALUES (1)' },
+			);
 
-			const promise2 = queue.enqueue('INSERT INTO users VALUES (2)', async () => {
-				executionOrder.push(2);
-				return 2;
-			});
+			const promise2 = queue.enqueue(
+				async () => {
+					executionOrder.push(2);
+					return 2;
+				},
+				{ sql: 'INSERT INTO users VALUES (2)' },
+			);
 
 			await Promise.all([promise1, promise2]);
 			expect(executionOrder).toEqual([1, 2]);
@@ -189,17 +195,23 @@ describe('Queue', () => {
 			const executionOrder: number[] = [];
 
 			// Start a slow write operation
-			const writePromise = queue.enqueue('INSERT INTO users VALUES (1)', async () => {
-				await new Promise((r) => setTimeout(r, 50));
-				executionOrder.push(1);
-				return 1;
-			});
+			const writePromise = queue.enqueue(
+				async () => {
+					await new Promise((r) => setTimeout(r, 50));
+					executionOrder.push(1);
+					return 1;
+				},
+				{ sql: 'INSERT INTO users VALUES (1)' },
+			);
 
 			// SELECT should execute immediately, not wait for the write
-			const selectPromise = queue.enqueue('SELECT * FROM users', async () => {
-				executionOrder.push(2);
-				return 2;
-			});
+			const selectPromise = queue.enqueue(
+				async () => {
+					executionOrder.push(2);
+					return 2;
+				},
+				{ sql: 'SELECT * FROM users' },
+			);
 
 			await selectPromise;
 			expect(executionOrder).toEqual([2]); // SELECT executed before INSERT finished
@@ -215,13 +227,16 @@ describe('Queue', () => {
 			const operations = Array.from(
 				{ length: 5 },
 				async (_, i) =>
-					await queue.enqueue('SELECT * FROM users', async () => {
-						concurrentOperations++;
-						maxConcurrent = Math.max(maxConcurrent, concurrentOperations);
-						await new Promise((r) => setTimeout(r, 10));
-						concurrentOperations--;
-						return i;
-					}),
+					await queue.enqueue(
+						async () => {
+							concurrentOperations++;
+							maxConcurrent = Math.max(maxConcurrent, concurrentOperations);
+							await new Promise((r) => setTimeout(r, 10));
+							concurrentOperations--;
+							return i;
+						},
+						{ sql: 'SELECT * FROM users' },
+					),
 			);
 
 			await Promise.all(operations);
@@ -240,9 +255,9 @@ describe('Queue', () => {
 				resolveFirst = r;
 			});
 
-			const enqueued = queue.enqueue(null, async () => await firstOperation);
-			void queue.enqueue(null, async () => 'second');
-			void queue.enqueue(null, async () => 'third');
+			const enqueued = queue.enqueue(async () => await firstOperation);
+			void queue.enqueue(async () => 'second');
+			void queue.enqueue(async () => 'third');
 
 			// First operation is processing, 2 are queued
 			expect(queue.getQueueLength()).toBe(2);
@@ -263,7 +278,7 @@ describe('Queue', () => {
 				resolveOperation = r;
 			});
 
-			const enqueued = queue.enqueue(null, async () => await operation);
+			const enqueued = queue.enqueue(async () => await operation);
 
 			expect(queue.isProcessing()).toBe(true);
 

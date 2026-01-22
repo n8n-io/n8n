@@ -87,14 +87,20 @@ export function createQueue() {
 	}
 
 	/**
-	 * Enqueue an operation. If sql is provided, it checks whether it's a write
+	 * Enqueue an operation. If options.sql is provided, it checks whether it's a write
 	 * operation and queues accordingly. If sql is not provided (or is a write),
 	 * the operation is queued. Read operations execute immediately without queueing.
 	 *
-	 * @param sql - Optional SQL string to check if queueing is needed
 	 * @param operation - The async operation to execute
+	 * @param options - Optional configuration
+	 * @param options.sql - SQL string to check if queueing is needed (default: null)
 	 */
-	async function enqueue<T>(sql: string | null, operation: () => Promise<T>): Promise<T> {
+	async function enqueue<T>(
+		operation: () => Promise<T>,
+		options: { sql?: string | null } = {},
+	): Promise<T> {
+		const { sql = null } = options;
+
 		// If sql is provided and it's a read operation, execute immediately
 		if (sql !== null && !isWriteOperation(sql)) {
 			return await operation();

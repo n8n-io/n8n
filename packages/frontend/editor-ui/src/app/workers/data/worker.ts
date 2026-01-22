@@ -173,7 +173,7 @@ async function initialize({ version }: { version: string }): Promise<void> {
  * Queued to prevent concurrent write operations from interleaving.
  */
 async function exec(sql: string): Promise<void> {
-	return await queue.enqueue(sql, async () => await execOp(state, sql));
+	return await queue.enqueue(async () => await execOp(state, sql), { sql });
 }
 
 /**
@@ -181,7 +181,7 @@ async function exec(sql: string): Promise<void> {
  * Automatically queued if the SQL is a write operation (INSERT, UPDATE, DELETE, etc.)
  */
 async function query(sql: string): Promise<QueryResult> {
-	return await queue.enqueue(sql, async () => await queryOp(state, sql));
+	return await queue.enqueue(async () => await queryOp(state, sql), { sql });
 }
 
 /**
@@ -189,7 +189,7 @@ async function query(sql: string): Promise<QueryResult> {
  * Automatically queued if the SQL is a write operation (INSERT, UPDATE, DELETE, etc.)
  */
 async function queryWithParams(sql: string, params: SQLiteParam[] = []): Promise<QueryResult> {
-	return await queue.enqueue(sql, async () => await queryWithParamsOp(state, sql, params));
+	return await queue.enqueue(async () => await queryWithParamsOp(state, sql, params), { sql });
 }
 
 /**
@@ -197,7 +197,7 @@ async function queryWithParams(sql: string, params: SQLiteParam[] = []): Promise
  * Queued to ensure all pending writes complete before closing.
  */
 async function close(): Promise<void> {
-	return await queue.enqueue(null, async () => await closeOp(state));
+	return await queue.enqueue(async () => await closeOp(state));
 }
 
 /**
@@ -213,7 +213,7 @@ function isInitialized(): boolean {
  * Queued to prevent concurrent write operations from interleaving.
  */
 async function loadNodeTypes(baseUrl: string): Promise<void> {
-	return await queue.enqueue(null, async () => await loadNodeTypesOp(state, baseUrl));
+	return await queue.enqueue(async () => await loadNodeTypesOp(state, baseUrl));
 }
 
 /**
@@ -221,7 +221,7 @@ async function loadNodeTypes(baseUrl: string): Promise<void> {
  * Queued to prevent concurrent write operations from interleaving.
  */
 async function storeVersion(version: string): Promise<void> {
-	return await queue.enqueue(null, async () => await storeVersionOp(state, version));
+	return await queue.enqueue(async () => await storeVersionOp(state, version));
 }
 
 /**
