@@ -24,6 +24,7 @@ onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.secretsProviderConnections.title'));
 	if (!secretsProviders.isEnterpriseExternalSecretsEnabled.value) return;
 	try {
+		void secretsProviders.fetchProviders();
 		void secretsProviders.fetchActiveConnections();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('error'));
@@ -116,7 +117,7 @@ function goToUpgrade() {
 .headerTitle {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: var(--spacing--2xs);
 }
 
 .link {
