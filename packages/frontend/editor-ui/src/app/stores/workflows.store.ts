@@ -1103,8 +1103,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function unpinAllData() {
 		const nodeNames = Object.keys(workflow.value.pinData ?? {});
 		const now = Date.now();
-		for (const md of Object.values(nodeMetadata.value)) {
-			md.pinnedDataLastRemovedAt = now;
+		for (const [key, md] of Object.entries(nodeMetadata.value)) {
+			if (Object.prototype.hasOwnProperty.call(workflow.value.pinData ?? {}, key)) {
+				md.pinnedDataLastRemovedAt = now;
+			}
 		}
 
 		workflow.value.pinData = undefined;
