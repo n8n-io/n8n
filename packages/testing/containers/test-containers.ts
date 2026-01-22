@@ -34,4 +34,5 @@ export const TEST_CONTAINER_IMAGES = {
 	// Tracing stack for workflow execution visualization
 	n8nTracer: 'ghcr.io/ivov/n8n-tracer:0.1.0',
 	jaeger: 'jaegertracing/all-in-one:1.76.0',
+	cloudflared: 'cloudflare/cloudflared:2025.1.1',
 } as const;
