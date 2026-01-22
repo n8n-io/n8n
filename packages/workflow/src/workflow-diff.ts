@@ -135,7 +135,7 @@ function nodeIsSuperset<T extends DiffableNode>(prevNode: T, nextNode: T) {
 	const { parameters: prevParams, ...prev } = prevNode;
 	const { parameters: nextParams, ...next } = nextNode;
 
-	// abort if the nodes don't match besides parameters or positions
+	// abort if the nodes don't match besides parameters
 	if (!compareNodes({ ...prev, parameters: {} }, { ...next, parameters: {} })) return false;
 
 	const params = Object.keys(prevParams);
