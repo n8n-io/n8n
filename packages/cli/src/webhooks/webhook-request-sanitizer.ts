@@ -1,8 +1,11 @@
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
 import { ExecutionContextHookRegistry } from 'n8n-core';
-import { toExecutionContextEstablishmentHookParameter, type Workflow } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
+import {
+	toExecutionContextEstablishmentHookParameter,
+	type Workflow,
+	type INode,
+} from 'n8n-workflow';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 
