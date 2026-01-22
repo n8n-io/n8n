@@ -11,6 +11,7 @@ import {
 	Query,
 	RestController,
 } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
 
@@ -28,11 +29,11 @@ import { AuthlessRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 import {
 	getCurrentAuthenticationMethod,
-	isSSOCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	isOidcCurrentAuthenticationMethod,
+	isSamlCurrentAuthenticationMethod,
 	isSsoCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
-
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 
 @RestController()
 export class AuthController {
@@ -44,7 +45,6 @@ export class AuthController {
 		private readonly license: License,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
-		private readonly authHandlerRegistry: AuthHandlerRegistry,
 		private readonly postHog?: PostHogClient,
 	) {}
 
@@ -78,30 +78,30 @@ export class AuthController {
 			throw new BadRequestError('Invalid email address');
 		}
 
-		const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
-
-		// Allow owners to always use email/password regardless of SSO settings
-		if (preliminaryUser?.role.slug === GLOBAL_OWNER_ROLE.slug) {
-			user = preliminaryUser;
-			usedAuthenticationMethod = 'email';
-		} else if (isSSOCurrentAuthenticationMethod()) {
-			// SSO is enabled - only allow if user has allowSSOManualLogin setting
-			if (preliminaryUser?.settings?.allowSSOManualLogin) {
+		if (isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) {
+			// attempt to fetch user data with the credentials, but don't log in yet
+			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
+			// if the user is an owner, continue with the login
+			if (
+				preliminaryUser?.role.slug === GLOBAL_OWNER_ROLE.slug ||
+				preliminaryUser?.settings?.allowSSOManualLogin
+			) {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
 				throw new AuthError('SSO is enabled, please log in with SSO');
 			}
-		} else if (this.authHandlerRegistry.hasHandlerFor(usedAuthenticationMethod)) {
-			// Delegate to the registered authentication handler (e.g., LDAP, SAML, etc.)
-			user = await this.authHandlerRegistry.handleLogin(
-				usedAuthenticationMethod,
-				emailOrLdapLoginId,
-				password,
-			);
+		} else if (isLdapCurrentAuthenticationMethod()) {
+			const preliminaryUser = await handleEmailLogin(emailOrLdapLoginId, password);
+			if (preliminaryUser?.role.slug === GLOBAL_OWNER_ROLE.slug) {
+				user = preliminaryUser;
+				usedAuthenticationMethod = 'email';
+			} else {
+				const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
+				user = await Container.get(LdapService).handleLogin(emailOrLdapLoginId, password);
+			}
 		} else {
-			// Default: use email authentication
-			user = preliminaryUser;
+			user = await handleEmailLogin(emailOrLdapLoginId, password);
 		}
 
 		if (user) {

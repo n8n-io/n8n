@@ -2,8 +2,6 @@ import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
-
 @BackendModule({ name: 'ldap', licenseFlag: 'feat:ldap', instanceTypes: ['main'] })
 export class LdapModule implements ModuleInterface {
 	async init() {
@@ -12,8 +10,5 @@ export class LdapModule implements ModuleInterface {
 		const { LdapService } = await import('./ldap.service.ee');
 		const ldapService = Container.get(LdapService);
 		await ldapService.init();
-
-		// Register the LDAP authentication handler
-		Container.get(AuthHandlerRegistry).registerHandler(ldapService);
 	}
 }
