@@ -18,6 +18,7 @@ import {
 	getDefaultExperimentName,
 	parseEvaluationArgs,
 } from './argument-parser';
+import { buildCIMetadata } from './ci-metadata';
 import {
 	runEvaluation,
 	createConsoleLifecycle,
@@ -213,13 +214,13 @@ export async function runV2Evaluation(): Promise<void> {
 						concurrency: args.concurrency,
 						maxExamples: args.maxExamples,
 						filters: args.filters,
-						experimentMetadata:
-							args.suite === 'pairwise'
-								? {
-										numJudges: args.numJudges,
-										scoringMethod: 'hierarchical',
-									}
-								: undefined,
+						experimentMetadata: {
+							...buildCIMetadata(),
+							...(args.suite === 'pairwise' && {
+								numJudges: args.numJudges,
+								scoringMethod: 'hierarchical',
+							}),
+						},
 					},
 				}
 			: {

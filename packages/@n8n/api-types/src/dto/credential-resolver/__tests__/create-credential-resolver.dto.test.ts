@@ -7,8 +7,8 @@ describe('CreateCredentialResolverDto', () => {
 				name: 'basic valid resolver',
 				data: {
 					name: 'Test Resolver',
-					type: 'credential-resolver.stub-1.0',
-					config: { prefix: 'test-' },
+					type: 'credential-resolver.test-1.0',
+					config: { test: 'value' },
 				},
 			},
 			{
@@ -56,7 +56,7 @@ describe('CreateCredentialResolverDto', () => {
 			{
 				name: 'missing name',
 				data: {
-					type: 'credential-resolver.stub-1.0',
+					type: 'credential-resolver.test-1.0',
 					config: {},
 				},
 				expectedErrorPath: ['name'],
@@ -73,7 +73,7 @@ describe('CreateCredentialResolverDto', () => {
 				name: 'missing config',
 				data: {
 					name: 'Test Resolver',
-					type: 'credential-resolver.stub-1.0',
+					type: 'credential-resolver.test-1.0',
 				},
 				expectedErrorPath: ['config'],
 			},
@@ -81,7 +81,7 @@ describe('CreateCredentialResolverDto', () => {
 				name: 'empty name',
 				data: {
 					name: '',
-					type: 'credential-resolver.stub-1.0',
+					type: 'credential-resolver.test-1.0',
 					config: {},
 				},
 				expectedErrorPath: ['name'],
@@ -90,7 +90,7 @@ describe('CreateCredentialResolverDto', () => {
 				name: 'whitespace-only name',
 				data: {
 					name: '   ',
-					type: 'credential-resolver.stub-1.0',
+					type: 'credential-resolver.test-1.0',
 					config: {},
 				},
 				expectedErrorPath: ['name'],
@@ -99,7 +99,7 @@ describe('CreateCredentialResolverDto', () => {
 				name: 'name too long (>255 chars)',
 				data: {
 					name: 'a'.repeat(256),
-					type: 'credential-resolver.stub-1.0',
+					type: 'credential-resolver.test-1.0',
 					config: {},
 				},
 				expectedErrorPath: ['name'],
@@ -135,7 +135,7 @@ describe('CreateCredentialResolverDto', () => {
 				name: 'config as string',
 				data: {
 					name: 'Test Resolver',
-					type: 'credential-resolver.stub-1.0',
+					type: 'credential-resolver.test-1.0',
 					config: 'invalid',
 				},
 				expectedErrorPath: ['config'],
@@ -144,7 +144,7 @@ describe('CreateCredentialResolverDto', () => {
 				name: 'config as array',
 				data: {
 					name: 'Test Resolver',
-					type: 'credential-resolver.stub-1.0',
+					type: 'credential-resolver.test-1.0',
 					config: [],
 				},
 				expectedErrorPath: ['config'],
@@ -153,7 +153,7 @@ describe('CreateCredentialResolverDto', () => {
 				name: 'config as null',
 				data: {
 					name: 'Test Resolver',
-					type: 'credential-resolver.stub-1.0',
+					type: 'credential-resolver.test-1.0',
 					config: null,
 				},
 				expectedErrorPath: ['config'],
@@ -173,7 +173,7 @@ describe('CreateCredentialResolverDto', () => {
 		test('should trim name', () => {
 			const result = CreateCredentialResolverDto.safeParse({
 				name: '  Test Resolver  ',
-				type: 'credential-resolver.stub-1.0',
+				type: 'credential-resolver.test-1.0',
 				config: {},
 			});
 
@@ -186,13 +186,13 @@ describe('CreateCredentialResolverDto', () => {
 		test('should trim type', () => {
 			const result = CreateCredentialResolverDto.safeParse({
 				name: 'Test Resolver',
-				type: '  credential-resolver.stub-1.0  ',
+				type: '  credential-resolver.test-1.0  ',
 				config: {},
 			});
 
 			expect(result.success).toBe(true);
 			if (result.success) {
-				expect(result.data.type).toBe('credential-resolver.stub-1.0');
+				expect(result.data.type).toBe('credential-resolver.test-1.0');
 			}
 		});
 	});

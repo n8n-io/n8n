@@ -53,6 +53,7 @@ describe('Coordinator Query Operations', () => {
 			tabs: new Map(),
 			activeTabId: null,
 			initialized: false,
+			version: null,
 			...overrides,
 		};
 	}
@@ -75,11 +76,12 @@ describe('Coordinator Query Operations', () => {
 		it('should call initialize when not initialized', async () => {
 			const state = createStateWithActiveTab();
 			state.initialized = false;
+			state.version = '1.0.0'; // Set version so ensureInitialized can use it
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
 			await ensureInitialized(state);
 
-			expect(worker?.initialize).toHaveBeenCalled();
+			expect(worker?.initialize).toHaveBeenCalledWith({ version: '1.0.0' });
 		});
 
 		it('should not call initialize when already initialized', async () => {
@@ -97,8 +99,19 @@ describe('Coordinator Query Operations', () => {
 				initialize: vi.fn().mockRejectedValue(new Error('Init failed')),
 			});
 			state.initialized = false;
+			state.version = '1.0.0';
 
 			await expect(ensureInitialized(state)).rejects.toThrow('Init failed');
+		});
+
+		it('should throw error when no version is stored and not initialized', async () => {
+			const state = createStateWithActiveTab();
+			state.initialized = false;
+			state.version = null;
+
+			await expect(ensureInitialized(state)).rejects.toThrow(
+				'[Coordinator] Cannot auto-initialize without version',
+			);
 		});
 	});
 
@@ -106,26 +119,34 @@ describe('Coordinator Query Operations', () => {
 		it('should throw error when no active data worker is available', async () => {
 			const state = createMockState();
 
-			await expect(initialize(state)).rejects.toThrow(
+			await expect(initialize(state, { version: '1.0.0' })).rejects.toThrow(
 				'[Coordinator] No active data worker available',
 			);
 		});
 
-		it('should call initialize on the active data worker', async () => {
+		it('should call initialize on the active data worker with version', async () => {
 			const state = createStateWithActiveTab();
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
-			await initialize(state);
+			await initialize(state, { version: '1.0.0' });
 
-			expect(worker?.initialize).toHaveBeenCalled();
+			expect(worker?.initialize).toHaveBeenCalledWith({ version: '1.0.0' });
 		});
 
 		it('should set initialized to true after successful initialization', async () => {
 			const state = createStateWithActiveTab();
 
-			await initialize(state);
+			await initialize(state, { version: '1.0.0' });
 
 			expect(state.initialized).toBe(true);
+		});
+
+		it('should store version in state', async () => {
+			const state = createStateWithActiveTab();
+
+			await initialize(state, { version: '1.0.0' });
+
+			expect(state.version).toBe('1.0.0');
 		});
 
 		it('should not call worker.initialize when already initialized', async () => {
@@ -133,7 +154,7 @@ describe('Coordinator Query Operations', () => {
 			state.initialized = true;
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
-			await initialize(state);
+			await initialize(state, { version: '1.0.0' });
 
 			expect(worker?.initialize).not.toHaveBeenCalled();
 		});
@@ -146,8 +167,8 @@ describe('Coordinator Query Operations', () => {
 
 			// Start two concurrent initializations
 			// The data worker handles promise caching, coordinator relies on state.initialized
-			const promise1 = initialize(state);
-			const promise2 = initialize(state);
+			const promise1 = initialize(state, { version: '1.0.0' });
+			const promise2 = initialize(state, { version: '1.0.0' });
 
 			await Promise.all([promise1, promise2]);
 
@@ -160,7 +181,7 @@ describe('Coordinator Query Operations', () => {
 		it('should log initialization messages', async () => {
 			const state = createStateWithActiveTab();
 
-			await initialize(state);
+			await initialize(state, { version: '1.0.0' });
 
 			expect(consoleSpy.log).toHaveBeenCalledWith('[Coordinator] Initialize requested');
 			expect(consoleSpy.log).toHaveBeenCalledWith('[Coordinator] Initialization complete');
@@ -169,7 +190,7 @@ describe('Coordinator Query Operations', () => {
 
 	describe('exec', () => {
 		it('should throw error when no active data worker is available', async () => {
-			const state = createMockState();
+			const state = createMockState({ version: '1.0.0' }); // Version required for ensureInitialized
 
 			await expect(exec(state, 'CREATE TABLE test (id INT)')).rejects.toThrow(
 				'[Coordinator] No active data worker available',
@@ -190,11 +211,12 @@ describe('Coordinator Query Operations', () => {
 		it('should ensure initialization before executing', async () => {
 			const state = createStateWithActiveTab();
 			state.initialized = false;
+			state.version = '1.0.0'; // Version required for ensureInitialized
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
 			await exec(state, 'DELETE FROM test');
 
-			expect(worker?.initialize).toHaveBeenCalled();
+			expect(worker?.initialize).toHaveBeenCalledWith({ version: '1.0.0' });
 			expect(worker?.exec).toHaveBeenCalled();
 		});
 
@@ -227,7 +249,11 @@ describe('Coordinator Query Operations', () => {
 				isActive: false,
 			});
 
-			const state = createMockState({ activeTabId: 'first-tab', initialized: false });
+			const state = createMockState({
+				activeTabId: 'first-tab',
+				initialized: false,
+				version: '1.0.0',
+			});
 			state.tabs.set('first-tab', firstTab);
 			state.tabs.set('second-tab', secondTab);
 
@@ -241,7 +267,7 @@ describe('Coordinator Query Operations', () => {
 
 	describe('query', () => {
 		it('should throw error when no active data worker is available', async () => {
-			const state = createMockState();
+			const state = createMockState({ version: '1.0.0' }); // Version required for ensureInitialized
 
 			await expect(query(state, 'SELECT * FROM test')).rejects.toThrow(
 				'[Coordinator] No active data worker available',
@@ -280,11 +306,12 @@ describe('Coordinator Query Operations', () => {
 		it('should ensure initialization before querying', async () => {
 			const state = createStateWithActiveTab();
 			state.initialized = false;
+			state.version = '1.0.0'; // Version required for ensureInitialized
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
 			await query(state, 'SELECT 1');
 
-			expect(worker?.initialize).toHaveBeenCalled();
+			expect(worker?.initialize).toHaveBeenCalledWith({ version: '1.0.0' });
 			expect(worker?.query).toHaveBeenCalled();
 		});
 
@@ -300,7 +327,7 @@ describe('Coordinator Query Operations', () => {
 
 	describe('queryWithParams', () => {
 		it('should throw error when no active data worker is available', async () => {
-			const state = createMockState();
+			const state = createMockState({ version: '1.0.0' }); // Version required for ensureInitialized
 
 			await expect(queryWithParams(state, 'SELECT * FROM test WHERE id = ?', [1])).rejects.toThrow(
 				'[Coordinator] No active data worker available',
@@ -361,11 +388,12 @@ describe('Coordinator Query Operations', () => {
 		it('should ensure initialization before querying', async () => {
 			const state = createStateWithActiveTab();
 			state.initialized = false;
+			state.version = '1.0.0'; // Version required for ensureInitialized
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
 			await queryWithParams(state, 'SELECT ?', [1]);
 
-			expect(worker?.initialize).toHaveBeenCalled();
+			expect(worker?.initialize).toHaveBeenCalledWith({ version: '1.0.0' });
 			expect(worker?.queryWithParams).toHaveBeenCalled();
 		});
 
