@@ -1,11 +1,13 @@
-import { Service } from '@n8n/di';
-import type { RateLimiterLimits, KeyedRateLimiterConfig } from '@n8n/decorators';
+import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
+import type { RateLimiterLimits, UserKeyedRateLimiterConfig } from '@n8n/decorators';
+import { BodyKeyedRateLimiterConfig } from '@n8n/decorators';
+import { Service } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
 import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import assert from 'node:assert';
-import { ErrorReporter } from 'n8n-core';
-import { Time } from '@n8n/constants';
+import type { ZodTypeAny } from 'zod';
+import type { ZodClass } from 'zod-class';
 
 const defaultLimits: Required<RateLimiterLimits> = {
 	limit: 5,
@@ -22,8 +24,6 @@ const defaultLimits: Required<RateLimiterLimits> = {
  */
 @Service()
 export class RateLimitService {
-	constructor(private readonly errorReporter: ErrorReporter) {}
-
 	/**
 	 * Creates Layer 1: IP-based rate limit middleware
 	 * Always runs BEFORE authentication.
@@ -42,53 +42,57 @@ export class RateLimitService {
 	 * Creates Layer 2: Keyed rate limit middleware
 	 * Position (before/after auth) depends on identifier source
 	 */
-	createKeyedRateLimitMiddleware(config: KeyedRateLimiterConfig): RequestHandler {
+	createBodyKeyedRateLimitMiddleware(
+		bodyDtoClass: ZodClass,
+		config: BodyKeyedRateLimiterConfig,
+	): RequestHandler {
+		const fieldName = config.field;
+		const bodyFieldSchema = bodyDtoClass.shape[fieldName];
+		assert(bodyFieldSchema, `Missing field ${fieldName} in DTO schema`);
+
 		return expressRateLimit({
 			limit: config.limit ?? defaultLimits.limit,
 			windowMs: config.windowMs ?? defaultLimits.windowMs,
-			keyGenerator: (req: Request) => this.extractReqIdentifier(req, config),
+			keyGenerator: (req: Request) =>
+				this.extractBodyIdentifier(req.body, fieldName, bodyFieldSchema),
 			skip: (req: Request) => {
-				const identifier = this.extractReqIdentifier(req, config);
+				const identifier = this.extractBodyIdentifier(req.body, fieldName, bodyFieldSchema);
 				return identifier.startsWith('skip:');
 			},
-			message: { message: 'Too many requests' },
 		});
 	}
 
-	private extractReqIdentifier(req: Request, config: KeyedRateLimiterConfig): string {
-		const { source } = config;
+	createUserKeyedRateLimitMiddleware(config: UserKeyedRateLimiterConfig): RequestHandler {
+		return expressRateLimit({
+			limit: config.limit ?? defaultLimits.limit,
+			windowMs: config.windowMs ?? defaultLimits.windowMs,
+			keyGenerator: (req: AuthenticatedRequest) => this.extractUserIdentifier(req),
+			skip: (req: AuthenticatedRequest) => {
+				const identifier = this.extractUserIdentifier(req);
+				return identifier.startsWith('skip:');
+			},
+		});
+	}
 
-		if (source === 'body') {
-			const body = req.body;
-			if (!body) {
-				return 'skip:no-body';
-			}
-
-			const value = body[config.field];
-			if (typeof value !== 'string' && typeof value !== 'number') {
-				return 'skip:no-identifier';
-			}
-
-			return `body:${value}`;
+	private extractBodyIdentifier(body: unknown, fieldName: string, fieldSchema: ZodTypeAny): string {
+		if (!body || typeof body !== 'object') {
+			return 'skip:empty-body';
 		}
 
-		if (source === 'user') {
-			const authReq = req as AuthenticatedRequest;
-			if (!authReq.user) {
-				this.errorReporter.error(new Error('Missing user for user-based rate limited endpoint'), {
-					extra: {
-						request: {
-							method: req.method,
-							url: req.url,
-						},
-					},
-				});
-				return 'skip:not-authenticated';
-			}
-
-			return `user:${authReq.user.id}`;
+		const value = (body as Record<string, unknown>)[fieldName];
+		if (typeof value !== 'string' && typeof value !== 'number') {
+			return 'skip:unsupported-type';
 		}
 
-		assert.fail(`Unknown source for keyed rate limiting: ${JSON.stringify(config)}`);
+		const parseResult = fieldSchema.safeParse(value);
+		if (!parseResult.success) {
+			return 'skip:validation-failed';
+		}
+
+		return `body:${value}`;
+	}
+
+	private extractUserIdentifier(req: AuthenticatedRequest): string {
+		return `user:${req.user.id}`;
 	}
 }

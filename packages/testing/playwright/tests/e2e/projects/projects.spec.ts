@@ -178,7 +178,7 @@ test.describe('Projects', () => {
 			await n8n.sideBar.clickProjectMenuItem(projectName);
 			await n8n.navigate.toWorkflows();
 
-			await n8n.workflows.clickNewWorkflowCard();
+			await n8n.workflows.clickNewWorkflowButtonFromOverview();
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 

@@ -6,7 +6,14 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
 import { Time } from '@n8n/constants';
-import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	createBodyKeyedRateLimiter,
+	Get,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
@@ -21,7 +28,6 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
-import { createJitterMiddleware } from '@/middlewares';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
@@ -52,12 +58,10 @@ export class PasswordResetController {
 	@Post('/forgot-password', {
 		skipAuth: true,
 		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
-		keyedRateLimit: {
+		keyedRateLimit: createBodyKeyedRateLimiter<ForgotPasswordRequestDto>({
 			limit: 3,
-			source: 'body',
-			field: 'email' satisfies keyof ForgotPasswordRequestDto,
-		},
-		middlewares: [createJitterMiddleware({ minMs: 200, maxMs: 1000 })],
+			field: 'email',
+		}),
 	})
 	async forgotPassword(
 		_req: AuthlessRequest,
