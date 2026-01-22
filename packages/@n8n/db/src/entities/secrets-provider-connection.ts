@@ -1,18 +1,31 @@
 import { Column, Entity, OneToMany } from '@n8n/typeorm';
 
-import { DateTimeColumn, WithTimestampsAndStringId } from './abstract-entity';
+import { WithTimestampsAndStringId } from './abstract-entity';
 import type { SharedSecretsProviderConnection } from './shared-secrets-provider-connection';
-
-export type SecretsProviderConnectionState = 'connected' | 'tested' | 'initializing' | 'error';
 
 @Entity()
 export class SecretsProviderConnection extends WithTimestampsAndStringId {
+	/**
+	 * Unique name of the secrets provider connection.
+	 * This is the name used in the credential expressions e.g. {{ $secrets.<connection-name>.<secret-key>}
+	 */
 	@Column({ unique: true })
 	name: string;
 
+	/**
+	 * Optional display name of the secrets provider connection
+	 */
 	@Column({ type: 'varchar', nullable: true })
 	displayName: string | null;
 
+	/**
+	 * Specifies the provider type, which determines the required settings for connecting to the external secrets provider.
+	 * e.g:
+	 * 'awsSecretsManager',
+	 * 'gcpSecretsManager',
+	 * 'hashicorpVault',
+	 * 'azureKeyVault',
+	 */
 	@Column()
 	type: string;
 
@@ -22,18 +35,27 @@ export class SecretsProviderConnection extends WithTimestampsAndStringId {
 	@Column({ default: false })
 	isGlobal: boolean;
 
+	/**
+	 * Shared secrets provider connections are used to share the secrets provider connection with other projects.
+	 */
 	@OneToMany('SharedSecretsProviderConnection', 'secretsProviderConnection')
 	shared: SharedSecretsProviderConnection[];
 
+	/**
+	 * Encrypted JSON string containing the connection settings for the secrets provider.
+	 */
 	@Column()
 	settings: string;
 
+	/**
+	 * Whether the secrets provider connection is enabled.
+	 * When enabled, a connection attempt will be made to the external secrets provider.
+	 * If the connection is successful, secrets will be available to be used in credentials.
+	 *
+	 * When disabled, the secrets provider connection will not be used to connect to the external secrets provider.
+	 *
+	 * This describes an intent rather than a state.
+	 */
 	@Column({ default: false })
-	connected: boolean;
-
-	@DateTimeColumn({ nullable: true })
-	connectedAt: Date | null;
-
-	@Column({ default: 'initializing' })
-	state: SecretsProviderConnectionState;
+	enabled: boolean;
 }
