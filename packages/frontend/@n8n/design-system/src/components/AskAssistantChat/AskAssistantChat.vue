@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 
+import MessageRating from './messages/MessageRating.vue';
 import MessageWrapper from './messages/MessageWrapper.vue';
 import ThinkingMessage from './messages/ThinkingMessage.vue';
 import { useI18n } from '../../composables/useI18n';
@@ -259,6 +260,21 @@ const showThinkingPlaceholder = computed(() => {
 const showBottomInput = computed(() => {
 	// Hide bottom input when showing suggestions (blank state with suggestions)
 	return !showSuggestions.value;
+});
+
+const showFooterRating = computed(() => {
+	if (props.streaming) return false;
+	if (!normalizedMessages.value.length) return false;
+
+	// Check if there's a workflow-updated message (same condition as original rating logic)
+	const hasWorkflowUpdate = normalizedMessages.value.some((msg) => msg.type === 'workflow-updated');
+	if (!hasWorkflowUpdate) return false;
+
+	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
+	if (lastMsg.role === 'user') return false;
+	if (lastMsg.type === 'thinking-group') return false;
+
+	return true;
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
@@ -534,6 +550,9 @@ defineExpose({
 				</template>
 			</div>
 		</div>
+		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
+			<MessageRating @feedback="onRateMessage" />
+		</div>
 		<div v-if="$slots.inputHeader && showBottomInput" :class="$style.inputHeaderWrapper">
 			<slot name="inputHeader" />
 		</div>
@@ -708,6 +727,15 @@ defineExpose({
 .quickRepliesTitle {
 	font-size: var(--font-size--3xs);
 	color: var(--color--text);
+}
+
+.feedbackWrapper {
+	display: flex;
+	justify-content: center;
+	padding: var(--spacing--xs);
+	border-left: var(--border);
+	border-right: var(--border);
+	background-color: var(--color--background--light-2);
 }
 
 .inputHeaderWrapper {
