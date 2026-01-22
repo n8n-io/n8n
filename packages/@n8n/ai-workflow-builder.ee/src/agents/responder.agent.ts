@@ -10,7 +10,7 @@ import {
 	buildRecursionErrorNoWorkflowGuidance,
 	buildGeneralErrorGuidance,
 	buildDataTableCreationGuidance,
-} from '@/prompts/agents/responder.prompt';
+} from '@/prompts';
 
 import type { CoordinationLogEntry } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';

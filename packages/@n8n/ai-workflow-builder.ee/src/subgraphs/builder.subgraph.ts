@@ -7,7 +7,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { buildBuilderPrompt } from '@/prompts/agents/builder.prompt';
+import { buildBuilderPrompt } from '@/prompts';
 import { autoFixConnections } from '@/validation/auto-fix';
 import { validateConnections } from '@/validation/checks';
 import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
@@ -195,10 +195,10 @@ export class BuilderSubgraph extends BaseSubgraph<
 		contextParts.push('=== USER REQUEST ===');
 		contextParts.push(userRequest);
 
-		// 2. Discovery context (what nodes to use)
+		// 2. Discovery context (what nodes to use) - best practices now embedded in prompts
 		if (parentState.discoveryContext) {
 			contextParts.push('=== DISCOVERY CONTEXT ===');
-			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
+			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, false));
 		}
 
 		// 3. Current workflow JSON (to add nodes to)

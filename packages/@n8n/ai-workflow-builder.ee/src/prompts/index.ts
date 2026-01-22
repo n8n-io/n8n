@@ -4,7 +4,8 @@
  * This directory contains all prompts used by the AI workflow builder agents and chains.
  * Organization:
  * - builder/ - PromptBuilder utility for composing prompts
- * - agents/ - Multi-agent system prompts (builder, configurator, discovery, etc.)
+ * - opus/ - Opus 4.5 optimized prompts (~88% reduction from original)
+ * - agents/ - Original Sonnet prompts (kept for reference during transition)
  * - chains/ - Chain-level prompts (categorization, compact, workflow-name, parameter-updater)
  */
 
@@ -19,17 +20,28 @@ export {
 	type SectionOptions,
 } from './builder';
 
-// Agent prompts (multi-agent system)
-export { buildBuilderPrompt } from './agents/builder.prompt';
+// Agent prompts - Using Opus-optimized versions
+// Reduced from ~3,538 lines to ~415 lines (~88% reduction)
+export { buildBuilderPrompt } from './opus/agents/builder.prompt';
 export {
 	buildDiscoveryPrompt,
+	exampleCategorizations,
 	formatTechniqueList,
 	formatExampleCategorizations,
 	type DiscoveryPromptOptions,
-} from './agents/discovery.prompt';
-export { buildConfiguratorPrompt, INSTANCE_URL_PROMPT } from './agents/configurator.prompt';
+} from './opus/agents/discovery.prompt';
+export {
+	buildConfiguratorPrompt,
+	INSTANCE_URL_PROMPT,
+	buildRecoveryModeContext,
+} from './opus/agents/configurator.prompt';
 export { buildSupervisorPrompt } from './agents/supervisor.prompt';
-export { buildResponderPrompt } from './agents/responder.prompt';
+export {
+	buildResponderPrompt,
+	buildRecursionErrorWithWorkflowGuidance,
+	buildRecursionErrorNoWorkflowGuidance,
+	buildGeneralErrorGuidance,
+} from './opus/agents/responder.prompt';
 
 // Chain prompts
 export {

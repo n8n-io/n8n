@@ -10,11 +10,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { LLMServiceError } from '@/errors';
-import {
-	buildDiscoveryPrompt,
-	formatTechniqueList,
-	formatExampleCategorizations,
-} from '@/prompts/agents/discovery.prompt';
+import { buildDiscoveryPrompt } from '@/prompts';
 import {
 	extractResourceOperations,
 	createResourceCacheKey,
@@ -24,7 +20,6 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
-import { createGetDocumentationTool } from '../tools/get-documentation.tool';
 import { createGetWorkflowExamplesTool } from '../tools/get-workflow-examples.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
@@ -160,9 +155,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
 
-		// Create base tools
+		// Create base tools - best practices now embedded in prompts, no get_documentation needed
 		const baseTools = [
-			createGetDocumentationTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes, config.logger),
 		];
@@ -242,8 +236,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const response = (await this.agent.invoke({
 			messages: state.messages,
 			prompt: state.userRequest,
-			techniques: formatTechniqueList(),
-			exampleCategorizations: formatExampleCategorizations(),
 		})) as AIMessage;
 
 		return { messages: [response] };
