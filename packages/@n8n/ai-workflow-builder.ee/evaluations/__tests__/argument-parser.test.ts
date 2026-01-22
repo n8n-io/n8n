@@ -29,13 +29,13 @@ describe('argument-parser', () => {
 			'--backend',
 			'langsmith',
 			'--filter',
-			'do:Slack',
+			'spec:Slack',
 			'--filter',
 			'technique:content_generation',
 		]);
 
 		expect(args.filters).toEqual({
-			doSearch: 'Slack',
+			specSearch: 'Slack',
 			technique: 'content_generation',
 		});
 	});
@@ -56,8 +56,8 @@ describe('argument-parser', () => {
 		expect(args.backend).toBe('langsmith');
 	});
 
-	it('rejects do/dont filters for non-pairwise suite', () => {
-		expect(() => parseEvaluationArgs(['--suite', 'llm-judge', '--filter', 'do:Slack'])).toThrow(
+	it('rejects spec filters for non-pairwise suite', () => {
+		expect(() => parseEvaluationArgs(['--suite', 'llm-judge', '--filter', 'spec:Slack'])).toThrow(
 			'only supported for `--suite pairwise`',
 		);
 	});

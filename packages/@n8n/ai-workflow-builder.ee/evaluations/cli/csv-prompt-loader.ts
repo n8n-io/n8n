@@ -72,8 +72,7 @@ export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
 
 	const promptIdx = findColumn('prompt') ?? 0;
 	const idIdx = findColumn('id');
-	const dosIdx = findColumn('dos', 'do');
-	const dontsIdx = findColumn('donts', 'dont');
+	const specsIdx = findColumn('specs', 'spec');
 
 	const getCell = (row: ParsedCsvRow, idx: number | undefined): string =>
 		idx !== undefined ? sanitizeValue(row[idx]) : '';
@@ -86,18 +85,15 @@ export function loadTestCasesFromCsv(csvPath: string): TestCase[] {
 
 		if (!prompt) continue;
 
-		const dos = getCell(row, dosIdx);
-		const donts = getCell(row, dontsIdx);
+		const specs = getCell(row, specsIdx);
 
 		const testCase: TestCase = {
 			id: getCell(row, idIdx) || `csv-case-${i + 1}`,
 			prompt,
 		};
 
-		if (dos || donts) {
-			testCase.context = {};
-			if (dos) testCase.context.dos = dos;
-			if (donts) testCase.context.donts = donts;
+		if (specs) {
+			testCase.context = { specs };
 		}
 
 		testCases.push(testCase);

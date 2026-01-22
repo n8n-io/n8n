@@ -23,8 +23,7 @@ describe('evaluateWorkflowPairwise', () => {
 
 	const input: PairwiseEvaluationInput = {
 		evalCriteria: {
-			dos: 'Do this',
-			donts: "Don't do that",
+			specs: "Do this\nDon't do that",
 		},
 		workflowJSON: mockWorkflow,
 	};
@@ -60,7 +59,7 @@ describe('evaluateWorkflowPairwise', () => {
 		expect(baseEvaluator.invokeEvaluatorChain).toHaveBeenCalledWith(
 			undefined, // The chain (undefined because createEvaluatorChain mock returns undefined)
 			expect.objectContaining({
-				userPrompt: expect.stringContaining('<do>'),
+				userPrompt: expect.stringContaining('<spec>'),
 				generatedWorkflow: input.workflowJSON,
 			}),
 			undefined, // config parameter (not passed in this test)

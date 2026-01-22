@@ -185,12 +185,11 @@ function getCategoriesFromMetadata(metadata: unknown): string[] | undefined {
 	return strings.length > 0 ? strings : undefined;
 }
 
-function getEvalsFromExampleInputs(exampleInputs: unknown): { dos?: string; donts?: string } {
+function getEvalsFromExampleInputs(exampleInputs: unknown): { specs?: string } {
 	const inputs = asRecord(exampleInputs);
 	const evals = asRecord(inputs.evals);
-	const result: { dos?: string; donts?: string } = {};
-	if (typeof evals.dos === 'string') result.dos = evals.dos;
-	if (typeof evals.donts === 'string') result.donts = evals.donts;
+	const result: { specs?: string } = {};
+	if (typeof evals.specs === 'string') result.specs = evals.specs;
 	return result;
 }
 
@@ -216,16 +215,10 @@ function exampleMatchesFilters(example: Example, filters: LangsmithExampleFilter
 		if (!categories.includes(filters.technique)) return false;
 	}
 
-	if (filters.doSearch || filters.dontSearch) {
-		const { dos, donts } = getEvalsFromExampleInputs(example.inputs);
-		if (filters.doSearch) {
-			const haystack = (dos ?? '').toLowerCase();
-			if (!haystack.includes(filters.doSearch.toLowerCase())) return false;
-		}
-		if (filters.dontSearch) {
-			const haystack = (donts ?? '').toLowerCase();
-			if (!haystack.includes(filters.dontSearch.toLowerCase())) return false;
-		}
+	if (filters.specSearch) {
+		const { specs } = getEvalsFromExampleInputs(example.inputs);
+		const haystack = (specs ?? '').toLowerCase();
+		if (!haystack.includes(filters.specSearch.toLowerCase())) return false;
 	}
 
 	return true;
@@ -260,8 +253,7 @@ async function loadExamplesFromDataset(params: {
 		const filterSummary = [
 			filters.notionId ? `id:${filters.notionId}` : undefined,
 			filters.technique ? `technique:${filters.technique}` : undefined,
-			filters.doSearch ? `do:${filters.doSearch}` : undefined,
-			filters.dontSearch ? `dont:${filters.dontSearch}` : undefined,
+			filters.specSearch ? `spec:${filters.specSearch}` : undefined,
 		]
 			.filter((v): v is string => v !== undefined)
 			.join(', ');
@@ -327,8 +319,7 @@ function extractContextFromLangsmithInputs(inputs: unknown): TestCaseContext {
 	const record = asRecord(inputs);
 	const context: TestCaseContext = {};
 
-	if (typeof record.dos === 'string') context.dos = record.dos;
-	if (typeof record.donts === 'string') context.donts = record.donts;
+	if (typeof record.specs === 'string') context.specs = record.specs;
 
 	// Support both legacy referenceWorkflow (single) and referenceWorkflows (array) from dataset
 	if (
@@ -656,13 +647,9 @@ function computeFilterMetadata(filters?: LangsmithExampleFilters): {
 		parts.push('category');
 		values.push(`category:${filters.technique}`);
 	}
-	if (filters.doSearch) {
-		parts.push('do');
-		values.push(`do:${filters.doSearch}`);
-	}
-	if (filters.dontSearch) {
-		parts.push('dont');
-		values.push(`dont:${filters.dontSearch}`);
+	if (filters.specSearch) {
+		parts.push('spec');
+		values.push(`spec:${filters.specSearch}`);
 	}
 
 	if (parts.length === 0) return { runType: 'full' };

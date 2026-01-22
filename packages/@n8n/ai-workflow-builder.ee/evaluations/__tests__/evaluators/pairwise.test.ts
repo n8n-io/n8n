@@ -93,14 +93,14 @@ describe('Pairwise Evaluator', () => {
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
-			const context = { prompt: 'Test prompt', dos: 'Use Slack', donts: 'No HTTP requests' };
+			const context = { prompt: 'Test prompt', specs: 'Use Slack\nDo not use HTTP requests' };
 
 			await evaluator.evaluate(workflow, context);
 
 			expect(mockRunJudgePanel).toHaveBeenCalledWith(
 				mockLlm,
 				workflow,
-				{ dos: 'Use Slack', donts: 'No HTTP requests' },
+				{ specs: 'Use Slack\nDo not use HTTP requests' },
 				3, // default number of judges
 				expect.any(Object),
 			);
@@ -124,7 +124,7 @@ describe('Pairwise Evaluator', () => {
 			);
 		});
 
-		it('should pass through empty criteria when context has no dos/donts', async () => {
+		it('should pass through empty criteria when context has no specs', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
 			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
@@ -137,8 +137,7 @@ describe('Pairwise Evaluator', () => {
 				mockLlm,
 				workflow,
 				{
-					dos: undefined,
-					donts: undefined,
+					specs: undefined,
 				},
 				3,
 				expect.any(Object),
@@ -247,41 +246,24 @@ describe('Pairwise Evaluator', () => {
 			);
 		});
 
-		it('should accept criteria with only dos (no donts)', async () => {
+		it('should accept specs with multiple criteria', async () => {
 			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
 
 			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
 			const evaluator = createPairwiseEvaluator(mockLlm);
 
 			const workflow = createMockWorkflow();
-			const context = { prompt: 'Test prompt', dos: 'Use Slack node' };
+			const context = {
+				prompt: 'Test prompt',
+				specs: 'Use Slack node\nDo not use HTTP Request node',
+			};
 
 			await evaluator.evaluate(workflow, context);
 
 			expect(mockRunJudgePanel).toHaveBeenCalledWith(
 				mockLlm,
 				workflow,
-				{ dos: 'Use Slack node', donts: undefined },
-				3,
-				expect.any(Object),
-			);
-		});
-
-		it('should accept criteria with only donts (no dos)', async () => {
-			mockRunJudgePanel.mockResolvedValue(createMockPanelResult());
-
-			const { createPairwiseEvaluator } = await import('../../evaluators/pairwise');
-			const evaluator = createPairwiseEvaluator(mockLlm);
-
-			const workflow = createMockWorkflow();
-			const context = { prompt: 'Test prompt', donts: 'Do not use HTTP Request node' };
-
-			await evaluator.evaluate(workflow, context);
-
-			expect(mockRunJudgePanel).toHaveBeenCalledWith(
-				mockLlm,
-				workflow,
-				{ dos: undefined, donts: 'Do not use HTTP Request node' },
+				{ specs: 'Use Slack node\nDo not use HTTP Request node' },
 				3,
 				expect.any(Object),
 			);

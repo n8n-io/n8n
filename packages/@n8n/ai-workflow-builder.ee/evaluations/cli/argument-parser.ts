@@ -29,8 +29,7 @@ export interface EvaluationArgs {
 	promptsCsv?: string;
 
 	prompt?: string;
-	dos?: string;
-	donts?: string;
+	specs?: string;
 
 	numJudges: number;
 
@@ -90,8 +89,7 @@ const cliSchema = z
 		promptsCsv: z.string().min(1).optional(),
 
 		prompt: z.string().min(1).optional(),
-		dos: z.string().min(1).optional(),
-		donts: z.string().min(1).optional(),
+		specs: z.string().min(1).optional(),
 
 		numJudges: z.coerce.number().int().positive().default(DEFAULTS.NUM_JUDGES),
 
@@ -170,17 +168,11 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 	},
 
 	// Pairwise options
-	'--dos': {
-		key: 'dos',
+	'--specs': {
+		key: 'specs',
 		kind: 'string',
 		group: 'pairwise',
-		desc: 'Requirements the workflow must satisfy',
-	},
-	'--donts': {
-		key: 'donts',
-		kind: 'string',
-		group: 'pairwise',
-		desc: 'Things the workflow must avoid',
+		desc: 'Evaluation specifications (newline-separated criteria)',
 	},
 
 	// LangSmith options
@@ -447,11 +439,8 @@ function parseFilters(args: {
 			throw new Error(`Invalid \`--filter\` value for "${key}": value cannot be empty`);
 		}
 		switch (key) {
-			case 'do':
-				filters.doSearch = value;
-				break;
-			case 'dont':
-				filters.dontSearch = value;
+			case 'spec':
+				filters.specSearch = value;
 				break;
 			case 'technique':
 				filters.technique = value;
@@ -460,7 +449,7 @@ function parseFilters(args: {
 				filters.notionId = value;
 				break;
 			default:
-				throw new Error(`Unknown filter key "${key}". Expected one of: do, dont, technique, id`);
+				throw new Error(`Unknown filter key "${key}". Expected one of: spec, technique, id`);
 		}
 	}
 
@@ -500,10 +489,8 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		technique: parsed.technique,
 	});
 
-	if (parsed.suite !== 'pairwise' && (filters?.doSearch || filters?.dontSearch)) {
-		throw new Error(
-			'`--filter do:` and `--filter dont:` are only supported for `--suite pairwise`',
-		);
+	if (parsed.suite !== 'pairwise' && filters?.specSearch) {
+		throw new Error('`--filter spec:` is only supported for `--suite pairwise`');
 	}
 
 	return {
@@ -521,8 +508,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		testCase: parsed.testCase,
 		promptsCsv: parsed.promptsCsv,
 		prompt: parsed.prompt,
-		dos: parsed.dos,
-		donts: parsed.donts,
+		specs: parsed.specs,
 		numJudges: parsed.numJudges,
 		featureFlags,
 		// Model configuration

@@ -15,10 +15,8 @@ export type LlmCallLimiter = ReturnType<typeof pLimit>;
 export interface EvaluationContext {
 	/** The original user prompt for this example */
 	prompt: string;
-	/** Pairwise criteria: required behaviors */
-	dos?: string;
-	/** Pairwise criteria: forbidden behaviors */
-	donts?: string;
+	/** Pairwise evaluation specifications (newline-separated criteria) */
+	specs?: string;
 	/** Optional reference workflows for similarity-based checks (best match wins) */
 	referenceWorkflows?: SimpleWorkflow[];
 	/**
@@ -89,7 +87,7 @@ export interface Evaluator<TContext = EvaluationContext> {
 export interface TestCase {
 	prompt: string;
 	id?: string;
-	/** Context passed to evaluators (e.g., pairwise dos/donts) */
+	/** Context passed to evaluators (e.g., pairwise specs) */
 	context?: TestCaseContext;
 	/** Reference workflows for similarity comparison (best match wins) */
 	referenceWorkflows?: SimpleWorkflow[];
@@ -157,10 +155,8 @@ export interface LangsmithExampleFilters {
 	notionId?: string;
 	/** Filter by `example.metadata.categories` (contains). */
 	technique?: string;
-	/** Filter by `example.inputs.evals.dos` (substring match, case-insensitive). */
-	doSearch?: string;
-	/** Filter by `example.inputs.evals.donts` (substring match, case-insensitive). */
-	dontSearch?: string;
+	/** Filter by `example.inputs.evals.specs` (substring match, case-insensitive). */
+	specSearch?: string;
 }
 
 /**
