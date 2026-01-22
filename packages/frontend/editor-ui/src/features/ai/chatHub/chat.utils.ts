@@ -505,6 +505,12 @@ export const isRegenerable = (message: ChatMessage): boolean => {
 	return message.type === 'ai';
 };
 
+type ChunkState =
+	| { type: 'normal' }
+	| { type: 'backtick-fence'; count: number }
+	| { type: 'tilde-fence'; count: number }
+	| { type: 'indented' };
+
 /**
  * Splits markdown content into chunks to allow text selection while streaming.
  * Splits on: paragraphs (double newlines), code blocks, and headers.
@@ -516,117 +522,93 @@ export function splitMarkdownIntoChunks(content: string): string[] {
 
 	const chunks: string[] = [];
 	let currentChunk = '';
-	let codeBlockBacktickCount = 0;
-	let codeBlockTildeCount = 0;
-	let inIndentedCodeBlock = false;
+	let state: ChunkState = { type: 'normal' };
 	const lines = content.split('\n');
+
+	const endChunk = () => {
+		if (currentChunk.trim()) {
+			chunks.push(currentChunk.trimEnd());
+			currentChunk = '';
+		}
+	};
 
 	for (let i = 0; i < lines.length; i++) {
 		const line = lines[i];
 		const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
 		const trimmedLine = line.trim();
-
-		// Check indentation (fences can have 0-3 spaces, 4+ is not a fence)
-		const indentMatch = line.match(/^( {0,3})(`{3,}|~{3,})/);
-		const hasValidFenceIndent = indentMatch !== null;
-
-		// Detect fenced code block boundaries (backticks or tildes)
-		// Only process backticks if not in a tilde block, and vice versa
-		const inFencedCodeBlock = codeBlockBacktickCount > 0 || codeBlockTildeCount > 0;
-
-		if (hasValidFenceIndent && trimmedLine.startsWith('```') && codeBlockTildeCount === 0) {
-			// Process backtick fences only if not inside a tilde fence
-			const fenceMatch = trimmedLine.match(/^(`+)/);
-			const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
-
-			if (codeBlockBacktickCount === 0) {
-				// Opening a backtick code block
-				codeBlockBacktickCount = fenceCount;
-			} else if (fenceCount >= codeBlockBacktickCount) {
-				// Closing a backtick code block
-				currentChunk += line + '\n';
-				codeBlockBacktickCount = 0;
-
-				if (currentChunk.trim()) {
-					chunks.push(currentChunk.trimEnd());
-					currentChunk = '';
-				}
-				continue;
-			}
-		} else if (
-			hasValidFenceIndent &&
-			trimmedLine.startsWith('~~~') &&
-			codeBlockBacktickCount === 0
-		) {
-			// Process tilde fences only if not inside a backtick fence
-			const fenceMatch = trimmedLine.match(/^(~+)/);
-			const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
-
-			if (codeBlockTildeCount === 0) {
-				// Opening a tilde code block
-				codeBlockTildeCount = fenceCount;
-			} else if (fenceCount >= codeBlockTildeCount) {
-				// Closing a tilde code block
-				currentChunk += line + '\n';
-				codeBlockTildeCount = 0;
-
-				if (currentChunk.trim()) {
-					chunks.push(currentChunk.trimEnd());
-					currentChunk = '';
-				}
-				continue;
-			}
-		}
-
-		// Detect indented code blocks (4 spaces or tab at start)
-		// Only process if not inside any fenced code block
 		const isIndented = /^( {4}|\t)/.test(line);
+		const hasValidFenceIndent = /^( {0,3})(`{3,}|~{3,})/.test(line);
 
-		if (!inFencedCodeBlock) {
-			if (inIndentedCodeBlock) {
-				// Continue indented code block if line is indented or empty
-				if (!isIndented && trimmedLine !== '') {
-					// Exit indented code block - end the chunk
-					inIndentedCodeBlock = false;
-					if (currentChunk.trim()) {
-						chunks.push(currentChunk.trimEnd());
-						currentChunk = '';
-					}
+		// Handle state transitions based on current state
+		if (state.type === 'backtick-fence') {
+			// Check if this line closes the backtick fence
+			if (hasValidFenceIndent && trimmedLine.startsWith('```')) {
+				const fenceMatch = trimmedLine.match(/^(`+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+
+				if (fenceCount >= state.count) {
+					// Closing fence
+					currentChunk += line + '\n';
+					state = { type: 'normal' };
+					endChunk();
+					continue;
 				}
+			}
+		} else if (state.type === 'tilde-fence') {
+			// Check if this line closes the tilde fence
+			if (hasValidFenceIndent && trimmedLine.startsWith('~~~')) {
+				const fenceMatch = trimmedLine.match(/^(~+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+
+				if (fenceCount >= state.count) {
+					// Closing fence
+					currentChunk += line + '\n';
+					state = { type: 'normal' };
+					endChunk();
+					continue;
+				}
+			}
+		} else if (state.type === 'indented') {
+			// Exit indented code block if line is not indented and not empty
+			if (!isIndented && trimmedLine !== '') {
+				state = { type: 'normal' };
+				endChunk();
+			}
+		} else {
+			// state.type === 'normal'
+			// Check for fence openings
+			if (hasValidFenceIndent && trimmedLine.startsWith('```')) {
+				const fenceMatch = trimmedLine.match(/^(`+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+				state = { type: 'backtick-fence', count: fenceCount };
+			} else if (hasValidFenceIndent && trimmedLine.startsWith('~~~')) {
+				const fenceMatch = trimmedLine.match(/^(~+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+				state = { type: 'tilde-fence', count: fenceCount };
 			} else if (isIndented && trimmedLine !== '') {
-				// Start indented code block - end previous chunk
-				if (currentChunk.trim()) {
-					chunks.push(currentChunk.trimEnd());
-					currentChunk = '';
-				}
-				inIndentedCodeBlock = true;
+				// Start indented code block
+				endChunk();
+				state = { type: 'indented' };
 			}
 		}
 
 		// Add line to current chunk
 		currentChunk += line + '\n';
 
-		// Split on double newlines (paragraph breaks) or headers, but not inside code blocks
-		const inAnyCodeBlock =
-			codeBlockBacktickCount > 0 || codeBlockTildeCount > 0 || inIndentedCodeBlock;
-		if (!inAnyCodeBlock) {
-			const isEmptyLine = line.trim() === '';
+		// Split on double newlines or headers (only in normal state)
+		if (state.type === 'normal') {
+			const isEmptyLine = trimmedLine === '';
 			const nextLineIsEmpty = nextLine.trim() === '';
 			const nextLineIsHeader = nextLine.trim().startsWith('#');
 
 			if ((isEmptyLine && nextLineIsEmpty) || (isEmptyLine && nextLineIsHeader)) {
-				if (currentChunk.trim()) {
-					chunks.push(currentChunk.trimEnd());
-					currentChunk = '';
-				}
+				endChunk();
 			}
 		}
 	}
 
 	// Add remaining content as the last chunk
-	if (currentChunk.trim()) {
-		chunks.push(currentChunk.trimEnd());
-	}
+	endChunk();
 
 	return chunks;
 }
