@@ -38,7 +38,7 @@ test.describe('@isolated', () => {
 			);
 
 			await n8n.projectTabs.clickWorkflowsTab();
-			await n8n.workflows.clickNewWorkflowCard();
+			await n8n.workflows.clickNewWorkflowButtonFromProject();
 
 			await n8n.canvas.addNode('Notion');
 			await n8n.canvas.getFirstAction().click();

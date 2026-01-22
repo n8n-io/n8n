@@ -15,8 +15,7 @@ export async function promptCategorizationChain(
 		techniques: z
 			.array(z.nativeEnum(WorkflowTechnique))
 			.min(0)
-			.max(5)
-			.describe('Zero to five workflow techniques identified in the prompt (maximum of 5)'),
+			.describe('Workflow techniques identified in the prompt'),
 		confidence: z
 			.number()
 			.min(0)
