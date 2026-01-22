@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { CredentialResolverDataNotFoundError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { NextFunction, Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -10,6 +11,7 @@ import type {
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { StaticAuthService } from '@/services/static-auth-service';
 
 import { DynamicCredentialResolverRegistry } from './credential-resolver-registry.service';
 import { ResolverConfigExpressionService } from './resolver-config-expression.service';
@@ -19,9 +21,8 @@ import type {
 	ICredentialResolutionProvider,
 } from '../../../credentials/credential-resolution-provider.interface';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
-import { CredentialResolutionError } from '../errors/credential-resolution.error';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
-import { StaticAuthService } from '@/services/static-auth-service';
+import { CredentialResolutionError } from '../errors/credential-resolution.error';
 
 /**
  * Service for resolving credentials dynamically via configured resolvers.
@@ -244,7 +245,18 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 	 */
 	getDynamicCredentialsEndpointsMiddleware() {
 		const { endpointAuthToken } = this.dynamicCredentialConfig;
+		if (!endpointAuthToken?.trim()) {
+			return (_req: Request, res: Response, _next: NextFunction) => {
+				this.logger.error(
+					'Dynamic credentials external endpoints require an endpoint auth token. Please set the N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN environment variable to enable access.',
+				);
+				res.status(500).json({
+					message: 'Dynamic credentials configuration is invalid. Check server logs for details.',
+				});
+				return;
+			};
+		}
 
-		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken, 'x-authorization');
+		return StaticAuthService.getStaticAuthMiddleware(endpointAuthToken, 'x-authorization')!;
 	}
 }
