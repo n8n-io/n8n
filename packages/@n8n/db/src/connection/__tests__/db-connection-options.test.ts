@@ -1,4 +1,4 @@
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, InstanceSettingsConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
 import path from 'path';
@@ -19,10 +19,12 @@ describe('DbConnectionOptions', () => {
 	const n8nFolder = '/test/n8n';
 	const instanceSettingsConfig = mock<InstanceSettingsConfig>({ n8nFolder });
 	const moduleRegistry = mock<ModuleRegistry>({ entities: [] });
+	const logger = mock<Logger>();
 	const dbConnectionOptions = new DbConnectionOptions(
 		dbConfig,
 		instanceSettingsConfig,
 		moduleRegistry,
+		logger,
 	);
 
 	beforeEach(() => jest.resetAllMocks());

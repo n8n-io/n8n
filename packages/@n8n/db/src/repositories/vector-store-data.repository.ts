@@ -1,19 +1,24 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
-import { generateNanoId } from '../utils/generators';
+import { jsonParse, type VectorDocument, type VectorSearchResult } from 'n8n-workflow';
 
 import { VectorStoreData } from '../entities';
 import { dbType } from '../entities/abstract-entity';
+import { generateNanoId } from '../utils/generators';
 
-export interface VectorDocument {
-	content: string;
-	metadata: Record<string, unknown>;
+interface QueryResult {
+	document: {
+		content: string;
+		metadata: Record<string, unknown>;
+	};
+	score: number;
 }
 
-export interface VectorSearchResult {
-	document: VectorDocument;
+interface QueryResultRow {
+	content: string;
 	score: number;
+	metadata: Record<string, unknown> | string;
 }
 
 @Service()
@@ -25,72 +30,48 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		super(VectorStoreData, dataSource.manager);
 	}
 
-	/**
-	 * Add vectors to the store
-	 */
 	async addVectors(
 		memoryKey: string,
 		documents: VectorDocument[],
 		embeddings: number[][],
 		clearStore: boolean = false,
 	): Promise<void> {
-		console.log('[VectorStore] Adding vectors:', {
-			memoryKey,
-			documentCount: documents.length,
-			embeddingCount: embeddings.length,
-			clearStore,
-			firstEmbeddingLength: embeddings[0]?.length,
-		});
-
 		if (clearStore) {
 			await this.clearStore(memoryKey);
-			console.log('[VectorStore] Cleared existing store for:', memoryKey);
 		}
 
-		const entities: VectorStoreData[] = [];
-		for (let i = 0; i < documents.length; i++) {
+		const entities = documents.map((document, i) => {
 			const entity = new VectorStoreData();
+
 			entity.id = generateNanoId();
 			entity.memoryKey = memoryKey;
-			entity.content = documents[i].content;
-			entity.metadata = documents[i].metadata;
+			entity.content = document.content;
+			entity.metadata = document.metadata;
 			entity.vector = this.serializeVector(embeddings[i]);
-			entities.push(entity);
-		}
+
+			return entity;
+		});
 
 		await this.save(entities);
-		console.log('[VectorStore] Successfully saved vectors:', entities.length);
 	}
 
-	/**
-	 * Perform similarity search on vectors
-	 */
 	async similaritySearch(
 		memoryKey: string,
 		queryEmbedding: number[],
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
-		console.log('[VectorStore] Similarity search called:', {
-			memoryKey,
-			queryEmbeddingLength: queryEmbedding.length,
-			k,
-			filter,
-			dbType,
-		});
-
 		if (dbType === 'postgresdb') {
 			return await this.similaritySearchPostgres(memoryKey, queryEmbedding, k, filter);
-		} else if (dbType === 'sqlite') {
+		}
+
+		if (dbType === 'sqlite') {
 			return await this.similaritySearchSQLite(memoryKey, queryEmbedding, k, filter);
 		}
 
 		throw new Error(`Database type ${dbType} does not support vector similarity search`);
 	}
 
-	/**
-	 * PostgreSQL similarity search using pgvector
-	 */
 	private async similaritySearchPostgres(
 		memoryKey: string,
 		queryEmbedding: number[],
@@ -130,20 +111,10 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 			`;
 
 		const results = await this.query(query, params);
-		return results.map(
-			(row: { content: string; metadata: Record<string, unknown>; score: number }) => ({
-				document: {
-					content: row.content,
-					metadata: row.metadata,
-				},
-				score: row.score,
-			}),
-		);
+
+		return (results as QueryResultRow[]).map((row) => this.transformRawQueryResult(row));
 	}
 
-	/**
-	 * SQLite similarity search using sqlite-vec
-	 */
 	private async similaritySearchSQLite(
 		memoryKey: string,
 		queryEmbedding: number[],
@@ -155,41 +126,6 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		const vectorCol = this.getColumnName('vector');
 		const contentCol = this.getColumnName('content');
 		const metadataCol = this.getColumnName('metadata');
-
-		console.log('[VectorStore] SQLite search starting:', {
-			memoryKey,
-			queryEmbeddingLength: queryEmbedding.length,
-			k,
-		});
-
-		// First, check if there are any records with this memoryKey
-		const countQuery = `SELECT COUNT(*) as count FROM ${tableName} WHERE ${memoryKeyCol} = ?`;
-		const countResult = await this.query(countQuery, [memoryKey]);
-		console.log('[VectorStore] Records found with memoryKey:', {
-			memoryKey,
-			count: countResult[0]?.count || 0,
-		});
-
-		// Check a sample vector length from database
-		const sampleQuery = `SELECT LENGTH(${vectorCol}) as vectorLength FROM ${tableName} WHERE ${memoryKeyCol} = ? LIMIT 1`;
-		const sampleResult = await this.query(sampleQuery, [memoryKey]);
-		console.log('[VectorStore] Sample stored vector info:', {
-			storedVectorLength: sampleResult[0]?.vectorLength,
-			expectedLength: queryEmbedding.length * 4,
-		});
-
-		// Test if vec_distance_cosine function works with a sample
-		try {
-			const queryVectorBlob = this.serializeVector(queryEmbedding);
-			const testQuery = `SELECT vec_distance_cosine(${vectorCol}, ?) as distance FROM ${tableName} WHERE ${memoryKeyCol} = ? LIMIT 1`;
-			const testResult = await this.query(testQuery, [queryVectorBlob, memoryKey]);
-			console.log('[VectorStore] vec_distance_cosine test:', {
-				works: testResult.length > 0,
-				sampleDistance: testResult[0]?.distance,
-			});
-		} catch (testErr) {
-			console.error('[VectorStore] vec_distance_cosine test failed:', testErr);
-		}
 
 		// Serialize query vector for sqlite-vec
 		const queryVectorBlob = this.serializeVector(queryEmbedding);
@@ -218,55 +154,33 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		// 1. First ? in SELECT vec_distance_cosine -> queryVectorBlob
 		// 2. WHERE clause parameters -> memoryKey (and filter values)
 		// 3. Second ? in ORDER BY vec_distance_cosine -> queryVectorBlob
-		const params = [queryVectorBlob, ...whereParams, queryVectorBlob];
+		const results = await this.query(query, [queryVectorBlob, ...whereParams, queryVectorBlob]);
 
-		console.log('[VectorStore] Executing SQLite vec query:', {
-			query,
-			paramsCount: params.length,
-			queryVectorBlobLength: queryVectorBlob.length,
-			memoryKey,
-		});
-
-		const results = await this.query(query, params);
-
-		console.log('[VectorStore] SQLite vec query results:', {
-			resultCount: results.length,
-			scores: results.map((r: { score: number }) => r.score),
-		});
-
-		return results.map((row: { content: string; metadata: string; score: number }) => ({
-			document: {
-				content: row.content,
-				metadata: typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata,
-			},
-			score: row.score,
-		}));
+		return (results as QueryResultRow[]).map((row) => this.transformRawQueryResult(row));
 	}
 
-	/**
-	 * Get count of vectors for a memory key
-	 */
+	private transformRawQueryResult(row: QueryResultRow): QueryResult {
+		return {
+			document: {
+				content: row.content,
+				metadata: typeof row.metadata === 'string' ? jsonParse(row.metadata) : row.metadata,
+			},
+			score: row.score,
+		};
+	}
+
 	async getVectorCount(memoryKey: string): Promise<number> {
 		return await this.countBy({ memoryKey });
 	}
 
-	/**
-	 * Clear all vectors for a memory key
-	 */
 	async clearStore(memoryKey: string): Promise<void> {
 		await this.delete({ memoryKey });
 	}
 
-	/**
-	 * Delete entire store (alias for clearStore)
-	 */
 	async deleteStore(memoryKey: string): Promise<void> {
 		await this.clearStore(memoryKey);
 	}
 
-	/**
-	 * Delete vectors by file names stored in metadata
-	 */
 	async deleteByFileNames(memoryKey: string, fileNames: string[]): Promise<number> {
 		if (fileNames.length === 0) {
 			return 0;
@@ -296,9 +210,6 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		return result.affected ?? 0;
 	}
 
-	/**
-	 * List all unique memory keys
-	 */
 	async listStores(): Promise<string[]> {
 		const result = await this.createQueryBuilder('vectorStore')
 			.select('DISTINCT vectorStore.memoryKey', 'memoryKey')
@@ -307,11 +218,6 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		return result.map((row) => row.memoryKey);
 	}
 
-	/**
-	 * Serialize vector for storage
-	 * - PostgreSQL: string format for pgvector "[x,y,z]"
-	 * - SQLite: binary buffer for sqlite-vec
-	 */
 	private serializeVector(vector: number[]): string | Buffer {
 		if (dbType === 'postgresdb') {
 			// pgvector expects string format

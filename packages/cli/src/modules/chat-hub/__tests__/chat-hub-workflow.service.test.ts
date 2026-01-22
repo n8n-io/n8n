@@ -65,37 +65,16 @@ describe('ChatHubWorkflowService', () => {
 		(sharedWorkflowRepository.create as jest.Mock) = jest.fn().mockReturnValue({});
 	});
 
-	describe('createChatWorkflow', () => {
+	describe('buildMessageValuesWithAttachments', () => {
 		describe('message history handling', () => {
 			it('should handle empty history', async () => {
-				const mockHistory: ChatHubMessage[] = [];
-				const mockUser = { id: 'user-123' } as any;
-
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
-					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
-					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
-					[],
-					null,
-					'UTC',
-					null,
-					null,
-				);
-
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-
-				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
-				expect(messageValues).toHaveLength(0);
+				expect(
+					service.buildMessageValuesWithAttachments(
+						[],
+						{ provider: 'openai', model: 'gpt-4-turbo' },
+						[],
+					),
+				).toHaveLength(0);
 			});
 
 			it('should handle multiple messages', async () => {
@@ -128,31 +107,12 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [message1, message2, message3];
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
 
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-
-				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
 				expect(messageValues).toHaveLength(3);
 				expect(messageValues[0]).toEqual({
 					type: 'user',
@@ -197,33 +157,16 @@ describe('ChatHubWorkflowService', () => {
 				const mockImageBuffer = Buffer.from('fake-image-data', 'base64');
 				binaryDataService.getAsBuffer.mockResolvedValue(mockImageBuffer);
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
 
 				const expectedDataUrl = `data:${mockAttachment.mimeType};base64,${mockImageBuffer.toString('base64')}`;
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-				expect((restoreMemoryNode?.parameters?.messages as any)?.messageValues[0].message).toEqual([
+				expect(messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Check this image' },
 					{ type: 'image_url', image_url: expectedDataUrl },
 				]);
@@ -247,30 +190,13 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
 
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-				expect((restoreMemoryNode?.parameters?.messages as any)?.messageValues[0].message).toEqual([
+				expect(messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Check this image' },
 					{ type: 'image_url', image_url: mockAttachment.data },
 				]);
@@ -306,23 +232,10 @@ describe('ChatHubWorkflowService', () => {
 				const mockImageBuffer = Buffer.from('fake-image-data-1', 'base64');
 				binaryDataService.getAsBuffer.mockResolvedValue(mockImageBuffer);
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
@@ -330,11 +243,7 @@ describe('ChatHubWorkflowService', () => {
 				expect(binaryDataService.createSignedToken).not.toHaveBeenCalled();
 
 				const expectedDataUrl = `data:${mockAttachmentWithId.mimeType};base64,${mockImageBuffer.toString('base64')}`;
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-				expect((restoreMemoryNode?.parameters?.messages as any)?.messageValues[0].message).toEqual([
+				expect(messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Check these images' },
 					{ type: 'image_url', image_url: expectedDataUrl },
 					{ type: 'image_url', image_url: mockAttachmentWithData.data },
@@ -369,32 +278,13 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
 
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-
-				const messageContent = (restoreMemoryNode?.parameters?.messages as any)?.messageValues[0]
-					.message;
+				const messageContent = messageValues[0].message;
 
 				// Should include text and only the first attachment since the second would exceed the limit
 				expect(messageContent).toEqual([
@@ -455,31 +345,12 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [message1, message2, message3];
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
 
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-
-				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
 				expect(messageValues).toHaveLength(3);
 
 				// First message attachment is skipped due to cumulative size limit (processed last, size limit reached)
@@ -536,31 +407,11 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage, mockMessage2];
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
-
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-
-				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
 
 				expect(messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Check this large image' },
@@ -598,33 +449,14 @@ describe('ChatHubWorkflowService', () => {
 				// Mock getAsBuffer to return the text content
 				binaryDataService.getAsBuffer.mockResolvedValue(Buffer.from(textContent, 'utf-8'));
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4-turbo' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
 
 				expect(binaryDataService.getAsBuffer).toHaveBeenCalledWith(mockAttachment);
 
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-
-				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
 				expect(messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Here is a text file' },
 					{ type: 'text', text: `File: document.txt\nContent: \n${textContent}` },
@@ -649,31 +481,12 @@ describe('ChatHubWorkflowService', () => {
 
 				const mockHistory: ChatHubMessage[] = [mockMessage];
 
-				const mockUser = { id: 'user-123' } as any;
-				const result = await service.createChatWorkflow(
-					mockUser,
-					'session-456',
-					'project-789',
+				const messageValues = await service.buildMessageValuesWithAttachments(
 					mockHistory,
-					'Hello',
-					[],
-					[],
-					{ openAiApi: { id: 'cred-123', name: 'OpenAI' } },
 					{ provider: 'openai', model: 'gpt-4' },
-					undefined,
 					[],
-					null,
-					'UTC',
-					null,
-					null,
 				);
 
-				const restoreMemoryNode = result.workflowData.nodes.find(
-					(node) => node.name === 'Restore Chat Memory',
-				);
-				expect(restoreMemoryNode?.parameters?.messages).toBeDefined();
-
-				const messageValues = (restoreMemoryNode?.parameters?.messages as any)?.messageValues;
 				expect(messageValues[0].message).toEqual([
 					{ type: 'text', text: 'Listen to this audio' },
 					{ type: 'text', text: 'File: audio.mp3\n(Unsupported file type)' },

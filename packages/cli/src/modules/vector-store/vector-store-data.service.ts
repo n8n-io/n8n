@@ -1,12 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import type { VectorDocument, VectorSearchResult } from '@n8n/db';
 import { VectorStoreDataRepository } from '@n8n/db';
 import { DataSource } from '@n8n/typeorm';
+import type { IVectorStoreDataService, VectorDocument, VectorSearchResult } from 'n8n-workflow';
 
 @Service()
-export class VectorStoreDataService {
+export class VectorStoreDataService implements IVectorStoreDataService {
 	private postgresHasVectorSupport: boolean = false;
 
 	private sqliteHasVectorSupport: boolean = false;

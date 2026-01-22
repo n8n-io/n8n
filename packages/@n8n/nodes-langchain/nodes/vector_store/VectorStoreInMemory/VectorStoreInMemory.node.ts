@@ -80,7 +80,9 @@ function getMemoryKey(context: IExecuteFunctions | ISupplyDataFunctions, itemInd
 	}
 }
 
-export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore>({
+export class VectorStoreInMemory extends createVectorStoreNode<
+	MemoryVectorStore | DatabaseVectorStore
+>({
 	meta: {
 		displayName: 'Simple Vector Store',
 		name: 'vectorStoreInMemory',
@@ -235,26 +237,15 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 
 		if (enablePersistence) {
 			// Use database-backed vector store
-			const vectorStoreService = context.helpers.getVectorStoreService?.();
+			const service = context.helpers.getVectorStoreService?.();
 
-			if (!vectorStoreService) {
+			if (!service) {
 				throw new ApplicationError(
 					'Vector store persistence is not available. The vector-store module may not be loaded.',
 				);
 			}
 
-			// Type assertion since we know the structure but it's typed as unknown
-			const service = vectorStoreService as {
-				canUsePersistence(): boolean;
-			};
-
-			if (!service.canUsePersistence()) {
-				throw new ApplicationError(
-					'Database persistence is not available. PostgreSQL requires pgvector extension to be installed.',
-				);
-			}
-
-			return new DatabaseVectorStore(embeddings, vectorStoreService, memoryKey);
+			return new DatabaseVectorStore(embeddings, service, memoryKey);
 		} else {
 			// Use in-memory vector store (existing behavior)
 			const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
@@ -277,17 +268,6 @@ export class VectorStoreInMemory extends createVectorStoreNode<MemoryVectorStore
 			if (!vectorStoreService) {
 				throw new ApplicationError(
 					'Vector store persistence is not available. The vector-store module may not be loaded.',
-				);
-			}
-
-			// Type assertion since we know the structure but it's typed as unknown
-			const service = vectorStoreService as {
-				canUsePersistence(): boolean;
-			};
-
-			if (!service.canUsePersistence()) {
-				throw new ApplicationError(
-					'Database persistence is not available. PostgreSQL requires pgvector extension to be installed.',
 				);
 			}
 

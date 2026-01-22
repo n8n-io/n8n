@@ -994,6 +994,10 @@ export type DataTableProxyFunctions = {
 	getDataTableProxy?(dataTableId: string): Promise<IDataTableProjectService>;
 };
 
+export type VectorStoreHelperFunctions = {
+	getVectorStoreService?(): IVectorStoreDataService;
+};
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;
@@ -1060,7 +1064,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			DeduplicationHelperFunctions &
 			FileSystemHelperFunctions &
 			SSHTunnelFunctions &
-			DataTableProxyFunctions & {
+			DataTableProxyFunctions &
+			VectorStoreHelperFunctions & {
 				normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
 				constructExecutionMetaData(
 					inputData: INodeExecutionData[],
@@ -3310,3 +3315,33 @@ export interface StructuredChunk {
 }
 
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';
+
+export interface VectorDocument {
+	content: string;
+	metadata: Record<string, unknown>;
+}
+
+export interface VectorSearchResult {
+	document: VectorDocument;
+	score: number;
+}
+
+export interface IVectorStoreDataService {
+	addVectors(
+		memoryKey: string,
+		documents: VectorDocument[],
+		embeddings: number[][],
+		clearStore?: boolean,
+	): Promise<void>;
+
+	similaritySearch(
+		memoryKey: string,
+		queryEmbedding: number[],
+		k: number,
+		filter?: Record<string, unknown>,
+	): Promise<VectorSearchResult[]>;
+
+	getVectorCount(memoryKey: string): Promise<number>;
+
+	clearStore(memoryKey: string): Promise<void>;
+}

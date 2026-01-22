@@ -1,27 +1,7 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import { Document } from '@langchain/core/documents';
 import { VectorStore } from '@langchain/core/vectorstores';
-
-// Type definition for the VectorStoreDataService interface
-// The actual service is injected at runtime from the execution context
-interface VectorStoreDataService {
-	addVectors(
-		memoryKey: string,
-		documents: Array<{ content: string; metadata: Record<string, unknown> }>,
-		embeddings: number[][],
-		clearStore?: boolean,
-	): Promise<void>;
-	similaritySearch(
-		memoryKey: string,
-		queryEmbedding: number[],
-		k: number,
-		filter?: Record<string, unknown>,
-	): Promise<
-		Array<{ document: { content: string; metadata: Record<string, unknown> }; score: number }>
-	>;
-	clearStore(memoryKey: string): Promise<void>;
-	getVectorCount(memoryKey: string): Promise<number>;
-}
+import type { IVectorStoreDataService } from 'n8n-workflow';
 
 /**
  * DatabaseVectorStore - A VectorStore implementation that persists vectors in the n8n instance database
@@ -34,7 +14,7 @@ interface VectorStoreDataService {
 export class DatabaseVectorStore extends VectorStore {
 	constructor(
 		embeddings: Embeddings,
-		private readonly service: VectorStoreDataService,
+		private readonly service: IVectorStoreDataService,
 		private readonly memoryKey: string,
 	) {
 		super(embeddings, {});
@@ -44,19 +24,8 @@ export class DatabaseVectorStore extends VectorStore {
 	 * Add documents to the vector store
 	 */
 	async addDocuments(documents: Document[]): Promise<string[]> {
-		console.log('[DatabaseVectorStore] Adding documents:', {
-			memoryKey: this.memoryKey,
-			documentCount: documents.length,
-			sampleContent: documents[0]?.pageContent.substring(0, 100),
-		});
-
 		const texts = documents.map((doc) => doc.pageContent);
 		const embeddings = await this.embeddings.embedDocuments(texts);
-
-		console.log('[DatabaseVectorStore] Generated embeddings:', {
-			embeddingCount: embeddings.length,
-			embeddingDimension: embeddings[0]?.length,
-		});
 
 		return await this.addVectors(embeddings, documents);
 	}
@@ -83,21 +52,8 @@ export class DatabaseVectorStore extends VectorStore {
 		query: number[],
 		k: number,
 		filter?: Record<string, unknown>,
-	): Promise<[Document, number][]> {
-		console.log('[DatabaseVectorStore] Similarity search:', {
-			memoryKey: this.memoryKey,
-			queryLength: query.length,
-			k,
-			filter,
-		});
-
+	): Promise<Array<[Document, number]>> {
 		const results = await this.service.similaritySearch(this.memoryKey, query, k, filter);
-
-		console.log('[DatabaseVectorStore] Search results:', {
-			resultCount: results.length,
-			scores: results.map((r) => r.score),
-			sampleContent: results[0]?.document.content.substring(0, 100),
-		});
 
 		return results.map((result) => {
 			const doc = new Document({
@@ -138,40 +94,5 @@ export class DatabaseVectorStore extends VectorStore {
 	 */
 	async getVectorCount(): Promise<number> {
 		return await this.service.getVectorCount(this.memoryKey);
-	}
-
-	/**
-	 * Static method to create a DatabaseVectorStore from texts
-	 */
-	static async fromTexts(
-		texts: string[],
-		metadatas: Record<string, unknown> | Record<string, unknown>[],
-		embeddings: Embeddings,
-		service: VectorStoreDataService,
-		memoryKey: string,
-	): Promise<DatabaseVectorStore> {
-		const docs: Document[] = [];
-		for (let i = 0; i < texts.length; i++) {
-			const metadata = Array.isArray(metadatas) ? metadatas[i] : metadatas;
-			docs.push(new Document({ pageContent: texts[i], metadata }));
-		}
-
-		const instance = new DatabaseVectorStore(embeddings, service, memoryKey);
-		await instance.addDocuments(docs);
-		return instance;
-	}
-
-	/**
-	 * Static method to create a DatabaseVectorStore from documents
-	 */
-	static async fromDocuments(
-		docs: Document[],
-		embeddings: Embeddings,
-		service: VectorStoreDataService,
-		memoryKey: string,
-	): Promise<DatabaseVectorStore> {
-		const instance = new DatabaseVectorStore(embeddings, service, memoryKey);
-		await instance.addDocuments(docs);
-		return instance;
 	}
 }

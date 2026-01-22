@@ -24,10 +24,6 @@ export { NoXss } from './utils/validators/no-xss.validator';
 export { NoUrl } from './utils/validators/no-url.validator';
 
 export * from './repositories';
-export type {
-	VectorDocument,
-	VectorSearchResult,
-} from './repositories/vector-store-data.repository';
 export * from './subscribers';
 
 export { Column as DslColumn } from './migrations/dsl/column';
