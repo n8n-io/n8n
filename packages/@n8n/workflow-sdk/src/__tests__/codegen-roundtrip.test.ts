@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { generateWorkflowCode } from '../codegen';
+import { generateWorkflowCode } from '../codegen/index';
 import { parseWorkflowCode } from '../parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 import {
