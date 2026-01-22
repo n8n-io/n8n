@@ -2598,3 +2598,180 @@ describe('SplitInBatches with IF branch converging to Merge (workflow 6993 patte
 		expect(parsed.connections['Supabase Upsert'].main[0][0].node).toBe('Loop Over Items');
 	});
 });
+
+describe('Sequential polling loops', () => {
+	it('should handle two sequential polling loops where first IF true branch leads to second loop', () => {
+		// This pattern is common in workflows that have multiple async job polling stages:
+		// Trigger → Job1 → Wait1 → Check1 → IF1
+		//                                  ├── true: Submit2 → Wait2 → Check2 → IF2
+		//                                  │                                    ├── true: Done
+		//                                  │                                    └── false: RetryWait2 → Check2 (cycle)
+		//                                  └── false: RetryWait1 → Check1 (cycle)
+		//
+		// The key pattern from workflow 9867:
+		// - First polling loop: Check1 is cycle target (RetryWait1 → Check1)
+		// - Second polling loop: Check2 is cycle target (RetryWait2 → Check2)
+		// - The true branch of IF1 goes through Submit2 → Wait2 → Check2 (not directly to Check2)
+		// - This means the second polling loop is reached via a chain that hits the cycle target Check2
+		const workflow: WorkflowJSON = {
+			id: 'sequential-polling',
+			name: 'Sequential Polling Loops',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'check1',
+					name: 'Check Job 1',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: { url: 'https://api.example.com/job1' },
+				},
+				{
+					id: 'if1',
+					name: 'Job 1 Done?',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [400, 0],
+					parameters: {},
+				},
+				{
+					id: 'retry-wait1',
+					name: 'Retry Wait 1',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [400, 200],
+					parameters: { amount: 5 },
+				},
+				{
+					id: 'submit2',
+					name: 'Submit Job 2',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [600, 0],
+					parameters: { url: 'https://api.example.com/submit2' },
+				},
+				{
+					id: 'wait2',
+					name: 'Wait For Job 2',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [700, 0],
+					parameters: { amount: 10 },
+				},
+				{
+					id: 'check2',
+					name: 'Check Job 2',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [800, 0],
+					parameters: { url: 'https://api.example.com/job2' },
+				},
+				{
+					id: 'if2',
+					name: 'Job 2 Done?',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [1000, 0],
+					parameters: {},
+				},
+				{
+					id: 'retry-wait2',
+					name: 'Retry Wait 2',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [1000, 200],
+					parameters: { amount: 5 },
+				},
+				{
+					id: 'done',
+					name: 'Done',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1200, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'Check Job 1', type: 'main', index: 0 }]] },
+				'Check Job 1': { main: [[{ node: 'Job 1 Done?', type: 'main', index: 0 }]] },
+				'Job 1 Done?': {
+					main: [
+						[{ node: 'Submit Job 2', type: 'main', index: 0 }], // true: go to second job
+						[{ node: 'Retry Wait 1', type: 'main', index: 0 }], // false: retry
+					],
+				},
+				'Retry Wait 1': { main: [[{ node: 'Check Job 1', type: 'main', index: 0 }]] }, // Cycle 1
+				'Submit Job 2': { main: [[{ node: 'Wait For Job 2', type: 'main', index: 0 }]] },
+				'Wait For Job 2': { main: [[{ node: 'Check Job 2', type: 'main', index: 0 }]] },
+				'Check Job 2': { main: [[{ node: 'Job 2 Done?', type: 'main', index: 0 }]] },
+				'Job 2 Done?': {
+					main: [
+						[{ node: 'Done', type: 'main', index: 0 }], // true: done
+						[{ node: 'Retry Wait 2', type: 'main', index: 0 }], // false: retry
+					],
+				},
+				'Retry Wait 2': { main: [[{ node: 'Check Job 2', type: 'main', index: 0 }]] }, // Cycle 2
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+		const parsed = parseWorkflowCode(code);
+
+		// Verify all 10 nodes are present
+		expect(parsed.nodes).toHaveLength(10);
+		const nodeNames = parsed.nodes.map((n) => n.name).sort();
+		expect(nodeNames).toEqual([
+			'Check Job 1',
+			'Check Job 2',
+			'Done',
+			'Job 1 Done?',
+			'Job 2 Done?',
+			'Retry Wait 1',
+			'Retry Wait 2',
+			'Submit Job 2',
+			'Trigger',
+			'Wait For Job 2',
+		]);
+
+		// Verify all connections are preserved
+		// Trigger → Check Job 1
+		expect(parsed.connections['Trigger']?.main[0]?.[0]?.node).toBe('Check Job 1');
+
+		// Check Job 1 → Job 1 Done?
+		expect(parsed.connections['Check Job 1']?.main[0]?.[0]?.node).toBe('Job 1 Done?');
+
+		// Job 1 Done? true branch → Submit Job 2
+		expect(parsed.connections['Job 1 Done?']?.main[0]?.[0]?.node).toBe('Submit Job 2');
+
+		// Job 1 Done? false branch → Retry Wait 1
+		expect(parsed.connections['Job 1 Done?']?.main[1]?.[0]?.node).toBe('Retry Wait 1');
+
+		// Retry Wait 1 → Check Job 1 (cycle back)
+		expect(parsed.connections['Retry Wait 1']?.main[0]?.[0]?.node).toBe('Check Job 1');
+
+		// Submit Job 2 → Wait For Job 2
+		expect(parsed.connections['Submit Job 2']?.main[0]?.[0]?.node).toBe('Wait For Job 2');
+
+		// Wait For Job 2 → Check Job 2
+		expect(parsed.connections['Wait For Job 2']?.main[0]?.[0]?.node).toBe('Check Job 2');
+
+		// Check Job 2 → Job 2 Done? (THIS IS THE CRITICAL ONE THAT'S MISSING!)
+		expect(parsed.connections['Check Job 2']?.main[0]?.[0]?.node).toBe('Job 2 Done?');
+
+		// Job 2 Done? true branch → Done
+		expect(parsed.connections['Job 2 Done?']?.main[0]?.[0]?.node).toBe('Done');
+
+		// Job 2 Done? false branch → Retry Wait 2
+		expect(parsed.connections['Job 2 Done?']?.main[1]?.[0]?.node).toBe('Retry Wait 2');
+
+		// Retry Wait 2 → Check Job 2 (cycle back)
+		expect(parsed.connections['Retry Wait 2']?.main[0]?.[0]?.node).toBe('Check Job 2');
+	});
+});

@@ -41,9 +41,9 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'4767',
 	'4807',
 	'4827',
-	'4833',
+	// '4833', - now passes after sequential polling loop fix
 	// '4846', - now passes after shared fan-out target fix
-	'4849',
+	// '4849', - now passes after sequential polling loop fix
 	'4868',
 	// '4912', - now passes after multiple triggers/convergence fixes
 	// '4949' - now passes after switch case downstream chain fix
@@ -80,14 +80,14 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '5707', - now passes after multiple triggers/convergence fixes
 	// '5711', - now passes after multiple triggers/convergence fixes
 	'5734', // still has connection source mismatch
-	'5741',
+	// '5741', - now passes after sequential polling loop fix
 	'5751',
 	// '5755', - now passes after multiple triggers/convergence fixes
 	// '5779', - now passes after shared fan-out target fix
 	// '5786', - now passes after shared fan-out target fix
 	// '5787' - now passes after handleFanOut NodeChain fix
 	'5789',
-	'5795',
+	// '5795', - now passes after sequential polling loop fix
 	// '5796', - now passes after multiple triggers/convergence fixes
 	// '5798', - now passes after multiple triggers/convergence fixes
 	// '5799', - now passes after multiple triggers/convergence fixes
@@ -122,7 +122,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'7455',
 	// '7601', - now passes after multiple triggers/convergence fixes
 	'7701',
-	'7756',
+	// '7756', - now passes after sequential polling loop fix
 	'7945',
 	'7946',
 	'7957',
@@ -166,7 +166,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'11366', // connection mismatch (stricter test comparison)
 	'11466',
 	// '11532', - now passes after multiple triggers/convergence fixes
-	'11572',
+	// '11572', - now passes after sequential polling loop fix
 	'11617',
 	'11637',
 	'11724',

@@ -1993,13 +1993,16 @@ function generateNodeCallWithChain(
 			// Mark as added to prevent re-processing
 			addedNodes.add(target.to);
 
-			// For IF/Switch/SplitInBatches cycle targets on FIRST encounter, also generate their branches
-			// Skip branch generation if cycling back (already processed)
+			// If cycling back to an already-processed node, stop here
+			if (alreadyProcessed) {
+				break;
+			}
+
+			// For IF/Switch/SplitInBatches cycle targets on FIRST encounter, generate their branches
 			if (
-				!alreadyProcessed &&
-				(isIfNode(targetInfo.node) ||
-					isSwitchNode(targetInfo.node) ||
-					isSplitInBatchesNode(targetInfo.node))
+				isIfNode(targetInfo.node) ||
+				isSwitchNode(targetInfo.node) ||
+				isSplitInBatchesNode(targetInfo.node)
 			) {
 				const outputs = Array.from(targetInfo.outgoingConnections.entries()).sort(
 					([a], [b]) => a - b,
@@ -2043,8 +2046,13 @@ function generateNodeCallWithChain(
 					}
 					call += `.then([${branchCalls.join(', ')}])`;
 				}
+				break;
 			}
-			break;
+
+			// For regular cycle target nodes (not IF/Switch/SplitInBatches) on first encounter,
+			// continue generating the downstream chain from the cycle target
+			currentInfo = targetInfo;
+			continue;
 		}
 
 		// Check if already processed (for non-cycle nodes)
