@@ -1,4 +1,5 @@
-import type { Expression, ExpressionContext } from '../types/base';
+import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
+import type { Expression, ExpressionContext, FromAIArgumentType } from '../types/base';
 
 /**
  * Parse n8n expression string to extract the inner expression
@@ -187,6 +188,106 @@ export function serializeExpression<T>(fn: Expression<T>): string {
  */
 export function expr(expression: string): string {
 	return `={{ ${expression} }}`;
+}
+
+// =============================================================================
+// $fromAI Expression Generator
+// =============================================================================
+
+/**
+ * Escape a string for use in a quoted argument.
+ * Handles backslashes and the quote character being used.
+ */
+function escapeForQuote(str: string, quoteChar: string): string {
+	// Escape backslashes first, then the quote character
+	return str.replace(/\\/g, '\\\\').replace(new RegExp(quoteChar, 'g'), `\\${quoteChar}`);
+}
+
+/**
+ * Determine the best quote character to use based on string content.
+ * Prefers single quote, falls back to double quote if single quotes are present,
+ * or backtick if both are present.
+ */
+function getBestQuoteChar(str: string): string {
+	const hasSingleQuote = str.includes("'");
+	const hasDoubleQuote = str.includes('"');
+
+	if (!hasSingleQuote) return "'";
+	if (!hasDoubleQuote) return '"';
+	return '`';
+}
+
+/**
+ * Escape and quote a string argument for $fromAI call.
+ */
+function escapeArg(arg: string): string {
+	const quoteChar = getBestQuoteChar(arg);
+	return `${quoteChar}${escapeForQuote(arg, quoteChar)}${quoteChar}`;
+}
+
+/**
+ * Serialize a default value for inclusion in the $fromAI expression.
+ */
+function serializeDefaultValue(value: string | number | boolean | object): string {
+	if (typeof value === 'string') {
+		return escapeArg(value);
+	}
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return String(value);
+	}
+	// For objects/arrays, serialize as JSON
+	return JSON.stringify(value);
+}
+
+/**
+ * Create a $fromAI expression with the auto-generated marker.
+ *
+ * This is used internally by ToolConfigContext to generate expressions
+ * that the AI agent will resolve at runtime.
+ *
+ * @param key - Unique identifier for the parameter
+ * @param description - Description to help the AI understand what value to provide
+ * @param type - Expected value type (default: 'string')
+ * @param defaultValue - Fallback value if AI doesn't provide one
+ * @returns Expression string like "={{ /*marker*\/ $fromAI('key', 'desc', 'type') }}"
+ *
+ * @example
+ * createFromAIExpression('email')
+ * // Returns: "={{ /*n8n-auto-generated-fromAI-override*\/ $fromAI('email') }}"
+ *
+ * @example
+ * createFromAIExpression('count', 'Number of items', 'number', 10)
+ * // Returns: "={{ /*n8n-auto-generated-fromAI-override*\/ $fromAI('count', 'Number of items', 'number', 10) }}"
+ */
+export function createFromAIExpression(
+	key: string,
+	description?: string,
+	type: FromAIArgumentType = 'string',
+	defaultValue?: string | number | boolean | object,
+): string {
+	const args: string[] = [];
+	const marker = FROM_AI_AUTO_GENERATED_MARKER;
+
+	// key is required
+	args.push(escapeArg(key));
+
+	// description (use empty string if needed for positional args)
+	if (description !== undefined || type !== 'string' || defaultValue !== undefined) {
+		const desc = description ?? '';
+		args.push(escapeArg(desc));
+	}
+
+	// type (only if not default or defaultValue follows)
+	if (type !== 'string' || defaultValue !== undefined) {
+		args.push(escapeArg(type));
+	}
+
+	// defaultValue
+	if (defaultValue !== undefined) {
+		args.push(serializeDefaultValue(defaultValue));
+	}
+
+	return `={{ ${marker} $fromAI(${args.join(', ')}) }}`;
 }
 
 // Re-export for convenience

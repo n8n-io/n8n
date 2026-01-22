@@ -55,6 +55,67 @@ function getGeneratedNodesPath(customGeneratedTypesDir?: string): string {
 }
 
 /**
+ * Convert string to snake_case for file/folder naming
+ * Examples: "runOnceForAllItems" -> "run_once_for_all_items"
+ */
+function toSnakeCase(str: string): string {
+	return str
+		.replace(/([A-Z])/g, '_$1')
+		.toLowerCase()
+		.replace(/^_/, '')
+		.replace(/[-\s]+/g, '_');
+}
+
+/**
+ * Check if a node uses split version structure (v{N}/ directory vs v{N}.ts file)
+ */
+function isSplitVersionStructure(nodeDir: string, versionStr: string): boolean {
+	const versionDir = join(nodeDir, versionStr);
+	const versionFile = join(nodeDir, `${versionStr}.ts`);
+
+	// If directory exists and file doesn't, it's split
+	if (existsSync(versionDir) && !existsSync(versionFile)) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * Get available discriminators for a split version
+ * Returns { resources, modes } based on directory structure
+ */
+function getAvailableDiscriminators(
+	nodeDir: string,
+	versionStr: string,
+): { resources?: string[]; modes?: string[] } {
+	const versionDir = join(nodeDir, versionStr);
+	if (!existsSync(versionDir)) {
+		return {};
+	}
+
+	try {
+		const entries = readdirSync(versionDir, { withFileTypes: true });
+		const resources: string[] = [];
+		const modes: string[] = [];
+
+		for (const entry of entries) {
+			if (entry.isDirectory() && entry.name.startsWith('resource_')) {
+				resources.push(entry.name.replace('resource_', ''));
+			} else if (entry.isFile() && entry.name.startsWith('mode_') && entry.name.endsWith('.ts')) {
+				modes.push(entry.name.replace('mode_', '').replace('.ts', ''));
+			}
+		}
+
+		return {
+			resources: resources.length > 0 ? resources : undefined,
+			modes: modes.length > 0 ? modes : undefined,
+		};
+	} catch {
+		return {};
+	}
+}
+
+/**
  * Parse a node ID into package and node name components
  * Examples:
  *   "n8n-nodes-base.httpRequest" -> { package: "n8n-nodes-base", nodeName: "httpRequest" }
@@ -113,20 +174,34 @@ function getNodeVersions(nodeId: string, generatedTypesDir?: string): string[] {
 	}
 
 	try {
-		const files = readdirSync(nodeDir);
-		const versionFiles = files
-			.filter((f) => f.startsWith('v') && f.endsWith('.ts') && f !== 'index.ts')
-			.map((f) => f.replace('.ts', ''));
+		const entries = readdirSync(nodeDir, { withFileTypes: true });
+		const versions: string[] = [];
+
+		for (const entry of entries) {
+			// Flat file: v1.ts, v2.ts, etc.
+			if (
+				entry.isFile() &&
+				entry.name.startsWith('v') &&
+				entry.name.endsWith('.ts') &&
+				entry.name !== 'index.ts'
+			) {
+				versions.push(entry.name.replace('.ts', ''));
+			}
+			// Split directory: v1/, v2/, etc.
+			else if (entry.isDirectory() && /^v\d+$/.test(entry.name)) {
+				versions.push(entry.name);
+			}
+		}
 
 		// Sort by numeric version descending
-		versionFiles.sort((a, b) => {
+		versions.sort((a, b) => {
 			const aNum = parseInt(a.slice(1), 10);
 			const bNum = parseInt(b.slice(1), 10);
 			return bNum - aNum;
 		});
 
-		debugLog('Found versions', { nodeId, versions: versionFiles });
-		return versionFiles;
+		debugLog('Found versions', { nodeId, versions });
+		return versions;
 	} catch (error) {
 		debugLog('Error reading node directory', {
 			nodeDir,
@@ -136,19 +211,29 @@ function getNodeVersions(nodeId: string, generatedTypesDir?: string): string[] {
 	}
 }
 
+/** Result of path resolution - either a file path or an error */
+interface PathResolutionResult {
+	filePath?: string;
+	error?: string;
+	requiresDiscriminators?: boolean;
+	availableDiscriminators?: { resources?: string[]; modes?: string[] };
+}
+
 /**
- * Get the file path for a node ID, optionally for a specific version
+ * Get the file path for a node ID, optionally for a specific version and discriminators
  * If no version specified, returns the latest version
+ * If node uses split structure, discriminators are required
  */
 function getNodeFilePath(
 	nodeId: string,
 	version?: string,
 	generatedTypesDir?: string,
-): string | null {
+	discriminators?: { resource?: string; operation?: string; mode?: string },
+): PathResolutionResult {
 	const parsed = parseNodeId(nodeId);
 	if (!parsed) {
 		debugLog('Could not get file path - parsing failed', { nodeId });
-		return null;
+		return { error: `Invalid node ID format: '${nodeId}'` };
 	}
 
 	const nodesPath = getGeneratedNodesPath(generatedTypesDir);
@@ -156,7 +241,9 @@ function getNodeFilePath(
 
 	if (!existsSync(nodeDir)) {
 		debugLog('Node directory does not exist', { nodeDir });
-		return null;
+		return {
+			error: `Node type '${nodeId}' not found. Use search_node to find the correct node ID.`,
+		};
 	}
 
 	let targetVersion = version;
@@ -166,7 +253,7 @@ function getNodeFilePath(
 		const versions = getNodeVersions(nodeId, generatedTypesDir);
 		if (versions.length === 0) {
 			debugLog('No versions found for node', { nodeId });
-			return null;
+			return { error: `No versions found for node '${nodeId}'` };
 		}
 		targetVersion = versions[0]; // Latest version (sorted descending)
 		debugLog('Using latest version', { nodeId, version: targetVersion });
@@ -183,9 +270,87 @@ function getNodeFilePath(
 		targetVersion = `v${targetVersion.slice(1).replace('.', '')}`;
 	}
 
+	// Check if this is a split version structure
+	if (isSplitVersionStructure(nodeDir, targetVersion)) {
+		debugLog('Detected split version structure', { nodeId, version: targetVersion });
+
+		const available = getAvailableDiscriminators(nodeDir, targetVersion);
+
+		// Handle resource/operation pattern
+		if (available.resources && available.resources.length > 0) {
+			if (!discriminators?.resource || !discriminators?.operation) {
+				return {
+					error: `Error: Node '${nodeId}' requires resource and operation discriminators. Available resources: ${available.resources.join(', ')}. Use search_nodes to see all options.`,
+					requiresDiscriminators: true,
+					availableDiscriminators: available,
+				};
+			}
+
+			// Validate resource
+			const resourcePath = `resource_${toSnakeCase(discriminators.resource)}`;
+			const resourceDir = join(nodeDir, targetVersion, resourcePath);
+			if (!existsSync(resourceDir)) {
+				return {
+					error: `Error: Invalid resource '${discriminators.resource}' for node '${nodeId}'. Available: ${available.resources.join(', ')}`,
+				};
+			}
+
+			// Validate operation
+			const operationFile = `operation_${toSnakeCase(discriminators.operation)}.ts`;
+			const filePath = join(resourceDir, operationFile);
+			if (!existsSync(filePath)) {
+				// Get available operations for this resource
+				try {
+					const ops = readdirSync(resourceDir)
+						.filter((f) => f.startsWith('operation_') && f.endsWith('.ts'))
+						.map((f) => f.replace('operation_', '').replace('.ts', ''));
+					return {
+						error: `Error: Invalid operation '${discriminators.operation}' for resource '${discriminators.resource}'. Available: ${ops.join(', ')}`,
+					};
+				} catch {
+					return {
+						error: `Error: Could not read operations for resource '${discriminators.resource}'`,
+					};
+				}
+			}
+
+			debugLog('Resolved split path for resource/operation', { filePath });
+			return { filePath };
+		}
+
+		// Handle mode pattern
+		if (available.modes && available.modes.length > 0) {
+			if (!discriminators?.mode) {
+				return {
+					error: `Error: Node '${nodeId}' requires mode discriminator. Available modes: ${available.modes.join(', ')}. Use search_nodes to see all options.`,
+					requiresDiscriminators: true,
+					availableDiscriminators: available,
+				};
+			}
+
+			// Validate mode
+			const modeFile = `mode_${toSnakeCase(discriminators.mode)}.ts`;
+			const filePath = join(nodeDir, targetVersion, modeFile);
+			if (!existsSync(filePath)) {
+				return {
+					error: `Error: Invalid mode '${discriminators.mode}' for node '${nodeId}'. Available: ${available.modes.join(', ')}`,
+				};
+			}
+
+			debugLog('Resolved split path for mode', { filePath });
+			return { filePath };
+		}
+
+		// Split structure exists but no recognized discriminator directories
+		return {
+			error: `Error: Node '${nodeId}' has split structure but no recognized discriminators found`,
+		};
+	}
+
+	// Flat file structure
 	const filePath = join(nodeDir, `${targetVersion}.ts`);
 
-	debugLog('Checking file path', {
+	debugLog('Checking flat file path', {
 		nodeId,
 		version: targetVersion,
 		filePath,
@@ -194,19 +359,20 @@ function getNodeFilePath(
 
 	if (!existsSync(filePath)) {
 		debugLog('File does not exist', { filePath });
-		return null;
+		return { error: `Version '${version}' not found for node '${nodeId}'` };
 	}
 
-	return filePath;
+	return { filePath };
 }
 
 /**
- * Get the type definition for a single node ID, optionally for a specific version
+ * Get the type definition for a single node ID, optionally for a specific version and discriminators
  */
 function getNodeTypeDefinition(
 	nodeId: string,
 	version?: string,
 	generatedTypesDir?: string,
+	discriminators?: { resource?: string; operation?: string; mode?: string },
 ): {
 	nodeId: string;
 	version?: string;
@@ -214,7 +380,12 @@ function getNodeTypeDefinition(
 	availableVersions?: string[];
 	error?: string;
 } {
-	debugLog('Getting type definition for node', { nodeId, version, generatedTypesDir });
+	debugLog('Getting type definition for node', {
+		nodeId,
+		version,
+		generatedTypesDir,
+		discriminators,
+	});
 
 	// Check if the types directory exists
 	const nodesPath = getGeneratedNodesPath(generatedTypesDir);
@@ -229,19 +400,20 @@ function getNodeTypeDefinition(
 		};
 	}
 
-	const filePath = getNodeFilePath(nodeId, version, generatedTypesDir);
+	const pathResult = getNodeFilePath(nodeId, version, generatedTypesDir, discriminators);
 
-	if (!filePath) {
+	if (pathResult.error) {
 		const availableVersions = getNodeVersions(nodeId, generatedTypesDir);
-		if (availableVersions.length > 0) {
-			return {
-				nodeId,
-				version,
-				content: '',
-				availableVersions,
-				error: `Version '${version}' not found for node '${nodeId}'. Available versions: ${availableVersions.join(', ')}`,
-			};
-		}
+		return {
+			nodeId,
+			version,
+			content: '',
+			availableVersions: availableVersions.length > 0 ? availableVersions : undefined,
+			error: pathResult.error,
+		};
+	}
+
+	if (!pathResult.filePath) {
 		return {
 			nodeId,
 			content: '',
@@ -251,16 +423,16 @@ function getNodeTypeDefinition(
 
 	try {
 		const readStartTime = Date.now();
-		const content = readFileSync(filePath, 'utf-8');
+		const content = readFileSync(pathResult.filePath, 'utf-8');
 		const readDuration = Date.now() - readStartTime;
 
-		// Extract version from file path
-		const actualVersion = filePath.match(/\/(v\d+)\.ts$/)?.[1];
+		// Extract version from file path - handles both flat (v1.ts) and split (v1/...) structures
+		const actualVersion = pathResult.filePath.match(/\/(v\d+)(?:\/|\.ts)/)?.[1];
 
 		debugLog('File read successfully', {
 			nodeId,
 			version: actualVersion,
-			filePath,
+			filePath: pathResult.filePath,
 			readDurationMs: readDuration,
 			contentLength: content.length,
 		});
@@ -270,7 +442,7 @@ function getNodeTypeDefinition(
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		debugLog('Error reading file', {
 			nodeId,
-			filePath,
+			filePath: pathResult.filePath,
 			error: errorMessage,
 		});
 		return {
@@ -281,8 +453,17 @@ function getNodeTypeDefinition(
 	}
 }
 
-/** Node request can be a simple string or an object with optional version */
-type NodeRequest = string | { nodeId: string; version?: string };
+/** Node request can be a simple string or an object with optional version and discriminators */
+type NodeRequest =
+	| string
+	| {
+			nodeId: string;
+			version?: string;
+			// Discriminator parameters for split type files
+			resource?: string;
+			operation?: string;
+			mode?: string;
+	  };
 
 /**
  * Options for creating the node get tool
@@ -316,7 +497,17 @@ export function createOneShotNodeGetTool(options: OneShotNodeGetToolOptions = {}
 				const nodeId = typeof nodeRequest === 'string' ? nodeRequest : nodeRequest.nodeId;
 				const version = typeof nodeRequest === 'string' ? undefined : nodeRequest.version;
 
-				const result = getNodeTypeDefinition(nodeId, version, generatedTypesDir);
+				// Extract discriminators from object format
+				const discriminators =
+					typeof nodeRequest === 'string'
+						? undefined
+						: {
+								resource: nodeRequest.resource,
+								operation: nodeRequest.operation,
+								mode: nodeRequest.mode,
+							};
+
+				const result = getNodeTypeDefinition(nodeId, version, generatedTypesDir, discriminators);
 				if (result.error) {
 					errors.push(result.error);
 				} else {
@@ -349,7 +540,7 @@ export function createOneShotNodeGetTool(options: OneShotNodeGetToolOptions = {}
 		{
 			name: 'get_nodes',
 			description:
-				'Get the full TypeScript type definitions for one or more nodes. Returns the complete type information including parameters, credentials, and node type variants. By default returns the latest version. ALWAYS call this with ALL node types you plan to use BEFORE generating workflow code.',
+				'Get the full TypeScript type definitions for one or more nodes. Returns the complete type information including parameters, credentials, and node type variants. By default returns the latest version. For nodes with resource/operation or mode discriminators, you MUST specify them. Use search_nodes first to discover available discriminators. ALWAYS call this with ALL node types you plan to use BEFORE generating workflow code.',
 			schema: z.object({
 				nodeIds: z
 					.array(
@@ -361,11 +552,25 @@ export function createOneShotNodeGetTool(options: OneShotNodeGetToolOptions = {}
 									.string()
 									.optional()
 									.describe('Optional version (e.g., "34" for v34). Omit for latest version.'),
+								resource: z
+									.string()
+									.optional()
+									.describe(
+										'Resource discriminator for REST API nodes (e.g., "ticket", "contact")',
+									),
+								operation: z
+									.string()
+									.optional()
+									.describe('Operation discriminator (e.g., "get", "create", "update")'),
+								mode: z
+									.string()
+									.optional()
+									.describe('Mode discriminator for nodes like Code (e.g., "runOnceForAllItems")'),
 							}),
 						]),
 					)
 					.describe(
-						'Array of nodes to fetch. Can be simple strings (e.g., ["n8n-nodes-base.httpRequest"]) or objects with optional version (e.g., [{ nodeId: "n8n-nodes-base.set", version: "2" }]). Defaults to latest version when not specified.',
+						'Array of nodes to fetch. Can be simple strings for flat nodes (e.g., ["n8n-nodes-base.aggregate"]) or objects with discriminators for split nodes (e.g., [{ nodeId: "n8n-nodes-base.freshservice", resource: "ticket", operation: "get" }] or [{ nodeId: "n8n-nodes-base.code", mode: "runOnceForAllItems" }]). Use search_nodes to discover which nodes require discriminators.',
 					),
 			}),
 		},

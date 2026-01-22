@@ -9,6 +9,7 @@
 
 import { inspect } from 'node:util';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { NodeWithDiscriminators } from '../utils/node-type-parser';
 
 /**
  * Debug logging helper for prompt builder
@@ -59,38 +60,55 @@ ${escapedSdkSourceCode}
 }
 
 /**
+ * Format a single node with optional discriminator info
+ */
+function formatNodeEntry(node: NodeWithDiscriminators): string {
+	const lines: string[] = [`- ${node.id}`];
+
+	if (node.discriminators) {
+		if (node.discriminators.type === 'resource_operation' && node.discriminators.resources) {
+			lines.push('    Requires discriminators for get_nodes:');
+			for (const resource of node.discriminators.resources) {
+				lines.push(
+					`      resource: "${resource.value}" → operations: ${resource.operations.join(', ')}`,
+				);
+			}
+		} else if (node.discriminators.type === 'mode' && node.discriminators.modes) {
+			lines.push(`    Requires mode for get_nodes: ${node.discriminators.modes.join(', ')}`);
+		}
+	}
+
+	return lines.join('\n');
+}
+
+/**
  * Available nodes organized by category
  * This section will be cached by Anthropic for efficiency
  */
-function buildAvailableNodesSection(nodeIds: {
-	triggers: string[];
-	core: string[];
-	ai: string[];
-	other: string[];
+export function buildAvailableNodesSection(nodeIds: {
+	triggers: NodeWithDiscriminators[];
+	core: NodeWithDiscriminators[];
+	ai: NodeWithDiscriminators[];
+	other: NodeWithDiscriminators[];
 }): string {
 	return `<available_nodes>
 Use these node IDs when creating nodes. If you need a node not listed here, use the search_node tool.
 
+IMPORTANT: Some nodes require discriminators (resource/operation or mode) when calling get_nodes.
+If a node shows "Requires discriminators", you MUST provide them. Example:
+  get_nodes({{ nodeIds: [{{ nodeId: "n8n-nodes-base.freshservice", resource: "ticket", operation: "get" }}] }})
+
 ## Trigger Nodes
-${nodeIds.triggers
-	.slice(0, 20)
-	.map((id) => `- ${id}`)
-	.join('\n')}
+${nodeIds.triggers.slice(0, 20).map(formatNodeEntry).join('\n')}
 
 ## Core Nodes
-${nodeIds.core.map((id) => `- ${id}`).join('\n')}
+${nodeIds.core.map(formatNodeEntry).join('\n')}
 
 ## AI/LangChain Nodes
-${nodeIds.ai
-	.slice(0, 30)
-	.map((id) => `- ${id}`)
-	.join('\n')}
+${nodeIds.ai.slice(0, 30).map(formatNodeEntry).join('\n')}
 
 ## Common Integration Nodes (Sample)
-${nodeIds.other
-	.slice(0, 50)
-	.map((id) => `- ${id}`)
-	.join('\n')}
+${nodeIds.other.slice(0, 50).map(formatNodeEntry).join('\n')}
 
 ... and ${nodeIds.other.length - 50} more integration nodes.
 
@@ -784,10 +802,10 @@ The code will be automatically parsed and validated. Make sure:
  */
 export function buildOneShotGeneratorPrompt(
 	nodeIds: {
-		triggers: string[];
-		core: string[];
-		ai: string[];
-		other: string[];
+		triggers: NodeWithDiscriminators[];
+		core: NodeWithDiscriminators[];
+		ai: NodeWithDiscriminators[];
+		other: NodeWithDiscriminators[];
 	},
 	sdkSourceCode: string,
 	currentWorkflow?: string,

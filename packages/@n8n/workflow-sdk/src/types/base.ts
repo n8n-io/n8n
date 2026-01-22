@@ -706,3 +706,49 @@ export type RunOnceForAllItemsFn = <T = unknown>(
 export type RunOnceForEachItemFn = <T = unknown>(
 	fn: (ctx: EachItemContext) => { json: T } | null,
 ) => CodeResult<T>;
+
+// =============================================================================
+// $fromAI types for Tool Nodes
+// =============================================================================
+
+/**
+ * Valid types for $fromAI parameter values
+ */
+export type FromAIArgumentType = 'string' | 'number' | 'boolean' | 'json';
+
+/**
+ * Context provided to tool() config callbacks.
+ * Use $.fromAI() to create AI-driven parameter values.
+ */
+export interface ToolConfigContext {
+	/**
+	 * Create a $fromAI placeholder for AI-driven parameter values.
+	 * The AI agent will determine the actual value at runtime.
+	 */
+	fromAI(
+		key: string,
+		description?: string,
+		type?: FromAIArgumentType,
+		defaultValue?: string | number | boolean | object,
+	): string;
+}
+
+/**
+ * Tool configuration - can be a static NodeConfig or a callback receiving ToolConfigContext.
+ */
+export type ToolConfigInput<TParams = IDataObject> =
+	| NodeConfig<TParams>
+	| (($: ToolConfigContext) => NodeConfig<TParams>);
+
+/**
+ * Input for tool() factory with config callback support for $fromAI.
+ */
+export interface ToolInput<
+	TType extends string = string,
+	TVersion extends number = number,
+	TParams = unknown,
+> {
+	type: TType;
+	version: TVersion;
+	config: ToolConfigInput<TParams>;
+}

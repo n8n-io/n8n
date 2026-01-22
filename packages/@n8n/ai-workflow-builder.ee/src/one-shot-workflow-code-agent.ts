@@ -654,16 +654,16 @@ export class OneShotWorkflowCodeAgent {
 	 * Build the system prompt with node IDs and SDK reference
 	 */
 	private buildPrompt(currentWorkflow?: string) {
-		debugLog('BUILD_PROMPT', 'Getting node IDs by category...');
-		const nodeIds = this.nodeTypeParser.getNodeIdsByCategory();
+		debugLog('BUILD_PROMPT', 'Getting node IDs by category with discriminators...');
+		const nodeIds = this.nodeTypeParser.getNodeIdsByCategoryWithDiscriminators();
 		debugLog('BUILD_PROMPT', 'Node IDs retrieved', {
 			triggerCount: nodeIds.triggers.length,
 			coreCount: nodeIds.core.length,
 			aiCount: nodeIds.ai.length,
 			otherCount: nodeIds.other.length,
-			triggersPreview: nodeIds.triggers.slice(0, 5),
-			corePreview: nodeIds.core.slice(0, 5),
-			aiPreview: nodeIds.ai.slice(0, 5),
+			triggersPreview: nodeIds.triggers.slice(0, 5).map((n) => n.id),
+			corePreview: nodeIds.core.slice(0, 5).map((n) => n.id),
+			aiPreview: nodeIds.ai.slice(0, 5).map((n) => n.id),
 		});
 		debugLog('BUILD_PROMPT', 'Building prompt template...', {
 			hasCurrentWorkflow: !!currentWorkflow,

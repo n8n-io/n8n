@@ -705,6 +705,79 @@ export type SwitchCaseFn = (
 export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder;
 
 // =============================================================================
+// $fromAI for Tool Nodes
+// =============================================================================
+
+/**
+ * Valid types for $fromAI parameter values
+ */
+export type FromAIArgumentType = 'string' | 'number' | 'boolean' | 'json';
+
+/**
+ * Context provided to tool() config callbacks.
+ * Use $.fromAI() to create AI-driven parameter values.
+ */
+export interface ToolConfigContext {
+	/**
+	 * Create a $fromAI placeholder for AI-driven parameter values.
+	 * The AI agent will determine the actual value at runtime.
+	 *
+	 * @param key - Unique identifier for the parameter (1-64 chars, alphanumeric/underscore/hyphen)
+	 * @param description - Description to help the AI understand what value to provide
+	 * @param type - Expected value type: 'string' | 'number' | 'boolean' | 'json' (default: 'string')
+	 * @param defaultValue - Fallback value if AI doesn't provide one
+	 * @returns Expression string like "={{ $fromAI('key', 'desc', 'type') }}"
+	 *
+	 * @example Basic usage
+	 * $.fromAI('recipient_email')
+	 * // Returns: "={{ /*n8n-auto-generated-fromAI-override*\/ $fromAI('recipient_email') }}"
+	 *
+	 * @example With description (helps AI understand the parameter)
+	 * $.fromAI('subject', 'The email subject line')
+	 *
+	 * @example With type
+	 * $.fromAI('count', 'Number of items to fetch', 'number')
+	 *
+	 * @example With default value
+	 * $.fromAI('limit', 'Max results', 'number', 10)
+	 */
+	fromAI(
+		key: string,
+		description?: string,
+		type?: FromAIArgumentType,
+		defaultValue?: string | number | boolean | object,
+	): string;
+}
+
+/**
+ * Tool configuration - can be a static NodeConfig or a callback receiving ToolConfigContext.
+ * Use the callback form when you need $.fromAI() for AI-driven parameter values.
+ */
+export type ToolConfigInput<TParams = unknown> =
+	| NodeConfig<TParams>
+	| (($: ToolConfigContext) => NodeConfig<TParams>);
+
+/**
+ * Input for tool() factory with config callback support for $fromAI.
+ */
+export interface ToolInput<
+	TType extends string = string,
+	TVersion extends number = number,
+	TParams = unknown,
+> {
+	/** Tool node type (e.g., 'n8n-nodes-base.gmailTool') */
+	type: TType;
+	/** Tool node version */
+	version: TVersion;
+	/**
+	 * Tool configuration - can be:
+	 * 1. Static NodeConfig object (when $fromAI not needed)
+	 * 2. Callback function receiving $ context with $.fromAI() (when AI should fill values)
+	 */
+	config: ToolConfigInput<TParams>;
+}
+
+// =============================================================================
 // Subnode Builder Functions (for AI/LangChain nodes)
 // =============================================================================
 
@@ -738,9 +811,51 @@ export type MemoryFn = <T extends NodeInput>(
 ) => MemoryInstance<T['type'], `${T['version']}`, unknown>;
 
 /**
- * tool(input) - Creates a tool subnode
+ * tool(input) - Creates a tool subnode for AI agents
+ *
+ * Tools are subnodes that give AI agents capabilities (send email, search, etc.).
+ * Use $.fromAI() in the config callback to let the AI determine parameter values.
+ *
+ * @example Static config (no AI-driven values)
+ * tool({
+ *   type: '@n8n/n8n-nodes-langchain.toolCalculator',
+ *   version: 1,
+ *   config: { parameters: {} }
+ * });
+ *
+ * @example Config callback with $.fromAI() for AI-driven values
+ * tool({
+ *   type: 'n8n-nodes-base.gmailTool',
+ *   version: 1,
+ *   config: ($) => ({
+ *     parameters: {
+ *       sendTo: $.fromAI('recipient', 'Email address to send to'),
+ *       subject: $.fromAI('subject', 'Email subject line'),
+ *       message: $.fromAI('body', 'Email body content', 'string')
+ *     },
+ *     credentials: { gmailOAuth2: { id: 'cred-123', name: 'Gmail' } }
+ *   })
+ * });
+ *
+ * @example Tool with typed parameters
+ * tool({
+ *   type: 'n8n-nodes-base.googleSheetsTool',
+ *   version: 4.5,
+ *   config: ($) => ({
+ *     parameters: {
+ *       operation: 'append',
+ *       sheetName: $.fromAI('sheet', 'Name of the sheet'),
+ *       columns: {
+ *         value: {
+ *           Name: $.fromAI('name', 'Person name'),
+ *           Email: $.fromAI('email', 'Person email')
+ *         }
+ *       }
+ *     }
+ *   })
+ * });
  */
-export type ToolFn = <T extends NodeInput>(
+export type ToolFn = <T extends ToolInput>(
 	input: T,
 ) => ToolInstance<T['type'], `${T['version']}`, unknown>;
 

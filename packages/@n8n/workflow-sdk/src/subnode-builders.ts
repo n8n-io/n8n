@@ -47,7 +47,11 @@ import type {
 	RerankerInstance,
 	DeclaredConnection,
 	NodeChain,
+	ToolConfigContext,
+	ToolConfigInput,
+	FromAIArgumentType,
 } from './types/base';
+import { createFromAIExpression } from './expression';
 
 // =============================================================================
 // Internal Subnode Instance Implementation
@@ -198,29 +202,84 @@ export function memory<TNode extends NodeInput>(
 	);
 }
 
+// =============================================================================
+// Tool Factory with $fromAI Support
+// =============================================================================
+
+/**
+ * Create the ToolConfigContext with fromAI helper
+ */
+function createToolConfigContext(): ToolConfigContext {
+	return {
+		fromAI(
+			key: string,
+			description?: string,
+			type?: FromAIArgumentType,
+			defaultValue?: string | number | boolean | object,
+		): string {
+			return createFromAIExpression(key, description, type, defaultValue);
+		},
+	};
+}
+
+/**
+ * Input type for tool() factory - accepts either NodeInput with static config
+ * or NodeInput with config callback for $fromAI support.
+ */
+interface ToolFactoryInput<
+	TType extends string = string,
+	TVersion extends number = number,
+	TParams = unknown,
+> {
+	type: TType;
+	version: TVersion;
+	config: ToolConfigInput<TParams>;
+}
+
 /**
  * Create a tool subnode instance.
  *
  * Use this for nodes that output `ai_tool` connection type,
  * such as Tool Code, Tool HTTP Request, Calculator, etc.
  *
- * @example
+ * Tools can use $.fromAI() in a config callback to let the AI agent
+ * determine parameter values at runtime.
+ *
+ * @example Static config (no $fromAI)
  * ```typescript
- * const codeRunner = tool({
- *   type: '@n8n/n8n-nodes-langchain.toolCode',
- *   version: 1.1,
- *   config: { parameters: { code: 'return Math.random()' } }
+ * const calc = tool({
+ *   type: '@n8n/n8n-nodes-langchain.toolCalculator',
+ *   version: 1,
+ *   config: { parameters: {} }
+ * });
+ * ```
+ *
+ * @example Config callback with $fromAI
+ * ```typescript
+ * const gmail = tool({
+ *   type: 'n8n-nodes-base.gmailTool',
+ *   version: 1,
+ *   config: ($) => ({
+ *     parameters: {
+ *       sendTo: $.fromAI('to', 'Email address to send to'),
+ *       subject: $.fromAI('subject', 'Email subject line'),
+ *       message: $.fromAI('body', 'Email body content', 'string')
+ *     }
+ *   })
  * });
  * ```
  */
-export function tool<TNode extends NodeInput>(
+export function tool<TNode extends ToolFactoryInput>(
 	input: TNode,
 ): ToolInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	const config =
+		typeof input.config === 'function' ? input.config(createToolConfigContext()) : input.config;
+
 	const versionStr = String(input.version) as `${TNode['version']}`;
 	return new SubnodeInstanceImpl<TNode['type'], `${TNode['version']}`, unknown, 'ai_tool'>(
 		input.type,
 		versionStr,
-		input.config as NodeConfig,
+		config as NodeConfig,
 		'ai_tool',
 	);
 }

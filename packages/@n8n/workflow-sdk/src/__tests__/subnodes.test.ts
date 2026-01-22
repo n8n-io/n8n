@@ -336,3 +336,174 @@ describe('subnode integration with node builder', () => {
 		expect(agent.config.subnodes?.tools).toHaveLength(2);
 	});
 });
+
+// =============================================================================
+// Tests for tool() with $fromAI Support
+// =============================================================================
+
+describe('tool() with $fromAI support', () => {
+	let subnodeBuilders: typeof import('../subnode-builders');
+
+	beforeAll(async () => {
+		try {
+			subnodeBuilders = await import('../subnode-builders');
+		} catch {
+			// Module doesn't exist yet
+		}
+	});
+
+	it('should support static config without fromAI', () => {
+		const calc = subnodeBuilders.tool({
+			type: '@n8n/n8n-nodes-langchain.toolCalculator',
+			version: 1,
+			config: { parameters: {} },
+		});
+		expect(calc.config.parameters).toEqual({});
+		expect(calc._subnodeType).toBe('ai_tool');
+	});
+
+	it('should support config callback with fromAI', () => {
+		const gmail = subnodeBuilders.tool({
+			type: 'n8n-nodes-base.gmailTool',
+			version: 1,
+			config: ($) => ({
+				parameters: {
+					sendTo: $.fromAI('to'),
+				},
+			}),
+		});
+		expect(gmail.config.parameters?.sendTo).toMatch(/\$fromAI\('to'\)/);
+		expect(gmail.config.parameters?.sendTo).toContain('/*n8n-auto-generated-fromAI-override*/');
+	});
+
+	it('should generate fromAI with description', () => {
+		const t = subnodeBuilders.tool({
+			type: 'n8n-nodes-base.gmailTool',
+			version: 1,
+			config: ($) => ({
+				parameters: { subject: $.fromAI('subject', 'Email subject line') },
+			}),
+		});
+		expect(t.config.parameters?.subject).toContain("'subject'");
+		expect(t.config.parameters?.subject).toContain('Email subject line');
+	});
+
+	it('should generate fromAI with type', () => {
+		const t = subnodeBuilders.tool({
+			type: 'test.tool',
+			version: 1,
+			config: ($) => ({
+				parameters: { count: $.fromAI('count', '', 'number') },
+			}),
+		});
+		expect(t.config.parameters?.count).toContain("'number'");
+	});
+
+	it('should generate fromAI with default value', () => {
+		const t = subnodeBuilders.tool({
+			type: 'test.tool',
+			version: 1,
+			config: ($) => ({
+				parameters: {
+					count: $.fromAI('count', '', 'number', 10),
+					enabled: $.fromAI('enabled', '', 'boolean', true),
+				},
+			}),
+		});
+		expect(t.config.parameters?.count).toContain('10');
+		expect(t.config.parameters?.enabled).toContain('true');
+	});
+
+	it('should handle special characters in description', () => {
+		const t = subnodeBuilders.tool({
+			type: 'test.tool',
+			version: 1,
+			config: ($) => ({
+				parameters: {
+					msg: $.fromAI('msg', 'User\'s message with "quotes"'),
+				},
+			}),
+		});
+		// Should properly escape quotes
+		expect(t.config.parameters?.msg).toBeDefined();
+		expect(t.config.parameters?.msg).toContain('$fromAI');
+	});
+
+	it('should generate proper expression format', () => {
+		const t = subnodeBuilders.tool({
+			type: 'test.tool',
+			version: 1,
+			config: ($) => ({
+				parameters: {
+					email: $.fromAI('recipient_email'),
+				},
+			}),
+		});
+		const expr = t.config.parameters?.email as string;
+		// Should start with ={{ and end with }}
+		expect(expr).toMatch(/^=\{\{.*\}\}$/);
+		// Should contain the marker
+		expect(expr).toContain('/*n8n-auto-generated-fromAI-override*/');
+		// Should contain the $fromAI call
+		expect(expr).toContain("$fromAI('recipient_email')");
+	});
+
+	it('should handle multiple fromAI calls in same config', () => {
+		const gmail = subnodeBuilders.tool({
+			type: 'n8n-nodes-base.gmailTool',
+			version: 1,
+			config: ($) => ({
+				parameters: {
+					sendTo: $.fromAI('to', 'Recipient email'),
+					subject: $.fromAI('subject', 'Email subject'),
+					message: $.fromAI('body', 'Email content'),
+				},
+				credentials: { gmailOAuth2: { id: 'cred-123', name: 'Gmail' } },
+			}),
+		});
+
+		expect(gmail.config.parameters?.sendTo).toContain("$fromAI('to'");
+		expect(gmail.config.parameters?.subject).toContain("$fromAI('subject'");
+		expect(gmail.config.parameters?.message).toContain("$fromAI('body'");
+		expect(gmail.config.credentials).toEqual({ gmailOAuth2: { id: 'cred-123', name: 'Gmail' } });
+	});
+
+	it('should work with nested parameters', () => {
+		const t = subnodeBuilders.tool({
+			type: 'n8n-nodes-base.googleSheetsTool',
+			version: 4.5,
+			config: ($) => ({
+				parameters: {
+					operation: 'append',
+					sheetName: $.fromAI('sheet', 'Name of the sheet'),
+					columns: {
+						value: {
+							Name: $.fromAI('name', 'Person name'),
+							Email: $.fromAI('email', 'Person email'),
+						},
+					},
+				},
+			}),
+		});
+
+		expect(t.config.parameters?.operation).toBe('append');
+		expect(t.config.parameters?.sheetName).toContain("$fromAI('sheet'");
+		const columns = t.config.parameters?.columns as { value: { Name: string; Email: string } };
+		expect(columns.value.Name).toContain("$fromAI('name'");
+		expect(columns.value.Email).toContain("$fromAI('email'");
+	});
+
+	it('should handle json type with object default value', () => {
+		const t = subnodeBuilders.tool({
+			type: 'test.tool',
+			version: 1,
+			config: ($) => ({
+				parameters: {
+					data: $.fromAI('payload', 'JSON payload', 'json', { key: 'value' }),
+				},
+			}),
+		});
+		expect(t.config.parameters?.data).toContain("'json'");
+		expect(t.config.parameters?.data).toContain('{"key":"value"}');
+	});
+});
