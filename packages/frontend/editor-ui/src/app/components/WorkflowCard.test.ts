@@ -7,6 +7,7 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import type { WorkflowResource } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { FrontendSettings } from '@n8n/api-types';
 import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -88,6 +89,12 @@ describe('WorkflowCard', () => {
 		usersStore = mockedStore(useUsersStore);
 		message = useMessage();
 		toast = useToast();
+
+		settingsStore.settings = {
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+		} as unknown as FrontendSettings;
 
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
@@ -588,6 +595,30 @@ describe('WorkflowCard', () => {
 		});
 
 		const indicator = queryByTestId('workflow-card-mcp');
+		expect(indicator).not.toBeVisible();
+	});
+
+	it('should show dynamic credentials indicator when workflow has credentialResolverId', () => {
+		const data = createWorkflow({
+			settings: {
+				credentialResolverId: 'resolver-123',
+			},
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+
+		const indicator = getByTestId('workflow-card-dynamic-credentials');
+		expect(indicator).toBeVisible();
+	});
+
+	it('should hide dynamic credentials indicator when workflow has no credentialResolverId', () => {
+		const data = createWorkflow({
+			settings: {},
+		});
+
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		const indicator = queryByTestId('workflow-card-dynamic-credentials');
 		expect(indicator).not.toBeVisible();
 	});
 

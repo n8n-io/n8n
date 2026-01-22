@@ -14,8 +14,16 @@ import ProjectCardBadge from '@/features/collaboration/projects/components/Proje
 import { useI18n } from '@n8n/i18n';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
-import { N8nActionToggle, N8nBadge, N8nCard, N8nText } from '@n8n/design-system';
+import {
+	N8nActionToggle,
+	N8nBadge,
+	N8nCard,
+	N8nIcon,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -43,6 +51,11 @@ const message = useMessage();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
+const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
+
+const isDynamicCredentialsEnabled = computed(() =>
+	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
+);
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.credential').toLowerCase());
 const credentialType = computed(() =>
@@ -144,6 +157,23 @@ function moveResource() {
 				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
+				<N8nTooltip v-if="isDynamicCredentialsEnabled && data.isResolvable" placement="top">
+					<template #content>
+						<div :class="$style.tooltipContent">
+							<strong>{{ locale.baseText('credentials.dynamic.tooltipTitle') }}</strong>
+							<span>{{ locale.baseText('credentials.dynamic.tooltip') }}</span>
+						</div>
+					</template>
+					<N8nBadge
+						theme="tertiary"
+						class="ml-3xs"
+						:class="$style.dynamicBadge"
+						data-test-id="credential-card-dynamic"
+					>
+						<N8nIcon icon="key-round" size="xsmall" />
+						{{ locale.baseText('credentials.dynamic.badge') }}
+					</N8nBadge>
+				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -212,6 +242,19 @@ function moveResource() {
 	align-self: stretch;
 	padding: 0 var(--spacing--sm) 0 0;
 	cursor: default;
+}
+
+.dynamicBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	font-size: var(--font-size--3xs);
+}
+
+.tooltipContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 @include mixins.breakpoint('sm-and-down') {

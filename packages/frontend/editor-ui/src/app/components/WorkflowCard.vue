@@ -43,6 +43,7 @@ import {
 } from '@n8n/design-system';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -101,6 +102,7 @@ const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
 const mcp = useMcp();
+const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -268,6 +270,14 @@ const isSomeoneElsesWorkflow = computed(
 
 const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;
+});
+
+const isDynamicCredentialsEnabled = computed(() =>
+	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
+);
+
+const hasDynamicCredentials = computed(() => {
+	return isDynamicCredentialsEnabled.value && !!props.data.settings?.credentialResolverId;
 });
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
@@ -526,6 +536,23 @@ const tags = computed(
 				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
+				<N8nTooltip v-if="hasDynamicCredentials" placement="top">
+					<template #content>
+						<div :class="$style.tooltipContent">
+							<strong>{{ locale.baseText('workflows.dynamic.tooltipTitle') }}</strong>
+							<span>{{ locale.baseText('workflows.dynamic.tooltip') }}</span>
+						</div>
+					</template>
+					<N8nBadge
+						theme="tertiary"
+						class="ml-3xs"
+						:class="$style.dynamicBadge"
+						data-test-id="workflow-card-dynamic-credentials"
+					>
+						<N8nIcon icon="key-round" size="xsmall" />
+						{{ locale.baseText('credentials.dynamic.badge') }}
+					</N8nBadge>
+				</N8nTooltip>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
@@ -708,6 +735,19 @@ const tags = computed(
 	&:hover {
 		color: var(--color--text);
 	}
+}
+
+.dynamicBadge {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	font-size: var(--font-size--3xs);
+}
+
+.tooltipContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .publishIndicator {

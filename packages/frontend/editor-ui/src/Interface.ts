@@ -311,6 +311,7 @@ export type CredentialsResource = BaseResource & {
 	readOnly: boolean;
 	needsSetup: boolean;
 	isGlobal?: boolean;
+	isResolvable?: boolean;
 };
 
 // Base resource types that are always available
