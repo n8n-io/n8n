@@ -465,11 +465,18 @@ export interface IfBranchConfig extends NodeConfig {
 
 /**
  * IF branch composite
+ * trueBranch/falseBranch can be:
+ * - single NodeInstance: one target
+ * - array of NodeInstance: fan-out to multiple parallel targets
  */
 export interface IfBranchComposite {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
-	readonly trueBranch: NodeInstance<string, string, unknown>;
-	readonly falseBranch: NodeInstance<string, string, unknown>;
+	readonly trueBranch:
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[];
+	readonly falseBranch:
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[];
 }
 
 /**

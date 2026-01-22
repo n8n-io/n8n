@@ -85,6 +85,21 @@ class SwitchNodeInstance implements NodeInstance<'n8n-nodes-base.switch', string
 }
 
 /**
+ * Check if an object is a NodeInstance (has type, version, config, then method)
+ */
+function isNodeInstance(obj: unknown): obj is NodeInstance<string, string, unknown> {
+	return (
+		obj !== null &&
+		typeof obj === 'object' &&
+		'type' in obj &&
+		'version' in obj &&
+		'config' in obj &&
+		'then' in obj &&
+		typeof (obj as NodeInstance<string, string, unknown>).then === 'function'
+	);
+}
+
+/**
  * Internal Switch case composite implementation
  */
 class SwitchCaseCompositeImpl implements SwitchCaseComposite {
@@ -98,10 +113,26 @@ class SwitchCaseCompositeImpl implements SwitchCaseComposite {
 }
 
 /**
+ * Switch case composite implementation that wraps an existing node instance
+ */
+class SwitchCaseCompositeWithExistingNode implements SwitchCaseComposite {
+	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+	readonly cases: NodeInstance<string, string, unknown>[];
+
+	constructor(
+		cases: NodeInstance<string, string, unknown>[],
+		existingNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+	) {
+		this.cases = cases;
+		this.switchNode = existingNode;
+	}
+}
+
+/**
  * Create a Switch case composite for multi-way branching
  *
  * @param cases - Array of nodes for each case output (index = output number)
- * @param config - Full Switch node config including optional version and id
+ * @param configOrNode - Full Switch node config including optional version and id, OR a pre-declared Switch node instance
  *
  * @example
  * ```typescript
@@ -116,11 +147,25 @@ class SwitchCaseCompositeImpl implements SwitchCaseComposite {
  *     },
  *   }))
  *   .toJSON();
+ *
+ * // Using a pre-declared Switch node:
+ * const switchNode = node({ type: 'n8n-nodes-base.switch', ... });
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(switchCase([case0, case1], switchNode));
  * ```
  */
 export function switchCase(
 	cases: NodeInstance<string, string, unknown>[],
-	config?: SwitchCaseConfig,
+	configOrNode?: SwitchCaseConfig | NodeInstance<'n8n-nodes-base.switch', string, unknown>,
 ): SwitchCaseComposite {
-	return new SwitchCaseCompositeImpl(cases, config);
+	// Check if the second argument is a NodeInstance (pre-declared Switch node)
+	if (isNodeInstance(configOrNode) && configOrNode.type === 'n8n-nodes-base.switch') {
+		return new SwitchCaseCompositeWithExistingNode(
+			cases,
+			configOrNode as NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+		);
+	}
+	// Otherwise, treat it as a SwitchCaseConfig
+	return new SwitchCaseCompositeImpl(cases, configOrNode as SwitchCaseConfig);
 }

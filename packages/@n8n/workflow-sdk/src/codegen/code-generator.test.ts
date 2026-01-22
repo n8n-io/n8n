@@ -3,6 +3,7 @@ import { generateCode } from './code-generator';
 import { buildSemanticGraph } from './semantic-graph';
 import { annotateGraph } from './graph-annotator';
 import { buildCompositeTree } from './composite-builder';
+import { parseWorkflowCode } from '../parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 
 // Helper to generate code from workflow JSON
@@ -1030,6 +1031,450 @@ describe('code-generator', () => {
 
 				expect(code).toContain('subnodes:');
 				expect(code).toContain('memory: memory(');
+			});
+		});
+
+		describe('fan-out patterns', () => {
+			it('generates .then([...]) for fan-out without merge', () => {
+				const json: WorkflowJSON = {
+					id: 'fanout-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Source',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'Target1',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, -50],
+						},
+						{
+							id: '4',
+							name: 'Target2',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 50],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Source', type: 'main', index: 0 }]] },
+						Source: {
+							main: [
+								[
+									{ node: 'Target1', type: 'main', index: 0 },
+									{ node: 'Target2', type: 'main', index: 0 },
+								],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should use array syntax for parallel targets
+				expect(code).toContain('.then([');
+				expect(code).toContain('Target1');
+				expect(code).toContain('Target2');
+				// Should NOT have sequential chaining between targets
+				expect(code).not.toMatch(/Target1.*\.then.*Target2/s);
+			});
+
+			it('generates .then([...]) for fan-out with downstream chains', () => {
+				const json: WorkflowJSON = {
+					id: 'fanout-chains',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Upload',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'Instagram',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, -100],
+						},
+						{
+							id: '4',
+							name: 'YouTube',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 0],
+						},
+						{
+							id: '5',
+							name: 'TikTok',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 100],
+						},
+						{
+							id: '6',
+							name: 'IG Analytics',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [300, -100],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Upload', type: 'main', index: 0 }]] },
+						Upload: {
+							main: [
+								[
+									{ node: 'Instagram', type: 'main', index: 0 },
+									{ node: 'YouTube', type: 'main', index: 0 },
+									{ node: 'TikTok', type: 'main', index: 0 },
+								],
+							],
+						},
+						Instagram: { main: [[{ node: 'IG Analytics', type: 'main', index: 0 }]] },
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should use array syntax for parallel targets
+				expect(code).toContain('.then([');
+				// All three branches should be present
+				expect(code).toContain('Instagram');
+				expect(code).toContain('YouTube');
+				expect(code).toContain('TikTok');
+				// Instagram branch should have downstream chain to IG Analytics
+				expect(code).toContain('IG Analytics');
+			});
+		});
+
+		describe('composite node parameters roundtrip', () => {
+			it('preserves switchCase parameters through roundtrip', () => {
+				const json: WorkflowJSON = {
+					id: 'switch-params-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Switch',
+							type: 'n8n-nodes-base.switch',
+							typeVersion: 3.2,
+							position: [100, 0],
+							parameters: {
+								rules: {
+									values: [
+										{
+											outputKey: 'Case1',
+											conditions: {
+												options: { version: 2, leftValue: '', caseSensitive: true },
+												combinator: 'and',
+												conditions: [
+													{
+														id: 'test-id',
+														operator: { type: 'string', operation: 'exists' },
+														leftValue: '={{ $json.test }}',
+													},
+												],
+											},
+										},
+									],
+								},
+								options: {},
+							},
+						},
+						{
+							id: '3',
+							name: 'Case1',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 0],
+						},
+						{
+							id: '4',
+							name: 'Fallback',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 100],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Switch', type: 'main', index: 0 }]] },
+						Switch: {
+							main: [
+								[{ node: 'Case1', type: 'main', index: 0 }],
+								[{ node: 'Fallback', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				// Generate code
+				const code = generateFromWorkflow(json);
+
+				// Verify parameters are in generated code
+				expect(code).toContain('parameters:');
+				expect(code).toContain('rules');
+				expect(code).toContain('Case1');
+
+				// Parse back to JSON
+				const parsedJson = parseWorkflowCode(code);
+
+				// Find the Switch node
+				const switchNode = parsedJson.nodes.find((n) => n.name === 'Switch');
+				expect(switchNode).toBeDefined();
+				expect(switchNode?.type).toBe('n8n-nodes-base.switch');
+
+				// Verify parameters are preserved
+				expect(switchNode?.parameters).toBeDefined();
+				expect(switchNode?.parameters?.rules).toBeDefined();
+				expect(switchNode?.parameters?.options).toBeDefined();
+			});
+
+			it('preserves ifBranch parameters through roundtrip', () => {
+				const json: WorkflowJSON = {
+					id: 'if-params-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'IF',
+							type: 'n8n-nodes-base.if',
+							typeVersion: 2,
+							position: [100, 0],
+							parameters: {
+								conditions: {
+									options: { version: 2, caseSensitive: true },
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'test-if-id',
+											operator: { type: 'string', operation: 'equals' },
+											leftValue: '={{ $json.status }}',
+											rightValue: 'active',
+										},
+									],
+								},
+								options: {},
+							},
+						},
+						{
+							id: '3',
+							name: 'True Branch',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, -50],
+						},
+						{
+							id: '4',
+							name: 'False Branch',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 50],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
+						IF: {
+							main: [
+								[{ node: 'True Branch', type: 'main', index: 0 }],
+								[{ node: 'False Branch', type: 'main', index: 0 }],
+							],
+						},
+					},
+				};
+
+				// Generate code
+				const code = generateFromWorkflow(json);
+
+				// Verify parameters are in generated code
+				expect(code).toContain('parameters:');
+				expect(code).toContain('conditions');
+
+				// Parse back to JSON
+				const parsedJson = parseWorkflowCode(code);
+
+				// Find the IF node
+				const ifNode = parsedJson.nodes.find((n) => n.name === 'IF');
+				expect(ifNode).toBeDefined();
+				expect(ifNode?.type).toBe('n8n-nodes-base.if');
+
+				// Verify parameters are preserved
+				expect(ifNode?.parameters).toBeDefined();
+				expect(ifNode?.parameters?.conditions).toBeDefined();
+			});
+
+			it('preserves IF node parameters when IF is a cycle target', () => {
+				// Read the actual workflow 5755 JSON which has IF nodes as cycle targets
+				const fs = require('fs');
+				const path = require('path');
+				const jsonPath = path.join(__dirname, '../../test-fixtures/real-workflows/5755.json');
+				const json = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+
+				// Find the Animation Completed? node in original
+				const originalNode = json.nodes.find(
+					(n: { name: string }) => n.name === 'Animation Completed?',
+				);
+				expect(originalNode?.type).toBe('n8n-nodes-base.if');
+				expect(originalNode?.parameters).toBeDefined();
+
+				// Generate and parse back to JSON
+				const code = generateFromWorkflow(json);
+				const parsedJson = parseWorkflowCode(code);
+
+				// Find the Animation Completed? node in parsed output
+				const parsedNode = parsedJson.nodes.find(
+					(n: { name: string }) => n.name === 'Animation Completed?',
+				);
+
+				// Verify parameters are preserved
+				expect(parsedNode).toBeDefined();
+				expect(parsedNode?.parameters).toBeDefined();
+				expect(parsedNode?.parameters?.conditions).toBeDefined();
+			});
+
+			it('preserves ifBranch parameters with cycle pattern (like workflow 5755)', () => {
+				// This replicates the pattern from workflow 5755 where:
+				// 1. A variable is declared for a cycle target node
+				// 2. The IF node has a chain on true branch and the variable on false branch
+				// 3. There's a cycle back from the chain to the variable node
+				const json: WorkflowJSON = {
+					id: 'if-cycle-params-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Wait Node',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [100, 0],
+							parameters: { amount: 60 },
+						},
+						{
+							id: '3',
+							name: 'Check Status',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4.2,
+							position: [200, 0],
+							parameters: { url: 'https://api.example.com/status' },
+						},
+						{
+							id: '4',
+							name: 'Status Check',
+							type: 'n8n-nodes-base.if',
+							typeVersion: 2.2,
+							position: [300, 0],
+							parameters: {
+								conditions: {
+									options: {
+										version: 2,
+										leftValue: '',
+										caseSensitive: true,
+										typeValidation: 'strict',
+									},
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'status-completed',
+											operator: {
+												name: 'filter.operator.equals',
+												type: 'string',
+												operation: 'equals',
+											},
+											leftValue: '={{ $json.status }}',
+											rightValue: 'COMPLETED',
+										},
+									],
+								},
+								options: {},
+							},
+						},
+						{
+							id: '5',
+							name: 'Process Result',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3.4,
+							position: [400, -50],
+							parameters: { options: {} },
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Wait Node', type: 'main', index: 0 }]] },
+						'Wait Node': { main: [[{ node: 'Check Status', type: 'main', index: 0 }]] },
+						'Check Status': { main: [[{ node: 'Status Check', type: 'main', index: 0 }]] },
+						'Status Check': {
+							main: [
+								[{ node: 'Process Result', type: 'main', index: 0 }], // True branch
+								[{ node: 'Wait Node', type: 'main', index: 0 }], // False branch (cycle back)
+							],
+						},
+					},
+				};
+
+				// Generate code
+				const code = generateFromWorkflow(json);
+
+				// Should have a variable declaration for the cycle target
+				expect(code).toContain('const');
+				expect(code).toContain('Wait Node');
+
+				// Verify IF parameters are in generated code
+				expect(code).toContain('parameters:');
+				expect(code).toContain('conditions');
+				expect(code).toContain('COMPLETED');
+
+				// Parse back to JSON
+				const parsedJson = parseWorkflowCode(code);
+
+				// Find the IF node (Status Check)
+				const ifNode = parsedJson.nodes.find((n) => n.name === 'Status Check');
+				expect(ifNode).toBeDefined();
+				expect(ifNode?.type).toBe('n8n-nodes-base.if');
+
+				// Verify parameters are preserved - THIS IS THE KEY TEST
+				expect(ifNode?.parameters).toBeDefined();
+				expect(ifNode?.parameters?.conditions).toBeDefined();
+				expect(ifNode?.parameters?.options).toBeDefined();
 			});
 		});
 

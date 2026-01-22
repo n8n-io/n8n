@@ -128,9 +128,24 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			} else if (this.isIfBranchComposite(chainNode)) {
 				const composite = chainNode as unknown as IfBranchComposite;
 				pinData = this.collectPinDataFromNode(composite.ifNode, pinData);
-				pinData = this.collectPinDataFromNode(composite.trueBranch, pinData);
+				// Handle array branches (fan-out within branch)
+				if (composite.trueBranch) {
+					if (Array.isArray(composite.trueBranch)) {
+						for (const branchNode of composite.trueBranch) {
+							pinData = this.collectPinDataFromNode(branchNode, pinData);
+						}
+					} else {
+						pinData = this.collectPinDataFromNode(composite.trueBranch, pinData);
+					}
+				}
 				if (composite.falseBranch) {
-					pinData = this.collectPinDataFromNode(composite.falseBranch, pinData);
+					if (Array.isArray(composite.falseBranch)) {
+						for (const branchNode of composite.falseBranch) {
+							pinData = this.collectPinDataFromNode(branchNode, pinData);
+						}
+					} else {
+						pinData = this.collectPinDataFromNode(composite.falseBranch, pinData);
+					}
 				}
 			} else if (this.isMergeComposite(chainNode)) {
 				const composite = chainNode as unknown as MergeComposite;
@@ -662,19 +677,40 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 	/**
 	 * Add nodes from an IfBranchComposite to the nodes map
+	 * Supports array branches for fan-out patterns (one output to multiple parallel nodes)
 	 */
 	private addIfBranchNodes(nodes: Map<string, GraphNode>, composite: IfBranchComposite): void {
 		// Build the IF node connections to its branches
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add branch nodes (may be NodeChain or single nodes)
+		// Add branch nodes (may be NodeChain, single node, or array of nodes for fan-out)
 		if (composite.trueBranch) {
-			const trueBranchHead = this.addBranchToGraph(nodes, composite.trueBranch);
-			ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
+			if (Array.isArray(composite.trueBranch)) {
+				// Fan-out: multiple parallel targets from trueBranch
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of composite.trueBranch) {
+					const branchHead = this.addBranchToGraph(nodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
+				}
+				ifMainConns.set(0, targets);
+			} else {
+				const trueBranchHead = this.addBranchToGraph(nodes, composite.trueBranch);
+				ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
+			}
 		}
 		if (composite.falseBranch) {
-			const falseBranchHead = this.addBranchToGraph(nodes, composite.falseBranch);
-			ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
+			if (Array.isArray(composite.falseBranch)) {
+				// Fan-out: multiple parallel targets from falseBranch
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of composite.falseBranch) {
+					const branchHead = this.addBranchToGraph(nodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
+				}
+				ifMainConns.set(1, targets);
+			} else {
+				const falseBranchHead = this.addBranchToGraph(nodes, composite.falseBranch);
+				ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
+			}
 		}
 
 		// Add the IF node with connections to branches
@@ -1259,21 +1295,42 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Handle IF branch composite - creates IF node with true/false branches
 	 * Supports null branches for single-branch patterns
 	 * Handles NodeChain branches (nodes with .then() chains)
+	 * Supports array branches for fan-out patterns (one output to multiple parallel nodes)
 	 */
 	private handleIfBranchComposite(composite: IfBranchComposite): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add true branch (may be NodeChain with downstream nodes)
+		// Add true branch (may be NodeChain with downstream nodes, or array for fan-out)
 		if (composite.trueBranch) {
-			const trueBranchHead = this.addBranchToGraph(newNodes, composite.trueBranch);
-			ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
+			if (Array.isArray(composite.trueBranch)) {
+				// Fan-out: multiple parallel targets from trueBranch
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of composite.trueBranch) {
+					const branchHead = this.addBranchToGraph(newNodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
+				}
+				ifMainConns.set(0, targets);
+			} else {
+				const trueBranchHead = this.addBranchToGraph(newNodes, composite.trueBranch);
+				ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
+			}
 		}
 
-		// Add false branch (may be NodeChain with downstream nodes)
+		// Add false branch (may be NodeChain with downstream nodes, or array for fan-out)
 		if (composite.falseBranch) {
-			const falseBranchHead = this.addBranchToGraph(newNodes, composite.falseBranch);
-			ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
+			if (Array.isArray(composite.falseBranch)) {
+				// Fan-out: multiple parallel targets from falseBranch
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of composite.falseBranch) {
+					const branchHead = this.addBranchToGraph(newNodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
+				}
+				ifMainConns.set(1, targets);
+			} else {
+				const falseBranchHead = this.addBranchToGraph(newNodes, composite.falseBranch);
+				ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
+			}
 		}
 
 		// Add IF node with connections to present branches

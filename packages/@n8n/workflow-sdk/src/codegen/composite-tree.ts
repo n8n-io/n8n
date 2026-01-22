@@ -40,21 +40,29 @@ export interface VariableReference extends CompositeNodeBase {
 
 /**
  * IF branch composite
+ * trueBranch/falseBranch can be:
+ * - null: no branch
+ * - single CompositeNode: one target
+ * - array of CompositeNode: fan-out to multiple parallel targets
  */
 export interface IfBranchCompositeNode extends CompositeNodeBase {
 	kind: 'ifBranch';
 	ifNode: SemanticNode;
-	trueBranch: CompositeNode | null;
-	falseBranch: CompositeNode | null;
+	trueBranch: CompositeNode | CompositeNode[] | null;
+	falseBranch: CompositeNode | CompositeNode[] | null;
 }
 
 /**
  * Switch case composite
+ * Each case can be:
+ * - null: no branch
+ * - single CompositeNode: one target
+ * - array of CompositeNode: fan-out to multiple parallel targets
  */
 export interface SwitchCaseCompositeNode extends CompositeNodeBase {
 	kind: 'switchCase';
 	switchNode: SemanticNode;
-	cases: (CompositeNode | null)[];
+	cases: (CompositeNode | CompositeNode[] | null)[];
 }
 
 /**
@@ -68,12 +76,25 @@ export interface MergeCompositeNode extends CompositeNodeBase {
 
 /**
  * SplitInBatches composite
+ * doneChain/loopChain can be:
+ * - null: no branch
+ * - single CompositeNode: one target
+ * - array of CompositeNode: fan-out to multiple parallel targets
  */
 export interface SplitInBatchesCompositeNode extends CompositeNodeBase {
 	kind: 'splitInBatches';
 	sibNode: SemanticNode;
-	doneChain: CompositeNode | null;
-	loopChain: CompositeNode | null;
+	doneChain: CompositeNode | CompositeNode[] | null;
+	loopChain: CompositeNode | CompositeNode[] | null;
+}
+
+/**
+ * Fan-out composite - a node that connects to multiple parallel targets
+ */
+export interface FanOutCompositeNode extends CompositeNodeBase {
+	kind: 'fanOut';
+	sourceNode: CompositeNode;
+	targets: CompositeNode[];
 }
 
 /**
@@ -86,7 +107,8 @@ export type CompositeNode =
 	| IfBranchCompositeNode
 	| SwitchCaseCompositeNode
 	| MergeCompositeNode
-	| SplitInBatchesCompositeNode;
+	| SplitInBatchesCompositeNode
+	| FanOutCompositeNode;
 
 /**
  * The complete composite tree for a workflow

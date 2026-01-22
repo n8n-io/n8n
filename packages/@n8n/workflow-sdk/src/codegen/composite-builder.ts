@@ -15,6 +15,7 @@ import type {
 	SwitchCaseCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
+	FanOutCompositeNode,
 } from './composite-tree';
 import { getCompositeType } from './semantic-registry';
 
@@ -194,17 +195,46 @@ function shouldBeVariable(node: SemanticNode): boolean {
 }
 
 /**
+ * Build branch targets for IF/Switch/SplitInBatches - handles single target or fan-out
+ * Returns:
+ * - null: no targets
+ * - single CompositeNode: one target
+ * - array of CompositeNode[]: multiple parallel targets (fan-out within branch)
+ */
+function buildBranchTargets(
+	targets: Array<{ target: string }>,
+	ctx: BuildContext,
+): CompositeNode | CompositeNode[] | null {
+	if (targets.length === 0) return null;
+
+	if (targets.length === 1) {
+		return buildFromNode(targets[0].target, ctx);
+	}
+
+	// Multiple targets - build all branches
+	const branches: CompositeNode[] = [];
+	for (const { target } of targets) {
+		if (!ctx.visited.has(target)) {
+			branches.push(buildFromNode(target, ctx));
+		}
+	}
+
+	if (branches.length === 0) return null;
+	if (branches.length === 1) return branches[0];
+
+	// Return array for fan-out within branch
+	return branches;
+}
+
+/**
  * Build composite for an IF node
  */
 function buildIfBranch(node: SemanticNode, ctx: BuildContext): IfBranchCompositeNode {
 	const trueBranchTargets = node.outputs.get('trueBranch') ?? [];
 	const falseBranchTargets = node.outputs.get('falseBranch') ?? [];
 
-	const trueBranch =
-		trueBranchTargets.length > 0 ? buildFromNode(trueBranchTargets[0].target, ctx) : null;
-
-	const falseBranch =
-		falseBranchTargets.length > 0 ? buildFromNode(falseBranchTargets[0].target, ctx) : null;
+	const trueBranch = buildBranchTargets(trueBranchTargets, ctx);
+	const falseBranch = buildBranchTargets(falseBranchTargets, ctx);
 
 	return {
 		kind: 'ifBranch',
@@ -218,15 +248,12 @@ function buildIfBranch(node: SemanticNode, ctx: BuildContext): IfBranchComposite
  * Build composite for a Switch node
  */
 function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompositeNode {
-	const cases: (CompositeNode | null)[] = [];
+	const cases: (CompositeNode | CompositeNode[] | null)[] = [];
 
 	// Iterate through all outputs in order
 	for (const [, connections] of node.outputs) {
-		if (connections.length > 0) {
-			cases.push(buildFromNode(connections[0].target, ctx));
-		} else {
-			cases.push(null);
-		}
+		// Use buildBranchTargets to handle fan-out within each case
+		cases.push(buildBranchTargets(connections, ctx));
 	}
 
 	return {
@@ -283,9 +310,9 @@ function buildSplitInBatches(node: SemanticNode, ctx: BuildContext): SplitInBatc
 	const doneTargets = node.outputs.get('done') ?? [];
 	const loopTargets = node.outputs.get('loop') ?? [];
 
-	const doneChain = doneTargets.length > 0 ? buildFromNode(doneTargets[0].target, ctx) : null;
-
-	const loopChain = loopTargets.length > 0 ? buildFromNode(loopTargets[0].target, ctx) : null;
+	// Use buildBranchTargets to handle fan-out within each branch
+	const doneChain = buildBranchTargets(doneTargets, ctx);
+	const loopChain = buildBranchTargets(loopTargets, ctx);
 
 	return {
 		kind: 'splitInBatches',
@@ -382,8 +409,7 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 					nodes: [compositeNode, mergeComposite],
 				};
 			}
-			// Fan-out without merge - generate all branches
-			// Each branch becomes a separate chain from the fan-out point
+			// Fan-out without merge - create proper fan-out composite
 			const fanOutBranches: CompositeNode[] = [];
 			for (const targetName of nextTargets) {
 				const targetNode = ctx.graph.nodes.get(targetName);
@@ -393,10 +419,9 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 				}
 			}
 			if (fanOutBranches.length > 0) {
-				// Return the node followed by all fan-out branches as separate chains
-				// The first branch continues the chain, others become separate roots
-				const firstBranch = fanOutBranches[0];
 				if (fanOutBranches.length === 1) {
+					// Single branch - just chain it
+					const firstBranch = fanOutBranches[0];
 					if (firstBranch.kind === 'chain') {
 						return {
 							kind: 'chain',
@@ -408,14 +433,13 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 						nodes: [compositeNode, firstBranch],
 					};
 				}
-				// Multiple branches - return as array (caller handles this)
-				// For now, chain with first and add others as separate .then() calls
-				// Actually, this needs proper .then([branch1, branch2, ...]) syntax
-				// Let's use a simple approach: generate multiple .then() chains
-				return {
-					kind: 'chain',
-					nodes: [compositeNode, ...fanOutBranches],
+				// Multiple branches - create fan-out composite for parallel targets
+				const fanOut: FanOutCompositeNode = {
+					kind: 'fanOut',
+					sourceNode: compositeNode,
+					targets: fanOutBranches,
 				};
+				return fanOut;
 			}
 		} else if (nextTargets.length === 1) {
 			const nextTarget = nextTargets[0];

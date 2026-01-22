@@ -16,6 +16,7 @@ import type {
 	SwitchCaseCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
+	FanOutCompositeNode,
 } from './composite-tree';
 
 /**
@@ -379,17 +380,6 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 }
 
 /**
- * Generate node config or variable reference if node is already a variable
- */
-function generateNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
-	const nodeName = node.json.name;
-	if (nodeName && ctx.variableNodes.has(nodeName)) {
-		return toVarName(nodeName);
-	}
-	return generateNodeConfig(node, ctx);
-}
-
-/**
  * Generate flat config object for composite functions (ifBranch, merge, switchCase, splitInBatches).
  * These expect { name?, version?, parameters?, credentials?, position? } directly,
  * not the { type, version, config: { ... } } format used by node().
@@ -532,18 +522,31 @@ function generateVarRef(varRef: VariableReference, _ctx: GenerationContext): str
 }
 
 /**
+ * Generate code for a branch that may be single, array (fan-out), or null
+ */
+function generateBranchCode(
+	branch: CompositeNode | CompositeNode[] | null,
+	ctx: GenerationContext,
+): string {
+	if (branch === null) return 'null';
+
+	if (Array.isArray(branch)) {
+		// Fan-out within branch - generate as array [branch1, branch2, ...]
+		const branchesCode = branch.map((b) => generateComposite(b, ctx)).join(', ');
+		return `[${branchesCode}]`;
+	}
+
+	return generateComposite(branch, ctx);
+}
+
+/**
  * Generate code for an IF branch
  */
 function generateIfBranch(ifBranch: IfBranchCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	const trueBranchCode = ifBranch.trueBranch
-		? generateComposite(ifBranch.trueBranch, innerCtx)
-		: 'null';
-
-	const falseBranchCode = ifBranch.falseBranch
-		? generateComposite(ifBranch.falseBranch, innerCtx)
-		: 'null';
+	const trueBranchCode = generateBranchCode(ifBranch.trueBranch, innerCtx);
+	const falseBranchCode = generateBranchCode(ifBranch.falseBranch, innerCtx);
 
 	// Use variable reference if IF node is already declared as a variable
 	// ifBranch expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
@@ -558,9 +561,8 @@ function generateIfBranch(ifBranch: IfBranchCompositeNode, ctx: GenerationContex
 function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	const casesCode = switchCase.cases
-		.map((c) => (c ? generateComposite(c, innerCtx) : 'null'))
-		.join(', ');
+	// Use generateBranchCode to handle fan-out within each case
+	const casesCode = switchCase.cases.map((c) => generateBranchCode(c, innerCtx)).join(', ');
 
 	// Use variable reference if switch node is already declared as a variable
 	// switchCase expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
@@ -585,6 +587,25 @@ function generateMerge(merge: MergeCompositeNode, ctx: GenerationContext): strin
 }
 
 /**
+ * Check if a branch (single, array, or null) ends with a varRef (for loop detection)
+ */
+function branchEndsWithVarRef(branch: CompositeNode | CompositeNode[] | null): boolean {
+	if (branch === null) return false;
+
+	if (Array.isArray(branch)) {
+		// For array branches, check if any branch ends with varRef
+		return branch.some((b) => branchEndsWithVarRef(b));
+	}
+
+	if (branch.kind === 'chain') {
+		const lastNode = branch.nodes[branch.nodes.length - 1];
+		return lastNode?.kind === 'varRef';
+	}
+
+	return branch.kind === 'varRef';
+}
+
+/**
  * Generate code for split in batches
  */
 function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: GenerationContext): string {
@@ -596,26 +617,39 @@ function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: Generatio
 	let code = `splitInBatches(${config})`;
 
 	if (sib.doneChain) {
-		const doneCode = generateComposite(sib.doneChain, innerCtx);
+		const doneCode = generateBranchCode(sib.doneChain, innerCtx);
 		code += `\n${getIndent(ctx)}.done().then(${doneCode})`;
 	}
 
 	if (sib.loopChain) {
-		const loopCode = generateComposite(sib.loopChain, innerCtx);
+		const loopCode = generateBranchCode(sib.loopChain, innerCtx);
 		code += `\n${getIndent(ctx)}.each().then(${loopCode})`;
 
 		// Check if loop chain ends with cycle back
-		if (sib.loopChain.kind === 'chain') {
-			const lastNode = sib.loopChain.nodes[sib.loopChain.nodes.length - 1];
-			if (lastNode && lastNode.kind === 'varRef') {
-				code += `.loop()`;
-			}
-		} else if (sib.loopChain.kind === 'varRef') {
+		if (branchEndsWithVarRef(sib.loopChain)) {
 			code += `.loop()`;
 		}
 	}
 
 	return code;
+}
+
+/**
+ * Generate code for a fan-out pattern (one source to multiple parallel targets)
+ */
+function generateFanOut(fanOut: FanOutCompositeNode, ctx: GenerationContext): string {
+	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
+
+	// Generate source node code
+	const sourceCode = generateComposite(fanOut.sourceNode, ctx);
+
+	// Generate all target branches
+	const targetsCode = fanOut.targets
+		.map((target) => generateComposite(target, innerCtx))
+		.join(',\n' + getIndent(innerCtx));
+
+	// Return with parallel .then([...]) syntax
+	return `${sourceCode}\n${getIndent(ctx)}.then([\n${getIndent(innerCtx)}${targetsCode}])`;
 }
 
 /**
@@ -637,6 +671,8 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateMerge(node, ctx);
 		case 'splitInBatches':
 			return generateSplitInBatches(node, ctx);
+		case 'fanOut':
+			return generateFanOut(node, ctx);
 	}
 }
 
