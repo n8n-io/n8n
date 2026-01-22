@@ -74,12 +74,19 @@ const SignoutView = async () => await import('@/features/core/auth/views/Signout
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
-const SettingsExternalSecrets = async () =>
-	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
-const SettingsSecretsProviderConnections = async () =>
-	await import(
-		'@/features/integrations/secretsProviderConnections.ee/views/SettingsSecretsProviderConnections.vue'
+const SettingsExternalSecrets = async () => {
+	const { check } = useEnvFeatureFlag();
+
+	if (check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+		return await import(
+			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.vue'
+		);
+	}
+
+	return await import(
+		'@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue'
 	);
+};
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
@@ -680,14 +687,6 @@ export const routes: RouteRecordRaw[] = [
 				path: 'external-secrets',
 				name: VIEWS.EXTERNAL_SECRETS_SETTINGS,
 				component: SettingsExternalSecrets,
-				beforeEnter: (_to, _from, next) => {
-					const posthogStore = usePostHog();
-					// Check feature flag to decide which route to use
-					if (posthogStore.isFeatureEnabled('secretsProviderConnections')) {
-						return next({ name: VIEWS.SECRETS_PROVIDER_CONNECTIONS_SETTINGS });
-					}
-					next();
-				},
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -700,34 +699,6 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'external-secrets',
-							};
-						},
-					},
-				},
-			},
-			{
-				path: 'secrets-provider-connections',
-				name: VIEWS.SECRETS_PROVIDER_CONNECTIONS_SETTINGS,
-				component: SettingsSecretsProviderConnections,
-				beforeEnter: (_to, _from, next) => {
-					const posthogStore = usePostHog();
-					if (!posthogStore.isFeatureEnabled('secretsProviderConnections')) {
-						return next({ name: VIEWS.SETTINGS }); // Redirect if flag disabled
-					}
-					next();
-				},
-				meta: {
-					middleware: ['authenticated', 'rbac'],
-					middlewareOptions: {
-						rbac: {
-							scope: ['externalSecretsProvider:list', 'externalSecretsProvider:update'],
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'secrets-provider-connections',
 							};
 						},
 					},
