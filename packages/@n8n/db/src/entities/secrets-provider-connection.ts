@@ -6,11 +6,11 @@ import type { SharedSecretsProviderConnection } from './shared-secrets-provider-
 @Entity()
 export class SecretsProviderConnection extends WithTimestampsAndStringId {
 	/**
-	 * Unique name of the secrets provider connection.
-	 * This is the name used in the credential expressions e.g. {{ $secrets.<connection-name>.<secret-key>}
+	 * Unique provider identifier of the secrets provider connection.
+	 * This is the identifier used in the credential expressions e.g. {{ $secrets.<provider-key>.<secret-key>}
 	 */
 	@Column({ unique: true })
-	name: string;
+	providerKey: string;
 
 	/**
 	 * Optional display name of the secrets provider connection
