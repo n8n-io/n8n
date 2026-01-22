@@ -1,5 +1,13 @@
 import { YjsProvider } from '../providers/yjs';
-import type { CRDTDoc, CRDTMap, CRDTUndoManager, UndoStackChangeEvent } from '../types';
+import type {
+	CRDTDoc,
+	CRDTMap,
+	CRDTUndoManager,
+	DeepChange,
+	DeepChangeEvent,
+	TransactionBatch,
+	UndoStackChangeEvent,
+} from '../types';
 
 // Run tests for all providers
 describe.each([['Yjs', () => new YjsProvider()]])('%s UndoManager', (_name, createProvider) => {
@@ -549,7 +557,7 @@ describe('UndoManager - provider-specific tests', () => {
 
 			// Redo should restore it
 			undoManager.redo();
-			const node = nodesMap.get('node-1') as unknown;
+			const node = nodesMap.get('node-1');
 			expect(node).toBeDefined();
 
 			undoManager.destroy();
@@ -571,20 +579,17 @@ describe('UndoManager - provider-specific tests', () => {
 			undoManager.stopCapturing();
 
 			// Get the node and update position (like drag does)
-			const nodeMap = nodesMap.get('node-1');
+			const nodeMap = nodesMap.get('node-1') as CRDTMap<unknown>;
 			doc.transact(() => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				(nodeMap as any).set('position', [300, 400]);
+				nodeMap.set('position', [300, 400]);
 			});
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			expect((nodeMap as any).get('position')).toEqual([300, 400]);
+			expect(nodeMap.get('position')).toEqual([300, 400]);
 			expect(undoManager.canUndo()).toBe(true);
 
 			// Undo should revert position
 			undoManager.undo();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			expect((nodeMap as any).get('position')).toEqual([100, 200]);
+			expect(nodeMap.get('position')).toEqual([100, 200]);
 
 			undoManager.destroy();
 			doc.destroy();
@@ -668,16 +673,17 @@ describe('UndoManager - provider-specific tests', () => {
 			// Track changes from onTransactionBatch
 			interface TrackedChange {
 				origin: string;
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				changes: any[];
+				changes: DeepChange[];
 			}
 			const tracked: TrackedChange[] = [];
-			doc.onTransactionBatch(['nodes'], (batch) => {
+			doc.onTransactionBatch(['nodes'], (batch: TransactionBatch) => {
+				const allChanges: DeepChange[] = [];
+				for (const changes of batch.changes.values()) {
+					allChanges.push(...changes);
+				}
 				tracked.push({
 					origin: batch.origin,
-					changes: Array.from(batch.changes.entries()).flatMap(([mapName, changes]) =>
-						changes.map((c) => ({ mapName, ...c })),
-					),
+					changes: allChanges,
 				});
 			});
 
@@ -691,10 +697,9 @@ describe('UndoManager - provider-specific tests', () => {
 			tracked.length = 0; // Clear initial add
 
 			// Get the node and update position
-			const nodeMap = nodesMap.get('node-1');
+			const nodeMap = nodesMap.get('node-1') as CRDTMap<unknown>;
 			doc.transact(() => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				(nodeMap as any).set('position', [300, 400]);
+				nodeMap.set('position', [300, 400]);
 			});
 
 			// Verify we got the position change
@@ -716,7 +721,8 @@ describe('UndoManager - provider-specific tests', () => {
 				(c) => isMapChange(c) && c.path.includes('position'),
 			);
 			expect(undoChange).toBeDefined();
-			expect(undoChange?.value).toEqual([100, 200]); // Original position restored
+			expect(isMapChange(undoChange!)).toBe(true);
+			expect((undoChange as DeepChangeEvent).value).toEqual([100, 200]); // Original position restored
 
 			undoManager.destroy();
 			doc.destroy();
@@ -729,12 +735,13 @@ describe('UndoManager - provider-specific tests', () => {
 			const nodesMap = doc.getMap('nodes');
 
 			// Track all changes
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const changes: any[] = [];
+			const changes: DeepChange[] = [];
 			doc.onTransactionBatch(['nodes'], (batch) => {
-				for (const [mapName, mapChanges] of batch.changes) {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				for (const [, mapChanges] of batch.changes) {
 					for (const change of mapChanges) {
-						changes.push({ mapName, ...change });
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+						changes.push(change);
 					}
 				}
 			});
@@ -751,15 +758,15 @@ describe('UndoManager - provider-specific tests', () => {
 				(c) => isMapChange(c) && c.path.length === 1 && c.path[0] === 'node-1',
 			);
 			expect(nodeAddChange).toBeDefined();
-			expect(nodeAddChange.action).toBe('add');
+			expect(isMapChange(nodeAddChange!)).toBe(true);
+			expect((nodeAddChange as DeepChangeEvent).action).toBe('add');
 
 			changes.length = 0;
 
 			// Update position on existing node
-			const nodeMap = nodesMap.get('node-1');
+			const nodeMap = nodesMap.get('node-1') as CRDTMap<unknown>;
 			doc.transact(() => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				(nodeMap as any).set('position', [300, 400]);
+				nodeMap.set('position', [300, 400]);
 			});
 
 			// onTransactionBatch uses changedParentTypes with target filtering
@@ -773,8 +780,9 @@ describe('UndoManager - provider-specific tests', () => {
 					c.path[1] === 'position',
 			);
 			expect(posChange).toBeDefined();
-			expect(posChange?.action).toBe('update');
-			expect(posChange?.value).toEqual([300, 400]);
+			expect(isMapChange(posChange!)).toBe(true);
+			expect((posChange as DeepChangeEvent).action).toBe('update');
+			expect((posChange as DeepChangeEvent).value).toEqual([300, 400]);
 
 			doc.destroy();
 		});
@@ -786,8 +794,7 @@ describe('UndoManager - provider-specific tests', () => {
 			const nodesMap = doc.getMap('nodes');
 
 			// Track changes using onDeepChange (which uses observeDeep internally)
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const changes: any[] = [];
+			const changes: DeepChange[] = [];
 			nodesMap.onDeepChange((changesFromDeep, _origin) => {
 				changes.push(...changesFromDeep);
 			});
@@ -802,10 +809,9 @@ describe('UndoManager - provider-specific tests', () => {
 			changes.length = 0;
 
 			// Update position on existing node
-			const nodeMap = nodesMap.get('node-1');
+			const nodeMap = nodesMap.get('node-1') as CRDTMap<unknown>;
 			doc.transact(() => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				(nodeMap as any).set('position', [300, 400]);
+				nodeMap.set('position', [300, 400]);
 			});
 
 			// observeDeep DOES receive nested changes with path relative to observed type
@@ -817,8 +823,9 @@ describe('UndoManager - provider-specific tests', () => {
 					c.path[1] === 'position',
 			);
 			expect(posChange).toBeDefined();
-			expect(posChange.action).toBe('update');
-			expect(posChange.value).toEqual([300, 400]);
+			expect(isMapChange(posChange!)).toBe(true);
+			expect((posChange as DeepChangeEvent).action).toBe('update');
+			expect((posChange as DeepChangeEvent).value).toEqual([300, 400]);
 
 			doc.destroy();
 		});
