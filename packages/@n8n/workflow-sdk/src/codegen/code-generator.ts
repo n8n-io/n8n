@@ -184,6 +184,12 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 		configParts.push(`credentials: ${formatValue(node.json.credentials)}`);
 	}
 
+	// Include position if non-zero
+	const pos = node.json.position;
+	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
+	}
+
 	if (configParts.length > 0) {
 		parts.push(`${innerIndent}config: { ${configParts.join(', ')} }`);
 	}

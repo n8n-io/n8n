@@ -595,6 +595,50 @@ describe('code-generator', () => {
 			});
 		});
 
+		describe('position tracking', () => {
+			it('includes position when non-zero', () => {
+				const json: WorkflowJSON = {
+					id: 'position-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4.2,
+							position: [200, 100],
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain('position: [200, 100]');
+			});
+
+			it('omits position when at origin [0, 0]', () => {
+				const json: WorkflowJSON = {
+					id: 'position-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4.2,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).not.toContain('position:');
+			});
+		});
+
 		describe('reserved keywords', () => {
 			it('appends _node suffix for reserved keyword variable names', () => {
 				const json: WorkflowJSON = {
