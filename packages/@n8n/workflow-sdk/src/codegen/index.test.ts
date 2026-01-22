@@ -129,7 +129,8 @@ describe('codegen index', () => {
 
 			const code = generateWorkflowCode(json);
 
-			expect(code).toContain("return workflow('workflow-id', 'Empty')");
+			// Empty string for undefined ID (preserves original for roundtrip)
+			expect(code).toContain("return workflow('', 'Empty')");
 			expect(code).not.toContain('.toJSON();');
 		});
 	});
