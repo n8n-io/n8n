@@ -156,3 +156,15 @@ export type {
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
+
+export type {
+	SecretsProviderType,
+	SecretsProviderState,
+	SecretsProviderConnectionTestState,
+	SecretsProviderConnectionOwner,
+	SecretSummary,
+	SecretProviderConnection,
+	SecretProviderTypeResponse,
+	AutocompletionSecretsResponse,
+	TestSecretProviderConnectionResponse,
+} from './schemas/secrets-provider.schema';
