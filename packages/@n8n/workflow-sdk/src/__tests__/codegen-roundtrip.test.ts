@@ -12,7 +12,7 @@ import {
 
 const SKIP_WORKFLOWS = new Set<string>([
 	// '2519', - now passes after multiple triggers fix
-	'2878',
+	// '2878', - now passes after merge composite downstream connection fix
 	'2896',
 	'3066',
 	'3121',
@@ -134,7 +134,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	'8591',
 	// '8644', - now passes after multiple triggers/convergence fixes
 	// '8721', - now passes after multiple triggers/convergence fixes
-	'9200',
+	// '9200', - now passes after merge composite downstream connection fix
 	// '9437', - now passes after multiple triggers/convergence fixes
 	// '9549' - now passes after fan-out pattern fix
 	// '9576', - now passes after multiple triggers/convergence fixes
@@ -177,7 +177,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '12452', - now passes after multiple triggers/convergence fixes
 	'12462',
 	// '12536', - now passes after shared fan-out target fix
-	'12645',
+	// '12645', - now passes after merge composite downstream connection fix
 	// '12739', - now passes after multiple triggers/convergence fixes
 ]);
 

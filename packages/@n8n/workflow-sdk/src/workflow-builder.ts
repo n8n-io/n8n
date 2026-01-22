@@ -1040,11 +1040,26 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					if (chainNode === null) {
 						continue;
 					}
-					if (typeof chainNode.getConnections === 'function') {
-						const nodeConns = chainNode.getConnections();
+
+					// Get the actual node instance that might have connections
+					// For MergeComposite, we need to check the mergeNode inside it
+					let nodeToCheck: NodeInstance<string, string, unknown> | null = null;
+					let nodeName: string | null = null;
+
+					if (this.isMergeComposite(chainNode)) {
+						const composite = chainNode as unknown as MergeComposite;
+						nodeToCheck = composite.mergeNode;
+						nodeName = composite.mergeNode.name;
+					} else if (typeof chainNode.getConnections === 'function') {
+						nodeToCheck = chainNode;
+						nodeName = chainNode.name;
+					}
+
+					if (nodeToCheck && nodeName && typeof nodeToCheck.getConnections === 'function') {
+						const nodeConns = nodeToCheck.getConnections();
 						if (nodeConns.some((c) => c.target === target && c.outputIndex === outputIndex)) {
 							// This chain node declared this connection
-							const sourceGraphNode = nodes.get(chainNode.name);
+							const sourceGraphNode = nodes.get(nodeName);
 							if (sourceGraphNode) {
 								const targetName = this.resolveTargetNodeName(target);
 								if (targetName) {

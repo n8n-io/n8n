@@ -288,10 +288,11 @@ class NodeChainImpl<
 		// Check if the tail is a composite - if so, get its output node
 		const outputNode = getCompositeOutputNode(this.tail);
 		if (outputNode) {
-			// For composites, the output node (mergeNode, switchNode, ifNode) doesn't support
-			// .then() directly, so we need to track the connection manually.
-			// The connection will be resolved by the workflow-builder when processing the chain.
-			// For now, we just add the targets to allNodes and return the new chain.
+			// For composites, connect the output node (mergeNode, switchNode, ifNode) to the targets.
+			// The output node supports .then() to declare the connection.
+			if (typeof outputNode.then === 'function') {
+				outputNode.then(targets, outputIndex);
+			}
 			const lastTarget = targets[targets.length - 1];
 			return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...allTargetNodes]);
 		}
