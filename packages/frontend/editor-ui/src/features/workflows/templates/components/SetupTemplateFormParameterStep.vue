@@ -13,6 +13,9 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { N8nHeading } from '@n8n/design-system';
 import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
 import AssignmentCollection from '@/features/ndv/parameters/components/AssignmentCollection/AssignmentCollection.vue';
+import FilterConditions from '@/features/ndv/parameters/components/FilterConditions/FilterConditions.vue';
+import ResourceMapper from '@/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue';
+
 import { PARAMETER_INPUT_TYPES } from '../composables/useParameterSetupState';
 
 const props = defineProps<{
@@ -121,6 +124,30 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 							emit('parameterChanged', { parameterKey: param.key, value: $event.value })
 						"
 					/>
+					<FilterConditions
+						v-else-if="param.parameter.type === 'filter'"
+						:parameter="param.parameter"
+						:value="parameterValues[param.key] ?? param.currentValue"
+						:path="`parameters.${param.key}`"
+						:node="node"
+						:read-only="false"
+						@value-changed="
+							emit('parameterChanged', { parameterKey: param.key, value: $event.value })
+						"
+					/>
+					<ResourceMapper
+						v-else-if="param.parameter.type === 'resourceMapper'"
+						:parameter="param.parameter"
+						:node="node"
+						:path="`parameters.${param.key}`"
+						:allow-empty-strings="param.parameter.typeOptions?.resourceMapper?.allowEmptyValues"
+						input-size="small"
+						label-size="small"
+						@value-changed="
+							emit('parameterChanged', { parameterKey: param.key, value: $event.value })
+						"
+					/>
+					<div v-else>🚧 REQUIRES CUSTOM COMPONENT</div>
 				</div>
 			</div>
 		</div>

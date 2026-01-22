@@ -292,6 +292,58 @@ export const TEST_TEMPLATE_WITH_MODULES: IWorkflowTemplate = {
 				},
 				position: [1168, 624],
 			},
+			{
+				id: '8fb7772e-5808-4153-ae82-8c7d1759caf3',
+				name: 'New IF Node',
+				type: 'n8n-nodes-base.if',
+				typeVersion: 2.3,
+				parameters: {
+					conditions: {
+						options: {
+							caseSensitive: true,
+							leftValue: '',
+							typeValidation: 'strict',
+							version: 3,
+						},
+						conditions: [
+							{
+								id: '463806cd-e5db-4958-b37c-40089b224036',
+								leftValue: '',
+								rightValue: '',
+								operator: {
+									type: 'string',
+									operation: 'equals',
+									name: 'filter.operator.equals',
+								},
+							},
+						],
+						combinator: 'and',
+					},
+					options: {},
+				},
+				position: [1008, 704],
+			},
+			{
+				parameters: {
+					operation: 'append',
+					documentId: {
+						__rl: true,
+						mode: 'list',
+						value: '',
+					},
+					sheetName: {
+						__rl: true,
+						mode: 'list',
+						value: '',
+					},
+				},
+				type: 'n8n-nodes-base.googleSheets',
+				typeVersion: 4.7,
+				position: [1872, 912],
+				id: 'c5de652e-e041-4d7e-865e-6dd6dd640fd8',
+				name: 'Append row in sheet',
+				credentials: {},
+			},
 		],
 		settings: {},
 		connections: {

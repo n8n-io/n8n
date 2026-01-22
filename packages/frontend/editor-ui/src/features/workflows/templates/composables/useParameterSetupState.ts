@@ -27,7 +27,7 @@ export const PARAMETER_INPUT_TYPES = [
 ];
 
 // Parameter types that have their own custom components
-export const CUSTOM_COMPONENT_TYPES = ['assignmentCollection'];
+export const CUSTOM_COMPONENT_TYPES = ['assignmentCollection', 'filter', 'resourceMapper'];
 
 export const SUPPORTED_PARAMETER_TYPES = [...PARAMETER_INPUT_TYPES, ...CUSTOM_COMPONENT_TYPES];
 
@@ -59,7 +59,7 @@ export const getNodeRequiredParameters = <TNode extends BaseNode>(
 		// TESTING: For now, we also include:
 		// 	- Parameters that require editors
 		//  - Assignment parameters (from the Set node)
-		const TEST_PARAMETER_TYPES = ['assignmentCollection', 'workflowSelector'];
+		const TEST_PARAMETER_TYPES = ['assignmentCollection', 'workflowSelector', 'filter'];
 		if (!prop.required && !prop.typeOptions?.editor && !TEST_PARAMETER_TYPES.includes(prop.type))
 			return false;
 
