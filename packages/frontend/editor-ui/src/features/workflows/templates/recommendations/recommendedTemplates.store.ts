@@ -6,6 +6,7 @@ import templateIds from './data/recommendedTemplateIds.json';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
+import sampleSize from 'lodash/sampleSize';
 
 export const NUMBER_OF_TEMPLATES = 6;
 
@@ -28,17 +29,8 @@ export const useRecommendedTemplatesStore = defineStore('recommendedTemplates', 
 	}
 
 	function getRandomTemplateIds(): number[] {
-		const result: number[] = [];
-		const picked = new Set<number>();
 		const count = Math.min(NUMBER_OF_TEMPLATES, templateIds.length);
-		while (result.length < count) {
-			const index = Math.floor(Math.random() * templateIds.length);
-			if (!picked.has(index)) {
-				picked.add(index);
-				result.push(templateIds[index]);
-			}
-		}
-		return result;
+		return sampleSize(templateIds, count);
 	}
 
 	function trackTemplateTileClick(templateId: number) {
