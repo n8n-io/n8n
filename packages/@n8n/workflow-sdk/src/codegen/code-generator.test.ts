@@ -100,8 +100,9 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain('.then(');
-				// Should have chained structure
-				expect(code).toMatch(/trigger\([^)]+\)\s*\n?\s*\.then\(/);
+				// Should have workflow-level chained structure: .add(trigger(...)).then(...)
+				expect(code).toMatch(/\.add\(trigger\(/);
+				expect(code).toMatch(/\.then\(node\(/);
 			});
 		});
 

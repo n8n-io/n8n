@@ -60,15 +60,71 @@ function createVarRef(nodeName: string): VariableReference {
 }
 
 /**
+ * Get all output connection targets from the first output slot
+ */
+function getAllFirstOutputTargets(node: SemanticNode): string[] {
+	// Get all targets from first non-empty output
+	for (const [, connections] of node.outputs) {
+		if (connections.length > 0) {
+			return connections.map((c) => c.target);
+		}
+	}
+	return [];
+}
+
+/**
  * Get the first output connection target (for single-output following)
  */
 function getFirstOutput(node: SemanticNode): string | null {
-	// Get first non-empty output
-	for (const [, connections] of node.outputs) {
-		if (connections.length > 0) {
-			return connections[0].target;
+	const targets = getAllFirstOutputTargets(node);
+	return targets.length > 0 ? targets[0] : null;
+}
+
+/**
+ * Check if a node is a merge node
+ */
+function isMergeType(type: string): boolean {
+	return type === 'n8n-nodes-base.merge';
+}
+
+/**
+ * Check if multiple targets all converge at the same merge node
+ */
+function detectMergePattern(
+	targetNames: string[],
+	ctx: BuildContext,
+): { mergeNode: SemanticNode; branches: string[] } | null {
+	if (targetNames.length < 2) return null;
+
+	// Find what each target connects to
+	const mergeTargets = new Map<string, string[]>();
+
+	for (const targetName of targetNames) {
+		const targetNode = ctx.graph.nodes.get(targetName);
+		if (!targetNode) continue;
+
+		// Get what this target connects to
+		const nextTargets = getAllFirstOutputTargets(targetNode);
+		for (const nextTarget of nextTargets) {
+			const nextNode = ctx.graph.nodes.get(nextTarget);
+			if (nextNode && isMergeType(nextNode.type)) {
+				const branches = mergeTargets.get(nextTarget) ?? [];
+				branches.push(targetName);
+				mergeTargets.set(nextTarget, branches);
+			}
 		}
 	}
+
+	// Check if all targets converge at the same merge
+	for (const [mergeName, branches] of mergeTargets) {
+		if (branches.length === targetNames.length) {
+			const mergeNode = ctx.graph.nodes.get(mergeName);
+			if (mergeNode) {
+				return { mergeNode, branches };
+			}
+		}
+	}
+
 	return null;
 }
 
@@ -139,14 +195,17 @@ function buildMerge(node: SemanticNode, ctx: BuildContext): MergeCompositeNode {
 		}
 	}
 
-	// Build each branch (but they may already be visited)
+	// Build each branch
+	// Note: For merge, we inline branches as leaves even if visited,
+	// unless they're explicitly declared as variables (cycle/convergence targets)
 	for (const branchName of branchNames) {
 		const branchNode = ctx.graph.nodes.get(branchName);
 		if (branchNode) {
-			if (ctx.visited.has(branchName)) {
-				// Already visited, use variable reference
+			if (ctx.variables.has(branchName)) {
+				// Only use varRef if it's an actual declared variable
 				branches.push(createVarRef(branchName));
 			} else {
+				// Inline as leaf (even if visited during chain traversal)
 				branches.push(createLeaf(branchNode));
 			}
 		}
@@ -225,7 +284,48 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 
 	// Check if there's a chain continuation (single output to non-composite target)
 	if (compositeType === undefined) {
-		const nextTarget = getFirstOutput(node);
+		const nextTargets = getAllFirstOutputTargets(node);
+
+		if (nextTargets.length > 1) {
+			// Fan-out: check if this leads to a merge pattern
+			const mergePattern = detectMergePattern(nextTargets, ctx);
+			if (mergePattern) {
+				// Generate merge composite with all branches
+				const branches: CompositeNode[] = mergePattern.branches.map((branchName) => {
+					const branchNode = ctx.graph.nodes.get(branchName);
+					if (branchNode) {
+						ctx.visited.add(branchName);
+						return createLeaf(branchNode);
+					}
+					return createVarRef(branchName);
+				});
+
+				ctx.visited.add(mergePattern.mergeNode.name);
+				const mergeComposite: MergeCompositeNode = {
+					kind: 'merge',
+					mergeNode: mergePattern.mergeNode,
+					branches,
+				};
+
+				// Check if merge has downstream continuation
+				const mergeOutputs = getAllFirstOutputTargets(mergePattern.mergeNode);
+				if (mergeOutputs.length > 0) {
+					const nextComposite = buildFromNode(mergeOutputs[0], ctx);
+					return {
+						kind: 'chain',
+						nodes: [compositeNode, mergeComposite, nextComposite],
+					};
+				}
+
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, mergeComposite],
+				};
+			}
+			// Fan-out without merge - just follow first target for now
+		}
+
+		const nextTarget = nextTargets[0];
 		if (nextTarget) {
 			const nextComposite = buildFromNode(nextTarget, ctx);
 			// Combine into chain

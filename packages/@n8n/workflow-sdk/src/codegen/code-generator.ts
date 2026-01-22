@@ -272,6 +272,32 @@ function generateVariableDeclarations(
 }
 
 /**
+ * Flatten a composite tree into workflow-level calls.
+ * Returns array of [method, code] tuples where method is 'add' or 'then'.
+ */
+function flattenToWorkflowCalls(
+	root: CompositeNode,
+	ctx: GenerationContext,
+): Array<[string, string]> {
+	const calls: Array<[string, string]> = [];
+
+	if (root.kind === 'chain') {
+		// Chain: first node is .add(), rest are .then()
+		for (let i = 0; i < root.nodes.length; i++) {
+			const node = root.nodes[i];
+			const method = i === 0 ? 'add' : 'then';
+			const code = generateComposite(node, ctx);
+			calls.push([method, code]);
+		}
+	} else {
+		// Single node: just .add()
+		calls.push(['add', generateComposite(root, ctx)]);
+	}
+
+	return calls;
+}
+
+/**
  * Generate SDK code from a composite tree
  *
  * @param tree - The composite tree
@@ -298,11 +324,13 @@ export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
 
 	lines.push(`return workflow('${workflowId}', '${workflowName}')`);
 
-	// Generate each root
+	// Generate each root, flattening chains to workflow-level calls
 	ctx.indent = 1;
 	for (const root of tree.roots) {
-		const rootCode = generateComposite(root, ctx);
-		lines.push(`  .add(${rootCode})`);
+		const calls = flattenToWorkflowCalls(root, ctx);
+		for (const [method, code] of calls) {
+			lines.push(`  .${method}(${code})`);
+		}
 	}
 
 	return lines.join('\n');
