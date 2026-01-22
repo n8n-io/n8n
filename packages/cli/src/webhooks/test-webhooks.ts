@@ -14,7 +14,10 @@ import type {
 } from 'n8n-workflow';
 
 import { authAllowlistedNodes } from './constants';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import {
+	removeContextEstablishmentHookTargets,
+	sanitizeWebhookRequest,
+} from './webhook-request-sanitizer';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
@@ -123,6 +126,9 @@ export class TestWebhooks implements IWebhookManager {
 		if (workflowStartNode === null) {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
+
+		// Remove headers targeted by context establishment hooks
+		removeContextEstablishmentHookTargets(request, workflow, workflowStartNode);
 
 		if (!authAllowlistedNodes.has(workflowStartNode.type)) {
 			sanitizeWebhookRequest(request);

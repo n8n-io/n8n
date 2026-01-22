@@ -1,4 +1,8 @@
+import { Container } from '@n8n/di';
 import type { Request } from 'express';
+import { ExecutionContextHookRegistry } from 'n8n-core';
+import { toExecutionContextEstablishmentHookParameter, type Workflow } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 import { AUTH_COOKIE_NAME } from '@/constants';
 
@@ -33,6 +37,64 @@ const removeCookiesFromParsedCookies = (req: Request) => {
 	if (req.cookies !== null && typeof req.cookies === 'object') {
 		for (const cookieName of DISALLOWED_COOKIES) {
 			delete req.cookies[cookieName];
+		}
+	}
+};
+
+/**
+ * Removes headers that are targeted by context establishment hooks from the request.
+ * This ensures that identity extractors (like BearerTokenExtractor, HttpHeaderExtractor)
+ * can extract the identity, but the headers are removed from the request before
+ * being included in the execution data.
+ */
+export const removeContextEstablishmentHookTargets = (
+	req: Request,
+	workflow: Workflow,
+	workflowStartNode: INode,
+): void => {
+	const hookRegistry = Container.get(ExecutionContextHookRegistry);
+	const nodeParams = {
+		...(workflow.getNode(workflowStartNode.name)?.parameters ?? {}),
+		...workflowStartNode.parameters,
+	};
+
+	const hookParamsResult = toExecutionContextEstablishmentHookParameter(nodeParams);
+	if (!hookParamsResult || hookParamsResult.error) {
+		return;
+	}
+
+	const hooks = hookParamsResult.data.contextEstablishmentHooks.hooks;
+	if (!hooks || hooks.length === 0) {
+		return;
+	}
+
+	const headersToRemove = new Set<string>();
+
+	for (const hookConfig of hooks) {
+		const hook = hookRegistry.getHookByName(hookConfig.hookName);
+		if (!hook) {
+			continue;
+		}
+
+		if (hookConfig.hookName === 'BearerTokenExtractor') {
+			headersToRemove.add('authorization');
+		}
+
+		if (hookConfig.hookName === 'HttpHeaderExtractor') {
+			const headerName =
+				(hookConfig.options as { headerName?: string })?.headerName ?? 'authorization';
+			headersToRemove.add(headerName.toLowerCase());
+		}
+	}
+
+	if (headersToRemove.size > 0 && req.headers) {
+		for (const headerName of headersToRemove) {
+			for (const key of Object.keys(req.headers)) {
+				if (key.toLowerCase() === headerName) {
+					delete req.headers[key];
+					break;
+				}
+			}
 		}
 	}
 };

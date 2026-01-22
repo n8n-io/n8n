@@ -1,7 +1,14 @@
+import { Container } from '@n8n/di';
 import type { Request } from 'express';
+import { ExecutionContextHookRegistry } from 'n8n-core';
 import { mock } from 'jest-mock-extended';
+import type { Workflow } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
-import { sanitizeWebhookRequest } from '@/webhooks/webhook-request-sanitizer';
+import {
+	removeContextEstablishmentHookTargets,
+	sanitizeWebhookRequest,
+} from '@/webhooks/webhook-request-sanitizer';
 
 describe('webhookRequestSanitizer', () => {
 	let mockRequest: Request;
@@ -263,6 +270,276 @@ describe('webhookRequestSanitizer', () => {
 			expect(mockRequest.cookies).toEqual({
 				'other-cookie': 'value',
 			});
+		});
+	});
+
+	describe('removeContextEstablishmentHookTargets', () => {
+		let mockRequest: Request;
+		let mockWorkflow: Workflow;
+		let mockWorkflowStartNode: INode;
+		let mockHookRegistry: ExecutionContextHookRegistry;
+
+		beforeEach(() => {
+			mockRequest = mock<Request>({
+				headers: {},
+			});
+
+			mockWorkflowStartNode = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: {},
+			});
+
+			mockWorkflow = mock<Workflow>();
+			(mockWorkflow.getNode as jest.Mock) = jest.fn().mockReturnValue(undefined);
+
+			mockHookRegistry = mock<ExecutionContextHookRegistry>();
+			(mockHookRegistry.getHookByName as jest.Mock) = jest.fn();
+
+			Container.set(ExecutionContextHookRegistry, mockHookRegistry);
+		});
+
+		afterEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should not remove headers when no hooks are configured', () => {
+			mockRequest.headers = {
+				authorization: 'Bearer token123',
+				'content-type': 'application/json',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers.authorization).toBe('Bearer token123');
+			expect(mockRequest.headers['content-type']).toBe('application/json');
+		});
+
+		it('should not remove headers when hooks parameter is invalid', () => {
+			mockWorkflowStartNode.parameters = {
+				contextEstablishmentHooks: 'invalid',
+			};
+			mockRequest.headers = {
+				authorization: 'Bearer token123',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers.authorization).toBe('Bearer token123');
+		});
+
+		it('should remove authorization header when BearerTokenExtractor hook is configured', () => {
+			mockWorkflowStartNode.parameters = {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [
+						{
+							hookName: 'BearerTokenExtractor',
+						},
+					],
+				},
+			};
+
+			(mockHookRegistry.getHookByName as jest.Mock).mockReturnValue(
+				mock<{ hookDescription: { name: string } }>(),
+			);
+
+			mockRequest.headers = {
+				authorization: 'Bearer token123',
+				'content-type': 'application/json',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers.authorization).toBeUndefined();
+			expect(mockRequest.headers['content-type']).toBe('application/json');
+		});
+
+		it('should remove authorization header when HttpHeaderExtractor hook uses default header', () => {
+			mockWorkflowStartNode.parameters = {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [
+						{
+							hookName: 'HttpHeaderExtractor',
+							options: {},
+						},
+					],
+				},
+			};
+
+			(mockHookRegistry.getHookByName as jest.Mock).mockReturnValue(
+				mock<{ hookDescription: { name: string } }>(),
+			);
+
+			mockRequest.headers = {
+				authorization: 'Bearer token123',
+				'content-type': 'application/json',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers.authorization).toBeUndefined();
+			expect(mockRequest.headers['content-type']).toBe('application/json');
+		});
+
+		it('should remove custom header when HttpHeaderExtractor hook is configured with custom header', () => {
+			mockWorkflowStartNode.parameters = {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [
+						{
+							hookName: 'HttpHeaderExtractor',
+							options: {
+								headerName: 'x-api-key',
+							},
+						},
+					],
+				},
+			};
+
+			(mockHookRegistry.getHookByName as jest.Mock).mockReturnValue(
+				mock<{ hookDescription: { name: string } }>(),
+			);
+
+			mockRequest.headers = {
+				'x-api-key': 'key123',
+				authorization: 'Bearer token123',
+				'content-type': 'application/json',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers['x-api-key']).toBeUndefined();
+			expect(mockRequest.headers.authorization).toBe('Bearer token123');
+			expect(mockRequest.headers['content-type']).toBe('application/json');
+		});
+
+		it('should remove multiple headers when multiple hooks are configured', () => {
+			mockWorkflowStartNode.parameters = {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [
+						{
+							hookName: 'BearerTokenExtractor',
+						},
+						{
+							hookName: 'HttpHeaderExtractor',
+							options: {
+								headerName: 'x-custom-auth',
+							},
+						},
+					],
+				},
+			};
+
+			(mockHookRegistry.getHookByName as jest.Mock).mockReturnValue(
+				mock<{ hookDescription: { name: string } }>(),
+			);
+
+			mockRequest.headers = {
+				authorization: 'Bearer token123',
+				'x-custom-auth': 'custom-token',
+				'content-type': 'application/json',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers.authorization).toBeUndefined();
+			expect(mockRequest.headers['x-custom-auth']).toBeUndefined();
+			expect(mockRequest.headers['content-type']).toBe('application/json');
+		});
+
+		it('should handle case-insensitive header removal', () => {
+			mockWorkflowStartNode.parameters = {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [
+						{
+							hookName: 'BearerTokenExtractor',
+						},
+					],
+				},
+			};
+
+			(mockHookRegistry.getHookByName as jest.Mock).mockReturnValue(
+				mock<{ hookDescription: { name: string } }>(),
+			);
+
+			mockRequest.headers = {
+				Authorization: 'Bearer token123',
+				'Content-Type': 'application/json',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers.Authorization).toBeUndefined();
+			expect(mockRequest.headers['Content-Type']).toBe('application/json');
+		});
+
+		it('should not remove headers when hook is not found in registry', () => {
+			mockWorkflowStartNode.parameters = {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [
+						{
+							hookName: 'NonExistentHook',
+						},
+					],
+				},
+			};
+
+			(mockHookRegistry.getHookByName as jest.Mock).mockReturnValue(undefined);
+
+			mockRequest.headers = {
+				authorization: 'Bearer token123',
+				'content-type': 'application/json',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers.authorization).toBe('Bearer token123');
+			expect(mockRequest.headers['content-type']).toBe('application/json');
+		});
+
+		it('should handle empty hooks array', () => {
+			mockWorkflowStartNode.parameters = {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [],
+				},
+			};
+
+			mockRequest.headers = {
+				authorization: 'Bearer token123',
+			};
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers.authorization).toBe('Bearer token123');
+		});
+
+		it('should handle undefined headers', () => {
+			mockWorkflowStartNode.parameters = {
+				executionsHooksVersion: 1,
+				contextEstablishmentHooks: {
+					hooks: [
+						{
+							hookName: 'BearerTokenExtractor',
+						},
+					],
+				},
+			};
+
+			(mockHookRegistry.getHookByName as jest.Mock).mockReturnValue(
+				mock<{ hookDescription: { name: string } }>(),
+			);
+
+			(mockRequest.headers as unknown) = undefined;
+
+			removeContextEstablishmentHookTargets(mockRequest, mockWorkflow, mockWorkflowStartNode);
+
+			expect(mockRequest.headers).toBeUndefined();
 		});
 	});
 });
