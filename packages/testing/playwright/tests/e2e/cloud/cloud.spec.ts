@@ -41,33 +41,6 @@ const cloudTrialRequirements: TestRequirements = {
 	},
 };
 
-const cloudNonTrialRequirements: TestRequirements = {
-	config: {
-		settings: {
-			deployment: { type: 'cloud' },
-			n8nMetadata: { userId: '1' },
-			aiCredits: {
-				enabled: true,
-				credits: 100,
-				setup: true,
-			},
-			banners: {
-				dismissed: ['V1'], // Prevent V1 banner interference
-			},
-		},
-	},
-	intercepts: {
-		'cloud-plan': {
-			url: '**/rest/admin/cloud-plan',
-			response: { ...nonTrialPlanData, expirationDate: fiveDaysFromNow.toJSON() },
-		},
-		'cloud-user': {
-			url: '**/rest/cloud/proxy/user/me',
-			response: {},
-		},
-	},
-};
-
 const setupCloudTest = async (
 	n8n: n8nPage,
 	setupRequirements: (requirements: TestRequirements) => Promise<void>,
