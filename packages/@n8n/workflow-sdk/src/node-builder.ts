@@ -14,6 +14,7 @@ import {
 	type MergeComposite,
 	type SwitchCaseComposite,
 	type IfBranchComposite,
+	type SplitInBatchesBuilder,
 } from './types/base';
 
 /**
@@ -56,6 +57,46 @@ function isIfBranchComposite(value: unknown): value is IfBranchComposite {
 }
 
 /**
+ * Check if value is a SplitInBatchesBuilder or a chain (DoneChain/EachChain) from one
+ */
+function isSplitInBatchesBuilderOrChain(value: unknown): value is SplitInBatchesBuilder<unknown> {
+	if (value === null || typeof value !== 'object') return false;
+
+	// Direct builder check (has sibNode, _doneNodes, _eachNodes)
+	if ('sibNode' in value && '_doneNodes' in value && '_eachNodes' in value) {
+		return true;
+	}
+
+	// Check if it's a DoneChain or EachChain with a _parent that's a builder
+	if ('_parent' in value && '_nodes' in value) {
+		const parent = (value as { _parent: unknown })._parent;
+		return (
+			parent !== null &&
+			typeof parent === 'object' &&
+			'sibNode' in parent &&
+			'_doneNodes' in parent &&
+			'_eachNodes' in parent
+		);
+	}
+
+	return false;
+}
+
+/**
+ * Extract the SplitInBatchesBuilder from a value (handles both direct builder and chains)
+ */
+function extractSplitInBatchesBuilder(value: unknown): SplitInBatchesBuilder<unknown> {
+	// Direct builder
+	if ('sibNode' in (value as object)) {
+		return value as SplitInBatchesBuilder<unknown>;
+	}
+
+	// Chain with _parent - extract the parent builder
+	const chain = value as { _parent: unknown };
+	return chain._parent as SplitInBatchesBuilder<unknown>;
+}
+
+/**
  * Get the output node from a composite (the node that should receive connections)
  */
 function getCompositeOutputNode(value: unknown): NodeInstance<string, string, unknown> | null {
@@ -67,6 +108,9 @@ function getCompositeOutputNode(value: unknown): NodeInstance<string, string, un
 	}
 	if (isIfBranchComposite(value)) {
 		return value.ifNode;
+	}
+	if (isSplitInBatchesBuilderOrChain(value)) {
+		return extractSplitInBatchesBuilder(value).sibNode;
 	}
 	return null;
 }
@@ -154,10 +198,15 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 			this._connections.push({ target: t, outputIndex });
 		}
 
-		// Helper to extract all nodes from a target (handles NodeChain targets)
+		// Helper to extract all nodes from a target (handles NodeChain and SplitInBatchesBuilder targets)
 		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
 			if (isNodeChain(t)) {
 				return t.allNodes;
+			}
+			// For SplitInBatchesBuilder, return it as-is so it can be detected and handled
+			// by workflow-builder's addSplitInBatchesChainNodes
+			if (isSplitInBatchesBuilderOrChain(t)) {
+				return [t as unknown as NodeInstance<string, string, unknown>];
 			}
 			return [t as NodeInstance<string, string, unknown>];
 		};
@@ -274,10 +323,15 @@ class NodeChainImpl<
 	): NodeChain<THead, T> {
 		const targets = Array.isArray(target) ? target : [target];
 
-		// Helper to extract all nodes from a target (handles NodeChain targets)
+		// Helper to extract all nodes from a target (handles NodeChain and SplitInBatchesBuilder targets)
 		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
 			if (isNodeChain(t)) {
 				return t.allNodes;
+			}
+			// For SplitInBatchesBuilder, return it as-is so it can be detected and handled
+			// by workflow-builder's addSplitInBatchesChainNodes
+			if (isSplitInBatchesBuilderOrChain(t)) {
+				return [t as unknown as NodeInstance<string, string, unknown>];
 			}
 			return [t as NodeInstance<string, string, unknown>];
 		};

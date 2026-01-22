@@ -234,6 +234,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					this.addIfBranchNodes(newNodes, chainNode as unknown as IfBranchComposite);
 				} else if (this.isMergeComposite(chainNode)) {
 					this.addMergeNodes(newNodes, chainNode as unknown as MergeComposite);
+				} else if (this.isSplitInBatchesBuilder(chainNode)) {
+					// Handle SplitInBatchesBuilder nested in chain (via node.then(splitInBatches(...)))
+					this.addSplitInBatchesChainNodes(newNodes, chainNode);
 				} else {
 					this.addNodeWithSubnodes(newNodes, chainNode);
 				}
@@ -857,6 +860,20 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		}
 
 		sibGraphNode.connections.set('main', sibMainConns);
+
+		// Add loop connection from last each node back to split in batches if hasLoop is true
+		if (builder._hasLoop && prevEachNode) {
+			const lastEachGraphNode = nodes.get(prevEachNode);
+			if (lastEachGraphNode) {
+				const lastEachMainConns = lastEachGraphNode.connections.get('main') || new Map();
+				const existingConns = lastEachMainConns.get(0) || [];
+				lastEachMainConns.set(0, [
+					...existingConns,
+					{ node: builder.sibNode.name, type: 'main', index: 0 },
+				]);
+				lastEachGraphNode.connections.set('main', lastEachMainConns);
+			}
+		}
 	}
 
 	/**
@@ -1237,10 +1254,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 					// Get the actual node instance that might have connections
 					// For MergeComposite, we need to check the mergeNode inside it
+					// For SplitInBatchesBuilder, skip - connections to SIB are handled differently
 					let nodeToCheck: NodeInstance<string, string, unknown> | null = null;
 					let nodeName: string | null = null;
 
-					if (this.isMergeComposite(chainNode)) {
+					if (this.isSplitInBatchesBuilder(chainNode)) {
+						// SplitInBatchesBuilder doesn't have getConnections - skip
+						continue;
+					} else if (this.isMergeComposite(chainNode)) {
 						const composite = chainNode as unknown as MergeComposite;
 						nodeToCheck = composite.mergeNode;
 						nodeName = composite.mergeNode.name;
