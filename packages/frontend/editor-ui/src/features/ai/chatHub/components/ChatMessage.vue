@@ -551,12 +551,11 @@ onBeforeMount(() => {
 		font-weight: var(--font-weight--medium);
 		text-decoration: underline;
 		text-underline-offset: 3px;
-		text-decoration-color: var(--color--secondary);
 		text-decoration-thickness: 1px;
-		transition: text-decoration-thickness 0.15s ease;
+		transition: color 0.15s ease;
 
 		&:hover {
-			text-decoration-thickness: 2px;
+			color: var(--color--primary);
 		}
 
 		code {
@@ -666,7 +665,7 @@ onBeforeMount(() => {
 
 	// Ordered lists
 	ol {
-		padding-left: 0;
+		padding-left: var(--spacing--sm);
 		list-style-type: decimal;
 		list-style-position: inside;
 		margin: var(--spacing--sm) 0;
@@ -683,7 +682,7 @@ onBeforeMount(() => {
 
 	// Unordered lists
 	ul {
-		padding-left: 0;
+		padding-left: var(--spacing--sm);
 		list-style-type: disc;
 		list-style-position: inside;
 		margin: var(--spacing--sm) 0;
