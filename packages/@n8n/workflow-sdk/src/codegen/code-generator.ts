@@ -24,6 +24,7 @@ import type {
 interface GenerationContext {
 	indent: number;
 	generatedVars: Set<string>;
+	variableNodes: Map<string, SemanticNode>; // Nodes that are declared as variables
 }
 
 /**
@@ -218,6 +219,17 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 }
 
 /**
+ * Generate node config or variable reference if node is already a variable
+ */
+function generateNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
+	const nodeName = node.json.name;
+	if (nodeName && ctx.variableNodes.has(nodeName)) {
+		return toVarName(nodeName);
+	}
+	return generateNodeConfig(node, ctx);
+}
+
+/**
  * Check if node is a sticky note
  */
 function isStickyNote(type: string): boolean {
@@ -321,7 +333,8 @@ function generateIfBranch(ifBranch: IfBranchCompositeNode, ctx: GenerationContex
 		? generateComposite(ifBranch.falseBranch, innerCtx)
 		: 'null';
 
-	const config = generateNodeConfig(ifBranch.ifNode, ctx);
+	// Use variable reference if IF node is already declared as a variable
+	const config = generateNodeOrVarRef(ifBranch.ifNode, ctx);
 
 	return `ifBranch([${trueBranchCode}, ${falseBranchCode}], ${config})`;
 }
@@ -336,7 +349,8 @@ function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: Generation
 		.map((c) => (c ? generateComposite(c, innerCtx) : 'null'))
 		.join(', ');
 
-	const config = generateNodeConfig(switchCase.switchNode, ctx);
+	// Use variable reference if switch node is already declared as a variable
+	const config = generateNodeOrVarRef(switchCase.switchNode, ctx);
 
 	return `switchCase([${casesCode}], ${config})`;
 }
@@ -349,7 +363,8 @@ function generateMerge(merge: MergeCompositeNode, ctx: GenerationContext): strin
 
 	const branchesCode = merge.branches.map((b) => generateComposite(b, innerCtx)).join(', ');
 
-	const config = generateNodeConfig(merge.mergeNode, ctx);
+	// Use variable reference if merge node is already declared as a variable
+	const config = generateNodeOrVarRef(merge.mergeNode, ctx);
 
 	return `merge([${branchesCode}], ${config})`;
 }
@@ -359,7 +374,8 @@ function generateMerge(merge: MergeCompositeNode, ctx: GenerationContext): strin
  */
 function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
-	const config = generateNodeConfig(sib.sibNode, ctx);
+	// Use variable reference if SIB node is already declared as a variable
+	const config = generateNodeOrVarRef(sib.sibNode, ctx);
 
 	let code = `splitInBatches(${config})`;
 
@@ -483,6 +499,7 @@ export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
 	const ctx: GenerationContext = {
 		indent: 0,
 		generatedVars: new Set(),
+		variableNodes: tree.variables,
 	};
 
 	const lines: string[] = [];
