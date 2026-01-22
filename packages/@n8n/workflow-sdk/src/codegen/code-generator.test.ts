@@ -65,6 +65,28 @@ describe('code-generator', () => {
 				expect(code).toContain("type: 'n8n-nodes-base.manualTrigger'");
 			});
 
+			it('always includes config property even when empty', () => {
+				const json: WorkflowJSON = {
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger', // matches default name
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0], // at origin
+							// no parameters, no credentials
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// config must always be present for the parser to work
+				expect(code).toContain('config:');
+			});
+
 			it('generates code for linear chain', () => {
 				const json: WorkflowJSON = {
 					name: 'Linear Chain',
@@ -525,6 +547,74 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain("message: 'Hello, it\\'s me'");
+			});
+
+			it('handles undefined workflow name', () => {
+				const json = {
+					id: 'test-id',
+					// name is undefined
+					nodes: [],
+					connections: {},
+				} as unknown as WorkflowJSON;
+
+				const code = generateFromWorkflow(json);
+
+				// Should use a default name instead of crashing
+				expect(code).toContain("workflow('test-id', 'Untitled Workflow')");
+			});
+
+			it('escapes Unicode smart quotes in node names', () => {
+				const json: WorkflowJSON = {
+					id: 'smart-quotes',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'When clicking \u2018Execute workflow\u2019', // Unicode smart quotes
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [100, 100],
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Smart quotes must be escaped for valid JS syntax
+				expect(code).toContain("name: 'When clicking");
+				expect(code).not.toContain('\u2018'); // No unescaped left smart quote
+				expect(code).not.toContain('\u2019'); // No unescaped right smart quote
+			});
+
+			it('quotes object keys with spaces', () => {
+				const json: WorkflowJSON = {
+					id: 'space-keys',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Update',
+							type: 'n8n-nodes-base.googleSheets',
+							typeVersion: 4.5,
+							position: [100, 100],
+							parameters: {
+								columns: {
+									value: {
+										'VIDEO URL': '={{ $json.url }}',
+									},
+								},
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Keys with spaces must be quoted for valid JS syntax
+				expect(code).toContain("'VIDEO URL':");
+				expect(code).not.toMatch(/[^'"]VIDEO URL[^'"]/); // Not unquoted
 			});
 		});
 

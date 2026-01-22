@@ -40,6 +40,8 @@ function escapeString(str: string): string {
 	return str
 		.replace(/\\/g, '\\\\')
 		.replace(/'/g, "\\'")
+		.replace(/\u2018/g, "\\'") // LEFT SINGLE QUOTATION MARK
+		.replace(/\u2019/g, "\\'") // RIGHT SINGLE QUOTATION MARK
 		.replace(/\n/g, '\\n')
 		.replace(/\r/g, '\\r');
 }
@@ -132,6 +134,21 @@ const RESERVED_KEYWORDS = new Set([
 ]);
 
 /**
+ * Check if a key needs to be quoted to be a valid JS identifier
+ */
+function needsQuoting(key: string): boolean {
+	// Valid JS identifier: starts with letter, _, or $, followed by letters, digits, _, or $
+	return !/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
+}
+
+/**
+ * Format an object key for code output
+ */
+function formatKey(key: string): string {
+	return needsQuoting(key) ? `'${escapeString(key)}'` : key;
+}
+
+/**
  * Format a value for code output
  */
 function formatValue(value: unknown): string {
@@ -145,7 +162,7 @@ function formatValue(value: unknown): string {
 	if (typeof value === 'object') {
 		const entries = Object.entries(value as Record<string, unknown>);
 		if (entries.length === 0) return '{}';
-		return `{ ${entries.map(([k, v]) => `${k}: ${formatValue(v)}`).join(', ')} }`;
+		return `{ ${entries.map(([k, v]) => `${formatKey(k)}: ${formatValue(v)}`).join(', ')} }`;
 	}
 	return String(value);
 }
@@ -190,8 +207,11 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 
+	// Always include config (required by parser), even if empty
 	if (configParts.length > 0) {
 		parts.push(`${innerIndent}config: { ${configParts.join(', ')} }`);
+	} else {
+		parts.push(`${innerIndent}config: {}`);
 	}
 
 	return `{\n${parts.join(',\n')}\n${indent}}`;
@@ -474,7 +494,7 @@ export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
 
 	// Generate workflow call
 	const workflowId = escapeString(json.id ?? 'workflow-id');
-	const workflowName = escapeString(json.name);
+	const workflowName = escapeString(json.name ?? 'Untitled Workflow');
 
 	// Include settings if present
 	const settingsStr =
