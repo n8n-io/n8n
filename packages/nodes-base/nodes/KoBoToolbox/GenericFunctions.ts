@@ -203,7 +203,7 @@ export function formatSubmission(
 	return response;
 }
 
-function validateAttachmentUrl(url: string, allowedDomain: string): void {
+export function validateAttachmentUrl(url: string, allowedDomain: string): void {
 	let attachmentUrl: URL;
 	let allowedUrl: URL;
 
