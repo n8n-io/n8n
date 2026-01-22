@@ -15,6 +15,32 @@ function generateFromWorkflow(json: WorkflowJSON): string {
 
 describe('code-generator', () => {
 	describe('generateCode', () => {
+		describe('output format', () => {
+			it('starts with return keyword', () => {
+				const json: WorkflowJSON = {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toMatch(/^return workflow\(/);
+			});
+
+			it('does not end with .toJSON()', () => {
+				const json: WorkflowJSON = {
+					name: 'Test',
+					nodes: [],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).not.toContain('.toJSON()');
+			});
+		});
+
 		describe('simple workflows', () => {
 			it('generates code for single trigger', () => {
 				const json: WorkflowJSON = {
@@ -33,7 +59,7 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("workflow('");
+				expect(code).toContain("return workflow('");
 				expect(code).toContain("'Single Trigger'");
 				expect(code).toContain('trigger({');
 				expect(code).toContain("type: 'n8n-nodes-base.manualTrigger'");
@@ -374,7 +400,7 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("workflow('");
+				expect(code).toContain("return workflow('");
 				expect(code).toContain("'Empty'");
 			});
 		});

@@ -296,7 +296,7 @@ export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
 	const workflowId = json.id ?? 'workflow-id';
 	const workflowName = json.name;
 
-	lines.push(`workflow('${workflowId}', '${workflowName}')`);
+	lines.push(`return workflow('${workflowId}', '${workflowName}')`);
 
 	// Generate each root
 	ctx.indent = 1;
@@ -304,8 +304,6 @@ export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
 		const rootCode = generateComposite(root, ctx);
 		lines.push(`  .add(${rootCode})`);
 	}
-
-	lines.push('  .toJSON();');
 
 	return lines.join('\n');
 }

@@ -31,9 +31,9 @@ describe('codegen index', () => {
 
 			const code = generateWorkflowCode(json);
 
-			expect(code).toContain("workflow('test-workflow-id', 'Test Workflow')");
+			expect(code).toContain("return workflow('test-workflow-id', 'Test Workflow')");
 			expect(code).toContain('.add(');
-			expect(code).toContain('.toJSON();');
+			expect(code).not.toContain('.toJSON();');
 		});
 
 		it('generates code with IF branch', () => {
@@ -129,8 +129,8 @@ describe('codegen index', () => {
 
 			const code = generateWorkflowCode(json);
 
-			expect(code).toContain("workflow('workflow-id', 'Empty')");
-			expect(code).toContain('.toJSON();');
+			expect(code).toContain("return workflow('workflow-id', 'Empty')");
+			expect(code).not.toContain('.toJSON();');
 		});
 	});
 });
