@@ -289,6 +289,10 @@ defineExpose({
 		color: var(--color--text--tint-1);
 	}
 
+	:global(.oversized-cell) {
+		cursor: not-allowed;
+	}
+
 	:global(.ag-header-cell[col-id='id']) {
 		text-align: center;
 	}
