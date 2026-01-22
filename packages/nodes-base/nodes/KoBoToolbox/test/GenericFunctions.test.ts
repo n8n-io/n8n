@@ -153,6 +153,26 @@ describe('KoBoToolbox GenericFunctions', () => {
 					'Attachment URL domain (malicious.com) does not match allowed domain (kf.kobotoolbox.org)',
 				);
 			});
+
+			it('should throw error for loopback IP address when allowed domain is public', () => {
+				expect(() => {
+					validateAttachmentUrl('http://127.0.0.1/file.jpg', 'https://example.com');
+				}).toThrow('Attachment URL domain (127.0.0.1) does not match allowed domain (example.com)');
+			});
+
+			it('should throw error for cloud metadata endpoint when allowed domain is public', () => {
+				expect(() => {
+					validateAttachmentUrl('http://169.254.169.254/file.jpg', 'https://example.com');
+				}).toThrow(
+					'Attachment URL domain (169.254.169.254) does not match allowed domain (example.com)',
+				);
+			});
+
+			it('should throw error for localhost when allowed domain is public', () => {
+				expect(() => {
+					validateAttachmentUrl('http://localhost/file.jpg', 'https://example.com');
+				}).toThrow('Attachment URL domain (localhost) does not match allowed domain (example.com)');
+			});
 		});
 
 		describe('edge cases', () => {

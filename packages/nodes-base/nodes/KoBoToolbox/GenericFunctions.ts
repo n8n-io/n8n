@@ -203,6 +203,8 @@ export function formatSubmission(
 	return response;
 }
 
+const KOBO_DOMAINS = ['kobotoolbox.org', 'humanitarianresponse.info'];
+
 export function validateAttachmentUrl(url: string, allowedDomain: string): void {
 	let attachmentUrl: URL;
 	let allowedUrl: URL;
@@ -233,8 +235,6 @@ export function validateAttachmentUrl(url: string, allowedDomain: string): void 
 		attachmentHost === allowedHost || attachmentHost.endsWith(`.${allowedHost}`);
 
 	if (matchesDomain) return;
-
-	const KOBO_DOMAINS = ['kobotoolbox.org', 'humanitarianresponse.info'];
 
 	const isKoboDomain = KOBO_DOMAINS.some(
 		(domain) => allowedHost === domain || allowedHost.endsWith(`.${domain}`),
