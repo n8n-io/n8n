@@ -395,7 +395,7 @@ describe('WorkflowsView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			await sourceControl.pullWorkfolder(true);
+			await sourceControl.pullWorkfolder(true, 'none');
 			expect(userStore.fetchUsers).toHaveBeenCalledTimes(2);
 		});
 	});

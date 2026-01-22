@@ -156,7 +156,7 @@ describe('SourceControlPullModal', () => {
 				},
 			},
 		});
-		expect(getByText('Pull and override')).toBeInTheDocument();
+		expect(getByText('Pull')).toBeInTheDocument();
 	});
 
 	it('should renders the changes', () => {
@@ -189,7 +189,9 @@ describe('SourceControlPullModal', () => {
 
 		await userEvent.click(getByTestId('force-pull'));
 
-		await waitFor(() => expect(sourceControlStore.pullWorkfolder).toHaveBeenCalledWith(true));
+		await waitFor(() =>
+			expect(sourceControlStore.pullWorkfolder).toHaveBeenCalledWith(true, 'none'),
+		);
 	});
 
 	it('should render diff button with file-diff icon for workflow items', () => {

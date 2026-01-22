@@ -6,7 +6,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as vcApi from './sourceControl.api';
 import type { SourceControlPreferences, SshKeyTypes } from './sourceControl.types';
 import type { TupleToUnion } from '@/app/utils/typeHelpers';
-import type { SourceControlledFile } from '@n8n/api-types';
+import type { AutoPublishMode, SourceControlledFile } from '@n8n/api-types';
 
 export const useSourceControlStore = defineStore('sourceControl', () => {
 	const rootStore = useRootStore();
@@ -52,8 +52,8 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		});
 	};
 
-	const pullWorkfolder = async (force: boolean) => {
-		return await vcApi.pullWorkfolder(rootStore.restApiContext, { force });
+	const pullWorkfolder = async (force: boolean, autoPublish: AutoPublishMode) => {
+		return await vcApi.pullWorkfolder(rootStore.restApiContext, { force, autoPublish });
 	};
 
 	const setPreferences = (data: Partial<SourceControlPreferences>) => {
@@ -99,8 +99,12 @@ export const useSourceControlStore = defineStore('sourceControl', () => {
 		return await vcApi.getStatus(rootStore.restApiContext);
 	};
 
-	const getAggregatedStatus = async () => {
-		return await vcApi.getAggregatedStatus(rootStore.restApiContext);
+	const getAggregatedStatus = async (options?: {
+		direction: 'push' | 'pull';
+		preferLocalVersion: boolean;
+		verbose: boolean;
+	}) => {
+		return await vcApi.getAggregatedStatus(rootStore.restApiContext, options);
 	};
 
 	const getRemoteWorkflow = async (workflowId: string) => {
