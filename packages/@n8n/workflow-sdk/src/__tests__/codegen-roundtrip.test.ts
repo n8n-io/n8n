@@ -23,7 +23,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '3904', - now passes after multiple triggers/convergence fixes
 	// '4005', - now passes after multiple triggers/convergence fixes
 	// '4247', - now passes after multiple triggers/convergence fixes
-	'4295',
+	// '4295', - now passes after orphaned connection filter fix (original workflow has connection from non-existent 'Start' node)
 	// '4365' - now passes after convergence pattern fix
 	'4366',
 	// '4400', - now passes after multiple triggers/convergence fixes
@@ -32,7 +32,7 @@ const SKIP_WORKFLOWS = new Set<string>([
 	// '4506', - now passes after multiple triggers/convergence fixes
 	'4557',
 	// '4573', - now passes after multiple triggers/convergence fixes
-	'4600',
+	// '4600', - now passes after orphaned connection filter fix (original workflow has connection from non-existent node)
 	'4637',
 	// '4678' - now passes after handleFanOut NodeChain fix
 	'4685',
@@ -1509,10 +1509,17 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				return p;
 			};
 
-			// Helper function for filtering empty connections
-			const filterEmptyConnections = (conns: Record<string, unknown>) => {
+			// Helper function for filtering empty connections and orphaned connections (from non-existent nodes)
+			const filterEmptyConnections = (
+				conns: Record<string, unknown>,
+				validNodeNames?: Set<string>,
+			) => {
 				const result: Record<string, unknown> = {};
 				for (const [nodeName, nodeConns] of Object.entries(conns)) {
+					// Skip connections from non-existent nodes (orphaned connections in original workflow)
+					if (validNodeNames && !validNodeNames.has(nodeName)) {
+						continue;
+					}
 					const nonEmptyTypes: Record<string, unknown> = {};
 					for (const [connType, outputs] of Object.entries(
 						nodeConns as Record<string, unknown[]>,
@@ -1581,7 +1588,9 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						expect(parsedJson.settings).toEqual(json.settings);
 					}
 
-					const filteredOriginal = filterEmptyConnections(json.connections);
+					// Filter connections from non-existent nodes (orphaned connections in original workflow)
+					const validNodeNames = new Set(json.nodes.map((n) => n.name));
+					const filteredOriginal = filterEmptyConnections(json.connections, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
 					expect(Object.keys(filteredParsed).sort()).toEqual(Object.keys(filteredOriginal).sort());
 				});
