@@ -7,9 +7,9 @@ import {
 	type Workflow,
 } from 'n8n-workflow';
 
-import { assertExecutionDataExists } from '@/utils/assertions';
-
 import { ExecutionContextService } from './execution-context.service';
+
+import { assertExecutionDataExists } from '@/utils/assertions';
 
 /**
  * Establishes the execution context for a workflow run.
@@ -197,7 +197,8 @@ export const establishExecutionContext = async (
 			startItem.data['main'][0] = triggerItems;
 		}
 	} catch (error) {
-		// Log the error but proceed with the established context
+		// Log the error
 		Container.get(Logger).error('Failed to augment execution context with hooks.', { error });
+		throw error;
 	}
 };
