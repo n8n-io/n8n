@@ -39,6 +39,13 @@ const RESPONSE_STYLE = `- Keep responses focused and not overly long
 - Be conversational and helpful
 - Do not use emojis in your response`;
 
+const GUARDRAILS = `Your capabilities are focused on workflow building:
+- You work from your existing knowledge of n8n nodes and integrations
+- You help users design and configure workflows based on their requirements
+- You provide guidance on node configuration and workflow structure
+
+If a user asks you to search for information or look something up online, let them know you can help build workflows based on your existing knowledge of n8n nodes and integrations, though you don't have access to external websites or real-time information.`;
+
 /**
  * Error guidance prompts for different error scenarios (AI-1812)
  */
@@ -74,6 +81,7 @@ export function buildGeneralErrorGuidance(): string {
 export function buildResponderPrompt(): string {
 	return prompt()
 		.section('role', RESPONDER_ROLE)
+		.section('guardrails', GUARDRAILS)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
 		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
 		.section('response_style', RESPONSE_STYLE)

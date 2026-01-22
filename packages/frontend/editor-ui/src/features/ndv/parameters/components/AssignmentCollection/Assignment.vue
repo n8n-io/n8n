@@ -331,7 +331,7 @@ const onValueDrop = (droppedExpression: string) => {
 .typeSelectWrapper {
 	height: 100%;
 
-	:global(.el-tooltip__trigger) {
+	> :deep(span) {
 		height: 100%;
 	}
 }
