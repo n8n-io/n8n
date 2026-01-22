@@ -559,6 +559,7 @@ describe('SourceControlImportService', () => {
 				const mockWorkflowData = {
 					id: 'workflow1',
 					name: 'New Workflow',
+					versionId: 'remote-version-123',
 					nodes: [],
 					parentFolderId: null,
 					active: false,
@@ -587,7 +588,8 @@ describe('SourceControlImportService', () => {
 					mockUser,
 					'workflow1',
 					expect.objectContaining({
-						versionId: expect.any(String),
+						// versionId must be preserved from remote file for change detection to work correctly
+						versionId: 'remote-version-123',
 					}),
 				);
 			});
@@ -597,6 +599,7 @@ describe('SourceControlImportService', () => {
 				const mockWorkflowData = {
 					id: 'workflow1',
 					name: 'Existing Workflow',
+					versionId: 'v2',
 					nodes: [],
 					parentFolderId: null,
 					active: false,
@@ -633,7 +636,8 @@ describe('SourceControlImportService', () => {
 					mockUser,
 					'workflow1',
 					expect.objectContaining({
-						versionId: expect.any(String),
+						// versionId must be preserved from remote file for change detection to work correctly
+						versionId: 'v2',
 					}),
 				);
 			});
@@ -740,6 +744,7 @@ describe('SourceControlImportService', () => {
 				const mockWorkflowData = {
 					id: 'workflow1',
 					name: 'Active Workflow',
+					versionId: 'new-version',
 					nodes: [],
 					parentFolderId: null,
 				};
@@ -765,7 +770,8 @@ describe('SourceControlImportService', () => {
 					expect.objectContaining({
 						active: false,
 						activeVersionId: null,
-						versionId: expect.any(String),
+						// versionId must be preserved from remote file for change detection to work correctly
+						versionId: 'new-version',
 					}),
 					['id'],
 				);
@@ -774,7 +780,8 @@ describe('SourceControlImportService', () => {
 					mockUser,
 					'workflow1',
 					expect.objectContaining({
-						versionId: expect.any(String),
+						// versionId must be preserved from remote file for change detection to work correctly
+						versionId: 'new-version',
 					}),
 				);
 			});

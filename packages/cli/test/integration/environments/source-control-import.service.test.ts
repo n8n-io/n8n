@@ -88,7 +88,6 @@ describe('SourceControlImportService', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
 			credentialsRepository,
 			projectRepository,
 			mock(),
@@ -105,7 +104,6 @@ describe('SourceControlImportService', () => {
 			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
 			sourceControlScopedService,
-			mock(),
 			workflowHistoryService,
 		);
 	});

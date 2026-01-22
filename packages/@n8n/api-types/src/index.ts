@@ -91,6 +91,8 @@ export {
 	SOURCE_CONTROL_FILE_TYPE,
 } from './schemas/source-controlled-file.schema';
 
+export { shouldActivateWorkflow } from './auto-publish-helper';
+
 export {
 	type InsightsSummaryType,
 	type InsightsSummaryUnit,

@@ -1,3 +1,4 @@
+import { shouldActivateWorkflow as shouldActivateWorkflowHelper } from '@n8n/api-types';
 import type { AutoPublishMode, SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
@@ -33,7 +34,6 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
-import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
@@ -203,6 +203,7 @@ export class SourceControlImportService {
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 					owner: project ? getOwnerFromProject(project) : undefined,
+					isArchived: remote.isArchived,
 				};
 			});
 
@@ -689,9 +690,6 @@ export class SourceControlImportService {
 				}
 			}
 
-			// Always update versionId to a new one on import to ensure fresh version
-			importedWorkflow.versionId = uuid();
-
 			// Set active state for upsert
 			if (shouldDeactivate) {
 				// We will activate the workflow later if needed
@@ -774,22 +772,12 @@ export class SourceControlImportService {
 		importedWorkflow: IWorkflowToImport,
 		autoPublish: AutoPublishMode,
 	): boolean {
-		// Archived workflows should never be activated
-		if (importedWorkflow.isArchived) {
-			return false;
-		}
-
-		if (autoPublish === 'all') {
-			return true;
-		}
-
-		const wasActive = !!existingWorkflow?.activeVersionId;
-
-		if (autoPublish === 'published' && wasActive) {
-			return true;
-		}
-
-		return false;
+		return shouldActivateWorkflowHelper({
+			isNewWorkflow: !existingWorkflow,
+			wasPublished: !!existingWorkflow?.activeVersionId,
+			isNowArchived: !!importedWorkflow.isArchived,
+			autoPublish,
+		});
 	}
 
 	private shouldDeactivateWorkflow(
