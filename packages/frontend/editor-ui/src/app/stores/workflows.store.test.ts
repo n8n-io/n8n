@@ -7,8 +7,13 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
+import {
+	useWorkflowsStore,
+	createDocumentKey,
+	parseDocumentKey,
+	isLatestVersion,
+} from '@/app/stores/workflows.store';
+import type { DocumentKey, INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import {
@@ -2391,6 +2396,502 @@ function getMockEditFieldsNode(): Partial<INodeTypeDescription> {
 		properties: [],
 	};
 }
+
+describe('Document Key Helper Functions', () => {
+	describe('createDocumentKey', () => {
+		it('should create a document key with default version "latest"', () => {
+			const key = createDocumentKey('workflow123');
+			expect(key).toBe('workflow123@latest');
+		});
+
+		it('should create a document key with a specific version', () => {
+			const key = createDocumentKey('workflow123', 'v1.0.0');
+			expect(key).toBe('workflow123@v1.0.0');
+		});
+
+		it('should handle empty workflow ID', () => {
+			const key = createDocumentKey('');
+			expect(key).toBe('@latest');
+		});
+	});
+
+	describe('parseDocumentKey', () => {
+		it('should parse a document key with latest version', () => {
+			const result = parseDocumentKey('workflow123@latest' as DocumentKey);
+			expect(result).toEqual({ id: 'workflow123', version: 'latest' });
+		});
+
+		it('should parse a document key with a specific version', () => {
+			const result = parseDocumentKey('workflow123@v1.0.0' as DocumentKey);
+			expect(result).toEqual({ id: 'workflow123', version: 'v1.0.0' });
+		});
+
+		it('should handle keys without @ symbol', () => {
+			const result = parseDocumentKey('workflow123' as DocumentKey);
+			expect(result).toEqual({ id: 'workflow123', version: 'latest' });
+		});
+
+		it('should handle multiple @ symbols by using the last one', () => {
+			const result = parseDocumentKey('workflow@123@v2' as DocumentKey);
+			expect(result).toEqual({ id: 'workflow@123', version: 'v2' });
+		});
+	});
+
+	describe('isLatestVersion', () => {
+		it('should return true for keys ending with @latest', () => {
+			expect(isLatestVersion('workflow123@latest' as DocumentKey)).toBe(true);
+		});
+
+		it('should return false for keys with specific versions', () => {
+			expect(isLatestVersion('workflow123@v1.0.0' as DocumentKey)).toBe(false);
+		});
+
+		it('should return false for keys without version suffix', () => {
+			expect(isLatestVersion('workflow123' as DocumentKey)).toBe(false);
+		});
+	});
+});
+
+describe('Document-based Workflow Management', () => {
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+		workflowsStore = useWorkflowsStore();
+	});
+
+	describe('setDocument and getDocumentWorkflow', () => {
+		it('should store and retrieve a workflow document', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+			});
+
+			workflowsStore.setDocument(key, workflowData);
+			const retrieved = workflowsStore.getDocumentWorkflow(key);
+
+			expect(retrieved).toBeDefined();
+			expect(retrieved?.id).toBe('workflow1');
+			expect(retrieved?.name).toBe('Test Workflow');
+		});
+
+		it('should return undefined for non-existent document', () => {
+			const key = createDocumentKey('nonexistent');
+			const retrieved = workflowsStore.getDocumentWorkflow(key);
+			expect(retrieved).toBeUndefined();
+		});
+
+		it('should create workflow object when setting document', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [createTestNode({ name: 'Node1' })],
+				connections: {},
+			});
+
+			workflowsStore.setDocument(key, workflowData);
+			const workflowObj = workflowsStore.getDocumentWorkflowObject(key);
+
+			expect(workflowObj).toBeDefined();
+			expect(workflowObj?.name).toBe('Test Workflow');
+		});
+	});
+
+	describe('hasDocument', () => {
+		it('should return true for existing document', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({ id: 'workflow1' });
+
+			workflowsStore.setDocument(key, workflowData);
+			expect(workflowsStore.hasDocument(key)).toBe(true);
+		});
+
+		it('should return false for non-existent document', () => {
+			const key = createDocumentKey('nonexistent');
+			expect(workflowsStore.hasDocument(key)).toBe(false);
+		});
+	});
+
+	describe('removeDocument', () => {
+		it('should remove a document from the store', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({ id: 'workflow1' });
+
+			workflowsStore.setDocument(key, workflowData);
+			expect(workflowsStore.hasDocument(key)).toBe(true);
+
+			workflowsStore.removeDocument(key);
+			expect(workflowsStore.hasDocument(key)).toBe(false);
+			expect(workflowsStore.getDocumentWorkflow(key)).toBeUndefined();
+			expect(workflowsStore.getDocumentWorkflowObject(key)).toBeUndefined();
+		});
+
+		it('should not throw when removing non-existent document', () => {
+			const key = createDocumentKey('nonexistent');
+			expect(() => workflowsStore.removeDocument(key)).not.toThrow();
+		});
+	});
+
+	describe('Document property accessors', () => {
+		const key = createDocumentKey('workflow1');
+
+		beforeEach(() => {
+			const workflowData = createTestWorkflow({
+				id: 'workflow1',
+				name: 'Test Workflow',
+				versionId: 'v1.0.0',
+				settings: { executionOrder: 'v1', timezone: 'UTC' },
+				tags: ['tag1', 'tag2'],
+				nodes: [],
+				connections: {},
+			});
+			workflowsStore.setDocument(key, workflowData);
+		});
+
+		it('should get workflow name', () => {
+			expect(workflowsStore.getDocumentWorkflowName(key)).toBe('Test Workflow');
+		});
+
+		it('should get workflow ID', () => {
+			expect(workflowsStore.getDocumentWorkflowId(key)).toBe('workflow1');
+		});
+
+		it('should get workflow version ID', () => {
+			expect(workflowsStore.getDocumentWorkflowVersionId(key)).toBe('v1.0.0');
+		});
+
+		it('should get workflow settings', () => {
+			const settings = workflowsStore.getDocumentWorkflowSettings(key);
+			expect(settings.timezone).toBe('UTC');
+		});
+
+		it('should get workflow tags', () => {
+			const tags = workflowsStore.getDocumentWorkflowTags(key);
+			expect(tags).toEqual(['tag1', 'tag2']);
+		});
+
+		it('should return defaults for non-existent document', () => {
+			const nonExistentKey = createDocumentKey('nonexistent');
+			expect(workflowsStore.getDocumentWorkflowName(nonExistentKey)).toBe('');
+			expect(workflowsStore.getDocumentWorkflowId(nonExistentKey)).toBe('');
+			expect(workflowsStore.getDocumentWorkflowVersionId(nonExistentKey)).toBe('');
+			expect(workflowsStore.getDocumentWorkflowTags(nonExistentKey)).toEqual([]);
+		});
+	});
+
+	describe('Document node operations', () => {
+		const key = createDocumentKey('workflow1');
+		const node1 = createTestNode({ id: 'node1', name: 'Node 1' });
+		const node2 = createTestNode({ id: 'node2', name: 'Node 2' });
+
+		beforeEach(() => {
+			const workflowData = createTestWorkflow({
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [node1, node2],
+				connections: {
+					'Node 1': {
+						main: [[{ node: 'Node 2', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			});
+			workflowsStore.setDocument(key, workflowData);
+		});
+
+		it('should get all document nodes', () => {
+			const nodes = workflowsStore.getDocumentNodes(key);
+			expect(nodes).toHaveLength(2);
+			expect(nodes[0].name).toBe('Node 1');
+			expect(nodes[1].name).toBe('Node 2');
+		});
+
+		it('should get node by name', () => {
+			const node = workflowsStore.getDocumentNodeByName(key, 'Node 1');
+			expect(node).toBeDefined();
+			expect(node?.id).toBe('node1');
+		});
+
+		it('should return null for non-existent node name', () => {
+			const node = workflowsStore.getDocumentNodeByName(key, 'NonExistent');
+			expect(node).toBeNull();
+		});
+
+		it('should get node by ID', () => {
+			const node = workflowsStore.getDocumentNodeById(key, 'node1');
+			expect(node).toBeDefined();
+			expect(node?.name).toBe('Node 1');
+		});
+
+		it('should return undefined for non-existent node ID', () => {
+			const node = workflowsStore.getDocumentNodeById(key, 'nonexistent');
+			expect(node).toBeUndefined();
+		});
+
+		it('should get nodes by IDs', () => {
+			const nodes = workflowsStore.getDocumentNodesByIds(key, ['node1', 'node2']);
+			expect(nodes).toHaveLength(2);
+		});
+
+		it('should filter out non-existent node IDs', () => {
+			const nodes = workflowsStore.getDocumentNodesByIds(key, ['node1', 'nonexistent']);
+			expect(nodes).toHaveLength(1);
+			expect(nodes[0].id).toBe('node1');
+		});
+
+		it('should get nodes by name', () => {
+			const nodesByName = workflowsStore.getDocumentNodesByName(key);
+			expect(nodesByName['Node 1']).toBeDefined();
+			expect(nodesByName['Node 2']).toBeDefined();
+		});
+
+		it('should get canvas names', () => {
+			const names = workflowsStore.getDocumentCanvasNames(key);
+			expect(names.has('Node 1')).toBe(true);
+			expect(names.has('Node 2')).toBe(true);
+		});
+
+		it('should return empty array for non-existent document', () => {
+			const nonExistentKey = createDocumentKey('nonexistent');
+			expect(workflowsStore.getDocumentNodes(nonExistentKey)).toEqual([]);
+		});
+	});
+
+	describe('Document connection operations', () => {
+		const key = createDocumentKey('workflow1');
+
+		beforeEach(() => {
+			const workflowData = createTestWorkflow({
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [
+					createTestNode({ name: 'Node 1' }),
+					createTestNode({ name: 'Node 2' }),
+					createTestNode({ name: 'Node 3' }),
+				],
+				connections: {
+					'Node 1': {
+						main: [[{ node: 'Node 2', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+					'Node 2': {
+						main: [[{ node: 'Node 3', type: NodeConnectionTypes.Main, index: 0 }]],
+					},
+				},
+			});
+			workflowsStore.setDocument(key, workflowData);
+		});
+
+		it('should get all document connections', () => {
+			const connections = workflowsStore.getDocumentAllConnections(key);
+			expect(connections['Node 1']).toBeDefined();
+			expect(connections['Node 2']).toBeDefined();
+		});
+
+		it('should get outgoing connections by node name', () => {
+			const connections = workflowsStore.getDocumentOutgoingConnectionsByNodeName(key, 'Node 1');
+			expect(connections.main?.[0]?.[0]?.node).toBe('Node 2');
+		});
+
+		it('should return empty object for node without outgoing connections', () => {
+			const connections = workflowsStore.getDocumentOutgoingConnectionsByNodeName(key, 'Node 3');
+			expect(connections).toEqual({});
+		});
+
+		it('should get incoming connections by node name', () => {
+			const connections = workflowsStore.getDocumentIncomingConnectionsByNodeName(key, 'Node 2');
+			expect(connections.main?.[0]?.[0]?.node).toBe('Node 1');
+		});
+
+		it('should return empty object for node without incoming connections', () => {
+			const connections = workflowsStore.getDocumentIncomingConnectionsByNodeName(key, 'Node 1');
+			expect(connections).toEqual({});
+		});
+
+		it('should check if node has output connection', () => {
+			expect(workflowsStore.documentNodeHasOutputConnection(key, 'Node 1')).toBe(true);
+			expect(workflowsStore.documentNodeHasOutputConnection(key, 'Node 3')).toBe(false);
+		});
+
+		it('should check if node is in outgoing connections', () => {
+			expect(workflowsStore.isDocumentNodeInOutgoingNodeConnections(key, 'Node 1', 'Node 2')).toBe(
+				true,
+			);
+			expect(workflowsStore.isDocumentNodeInOutgoingNodeConnections(key, 'Node 1', 'Node 3')).toBe(
+				true,
+			);
+			expect(workflowsStore.isDocumentNodeInOutgoingNodeConnections(key, 'Node 3', 'Node 1')).toBe(
+				false,
+			);
+		});
+
+		it('should respect depth limit when checking outgoing connections', () => {
+			expect(
+				workflowsStore.isDocumentNodeInOutgoingNodeConnections(key, 'Node 1', 'Node 3', 1),
+			).toBe(false);
+			expect(
+				workflowsStore.isDocumentNodeInOutgoingNodeConnections(key, 'Node 1', 'Node 3', 2),
+			).toBe(true);
+		});
+	});
+
+	describe('setDocumentIsNew and isDocumentNewWorkflow', () => {
+		it('should mark and check if document is new', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({ id: 'workflow1' });
+			workflowsStore.setDocument(key, workflowData);
+
+			expect(workflowsStore.isDocumentNewWorkflow(key)).toBe(false);
+
+			workflowsStore.setDocumentIsNew(key, true);
+			expect(workflowsStore.isDocumentNewWorkflow(key)).toBe(true);
+
+			workflowsStore.setDocumentIsNew(key, false);
+			expect(workflowsStore.isDocumentNewWorkflow(key)).toBe(false);
+		});
+	});
+
+	describe('setDocumentNodes', () => {
+		it('should set nodes for a document', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({ id: 'workflow1', nodes: [] });
+			workflowsStore.setDocument(key, workflowData);
+
+			const newNodes = [
+				createTestNode({ name: 'New Node 1' }),
+				createTestNode({ name: 'New Node 2' }),
+			];
+			workflowsStore.setDocumentNodes(key, newNodes);
+
+			const nodes = workflowsStore.getDocumentNodes(key);
+			expect(nodes).toHaveLength(2);
+			expect(nodes[0].name).toBe('New Node 1');
+		});
+	});
+
+	describe('setDocumentConnections', () => {
+		it('should set connections for a document', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({
+				id: 'workflow1',
+				nodes: [createTestNode({ name: 'Node 1' }), createTestNode({ name: 'Node 2' })],
+				connections: {},
+			});
+			workflowsStore.setDocument(key, workflowData);
+
+			const newConnections: IConnections = {
+				'Node 1': {
+					main: [[{ node: 'Node 2', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+			workflowsStore.setDocumentConnections(key, newConnections);
+
+			const connections = workflowsStore.getDocumentAllConnections(key);
+			expect(connections['Node 1']).toBeDefined();
+		});
+	});
+
+	describe('setDocumentWorkflowName', () => {
+		it('should update the workflow name for a document', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({ id: 'workflow1', name: 'Original Name' });
+			workflowsStore.setDocument(key, workflowData);
+
+			workflowsStore.setDocumentWorkflowName(key, 'New Name');
+
+			expect(workflowsStore.getDocumentWorkflowName(key)).toBe('New Name');
+		});
+	});
+
+	describe('setDocumentWorkflowSettings', () => {
+		it('should update workflow settings for a document', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({
+				id: 'workflow1',
+				settings: { executionOrder: 'v1' },
+			});
+			workflowsStore.setDocument(key, workflowData);
+
+			workflowsStore.setDocumentWorkflowSettings(key, {
+				executionOrder: 'v1',
+				timezone: 'America/New_York',
+			});
+
+			const settings = workflowsStore.getDocumentWorkflowSettings(key);
+			expect(settings.timezone).toBe('America/New_York');
+		});
+	});
+
+	describe('resetDocumentWorkflow', () => {
+		it('should reset a document to empty workflow state', () => {
+			const key = createDocumentKey('workflow1');
+			const workflowData = createTestWorkflow({
+				id: 'workflow1',
+				name: 'Test Workflow',
+				nodes: [createTestNode({ name: 'Node 1' })],
+			});
+			workflowsStore.setDocument(key, workflowData);
+
+			workflowsStore.resetDocumentWorkflow(key);
+
+			const workflow = workflowsStore.getDocumentWorkflow(key);
+			// resetDocumentWorkflow creates a new empty workflow using createEmptyWorkflow()
+			// which resets name, id, and connections to empty values
+			expect(workflow?.name).toBe('');
+			expect(workflow?.id).toBe('');
+			expect(workflow?.connections).toEqual({});
+		});
+	});
+
+	describe('Multiple documents', () => {
+		it('should handle multiple documents independently', () => {
+			const key1 = createDocumentKey('workflow1');
+			const key2 = createDocumentKey('workflow2');
+
+			const workflow1 = createTestWorkflow({ id: 'workflow1', name: 'Workflow 1' });
+			const workflow2 = createTestWorkflow({ id: 'workflow2', name: 'Workflow 2' });
+
+			workflowsStore.setDocument(key1, workflow1);
+			workflowsStore.setDocument(key2, workflow2);
+
+			expect(workflowsStore.getDocumentWorkflowName(key1)).toBe('Workflow 1');
+			expect(workflowsStore.getDocumentWorkflowName(key2)).toBe('Workflow 2');
+
+			workflowsStore.setDocumentWorkflowName(key1, 'Updated Workflow 1');
+
+			expect(workflowsStore.getDocumentWorkflowName(key1)).toBe('Updated Workflow 1');
+			expect(workflowsStore.getDocumentWorkflowName(key2)).toBe('Workflow 2');
+		});
+
+		it('should handle same workflow with different versions', () => {
+			const latestKey = createDocumentKey('workflow1', 'latest');
+			const v1Key = createDocumentKey('workflow1', 'v1');
+
+			const latestWorkflow = createTestWorkflow({
+				id: 'workflow1',
+				name: 'Latest Version',
+				versionId: 'latest',
+			});
+			const v1Workflow = createTestWorkflow({
+				id: 'workflow1',
+				name: 'Version 1',
+				versionId: 'v1',
+			});
+
+			workflowsStore.setDocument(latestKey, latestWorkflow);
+			workflowsStore.setDocument(v1Key, v1Workflow);
+
+			expect(workflowsStore.getDocumentWorkflowName(latestKey)).toBe('Latest Version');
+			expect(workflowsStore.getDocumentWorkflowName(v1Key)).toBe('Version 1');
+
+			// Verify they're stored separately
+			expect(workflowsStore.hasDocument(latestKey)).toBe(true);
+			expect(workflowsStore.hasDocument(v1Key)).toBe(true);
+		});
+	});
+});
 
 function generateMockExecutionEvents() {
 	const executionResponse: IExecutionResponse = {
