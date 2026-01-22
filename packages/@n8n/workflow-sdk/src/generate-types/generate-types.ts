@@ -1260,6 +1260,549 @@ function toPascalCase(str: string): string {
 }
 
 /**
+ * Convert string to snake_case (lowercase with underscores)
+ * Used for folder/file naming in split type structure
+ */
+function toSnakeCase(str: string): string {
+	return str
+		.replace(/([A-Z])/g, '_$1')
+		.toLowerCase()
+		.replace(/^_/, '')
+		.replace(/[-\s]+/g, '_');
+}
+
+/**
+ * Build discriminator path from a combination
+ * Examples:
+ *   { resource: 'ticket', operation: 'get' } -> 'resource_ticket/operation_get'
+ *   { mode: 'runOnceForAllItems' } -> 'mode_run_once_for_all_items'
+ *   { authentication: 'oauth2' } -> 'authentication_oauth2'
+ */
+export function buildDiscriminatorPath(combo: DiscriminatorCombination): string {
+	const parts: string[] = [];
+
+	// Handle resource/operation pattern (nested directories)
+	if (combo.resource && combo.operation) {
+		parts.push(`resource_${toSnakeCase(combo.resource)}`);
+		parts.push(`operation_${toSnakeCase(combo.operation)}`);
+		return parts.join('/');
+	}
+
+	// Handle single discriminators (flat files)
+	for (const [key, value] of Object.entries(combo)) {
+		if (value !== undefined) {
+			parts.push(`${key}_${toSnakeCase(value)}`);
+		}
+	}
+
+	return parts.join('/');
+}
+
+/**
+ * Check if a node uses ANY discriminator pattern that benefits from splitting
+ * Only returns true for: resource/operation, mode
+ * Does NOT split for: trigger, authentication, agent, promptType (these don't benefit from splitting)
+ */
+export function hasDiscriminatorPattern(node: NodeTypeDescription): boolean {
+	const combinations = extractDiscriminatorCombinations(node);
+	if (combinations.length === 0) {
+		return false;
+	}
+
+	// Check the first combination to see what kind of discriminators it has
+	const first = combinations[0];
+
+	// Resource/operation pattern
+	if (first.resource !== undefined && first.operation !== undefined) {
+		return true;
+	}
+
+	// Mode pattern
+	if (first.mode !== undefined) {
+		return true;
+	}
+
+	// Other discriminators don't benefit from splitting
+	return false;
+}
+
+/**
+ * Represents the discriminator tree structure for a node version
+ * Used for generating index files at different levels
+ */
+export interface DiscriminatorTree {
+	/** Type of discriminator pattern: 'resource_operation' or 'single' (mode, auth, etc.) */
+	type: 'resource_operation' | 'single';
+	/** For resource_operation: map of resource -> operations */
+	resources?: Map<string, string[]>;
+	/** For single discriminators: discriminator name and its values */
+	discriminatorName?: string;
+	discriminatorValues?: string[];
+}
+
+/**
+ * Build a discriminator tree from combinations
+ */
+export function buildDiscriminatorTree(
+	combinations: DiscriminatorCombination[],
+): DiscriminatorTree {
+	if (combinations.length === 0) {
+		return { type: 'single' };
+	}
+
+	const first = combinations[0];
+
+	// Resource/operation pattern
+	if (first.resource !== undefined && first.operation !== undefined) {
+		const resources = new Map<string, string[]>();
+		for (const combo of combinations) {
+			if (combo.resource && combo.operation) {
+				if (!resources.has(combo.resource)) {
+					resources.set(combo.resource, []);
+				}
+				resources.get(combo.resource)!.push(combo.operation);
+			}
+		}
+		return { type: 'resource_operation', resources };
+	}
+
+	// Single discriminator pattern
+	const discName = Object.keys(first).find((k) => first[k] !== undefined);
+	if (discName) {
+		const values = combinations.map((c) => c[discName]!).filter(Boolean);
+		return {
+			type: 'single',
+			discriminatorName: discName,
+			discriminatorValues: [...new Set(values)],
+		};
+	}
+
+	return { type: 'single' };
+}
+
+/**
+ * Generate the _shared.ts file for a split version directory
+ * Contains credentials, base type, and helper types shared across all discriminator files
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @param importDepth How many levels deep (for import paths)
+ */
+export function generateSharedFile(
+	node: NodeTypeDescription,
+	version: number,
+	importDepth: number = 5,
+): string {
+	const prefix = getPackagePrefix(node.name);
+	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+	const isTrigger = isTriggerNode(node);
+	const versionSuffix = versionToTypeName(version);
+
+	// Filter properties for this version
+	const filteredProperties = filterPropertiesForVersion(node.properties, version);
+
+	const lines: string[] = [];
+
+	// Header
+	lines.push('/**');
+	lines.push(` * ${node.displayName} Node - Version ${version} - Shared Types`);
+	lines.push(' * ');
+	lines.push(' * Contains credentials, base type, and helper types shared across all');
+	lines.push(' * resource/operation combinations.');
+	lines.push(' */');
+	lines.push('');
+	lines.push('// @ts-nocheck - Generated file may have unused imports');
+	lines.push('');
+
+	// Helper function to check if property needs Expression import
+	const propNeedsExpression = (p: NodeProperty): boolean => {
+		if (p.type === 'fixedCollection' || p.type === 'collection') {
+			return false;
+		}
+		return ['string', 'number', 'boolean', 'options', 'json', 'dateTime', 'color'].includes(p.type);
+	};
+
+	// Check properties
+	const outputProps = filteredProperties.filter(
+		(p) => !['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(p.type),
+	);
+
+	// Determine imports needed
+	const needsExpression = outputProps.some(propNeedsExpression);
+	const needsCredentialReference = node.credentials && node.credentials.length > 0;
+	const needsIDataObject = outputProps.some((p) => p.type === 'json');
+
+	// Build imports (relative path based on depth)
+	const basePath = '../'.repeat(importDepth) + 'base';
+	const baseImports: string[] = ['NodeConfig'];
+	if (needsExpression) baseImports.unshift('Expression');
+	if (needsCredentialReference)
+		baseImports.splice(baseImports.length - 1, 0, 'CredentialReference');
+
+	lines.push(`import type { ${baseImports.join(', ')} } from '${basePath}';`);
+	if (needsIDataObject) {
+		lines.push(`import type { IDataObject } from '${basePath}';`);
+	}
+	lines.push('');
+
+	// Re-export imports that discriminator files will need
+	lines.push('// Re-export types for discriminator files');
+	lines.push(`export type { ${baseImports.join(', ')} } from '${basePath}';`);
+	if (needsIDataObject) {
+		lines.push(`export type { IDataObject } from '${basePath}';`);
+	}
+	lines.push('');
+
+	// Helper types
+	const needsResourceLocator = outputProps.some((p) => p.type === 'resourceLocator');
+	const needsFilter = outputProps.some((p) => p.type === 'filter');
+	const needsAssignment = outputProps.some((p) => p.type === 'assignmentCollection');
+
+	if (needsResourceLocator || needsFilter || needsAssignment) {
+		lines.push('// Helper types for special n8n fields');
+		if (needsResourceLocator) {
+			lines.push(
+				'export type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
+			);
+		}
+		if (needsFilter) {
+			lines.push(
+				'export type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
+			);
+		}
+		if (needsAssignment) {
+			lines.push(
+				'export type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: string }> };',
+			);
+		}
+		lines.push('');
+	}
+
+	// Credentials
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Credentials');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	const credTypeName =
+		node.credentials && node.credentials.length > 0
+			? `${nodeName}${versionSuffix}Credentials`
+			: undefined;
+
+	if (node.credentials && node.credentials.length > 0) {
+		lines.push(`export interface ${credTypeName} {`);
+		const seenCreds = new Set<string>();
+		for (const cred of node.credentials) {
+			if (seenCreds.has(cred.name)) continue;
+			seenCreds.add(cred.name);
+			const optional = !cred.required ? '?' : '';
+			lines.push(`\t${cred.name}${optional}: CredentialReference;`);
+		}
+		lines.push('}');
+		lines.push('');
+	}
+
+	// Base type
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Base Node Type');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	const baseTypeName = `${nodeName}${versionSuffix}NodeBase`;
+	lines.push(`export interface ${baseTypeName} {`);
+	lines.push(`\ttype: '${node.name}';`);
+	lines.push(`\tversion: ${version};`);
+	if (credTypeName) {
+		lines.push(`\tcredentials?: ${credTypeName};`);
+	}
+	if (isTrigger) {
+		lines.push('\tisTrigger: true;');
+	}
+	lines.push('}');
+
+	return lines.join('\n');
+}
+
+/**
+ * Generate a discriminator file for a single resource/operation (or mode, etc.) combination
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @param combo The discriminator combination (e.g., { resource: 'ticket', operation: 'get' })
+ * @param props Properties applicable to this combination
+ * @param schema Optional JSON schema for output type
+ * @param sharedImportPath Relative path to _shared.ts
+ */
+export function generateDiscriminatorFile(
+	node: NodeTypeDescription,
+	version: number,
+	combo: DiscriminatorCombination,
+	props: NodeProperty[],
+	schema?: JsonSchema,
+	sharedImportPath: string = './_shared',
+): string {
+	const prefix = getPackagePrefix(node.name);
+	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+	const versionSuffix = versionToTypeName(version);
+
+	// Build type name from discriminator values
+	const comboValues = Object.entries(combo)
+		.filter(([_, v]) => v !== undefined)
+		.map(([_, v]) => toPascalCase(v!));
+	const configName = `${nodeName}${versionSuffix}${comboValues.join('')}Config`;
+	const outputTypeName = `${nodeName}${versionSuffix}${comboValues.join('')}Output`;
+	const nodeTypeName = `${nodeName}${versionSuffix}${comboValues.join('')}Node`;
+	const baseTypeName = `${nodeName}${versionSuffix}NodeBase`;
+
+	const lines: string[] = [];
+
+	// Build description from discriminator values
+	const comboDesc = Object.entries(combo)
+		.filter(([_, v]) => v !== undefined)
+		.map(([k, v]) => `${k}=${v}`)
+		.join(', ');
+
+	// Header
+	lines.push('/**');
+	lines.push(` * ${node.displayName} Node - Version ${version}`);
+	lines.push(` * Discriminator: ${comboDesc}`);
+	lines.push(' */');
+	lines.push('');
+	lines.push('// @ts-nocheck - Generated file may have unused imports');
+	lines.push('');
+
+	// Imports from shared file
+	const sharedImports: string[] = ['Expression', 'NodeConfig', baseTypeName];
+
+	// Check what helper types we need
+	const needsResourceLocator = props.some((p) => p.type === 'resourceLocator');
+	const needsFilter = props.some((p) => p.type === 'filter');
+	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
+	const needsIDataObject = props.some((p) => p.type === 'json');
+
+	if (needsResourceLocator) sharedImports.push('ResourceLocatorValue');
+	if (needsFilter) sharedImports.push('FilterValue');
+	if (needsAssignment) sharedImports.push('AssignmentCollectionValue');
+	if (needsIDataObject) sharedImports.push('IDataObject');
+
+	lines.push(`import type { ${sharedImports.join(', ')} } from '${sharedImportPath}';`);
+	lines.push('');
+
+	// Find description for JSDoc from discriminator option
+	let description: string | undefined;
+	for (const [key, value] of Object.entries(combo)) {
+		if (value === undefined) continue;
+		const discProp = node.properties.find(
+			(p) => p.name === key && p.options?.some((o) => o.value === value),
+		);
+		if (discProp) {
+			description = discProp.options?.find((o) => o.value === value)?.description;
+			if (description) break;
+		}
+	}
+
+	// Config type
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Config');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	if (description) {
+		lines.push(`/** ${description} */`);
+	}
+	lines.push(`export type ${configName} = {`);
+
+	// Add discriminator fields
+	for (const [key, value] of Object.entries(combo)) {
+		if (value !== undefined) {
+			lines.push(`\t${key}: '${value}';`);
+		}
+	}
+
+	// Add properties
+	const seenNames = new Set<string>();
+	for (const prop of props) {
+		if (seenNames.has(prop.name)) continue;
+		seenNames.add(prop.name);
+		const propLine = generatePropertyLine(prop, !prop.required);
+		if (propLine) {
+			lines.push(propLine);
+		}
+	}
+
+	lines.push('};');
+	lines.push('');
+
+	// Output type (if schema provided)
+	if (schema) {
+		lines.push('// ' + '='.repeat(75));
+		lines.push('// Output');
+		lines.push('// ' + '='.repeat(75));
+		lines.push('');
+		lines.push(`export type ${outputTypeName} = ${jsonSchemaToTypeScript(schema)};`);
+		lines.push('');
+	}
+
+	// Node type
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Node Type');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	lines.push(`export type ${nodeTypeName} = ${baseTypeName} & {`);
+	lines.push(`\tconfig: NodeConfig<${configName}>;`);
+	if (schema) {
+		lines.push(`\toutput?: ${outputTypeName};`);
+	}
+	lines.push('};');
+
+	return lines.join('\n');
+}
+
+/**
+ * Generate index file for a resource directory (e.g., resource_ticket/index.ts)
+ * Re-exports all operation files within this resource
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @param resource The resource name
+ * @param operations Array of operation names for this resource
+ */
+export function generateResourceIndexFile(
+	node: NodeTypeDescription,
+	version: number,
+	resource: string,
+	operations: string[],
+): string {
+	const prefix = getPackagePrefix(node.name);
+	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+	const versionSuffix = versionToTypeName(version);
+
+	const lines: string[] = [];
+
+	lines.push('/**');
+	lines.push(` * ${node.displayName} - ${toPascalCase(resource)} Resource`);
+	lines.push(' * Re-exports all operation types for this resource.');
+	lines.push(' */');
+	lines.push('');
+
+	// Import node types for union
+	const nodeTypeNames: string[] = [];
+	for (const op of operations.sort()) {
+		const fileName = `operation_${toSnakeCase(op)}`;
+		const nodeTypeName = `${nodeName}${versionSuffix}${toPascalCase(resource)}${toPascalCase(op)}Node`;
+		nodeTypeNames.push(nodeTypeName);
+		lines.push(`import type { ${nodeTypeName} } from './${fileName}';`);
+	}
+	lines.push('');
+
+	// Re-export all operations
+	for (const op of operations.sort()) {
+		const fileName = `operation_${toSnakeCase(op)}`;
+		lines.push(`export * from './${fileName}';`);
+	}
+	lines.push('');
+
+	// Union type for this resource's nodes
+	const resourceNodeTypeName = `${nodeName}${versionSuffix}${toPascalCase(resource)}Node`;
+	if (nodeTypeNames.length === 1) {
+		lines.push(`export type ${resourceNodeTypeName} = ${nodeTypeNames[0]};`);
+	} else {
+		lines.push(`export type ${resourceNodeTypeName} =`);
+		for (const typeName of nodeTypeNames) {
+			lines.push(`\t| ${typeName}`);
+		}
+		lines.push('\t;');
+	}
+
+	return lines.join('\n');
+}
+
+/**
+ * Generate version-level index file for split structure (e.g., v1/index.ts)
+ * Re-exports _shared.ts and all discriminator directories
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @param tree The discriminator tree structure
+ */
+export function generateSplitVersionIndexFile(
+	node: NodeTypeDescription,
+	version: number,
+	tree: DiscriminatorTree,
+): string {
+	const prefix = getPackagePrefix(node.name);
+	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+	const versionSuffix = versionToTypeName(version);
+
+	const lines: string[] = [];
+
+	lines.push('/**');
+	lines.push(` * ${node.displayName} Node - Version ${version}`);
+	lines.push(' * Re-exports shared types and all discriminator combinations.');
+	lines.push(' */');
+	lines.push('');
+
+	// Re-export shared types
+	lines.push("export * from './_shared';");
+	lines.push('');
+
+	// Collect all node type names for the union
+	const nodeTypeNames: string[] = [];
+
+	if (tree.type === 'resource_operation' && tree.resources) {
+		// Import resource node types for union
+		for (const [resource] of tree.resources) {
+			const resourceNodeTypeName = `${nodeName}${versionSuffix}${toPascalCase(resource)}Node`;
+			nodeTypeNames.push(resourceNodeTypeName);
+			const resourceDir = `resource_${toSnakeCase(resource)}`;
+			lines.push(`import type { ${resourceNodeTypeName} } from './${resourceDir}';`);
+		}
+		lines.push('');
+
+		// Re-export resource directories
+		for (const [resource] of tree.resources) {
+			const resourceDir = `resource_${toSnakeCase(resource)}`;
+			lines.push(`export * from './${resourceDir}';`);
+		}
+		lines.push('');
+	} else if (tree.type === 'single' && tree.discriminatorName && tree.discriminatorValues) {
+		// Single discriminator pattern (mode, etc.)
+		const discName = tree.discriminatorName;
+
+		// Import node types
+		for (const value of tree.discriminatorValues.sort()) {
+			const fileName = `${discName}_${toSnakeCase(value)}`;
+			const nodeTypeName = `${nodeName}${versionSuffix}${toPascalCase(value)}Node`;
+			nodeTypeNames.push(nodeTypeName);
+			lines.push(`import type { ${nodeTypeName} } from './${fileName}';`);
+		}
+		lines.push('');
+
+		// Re-export discriminator files
+		for (const value of tree.discriminatorValues.sort()) {
+			const fileName = `${discName}_${toSnakeCase(value)}`;
+			lines.push(`export * from './${fileName}';`);
+		}
+		lines.push('');
+	}
+
+	// Generate the combined node type union
+	const nodeTypeName = `${nodeName}${versionSuffix}Node`;
+	if (nodeTypeNames.length === 1) {
+		lines.push(`export type ${nodeTypeName} = ${nodeTypeNames[0]};`);
+	} else if (nodeTypeNames.length > 1) {
+		lines.push(`export type ${nodeTypeName} =`);
+		for (const typeName of nodeTypeNames) {
+			lines.push(`\t| ${typeName}`);
+		}
+		lines.push('\t;');
+	}
+
+	return lines.join('\n');
+}
+
+/**
  * Check if node is a trigger (no main input)
  */
 function isTriggerNode(node: NodeTypeDescription): boolean {

@@ -1467,4 +1467,422 @@ describe('generate-types', () => {
 			});
 		});
 	});
+
+	// =========================================================================
+	// Discriminator Split Type Generation Tests
+	// =========================================================================
+
+	describe('discriminator split type generation', () => {
+		// Mock node with resource/operation pattern (like Freshservice)
+		const mockFreshserviceNode: NodeTypeDescription = {
+			name: 'n8n-nodes-base.freshservice',
+			displayName: 'Freshservice',
+			description: 'Consume Freshservice API',
+			group: ['transform'],
+			version: 1,
+			inputs: ['main'],
+			outputs: ['main'],
+			credentials: [{ name: 'freshserviceApi', required: true }],
+			properties: [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [
+						{ name: 'Ticket', value: 'ticket' },
+						{ name: 'Agent', value: 'agent' },
+					],
+					default: 'ticket',
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['ticket'] } },
+					options: [
+						{ name: 'Get', value: 'get', description: 'Get a ticket' },
+						{ name: 'Create', value: 'create', description: 'Create a ticket' },
+						{ name: 'Delete', value: 'delete', description: 'Delete a ticket' },
+					],
+					default: 'get',
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: { show: { resource: ['agent'] } },
+					options: [
+						{ name: 'Get', value: 'get', description: 'Get an agent' },
+						{ name: 'Create', value: 'create', description: 'Create an agent' },
+					],
+					default: 'get',
+				},
+				{
+					displayName: 'Ticket ID',
+					name: 'ticketId',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: { show: { resource: ['ticket'], operation: ['get', 'delete'] } },
+				},
+				{
+					displayName: 'Subject',
+					name: 'subject',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: { show: { resource: ['ticket'], operation: ['create'] } },
+				},
+				{
+					displayName: 'Agent ID',
+					name: 'agentId',
+					type: 'string',
+					required: true,
+					default: '',
+					displayOptions: { show: { resource: ['agent'], operation: ['get'] } },
+				},
+			],
+		};
+
+		// Mock node with mode discriminator (like Code node)
+		const mockCodeNode: NodeTypeDescription = {
+			name: 'n8n-nodes-base.code',
+			displayName: 'Code',
+			description: 'Run custom JavaScript code',
+			group: ['transform'],
+			version: 2,
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Mode',
+					name: 'mode',
+					type: 'options',
+					options: [
+						{ name: 'Run Once for All Items', value: 'runOnceForAllItems' },
+						{ name: 'Run Once for Each Item', value: 'runOnceForEachItem' },
+					],
+					default: 'runOnceForAllItems',
+				},
+				{
+					displayName: 'JavaScript Code',
+					name: 'jsCode',
+					type: 'string',
+					default: '',
+					displayOptions: { show: { mode: ['runOnceForAllItems', 'runOnceForEachItem'] } },
+				},
+				{
+					displayName: 'Items Per Batch',
+					name: 'itemsPerBatch',
+					type: 'number',
+					default: 100,
+					displayOptions: { show: { mode: ['runOnceForAllItems'] } },
+				},
+			],
+		};
+
+		// Mock node without discriminators (like Aggregate)
+		const mockAggregateNode: NodeTypeDescription = {
+			name: 'n8n-nodes-base.aggregate',
+			displayName: 'Aggregate',
+			description: 'Aggregate items into a single item',
+			group: ['transform'],
+			version: 1,
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					displayName: 'Field Name',
+					name: 'fieldName',
+					type: 'string',
+					default: 'data',
+				},
+			],
+		};
+
+		describe('toSnakeCase', () => {
+			it('should convert camelCase to snake_case', () => {
+				// Note: toSnakeCase may not be exported, test through buildDiscriminatorPath
+				const combo = { mode: 'runOnceForAllItems' };
+				const path = generateTypes.buildDiscriminatorPath(combo);
+				expect(path).toBe('mode_run_once_for_all_items');
+			});
+
+			it('should convert simple strings to lowercase', () => {
+				const combo = { resource: 'ticket' };
+				const path = generateTypes.buildDiscriminatorPath(combo);
+				expect(path).toContain('ticket');
+			});
+
+			it('should handle PascalCase values', () => {
+				const combo = { mode: 'RunOnceForEachItem' };
+				const path = generateTypes.buildDiscriminatorPath(combo);
+				expect(path).toBe('mode_run_once_for_each_item');
+			});
+		});
+
+		describe('buildDiscriminatorPath', () => {
+			it('should build nested path for resource/operation combo', () => {
+				const combo = { resource: 'ticket', operation: 'get' };
+				const path = generateTypes.buildDiscriminatorPath(combo);
+				expect(path).toBe('resource_ticket/operation_get');
+			});
+
+			it('should build flat path for single discriminator (mode)', () => {
+				const combo = { mode: 'runOnceForAllItems' };
+				const path = generateTypes.buildDiscriminatorPath(combo);
+				expect(path).toBe('mode_run_once_for_all_items');
+			});
+
+			it('should handle authentication discriminator', () => {
+				const combo = { authentication: 'oauth2' };
+				const path = generateTypes.buildDiscriminatorPath(combo);
+				expect(path).toBe('authentication_oauth2');
+			});
+
+			it('should convert camelCase values to snake_case', () => {
+				const combo = { resource: 'agentGroup', operation: 'getAll' };
+				const path = generateTypes.buildDiscriminatorPath(combo);
+				expect(path).toBe('resource_agent_group/operation_get_all');
+			});
+		});
+
+		describe('hasDiscriminatorPattern', () => {
+			it('should return true for nodes with resource/operation pattern', () => {
+				const result = generateTypes.hasDiscriminatorPattern(mockFreshserviceNode);
+				expect(result).toBe(true);
+			});
+
+			it('should return true for nodes with mode discriminator', () => {
+				const result = generateTypes.hasDiscriminatorPattern(mockCodeNode);
+				expect(result).toBe(true);
+			});
+
+			it('should return false for nodes without discriminators', () => {
+				const result = generateTypes.hasDiscriminatorPattern(mockAggregateNode);
+				expect(result).toBe(false);
+			});
+
+			it('should return false for nodes without discriminators (HTTP Request)', () => {
+				const result = generateTypes.hasDiscriminatorPattern(mockHttpRequestNode);
+				expect(result).toBe(false);
+			});
+		});
+
+		describe('generateSharedFile', () => {
+			it('should generate _shared.ts with credentials for resource/operation node', () => {
+				const content = generateTypes.generateSharedFile(mockFreshserviceNode, 1);
+
+				// Should have header
+				expect(content).toContain('Freshservice Node - Version 1 - Shared Types');
+
+				// Should have credentials
+				expect(content).toContain('FreshserviceV1Credentials');
+				expect(content).toContain('freshserviceApi');
+
+				// Should have base type
+				expect(content).toContain('FreshserviceV1NodeBase');
+				expect(content).toContain("type: 'n8n-nodes-base.freshservice'");
+				expect(content).toContain('version: 1');
+
+				// Should re-export types for discriminator files (all on one line)
+				expect(content).toContain('export type { Expression, CredentialReference, NodeConfig }');
+			});
+
+			it('should generate _shared.ts without credentials for node without them', () => {
+				const content = generateTypes.generateSharedFile(mockAggregateNode, 1);
+
+				// Should NOT have credentials section with real credentials
+				expect(content).not.toContain('AggregateV1Credentials');
+
+				// Should have base type
+				expect(content).toContain('AggregateV1NodeBase');
+			});
+
+			it('should include helper types when needed', () => {
+				// Create a node with resourceLocator
+				const nodeWithLocator: NodeTypeDescription = {
+					...mockFreshserviceNode,
+					properties: [
+						...mockFreshserviceNode.properties,
+						{
+							displayName: 'Channel',
+							name: 'channel',
+							type: 'resourceLocator',
+							default: {},
+						},
+					],
+				};
+
+				const content = generateTypes.generateSharedFile(nodeWithLocator, 1);
+				expect(content).toContain('ResourceLocatorValue');
+			});
+		});
+
+		describe('generateDiscriminatorFile', () => {
+			it('should generate operation file for resource/operation combo', () => {
+				const combo = { resource: 'ticket', operation: 'get' };
+				const props = generateTypes.getPropertiesForCombination(mockFreshserviceNode, combo);
+
+				const content = generateTypes.generateDiscriminatorFile(
+					mockFreshserviceNode,
+					1,
+					combo,
+					props,
+					undefined,
+					'./_shared',
+				);
+
+				// Should have header with discriminator info
+				expect(content).toContain('Discriminator: resource=ticket, operation=get');
+
+				// Should import from _shared
+				expect(content).toContain("from './_shared'");
+				expect(content).toContain('FreshserviceV1NodeBase');
+
+				// Should have config type with discriminators
+				expect(content).toContain('FreshserviceV1TicketGetConfig');
+				expect(content).toContain("resource: 'ticket'");
+				expect(content).toContain("operation: 'get'");
+
+				// Should have node type
+				expect(content).toContain('FreshserviceV1TicketGetNode');
+				expect(content).toContain('FreshserviceV1NodeBase &');
+			});
+
+			it('should generate mode file for single discriminator', () => {
+				const combo = { mode: 'runOnceForAllItems' };
+				const props = generateTypes.getPropertiesForCombination(mockCodeNode, combo);
+
+				const content = generateTypes.generateDiscriminatorFile(
+					mockCodeNode,
+					2,
+					combo,
+					props,
+					undefined,
+					'./_shared',
+				);
+
+				// Should have config type
+				expect(content).toContain('CodeV2RunOnceForAllItemsConfig');
+				expect(content).toContain("mode: 'runOnceForAllItems'");
+
+				// Should have node type
+				expect(content).toContain('CodeV2RunOnceForAllItemsNode');
+			});
+
+			it('should include output type when schema is provided', () => {
+				const combo = { resource: 'ticket', operation: 'get' };
+				const props = generateTypes.getPropertiesForCombination(mockFreshserviceNode, combo);
+				const schema = {
+					type: 'object',
+					properties: {
+						id: { type: 'number' },
+						subject: { type: 'string' },
+					},
+				};
+
+				const content = generateTypes.generateDiscriminatorFile(
+					mockFreshserviceNode,
+					1,
+					combo,
+					props,
+					schema,
+					'./_shared',
+				);
+
+				// Should have output type
+				expect(content).toContain('FreshserviceV1TicketGetOutput');
+				expect(content).toContain('id?:');
+				expect(content).toContain('subject?:');
+
+				// Node type should reference output
+				expect(content).toContain('output?: FreshserviceV1TicketGetOutput');
+			});
+		});
+
+		describe('buildDiscriminatorTree', () => {
+			it('should build tree for resource/operation pattern', () => {
+				const combinations = generateTypes.extractDiscriminatorCombinations(mockFreshserviceNode);
+				const tree = generateTypes.buildDiscriminatorTree(combinations);
+
+				expect(tree.type).toBe('resource_operation');
+				expect(tree.resources).toBeDefined();
+				expect(tree.resources?.get('ticket')).toContain('get');
+				expect(tree.resources?.get('ticket')).toContain('create');
+				expect(tree.resources?.get('ticket')).toContain('delete');
+				expect(tree.resources?.get('agent')).toContain('get');
+				expect(tree.resources?.get('agent')).toContain('create');
+			});
+
+			it('should build tree for single discriminator pattern', () => {
+				const combinations = generateTypes.extractDiscriminatorCombinations(mockCodeNode);
+				const tree = generateTypes.buildDiscriminatorTree(combinations);
+
+				expect(tree.type).toBe('single');
+				expect(tree.discriminatorName).toBe('mode');
+				expect(tree.discriminatorValues).toContain('runOnceForAllItems');
+				expect(tree.discriminatorValues).toContain('runOnceForEachItem');
+			});
+		});
+
+		describe('generateResourceIndexFile', () => {
+			it('should generate index for a resource directory', () => {
+				const content = generateTypes.generateResourceIndexFile(mockFreshserviceNode, 1, 'ticket', [
+					'get',
+					'create',
+					'delete',
+				]);
+
+				// Should re-export operations
+				expect(content).toContain("export * from './operation_get'");
+				expect(content).toContain("export * from './operation_create'");
+				expect(content).toContain("export * from './operation_delete'");
+
+				// Should import node types for union
+				expect(content).toContain('FreshserviceV1TicketGetNode');
+				expect(content).toContain('FreshserviceV1TicketCreateNode');
+				expect(content).toContain('FreshserviceV1TicketDeleteNode');
+
+				// Should have combined resource node type
+				expect(content).toContain('FreshserviceV1TicketNode');
+			});
+		});
+
+		describe('generateSplitVersionIndexFile', () => {
+			it('should generate version index for resource/operation pattern', () => {
+				const combinations = generateTypes.extractDiscriminatorCombinations(mockFreshserviceNode);
+				const tree = generateTypes.buildDiscriminatorTree(combinations);
+				const content = generateTypes.generateSplitVersionIndexFile(mockFreshserviceNode, 1, tree);
+
+				// Should re-export shared
+				expect(content).toContain("export * from './_shared'");
+
+				// Should re-export resource directories
+				expect(content).toContain("export * from './resource_ticket'");
+				expect(content).toContain("export * from './resource_agent'");
+
+				// Should have combined node type
+				expect(content).toContain('FreshserviceV1Node');
+				expect(content).toContain('FreshserviceV1TicketNode');
+				expect(content).toContain('FreshserviceV1AgentNode');
+			});
+
+			it('should generate version index for single discriminator pattern', () => {
+				const combinations = generateTypes.extractDiscriminatorCombinations(mockCodeNode);
+				const tree = generateTypes.buildDiscriminatorTree(combinations);
+				const content = generateTypes.generateSplitVersionIndexFile(mockCodeNode, 2, tree);
+
+				// Should re-export shared
+				expect(content).toContain("export * from './_shared'");
+
+				// Should re-export mode files
+				expect(content).toContain("export * from './mode_run_once_for_all_items'");
+				expect(content).toContain("export * from './mode_run_once_for_each_item'");
+
+				// Should have combined node type
+				expect(content).toContain('CodeV2Node');
+			});
+		});
+	});
 });
