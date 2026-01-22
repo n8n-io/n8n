@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useTemplateWorkflow } from '@/features/workflows/templates/utils/templateActions';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -12,7 +12,7 @@ import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import TemplatesView from './TemplatesView.vue';
 import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
 
-import { N8nButton, N8nLoading, N8nMarkdown, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nMarkdown, N8nText } from '@n8n/design-system';
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -26,9 +26,6 @@ const documentTitle = useDocumentTitle();
 const loading = ref(true);
 const showPreview = ref(true);
 const notFoundError = ref(false);
-const isPreviewVisible = ref(true);
-const previewWrapperRef = ref<HTMLElement | null>(null);
-let previewObserver: IntersectionObserver | null = null;
 
 const templateId = computed(() =>
 	Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
@@ -74,29 +71,6 @@ watch(
 	},
 );
 
-watch(
-	previewWrapperRef,
-	(newRef) => {
-		if (previewObserver) {
-			previewObserver.disconnect();
-			previewObserver = null;
-		}
-
-		if (newRef) {
-			previewObserver = new IntersectionObserver(
-				(entries) => {
-					for (const entry of entries) {
-						isPreviewVisible.value = entry.isIntersecting;
-					}
-				},
-				{ threshold: 0 },
-			);
-			previewObserver.observe(newRef);
-		}
-	},
-	{ immediate: true },
-);
-
 onMounted(async () => {
 	scrollToTop();
 
@@ -113,13 +87,6 @@ onMounted(async () => {
 
 	loading.value = false;
 });
-
-onBeforeUnmount(() => {
-	if (previewObserver) {
-		previewObserver.disconnect();
-		previewObserver = null;
-	}
-});
 </script>
 
 <template>
@@ -130,7 +97,7 @@ onBeforeUnmount(() => {
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
-			<div ref="previewWrapperRef" :class="$style.previewWrapper">
+			<div :class="$style.previewWrapper">
 				<div :class="$style.image">
 					<WorkflowPreview
 						v-if="showPreview"
@@ -139,26 +106,16 @@ onBeforeUnmount(() => {
 						@close="onHidePreview"
 					/>
 				</div>
-				<div v-if="isPreviewVisible" :class="$style.button">
-					<N8nButton
-						v-if="template"
-						data-test-id="use-template-button"
-						:label="i18n.baseText('template.buttons.tryTemplate')"
-						size="large"
-						@click="openTemplateSetup(templateId, $event)"
-					/>
-					<N8nLoading :loading="!template" :rows="1" variant="button" />
-				</div>
 			</div>
 			<div :class="$style.contentContainer">
 				<div :class="$style.content">
 					<div :class="$style.templateCard">
 						<RecommendedTemplateCard v-if="template" :template="template" :show-details="true">
-							<template v-if="!isPreviewVisible" #belowContent>
+							<template #belowContent>
 								<N8nButton
 									data-test-id="use-template-button"
 									:label="i18n.baseText('template.buttons.tryTemplate')"
-									size="medium"
+									size="large"
 									@click.stop="openTemplateSetup(templateId, $event)"
 								/>
 							</template>
