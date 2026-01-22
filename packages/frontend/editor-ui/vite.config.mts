@@ -106,6 +106,15 @@ const plugins: UserConfig['plugins'] = [
 				src: pathPosix.resolve('node_modules/curlconverter/dist/tree-sitter-bash.wasm'),
 				dest: resolve(__dirname, 'dist'),
 			},
+			// wa-sqlite WASM files for OPFS database support (no cross-origin isolation needed)
+			{
+				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite.wasm'),
+				dest: 'assets',
+			},
+			{
+				src: pathPosix.resolve('node_modules/wa-sqlite/dist/wa-sqlite-async.wasm'),
+				dest: 'assets',
+			},
 		],
 	}),
 	vue(),
@@ -227,6 +236,7 @@ export default mergeConfig(
 			target,
 		},
 		optimizeDeps: {
+			exclude: ['wa-sqlite'],
 			esbuildOptions: {
 				target,
 			},

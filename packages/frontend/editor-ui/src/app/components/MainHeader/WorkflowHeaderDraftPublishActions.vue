@@ -292,6 +292,7 @@ defineExpose({
 					workflowPublishState === 'not-published-eligible' && props.workflowPermissions.publish
 				"
 				:show-after="300"
+				:offset="15"
 			>
 				<template #content>
 					<div>
