@@ -1431,4 +1431,203 @@ describe('getStatus', () => {
 			});
 		});
 	});
+
+	describe('tag mappings', () => {
+		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+
+		it('should detect when a tag mapping is removed locally but still exists remotely', async () => {
+			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
+			tagRepository.find.mockResolvedValue([tag]);
+
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [tag],
+				mappings: [{ tagId: 'tag1', workflowId: 'wf1' }],
+			});
+
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [tag],
+				mappings: [],
+			});
+
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object in verbose mode.');
+			}
+
+			expect(result.mappingsMissingInLocal).toHaveLength(1);
+			expect(result.mappingsMissingInLocal[0]).toMatchObject({
+				tagId: 'tag1',
+				workflowId: 'wf1',
+			});
+			expect(result.mappingsMissingInRemote).toHaveLength(0);
+		});
+
+		it('should correctly match mappings by both tagId and workflowId', async () => {
+			const tag1 = mock<TagEntity>({ id: 'tag1', name: 'Tag 1', updatedAt: new Date() });
+			const tag2 = mock<TagEntity>({ id: 'tag2', name: 'Tag 2', updatedAt: new Date() });
+			tagRepository.find.mockResolvedValue([tag1, tag2]);
+
+			// Remote
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [tag1, tag2],
+				mappings: [
+					{ tagId: 'tag1', workflowId: 'wf1' },
+					{ tagId: 'tag2', workflowId: 'wf2' },
+				],
+			});
+
+			// Local
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [tag1, tag2],
+				mappings: [
+					{ tagId: 'tag1', workflowId: 'wf1' },
+					{ tagId: 'tag1', workflowId: 'wf2' },
+				],
+			});
+
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object.');
+			}
+
+			// Should detect changes:
+			// - tag2 mapping with wf2 exists remote but not local (mappingsMissingInLocal)
+			expect(result.mappingsMissingInLocal).toHaveLength(1);
+			expect(result.mappingsMissingInLocal[0]).toMatchObject({
+				tagId: 'tag2',
+				workflowId: 'wf2',
+			});
+
+			// - tag1 mapping with wf2 exists local but not remote (mappingsMissingInRemote)
+			expect(result.mappingsMissingInRemote).toHaveLength(1);
+			expect(result.mappingsMissingInRemote[0]).toMatchObject({
+				tagId: 'tag1',
+				workflowId: 'wf2',
+			});
+
+			// The first mapping (tag1 + wf1) should match on both sides
+		});
+
+		it('should not detect changes when mappings are identical', async () => {
+			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
+			tagRepository.find.mockResolvedValue([tag]);
+
+			const identicalMappings = [
+				{ tagId: 'tag1', workflowId: 'wf1' },
+				{ tagId: 'tag1', workflowId: 'wf2' },
+			];
+
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [tag],
+				mappings: identicalMappings,
+			});
+
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [tag],
+				mappings: identicalMappings,
+			});
+
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object in verbose mode.');
+			}
+
+			// Should not detect any mapping changes
+			expect(result.mappingsMissingInLocal).toHaveLength(0);
+			expect(result.mappingsMissingInRemote).toHaveLength(0);
+		});
+
+		it('should add tags file to sourceControlledFiles when only mappings change (push)', async () => {
+			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
+			tagRepository.find.mockResolvedValue([tag]);
+
+			// Remote
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [tag],
+				mappings: [{ tagId: 'tag1', workflowId: 'wf1' }],
+			});
+
+			// Local: tag removed
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [tag], // Tag still present
+				mappings: [], // Mapping gone
+			});
+
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			if (!Array.isArray(result)) {
+				fail('Expected result to be an array in non-verbose mode.');
+			}
+
+			// Should have a tags entry in sourceControlledFiles
+			const tagsFiles = result.filter((f) => f.type === 'tags');
+			expect(tagsFiles).toHaveLength(1);
+			expect(tagsFiles[0]).toMatchObject({
+				id: 'tags',
+				name: 'Workflow Tags',
+				type: 'tags',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+			});
+		});
+
+		it('should add tags file to sourceControlledFiles when only mappings change (pull)', async () => {
+			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
+			tagRepository.find.mockResolvedValue([tag]);
+
+			// Remote
+			sourceControlImportService.getRemoteTagsAndMappingsFromFile.mockResolvedValue({
+				tags: [tag],
+				mappings: [],
+			});
+
+			// Local
+			sourceControlImportService.getLocalTagsAndMappingsFromDb.mockResolvedValue({
+				tags: [tag],
+				mappings: [{ tagId: 'tag1', workflowId: 'wf1' }],
+			});
+
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			if (!Array.isArray(result)) {
+				fail('Expected result to be an array');
+			}
+
+			// Should have a tags entry in sourceControlledFiles
+			const tagsFiles = result.filter((f) => f.type === 'tags');
+			expect(tagsFiles).toHaveLength(1);
+			expect(tagsFiles[0]).toMatchObject({
+				id: 'tags',
+				name: 'Workflow Tags',
+				type: 'tags',
+				status: 'modified',
+				location: 'remote',
+				conflict: true,
+			});
+		});
+	});
 });
