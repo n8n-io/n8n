@@ -4,6 +4,8 @@ import { useExternalSecretsStore } from '@/features/integrations/externalSecrets
 
 const escape = (str: string) => str.replace('$', '\\$');
 
+// NOTE: this file is unused, only externalSecrets.ee.store.ts#secretsAsObject is the source for expressions
+// and datatype.completions.ts renders them in the little popup in the expression editor
 export function useSecretsCompletions() {
 	const externalSecretsStore = useExternalSecretsStore();
 
