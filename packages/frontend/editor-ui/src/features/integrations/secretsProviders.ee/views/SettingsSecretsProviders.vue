@@ -4,8 +4,15 @@ import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useSecretsProviders } from '../composables/useSecretsProviders';
 import { computed, onMounted } from 'vue';
-import { N8nActionBox, N8nHeading, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
-import SecretsProviderCard from '../components/SecretsProviderCard.ee.vue';
+import {
+	N8nActionBox,
+	N8nHeading,
+	N8nIcon,
+	N8nLink,
+	N8nLoading,
+	N8nText,
+} from '@n8n/design-system';
+import SecretsProviderConnectionCard from '../components/SecretsProviderConnectionCard.ee.vue';
 import SecretsProvidersEmptyState from '../components/SecretsProvidersEmptyState.ee.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { I18nT } from 'vue-i18n';
@@ -66,9 +73,14 @@ function goToUpgrade() {
 			v-if="secretsProviders.isEnterpriseExternalSecretsEnabled.value"
 			data-test-id="secrets-provider-connections-content-licensed"
 		>
-			<SecretsProvidersEmptyState v-if="!hasActiveProviders" />
+			<div v-if="secretsProviders.isLoading.value" data-test-id="secrets-providers-loading">
+				<div v-for="i in 3" :key="i" class="mb-2xs">
+					<N8nLoading variant="p" :rows="1" />
+				</div>
+			</div>
+			<SecretsProvidersEmptyState v-else-if="!hasActiveProviders" />
 			<div v-else>
-				<SecretsProviderCard
+				<SecretsProviderConnectionCard
 					v-for="provider in secretsProviders.activeProviders.value"
 					:key="provider.name"
 					class="mb-2xs"
