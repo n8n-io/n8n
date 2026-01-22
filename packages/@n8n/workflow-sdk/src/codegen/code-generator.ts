@@ -37,13 +37,16 @@ function getIndent(ctx: GenerationContext): string {
 
 /**
  * Escape a string for use in generated code
+ * Uses unicode escape sequences to preserve special characters through roundtrip
  */
 function escapeString(str: string): string {
 	return str
 		.replace(/\\/g, '\\\\')
 		.replace(/'/g, "\\'")
-		.replace(/\u2018/g, "\\'") // LEFT SINGLE QUOTATION MARK
-		.replace(/\u2019/g, "\\'") // RIGHT SINGLE QUOTATION MARK
+		.replace(/\u2018/g, '\\u2018') // LEFT SINGLE QUOTATION MARK - preserve as unicode
+		.replace(/\u2019/g, '\\u2019') // RIGHT SINGLE QUOTATION MARK - preserve as unicode
+		.replace(/\u201C/g, '\\u201C') // LEFT DOUBLE QUOTATION MARK - preserve as unicode
+		.replace(/\u201D/g, '\\u201D') // RIGHT DOUBLE QUOTATION MARK - preserve as unicode
 		.replace(/\n/g, '\\n')
 		.replace(/\r/g, '\\r');
 }

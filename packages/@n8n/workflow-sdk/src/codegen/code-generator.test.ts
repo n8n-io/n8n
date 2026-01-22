@@ -587,6 +587,43 @@ describe('code-generator', () => {
 				expect(code).not.toContain('\u2019'); // No unescaped right smart quote
 			});
 
+			it('preserves Unicode smart quotes through roundtrip', () => {
+				const originalName = 'What\u2019s the weather in Paris?'; // RIGHT SINGLE QUOTATION MARK
+				const json: WorkflowJSON = {
+					id: 'roundtrip-unicode',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [100, 100],
+						},
+						{
+							id: '2',
+							name: 'Note',
+							type: 'n8n-nodes-base.stickyNote',
+							typeVersion: 1,
+							position: [200, 100],
+							parameters: {
+								content: originalName,
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// The unicode character should be preserved as escape sequence
+				expect(code).toContain('\\u2019'); // Unicode escape sequence in generated code
+
+				// When eval'd, should produce the original character
+				const evalResult = eval(`'What\\u2019s the weather in Paris?'`);
+				expect(evalResult).toBe(originalName);
+			});
+
 			it('quotes object keys with spaces', () => {
 				const json: WorkflowJSON = {
 					id: 'space-keys',
