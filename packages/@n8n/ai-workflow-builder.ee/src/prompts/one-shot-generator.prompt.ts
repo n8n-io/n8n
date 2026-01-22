@@ -233,6 +233,39 @@ const agent = node({{
   }}
 }});
 \`\`\`
+
+## AI Agent with $fromAI Tools
+Use $.fromAI() in tool config callbacks to let the AI determine parameter values:
+\`\`\`typescript
+const agent = node({{
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {{
+    parameters: {{ promptType: 'define', text: 'You can send emails' }},
+    subnodes: {{
+      model: languageModel({{
+        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+        version: 1,
+        config: {{}}
+      }}),
+      tools: [
+        tool({{
+          type: 'n8n-nodes-base.gmailTool',
+          version: 1,
+          config: ($) => ({{
+            parameters: {{
+              sendTo: $.fromAI('recipient', 'Email address'),
+              subject: $.fromAI('subject', 'Email subject'),
+              message: $.fromAI('body', 'Email content')
+            }},
+            credentials: {{ gmailOAuth2: newCredential('Gmail') }}
+          }})
+        }})
+      ]
+    }}
+  }}
+}});
+\`\`\`
 </ai_patterns>`;
 
 /**
@@ -664,17 +697,64 @@ Key points for multiple chains:
 - Connections between nodes in the chain are preserved
 - Position nodes vertically to avoid overlap (e.g., y: 200 for first chain, y: 500 for second)
 
-## Example 9: Multi-Agent Orchestration
+## Example 9: Tools with $fromAI for AI-Driven Parameters
+Use the tool() config callback with $.fromAI() to let the AI agent determine parameter values at runtime:
+\`\`\`typescript
+return workflow('ai-email', 'AI Email Assistant')
+  .add(trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {{}} }}))
+  .then(node({{
+    type: '@n8n/n8n-nodes-langchain.agent',
+    version: 3.1,
+    config: {{
+      name: 'Email Agent',
+      parameters: {{
+        promptType: 'define',
+        text: '={{{{ $json.chatInput }}}}',
+        options: {{ systemMessage: 'You are an email assistant. Send emails when asked.' }}
+      }},
+      subnodes: {{
+        model: languageModel({{
+          type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+          version: 1.3,
+          config: {{ credentials: {{ openAiApi: newCredential('OpenAI') }} }}
+        }}),
+        tools: [
+          // Use config callback with $.fromAI() for AI-driven parameters
+          tool({{
+            type: 'n8n-nodes-base.gmailTool',
+            version: 1,
+            config: ($) => ({{
+              parameters: {{
+                sendTo: $.fromAI('recipient', 'Email address to send to'),
+                subject: $.fromAI('subject', 'Email subject line'),
+                message: $.fromAI('body', 'Email body content')
+              }},
+              credentials: {{ gmailOAuth2: newCredential('Gmail') }}
+            }})
+          }})
+        ]
+      }}
+    }}
+  }}));
+\`\`\`
+
+Key points for $fromAI:
+- Use tool({{ config: ($) => ({{ ... }}) }}) callback syntax
+- $.fromAI(key, description?, type?, defaultValue?) creates AI-driven parameters
+- The AI agent will determine the actual values at runtime based on user input
+- Types: 'string' (default), 'number', 'boolean', 'json'
+
+## Example 10: Multi-Agent Orchestration
 \`\`\`typescript
 // Sub-agent that can be called as a tool
 const researchAgent = tool({{
   type: '@n8n/n8n-nodes-langchain.agentTool',
   version: 3,
-  config: {{
+  config: ($) => ({{
     name: 'Research Agent',
     parameters: {{
       toolDescription: 'Researches a topic and returns findings',
-      text: '={{{{ $fromAI(\\'topic\\', \\'Topic to research\\', \\'string\\') }}}}'
+      text: $.fromAI('topic', 'Topic to research')
     }},
     subnodes: {{
       model: languageModel({{
@@ -690,7 +770,7 @@ const researchAgent = tool({{
         }})
       ]
     }}
-  }}
+  }})
 }});
 
 return workflow('orchestrator', 'Multi-Agent Workflow')
