@@ -201,17 +201,12 @@ export function buildSteps(
 			const toolId = typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call';
 			const toolName = nodeNameToToolName(tool.action.nodeName);
 
-			// Build the tool call object with thought_signature if present (for Gemini)
+			// Build the tool call object
 			const toolCall = {
 				id: toolId,
 				name: toolName,
 				args: toolInput,
 				type: 'tool_call' as const,
-				additional_kwargs: {
-					...(providerMetadata.thoughtSignature && {
-						thought_signature: providerMetadata.thoughtSignature,
-					}),
-				},
 			};
 
 			// Build message content using provider-specific logic
@@ -223,12 +218,33 @@ export function buildSteps(
 				tool.action.nodeName,
 			);
 
-			const syntheticAIMessage = new AIMessage({
+			// Build AIMessage options, handling provider-specific requirements
+			// Note: tool_calls is only used when content is a string
+			// When content is an array (thinking mode), tool_use blocks are in the content array
+			const aiMessageOptions: {
+				content: typeof messageContent;
+				tool_calls?: Array<typeof toolCall>;
+				additional_kwargs?: Record<string, unknown>;
+			} = {
 				content: messageContent,
-				// Note: tool_calls is only used when content is a string
-				// When content is an array (thinking mode), tool_use blocks are in the content array
-				...(typeof messageContent === 'string' && { tool_calls: [toolCall] }),
-			});
+			};
+
+			if (typeof messageContent === 'string') {
+				aiMessageOptions.tool_calls = [toolCall];
+			}
+
+			// Include additional_kwargs with Gemini thought signatures for LangChain to pass back
+			if (providerMetadata.thoughtSignature) {
+				aiMessageOptions.additional_kwargs = {
+					__gemini_function_call_thought_signatures__: {
+						[toolId]: providerMetadata.thoughtSignature,
+					},
+					tool_calls: [{ id: toolId, name: toolName, args: toolInput }],
+					signatures: ['', providerMetadata.thoughtSignature],
+				};
+			}
+
+			const syntheticAIMessage = new AIMessage(aiMessageOptions);
 
 			// Extract tool input arguments for the result
 			// Exclude metadata fields: id, log, type - always keep as object for type consistency

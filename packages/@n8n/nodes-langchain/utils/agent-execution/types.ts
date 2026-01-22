@@ -18,6 +18,8 @@ export type ToolCallRequest = {
 	log?: string;
 	/** Full message log including LLM response */
 	messageLog?: unknown[];
+	/** Additional kwargs from the LLM response (for Gemini thought signatures) */
+	additionalKwargs?: Record<string, unknown>;
 };
 
 /**
