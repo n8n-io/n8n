@@ -247,9 +247,11 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		const { endpointAuthToken } = this.dynamicCredentialConfig;
 		if (!endpointAuthToken?.trim()) {
 			return (_req: Request, res: Response, _next: NextFunction) => {
-				res.status(400).json({
-					message:
-						'You must provide an endpoint auth token to access dynamic credentials external endpoints.',
+				this.logger.error(
+					'Dynamic credentials external endpoints require an endpoint auth token. Please set the N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN environment variable to enable access.',
+				);
+				res.status(500).json({
+					message: 'Dynamic credentials configuration is invalid. Check server logs for details.',
 				});
 				return;
 			};
