@@ -61,7 +61,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 .background {
 	position: absolute;
 	background-color: var(--input-triple--color--background);
-	top: var(--parameter-input-options--height);
+	top: 0;
 	bottom: 0;
 	left: 0;
 	right: 0;
@@ -90,6 +90,9 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 .middle {
 	flex-grow: 0;
 	flex-basis: 160px;
+}
+
+.default .middle {
 	padding-top: var(--parameter-input-options--height);
 }
 
@@ -112,6 +115,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 
 	.middle {
 		margin-left: -1px;
+		padding-top: var(--parameter-input-options--height);
 
 		--input-triple--radius--top-right: var(--radius);
 		--input-triple--radius--bottom-right: 0;

@@ -54,6 +54,7 @@ export {
 	isDomainAllowed,
 	isCommunityPackageName,
 	dedupe,
+	sanitizeFilename,
 } from './utils';
 export {
 	isINodeProperties,
@@ -66,6 +67,7 @@ export {
 	isResourceLocatorValue,
 	isFilterValue,
 	isNodeConnectionType,
+	isBinaryValue,
 } from './type-guards';
 
 export {
@@ -75,11 +77,12 @@ export {
 	type ExtractableSubgraphData,
 	type IConnectionAdjacencyList as AdjacencyList,
 } from './graph/graph-utils';
-export { ExpressionExtensions } from './extensions';
+export { ExpressionExtensions, type Alias, type AliasCompletion } from './extensions';
 export * as ExpressionParser from './extensions/expression-parser';
 export { NativeMethods } from './native-methods';
 export * from './node-parameters/filter-parameter';
 export * from './node-parameters/parameter-type-validation';
+export * from './node-parameters/node-parameter-value-type-guard';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';

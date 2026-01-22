@@ -27,8 +27,15 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
-import type { INode, INodes } from 'n8n-workflow';
-import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
+
+import type { INode, INodes, IWorkflowSettings, JsonValue } from 'n8n-workflow';
+import {
+	NodeApiError,
+	PROJECT_ROOT,
+	Workflow,
+	assert,
+	calculateWorkflowChecksum,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -52,8 +59,11 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
 import { WorkflowValidationService } from './workflow-validation.service';
+import { WebhookService } from '@/webhooks/webhook.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 
 @Service()
 export class WorkflowService {
@@ -79,6 +89,7 @@ export class WorkflowService {
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly webhookService: WebhookService,
 	) {}
 
 	async getMany(
@@ -87,6 +98,7 @@ export class WorkflowService {
 		includeScopes?: boolean,
 		includeFolders?: boolean,
 		onlySharedWithMe?: boolean,
+		requiredScopes: Scope[] = ['workflow:read'],
 	) {
 		let count;
 		let workflows;
@@ -108,7 +120,7 @@ export class WorkflowService {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWithMeIds(user);
 		} else {
 			sharedWorkflowIds = await this.workflowSharingService.getSharedWorkflowIds(user, {
-				scopes: ['workflow:read'],
+				scopes: requiredScopes,
 			});
 		}
 
@@ -264,6 +276,10 @@ export class WorkflowService {
 			);
 		}
 
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot update an archived workflow.');
+		}
+
 		if (!forceSave && expectedChecksum) {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
@@ -305,32 +321,19 @@ export class WorkflowService {
 			};
 		}
 
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
+
+		if (workflowUpdateData.settings) {
+			workflowUpdateData.settings = WorkflowHelpers.removeDefaultValues(
+				workflowUpdateData.settings,
+				this.globalConfig.executions.timeout,
+			);
+		}
+
 		// Check if settings actually changed
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
 			!isEqual(workflow.settings, workflowUpdateData.settings);
-
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
-
-		const workflowSettings = workflowUpdateData.settings ?? {};
-		const keysAllowingDefault = [
-			'timezone',
-			'saveDataErrorExecution',
-			'saveDataSuccessExecution',
-			'saveManualExecutions',
-			'saveExecutionProgress',
-		] as const;
-		for (const key of keysAllowingDefault) {
-			// Do not save the default value
-			if (workflowSettings[key] === 'DEFAULT') {
-				delete workflowSettings[key];
-			}
-		}
-
-		if (workflowSettings.executionTimeout === this.globalConfig.executions.timeout) {
-			// Do not save when default got set
-			delete workflowSettings.executionTimeout;
-		}
 
 		// Always set updatedAt to get millisecond precision
 		workflowUpdateData.updatedAt = new Date();
@@ -416,12 +419,19 @@ export class WorkflowService {
 			});
 		}
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+
+		const settingsChangesDetail = this.calculateSettingsChanges(
+			workflow.settings,
+			updatedWorkflow.settings,
+		);
+
 		this.eventService.emit('workflow-saved', {
 			user,
 			workflow: updatedWorkflow,
 			publicApi,
 			previousWorkflow: workflow,
 			aiBuilderAssisted,
+			...(settingsChangesDetail && { settingsChanged: settingsChangesDetail }),
 		});
 
 		// Activate workflow if requested, or
@@ -502,6 +512,44 @@ export class WorkflowService {
 		}
 	}
 
+	private async _findConflictingWebhooks(
+		workflowEntity: WorkflowEntity,
+		versionToActivate: WorkflowHistory,
+	) {
+		const workflow = new Workflow({
+			id: workflowEntity.id,
+			nodes: versionToActivate.nodes,
+			connections: versionToActivate.connections,
+			active: !!workflowEntity.activeVersion,
+			settings: workflowEntity.settings,
+			nodeTypes: this.nodeTypes,
+		});
+		const additionalData = await getWorkflowExecutionData({
+			workflowId: workflow.id,
+		});
+
+		return await this.webhookService.findWebhookConflicts(workflow, additionalData);
+	}
+
+	private async _detectWebhookConflicts(
+		workflowEntity: WorkflowEntity,
+		versionToActivate: WorkflowHistory,
+	) {
+		const conflicts = await this._findConflictingWebhooks(workflowEntity, versionToActivate);
+
+		if (conflicts.length > 0) {
+			throw new ConflictError(
+				'There is a conflict with one of the webhooks.',
+				JSON.stringify(
+					conflicts.map(({ trigger, conflict }) => ({
+						trigger,
+						conflict,
+					})),
+				),
+			);
+		}
+	}
+
 	/**
 	 * Activates a workflow by setting its activeVersionId and adding it to the active workflow manager.
 	 * @param user - The user activating the workflow
@@ -524,7 +572,7 @@ export class WorkflowService {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:update'],
+			['workflow:publish'],
 			{ includeActiveVersion: true },
 		);
 
@@ -536,6 +584,10 @@ export class WorkflowService {
 			throw new NotFoundError(
 				'You do not have permission to activate this workflow. Ask the owner to share it with you.',
 			);
+		}
+
+		if (workflow.isArchived) {
+			throw new BadRequestError('Cannot activate an archived workflow.');
 		}
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
@@ -562,7 +614,10 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
+		await this._detectWebhookConflicts(workflow, versionToActivate);
+
 		this._validateNodes(workflowId, versionToActivate.nodes);
+		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
@@ -644,7 +699,7 @@ export class WorkflowService {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
-			['workflow:update'],
+			['workflow:publish'],
 			{ includeActiveVersion: true },
 		);
 
@@ -938,6 +993,66 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	/**
+	 * Calculates which workflow settings changed between two versions.
+	 * Returns an object with { settingKey: { from, to } } for each changed setting,
+	 * or undefined if no settings changed.
+	 */
+	private calculateSettingsChanges(
+		previousSettings: IWorkflowSettings | undefined,
+		newSettings: IWorkflowSettings | undefined,
+	): Record<string, { from: JsonValue; to: JsonValue }> | undefined {
+		const changes: Record<string, { from: JsonValue; to: JsonValue }> = {};
+
+		const prev = previousSettings ?? {};
+		const next = newSettings ?? {};
+
+		// Get all unique keys from both previous and new settings
+		const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+
+		for (const key of allKeys) {
+			const prevValue = prev[key as keyof IWorkflowSettings];
+			const nextValue = next[key as keyof IWorkflowSettings];
+
+			if (!isEqual(prevValue, nextValue)) {
+				const from: JsonValue = prevValue ?? null;
+				const to: JsonValue = nextValue ?? null;
+				changes[key] = { from, to };
+			}
+		}
+
+		return Object.keys(changes).length > 0 ? changes : undefined;
+	}
+
+	/**
+	 * Validates that all sub-workflow references in a workflow are published.
+	 * Prevents publishing a parent workflow that references draft-only sub-workflows.
+	 *
+	 * Note: A published workflow could still end up referencing draft-only sub-workflows if:
+	 * - A referenced sub-workflow gets unpublished after the parent workflow was published
+	 * - The workflow ID is provided via an expression (e.g., ={{ $json.workflowId }})
+	 * - The workflow source is not 'database' (e.g., URL, parameter, localFile)
+	 *
+	 * In these cases, the invariant is enforced at execution time, where the workflow will
+	 * fail with a clear error message if the sub-workflow is not published (for production
+	 * executions) or not found.
+	 */
+	private async _validateSubWorkflowReferences(workflowId: string, nodes: INode[]) {
+		const validation = await this.workflowValidationService.validateSubWorkflowReferences(
+			workflowId,
+			nodes,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed sub-workflow validation', {
+				workflowId,
+				error: validation.error,
+				invalidReferences: validation.invalidReferences,
+			});
+			throw new WorkflowValidationError(validation.error ?? 'Sub-workflow validation failed');
 		}
 	}
 }

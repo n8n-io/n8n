@@ -1,13 +1,18 @@
 import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
 import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 
+import type { ChatTriggerResponseMode } from './chat-hub.types';
+
 export const EXECUTION_POLL_INTERVAL = 1000;
+export const STREAM_CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 	'canceled',
 	'crashed',
+	'unknown',
+	'waiting',
 	'error',
 	'success',
-];
+] as const satisfies ExecutionStatus[];
 export const TOOLS_AGENT_NODE_MIN_VERSION = 2.2;
 export const CHAT_TRIGGER_NODE_MIN_VERSION = 1.2;
 
@@ -25,7 +30,7 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		version: 1.2,
 	},
 	ollama: {
-		name: '@n8n/n8n-nodes-langchain.lmOllama',
+		name: '@n8n/n8n-nodes-langchain.lmChatOllama',
 		version: 1,
 	},
 	azureOpenAi: {
@@ -575,3 +580,9 @@ export function getModelMetadata(
 		available: modelOverride.available ?? true,
 	};
 }
+
+export const SUPPORTED_RESPONSE_MODES: ChatTriggerResponseMode[] = [
+	'streaming',
+	'lastNode',
+	'responseNodes',
+] as const;

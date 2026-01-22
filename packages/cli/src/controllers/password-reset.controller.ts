@@ -5,7 +5,14 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
-import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	createBodyKeyedRateLimiter,
+	Get,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
@@ -28,6 +35,7 @@ import {
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { Time } from '@n8n/constants';
 
 @RestController()
 export class PasswordResetController {
@@ -47,7 +55,14 @@ export class PasswordResetController {
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password', { skipAuth: true, rateLimit: { limit: 3 } })
+	@Post('/forgot-password', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+		keyedRateLimit: createBodyKeyedRateLimiter<ForgotPasswordRequestDto>({
+			limit: 3,
+			field: 'email',
+		}),
+	})
 	async forgotPassword(
 		_req: AuthlessRequest,
 		_res: Response,
@@ -162,7 +177,10 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and update password.
 	 */
-	@Post('/change-password', { skipAuth: true })
+	@Post('/change-password', {
+		skipAuth: true,
+		ipRateLimit: true,
+	})
 	async changePassword(
 		req: AuthlessRequest,
 		res: Response,

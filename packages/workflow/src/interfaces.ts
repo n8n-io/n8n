@@ -12,7 +12,14 @@ import type { Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 import type { URLSearchParams } from 'url';
 
-import type { CODE_EXECUTION_MODES, CODE_LANGUAGES, LOG_LEVELS } from './constants';
+import type {
+	CODE_EXECUTION_MODES,
+	CODE_LANGUAGES,
+	LOG_LEVELS,
+	BINARY_MODE_COMBINED,
+	BINARY_MODE_SEPARATE,
+} from './constants';
+
 import type {
 	IDataTableProjectAggregateService,
 	IDataTableProjectService,
@@ -61,7 +68,8 @@ export interface IBinaryData {
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
-	fileSize?: string; // TODO: change this to number and store the actual value
+	fileSize?: string;
+	bytes?: number;
 	id?: string;
 }
 
@@ -240,6 +248,7 @@ export abstract class ICredentialsHelper {
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,
 		data: ICredentialDataDecryptedObject,
+		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<void>;
 
 	abstract getCredentialsProperties(type: string): INodeProperties[];
@@ -485,6 +494,11 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 /**
@@ -532,6 +546,12 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 export interface PaginationOptions {
@@ -926,6 +946,7 @@ export interface FunctionsBase {
 	getExecutionId(): string;
 	getNode(): INode;
 	getWorkflow(): IWorkflowMetadata;
+	getWorkflowSettings(): IWorkflowSettings;
 	getWorkflowStaticData(type: string): IDataObject;
 	getTimezone(): string;
 	getRestApiUrl(): string;
@@ -951,7 +972,7 @@ export interface FunctionsBase {
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 	getChatTrigger: () => INode | null;
-
+	isNodeFeatureEnabled(featureName: string): boolean;
 	getExecutionContext: () => IExecutionContext | undefined;
 
 	/** @deprecated */
@@ -1007,6 +1028,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			options?: {
 				doNotWaitToFinish?: boolean;
 				parentExecution?: RelatedExecution;
+				executionMode?: WorkflowExecuteMode;
 			},
 		): Promise<ExecuteWorkflowData>;
 		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
@@ -1023,6 +1045,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		sendResponse(response: IExecuteResponsePromiseData): void;
 		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
 		isStreaming(): boolean;
+		/** Returns true if the node is being executed as an AI Agent tool */
+		isToolExecution(): boolean;
 
 		// TODO: Make this one then only available in the new config one
 		addInputData(
@@ -1104,6 +1128,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		| 'sendMessageToUI'
 		| 'startJob'
 		| 'helpers'
+		| 'isToolExecution'
 	> & {
 		getNextRunIndex(): number;
 		continueOnFail(): boolean;
@@ -1298,6 +1323,25 @@ export interface IPairedItemData {
 	sourceOverwrite?: ISourceData;
 }
 
+export const ChatNodeMessageType = {
+	WITH_BUTTONS: 'with-buttons',
+} as const;
+
+export type ChatNodeMessageButtonType = 'primary' | 'secondary';
+
+export type ChatNodeMessageWithButtons = {
+	type: typeof ChatNodeMessageType.WITH_BUTTONS;
+	text: string;
+	blockUserInput: boolean;
+	buttons: Array<{
+		text: string;
+		link: string;
+		type: ChatNodeMessageButtonType;
+	}>;
+};
+
+export type ChatNodeMessage = ChatNodeMessageWithButtons | string;
+
 export interface INodeExecutionData {
 	[key: string]:
 		| IDataObject
@@ -1326,7 +1370,7 @@ export interface INodeExecutionData {
 	 * See example in
 	 * packages/@n8n/nodes-langchain/nodes/trigger/ChatTrigger/Chat.node.ts
 	 */
-	sendMessage?: string;
+	sendMessage?: ChatNodeMessage;
 
 	/**
 	 * @deprecated This key was added by accident and should not be used as it
@@ -1353,6 +1397,8 @@ export interface INodeParameterResourceLocator {
 	__regex?: string;
 }
 
+export type IconOrEmoji = { type: 'icon'; value: string } | { type: 'emoji'; value: string };
+
 export type NodeParameterValueType =
 	// TODO: Later also has to be possible to add multiple ones with the name name. So array has to be possible
 	| NodeParameterValue
@@ -1361,6 +1407,7 @@ export type NodeParameterValueType =
 	| ResourceMapperValue
 	| FilterValue
 	| AssignmentCollectionValue
+	| IconOrEmoji
 	| NodeParameterValue[]
 	| INodeParameters[]
 	| INodeParameterResourceLocator[]
@@ -1378,6 +1425,7 @@ export type NodePropertyTypes =
 	| 'dateTime'
 	| 'fixedCollection'
 	| 'hidden'
+	| 'icon'
 	| 'json'
 	| 'callout'
 	| 'notice'
@@ -1430,18 +1478,12 @@ export interface CalloutActionBase {
 	icon?: string;
 }
 
-export interface CalloutActionOpenPreBuiltAgentsCollection extends CalloutActionBase {
-	type: 'openPreBuiltAgentsCollection';
-}
-
 export interface CalloutActionOpenSampleWorkflowTemplate extends CalloutActionBase {
 	type: 'openSampleWorkflowTemplate';
 	templateId: string;
 }
 
-export type CalloutAction =
-	| CalloutActionOpenPreBuiltAgentsCollection
-	| CalloutActionOpenSampleWorkflowTemplate;
+export type CalloutAction = CalloutActionOpenSampleWorkflowTemplate;
 
 export interface INodePropertyTypeOptions {
 	// Supported by: button
@@ -1465,6 +1507,9 @@ export interface INodePropertyTypeOptions {
 	multipleValues?: boolean; // Supported by: <All>
 	multipleValueButtonText?: string; // Supported when "multipleValues" set to true
 	numberPrecision?: number; // Supported by: number
+	fixedCollection?: {
+		itemTitle?: string; // Template for item titles, supports {{ $collection.item.value }}, {{ $collection.item.index }}
+	};
 	password?: boolean; // Supported by: string
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
@@ -1476,6 +1521,9 @@ export interface INodePropertyTypeOptions {
 	assignment?: AssignmentTypeOptions;
 	minRequiredFields?: number; // Supported by: fixedCollection
 	maxAllowedFields?: number; // Supported by: fixedCollection
+	hideOptionalFields?: boolean; // Supported by: fixedCollection - hide non-required fields by default
+	addOptionalFieldButtonText?: string; // Supported by: fixedCollection with hideOptionalFields set to true
+	showEvenWhenOptional?: boolean; // Supported by: fixedCollection with hideOptionalFields
 	calloutAction?: CalloutAction; // Supported by: callout
 	binaryDataProperty?: boolean; // Indicate that the property expects binary data
 	[key: string]: any;
@@ -1549,12 +1597,17 @@ export type DisplayCondition =
 	| { _cnd: { regex: string } }
 	| { _cnd: { exists: true } };
 
+export type NodeFeatures = Record<string, boolean>;
+export type FeatureCondition = { '@version': Array<number | DisplayCondition> };
+export type NodeFeaturesDefinition = Record<string, FeatureCondition>;
+
 export interface IDisplayOptions {
 	hide?: {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
 	show?: {
 		'@version'?: Array<number | DisplayCondition>;
+		'@feature'?: Array<string | DisplayCondition>;
 		'@tool'?: boolean[];
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
 	};
@@ -2241,6 +2294,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
+	features?: NodeFeaturesDefinition;
 }
 
 export type TriggerPanelDefinition = {
@@ -2505,6 +2559,7 @@ export interface ITaskMetadata {
 	 * tools to access data from nodes earlier in the workflow chain via $() expressions.
 	 */
 	preserveSourceOverwrite?: boolean;
+	preservedSourceOverwrite?: ISourceData;
 	/**
 	 * Indicates that this node execution is resuming from a previous pause (e.g., AI agent
 	 * resuming after tool execution). When true, the nodeExecuteBefore hook is skipped to
@@ -2676,6 +2731,7 @@ export interface ExecuteWorkflowOptions {
 	parentCallbackManager?: CallbackManager;
 	doNotWaitToFinish?: boolean;
 	parentExecution?: RelatedExecution;
+	executionMode?: WorkflowExecuteMode;
 }
 
 export type AiEvent =
@@ -2774,9 +2830,11 @@ export namespace WorkflowSettings {
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
 }
 
+export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
+
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
-	errorWorkflow?: string;
+	errorWorkflow?: 'DEFAULT' | string;
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	saveDataErrorExecution?: WorkflowSettings.SaveDataExecution;
@@ -2785,6 +2843,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
@@ -3097,6 +3156,7 @@ export type FieldTypeMap = {
 	url: string;
 	jwt: string;
 	'form-fields': FormFieldsParameter;
+	binary: string;
 };
 
 export type FieldType = keyof FieldTypeMap;

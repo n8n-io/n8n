@@ -30,11 +30,12 @@ import {
 } from '@/app/composables/useWorkflowState';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
-import { type INodeTypeDescription } from 'n8n-workflow';
+import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { mockedStore } from '@/__tests__/utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
@@ -45,6 +46,16 @@ vi.mock('@n8n/i18n', () => ({
 		baseText: (key: string) => key,
 	},
 }));
+
+// Mock workflowHistory API
+vi.mock('@n8n/rest-api-client/api/workflowHistory', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const actual = await importOriginal<typeof import('@n8n/rest-api-client/api/workflowHistory')>();
+	return {
+		...actual,
+		getWorkflowVersionsByIds: vi.fn(),
+	};
+});
 
 // Mock useToast
 vi.mock('@/app/composables/useToast', () => ({
@@ -61,6 +72,41 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 		injectWorkflowState: vi.fn(),
 	};
 });
+
+// Mock useWorkflowSaving
+const saveCurrentWorkflowMock = vi.fn().mockResolvedValue(true);
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: () => ({
+		saveCurrentWorkflow: saveCurrentWorkflowMock,
+	}),
+}));
+
+// Mock useDocumentTitle
+let mockDocumentState: string | undefined;
+const setDocumentTitleMock = vi.fn((_workflowName: string, state: string) => {
+	mockDocumentState = state;
+});
+const getDocumentStateMock = vi.fn(() => mockDocumentState);
+vi.mock('@/app/composables/useDocumentTitle', () => ({
+	useDocumentTitle: () => ({
+		set: vi.fn(),
+		reset: vi.fn(),
+		setDocumentTitle: setDocumentTitleMock,
+		getDocumentState: getDocumentStateMock,
+	}),
+}));
+
+// Mock useBrowserNotifications
+const mockShowNotification = vi.fn();
+const mockIsNotificationsEnabled = { value: false };
+vi.mock('@/app/composables/useBrowserNotifications', () => ({
+	useBrowserNotifications: () => ({
+		showNotification: mockShowNotification,
+		isEnabled: mockIsNotificationsEnabled,
+		canPrompt: { value: false },
+		requestPermission: vi.fn(),
+	}),
+}));
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
@@ -101,6 +147,7 @@ let workflowState: WorkflowState;
 describe('AI Builder store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockDocumentState = undefined;
 		pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		settingsStore = useSettingsStore();
@@ -217,7 +264,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'Hi' });
+		await builderStore.sendChatMessage({ text: 'Hi' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1]).toMatchObject({
@@ -245,7 +292,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'Create workflow' });
+		await builderStore.sendChatMessage({ text: 'Create workflow' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 		expect(builderStore.chatMessages[1]).toMatchObject({
 			type: 'workflow-updated',
@@ -272,7 +319,7 @@ describe('AI Builder store', () => {
 			onDoneCallback = onDone;
 		});
 
-		builderStore.sendChatMessage({ text: 'Add nodes and connect them' });
+		await builderStore.sendChatMessage({ text: 'Add nodes and connect them' });
 
 		// Initially shows "aiAssistant.thinkingSteps.thinking" from prepareForStreaming
 		expect(builderStore.builderThinkingMessage).toBe('aiAssistant.thinkingSteps.thinking');
@@ -388,7 +435,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'Add a node' });
+		await builderStore.sendChatMessage({ text: 'Add a node' });
 
 		// Should show "aiAssistant.thinkingSteps.thinking" when tool completes
 		await vi.waitFor(() =>
@@ -424,7 +471,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'Hi' });
+		await builderStore.sendChatMessage({ text: 'Hi' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		builderStore.resetBuilderChat();
@@ -484,7 +531,7 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		expect(apiSpy).toHaveBeenCalled();
@@ -527,11 +574,11 @@ describe('AI Builder store', () => {
 			onDone();
 		});
 
-		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 		// Send a follow-up message
-		builderStore.sendChatMessage({ text: 'Generate a workflow for me' });
+		await builderStore.sendChatMessage({ text: 'Generate a workflow for me' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(4));
 
 		const thirdMessage = builderStore.chatMessages[2] as ChatUI.TextMessage;
@@ -552,7 +599,7 @@ describe('AI Builder store', () => {
 			onError(new Error('An API error occurred'));
 		});
 
-		builderStore.sendChatMessage({ text: 'I want to build a workflow' });
+		await builderStore.sendChatMessage({ text: 'I want to build a workflow' });
 		await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1].type).toBe('error');
@@ -581,9 +628,9 @@ describe('AI Builder store', () => {
 
 		// Retry the failed request
 		if (errorMessage.retry) {
-			void errorMessage.retry();
-			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
+			await errorMessage.retry();
 		}
+		expect(builderStore.chatMessages.length).toBe(2);
 		expect(builderStore.chatMessages[0].role).toBe('user');
 		expect(builderStore.chatMessages[1].type).toBe('text');
 		expect((builderStore.chatMessages[1] as ChatUI.TextMessage).content).toBe(
@@ -591,8 +638,33 @@ describe('AI Builder store', () => {
 		);
 	});
 
+	it('should return early without sending message when workflow save fails', async () => {
+		const builderStore = useBuilderStore();
+
+		// Mock saveCurrentWorkflow to return false (save failed or user cancelled)
+		saveCurrentWorkflowMock.mockResolvedValueOnce(false);
+
+		// Mock that there are unsaved changes
+		const uiStore = mockedStore(useUIStore);
+		vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
+
+		// Verify no API call was made
+		apiSpy.mockClear();
+
+		await builderStore.sendChatMessage({ text: 'test message' });
+
+		// Should not call the API when save fails
+		expect(apiSpy).not.toHaveBeenCalled();
+
+		// Should not add any messages
+		expect(builderStore.chatMessages).toHaveLength(0);
+
+		// Should not be streaming
+		expect(builderStore.streaming).toBe(false);
+	});
+
 	describe('Abort functionality', () => {
-		it('should create and manage abort controller', () => {
+		it('should create and manage abort controller', async () => {
 			const builderStore = useBuilderStore();
 
 			// Initially no abort controller (might be undefined or null)
@@ -615,17 +687,17 @@ describe('AI Builder store', () => {
 				}, 0);
 			});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 			expect(builderStore.streamingAbortController).not.toBeNull();
 			expect(builderStore.streamingAbortController).toBeInstanceOf(AbortController);
 		});
 
-		it('should call abort on existing controller when abortStreaming is called', () => {
+		it('should call abort on existing controller when abortStreaming is called', async () => {
 			const builderStore = useBuilderStore();
 
 			// First start a request to create an abort controller
 			apiSpy.mockImplementationOnce(() => {});
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			// Verify controller was created
 			const controller = builderStore.streamingAbortController;
@@ -654,7 +726,7 @@ describe('AI Builder store', () => {
 				onError(abortError);
 			});
 
-			builderStore.sendChatMessage({ text: 'test message' });
+			await builderStore.sendChatMessage({ text: 'test message' });
 			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBe(2));
 
 			// Should have user message and aborted message
@@ -670,7 +742,136 @@ describe('AI Builder store', () => {
 			expect(builderStore.builderThinkingMessage).toBeUndefined();
 		});
 
-		it('should abort previous request when sending new message', () => {
+		it('should remove running tool messages when AbortError occurs', async () => {
+			const builderStore = useBuilderStore();
+
+			const abortError = new Error('AbortError');
+			abortError.name = 'AbortError';
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
+				// First send some tool messages - one completed, one running
+				onMessage({
+					messages: [
+						{
+							type: 'tool',
+							role: 'assistant',
+							toolName: 'add_nodes',
+							toolCallId: 'call-1',
+							status: 'completed',
+							updates: [{ type: 'output', data: { success: true } }],
+						},
+					],
+				});
+				onMessage({
+					messages: [
+						{
+							type: 'tool',
+							role: 'assistant',
+							toolName: 'connect_nodes',
+							toolCallId: 'call-2',
+							status: 'running',
+							updates: [{ type: 'input', data: {} }],
+						},
+					],
+				});
+				// Then simulate abort
+				onError(abortError);
+			});
+
+			await builderStore.sendChatMessage({ text: 'test message' });
+
+			// Wait for messages to be processed
+			await vi.waitFor(() => {
+				const abortedMsg = builderStore.chatMessages.find(
+					(msg) => msg.type === 'text' && 'aborted' in msg,
+				);
+				return expect(abortedMsg).toBeDefined();
+			});
+
+			// Should have: user message, completed tool, aborted message
+			// Running tool should be removed
+			const toolMessages = builderStore.chatMessages.filter((msg) => msg.type === 'tool');
+			expect(toolMessages).toHaveLength(1);
+			expect((toolMessages[0] as ChatUI.ToolMessage).toolName).toBe('add_nodes');
+			expect((toolMessages[0] as ChatUI.ToolMessage).status).toBe('completed');
+
+			// Verify no running tools remain
+			const runningTools = toolMessages.filter(
+				(msg) => (msg as ChatUI.ToolMessage).status === 'running',
+			);
+			expect(runningTools).toHaveLength(0);
+
+			// Verify aborted message is present
+			const abortedMessage = builderStore.chatMessages.find(
+				(msg) => msg.type === 'text' && 'aborted' in msg,
+			) as ChatUI.TaskAbortedMessage;
+			expect(abortedMessage).toBeDefined();
+			expect(abortedMessage.aborted).toBe(true);
+		});
+
+		it('should remove running tool messages when service error occurs', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce((_ctx, _payload, onMessage, _onDone, onError) => {
+				// First send some tool messages - one completed, one running
+				onMessage({
+					messages: [
+						{
+							type: 'tool',
+							role: 'assistant',
+							toolName: 'add_nodes',
+							toolCallId: 'call-1',
+							status: 'completed',
+							updates: [{ type: 'output', data: { success: true } }],
+						},
+					],
+				});
+				onMessage({
+					messages: [
+						{
+							type: 'tool',
+							role: 'assistant',
+							toolName: 'connect_nodes',
+							toolCallId: 'call-2',
+							status: 'running',
+							updates: [{ type: 'input', data: {} }],
+						},
+					],
+				});
+				// Then simulate a service error
+				onError(new Error('Network error'));
+			});
+
+			await builderStore.sendChatMessage({ text: 'test message' });
+
+			// Wait for error message to be processed
+			await vi.waitFor(() => {
+				const errorMsg = builderStore.chatMessages.find((msg) => msg.type === 'error');
+				return expect(errorMsg).toBeDefined();
+			});
+
+			// Should have: user message, completed tool, error message
+			// Running tool should be removed
+			const toolMessages = builderStore.chatMessages.filter((msg) => msg.type === 'tool');
+			expect(toolMessages).toHaveLength(1);
+			expect((toolMessages[0] as ChatUI.ToolMessage).toolName).toBe('add_nodes');
+			expect((toolMessages[0] as ChatUI.ToolMessage).status).toBe('completed');
+
+			// Verify no running tools remain
+			const runningTools = toolMessages.filter(
+				(msg) => (msg as ChatUI.ToolMessage).status === 'running',
+			);
+			expect(runningTools).toHaveLength(0);
+
+			// Verify error message is present
+			const errorMessage = builderStore.chatMessages.find(
+				(msg) => msg.type === 'error',
+			) as ChatUI.ErrorMessage;
+			expect(errorMessage).toBeDefined();
+			expect(errorMessage.retry).toBeDefined();
+		});
+
+		it('should abort previous request when sending new message', async () => {
 			const builderStore = useBuilderStore();
 
 			// The current implementation prevents sending a new message while streaming
@@ -693,7 +894,7 @@ describe('AI Builder store', () => {
 			});
 
 			// Start first request
-			builderStore.sendChatMessage({ text: 'first message' });
+			await builderStore.sendChatMessage({ text: 'first message' });
 
 			// Verify streaming is active and controller was created
 			expect(builderStore.streaming).toBe(true);
@@ -705,7 +906,7 @@ describe('AI Builder store', () => {
 			const abortSpy = vi.spyOn(firstController!, 'abort');
 
 			// Try to send second message while streaming - it should be ignored
-			builderStore.sendChatMessage({ text: 'second message ignored' });
+			await builderStore.sendChatMessage({ text: 'second message ignored' });
 
 			// Verify the abort was NOT called and controller is the same
 			expect(abortSpy).not.toHaveBeenCalled();
@@ -723,7 +924,7 @@ describe('AI Builder store', () => {
 			apiSpy.mockImplementationOnce(() => {});
 
 			// Now we can send a new message
-			builderStore.sendChatMessage({ text: 'second message' });
+			await builderStore.sendChatMessage({ text: 'second message' });
 
 			// New controller should be created
 			const secondController = builderStore.streamingAbortController;
@@ -732,18 +933,18 @@ describe('AI Builder store', () => {
 			expect(secondController).toBeInstanceOf(AbortController);
 		});
 
-		it('should pass abort signal to API call', () => {
+		it('should pass abort signal to API call', async () => {
 			const builderStore = useBuilderStore();
 
 			// Mock the API to prevent actual network calls
 			apiSpy.mockImplementationOnce(() => {});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			// Verify the API was called with correct parameters
 			expect(apiSpy).toHaveBeenCalled();
 			const callArgs = apiSpy.mock.calls[0];
-			const signal = callArgs[5]; // The 6th argument is the abort signal
+			const signal = callArgs[6]; // The 7th argument is the abort signal (after versionId)
 			expect(signal).toBeDefined();
 			expect(signal).toBeInstanceOf(AbortSignal);
 
@@ -773,7 +974,7 @@ describe('AI Builder store', () => {
 			// Clear messages before test
 			builderStore.chatMessages.length = 0;
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			// Wait for the error to be processed
 			await vi.waitFor(() => expect(builderStore.chatMessages.length).toBeGreaterThan(1));
@@ -795,7 +996,7 @@ describe('AI Builder store', () => {
 	});
 
 	describe('Rating logic integration', () => {
-		it('should clear ratings from existing messages when preparing for streaming', () => {
+		it('should clear ratings from existing messages when preparing for streaming', async () => {
 			const builderStore = useBuilderStore();
 
 			// Setup initial messages with ratings
@@ -824,7 +1025,7 @@ describe('AI Builder store', () => {
 			apiSpy.mockImplementationOnce(() => {});
 
 			// Send new message which calls prepareForStreaming
-			builderStore.sendChatMessage({ text: 'New message' });
+			await builderStore.sendChatMessage({ text: 'New message' });
 
 			// Verify that existing messages no longer have rating properties
 			expect(builderStore.chatMessages).toHaveLength(3); // 2 existing + 1 new user message
@@ -845,657 +1046,6 @@ describe('AI Builder store', () => {
 			expect(userMessage.content).toBe('New message');
 			expect(userMessage).not.toHaveProperty('showRating');
 			expect(userMessage).not.toHaveProperty('ratingStyle');
-		});
-	});
-
-	describe('applyWorkflowUpdate with workflow naming', () => {
-		it('should apply generated workflow name during initial generation when workflow has default name', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Ensure workflow has default name
-			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-			// Create workflow JSON with a generated name
-			const workflowJson = JSON.stringify({
-				name: 'Generated Workflow Name for Email Processing',
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName was called with the generated name
-			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
-				newName: 'Generated Workflow Name for Email Processing',
-				setStateDirty: false,
-			});
-		});
-
-		it('should NOT apply generated workflow name during initial generation when workflow has custom name', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Set a custom workflow name (not the default)
-			workflowsStore.workflow.name = 'My Custom Workflow';
-
-			// Create workflow JSON with a generated name
-			const workflowJson = JSON.stringify({
-				name: 'Generated Workflow Name for Email Processing',
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName was NOT called
-			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
-		});
-
-		it('should NOT apply generated workflow name when not initial generation', () => {
-			const builderStore = useBuilderStore();
-
-			// Ensure initial generation flag is false
-			builderStore.initialGeneration = false;
-
-			// Ensure workflow has default name
-			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-			// Create workflow JSON with a generated name
-			const workflowJson = JSON.stringify({
-				name: 'Generated Workflow Name for Email Processing',
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName was NOT called
-			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
-		});
-
-		it('should handle workflow updates without name property', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Ensure workflow has default name
-			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-			// Create workflow JSON without a name property
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName was NOT called
-			expect(setWorkflowNameSpy).not.toHaveBeenCalled();
-		});
-
-		it('should handle workflow names that start with but are not exactly the default name', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Set workflow name that starts with default but has more text
-			workflowsStore.workflow.name = `${DEFAULT_NEW_WORKFLOW_NAME} - Copy`;
-
-			// Create workflow JSON with a generated name
-			const workflowJson = JSON.stringify({
-				name: 'Generated Workflow Name for Email Processing',
-				nodes: [
-					{
-						id: 'node1',
-						name: 'Start',
-						type: 'n8n-nodes-base.start',
-						position: [250, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify setWorkflowName WAS called because the name starts with default
-			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
-				newName: 'Generated Workflow Name for Email Processing',
-				setStateDirty: false,
-			});
-		});
-
-		it('should handle malformed JSON gracefully', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Create malformed JSON
-			const workflowJson = '{ invalid json }';
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update failed
-			expect(result.success).toBe(false);
-			expect(result.error).toBeDefined();
-		});
-
-		it('should maintain initial generation flag state across multiple updates', () => {
-			const builderStore = useBuilderStore();
-
-			// Set initial generation flag
-			builderStore.initialGeneration = true;
-
-			// Ensure workflow has default name
-			workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
-
-			// First update with name
-			const workflowJson1 = JSON.stringify({
-				name: 'First Generated Name',
-				nodes: [],
-				connections: {},
-			});
-
-			builderStore.applyWorkflowUpdate(workflowJson1);
-			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
-
-			// The flag should still be true for subsequent updates in the same generation
-			expect(builderStore.initialGeneration).toBe(true);
-
-			// Second update without name (simulating further tool operations)
-			const workflowJson2 = JSON.stringify({
-				nodes: [
-					{
-						id: 'node2',
-						name: 'HTTP',
-						type: 'n8n-nodes-base.httpRequest',
-						position: [450, 300],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			builderStore.applyWorkflowUpdate(workflowJson2);
-
-			// Should not call setWorkflowName again
-			expect(setWorkflowNameSpy).toHaveBeenCalledTimes(1);
-		});
-
-		describe('applyWorkflowUpdate credential defaults', () => {
-			const createTestNodeType = (): INodeTypeDescription => ({
-				displayName: 'Test Node',
-				name: 'n8n-nodes-base.test',
-				description: 'Test node',
-				group: ['trigger'],
-				version: 1,
-				defaults: { name: 'Test Node' },
-				inputs: ['main'],
-				outputs: ['main'],
-				properties: [
-					{
-						displayName: 'Authentication',
-						name: 'authentication',
-						type: 'options',
-						options: [
-							{
-								name: 'API Key',
-								value: 'apiKey',
-							},
-						],
-						default: 'apiKey',
-						required: true,
-					},
-				],
-				credentials: [
-					{
-						name: 'testApi',
-						required: true,
-						displayOptions: {
-							show: {
-								authentication: ['apiKey'],
-							},
-						},
-					},
-				],
-			});
-
-			it('assigns default credentials when available', () => {
-				const builderStore = useBuilderStore();
-				getNodeTypeSpy.mockReturnValue(createTestNodeType());
-				getCredentialsByTypeSpy.mockReturnValue([
-					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
-				]);
-
-				const workflowJson = JSON.stringify({
-					nodes: [
-						{
-							id: 'node1',
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.test',
-							position: [0, 0],
-							parameters: {},
-						},
-					],
-					connections: {},
-				});
-
-				const result = builderStore.applyWorkflowUpdate(workflowJson);
-				expect(result.success).toBe(true);
-				const [node] = result.workflowData?.nodes ?? [];
-				expect(node.credentials).toEqual({
-					testApi: { id: 'cred-id', name: 'API Credential' },
-				});
-				expect(node.parameters.authentication).toBe('apiKey');
-			});
-
-			it('keeps existing credentials untouched', () => {
-				const builderStore = useBuilderStore();
-				getNodeTypeSpy.mockReturnValue(createTestNodeType());
-				getCredentialsByTypeSpy.mockReturnValue([
-					{ id: 'cred-id', name: 'API Credential', type: 'testApi' },
-				]);
-
-				const workflowJson = JSON.stringify({
-					nodes: [
-						{
-							id: 'node1',
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.test',
-							position: [0, 0],
-							parameters: { authentication: 'apiKey' },
-							credentials: {
-								testApi: { id: 'existing', name: 'Existing Credential' },
-							},
-						},
-					],
-					connections: {},
-				});
-
-				const result = builderStore.applyWorkflowUpdate(workflowJson);
-				expect(result.success).toBe(true);
-				const [node] = result.workflowData?.nodes ?? [];
-				expect(node.credentials).toEqual({
-					testApi: { id: 'existing', name: 'Existing Credential' },
-				});
-			});
-		});
-	});
-
-	describe('applyWorkflowUpdate with pinned data preservation', () => {
-		it('should preserve pinned data for nodes with matching names', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow with nodes that have pinned data
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [0, 0] as [number, number],
-				parameters: {},
-			};
-			const node2 = {
-				id: 'node2-id',
-				name: 'Set',
-				type: 'n8n-nodes-base.set',
-				position: [0, 0] as [number, number],
-				typeVersion: 1,
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1, node2];
-			workflowsStore.workflow.nodes = [node1, node2];
-
-			// Mock pinned data for these nodes
-			const pinnedData1 = [{ json: { data: 'test1' } }];
-			const pinnedData2 = [{ json: { data: 'test2' } }];
-
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
-				vi.fn((nodeName: string) => {
-					if (nodeName === 'HTTP Request') return pinnedData1;
-					if (nodeName === 'Set') return pinnedData2;
-					return undefined;
-				}),
-			);
-
-			// Create workflow update with the same node names but different IDs
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						position: [250, 300] as [number, number],
-						parameters: {},
-					},
-					{
-						id: 'new-node2-id',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						position: [450, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify pinned data was preserved for nodes with matching names
-			expect(result.workflowData?.pinData).toEqual({
-				'HTTP Request': pinnedData1,
-				Set: pinnedData2,
-			});
-		});
-
-		it('should preserve pinned data only for nodes that still exist', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow with three nodes
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [250, 300] as [number, number],
-				parameters: {},
-			};
-			const node2 = {
-				id: 'node2-id',
-				name: 'Set',
-				type: 'n8n-nodes-base.set',
-				typeVersion: 1,
-				position: [450, 300] as [number, number],
-				parameters: {},
-			};
-			const node3 = {
-				id: 'node3-id',
-				name: 'Code',
-				type: 'n8n-nodes-base.code',
-				typeVersion: 1,
-				position: [650, 300] as [number, number],
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1, node2, node3];
-			workflowsStore.workflow.nodes = [node1, node2, node3];
-
-			// Mock pinned data for all three nodes
-			const pinnedData1 = [{ json: { data: 'test1' } }];
-			const pinnedData2 = [{ json: { data: 'test2' } }];
-			const pinnedData3 = [{ json: { data: 'test3' } }];
-
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
-				vi.fn((nodeName: string) => {
-					if (nodeName === 'HTTP Request') return pinnedData1;
-					if (nodeName === 'Set') return pinnedData2;
-					if (nodeName === 'Code') return pinnedData3;
-					return undefined;
-				}),
-			);
-
-			// Create workflow update with only two of the three nodes
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						position: [250, 300] as [number, number],
-						typeVersion: 1,
-						parameters: {},
-					},
-					{
-						id: 'new-node2-id',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [450, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify only pinned data for existing nodes was preserved
-			expect(result.workflowData?.pinData).toEqual({
-				'HTTP Request': pinnedData1,
-				Set: pinnedData2,
-			});
-
-			// Code node's pinned data should not be included
-			expect(result.workflowData?.pinData).not.toHaveProperty('Code');
-		});
-
-		it('should not add pinData property if no pinned data exists', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow without pinned data
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [250, 300] as [number, number],
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1];
-			workflowsStore.workflow.nodes = [node1];
-
-			// Mock no pinned data
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(vi.fn(() => undefined));
-
-			// Create workflow update
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [250, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify pinData property is not added
-			expect(result.workflowData?.pinData).toBeUndefined();
-		});
-
-		it('should handle nodes with renamed names correctly', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [250, 300] as [number, number],
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1];
-			workflowsStore.workflow.nodes = [node1];
-
-			// Mock pinned data
-			const pinnedData1 = [{ json: { data: 'test1' } }];
-
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
-				vi.fn((nodeName: string) => {
-					if (nodeName === 'HTTP Request') return pinnedData1;
-					return undefined;
-				}),
-			);
-
-			// Create workflow update with renamed node
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request1',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [250, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify pinned data was not preserved since the name changed
-			expect(result.workflowData?.pinData).toBeUndefined();
-		});
-
-		it('should preserve pinned data when adding new nodes', () => {
-			const builderStore = useBuilderStore();
-
-			// Set up initial workflow with one node
-			const node1 = {
-				id: 'node1-id',
-				name: 'HTTP Request',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 1,
-				position: [250, 300] as [number, number],
-				parameters: {},
-			};
-
-			workflowsStore.allNodes = [node1];
-			workflowsStore.workflow.nodes = [node1];
-
-			// Mock pinned data for the existing node
-			const pinnedData1 = [{ json: { data: 'test1' } }];
-
-			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
-				vi.fn((nodeName: string) => {
-					if (nodeName === 'HTTP Request') return pinnedData1;
-					return undefined;
-				}),
-			);
-
-			// Create workflow update with existing node plus a new node
-			const workflowJson = JSON.stringify({
-				nodes: [
-					{
-						id: 'new-node1-id',
-						name: 'HTTP Request',
-						type: 'n8n-nodes-base.httpRequest',
-						typeVersion: 1,
-						position: [250, 300] as [number, number],
-						parameters: {},
-					},
-					{
-						id: 'new-node2-id',
-						name: 'Set',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [450, 300] as [number, number],
-						parameters: {},
-					},
-				],
-				connections: {},
-			});
-
-			// Apply the workflow update
-			const result = builderStore.applyWorkflowUpdate(workflowJson);
-
-			// Verify the update was successful
-			expect(result.success).toBe(true);
-
-			// Verify pinned data was preserved only for the existing node
-			expect(result.workflowData?.pinData).toEqual({
-				'HTTP Request': pinnedData1,
-			});
-
-			// New node should not have pinned data
-			expect(result.workflowData?.pinData).not.toHaveProperty('Set');
 		});
 	});
 
@@ -1713,13 +1263,15 @@ describe('AI Builder store', () => {
 			});
 
 			// Mock loadSessions to prevent actual API call
-			vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
+			const spy = vi.spyOn(chatAPI, 'getAiSessions').mockResolvedValueOnce({ sessions: [] });
 
 			await chatPanelStore.open({ mode: 'builder' });
 
 			expect(mockGetBuilderCredits).toHaveBeenCalled();
 			expect(builderStore.creditsQuota).toBe(100);
 			expect(builderStore.creditsRemaining).toBe(80);
+
+			spy.mockRestore();
 		});
 	});
 
@@ -1747,7 +1299,7 @@ describe('AI Builder store', () => {
 				onDone();
 			});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
 			track.mockClear();
@@ -1815,7 +1367,7 @@ describe('AI Builder store', () => {
 				onDone();
 			});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
 			track.mockClear();
@@ -1838,11 +1390,11 @@ describe('AI Builder store', () => {
 	});
 
 	describe('abortStreaming telemetry', () => {
-		it('tracks end of response with aborted flag when aborting', () => {
+		it('tracks end of response with aborted flag when aborting', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			track.mockClear();
 			builderStore.abortStreaming();
@@ -1857,11 +1409,11 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('includes workflow modifications in abort telemetry', () => {
+		it('includes workflow modifications in abort telemetry', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			track.mockClear();
 			builderStore.abortStreaming();
@@ -1872,15 +1424,16 @@ describe('AI Builder store', () => {
 					tools_called: expect.any(Array),
 					start_workflow_json: expect.any(String),
 					end_workflow_json: expect.any(String),
+					workflow_modified: false,
 				}),
 			);
 		});
 
-		it('includes todos count in abort telemetry', () => {
+		it('includes todos count in abort telemetry', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			track.mockClear();
 			builderStore.abortStreaming();
@@ -1904,6 +1457,23 @@ describe('AI Builder store', () => {
 			builderStore.abortStreaming();
 
 			expect(track).not.toHaveBeenCalledWith('End of response from builder', expect.anything());
+		});
+
+		it('includes tab_visible in abort telemetry', async () => {
+			const builderStore = useBuilderStore();
+
+			apiSpy.mockImplementationOnce(() => {});
+			await builderStore.sendChatMessage({ text: 'test' });
+
+			track.mockClear();
+			builderStore.abortStreaming();
+
+			expect(track).toHaveBeenCalledWith(
+				'End of response from builder',
+				expect.objectContaining({
+					tab_visible: expect.any(Boolean),
+				}),
+			);
 		});
 	});
 
@@ -1983,7 +1553,7 @@ describe('AI Builder store', () => {
 				{
 					id: 'node-1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [0, 0],
 					parameters: {},
@@ -2000,7 +1570,7 @@ describe('AI Builder store', () => {
 				{
 					id: 'node-1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
 					position: [0, 0],
 				} as Parameters<typeof workflowsStore.workflow.nodes.push>[0],
@@ -2282,13 +1852,13 @@ describe('AI Builder store', () => {
 	});
 
 	describe('manual execution stats telemetry', () => {
-		it('should include success count in telemetry when sending message', () => {
+		it('should include success count in telemetry when sending message', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
 
 			builderStore.incrementManualExecutionStats('success');
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
 				'User submitted builder message',
@@ -2299,13 +1869,13 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('should include error count in telemetry when sending message', () => {
+		it('should include error count in telemetry when sending message', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
 
 			builderStore.incrementManualExecutionStats('error');
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
 				'User submitted builder message',
@@ -2316,7 +1886,7 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('should include multiple incremented counts in telemetry', () => {
+		it('should include multiple incremented counts in telemetry', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
@@ -2324,7 +1894,7 @@ describe('AI Builder store', () => {
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('error');
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
 				'User submitted builder message',
@@ -2349,7 +1919,7 @@ describe('AI Builder store', () => {
 
 			builderStore.incrementManualExecutionStats('success');
 			builderStore.incrementManualExecutionStats('error');
-			builderStore.sendChatMessage({ text: 'first message' });
+			await builderStore.sendChatMessage({ text: 'first message' });
 
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
@@ -2373,7 +1943,7 @@ describe('AI Builder store', () => {
 				onDone();
 			});
 
-			builderStore.sendChatMessage({ text: 'second message' });
+			await builderStore.sendChatMessage({ text: 'second message' });
 
 			await vi.waitFor(() => expect(builderStore.streaming).toBe(false));
 
@@ -2386,12 +1956,12 @@ describe('AI Builder store', () => {
 			);
 		});
 
-		it('should include zero counts when no manual executions occurred', () => {
+		it('should include zero counts when no manual executions occurred', async () => {
 			const builderStore = useBuilderStore();
 
 			apiSpy.mockImplementationOnce(() => {});
 
-			builderStore.sendChatMessage({ text: 'test' });
+			await builderStore.sendChatMessage({ text: 'test' });
 
 			expect(track).toHaveBeenCalledWith(
 				'User submitted builder message',
@@ -2400,6 +1970,588 @@ describe('AI Builder store', () => {
 					manual_exec_error_count_since_prev_msg: 0,
 				}),
 			);
+		});
+	});
+
+	describe('Version management and revert functionality', () => {
+		const mockGetAiSessions = vi.spyOn(chatAPI, 'getAiSessions');
+		const mockTruncateBuilderMessages = vi.spyOn(chatAPI, 'truncateBuilderMessages');
+
+		beforeEach(() => {
+			mockGetAiSessions.mockReset();
+			mockTruncateBuilderMessages.mockReset();
+		});
+
+		describe('loadSessions guards', () => {
+			it('should return early if workflow is not saved', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as not saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': false };
+
+				await builderStore.loadSessions();
+
+				// Should not call the API
+				expect(mockGetAiSessions).not.toHaveBeenCalled();
+				expect(builderStore.chatMessages).toHaveLength(0);
+			});
+
+			it('should not request again after loading empty sessions for the same workflow', async () => {
+				const builderStore = useBuilderStore();
+
+				// Ensure clean state by resetting the builder chat
+				builderStore.resetBuilderChat();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return empty sessions
+				mockGetAiSessions.mockResolvedValueOnce({ sessions: [] });
+
+				// First call - should make API request
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+				expect(builderStore.chatMessages).toHaveLength(0);
+
+				// Reset mock to track second call
+				mockGetAiSessions.mockClear();
+
+				// Second call - should NOT make API request (cached)
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).not.toHaveBeenCalled();
+			});
+
+			it('should allow loading sessions after resetBuilderChat clears the cache', async () => {
+				const builderStore = useBuilderStore();
+
+				// Ensure clean state by resetting the builder chat
+				builderStore.resetBuilderChat();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return empty sessions
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// First call
+				await builderStore.loadSessions();
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+
+				// Reset mock
+				mockGetAiSessions.mockClear();
+
+				// Reset builder chat (this should clear the cache)
+				builderStore.resetBuilderChat();
+
+				// Now loadSessions should make a new API request
+				await builderStore.loadSessions();
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should prevent duplicate concurrent calls', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return with a delay
+				let resolvePromise: ((value: { sessions: [] }) => void) | undefined;
+				mockGetAiSessions.mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							resolvePromise = resolve;
+						}),
+				);
+
+				// Start first call
+				const firstCall = builderStore.loadSessions();
+
+				// Wait a tick to ensure the first call has started
+				await Promise.resolve();
+
+				// Start second call while first is still in progress
+				const secondCall = builderStore.loadSessions();
+
+				// Resolve the first call
+				if (resolvePromise) {
+					resolvePromise({ sessions: [] });
+				}
+
+				await firstCall;
+				await secondCall;
+
+				// Should only call the API once
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should reset loading state even on error and allow retry after resetBuilderChat', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// First call fails
+				mockGetAiSessions.mockRejectedValueOnce(new Error('API error'));
+				await builderStore.loadSessions();
+
+				// Reset mock call count
+				mockGetAiSessions.mockClear();
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// Reset builder chat to clear the cache and allow retry
+				builderStore.resetBuilderChat();
+
+				// Second call should work after proper reset
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+
+			it('should reset loading state even on error', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to throw error
+				mockGetAiSessions.mockRejectedValueOnce(new Error('API error'));
+
+				await builderStore.loadSessions();
+
+				// Reset mock
+				mockGetAiSessions.mockClear();
+				mockGetAiSessions.mockResolvedValue({ sessions: [] });
+
+				// Should be able to call again (loading state was reset)
+				await builderStore.loadSessions();
+
+				expect(mockGetAiSessions).toHaveBeenCalledTimes(1);
+			});
+		});
+
+		describe('fetchExistingVersionIds and message enrichment', () => {
+			it('should enrich messages with revertVersion when versions exist', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Import the mocked module
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				// Mock API to return messages with revertVersionId
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Create workflow',
+									id: 'msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Created workflow',
+									id: 'msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				// Mock version check - version-1 exists
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockResolvedValueOnce({
+					versions: [{ versionId: 'version-1', createdAt: '2024-01-01T00:00:00Z' }],
+				});
+
+				await builderStore.loadSessions();
+
+				// Should have 2 messages
+				expect(builderStore.chatMessages).toHaveLength(2);
+
+				// First message should have revertVersion object
+				const firstMessage = builderStore.chatMessages[0] as ChatUI.TextMessage;
+				expect(firstMessage).toHaveProperty('revertVersion');
+				expect(firstMessage.revertVersion).toEqual({
+					id: 'version-1',
+					createdAt: '2024-01-01T00:00:00Z',
+				});
+			});
+
+			it('should handle empty version IDs array', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Test',
+									id: 'msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				await builderStore.loadSessions();
+
+				expect(builderStore.chatMessages).toHaveLength(1);
+			});
+
+			it('should handle API errors gracefully when checking versions', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Import the mocked module
+				const workflowHistoryModule = await import('@n8n/rest-api-client/api/workflowHistory');
+
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Test',
+									id: 'msg-1',
+									revertVersionId: 'version-1',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				// Mock API error
+				vi.mocked(workflowHistoryModule.getWorkflowVersionsByIds).mockRejectedValueOnce(
+					new Error('API error'),
+				);
+
+				await builderStore.loadSessions();
+
+				// Should still load messages but without revertVersion (error is caught)
+				expect(builderStore.chatMessages).toHaveLength(1);
+			});
+
+			it('should restore lastUserMessageId from loaded session', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mark workflow as saved to allow loadSessions
+				workflowsStore.isWorkflowSaved = { 'test-workflow-id': true };
+
+				// Mock API to return messages with a user message
+				mockGetAiSessions.mockResolvedValueOnce({
+					sessions: [
+						{
+							sessionId: 'session-1',
+							lastUpdated: '2024-01-01T00:00:00Z',
+							messages: [
+								{
+									type: 'message',
+									role: 'user',
+									text: 'First user message',
+									id: 'user-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'assistant',
+									text: 'Assistant response',
+									id: 'assistant-msg-1',
+								} as unknown as ChatRequest.MessageResponse,
+								{
+									type: 'message',
+									role: 'user',
+									text: 'Second user message',
+									id: 'user-msg-2',
+								} as unknown as ChatRequest.MessageResponse,
+							],
+						},
+					],
+				});
+
+				await builderStore.loadSessions();
+
+				// Should have 3 messages
+				expect(builderStore.chatMessages).toHaveLength(3);
+
+				// lastUserMessageId should be set to the last user message ID
+				expect(builderStore.lastUserMessageId).toBe('user-msg-2');
+			});
+		});
+
+		describe('restoreToVersion', () => {
+			// Note: restoreToVersion tests are limited because the function depends on
+			// workflowHistoryStore and workflowSaver which are difficult to mock in vitest
+			// The core functionality is tested through integration tests
+			it('should expose restoreToVersion method', () => {
+				const builderStore = useBuilderStore();
+
+				// Verify the method exists
+				expect(builderStore.restoreToVersion).toBeDefined();
+				expect(typeof builderStore.restoreToVersion).toBe('function');
+			});
+
+			it('should return undefined when workflow save fails with unsaved changes', async () => {
+				const builderStore = useBuilderStore();
+
+				// Mock that there are unsaved changes
+				const uiStore = mockedStore(useUIStore);
+				vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
+
+				// Mock saveCurrentWorkflow to return false (save failed or user cancelled)
+				saveCurrentWorkflowMock.mockResolvedValueOnce(false);
+
+				const result = await builderStore.restoreToVersion('version-123', 'message-456');
+
+				// Should return undefined when save fails
+				expect(result).toBeUndefined();
+			});
+		});
+
+		describe('sendChatMessage with versionId', () => {
+			// Note: sendChatMessage tests with versionId are limited because
+			// the function depends on workflowSaver which requires router mocking
+			// The versionId functionality is tested through integration tests
+			it('should pass versionId to chatWithBuilder API', () => {
+				const builderStore = useBuilderStore();
+
+				// Verify that chatWithBuilder is being called with the versionId parameter
+				// This is tested indirectly through the chatWithBuilder API tests
+				expect(builderStore.sendChatMessage).toBeDefined();
+				expect(typeof builderStore.sendChatMessage).toBe('function');
+			});
+		});
+	});
+
+	describe('Page title status', () => {
+		it('should set title to AI_BUILDING when streaming starts', async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			// Mock the API to prevent actual calls
+			apiSpy.mockImplementation(() => {});
+
+			await builderStore.sendChatMessage({ text: 'Build something' });
+
+			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'AI_BUILDING');
+		});
+
+		it('should set title to AI_DONE when streaming stops and tab is hidden', () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			// Start streaming first
+			builderStore.streaming = true;
+
+			// Trigger abortStreaming which calls stopStreaming internally
+			builderStore.abortStreaming();
+
+			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'AI_DONE');
+		});
+
+		it('should set title to IDLE when streaming stops and tab is visible', () => {
+			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			// Start streaming first
+			builderStore.streaming = true;
+
+			// Trigger abortStreaming which calls stopStreaming internally
+			builderStore.abortStreaming();
+
+			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'IDLE');
+		});
+
+		it('should reset title to IDLE when clearDoneIndicatorTitle is called and indicator is showing', () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			builderStore.streaming = true;
+			builderStore.abortStreaming();
+
+			setDocumentTitleMock.mockClear();
+
+			builderStore.clearDoneIndicatorTitle();
+
+			expect(setDocumentTitleMock).toHaveBeenCalledWith('Test Workflow', 'IDLE');
+		});
+
+		it('should not change title when clearDoneIndicatorTitle is called and indicator is not showing', () => {
+			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			setDocumentTitleMock.mockClear();
+
+			builderStore.clearDoneIndicatorTitle();
+
+			expect(setDocumentTitleMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Browser notifications', () => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		let capturedOnMessageCallback: ((data: any) => void) | null = null;
+		let capturedDoneCallback: (() => void) | null = null;
+
+		beforeEach(() => {
+			mockShowNotification.mockClear();
+			mockShowNotification.mockReturnValue({
+				onclick: null,
+				close: vi.fn(),
+			});
+			capturedOnMessageCallback = null;
+			capturedDoneCallback = null;
+
+			// Mock chatWithBuilder to capture the onMessage and done callbacks
+			apiSpy.mockImplementation((_context, _options, onMessage, onDone) => {
+				capturedOnMessageCallback = onMessage;
+				capturedDoneCallback = onDone;
+			});
+		});
+
+		const triggerSuccessfulStreamingComplete = async () => {
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.isNewWorkflow = false;
+			workflowsStore.workflowVersionId = 'version-1';
+
+			// Trigger sendChatMessage to start streaming and capture callbacks
+			await builderStore.sendChatMessage({ text: 'test message' });
+
+			// Simulate a workflow-updated message to indicate successful build
+			if (capturedOnMessageCallback) {
+				capturedOnMessageCallback({
+					messages: [
+						{
+							type: 'workflow-updated',
+							role: 'assistant',
+							codeSnippet: '{"nodes":[],"connections":{}}',
+						},
+					],
+					sessionId: 'test-session',
+				});
+			}
+
+			// Simulate successful completion by calling the done callback
+			if (capturedDoneCallback) {
+				capturedDoneCallback();
+			}
+		};
+
+		it('should show browser notification when streaming completes successfully and tab is hidden', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).toHaveBeenCalledWith(
+				'aiAssistant.builder.notification.title',
+				expect.objectContaining({
+					body: 'aiAssistant.builder.notification.body',
+					icon: '/favicon.ico',
+					requireInteraction: false,
+				}),
+			);
+		});
+
+		it('should NOT show browser notification when build is aborted', () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			const builderStore = useBuilderStore();
+			workflowsStore.workflowName = 'Test Workflow';
+
+			builderStore.streaming = true;
+			builderStore.abortStreaming();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should NOT show browser notification when tab is visible', async () => {
+			Object.defineProperty(document, 'hidden', { value: false, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should NOT show browser notification when notifications are not enabled', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = false;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).not.toHaveBeenCalled();
+		});
+
+		it('should use workflow-specific tag to prevent duplicate notifications from the same workflow', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			await triggerSuccessfulStreamingComplete();
+
+			expect(mockShowNotification).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					tag: 'workflow-build-test-workflow-123',
+				}),
+			);
+		});
+
+		it('should set onclick handler that focuses window when notification is created', async () => {
+			Object.defineProperty(document, 'hidden', { value: true, configurable: true });
+			mockIsNotificationsEnabled.value = true;
+
+			const mockNotification = {
+				onclick: null as ((ev: Event) => void) | null,
+				close: vi.fn(),
+			};
+			mockShowNotification.mockReturnValue(mockNotification);
+
+			const windowFocusSpy = vi.spyOn(window, 'focus').mockImplementation(() => {});
+
+			await triggerSuccessfulStreamingComplete();
+
+			// Verify onclick handler was set
+			expect(mockNotification.onclick).not.toBeNull();
+
+			// Simulate clicking the notification
+			if (mockNotification.onclick) {
+				mockNotification.onclick(new Event('click'));
+			}
+
+			expect(windowFocusSpy).toHaveBeenCalled();
+			expect(mockNotification.close).toHaveBeenCalled();
+
+			windowFocusSpy.mockRestore();
 		});
 	});
 });

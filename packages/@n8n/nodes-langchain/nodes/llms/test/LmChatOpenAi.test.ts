@@ -1,6 +1,8 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatOpenAI } from '@langchain/openai';
+import { AiConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { IDataObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
 
@@ -21,6 +23,7 @@ const MockedChatOpenAI = jest.mocked(ChatOpenAI);
 const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedCommon = jest.mocked(common);
+const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 describe('LmChatOpenAi', () => {
 	let lmChatOpenAi: LmChatOpenAi;
@@ -111,9 +114,13 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					timeout: 60000,
 					maxRetries: 2,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+						fetchOptions: {
+							dispatcher: {},
+						},
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
 					onFailedAttempt: expect.any(Function),
@@ -143,9 +150,13 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					timeout: 60000,
 					maxRetries: 2,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+						fetchOptions: {
+							dispatcher: {},
+						},
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
 					onFailedAttempt: expect.any(Function),
@@ -182,6 +193,7 @@ describe('LmChatOpenAi', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
@@ -211,13 +223,13 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					timeout: 60000,
 					maxRetries: 2,
 					configuration: {
 						baseURL: customURL,
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {},
@@ -248,11 +260,14 @@ describe('LmChatOpenAi', () => {
 				expect.objectContaining({
 					apiKey: 'test-api-key',
 					model: 'gpt-4o-mini',
-					timeout: 60000,
 					maxRetries: 2,
 					configuration: {
 						defaultHeaders: {
+							...defaultHeaders,
 							'X-Custom-Header': 'custom-value',
+						},
+						fetchOptions: {
+							dispatcher: {},
 						},
 					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
@@ -295,7 +310,12 @@ describe('LmChatOpenAi', () => {
 					topP: 0.9,
 					timeout: 45000,
 					maxRetries: 3,
-					configuration: {},
+					configuration: {
+						defaultHeaders,
+						fetchOptions: {
+							dispatcher: {},
+						},
+					},
 					callbacks: expect.arrayContaining([expect.any(Object)]),
 					modelKwargs: {
 						response_format: { type: 'json_object' },
@@ -359,7 +379,26 @@ describe('LmChatOpenAi', () => {
 			);
 		});
 
-		it('should use default values for timeout and maxRetries when not provided', async () => {
+		it('should use default values for maxRetries when not provided', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			// timeout is now controlled at the undici level via fetchOptions dispatcher
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					maxRetries: 2,
+				}),
+			);
+		});
+
+		it('should set supportsStrictToolCalling to false for OpenAI-compatible backends', async () => {
 			const mockContext = setupMockContext();
 
 			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
@@ -372,8 +411,7 @@ describe('LmChatOpenAi', () => {
 
 			expect(MockedChatOpenAI).toHaveBeenCalledWith(
 				expect.objectContaining({
-					timeout: 60000,
-					maxRetries: 2,
+					supportsStrictToolCalling: false,
 				}),
 			);
 		});
@@ -406,6 +444,7 @@ describe('LmChatOpenAi', () => {
 						fetchOptions: {
 							dispatcher: {},
 						},
+						defaultHeaders,
 					},
 				}),
 			);

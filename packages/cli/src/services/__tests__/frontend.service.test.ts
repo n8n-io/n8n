@@ -3,6 +3,7 @@ import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -210,6 +211,7 @@ describe('FrontendService', () => {
 		it('should return public settings', async () => {
 			const expectedPublicSettings: PublicFrontendSettings = {
 				settingsMode: 'public',
+				defaultLocale: 'en',
 				userManagement: {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
@@ -229,7 +231,39 @@ describe('FrontendService', () => {
 			};
 
 			const { service } = createMockService();
-			const settings = await service.getPublicSettings();
+			const settings = await service.getPublicSettings(false);
+
+			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should return public settings with mfa', async () => {
+			const expectedPublicSettings = {
+				settingsMode: 'public',
+				defaultLocale: 'en',
+				userManagement: {
+					smtpSetup: false,
+					showSetupOnFirstLoad: true,
+					authenticationMethod: 'email',
+				},
+				sso: {
+					saml: { loginEnabled: false },
+					ldap: { loginEnabled: false, loginLabel: '' },
+					oidc: {
+						loginEnabled: false,
+						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
+					},
+				},
+				authCookie: { secure: false },
+				previewMode: false,
+				enterprise: { saml: false, ldap: false, oidc: false },
+				mfa: {
+					enabled: false,
+					enforced: false,
+				},
+			};
+
+			const { service } = createMockService();
+			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
 		});
@@ -363,6 +397,105 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiBuilder.enabled).toBe(false);
+		});
+	});
+
+	describe('node version identifiers', () => {
+		it('should create type@version identifiers for single and multi-version nodes', () => {
+			const { service } = createMockService();
+			const getNodeVersionIdentifiers = service.getNodeVersionIdentifiers.bind(service);
+
+			const nodes = [
+				{
+					name: 'n8n-nodes-base.single',
+					version: 1,
+				},
+				{
+					name: 'n8n-nodes-base.multi',
+					version: [1, 2],
+				},
+			] as unknown as INodeTypeDescription[];
+
+			const identifiers = getNodeVersionIdentifiers(nodes);
+
+			expect(identifiers).toEqual(
+				expect.arrayContaining([
+					'n8n-nodes-base.single@1',
+					'n8n-nodes-base.multi@1',
+					'n8n-nodes-base.multi@2',
+				]),
+			);
+			expect(identifiers).toHaveLength(3);
+		});
+
+		it('should ignore invalid entries and deduplicate identifiers', () => {
+			const { service } = createMockService();
+			const getNodeVersionIdentifiers = service.getNodeVersionIdentifiers.bind(service);
+
+			const nodes = [
+				{
+					name: 'n8n-nodes-base.duplicate',
+					version: [1, 1, 2],
+				},
+				{
+					name: 'n8n-nodes-base.duplicate',
+					version: 2,
+				},
+				{
+					name: undefined as unknown as string,
+					version: 3,
+				},
+				{
+					name: 'n8n-nodes-base.invalidVersion',
+				},
+			] as unknown as INodeTypeDescription[];
+
+			const identifiers = getNodeVersionIdentifiers(nodes);
+
+			expect(identifiers).toEqual(
+				expect.arrayContaining(['n8n-nodes-base.duplicate@1', 'n8n-nodes-base.duplicate@2']),
+			);
+			expect(identifiers).toHaveLength(2);
+		});
+	});
+
+	describe('generateTypes', () => {
+		it('should write node versions file with generated identifiers', async () => {
+			const { service } = createMockService();
+
+			const originalNodes = (loadNodesAndCredentials.types as any).nodes;
+			(loadNodesAndCredentials.types as any).nodes = [
+				{ name: 'n8n-nodes-base.single', version: 1 },
+				{ name: 'n8n-nodes-base.multi', version: [1, 2] },
+			];
+
+			const writeStaticJSONSpy = jest
+				.spyOn(service as any, 'writeStaticJSON')
+				.mockImplementation(() => {});
+
+			try {
+				await (service as any).generateTypes();
+
+				const nodeVersionCall = writeStaticJSONSpy.mock.calls.find(
+					([name]) => name === 'node-versions',
+				);
+
+				expect(nodeVersionCall).toBeDefined();
+
+				const [, identifiers] = nodeVersionCall as [string, string[]];
+
+				expect(identifiers).toEqual(
+					expect.arrayContaining([
+						'n8n-nodes-base.single@1',
+						'n8n-nodes-base.multi@1',
+						'n8n-nodes-base.multi@2',
+					]),
+				);
+				expect(identifiers).toHaveLength(3);
+			} finally {
+				writeStaticJSONSpy.mockRestore();
+				(loadNodesAndCredentials.types as any).nodes = originalNodes;
+			}
 		});
 	});
 });

@@ -6,13 +6,12 @@ import { defaultSettings } from '@/__tests__/defaults';
 import MainSidebar from '@/app/components/MainSidebar.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import { ABOUT_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 
@@ -27,13 +26,12 @@ vi.mock('vue-router', () => ({
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
-let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let versionsStore: MockedStore<typeof useVersionsStore>;
 let usersStore: MockedStore<typeof useUsersStore>;
 let templatesStore: MockedStore<typeof useTemplatesStore>;
 let personalizedTemplatesV2Store: MockedStore<typeof usePersonalizedTemplatesV2Store>;
 let personalizedTemplatesV3Store: MockedStore<typeof usePersonalizedTemplatesV3Store>;
-let templatesDataQualityStore: MockedStore<typeof useTemplatesDataQualityStore>;
+let recommendedTemplatesStore: MockedStore<typeof useRecommendedTemplatesStore>;
 
 const mockVersion: Version = {
 	name: '1.2.0',
@@ -54,13 +52,12 @@ describe('MainSidebar', () => {
 		});
 		settingsStore = mockedStore(useSettingsStore);
 		uiStore = mockedStore(useUIStore);
-		sourceControlStore = mockedStore(useSourceControlStore);
 		versionsStore = mockedStore(useVersionsStore);
 		usersStore = mockedStore(useUsersStore);
 		templatesStore = mockedStore(useTemplatesStore);
 		personalizedTemplatesV2Store = mockedStore(usePersonalizedTemplatesV2Store);
 		personalizedTemplatesV3Store = mockedStore(usePersonalizedTemplatesV3Store);
-		templatesDataQualityStore = mockedStore(useTemplatesDataQualityStore);
+		recommendedTemplatesStore = mockedStore(useRecommendedTemplatesStore);
 
 		settingsStore.settings = defaultSettings;
 
@@ -76,29 +73,12 @@ describe('MainSidebar', () => {
 		// Default experiment store values
 		personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 		personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-		templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
+		recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
 	});
 
 	it('renders the sidebar without error', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
-
-	test.each([
-		[false, true, true],
-		[true, false, false],
-		[true, true, false],
-		[false, false, false],
-	])(
-		'should render readonly tooltip when is opened %s and the environment is readonly %s',
-		(sidebarMenuCollapsed, branchReadOnly, shouldRender) => {
-			uiStore.sidebarMenuCollapsed = sidebarMenuCollapsed;
-			sourceControlStore.preferences.branchReadOnly = branchReadOnly;
-
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('read-only-env-icon') !== null).toBe(shouldRender);
-		},
-	);
 
 	describe('Version Update CTA', () => {
 		it('should not render version update CTA when hasVersionUpdates is false', () => {
@@ -143,7 +123,7 @@ describe('MainSidebar', () => {
 			templatesStore.hasCustomTemplatesHost = false;
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => false);
-			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
+			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
 
 			const { getAllByTestId } = renderComponent();
 
@@ -156,7 +136,7 @@ describe('MainSidebar', () => {
 			settingsStore.isTemplatesEnabled = true;
 			personalizedTemplatesV3Store.isFeatureEnabled = vi.fn(() => true);
 			personalizedTemplatesV2Store.isFeatureEnabled = vi.fn(() => false);
-			templatesDataQualityStore.isFeatureEnabled = vi.fn(() => false);
+			recommendedTemplatesStore.isFeatureEnabled = vi.fn(() => false);
 
 			const { getAllByTestId } = renderComponent();
 
