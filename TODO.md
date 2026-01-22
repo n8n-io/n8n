@@ -17,8 +17,9 @@
 - [ ] Add some tracking if code generation step fails in prod.
 - [ ] Figure out how to integrate/release it. Behind a/b test
 - [ ] Update telemetry and prompt viewer app to support the code and workflow generated
-- [ ] consider how to include node defaults
-- [ ] add in expression
+- [ ] consider adding node defaults when generating wor
+- [ ] add in execution schema/expression data, whatever we are passing now
+- [ ] format the workflows into multi lines. might make it easier for workflow to handle parsing issues
 
 Nice to haves / tech debt
 - [ ] Make it more clear that SDK api file is for LLM consumption. To avoid other engineers adding unnecessary types to it, confusing the agent.
