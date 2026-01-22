@@ -203,7 +203,7 @@ describe('ScalingService', () => {
 				await scalingService.stop();
 
 				expect(getRunningJobsCountSpy).not.toHaveBeenCalled();
-				expect(queue.pause).toHaveBeenCalledWith(true, true);
+				expect(queue.pause).toHaveBeenCalledWith(false, true);
 				expect(stopQueueRecoverySpy).toHaveBeenCalled();
 				expect(stopQueueMetricsSpy).toHaveBeenCalled();
 			});
