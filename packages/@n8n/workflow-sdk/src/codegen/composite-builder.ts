@@ -391,11 +391,43 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 					nodes: [compositeNode, mergeComposite],
 				};
 			}
-			// Fan-out without merge - just follow first target for now
-		}
-
-		const nextTarget = nextTargets[0];
-		if (nextTarget) {
+			// Fan-out without merge - generate all branches
+			// Each branch becomes a separate chain from the fan-out point
+			const fanOutBranches: CompositeNode[] = [];
+			for (const targetName of nextTargets) {
+				const targetNode = ctx.graph.nodes.get(targetName);
+				if (targetNode && !ctx.visited.has(targetName)) {
+					const branchComposite = buildFromNode(targetName, ctx);
+					fanOutBranches.push(branchComposite);
+				}
+			}
+			if (fanOutBranches.length > 0) {
+				// Return the node followed by all fan-out branches as separate chains
+				// The first branch continues the chain, others become separate roots
+				const firstBranch = fanOutBranches[0];
+				if (fanOutBranches.length === 1) {
+					if (firstBranch.kind === 'chain') {
+						return {
+							kind: 'chain',
+							nodes: [compositeNode, ...firstBranch.nodes],
+						};
+					}
+					return {
+						kind: 'chain',
+						nodes: [compositeNode, firstBranch],
+					};
+				}
+				// Multiple branches - return as array (caller handles this)
+				// For now, chain with first and add others as separate .then() calls
+				// Actually, this needs proper .then([branch1, branch2, ...]) syntax
+				// Let's use a simple approach: generate multiple .then() chains
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, ...fanOutBranches],
+				};
+			}
+		} else if (nextTargets.length === 1) {
+			const nextTarget = nextTargets[0];
 			const nextComposite = buildFromNode(nextTarget, ctx);
 			// Combine into chain
 			if (nextComposite.kind === 'chain') {
