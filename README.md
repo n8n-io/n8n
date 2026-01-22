@@ -206,6 +206,44 @@ pnpm typecheck
 - Check that variables are set correctly (no quotes needed for values)
 - Restart the application after changing `./packages/cli/bin/.env.tapis`
 
+
+**Changes Made Implementing TAPIS Authentication:**
+
+```mermaid
+graph TD
+    %% Estilos de los nodos
+    classDef start_end fill:#f63,stroke:#333,stroke-width:2px;
+    classDef decision fill:#333,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef action fill:#222,stroke:#555,stroke-width:1px,color:#fff;
+    classDef error fill:#b33,stroke:#333,stroke-width:1px,color:#fff;
+
+    A([Tapis Login on n8n]) --> B[Send credentials to Tapis API]
+    
+    B --> C{If Authorized}
+    
+    %% Flujo de Error
+    C -- "Error 401" --> D[Show error message]
+    D --- D1["❌ Problem logging in: Wrong Tapis Username or Password"]
+    
+    %% Flujo de Éxito
+    C -- "Code 200" --> E{Check if User Exists}
+    
+    E -- "False" --> F[Create an account]
+    F --> F1["• Use Username + @tacc.utexas.edu<br>• Encrypt password<br>• Fill N8N required fields"]
+    F1 --> G
+    
+    E -- "True" --> G([Sign In with credentials])
+    
+    G --- G1["✅ Welcome: Success login with Tapis API"]
+
+    %% Aplicación de clases
+    class A,G start_end;
+    class C,E decision;
+    class B,F,F1 action;
+    class D,D1 error;
+```
+
+
 **TAPIS Authentication Issues:**
 - Verify `TAPIS_BASE_URL` is correct
 - Check that the TAPIS API is accessible from your network
