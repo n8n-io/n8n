@@ -1,10 +1,10 @@
 import {
 	randomEmail,
 	randomInvalidPassword,
+	randomName,
 	randomValidPassword,
 	testDb,
 	mockInstance,
-	randomName,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
@@ -63,28 +63,26 @@ describe('POST /forgot-password', () => {
 		);
 	});
 
-	test('should return 200 even if emailing is not set up (silent failure)', async () => {
+	test('should fail if emailing is not set up', async () => {
 		jest.replaceProperty(mailer, 'isEmailSetUp', false);
 
-		// Returns 200 to prevent information leakage about email configuration
 		await testServer.authlessAgent
 			.post('/forgot-password')
 			.send({ email: owner.email })
-			.expect(200);
+			.expect(500);
 	});
 
-	test('should return 200 for SAML users (silent failure)', async () => {
+	test('should fail if SAML is authentication method', async () => {
 		await setCurrentAuthenticationMethod('saml');
 		const member = await createUser({
 			email: 'test@test.com',
 			role: { slug: 'global:member' },
 		});
 
-		// Returns 200 to prevent user enumeration via authentication method detection
 		await testServer.authlessAgent
 			.post('/forgot-password')
 			.send({ email: member.email })
-			.expect(200);
+			.expect(403);
 
 		await setCurrentAuthenticationMethod('email');
 	});
@@ -103,16 +101,16 @@ describe('POST /forgot-password', () => {
 	});
 
 	test('should fail with invalid inputs', async () => {
-		// Limited to 3 payloads to stay under rate limit (invalid payloads share IP bucket)
 		const invalidPayloads = [
-			randomEmail(), // string instead of object
-			{}, // missing email field
-			{ email: randomName() }, // invalid email format
+			randomEmail(),
+			[randomEmail()],
+			{},
+			[{ name: randomName() }],
+			[{ email: randomName() }],
 		];
 
 		for (const invalidPayload of invalidPayloads) {
 			const response = await testServer.authlessAgent.post('/forgot-password').send(invalidPayload);
-
 			expect(response.statusCode).toBe(400);
 		}
 	});
@@ -123,55 +121,6 @@ describe('POST /forgot-password', () => {
 			.send({ email: randomEmail() });
 
 		expect(response.statusCode).toBe(200); // expect 200 to remain vague
-	});
-
-	test('should rate limit by email after 3 requests', async () => {
-		const email = randomEmail();
-
-		// First 3 requests should succeed (rate limit is 3 per hour per email)
-		for (let i = 0; i < 3; i++) {
-			const response = await testServer.authlessAgent.post('/forgot-password').send({ email });
-			expect(response.statusCode).toBe(200);
-		}
-
-		// 4th request should be rate limited
-		const response = await testServer.authlessAgent.post('/forgot-password').send({ email });
-		expect(response.statusCode).toBe(429);
-		expect(response.body.message).toBe('Too many requests');
-	});
-
-	test('should have separate rate limit buckets per email', async () => {
-		const email1 = randomEmail();
-		const email2 = randomEmail();
-
-		// Exhaust rate limit for email1
-		for (let i = 0; i < 3; i++) {
-			await testServer.authlessAgent.post('/forgot-password').send({ email: email1 });
-		}
-
-		// email2 should still work (different bucket)
-		const response = await testServer.authlessAgent
-			.post('/forgot-password')
-			.send({ email: email2 });
-		expect(response.statusCode).toBe(200);
-	});
-
-	test('should normalize email case for rate limiting', async () => {
-		const baseEmail = randomEmail();
-		const upperEmail = baseEmail.toUpperCase();
-
-		// First 3 requests with different cases should count towards same bucket
-		await testServer.authlessAgent.post('/forgot-password').send({ email: baseEmail });
-		await testServer.authlessAgent.post('/forgot-password').send({ email: upperEmail });
-		await testServer.authlessAgent
-			.post('/forgot-password')
-			.send({ email: baseEmail.toLowerCase() });
-
-		// 4th request should be rate limited regardless of case
-		const response = await testServer.authlessAgent
-			.post('/forgot-password')
-			.send({ email: upperEmail });
-		expect(response.statusCode).toBe(429);
 	});
 });
 
