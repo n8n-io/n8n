@@ -193,6 +193,7 @@ const AI_CONNECTION_TO_CONFIG_KEY: Record<AiConnectionType, string> = {
 	ai_retriever: 'retriever',
 	ai_document: 'documentLoader',
 	ai_textSplitter: 'textSplitter',
+	ai_reranker: 'reranker',
 };
 
 /**
@@ -208,6 +209,7 @@ const AI_CONNECTION_TO_BUILDER: Record<AiConnectionType, string> = {
 	ai_retriever: 'retriever',
 	ai_document: 'documentLoader',
 	ai_textSplitter: 'textSplitter',
+	ai_reranker: 'reranker',
 };
 
 /**

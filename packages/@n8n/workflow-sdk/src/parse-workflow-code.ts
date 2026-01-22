@@ -271,6 +271,7 @@ import {
 	retriever as retrieverFn,
 	documentLoader as documentLoaderFn,
 	textSplitter as textSplitterFn,
+	reranker as rerankerFn,
 } from './subnode-builders';
 import { merge as mergeFn } from './merge';
 import { ifBranch as ifBranchFn } from './if-branch';
@@ -314,6 +315,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 			'retriever',
 			'documentLoader',
 			'textSplitter',
+			'reranker',
 			'merge',
 			'ifBranch',
 			'switchCase',
@@ -347,6 +349,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		retrieverFn,
 		documentLoaderFn,
 		textSplitterFn,
+		rerankerFn,
 		mergeFn,
 		ifBranchFn,
 		switchCaseFn,

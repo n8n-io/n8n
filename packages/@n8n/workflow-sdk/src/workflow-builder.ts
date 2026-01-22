@@ -979,6 +979,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (subnodes.textSplitter) {
 			addSubnode(subnodes.textSplitter, 'ai_textSplitter');
 		}
+
+		// Add reranker subnode
+		if (subnodes.reranker) {
+			addSubnode(subnodes.reranker, 'ai_reranker');
+		}
 	}
 
 	/**
@@ -1044,6 +1049,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (subnodes.retriever) addNestedSubnode(subnodes.retriever, 'ai_retriever');
 		addNestedSubnodeOrArray(subnodes.documentLoader, 'ai_document');
 		if (subnodes.textSplitter) addNestedSubnode(subnodes.textSplitter, 'ai_textSplitter');
+		if (subnodes.reranker) addNestedSubnode(subnodes.reranker, 'ai_reranker');
 	}
 
 	/**

@@ -44,6 +44,7 @@ import type {
 	RetrieverInstance,
 	DocumentLoaderInstance,
 	TextSplitterInstance,
+	RerankerInstance,
 	DeclaredConnection,
 	NodeChain,
 } from './types/base';
@@ -386,6 +387,33 @@ export function textSplitter<TNode extends NodeInput>(
 	);
 }
 
+/**
+ * Create a reranker subnode instance.
+ *
+ * Use this for nodes that output `ai_reranker` connection type,
+ * such as Cohere Rerank, etc.
+ *
+ * @example
+ * ```typescript
+ * const rerank = reranker({
+ *   type: '@n8n/n8n-nodes-langchain.rerankerCohere',
+ *   version: 1,
+ *   config: { parameters: { topN: 5 } }
+ * });
+ * ```
+ */
+export function reranker<TNode extends NodeInput>(
+	input: TNode,
+): RerankerInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	const versionStr = String(input.version) as `${TNode['version']}`;
+	return new SubnodeInstanceImpl<TNode['type'], `${TNode['version']}`, unknown, 'ai_reranker'>(
+		input.type,
+		versionStr,
+		input.config as NodeConfig,
+		'ai_reranker',
+	);
+}
+
 // =============================================================================
 // Type Exports for Factory Function Signatures
 // =============================================================================
@@ -399,3 +427,4 @@ export type VectorStoreFn = typeof vectorStore;
 export type RetrieverFn = typeof retriever;
 export type DocumentLoaderFn = typeof documentLoader;
 export type TextSplitterFn = typeof textSplitter;
+export type RerankerFn = typeof reranker;

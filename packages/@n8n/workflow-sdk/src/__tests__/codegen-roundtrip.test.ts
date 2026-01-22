@@ -11,15 +11,12 @@ import {
 } from './fixtures-download';
 
 const SKIP_WORKFLOWS = new Set<string>([
-	'3066', // node count 57 vs 56 - missing: LinkedIn Post
-	'5449', // connection source mismatch (AI Agent, Reranker subnodes)
-	'5734', // connection source mismatch (VectorStore, Reranker subnodes)
-	'6150', // node count 24 vs 20 - missing Google Drive nodes, Cover Letter
-	'6542', // connection source mismatch (Reranker subnodes)
-	'7945', // node count 37 vs 29 - missing: Loop Over Batches1, Upsert Points1, Merge1
-	'7946', // node count 17 vs 15 - missing: Query Points, Merge, isHit
-	'10132', // node count 50 vs 49 - missing 1 node
-	'10476', // node count 31 vs 19 - missing: Merge1, If, Restart Message
+	'3066', // node count 57 vs 56 - missing: LinkedIn Post (fan-out with Merge pattern)
+	'6150', // node count 24 vs 20 - missing Google Drive nodes, Cover Letter (fan-out with Merge pattern)
+	'7945', // node count 37 vs 29 - missing: Loop Over Batches1, Upsert Points1, Merge1 (fan-out with Merge pattern)
+	'7946', // node count 17 vs 15 - missing: Query Points, isHit (fan-out with Merge pattern)
+	'10132', // node count 50 vs 49 - missing 1 node (fan-out with Merge pattern)
+	'10476', // node count 31 vs 19 - missing: Merge1, If, Restart Message (fan-out with Merge pattern)
 ]);
 
 interface TestWorkflow {

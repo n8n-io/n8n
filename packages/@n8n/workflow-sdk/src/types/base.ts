@@ -289,6 +289,7 @@ export interface SubnodeConfig {
 	retriever?: RetrieverInstance;
 	documentLoader?: DocumentLoaderInstance | DocumentLoaderInstance[];
 	textSplitter?: TextSplitterInstance;
+	reranker?: RerankerInstance;
 }
 
 // =============================================================================
@@ -430,6 +431,12 @@ export interface TextSplitterInstance<
 	TVersion extends string = string,
 	TOutput = unknown,
 > extends SubnodeInstance<TType, TVersion, TOutput, 'ai_textSplitter'> {}
+
+export interface RerankerInstance<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> extends SubnodeInstance<TType, TVersion, TOutput, 'ai_reranker'> {}
 
 // =============================================================================
 // Composite types
