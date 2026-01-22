@@ -1,11 +1,9 @@
-import type { IConnection } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../types';
 import {
 	DATA_TABLE_NODE_TYPE,
 	SET_NODE_TYPE,
-	findPredecessorNodes,
 	extractSetNodeFields,
 	extractDataTableInfo,
 } from '../data-table-helpers';
@@ -15,42 +13,6 @@ describe('data-table-helpers', () => {
 		name: 'Test Workflow',
 		nodes: [],
 		connections: {},
-	});
-
-	describe('findPredecessorNodes', () => {
-		it('should return empty array for workflow with no connections', () => {
-			const workflow = createEmptyWorkflow();
-			expect(findPredecessorNodes(workflow, 'Target')).toEqual([]);
-		});
-
-		it('should find predecessor node', () => {
-			const workflow: SimpleWorkflow = {
-				name: 'Test',
-				nodes: [],
-				connections: {
-					Source: {
-						main: [[{ node: 'Target', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-			};
-			expect(findPredecessorNodes(workflow, 'Target')).toEqual(['Source']);
-		});
-
-		it('should handle null connections in array', () => {
-			const workflow: SimpleWorkflow = {
-				name: 'Test',
-				nodes: [],
-				connections: {
-					Source: {
-						main: [
-							null as unknown as IConnection[],
-							[{ node: 'Target', type: NodeConnectionTypes.Main, index: 0 }],
-						],
-					},
-				},
-			};
-			expect(findPredecessorNodes(workflow, 'Target')).toEqual(['Source']);
-		});
 	});
 
 	describe('extractSetNodeFields', () => {

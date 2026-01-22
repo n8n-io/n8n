@@ -4,16 +4,16 @@
  * Utility functions for extracting and processing Data Table information
  * from workflow JSON for use in the responder agent.
  */
-
-import type { DataTableRowOperation } from 'n8n-workflow';
+import {
+	getParentNodes,
+	mapConnectionsByDestination,
+	type DataTableRowOperation,
+} from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../types';
 
 export const DATA_TABLE_NODE_TYPE = 'n8n-nodes-base.dataTable';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';
-
-// Re-export type from n8n-workflow for convenience
-export type { DataTableRowOperation };
 
 /** Row operations that require column definitions (from a preceding Set node) */
 export const DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS: readonly DataTableRowOperation[] = [
@@ -53,28 +53,6 @@ export interface DataTableInfo {
 	setNodeName?: string;
 	/** The operation (insert, update, upsert, get, delete) */
 	operation: DataTableRowOperation;
-}
-
-/**
- * Find nodes that connect to a target node
- */
-export function findPredecessorNodes(workflow: SimpleWorkflow, targetNodeName: string): string[] {
-	const predecessors: string[] = [];
-
-	for (const [sourceName, outputs] of Object.entries(workflow.connections)) {
-		if (!outputs.main) continue;
-
-		for (const connections of outputs.main) {
-			if (!connections) continue;
-			for (const connection of connections) {
-				if (connection.node === targetNodeName) {
-					predecessors.push(sourceName);
-				}
-			}
-		}
-	}
-
-	return predecessors;
 }
 
 /**
@@ -152,6 +130,7 @@ export function extractSetNodeFields(
  */
 export function extractDataTableInfo(workflow: SimpleWorkflow): DataTableInfo[] {
 	const dataTableNodes = workflow.nodes.filter((node) => node.type === DATA_TABLE_NODE_TYPE);
+	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
 
 	return dataTableNodes.map((node) => {
 		const params = node.parameters ?? {};
@@ -172,7 +151,8 @@ export function extractDataTableInfo(workflow: SimpleWorkflow): DataTableInfo[] 
 
 		// Look for a set node before the data table operation - this should contain the columns
 		if (isDataTableRowColumnOperation(operation)) {
-			const predecessors = findPredecessorNodes(workflow, node.name);
+			// Get direct predecessors (depth=1) using getParentNodes from n8n-workflow
+			const predecessors = getParentNodes(connectionsByDestination, node.name, 'main', 1);
 			for (const predecessorName of predecessors) {
 				const setFields = extractSetNodeFields(workflow, predecessorName);
 				if (setFields.length > 0) {

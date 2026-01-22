@@ -1,5 +1,10 @@
-import type { INodeConnections, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
-import { mapConnectionsByDestination } from 'n8n-workflow';
+import type {
+	IConnections,
+	INodeConnections,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 import {
@@ -144,7 +149,7 @@ function checkMergeNodeConnections(
 }
 
 function checkDataTableHasSetNodePredecessor(
-	workflow: SimpleWorkflow,
+	connectionsByDestination: IConnections,
 	node: SimpleWorkflow['nodes'][number],
 	nodesByName: Map<string, SimpleWorkflow['nodes'][number]>,
 ): ProgrammaticViolation[] {
@@ -160,15 +165,15 @@ function checkDataTableHasSetNodePredecessor(
 		return [];
 	}
 
-	// Check if any predecessor is a Set node
-	const hasSetNodePredecessor = Object.entries(workflow.connections).some(([sourceName, outputs]) =>
-		outputs.main?.some((connections) =>
-			connections?.some((connection) => {
-				if (connection.node !== node.name) return false;
-				const sourceNode = nodesByName.get(sourceName);
-				return sourceNode?.type === SET_NODE_TYPE;
-			}),
-		),
+	// Check if any direct predecessor is a Set node
+	const predecessors = getParentNodes(
+		connectionsByDestination,
+		node.name,
+		NodeConnectionTypes.Main,
+		1,
+	);
+	const hasSetNodePredecessor = predecessors.some(
+		(name) => nodesByName.get(name)?.type === SET_NODE_TYPE,
 	);
 
 	if (hasSetNodePredecessor) {
@@ -290,7 +295,9 @@ export function validateConnections(
 
 		violations.push(...checkSubNodeRootConnections(workflow, nodeInfo, nodesByName));
 
-		violations.push(...checkDataTableHasSetNodePredecessor(workflow, node, nodesByName));
+		violations.push(
+			...checkDataTableHasSetNodePredecessor(connectionsByDestination, node, nodesByName),
+		);
 	}
 
 	return violations;
