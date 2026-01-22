@@ -38,3 +38,8 @@ Options:
 - `--no-node-name` - Exclude node names
 - `--no-node-type` - Exclude node type comments
 - `--node-params` - Include node parameters
+
+## Evaluations
+
+Before modifying evaluations, judgement criteria, or scoring logic, read
+`evaluations/README.md` for the evaluation framework architecture and guidelines.
