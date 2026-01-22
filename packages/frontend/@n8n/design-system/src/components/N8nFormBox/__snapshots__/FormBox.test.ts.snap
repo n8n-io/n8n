@@ -78,7 +78,7 @@ exports[`FormBox > should render the component 1`] = `
                 class=""
               >
                 <div
-                  class="inputContainer small"
+                  class="n8n-input inputContainer small"
                 >
                   <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->
@@ -158,7 +158,7 @@ exports[`FormBox > should render the component 1`] = `
                 class=""
               >
                 <div
-                  class="inputContainer medium"
+                  class="n8n-input inputContainer medium"
                 >
                   <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->
@@ -238,7 +238,7 @@ exports[`FormBox > should render the component 1`] = `
                 class=""
               >
                 <div
-                  class="inputContainer large ph-no-capture"
+                  class="n8n-input inputContainer large ph-no-capture"
                 >
                   <!-- Prepend slot (outside input container, before) -->
                   <!--v-if-->

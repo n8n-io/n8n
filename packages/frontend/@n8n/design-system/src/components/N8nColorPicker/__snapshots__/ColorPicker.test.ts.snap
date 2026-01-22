@@ -65,7 +65,7 @@ exports[`components > N8nColorPicker > should render with input 1`] = `
     <!--teleport end-->
     
     <div
-      class="inputContainer large input"
+      class="n8n-input inputContainer large input"
       data-v-dab78bb8=""
     >
       <!-- Prepend slot (outside input container, before) -->
