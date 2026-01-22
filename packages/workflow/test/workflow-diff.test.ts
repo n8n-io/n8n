@@ -17,6 +17,7 @@ import {
 	NodeDiffStatus,
 	RULES,
 	SKIP_RULES,
+	stringContainsParts,
 	WorkflowChangeSet,
 	type DiffableNode,
 	type DiffableWorkflow,
@@ -883,7 +884,26 @@ describe('groupWorkflows', () => {
 		});
 	});
 });
-
+describe('stringContainsParts', () => {
+	test.each([
+		['abcde', 'abde', true],
+		['abcde', 'abced', false],
+		['abc', 'abcd', false],
+		['abcde', '', true],
+		['abcde', 'abcde', true],
+		['', 'a', false],
+		['abcde', 'c', true],
+		['abcde', 'z', false],
+		['abcde', 'abc', true],
+		['abcde', 'cde', true],
+		['abcde', 'abfz', false],
+		['abcde', 'ace', true],
+		['abcde', 'aec', false],
+	])('$[0]', (s, substr, expected) => {
+		const result = stringContainsParts(s, substr);
+		expect(result).toBe(expected);
+	});
+});
 describe('hasNonPositionalChanges', () => {
 	const createNode = (id: string, overrides: Partial<INode> = {}): INode => ({
 		id,

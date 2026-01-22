@@ -111,10 +111,14 @@ export class WorkflowChangeSet<T extends DiffableNode> {
  *  'abcd' -> false
  *  'abced' -> false
  */
-function stringContainsParts(s: string, substr: string) {
+export function stringContainsParts(s: string, substr: string) {
+	if (substr.length > s.length) return false;
+	const diffSize = s.length - substr.length;
 	let marker = 0;
 	for (let i = 0; i < s.length; ++i) {
 		if (substr[marker] === s[i]) marker++;
+
+		if (i - marker > diffSize) return false;
 	}
 	return marker >= substr.length;
 }
