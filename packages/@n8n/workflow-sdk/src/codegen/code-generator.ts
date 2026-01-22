@@ -198,9 +198,51 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 }
 
 /**
+ * Check if node is a sticky note
+ */
+function isStickyNote(type: string): boolean {
+	return type === 'n8n-nodes-base.stickyNote';
+}
+
+/**
+ * Generate sticky note call
+ */
+function generateStickyCall(node: SemanticNode): string {
+	const content = escapeString((node.json.parameters?.content as string) ?? '');
+	const options: string[] = [];
+
+	if (node.json.name && node.json.name !== 'Sticky Note') {
+		options.push(`name: '${escapeString(node.json.name)}'`);
+	}
+
+	const params = node.json.parameters;
+	if (params?.color !== undefined) {
+		options.push(`color: ${params.color}`);
+	}
+	if (params?.width !== undefined) {
+		options.push(`width: ${params.width}`);
+	}
+	if (params?.height !== undefined) {
+		options.push(`height: ${params.height}`);
+	}
+
+	const pos = node.json.position;
+	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+		options.push(`position: [${pos[0]}, ${pos[1]}]`);
+	}
+
+	const optionsStr = options.length > 0 ? `, { ${options.join(', ')} }` : '';
+	return `sticky('${content}'${optionsStr})`;
+}
+
+/**
  * Generate node call
  */
 function generateNodeCall(node: SemanticNode, ctx: GenerationContext): string {
+	if (isStickyNote(node.type)) {
+		return generateStickyCall(node);
+	}
+
 	const config = generateNodeConfig(node, ctx);
 
 	if (isTriggerType(node.type)) {

@@ -639,6 +639,63 @@ describe('code-generator', () => {
 			});
 		});
 
+		describe('sticky notes', () => {
+			it('generates sticky() call for sticky note nodes', () => {
+				const json: WorkflowJSON = {
+					id: 'sticky-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Sticky Note',
+							type: 'n8n-nodes-base.stickyNote',
+							typeVersion: 1,
+							position: [100, 200],
+							parameters: {
+								content: '## Documentation\n\nThis is a note.',
+								color: 4,
+								width: 300,
+								height: 200,
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain('sticky(');
+				expect(code).toContain('## Documentation\\n\\nThis is a note.');
+				expect(code).toContain('color: 4');
+				expect(code).toContain('width: 300');
+				expect(code).toContain('height: 200');
+			});
+
+			it('generates sticky with custom name', () => {
+				const json: WorkflowJSON = {
+					id: 'sticky-name-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'My Custom Note',
+							type: 'n8n-nodes-base.stickyNote',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {
+								content: 'Note content',
+							},
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("name: 'My Custom Note'");
+			});
+		});
+
 		describe('reserved keywords', () => {
 			it('appends _node suffix for reserved keyword variable names', () => {
 				const json: WorkflowJSON = {
