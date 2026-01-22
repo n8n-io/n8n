@@ -45,6 +45,93 @@ function escapeString(str: string): string {
 }
 
 /**
+ * Generate the default node name from a node type
+ * e.g., 'n8n-nodes-base.httpRequest' -> 'HTTP Request'
+ */
+function generateDefaultNodeName(type: string): string {
+	const parts = type.split('.');
+	const nodeName = parts[parts.length - 1];
+
+	return nodeName
+		.replace(/([a-z])([A-Z])/g, '$1 $2')
+		.replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+		.replace(/^./, (str) => str.toUpperCase())
+		.replace(/Http/g, 'HTTP')
+		.replace(/Api/g, 'API')
+		.replace(/Url/g, 'URL')
+		.replace(/Id/g, 'ID')
+		.replace(/Json/g, 'JSON')
+		.replace(/Xml/g, 'XML')
+		.replace(/Sql/g, 'SQL')
+		.replace(/Ai/g, 'AI')
+		.replace(/Aws/g, 'AWS')
+		.replace(/Gcp/g, 'GCP')
+		.replace(/Ssh/g, 'SSH')
+		.replace(/Ftp/g, 'FTP')
+		.replace(/Csv/g, 'CSV');
+}
+
+/**
+ * Reserved keywords that cannot be used as variable names
+ */
+const RESERVED_KEYWORDS = new Set([
+	// JavaScript reserved
+	'break',
+	'case',
+	'catch',
+	'class',
+	'const',
+	'continue',
+	'debugger',
+	'default',
+	'delete',
+	'do',
+	'else',
+	'export',
+	'extends',
+	'finally',
+	'for',
+	'function',
+	'if',
+	'import',
+	'in',
+	'instanceof',
+	'let',
+	'new',
+	'return',
+	'static',
+	'super',
+	'switch',
+	'this',
+	'throw',
+	'try',
+	'typeof',
+	'var',
+	'void',
+	'while',
+	'with',
+	'yield',
+	// SDK functions
+	'workflow',
+	'trigger',
+	'node',
+	'merge',
+	'ifBranch',
+	'switchCase',
+	'splitInBatches',
+	'sticky',
+	'languageModel',
+	'tool',
+	'memory',
+	'outputParser',
+	'textSplitter',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'document',
+]);
+
+/**
  * Format a value for code output
  */
 function formatValue(value: unknown): string {
@@ -84,7 +171,8 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 
 	const configParts: string[] = [];
 
-	if (node.json.name && node.json.name !== 'Node') {
+	const defaultName = generateDefaultNodeName(node.type);
+	if (node.json.name && node.json.name !== defaultName) {
 		configParts.push(`name: '${escapeString(node.json.name)}'`);
 	}
 
@@ -255,12 +343,19 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
  * Generate variable name from node name
  */
 function toVarName(nodeName: string): string {
-	return nodeName
+	let varName = nodeName
 		.replace(/[^a-zA-Z0-9]/g, '_')
 		.replace(/^(\d)/, '_$1')
 		.replace(/_+/g, '_')
 		.replace(/^_|_$/g, '')
 		.replace(/^([A-Z])/, (c) => c.toLowerCase());
+
+	// Avoid reserved keywords
+	if (RESERVED_KEYWORDS.has(varName)) {
+		varName = varName + '_node';
+	}
+
+	return varName;
 }
 
 /**

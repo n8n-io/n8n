@@ -527,5 +527,134 @@ describe('code-generator', () => {
 				expect(code).toContain("message: 'Hello, it\\'s me'");
 			});
 		});
+
+		describe('default node names', () => {
+			it('omits name config when node name matches default', () => {
+				const json: WorkflowJSON = {
+					id: 'default-name-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4.2,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should NOT have name in config since it matches the default
+				expect(code).not.toContain("name: 'HTTP Request'");
+			});
+
+			it('includes name config when node name differs from default', () => {
+				const json: WorkflowJSON = {
+					id: 'custom-name-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'My Custom Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 4.2,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("name: 'My Custom Request'");
+			});
+
+			it('generates correct default name from camelCase type', () => {
+				const json: WorkflowJSON = {
+					id: 'camel-case-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Manual Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+					],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should NOT have name since "Manual Trigger" matches default for "manualTrigger"
+				expect(code).not.toContain("name: 'Manual Trigger'");
+			});
+		});
+
+		describe('reserved keywords', () => {
+			it('appends _node suffix for reserved keyword variable names', () => {
+				const json: WorkflowJSON = {
+					id: 'reserved-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'If',
+							type: 'n8n-nodes-base.if',
+							typeVersion: 2,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'True',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, -50],
+						},
+						{
+							id: '4',
+							name: 'False',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 50],
+						},
+						{
+							id: '5',
+							name: 'Merge',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [300, 0],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'If', type: 'main', index: 0 }]] },
+						If: {
+							main: [
+								[{ node: 'True', type: 'main', index: 0 }],
+								[{ node: 'False', type: 'main', index: 0 }],
+							],
+						},
+						True: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+						False: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// "Merge" is a reserved SDK function, so variable should be merge_node
+				expect(code).toContain('const merge_node =');
+			});
+		});
 	});
 });
