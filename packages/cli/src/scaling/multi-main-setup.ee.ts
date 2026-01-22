@@ -8,7 +8,6 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis-client.service';
 import { TypedEmitter } from '@/typed-emitter';
-import { error } from 'node:console';
 
 type MultiMainEvents = {
 	/**
