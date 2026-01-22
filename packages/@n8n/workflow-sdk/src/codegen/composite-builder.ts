@@ -29,16 +29,83 @@ interface BuildContext {
 }
 
 /**
+ * Reserved keywords that cannot be used as variable names
+ */
+const RESERVED_KEYWORDS = new Set([
+	// JavaScript reserved
+	'break',
+	'case',
+	'catch',
+	'class',
+	'const',
+	'continue',
+	'debugger',
+	'default',
+	'delete',
+	'do',
+	'else',
+	'export',
+	'extends',
+	'finally',
+	'for',
+	'function',
+	'if',
+	'import',
+	'in',
+	'instanceof',
+	'let',
+	'new',
+	'return',
+	'static',
+	'super',
+	'switch',
+	'this',
+	'throw',
+	'try',
+	'typeof',
+	'var',
+	'void',
+	'while',
+	'with',
+	'yield',
+	// SDK functions
+	'workflow',
+	'trigger',
+	'node',
+	'merge',
+	'ifBranch',
+	'switchCase',
+	'splitInBatches',
+	'sticky',
+	'languageModel',
+	'tool',
+	'memory',
+	'outputParser',
+	'textSplitter',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'document',
+]);
+
+/**
  * Generate a variable name from node name
  */
 function toVarName(nodeName: string): string {
 	// Convert to camelCase and sanitize for JS variable name
-	return nodeName
+	let varName = nodeName
 		.replace(/[^a-zA-Z0-9]/g, '_')
 		.replace(/^(\d)/, '_$1')
 		.replace(/_+/g, '_')
 		.replace(/^_|_$/g, '')
 		.replace(/^([A-Z])/, (c) => c.toLowerCase());
+
+	// Avoid reserved keywords
+	if (RESERVED_KEYWORDS.has(varName)) {
+		varName = varName + '_node';
+	}
+
+	return varName;
 }
 
 /**
@@ -247,7 +314,9 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 	}
 
 	// If already visited, return variable reference
+	// Also add to variables to ensure declaration is generated
 	if (ctx.visited.has(nodeName)) {
+		ctx.variables.set(nodeName, node);
 		return createVarRef(nodeName);
 	}
 
