@@ -1149,6 +1149,7 @@ describe('ParameterInputList', () => {
 					nodeValues: TEST_NODE_VALUES,
 				},
 			});
+			await flushPromises();
 
 			// Verify issue icon is present and tooltip shows issue text on hover
 			const issueIcon = container.querySelector('[data-icon="triangle-alert"]');
@@ -1182,6 +1183,7 @@ describe('ParameterInputList', () => {
 					hiddenIssuesInputs: [FIXED_COLLECTION_PARAMETERS[0].name],
 				},
 			});
+			await flushPromises();
 
 			// Issue text still appears because hiddenIssuesInputs is passed to child component
 			// The actual hiding logic is in the child component (ParameterInputFull)
