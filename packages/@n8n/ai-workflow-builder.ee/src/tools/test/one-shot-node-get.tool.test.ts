@@ -36,16 +36,18 @@ describe('OneShotNodeGetTool', () => {
 		});
 
 		it('should provide helpful error when generated types directory does not exist', async () => {
-			// When generatedTypesDir is not provided and the fallback path doesn't have types,
-			// the error message should indicate that the types need to be generated.
-			const tool = createOneShotNodeGetTool();
+			// When a non-existent generatedTypesDir is provided, the error message
+			// should indicate that the types need to be generated.
+			const tool = createOneShotNodeGetTool({
+				generatedTypesDir: '/non-existent-path-that-does-not-exist-12345',
+			});
 
 			// Request a valid node that should exist if types were generated
 			const result = await tool.invoke({ nodeIds: ['n8n-nodes-base.httpRequest'] });
 
 			// Should return a helpful error message about types not being generated
 			expect(typeof result).toBe('string');
-			expect(result).toContain('generated types directory does not exist');
+			expect(result).toContain('not found');
 		});
 	});
 });

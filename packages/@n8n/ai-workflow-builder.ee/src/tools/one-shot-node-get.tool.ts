@@ -8,7 +8,8 @@
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { inspect } from 'node:util';
 import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
@@ -46,10 +47,10 @@ function getGeneratedNodesPath(customGeneratedTypesDir?: string): string {
 		return nodesPath;
 	}
 
-	// Fallback to workflow-sdk static types for development/testing
-	const workflowSdkPath = dirname(require.resolve('@n8n/workflow-sdk/package.json'));
-	const nodesPath = join(workflowSdkPath, 'src', 'types', 'generated', 'nodes');
-	debugLog('Using workflow-sdk generated nodes path', { workflowSdkPath, nodesPath });
+	// Default to ~/.n8n/generated-types (same location as runtime and CLI)
+	const defaultTypesDir = join(homedir(), '.n8n', 'generated-types');
+	const nodesPath = join(defaultTypesDir, 'nodes');
+	debugLog('Using default generated nodes path', { defaultTypesDir, nodesPath });
 	return nodesPath;
 }
 

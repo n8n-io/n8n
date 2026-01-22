@@ -21,6 +21,7 @@
  */
 
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 
 // =============================================================================
@@ -32,7 +33,7 @@ const NODES_LANGCHAIN_TYPES = path.resolve(
 	__dirname,
 	'../../../nodes-langchain/dist/types/nodes.json',
 );
-const OUTPUT_PATH = path.resolve(__dirname, '../types/generated');
+const OUTPUT_PATH = path.join(os.homedir(), '.n8n', 'generated-types');
 
 // Path to nodes-base dist for finding output schemas
 const NODES_BASE_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
