@@ -496,7 +496,7 @@ export class LdapService {
 		return localLdapIds.filter((user) => !remoteAdUserIds.includes(user));
 	}
 
-	async handleLogin(loginId: string, password: string): Promise<User | undefined> {
+	async handleLdapLogin(loginId: string, password: string): Promise<User | undefined> {
 		if (!this.licenseState.isLdapLicensed()) return undefined;
 
 		if (!this.config.loginEnabled) return undefined;
