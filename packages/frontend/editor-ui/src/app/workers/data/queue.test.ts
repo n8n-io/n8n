@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createWriteQueue, isWriteOperation } from './writeQueue';
+import { createQueue, isWriteOperation } from './queue';
 
 describe('isWriteOperation', () => {
 	it('should return true for INSERT statements', () => {
@@ -88,11 +88,11 @@ describe('isWriteOperation', () => {
 	});
 });
 
-describe('WriteQueue', () => {
-	let queue: ReturnType<typeof createWriteQueue>;
+describe('Queue', () => {
+	let queue: ReturnType<typeof createQueue>;
 
 	beforeEach(() => {
-		queue = createWriteQueue();
+		queue = createQueue();
 	});
 
 	describe('enqueue', () => {

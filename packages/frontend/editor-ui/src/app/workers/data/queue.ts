@@ -1,5 +1,5 @@
 /**
- * Write Queue for SQLite Operations
+ * Queue for SQLite Operations
  *
  * Serializes write operations to prevent concurrent writes from interleaving.
  * Read operations (SELECT) do not need queueing as SQLite WASM
@@ -54,22 +54,22 @@ interface QueuedRequest<T> {
 }
 
 /**
- * Creates a serial write queue that processes write operations one at a time
+ * Creates a serial queue that processes write operations one at a time
  */
-export function createWriteQueue() {
-	const queue: Array<QueuedRequest<unknown>> = [];
+export function createQueue() {
+	const pending: Array<QueuedRequest<unknown>> = [];
 	let processing = false;
 
 	/**
 	 * Process the next request in the queue
 	 */
 	async function processNext(): Promise<void> {
-		if (processing || queue.length === 0) {
+		if (processing || pending.length === 0) {
 			return;
 		}
 
 		processing = true;
-		const request = queue.shift();
+		const request = pending.shift();
 		if (!request) {
 			processing = false;
 			return;
@@ -102,7 +102,7 @@ export function createWriteQueue() {
 
 		// Queue write operations
 		return await new Promise<T>((resolve, reject) => {
-			queue.push({
+			pending.push({
 				operation,
 				resolve: resolve as (value: unknown) => void,
 				reject,
@@ -115,7 +115,7 @@ export function createWriteQueue() {
 	 * Get the current queue length (for debugging/monitoring)
 	 */
 	function getQueueLength(): number {
-		return queue.length;
+		return pending.length;
 	}
 
 	/**
@@ -132,4 +132,4 @@ export function createWriteQueue() {
 	};
 }
 
-export type WriteQueue = ReturnType<typeof createWriteQueue>;
+export type Queue = ReturnType<typeof createQueue>;
