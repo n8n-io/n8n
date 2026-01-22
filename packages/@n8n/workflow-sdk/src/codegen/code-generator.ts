@@ -231,7 +231,8 @@ function generateStickyCall(node: SemanticNode): string {
 	const content = escapeString((node.json.parameters?.content as string) ?? '');
 	const options: string[] = [];
 
-	if (node.json.name && node.json.name !== 'Sticky Note') {
+	// Always include name for sticky notes (parser generates unique names otherwise)
+	if (node.json.name) {
 		options.push(`name: '${escapeString(node.json.name)}'`);
 	}
 
@@ -493,8 +494,8 @@ export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
 	}
 
 	// Generate workflow call
-	const workflowId = escapeString(json.id ?? 'workflow-id');
-	const workflowName = escapeString(json.name ?? 'Untitled Workflow');
+	const workflowId = escapeString(json.id ?? '');
+	const workflowName = escapeString(json.name ?? '');
 
 	// Include settings if present
 	const settingsStr =

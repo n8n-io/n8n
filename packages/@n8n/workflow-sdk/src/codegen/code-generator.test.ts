@@ -559,8 +559,8 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should use a default name instead of crashing
-				expect(code).toContain("workflow('test-id', 'Untitled Workflow')");
+				// Should generate valid code without crashing, preserving empty name
+				expect(code).toContain("workflow('test-id', '')");
 			});
 
 			it('escapes Unicode smart quotes in node names', () => {
