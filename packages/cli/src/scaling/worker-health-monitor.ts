@@ -10,6 +10,7 @@ import { RedisClientService } from '@/services/redis-client.service';
 import { CircuitBreaker, CircuitBreakerOpen } from '@/utils/circuit-breaker';
 
 import type { ScalingService } from './scaling.service';
+import { checkWorkerReadiness } from './worker-readiness';
 
 /**
  * Monitors worker health and automatically pauses/resumes queue processing
@@ -26,7 +27,7 @@ import type { ScalingService } from './scaling.service';
  *
  * ## Configuration
  *
- * - `QUEUE_HEALTH_CHECK_INTERVAL`: How often to check health (default: 10 seconds)
+ * - `QUEUE_HEALTH_CHECK_INTERVAL`: How often to check health (0 to disable, default: 0)
  * - `QUEUE_HEALTH_CHECK_ACTIVE`: Must be enabled for health monitoring
  *
  * @example
@@ -59,8 +60,7 @@ export class WorkerHealthMonitor {
 
 		this.logger = this.logger.scoped('scaling');
 
-		// Default to 10 seconds if not configured
-		this.checkIntervalMs = this.globalConfig.queue.health.checkInterval ?? 10_000;
+		this.checkIntervalMs = this.globalConfig.queue.health.checkInterval;
 
 		// Circuit breaker prevents flapping between healthy/unhealthy states
 		// - Opens after 3 failures within 60 seconds
@@ -80,7 +80,12 @@ export class WorkerHealthMonitor {
 	 */
 	async start(scalingService: ScalingService) {
 		if (!this.globalConfig.queue.health.active) {
-			this.logger.debug('Health monitoring is disabled');
+			this.logger.debug('Health monitoring is disabled (health check endpoints not active)');
+			return;
+		}
+
+		if (this.checkIntervalMs === 0) {
+			this.logger.debug('Health monitoring is disabled (check interval is 0)');
 			return;
 		}
 
@@ -107,8 +112,7 @@ export class WorkerHealthMonitor {
 			// Use circuit breaker to check health
 			// If circuit is open, checkHealth throws CircuitBreakerOpen
 			await this.circuitBreaker.execute(async () => {
-				const isHealthy = await this.checkHealth();
-				if (!isHealthy) {
+				if (!this.checkHealth()) {
 					throw new Error('Worker is unhealthy');
 				}
 			});
@@ -132,38 +136,8 @@ export class WorkerHealthMonitor {
 		}
 	}
 
-	/**
-	 * Check if worker is healthy by verifying connectivity to critical dependencies.
-	 *
-	 * @returns true if worker is healthy, false otherwise
-	 */
-	private async checkHealth(): Promise<boolean> {
-		const { connectionState } = this.dbConnection;
-
-		// Check database connectivity
-		const isDbHealthy = connectionState.connected && connectionState.migrated;
-		if (!isDbHealthy) {
-			this.logger.warn('Database is not healthy', {
-				connected: connectionState.connected,
-				migrated: connectionState.migrated,
-			});
-			return false;
-		}
-
-		// Check Redis connectivity
-		const isRedisHealthy = this.redisClientService.isConnected();
-		if (!isRedisHealthy) {
-			this.logger.warn('Redis is not healthy');
-			return false;
-		}
-
-		this.logger.debug('Worker health check passed', {
-			dbConnected: connectionState.connected,
-			dbMigrated: connectionState.migrated,
-			redisConnected: isRedisHealthy,
-		});
-
-		return true;
+	private checkHealth(): boolean {
+		return checkWorkerReadiness(this.dbConnection, this.redisClientService);
 	}
 
 	/**

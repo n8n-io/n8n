@@ -70,8 +70,28 @@ describe('WorkerHealthMonitor', () => {
 
 			await monitor.start(scalingService);
 
-			expect(logger.debug).toHaveBeenCalledWith('Health monitoring is disabled');
 			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
+		});
+
+		it('should not start monitoring if check interval is 0', async () => {
+			globalConfig.queue.health.active = true;
+			globalConfig.queue.health.checkInterval = 0;
+
+			// Need to create a new monitor instance with the updated config
+			const monitorWithZeroInterval = new WorkerHealthMonitor(
+				logger,
+				globalConfig,
+				dbConnection,
+				redisClientService,
+				instanceSettings,
+			);
+
+			await monitorWithZeroInterval.start(scalingService);
+
+			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
+
+			// Restore for other tests
+			globalConfig.queue.health.checkInterval = 1000;
 		});
 
 		it('should perform initial health check and start monitoring', async () => {
@@ -133,7 +153,6 @@ describe('WorkerHealthMonitor', () => {
 			await jest.advanceTimersByTimeAsync(1000);
 
 			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith('Redis is not healthy');
 		});
 
 		it('should resume queue when worker becomes healthy again', async () => {

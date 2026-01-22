@@ -22,10 +22,10 @@ class HealthConfig {
 	 * How often (in milliseconds) to check worker health and pause/resume queue accordingly.
 	 * Worker will automatically pause queue processing if database or Redis connectivity is lost.
 	 * Set to 0 to disable automatic health monitoring.
-	 * @default 10000 (10 seconds)
+	 * @default 0 (disabled)
 	 */
 	@Env('QUEUE_HEALTH_CHECK_INTERVAL')
-	checkInterval: number = 10_000;
+	checkInterval: number = 0;
 }
 
 @Config
