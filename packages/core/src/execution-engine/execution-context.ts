@@ -7,9 +7,9 @@ import {
 	type Workflow,
 } from 'n8n-workflow';
 
-import { ExecutionContextService } from './execution-context.service';
-
 import { assertExecutionDataExists } from '@/utils/assertions';
+
+import { ExecutionContextService } from './execution-context.service';
 
 /**
  * Establishes the execution context for a workflow run.
