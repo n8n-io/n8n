@@ -17,6 +17,7 @@ import {
 	NodeDiffStatus,
 	RULES,
 	SKIP_RULES,
+	stringContainsParts,
 	WorkflowChangeSet,
 	type DiffableNode,
 	type DiffableWorkflow,
@@ -527,6 +528,86 @@ describe('groupWorkflows', () => {
 					nextWorkflow: createWorkflow('1', []),
 					expected: true,
 				},
+				{
+					description: 'should handle nested node',
+					baseWorkflow: createWorkflow('1', [
+						{
+							id: '1',
+							parameters: {
+								conditions: {
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'a561e9ba-ec13-4280-813c-28439d2e57df',
+											leftValue: '={{ $json.da',
+											operator: {
+												name: 'filter.operator.equals',
+												operation: 'equals',
+												type: 'string',
+											},
+											rightValue: '',
+										},
+									],
+									options: {
+										caseSensitive: true,
+										leftValue: '',
+										typeValidation: 'strict',
+										version: 3,
+									},
+								},
+								options: {},
+							},
+							name: 'n1',
+						},
+					]),
+					nextWorkflow: createWorkflow('1', [
+						{
+							id: '1',
+							parameters: {
+								conditions: {
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'a561e9ba-ec13-4280-813c-28439d2e57df',
+											leftValue: '={{ $json.dayOffset }}', // changed value
+											operator: {
+												name: 'filter.operator.equals',
+												operation: 'equals',
+												type: 'string',
+											},
+											rightValue: '',
+										},
+									],
+									options: {
+										caseSensitive: true,
+										leftValue: '',
+										typeValidation: 'strict',
+										version: 3,
+									},
+								},
+								options: {},
+							},
+							name: 'n1',
+						},
+					]),
+					expected: false,
+				},
+				{
+					description: 'should return true when next string contains parts of previous string',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'val with some text ue1' }, name: 'n1' },
+					]),
+					expected: true,
+				},
+				{
+					description: 'should return false when prev string contains parts of next string',
+					baseWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'val with some text ue1' }, name: 'n1' },
+					]),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					expected: false,
+				},
 			])('$description', ({ baseWorkflow, nextWorkflow, expected }) => {
 				const result = RULES.mergeAdditiveChanges(
 					baseWorkflow,
@@ -803,7 +884,26 @@ describe('groupWorkflows', () => {
 		});
 	});
 });
-
+describe('stringContainsParts', () => {
+	test.each([
+		['abcde', 'abde', true],
+		['abcde', 'abced', false],
+		['abc', 'abcd', false],
+		['abcde', '', true],
+		['abcde', 'abcde', true],
+		['', 'a', false],
+		['abcde', 'c', true],
+		['abcde', 'z', false],
+		['abcde', 'abc', true],
+		['abcde', 'cde', true],
+		['abcde', 'abfz', false],
+		['abcde', 'ace', true],
+		['abcde', 'aec', false],
+	])('$[0]', (s, substr, expected) => {
+		const result = stringContainsParts(s, substr);
+		expect(result).toBe(expected);
+	});
+});
 describe('hasNonPositionalChanges', () => {
 	const createNode = (id: string, overrides: Partial<INode> = {}): INode => ({
 		id,

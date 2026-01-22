@@ -102,6 +102,27 @@ export class WorkflowChangeSet<T extends DiffableNode> {
 		}
 	}
 }
+
+/**
+ * Returns true if `s` contains all characters of `substr` in order
+ * e.g. s='abcde'
+ * substr:
+ *  'abde' -> true
+ *  'abcd' -> false
+ *  'abced' -> false
+ */
+export function stringContainsParts(s: string, substr: string) {
+	if (substr.length > s.length) return false;
+	const diffSize = s.length - substr.length;
+	let marker = 0;
+	for (let i = 0; i < s.length; ++i) {
+		if (substr[marker] === s[i]) marker++;
+
+		if (i - marker > diffSize) return false;
+	}
+	return marker >= substr.length;
+}
+
 /**
  * Determines whether the second node is a "superset" of the first one, i.e. whether no data
  * is lost if we were to replace `prev` with `next`.
@@ -110,7 +131,6 @@ export class WorkflowChangeSet<T extends DiffableNode> {
  * - Both nodes have the exact same keys
  * - All values are either strings where `next.x` contains `prev.x`, or hold the exact same value
  */
-
 function nodeIsSuperset<T extends DiffableNode>(prevNode: T, nextNode: T) {
 	const { parameters: prevParams, ...prev } = prevNode;
 	const { parameters: nextParams, ...next } = nextNode;
@@ -131,7 +151,7 @@ function nodeIsSuperset<T extends DiffableNode>(prevNode: T, nextNode: T) {
 		// non-strings must be exactly equal to not be lost data
 		if (typeof left === 'string' && typeof right === 'string') {
 			// strings must only be contained in the new string
-			if (!right.includes(left)) return false;
+			if (!stringContainsParts(right, left)) return false;
 		} else if (left !== right) return false;
 	}
 
