@@ -45,7 +45,7 @@ export class SecretsProviderConnection extends WithTimestampsAndStringId {
 	 * Encrypted JSON string containing the connection settings for the secrets provider.
 	 */
 	@Column()
-	settings: string;
+	encryptedSettings: string;
 
 	/**
 	 * Whether the secrets provider connection is enabled.
