@@ -1478,6 +1478,362 @@ describe('code-generator', () => {
 			});
 		});
 
+		describe('merge node outgoing connections', () => {
+			it('preserves merge node outgoing connections when merge has .then()', () => {
+				// Pattern: trigger → [branch1, branch2] → merge → loopOverItems
+				// The merge node's connection to loopOverItems should be preserved
+				const json: WorkflowJSON = {
+					id: 'merge-outgoing-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Branch1',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [100, -50],
+						},
+						{
+							id: '3',
+							name: 'Branch2',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [100, 50],
+						},
+						{
+							id: '4',
+							name: 'Merge: All Sources',
+							type: 'n8n-nodes-base.merge',
+							typeVersion: 3,
+							position: [200, 0],
+							parameters: { numberInputs: 2 },
+						},
+						{
+							id: '5',
+							name: 'Loop Over Items',
+							type: 'n8n-nodes-base.splitInBatches',
+							typeVersion: 3,
+							position: [300, 0],
+						},
+					],
+					connections: {
+						Trigger: {
+							main: [
+								[
+									{ node: 'Branch1', type: 'main', index: 0 },
+									{ node: 'Branch2', type: 'main', index: 0 },
+								],
+							],
+						},
+						Branch1: { main: [[{ node: 'Merge: All Sources', type: 'main', index: 0 }]] },
+						Branch2: { main: [[{ node: 'Merge: All Sources', type: 'main', index: 1 }]] },
+						'Merge: All Sources': { main: [[{ node: 'Loop Over Items', type: 'main', index: 0 }]] },
+					},
+				};
+
+				// Generate code and parse back
+				const code = generateFromWorkflow(json);
+				const parsedJson = parseWorkflowCode(code);
+
+				// The key test: Merge: All Sources should have an outgoing connection
+				expect(Object.keys(parsedJson.connections)).toContain('Merge: All Sources');
+				expect(parsedJson.connections['Merge: All Sources']).toBeDefined();
+				expect(parsedJson.connections['Merge: All Sources'].main[0]).toEqual(
+					expect.arrayContaining([expect.objectContaining({ node: 'Loop Over Items' })]),
+				);
+			});
+		});
+
+		describe('chain intermediate node connections', () => {
+			it('preserves intermediate node connections in linear chain', () => {
+				// Pattern: trigger → Wait 1 → Wait 2 → Loop
+				// Wait 2's connection to Loop should be preserved
+				const json: WorkflowJSON = {
+					id: 'chain-intermediate-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Wait 1',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [100, 0],
+							parameters: { amount: 1 },
+						},
+						{
+							id: '3',
+							name: 'Wait 2',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [200, 0],
+							parameters: { amount: 2 },
+						},
+						{
+							id: '4',
+							name: 'Loop',
+							type: 'n8n-nodes-base.splitInBatches',
+							typeVersion: 3,
+							position: [300, 0],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Wait 1', type: 'main', index: 0 }]] },
+						'Wait 1': { main: [[{ node: 'Wait 2', type: 'main', index: 0 }]] },
+						'Wait 2': { main: [[{ node: 'Loop', type: 'main', index: 0 }]] },
+					},
+				};
+
+				// Generate code and parse back
+				const code = generateFromWorkflow(json);
+				const parsedJson = parseWorkflowCode(code);
+
+				// The key test: Wait 2 should have an outgoing connection to Loop
+				expect(Object.keys(parsedJson.connections)).toContain('Wait 2');
+				expect(parsedJson.connections['Wait 2']).toBeDefined();
+				expect(parsedJson.connections['Wait 2'].main[0]).toEqual(
+					expect.arrayContaining([expect.objectContaining({ node: 'Loop' })]),
+				);
+			});
+
+			it('preserves connection from node chain to splitInBatches composite', () => {
+				// Pattern: trigger → Wait 1 → Wait 2 → splitInBatches with .each().then() chain
+				// This replicates the pattern from workflow 5682 where the connection
+				// from Wait 2 to Debate Loop (splitInBatches) is lost
+				const json: WorkflowJSON = {
+					id: 'chain-to-composite-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Wait 1',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [100, 0],
+							parameters: { amount: 1 },
+						},
+						{
+							id: '3',
+							name: 'Wait 2',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [200, 0],
+							parameters: { amount: 2 },
+						},
+						{
+							id: '4',
+							name: 'Debate Loop',
+							type: 'n8n-nodes-base.splitInBatches',
+							typeVersion: 3,
+							position: [300, 0],
+						},
+						{
+							id: '5',
+							name: 'Process',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [400, 50],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Wait 1', type: 'main', index: 0 }]] },
+						'Wait 1': { main: [[{ node: 'Wait 2', type: 'main', index: 0 }]] },
+						'Wait 2': { main: [[{ node: 'Debate Loop', type: 'main', index: 0 }]] },
+						'Debate Loop': {
+							main: [
+								[], // done output
+								[{ node: 'Process', type: 'main', index: 0 }], // each output
+							],
+						},
+					},
+				};
+
+				// Generate code and parse back
+				const code = generateFromWorkflow(json);
+				const parsedJson = parseWorkflowCode(code);
+
+				// The key test: Wait 2 should have an outgoing connection to Debate Loop
+				expect(Object.keys(parsedJson.connections)).toContain('Wait 2');
+				expect(parsedJson.connections['Wait 2']).toBeDefined();
+				expect(parsedJson.connections['Wait 2'].main[0]).toEqual(
+					expect.arrayContaining([expect.objectContaining({ node: 'Debate Loop' })]),
+				);
+			});
+
+			it('preserves connection when chain inside splitInBatches.each() ends with another splitInBatches', () => {
+				// Pattern from workflow 5682:
+				// outer_sib.each().then(A.then(B.then(Wait1.then(Wait2.then(inner_sib.each()...)))))
+				// The connection from Wait2 to inner_sib is lost
+				const json: WorkflowJSON = {
+					id: 'nested-sib-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Outer Loop',
+							type: 'n8n-nodes-base.splitInBatches',
+							typeVersion: 3,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'Process A',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 50],
+						},
+						{
+							id: '4',
+							name: 'Wait 1',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [300, 50],
+							parameters: { amount: 1 },
+						},
+						{
+							id: '5',
+							name: 'Wait 2',
+							type: 'n8n-nodes-base.wait',
+							typeVersion: 1.1,
+							position: [400, 50],
+							parameters: { amount: 2 },
+						},
+						{
+							id: '6',
+							name: 'Inner Loop',
+							type: 'n8n-nodes-base.splitInBatches',
+							typeVersion: 3,
+							position: [500, 50],
+						},
+						{
+							id: '7',
+							name: 'Inner Process',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [600, 100],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Outer Loop', type: 'main', index: 0 }]] },
+						'Outer Loop': {
+							main: [
+								[], // done output
+								[{ node: 'Process A', type: 'main', index: 0 }], // each output
+							],
+						},
+						'Process A': { main: [[{ node: 'Wait 1', type: 'main', index: 0 }]] },
+						'Wait 1': { main: [[{ node: 'Wait 2', type: 'main', index: 0 }]] },
+						'Wait 2': { main: [[{ node: 'Inner Loop', type: 'main', index: 0 }]] },
+						'Inner Loop': {
+							main: [
+								[], // done output
+								[{ node: 'Inner Process', type: 'main', index: 0 }], // each output
+							],
+						},
+					},
+				};
+
+				// Generate code and parse back
+				const code = generateFromWorkflow(json);
+				const parsedJson = parseWorkflowCode(code);
+
+				// The key test: Wait 2 should have an outgoing connection to Inner Loop
+				expect(Object.keys(parsedJson.connections)).toContain('Wait 2');
+				expect(parsedJson.connections['Wait 2']).toBeDefined();
+				expect(parsedJson.connections['Wait 2'].main[0]).toEqual(
+					expect.arrayContaining([expect.objectContaining({ node: 'Inner Loop' })]),
+				);
+			});
+
+			it('preserves connections for inline node connecting to predeclared variable', () => {
+				// Pattern: IF → true: Filter → predeclared_var (cycle target)
+				// Filter's connection to the predeclared variable should be preserved
+				const json: WorkflowJSON = {
+					id: 'inline-to-predeclared-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'SplitInBatches',
+							type: 'n8n-nodes-base.splitInBatches',
+							typeVersion: 3,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'Process',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 0],
+						},
+						{
+							id: '4',
+							name: 'Filter',
+							type: 'n8n-nodes-base.filter',
+							typeVersion: 2,
+							position: [300, 0],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'SplitInBatches', type: 'main', index: 0 }]] },
+						SplitInBatches: {
+							main: [
+								[], // done output
+								[{ node: 'Process', type: 'main', index: 0 }], // each output
+							],
+						},
+						Process: { main: [[{ node: 'Filter', type: 'main', index: 0 }]] },
+						Filter: { main: [[{ node: 'SplitInBatches', type: 'main', index: 0 }]] }, // cycle back
+					},
+				};
+
+				// Generate code and parse back
+				const code = generateFromWorkflow(json);
+				const parsedJson = parseWorkflowCode(code);
+
+				// The key test: Filter should have an outgoing connection to SplitInBatches
+				expect(Object.keys(parsedJson.connections)).toContain('Filter');
+				expect(parsedJson.connections['Filter']).toBeDefined();
+				expect(parsedJson.connections['Filter'].main[0]).toEqual(
+					expect.arrayContaining([expect.objectContaining({ node: 'SplitInBatches' })]),
+				);
+			});
+		});
+
 		describe('reserved keywords', () => {
 			it('appends _node suffix for reserved keyword variable names', () => {
 				const json: WorkflowJSON = {
