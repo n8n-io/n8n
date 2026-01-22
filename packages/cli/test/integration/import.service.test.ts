@@ -8,7 +8,6 @@ import {
 	createActiveWorkflow,
 	createWorkflowWithHistory,
 } from '@n8n/backend-test-utils';
-import { DatabaseConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import {
 	TagEntity,
@@ -70,7 +69,6 @@ describe('ImportService', () => {
 			mock(),
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
-			Container.get(DatabaseConfig),
 		);
 	});
 
@@ -99,11 +97,7 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
-		if (Container.get(DatabaseConfig).isLegacySqlite) {
-			expect(mockWorkflowIndexService.updateIndexFor).not.toHaveBeenCalled();
-		} else {
-			expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport);
-		}
+		expect(mockWorkflowIndexService.updateIndexFor).toHaveBeenCalledWith(workflowToImport);
 	});
 
 	test('should make user owner of imported workflow', async () => {
