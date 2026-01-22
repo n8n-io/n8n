@@ -1803,6 +1803,84 @@ export function generateSplitVersionIndexFile(
 }
 
 /**
+ * Plan the file structure for a split version directory
+ * Returns a Map of relative file paths to their content
+ * This separates the file structure planning from actual filesystem writing
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @returns Map of relative path -> file content
+ */
+export function planSplitVersionFiles(
+	node: NodeTypeDescription,
+	version: number,
+): Map<string, string> {
+	const files = new Map<string, string>();
+
+	// Get discriminator combinations
+	const combinations = extractDiscriminatorCombinations(node);
+	const tree = buildDiscriminatorTree(combinations);
+
+	// Generate _shared.ts
+	files.set('_shared.ts', generateSharedFile(node, version));
+
+	if (tree.type === 'resource_operation' && tree.resources) {
+		// Resource/operation pattern: nested directories
+		for (const [resource, operations] of tree.resources) {
+			const resourceDir = `resource_${toSnakeCase(resource)}`;
+
+			// Generate operation files within resource directory
+			for (const operation of operations) {
+				const combo = { resource, operation };
+				const props = getPropertiesForCombination(node, combo);
+				const fileName = `operation_${toSnakeCase(operation)}.ts`;
+				const filePath = `${resourceDir}/${fileName}`;
+
+				// Import path goes up one level from resource dir to version dir
+				const content = generateDiscriminatorFile(
+					node,
+					version,
+					combo,
+					props,
+					undefined,
+					'../_shared',
+				);
+				files.set(filePath, content);
+			}
+
+			// Generate resource index file
+			const resourceIndexContent = generateResourceIndexFile(node, version, resource, operations);
+			files.set(`${resourceDir}/index.ts`, resourceIndexContent);
+		}
+	} else if (tree.type === 'single' && tree.discriminatorName && tree.discriminatorValues) {
+		// Single discriminator pattern (mode, etc.): flat files
+		const discName = tree.discriminatorName;
+
+		for (const value of tree.discriminatorValues) {
+			const combo: DiscriminatorCombination = { [discName]: value };
+			const props = getPropertiesForCombination(node, combo);
+			const fileName = `${discName}_${toSnakeCase(value)}.ts`;
+
+			// Import path is sibling in same directory
+			const content = generateDiscriminatorFile(
+				node,
+				version,
+				combo,
+				props,
+				undefined,
+				'./_shared',
+			);
+			files.set(fileName, content);
+		}
+	}
+
+	// Generate version index file
+	files.set('index.ts', generateSplitVersionIndexFile(node, version, tree));
+
+	return files;
+}
+
+/**
  * Check if node is a trigger (no main input)
  */
 function isTriggerNode(node: NodeTypeDescription): boolean {
@@ -2077,7 +2155,11 @@ export function generateSingleVersionTypeFile(
  * @param node A sample node description (used for display name and name)
  * @param versions Array of individual version numbers to include
  */
-export function generateVersionIndexFile(node: NodeTypeDescription, versions: number[]): string {
+export function generateVersionIndexFile(
+	node: NodeTypeDescription,
+	versions: number[],
+	splitVersions: Set<number> = new Set(),
+): string {
 	const prefix = getPackagePrefix(node.name);
 	const typeName = prefix + toPascalCase(getNodeBaseName(node.name));
 
@@ -2093,20 +2175,25 @@ export function generateVersionIndexFile(node: NodeTypeDescription, versions: nu
 	lines.push(' */');
 	lines.push('');
 
-	// Import node types from each version file for use in union type
+	// Import node types from each version file/directory for use in union type
 	const nodeTypeNames: string[] = [];
 	for (const version of sortedVersions) {
 		const fileName = versionToFileName(version);
 		const versionSuffix = versionToTypeName(version);
 		const nodeTypeName = `${typeName}${versionSuffix}Node`;
 		nodeTypeNames.push(nodeTypeName);
-		lines.push(`import type { ${nodeTypeName} } from './${fileName}';`);
+
+		// For split versions, import from directory index; for flat versions, import from file
+		const importPath = splitVersions.has(version) ? `./${fileName}` : `./${fileName}`;
+		lines.push(`import type { ${nodeTypeName} } from '${importPath}';`);
 	}
 	lines.push('');
 
-	// Re-export from each version file
+	// Re-export from each version file/directory
 	for (const version of sortedVersions) {
 		const fileName = versionToFileName(version);
+		// Both flat files and directories use the same export syntax
+		// TypeScript resolves ./v1 to either ./v1.ts or ./v1/index.ts
 		lines.push(`export * from './${fileName}';`);
 	}
 	lines.push('');
@@ -2718,9 +2805,37 @@ export async function loadNodeTypes(
 // =============================================================================
 
 /**
+ * Write files from a plan map to disk
+ * Creates directories as needed
+ */
+async function writePlanToDisk(baseDir: string, plan: Map<string, string>): Promise<number> {
+	let fileCount = 0;
+	for (const [relativePath, content] of plan) {
+		const fullPath = path.join(baseDir, relativePath);
+		const dir = path.dirname(fullPath);
+		await fs.promises.mkdir(dir, { recursive: true });
+		await fs.promises.writeFile(fullPath, content);
+		fileCount++;
+	}
+	return fileCount;
+}
+
+/**
  * Generate version-specific type files for a package
- * Creates directory structure: nodes/{package}/{nodeName}/v{version}.ts and index.ts
- * Each individual version gets its own file with filtered properties
+ * Creates directory structure: nodes/{package}/{nodeName}/v{version}.ts (or v{version}/) and index.ts
+ * Each individual version gets its own file or directory (for split structure) with filtered properties
+ *
+ * For nodes with resource/operation or mode discriminators, creates split structure:
+ *   v1/
+ *     _shared.ts
+ *     index.ts
+ *     resource_ticket/
+ *       operation_get.ts
+ *       ...
+ *
+ * For nodes without discriminators, creates flat files:
+ *   v1.ts
+ *   v2.ts
  */
 async function generateVersionSpecificFiles(
 	packageDir: string,
@@ -2730,6 +2845,8 @@ async function generateVersionSpecificFiles(
 	const allNodes: NodeTypeDescription[] = [];
 	let generatedFiles = 0;
 	let generatedDirs = 0;
+	let splitVersions = 0;
+	let flatVersions = 0;
 
 	for (const [nodeName, nodes] of nodesByName) {
 		try {
@@ -2742,6 +2859,8 @@ async function generateVersionSpecificFiles(
 			// This allows us to generate a file per individual version (e.g., v3, v31, v32, v33, v34)
 			const versionToNode = new Map<number, NodeTypeDescription>();
 			const allVersions: number[] = [];
+			// Track which versions use split structure
+			const splitVersionsSet = new Set<number>();
 
 			for (const node of nodes) {
 				const versions = Array.isArray(node.version) ? node.version : [node.version];
@@ -2753,18 +2872,33 @@ async function generateVersionSpecificFiles(
 				}
 			}
 
-			// Generate a file for each individual version
+			// Generate files for each individual version
 			for (const version of allVersions) {
 				const sourceNode = versionToNode.get(version)!;
 				const fileName = versionToFileName(version);
-				const content = generateSingleVersionTypeFile(sourceNode, version);
-				const filePath = path.join(nodeDir, `${fileName}.ts`);
-				await fs.promises.writeFile(filePath, content);
-				generatedFiles++;
+
+				// Check if this node uses a discriminator pattern that benefits from splitting
+				if (hasDiscriminatorPattern(sourceNode)) {
+					// Generate split structure in a version directory
+					const versionDir = path.join(nodeDir, fileName);
+					const plan = planSplitVersionFiles(sourceNode, version);
+					const count = await writePlanToDisk(versionDir, plan);
+					generatedFiles += count;
+					splitVersionsSet.add(version);
+					splitVersions++;
+				} else {
+					// Generate flat file
+					const content = generateSingleVersionTypeFile(sourceNode, version);
+					const filePath = path.join(nodeDir, `${fileName}.ts`);
+					await fs.promises.writeFile(filePath, content);
+					generatedFiles++;
+					flatVersions++;
+				}
 			}
 
 			// Generate index.ts that re-exports all individual versions
-			const indexContent = generateVersionIndexFile(nodes[0], allVersions);
+			// Pass splitVersionsSet so it knows which versions are directories vs files
+			const indexContent = generateVersionIndexFile(nodes[0], allVersions, splitVersionsSet);
 			await fs.promises.writeFile(path.join(nodeDir, 'index.ts'), indexContent);
 
 			// Add first node to allNodes for main index generation
@@ -2774,7 +2908,9 @@ async function generateVersionSpecificFiles(
 		}
 	}
 
-	console.log(`  Generated ${generatedDirs} node directories with ${generatedFiles} version files`);
+	console.log(
+		`  Generated ${generatedDirs} node directories with ${generatedFiles} files (${splitVersions} split, ${flatVersions} flat)`,
+	);
 	return allNodes;
 }
 

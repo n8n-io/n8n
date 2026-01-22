@@ -1884,5 +1884,75 @@ describe('generate-types', () => {
 				expect(content).toContain('CodeV2Node');
 			});
 		});
+
+		describe('planSplitVersionFiles', () => {
+			it('should plan correct file structure for resource/operation node', () => {
+				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
+
+				// Should have _shared.ts
+				expect(plan.has('_shared.ts')).toBe(true);
+				expect(plan.get('_shared.ts')).toContain('FreshserviceV1NodeBase');
+
+				// Should have version index
+				expect(plan.has('index.ts')).toBe(true);
+				expect(plan.get('index.ts')).toContain("export * from './_shared'");
+
+				// Should have resource directories with index files
+				expect(plan.has('resource_ticket/index.ts')).toBe(true);
+				expect(plan.has('resource_agent/index.ts')).toBe(true);
+
+				// Should have operation files
+				expect(plan.has('resource_ticket/operation_get.ts')).toBe(true);
+				expect(plan.has('resource_ticket/operation_create.ts')).toBe(true);
+				expect(plan.has('resource_ticket/operation_delete.ts')).toBe(true);
+				expect(plan.has('resource_agent/operation_get.ts')).toBe(true);
+				expect(plan.has('resource_agent/operation_create.ts')).toBe(true);
+
+				// Operation files should have correct content
+				const ticketGetContent = plan.get('resource_ticket/operation_get.ts');
+				expect(ticketGetContent).toContain("resource: 'ticket'");
+				expect(ticketGetContent).toContain("operation: 'get'");
+				expect(ticketGetContent).toContain('FreshserviceV1TicketGetConfig');
+				expect(ticketGetContent).toContain('FreshserviceV1TicketGetNode');
+			});
+
+			it('should plan correct file structure for single discriminator node (mode)', () => {
+				const plan = generateTypes.planSplitVersionFiles(mockCodeNode, 2);
+
+				// Should have _shared.ts
+				expect(plan.has('_shared.ts')).toBe(true);
+				expect(plan.get('_shared.ts')).toContain('CodeV2NodeBase');
+
+				// Should have version index
+				expect(plan.has('index.ts')).toBe(true);
+				expect(plan.get('index.ts')).toContain("export * from './_shared'");
+
+				// Should have mode files (flat, not nested)
+				expect(plan.has('mode_run_once_for_all_items.ts')).toBe(true);
+				expect(plan.has('mode_run_once_for_each_item.ts')).toBe(true);
+
+				// Mode files should have correct content
+				const allItemsContent = plan.get('mode_run_once_for_all_items.ts');
+				expect(allItemsContent).toContain("mode: 'runOnceForAllItems'");
+				expect(allItemsContent).toContain('CodeV2RunOnceForAllItemsConfig');
+				expect(allItemsContent).toContain('CodeV2RunOnceForAllItemsNode');
+
+				// Should NOT have nested resource directories
+				expect([...plan.keys()].some((k) => k.startsWith('resource_'))).toBe(false);
+			});
+
+			it('should use correct import paths in discriminator files', () => {
+				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
+
+				// Operation files should import from parent _shared
+				const ticketGetContent = plan.get('resource_ticket/operation_get.ts');
+				expect(ticketGetContent).toContain("from '../_shared'");
+
+				// Mode files should import from sibling _shared
+				const codePlan = generateTypes.planSplitVersionFiles(mockCodeNode, 2);
+				const modeContent = codePlan.get('mode_run_once_for_all_items.ts');
+				expect(modeContent).toContain("from './_shared'");
+			});
+		});
 	});
 });
