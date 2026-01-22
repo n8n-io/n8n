@@ -7,8 +7,7 @@ import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service, Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
-import type { Entry as LdapUser, ClientOptions } from 'ldapts';
-import { Client } from 'ldapts';
+import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import type { ConnectionOptions } from 'tls';
@@ -51,6 +50,9 @@ import { BINARY_AD_ATTRIBUTES } from './constants';
 @Service()
 export class LdapService {
 	private client: Client | undefined;
+
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	private ldapts: typeof import('ldapts');
 
 	private syncTimer: NodeJS.Timeout | undefined = undefined;
 
@@ -178,6 +180,10 @@ export class LdapService {
 			throw new UnexpectedError('Service cannot be used without setting the property config');
 		}
 		if (this.client === undefined) {
+			if (!this.ldapts) {
+				this.ldapts = await import('ldapts');
+			}
+
 			const url = formatUrl(
 				this.config.connectionUrl,
 				this.config.connectionPort,
@@ -195,7 +201,7 @@ export class LdapService {
 				}
 			}
 
-			this.client = new Client(ldapOptions);
+			this.client = new this.ldapts.Client(ldapOptions);
 			if (this.config.connectionSecurity === 'startTls') {
 				await this.client.startTLS(tlsOptions);
 			}
