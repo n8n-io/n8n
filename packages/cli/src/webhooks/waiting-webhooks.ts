@@ -4,7 +4,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type express from 'express';
-import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import { InstanceSettings, RESUME_TOKEN_QUERY_PARAM } from 'n8n-core';
 import { type INodes, type IWorkflowBase, SEND_AND_WAIT_OPERATION, Workflow } from 'n8n-workflow';
 
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -92,29 +92,56 @@ export class WaitingWebhooks implements IWebhookManager {
 	/**
 	 * Validates the token in the request against the stored token in execution data.
 	 * Uses timing-safe comparison to prevent timing attacks.
+	 *
+	 * Backwards compatibility note:
+	 * Before signatures were added, $execution.resumeUrl was just the base URL without query params.
+	 * Workflows could append a webhook suffix like: `$execution.resumeUrl + '/my-suffix'`
+	 *
+	 * Now that $execution.resumeUrl includes `?signature=token`, appending a suffix produces:
+	 *   `http://host/wait/123?signature=token/my-suffix` (malformed)
+	 * instead of the correct:
+	 *   `http://host/wait/123/my-suffix?signature=token`
+	 *
+	 * To maintain backwards compatibility, we detect when the signature contains a '/' and
+	 * extract the webhook path from it, allowing both URL formats to work.
+	 *
+	 * @returns Object with validation result and optionally the webhook path parsed from the token
 	 */
-	protected validateToken(req: express.Request, execution: IExecutionResponse): boolean {
+	protected validateToken(
+		req: express.Request,
+		execution: IExecutionResponse,
+	): { valid: boolean; webhookPath?: string } {
 		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
-		const providedToken = url.searchParams.get(WAITING_TOKEN_QUERY_PARAM);
-		const storedToken = execution.data.waitingToken;
+		let providedToken = url.searchParams.get(RESUME_TOKEN_QUERY_PARAM);
+		const storedToken = execution.data.resumeToken;
+		let webhookPath: string | undefined;
 
 		if (!providedToken || !storedToken) {
-			return false;
+			return { valid: false };
+		}
+
+		// Handle backwards compat: extract webhook path if it was appended after the signature
+		// e.g., ?signature=abc123/my-suffix -> token is "abc123", webhookPath is "my-suffix"
+		if (providedToken.includes('/')) {
+			const slashIndex = providedToken.indexOf('/');
+			webhookPath = providedToken.slice(slashIndex + 1);
+			providedToken = providedToken.slice(0, slashIndex);
 		}
 
 		// Use timing-safe comparison to prevent timing attacks
 		if (providedToken.length !== storedToken.length) {
-			return false;
+			return { valid: false };
 		}
 
-		return timingSafeEqual(Buffer.from(providedToken), Buffer.from(storedToken));
+		const valid = timingSafeEqual(Buffer.from(providedToken), Buffer.from(storedToken));
+		return { valid, webhookPath };
 	}
 
 	async executeWebhook(
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId, suffix } = req.params;
+		let { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
 
@@ -125,8 +152,9 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const execution = await this.getExecution(executionId);
 
-		if (execution?.data.waitingToken) {
-			if (!this.validateToken(req, execution)) {
+		if (execution?.data.resumeToken) {
+			const { valid, webhookPath } = this.validateToken(req, execution);
+			if (!valid) {
 				const { workflowData } = execution;
 				const { nodes } = this.createWorkflow(workflowData);
 				if (this.isSendAndWaitRequest(nodes, suffix)) {
@@ -135,6 +163,10 @@ export class WaitingWebhooks implements IWebhookManager {
 					res.status(401).json({ error: 'Invalid token' });
 				}
 				return { noWebhookResponse: true };
+			}
+			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
+			if (!suffix && webhookPath) {
+				suffix = webhookPath;
 			}
 		}
 

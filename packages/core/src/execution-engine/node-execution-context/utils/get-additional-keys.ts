@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy } from 'n8n-workflow';
 
-import { PLACEHOLDER_EMPTY_EXECUTION_ID, WAITING_TOKEN_QUERY_PARAM } from '@/constants';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID, RESUME_TOKEN_QUERY_PARAM } from '@/constants';
 
 import {
 	setWorkflowExecutionMetadata,
@@ -15,6 +15,12 @@ import {
 	getAllWorkflowExecutionMetadata,
 } from './execution-metadata';
 import { getSecretsProxy } from './get-secrets-proxy';
+
+function appendResumeToken(url: string, token: string): string {
+	const urlObj = new URL(url);
+	urlObj.searchParams.set(RESUME_TOKEN_QUERY_PARAM, token);
+	return urlObj.toString();
+}
 
 /** Returns the additional keys for Expressions and Function-Nodes */
 export function getAdditionalKeys(
@@ -25,13 +31,13 @@ export function getAdditionalKeys(
 ): IWorkflowDataProxyAdditionalKeys {
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
 
-	// Add waitingToken to resumeUrl and resumeFormUrl if available
+	// Add resumeToken to resumeUrl and resumeFormUrl if available
 	let resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
 	let resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
-	if (runExecutionData?.waitingToken) {
-		const token = runExecutionData.waitingToken;
-		resumeUrl = `${resumeUrl}?${WAITING_TOKEN_QUERY_PARAM}=${token}`;
-		resumeFormUrl = `${resumeFormUrl}?${WAITING_TOKEN_QUERY_PARAM}=${token}`;
+	if (runExecutionData?.resumeToken) {
+		const token = runExecutionData.resumeToken;
+		resumeUrl = appendResumeToken(resumeUrl, token);
+		resumeFormUrl = appendResumeToken(resumeFormUrl, token);
 	}
 	return {
 		$execution: {

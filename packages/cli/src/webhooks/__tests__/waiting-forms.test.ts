@@ -302,7 +302,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
-					waitingToken: undefined, // Explicitly set to avoid token validation in test
+					resumeToken: undefined, // Explicitly set to avoid token validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -447,7 +447,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 					},
-					waitingToken: undefined, // Explicitly set to avoid token validation in test
+					resumeToken: undefined, // Explicitly set to avoid token validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -505,7 +505,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 					},
-					waitingToken: undefined, // Explicitly set to avoid token validation in test
+					resumeToken: undefined, // Explicitly set to avoid token validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -554,7 +554,7 @@ describe('WaitingForms', () => {
 	describe('executeWebhook - token validation', () => {
 		const STORED_TOKEN = 'a'.repeat(64);
 
-		it('should return 401 when waitingToken exists but request has no token', async () => {
+		it('should return 401 when resumeToken exists but request has no token', async () => {
 			const execution = mock<IExecutionResponse>({
 				finished: false,
 				status: 'waiting',
@@ -564,7 +564,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
-					waitingToken: STORED_TOKEN, // Token validation enabled
+					resumeToken: STORED_TOKEN, // Token validation enabled
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -604,7 +604,7 @@ describe('WaitingForms', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('should skip token validation when waitingToken is undefined (backwards compat)', async () => {
+		it('should skip token validation when resumeToken is undefined (backwards compat)', async () => {
 			const execution = mock<IExecutionResponse>({
 				finished: true,
 				status: 'success',
@@ -614,7 +614,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
-					waitingToken: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					resumeToken: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 				},
 				workflowData: {
 					id: 'workflow1',

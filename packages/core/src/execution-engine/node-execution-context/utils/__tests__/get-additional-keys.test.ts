@@ -93,7 +93,7 @@ describe('getAdditionalKeys', () => {
 		}).toThrow();
 	});
 
-	it('should correctly set resume URLs without waitingToken', () => {
+	it('should correctly set resume URLs without resumeToken', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', null);
 
 		expect(result.$execution?.resumeUrl).toBe('https://webhook.test/123');
@@ -101,27 +101,27 @@ describe('getAdditionalKeys', () => {
 		expect(result.$resumeWebhookUrl).toBe('https://webhook.test/123'); // Test deprecated property
 	});
 
-	it('should add waitingToken to resume URLs when runExecutionData has waitingToken', () => {
+	it('should add resumeToken to resume URLs when runExecutionData has resumeToken', () => {
 		const runDataWithToken = mock<IRunExecutionData>({
 			resultData: {
 				runData: {},
 				metadata: {},
 			},
-			waitingToken: 'test-waiting-token-12345',
+			resumeToken: 'test-resume-token-12345',
 		});
 
 		const result = getAdditionalKeys(additionalData, 'manual', runDataWithToken);
 
-		// URLs should contain signature parameter with the waitingToken
+		// URLs should contain signature parameter with the resumeToken
 		expect(result.$execution?.resumeUrl).toBe(
-			'https://webhook.test/123?signature=test-waiting-token-12345',
+			'https://webhook.test/123?signature=test-resume-token-12345',
 		);
 		expect(result.$execution?.resumeFormUrl).toBe(
-			'https://form.test/123?signature=test-waiting-token-12345',
+			'https://form.test/123?signature=test-resume-token-12345',
 		);
 		// Deprecated property should also have the token
 		expect(result.$resumeWebhookUrl).toBe(
-			'https://webhook.test/123?signature=test-waiting-token-12345',
+			'https://webhook.test/123?signature=test-resume-token-12345',
 		);
 	});
 

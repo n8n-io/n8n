@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Memoized } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { randomBytes } from 'crypto';
 import get from 'lodash/get';
 import type {
 	FunctionsBase,
@@ -39,7 +38,7 @@ import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
-	WAITING_TOKEN_QUERY_PARAM,
+	RESUME_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 
@@ -248,24 +247,11 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return this.instanceSettings.instanceId;
 	}
 
-	/**
-	 * @deprecated This method is now a no-op. Token validation is handled automatically
-	 * via waitingToken when getSignedResumeUrl() is called.
-	 */
-	setSignatureValidationRequired() {
-		// No-op: waitingToken is now set in getSignedResumeUrl() and validated in waiting-webhooks.ts
-	}
-
 	getSignedResumeUrl(parameters: Record<string, string> = {}) {
 		const { webhookWaitingBaseUrl, executionId } = this.additionalData;
 
 		if (typeof executionId !== 'string') {
 			throw new UnexpectedError('Execution id is missing');
-		}
-
-		// Generate a random token on first call, reuse for subsequent calls within the same execution
-		if (this.runExecutionData && !this.runExecutionData.waitingToken) {
-			this.runExecutionData.waitingToken = randomBytes(32).toString('hex');
 		}
 
 		const baseURL = new URL(`${webhookWaitingBaseUrl}/${executionId}/${this.node.id}`);
@@ -274,8 +260,8 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			baseURL.searchParams.set(key, value);
 		}
 
-		if (this.runExecutionData?.waitingToken) {
-			baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, this.runExecutionData.waitingToken);
+		if (this.runExecutionData?.resumeToken) {
+			baseURL.searchParams.set(RESUME_TOKEN_QUERY_PARAM, this.runExecutionData.resumeToken);
 		}
 
 		return baseURL.toString();

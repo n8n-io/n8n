@@ -40,6 +40,8 @@ describe('NodeExecutionContext', () => {
 	});
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		credentialsHelper: mock(),
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
 
 	const mode: WorkflowExecuteMode = 'manual';
@@ -227,6 +229,8 @@ describe('NodeExecutionContext', () => {
 
 			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper: mockCredentialsHelper,
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 			});
 
 			const contextWithCredentials = new TestContext(
@@ -437,6 +441,7 @@ describe('NodeExecutionContext', () => {
 				mock<IWorkflowExecuteAdditionalData>({
 					executionId: '123',
 					webhookWaitingBaseUrl: 'http://localhost/waiting-webhook',
+					formWaitingBaseUrl: 'http://localhost/form-waiting',
 				}),
 				mode,
 				createRunExecutionData({
@@ -445,16 +450,16 @@ describe('NodeExecutionContext', () => {
 			);
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 		});
-		it('should return a resume URL with a generated waitingToken', () => {
+		it('should return a resume URL with resumeToken from execution data', () => {
 			const result = testContext.getSignedResumeUrl();
 
-			// URL should contain base path and a signature (64-char hex token)
+			// URL should contain base path and a signature (64-char hex token from createRunExecutionData)
 			expect(result).toMatch(
 				/^http:\/\/localhost\/waiting-webhook\/123\/node456\?signature=[a-f0-9]{64}$/,
 			);
 		});
 
-		it('should return a resume URL with query parameters and waitingToken', () => {
+		it('should return a resume URL with query parameters and resumeToken', () => {
 			const result = testContext.getSignedResumeUrl({ approved: 'true' });
 
 			// URL should contain base path, approved param, and a signature (64-char hex token)
@@ -463,7 +468,7 @@ describe('NodeExecutionContext', () => {
 			);
 		});
 
-		it('should reuse the same waitingToken for subsequent calls', () => {
+		it('should use the same resumeToken for subsequent calls within the same execution', () => {
 			const result1 = testContext.getSignedResumeUrl();
 			const result2 = testContext.getSignedResumeUrl({ approved: 'true' });
 

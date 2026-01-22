@@ -13,6 +13,17 @@ import * as LoggerProxy from './logger-proxy';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
+/**
+ * Generates a cryptographically secure random token.
+ * Uses the Web Crypto API which is available in both browsers and Node.js 15+
+ * @returns A 64-character hexadecimal string (256 bits of entropy)
+ */
+export function generateSecureToken(): string {
+	const bytes = new Uint8Array(32);
+	crypto.getRandomValues(bytes);
+	return bytes.reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
+}
+
 // NOTE: BigInt.prototype.toJSON is not available, which causes JSON.stringify to throw an error
 // as well as the flatted stringify method. This is a workaround for that.
 BigInt.prototype.toJSON = function () {

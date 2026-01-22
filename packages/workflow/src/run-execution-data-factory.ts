@@ -14,6 +14,7 @@ import type {
 } from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import type { IRunExecutionDataV1 } from './run-execution-data/run-execution-data.v1';
+import { generateSecureToken } from './utils';
 
 export interface CreateFullRunExecutionDataOptions {
 	startData?: {
@@ -40,7 +41,6 @@ export interface CreateFullRunExecutionDataOptions {
 		runtimeData?: IExecutionContext;
 	} | null;
 	parentExecution?: RelatedExecution;
-	waitingToken?: string;
 	waitTill?: Date;
 	manualData?: IRunExecutionData['manualData'];
 	pushRef?: IRunExecutionData['pushRef'];
@@ -78,7 +78,7 @@ export function createRunExecutionData(
 						runtimeData: options.executionData?.runtimeData,
 					},
 		parentExecution: options.parentExecution,
-		waitingToken: options.waitingToken,
+		resumeToken: generateSecureToken(),
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,

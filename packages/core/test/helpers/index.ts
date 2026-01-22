@@ -62,6 +62,8 @@ export function WorkflowExecuteAdditionalData(
 		// e.g. `if (!this.additionalData.restartExecutionId)`. This would for
 		// example skip running the `workflowExecuteBefore` hook in the tests.
 		restartExecutionId: undefined,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
 }
 

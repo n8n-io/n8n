@@ -13,28 +13,27 @@ describe('RunExecutionDataFactory', () => {
 		it('should create a complete IRunExecutionData object with default values', () => {
 			const result = createRunExecutionData();
 
-			expect(result).toEqual({
-				version: 1,
-				startData: {},
-				manualData: undefined,
-				parentExecution: undefined,
-				pushRef: undefined,
-				waitingToken: undefined,
-				waitTill: undefined,
-				resultData: {
-					error: undefined,
-					runData: {},
-					pinData: undefined,
-					lastNodeExecuted: undefined,
-					metadata: undefined,
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
+			expect(result.version).toBe(1);
+			expect(result.startData).toEqual({});
+			expect(result.manualData).toBeUndefined();
+			expect(result.parentExecution).toBeUndefined();
+			expect(result.pushRef).toBeUndefined();
+			// resumeToken is now generated automatically
+			expect(result.resumeToken).toMatch(/^[a-f0-9]{64}$/);
+			expect(result.waitTill).toBeUndefined();
+			expect(result.resultData).toEqual({
+				error: undefined,
+				runData: {},
+				pinData: undefined,
+				lastNodeExecuted: undefined,
+				metadata: undefined,
+			});
+			expect(result.executionData).toEqual({
+				contextData: {},
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: {},
 			});
 		});
 
@@ -61,7 +60,6 @@ describe('RunExecutionDataFactory', () => {
 					executionId: 'parent-123',
 					workflowId: 'workflow-456',
 				},
-				waitingToken: 'test-token-123',
 				waitTill: new Date('2023-01-01'),
 			} satisfies CreateFullRunExecutionDataOptions;
 
@@ -75,7 +73,8 @@ describe('RunExecutionDataFactory', () => {
 			);
 			expect(result.executionData?.runtimeData).toEqual(options.executionData.runtimeData);
 			expect(result.parentExecution).toEqual(options.parentExecution);
-			expect(result.waitingToken).toBe('test-token-123');
+			// resumeToken is automatically generated
+			expect(result.resumeToken).toMatch(/^[a-f0-9]{64}$/);
 			expect(result.waitTill).toEqual(options.waitTill);
 		});
 

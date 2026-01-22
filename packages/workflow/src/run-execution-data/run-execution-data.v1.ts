@@ -45,9 +45,9 @@ export interface IRunExecutionDataV1 {
 	parentExecution?: RelatedExecution;
 	/**
 	 * Random token used to validate waiting webhook requests.
-	 * Stored when the waiting URL is generated, validated when the webhook is called.
+	 * Generated when execution starts
 	 */
-	waitingToken?: string;
+	resumeToken?: string;
 	waitTill?: Date;
 	pushRef?: string;
 

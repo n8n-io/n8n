@@ -1334,7 +1334,14 @@ describe('WorkflowExecute', () => {
 
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
-			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
+			workflowExecute = new WorkflowExecute(
+				mock<IWorkflowExecuteAdditionalData>({
+					webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+					formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				}),
+				'manual',
+				runExecutionData,
+			);
 		});
 
 		test('should handle undefined error data input correctly', () => {
@@ -2775,9 +2782,10 @@ describe('WorkflowExecute', () => {
 			};
 
 			expect(runHook.mock.lastCall[0]).toEqual('workflowExecuteAfter');
-			expect(JSON.stringify(runHook.mock.lastCall[1][0].data)).toBe(
-				JSON.stringify(updatedExecutionData.data),
-			);
+			// Compare data without resumeToken since it's randomly generated
+			const actualData = { ...runHook.mock.lastCall[1][0].data };
+			delete actualData.resumeToken;
+			expect(JSON.stringify(actualData)).toBe(JSON.stringify(updatedExecutionData.data));
 			expect(runHook.mock.lastCall[1][0].status).toEqual('canceled');
 		});
 

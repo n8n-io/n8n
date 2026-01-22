@@ -10,7 +10,7 @@ import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { BinaryDataService, ErrorReporter, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import { BinaryDataService, ErrorReporter, RESUME_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type {
 	IBinaryData,
 	IDataObject,
@@ -645,8 +645,8 @@ export async function executeWebhook(
 
 		if (responseMode === 'formPage' && !didSendResponse) {
 			const formUrl = new URL(`${additionalData.formWaitingBaseUrl}/${executionId}`);
-			if (runExecutionData.waitingToken) {
-				formUrl.searchParams.set(WAITING_TOKEN_QUERY_PARAM, runExecutionData.waitingToken);
+			if (runExecutionData.resumeToken) {
+				formUrl.searchParams.set(RESUME_TOKEN_QUERY_PARAM, runExecutionData.resumeToken);
 			}
 
 			res.send({ formWaitingUrl: formUrl.toString() });

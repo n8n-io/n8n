@@ -74,7 +74,7 @@ export class WaitingForms extends WaitingWebhooks {
 		req: WaitingWebhookRequest,
 		res: express.Response,
 	): Promise<IWebhookResponseCallbackData> {
-		const { path: executionId, suffix } = req.params;
+		let { path: executionId, suffix } = req.params;
 
 		this.logReceivedWebhook(req.method, executionId);
 
@@ -86,10 +86,16 @@ export class WaitingForms extends WaitingWebhooks {
 		const execution = await this.getExecution(executionId);
 
 		// Validate token for forms if required
-		if (execution?.data.waitingToken) {
-			if (!this.validateToken(req, execution)) {
+		if (execution?.data.resumeToken) {
+			const { valid, webhookPath } = this.validateToken(req, execution);
+			if (!valid) {
 				res.status(401).render('form-invalid-token');
 				return { noWebhookResponse: true };
+			}
+
+			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
+			if (!suffix && webhookPath) {
+				suffix = webhookPath;
 			}
 		}
 

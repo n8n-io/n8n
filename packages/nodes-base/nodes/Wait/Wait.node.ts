@@ -233,12 +233,16 @@ const waitingTooltip = (
 ) => {
 	const resume = parameters.resume;
 
-	if (['webhook', 'form'].includes(resume as string)) {
+	if (['webhook', 'form'].includes(resume)) {
 		const { webhookSuffix } = (parameters.options ?? {}) as { webhookSuffix: string };
 		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
 
 		let message = '';
-		const url = `${resume === 'form' ? formResumeUrl : resumeUrl}${suffix}`;
+		const baseUrl = resume === 'form' ? formResumeUrl : resumeUrl;
+
+		const parsedUrl = new URL(baseUrl);
+		parsedUrl.pathname = `${parsedUrl.pathname}${suffix}`;
+		const url = parsedUrl.toString();
 
 		if (resume === 'form') {
 			message = 'Execution will continue when form is submitted on ';
@@ -496,8 +500,6 @@ export class Wait extends Webhook {
 
 		if (['webhook', 'form'].includes(resume)) {
 			let hasFormTrigger = false;
-
-			context.setSignatureValidationRequired();
 
 			if (resume === 'form') {
 				// Add signed resumeFormUrl to metadata for frontend to use when opening form popup

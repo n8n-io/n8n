@@ -2,7 +2,7 @@ import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import { WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
+import { RESUME_TOKEN_QUERY_PARAM } from 'n8n-core';
 import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
@@ -16,7 +16,10 @@ class TestWaitingWebhooks extends WaitingWebhooks {
 		return this.createWorkflow(workflowData);
 	}
 
-	exposeValidateToken(req: express.Request, execution: IExecutionResponse): boolean {
+	exposeValidateToken(
+		req: express.Request,
+		execution: IExecutionResponse,
+	): { valid: boolean; webhookPath?: string } {
 		return this.validateToken(req, execution);
 	}
 }
@@ -113,13 +116,13 @@ describe('WaitingWebhooks', () => {
 
 		const createMockRequest = (opts: { host?: string; token?: string }) =>
 			mock<express.Request>({
-				url: `/webhook/test${opts.token ? `?${WAITING_TOKEN_QUERY_PARAM}=${opts.token}` : ''}`,
+				url: `/webhook/test${opts.token ? `?${RESUME_TOKEN_QUERY_PARAM}=${opts.token}` : ''}`,
 				headers: { host: opts.host ?? EXAMPLE_HOST },
 			});
 
 		const createMockExecution = (token?: string) =>
 			mock<IExecutionResponse>({
-				data: { waitingToken: token },
+				data: { resumeToken: token },
 			});
 
 		it('should validate token correctly when tokens match', () => {
@@ -131,7 +134,7 @@ describe('WaitingWebhooks', () => {
 			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
 
 			/* Assert */
-			expect(result).toBe(true);
+			expect(result).toEqual({ valid: true, webhookPath: undefined });
 		});
 
 		it('should return false when provided token is missing', () => {
@@ -143,7 +146,7 @@ describe('WaitingWebhooks', () => {
 			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
 
 			/* Assert */
-			expect(result).toBe(false);
+			expect(result).toEqual({ valid: false });
 		});
 
 		it('should return false when stored token is missing', () => {
@@ -155,7 +158,7 @@ describe('WaitingWebhooks', () => {
 			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
 
 			/* Assert */
-			expect(result).toBe(false);
+			expect(result).toEqual({ valid: false });
 		});
 
 		it('should return false when tokens do not match', () => {
@@ -168,7 +171,7 @@ describe('WaitingWebhooks', () => {
 			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
 
 			/* Assert */
-			expect(result).toBe(false);
+			expect(result).toEqual({ valid: false, webhookPath: undefined });
 		});
 
 		it('should return false when token lengths differ', () => {
@@ -181,7 +184,7 @@ describe('WaitingWebhooks', () => {
 			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
 
 			/* Assert */
-			expect(result).toBe(false);
+			expect(result).toEqual({ valid: false });
 		});
 
 		it('should work regardless of host or URL path', () => {
@@ -193,7 +196,33 @@ describe('WaitingWebhooks', () => {
 			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
 
 			/* Assert */
-			expect(result).toBe(true);
+			expect(result).toEqual({ valid: true, webhookPath: undefined });
+		});
+
+		it('should extract suffix from token when appended (backwards compat)', () => {
+			/* Arrange - URL format: ?signature=token/suffix */
+			const tokenWithSuffix = `${VALID_TOKEN}/my-suffix`;
+			const mockReq = createMockRequest({ token: tokenWithSuffix });
+			const mockExecution = createMockExecution(VALID_TOKEN);
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: 'my-suffix' });
+		});
+
+		it('should handle nested suffix paths (backwards compat)', () => {
+			/* Arrange - URL format: ?signature=token/path/to/suffix */
+			const tokenWithNestedSuffix = `${VALID_TOKEN}/path/to/suffix`;
+			const mockReq = createMockRequest({ token: tokenWithNestedSuffix });
+			const mockExecution = createMockExecution(VALID_TOKEN);
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateToken(mockReq, mockExecution);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: 'path/to/suffix' });
 		});
 	});
 
@@ -212,7 +241,7 @@ describe('WaitingWebhooks', () => {
 						runData: {},
 						error: undefined,
 					},
-					waitingToken: STORED_TOKEN,
+					resumeToken: STORED_TOKEN,
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -247,7 +276,7 @@ describe('WaitingWebhooks', () => {
 			const req = mock<WaitingWebhookRequest>({
 				params: { path: 'execution-id', suffix: nodeId },
 				method: 'GET',
-				url: `/webhook/execution-id/${nodeId}?${WAITING_TOKEN_QUERY_PARAM}=wrong-token`,
+				url: `/webhook/execution-id/${nodeId}?${RESUME_TOKEN_QUERY_PARAM}=wrong-token`,
 				headers: { host: 'example.com' },
 			});
 
@@ -272,7 +301,7 @@ describe('WaitingWebhooks', () => {
 						runData: {},
 						error: undefined,
 					},
-					waitingToken: STORED_TOKEN,
+					resumeToken: STORED_TOKEN,
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -307,7 +336,7 @@ describe('WaitingWebhooks', () => {
 			const req = mock<WaitingWebhookRequest>({
 				params: { path: 'execution-id', suffix: 'wait-node-id' },
 				method: 'GET',
-				url: `/webhook/execution-id/wait-node-id?${WAITING_TOKEN_QUERY_PARAM}=wrong-token`,
+				url: `/webhook/execution-id/wait-node-id?${RESUME_TOKEN_QUERY_PARAM}=wrong-token`,
 				headers: { host: 'example.com' },
 			});
 
