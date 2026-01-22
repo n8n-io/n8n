@@ -40,7 +40,7 @@ export class CommunityNodeTypesService {
 				nodeType.npmVersion !== entry.npmVersion ||
 				nodeType.updatedAt !== entry.updatedAt
 			) {
-				this.logger.info(
+				this.logger.debug(
 					`Detected update for community node type: name - ${entry.name}; npmVersion - ${entry.npmVersion}; updatedAt - ${entry.updatedAt};`,
 				);
 				typesToUpdate.push(entry.id);

@@ -154,7 +154,7 @@ describe('Strapi utils', () => {
 			expect(axiosGetSpy).toHaveBeenCalledWith(
 				baseUrl,
 				expect.objectContaining({
-					timeout: 3000,
+					timeout: 6000,
 				}),
 			);
 
@@ -162,14 +162,14 @@ describe('Strapi utils', () => {
 		});
 
 		it('should handle timeout errors and return empty array', async () => {
-			const timeoutError = new Error('timeout of 3000ms exceeded');
+			const timeoutError = new Error('timeout of 6000ms exceeded');
 			timeoutError.name = 'AxiosError';
 			(timeoutError as any).code = 'ECONNABORTED';
 
 			nock('https://strapi.test')
 				.get('/api/nodes')
 				.query(true)
-				.delayConnection(4000) // Delay longer than timeout
+				.delayConnection(7000) // Delay longer than timeout
 				.reply(200, { data: [] });
 
 			const result = await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
@@ -180,7 +180,7 @@ describe('Strapi utils', () => {
 		it('should handle network timeout and continue gracefully', async () => {
 			// Mock axios to simulate timeout
 			const axiosGetSpy = jest.spyOn(axios, 'get').mockRejectedValueOnce(
-				Object.assign(new Error('timeout of 3000ms exceeded'), {
+				Object.assign(new Error('timeout of 6000ms exceeded'), {
 					code: 'ECONNABORTED',
 					name: 'AxiosError',
 				}),
@@ -192,7 +192,7 @@ describe('Strapi utils', () => {
 			expect(axiosGetSpy).toHaveBeenCalledWith(
 				baseUrl,
 				expect.objectContaining({
-					timeout: 3000,
+					timeout: 6000,
 				}),
 			);
 

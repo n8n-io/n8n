@@ -19,6 +19,7 @@ jest.mock('fs/promises', () => ({
 }));
 
 jest.mock('../community-node-types-utils', () => ({
+	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
 	getCommunityNodesMetadata: jest.fn().mockResolvedValue([]),
 }));
 
@@ -39,7 +40,7 @@ describe('CommunityNodeTypesService', () => {
 
 		delete process.env.ENVIRONMENT;
 
-		loggerMock = { error: jest.fn(), debug: jest.fn(), info: jest.fn() };
+		loggerMock = { error: jest.fn(), debug: jest.fn() };
 		configMock = {
 			enabled: true,
 			verifiedEnabled: true,
@@ -58,41 +59,31 @@ describe('CommunityNodeTypesService', () => {
 	});
 
 	describe('fetchNodeTypes', () => {
+		const { getCommunityNodeTypes } = require('../community-node-types-utils');
+
 		it('should use staging environment when ENVIRONMENT=staging', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			await (service as any).fetchNodeTypes();
-			expect(mockReadFileSync).toHaveBeenCalledWith(
-				expect.stringContaining('staging-node-types.json'),
-				'utf-8',
-			);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
 		});
 
 		it('should use production environment when inProduction=true', async () => {
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(mockReadFileSync).toHaveBeenCalledWith(
-				expect.stringContaining('production-node-types.json'),
-				'utf-8',
-			);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
 		});
 
 		it('should use production environment when ENVIRONMENT=production', async () => {
 			process.env.ENVIRONMENT = 'production';
 			await (service as any).fetchNodeTypes();
-			expect(mockReadFileSync).toHaveBeenCalledWith(
-				expect.stringContaining('production-node-types.json'),
-				'utf-8',
-			);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production');
 		});
 
 		it('should prioritize ENVIRONMENT=staging over inProduction=true', async () => {
 			process.env.ENVIRONMENT = 'staging';
 			(inProduction as unknown as jest.Mock).mockReturnValue(true);
 			await (service as any).fetchNodeTypes();
-			expect(mockReadFileSync).toHaveBeenCalledWith(
-				expect.stringContaining('staging-node-types.json'),
-				'utf-8',
-			);
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging');
 		});
 	});
 
@@ -352,7 +343,7 @@ describe('CommunityNodeTypesService', () => {
 			const result = await (service as any).detectUpdates('production');
 
 			expect(result).toEqual([3]);
-			expect(loggerMock.info).toHaveBeenCalledWith(
+			expect(loggerMock.debug).toHaveBeenCalledWith(
 				expect.stringContaining('Detected update for community node type: name - node-3'),
 			);
 		});
@@ -365,7 +356,7 @@ describe('CommunityNodeTypesService', () => {
 			const result = await (service as any).detectUpdates('production');
 
 			expect(result).toEqual([1]);
-			expect(loggerMock.info).toHaveBeenCalledWith(expect.stringContaining('npmVersion - 1.1.0'));
+			expect(loggerMock.debug).toHaveBeenCalledWith(expect.stringContaining('npmVersion - 1.1.0'));
 		});
 
 		it('should detect timestamp changes', async () => {
@@ -376,7 +367,7 @@ describe('CommunityNodeTypesService', () => {
 			const result = await (service as any).detectUpdates('production');
 
 			expect(result).toEqual([2]);
-			expect(loggerMock.info).toHaveBeenCalledWith(
+			expect(loggerMock.debug).toHaveBeenCalledWith(
 				expect.stringContaining('updatedAt - 2024-01-05'),
 			);
 		});
@@ -390,7 +381,7 @@ describe('CommunityNodeTypesService', () => {
 			const result = await (service as any).detectUpdates('production');
 
 			expect(result).toEqual([]);
-			expect(loggerMock.info).not.toHaveBeenCalled();
+			expect(loggerMock.debug).not.toHaveBeenCalled();
 		});
 	});
 

@@ -32,7 +32,7 @@ import { toError } from '@/utils';
 
 import { CommunityPackagesConfig } from './community-packages.config';
 import type { CommunityPackages } from './community-packages.types';
-import { getCommunityNodeTypes } from './community-node-types-utils';
+import { getCommunityNodeTypes, StrapiCommunityNodeType } from './community-node-types-utils';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
 import { checkIfVersionExistsOrThrow, verifyIntegrity } from './npm-utils';
@@ -328,12 +328,29 @@ export class CommunityPackagesService {
 			});
 			const environment = process.env.ENVIRONMENT === 'staging' ? 'staging' : 'production';
 
+			const packageNames = [...missingPackages].map((p) => p.packageName);
+
+			let vettedPackages: StrapiCommunityNodeType[] = [];
+			try {
+				vettedPackages = await getCommunityNodeTypes(environment, {
+					filters: {
+						packageName: {
+							$in: packageNames,
+						},
+					},
+					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+				});
+			} catch (error) {
+				this.logger.error(
+					`Failed to fetch community packages from Strapi: ${ensureError(error).message}`,
+				);
+			}
+
 			for (const missingPackage of missingPackages) {
 				try {
-					const [vettedPackage] = await getCommunityNodeTypes(environment, {
-						filters: { packageName: { $eq: missingPackage.packageName } },
-						fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
-					});
+					const vettedPackage = vettedPackages.find(
+						(p) => p.packageName === missingPackage.packageName,
+					);
 
 					let checksum: string | undefined;
 					if (vettedPackage) {

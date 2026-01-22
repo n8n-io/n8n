@@ -809,22 +809,19 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 
-			// Mock getCommunityNodeTypes to return different results for each package
-			mocked(getCommunityNodeTypes)
-				.mockResolvedValueOnce([
-					{
-						packageName: 'package-1',
-						checksum: 'sha512-package1',
-						npmVersion: '1.0.0',
-					} as never,
-				])
-				.mockResolvedValueOnce([
-					{
-						packageName: 'package-2',
-						checksum: 'sha512-package2',
-						npmVersion: '2.0.0',
-					} as never,
-				]);
+			// Mock getCommunityNodeTypes to return both packages in a single call
+			mocked(getCommunityNodeTypes).mockResolvedValueOnce([
+				{
+					packageName: 'package-1',
+					checksum: 'sha512-package1',
+					npmVersion: '1.0.0',
+				} as never,
+				{
+					packageName: 'package-2',
+					checksum: 'sha512-package2',
+					npmVersion: '2.0.0',
+				} as never,
+			]);
 
 			await communityPackagesService.checkForMissingPackages();
 
@@ -853,7 +850,7 @@ describe('CommunityPackagesService', () => {
 			await communityPackagesService.checkForMissingPackages();
 
 			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {
-				filters: { packageName: { $eq: 'package-1' } },
+				filters: { packageName: { $in: ['package-1'] } },
 				fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 			});
 		});
@@ -873,7 +870,7 @@ describe('CommunityPackagesService', () => {
 			await communityPackagesService.checkForMissingPackages();
 
 			expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {
-				filters: { packageName: { $eq: 'package-1' } },
+				filters: { packageName: { $in: ['package-1'] } },
 				fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
 			});
 

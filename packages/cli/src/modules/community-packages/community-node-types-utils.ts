@@ -1,6 +1,10 @@
-import type { IDataObject, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { paginatedRequest, type PaginationRequestOptions } from './strapi-utils';
+import {
+	paginatedRequest,
+	type StrapiFilters,
+	type PaginationRequestOptions,
+} from './strapi-utils';
 
 export type StrapiCommunityNodeType = {
 	authorGithubUrl: string;
@@ -39,7 +43,7 @@ function getUrl(environment: 'staging' | 'production'): string {
 
 export async function getCommunityNodeTypes(
 	environment: 'staging' | 'production',
-	qs: { filters?: IDataObject; fields?: string[] } = {},
+	qs: { filters?: StrapiFilters; fields?: string[] } = {},
 	options?: PaginationRequestOptions,
 ): Promise<StrapiCommunityNodeType[]> {
 	const url = getUrl(environment);

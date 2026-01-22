@@ -30,8 +30,10 @@ export interface PaginationRequestOptions {
 	throwOnError?: boolean;
 }
 
+export type StrapiFilters = { [key: string]: { ['$eq']?: string; ['$in']?: string[] } };
+
 interface PaginationRequestParams {
-	filters?: IDataObject;
+	filters?: StrapiFilters;
 	fields?: string[];
 	pagination: {
 		page: number;
@@ -39,7 +41,7 @@ interface PaginationRequestParams {
 	};
 }
 
-const REQUEST_TIMEOUT_MS = 3000;
+const REQUEST_TIMEOUT_MS = 6000;
 
 export async function paginatedRequest<T>(
 	url: string,
