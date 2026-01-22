@@ -322,7 +322,11 @@ export function generateCode(tree: CompositeTree, json: WorkflowJSON): string {
 	const workflowId = json.id ?? 'workflow-id';
 	const workflowName = json.name;
 
-	lines.push(`return workflow('${workflowId}', '${workflowName}')`);
+	// Include settings if present
+	const settingsStr =
+		json.settings && Object.keys(json.settings).length > 0 ? `, ${formatValue(json.settings)}` : '';
+
+	lines.push(`return workflow('${workflowId}', '${workflowName}'${settingsStr})`);
 
 	// Generate each root, flattening chains to workflow-level calls
 	ctx.indent = 1;

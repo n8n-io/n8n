@@ -405,5 +405,54 @@ describe('code-generator', () => {
 				expect(code).toContain("'Empty'");
 			});
 		});
+
+		describe('workflow settings', () => {
+			it('includes settings in workflow call when present', () => {
+				const json: WorkflowJSON = {
+					id: 'settings-test',
+					name: 'Settings Test',
+					nodes: [],
+					connections: {},
+					settings: {
+						timezone: 'America/New_York',
+						executionOrder: 'v1',
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("return workflow('settings-test', 'Settings Test',");
+				expect(code).toContain("timezone: 'America/New_York'");
+				expect(code).toContain("executionOrder: 'v1'");
+			});
+
+			it('omits settings when empty', () => {
+				const json: WorkflowJSON = {
+					id: 'no-settings',
+					name: 'No Settings',
+					nodes: [],
+					connections: {},
+					settings: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toContain("return workflow('no-settings', 'No Settings')");
+				expect(code).not.toContain('timezone');
+			});
+
+			it('omits settings when undefined', () => {
+				const json: WorkflowJSON = {
+					id: 'undefined-settings',
+					name: 'Undefined Settings',
+					nodes: [],
+					connections: {},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				expect(code).toMatch(/return workflow\('undefined-settings', 'Undefined Settings'\)$/m);
+			});
+		});
 	});
 });
