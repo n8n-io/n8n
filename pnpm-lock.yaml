@@ -129,6 +129,9 @@ catalogs:
     jsonwebtoken:
       specifier: 9.0.3
       version: 9.0.3
+    kafkajs:
+      specifier: 2.2.4
+      version: 2.2.4
     lodash:
       specifier: 4.17.21
       version: 4.17.21
@@ -3238,7 +3241,7 @@ importers:
         specifier: 'catalog:'
         version: 9.0.3
       kafkajs:
-        specifier: 2.2.4
+        specifier: 'catalog:'
         version: 2.2.4
       ldapts:
         specifier: 4.2.6
@@ -3448,6 +3451,9 @@ importers:
 
   packages/testing/containers:
     devDependencies:
+      '@testcontainers/kafka':
+        specifier: ^11.11.0
+        version: 11.11.0
       '@testcontainers/postgresql':
         specifier: ^11.0.3
         version: 11.0.3
@@ -3457,9 +3463,12 @@ importers:
       get-port:
         specifier: ^7.1.0
         version: 7.1.0
+      kafkajs:
+        specifier: 'catalog:'
+        version: 2.2.4
       testcontainers:
-        specifier: ^11.0.3
-        version: 11.0.3
+        specifier: ^11.11.0
+        version: 11.11.0
 
   packages/testing/playwright:
     devDependencies:
@@ -8357,6 +8366,9 @@ packages:
   '@tediousjs/connection-string@0.5.0':
     resolution: {integrity: sha512-7qSgZbincDDDFyRweCIEvZULFAw5iz/DeunhvuxpL31nfntX3P4Yd4HkHBRg9H8CdqY1e5WFN1PZIz/REL9MVQ==}
 
+  '@testcontainers/kafka@11.11.0':
+    resolution: {integrity: sha512-DGGoQL0wELifn1GHrfe4tW7ejYDIXNFHisx6wlgFzQ1xqaN8ppYlO658Fgg8B9+rcl0wY2rZF0oF0QFADKgqEg==}
+
   '@testcontainers/postgresql@11.0.3':
     resolution: {integrity: sha512-nMq0lBLguZecp9JDV4J8nlPWwxOQ4XiXUIGkV5Lvj1CMdVqbqQJe4eVrNHVC3rIM/w8nadNp5ecEoxnwkhG33w==}
 
@@ -8539,8 +8551,8 @@ packages:
   '@types/docker-modem@3.0.6':
     resolution: {integrity: sha512-yKpAGEuKRSS8wwx0joknWxsmLha78wNMe9R2S3UNsVOkZded8UqOrV8KoeDXoXsjndxwyF3eIhyClGbO1SEhEg==}
 
-  '@types/dockerode@3.3.42':
-    resolution: {integrity: sha512-U1jqHMShibMEWHdxYhj3rCMNCiLx5f35i4e3CEUuW+JSSszc/tVqc6WCAPdhwBymG5R/vgbcceagK0St7Cq6Eg==}
+  '@types/dockerode@3.3.47':
+    resolution: {integrity: sha512-ShM1mz7rCjdssXt7Xz0u1/R2BJC7piWa3SJpUBiVjCf2A3XNn4cP6pUVaD8bLanpPVVn4IKzJuw3dOvkJ8IbYw==}
 
   '@types/eslint@9.6.1':
     resolution: {integrity: sha512-FXx2pKgId/WyYo2jXw63kk7/+TY7u7AziEJxJAnSFzHlqTAS3Ync6SvgYAN/k4/PQpnnVuzoMuVnByKK2qp0ag==}
@@ -11236,16 +11248,16 @@ packages:
   dlv@1.1.3:
     resolution: {integrity: sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==}
 
-  docker-compose@1.2.0:
-    resolution: {integrity: sha512-wIU1eHk3Op7dFgELRdmOYlPYS4gP8HhH1ZmZa13QZF59y0fblzFDFmKPhyc05phCy2hze9OEvNZAsoljrs+72w==}
+  docker-compose@1.3.0:
+    resolution: {integrity: sha512-7Gevk/5eGD50+eMD+XDnFnOrruFkL0kSd7jEG4cjmqweDSUhB7i0g8is/nBdVpl+Bx338SqIB2GLKm32M+Vs6g==}
     engines: {node: '>= 6.0.0'}
 
   docker-modem@5.0.6:
     resolution: {integrity: sha512-ens7BiayssQz/uAxGzH8zGXCtiV24rRWXdjNha5V4zSOcxmAZsfGVm/PPFbwQdqEkDnhG+SyR9E3zSHUbOKXBQ==}
     engines: {node: '>= 8.0'}
 
-  dockerode@4.0.7:
-    resolution: {integrity: sha512-R+rgrSRTRdU5mH14PZTCPZtW/zw3HDWNTS/1ZAQpL/5Upe/ye5K9WQkIysu4wBoiMwKynsz0a8qWuGsHgEvSAA==}
+  dockerode@4.0.9:
+    resolution: {integrity: sha512-iND4mcOWhPaCNh54WmK/KoSb35AFqPAUWFMffTQcp52uQt36b5uNwEJTSXntJZBbeGad72Crbi/hvDIv6us/6Q==}
     engines: {node: '>= 8.0'}
 
   doctrine@2.1.0:
@@ -17159,8 +17171,8 @@ packages:
     resolution: {integrity: sha512-pFYqmTw68LXVjeWJMST4+borgQP2AyMNbg1BpZh9LbyhUeNkeaPF9gzfPGUAnSMV3qPYdWUwDIjjCLiSDOl7vg==}
     engines: {node: '>=18'}
 
-  testcontainers@11.0.3:
-    resolution: {integrity: sha512-Xu6ZAaE1FaLyHzFSYdCsd+xMPxUegUjkum0r6zgO8SinnFDHRX/PllIHMt1D+DVUmJqBvPQI6vge/J5jgE5vng==}
+  testcontainers@11.11.0:
+    resolution: {integrity: sha512-nKTJn3n/gkyGg/3SVkOwX+isPOGSHlfI+CWMobSmvQrsj7YW01aWvl2pYIfV4LMd+C8or783yYrzKSK2JlP+Qw==}
 
   text-decoder@1.2.3:
     resolution: {integrity: sha512-3/o9z3X0X0fTupwsYvR03pJ/DjWuqqrfwBgTQzdWDiQSm9KitAyz/9WqsT2JQW7KV2m+bC2ol/zqpW37NHxLaA==}
@@ -21537,7 +21549,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.3)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.3))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -25231,15 +25243,22 @@ snapshots:
 
   '@tediousjs/connection-string@0.5.0': {}
 
+  '@testcontainers/kafka@11.11.0':
+    dependencies:
+      compare-versions: 6.1.1
+      testcontainers: 11.11.0
+    transitivePeerDependencies:
+      - supports-color
+
   '@testcontainers/postgresql@11.0.3':
     dependencies:
-      testcontainers: 11.0.3
+      testcontainers: 11.11.0
     transitivePeerDependencies:
       - supports-color
 
   '@testcontainers/redis@11.0.3':
     dependencies:
-      testcontainers: 11.0.3
+      testcontainers: 11.11.0
     transitivePeerDependencies:
       - supports-color
 
@@ -25458,7 +25477,7 @@ snapshots:
       '@types/node': 20.19.21
       '@types/ssh2': 1.11.6
 
-  '@types/dockerode@3.3.42':
+  '@types/dockerode@3.3.47':
     dependencies:
       '@types/docker-modem': 3.0.6
       '@types/node': 20.19.21
@@ -27034,6 +27053,11 @@ snapshots:
   aws4@1.11.0: {}
 
   axe-core@4.7.2: {}
+
+  axios-retry@4.5.0(axios@1.12.0(debug@4.4.3)):
+    dependencies:
+      axios: 1.12.0(debug@4.4.3)
+      is-retry-allowed: 2.2.0
 
   axios-retry@4.5.0(axios@1.12.0):
     dependencies:
@@ -28611,7 +28635,7 @@ snapshots:
 
   dlv@1.1.3: {}
 
-  docker-compose@1.2.0:
+  docker-compose@1.3.0:
     dependencies:
       yaml: 2.3.4
 
@@ -28624,7 +28648,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  dockerode@4.0.7:
+  dockerode@4.0.9:
     dependencies:
       '@balena/dockerignore': 1.0.2
       '@grpc/grpc-js': 1.13.2
@@ -36289,16 +36313,16 @@ snapshots:
       glob: 10.5.0
       minimatch: 9.0.5
 
-  testcontainers@11.0.3:
+  testcontainers@11.11.0:
     dependencies:
       '@balena/dockerignore': 1.0.2
-      '@types/dockerode': 3.3.42
+      '@types/dockerode': 3.3.47
       archiver: 7.0.1
       async-lock: 1.4.1
       byline: 5.0.0
-      debug: 4.4.1(supports-color@8.1.1)
-      docker-compose: 1.2.0
-      dockerode: 4.0.7
+      debug: 4.4.3(supports-color@8.1.1)
+      docker-compose: 1.3.0
+      dockerode: 4.0.9
       get-port: 7.1.0
       proper-lockfile: 4.1.2
       properties-reader: 2.3.0
