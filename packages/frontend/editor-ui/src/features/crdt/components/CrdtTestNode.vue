@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import CanvasHandleDiamond from '@/features/workflows/canvas/components/elements/handles/render-types/parts/CanvasHandleDiamond.vue';
 import CanvasHandleDot from '@/features/workflows/canvas/components/elements/handles/render-types/parts/CanvasHandleDot.vue';
+import { useI18n } from '@n8n/i18n';
 import type { NodeProps } from '@vue-flow/core';
 import { Handle, Position, useNode } from '@vue-flow/core';
 import { computed, onScopeDispose, shallowRef, triggerRef, watch } from 'vue';
@@ -380,6 +380,7 @@ const selectedByCollaborator = computed(() => {
 	<div
 		class="crdt-node"
 		:class="{
+			'crdt-node--selected': props.selected,
 			'crdt-node--selected-by-collaborator': selectedByCollaborator,
 			'crdt-node--trigger': isTriggerNode,
 			'crdt-node--configuration': isConfigurationNode,
@@ -562,10 +563,17 @@ const selectedByCollaborator = computed(() => {
 	transition: box-shadow 0.15s ease;
 }
 
+/* Selected by local user - greyish outline (matches production CanvasNodeDefault) */
+.crdt-node--selected {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	box-shadow: 0 0 0 calc(6px * var(--canvas-zoom-compensation-factor, 1))
+		var(--canvas--color--selected-transparent);
+}
+
+/* Selected by collaborator - colored outline (works alongside local selection box-shadow) */
 .crdt-node--selected-by-collaborator {
-	box-shadow:
-		0 0 0 2px var(--collaborator--color),
-		0 0 8px var(--collaborator--color);
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	outline: calc(2px * var(--canvas-zoom-compensation-factor, 1)) solid var(--collaborator--color);
 }
 
 /* Trigger nodes - asymmetric rounded corners (rounded left side) */

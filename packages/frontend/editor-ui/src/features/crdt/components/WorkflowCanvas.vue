@@ -82,14 +82,31 @@ onMounted(() => {
 // Zoom for cursor size compensation (inverse scale)
 const zoom = computed(() => instance.viewport.value.zoom);
 
+const emit = defineEmits<{
+	'click:connection:add': [connection: Connection];
+}>();
+
+/**
+ * Handle edge add button click - emits to parent to open node creator.
+ */
+function onEdgeAdd(connection: Connection) {
+	emit('click:connection:add', connection);
+}
+
 /**
  * Handle edge deletion from edge toolbar.
  * Removes edge from both Vue Flow and CRDT document.
  */
-function onEdgeDelete(connection: Connection) {
-	const edgeId = `[${connection.source}/${connection.sourceHandle ?? ''}][${connection.target}/${connection.targetHandle ?? ''}]`;
-	doc.removeEdge(edgeId);
-	instance.removeEdges([edgeId]);
+// function onEdgeDelete(connection: Connection) {
+// 	console.log(connection);
+// 	const edgeId = `[${connection.source}/${connection.sourceHandle ?? ''}][${connection.target}/${connection.targetHandle ?? ''}]`;
+// 	doc.removeEdge(edgeId);
+// 	instance.removeEdges([edgeId]);
+// }
+
+function onEdgeDelete(id: string) {
+	doc.removeEdge(id);
+	instance.removeEdges([id]);
 }
 </script>
 
@@ -120,7 +137,8 @@ function onEdgeDelete(connection: Connection) {
 					v-bind="edgeProps"
 					:marker-end="`url(#${arrowHeadMarkerId})`"
 					:hovered="edgesHoveredById[edgeProps.id]"
-					@delete="onEdgeDelete"
+					@add="onEdgeAdd"
+					@delete="onEdgeDelete(edgeProps.id)"
 				/>
 			</template>
 

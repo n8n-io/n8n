@@ -9,6 +9,7 @@ import CanvasEdgeToolbar from '@/features/workflows/canvas/components/elements/e
 import { getEdgeRenderData } from '@/features/workflows/canvas/components/elements/edges/utils';
 
 const emit = defineEmits<{
+	add: [connection: Connection];
 	delete: [connection: Connection];
 }>();
 
@@ -113,6 +114,10 @@ const edgeStyles = computed(() => ({
 	'--canvas-edge--color--lightness--dark': edgeLightness.value.dark,
 }));
 
+function onAdd() {
+	emit('add', connection.value);
+}
+
 function onDelete() {
 	emit('delete', connection.value);
 }
@@ -134,7 +139,12 @@ function onDelete() {
 
 	<EdgeLabelRenderer>
 		<div data-test-id="crdt-edge-label" :style="edgeToolbarStyle" :class="edgeToolbarClasses">
-			<CanvasEdgeToolbar v-if="renderToolbar" :type="connectionType" @delete="onDelete" />
+			<CanvasEdgeToolbar
+				v-if="renderToolbar"
+				:type="connectionType"
+				@add="onAdd"
+				@delete="onDelete"
+			/>
 			<div v-else :class="$style.edgeLabel">{{ label }}</div>
 		</div>
 	</EdgeLabelRenderer>

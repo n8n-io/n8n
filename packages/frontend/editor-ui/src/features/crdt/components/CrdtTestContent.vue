@@ -1,10 +1,23 @@
 <script lang="ts" setup>
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	GRID_SIZE,
+	DEFAULT_NODE_SIZE,
+	getNewNodePosition,
+	snapPositionToGrid,
+} from '@/app/utils/nodeViewUtils';
+import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
+import {
+	createCanvasConnectionHandleString,
+	createCanvasConnectionId,
+} from '@/features/workflows/canvas/canvas.utils';
+import { useCanvasTraversal } from '@/features/workflows/canvas/composables/useCanvasTraversal';
 import NodeCreation from '@/features/shared/nodeCreator/views/NodeCreation.vue';
 import type { AddedNodesAndConnections, INodeUi, ToggleNodeCreatorOptions } from '@/Interface';
+import type { Connection } from '@vue-flow/core';
 import { useVueFlow } from '@vue-flow/core';
-import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 import { provide, ref } from 'vue';
 import { useWorkflowAwareness } from '../composables/useWorkflowAwareness';
 import { useWorkflowDoc } from '../composables/useWorkflowSync';
@@ -19,6 +32,7 @@ const awareness = useWorkflowAwareness({ awareness: doc.awareness });
 provide(WorkflowAwarenessKey, awareness);
 
 const instance = useVueFlow(doc.workflowId);
+const { getDownstreamNodes } = useCanvasTraversal(instance);
 const selectedNode = ref<string | null>(null);
 
 // Dummy state for NodeCreation props
@@ -47,6 +61,18 @@ function generateUniqueNodeName(baseName: string, additionalNames: string[] = []
 	return `${baseName}${counter}`;
 }
 
+/**
+ * Check if the CRDT graph already contains a trigger node.
+ * Uses the directed graph structure to avoid depending on workflows store.
+ */
+function graphHasTrigger(): boolean {
+	const nodes = doc.getNodes();
+	return nodes.some((node) => {
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		return nodeType?.group.includes('trigger') ?? false;
+	});
+}
+
 function requireNodeTypeDescription(
 	type: INodeUi['type'],
 	version?: INodeUi['typeVersion'],
@@ -73,76 +99,298 @@ function requireNodeTypeDescription(
 	} as INodeTypeDescription;
 }
 
+// Track the node that was selected when opening the node creator (for auto-connect)
+const lastSelectedNodeId = ref<string | null>(null);
+
+// Track the connection to insert a new node into (when clicking + on an edge)
+const insertBetweenConnection = ref<Connection | null>(null);
+
 const onToggleNodeCreator = (options: ToggleNodeCreatorOptions) => {
+	// Capture selected node when opening the creator
+	if (options.createNodeActive && !createNodeActive.value) {
+		const selectedNodes = instance.getSelectedNodes.value;
+		lastSelectedNodeId.value = selectedNodes.length === 1 ? selectedNodes[0].id : null;
+	}
 	createNodeActive.value = options.createNodeActive ?? !createNodeActive.value;
 };
 
+/**
+ * Get the center position of the current viewport for node insertion.
+ */
+function getViewportCenter(): [number, number] {
+	const { x, y, zoom } = instance.viewport.value;
+	const { width, height } = instance.dimensions.value;
+	// Convert viewport center to canvas coordinates
+	const centerX = (-x + width / 2) / zoom;
+	const centerY = (-y + height / 2) / zoom;
+	return [centerX, centerY];
+}
+
+/**
+ * Handle click on edge plus button - opens node creator to insert a node between two connected nodes.
+ */
+function onClickConnectionAdd(connection: Connection) {
+	insertBetweenConnection.value = connection;
+	createNodeActive.value = true;
+}
+
+/**
+ * Shift downstream nodes to make room for a new node insertion.
+ * Only shifts if there isn't enough space, and only by the amount needed.
+ * Uses Vue Flow's graph traversal utilities.
+ */
+function shiftDownstreamNodes(
+	sourceNodeId: string,
+	insertPosition: [number, number],
+	insertedNodeSize: [number, number] = DEFAULT_NODE_SIZE,
+): void {
+	// Use Vue Flow's built-in graph traversal
+	const allDownstream = getDownstreamNodes(sourceNodeId);
+
+	// Filter to nodes at similar Y position
+	const yTolerance = DEFAULT_NODE_SIZE[1] * 2;
+	const downstreamNodes = allDownstream.filter(
+		(node) => Math.abs(node.position.y - insertPosition[1]) <= yTolerance,
+	);
+
+	if (downstreamNodes.length === 0) return;
+
+	// Find leftmost to check available space
+	const leftmostDownstream = downstreamNodes.reduce((left, node) =>
+		node.position.x < left.position.x ? node : left,
+	);
+
+	// Check if we need to shift
+	const insertedNodeRightEdge = insertPosition[0] + insertedNodeSize[0] + GRID_SIZE;
+	const availableSpace = leftmostDownstream.position.x - insertedNodeRightEdge;
+	if (availableSpace >= 0) return;
+
+	// Shift by the amount needed to create space
+	const shiftAmount = Math.abs(availableSpace) + GRID_SIZE;
+
+	// Update positions via CRDT
+	const positionUpdates = downstreamNodes.map((node) => ({
+		nodeId: node.id,
+		position: snapPositionToGrid([node.position.x + shiftAmount, node.position.y]) as [
+			number,
+			number,
+		],
+	}));
+
+	doc.updateNodePositions(positionUpdates);
+
+	// Update Vue Flow for immediate visual feedback
+	for (const update of positionUpdates) {
+		const vueFlowNode = instance.findNode(update.nodeId);
+		if (vueFlowNode) {
+			vueFlowNode.position = { x: update.position[0], y: update.position[1] };
+		}
+	}
+}
+
 const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
+	// Filter out auto-added trigger nodes if trigger already exists in graph
+	// NodeCreation's useActions adds triggers automatically, but we check the CRDT graph directly
+	const hasTrigger = graphHasTrigger();
+	let nodes = payload.nodes;
+	let connections = payload.connections ?? [];
+
+	if (hasTrigger) {
+		// Find indices of auto-added trigger nodes to remove
+		const triggerIndices = new Set<number>();
+		nodes.forEach((node, index) => {
+			if (node.isAutoAdd) {
+				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (nodeType?.group.includes('trigger')) {
+					triggerIndices.add(index);
+				}
+			}
+		});
+
+		if (triggerIndices.size > 0) {
+			// Remove trigger nodes and remap connection indices
+			const indexMap = new Map<number, number>();
+			let newIndex = 0;
+			nodes = nodes.filter((_, index) => {
+				if (triggerIndices.has(index)) {
+					return false;
+				}
+				indexMap.set(index, newIndex++);
+				return true;
+			});
+
+			// Remap connections, removing any that reference removed triggers
+			connections = connections
+				.filter(
+					(conn) =>
+						!triggerIndices.has(conn.from.nodeIndex) && !triggerIndices.has(conn.to.nodeIndex),
+				)
+				.map((conn) => ({
+					...conn,
+					from: { ...conn.from, nodeIndex: indexMap.get(conn.from.nodeIndex)! },
+					to: { ...conn.to, nodeIndex: indexMap.get(conn.to.nodeIndex)! },
+				}));
+		}
+	}
+
 	// Track names of nodes being added in this batch to avoid duplicates within the same transaction
 	const namesInBatch: string[] = [];
+	const nodesToAdd: WorkflowNode[] = [];
 
-	const nodesToAdd: WorkflowNode[] = payload.nodes.map((node, index) => {
-		const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
+	// Get existing nodes from the graph for collision detection
+	const existingNodes = doc.getNodes();
 
-		let typeVersion: number;
-		if (node.typeVersion !== undefined) {
-			typeVersion = node.typeVersion;
-		} else if (Array.isArray(nodeTypeDescription.version)) {
-			typeVersion = nodeTypeDescription.version[nodeTypeDescription.version.length - 1];
+	// Find the selected node to position relative to and connect from
+	const selectedNode = lastSelectedNodeId.value
+		? existingNodes.find((n) => n.id === lastSelectedNodeId.value)
+		: null;
+
+	// Determine insert position based on context
+	let insertPosition: [number, number];
+
+	if (insertBetweenConnection.value) {
+		// Insert between: position right after source node (downstream nodes will be shifted if needed)
+		const conn = insertBetweenConnection.value;
+		const sourceNode = existingNodes.find((n) => n.id === conn.source);
+
+		if (sourceNode) {
+			// Position to the right of source with standard spacing
+			const sourceWidth = sourceNode.size?.[0] ?? DEFAULT_NODE_SIZE[0];
+			insertPosition = [
+				sourceNode.position[0] + sourceWidth + GRID_SIZE * 2,
+				sourceNode.position[1],
+			];
 		} else {
-			typeVersion = nodeTypeDescription.version;
+			insertPosition = getViewportCenter();
 		}
+	} else if (selectedNode) {
+		// Selected node: position to its right
+		const selectedNodeWidth = selectedNode.size?.[0] ?? DEFAULT_NODE_SIZE[0];
+		insertPosition = [
+			selectedNode.position[0] + selectedNodeWidth + DEFAULT_NODE_SIZE[0] + GRID_SIZE,
+			selectedNode.position[1],
+		];
+	} else {
+		// Default: viewport center
+		insertPosition = getViewportCenter();
+	}
 
-		const position: [number, number] = [100 + index * 200, 100];
+	// For insert-between, skip collision detection since we're deliberately placing at the midpoint
+	const skipCollisionDetection = !!insertBetweenConnection.value;
 
-		const baseName =
-			node.name ??
-			(typeof nodeTypeDescription.defaults.name === 'string'
-				? nodeTypeDescription.defaults.name
-				: nodeTypeDescription.displayName);
+	for (const node of nodes) {
+		try {
+			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 
-		// Generate a unique name considering both existing nodes and nodes being added in this batch
-		const name = generateUniqueNodeName(baseName, namesInBatch);
-		namesInBatch.push(name);
+			let typeVersion: number;
+			if (node.typeVersion !== undefined) {
+				typeVersion = node.typeVersion;
+			} else if (Array.isArray(nodeTypeDescription.version)) {
+				typeVersion = nodeTypeDescription.version[nodeTypeDescription.version.length - 1];
+			} else {
+				typeVersion = nodeTypeDescription.version;
+			}
 
-		// Create a temporary node object to pass to getNodeParameters
-		const tempNode = {
-			id: crypto.randomUUID(),
-			name,
-			type: node.type,
-			typeVersion,
-			position,
-			parameters: {},
-		};
+			// Calculate position - skip collision detection for insert-between to prevent Y jumps
+			const position = getNewNodePosition(
+				[...existingNodes, ...nodesToAdd] as INodeUi[],
+				insertPosition,
+				{ normalize: !skipCollisionDetection },
+			);
 
-		// Resolve parameters with defaults (like the main editor does)
-		// This ensures dynamic inputs/outputs get the correct default parameter values
-		const resolvedParameters =
-			NodeHelpers.getNodeParameters(
-				nodeTypeDescription.properties,
-				tempNode.parameters,
-				true, // returnDefaults
-				false, // returnNoneDisplayed
-				tempNode,
-				nodeTypeDescription,
-			) ?? {};
+			// Update insert position for next node - increment X horizontally (like production)
+			insertPosition = [position[0] + DEFAULT_NODE_SIZE[0] * 2 + GRID_SIZE, position[1]];
 
-		return {
-			...tempNode,
-			parameters: resolvedParameters,
-		};
-	});
+			const baseName =
+				node.name ??
+				(typeof nodeTypeDescription.defaults.name === 'string'
+					? nodeTypeDescription.defaults.name
+					: nodeTypeDescription.displayName);
 
-	const { off } = instance.onNodesInitialized(() => {
-		instance.addSelectedNodes(nodesToAdd.map((node) => instance.findNode(node.id)!));
-		instance.nodesSelectionActive.value = true;
-		off();
-	});
+			// Generate a unique name considering both existing nodes and nodes being added in this batch
+			const name = generateUniqueNodeName(baseName, namesInBatch);
+			namesInBatch.push(name);
 
-	// Convert connections to edges
+			// Create a temporary node object to pass to getNodeParameters
+			const tempNode = {
+				id: crypto.randomUUID(),
+				name,
+				type: node.type,
+				typeVersion,
+				position,
+				parameters: {},
+			};
+
+			// Resolve parameters with defaults (like the main editor does)
+			// This ensures dynamic inputs/outputs get the correct default parameter values
+			const resolvedParameters =
+				NodeHelpers.getNodeParameters(
+					nodeTypeDescription.properties,
+					tempNode.parameters,
+					true, // returnDefaults
+					false, // returnNoneDisplayed
+					tempNode,
+					nodeTypeDescription,
+				) ?? {};
+
+			nodesToAdd.push({
+				...tempNode,
+				parameters: resolvedParameters,
+			});
+		} catch (error) {
+			console.error('Failed to create node:', error);
+			continue;
+		}
+	}
+
+	if (nodesToAdd.length > 0) {
+		const { off } = instance.onNodesInitialized(() => {
+			instance.addSelectedNodes(nodesToAdd.map((n) => instance.findNode(n.id)!));
+			instance.nodesSelectionActive.value = true;
+			off();
+		});
+	}
+
+	// Convert connections to edges using production utilities
 	const edgesToAdd: WorkflowEdge[] = [];
-	if (payload.connections && payload.connections.length > 0) {
-		for (const conn of payload.connections) {
+
+	// Auto-connect from selected node to first non-auto-add node (like production)
+	if (selectedNode && nodesToAdd.length > 0) {
+		// Find the first non-auto-add node (the "main" node being added)
+		const firstNonAutoAddIndex = nodes.findIndex((n) => !n.isAutoAdd);
+		const targetNode = firstNonAutoAddIndex >= 0 ? nodesToAdd[firstNonAutoAddIndex] : nodesToAdd[0];
+
+		if (targetNode) {
+			const sourceHandle = createCanvasConnectionHandleString({
+				mode: 'outputs',
+				type: NodeConnectionTypes.Main,
+				index: 0,
+			});
+			const targetHandle = createCanvasConnectionHandleString({
+				mode: 'inputs',
+				type: NodeConnectionTypes.Main,
+				index: 0,
+			});
+			const edgeId = createCanvasConnectionId({
+				source: selectedNode.id,
+				sourceHandle,
+				target: targetNode.id,
+				targetHandle,
+			});
+
+			edgesToAdd.push({
+				id: edgeId,
+				source: selectedNode.id,
+				target: targetNode.id,
+				sourceHandle,
+				targetHandle,
+			});
+		}
+	}
+
+	// Add connections from the payload (for multi-node templates)
+	if (connections.length > 0) {
+		for (const conn of connections) {
 			const sourceNode = nodesToAdd[conn.from.nodeIndex];
 			const targetNode = nodesToAdd[conn.to.nodeIndex];
 
@@ -150,14 +398,38 @@ const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
 				continue;
 			}
 
-			const sourceType: NodeConnectionType = conn.from.type ?? 'main';
-			const targetType: NodeConnectionType = conn.to.type ?? 'main';
+			// Get connection types with validation, fallback to Main if invalid
+			const rawSourceType = conn.from.type ?? NodeConnectionTypes.Main;
+			const rawTargetType = conn.to.type ?? NodeConnectionTypes.Main;
+			const sourceType = isValidNodeConnectionType(rawSourceType)
+				? rawSourceType
+				: NodeConnectionTypes.Main;
+			const targetType = isValidNodeConnectionType(rawTargetType)
+				? rawTargetType
+				: NodeConnectionTypes.Main;
+
 			const sourceIndex = conn.from.outputIndex ?? 0;
 			const targetIndex = conn.to.inputIndex ?? 0;
 
-			const sourceHandle = `outputs/${sourceType}/${sourceIndex}`;
-			const targetHandle = `inputs/${targetType}/${targetIndex}`;
-			const edgeId = `[${sourceNode.id}/${sourceHandle}][${targetNode.id}/${targetHandle}]`;
+			// Use production utilities for handle string creation
+			const sourceHandle = createCanvasConnectionHandleString({
+				mode: 'outputs',
+				type: sourceType,
+				index: sourceIndex,
+			});
+			const targetHandle = createCanvasConnectionHandleString({
+				mode: 'inputs',
+				type: targetType,
+				index: targetIndex,
+			});
+
+			// Use production utility for edge ID
+			const edgeId = createCanvasConnectionId({
+				source: sourceNode.id,
+				sourceHandle,
+				target: targetNode.id,
+				targetHandle,
+			});
 
 			edgesToAdd.push({
 				id: edgeId,
@@ -169,14 +441,91 @@ const onAddNodesAndConnections = (payload: AddedNodesAndConnections) => {
 		}
 	}
 
+	// Handle "insert between" case - when adding a node from an edge plus button
+	let edgesToRemove: string[] = [];
+	if (insertBetweenConnection.value && nodesToAdd.length > 0) {
+		const conn = insertBetweenConnection.value;
+		const insertedNode = nodesToAdd[0]; // Insert the first node between
+
+		// Shift downstream nodes to make room for the inserted node
+		shiftDownstreamNodes(
+			conn.source,
+			insertedNode.position,
+			insertedNode.size ?? DEFAULT_NODE_SIZE,
+		);
+
+		// Remove the original edge
+		const originalEdgeId = createCanvasConnectionId({
+			source: conn.source,
+			sourceHandle: conn.sourceHandle ?? '',
+			target: conn.target ?? '',
+			targetHandle: conn.targetHandle ?? '',
+		});
+		edgesToRemove = [originalEdgeId];
+
+		// Create edge from original source to inserted node
+		const sourceToInsertedHandle = createCanvasConnectionHandleString({
+			mode: 'inputs',
+			type: NodeConnectionTypes.Main,
+			index: 0,
+		});
+		const sourceToInsertedId = createCanvasConnectionId({
+			source: conn.source,
+			sourceHandle: conn.sourceHandle ?? '',
+			target: insertedNode.id,
+			targetHandle: sourceToInsertedHandle,
+		});
+		edgesToAdd.push({
+			id: sourceToInsertedId,
+			source: conn.source,
+			target: insertedNode.id,
+			sourceHandle: conn.sourceHandle ?? '',
+			targetHandle: sourceToInsertedHandle,
+		});
+
+		// Create edge from inserted node to original target
+		if (conn.target) {
+			const insertedToTargetHandle = createCanvasConnectionHandleString({
+				mode: 'outputs',
+				type: NodeConnectionTypes.Main,
+				index: 0,
+			});
+			const insertedToTargetId = createCanvasConnectionId({
+				source: insertedNode.id,
+				sourceHandle: insertedToTargetHandle,
+				target: conn.target,
+				targetHandle: conn.targetHandle ?? '',
+			});
+			edgesToAdd.push({
+				id: insertedToTargetId,
+				source: insertedNode.id,
+				target: conn.target,
+				sourceHandle: insertedToTargetHandle,
+				targetHandle: conn.targetHandle ?? '',
+			});
+		}
+	}
+
+	// Remove old edges first (for insert between), then add nodes and new edges
+	if (edgesToRemove.length > 0) {
+		for (const edgeId of edgesToRemove) {
+			doc.removeEdge(edgeId);
+			instance.removeEdges([edgeId]);
+		}
+	}
+
 	// Add nodes and edges in a single atomic transaction
 	doc.addNodesAndEdges(nodesToAdd, edgesToAdd);
 
+	// Clear state
+	lastSelectedNodeId.value = null;
+	insertBetweenConnection.value = null;
 	createNodeActive.value = false;
 };
 
 const onNodeCreatorClose = () => {
 	createNodeActive.value = false;
+	insertBetweenConnection.value = null;
 };
 
 instance.onNodeDoubleClick(({ node }) => {
@@ -197,7 +546,7 @@ instance.onNodeDoubleClick(({ node }) => {
 				{{ awareness.collaboratorCount.value }} online
 			</span>
 		</div>
-		<WorkflowCanvas v-if="doc.isReady.value" />
+		<WorkflowCanvas v-if="doc.isReady.value" @click:connection:add="onClickConnectionAdd" />
 		<div v-else-if="doc.state.value === 'connecting'" :class="$style.loading">
 			Connecting to workflow...
 		</div>
