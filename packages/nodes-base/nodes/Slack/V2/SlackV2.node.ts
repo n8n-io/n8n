@@ -1474,7 +1474,7 @@ export class SlackV2 implements INodeType {
 
 						const options = this.getNodeParameter('options', i);
 
-						const resolveData = options.resolveData !== false;
+						const resolveData = options.resolveData ?? true
 
 						// Get the user group with user list
 						const groupData = await slackApiRequest.call(
