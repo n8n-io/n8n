@@ -142,19 +142,21 @@ export const isAllowedInDotNotation = (str: string) => {
 //      resolution-based utils
 // ----------------------------------
 
-export function receivesNoBinaryData(contextNodeName?: string) {
+export async function receivesNoBinaryData(contextNodeName?: string) {
 	try {
-		return resolveAutocompleteExpression('={{ $binary }}', contextNodeName)?.data === undefined;
+		return (
+			(await resolveAutocompleteExpression('={{ $binary }}', contextNodeName))?.data === undefined
+		);
 	} catch {
 		return true;
 	}
 }
 
-export function hasNoParams(toResolve: string, contextNodeName?: string) {
+export async function hasNoParams(toResolve: string, contextNodeName?: string) {
 	let params;
 
 	try {
-		params = resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
+		params = await resolveAutocompleteExpression(`={{ ${toResolve}.params }}`, contextNodeName);
 	} catch {
 		return true;
 	}
@@ -166,7 +168,7 @@ export function hasNoParams(toResolve: string, contextNodeName?: string) {
 	return paramKeys.length === 1 && isPseudoParam(paramKeys[0]);
 }
 
-export function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
+export async function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
 	const ndvStore = useNDVStore();
 	const inputData =
 		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
@@ -177,7 +179,7 @@ export function resolveAutocompleteExpression(expression: string, contextNodeNam
 					inputBranchIndex: ndvStore.ndvInputBranchIndex,
 				}
 			: {};
-	return resolveParameter(expression, {
+	return await resolveParameter(expression, {
 		...inputData,
 		contextNodeName,
 	});

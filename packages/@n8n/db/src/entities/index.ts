@@ -15,8 +15,10 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import { Role } from './role';
 import { Scope } from './scope';
+import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -70,6 +72,8 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
 };
 
 export const entities = {
@@ -107,4 +111,6 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
 };

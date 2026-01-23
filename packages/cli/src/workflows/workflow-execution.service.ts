@@ -27,7 +27,7 @@ import {
 
 import { ChatTokenService } from '@/chat/chat-token.service';
 import { EventService } from '@/events/event.service';
-import { ExecutionDataService } from '@/executions/execution-data.service';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
@@ -48,7 +48,7 @@ export class WorkflowExecutionService {
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly globalConfig: GlobalConfig,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
-		private readonly executionDataService: ExecutionDataService,
+		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
 		private readonly chatTokenService: ChatTokenService,
 	) {}
@@ -346,7 +346,7 @@ export class WorkflowExecutionService {
 					);
 
 					// Create a fake execution and save it to DB.
-					const fakeExecution = this.executionDataService.generateFailedExecutionFromError(
+					const fakeExecution = this.failedRunFactory.generateFailedExecutionFromError(
 						'error',
 						errorWorkflowPermissionError,
 						initialNode,

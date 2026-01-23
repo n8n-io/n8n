@@ -12,6 +12,7 @@ import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
+import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import {
 	BuilderFeatureFlags,
 	WorkflowBuilderAgent,
@@ -36,6 +37,7 @@ export class AiWorkflowBuilderService {
 		private readonly n8nVersion?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
+		private readonly resourceLocatorCallbackFactory?: ResourceLocatorCallbackFactory,
 	) {
 		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
@@ -167,6 +169,9 @@ export class AiWorkflowBuilderService {
 			userMessageId,
 		);
 
+		// Create resource locator callback scoped to this user if factory is provided
+		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
+
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
 			// Use the same model for all stages in production
@@ -189,6 +194,7 @@ export class AiWorkflowBuilderService {
 				featureFlags: featureFlags ?? {},
 			},
 			onGenerationSuccess: async () => await this.onGenerationSuccess(user, authHeaders),
+			resourceLocatorCallback,
 		});
 
 		return { agent };

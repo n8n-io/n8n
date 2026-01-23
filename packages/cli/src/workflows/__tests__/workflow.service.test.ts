@@ -3,6 +3,7 @@ import type { Scope } from '@n8n/permissions';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 
+import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -11,12 +12,14 @@ describe('WorkflowService', () => {
 		let workflowService: WorkflowService;
 		let workflowSharingServiceMock: MockProxy<WorkflowSharingService>;
 		let workflowRepositoryMock: MockProxy<{ getManyAndCount: jest.Mock }>;
+		let webhookServiceMock: MockProxy<WebhookService>;
 
 		beforeEach(() => {
 			workflowSharingServiceMock = mock<WorkflowSharingService>();
 			workflowRepositoryMock = mock();
 			workflowRepositoryMock.getManyAndCount.mockResolvedValue({ workflows: [], count: 0 });
 			workflowSharingServiceMock.getSharedWorkflowIds.mockResolvedValue([]);
+			webhookServiceMock = mock<WebhookService>();
 
 			workflowService = new WorkflowService(
 				mock(), // logger
@@ -40,6 +43,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishHistoryRepository
 				mock(), // workflowValidationService
 				mock(), // nodeTypes
+				webhookServiceMock, // webhookService
 			);
 		});
 

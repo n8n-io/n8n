@@ -9,11 +9,13 @@ import type {
 	INodeParameters,
 	IConnection,
 	NodeConnectionType,
+	INodeListSearchResult,
 } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
 import type { ProgrammaticEvaluationResult } from '@/validation/types';
 
+import type { ResourceLocatorCallback } from '../src/types/callbacks';
 import type { ProgressReporter, ToolProgressMessage } from '../src/types/tools';
 import type { SimpleWorkflow } from '../src/types/workflow';
 
@@ -609,3 +611,64 @@ export const REASONING = {
 	TRIGGER_NODE: 'Trigger node, no connection parameters needed',
 	WEBHOOK_NODE: 'Webhook is a trigger node, no connection parameters needed',
 } as const;
+
+// ========== Resource Locator Testing Utilities ==========
+
+// Create a node type with resource locator property
+export const createNodeTypeWithResourceLocator = (
+	nodeName: string,
+	parameterName: string,
+	searchMethod: string,
+	overrides: Partial<INodeTypeDescription> = {},
+): INodeTypeDescription =>
+	createNodeType({
+		name: nodeName,
+		displayName: overrides.displayName ?? 'Test Resource Node',
+		credentials: overrides.credentials ?? [{ name: 'testApi', required: true }],
+		properties: [
+			{
+				displayName: 'Resource',
+				name: parameterName,
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: searchMethod,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+					},
+				],
+			},
+			...(overrides.properties ?? []),
+		],
+		...overrides,
+	});
+
+// Create a mock resource locator callback
+export const mockResourceLocatorCallback = (
+	results: INodeListSearchResult = { results: [] },
+): jest.MockedFunction<ResourceLocatorCallback> => {
+	return jest.fn().mockResolvedValue(results);
+};
+
+// Create sample resource locator results
+export const createResourceLocatorResults = (
+	items: Array<{ name: string; value: string; description?: string }>,
+	paginationToken?: string,
+): INodeListSearchResult => ({
+	results: items.map((item) => ({
+		name: item.name,
+		value: item.value,
+		...(item.description && { description: item.description }),
+	})),
+	...(paginationToken && { paginationToken }),
+});
