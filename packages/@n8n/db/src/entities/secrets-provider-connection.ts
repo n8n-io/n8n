@@ -30,12 +30,6 @@ export class SecretsProviderConnection extends WithTimestamps {
 	type: string;
 
 	/**
-	 * Whether the secrets provider connection is available for use by all projects.
-	 */
-	@Column({ default: false })
-	isGlobal: boolean;
-
-	/**
 	 * Shared secrets provider connections are used to share the secrets provider connection with other projects.
 	 */
 	@OneToMany('SharedSecretsProviderConnection', 'secretsProviderConnection')
