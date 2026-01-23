@@ -1170,8 +1170,8 @@ describe(resolveParameter, () => {
 			});
 		});
 
-		it('should include $tool in additionalKeys for tool node types', async () => {
-			const toolNodeType = 'n8n-nodes-base.someTool';
+		it('should include $tool in additionalKeys for hitl tool node types', async () => {
+			const toolNodeType = 'n8n-nodes-base.someHitlTool';
 			const toolNodeTypes = createMockNodeTypes({
 				[toolNodeType]: mockLoadedNodeType(toolNodeType),
 			});
@@ -1217,7 +1217,7 @@ describe(resolveParameter, () => {
 		});
 
 		it('should resolve $tool.name expression for tool nodes', async () => {
-			const toolNodeType = 'n8n-nodes-base.hitlTool';
+			const toolNodeType = 'n8n-nodes-base.someHitlTool';
 			const toolNodeTypes = createMockNodeTypes({
 				[toolNodeType]: mockLoadedNodeType(toolNodeType),
 			});
@@ -1241,8 +1241,8 @@ describe(resolveParameter, () => {
 			expect(result?.message).toContain('The agent wants to call');
 		});
 
-		it('should resolve $tool.parameters expression for tool nodes', async () => {
-			const toolNodeType = 'n8n-nodes-base.customTool';
+		it('should resolve $tool.parameters expression for hitl tool nodes', async () => {
+			const toolNodeType = 'n8n-nodes-base.someHitlTool';
 			const toolNodeTypes = createMockNodeTypes({
 				[toolNodeType]: mockLoadedNodeType(toolNodeType),
 			});
