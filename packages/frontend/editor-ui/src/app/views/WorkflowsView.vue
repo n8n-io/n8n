@@ -1003,6 +1003,16 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 	}
 };
 
+const onWorkflowUnpublished = async (data: { id: string }) => {
+	const workflow: WorkflowListItem | undefined = workflowsAndFolders.value.find(
+		(w): w is WorkflowListItem => w.id === data.id,
+	);
+	if (!workflow) return;
+
+	// Update the workflow to reflect unpublished state
+	workflow.activeVersionId = null;
+};
+
 const getFolderListItem = (folderId: string): FolderListItem | undefined => {
 	return workflowsAndFolders.value.find(
 		(resource): resource is FolderListItem =>
@@ -1990,6 +2000,7 @@ const onNameSubmit = async (name: string) => {
 					@workflow:unarchived="refreshWorkflows"
 					@workflow:moved="fetchWorkflows"
 					@workflow:duplicated="fetchWorkflows"
+					@workflow:unpublished="onWorkflowUnpublished"
 					@workflow:active-toggle="onWorkflowActiveToggle"
 					@action:move-to-folder="moveWorkflowToFolder"
 					@mouseenter="isDragging ? folderHelpers.resetDropTarget() : {}"
