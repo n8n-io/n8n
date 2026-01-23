@@ -91,7 +91,7 @@ export class LogStreamingDestinationService {
 	 */
 	async addDestination(
 		destination: MessageEventBusDestination,
-		notifyWorkers: boolean = true,
+		notifyInstances: boolean = true,
 	): Promise<MessageEventBusDestination> {
 		// Remove any existing destination with the same ID
 		await this.destinations[destination.getId()]?.close();
@@ -103,8 +103,8 @@ export class LogStreamingDestinationService {
 		// Save to database
 		await this.saveDestinationToDb(destination);
 
-		// Notify workers to reload destinations
-		if (notifyWorkers) {
+		// Notify other instances to reload destinations
+		if (notifyInstances) {
 			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
 
@@ -114,7 +114,7 @@ export class LogStreamingDestinationService {
 	/**
 	 * Remove a destination from the local map and delete from database
 	 */
-	async removeDestination(id: string, notifyWorkers: boolean = true): Promise<DeleteResult> {
+	async removeDestination(id: string, notifyInstances: boolean = true): Promise<DeleteResult> {
 		// Close and remove from local map
 		if (this.destinations[id]) {
 			await this.destinations[id].close();
@@ -122,8 +122,8 @@ export class LogStreamingDestinationService {
 			this.logger.debug(`Removed destination ${id}`);
 		}
 
-		// Notify workers to reload destinations
-		if (notifyWorkers) {
+		// Notify other instances to reload destinations
+		if (notifyInstances) {
 			void this.publisher.publishCommand({ command: 'restart-event-bus' });
 		}
 
