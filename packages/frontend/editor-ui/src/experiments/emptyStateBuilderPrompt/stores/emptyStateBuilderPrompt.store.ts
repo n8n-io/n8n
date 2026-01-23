@@ -7,6 +7,7 @@ import {
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { STORES } from '@n8n/stores';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
@@ -28,8 +29,25 @@ export const useEmptyStateBuilderPromptStore = defineStore(
 		const posthogStore = usePostHog();
 		const cloudPlanStore = useCloudPlanStore();
 		const workflowsStore = useWorkflowsStore();
+		const credentialsStore = useCredentialsStore();
 		const router = useRouter();
 		const telemetry = useTelemetry();
+
+		function removeUnknownCredentials(workflow: WorkflowDataUpdate) {
+			if (!workflow?.nodes) return;
+
+			for (const node of workflow.nodes) {
+				if (!node.credentials) continue;
+
+				for (const [name, credential] of Object.entries(node.credentials)) {
+					if (typeof credential === 'string' || credential.id === null) continue;
+
+					if (!credentialsStore.getCredentialById(credential.id)) {
+						delete node.credentials[name];
+					}
+				}
+			}
+		}
 
 		// Store pending prompt for after navigation
 		const pendingPrompt = ref<string | null>(null);
@@ -88,6 +106,8 @@ export const useEmptyStateBuilderPromptStore = defineStore(
 			if (!isValidWorkflowData(workflowData)) {
 				throw new Error('Invalid workflow data');
 			}
+
+			removeUnknownCredentials(workflowData);
 
 			telemetry.track('User imported workflow from empty state', {
 				node_count: workflowData.nodes?.length ?? 0,
