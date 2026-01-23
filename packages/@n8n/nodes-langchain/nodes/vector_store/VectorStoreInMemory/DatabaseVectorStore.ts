@@ -6,10 +6,7 @@ import type { IVectorStoreDataService } from 'n8n-workflow';
 /**
  * DatabaseVectorStore - A VectorStore implementation that persists vectors in the n8n instance database
  *
- * This class bridges LangChain's VectorStore interface with n8n's database backend,
- * providing persistent vector storage using either:
- * - PostgreSQL with pgvector extension
- * - SQLite with sqlite-vec extension
+ * This class bridges LangChain's VectorStore interface with n8n's database backend
  */
 export class DatabaseVectorStore extends VectorStore {
 	constructor(

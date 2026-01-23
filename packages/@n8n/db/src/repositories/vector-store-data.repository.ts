@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
@@ -26,6 +27,7 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 	constructor(
 		dataSource: DataSource,
 		private readonly databaseConfig: DatabaseConfig,
+		private readonly logger: Logger,
 	) {
 		super(VectorStoreData, dataSource.manager);
 	}
@@ -102,22 +104,81 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 			}
 		}
 
-		// Use pgvector cosine distance operator
-		const vectorString = `[${queryEmbedding.join(',')}]`;
-		params.push(vectorString);
-
+		// Fetch all matching vectors to calculate similarity in JavaScript
 		const query = `
-				SELECT ${contentCol} as content, ${metadataCol} as metadata,
-					   1 - (${vectorCol} <=> $${paramIndex}::vector) as score
+				SELECT ${contentCol} as content, ${metadataCol} as metadata, ${vectorCol} as vector
 				FROM ${tableName}
 				WHERE ${whereClause}
-				ORDER BY ${vectorCol} <=> $${paramIndex}::vector
-				LIMIT ${k}
 			`;
+
+		// Track query time
+		const queryStartTime = performance.now();
+		const memBefore = process.memoryUsage();
 
 		const results = await this.query(query, params);
 
-		return (results as QueryResultRow[]).map((row) => this.transformRawQueryResult(row));
+		const queryTime = performance.now() - queryStartTime;
+		const vectorCount = results.length;
+
+		this.logger.info('Vector similarity search - query completed', {
+			memoryKey,
+			projectId,
+			vectorCount,
+			queryTimeMs: queryTime.toFixed(2),
+			requestedK: k,
+		});
+
+		// Calculate cosine similarity for each result
+		const calcStartTime = performance.now();
+
+		const resultsWithScores = (results as Array<QueryResultRow & { vector: Buffer }>).map((row) => {
+			const vectorBuffer = row.vector;
+			const vectorArray = this.deserializeVector(vectorBuffer);
+			const score = this.cosineSimilarity(queryEmbedding, vectorArray);
+
+			return {
+				content: row.content,
+				metadata: row.metadata,
+				score,
+			};
+		});
+
+		const calcTime = performance.now() - calcStartTime;
+		const memAfter = process.memoryUsage();
+
+		// Sort by score descending and take top k
+		const sortStartTime = performance.now();
+		resultsWithScores.sort((a, b) => b.score - a.score);
+		const topK = resultsWithScores.slice(0, k);
+		const sortTime = performance.now() - sortStartTime;
+
+		const totalTime = performance.now() - queryStartTime;
+		const memDelta = {
+			heapUsed: ((memAfter.heapUsed - memBefore.heapUsed) / 1024 / 1024).toFixed(2),
+			external: ((memAfter.external - memBefore.external) / 1024 / 1024).toFixed(2),
+		};
+
+		this.logger.info('Vector similarity search - calculation completed', {
+			memoryKey,
+			projectId,
+			vectorCount,
+			returnedK: topK.length,
+			timings: {
+				queryMs: queryTime.toFixed(2),
+				calculationMs: calcTime.toFixed(2),
+				sortMs: sortTime.toFixed(2),
+				totalMs: totalTime.toFixed(2),
+				avgPerVectorMs: vectorCount > 0 ? (calcTime / vectorCount).toFixed(3) : '0',
+			},
+			memory: {
+				heapUsedDeltaMB: memDelta.heapUsed,
+				externalDeltaMB: memDelta.external,
+				heapUsedMB: (memAfter.heapUsed / 1024 / 1024).toFixed(2),
+				heapTotalMB: (memAfter.heapTotal / 1024 / 1024).toFixed(2),
+			},
+		});
+
+		return topK.map((row) => this.transformRawQueryResult(row));
 	}
 
 	private async similaritySearchSQLite(
@@ -244,18 +305,45 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		return result.map((row) => row.memoryKey);
 	}
 
-	private serializeVector(vector: number[]): string | Buffer {
-		if (dbType === 'postgresdb') {
-			// pgvector expects string format
-			return `[${vector.join(',')}]`;
-		}
-
-		// sqlite-vec expects binary buffer
+	private serializeVector(vector: number[]): Buffer {
+		// Store as binary buffer (Float32Array) for both PostgreSQL and SQLite
 		const buffer = Buffer.allocUnsafe(vector.length * 4);
 		for (let i = 0; i < vector.length; i++) {
 			buffer.writeFloatLE(vector[i], i * 4);
 		}
 		return buffer;
+	}
+
+	private deserializeVector(buffer: Buffer): number[] {
+		// Convert binary buffer back to number array
+		const length = buffer.length / 4;
+		const vector: number[] = [];
+		for (let i = 0; i < length; i++) {
+			vector.push(buffer.readFloatLE(i * 4));
+		}
+		return vector;
+	}
+
+	private cosineSimilarity(a: number[], b: number[]): number {
+		// Calculate cosine similarity: (a · b) / (||a|| * ||b||)
+		let dotProduct = 0;
+		let normA = 0;
+		let normB = 0;
+
+		for (let i = 0; i < a.length; i++) {
+			dotProduct += a[i] * b[i];
+			normA += a[i] * a[i];
+			normB += b[i] * b[i];
+		}
+
+		normA = Math.sqrt(normA);
+		normB = Math.sqrt(normB);
+
+		if (normA === 0 || normB === 0) {
+			return 0;
+		}
+
+		return dotProduct / (normA * normB);
 	}
 
 	private getTableName(name: string): string {

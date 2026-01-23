@@ -13,11 +13,9 @@ export class VectorStoreData extends WithTimestamps {
 	@Index()
 	memoryKey: string;
 
-	// We use 'text'/'blob' for TypeORM compatibility, migrations create the actual vector type
-	@Column({
-		type: dbType === 'postgresdb' ? 'text' : 'blob',
-	})
-	vector: string | Buffer;
+	// Binary vector storage: bytea for PostgreSQL, blob for SQLite
+	@Column(dbType === 'postgresdb' ? 'bytea' : 'blob')
+	vector: Buffer;
 
 	@Column('text')
 	content: string;
