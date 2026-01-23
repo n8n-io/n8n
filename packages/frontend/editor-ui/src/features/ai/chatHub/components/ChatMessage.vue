@@ -32,7 +32,6 @@ const {
 	minHeight,
 	cachedAgentDisplayName,
 	cachedAgentIcon,
-	containerWidth,
 } = defineProps<{
 	message: ChatMessage;
 	compact: boolean;
@@ -45,7 +44,6 @@ const {
 	 * minHeight allows scrolling agent's response to the top while it is being generated
 	 */
 	minHeight?: number;
-	containerWidth: number;
 }>();
 
 const emit = defineEmits<{
@@ -250,7 +248,6 @@ onBeforeMount(() => {
 		]"
 		:style="{
 			minHeight: minHeight ? `${minHeight}px` : undefined,
-			'--container--width': `${containerWidth}px`,
 		}"
 		:data-message-id="message.id"
 		:data-test-id="`chat-message-${message.id}`"
@@ -330,13 +327,13 @@ onBeforeMount(() => {
 					<div v-if="message.type === 'human'" :class="$style.messageContent">
 						{{ message.content }}
 					</div>
-					<ChatMarkdownChunk
-						v-for="(chunk, index) in messageChunks"
-						v-else
-						:key="index"
-						:source="chunk"
-						:container-width="containerWidth"
-					/>
+					<div v-else :class="$style.markdownContent">
+						<ChatMarkdownChunk
+							v-for="(chunk, index) in messageChunks"
+							:key="index"
+							:source="chunk"
+						/>
+					</div>
 				</div>
 				<ChatTypingIndicator v-if="message.status === 'running'" :class="$style.typingIndicator" />
 				<ChatMessageActions
@@ -366,6 +363,24 @@ onBeforeMount(() => {
 	line-height: var(--line-height--xl);
 }
 
+.markdownContent {
+	> * + * > *:first-child {
+		margin-top: var(--spacing--sm);
+	}
+
+	> *:first-child > *:first-child {
+		margin-top: 0;
+	}
+
+	> *:last-child > *:last-child {
+		margin-bottom: 0;
+	}
+
+	h1:first-child {
+		margin-top: 0;
+	}
+}
+
 .codeBlockActions > * {
 	margin-top: -2px;
 }
@@ -392,14 +407,12 @@ onBeforeMount(() => {
 .content {
 	display: flex;
 	flex-direction: column;
-	align-items: stretch;
 }
 
 .attachments {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	padding-bottom: var(--spacing--2xs);
 
 	.chatMessage & {
 		margin-top: var(--spacing--xs);
@@ -409,13 +422,13 @@ onBeforeMount(() => {
 .chatMessage {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--2xs);
 	position: relative;
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: 1.5;
 
 	.user & {
-		max-width: fit-content;
 		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);

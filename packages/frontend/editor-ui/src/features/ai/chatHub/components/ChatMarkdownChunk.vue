@@ -4,9 +4,8 @@ import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/use
 import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 import { computed, ref, useCssModule } from 'vue';
 
-const { source, containerWidth } = defineProps<{
+const { source } = defineProps<{
 	source: string;
-	containerWidth: number;
 }>();
 
 const styles = useCssModule();
@@ -34,10 +33,7 @@ function handleMouseLeave() {
 
 <template>
 	<div
-		:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-		:style="{
-			'--container--width': `${containerWidth}px`,
-		}"
+		:class="$style.chatMessageMarkdown"
 		@mousemove="handleMouseMove"
 		@mouseleave="handleMouseLeave"
 	>
@@ -59,21 +55,7 @@ function handleMouseLeave() {
 <style lang="scss" module>
 .chatMessageMarkdown {
 	display: block;
-	box-sizing: border-box;
 	color: var(--color--text--shade-1);
-
-	// Base spacing rhythm between sibling elements
-	> * + * {
-		margin-top: var(--spacing--sm);
-	}
-
-	> *:first-child {
-		margin-top: 0;
-	}
-
-	> *:last-child {
-		margin-bottom: 0;
-	}
 
 	// Paragraphs and normal text
 	p,
@@ -94,53 +76,61 @@ function handleMouseLeave() {
 	h4,
 	h5,
 	h6 {
+		margin: 0;
 		color: var(--color--text--shade-1);
 		line-height: var(--line-height--md);
+		font-weight: var(--font-weight--bold);
 		scroll-margin-top: var(--spacing--xl);
 	}
 
 	h1 {
 		font-size: var(--font-size--xl);
-		font-weight: var(--font-weight--bold);
+		margin-top: var(--spacing--lg);
 	}
 
 	h2 {
 		font-size: var(--font-size--lg);
-		font-weight: var(--font-weight--bold);
+		margin-top: var(--spacing--lg);
 	}
 
 	h3 {
 		font-size: var(--font-size--md);
-		font-weight: var(--font-weight--bold);
+		margin-top: var(--spacing--md);
+	}
+
+	h4 {
+		font-size: var(--font-size--sm);
+		margin-top: var(--spacing--md);
+	}
+
+	h5,
+	h6 {
+		font-size: var(--font-size--sm);
+		margin-top: var(--spacing--sm);
 	}
 
 	h2 + h3 {
 		margin-top: var(--spacing--sm);
 	}
 
-	h4 {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h5,
-	h6 {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-		margin-top: var(--spacing--sm);
+	> h1:first-child,
+	> h2:first-child,
+	> h3:first-child,
+	> h4:first-child,
+	> h5:first-child,
+	> h6:first-child {
+		margin-top: 0;
 	}
 
 	// Strong/bold text
 	strong,
 	b {
-		font-size: var(--font-size--md);
 		color: var(--color--text--shade-1);
 		font-weight: var(--font-weight--bold);
 	}
 
 	// Links
 	a:not(:where(h1, h2, h3, h4, h5, h6) *) {
-		font-size: var(--font-size--md);
 		color: var(--color--text--shade-1);
 		font-weight: var(--font-weight--medium);
 		text-decoration: underline;
@@ -207,20 +197,16 @@ function handleMouseLeave() {
 		}
 
 		& .codeBlockActions {
-			position: sticky;
-			top: var(--spacing--sm);
+			position: absolute;
+			top: var(--spacing--2xs);
+			right: var(--spacing--2xs);
 			display: flex;
 			justify-content: flex-end;
-			height: 32px;
 			pointer-events: none;
 
 			& > * {
 				pointer-events: auto;
 			}
-		}
-
-		& .codeBlockActions ~ code {
-			margin-top: -32px;
 		}
 
 		& ~ pre {
@@ -230,7 +216,6 @@ function handleMouseLeave() {
 
 	// Blockquotes
 	blockquote {
-		font-size: var(--font-size--md);
 		font-style: italic;
 		border-left: var(--spacing--4xs) solid var(--color--foreground--shade-1);
 		padding-left: var(--spacing--sm);
@@ -302,16 +287,8 @@ function handleMouseLeave() {
 
 	// Tables
 	.tableContainer {
-		width: var(--container--width);
-		padding-bottom: 1em;
-		padding-left: calc((var(--container--width) - 100%) / 2);
-		padding-right: var(--spacing--lg);
-		margin-left: calc(-1 * (var(--container--width) - 100%) / 2);
+		width: 100%;
 		overflow-x: auto;
-
-		&:first-child {
-			padding-top: 1em;
-		}
 	}
 
 	table {
