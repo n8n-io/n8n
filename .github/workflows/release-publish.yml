@@ -187,6 +187,7 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'release:minor') &&
       !contains(needs.publish-to-npm.outputs.release, '-rc.')
     runs-on: ubuntu-latest
+    environment: minor-release-tag-merge
     steps:
       - name: Generate GitHub App Token
         id: generate_token
@@ -201,12 +202,10 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
 
-      # TODO: Update bot user ID once n8n-release-tag-merge App is created
-      # Get ID from: https://api.github.com/users/n8n-release-tag-merge[bot]
       - name: Merge release tag to master
         run: |
           git config user.name "n8n-release-tag-merge[bot]"
-          git config user.email "000000000+n8n-release-tag-merge[bot]@users.noreply.github.com"
+          git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
           git fetch origin master
           git checkout --track origin/master
           git merge --ff-only n8n@${{ needs.publish-to-npm.outputs.release }}
@@ -217,7 +216,7 @@ jobs:
         uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         with:
           status: ${{ job.status }}
-          channel: '#alerts-build'
+          channel: '#C036AELNMV0'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to master failed for n8n@${{ needs.publish-to-npm.outputs.release }} >
