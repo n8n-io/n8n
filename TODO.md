@@ -27,6 +27,7 @@ Nice to haves / tech debt
 - [ ] rename one shot agent across code base
 - [ ] Rename ifBranch to ifElse, update branches with clearer naming.
 - [ ] what's the success: true in manifest.json?
+- [ ] update workflow() to support object init { id, settings }
 
 Future improvement
 - [ ] Support passing nodes to sticky function
