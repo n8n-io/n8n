@@ -1,5 +1,5 @@
 // services/api-helper.ts
-import type { APIRequestContext } from '@playwright/test';
+import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
@@ -16,7 +16,7 @@ import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
-import { UserApiHelper } from './user-api-helper';
+import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
@@ -224,12 +224,36 @@ export class ApiHelpers {
 		await this.setFeature(feature, true);
 	}
 
+	/**
+	 * Enable all project features (sharing, folders, advancedPermissions, projectRoles)
+	 * Use this in API-only tests - the n8n fixture enables these via withProjectFeatures()
+	 */
+	async enableProjectFeatures(): Promise<void> {
+		await this.enableFeature('sharing');
+		await this.enableFeature('folders');
+		await this.enableFeature('advancedPermissions');
+		await this.enableFeature('projectRole:admin');
+		await this.enableFeature('projectRole:editor');
+	}
+
 	async disableFeature(feature: string): Promise<void> {
 		await this.setFeature(feature, false);
 	}
 
 	async setMaxTeamProjectsQuota(value: number | string): Promise<void> {
 		await this.setQuota('maxTeamProjects', value);
+	}
+
+	/**
+	 * Create an isolated API context for a specific user.
+	 * Returns an ApiHelpers instance logged in as the specified user.
+	 * Use this for API-only operations without needing a browser context.
+	 */
+	async createApiForUser(user: Pick<TestUser, 'email' | 'password'>): Promise<ApiHelpers> {
+		const userContext = await request.newContext();
+		const userApi = new ApiHelpers(userContext);
+		await userApi.login({ email: user.email, password: user.password });
+		return userApi;
 	}
 
 	async get(path: string, params?: URLSearchParams) {

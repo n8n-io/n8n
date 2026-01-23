@@ -30,6 +30,23 @@ export class ProjectApiHelper {
 	}
 
 	/**
+	 * Get the current logged-in user's personal project.
+	 * Uses the dedicated /rest/projects/personal endpoint which returns
+	 * only the authenticated user's personal project, not all visible personal projects.
+	 * @returns The current user's personal project
+	 */
+	async getMyPersonalProject(): Promise<Project> {
+		const response = await this.api.request.get('/rest/projects/personal');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get personal project: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
 	 * Delete a project
 	 * @param projectId The ID of the project to delete
 	 * @returns True if deletion was successful
