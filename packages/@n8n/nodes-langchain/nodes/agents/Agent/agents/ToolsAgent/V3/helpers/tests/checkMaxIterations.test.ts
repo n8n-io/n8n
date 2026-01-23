@@ -1,8 +1,8 @@
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 import { mock } from 'jest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
 import type { INode, EngineResponse } from 'n8n-workflow';
 
-import type { RequestResponseMetadata } from '../../types';
 import { checkMaxIterations } from '../checkMaxIterations';
 
 describe('checkMaxIterations', () => {

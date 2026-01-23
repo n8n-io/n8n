@@ -70,4 +70,8 @@ export class ResourceCards {
 	async clickWorkflowCard(workflowName: string): Promise<void> {
 		await this.getWorkflow(workflowName).getByTestId('card-content').click();
 	}
+
+	async clickCredentialCard(credentialName: string): Promise<void> {
+		await this.getCredential(credentialName).getByTestId('card-content').click();
+	}
 }
