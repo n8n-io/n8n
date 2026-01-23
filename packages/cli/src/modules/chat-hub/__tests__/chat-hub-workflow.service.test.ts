@@ -25,6 +25,8 @@ describe('ChatHubWorkflowService', () => {
 	const defaultExecutionMetadata: ChatHubAuthenticationMetadata = {
 		authToken: 'test-token-123',
 		browserId: 'browser-456',
+		method: 'POST',
+		endpoint: '/api/chat/message',
 	};
 
 	beforeEach(() => {
@@ -646,7 +648,12 @@ describe('ChatHubWorkflowService', () => {
 				type: 'n8n-nodes-base.chatTrigger',
 				parameters: {},
 			} as any;
-			const executionMetadata = { authToken: 'token-123', browserId: 'browser-456' };
+			const executionMetadata: ChatHubAuthenticationMetadata = {
+				authToken: 'token-123',
+				browserId: 'browser-456',
+				method: 'POST',
+				endpoint: '/api/chat/message',
+			};
 
 			const result = service.prepareExecutionData(
 				triggerNode,
@@ -672,6 +679,8 @@ describe('ChatHubWorkflowService', () => {
 			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
 				authToken: 'token',
 				browserId: undefined,
+				method: 'POST',
+				endpoint: '/api/chat/message',
 			});
 
 			expect(result[0].node.parameters).toMatchObject({
@@ -699,6 +708,8 @@ describe('ChatHubWorkflowService', () => {
 			const result = service.prepareExecutionData(triggerNode, 'session-123', 'Hello', [], {
 				authToken: 'token',
 				browserId: 'browser',
+				method: 'POST',
+				endpoint: '/api/chat/message',
 			});
 
 			expect(result[0].node.parameters).toMatchObject({

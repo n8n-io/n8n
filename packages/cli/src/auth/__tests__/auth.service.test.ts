@@ -636,7 +636,47 @@ describe('AuthService', () => {
 
 		it('should throw on hijacked tokens', async () => {
 			userRepository.findOne.mockResolvedValue(user);
-			const req = mock<AuthenticatedRequest>({ browserId: 'another-browser' });
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'POST',
+				baseUrl: '/api',
+				route: { path: '/some-endpoint' },
+			});
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should skip browserId check for GET requests on skip endpoints', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/api',
+				route: { path: '/chat/sessions' },
+			});
+
+			// Mock skipBrowserIdCheckEndpoints to include this endpoint
+			(authService as any).skipBrowserIdCheckEndpoints = ['/api/chat/sessions'];
+
+			// Should not throw even though browserId is different
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should not skip browserId check for POST requests on skip endpoints', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'POST',
+				baseUrl: '/api',
+				route: { path: '/chat/sessions' },
+			});
+
+			// Mock skipBrowserIdCheckEndpoints to include this endpoint
+			(authService as any).skipBrowserIdCheckEndpoints = ['/api/chat/sessions'];
+
+			// Should still throw for POST even on skip endpoint
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
@@ -838,62 +878,51 @@ describe('AuthService', () => {
 		});
 	});
 
-	describe('getBrowserIdIfApplicable', () => {
-		it('should return browserId for POST requests', () => {
+	describe('getBrowserId', () => {
+		it('should return browserId from request', () => {
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'browser-123',
+			});
+
+			const browserId = authService.getBrowserId(req);
+
+			expect(browserId).toBe('browser-123');
+		});
+	});
+
+	describe('getMethod', () => {
+		it('should return HTTP method from request', () => {
 			const req = mock<AuthenticatedRequest>({
 				method: 'POST',
+			});
+
+			const method = authService.getMethod(req);
+
+			expect(method).toBe('POST');
+		});
+	});
+
+	describe('getEndpoint', () => {
+		it('should return full endpoint path when route is present', () => {
+			const req = mock<AuthenticatedRequest>({
 				baseUrl: '/api',
 				route: { path: '/chat/message' },
-				browserId: 'browser-123',
 			});
 
-			const browserId = authService.getBrowserIdIfApplicable(req);
+			const endpoint = authService.getEndpoint(req);
 
-			expect(browserId).toBe('browser-123');
+			expect(endpoint).toBe('/api/chat/message');
 		});
 
-		it('should return false for GET on skip endpoints', () => {
+		it('should return baseUrl when route is not present', () => {
 			const req = mock<AuthenticatedRequest>({
-				method: 'GET',
 				baseUrl: '/api',
-				route: { path: '/chat/sessions' },
-				browserId: 'browser-123',
+				route: undefined,
 			});
 
-			// Mock skipBrowserIdCheckEndpoints to include this endpoint
-			(authService as any).skipBrowserIdCheckEndpoints = ['/api/chat/sessions'];
+			const endpoint = authService.getEndpoint(req);
 
-			const browserId = authService.getBrowserIdIfApplicable(req);
-
-			expect(browserId).toBe(false);
-		});
-
-		it('should return browserId for POST on skip endpoints', () => {
-			const req = mock<AuthenticatedRequest>({
-				method: 'POST',
-				baseUrl: '/api',
-				route: { path: '/chat/sessions' },
-				browserId: 'browser-123',
-			});
-
-			// Mock skipBrowserIdCheckEndpoints to include this endpoint
-			(authService as any).skipBrowserIdCheckEndpoints = ['/api/chat/sessions'];
-
-			const browserId = authService.getBrowserIdIfApplicable(req);
-
-			expect(browserId).toBe('browser-123');
-		});
-
-		it('should return browserId when no route is present', () => {
-			const req = mock<AuthenticatedRequest>({
-				method: 'POST',
-				baseUrl: '/api',
-				browserId: 'browser-123',
-			});
-
-			const browserId = authService.getBrowserIdIfApplicable(req);
-
-			expect(browserId).toBe('browser-123');
+			expect(endpoint).toBe('/api');
 		});
 	});
 });

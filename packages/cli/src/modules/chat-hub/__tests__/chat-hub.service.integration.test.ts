@@ -1003,6 +1003,8 @@ describe('chatHub', () => {
 					},
 					{
 						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
 					},
 				);
 
@@ -1085,6 +1087,8 @@ describe('chatHub', () => {
 					},
 					{
 						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
 					},
 				);
 
@@ -1177,6 +1181,8 @@ describe('chatHub', () => {
 					},
 					{
 						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
 					},
 				);
 
@@ -1283,6 +1289,8 @@ describe('chatHub', () => {
 					},
 					{
 						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
 					},
 				);
 
@@ -1369,6 +1377,8 @@ describe('chatHub', () => {
 					},
 					{
 						authToken: 'authtoken',
+						method: 'POST',
+						endpoint: '/api/chat/message',
 					},
 				);
 
@@ -1548,6 +1558,8 @@ describe('chatHub', () => {
 						},
 						{
 							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
 						},
 					);
 
@@ -1665,6 +1677,8 @@ describe('chatHub', () => {
 						},
 						{
 							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
 						},
 					);
 
@@ -1789,6 +1803,8 @@ describe('chatHub', () => {
 						},
 						{
 							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
 						},
 					);
 
@@ -1948,6 +1964,8 @@ describe('chatHub', () => {
 						},
 						{
 							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
 						},
 					);
 
@@ -2067,6 +2085,8 @@ describe('chatHub', () => {
 						},
 						{
 							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
 						},
 					);
 
@@ -2128,6 +2148,8 @@ describe('chatHub', () => {
 							},
 							{
 								authToken: 'authtoken',
+								method: 'POST',
+								endpoint: '/api/chat/message',
 							},
 						),
 					).rejects.toThrow('Chat Trigger node response mode must be set to');
@@ -2245,17 +2267,26 @@ describe('chatHub', () => {
 						return { executionId };
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
 
 					const messages = await retryUntil(async () => {
 						const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -2362,17 +2393,26 @@ describe('chatHub', () => {
 						return { executionId };
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
 
 					const messages = await retryUntil(async () => {
 						const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -2460,17 +2500,26 @@ describe('chatHub', () => {
 						return { executionId };
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
 
 					const messages = await retryUntil(async () => {
 						const messages = await messagesRepository.getManyBySessionId(sessionId);
@@ -2535,17 +2584,26 @@ describe('chatHub', () => {
 						return { executionId };
 					});
 
-					await chatHubService.sendHumanMessage(mockResponse, member, {
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'n8n', workflowId: workflow.id },
-						credentials: {},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					});
+					await chatHubService.sendHumanMessage(
+						mockResponse,
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
 
 					// Ensure polling was attempted
 					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
