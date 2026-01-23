@@ -33,6 +33,7 @@ describe('eligibleModules', () => {
 			'sso-oidc',
 			'sso-saml',
 			'log-streaming',
+			'ldap',
 		]);
 	});
 
@@ -52,6 +53,7 @@ describe('eligibleModules', () => {
 			'sso-oidc',
 			'sso-saml',
 			'log-streaming',
+			'ldap',
 		]);
 	});
 

@@ -61,7 +61,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 .background {
 	position: absolute;
 	background-color: var(--input-triple--color--background);
-	top: 0;
+	top: var(--parameter-input-options--height);
 	bottom: 0;
 	left: 0;
 	right: 0;
@@ -92,10 +92,6 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	flex-basis: 160px;
 }
 
-.default .middle {
-	padding-top: var(--parameter-input-options--height);
-}
-
 .item:first-of-type {
 	--input--radius--top-left: var(--radius);
 	--input--radius--bottom-left: var(--radius);
@@ -115,7 +111,6 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 
 	.middle {
 		margin-left: -1px;
-		padding-top: var(--parameter-input-options--height);
 
 		--input-triple--radius--top-right: var(--radius);
 		--input-triple--radius--bottom-right: 0;

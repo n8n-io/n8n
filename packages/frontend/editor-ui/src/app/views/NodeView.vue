@@ -1251,8 +1251,8 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
-function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
-	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
+async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+	const webhookUrl = await workflowsStore.getWebhookUrl(id, webhookType);
 	if (!webhookUrl) return;
 
 	void clipboard.copy(webhookUrl);
@@ -1275,7 +1275,7 @@ async function onCopyTestUrl(id: string) {
 		return;
 	}
 
-	copyWebhookUrl(id, 'test');
+	void copyWebhookUrl(id, 'test');
 }
 
 async function onCopyProductionUrl(id: string) {
@@ -1287,7 +1287,7 @@ async function onCopyProductionUrl(id: string) {
 		});
 		return;
 	}
-	copyWebhookUrl(id, 'production');
+	void copyWebhookUrl(id, 'production');
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
@@ -1557,6 +1557,11 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = false;
+
+				// Apply tidy-up if requested
+				if (json.tidyUp === true) {
+					canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+				}
 			} catch (e) {
 				if (window.top) {
 					window.top.postMessage(
@@ -1901,6 +1906,9 @@ watch(
 	() => uiStore.dirtyStateSetCount,
 	(dirtyStateSetCount) => {
 		if (dirtyStateSetCount > 0) {
+			// Skip write access and auto-save in demo mode
+			if (isDemoRoute.value) return;
+
 			collaborationStore.requestWriteAccess();
 
 			// Trigger auto-save (debounced) for writers only

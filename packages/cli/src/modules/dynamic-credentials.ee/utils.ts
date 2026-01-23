@@ -24,7 +24,5 @@ export function getBearerToken(req: Request): string {
 }
 
 export const getDynamicCredentialMiddlewares = () => {
-	const dynamicCredentialEndpointsMiddleware =
-		Container.get(DynamicCredentialService).getDynamicCredentialsEndpointsMiddleware();
-	return dynamicCredentialEndpointsMiddleware ? [dynamicCredentialEndpointsMiddleware] : undefined;
+	return [Container.get(DynamicCredentialService).getDynamicCredentialsEndpointsMiddleware()];
 };

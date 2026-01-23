@@ -62,5 +62,8 @@ runs:
       uses: useblacksmith/setup-docker-builder@53647ab5afe8827af5623b35bd4302eabd41619f # v1.2.0
 
     - name: Build Project
-      run: ${{ inputs.build-command }}
+      if: ${{ inputs.build-command != '' }}
+      run: |
+        ${{ inputs.build-command }} --summarize
+        node .github/scripts/send-build-stats.mjs || true
       shell: bash

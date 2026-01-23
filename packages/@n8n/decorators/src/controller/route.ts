@@ -2,13 +2,8 @@ import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
 import { ControllerRegistryMetadata } from './controller-registry-metadata';
-import type {
-	Controller,
-	CorsOptions,
-	Method,
-	RateLimiterLimits,
-	KeyedRateLimiterConfig,
-} from './types';
+import type { KeyedRateLimiterConfig, RateLimiterLimits } from './rate-limit';
+import type { Controller, CorsOptions, Method } from './types';
 
 interface RouteOptions {
 	middlewares?: RequestHandler[];
