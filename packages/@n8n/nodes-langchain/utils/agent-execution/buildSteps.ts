@@ -236,7 +236,7 @@ export function buildSteps(
 			const aiToolData = tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json);
 			let observation: string;
 			if (aiToolData && aiToolData.length > 0) {
-				observation = JSON.stringify(aiToolData);
+				observation = JSON.stringify(aiToolData.length > 1 ? aiToolData : aiToolData[0]);
 			} else if (tool.data?.error) {
 				// Include error information in observation so the agent can see what went wrong
 				// tool.data is ITaskData which has error?: ExecutionError

@@ -44,6 +44,9 @@ function isApprovalData(data: unknown): data is { approved: boolean } {
 	);
 }
 
+function getActionJsonResponse(actionResponse: ExecuteNodeResult<RequestResponseMetadata>) {
+	return actionResponse.data?.data?.ai_tool?.[0]?.[0]?.json;
+}
 /**
  * Extract approval status from HITL response data.
  * SendAndWait webhook returns { approved: boolean } or { data: { approved: boolean } }
@@ -51,7 +54,7 @@ function isApprovalData(data: unknown): data is { approved: boolean } {
 function getApprovalStatus(
 	actionResponse: ExecuteNodeResult<RequestResponseMetadata>,
 ): boolean | undefined {
-	const json = actionResponse.data?.data?.ai_tool?.[0]?.[0]?.json;
+	const json = getActionJsonResponse(actionResponse);
 
 	if (isApprovalData(json)) {
 		return json.approved;
@@ -65,8 +68,27 @@ function getApprovalStatus(
 	return undefined;
 }
 
-function getDenialMessage(toolName: string, toolId: string): string {
-	return `User rejected the tool call for ${toolName} with id ${toolId}. STOP what you are doing and wait for the user to tell you how to proceed. The tool is still available if needed.`;
+function getChatInput(actionResponse: ExecuteNodeResult<RequestResponseMetadata>) {
+	const json = getActionJsonResponse(actionResponse);
+	const chatInput = json?.chatInput ?? (json?.data as IDataObject | undefined)?.chatInput;
+	if (typeof chatInput === 'string') {
+		return chatInput;
+	}
+	return undefined;
+}
+
+function getDenialMessage(toolName: string, toolId: string, chatInput?: string): string {
+	const parts: string[] = [];
+	if (chatInput) {
+		parts.push(
+			`The user reviewed your planned tool call to ${toolName} (id: ${toolId}) and provided feedback: "${chatInput}".`,
+		);
+	} else {
+		parts.push(`User rejected the tool call to ${toolName} (id: ${toolId}).`);
+		parts.push('STOP what you are doing and wait for the user to tell you how to proceed.');
+	}
+	parts.push('The tool is still available if needed.');
+	return parts.join(' ');
 }
 
 /**
@@ -105,6 +127,7 @@ export function processHitlResponses(
 
 		const { hitl } = actionResponse.action.metadata;
 		const approved = getApprovalStatus(actionResponse);
+		const chatInput = getChatInput(actionResponse);
 		const toolName = hitl.gatedToolNodeName;
 		const toolId = actionResponse.action.id;
 		if (approved === true) {
@@ -137,9 +160,7 @@ export function processHitlResponses(
 							[
 								{
 									json: {
-										id: toolId,
-										response: getDenialMessage(toolName, toolId),
-										approved: false,
+										output: getDenialMessage(toolName, toolId, chatInput),
 									},
 								},
 							],
