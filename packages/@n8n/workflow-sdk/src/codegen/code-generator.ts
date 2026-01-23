@@ -714,9 +714,9 @@ function generateBranchCode(
 	if (branch === null) return 'null';
 
 	if (Array.isArray(branch)) {
-		// Fan-out within branch - generate as array [branch1, branch2, ...]
+		// Fan-out within branch - generate as fanOut(branch1, branch2, ...)
 		const branchesCode = branch.map((b) => generateComposite(b, ctx)).join(', ');
-		return `[${branchesCode}]`;
+		return `fanOut(${branchesCode})`;
 	}
 
 	return generateComposite(branch, ctx);
@@ -743,13 +743,18 @@ function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): st
 function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
+	// For named syntax, we need a variable reference to the Switch node
+	const switchNodeRef = getVarRefOrInlineNode(switchCase.switchNode, ctx);
+
+	// If no cases, just return the switch node reference (don't wrap in switchCase())
+	if (switchCase.cases.length === 0) {
+		return switchNodeRef;
+	}
+
 	// Generate named case entries: { case0: ..., case1: ..., ... }
 	const caseEntries = switchCase.cases
 		.map((c, i) => `case${i}: ${generateBranchCode(c, innerCtx)}`)
 		.join(', ');
-
-	// For named syntax, we need a variable reference to the Switch node
-	const switchNodeRef = getVarRefOrInlineNode(switchCase.switchNode, ctx);
 
 	return `switchCase(${switchNodeRef}, { ${caseEntries} })`;
 }
