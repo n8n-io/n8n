@@ -15,6 +15,8 @@ import type {
 	IConnections,
 	IDataObject,
 	NodeChain,
+	CredentialReference,
+	NewCredentialValue,
 } from './types/base';
 import { isNodeChain } from './types/base';
 import { isMergeNamedInputSyntax } from './merge';
