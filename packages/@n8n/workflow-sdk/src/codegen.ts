@@ -467,9 +467,9 @@ export function generateWorkflowCode(json: WorkflowJSON): string {
 	for (const orphanInfo of orphanNodes) {
 		if (addedNodes.has(orphanInfo.node.name)) continue;
 
-		// Check if orphan is an IF node with branches - use ifBranch() composite
+		// Check if orphan is an IF node with branches - use ifElse() composite
 		if (isIfNode(orphanInfo.node)) {
-			const ifResult = generateIfBranchCall(
+			const ifResult = generateIfElseCall(
 				orphanInfo,
 				nodeInfoMap,
 				addedNodes,
@@ -693,7 +693,7 @@ function generateNodeCallWithChainUsingSharedVars(
 		const falseToShared = falseTargets.length > 0 && sharedVars.has(falseTargets[0].to);
 
 		if (trueToShared || falseToShared) {
-			// Generate ifBranch with appropriate branches
+			// Generate ifElse with appropriate branches
 			const trueCall = trueToShared ? sharedVars.get(trueTargets[0].to)! : 'null';
 			const falseCall = falseToShared ? sharedVars.get(falseTargets[0].to)! : 'null';
 
@@ -708,7 +708,7 @@ function generateNodeCallWithChainUsingSharedVars(
 				configParts.push(`name: '${escapeString(startInfo.node.name)}'`);
 			}
 			const configStr = configParts.length > 0 ? `, { ${configParts.join(', ')} }` : '';
-			return `ifBranch([${trueCall}, ${falseCall}]${configStr})`;
+			return `ifElse([${trueCall}, ${falseCall}]${configStr})`;
 		}
 	}
 
@@ -827,10 +827,10 @@ function generateChain(
 					}
 				}
 
-				// Check if target is an IF node with both branches - use ifBranch() composite
+				// Check if target is an IF node with both branches - use ifElse() composite
 				// BUT if the IF node is a cycle target, use variable reference instead
 				if (isIfNode(targetInfo.node) && !cycleNodeVars?.has(target.to)) {
-					const ifResult = generateIfBranchCall(
+					const ifResult = generateIfElseCall(
 						targetInfo,
 						nodeInfoMap,
 						addedNodes,
@@ -1500,7 +1500,7 @@ function generateChainUpToMerge(
 
 		// Handle composites
 		if (isIfNode(targetInfo.node)) {
-			const ifResult = generateIfBranchCall(
+			const ifResult = generateIfElseCall(
 				targetInfo,
 				nodeInfoMap,
 				addedNodes,
@@ -1602,7 +1602,7 @@ function generateConvergenceNodeWithChain(
 
 		// Handle composite patterns (IF, Switch, Merge) in downstream
 		if (isIfNode(targetInfo.node)) {
-			const ifResult = generateIfBranchCall(
+			const ifResult = generateIfElseCall(
 				targetInfo,
 				nodeInfoMap,
 				addedNodes,
@@ -1743,7 +1743,7 @@ function generateMergeCall(
 
 /**
  * Generate a node call WITH its downstream chain using .then() chaining.
- * This is used for branch nodes in ifBranch() and switchCase() to include
+ * This is used for branch nodes in ifElse() and switchCase() to include
  * the entire downstream chain inline.
  *
  * Recursively handles IF, Switch, and Merge nodes to prevent them from
@@ -1785,7 +1785,7 @@ function generateNodeCallWithChain(
 		return varName;
 	}
 
-	// For IF/Switch nodes that are cycle targets, we can't use ifBranch/switchCase
+	// For IF/Switch nodes that are cycle targets, we can't use ifElse/switchCase
 	// because those create new nodes. Instead, use the variable reference and
 	// let the branches be connected via .then([...]) syntax.
 	// This is handled below by the cycleNodeVars check at line ~1295.
@@ -1794,7 +1794,7 @@ function generateNodeCallWithChain(
 	// If so, generate the composite call instead of a regular node call
 	// BUT skip this if the node is a cycle target (we use variable reference instead)
 	if (isIfNode(startInfo.node) && !cycleNodeVars?.has(startInfo.node.name)) {
-		const ifResult = generateIfBranchCall(
+		const ifResult = generateIfElseCall(
 			startInfo,
 			nodeInfoMap,
 			addedNodes,
@@ -2119,7 +2119,7 @@ function generateNodeCallWithChain(
 
 		// Handle composite patterns recursively (IF, Switch, Merge)
 		if (isIfNode(targetInfo.node)) {
-			const ifResult = generateIfBranchCall(
+			const ifResult = generateIfElseCall(
 				targetInfo,
 				nodeInfoMap,
 				addedNodes,
@@ -2177,17 +2177,17 @@ function generateNodeCallWithChain(
 }
 
 /**
- * Generate an ifBranch() call for an IF node.
+ * Generate an ifElse() call for an IF node.
  * Supports both full IF nodes (both branches) and single-branch IF nodes.
- * Returns the ifBranch call string, or null if no branches connected.
+ * Returns the ifElse call string, or null if no branches connected.
  * Note: branchNames is kept for backward compatibility but downstream nodes
  * are now included inline via .then() chaining.
  *
  * When both branches converge to the same downstream node(s), those convergence
- * nodes are generated as variables before the ifBranch call, and both branches
+ * nodes are generated as variables before the ifElse call, and both branches
  * reference the variable to preserve both connections.
  */
-function generateIfBranchCall(
+function generateIfElseCall(
 	ifInfo: NodeInfo,
 	nodeInfoMap: Map<string, NodeInfo>,
 	addedNodes: Set<string>,
@@ -2286,7 +2286,7 @@ function generateIfBranchCall(
 		addedNodes.add(falseBranch.to);
 	}
 
-	// Generate the ifBranch call with inline downstream chains
+	// Generate the ifElse call with inline downstream chains
 	// Pass convergence context so chains reference variables instead of inlining
 	const trueCall = trueInfo
 		? generateNodeCallWithChain(
@@ -2348,7 +2348,7 @@ function generateIfBranchCall(
 	}
 
 	// Build the final call with variable declarations prepended
-	let finalCall = `ifBranch([${trueCall}, ${falseCall}]${configStr})${errorHandlerCall}`;
+	let finalCall = `ifElse([${trueCall}, ${falseCall}]${configStr})${errorHandlerCall}`;
 	if (varDeclarations.length > 0) {
 		// Wrap in IIFE to scope variables
 		finalCall = `(() => {\n${varDeclarations.join(';\n')};\nreturn ${finalCall};\n})()`;

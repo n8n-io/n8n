@@ -463,20 +463,20 @@ export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 }
 
 /**
- * Configuration for IF branch
+ * Configuration for IF else
  */
-export interface IfBranchConfig extends NodeConfig {
+export interface IfElseConfig extends NodeConfig {
 	version?: number | string;
 	id?: string;
 }
 
 /**
- * IF branch composite
+ * IF else composite
  * trueBranch/falseBranch can be:
  * - single NodeInstance: one target
  * - array of NodeInstance: fan-out to multiple parallel targets
  */
-export interface IfBranchComposite {
+export interface IfElseComposite {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
 	readonly trueBranch:
 		| NodeInstance<string, string, unknown>
@@ -554,7 +554,7 @@ export interface WorkflowBuilder {
 
 	then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
 	then<M extends MergeComposite>(merge: M): WorkflowBuilder;
-	then(ifBranch: IfBranchComposite): WorkflowBuilder;
+	then(ifElse: IfElseComposite): WorkflowBuilder;
 	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
 
@@ -660,13 +660,13 @@ export type MergeFn = <TBranches extends NodeInstance<string, string, unknown>[]
 	config?: MergeConfig,
 ) => MergeComposite<TBranches>;
 
-export type IfBranchFn = (
+export type IfElseFn = (
 	branches: [
 		NodeInstance<string, string, unknown> | null,
 		NodeInstance<string, string, unknown> | null,
 	],
-	config?: IfBranchConfig,
-) => IfBranchComposite;
+	config?: IfElseConfig,
+) => IfElseComposite;
 
 export type SwitchCaseFn = (
 	cases: NodeInstance<string, string, unknown>[],

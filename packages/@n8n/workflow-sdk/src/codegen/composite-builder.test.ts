@@ -6,7 +6,7 @@ import type { WorkflowJSON } from '../types/base';
 import type {
 	LeafNode,
 	ChainNode,
-	IfBranchCompositeNode,
+	IfElseCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
 } from './composite-tree';
@@ -90,7 +90,7 @@ describe('composite-builder', () => {
 		});
 
 		describe('IF branch', () => {
-			it('builds ifBranch composite', () => {
+			it('builds ifElse composite', () => {
 				const json: WorkflowJSON = {
 					name: 'Test',
 					nodes: [
@@ -135,17 +135,17 @@ describe('composite-builder', () => {
 				expect(tree.roots[0].kind).toBe('chain');
 				const chain = tree.roots[0] as ChainNode;
 
-				// Chain should have: Trigger -> IfBranch
+				// Chain should have: Trigger -> IfElse
 				expect(chain.nodes).toHaveLength(2);
 				expect((chain.nodes[0] as LeafNode).node.name).toBe('Trigger');
-				expect(chain.nodes[1].kind).toBe('ifBranch');
+				expect(chain.nodes[1].kind).toBe('ifElse');
 
-				const ifBranch = chain.nodes[1] as IfBranchCompositeNode;
-				expect(ifBranch.ifNode.name).toBe('IF');
-				expect(ifBranch.trueBranch).not.toBeNull();
-				expect(ifBranch.falseBranch).not.toBeNull();
-				expect((ifBranch.trueBranch as LeafNode).node.name).toBe('TrueHandler');
-				expect((ifBranch.falseBranch as LeafNode).node.name).toBe('FalseHandler');
+				const ifElse = chain.nodes[1] as IfElseCompositeNode;
+				expect(ifElse.ifNode.name).toBe('IF');
+				expect(ifElse.trueBranch).not.toBeNull();
+				expect(ifElse.falseBranch).not.toBeNull();
+				expect((ifElse.trueBranch as LeafNode).node.name).toBe('TrueHandler');
+				expect((ifElse.falseBranch as LeafNode).node.name).toBe('FalseHandler');
 			});
 
 			it('handles IF with only true branch', () => {
@@ -183,10 +183,10 @@ describe('composite-builder', () => {
 				const tree = buildCompositeTree(graph);
 
 				const chain = tree.roots[0] as ChainNode;
-				const ifBranch = chain.nodes[1] as IfBranchCompositeNode;
+				const ifElse = chain.nodes[1] as IfElseCompositeNode;
 
-				expect(ifBranch.trueBranch).not.toBeNull();
-				expect(ifBranch.falseBranch).toBeNull();
+				expect(ifElse.trueBranch).not.toBeNull();
+				expect(ifElse.falseBranch).toBeNull();
 			});
 		});
 

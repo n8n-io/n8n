@@ -12,7 +12,7 @@ import type {
 	LeafNode,
 	ChainNode,
 	VariableReference,
-	IfBranchCompositeNode,
+	IfElseCompositeNode,
 	SwitchCaseCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
@@ -125,7 +125,7 @@ const RESERVED_KEYWORDS = new Set([
 	'trigger',
 	'node',
 	'merge',
-	'ifBranch',
+	'ifElse',
 	'switchCase',
 	'splitInBatches',
 	'sticky',
@@ -383,7 +383,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 }
 
 /**
- * Generate flat config object for composite functions (ifBranch, merge, switchCase, splitInBatches).
+ * Generate flat config object for composite functions (ifElse, merge, switchCase, splitInBatches).
  * These expect { name?, version?, parameters?, credentials?, position? } directly,
  * not the { type, version, config: { ... } } format used by node().
  */
@@ -397,7 +397,7 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 		parts.push(`version: ${node.json.typeVersion}`);
 	}
 
-	// ALWAYS include name for composite nodes (ifBranch, merge, switchCase, splitInBatches)
+	// ALWAYS include name for composite nodes (ifElse, merge, switchCase, splitInBatches)
 	// because the parser's hardcoded defaults ("IF", "Merge", "Switch", "Split In Batches")
 	// don't match what generateDefaultNodeName() computes from the node type.
 	// Without this, roundtrip fails with name mismatches.
@@ -424,7 +424,7 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 
 /**
  * Generate flat node config or variable reference for composite functions.
- * Used by ifBranch, merge, switchCase, and splitInBatches.
+ * Used by ifElse, merge, switchCase, and splitInBatches.
  */
 function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
 	const nodeName = node.json.name;
@@ -565,17 +565,17 @@ function generateBranchCode(
 /**
  * Generate code for an IF branch
  */
-function generateIfBranch(ifBranch: IfBranchCompositeNode, ctx: GenerationContext): string {
+function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	const trueBranchCode = generateBranchCode(ifBranch.trueBranch, innerCtx);
-	const falseBranchCode = generateBranchCode(ifBranch.falseBranch, innerCtx);
+	const trueBranchCode = generateBranchCode(ifElse.trueBranch, innerCtx);
+	const falseBranchCode = generateBranchCode(ifElse.falseBranch, innerCtx);
 
 	// Use variable reference if IF node is already declared as a variable
-	// ifBranch expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
-	const config = generateFlatNodeOrVarRef(ifBranch.ifNode, ctx);
+	// ifElse expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
+	const config = generateFlatNodeOrVarRef(ifElse.ifNode, ctx);
 
-	return `ifBranch([${trueBranchCode}, ${falseBranchCode}], ${config})`;
+	return `ifElse([${trueBranchCode}, ${falseBranchCode}], ${config})`;
 }
 
 /**
@@ -704,8 +704,8 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateChain(node, ctx);
 		case 'varRef':
 			return generateVarRef(node, ctx);
-		case 'ifBranch':
-			return generateIfBranch(node, ctx);
+		case 'ifElse':
+			return generateIfElse(node, ctx);
 		case 'switchCase':
 			return generateSwitchCase(node, ctx);
 		case 'merge':

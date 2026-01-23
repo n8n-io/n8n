@@ -13,7 +13,7 @@ import {
 	type NodeChain,
 	type MergeComposite,
 	type SwitchCaseComposite,
-	type IfBranchComposite,
+	type IfElseComposite,
 	type SplitInBatchesBuilder,
 } from './types/base';
 
@@ -44,9 +44,9 @@ function isSwitchCaseComposite(value: unknown): value is SwitchCaseComposite {
 }
 
 /**
- * Check if value is an IfBranchComposite
+ * Check if value is an IfElseComposite
  */
-function isIfBranchComposite(value: unknown): value is IfBranchComposite {
+function isIfElseComposite(value: unknown): value is IfElseComposite {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
@@ -106,7 +106,7 @@ function getCompositeOutputNode(value: unknown): NodeInstance<string, string, un
 	if (isSwitchCaseComposite(value)) {
 		return value.switchNode;
 	}
-	if (isIfBranchComposite(value)) {
+	if (isIfElseComposite(value)) {
 		return value.ifNode;
 	}
 	if (isSplitInBatchesBuilderOrChain(value)) {

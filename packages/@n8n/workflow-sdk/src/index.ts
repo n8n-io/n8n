@@ -39,8 +39,8 @@ export type {
 	MergeComposite,
 	MergeConfig,
 	MergeMode,
-	// IF branch types
-	IfBranchComposite,
+	// IF else types
+	IfElseComposite,
 	// Switch case types
 	SwitchCaseComposite,
 	// Sticky note types
@@ -65,8 +65,8 @@ export type {
 	PlaceholderFn,
 	NewCredentialFn,
 	MergeFn,
-	IfBranchFn,
-	IfBranchConfig,
+	IfElseFn,
+	IfElseConfig,
 	SwitchCaseFn,
 	SwitchCaseConfig,
 	SplitInBatchesFn,
@@ -117,13 +117,13 @@ export {
 	type MergeNamedInputs,
 } from './merge';
 
-// IF branch composite
+// IF else composite
 export {
-	ifBranch,
-	isIfBranchNamedSyntax,
-	type IfBranchTarget,
-	type IfBranchNamedInputs,
-} from './if-branch';
+	ifElse,
+	isIfElseNamedSyntax,
+	type IfElseTarget,
+	type IfElseNamedInputs,
+} from './if-else';
 
 // Switch case composite
 export {

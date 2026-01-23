@@ -130,7 +130,7 @@ describe('code-generator', () => {
 		});
 
 		describe('IF branch', () => {
-			it('generates ifBranch composite', () => {
+			it('generates ifElse composite', () => {
 				const json: WorkflowJSON = {
 					name: 'IF Branch',
 					nodes: [
@@ -170,9 +170,9 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('ifBranch([');
+				expect(code).toContain('ifElse([');
 				// Should have true and false branches
-				expect(code).toMatch(/ifBranch\(\[[\s\S]*node\([\s\S]*node\(/);
+				expect(code).toMatch(/ifElse\(\[[\s\S]*node\([\s\S]*node\(/);
 			});
 
 			it('handles IF with null branch', () => {
@@ -205,7 +205,7 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('ifBranch([');
+				expect(code).toContain('ifElse([');
 				expect(code).toContain('null');
 			});
 		});
@@ -795,7 +795,7 @@ describe('code-generator', () => {
 			});
 
 			it('always includes name for composite nodes like IF (even if matching default)', () => {
-				// The parser's ifBranch defaults to "IF", but the codegen default is "If"
+				// The parser's ifElse defaults to "IF", but the codegen default is "If"
 				// We must always include the name for composite nodes to ensure roundtrip works
 				const json: WorkflowJSON = {
 					id: 'if-name-test',
@@ -1329,7 +1329,7 @@ describe('code-generator', () => {
 				expect(switchNode?.parameters?.options).toBeDefined();
 			});
 
-			it('preserves ifBranch parameters through roundtrip', () => {
+			it('preserves ifElse parameters through roundtrip', () => {
 				const json: WorkflowJSON = {
 					id: 'if-params-test',
 					name: 'Test',
@@ -1438,7 +1438,7 @@ describe('code-generator', () => {
 				expect(parsedNode?.parameters?.conditions).toBeDefined();
 			});
 
-			it('preserves ifBranch parameters with cycle pattern (like workflow 5755)', () => {
+			it('preserves ifElse parameters with cycle pattern (like workflow 5755)', () => {
 				// This replicates the pattern from workflow 5755 where:
 				// 1. A variable is declared for a cycle target node
 				// 2. The IF node has a chain on true branch and the variable on false branch

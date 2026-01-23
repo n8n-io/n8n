@@ -47,8 +47,8 @@ export interface VariableReference extends CompositeNodeBase {
  * - single CompositeNode: one target
  * - array of CompositeNode: fan-out to multiple parallel targets
  */
-export interface IfBranchCompositeNode extends CompositeNodeBase {
-	kind: 'ifBranch';
+export interface IfElseCompositeNode extends CompositeNodeBase {
+	kind: 'ifElse';
 	ifNode: SemanticNode;
 	trueBranch: CompositeNode | CompositeNode[] | null;
 	falseBranch: CompositeNode | CompositeNode[] | null;
@@ -136,7 +136,7 @@ export type CompositeNode =
 	| LeafNode
 	| ChainNode
 	| VariableReference
-	| IfBranchCompositeNode
+	| IfElseCompositeNode
 	| SwitchCaseCompositeNode
 	| MergeCompositeNode
 	| SplitInBatchesCompositeNode

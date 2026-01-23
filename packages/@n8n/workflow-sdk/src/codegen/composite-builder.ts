@@ -11,7 +11,7 @@ import type {
 	CompositeNode,
 	LeafNode,
 	VariableReference,
-	IfBranchCompositeNode,
+	IfElseCompositeNode,
 	SwitchCaseCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
@@ -75,7 +75,7 @@ const RESERVED_KEYWORDS = new Set([
 	'trigger',
 	'node',
 	'merge',
-	'ifBranch',
+	'ifElse',
 	'switchCase',
 	'splitInBatches',
 	'sticky',
@@ -619,7 +619,7 @@ function buildBranchTargets(
 /**
  * Build composite for an IF node
  */
-function buildIfBranch(node: SemanticNode, ctx: BuildContext): IfBranchCompositeNode {
+function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode {
 	const trueBranchTargets = node.outputs.get('trueBranch') ?? [];
 	const falseBranchTargets = node.outputs.get('falseBranch') ?? [];
 
@@ -627,7 +627,7 @@ function buildIfBranch(node: SemanticNode, ctx: BuildContext): IfBranchComposite
 	const falseBranch = buildBranchTargets(falseBranchTargets, ctx);
 
 	return {
-		kind: 'ifBranch',
+		kind: 'ifElse',
 		ifNode: node,
 		trueBranch,
 		falseBranch,
@@ -754,8 +754,8 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 	let compositeNode: CompositeNode;
 
 	switch (compositeType) {
-		case 'ifBranch':
-			compositeNode = buildIfBranch(node, ctx);
+		case 'ifElse':
+			compositeNode = buildIfElse(node, ctx);
 			break;
 		case 'switchCase':
 			compositeNode = buildSwitchCase(node, ctx);

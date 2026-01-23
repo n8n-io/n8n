@@ -274,7 +274,7 @@ import {
 	reranker as rerankerFn,
 } from './subnode-builders';
 import { merge as mergeFn } from './merge';
-import { ifBranch as ifBranchFn } from './if-branch';
+import { ifElse as ifElseFn } from './if-else';
 import { switchCase as switchCaseFn } from './switch-case';
 import { splitInBatches as splitInBatchesFn } from './split-in-batches';
 import type { WorkflowJSON } from './types/base';
@@ -317,7 +317,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 			'textSplitter',
 			'reranker',
 			'merge',
-			'ifBranch',
+			'ifElse',
 			'switchCase',
 			'splitInBatches',
 			executableCode,
@@ -351,7 +351,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		textSplitterFn,
 		rerankerFn,
 		mergeFn,
-		ifBranchFn,
+		ifElseFn,
 		switchCaseFn,
 		splitInBatchesFn,
 	);

@@ -1,11 +1,11 @@
-import { ifBranch, isIfBranchNamedSyntax } from '../if-branch';
+import { ifElse, isIfElseNamedSyntax } from '../if-else';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
 
-describe('IF Branch', () => {
-	describe('ifBranch() array syntax (existing)', () => {
-		it('should create an IF branch composite with array of branches', () => {
+describe('IF Else', () => {
+	describe('ifElse() array syntax (existing)', () => {
+		it('should create an IF else composite with array of branches', () => {
 			const trueNode = node({
 				type: 'n8n-nodes-base.set',
 				version: 3.4,
@@ -17,15 +17,15 @@ describe('IF Branch', () => {
 				config: { name: 'False Branch' },
 			});
 
-			const ib = ifBranch([trueNode, falseNode]);
+			const ib = ifElse([trueNode, falseNode]);
 			expect(ib.ifNode).toBeDefined();
 			expect(ib.trueBranch).toBe(trueNode);
 			expect(ib.falseBranch).toBe(falseNode);
 		});
 	});
 
-	describe('ifBranch() named object syntax', () => {
-		it('should support ifBranch(node, { true, false }) syntax', () => {
+	describe('ifElse() named object syntax', () => {
+		it('should support ifElse(node, { true, false }) syntax', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
@@ -48,11 +48,11 @@ describe('IF Branch', () => {
 				config: { name: 'Downstream' },
 			});
 
-			// Named syntax: ifBranch(ifNode, { true: trueBranch, false: falseBranch })
+			// Named syntax: ifElse(ifNode, { true: trueBranch, false: falseBranch })
 			const wf = workflow('test-id', 'Test')
 				.add(t)
 				.then(
-					ifBranch(ifNode, {
+					ifElse(ifNode, {
 						true: trueBranch,
 						false: falseBranch,
 					}),
@@ -91,7 +91,7 @@ describe('IF Branch', () => {
 			const wf = workflow('test-id', 'Test')
 				.add(t)
 				.then(
-					ifBranch(ifNode, {
+					ifElse(ifNode, {
 						true: trueBranch,
 						false: null, // no false branch
 					}),
@@ -139,7 +139,7 @@ describe('IF Branch', () => {
 			const wf = workflow('test-id', 'Test')
 				.add(t)
 				.then(
-					ifBranch(ifNode, {
+					ifElse(ifNode, {
 						true: fanOut(targetA, targetB), // true -> both A and B
 						false: targetC, // false -> C
 					}),
@@ -163,7 +163,7 @@ describe('IF Branch', () => {
 			expect(ifConns.main[1][0].node).toBe('Target C');
 		});
 
-		it('should identify named syntax with isIfBranchNamedSyntax', () => {
+		it('should identify named syntax with isIfElseNamedSyntax', () => {
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
@@ -181,12 +181,12 @@ describe('IF Branch', () => {
 			});
 
 			// Named syntax
-			const namedIb = ifBranch(ifNode, { true: trueBranch, false: falseBranch });
-			expect(isIfBranchNamedSyntax(namedIb)).toBe(true);
+			const namedIb = ifElse(ifNode, { true: trueBranch, false: falseBranch });
+			expect(isIfElseNamedSyntax(namedIb)).toBe(true);
 
 			// Array syntax
-			const arrayIb = ifBranch([trueBranch, falseBranch]);
-			expect(isIfBranchNamedSyntax(arrayIb)).toBe(false);
+			const arrayIb = ifElse([trueBranch, falseBranch]);
+			expect(isIfElseNamedSyntax(arrayIb)).toBe(false);
 		});
 	});
 });
