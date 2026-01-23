@@ -510,6 +510,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -639,6 +640,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -775,6 +777,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -911,6 +914,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 
@@ -1042,6 +1046,7 @@ describe('WaitingWebhooks', () => {
 
 			// Explicitly set error to undefined to avoid mock function
 			mockExecution.data.resultData.error = undefined;
+			mockExecution.data.resumeToken = undefined;
 
 			executionRepository.findSingleExecution.mockResolvedValue(mockExecution);
 

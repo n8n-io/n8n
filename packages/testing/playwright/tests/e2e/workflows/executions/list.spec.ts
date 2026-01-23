@@ -1,3 +1,6 @@
+import flatted from 'flatted';
+import type { IRunExecutionData } from 'n8n-workflow';
+
 import { test, expect } from '../../../../fixtures/base';
 import executionOutOfMemoryResponse from '../../../../fixtures/execution-out-of-memory-server-response.json';
 import { retryUntil } from '../../../../utils/retry-utils';
@@ -286,9 +289,17 @@ test.describe('Workflow Executions', () => {
 			const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'waiting', 10000);
 			const originalStartedAt = execution.startedAt;
 
+			// Get the resumeToken from execution data to construct the signed URL
+			const fullExecution = await api.workflows.getExecution(execution.id);
+			const executionData = flatted.parse(fullExecution.data) as IRunExecutionData;
+			const resumeToken = executionData.resumeToken;
+
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
-			const resumeResponse = await api.request.get(`/webhook-waiting/${execution.id}`);
+			const resumeUrl = resumeToken
+				? `/webhook-waiting/${execution.id}?signature=${resumeToken}`
+				: `/webhook-waiting/${execution.id}`;
+			const resumeResponse = await api.request.get(resumeUrl);
 			expect(resumeResponse.ok()).toBe(true);
 
 			await api.workflows.waitForExecution(workflowId, 15000);

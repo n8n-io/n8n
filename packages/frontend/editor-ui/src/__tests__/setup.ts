@@ -6,6 +6,17 @@ import englishBaseText from '@n8n/i18n/locales/en.json';
 import { loadLanguage, type LocaleMessages } from '@n8n/i18n';
 import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 
+// Mock crypto.getRandomValues to return static value for deterministic tests
+const originalGetRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
+
+globalThis.crypto.getRandomValues = <T extends ArrayBufferView | null>(array: T): T => {
+	if (array instanceof Uint8Array) {
+		array.fill(0xaa);
+		return array;
+	}
+	return originalGetRandomValues(array);
+};
+
 // Global stub for Reka UI Popover components used by N8nPopover.
 // Unlike Element+ popover which always renders content regardless of visibility,
 // Reka UI respects the `open` prop and only renders content when open.
