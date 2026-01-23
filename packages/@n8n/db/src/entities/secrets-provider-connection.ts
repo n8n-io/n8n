@@ -13,12 +13,6 @@ export class SecretsProviderConnection extends WithTimestamps {
 	providerKey: string;
 
 	/**
-	 * Optional display name of the secrets provider connection
-	 */
-	@Column({ type: 'varchar', nullable: true })
-	displayName: string | null;
-
-	/**
 	 * Specifies the provider type, which determines the required settings for connecting to the external secrets provider.
 	 * e.g:
 	 * 'awsSecretsManager',

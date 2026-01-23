@@ -17,7 +17,6 @@ describe('SecretsProviderConnectionRepository', () => {
 			const mockConnections = [
 				{
 					providerKey: 'awsSecretsManager',
-					displayName: 'AWS Secrets Manager',
 					type: 'awsSecretsManager',
 					encryptedSettings: '{}',
 					isEnabled: true,
@@ -27,7 +26,6 @@ describe('SecretsProviderConnectionRepository', () => {
 				},
 				{
 					providerKey: 'vault',
-					displayName: 'HashiCorp Vault',
 					type: 'vault',
 					encryptedSettings: '{}',
 					isEnabled: false,
