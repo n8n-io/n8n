@@ -11,7 +11,7 @@ import * as auth from '@/auth';
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { EventService } from '@/events/event.service';
-import { LdapService } from '@/ldap.ee/ldap.service.ee';
+import { LdapService } from '@/modules/ldap.ee/ldap.service.ee';
 import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { PostHogClient } from '@/posthog';
