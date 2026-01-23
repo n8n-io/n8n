@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -114,19 +115,13 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		// Default workflow state
 		workflowsStore.workflowId = '1';
 		workflowsStore.workflowDocumentById = {
-			'1': {
+			'1': createTestWorkflow({
 				id: '1',
 				name: 'Test Workflow',
 				active: false,
-				activeVersionId: null,
-				activeVersion: null,
 				versionId: 'version-1',
 				isArchived: false,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				nodes: [],
-				connections: {},
-			},
+			}),
 		};
 		workflowsStore.workflowTriggerNodes = [];
 		uiStore.markStateClean();

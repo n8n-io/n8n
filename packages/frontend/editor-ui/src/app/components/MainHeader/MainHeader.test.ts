@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import MainHeader from '@/app/components/MainHeader/MainHeader.vue';
@@ -106,22 +107,13 @@ describe('MainHeader', () => {
 		const workflowId = '1';
 		workflowsStore.workflowId = workflowId;
 		workflowsStore.workflowDocumentById = {
-			[workflowId]: {
+			[workflowId]: createTestWorkflow({
 				id: workflowId,
 				name: 'Test Workflow',
 				active: false,
-				activeVersionId: null,
-				activeVersion: null,
-				versionId: 'version-1',
 				scopes: ['workflow:read', 'workflow:update'],
 				isArchived: false,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				nodes: [],
-				connections: {},
-				tags: [],
-				meta: {},
-			} as never,
+			}),
 		};
 
 		sourceControlStore.preferences.branchReadOnly = false;

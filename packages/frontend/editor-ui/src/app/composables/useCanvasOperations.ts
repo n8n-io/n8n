@@ -1760,10 +1760,9 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
-		if (!currentWorkflowDocument) return;
+		if (!editableWorkflow.value) return;
 
-		const connections = cloneDeep(currentWorkflowDocument.connections);
+		const connections = cloneDeep(editableWorkflow.value.connections);
 		for (const nodeName of Object.keys(connections)) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) {
@@ -1807,7 +1806,9 @@ export function useCanvasOperations() {
 			}
 		}
 
-		delete currentWorkflowDocument.connections[targetNode.name];
+		if (editableWorkflow.value) {
+			delete editableWorkflow.value.connections[targetNode.name];
+		}
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -1870,12 +1871,11 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
-		if (!currentWorkflowDocument) return;
+		if (!editableWorkflow.value) return;
 
 		const connections = mapLegacyConnectionsToCanvasConnections(
-			currentWorkflowDocument.connections,
-			currentWorkflowDocument.nodes,
+			editableWorkflow.value.connections,
+			editableWorkflow.value.nodes,
 		);
 
 		connections.forEach((connection) => {
@@ -2125,15 +2125,16 @@ export function useCanvasOperations() {
 	}
 
 	const initializeUnknownNodes = (nodes: INode[]) => {
-		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
-		if (!currentWorkflowDocument) return;
+		if (!editableWorkflow.value) return;
 
 		nodes.forEach((node) => {
+			if (!editableWorkflow.value) return;
+
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			nodeHelpers.matchCredentials(node);
 			resolveNodeParameters(node, nodeTypeDescription);
 			resolveNodeWebhook(node, nodeTypeDescription);
-			const nodeIndex = currentWorkflowDocument.nodes.findIndex((n) => {
+			const nodeIndex = editableWorkflow.value.nodes.findIndex((n) => {
 				return n.name === node.name;
 			});
 			workflowState.updateNodeAtIndex(nodeIndex, node);
@@ -2654,11 +2655,10 @@ export function useCanvasOperations() {
 
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
-		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
 
 		workflowData.meta = {
 			...workflowData.meta,
-			...currentWorkflowDocument?.meta,
+			...editableWorkflow.value?.meta,
 			instanceId: rootStore.instanceId,
 		};
 
@@ -2829,8 +2829,11 @@ export function useCanvasOperations() {
 			telemetry: true,
 		});
 
-		// editableWorkflow.value is guaranteed to be defined by the guard at the top of this function
-		const workflowNodes = editableWorkflow.value!.nodes;
+		if (!editableWorkflow.value) {
+			return [];
+		}
+
+		const workflowNodes = editableWorkflow.value.nodes;
 		const offsetIndex = workflowNodes.length - nodes.length;
 		const connections: CanvasConnectionCreateData[] = addedConnections.map(({ from, to }) => {
 			const fromNode = workflowNodes[offsetIndex + from.nodeIndex];

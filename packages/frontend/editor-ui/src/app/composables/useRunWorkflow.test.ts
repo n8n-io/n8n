@@ -28,7 +28,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { captor, mock } from 'vitest-mock-extended';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -48,23 +48,8 @@ vi.mock('@/app/stores/workflows.store', () => {
 		executionWaitingForWebhook: false,
 		workflowValidationIssues: [],
 		workflowId: '123',
-		workflowDocumentById: {
-			'123': {
-				id: '123',
-				name: 'Test Workflow',
-				active: false,
-				isArchived: false,
-				createdAt: '',
-				updatedAt: '',
-				connections: {},
-				nodes: [],
-				versionId: '',
-				activeVersionId: null,
-			},
-		},
-		workflowObjectById: {
-			'123': { id: '123' } as Workflow,
-		},
+		workflowDocumentById: {},
+		workflowObjectById: {},
 		isWorkflowSaved: {
 			'123': true,
 		},
@@ -191,6 +176,14 @@ describe('useRunWorkflow({ router })', () => {
 		uiStore = useUIStore();
 		workflowsStore = useWorkflowsStore();
 		agentRequestStore = useAgentRequestStore();
+
+		// Set up the workflow document and object using helper functions
+		workflowsStore.workflowDocumentById = {
+			'123': createTestWorkflow({ id: '123', name: 'Test Workflow' }),
+		};
+		workflowsStore.workflowObjectById = {
+			'123': createTestWorkflowObject({ id: '123' }),
+		};
 
 		workflowState = vi.mocked(useWorkflowState());
 		// vi.mocked(workflowState.setActiveExecutionId).mockImplementation((id: string | null | undefined) => {

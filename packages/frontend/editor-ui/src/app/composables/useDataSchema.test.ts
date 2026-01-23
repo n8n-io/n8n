@@ -1,6 +1,7 @@
 import jp from 'jsonpath';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
-import type { INodeUi, Schema, IWorkflowDb } from '@/Interface';
+import { createTestWorkflow } from '@/__tests__/mocks';
+import type { INodeUi, Schema } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -1170,24 +1171,10 @@ describe('useFlattenSchema', () => {
 				...useWorkflowsStore(),
 				workflowId,
 				workflowDocumentById: {
-					[workflowId]: {
+					[workflowId]: createTestWorkflow({
 						id: workflowId,
 						name: 'Test Workflow',
-						active: false,
-						activeVersionId: null,
-						isArchived: false,
-						createdAt: '2024-01-01',
-						updatedAt: '2024-01-01',
-						nodes: [],
-						connections: {},
-						settings: {
-							executionOrder: 'v1',
-							binaryMode: undefined,
-						},
-						tags: [],
-						pinData: {},
-						versionId: '',
-					} as IWorkflowDb,
+					}),
 				},
 			});
 

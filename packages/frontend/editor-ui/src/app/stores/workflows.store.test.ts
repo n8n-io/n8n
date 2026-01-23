@@ -110,16 +110,7 @@ describe('useWorkflowsStore', () => {
 	const initializeWorkflow = (id: string = DEFAULT_WORKFLOW_ID) => {
 		workflowsStore.workflowId = id;
 		workflowsStore.workflowDocumentById = {
-			[id]: {
-				id,
-				name: 'Test Workflow',
-				nodes: [],
-				connections: {},
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				versionId: '1',
-			} as unknown as IWorkflowDb,
+			[id]: createTestWorkflow({ id, name: 'Test Workflow' }),
 		};
 	};
 
@@ -220,24 +211,19 @@ describe('useWorkflowsStore', () => {
 			const workflowId = 'test-workflow-id';
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowDocumentById = {
-				[workflowId]: {
+				[workflowId]: createTestWorkflow({
 					id: workflowId,
 					name: 'Test Workflow',
 					nodes: [
-						{
+						createTestNode({
 							id: 'start',
 							name: 'Start',
 							type: 'n8n-nodes-base.manualTrigger',
-							typeVersion: 1,
-							parameters: {},
-							position: [0, 0],
-						},
-						{
+						}),
+						createTestNode({
 							id: 'fetch',
 							name: 'Fetch',
 							type: 'n8n-nodes-base.httpRequest',
-							typeVersion: 1,
-							parameters: {},
 							issues: {
 								parameters: {
 									url: ['Missing URL', 'Invalid URL.'],
@@ -247,33 +233,27 @@ describe('useWorkflowsStore', () => {
 								},
 							},
 							position: [300, 0],
-						},
-						{
+						}),
+						createTestNode({
 							id: 'orphan',
 							name: 'Disconnected',
-							type: 'n8n-nodes-base.set',
-							typeVersion: 1,
-							parameters: {},
 							issues: {
 								parameters: { field: ['Should be ignored'] },
 							},
 							position: [0, 400],
-						},
-						{
+						}),
+						createTestNode({
 							id: 'disabled',
 							name: 'Disabled Node',
-							type: 'n8n-nodes-base.set',
-							typeVersion: 1,
 							disabled: true,
-							parameters: {},
 							issues: {
 								parameters: { field: ['Disabled issue'] },
 							},
 							position: [0, 600],
-						},
+						}),
 					],
 					connections,
-				} as unknown as IWorkflowDb,
+				}),
 			};
 
 			const issues = workflowsStore.workflowValidationIssues;
@@ -397,7 +377,7 @@ describe('useWorkflowsStore', () => {
 			const workflowId = 'test-workflow-id';
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowDocumentById = {
-				[workflowId]: { id: workflowId, name: 'Test', nodes: [] } as unknown as IWorkflowDb,
+				[workflowId]: createTestWorkflow({ id: workflowId, name: 'Test' }),
 			};
 
 			const hasWebhookNode = workflowsStore.currentWorkflowHasWebhookNode;
@@ -477,7 +457,7 @@ describe('useWorkflowsStore', () => {
 			const workflowId = 'test-workflow-id';
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowDocumentById = {
-				[workflowId]: { id: workflowId, name: 'Test', nodes: [] } as unknown as IWorkflowDb,
+				[workflowId]: createTestWorkflow({ id: workflowId, name: 'Test' }),
 			};
 
 			const hasIssues = workflowsStore.nodesIssuesExist;
@@ -966,7 +946,9 @@ describe('useWorkflowsStore', () => {
 		it('should set workflow as active when it is not already active', async () => {
 			uiStore.markStateDirty();
 			workflowsStore.workflowId = '1';
-			workflowsStore.workflowDocumentById = { '1': { id: '1', active: false } as IWorkflowDb };
+			workflowsStore.workflowDocumentById = {
+				'1': createTestWorkflow({ id: '1', active: false }),
+			};
 
 			const mockActiveVersion: WorkflowHistory = {
 				versionId: 'test-version-id',
@@ -989,7 +971,9 @@ describe('useWorkflowsStore', () => {
 		it('should not modify active workflows when workflow is already active', () => {
 			workflowsStore.activeWorkflows = ['1'];
 			workflowsStore.workflowId = '1';
-			workflowsStore.workflowDocumentById = { '1': { id: '1', active: true } as IWorkflowDb };
+			workflowsStore.workflowDocumentById = {
+				'1': createTestWorkflow({ id: '1', active: true }),
+			};
 
 			const mockActiveVersion: WorkflowHistory = {
 				versionId: 'test-version-id',
@@ -1011,7 +995,9 @@ describe('useWorkflowsStore', () => {
 		it('should not set current workflow as active when it is not the target', () => {
 			uiStore.markStateDirty();
 			workflowsStore.workflowId = '1';
-			workflowsStore.workflowDocumentById = { '1': { id: '1', active: false } as IWorkflowDb };
+			workflowsStore.workflowDocumentById = {
+				'1': createTestWorkflow({ id: '1', active: false }),
+			};
 
 			const mockActiveVersion: WorkflowHistory = {
 				versionId: 'test-version-id',
@@ -1032,14 +1018,18 @@ describe('useWorkflowsStore', () => {
 	describe('setWorkflowInactive()', () => {
 		it('should set workflow as inactive when it exists', () => {
 			workflowsStore.activeWorkflows = ['1', '2'];
-			workflowsStore.workflowDocumentById = { '1': { id: '1', active: true } as IWorkflowDb };
+			workflowsStore.workflowDocumentById = {
+				'1': createTestWorkflow({ id: '1', active: true }),
+			};
 			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsStore.workflowDocumentById['1'].active).toBe(false);
 			expect(workflowsStore.activeWorkflows).toEqual(['2']);
 		});
 
 		it('should not modify active workflows when workflow is not active', () => {
-			workflowsStore.workflowDocumentById = { '2': { id: '2', active: true } as IWorkflowDb };
+			workflowsStore.workflowDocumentById = {
+				'2': createTestWorkflow({ id: '2', active: true }),
+			};
 			workflowsStore.activeWorkflows = ['2'];
 			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsStore.activeWorkflows).toEqual(['2']);
@@ -1048,7 +1038,9 @@ describe('useWorkflowsStore', () => {
 
 		it('should set current workflow as inactive when it is the target', () => {
 			workflowsStore.workflowId = '1';
-			workflowsStore.workflowDocumentById = { '1': { id: '1', active: true } as IWorkflowDb };
+			workflowsStore.workflowDocumentById = {
+				'1': createTestWorkflow({ id: '1', active: true }),
+			};
 			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.active).toBe(false);
 		});
@@ -1170,10 +1162,10 @@ describe('useWorkflowsStore', () => {
 			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
 
 			// Set up existing pinned data with metadata
-			workflowsStore.workflowDocumentById[DEFAULT_WORKFLOW_ID] = {
+			workflowsStore.workflowDocumentById[DEFAULT_WORKFLOW_ID] = createTestWorkflow({
 				...workflowsStore.workflowDocumentById[DEFAULT_WORKFLOW_ID],
 				pinData: { [node.name]: data },
-			} as IWorkflowDb;
+			});
 			workflowsStore.nodeMetadata[node.name] = { pristine: false, pinnedDataLastUpdatedAt: 1000 };
 
 			workflowsStore.pinData({ node, data, isRestoration: true });
@@ -1327,12 +1319,7 @@ describe('useWorkflowsStore', () => {
 			const workflowId = 'test-workflow-id';
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowDocumentById = {
-				[workflowId]: {
-					id: workflowId,
-					name: 'Test',
-					nodes: [],
-					pinData: {},
-				} as unknown as IWorkflowDb,
+				[workflowId]: createTestWorkflow({ id: workflowId, name: 'Test' }),
 			};
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
 			workflowsStore.addNode({
@@ -1524,11 +1511,11 @@ describe('useWorkflowsStore', () => {
 				const workflowId = 'test-workflow-id';
 				workflowsStore.workflowId = workflowId;
 				workflowsStore.workflowDocumentById = {
-					[workflowId]: {
+					[workflowId]: createTestWorkflow({
 						id: workflowId,
 						name: 'Test',
-						nodes: ids.map((x) => ({ id: x }) as never),
-					} as unknown as IWorkflowDb,
+						nodes: ids.map((x) => createTestNode({ id: x })),
+					}),
 				};
 
 				const nodes = workflowsStore.workflowDocumentById[workflowId]?.nodes ?? [];
@@ -1551,11 +1538,11 @@ describe('useWorkflowsStore', () => {
 				const workflowId = 'test-workflow-id';
 				workflowsStore.workflowId = workflowId;
 				workflowsStore.workflowDocumentById = {
-					[workflowId]: {
+					[workflowId]: createTestWorkflow({
 						id: workflowId,
 						name: 'Test',
-						nodes: ids.map((x) => ({ id: x }) as never),
-					} as unknown as IWorkflowDb,
+						nodes: ids.map((x) => createTestNode({ id: x })),
+					}),
 				};
 
 				expect(workflowsStore.getPartialIdForNode(id)).toBe(expected);
@@ -1571,7 +1558,7 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowDocumentById = {
-				'1': { id: '1', active: true, isArchived: false, versionId } as IWorkflowDb,
+				'1': createTestWorkflow({ id: '1', active: true, isArchived: false, versionId }),
 			};
 
 			const makeRestApiRequestSpy = vi
@@ -1610,7 +1597,7 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowDocumentById = {
-				'1': { id: '1', active: false, isArchived: true, versionId } as IWorkflowDb,
+				'1': createTestWorkflow({ id: '1', active: false, isArchived: true, versionId }),
 			};
 
 			const makeRestApiRequestSpy = vi
@@ -1651,14 +1638,14 @@ describe('useWorkflowsStore', () => {
 		it('updates current workflow setting and store state', async () => {
 			workflowsStore.workflowId = 'w1';
 			workflowsStore.workflowDocumentById = {
-				w1: {
+				w1: createTestWorkflow({
 					id: 'w1',
 					versionId: 'v1',
 					settings: {
 						executionOrder: 'v1',
 						timezone: 'UTC',
 					},
-				} as unknown as IWorkflowDb,
+				}),
 			};
 
 			const makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest').mockResolvedValue(
@@ -1794,10 +1781,9 @@ describe('useWorkflowsStore', () => {
 
 			workflowsStore.workflowId = workflowId;
 			workflowsStore.workflowDocumentById = {
-				[workflowId]: {
+				[workflowId]: createTestWorkflow({
 					id: workflowId,
 					name: 'Test',
-					nodes: [],
 					pinData: {
 						[nodeName]: [
 							{
@@ -1828,7 +1814,7 @@ describe('useWorkflowsStore', () => {
 							},
 						],
 					},
-				} as unknown as IWorkflowDb,
+				}),
 			};
 
 			workflowsStore.workflowExecutionData = {

@@ -7,7 +7,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { mockedStore } from '@/__tests__/utils';
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 
@@ -77,12 +77,10 @@ describe('useWorkflowUpdate', () => {
 		const workflowId = 'test-workflow';
 		workflowsStore.workflowId = workflowId;
 		workflowsStore.workflowDocumentById = {
-			[workflowId]: {
+			[workflowId]: createTestWorkflow({
 				id: workflowId,
 				name: DEFAULT_NEW_WORKFLOW_NAME,
-				nodes: [],
-				connections: {},
-			} as never,
+			}),
 		};
 		workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue({
 			nodes: {},

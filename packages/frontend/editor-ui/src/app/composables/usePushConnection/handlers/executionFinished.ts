@@ -203,15 +203,15 @@ export async function fetchExecutionData(
 	const workflowsStore = useWorkflowsStore();
 	try {
 		const executionResponse = await workflowsStore.fetchExecutionDataById(executionId);
-		if (!executionResponse?.data) {
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+		if (!executionResponse?.data || !currentWorkflowDocument) {
 			return;
 		}
 
-		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
 		return {
 			id: executionId,
 			workflowId: executionResponse.workflowId,
-			workflowData: currentWorkflowDocument!,
+			workflowData: currentWorkflowDocument,
 			data: parse(executionResponse.data as unknown as string),
 			status: executionResponse.status,
 			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
