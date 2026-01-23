@@ -141,37 +141,54 @@ export class ScalingService {
 	}
 
 	/**
-	 * Pause queue processing to prevent picking up new jobs.
+	 * Pause queue processing locally (this worker only).
+	 * Other workers continue pulling jobs normally.
 	 * Already running jobs will continue to completion.
-	 *
-	 * @param local - If true, only pause locally (this worker). If false, pause globally across all workers.
 	 */
-	async pauseQueue(local = true) {
+	async pauseQueueLocal() {
 		this.assertQueue();
-		await this.queue.pause(local, true); // second param: doNotWaitActive = true
-		this.logger.debug('Paused queue', { local });
+		await this.queue.pause(true, true); // local=true, doNotWaitActive=true
+		this.logger.debug('Paused queue locally');
 	}
 
 	/**
-	 * Resume queue processing to allow picking up new jobs.
-	 *
-	 * @param local - If true, only resume locally (this worker). If false, resume globally across all workers.
+	 * Pause queue processing globally (all workers).
+	 * All workers stop pulling new jobs.
+	 * Already running jobs will continue to completion.
 	 */
-	async resumeQueue(local = true) {
+	async pauseQueueGlobal() {
 		this.assertQueue();
-		await this.queue.resume(local);
-		this.logger.debug('Resumed queue', { local });
+		await this.queue.pause(false, true); // local=false, doNotWaitActive=true
+		this.logger.debug('Paused queue globally');
+	}
+
+	/**
+	 * Resume queue processing locally (this worker only).
+	 */
+	async resumeQueueLocal() {
+		this.assertQueue();
+		await this.queue.resume(true);
+		this.logger.debug('Resumed queue locally');
+	}
+
+	/**
+	 * Resume queue processing globally (all workers).
+	 */
+	async resumeQueueGlobal() {
+		this.assertQueue();
+		await this.queue.resume(false);
+		this.logger.debug('Resumed queue globally');
 	}
 
 	private async stopMain() {
-		if (this.instanceSettings.isSingleMain) await this.pauseQueue(false);
+		if (this.instanceSettings.isSingleMain) await this.pauseQueueGlobal();
 
 		if (this.queueRecoveryContext.timeout) this.stopQueueRecovery();
 		if (this.isQueueMetricsEnabled) this.stopQueueMetrics();
 	}
 
 	private async stopWorker() {
-		await this.pauseQueue(false);
+		await this.pauseQueueLocal();
 
 		let count = 0;
 

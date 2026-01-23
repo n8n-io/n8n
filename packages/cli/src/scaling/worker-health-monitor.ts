@@ -149,7 +149,7 @@ export class WorkerHealthMonitor {
 		}
 
 		try {
-			await this.scalingService.pauseQueue();
+			await this.scalingService.pauseQueueLocal();
 			this.isQueuePaused = true;
 			this.logger.warn('Paused queue due to unhealthy worker state', {
 				circuitState: this.circuitBreaker.currentState(),
@@ -168,7 +168,7 @@ export class WorkerHealthMonitor {
 		}
 
 		try {
-			await this.scalingService.resumeQueue();
+			await this.scalingService.resumeQueueLocal();
 			this.isQueuePaused = false;
 			this.logger.info('Resumed queue after worker became healthy', {
 				circuitState: this.circuitBreaker.currentState(),

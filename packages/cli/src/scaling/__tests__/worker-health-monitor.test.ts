@@ -70,7 +70,7 @@ describe('WorkerHealthMonitor', () => {
 
 			await monitor.start(scalingService);
 
-			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
+			expect(scalingService.pauseQueueLocal).not.toHaveBeenCalled();
 		});
 
 		it('should not start monitoring if check interval is 0', async () => {
@@ -88,7 +88,7 @@ describe('WorkerHealthMonitor', () => {
 
 			await monitorWithZeroInterval.start(scalingService);
 
-			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
+			expect(scalingService.pauseQueueLocal).not.toHaveBeenCalled();
 
 			// Restore for other tests
 			globalConfig.queue.health.checkInterval = 1000;
@@ -102,8 +102,8 @@ describe('WorkerHealthMonitor', () => {
 			expect(logger.info).toHaveBeenCalledWith('Worker health monitoring started', {
 				checkIntervalMs: 1000,
 			});
-			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
-			expect(scalingService.resumeQueue).not.toHaveBeenCalled();
+			expect(scalingService.pauseQueueLocal).not.toHaveBeenCalled();
+			expect(scalingService.resumeQueueLocal).not.toHaveBeenCalled();
 		});
 
 		it('should pause queue immediately if worker is unhealthy on startup', async () => {
@@ -112,7 +112,7 @@ describe('WorkerHealthMonitor', () => {
 			await monitor.start(scalingService);
 
 			// Initial check should pause queue
-			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
+			expect(scalingService.pauseQueueLocal).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -126,8 +126,8 @@ describe('WorkerHealthMonitor', () => {
 			// Advance time to trigger health check
 			await jest.advanceTimersByTimeAsync(1000);
 
-			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
-			expect(scalingService.resumeQueue).not.toHaveBeenCalled();
+			expect(scalingService.pauseQueueLocal).not.toHaveBeenCalled();
+			expect(scalingService.resumeQueueLocal).not.toHaveBeenCalled();
 		});
 
 		it('should pause queue when database becomes unhealthy', async () => {
@@ -137,7 +137,7 @@ describe('WorkerHealthMonitor', () => {
 			// First health check - should pause queue immediately
 			await jest.advanceTimersByTimeAsync(1000);
 
-			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
+			expect(scalingService.pauseQueueLocal).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith('Paused queue due to unhealthy worker state', {
 				circuitState: 'CLOSED',
 			});
@@ -152,7 +152,7 @@ describe('WorkerHealthMonitor', () => {
 			await jest.advanceTimersByTimeAsync(1000);
 			await jest.advanceTimersByTimeAsync(1000);
 
-			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
+			expect(scalingService.pauseQueueLocal).toHaveBeenCalledTimes(1);
 		});
 
 		it('should resume queue when worker becomes healthy again', async () => {
@@ -164,7 +164,7 @@ describe('WorkerHealthMonitor', () => {
 			await jest.advanceTimersByTimeAsync(1000);
 			await jest.advanceTimersByTimeAsync(1000);
 
-			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
+			expect(scalingService.pauseQueueLocal).toHaveBeenCalledTimes(1);
 			jest.clearAllMocks();
 
 			// Make worker healthy again
@@ -176,7 +176,7 @@ describe('WorkerHealthMonitor', () => {
 			// Circuit breaker enters HALF_OPEN, first successful check resumes queue
 			await jest.advanceTimersByTimeAsync(1000);
 
-			expect(scalingService.resumeQueue).toHaveBeenCalledTimes(1);
+			expect(scalingService.resumeQueueLocal).toHaveBeenCalledTimes(1);
 			expect(logger.info).toHaveBeenCalledWith('Resumed queue after worker became healthy', {
 				circuitState: 'HALF_OPEN',
 			});
@@ -188,15 +188,15 @@ describe('WorkerHealthMonitor', () => {
 			await jest.advanceTimersByTimeAsync(1000);
 
 			// Queue should be paused after first failure
-			expect(scalingService.pauseQueue).toHaveBeenCalledTimes(1);
+			expect(scalingService.pauseQueueLocal).toHaveBeenCalledTimes(1);
 			jest.clearAllMocks();
 
 			dbConnectionState.connected = true;
 			await jest.advanceTimersByTimeAsync(1000);
 
 			// Queue should be resumed when healthy again
-			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
-			expect(scalingService.resumeQueue).toHaveBeenCalledTimes(1);
+			expect(scalingService.pauseQueueLocal).not.toHaveBeenCalled();
+			expect(scalingService.resumeQueueLocal).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -262,7 +262,7 @@ describe('WorkerHealthMonitor', () => {
 			jest.clearAllMocks();
 			await jest.advanceTimersByTimeAsync(10_000);
 
-			expect(scalingService.pauseQueue).not.toHaveBeenCalled();
+			expect(scalingService.pauseQueueLocal).not.toHaveBeenCalled();
 		});
 	});
 
@@ -286,7 +286,7 @@ describe('WorkerHealthMonitor', () => {
 		});
 
 		it('should handle pause queue errors gracefully', async () => {
-			scalingService.pauseQueue.mockRejectedValue(new Error('Pause failed'));
+			scalingService.pauseQueueLocal.mockRejectedValue(new Error('Pause failed'));
 			dbConnectionState.connected = false;
 
 			// Trigger failures to open circuit
@@ -301,8 +301,8 @@ describe('WorkerHealthMonitor', () => {
 
 		it('should handle resume queue errors gracefully', async () => {
 			// Reset pauseQueue mock from previous test and make it succeed
-			scalingService.pauseQueue.mockResolvedValue(undefined);
-			scalingService.resumeQueue.mockRejectedValue(new Error('Resume failed'));
+			scalingService.pauseQueueLocal.mockResolvedValue(undefined);
+			scalingService.resumeQueueLocal.mockRejectedValue(new Error('Resume failed'));
 
 			// Open circuit
 			dbConnectionState.connected = false;
