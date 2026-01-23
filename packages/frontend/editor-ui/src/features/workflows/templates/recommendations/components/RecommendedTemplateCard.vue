@@ -133,14 +133,6 @@ onBeforeUnmount(() => {
 		@click="handleUseTemplate"
 	>
 		<div :class="$style.cardContent">
-			<div v-if="templateNodes.length > 0" :class="$style.nodes">
-				<NodeIcon
-					v-for="nodeType in templateNodes"
-					:key="nodeType!.name"
-					:size="20"
-					:node-type="nodeType"
-				/>
-			</div>
 			<N8nText size="large" :bold="true" :class="$style.title">
 				{{ template.name }}
 			</N8nText>
@@ -172,14 +164,24 @@ onBeforeUnmount(() => {
 				/>
 			</div>
 			<div :class="$style.statItem">
-				<N8nIcon icon="clock" :size="16" />
-				<N8nText size="medium">
-					{{
-						i18n.baseText('templates.card.setupTime', {
-							interpolate: { count: setupTimeMinutes },
-						})
-					}}
-				</N8nText>
+				<div :class="$style.statItemLeft">
+					<N8nIcon icon="clock" :size="16" />
+					<N8nText size="medium">
+						{{
+							i18n.baseText('templates.card.setupTime', {
+								interpolate: { count: setupTimeMinutes },
+							})
+						}}
+					</N8nText>
+				</div>
+				<div v-if="templateNodes.length > 0" :class="$style.nodes">
+					<NodeIcon
+						v-for="nodeType in templateNodes"
+						:key="nodeType!.name"
+						:size="20"
+						:node-type="nodeType"
+					/>
+				</div>
 			</div>
 			<div v-if="$slots.belowContent">
 				<slot name="belowContent" />
@@ -223,6 +225,13 @@ onBeforeUnmount(() => {
 	gap: var(--spacing--xs);
 }
 
+.statItemLeft {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+}
+
 .userInfo {
 	display: flex;
 	align-items: center;
@@ -258,7 +267,8 @@ onBeforeUnmount(() => {
 
 .statItem {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 }
 </style>
