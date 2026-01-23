@@ -2,6 +2,7 @@
 - [X] refactor code generation to simplify implementation, with learnings from POC
 - [ ] get workflow-sdk to support roundtrip test of a lot of our template library [Now 289 tests pass, 4 remain skipped.]
 - [ ] test out more edge cases
+	- [ ] Add more error branch workflows
 - [X] Add more examples for more complex flows (like loops or multi level orchestrator) to prompt
 - [ ] prompt optimization per model
 - [ ] rerun evaluations, get to parity with current agent
@@ -24,6 +25,8 @@
 - [ ] format the workflows into multi lines. might make it easier for workflow to handle parsing issues
 - [ ] test how unknown nodes handled?
 - [ ] when generating json -> code, add "nodes" to sticky() so that llm understands connection to nodes
+- [ ] fix up sticky sizing and positioning to cover nodes
+- [ ] test out iteration, inserting nodes in between
 
 Nice to haves / tech debt
 - [ ] Make it more clear that SDK api file is for LLM consumption. To avoid other engineers adding unnecessary types to it, confusing the agent.
