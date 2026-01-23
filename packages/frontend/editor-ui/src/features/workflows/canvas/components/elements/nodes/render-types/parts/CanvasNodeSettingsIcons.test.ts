@@ -22,6 +22,12 @@ const renderComponent = createComponentRenderer(CanvasNodeSettingsIcons, {
 	pinia: createTestingPinia(),
 });
 
+const mockFeatureFlag = (enabled: boolean) => {
+	mockedUseEnvFeatureFlag.mockReturnValue({
+		check: { value: (flag: string) => enabled && flag === 'DYNAMIC_CREDENTIALS' },
+	} as unknown as ReturnType<typeof useEnvFeatureFlag>);
+};
+
 describe('CanvasNodeSettingsIcons', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let credentialsStore: MockedStore<typeof useCredentialsStore>;
@@ -41,9 +47,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		credentialsStore = mockedStore(useCredentialsStore);
 
 		// Default: feature flag disabled
-		mockedUseEnvFeatureFlag.mockReturnValue({
-			check: { value: () => false },
-		} as ReturnType<typeof useEnvFeatureFlag>);
+		mockFeatureFlag(false);
 	});
 
 	describe('dynamic credentials icon', () => {
@@ -67,9 +71,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should render when feature flag enabled and credential is resolvable', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				credentials: { testCred: { id: 'cred-1', name: 'Test Cred' } },
@@ -90,9 +92,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should not render when credential is not resolvable', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				credentials: { testCred: { id: 'cred-1', name: 'Test Cred' } },
@@ -113,9 +113,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should render when node has context establishment hooks', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				parameters: {
@@ -137,9 +135,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should not render when node has empty context establishment hooks', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				parameters: {
@@ -161,9 +157,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should not render when node has no credentials', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({ credentials: undefined });
 			workflowsStore.workflowObject = { getNode: vi.fn().mockReturnValue(node) } as never;
@@ -181,9 +175,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should not render when credential has no id', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				credentials: { testCred: { id: '', name: 'Test Cred' } },
@@ -204,9 +196,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should not render when credential is not found in store', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				credentials: { testCred: { id: 'cred-1', name: 'Test Cred' } },
@@ -227,9 +217,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should not render when contextEstablishmentHooks is not an object', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				parameters: {
@@ -251,9 +239,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should not render when contextEstablishmentHooks has no hooks property', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				parameters: {
@@ -275,9 +261,7 @@ describe('CanvasNodeSettingsIcons', () => {
 		});
 
 		it('should not render when hooks is not an array', () => {
-			mockedUseEnvFeatureFlag.mockReturnValue({
-				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
-			} as ReturnType<typeof useEnvFeatureFlag>);
+			mockFeatureFlag(true);
 
 			const node = createMockNode({
 				parameters: {
