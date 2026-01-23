@@ -103,7 +103,7 @@ const emit = defineEmits<{
 			<TextWithHighlights class="title" :content="title" :search="props.search" />
 		</div>
 
-		<N8nTooltip v-if="locked" :disabled="!lockedTooltip" :popper-class="$style.tooltip">
+		<N8nTooltip v-if="locked" :disabled="!lockedTooltip" :content-class="$style.tooltip">
 			<template #content>
 				<span v-n8n-html="lockedTooltip" />
 			</template>
