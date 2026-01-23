@@ -21,7 +21,9 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { NodeTypeParser } from './utils/node-type-parser';
 import { buildOneShotGeneratorPrompt } from './prompts/one-shot-generator.prompt';
+import { buildOpusOneShotGeneratorPrompt } from './prompts/one-shot-generator-opus.prompt';
 import { createOneShotNodeSearchTool } from './tools/one-shot-node-search.tool';
+import type { ModelId } from './llm-config';
 import { createOneShotNodeGetTool } from './tools/one-shot-node-get.tool';
 import type {
 	StreamOutput,
@@ -122,6 +124,12 @@ export interface OneShotWorkflowCodeAgentConfig {
 	 * If not provided, falls back to workflow-sdk static types.
 	 */
 	generatedTypesDir?: string;
+	/**
+	 * Optional model ID to select the appropriate prompt.
+	 * - 'claude-opus-4.5': Uses the Opus 4.5 prompt with full SDK reference
+	 * - Other models: Uses the Sonnet 4.5 optimized prompt (condensed, no SDK reference)
+	 */
+	modelId?: ModelId;
 }
 
 /**
@@ -140,16 +148,19 @@ export class OneShotWorkflowCodeAgent {
 	private sdkSourceCode: string;
 	private tools: StructuredToolInterface[];
 	private toolsMap: Map<string, StructuredToolInterface>;
+	private modelId?: ModelId;
 
 	constructor(config: OneShotWorkflowCodeAgentConfig) {
 		debugLog('CONSTRUCTOR', 'Initializing OneShotWorkflowCodeAgent...', {
 			nodeTypesCount: config.nodeTypes.length,
 			hasLogger: !!config.logger,
+			modelId: config.modelId,
 		});
 		this.llm = config.llm;
 		this.nodeTypeParser = new NodeTypeParser(config.nodeTypes);
 		this.logger = config.logger;
 		this.sdkSourceCode = getSdkSourceCode();
+		this.modelId = config.modelId;
 
 		// Create tools
 		const searchTool = createOneShotNodeSearchTool(this.nodeTypeParser);
@@ -651,7 +662,10 @@ export class OneShotWorkflowCodeAgent {
 	}
 
 	/**
-	 * Build the system prompt with node IDs and SDK reference
+	 * Build the system prompt with node IDs and SDK reference.
+	 * Selects the appropriate prompt based on modelId:
+	 * - 'claude-opus-4.5': Uses Opus prompt with full SDK reference
+	 * - Other models: Uses Sonnet 4.5 optimized prompt (condensed, no SDK reference)
 	 */
 	private buildPrompt(currentWorkflow?: string) {
 		debugLog('BUILD_PROMPT', 'Getting node IDs by category with discriminators...');
@@ -665,12 +679,23 @@ export class OneShotWorkflowCodeAgent {
 			corePreview: nodeIds.core.slice(0, 5).map((n) => n.id),
 			aiPreview: nodeIds.ai.slice(0, 5).map((n) => n.id),
 		});
+
+		// Select prompt based on model
+		const useOpusPrompt = this.modelId === 'claude-opus-4.5';
 		debugLog('BUILD_PROMPT', 'Building prompt template...', {
 			hasCurrentWorkflow: !!currentWorkflow,
 			sdkSourceCodeLength: this.sdkSourceCode.length,
+			modelId: this.modelId,
+			promptType: useOpusPrompt ? 'opus' : 'sonnet',
 		});
-		const prompt = buildOneShotGeneratorPrompt(nodeIds, this.sdkSourceCode, currentWorkflow);
-		debugLog('BUILD_PROMPT', 'Prompt template built');
+
+		const prompt = useOpusPrompt
+			? buildOpusOneShotGeneratorPrompt(nodeIds, this.sdkSourceCode, currentWorkflow)
+			: buildOneShotGeneratorPrompt(nodeIds, this.sdkSourceCode, currentWorkflow);
+
+		debugLog('BUILD_PROMPT', 'Prompt template built', {
+			promptType: useOpusPrompt ? 'opus (with SDK reference)' : 'sonnet (optimized)',
+		});
 		return prompt;
 	}
 

@@ -1,7 +1,123 @@
 import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
-import { buildAvailableNodesSection } from '../one-shot-generator.prompt';
+import {
+	buildAvailableNodesSection,
+	buildOneShotGeneratorPrompt,
+	buildRawSystemPrompt,
+} from '../one-shot-generator.prompt';
 
 describe('one-shot-generator.prompt', () => {
+	const mockNodeIds: {
+		triggers: NodeWithDiscriminators[];
+		core: NodeWithDiscriminators[];
+		ai: NodeWithDiscriminators[];
+		other: NodeWithDiscriminators[];
+	} = {
+		triggers: [{ id: 'n8n-nodes-base.manualTrigger', displayName: 'Manual Trigger' }],
+		core: [{ id: 'n8n-nodes-base.httpRequest', displayName: 'HTTP Request' }],
+		ai: [{ id: '@n8n/n8n-nodes-langchain.agent', displayName: 'AI Agent' }],
+		other: [{ id: 'n8n-nodes-base.slack', displayName: 'Slack' }],
+	};
+
+	const mockSdkSourceCode = '// Mock SDK source code for testing';
+
+	describe('buildOneShotGeneratorPrompt', () => {
+		it('should return a ChatPromptTemplate', () => {
+			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode);
+
+			// ChatPromptTemplate has invoke method
+			expect(result).toHaveProperty('invoke');
+			expect(typeof result.invoke).toBe('function');
+		});
+
+		it('should NOT include SDK API reference in the prompt (commented out for Sonnet 4.5)', async () => {
+			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode);
+
+			// Format the prompt to check contents
+			const formatted = await result.format({ userMessage: 'test message' });
+
+			// SDK reference should NOT be present in Sonnet 4.5 optimized prompt
+			expect(formatted).not.toContain('<sdk_api_reference>');
+			expect(formatted).not.toContain('</sdk_api_reference>');
+		});
+
+		it('should include available nodes section in the prompt', async () => {
+			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode);
+
+			const formatted = await result.format({ userMessage: 'test message' });
+
+			expect(formatted).toContain('<available_nodes>');
+			expect(formatted).toContain('</available_nodes>');
+		});
+
+		it('should include workflow patterns in the prompt', async () => {
+			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode);
+
+			const formatted = await result.format({ userMessage: 'test message' });
+
+			// Check for key workflow patterns from the optimized prompt
+			expect(formatted).toContain('Linear Chain');
+			expect(formatted).toContain('Conditional Branching');
+		});
+
+		it('should include mandatory workflow instructions', async () => {
+			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode);
+
+			const formatted = await result.format({ userMessage: 'test message' });
+
+			expect(formatted).toContain('get_nodes');
+		});
+
+		it('should include output format instructions', async () => {
+			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode);
+
+			const formatted = await result.format({ userMessage: 'test message' });
+
+			expect(formatted).toContain('workflowCode');
+		});
+
+		it('should include planning section instruction', async () => {
+			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode);
+
+			const formatted = await result.format({ userMessage: 'test message' });
+
+			// The optimized Sonnet prompt has a <planning> tags instruction
+			expect(formatted).toContain('<planning>');
+		});
+
+		it('should include current workflow context when provided', async () => {
+			const currentWorkflow = "return workflow('test', 'Test Workflow').add(trigger({...}));";
+			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode, currentWorkflow);
+
+			const formatted = await result.format({ userMessage: 'test message' });
+
+			expect(formatted).toContain('<current_workflow>');
+			expect(formatted).toContain('Test Workflow');
+		});
+	});
+
+	describe('buildRawSystemPrompt', () => {
+		it('should return a string', () => {
+			const result = buildRawSystemPrompt(mockNodeIds, mockSdkSourceCode);
+
+			expect(typeof result).toBe('string');
+		});
+
+		it('should NOT include SDK API reference (commented out for Sonnet 4.5)', () => {
+			const result = buildRawSystemPrompt(mockNodeIds, mockSdkSourceCode);
+
+			// SDK reference should NOT be present in Sonnet 4.5 optimized prompt
+			expect(result).not.toContain('<sdk_api_reference>');
+		});
+
+		it('should include all major sections', () => {
+			const result = buildRawSystemPrompt(mockNodeIds, mockSdkSourceCode);
+
+			expect(result).toContain('<available_nodes>');
+			expect(result).toContain('get_nodes');
+			expect(result).toContain('workflowCode');
+		});
+	});
+
 	describe('buildAvailableNodesSection', () => {
 		it('should format nodes without discriminators as simple list items', () => {
 			const nodeIds: {
