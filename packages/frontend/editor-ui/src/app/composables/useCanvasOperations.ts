@@ -103,6 +103,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 	INodeParameters,
+	INodeFilter,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -110,6 +111,7 @@ import {
 	NodeHelpers,
 	TelemetryHelpers,
 	isCommunityPackageName,
+	isHitlToolType,
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
@@ -843,7 +845,6 @@ export function useCanvasOperations() {
 		}
 
 		workflowsStore.addNode(nodeData);
-
 		if (options.trackHistory) {
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData, Date.now()));
 		}
@@ -909,10 +910,42 @@ export function useCanvasOperations() {
 		if (!lastInteractedWithNode) {
 			return;
 		}
-
+		const isNewHitlToolNode = isHitlToolType(node.type);
 		const lastInteractedWithNodeId = lastInteractedWithNode.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
+		if (isNewHitlToolNode && lastInteractedWithNodeConnection) {
+			const { type: connectionType } = parseCanvasConnectionHandleString(
+				lastInteractedWithNodeHandle,
+			);
+			const nodeId = node.id;
+			const nodeHandle = createCanvasConnectionHandleString({
+				mode: CanvasConnectionMode.Input,
+				type: connectionType,
+				index: 0,
+			});
+			// create connection from master(e.g. agent) node to hitl node
+			const connectionFromHitl: Connection = {
+				target: lastInteractedWithNodeConnection.target,
+				targetHandle: lastInteractedWithNodeConnection.targetHandle,
+				source: nodeId,
+				sourceHandle: nodeHandle,
+			};
+			createConnection(connectionFromHitl);
+
+			// delete existing connection from agent node to tool node
+			deleteConnection(lastInteractedWithNodeConnection);
+
+			const connection: Connection = {
+				source: lastInteractedWithNodeConnection.source,
+				sourceHandle: lastInteractedWithNodeConnection.sourceHandle,
+				target: nodeId,
+				targetHandle: nodeHandle,
+			};
+			createConnection(connection);
+
+			return;
+		}
 
 		const trackOptions = {
 			trackHistory: options.trackHistory,
@@ -1198,6 +1231,53 @@ export function useCanvasOperations() {
 				// - clicking the plus button of a node handle
 				// - clicking the plus button of a node edge / connection
 				// - selecting a node, adding a node via the node creator
+
+				// When adding a HITL node from clicking the plus button of a node connection
+				const isNewHitlToolNode = isHitlToolType(node.type);
+				if (
+					isNewHitlToolNode &&
+					lastInteractedWithNodeConnection &&
+					connectionType === NodeConnectionTypes.AiTool
+				) {
+					// Get the source node (main node) from the connection
+					const toolUserNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
+					if (toolUserNode) {
+						// Position the HITL node vertically between the source (main) node and target (tool) node
+						// X position: same as the tool node, slightly shifted to the left because of the size difference
+						// Y position: halfway between source and target nodes
+						const sourceY = toolUserNode.position[1];
+						const targetY = lastInteractedWithNode.position[1];
+						const yDiff = (targetY - sourceY) / 2;
+						const middleY = sourceY + yDiff;
+
+						position = [
+							lastInteractedWithNode.position[0] - CONFIGURABLE_NODE_SIZE[0] / 2,
+							middleY,
+						];
+
+						const isTooClose = Math.abs(middleY - targetY) < PUSH_NODES_OFFSET;
+						if (isTooClose) {
+							// slightly move the tool node vertically
+							const verticalOffset = PUSH_NODES_OFFSET / 2;
+							updateNodePosition(
+								lastInteractedWithNode.id,
+								{
+									x: lastInteractedWithNode.position[0],
+									y:
+										lastInteractedWithNode.position[1] +
+										(yDiff > 0 ? verticalOffset : -verticalOffset),
+								},
+								{ trackHistory: true },
+							);
+						}
+
+						return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, {
+							offset: pushOffsets,
+							size: nodeSize,
+							viewport: options.viewport,
+						});
+					}
+				}
 
 				const lastInteractedWithNodeInputs = NodeHelpers.getNodeInputs(
 					editableWorkflowObject.value,
@@ -1922,7 +2002,7 @@ export function useCanvasOperations() {
 				return connectionType === type;
 			});
 
-		const getInputFilter = (
+		const getConnectionFilter = (
 			connection?: NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration,
 		) => {
 			if (connection && typeof connection === 'object' && 'filter' in connection) {
@@ -1961,6 +2041,10 @@ export function useCanvasOperations() {
 
 		const sourceNodeHasOutputConnectionPortOfType =
 			sourceConnection.index < sourceOutputsOfType.length;
+		const sourceConnectionDefinition = sourceNodeHasOutputConnectionPortOfType
+			? sourceOutputsOfType[sourceConnection.index]
+			: undefined;
+		const sourceConnectionFilter = getConnectionFilter(sourceConnectionDefinition);
 
 		const isMissingOutputConnection =
 			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
@@ -1993,14 +2077,18 @@ export function useCanvasOperations() {
 		const targetConnectionDefinition = targetNodeHasInputConnectionPortOfType
 			? targetInputsOfType[targetConnection.index]
 			: undefined;
-		const targetConnectionFilter = getInputFilter(targetConnectionDefinition);
+		const targetConnectionFilter = getConnectionFilter(targetConnectionDefinition);
 
-		if (
-			(targetConnectionFilter?.nodes?.length &&
-				!targetConnectionFilter.nodes.includes(sourceNode.type)) ||
-			(targetConnectionFilter?.excludedNodes?.length &&
-				targetConnectionFilter.excludedNodes.includes(sourceNode.type))
-		) {
+		function isConnectionFiltered(filter: INodeFilter | undefined, nodeType: string): boolean {
+			const isNotIncluded = !!filter?.nodes?.length && !filter.nodes.includes(nodeType);
+			const isExcluded = !!filter?.excludedNodes?.length && filter.excludedNodes.includes(nodeType);
+			return isNotIncluded || isExcluded;
+		}
+
+		const isFilteredByTarget = isConnectionFiltered(targetConnectionFilter, sourceNode.type);
+		const isFilteredBySource = isConnectionFiltered(sourceConnectionFilter, targetNode.type);
+
+		if (isFilteredByTarget || isFilteredBySource) {
 			toast.showToast({
 				title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
 				message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {

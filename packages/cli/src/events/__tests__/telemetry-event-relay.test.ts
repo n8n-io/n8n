@@ -659,6 +659,7 @@ describe('TelemetryEventRelay', () => {
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
+				isDynamic: false,
 			};
 
 			eventService.emit('credentials-created', event);
@@ -669,6 +670,7 @@ describe('TelemetryEventRelay', () => {
 				credential_id: 'cred123',
 				project_id: 'project123',
 				project_type: 'personal',
+				is_dynamic: false,
 			});
 		});
 
@@ -711,6 +713,7 @@ describe('TelemetryEventRelay', () => {
 				},
 				credentialId: 'cred123',
 				credentialType: 'github',
+				isDynamic: true,
 			};
 
 			eventService.emit('credentials-updated', event);
@@ -719,6 +722,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				credential_type: 'github',
 				credential_id: 'cred123',
+				is_dynamic: true,
 			});
 		});
 
@@ -1023,6 +1027,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
+				used_dynamic_credentials: false,
 			});
 		});
 
@@ -1057,6 +1062,54 @@ describe('TelemetryEventRelay', () => {
 				workflow_edited_no_pos: false,
 				credential_edited: false,
 				ai_builder_assisted: false,
+				identity_extractor_changed: false,
+			});
+		});
+
+		it('should track resolver settings when credentialResolverId changes', async () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					settings: { credentialResolverId: 'resolver-123' },
+				}),
+				publicApi: false,
+				settingsChanged: {
+					credentialResolverId: {
+						from: null,
+						to: 'resolver-123',
+					},
+				},
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith('User saved workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				node_graph_string: expect.any(String),
+				notes_count_overlapping: 0,
+				notes_count_non_overlapping: 0,
+				version_cli: expect.any(String),
+				num_tags: 0,
+				public_api: false,
+				sharing_role: undefined,
+				meta: undefined,
+				workflow_edited_no_pos: false,
+				credential_edited: false,
+				ai_builder_assisted: false,
+				credential_resolver_id: 'resolver-123',
+				identity_extractor_changed: false,
 			});
 		});
 
