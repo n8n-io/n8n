@@ -15,7 +15,7 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
-import { ProjectSecretsProviderConnection } from './project-secrets-provider-connection';
+import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import { Role } from './role';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
@@ -58,7 +58,7 @@ export {
 	SecretsProviderConnection,
 	Settings,
 	SharedCredentials,
-	ProjectSecretsProviderConnection as SharedSecretsProviderConnection,
+	ProjectSecretsProviderAccess,
 	SharedWorkflow,
 	SourceTypeSchema,
 	TagEntity,
@@ -112,5 +112,5 @@ export const entities = {
 	ExecutionEntity,
 	Role,
 	SecretsProviderConnection,
-	ProjectSecretsProviderConnection,
+	ProjectSecretsProviderAccess,
 };

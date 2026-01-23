@@ -1,7 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryColumn } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
-import type { ProjectSecretsProviderConnection } from './project-secrets-provider-connection';
+import type { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 
 @Entity()
 export class SecretsProviderConnection extends WithTimestamps {
@@ -30,10 +30,12 @@ export class SecretsProviderConnection extends WithTimestamps {
 	type: string;
 
 	/**
-	 * Shared secrets provider connections are used to share the secrets provider connection with other projects.
+	 * Projects that have access to this secrets provider connection.
+	 * If empty, the provider is global and accessible to all projects.
+	 * If populated, the provider is project-scoped and only accessible to the specified projects.
 	 */
-	@OneToMany('SharedSecretsProviderConnection', 'secretsProviderConnection')
-	shared: ProjectSecretsProviderConnection[];
+	@OneToMany('ProjectSecretsProviderAccess', 'secretsProviderConnection')
+	projectAccess: ProjectSecretsProviderAccess[];
 
 	/**
 	 * Encrypted JSON string containing the connection settings for the secrets provider.
