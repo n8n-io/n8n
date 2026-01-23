@@ -1,4 +1,7 @@
-import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
+import { randomBytes, timingSafeEqual } from 'crypto';
+import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
+
+const CURRENTS_API_BASE = 'https://api.currents.dev/v1';
 
 /**
  * Maximum allowed age for a webhook request timestamp (5 minutes).
@@ -7,11 +10,132 @@ import type { IDataObject, IWebhookFunctions } from 'n8n-workflow';
 const MAX_TIMESTAMP_AGE_SECONDS = 300;
 
 /**
- * Verifies the webhook request is recent and optionally validates a secret header.
+ * Header name used for webhook secret validation.
+ */
+const WEBHOOK_SECRET_HEADER = 'x-webhook-secret';
+
+/**
+ * Currents webhook object returned from the API.
+ */
+export interface CurrentsWebhook {
+	hookId: string;
+	projectId: string;
+	url: string;
+	headers?: string | null;
+	hookEvents: string[];
+	label?: string | null;
+	createdAt?: string;
+	updatedAt?: string;
+}
+
+/**
+ * Options for creating a Currents webhook.
+ */
+export interface CreateWebhookOptions {
+	url: string;
+	hookEvents?: string[];
+	headers?: string;
+	label?: string;
+}
+
+/**
+ * Generates a cryptographically secure random secret for webhook validation.
+ */
+export function generateWebhookSecret(): string {
+	return randomBytes(32).toString('hex');
+}
+
+/**
+ * Lists all webhooks for a project.
+ */
+export async function listWebhooks(
+	this: IHookFunctions,
+	projectId: string,
+): Promise<CurrentsWebhook[]> {
+	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'currentsApi', {
+		method: 'GET',
+		url: `${CURRENTS_API_BASE}/webhooks`,
+		qs: { projectId },
+	});
+
+	return (response.data as CurrentsWebhook[]) ?? [];
+}
+
+/**
+ * Finds an existing webhook by URL for a project.
+ */
+export async function findWebhookByUrl(
+	this: IHookFunctions,
+	projectId: string,
+	webhookUrl: string,
+): Promise<CurrentsWebhook | undefined> {
+	const webhooks = await listWebhooks.call(this, projectId);
+	return webhooks.find((webhook) => webhook.url === webhookUrl);
+}
+
+/**
+ * Creates a new webhook in Currents.
+ */
+export async function createWebhook(
+	this: IHookFunctions,
+	projectId: string,
+	options: CreateWebhookOptions,
+): Promise<CurrentsWebhook> {
+	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'currentsApi', {
+		method: 'POST',
+		url: `${CURRENTS_API_BASE}/webhooks`,
+		qs: { projectId },
+		body: {
+			url: options.url,
+			hookEvents: options.hookEvents ?? [],
+			headers: options.headers,
+			label: options.label,
+		},
+	});
+
+	return response.data as CurrentsWebhook;
+}
+
+/**
+ * Updates an existing webhook in Currents.
+ */
+export async function updateWebhook(
+	this: IHookFunctions,
+	hookId: string,
+	options: Partial<CreateWebhookOptions>,
+): Promise<CurrentsWebhook> {
+	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'currentsApi', {
+		method: 'PUT',
+		url: `${CURRENTS_API_BASE}/webhooks/${hookId}`,
+		body: {
+			...(options.url && { url: options.url }),
+			...(options.hookEvents && { hookEvents: options.hookEvents }),
+			...(options.headers && { headers: options.headers }),
+			...(options.label && { label: options.label }),
+		},
+	});
+
+	return response.data as CurrentsWebhook;
+}
+
+/**
+ * Deletes a webhook from Currents.
+ */
+export async function deleteWebhook(this: IHookFunctions, hookId: string): Promise<void> {
+	await this.helpers.httpRequestWithAuthentication.call(this, 'currentsApi', {
+		method: 'DELETE',
+		url: `${CURRENTS_API_BASE}/webhooks/${hookId}`,
+	});
+}
+
+/**
+ * Verifies the webhook request is recent and validates the secret.
+ *
+ * Uses auto-managed secret from workflow static data.
  *
  * Currents.dev includes an `x-timestamp` header with the epoch timestamp in milliseconds.
  * This function validates that the timestamp is within an acceptable window to prevent
- * replay attacks. Additionally, if a secret header is configured, it validates that.
+ * replay attacks.
  *
  * @returns true if the request is valid, false otherwise
  */
@@ -20,8 +144,8 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const headerData = this.getHeaderData();
 
 	// Check timestamp to prevent replay attacks (Currents sends milliseconds)
-	const timestampHeader = req.headers['x-timestamp'] as string | undefined;
-	if (timestampHeader) {
+	const timestampHeader = req.headers['x-timestamp'];
+	if (typeof timestampHeader === 'string') {
 		const requestTimeMs = parseInt(timestampHeader, 10);
 		if (isNaN(requestTimeMs)) {
 			return false;
@@ -35,15 +159,19 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 		}
 	}
 
-	// Check optional secret header if configured (nested under 'options' collection)
-	const options = this.getNodeParameter('options', {}) as IDataObject;
-	const expectedSecret = (options.webhookSecret as string) || '';
+	const webhookData = this.getWorkflowStaticData('node');
+	const expectedSecret = webhookData.webhookSecret;
 
-	if (expectedSecret) {
-		const validationHeaderName = (options.validationHeaderName as string) || 'x-webhook-secret';
-		const actualSecret = headerData[validationHeaderName.toLowerCase()] as string | undefined;
-
-		if (actualSecret !== expectedSecret) {
+	if (typeof expectedSecret === 'string') {
+		const actualSecret = headerData[WEBHOOK_SECRET_HEADER];
+		if (typeof actualSecret !== 'string') {
+			return false;
+		}
+		// Use constant-time comparison to prevent timing attacks
+		if (
+			expectedSecret.length !== actualSecret.length ||
+			!timingSafeEqual(Buffer.from(expectedSecret), Buffer.from(actualSecret))
+		) {
 			return false;
 		}
 	}
