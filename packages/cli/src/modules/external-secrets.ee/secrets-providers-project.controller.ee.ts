@@ -8,7 +8,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalSecretsConfig } from './external-secrets.config';
 
 @RestController('/secret-providers/projects')
-export class SecretProvidersController {
+export class SecretProvidersProjectController {
 	constructor(
 		private readonly config: ExternalSecretsConfig,
 		private readonly logger: Logger,
