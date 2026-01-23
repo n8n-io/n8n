@@ -198,8 +198,12 @@ export function useCanvasOperations() {
 
 	const preventOpeningNDV = !!localStorage.getItem('NodeView.preventOpeningNDV');
 
-	const editableWorkflow = computed<IWorkflowDb>(() => workflowsStore.workflow);
-	const editableWorkflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const editableWorkflow = computed<IWorkflowDb | undefined>(
+		() => workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+	);
+	const editableWorkflowObject = computed(
+		() => workflowsStore.workflowObjectById[workflowsStore.workflowId] as Workflow | undefined,
+	);
 
 	const triggerNodes = computed<INodeUi[]>(() => {
 		return workflowsStore.workflowTriggerNodes;
@@ -526,7 +530,8 @@ export function useCanvasOperations() {
 		if (!previousNode || !newNode) {
 			return;
 		}
-		const workflowObject = workflowsStore.workflowObject;
+		const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+		if (!workflowObject) return;
 
 		const inputNodeNames = replaceInputs
 			? uniq(workflowObject.getParentNodes(previousNode.name, 'ALL', 1))
@@ -1745,7 +1750,10 @@ export function useCanvasOperations() {
 			historyStore.startRecordingUndo();
 		}
 
-		const connections = cloneDeep(workflowsStore.workflow.connections);
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+		if (!currentWorkflowDocument) return;
+
+		const connections = cloneDeep(currentWorkflowDocument.connections);
 		for (const nodeName of Object.keys(connections)) {
 			const node = workflowsStore.getNodeByName(nodeName);
 			if (!node) {
@@ -1789,7 +1797,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		delete workflowsStore.workflow.connections[targetNode.name];
+		delete currentWorkflowDocument.connections[targetNode.name];
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -1852,9 +1860,12 @@ export function useCanvasOperations() {
 			return;
 		}
 
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+		if (!currentWorkflowDocument) return;
+
 		const connections = mapLegacyConnectionsToCanvasConnections(
-			workflowsStore.workflow.connections,
-			workflowsStore.workflow.nodes,
+			currentWorkflowDocument.connections,
+			currentWorkflowDocument.nodes,
 		);
 
 		connections.forEach((connection) => {
@@ -2100,12 +2111,15 @@ export function useCanvasOperations() {
 	}
 
 	const initializeUnknownNodes = (nodes: INode[]) => {
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+		if (!currentWorkflowDocument) return;
+
 		nodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			nodeHelpers.matchCredentials(node);
 			resolveNodeParameters(node, nodeTypeDescription);
 			resolveNodeWebhook(node, nodeTypeDescription);
-			const nodeIndex = workflowsStore.workflow.nodes.findIndex((n) => {
+			const nodeIndex = currentWorkflowDocument.nodes.findIndex((n) => {
 				return n.name === node.name;
 			});
 			workflowState.updateNodeAtIndex(nodeIndex, node);
@@ -2622,10 +2636,11 @@ export function useCanvasOperations() {
 
 	async function copyNodes(ids: string[]) {
 		const workflowData = deepCopy(getNodesToSave(workflowsStore.getNodesByIds(ids)));
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
 
 		workflowData.meta = {
 			...workflowData.meta,
-			...workflowsStore.workflow.meta,
+			...currentWorkflowDocument?.meta,
 			instanceId: rootStore.instanceId,
 		};
 
@@ -2693,7 +2708,8 @@ export function useCanvasOperations() {
 			return;
 		}
 
-		const workflowObject = workflowsStore.workflowObject; // @TODO Check if we actually need workflowObject here
+		const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId]; // @TODO Check if we actually need workflowObject here
+		if (!workflowObject) return;
 
 		logsStore.toggleOpen(true);
 
