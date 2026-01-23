@@ -1908,11 +1908,7 @@ describe('cycle detection and variable generation', () => {
 });
 
 describe('SplitInBatches multi-output handling', () => {
-	// TODO: This test is currently skipped because the splitInBatches composite parsing
-	// has a known limitation when handling cycles. The .done().then(done) connection
-	// is not being correctly preserved during roundtrip. This needs to be fixed in
-	// the parse-workflow-code.ts parser.
-	it.skip('should preserve both outputs of SplitInBatches node', () => {
+	it('should preserve both outputs of SplitInBatches node', () => {
 		// SplitInBatches has 2 outputs:
 		// - Output 0: "done" (all items processed)
 		// - Output 1: "loop" (continue processing)
