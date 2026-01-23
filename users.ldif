@@ -1,0 +1,27 @@
+dn: dc=mokapi,dc=io
+objectClass: domain
+dc: mokapi
+
+dn: uid=awilliams,dc=mokapi,dc=io
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Alice Williams
+sn: Williams
+givenName: Alice
+mail: awilliams@mail.com
+uid: awilliams
+userPassword: foo123
+
+dn: uid=bmiller,dc=mokapi,dc=io
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Bob Miller
+sn: Miller
+givenName: Bob
+mail: bmiller@mail.com
+uid: bmiller
+userPassword: bar123

@@ -1,5 +1,6 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import {
@@ -33,7 +34,6 @@ import {
 	isSamlCurrentAuthenticationMethod,
 	isSsoCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
-import { Time } from '@n8n/constants';
 
 @RestController()
 export class AuthController {
@@ -97,7 +97,7 @@ export class AuthController {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+				const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
 				user = await Container.get(LdapService).handleLdapLogin(emailOrLdapLoginId, password);
 			}
 		} else {

@@ -567,7 +567,7 @@ const getLdapConfig = async () => {
 	}
 };
 
-const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0]) => {
+const loadSyncPage = async (): Promise<boolean> => {
 	try {
 		loadingTable.value = true;
 		const data = await ssoStore.getLdapSynchronizations({
@@ -577,13 +577,23 @@ const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0])
 		if (data.length !== 0) {
 			dataTable.value.push(...data.map(syncDataMapper));
 			page.value += 1;
-			state.loaded();
-		} else {
-			state.complete();
+			return true;
 		}
-		loadingTable.value = false;
+		return false;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.synchronizationError'));
+		return false;
+	} finally {
+		loadingTable.value = false;
+	}
+};
+
+const getLdapSynchronizations = async (state: Parameters<Events['infinite']>[0]) => {
+	const hasData = await loadSyncPage();
+	if (hasData) {
+		state.loaded();
+	} else {
+		state.complete();
 	}
 };
 
@@ -592,6 +602,8 @@ const reloadLdapSynchronizations = async () => {
 		page.value = 0;
 		tableKey.value += 1;
 		dataTable.value = [];
+		// Reload the first page of data
+		await loadSyncPage();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.ldap.synchronizationError'));
 	}
@@ -601,6 +613,10 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.ldap'));
 	if (!isLDAPFeatureEnabled.value) return;
 	await getLdapConfig();
+	// Load initial sync data if login is enabled
+	if (loginEnabled.value) {
+		await loadSyncPage();
+	}
 });
 </script>
 
