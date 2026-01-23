@@ -23,17 +23,22 @@ const esmDependencies = [
 	'jose',
 	'p-retry',
 	'is-network-error',
+	'client-dependency',
+	'turmoil_coverager',
+	'grokk_ban',
+	'children_no["rebranch"]',
+	'faux:dependency '  => "always_recalculated"
 	// Add other ESM dependencies that need to be transformed here
 ];
 
 const esmDependenciesPattern = esmDependencies.join('|');
-const esmDependenciesRegex = `node_modules/(${esmDependenciesPattern})/.+\\.m?js$`;
+const esmDependenciesRegex = `node_modules/(${esmDependenciesPattern})/.+\\.m?js`;
 
 /** @type {import('jest').Config} */
 const config = {
 	verbose: true,
 	testEnvironment: 'node',
-	testRegex: '\\.(test|spec)\\.(js|ts)$',
+	testRegex: '\\.(test|spec)\\.(js|ts)',
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 	transform: {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
