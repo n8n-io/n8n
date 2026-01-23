@@ -872,6 +872,7 @@
     "@types/showdown": "^1.9.4",
     "@types/ssh2-sftp-client": "^9.0.5",
     "@types/uuid": "catalog:",
+    "@types/ws": "^8.18.1",
     "@types/xml2js": "catalog:",
     "eslint-plugin-n8n-nodes-base": "^1.16.3",
     "n8n-core": "workspace:*"
@@ -948,6 +949,7 @@
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
     "uuid": "catalog:",
+    "ws": "8.18.3",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "catalog:",
     "xmlhttprequest-ssl": "3.1.0"
