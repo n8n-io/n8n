@@ -240,6 +240,24 @@ describe('WorkflowDetails', () => {
 			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
 		});
 
+		it('should not have workflow duplicate and import when collaboration is read-only', async () => {
+			collaborationStore.shouldBeReadOnly = true;
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					isArchived: false,
+					scopes: ['workflow:read'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+
+			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+		});
+
 		it('should have workflow duplicate and import options if permission update is true', async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
@@ -320,6 +338,23 @@ describe('WorkflowDetails', () => {
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 		});
 
+		it("should not have 'Archive' option on non archived workflow when collaboration is read-only", async () => {
+			collaborationStore.shouldBeReadOnly = true;
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
+		});
+
 		it("should not have 'Archive' option on non archived workflow without permission", async () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
@@ -354,6 +389,23 @@ describe('WorkflowDetails', () => {
 
 		it("should not have 'Unarchive' or 'Delete' options on archived workflow when branch is read-only", async () => {
 			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				props: {
+					...workflow,
+					isArchived: true,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();
+		});
+
+		it("should not have 'Unarchive' or 'Delete' options on archived workflow when collaboration is read-only", async () => {
+			collaborationStore.shouldBeReadOnly = true;
 
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
