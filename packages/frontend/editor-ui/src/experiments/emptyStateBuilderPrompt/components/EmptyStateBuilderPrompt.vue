@@ -60,19 +60,31 @@ function handleFileImport() {
 
 	const reader = new FileReader();
 	reader.onload = async () => {
+		let workflowData: unknown;
+
 		try {
-			const workflowData: unknown = JSON.parse(reader.result as string);
-			await emptyStateBuilderPromptStore.createWorkflowFromImport(
-				workflowData,
-				props.projectId,
-				props.parentFolderId,
-			);
+			workflowData = JSON.parse(reader.result as string);
 		} catch {
 			toast.showMessage({
 				title: i18n.baseText('mainSidebar.showMessage.handleFileImport.title'),
 				message: i18n.baseText('mainSidebar.showMessage.handleFileImport.message'),
 				type: 'error',
 			});
+			input.value = '';
+			return;
+		}
+
+		try {
+			await emptyStateBuilderPromptStore.createWorkflowFromImport(
+				workflowData,
+				props.projectId,
+				props.parentFolderId,
+			);
+		} catch {
+			toast.showError(
+				new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
+				i18n.baseText('nodeView.couldntImportWorkflow'),
+			);
 		} finally {
 			input.value = '';
 		}
