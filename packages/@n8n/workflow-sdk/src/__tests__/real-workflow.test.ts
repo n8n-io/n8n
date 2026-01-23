@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { workflow } from '../workflow-builder';
-import { generateWorkflowCode } from '../codegen/index';
+import { generateWorkflowCode } from '../codegen';
 import type { WorkflowJSON } from '../types/base';
 import {
 	ensureFixtures,

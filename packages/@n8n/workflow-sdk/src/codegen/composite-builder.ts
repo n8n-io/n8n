@@ -323,17 +323,10 @@ function detectMergePattern(
 }
 
 /**
- * Check if node should be a variable.
- * In the variables-first pattern, all regular nodes become variables.
- * Sticky notes don't need to be variables since they have no connections.
+ * Check if node should be a variable (cycle target or convergence point)
  */
 function shouldBeVariable(node: SemanticNode): boolean {
-	// Sticky notes don't need to be variables (they have no connections)
-	if (node.type === 'n8n-nodes-base.stickyNote') {
-		return false;
-	}
-	// All regular nodes become variables for cleaner code
-	return true;
+	return node.annotations.isCycleTarget || node.annotations.isConvergencePoint;
 }
 
 /**
