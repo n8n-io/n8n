@@ -17,7 +17,7 @@ function generateFromWorkflow(json: WorkflowJSON): string {
 describe('code-generator', () => {
 	describe('generateCode', () => {
 		describe('output format', () => {
-			it('starts with return keyword', () => {
+			it('starts with const wf declaration', () => {
 				const json: WorkflowJSON = {
 					name: 'Test',
 					nodes: [],
@@ -26,7 +26,8 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toMatch(/^return workflow\(/);
+				expect(code).toMatch(/^const wf = workflow\(/);
+				expect(code).toContain('return wf');
 			});
 
 			it('does not end with .toJSON()', () => {
@@ -60,10 +61,11 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("return workflow('");
+				expect(code).toContain("const wf = workflow('");
 				expect(code).toContain("'Single Trigger'");
 				expect(code).toContain('trigger({');
 				expect(code).toContain("type: 'n8n-nodes-base.manualTrigger'");
+				expect(code).toContain('return wf');
 			});
 
 			it('always includes config property even when empty', () => {
@@ -123,9 +125,9 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain('.then(');
-				// Should have workflow-level chained structure: .add(trigger(...)).then(...)
-				expect(code).toMatch(/\.add\(trigger\(/);
-				expect(code).toMatch(/\.then\(node\(/);
+				// Should have workflow-level chained structure with variable references
+				expect(code).toContain('.add(trigger_node');
+				expect(code).toContain('return wf');
 			});
 		});
 
@@ -171,8 +173,9 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain('ifElse([');
-				// Should have true and false branches
-				expect(code).toMatch(/ifElse\(\[[\s\S]*node\([\s\S]*node\(/);
+				// Should reference variable names in branches
+				expect(code).toContain('trueHandler');
+				expect(code).toContain('falseHandler');
 			});
 
 			it('handles IF with null branch', () => {
@@ -496,8 +499,9 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("return workflow('");
+				expect(code).toContain("const wf = workflow('");
 				expect(code).toContain("'Empty'");
+				expect(code).toContain('return wf');
 			});
 		});
 
@@ -516,7 +520,7 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("return workflow('settings-test', 'Settings Test',");
+				expect(code).toContain("const wf = workflow('settings-test', 'Settings Test',");
 				expect(code).toContain("timezone: 'America/New_York'");
 				expect(code).toContain("executionOrder: 'v1'");
 			});
@@ -532,7 +536,7 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("return workflow('no-settings', 'No Settings')");
+				expect(code).toContain("const wf = workflow('no-settings', 'No Settings')");
 				expect(code).not.toContain('timezone');
 			});
 
@@ -546,7 +550,9 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toMatch(/return workflow\('undefined-settings', 'Undefined Settings'\)$/m);
+				expect(code).toMatch(
+					/const wf = workflow\('undefined-settings', 'Undefined Settings'\);$/m,
+				);
 			});
 		});
 
@@ -794,9 +800,9 @@ describe('code-generator', () => {
 				expect(code).not.toContain("name: 'Manual Trigger'");
 			});
 
-			it('always includes name for composite nodes like IF (even if matching default)', () => {
-				// The parser's ifElse defaults to "IF", but the codegen default is "If"
-				// We must always include the name for composite nodes to ensure roundtrip works
+			it('generates IF node as variable with ifElse composite', () => {
+				// With variables-first pattern, IF nodes are declared as variables
+				// and referenced in the ifElse composite
 				const json: WorkflowJSON = {
 					id: 'if-name-test',
 					name: 'Test',
@@ -810,7 +816,7 @@ describe('code-generator', () => {
 						},
 						{
 							id: '2',
-							name: 'If', // Matches codegen default but not parser default
+							name: 'If', // Matches codegen default
 							type: 'n8n-nodes-base.if',
 							typeVersion: 2.2,
 							position: [100, 0],
@@ -832,8 +838,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// IF node must always include its name in the config for roundtrip
-				expect(code).toContain("name: 'If'");
+				// IF node should be declared as a variable
+				expect(code).toContain('const if_node = node({');
+				// And used in ifElse composite
+				expect(code).toContain('ifElse([trueHandler, null], if_node)');
 			});
 		});
 

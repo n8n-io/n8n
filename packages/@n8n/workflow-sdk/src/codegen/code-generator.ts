@@ -28,6 +28,7 @@ interface GenerationContext {
 	generatedVars: Set<string>;
 	variableNodes: Map<string, SemanticNode>; // Nodes that are declared as variables
 	graph: SemanticGraph; // Full graph for looking up subnodes
+	nodeNameToVarName?: Map<string, string>; // Mapping from node names to unique variable names
 }
 
 /**
@@ -84,7 +85,7 @@ function generateDefaultNodeName(type: string): string {
  * Reserved keywords that cannot be used as variable names
  */
 const RESERVED_KEYWORDS = new Set([
-	// JavaScript reserved
+	// JavaScript reserved keywords
 	'break',
 	'case',
 	'catch',
@@ -120,6 +121,13 @@ const RESERVED_KEYWORDS = new Set([
 	'while',
 	'with',
 	'yield',
+	// JavaScript literals
+	'null',
+	'true',
+	'false',
+	'undefined',
+	'NaN',
+	'Infinity',
 	// SDK functions
 	'workflow',
 	'trigger',
@@ -429,7 +437,7 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
 	const nodeName = node.json.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
-		return toVarName(nodeName);
+		return getVarName(nodeName, ctx);
 	}
 	return generateFlatNodeConfig(node);
 }
@@ -497,7 +505,7 @@ function generateLeafCode(leaf: LeafNode, ctx: GenerationContext): string {
 	const nodeName = leaf.node.json.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
 		// Use variable reference for nodes that are declared as variables
-		return toVarName(nodeName);
+		return getVarName(nodeName, ctx);
 	}
 	return generateNodeCall(leaf.node, ctx);
 }
@@ -540,8 +548,9 @@ function generateChain(chain: ChainNode, ctx: GenerationContext): string {
 /**
  * Generate code for a variable reference
  */
-function generateVarRef(varRef: VariableReference, _ctx: GenerationContext): string {
-	return varRef.varName;
+function generateVarRef(varRef: VariableReference, ctx: GenerationContext): string {
+	// Use context mapping if available (handles duplicate variable names)
+	return getVarName(varRef.nodeName, ctx);
 }
 
 /**
@@ -680,14 +689,14 @@ function generateFanOut(fanOut: FanOutCompositeNode, ctx: GenerationContext): st
  */
 function generateExplicitConnections(
 	explicitConns: ExplicitConnectionsNode,
-	_ctx: GenerationContext,
+	ctx: GenerationContext,
 ): string {
 	// Generate variable references to the nodes involved
 	// The actual .add() and .connect() calls will be generated at the root level
 	// For now, just return the variable reference to the first node
 	if (explicitConns.nodes.length > 0) {
 		const firstNode = explicitConns.nodes[0];
-		const varName = toVarName(firstNode.name);
+		const varName = getVarName(firstNode.name, ctx);
 		return varName;
 	}
 	return '';
@@ -720,7 +729,7 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 }
 
 /**
- * Generate variable name from node name
+ * Generate variable name from node name (base function, doesn't handle duplicates)
  */
 function toVarName(nodeName: string): string {
 	let varName = nodeName
@@ -749,6 +758,46 @@ function toVarName(nodeName: string): string {
 }
 
 /**
+ * Get variable name for a node, using the context mapping if available
+ */
+function getVarName(nodeName: string, ctx: GenerationContext): string {
+	// If we have a mapping from variable declaration, use it
+	if (ctx.nodeNameToVarName?.has(nodeName)) {
+		return ctx.nodeNameToVarName.get(nodeName)!;
+	}
+	// Fallback to base function
+	return toVarName(nodeName);
+}
+
+/**
+ * Generate unique variable name, handling duplicates
+ */
+function getUniqueVarName(
+	nodeName: string,
+	usedVarNames: Set<string>,
+	nodeNameToVarName: Map<string, string>,
+): string {
+	// If we already assigned a var name for this node, return it
+	if (nodeNameToVarName.has(nodeName)) {
+		return nodeNameToVarName.get(nodeName)!;
+	}
+
+	const baseVarName = toVarName(nodeName);
+	let varName = baseVarName;
+	let counter = 1;
+
+	// Keep incrementing until we find an unused name
+	while (usedVarNames.has(varName)) {
+		varName = `${baseVarName}${counter}`;
+		counter++;
+	}
+
+	usedVarNames.add(varName);
+	nodeNameToVarName.set(nodeName, varName);
+	return varName;
+}
+
+/**
  * Generate variable declarations
  */
 function generateVariableDeclarations(
@@ -756,60 +805,30 @@ function generateVariableDeclarations(
 	ctx: GenerationContext,
 ): string {
 	const declarations: string[] = [];
+	const usedVarNames = new Set<string>();
+	const nodeNameToVarName = new Map<string, string>();
 
 	for (const [nodeName, node] of variables) {
-		const varName = toVarName(nodeName);
+		const varName = getUniqueVarName(nodeName, usedVarNames, nodeNameToVarName);
 		const nodeCall = generateNodeCall(node, ctx);
 		declarations.push(`const ${varName} = ${nodeCall};`);
 		ctx.generatedVars.add(nodeName);
 	}
 
+	// Store the mapping in context for use in variable references
+	ctx.nodeNameToVarName = nodeNameToVarName;
+
 	return declarations.join('\n');
 }
 
 /**
- * Flatten a composite tree into workflow-level calls.
- * Returns array of [method, code] tuples where method is 'add', 'then', or 'connect'.
+ * Check if a composite node represents a sticky note
  */
-function flattenToWorkflowCalls(
-	root: CompositeNode,
-	ctx: GenerationContext,
-): Array<[string, string]> {
-	const calls: Array<[string, string]> = [];
-
-	if (root.kind === 'explicitConnections') {
-		// Explicit connections pattern: generate .add() for each node, then .connect() for each connection
-		const explicitConns = root as ExplicitConnectionsNode;
-
-		// Add each node (use variable references since they're already declared)
-		for (const node of explicitConns.nodes) {
-			const varName = toVarName(node.name);
-			calls.push(['add', varName]);
-		}
-
-		// Generate .connect() calls for each explicit connection
-		for (const conn of explicitConns.connections) {
-			const sourceVar = toVarName(conn.sourceNode);
-			const targetVar = toVarName(conn.targetNode);
-			calls.push([
-				'connect',
-				`${sourceVar}, ${conn.sourceOutput}, ${targetVar}, ${conn.targetInput}`,
-			]);
-		}
-	} else if (root.kind === 'chain') {
-		// Chain: first node is .add(), rest are .then()
-		for (let i = 0; i < root.nodes.length; i++) {
-			const node = root.nodes[i];
-			const method = i === 0 ? 'add' : 'then';
-			const code = generateComposite(node, ctx);
-			calls.push([method, code]);
-		}
-	} else {
-		// Single node: just .add()
-		calls.push(['add', generateComposite(root, ctx)]);
+function isStickyRoot(root: CompositeNode): boolean {
+	if (root.kind === 'leaf') {
+		return root.node.type === 'n8n-nodes-base.stickyNote';
 	}
-
-	return calls;
+	return false;
 }
 
 /**
@@ -833,13 +852,7 @@ export function generateCode(
 
 	const lines: string[] = [];
 
-	// Generate variable declarations first
-	if (tree.variables.size > 0) {
-		lines.push(generateVariableDeclarations(tree.variables, ctx));
-		lines.push('');
-	}
-
-	// Generate workflow call
+	// Generate workflow variable
 	const workflowId = escapeString(json.id ?? '');
 	const workflowName = escapeString(json.name ?? '');
 
@@ -847,15 +860,83 @@ export function generateCode(
 	const settingsStr =
 		json.settings && Object.keys(json.settings).length > 0 ? `, ${formatValue(json.settings)}` : '';
 
-	lines.push(`return workflow('${workflowId}', '${workflowName}'${settingsStr})`);
+	lines.push(`const wf = workflow('${workflowId}', '${workflowName}'${settingsStr});`);
 
-	// Generate each root, flattening chains to workflow-level calls
-	ctx.indent = 1;
+	// Generate variable declarations for nodes
+	if (tree.variables.size > 0) {
+		lines.push(generateVariableDeclarations(tree.variables, ctx));
+	}
+
+	// Separate roots into regular flows and sticky notes
+	const regularRoots: CompositeNode[] = [];
+	const stickyRoots: CompositeNode[] = [];
+
 	for (const root of tree.roots) {
-		const calls = flattenToWorkflowCalls(root, ctx);
-		for (const [method, code] of calls) {
-			lines.push(`  .${method}(${code})`);
+		if (isStickyRoot(root)) {
+			stickyRoots.push(root);
+		} else {
+			regularRoots.push(root);
 		}
+	}
+
+	// Collect all workflow-level calls to chain them together
+	// Use workflow-level .add() and .then() to ensure merge composites are handled correctly
+	const workflowCalls: string[] = [];
+	ctx.indent = 1;
+
+	// Generate each disconnected flow
+	for (const root of regularRoots) {
+		if (root.kind === 'explicitConnections') {
+			// Explicit connections pattern: generate multiple .add() and .connect() calls
+			const explicitConns = root as ExplicitConnectionsNode;
+
+			// Add each node (use variable references since they're already declared)
+			for (const node of explicitConns.nodes) {
+				const varName = getVarName(node.name, ctx);
+				workflowCalls.push(`add(${varName})`);
+			}
+
+			// Generate .connect() calls for each explicit connection
+			for (const conn of explicitConns.connections) {
+				const sourceVar = getVarName(conn.sourceNode, ctx);
+				const targetVar = getVarName(conn.targetNode, ctx);
+				workflowCalls.push(
+					`connect(${sourceVar}, ${conn.sourceOutput}, ${targetVar}, ${conn.targetInput})`,
+				);
+			}
+		} else if (root.kind === 'chain') {
+			// Chain: first node is .add(), rest are .then() at workflow level
+			// This ensures merge composites get proper fan-out handling
+			for (let i = 0; i < root.nodes.length; i++) {
+				const node = root.nodes[i];
+				const method = i === 0 ? 'add' : 'then';
+				const code = generateComposite(node, ctx);
+				workflowCalls.push(`${method}(${code})`);
+			}
+		} else {
+			// Single node: just .add()
+			workflowCalls.push(`add(${generateComposite(root, ctx)})`);
+		}
+	}
+
+	// Generate sticky notes section (separate from main flow)
+	for (const stickyRoot of stickyRoots) {
+		if (stickyRoot.kind === 'leaf') {
+			const stickyCall = generateStickyCall(stickyRoot.node);
+			workflowCalls.push(`add(${stickyCall})`);
+		}
+	}
+
+	// Generate the return statement with chained workflow calls
+	if (workflowCalls.length > 0) {
+		lines.push('');
+		lines.push('return wf');
+		for (const call of workflowCalls) {
+			lines.push(`  .${call}`);
+		}
+	} else {
+		lines.push('');
+		lines.push('return wf');
 	}
 
 	return lines.join('\n');
