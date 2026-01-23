@@ -1,8 +1,4 @@
 import { test, expect, chatHubTestConfig } from './fixtures';
-import {
-	INSTANCE_MEMBER_CREDENTIALS,
-	INSTANCE_OWNER_CREDENTIALS,
-} from '../../../config/test-users';
 import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 import { CredentialModal } from '../../../pages/components/CredentialModal';
 
