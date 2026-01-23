@@ -31,6 +31,7 @@ import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 jest.mock('fast-glob');
@@ -61,6 +62,7 @@ describe('SourceControlImportService', () => {
 	const variablesRepository = mock<VariablesRepository>();
 	const workflowService = mock<WorkflowService>();
 	const userRepository = mock<UserRepository>();
+	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const service = new SourceControlImportService(
 		mockLogger,
 		mock(),
@@ -81,7 +83,7 @@ describe('SourceControlImportService', () => {
 		folderRepository,
 		mock<InstanceSettings>({ n8nFolder: '/mock/n8n' }),
 		sourceControlScopedService,
-		mock(),
+		workflowHistoryService,
 	);
 
 	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
@@ -276,6 +278,109 @@ describe('SourceControlImportService', () => {
 			);
 		});
 
+		it('should skip corrupted workflow files but import valid ones', async () => {
+			const mockUserId = 'user-id-123';
+			const mockCorruptedFile = '/mock/corrupted-workflow.json';
+			const mockValidFile = '/mock/valid-workflow.json';
+			const mockCorruptedData = {
+				id: 'workflow1',
+				name: 'Corrupted Workflow',
+				// Missing required fields: versionId, nodes, connections
+			};
+			const mockValidData = {
+				id: 'workflow2',
+				name: 'Valid Workflow',
+				nodes: [],
+				connections: {},
+				versionId: 'v1',
+				parentFolderId: null,
+			};
+			const candidates = [
+				mock<SourceControlledFile>({ file: mockCorruptedFile, id: 'workflow1' }),
+				mock<SourceControlledFile>({ file: mockValidFile, id: 'workflow2' }),
+			];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow2' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile
+				.mockResolvedValueOnce(JSON.stringify(mockCorruptedData))
+				.mockResolvedValueOnce(JSON.stringify(mockValidData));
+
+			const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			// Should log error for corrupted file
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				`Workflow file ${mockCorruptedFile} is missing required fields (id, versionId, nodes, connections)`,
+			);
+
+			// Should still import the valid workflow
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'workflow2',
+					name: 'Valid Workflow',
+				}),
+				['id'],
+			);
+
+			// Result should only contain the valid workflow
+			expect(result).toEqual([
+				{
+					id: 'workflow2',
+					name: mockValidFile,
+				},
+			]);
+		});
+
+		it('should skip workflows with history save failures but import valid ones', async () => {
+			const candidates = [
+				mock<SourceControlledFile>({ file: '/mock/wf1.json', id: 'wf1' }),
+				mock<SourceControlledFile>({ file: '/mock/wf2.json', id: 'wf2' }),
+			];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'wf' }],
+				generatedMaps: [],
+				raw: [],
+			});
+			userRepository.findOne.mockResolvedValue(Object.assign(new User(), { id: 'user1' }));
+
+			workflowHistoryService.findVersion
+				.mockRejectedValueOnce(new Error('DB error'))
+				.mockResolvedValueOnce(null);
+
+			fsReadFile
+				.mockResolvedValueOnce(
+					JSON.stringify({ id: 'wf1', nodes: [], connections: {}, versionId: 'v1' }),
+				)
+				.mockResolvedValueOnce(
+					JSON.stringify({ id: 'wf2', nodes: [], connections: {}, versionId: 'v1' }),
+				);
+
+			const result = await service.importWorkflowFromWorkFolder(candidates, 'user1');
+
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				'Failed to save or update workflow history for workflow wf1',
+				expect.any(Object),
+			);
+			expect(result).toEqual([{ id: 'wf2', name: '/mock/wf2.json' }]);
+		});
+
 		it('should set new workflows as inactive', async () => {
 			const mockUserId = 'user-id-123';
 			const mockWorkflowFile = '/mock/workflow1.json';
@@ -302,6 +407,10 @@ describe('SourceControlImportService', () => {
 			});
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+			userRepository.findOne.mockResolvedValue(
+				Object.assign(new User(), { id: mockUserId, firstName: 'Test', lastName: 'User' }),
+			);
+			workflowHistoryService.findVersion.mockResolvedValue(null);
 
 			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
@@ -348,6 +457,10 @@ describe('SourceControlImportService', () => {
 				generatedMaps: [],
 				raw: [],
 			});
+			userRepository.findOne.mockResolvedValue(
+				Object.assign(new User(), { id: mockUserId, firstName: 'Test', lastName: 'User' }),
+			);
+			workflowHistoryService.findVersion.mockResolvedValue(null);
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
 

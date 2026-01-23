@@ -755,7 +755,15 @@ export class SourceControlImportService {
 			});
 		}
 
-		await this.saveOrUpdateWorkflowHistory({ id, versionId, nodes, connections }, userId);
+		try {
+			await this.saveOrUpdateWorkflowHistory({ id, versionId, nodes, connections }, userId);
+		} catch (error) {
+			const e = ensureError(error);
+			this.logger.error(`Failed to save or update workflow history for workflow ${id}`, {
+				error: e,
+			});
+			return;
+		}
 
 		const localOwner = allSharedWorkflows.find(
 			(w) => w.workflowId === id && w.role === 'workflow:owner',
