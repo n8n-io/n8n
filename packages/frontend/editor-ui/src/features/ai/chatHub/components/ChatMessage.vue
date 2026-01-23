@@ -324,7 +324,7 @@ onBeforeMount(() => {
 							:href="attachment.downloadUrl"
 						/>
 					</div>
-					<div v-if="message.type === 'human'" :class="$style.messageContent">
+					<div v-if="message.type === 'human'">
 						{{ message.content }}
 					</div>
 					<div v-else :class="$style.markdownContent">
@@ -356,11 +356,6 @@ onBeforeMount(() => {
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
-}
-
-.messageContent {
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--xl);
 }
 
 .markdownContent {
@@ -433,6 +428,9 @@ onBeforeMount(() => {
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 		white-space-collapse: preserve-breaks;
+		width: fit-content;
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--xl);
 	}
 }
 
