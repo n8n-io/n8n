@@ -1,4 +1,5 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
+import type { LicenseState } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings, User } from '@n8n/db';
@@ -25,7 +26,6 @@ import {
 	resolveEntryBinaryAttributes,
 	getAuthIdentityByLdapId,
 	getUserByEmail,
-	isLdapEnabled,
 	createLdapUserOnLocalDb,
 } from '../helpers.ee';
 import { LdapService } from '../ldap.service.ee';
@@ -114,7 +114,16 @@ describe('LdapService', () => {
 	const createDefaultLdapService = (config: LdapConfig, eventService?: EventService) => {
 		mockSettingsRespositoryFindOneByOrFail(config);
 
-		return new LdapService(mockLogger(), settingsRepository, mock(), eventService ?? mock());
+		const mockLicenseState = mock<LicenseState>();
+		mockLicenseState.isLdapLicensed.mockReturnValue(true);
+
+		return new LdapService(
+			mockLogger(),
+			settingsRepository,
+			mock(),
+			eventService ?? mock(),
+			mockLicenseState,
+		);
 	};
 
 	describe('init()', () => {
@@ -165,7 +174,13 @@ describe('LdapService', () => {
 
 			const logger = mockLogger();
 
-			const ldapService = new LdapService(logger, settingsRepository, mock(), mock());
+			const ldapService = new LdapService(
+				logger,
+				settingsRepository,
+				mock(),
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			config.set('userManagement.authenticationMethod', 'invalid');
 
@@ -226,7 +241,13 @@ describe('LdapService', () => {
 				new Error('LDAP configuration not found'),
 			);
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, mock(), mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				mock(),
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			await expect(ldapService.loadConfig()).rejects.toThrowError('LDAP configuration not found');
 		});
@@ -238,7 +259,13 @@ describe('LdapService', () => {
 				decrypt: jest.fn(),
 			});
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			await ldapService.loadConfig();
 
@@ -253,7 +280,13 @@ describe('LdapService', () => {
 				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
 			});
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			const config = await ldapService.loadConfig();
 
@@ -290,7 +323,13 @@ describe('LdapService', () => {
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			const newConfig = { ...ldapConfig };
 			await ldapService.updateConfig(newConfig);
@@ -313,7 +352,13 @@ describe('LdapService', () => {
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
 			await ldapService.updateConfig(newConfig);
@@ -336,7 +381,13 @@ describe('LdapService', () => {
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
 			await ldapService.updateConfig(newConfig);
@@ -359,7 +410,13 @@ describe('LdapService', () => {
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			const newConfig = { ...ldapConfig, loginEnabled: false, synchronizationEnabled: true };
 			await ldapService.updateConfig(newConfig);
@@ -382,7 +439,13 @@ describe('LdapService', () => {
 			});
 			const globalConfig = Container.get(GlobalConfig);
 			config.set('userManagement.authenticationMethod', 'email');
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			const newConfig = {
 				...ldapConfig,
@@ -492,7 +555,13 @@ describe('LdapService', () => {
 
 			const filter = '';
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			await ldapService.init();
 			await ldapService.searchWithAdminBinding(filter);
@@ -515,7 +584,13 @@ describe('LdapService', () => {
 
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			await ldapService.init();
 			await ldapService.searchWithAdminBinding(filter);
@@ -547,7 +622,13 @@ describe('LdapService', () => {
 
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			await ldapService.init();
 			await ldapService.searchWithAdminBinding(filter);
@@ -579,7 +660,13 @@ describe('LdapService', () => {
 
 			const filter = '';
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			await ldapService.init();
 			await ldapService.searchWithAdminBinding(filter);
@@ -616,7 +703,13 @@ describe('LdapService', () => {
 
 			const filter = '';
 
-			const ldapService = new LdapService(mockLogger(), settingsRepository, cipherMock, mock());
+			const ldapService = new LdapService(
+				mockLogger(),
+				settingsRepository,
+				cipherMock,
+				mock(),
+				mock<LicenseState>(),
+			);
 
 			await ldapService.init();
 			const results = await ldapService.searchWithAdminBinding(filter);
@@ -716,6 +809,7 @@ describe('LdapService', () => {
 				settingsRepository,
 				mock(),
 				eventServiceMock,
+				mock<LicenseState>(),
 			);
 			Client.prototype.search = jest.fn().mockRejectedValue(new Error('Failed to find admin user'));
 
@@ -1278,6 +1372,7 @@ describe('LdapService', () => {
 				settingsRepository,
 				mock(),
 				eventServiceMock,
+				mock<LicenseState>(),
 			);
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
 
@@ -1308,6 +1403,7 @@ describe('LdapService', () => {
 				settingsRepository,
 				mock(),
 				eventServiceMock,
+				mock<LicenseState>(),
 			);
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
 
@@ -1339,6 +1435,7 @@ describe('LdapService', () => {
 				settingsRepository,
 				mock(),
 				eventServiceMock,
+				mock<LicenseState>(),
 			);
 			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
 
@@ -1410,9 +1507,6 @@ describe('LdapService', () => {
 
 				const mockedGetAuthIdentity = getAuthIdentityByLdapId as jest.Mock;
 				mockedGetAuthIdentity.mockResolvedValue(null);
-
-				const mockIsLdapEnabled = isLdapEnabled as jest.Mock;
-				mockIsLdapEnabled.mockReturnValue(true);
 
 				const mockedCreateLdapUserOnLocalDb = createLdapUserOnLocalDb as jest.Mock;
 				mockedCreateLdapUserOnLocalDb.mockResolvedValue(mockUser);
