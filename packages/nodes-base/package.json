@@ -81,6 +81,7 @@
       "dist/credentials/CortexApi.credentials.js",
       "dist/credentials/CrateDb.credentials.js",
       "dist/credentials/CrowdStrikeOAuth2Api.credentials.js",
+      "dist/credentials/Crypto.credentials.js",
       "dist/credentials/CustomerIoApi.credentials.js",
       "dist/credentials/DatadogApi.credentials.js",
       "dist/credentials/DeepLApi.credentials.js",
