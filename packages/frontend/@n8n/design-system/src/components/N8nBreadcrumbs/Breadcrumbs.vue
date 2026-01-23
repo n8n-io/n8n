@@ -119,11 +119,22 @@ const onHiddenMenuVisibleChange = async (visible: boolean) => {
 	}
 };
 
-const emitItemSelected = (id: string) => {
+const emitItemSelected = (id: string, event?: MouseEvent) => {
 	const item = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === id);
 	if (!item) {
 		return;
 	}
+
+	// Allow default browser behavior for modifier keys (ctrl/cmd/shift + click) or middle mouse button
+	if (event && (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1)) {
+		return;
+	}
+
+	// Prevent default navigation and emit event for custom handling
+	if (event && item.href) {
+		event.preventDefault();
+	}
+
 	emit('itemSelected', item);
 };
 
@@ -241,12 +252,17 @@ const handleTooltipClose = () => {
 					:data-resourceid="item.id"
 					data-test-id="breadcrumbs-item"
 					data-target="folder-breadcrumb-item"
-					@click.prevent="emitItemSelected(item.id)"
 					@mouseenter="emitItemHover(item.id)"
 					@mouseup="onItemMouseUp(item)"
 				>
-					<N8nLink v-if="item.href" :href="item.href" theme="text">{{ item.label }}</N8nLink>
-					<N8nText v-else>{{ item.label }}</N8nText>
+					<N8nLink
+						v-if="item.href"
+						:href="item.href"
+						theme="text"
+						@click="(event: MouseEvent) => emitItemSelected(item.id, event)"
+						>{{ item.label }}</N8nLink
+					>
+					<N8nText v-else @click="emitItemSelected(item.id)">{{ item.label }}</N8nText>
 				</li>
 				<li v-if="index !== items.length - 1" :class="$style.separator">
 					{{ separator }}
