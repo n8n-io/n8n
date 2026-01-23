@@ -6,11 +6,12 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { strict as assert } from 'node:assert';
 
+import { checkWorkerReadiness } from './worker-readiness';
+
 import { RedisClientService } from '@/services/redis-client.service';
 import { CircuitBreaker, CircuitBreakerOpen } from '@/utils/circuit-breaker';
 
 import type { ScalingService } from './scaling.service';
-import { checkWorkerReadiness } from './worker-readiness';
 
 /**
  * Monitors worker health and automatically pauses/resumes queue processing
@@ -18,24 +19,8 @@ import { checkWorkerReadiness } from './worker-readiness';
  *
  * This prevents unhealthy workers from pulling jobs they cannot successfully process.
  *
- * ## How it works
- *
- * 1. Periodically checks worker health (DB and Redis connectivity)
- * 2. If unhealthy: pauses queue to stop pulling new jobs
- * 3. If healthy again: resumes queue processing
- * 4. Uses circuit breaker pattern to prevent flapping
- *
- * ## Configuration
- *
- * - `QUEUE_HEALTH_CHECK_INTERVAL`: How often to check health (0 to disable, default: 0)
- * - `QUEUE_HEALTH_CHECK_ACTIVE`: Must be enabled for health monitoring
- *
- * @example
- * ```typescript
- * // Automatically started when worker is initialized
- * const monitor = Container.get(WorkerHealthMonitor);
- * await monitor.start(scalingService);
- * ```
+ * QUEUE_HEALTH_CHECK_ACTIVE must be true and QUEUE_HEALTH_CHECK_INTERVAL must be >0 to
+ * enable this.
  */
 @Service()
 export class WorkerHealthMonitor {
@@ -63,14 +48,11 @@ export class WorkerHealthMonitor {
 		this.checkIntervalMs = this.globalConfig.queue.health.checkInterval;
 
 		// Circuit breaker prevents flapping between healthy/unhealthy states
-		// - Opens after 3 failures within 60 seconds
-		// - Tests recovery after 10 seconds
-		// - Requires 2 successful checks to close
 		this.circuitBreaker = new CircuitBreaker({
-			timeout: 10_000, // Wait 10s before testing recovery
-			maxFailures: 3, // Pause queue after 3 consecutive health check failures
-			halfOpenRequests: 2, // Need 2 successful checks to resume
-			failureWindow: 60_000, // Count failures within 60s window
+			timeout: 10_000,
+			maxFailures: 3,
+			halfOpenRequests: 2,
+			failureWindow: 60_000,
 		});
 	}
 
@@ -91,10 +73,8 @@ export class WorkerHealthMonitor {
 
 		this.scalingService = scalingService;
 
-		// Perform initial health check immediately
 		await this.checkHealthAndUpdateQueue();
 
-		// Schedule periodic health checks
 		this.healthCheckInterval = setInterval(async () => {
 			await this.checkHealthAndUpdateQueue();
 		}, this.checkIntervalMs);
@@ -112,18 +92,17 @@ export class WorkerHealthMonitor {
 			// Use circuit breaker to check health
 			// If circuit is open, checkHealth throws CircuitBreakerOpen
 			await this.circuitBreaker.execute(async () => {
-				if (!this.checkHealth()) {
+				if (!(await this.checkHealth())) {
 					throw new Error('Worker is unhealthy');
 				}
 			});
 
-			// Health check passed - ensure queue is running
+			// Health check passed, so we can resume pulling from the queue if it has been paused.
 			if (this.isQueuePaused) {
 				await this.resumeQueue();
 			}
 		} catch (error) {
 			if (error instanceof CircuitBreakerOpen) {
-				// Circuit breaker is open - worker is considered unhealthy
 				this.logger.warn('Health check circuit breaker is open, worker is unhealthy');
 			} else {
 				this.logger.error('Health check failed', { error });
@@ -136,8 +115,8 @@ export class WorkerHealthMonitor {
 		}
 	}
 
-	private checkHealth(): boolean {
-		return checkWorkerReadiness(this.dbConnection, this.redisClientService);
+	private async checkHealth(): Promise<boolean> {
+		return await Promise.resolve(checkWorkerReadiness(this.dbConnection, this.redisClientService));
 	}
 
 	/**
