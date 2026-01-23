@@ -9,6 +9,7 @@ import {
 	PrimaryColumn,
 	Relation,
 	DeleteDateColumn,
+	JoinColumn,
 } from '@n8n/typeorm';
 import type { SimpleColumnType } from '@n8n/typeorm/driver/types/ColumnTypes';
 import { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';

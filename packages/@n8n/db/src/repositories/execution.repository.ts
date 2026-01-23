@@ -228,7 +228,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			return {
 				...rest,
 				data,
-				workflowData: executionData.workflowData,
+				workflowData: executionData.getWorkflowData(),
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			};
 		}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
@@ -300,7 +300,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			},
 		};
 		if (options?.includeData) {
-			findOptions.relations = { executionData: true, metadata: true };
+			findOptions.relations = {
+				executionData: { workflowData: true, workflowHistory: true },
+				metadata: true,
+			};
 		}
 
 		if (options?.includeAnnotation) {
@@ -325,7 +328,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.errorReporter.error('Found successful execution where data is empty stringified array', {
 				extra: {
 					executionId: execution.id,
-					workflowId: executionData?.workflowData.id,
+					workflowId: executionData?.getWorkflowData().id,
 				},
 			});
 		}
@@ -345,7 +348,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return {
 			...rest,
 			data,
-			workflowData: executionData.workflowData,
+			workflowData: executionData.getWorkflowData(),
 			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
@@ -448,7 +451,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			id,
 			data,
 			workflowId,
-			workflowData,
+			workflowData: wd,
 			createdAt, // must never change
 			startedAt, // must never change
 			customData,
@@ -457,7 +460,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const executionData: Partial<ExecutionData> = {};
 
-		if (workflowData) executionData.workflowData = workflowData;
+		if (wd) {
+			const { nodes: _, connections: _a, ...workflowData } = wd;
+			executionData.workflowData = workflowData;
+		}
 		if (data) executionData.data = stringify(data);
 
 		return await this.manager.transaction(async (tx) => {

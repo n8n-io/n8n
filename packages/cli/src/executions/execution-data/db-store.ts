@@ -14,16 +14,24 @@ export class DbStore implements ExecutionDataStore {
 	constructor(private readonly repository: ExecutionDataRepository) {}
 
 	async write({ executionId }: ExecutionRef, payload: ExecutionDataPayload) {
-		await this.repository.upsert({ ...payload, executionId }, ['executionId']);
+		await this.repository.doUpsert({ ...payload, executionId }, ['executionId']);
 	}
 
 	async read({ executionId }: ExecutionRef): Promise<ExecutionDataBundle | null> {
-		const result = await this.repository.findOne({
+		const executionData = await this.repository.findOne({
 			where: { executionId },
-			select: ['data', 'workflowData', 'workflowVersionId'],
+			select: ['data', 'workflowData', 'workflowVersionId', 'workflowHistory'],
+			relations: { workflowHistory: true },
 		});
 
-		if (!result) return null;
+		if (!executionData) return null;
+
+		const ed = {
+			...executionData,
+			workflowData: executionData.getWorkflowData(),
+		};
+
+		const { workflowHistory: _, ...result } = ed;
 
 		return { ...result, version: EXECUTION_DATA_BUNDLE_VERSION };
 	}

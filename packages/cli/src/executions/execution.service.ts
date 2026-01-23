@@ -130,7 +130,6 @@ export class ExecutionService {
 			});
 			return undefined;
 		}
-
 		return execution;
 	}
 

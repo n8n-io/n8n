@@ -233,6 +233,9 @@ watch(
 		}
 	},
 );
+onMounted(() => {
+	console.log('aaa');
+});
 </script>
 
 <template>
