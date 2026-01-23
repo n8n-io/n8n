@@ -3,16 +3,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { createEngineRequests } from '../createEngineRequests';
-import type { ToolCallRequest } from '../types';
+import type { ToolCallRequest, ToolMetadata } from '../types';
 
 describe('createEngineRequests', () => {
-	const createMockTool = (
-		name: string,
-		metadata?: {
-			sourceNodeName?: string;
-			isFromToolkit?: boolean;
-		},
-	) => {
+	const createMockTool = (name: string, metadata?: ToolMetadata) => {
 		return new DynamicStructuredTool({
 			name,
 			description: `A test tool named ${name}`,
@@ -39,7 +33,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual({
@@ -73,7 +67,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 1, tools);
+			const result = createEngineRequests(toolCalls, 1, tools);
 
 			expect(result).toHaveLength(2);
 			expect(result[0]).toEqual({
@@ -114,7 +108,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].nodeName).toBe('Calculator');
@@ -139,7 +133,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].nodeName).toBe('Calculator');
@@ -149,7 +143,7 @@ describe('createEngineRequests', () => {
 			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
 			const toolCalls: ToolCallRequest[] = [];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(0);
 		});
@@ -164,7 +158,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(0);
 		});
@@ -187,7 +181,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -212,7 +206,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -245,7 +239,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].input).toEqual({
@@ -270,7 +264,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 5, tools);
+			const result = createEngineRequests(toolCalls, 5, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.itemIndex).toBe(5);
@@ -297,7 +291,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -328,7 +322,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -337,6 +331,260 @@ describe('createEngineRequests', () => {
 				param3: true,
 				param4: null,
 				param5: undefined,
+			});
+		});
+	});
+
+	describe('HITL (Human-in-the-Loop) tools handling', () => {
+		it('should extract HITL metadata when gatedToolNodeName is present', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'ToolNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: {
+							param1: 'value1',
+							param2: 'value2',
+						},
+						hitlParameters: {
+							hitlParam1: 'hitlValue1',
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.hitl).toEqual({
+				gatedToolNodeName: 'HITLNode',
+				toolName: 'gated_tool',
+				originalInput: {
+					param1: 'value1',
+					param2: 'value2',
+				},
+			});
+		});
+
+		it('should merge hitlParameters into input when HITL metadata is present', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'ToolNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: {
+							param1: 'value1',
+						},
+						hitlParameters: {
+							hitlParam1: 'hitlValue1',
+							hitlParam2: 'hitlValue2',
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				toolParameters: '{"param1":"value1"}',
+				hitlParam1: 'hitlValue1',
+				hitlParam2: 'hitlValue2',
+			});
+		});
+
+		it('should not extract HITL metadata when gatedToolNodeName is not present', async () => {
+			const tools = [
+				createMockTool('regular_tool', {
+					sourceNodeName: 'ToolNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'regular_tool',
+					toolInput: {
+						param1: 'value1',
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.hitl).toBeUndefined();
+			expect(result[0].input).toEqual({
+				param1: 'value1',
+			});
+		});
+
+		it('should handle HITL tool with toolkit flag', async () => {
+			const tools = [
+				createMockTool('gated_toolkit_tool', {
+					sourceNodeName: 'ToolkitNode',
+					gatedToolNodeName: 'HITLNode',
+					isFromToolkit: true,
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_toolkit_tool',
+					toolInput: {
+						toolParameters: {
+							param1: 'value1',
+						},
+						hitlParameters: {
+							hitlParam1: 'hitlValue1',
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].input).toEqual({
+				toolParameters: '{"param1":"value1"}',
+				tool: 'gated_toolkit_tool',
+				hitlParam1: 'hitlValue1',
+			});
+			expect(result[0].metadata.hitl).toEqual({
+				gatedToolNodeName: 'HITLNode',
+				toolName: 'gated_toolkit_tool',
+				originalInput: {
+					param1: 'value1',
+				},
+			});
+		});
+
+		it('should handle HITL tool without hitlParameters', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'ToolNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: {
+							param1: 'value1',
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.hitl).toEqual({
+				gatedToolNodeName: 'HITLNode',
+				toolName: 'gated_tool',
+				originalInput: {
+					param1: 'value1',
+				},
+			});
+			// Input should remain the same when hitlParameters is missing
+			expect(result[0].input).toEqual({
+				toolParameters: '{"param1":"value1"}',
+			});
+		});
+
+		it('should handle multiple tool calls with mixed HITL and non-HITL tools', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'GatedNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+				createMockTool('regular_tool', {
+					sourceNodeName: 'RegularNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: { param1: 'value1' },
+						hitlParameters: { hitlParam1: 'hitlValue1' },
+					},
+					toolCallId: 'call_123',
+				},
+				{
+					tool: 'regular_tool',
+					toolInput: { param2: 'value2' },
+					toolCallId: 'call_124',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].metadata.hitl).toBeDefined();
+			expect(result[0].metadata.hitl?.gatedToolNodeName).toBe('HITLNode');
+			expect(result[1].metadata.hitl).toBeUndefined();
+		});
+
+		it('should preserve originalInput structure in HITL metadata', async () => {
+			const tools = [
+				createMockTool('gated_tool', {
+					sourceNodeName: 'ToolNode',
+					gatedToolNodeName: 'HITLNode',
+				}),
+			];
+
+			const toolCalls: ToolCallRequest[] = [
+				{
+					tool: 'gated_tool',
+					toolInput: {
+						toolParameters: {
+							nested: {
+								level1: {
+									level2: 'value',
+								},
+							},
+							array: [1, 2, 3],
+							string: 'test',
+						},
+						hitlParameters: {
+							hitlNested: { data: 'hitlData' },
+						},
+					},
+					toolCallId: 'call_123',
+				},
+			];
+
+			const result = createEngineRequests(toolCalls, 0, tools);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].metadata.hitl?.originalInput).toEqual({
+				nested: {
+					level1: {
+						level2: 'value',
+					},
+				},
+				array: [1, 2, 3],
+				string: 'test',
 			});
 		});
 	});
@@ -370,7 +618,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic?.thinkingContent).toBe(
@@ -407,7 +655,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic?.thinkingContent).toBe(
@@ -432,7 +680,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic).toBeUndefined();
@@ -465,7 +713,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic).toBeUndefined();
@@ -496,7 +744,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe('Gemini thought signature');
@@ -523,7 +771,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe('gemini_signature_from_kwargs');
@@ -550,7 +798,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe(
@@ -583,7 +831,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			// Should prefer additionalKwargs over content block
@@ -609,7 +857,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			// Should use the available signature even though call ID doesn't match
@@ -631,7 +879,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google).toBeUndefined();
@@ -668,7 +916,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(2);
 			// Both should get the signature from the shared messageLog
@@ -700,7 +948,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(2);
 			// Both should get the signature from the shared additionalKwargs
@@ -722,7 +970,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			// Should get the first non-empty signature
@@ -743,7 +991,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe('actual_signature');
