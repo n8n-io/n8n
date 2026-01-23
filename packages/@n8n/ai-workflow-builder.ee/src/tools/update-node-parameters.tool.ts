@@ -284,9 +284,8 @@ function filterPropertiesForContext(
 /**
  * Build a success message for the parameter update
  */
-function buildSuccessMessage(node: INode, changes: string[]): string {
-	const changesList = changes.map((c) => `- ${c}`).join('\n');
-	return `Successfully updated parameters for node "${node.name}" (${node.type}):\n${changesList}`;
+function buildSuccessMessage(node: INode, _changes: string[]): string {
+	return `Updated "${node.name}" (${node.type})`;
 }
 
 /**

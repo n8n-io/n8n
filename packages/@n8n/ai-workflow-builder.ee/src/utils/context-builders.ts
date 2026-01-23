@@ -57,7 +57,7 @@ export function buildDiscoveryContextBlock(
 			({ nodeName, version, reasoning, connectionChangingParameters, availableResources }) => {
 				const params =
 					connectionChangingParameters.length > 0
-						? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
+						? ` [Connection params: ${connectionChangingParameters.map((p) => `${p.name}=${p.possibleValues.join('|')}`).join(', ')}]`
 						: '';
 
 				// Format resource/operation info clearly to help LLM understand the structure

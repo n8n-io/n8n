@@ -7,20 +7,13 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { ResponderAgent } from './agents/responder.agent';
 import { SupervisorAgent } from './agents/supervisor.agent';
 import {
-	configureNodeWorker,
-	createDispatchConfigWorkers,
-	createPrepareConfigDispatchNode,
-	createValidateParallelConfigNode,
-} from './nodes';
-import {
 	DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 	MAX_BUILDER_ITERATIONS,
 	MAX_CONFIGURATOR_ITERATIONS,
 	MAX_DISCOVERY_ITERATIONS,
 } from './constants';
 import { ParentGraphState } from './parent-graph-state';
-import { BuilderSubgraph } from './subgraphs/builder.subgraph';
-import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
+import { BuilderConfiguratorSubgraph } from './subgraphs/builder-configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { ResourceLocatorCallback } from './types/callbacks';
@@ -46,8 +39,8 @@ function routeToNode(next: string): string {
 	const nodeMapping: Record<string, string> = {
 		responder: 'responder',
 		discovery: 'discovery_subgraph',
-		builder: 'builder_subgraph',
-		configurator: 'configurator_subgraph',
+		builder: 'builder_configurator_subgraph', // Merged builder + configurator
+		configurator: 'builder_configurator_subgraph', // Legacy routing support
 	};
 	return nodeMapping[next] ?? 'responder';
 }
@@ -152,8 +145,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 
 	// Create subgraph instances
 	const discoverySubgraph = new DiscoverySubgraph();
-	const builderSubgraph = new BuilderSubgraph();
-	const configuratorSubgraph = new ConfiguratorSubgraph();
+	const builderConfiguratorSubgraph = new BuilderConfiguratorSubgraph();
 
 	// Compile subgraphs with per-stage LLMs
 	const compiledDiscovery = discoverySubgraph.create({
@@ -162,15 +154,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		logger,
 		featureFlags,
 	});
-	const compiledBuilder = builderSubgraph.create({
+	// Merged builder + configurator subgraph
+	const compiledBuilderConfigurator = builderConfiguratorSubgraph.create({
 		parsedNodeTypes,
 		llm: stageLLMs.builder,
-		logger,
-		featureFlags,
-	});
-	const compiledConfigurator = configuratorSubgraph.create({
-		parsedNodeTypes,
-		llm: stageLLMs.configurator,
 		llmParameterUpdater: stageLLMs.parameterUpdater,
 		logger,
 		instanceUrl,
@@ -273,29 +260,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				),
 			)
 			.addNode(
-				'builder_subgraph',
+				'builder_configurator_subgraph',
 				createSubgraphNodeHandler(
-					builderSubgraph,
-					compiledBuilder,
-					'builder_subgraph',
+					builderConfiguratorSubgraph,
+					compiledBuilderConfigurator,
+					'builder_configurator_subgraph',
 					logger,
-					MAX_BUILDER_ITERATIONS,
-				),
-			)
-			.addNode(
-				'configurator_subgraph',
-				createSubgraphNodeHandler(
-					configuratorSubgraph,
-					compiledConfigurator,
-					'configurator_subgraph',
-					logger,
-					MAX_CONFIGURATOR_ITERATIONS,
+					MAX_BUILDER_ITERATIONS + MAX_CONFIGURATOR_ITERATIONS, // Combined limit
 				),
 			)
 			// Connect all subgraphs to process_operations
 			.addEdge('discovery_subgraph', 'process_operations')
-			.addEdge('builder_subgraph', 'process_operations')
-			.addEdge('configurator_subgraph', 'process_operations')
+			.addEdge('builder_configurator_subgraph', 'process_operations')
 			// Start flows to check_state (preprocessing)
 			.addEdge(START, 'check_state')
 			// Conditional routing from check_state

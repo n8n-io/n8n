@@ -416,7 +416,8 @@ export async function processNodeConfiguration(
 	}
 
 	// Fix expression prefixes
-	const fixedParameters = fixExpressionPrefixes(newParameters.parameters) as INodeParameters;
+	// Type assertion is safe here because we validated it's an object above
+	const fixedParameters = fixExpressionPrefixes(newParameters.parameters as INodeParameters);
 
 	return {
 		parameters: fixedParameters,

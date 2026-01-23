@@ -16,6 +16,7 @@ import type {
 	StateManagementMetadata,
 } from '../types/coordination';
 
+// Note: 'configurator' kept for backwards compatibility with existing coordination logs
 export type RoutingDecision = 'discovery' | 'builder' | 'configurator' | 'responder';
 
 /**
@@ -160,17 +161,17 @@ export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecisio
 	}
 
 	const lastPhase = getLastCompletedPhase(log);
-	// After discovery → always builder (builder decides what new nodes to add)
+	// After discovery → builder_configurator (merged)
 	if (lastPhase === 'discovery') {
 		return 'builder';
 	}
 
-	// After builder → configurator
+	// After builder (now includes configuration) → responder
 	if (lastPhase === 'builder') {
-		return 'configurator';
+		return 'responder';
 	}
 
-	// After configurator → responder (terminal)
+	// Legacy: After configurator → responder (kept for backwards compatibility)
 	if (lastPhase === 'configurator') {
 		return 'responder';
 	}
