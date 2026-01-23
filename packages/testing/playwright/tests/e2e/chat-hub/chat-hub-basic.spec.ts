@@ -15,9 +15,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await n8n.navigate.toChatHub();
 		await page.dismissWelcomeScreen();
 
-		await expect(page.getGreetingMessage()).toHaveText(
-			`Hello, ${INSTANCE_OWNER_CREDENTIALS.firstName}!`,
-		);
+		await expect(page.getGreetingMessage()).toContainText('Start a chat with');
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // pre-selected
 
 		await page.getChatInput().fill('Hello');
@@ -38,9 +36,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await n8n.navigate.toChatHub();
 		await page.dismissWelcomeScreen();
 
-		await expect(page.getGreetingMessage()).toHaveText(
-			`Hello, ${INSTANCE_MEMBER_CREDENTIALS[0].firstName}!`,
-		);
+		await expect(page.getGreetingMessage()).toContainText('Select a model to start chatting');
 
 		await page.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item

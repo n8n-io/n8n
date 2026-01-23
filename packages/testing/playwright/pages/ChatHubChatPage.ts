@@ -30,9 +30,7 @@ export class ChatHubChatPage extends BasePage {
 
 	async dismissWelcomeScreen(): Promise<void> {
 		const startButton = this.getWelcomeStartNewChatButton();
-		if (await startButton.isVisible()) {
-			await startButton.click();
-		}
+		await startButton.click();
 	}
 
 	getModelSelectorButton(): Locator {
