@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import uniqBy from 'lodash/uniqBy';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { type ITemplatesWorkflowFull } from '@n8n/rest-api-client';
@@ -6,17 +7,24 @@ import { useRecommendedTemplatesStore } from '../recommendedTemplates.store';
 import { useRouter } from 'vue-router';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nCard, N8nIcon, N8nTag, N8nText } from '@n8n/design-system';
 import {
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
 } from '@/features/workflows/templates/utils/templateTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
 
-const props = defineProps<{
-	template: ITemplatesWorkflowFull;
-	tileNumber?: number;
-}>();
+const props = withDefaults(
+	defineProps<{
+		template: ITemplatesWorkflowFull;
+		tileNumber?: number;
+		showDetails?: boolean;
+		clickable?: boolean;
+	}>(),
+	{
+		clickable: false,
+	},
+);
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
@@ -27,7 +35,9 @@ const router = useRouter();
 const templateNodes = computed(() => {
 	if (!props.template?.nodes) return [];
 
-	const uniqueNodeTypes = new Set(props.template.nodes.map((node) => node.name));
+	const uniqueNodeTypes = uniqBy(props.template.nodes, (node) => node.icon).map(
+		(node) => node.name,
+	);
 	const nodeTypesArray = Array.from(uniqueNodeTypes).slice(0, 2);
 
 	return nodeTypesArray.map((nodeType) => nodeTypesStore.getNodeType(nodeType)).filter(Boolean);
@@ -83,6 +93,7 @@ const trackWhenVisible = () => {
 };
 
 const handleUseTemplate = async () => {
+	if (!props.clickable) return;
 	trackTemplateTileClick(props.template.id);
 	await router.push(getTemplateRoute(props.template.id));
 };
@@ -116,27 +127,62 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-	<N8nCard ref="cardRef" :class="$style.suggestion" @click="handleUseTemplate">
+	<N8nCard
+		ref="cardRef"
+		:class="[$style.suggestion, { [$style.clickable]: clickable }]"
+		@click="handleUseTemplate"
+	>
 		<div :class="$style.cardContent">
 			<div v-if="templateNodes.length > 0" :class="$style.nodes">
-				<div v-for="nodeType in templateNodes" :key="nodeType!.name" :class="$style.nodeIcon">
-					<NodeIcon :size="20" :stroke-width="1.5" :node-type="nodeType" />
-				</div>
+				<NodeIcon
+					v-for="nodeType in templateNodes"
+					:key="nodeType!.name"
+					:size="20"
+					:node-type="nodeType"
+				/>
 			</div>
-			<N8nText size="large" :bold="true">
+			<N8nText size="large" :bold="true" :class="$style.title">
 				{{ template.name }}
 			</N8nText>
-			<div :class="$style.stats">
-				<div :class="$style.statItem">
-					<N8nIcon icon="clock" size="medium" color="text-base" />
-					<N8nText size="small" color="text-dark">
-						{{
-							i18n.baseText('templates.card.setupTime', {
-								interpolate: { count: setupTimeMinutes },
-							})
-						}}
+			<div v-if="template.user" :class="$style.userInfo">
+				<img
+					v-if="template.user.avatar"
+					:src="template.user.avatar"
+					:alt="template.user.name"
+					:class="$style.userAvatar"
+				/>
+				<N8nIcon v-else icon="user" :size="16" />
+				<N8nText size="medium">
+					{{ template.user.name }}
+				</N8nText>
+				<span v-if="template.user.verified" :class="$style.verifiedBadge">
+					<N8nIcon icon="shield-half" :size="16" />
+					<N8nText size="medium">
+						{{ i18n.baseText('templates.card.verified') }}
 					</N8nText>
-				</div>
+				</span>
+			</div>
+			<div v-if="showDetails && template.categories?.length" :class="$style.categories">
+				<N8nTag
+					v-for="category in template.categories"
+					:key="category.id"
+					:text="category.name"
+					:clickable="false"
+					:class="$style.categoryTag"
+				/>
+			</div>
+			<div :class="$style.statItem">
+				<N8nIcon icon="clock" :size="16" />
+				<N8nText size="medium">
+					{{
+						i18n.baseText('templates.card.setupTime', {
+							interpolate: { count: setupTimeMinutes },
+						})
+					}}
+				</N8nText>
+			</div>
+			<div v-if="$slots.belowContent">
+				<slot name="belowContent" />
 			</div>
 		</div>
 	</N8nCard>
@@ -150,7 +196,19 @@ onBeforeUnmount(() => {
 	justify-content: space-between;
 	min-width: 200px;
 	background-color: var(--color--background--light-3);
+}
+
+.clickable {
 	cursor: pointer;
+
+	&:hover {
+		box-shadow: var(--shadow--card-hover);
+
+		.title {
+			color: var(--color--primary);
+			text-decoration: underline;
+		}
+	}
 }
 
 .cardContent {
@@ -162,22 +220,40 @@ onBeforeUnmount(() => {
 
 .nodes {
 	display: flex;
-	flex-direction: row;
+	gap: var(--spacing--xs);
 }
 
-.nodeIcon {
-	padding: 0 var(--spacing--2xs);
-	background-color: var(--dialog--color--background);
-	border-radius: var(--radius--lg);
-	z-index: 1;
+.userInfo {
 	display: flex;
-	flex-direction: column;
-	align-items: end;
-	margin-right: var(--spacing--3xs);
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-top: auto;
 }
 
-.stats {
-	margin-top: auto;
+.userAvatar {
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
+	border-radius: 50%;
+	object-fit: cover;
+}
+
+.verifiedBadge {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-left: var(--spacing--xs);
+}
+
+.categories {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.categoryTag {
+	--tag--height: var(--spacing--lg);
+	--tag--border-color: transparent;
+	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
 }
 
 .statItem {
