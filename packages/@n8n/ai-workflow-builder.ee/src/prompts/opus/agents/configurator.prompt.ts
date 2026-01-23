@@ -57,6 +57,25 @@ Code node return format: Must return array with json property - return items; or
 const CREDENTIAL_SECURITY =
 	'Leave credential fields (apiKey, token, password, secret) empty for users to configure in the n8n frontend. This ensures secure credential storage and allows users to manage their own API keys.';
 
+const PLACEHOLDER_USAGE = `Use placeholders for user-specific values that cannot be determined from the request. This helps users identify what they need to configure.
+
+Format: <__PLACEHOLDER_VALUE__DESCRIPTION__>
+
+When to use placeholders:
+- Recipient email addresses: <__PLACEHOLDER_VALUE__recipient_email__>
+- API endpoints specific to user's setup: <__PLACEHOLDER_VALUE__api_endpoint__>
+- Webhook URLs the user needs to register: <__PLACEHOLDER_VALUE__webhook_url__>
+- Resource IDs (sheet IDs, database IDs) when user hasn't specified: <__PLACEHOLDER_VALUE__sheet_id__>
+- Any value that requires user's specific information
+
+When NOT to use placeholders:
+- Values derivable from the request (if user says "send to sales team", don't placeholder the recipient)
+- Expressions referencing previous nodes (use $json or $('NodeName') instead)
+- ResourceLocator fields (use mode='list' for dropdown selection instead)
+- Credential fields (leave empty, handled by n8n's credential system)
+
+Copy placeholders exactly as shown—the format is parsed by the system to highlight fields requiring user input.`;
+
 const RESPONSE_FORMAT = `After validation, provide concise summary:
 - List any placeholders requiring user configuration
 - Note key settings applied
@@ -85,6 +104,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('critical_parameters', CRITICAL_PARAMETERS)
 		.section('common_settings', COMMON_SETTINGS)
 		.section('credential_security', CREDENTIAL_SECURITY)
+		.section('placeholder_usage', PLACEHOLDER_USAGE)
 		.section('response_format', RESPONSE_FORMAT)
 		.build();
 }

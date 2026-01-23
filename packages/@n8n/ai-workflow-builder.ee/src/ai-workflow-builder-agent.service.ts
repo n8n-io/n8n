@@ -178,7 +178,7 @@ export class AiWorkflowBuilderService {
 		// Create resource locator callback scoped to this user if factory is provided
 		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
 
-		const haiku = await anthropicHaiku45({
+		const opus = await anthropicClaudeOpus45({
 			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 		});
 		const sonnet = await anthropicClaudeSonnet45({

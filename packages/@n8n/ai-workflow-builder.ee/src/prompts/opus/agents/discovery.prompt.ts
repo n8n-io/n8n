@@ -65,9 +65,7 @@ Common patterns requiring Aggregate:
 
 const PROCESS = `1. Search for nodes matching the user's request using search_nodes tool
 2. Identify connection-changing parameters from input/output expressions (look for $parameter.X)
-3. Call submit_discovery_results tool with your nodesFound array
-
-You must call submit_discovery_results to complete discovery—the next agent needs this structured data. Text responses alone will not pass the results forward.`;
+3. Call submit_discovery_results with your nodesFound array to pass structured data to the next agent`;
 
 const AI_NODE_SELECTION = `AI node selection guidance:
 

@@ -30,12 +30,12 @@ export const nodeConnectionSchema = z.object({
 	sourceNodeId: z
 		.string()
 		.describe(
-			'The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), this MUST be the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
+			'The UUID of the source node. For ai_* connections (ai_languageModel, ai_tool, etc.), use the sub-node (e.g., OpenAI Chat Model). For main connections, this is the node producing the output',
 		),
 	targetNodeId: z
 		.string()
 		.describe(
-			'The UUID of the target node. For ai_* connections, this MUST be the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
+			'The UUID of the target node. For ai_* connections, use the main node that accepts the sub-node (e.g., AI Agent, Basic LLM Chain). For main connections, this is the node receiving the input',
 		),
 	sourceOutputIndex: z
 		.number()
@@ -326,7 +326,18 @@ CONNECTION EXAMPLES:
 - Simple Memory → Basic LLM Chain (detects ai_memory)
 - Embeddings OpenAI → Vector Store (detects ai_embedding)
 - Document Loader → Embeddings OpenAI (detects ai_document)
-- HTTP Request → Set (detects main)`,
+- HTTP Request → Set (detects main)
+
+MULTI-OUTPUT NODES (sourceOutputIndex):
+- IF node: output 0 = true branch, output 1 = false branch
+- Switch node: outputs 0-N based on configured rules, last output = default/fallback
+- Nodes with onError: 'continueErrorOutput': regular outputs at index 0, ERROR OUTPUT at LAST index (index 1 for single-output nodes)
+
+ERROR OUTPUT CONNECTIONS:
+When a node has nodeSettings.onError = 'continueErrorOutput', it gains an additional error output:
+- Connect success handler to sourceOutputIndex: 0
+- Connect error handler to sourceOutputIndex: 1 (or last index for multi-output nodes)
+Example: HTTP Request with continueErrorOutput → connect error logging node with sourceOutputIndex: 1`,
 			schema: nodeConnectionSchema,
 		},
 	);
