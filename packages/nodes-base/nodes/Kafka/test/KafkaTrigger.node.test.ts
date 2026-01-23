@@ -11,7 +11,7 @@ import {
 	type KafkaMessage,
 	type RecordBatchEntry,
 } from 'kafkajs';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, type IRun } from 'n8n-workflow';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
@@ -155,6 +155,7 @@ describe('KafkaTrigger Node', () => {
 		const { close, emit } = await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -457,6 +458,7 @@ describe('KafkaTrigger Node', () => {
 		await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -627,6 +629,7 @@ describe('KafkaTrigger Node', () => {
 		await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -742,6 +745,7 @@ describe('KafkaTrigger Node', () => {
 		await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -931,5 +935,190 @@ describe('KafkaTrigger Node', () => {
 				},
 			],
 		]);
+	});
+
+	describe('version 1.2', () => {
+		it('should calculate sessionTimeout and heartbeatInterval from executionTimeout', async () => {
+			await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffsetMode: 'immediately',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			expect(mockConsumerCreate).toHaveBeenCalledWith({
+				groupId: 'test-group',
+				maxInFlightRequests: null,
+				sessionTimeout: 3605000,
+				heartbeatInterval: 1201666,
+				rebalanceTimeout: 600000,
+			});
+		});
+
+		it('should use resolveOffsetMode "immediately" and emit without waiting', async () => {
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffsetMode: 'immediately',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			await publishMessage({ value: Buffer.from('test-message') });
+
+			expect(emit).toHaveBeenCalledWith([
+				[{ json: { message: 'test-message', topic: 'test-topic' } }],
+			]);
+			expect(emit.mock.calls[0][2]).toBeUndefined();
+		});
+
+		it('should use resolveOffsetMode "onCompletion" and wait for execution', async () => {
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffsetMode: 'onCompletion',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const publishPromise = publishMessage({ value: Buffer.from('test-message') });
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(emit).toHaveBeenCalled();
+			const deferredPromise = emit.mock.calls[0][2];
+			expect(deferredPromise).toBeDefined();
+
+			deferredPromise?.resolve(mock());
+			await publishPromise;
+		});
+
+		it('should use resolveOffsetMode "onSuccess" and wait for successful execution', async () => {
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffsetMode: 'onSuccess',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const publishPromise = publishMessage({ value: Buffer.from('test-message') });
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(emit).toHaveBeenCalled();
+			const deferredPromise = emit.mock.calls[0][2];
+			expect(deferredPromise).toBeDefined();
+
+			deferredPromise?.resolve(mock<IRun>({ status: 'success' }));
+			await publishPromise;
+		});
+
+		it('should throw error when resolveOffsetMode is "onSuccess" and execution fails', async () => {
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffsetMode: 'onSuccess',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const publishPromise = publishMessage({ value: Buffer.from('test-message') });
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(emit).toHaveBeenCalled();
+			const deferredPromise = emit.mock.calls[0][2];
+			expect(deferredPromise).toBeDefined();
+
+			deferredPromise?.resolve(mock<IRun>({ status: 'error' }));
+			await expect(publishPromise).rejects.toThrow('Status is not success');
+		});
+
+		it('should ignore sessionTimeout and heartbeatInterval options', async () => {
+			await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffsetMode: 'immediately',
+						options: {
+							sessionTimeout: 20000,
+							heartbeatInterval: 2000,
+						},
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			expect(mockConsumerCreate).toHaveBeenCalledWith({
+				groupId: 'test-group',
+				maxInFlightRequests: null,
+				sessionTimeout: 3605000,
+				heartbeatInterval: 1201666,
+				rebalanceTimeout: 600000,
+			});
+		});
 	});
 });

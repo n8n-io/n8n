@@ -9,7 +9,7 @@ import type {
 import { logLevel } from 'kafkajs';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { Logger, ITriggerFunctions, IDataObject, IRun } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { ensureError, jsonParse, NodeOperationError } from 'n8n-workflow';
 
 export interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;
@@ -29,6 +29,8 @@ export interface KafkaTriggerOptions {
 	rebalanceTimeout?: number;
 	sessionTimeout?: number;
 }
+
+type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess';
 
 export async function createConfig(ctx: ITriggerFunctions) {
 	const credentials = await ctx.getCredentials('kafka');
@@ -60,7 +62,11 @@ export async function createConfig(ctx: ITriggerFunctions) {
 	return config;
 }
 
-export function createConsumerConfig(ctx: ITriggerFunctions, options: KafkaTriggerOptions) {
+export function createConsumerConfig(
+	ctx: ITriggerFunctions,
+	options: KafkaTriggerOptions,
+	nodeVersion: number,
+) {
 	const groupId = ctx.getNodeParameter('groupId') as string;
 	const maxInFlightRequests = (
 		ctx.getNodeParameter('options.maxInFlightRequests', null) === 0
@@ -68,8 +74,17 @@ export function createConsumerConfig(ctx: ITriggerFunctions, options: KafkaTrigg
 			: ctx.getNodeParameter('options.maxInFlightRequests', null)
 	) as number;
 
-	const sessionTimeout = options.sessionTimeout ?? 30000;
-	const heartbeatInterval = options.heartbeatInterval ?? 3000;
+	let sessionTimeout: number;
+	let heartbeatInterval: number;
+	if (nodeVersion < 1.2) {
+		sessionTimeout = options.sessionTimeout ?? 30000;
+		heartbeatInterval = options.heartbeatInterval ?? 3000;
+	} else {
+		const executionTimeoutInSeconds = (ctx.getWorkflowSettings().executionTimeout ?? 3600) + 5;
+		sessionTimeout = executionTimeoutInSeconds * 1000;
+		heartbeatInterval = Math.floor((executionTimeoutInSeconds * 1000) / 3);
+	}
+
 	const rebalanceTimeout = options.rebalanceTimeout ?? 600000;
 	const maxBytesPerPartition = options.fetchMaxBytes;
 	const minBytes = options.fetchMinBytes;
@@ -185,35 +200,52 @@ export function connectEventListeners(consumer: Consumer, logger: Logger) {
 	];
 }
 
+function getResolveOffsetMode(
+	ctx: ITriggerFunctions,
+	options: KafkaTriggerOptions,
+	nodeVersion: number,
+): ResolveOffsetMode {
+	if (nodeVersion === 1) return 'immediately';
+
+	if (nodeVersion === 1.1) {
+		if (options.parallelProcessing) return 'immediately';
+		return 'onCompletion';
+	}
+	return ctx.getNodeParameter('resolveOffsetMode', 'immediately') as ResolveOffsetMode;
+}
+
 export function configureDataEmitter(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
 ) {
 	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
+	const mode = getResolveOffsetMode(ctx, options, nodeVersion);
 
-	if (!options.parallelProcessing && nodeVersion > 1) {
-		return async (dataArray: IDataObject[]) => {
-			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
-			ctx.emit([ctx.helpers.returnJsonArray(dataArray)], undefined, responsePromise);
-
-			const timeoutPromise = new Promise<IRun>((_, reject) => {
-				setTimeout(() => {
-					reject(new Error(`Workflow timed out after ${executionTimeoutInSeconds} seconds`));
-				}, executionTimeoutInSeconds * 1000);
-			});
-
-			try {
-				const run = await Promise.race([responsePromise.promise, timeoutPromise]);
-				console.log(run);
-			} catch (error) {
-				console.error(error);
-				throw error;
-			}
-		};
+	if (mode === 'immediately') {
+		return async (dataArray: IDataObject[]) => ctx.emit([ctx.helpers.returnJsonArray(dataArray)]);
 	}
 
-	return async (dataArray: IDataObject[]) => ctx.emit([ctx.helpers.returnJsonArray(dataArray)]);
+	return async (dataArray: IDataObject[]) => {
+		const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
+		ctx.emit([ctx.helpers.returnJsonArray(dataArray)], undefined, responsePromise);
+
+		const timeoutPromise = new Promise<IRun>((_, reject) => {
+			setTimeout(() => {
+				reject(new Error(`Workflow timed out after ${executionTimeoutInSeconds} seconds`));
+			}, executionTimeoutInSeconds * 1000);
+		});
+
+		try {
+			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
+
+			if (mode === 'onSuccess' && run.status !== 'success') {
+				throw new Error('Status is not success');
+			}
+		} catch (error) {
+			throw new NodeOperationError(ctx.getNode(), ensureError(error).message);
+		}
+	};
 }
 
 export function disconnectEventListeners(

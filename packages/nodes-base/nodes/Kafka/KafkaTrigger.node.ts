@@ -25,7 +25,7 @@ export class KafkaTrigger implements INodeType {
 		name: 'kafkaTrigger',
 		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
@@ -39,6 +39,18 @@ export class KafkaTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName:
+					'Session Timeout is set automatically to match the Workflow Timeout. Heartbeat Interval is set automatically to one third of the Session Timeout. We suggest adjusting the Workflow Timeout in the workflow settings to match the expected execution time.',
+				name: 'settingsNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
 			{
 				displayName: 'Topic',
 				name: 'topic',
@@ -56,6 +68,36 @@ export class KafkaTrigger implements INodeType {
 				required: true,
 				placeholder: 'n8n-kafka',
 				description: 'ID of the consumer group',
+			},
+			{
+				displayName: 'Resolve Offset',
+				name: 'resolveOffset',
+				type: 'options',
+				default: 'onCompletion',
+				options: [
+					{
+						name: 'On Execution Completion',
+						value: 'onCompletion',
+						description: 'Resolve offset after execution completion regardless of the status',
+					},
+					{
+						name: 'On Execution Success',
+						value: 'onSuccess',
+						description:
+							'Resolve offset only if execution statue equlas success. Do not use this option if your workflow contains waiting nodes or the Execute Workflow node.',
+					},
+					{
+						name: 'Immediately',
+						value: 'immediately',
+						description:
+							'Resolve offset immediately after message received. This option is not recommended as it can cause messages loss.',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Use Schema Registry',
@@ -140,6 +182,11 @@ export class KafkaTrigger implements INodeType {
 						default: 3000,
 						description: "Heartbeats are used to ensure that the consumer's session stays active",
 						hint: 'The value must be set lower than Session Timeout',
+						displayOptions: {
+							hide: {
+								'@version': [{ _cnd: { gte: 1.2 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Max Number of Requests',
@@ -169,8 +216,8 @@ export class KafkaTrigger implements INodeType {
 						type: 'boolean',
 						default: true,
 						displayOptions: {
-							hide: {
-								'@version': [1],
+							show: {
+								'@version': [1.1],
 							},
 						},
 						description:
@@ -218,6 +265,11 @@ export class KafkaTrigger implements INodeType {
 						default: 30000,
 						description: 'The time to await a response in ms',
 						hint: 'Value in milliseconds',
+						displayOptions: {
+							hide: {
+								'@version': [{ _cnd: { gte: 1.2 } }],
+							},
+						},
 					},
 				],
 			},
@@ -233,7 +285,7 @@ export class KafkaTrigger implements INodeType {
 
 		const options = this.getNodeParameter('options', {}) as KafkaTriggerOptions;
 
-		const consumerConfig = createConsumerConfig(this, options);
+		const consumerConfig = createConsumerConfig(this, options, nodeVersion);
 		const consumer = kafka.consumer(consumerConfig);
 
 		const processMessage = configureMessageParser(options, this.logger, registry);
