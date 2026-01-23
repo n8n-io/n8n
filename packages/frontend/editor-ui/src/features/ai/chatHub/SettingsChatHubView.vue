@@ -90,23 +90,49 @@ onMounted(async () => {
 		fetchSettings(),
 		credentialsStore.fetchAllCredentials(),
 		credentialsStore.fetchCredentialTypes(false),
+		chatStore.fetchVectorStoreUsage(),
 	]);
 });
+
+function formatBytes(bytes: number): string {
+	if (bytes === 0) return '0 B';
+	const k = 1024;
+	const sizes = ['B', 'KB', 'MB', 'GB'];
+	const i = Math.floor(Math.log(bytes) / Math.log(k));
+	return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+}
 </script>
 <template>
 	<div :class="$style.container">
 		<N8nHeading size="2xlarge" :class="$style.title">
 			{{ i18n.baseText('settings.chatHub') }}
 		</N8nHeading>
-		<div :class="$style.container">
-			<ChatProvidersTable
-				:data-test-id="'chat-providers-table'"
-				:settings="chatStore.settings"
-				:loading="chatStore.settingsLoading"
-				:disabled="disabled"
-				@edit-provider="onEditProvider"
-				@refresh="onRefreshWorkflows"
-			/>
+		<ChatProvidersTable
+			:data-test-id="'chat-providers-table'"
+			:settings="chatStore.settings"
+			:loading="chatStore.settingsLoading"
+			:disabled="disabled"
+			@edit-provider="onEditProvider"
+			@refresh="onRefreshWorkflows"
+		/>
+
+		<N8nHeading size="medium" bold :class="$style.usageTitle">Vector Store Usage</N8nHeading>
+		<div v-if="chatStore.vectorStoreUsage" :class="$style.usageSection">
+			<div :class="$style.usageStats">
+				<span :class="$style.usageText">
+					{{ formatBytes(chatStore.vectorStoreUsage.currentSize) }} /
+					{{ formatBytes(chatStore.vectorStoreUsage.maxSize) }}
+				</span>
+				<span :class="$style.usagePercentage">
+					{{ chatStore.vectorStoreUsage.usagePercentage }}%
+				</span>
+			</div>
+			<div :class="$style.usageBarContainer">
+				<div
+					:class="$style.usageBar"
+					:style="{ width: `${chatStore.vectorStoreUsage.usagePercentage}%` }"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -115,10 +141,56 @@ onMounted(async () => {
 .container {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	padding-bottom: var(--spacing--lg);
 }
 
 .title {
 	margin-bottom: var(--spacing--sm);
+}
+
+.usageSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--md);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
+}
+
+.usageTitle {
+	margin-bottom: var(--spacing--sm);
+}
+
+.usageStats {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+}
+
+.usageText {
+	color: var(--color--text);
+}
+
+.usagePercentage {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+}
+
+.usageBarContainer {
+	width: 100%;
+	height: var(--spacing--sm);
+	background-color: var(--color--background);
+	border-radius: var(--radius);
+	overflow: hidden;
+}
+
+.usageBar {
+	height: 100%;
+	background-color: var(--color--primary);
+	border-radius: var(--radius);
+	transition: width 0.3s ease;
 }
 </style>

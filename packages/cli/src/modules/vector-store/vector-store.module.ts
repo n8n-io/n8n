@@ -4,6 +4,10 @@ import { Container } from '@n8n/di';
 
 @BackendModule({ name: 'vector-store' })
 export class VectorStoreModule implements ModuleInterface {
+	async init() {
+		await import('./vector-store-data.controller');
+	}
+
 	async entities() {
 		const { VectorStoreData } = await import('@n8n/db');
 

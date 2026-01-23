@@ -53,6 +53,7 @@ export {
 	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
+	type VectorStoreUsageDto,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';

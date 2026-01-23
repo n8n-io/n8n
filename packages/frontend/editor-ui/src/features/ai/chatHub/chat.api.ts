@@ -17,6 +17,7 @@ import type {
 	MessageChunk,
 	ChatHubLLMProvider,
 	ChatProviderSettingsDto,
+	VectorStoreUsageDto,
 } from '@n8n/api-types';
 
 // Workflows stream data as newline separated JSON objects (jsonl)
@@ -235,3 +236,10 @@ export function buildAgentAttachmentUrl(
 ): string {
 	return `${context.baseUrl}/chat/agents/${agentId}/attachments/${attachmentIndex}`;
 }
+
+export const fetchVectorStoreUsageApi = async (
+	context: IRestApiContext,
+): Promise<VectorStoreUsageDto> => {
+	const apiEndpoint = '/vector-store/usage';
+	return await makeRestApiRequest<VectorStoreUsageDto>(context, 'GET', apiEndpoint);
+};

@@ -366,6 +366,7 @@ export class ChatHubAgentService {
 
 		try {
 			await this.chatHubWorkflowService.waitForExecutionCompletion(execution.executionId);
+			await this.chatHubWorkflowService.ensureWasSuccessfulOrThrow(execution.executionId);
 		} finally {
 			//await this.chatHubWorkflowService.deleteWorkflow(workflowData.id);
 		}

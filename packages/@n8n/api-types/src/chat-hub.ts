@@ -513,3 +513,9 @@ export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 }
+
+export interface VectorStoreUsageDto {
+	currentSize: number;
+	maxSize: number;
+	usagePercentage: number;
+}

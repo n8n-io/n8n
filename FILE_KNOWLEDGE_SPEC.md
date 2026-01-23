@@ -108,7 +108,7 @@ File Knowledge requires disk space for both the original files and the vector em
 
 ## TODO
 
-- Define size limit
-- Define telemetry
-- Explore Postgres support without pgvector
-- Don't store PDF binary data
+- [x] Define size limit
+- [ ] Define telemetry
+- [x] Explore Postgres support without pgvector
+- [ ] Don't store PDF binary data

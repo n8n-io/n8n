@@ -22,6 +22,7 @@ import {
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
+	fetchVectorStoreUsageApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -70,6 +71,7 @@ import { deepCopy, type INode } from 'n8n-workflow';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores/constants';
+import type { VectorStoreUsageDto } from '@n8n/api-types/src';
 
 export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const rootStore = useRootStore();
@@ -91,6 +93,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const settingsLoading = ref(false);
 	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
+	const vectorStoreUsage = ref<VectorStoreUsageDto | null>(null);
 
 	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>
 		conversationsBySession.value.get(sessionId);
@@ -904,6 +907,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return saved;
 	}
 
+	async function fetchVectorStoreUsage() {
+		vectorStoreUsage.value = await fetchVectorStoreUsageApi(rootStore.restApiContext);
+		return vectorStoreUsage.value;
+	}
+
 	return {
 		/**
 		 * models and agents
@@ -959,5 +967,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+
+		/**
+		 * vector store usage
+		 */
+		vectorStoreUsage,
+		fetchVectorStoreUsage,
 	};
 });

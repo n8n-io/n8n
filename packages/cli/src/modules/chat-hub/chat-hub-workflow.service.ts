@@ -1306,6 +1306,23 @@ Respond the title only:`,
 		}
 	}
 
+	async ensureWasSuccessfulOrThrow(executionId: string) {
+		const executionEntity = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!executionEntity) {
+			throw new BadRequestError('Failed to insert documents: execution not found');
+		}
+
+		if (executionEntity.status !== 'success') {
+			const errorMessage = executionEntity.data.resultData.error?.message ?? 'Unknown error';
+
+			throw new BadRequestError(`Failed to insert documents: ${errorMessage}`);
+		}
+	}
+
 	private async waitForExecutionPoller(executionId: string): Promise<void> {
 		return await new Promise<void>((resolve, reject) => {
 			const poller = setInterval(async () => {

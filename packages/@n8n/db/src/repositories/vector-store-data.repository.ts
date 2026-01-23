@@ -305,6 +305,40 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		return result.map((row) => row.memoryKey);
 	}
 
+	/**
+	 * Get the total size of all vectors in bytes (instance-wide)
+	 */
+	async getTotalSize(): Promise<number> {
+		const tableName = this.getTableName('vector_store_data');
+		const contentCol = this.getColumnName('content');
+		const metadataCol = this.getColumnName('metadata');
+		const vectorCol = this.getColumnName('vector');
+
+		let query: string;
+		if (dbType === 'postgresdb') {
+			// PostgreSQL: use OCTET_LENGTH for text, pg_column_size for JSONB, LENGTH for bytea
+			query = `
+				SELECT
+					COALESCE(SUM(OCTET_LENGTH(${contentCol})), 0) +
+					COALESCE(SUM(pg_column_size(${metadataCol})), 0) +
+					COALESCE(SUM(LENGTH(${vectorCol})), 0) as total_size
+				FROM ${tableName}
+			`;
+		} else {
+			// SQLite: use LENGTH for all types
+			query = `
+				SELECT
+					COALESCE(SUM(LENGTH(${contentCol})), 0) +
+					COALESCE(SUM(LENGTH(${metadataCol})), 0) +
+					COALESCE(SUM(LENGTH(${vectorCol})), 0) as total_size
+				FROM ${tableName}
+			`;
+		}
+
+		const result = await this.query(query);
+		return Number(result[0]?.total_size ?? 0);
+	}
+
 	private serializeVector(vector: number[]): Buffer {
 		// Store as binary buffer (Float32Array) for both PostgreSQL and SQLite
 		const buffer = Buffer.allocUnsafe(vector.length * 4);

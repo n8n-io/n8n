@@ -1,12 +1,15 @@
 import { Service } from '@n8n/di';
 import { VectorStoreDataRepository, SharedWorkflowRepository } from '@n8n/db';
+import { VectorStoreConfig } from '@n8n/config';
 import type { IVectorStoreDataService, VectorDocument, VectorSearchResult } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
 @Service()
 export class VectorStoreDataService implements IVectorStoreDataService {
 	constructor(
 		private readonly repository: VectorStoreDataRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly config: VectorStoreConfig,
 	) {}
 
 	/**
@@ -28,6 +31,26 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 	}
 
 	/**
+	 * Calculate the size in bytes of vectors and documents to be added
+	 */
+	private calculateVectorSize(documents: VectorDocument[], embeddings: number[][]): number {
+		let totalSize = 0;
+
+		for (let i = 0; i < documents.length; i++) {
+			// Content size (UTF-8 string)
+			totalSize += Buffer.byteLength(documents[i].content, 'utf8');
+
+			// Metadata size (JSON stringified)
+			totalSize += Buffer.byteLength(JSON.stringify(documents[i].metadata), 'utf8');
+
+			// Vector size (Float32Array: 4 bytes per number)
+			totalSize += embeddings[i].length * 4;
+		}
+
+		return totalSize;
+	}
+
+	/**
 	 * Add vectors to a memory store
 	 */
 	async addVectors(
@@ -38,6 +61,25 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 		clearStore: boolean = false,
 	): Promise<void> {
 		const projectId = await this.resolveProjectId(workflowId);
+
+		// Calculate size of new vectors
+		const newVectorSize = this.calculateVectorSize(documents, embeddings);
+
+		// Get current total size (unless we're clearing the store)
+		const currentSize = clearStore ? 0 : await this.repository.getTotalSize();
+
+		// Check if adding new vectors would exceed the limit
+		const totalSizeAfterAdd = currentSize + newVectorSize;
+		if (totalSizeAfterAdd > this.config.maxSize) {
+			const currentSizeMB = (currentSize / 1024 / 1024).toFixed(2);
+			const newSizeMB = (newVectorSize / 1024 / 1024).toFixed(2);
+			const maxSizeMB = (this.config.maxSize / 1024 / 1024).toFixed(2);
+
+			throw new OperationalError(
+				`Vector store size limit exceeded. Current size: ${currentSizeMB} MiB, attempting to add: ${newSizeMB} MiB, maximum allowed: ${maxSizeMB} MiB`,
+			);
+		}
+
 		await this.repository.addVectors(memoryKey, projectId, documents, embeddings, clearStore);
 	}
 
