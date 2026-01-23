@@ -1325,7 +1325,7 @@ return 0;`,
 						return result;
 					});
 				} else {
-					newItems = sortByCode.call(this, newItems);
+					newItems = await sortByCode.call(this, newItems);
 				}
 				return [newItems];
 			} else if (operation === 'limit') {

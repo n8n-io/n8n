@@ -1,5 +1,4 @@
 import {
-	type CodeExecutionMode,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type WorkflowExecuteMode,
@@ -20,7 +19,6 @@ const JS_TEXT_KEYS: TextKeys = {
 export class JsTaskRunnerSandbox {
 	constructor(
 		private readonly jsCode: string,
-		private readonly nodeMode: CodeExecutionMode,
 		private readonly workflowMode: WorkflowExecuteMode,
 		private readonly executeFunctions: Pick<
 			IExecuteFunctions,
@@ -37,7 +35,7 @@ export class JsTaskRunnerSandbox {
 			'javascript',
 			{
 				code: this.jsCode,
-				nodeMode: this.nodeMode,
+				nodeMode: 'runOnceForAllItems',
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
 				additionalProperties: this.additionalProperties,
@@ -63,7 +61,7 @@ export class JsTaskRunnerSandbox {
 			'javascript',
 			{
 				code: this.jsCode,
-				nodeMode: this.nodeMode,
+				nodeMode: 'runOnceForAllItems',
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
 				additionalProperties: this.additionalProperties,
@@ -90,7 +88,7 @@ export class JsTaskRunnerSandbox {
 				'javascript',
 				{
 					code: this.jsCode,
-					nodeMode: this.nodeMode,
+					nodeMode: 'runOnceForEachItem',
 					workflowMode: this.workflowMode,
 					continueOnFail: this.executeFunctions.continueOnFail(),
 					chunk: {
@@ -121,6 +119,27 @@ export class JsTaskRunnerSandbox {
 		}
 
 		return executionResults;
+	}
+
+	async runCode<T = unknown>(code: string): Promise<T> {
+		const executionResult = await this.executeFunctions.startJob(
+			'javascript',
+			{
+				code,
+				nodeMode: 'runCode',
+				workflowMode: this.workflowMode,
+				continueOnFail: this.executeFunctions.continueOnFail(),
+				additionalProperties: this.additionalProperties,
+			},
+			0,
+		);
+
+		if (!executionResult.ok) {
+			throwExecutionError('error' in executionResult ? executionResult.error : {});
+		}
+
+		// We just assume the caller types the result correctly to match the code
+		return executionResult.result as T;
 	}
 
 	/** Chunks the input items into chunks of 1000 items each */

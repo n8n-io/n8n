@@ -79,16 +79,9 @@ function getTool(
 	const runFunction = async (query: string | IDataObject): Promise<unknown> => {
 		if (language === 'javaScript') {
 			if (isJsRunnerEnabled) {
-				const sandbox = new JsTaskRunnerSandbox(
-					code,
-					'runOnceForAllItems',
-					workflowMode,
-					ctx,
-					undefined,
-					{
-						query,
-					},
-				);
+				const sandbox = new JsTaskRunnerSandbox(code, workflowMode, ctx, undefined, {
+					query,
+				});
 				return await sandbox.runCodeForTool();
 			} else {
 				const context = getSandboxContext.call(ctx, itemIndex);
