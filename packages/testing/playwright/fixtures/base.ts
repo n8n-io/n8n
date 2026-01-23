@@ -136,6 +136,12 @@ export const test = base.extend<
 		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 
+		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
+		// Can be lowered (e.g. 0.5) to speed up tests, but avoid 0 as it causes race conditions
+		await page.addInitScript(() => {
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '1');
+		});
+
 		const useSeparateApiContext = backendUrl !== frontendUrl;
 
 		if (useSeparateApiContext) {

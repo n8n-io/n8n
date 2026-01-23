@@ -3,7 +3,15 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
-import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRM, VIEWS, AutoSaveState } from '@/app/constants';
+import {
+	MODAL_CANCEL,
+	MODAL_CLOSE,
+	MODAL_CONFIRM,
+	VIEWS,
+	AutoSaveState,
+	DEBOUNCE_TIME,
+	getDebounceTime,
+} from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -516,8 +524,8 @@ export function useWorkflowSaving({
 
 			autosaveStore.setPendingAutoSave(savePromise);
 		},
-		1500,
-		{ maxWait: 5000 },
+		getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE),
+		{ maxWait: getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) },
 	);
 
 	const scheduleAutoSave = () => {
