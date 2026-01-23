@@ -72,7 +72,6 @@ const renderComponent = createComponentRenderer(MainHeader, {
 		stubs: {
 			WorkflowDetails: {
 				props: [
-					'readOnly',
 					'id',
 					'tags',
 					'name',
@@ -83,8 +82,7 @@ const renderComponent = createComponentRenderer(MainHeader, {
 					'isArchived',
 					'description',
 				],
-				template:
-					'<div data-test-id="workflow-details-stub" :data-read-only="readOnly ? \'true\' : \'false\'"></div>',
+				template: '<div data-test-id="workflow-details-stub"></div>',
 			},
 			GithubButton: { template: '<div></div>' },
 			TabBar: { template: '<div></div>' },
@@ -123,38 +121,10 @@ describe('MainHeader', () => {
 		vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
 	});
 
-	describe('readOnly computed', () => {
-		it('should be false when there are no read-only conditions', () => {
-			sourceControlStore.preferences.branchReadOnly = false;
-			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
-			workflowsStore.workflow.isArchived = false;
+	it('should render WorkflowDetails component', () => {
+		const { getByTestId } = renderComponent();
 
-			const { getByTestId } = renderComponent();
-
-			const workflowDetails = getByTestId('workflow-details-stub');
-			expect(workflowDetails).toHaveAttribute('data-read-only', 'false');
-		});
-
-		it('should be true when branch is read-only', () => {
-			sourceControlStore.preferences.branchReadOnly = true;
-			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
-			workflowsStore.workflow.isArchived = false;
-
-			const { getByTestId } = renderComponent();
-
-			const workflowDetails = getByTestId('workflow-details-stub');
-			expect(workflowDetails).toHaveAttribute('data-read-only', 'true');
-		});
-
-		it('should be true when collaboration requires read-only', () => {
-			sourceControlStore.preferences.branchReadOnly = false;
-			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(true);
-			workflowsStore.workflow.isArchived = false;
-
-			const { getByTestId } = renderComponent();
-
-			const workflowDetails = getByTestId('workflow-details-stub');
-			expect(workflowDetails).toHaveAttribute('data-read-only', 'true');
-		});
+		const workflowDetails = getByTestId('workflow-details-stub');
+		expect(workflowDetails).toBeInTheDocument();
 	});
 });
