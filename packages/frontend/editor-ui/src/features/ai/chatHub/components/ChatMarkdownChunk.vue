@@ -152,6 +152,7 @@ function handleMouseLeave() {
 		font-family: var(--font-family--monospace);
 		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--sm);
+		padding: var(--spacing--5xs) var(--spacing--4xs);
 		line-height: var(--line-height--lg);
 		background-color: var(--chat--message--pre--background);
 		border-radius: var(--radius--sm);
