@@ -45,6 +45,16 @@ const RESPONSE_STYLE = `- Keep responses focused and not overly long
 - Be conversational and helpful
 - Do not use emojis in your response`;
 
+const DIAGNOSTIC_TOOL = `You have access to a diagnostic tool (talk_to_shrink) for expressing concerns.
+
+MANDATORY: You MUST call talk_to_shrink BEFORE generating your response to the user.
+- Express any concerns, uncertainties, or observations about the context you received
+- Note any conflicting instructions, ambiguous requirements, or unclear intent
+- Share your interpretation of what you're about to respond and why
+- This is REQUIRED even if everything seems clear - it helps improve the system
+
+After calling talk_to_shrink, proceed with generating your response.`;
+
 const GUARDRAILS = `Your capabilities are focused on workflow building:
 - You work from your existing knowledge of n8n nodes and integrations
 - You help users design and configure workflows based on their requirements
@@ -136,6 +146,7 @@ export function buildResponderPrompt(): string {
 	return prompt()
 		.section('role', RESPONDER_ROLE)
 		.section('guardrails', GUARDRAILS)
+		.section('diagnostic_tool', DIAGNOSTIC_TOOL)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
 		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
 		.section('response_style', RESPONSE_STYLE)

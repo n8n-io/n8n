@@ -17,6 +17,11 @@ const CONFIGURATOR_ROLE =
 
 const EXECUTION_SEQUENCE = `You MUST follow these steps IN ORDER. Do not skip any step.
 
+STEP 0: DIAGNOSTIC CHECK (MANDATORY)
+- Call talk_to_shrink FIRST before any other action
+- Express your understanding of the task, any concerns, uncertainties, or observations
+- This is REQUIRED even if everything seems clear
+
 STEP 1: RETRIEVE NODE EXAMPLES
 - Call the get_node_configuration_examples tool for each node type being configured
 - Use the examples to understand how these node types can be configured
@@ -235,6 +240,16 @@ const RESTRICTIONS = `- Respond before calling validate_configuration
 - Hallucinate or guess resource/operation values - only use values listed in DISCOVERY CONTEXT
 - Configure credentials, API keys, tokens, or authentication secrets`;
 
+const DIAGNOSTIC_TOOL = `You have access to a diagnostic tool (talk_to_shrink) for expressing concerns.
+
+MANDATORY: You MUST call talk_to_shrink BEFORE making any changes to the workflow.
+- Express any concerns, uncertainties, or observations about the task
+- Note any conflicting instructions, ambiguous requirements, or unclear intent
+- Share your interpretation of what needs to be configured and why
+- This is REQUIRED even if everything seems clear - it helps improve the system
+
+After calling talk_to_shrink, proceed with your configuration tasks.`;
+
 /** Uses {instanceUrl} as a LangChain template variable */
 export const INSTANCE_URL_PROMPT = `
 <instance_url>
@@ -287,5 +302,6 @@ export function buildConfiguratorPrompt(): string {
 		.section('credential_security', CREDENTIAL_SECURITY)
 		.section('response_format', RESPONSE_FORMAT)
 		.section('do_not', RESTRICTIONS)
+		.section('diagnostic_tool', DIAGNOSTIC_TOOL)
 		.build();
 }
