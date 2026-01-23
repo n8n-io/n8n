@@ -41,7 +41,7 @@ export class SecretProvidersController {
 	}
 
 	@Patch('/:providerKey')
-	@GlobalScope('externalSecretsProvider:create')
+	@GlobalScope('externalSecretsProvider:update')
 	async updateConnectionValues() {
 		this.logger.debug('Update specific fields only (update projectIds, or connection settings)');
 		//TODO implement
