@@ -1436,8 +1436,8 @@ describe('getStatus', () => {
 			});
 		});
 
-		describe('workflow wasPublished and isNowArchived fields', () => {
-			it('should populate wasPublished and isNowArchived for new workflows', async () => {
+		describe('workflow isLocalPublished and isRemoteArchived fields', () => {
+			it('should populate isLocalPublished and isRemoteArchived for new workflows', async () => {
 				const remoteWorkflow: SourceControlWorkflowVersionId = {
 					id: 'wf-new',
 					name: 'New Workflow',
@@ -1461,11 +1461,11 @@ describe('getStatus', () => {
 				expect(result).toHaveLength(1);
 				const workflow = result.find((f) => f.id === 'wf-new');
 				expect(workflow).toBeDefined();
-				expect(workflow?.wasPublished).toBe(false);
-				expect(workflow?.isNowArchived).toBe(true);
+				expect(workflow?.isLocalPublished).toBe(false);
+				expect(workflow?.isRemoteArchived).toBe(true);
 			});
 
-			it('should populate wasPublished for modified published workflows', async () => {
+			it('should populate isLocalPublished for modified published workflows', async () => {
 				const workflowId = 'wf-published';
 				const localWorkflow: SourceControlWorkflowVersionId = {
 					id: workflowId,
@@ -1499,11 +1499,11 @@ describe('getStatus', () => {
 				expect(result).toHaveLength(1);
 				const workflow = result.find((f) => f.id === workflowId);
 				expect(workflow).toBeDefined();
-				expect(workflow?.wasPublished).toBe(true);
-				expect(workflow?.isNowArchived).toBe(false);
+				expect(workflow?.isLocalPublished).toBe(true);
+				expect(workflow?.isRemoteArchived).toBe(false);
 			});
 
-			it('should populate wasPublished=false for modified unpublished workflows', async () => {
+			it('should populate isLocalPublished=false for modified unpublished workflows', async () => {
 				const workflowId = 'wf-unpublished';
 				const localWorkflow: SourceControlWorkflowVersionId = {
 					id: workflowId,
@@ -1538,8 +1538,8 @@ describe('getStatus', () => {
 				expect(result).toHaveLength(1);
 				const workflow = result.find((f) => f.id === workflowId);
 				expect(workflow).toBeDefined();
-				expect(workflow?.wasPublished).toBe(false);
-				expect(workflow?.isNowArchived).toBe(false);
+				expect(workflow?.isLocalPublished).toBe(false);
+				expect(workflow?.isRemoteArchived).toBe(false);
 			});
 		});
 	});

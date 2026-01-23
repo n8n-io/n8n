@@ -392,7 +392,7 @@ describe('SourceControlPullModal', () => {
 					conflict: true,
 					file: '/workflows/workflow-1.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: true,
+					isLocalPublished: true,
 				},
 				{
 					id: 'workflow-2',
@@ -403,7 +403,7 @@ describe('SourceControlPullModal', () => {
 					conflict: false,
 					file: '/workflows/workflow-2.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: false,
+					isLocalPublished: false,
 				},
 			];
 
@@ -435,7 +435,7 @@ describe('SourceControlPullModal', () => {
 					conflict: true,
 					file: '/workflows/workflow-1.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: true,
+					isLocalPublished: true,
 				},
 				{
 					id: 'workflow-2',
@@ -446,7 +446,7 @@ describe('SourceControlPullModal', () => {
 					conflict: false,
 					file: '/workflows/workflow-2.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: false,
+					isLocalPublished: false,
 				},
 				{
 					id: 'workflow-3',
@@ -457,7 +457,7 @@ describe('SourceControlPullModal', () => {
 					conflict: true,
 					file: '/workflows/workflow-3.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: false,
+					isLocalPublished: false,
 				},
 			];
 
@@ -492,7 +492,7 @@ describe('SourceControlPullModal', () => {
 					conflict: true,
 					file: '/workflows/workflow-1.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: true,
+					isLocalPublished: true,
 				},
 				{
 					id: 'workflow-2',
@@ -503,7 +503,7 @@ describe('SourceControlPullModal', () => {
 					conflict: false,
 					file: '/workflows/workflow-2.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: false,
+					isLocalPublished: false,
 				},
 				{
 					id: 'workflow-3',
@@ -514,7 +514,7 @@ describe('SourceControlPullModal', () => {
 					conflict: true,
 					file: '/workflows/workflow-3.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: false,
+					isLocalPublished: false,
 				},
 			];
 
@@ -549,7 +549,7 @@ describe('SourceControlPullModal', () => {
 					conflict: false,
 					file: '/workflows/workflow-1.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: true,
+					isLocalPublished: true,
 				},
 				{
 					id: 'workflow-2',
@@ -560,7 +560,7 @@ describe('SourceControlPullModal', () => {
 					conflict: false,
 					file: '/workflows/workflow-2.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: false,
+					isLocalPublished: false,
 				},
 			];
 
@@ -598,8 +598,8 @@ describe('SourceControlPullModal', () => {
 					conflict: true,
 					file: '/workflows/workflow-1.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: true,
-					isNowArchived: true, // Archived in remote
+					isLocalPublished: true,
+					isRemoteArchived: true, // Archived in remote
 				},
 				{
 					id: 'workflow-2',
@@ -610,8 +610,8 @@ describe('SourceControlPullModal', () => {
 					conflict: true,
 					file: '/workflows/workflow-2.json',
 					updatedAt: '2025-01-09T13:12:24.586Z',
-					wasPublished: true,
-					isNowArchived: false,
+					isLocalPublished: true,
+					isRemoteArchived: false,
 				},
 			];
 

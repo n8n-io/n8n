@@ -15,12 +15,8 @@ import {
 	getStatusTheme,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '../sourceControl.utils';
-import {
-	type AutoPublishMode,
-	type SourceControlledFile,
-	SOURCE_CONTROL_FILE_TYPE,
-} from '@n8n/api-types';
-import { shouldAutoPublishWorkflow } from 'n8n-workflow';
+import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
+import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import dateformat from 'dateformat';
@@ -73,7 +69,7 @@ const autoPublish = ref<AutoPublishMode>('none');
 
 const autoPublishOptions = computed(() => {
 	const workflows = status.value.filter((f) => f.type === SOURCE_CONTROL_FILE_TYPE.workflow);
-	const hasPublishedWorkflows = workflows.some((w) => w.wasPublished && w.status !== 'created');
+	const hasPublishedWorkflows = workflows.some((w) => w.isLocalPublished && w.status !== 'created');
 
 	const options: Array<{ label: string; value: AutoPublishMode }> = [
 		{
@@ -181,8 +177,8 @@ const sortedWorkflows = computed(() => {
 			file.status !== 'deleted' &&
 			shouldAutoPublishWorkflow({
 				isNewWorkflow: file.status === 'created',
-				wasPublished: file.wasPublished ?? false,
-				isNowArchived: file.isNowArchived ?? false,
+				isLocalPublished: file.isLocalPublished ?? false,
+				isRemoteArchived: file.isRemoteArchived ?? false,
 				autoPublish: autoPublish.value,
 			}),
 	}));
@@ -448,7 +444,7 @@ onMounted(() => {
 														{{ i18n.baseText('settings.sourceControl.modals.pull.autoPublishing') }}
 													</N8nText>
 													<N8nText
-														v-if="file.isNowArchived"
+														v-if="file.isRemoteArchived"
 														tag="p"
 														class="mt-2xs"
 														color="warning"

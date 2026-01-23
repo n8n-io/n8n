@@ -195,7 +195,7 @@ export class SourceControlStatusService {
 		const wfLocalVersionIds =
 			await this.sourceControlImportService.getLocalVersionIdsFromDb(context);
 
-		// Fetch active status for local workflows to determine wasPublished
+		// Fetch published status for local workflows to determine isLocalPublished
 		const candidateIds = [
 			...new Set([...wfLocalVersionIds.map((w) => w.id), ...wfRemoteVersionIds.map((w) => w.id)]),
 		];
@@ -206,7 +206,7 @@ export class SourceControlStatusService {
 			localWorkflowsWithStatus.filter((w) => !!w.activeVersionId).map((w) => w.id),
 		);
 
-		// Create map of isArchived from remote workflows to determine isNowArchived
+		// Create map of isArchived from remote workflows to determine isRemoteArchived
 		const archivedWorkflowIds = new Map(
 			wfRemoteVersionIds.filter((w) => w.isArchived).map((w) => [w.id, true]),
 		);
@@ -283,8 +283,8 @@ export class SourceControlStatusService {
 				conflict: false,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
-				wasPublished: false, // New workflow, not published locally
-				isNowArchived: archivedWorkflowIds.get(item.id) ?? false,
+				isLocalPublished: false, // New workflow, not published locally
+				isRemoteArchived: archivedWorkflowIds.get(item.id) ?? false,
 				owner: item.owner,
 			});
 		});
@@ -299,8 +299,8 @@ export class SourceControlStatusService {
 				conflict: options.direction === 'push' ? false : true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
-				wasPublished: publishedWorkflowIds.has(item.id),
-				isNowArchived: false, // Workflow deleted from remote, no archived status
+				isLocalPublished: publishedWorkflowIds.has(item.id),
+				isRemoteArchived: false, // Workflow deleted from remote, no archived status
 				owner: item.owner,
 			});
 		});
@@ -315,8 +315,8 @@ export class SourceControlStatusService {
 				conflict: true,
 				file: item.filename,
 				updatedAt: item.updatedAt ?? new Date().toISOString(),
-				wasPublished: publishedWorkflowIds.has(item.id),
-				isNowArchived: archivedWorkflowIds.get(item.id) ?? false,
+				isLocalPublished: publishedWorkflowIds.has(item.id),
+				isRemoteArchived: archivedWorkflowIds.get(item.id) ?? false,
 				owner: item.owner,
 			});
 		});

@@ -49,8 +49,8 @@ export const SourceControlledFileSchema = z.object({
 	conflict: z.boolean(),
 	updatedAt: z.string(),
 	pushed: z.boolean().optional(),
-	wasPublished: z.boolean().optional(), // true if local workflow was previously active/published
-	isNowArchived: z.boolean().optional(), // true if remote workflow is archived
+	isLocalPublished: z.boolean().optional(),
+	isRemoteArchived: z.boolean().optional(),
 	owner: ResourceOwnerSchema.optional(), // Resource owner can be a personal email or team information
 });
 

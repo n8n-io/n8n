@@ -672,25 +672,25 @@ export class SourceControlImportService {
 			// In that case, we deactivate the existing workflow on pull and turn it archived.
 			// The autoPublish parameter can override this behavior to auto-activate workflows.
 
-			let shouldActivate = this.shouldAutoPublishWorkflow(
+			let shouldAutoPublish = this.shouldAutoPublishWorkflow(
 				existingWorkflow,
 				importedWorkflow,
 				autoPublish,
 			);
 
-			const shouldDeactivate =
+			const shouldUnpublishLocal =
 				existingWorkflow &&
-				this.shouldDeactivateWorkflow(existingWorkflow, importedWorkflow, shouldActivate);
-			if (shouldDeactivate && existingWorkflow) {
-				const deactivated = await this.deactivateImportedWorkflow(existingWorkflow.id, userId);
+				this.shouldUnpublishLocalWorkflow(existingWorkflow, importedWorkflow, shouldAutoPublish);
+			if (shouldUnpublishLocal && existingWorkflow) {
+				const deactivated = await this.unpublishWorkflow(existingWorkflow.id, userId);
 				// If deactivation failed, don't try to activate
 				if (!deactivated) {
-					shouldActivate = false;
+					shouldAutoPublish = false;
 				}
 			}
 
 			// Set active state for upsert
-			if (shouldDeactivate) {
+			if (shouldUnpublishLocal) {
 				// We will activate the workflow later if needed
 				importedWorkflow.active = false;
 				importedWorkflow.activeVersionId = null;
@@ -736,9 +736,9 @@ export class SourceControlImportService {
 				repository: this.sharedWorkflowRepository,
 			});
 
-			// Now activate the workflow if needed (after history is saved)
-			if (shouldActivate) {
-				await this.activateImportedWorkflow(importedWorkflow, userId);
+			// Now publish the workflow if needed (after history is saved)
+			if (shouldAutoPublish) {
+				await this.publishWorkflow(importedWorkflow.id, importedWorkflow.versionId!, userId);
 			}
 
 			importWorkflowsResult.push({
@@ -779,13 +779,13 @@ export class SourceControlImportService {
 		});
 	}
 
-	private shouldDeactivateWorkflow(
+	private shouldUnpublishLocalWorkflow(
 		existingWorkflow: WorkflowEntity,
 		importedWorkflow: IWorkflowToImport,
-		shouldActivate: boolean,
+		shouldAutoPublish: boolean,
 	): boolean {
-		const wasActive = !!existingWorkflow.activeVersionId;
-		if (!wasActive) {
+		const wasPublished = !!existingWorkflow.activeVersionId;
+		if (!wasPublished) {
 			return false;
 		}
 
@@ -793,45 +793,42 @@ export class SourceControlImportService {
 			return true;
 		}
 
-		return shouldActivate;
+		return shouldAutoPublish;
 	}
 
-	private async deactivateImportedWorkflow(workflowId: string, userId: string): Promise<boolean> {
+	private async unpublishWorkflow(workflowId: string, userId: string): Promise<boolean> {
 		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 		if (!user) {
-			this.logger.error(`User ${userId} not found, cannot deactivate workflow ${workflowId}`);
+			this.logger.error(`User ${userId} not found, cannot unpublish workflow ${workflowId}`);
 			return false;
 		}
 
 		try {
-			this.logger.debug(`Deactivating workflow id ${workflowId} before import`);
+			this.logger.debug(`Unpublishing workflow id ${workflowId} before import`);
 			await this.workflowService.deactivateWorkflow(user, workflowId);
 			return true;
 		} catch (e) {
 			const error = ensureError(e);
-			this.logger.error(`Failed to deactivate workflow ${workflowId}`, { error });
+			this.logger.error(`Failed to unpublish workflow ${workflowId}`, { error });
 			return false;
 		}
 	}
 
-	private async activateImportedWorkflow(importedWorkflow: IWorkflowToImport, userId: string) {
-		const versionId = importedWorkflow.versionId!;
+	private async publishWorkflow(workflowId: string, versionId: string, userId: string) {
 		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 		if (!user) {
-			this.logger.error(
-				`User ${userId} not found, cannot activate workflow ${importedWorkflow.id}`,
-			);
+			this.logger.error(`User ${userId} not found, cannot publish workflow ${workflowId}`);
 			return;
 		}
 
 		try {
-			this.logger.debug(`Activating imported workflow id ${importedWorkflow.id}`);
-			await this.workflowService.activateWorkflow(user, importedWorkflow.id, {
+			this.logger.debug(`Publishing imported workflow id ${workflowId}`);
+			await this.workflowService.activateWorkflow(user, workflowId, {
 				versionId,
 			});
 		} catch (e) {
 			const error = ensureError(e);
-			this.logger.error(`Failed to activate workflow ${importedWorkflow.id}`, { error });
+			this.logger.error(`Failed to publish workflow ${workflowId}`, { error });
 		}
 	}
 
