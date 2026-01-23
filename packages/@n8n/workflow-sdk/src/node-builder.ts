@@ -655,3 +655,54 @@ class NewCredentialImpl implements NewCredentialValue {
 export function newCredential(name: string): NewCredentialValue {
 	return new NewCredentialImpl(name);
 }
+
+/**
+ * Create a NodeChain with additional nodes prepended to allNodes.
+ * This is used by MergeComposite to ensure branch nodes are included
+ * when .then() is called on a merge.
+ *
+ * @param baseChain - The base chain created by mergeNode.then()
+ * @param additionalNodes - Additional nodes to prepend to allNodes (e.g., merge branches)
+ * @returns A new chain with the additional nodes included
+ */
+export function createChainWithAdditionalNodes<
+	THead extends NodeInstance<string, string, unknown>,
+	TTail extends NodeInstance<string, string, unknown>,
+>(
+	baseChain: NodeChain<THead, TTail>,
+	additionalNodes: NodeInstance<string, string, unknown>[],
+): NodeChain<THead, TTail> {
+	// Filter out nodes that are already in allNodes to avoid duplicates
+	const existingNames = new Set(baseChain.allNodes.map((n) => n.name));
+	const newNodes = additionalNodes.filter((n) => !existingNames.has(n.name));
+
+	// Create a new chain with the additional nodes prepended
+	const allNodes = [...newNodes, ...baseChain.allNodes];
+
+	return new NodeChainImpl(baseChain.head, baseChain.tail, allNodes);
+}
+
+/**
+ * Create a NodeChain that includes a MergeComposite in allNodes.
+ * This is used by MergeComposite.then() to ensure the composite is processed
+ * by addBranchToGraph which calls addMergeNodes to set up branch connections.
+ *
+ * @param baseChain - The base chain created by mergeNode.then()
+ * @param mergeComposite - The MergeComposite to include in allNodes
+ * @returns A new chain with the MergeComposite prepended to allNodes
+ */
+export function createChainWithMergeComposite<
+	THead extends NodeInstance<string, string, unknown>,
+	TTail extends NodeInstance<string, string, unknown>,
+>(baseChain: NodeChain<THead, TTail>, mergeComposite: MergeComposite): NodeChain<THead, TTail> {
+	// Include the MergeComposite at the front of allNodes
+	// The workflow-builder's addBranchToGraph will detect it via isMergeComposite
+	// and call addMergeNodes which properly sets up branch connections
+	// Note: The type cast is safe because addBranchToGraph handles MergeComposite in allNodes
+	const allNodes = [
+		mergeComposite as unknown as NodeInstance<string, string, unknown>,
+		...baseChain.allNodes,
+	];
+
+	return new NodeChainImpl(baseChain.head, baseChain.tail, allNodes);
+}

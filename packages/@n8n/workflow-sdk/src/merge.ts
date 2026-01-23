@@ -9,6 +9,7 @@ import type {
 	NodeChain,
 	IDataObject,
 } from './types/base';
+import { createChainWithMergeComposite } from './node-builder';
 
 /**
  * Internal merge node implementation
@@ -206,13 +207,18 @@ class MergeCompositeImpl<TBranches extends NodeInstance<string, string, unknown>
 
 	/**
 	 * Chain a downstream node to the merge output.
-	 * Delegates to the mergeNode's then() method to declare the connection.
+	 * Delegates to the mergeNode's then() method to declare the connection,
+	 * then includes this MergeComposite in allNodes so addBranchToGraph
+	 * can call addMergeNodes to properly set up branch connections.
 	 */
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T | T[],
 		outputIndex: number = 0,
 	): NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T> {
-		return this.mergeNode.then(target, outputIndex);
+		const baseChain = this.mergeNode.then(target, outputIndex);
+		// Include the MergeComposite itself in allNodes so workflow-builder can
+		// call addMergeNodes which properly sets up branch-to-merge connections
+		return createChainWithMergeComposite(baseChain, this);
 	}
 }
 
@@ -239,13 +245,18 @@ class MergeCompositeWithExistingNode<TBranches extends NodeInstance<string, stri
 
 	/**
 	 * Chain a downstream node to the merge output.
-	 * Delegates to the mergeNode's then() method to declare the connection.
+	 * Delegates to the mergeNode's then() method to declare the connection,
+	 * then includes this MergeComposite in allNodes so addBranchToGraph
+	 * can call addMergeNodes to properly set up branch connections.
 	 */
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T | T[],
 		outputIndex: number = 0,
 	): NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T> {
-		return this.mergeNode.then(target, outputIndex);
+		const baseChain = this.mergeNode.then(target, outputIndex);
+		// Include the MergeComposite itself in allNodes so workflow-builder can
+		// call addMergeNodes which properly sets up branch-to-merge connections
+		return createChainWithMergeComposite(baseChain, this);
 	}
 }
 

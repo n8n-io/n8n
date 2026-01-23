@@ -186,6 +186,68 @@ function isMergeType(type: string): boolean {
 }
 
 /**
+ * Find a direct Merge node among fan-out targets.
+ * Returns the merge node and non-merge targets if one target IS a Merge
+ * and other targets feed INTO that same Merge.
+ */
+function findDirectMergeInFanOut(
+	targetNames: string[],
+	ctx: BuildContext,
+): { mergeNode: SemanticNode; nonMergeTargets: string[] } | null {
+	// Find which targets are Merge nodes
+	let mergeTarget: SemanticNode | null = null;
+	const nonMergeTargets: string[] = [];
+
+	for (const targetName of targetNames) {
+		const node = ctx.graph.nodes.get(targetName);
+		if (!node) continue;
+
+		if (isMergeType(node.type)) {
+			if (mergeTarget !== null) {
+				// Multiple merge targets - this pattern doesn't apply
+				return null;
+			}
+			mergeTarget = node;
+		} else {
+			nonMergeTargets.push(targetName);
+		}
+	}
+
+	if (!mergeTarget || nonMergeTargets.length === 0) {
+		return null;
+	}
+
+	// Verify that at least some non-merge targets feed into this merge
+	// (checking inputSources of the merge node)
+	const mergeInputSources = new Set<string>();
+	for (const [, sources] of mergeTarget.inputSources) {
+		for (const source of sources) {
+			mergeInputSources.add(source.from);
+		}
+	}
+
+	// Check if any non-merge target (or its descendants) feeds into the merge
+	const feedsIntoMerge = nonMergeTargets.some((targetName) => {
+		// Direct connection
+		if (mergeInputSources.has(targetName)) return true;
+
+		// Check if target's output goes to merge (one hop)
+		const targetNode = ctx.graph.nodes.get(targetName);
+		if (targetNode) {
+			const outputs = getAllFirstOutputTargets(targetNode);
+			if (outputs.includes(mergeTarget!.name)) return true;
+		}
+		return false;
+	});
+
+	if (!feedsIntoMerge) {
+		return null;
+	}
+
+	return { mergeNode: mergeTarget, nonMergeTargets };
+}
+
+/**
  * Check if multiple targets all converge at the same merge node
  */
 function detectMergePattern(
@@ -248,6 +310,111 @@ function buildBranchTargets(
 
 	if (targets.length === 1) {
 		return buildFromNode(targets[0].target, ctx);
+	}
+
+	const targetNames = targets.map((t) => t.target);
+
+	// Check for "fan-out with direct merge" pattern:
+	// One target IS a Merge node, and other targets feed INTO that Merge
+	const directMergePattern = findDirectMergeInFanOut(targetNames, ctx);
+	if (directMergePattern) {
+		const { mergeNode, nonMergeTargets } = directMergePattern;
+
+		// Mark merge as visited FIRST so non-merge targets don't chain to it
+		// This prevents buildFromNode for non-merge targets from following their
+		// output connection to the merge and building it prematurely
+		ctx.visited.add(mergeNode.name);
+
+		// Build chains for non-merge targets
+		// These will form part of the merge's input branches
+		const builtBranches: CompositeNode[] = [];
+		for (const targetName of nonMergeTargets) {
+			if (!ctx.visited.has(targetName)) {
+				builtBranches.push(buildFromNode(targetName, ctx));
+			}
+		}
+
+		// Build a merge composite that includes both:
+		// 1. The branches we just built (non-merge targets)
+		// 2. Any other input sources the merge has (from its inputSources)
+
+		// Get all input sources for the merge
+		const allBranchNames: string[] = [];
+		for (const [, sources] of mergeNode.inputSources) {
+			for (const source of sources) {
+				if (!allBranchNames.includes(source.from)) {
+					allBranchNames.push(source.from);
+				}
+			}
+		}
+
+		// Build branches array for the merge composite
+		// Include variable references to already-built nodes
+		const mergeBranches: CompositeNode[] = [];
+		for (const branchName of allBranchNames) {
+			const branchNode = ctx.graph.nodes.get(branchName);
+			if (branchNode) {
+				if (ctx.variables.has(branchName)) {
+					// Use varRef for declared variables
+					mergeBranches.push(createVarRef(branchName));
+				} else if (ctx.visited.has(branchName)) {
+					// Already built - add as varRef and register as variable
+					ctx.variables.set(branchName, branchNode);
+					mergeBranches.push(createVarRef(branchName));
+				} else {
+					// Not yet built - inline as leaf
+					mergeBranches.push(createLeaf(branchNode));
+				}
+			}
+		}
+
+		const mergeComposite: MergeCompositeNode = {
+			kind: 'merge',
+			mergeNode,
+			branches: mergeBranches,
+		};
+
+		// Check if merge has downstream continuation
+		const mergeOutputs = getAllFirstOutputTargets(mergeNode);
+		const unvisitedOutputs = mergeOutputs.filter((target) => !ctx.visited.has(target));
+
+		if (unvisitedOutputs.length === 0) {
+			return mergeComposite;
+		}
+
+		if (unvisitedOutputs.length === 1) {
+			// Single downstream target - chain to it
+			const nextComposite = buildFromNode(unvisitedOutputs[0], ctx);
+			return {
+				kind: 'chain',
+				nodes: [mergeComposite, nextComposite],
+			};
+		}
+
+		// Multiple downstream targets - build as fan-out
+		const fanOutBranches: CompositeNode[] = [];
+		for (const target of unvisitedOutputs) {
+			if (!ctx.visited.has(target)) {
+				fanOutBranches.push(buildFromNode(target, ctx));
+			}
+		}
+
+		if (fanOutBranches.length === 0) {
+			return mergeComposite;
+		}
+
+		if (fanOutBranches.length === 1) {
+			return {
+				kind: 'chain',
+				nodes: [mergeComposite, fanOutBranches[0]],
+			};
+		}
+
+		// Return chain with fan-out array
+		return {
+			kind: 'chain',
+			nodes: [mergeComposite, ...fanOutBranches],
+		};
 	}
 
 	// Multiple targets - build all branches
@@ -406,6 +573,46 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 		default:
 			// Regular node - check for chain continuation
 			compositeNode = createLeaf(node);
+	}
+
+	// Handle downstream continuation for merge nodes
+	if (compositeType === 'merge') {
+		const mergeOutputs = getAllFirstOutputTargets(node);
+		const unvisitedOutputs = mergeOutputs.filter((target) => !ctx.visited.has(target));
+
+		if (unvisitedOutputs.length === 1) {
+			// Single downstream target - chain to it
+			const nextComposite = buildFromNode(unvisitedOutputs[0], ctx);
+			return {
+				kind: 'chain',
+				nodes: [compositeNode, nextComposite],
+			};
+		}
+
+		if (unvisitedOutputs.length > 1) {
+			// Multiple downstream targets - build as fan-out
+			const fanOutBranches: CompositeNode[] = [];
+			for (const target of unvisitedOutputs) {
+				fanOutBranches.push(buildFromNode(target, ctx));
+			}
+
+			if (fanOutBranches.length === 1) {
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, fanOutBranches[0]],
+				};
+			}
+
+			// Create fan-out composite for parallel targets
+			const fanOut: FanOutCompositeNode = {
+				kind: 'fanOut',
+				sourceNode: compositeNode,
+				targets: fanOutBranches,
+			};
+			return fanOut;
+		}
+
+		return compositeNode;
 	}
 
 	// Check if there's a chain continuation (single output to non-composite target)
