@@ -158,4 +158,206 @@ describe('CredentialConfig', () => {
 		// Verify that addCredentialTranslation was not called
 		expect(addCredentialTranslation).not.toHaveBeenCalled();
 	});
+
+	describe('Dynamic Credentials Section', () => {
+		it('should not display dynamic credentials section when isDynamicCredentialsEnabled is false', async () => {
+			renderComponent(
+				{
+					props: {
+						isDynamicCredentialsEnabled: false,
+						isOAuthType: true,
+						isNewCredential: true,
+						credentialPermissions: {
+							create: true,
+							update: true,
+							read: true,
+							delete: true,
+							share: true,
+							list: true,
+							move: true,
+						},
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+		});
+
+		it('should not display dynamic credentials section when isOAuthType is false', async () => {
+			renderComponent(
+				{
+					props: {
+						isDynamicCredentialsEnabled: true,
+						isOAuthType: false,
+						isNewCredential: true,
+						credentialPermissions: {
+							create: true,
+							update: true,
+							read: true,
+							delete: true,
+							share: true,
+							list: true,
+							move: true,
+						},
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+		});
+
+		it('should not display dynamic credentials section when user lacks create permission for new credential', async () => {
+			renderComponent(
+				{
+					props: {
+						isDynamicCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: true,
+						credentialPermissions: {
+							create: false,
+							update: false,
+							read: true,
+							delete: false,
+							share: false,
+							list: true,
+							move: false,
+						},
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+		});
+
+		it('should not display dynamic credentials section when user lacks update permission for existing credential', async () => {
+			renderComponent(
+				{
+					props: {
+						isDynamicCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: false,
+						credentialPermissions: {
+							create: false,
+							update: false,
+							read: true,
+							delete: false,
+							share: false,
+							list: true,
+							move: false,
+						},
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.queryByTestId('dynamic-credentials-section')).not.toBeInTheDocument();
+		});
+
+		it('should display dynamic credentials section when all conditions are met for new credential', async () => {
+			renderComponent(
+				{
+					props: {
+						isDynamicCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: true,
+						isResolvable: false,
+						credentialPermissions: {
+							create: true,
+							update: false,
+							read: true,
+							delete: false,
+							share: false,
+							list: true,
+							move: false,
+						},
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
+			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+		});
+
+		it('should display dynamic credentials section when all conditions are met for existing credential', async () => {
+			renderComponent(
+				{
+					props: {
+						isDynamicCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: false,
+						isResolvable: false,
+						credentialPermissions: {
+							create: false,
+							update: true,
+							read: true,
+							delete: false,
+							share: false,
+							list: true,
+							move: false,
+						},
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
+			expect(screen.getByTestId('dynamic-credentials-toggle')).toBeInTheDocument();
+		});
+
+		it('should display warning notice when isResolvable is true', async () => {
+			renderComponent(
+				{
+					props: {
+						isDynamicCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: true,
+						isResolvable: true,
+						credentialPermissions: {
+							create: true,
+							update: true,
+							read: true,
+							delete: true,
+							share: true,
+							list: true,
+							move: true,
+						},
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
+			expect(screen.getByTestId('dynamic-credentials-alert')).toBeInTheDocument();
+		});
+
+		it('should not display warning notice when isResolvable is false', async () => {
+			renderComponent(
+				{
+					props: {
+						isDynamicCredentialsEnabled: true,
+						isOAuthType: true,
+						isNewCredential: true,
+						isResolvable: false,
+						credentialPermissions: {
+							create: true,
+							update: true,
+							read: true,
+							delete: true,
+							share: true,
+							list: true,
+							move: true,
+						},
+					},
+				},
+				{ merge: true },
+			);
+
+			expect(screen.getByTestId('dynamic-credentials-section')).toBeInTheDocument();
+			expect(screen.queryByTestId('dynamic-credentials-alert')).not.toBeInTheDocument();
+		});
+	});
 });
