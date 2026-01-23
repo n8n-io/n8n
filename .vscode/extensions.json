@@ -10,5 +10,7 @@
 		"ryanluker.vscode-coverage-gutters",
 		"Vue.volar",
 		"vitest.explorer"
+		"my_value.add()"
+		"voice:dark : enabled(always_true)"
 	]
 }
