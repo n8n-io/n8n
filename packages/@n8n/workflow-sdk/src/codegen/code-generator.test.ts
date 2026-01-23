@@ -17,7 +17,7 @@ function generateFromWorkflow(json: WorkflowJSON): string {
 describe('code-generator', () => {
 	describe('generateCode', () => {
 		describe('output format', () => {
-			it('starts with return keyword', () => {
+			it('uses variables-first format with const wf = workflow(...)', () => {
 				const json: WorkflowJSON = {
 					name: 'Test',
 					nodes: [],
@@ -26,7 +26,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toMatch(/^return workflow\(/);
+				// Should start with const wf = workflow(...)
+				expect(code).toMatch(/^const wf = workflow\(/);
+				// Should end with return wf
+				expect(code.trim()).toMatch(/return wf$/);
 			});
 
 			it('does not end with .toJSON()', () => {
@@ -60,10 +63,11 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("return workflow('");
+				expect(code).toContain("const wf = workflow('");
 				expect(code).toContain("'Single Trigger'");
 				expect(code).toContain('trigger({');
 				expect(code).toContain("type: 'n8n-nodes-base.manualTrigger'");
+				expect(code).toContain('return wf');
 			});
 
 			it('always includes config property even when empty', () => {
@@ -123,9 +127,14 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain('.then(');
-				// Should have workflow-level chained structure: .add(trigger(...)).then(...)
-				expect(code).toMatch(/\.add\(trigger\(/);
-				expect(code).toMatch(/\.then\(node\(/);
+				// All nodes should be variables
+				expect(code).toContain('const trigger_node = trigger({');
+				expect(code).toContain('const process = node({');
+				expect(code).toContain('const final = node({');
+				// Workflow should chain variable references
+				expect(code).toMatch(/\.add\(trigger_node\)/);
+				expect(code).toMatch(/\.then\(process\)/);
+				expect(code).toMatch(/\.then\(final\)/);
 			});
 		});
 
@@ -171,8 +180,11 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain('ifElse([');
-				// Should have true and false branches
-				expect(code).toMatch(/ifElse\(\[[\s\S]*node\([\s\S]*node\(/);
+				// Should have true and false branch variable references
+				expect(code).toContain('const trueHandler = node({');
+				expect(code).toContain('const falseHandler = node({');
+				// The ifElse should reference the variables
+				expect(code).toMatch(/ifElse\(\[trueHandler, falseHandler\]/);
 			});
 
 			it('handles IF with null branch', () => {
@@ -496,8 +508,9 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("return workflow('");
+				expect(code).toContain("const wf = workflow('");
 				expect(code).toContain("'Empty'");
+				expect(code).toContain('return wf');
 			});
 		});
 
@@ -516,9 +529,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("return workflow('settings-test', 'Settings Test',");
+				expect(code).toContain("const wf = workflow('settings-test', 'Settings Test',");
 				expect(code).toContain("timezone: 'America/New_York'");
 				expect(code).toContain("executionOrder: 'v1'");
+				expect(code).toContain('return wf');
 			});
 
 			it('omits settings when empty', () => {
@@ -532,7 +546,7 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain("return workflow('no-settings', 'No Settings')");
+				expect(code).toContain("const wf = workflow('no-settings', 'No Settings')");
 				expect(code).not.toContain('timezone');
 			});
 
@@ -546,7 +560,8 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toMatch(/return workflow\('undefined-settings', 'Undefined Settings'\)$/m);
+				expect(code).toContain("const wf = workflow('undefined-settings', 'Undefined Settings')");
+				expect(code).toContain('return wf');
 			});
 		});
 
@@ -729,7 +744,7 @@ describe('code-generator', () => {
 		});
 
 		describe('default node names', () => {
-			it('omits name config when node name matches default', () => {
+			it('always includes name for reliable roundtrip', () => {
 				const json: WorkflowJSON = {
 					id: 'default-name-test',
 					name: 'Test',
@@ -747,8 +762,8 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should NOT have name in config since it matches the default
-				expect(code).not.toContain("name: 'HTTP Request'");
+				// Name is always included for reliable roundtrip (parser defaults may differ from codegen)
+				expect(code).toContain("name: 'HTTP Request'");
 			});
 
 			it('includes name config when node name differs from default', () => {
@@ -772,7 +787,7 @@ describe('code-generator', () => {
 				expect(code).toContain("name: 'My Custom Request'");
 			});
 
-			it('generates correct default name from camelCase type', () => {
+			it('always includes node name for reliable roundtrip', () => {
 				const json: WorkflowJSON = {
 					id: 'camel-case-test',
 					name: 'Test',
@@ -790,8 +805,8 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should NOT have name since "Manual Trigger" matches default for "manualTrigger"
-				expect(code).not.toContain("name: 'Manual Trigger'");
+				// Name is always included for reliable roundtrip (parser defaults may differ from codegen)
+				expect(code).toContain("name: 'Manual Trigger'");
 			});
 
 			it('always includes name for composite nodes like IF (even if matching default)', () => {

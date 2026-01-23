@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import type {
-	IfBranchComposite,
+	IfElseComposite,
 	NodeInstance,
 	NodeConfig,
 	DeclaredConnection,
@@ -76,7 +76,7 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {
-		throw new Error('IF node error handling is managed by IfBranchComposite');
+		throw new Error('IF node error handling is managed by IfElseComposite');
 	}
 
 	getConnections(): DeclaredConnection[] {
@@ -110,7 +110,7 @@ type BranchType =
 /**
  * Internal IF branch composite implementation
  */
-class IfBranchCompositeImpl implements IfBranchComposite {
+class IfElseCompositeImpl implements IfElseComposite {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
 	readonly trueBranch:
 		| NodeInstance<string, string, unknown>
@@ -135,7 +135,7 @@ class IfBranchCompositeImpl implements IfBranchComposite {
 /**
  * IF branch composite implementation that wraps an existing node instance
  */
-class IfBranchCompositeWithExistingNode implements IfBranchComposite {
+class IfElseCompositeWithExistingNode implements IfElseComposite {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
 	readonly trueBranch:
 		| NodeInstance<string, string, unknown>
@@ -199,14 +199,14 @@ class IfBranchCompositeWithExistingNode implements IfBranchComposite {
 export function ifBranch(
 	branches: [BranchType, BranchType],
 	configOrNode?: IfBranchConfig | NodeInstance<'n8n-nodes-base.if', string, unknown>,
-): IfBranchComposite {
+): IfElseComposite {
 	// Check if the second argument is a NodeInstance (pre-declared IF node)
 	if (isNodeInstance(configOrNode) && configOrNode.type === 'n8n-nodes-base.if') {
-		return new IfBranchCompositeWithExistingNode(
+		return new IfElseCompositeWithExistingNode(
 			branches,
 			configOrNode as NodeInstance<'n8n-nodes-base.if', string, unknown>,
 		);
 	}
 	// Otherwise, treat it as an IfBranchConfig
-	return new IfBranchCompositeImpl(branches, configOrNode as IfBranchConfig);
+	return new IfElseCompositeImpl(branches, configOrNode as IfBranchConfig);
 }

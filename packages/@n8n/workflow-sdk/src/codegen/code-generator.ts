@@ -28,6 +28,8 @@ interface GenerationContext {
 	generatedVars: Set<string>;
 	variableNodes: Map<string, SemanticNode>; // Nodes that are declared as variables
 	graph: SemanticGraph; // Full graph for looking up subnodes
+	nodeNameToVarName: Map<string, string>; // Maps node names to unique variable names
+	usedVarNames: Set<string>; // Tracks all used variable names to avoid collisions
 }
 
 /**
@@ -84,7 +86,7 @@ function generateDefaultNodeName(type: string): string {
  * Reserved keywords that cannot be used as variable names
  */
 const RESERVED_KEYWORDS = new Set([
-	// JavaScript reserved
+	// JavaScript reserved words
 	'break',
 	'case',
 	'catch',
@@ -120,6 +122,11 @@ const RESERVED_KEYWORDS = new Set([
 	'while',
 	'with',
 	'yield',
+	// JavaScript literals
+	'null',
+	'true',
+	'false',
+	'undefined',
 	// SDK functions
 	'workflow',
 	'trigger',
@@ -347,8 +354,8 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 
 	const configParts: string[] = [];
 
-	const defaultName = generateDefaultNodeName(node.type);
-	if (node.json.name && node.json.name !== defaultName) {
+	// Always include name for proper roundtrip - parser defaults may differ from codegen defaults
+	if (node.json.name) {
 		configParts.push(`name: '${escapeString(node.json.name)}'`);
 	}
 
@@ -429,7 +436,7 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
 	const nodeName = node.json.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
-		return toVarName(nodeName);
+		return getVarName(nodeName, ctx);
 	}
 	return generateFlatNodeConfig(node);
 }
@@ -497,7 +504,7 @@ function generateLeafCode(leaf: LeafNode, ctx: GenerationContext): string {
 	const nodeName = leaf.node.json.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
 		// Use variable reference for nodes that are declared as variables
-		return toVarName(nodeName);
+		return getVarName(nodeName, ctx);
 	}
 	return generateNodeCall(leaf.node, ctx);
 }
@@ -680,14 +687,14 @@ function generateFanOut(fanOut: FanOutCompositeNode, ctx: GenerationContext): st
  */
 function generateExplicitConnections(
 	explicitConns: ExplicitConnectionsNode,
-	_ctx: GenerationContext,
+	ctx: GenerationContext,
 ): string {
 	// Generate variable references to the nodes involved
 	// The actual .add() and .connect() calls will be generated at the root level
 	// For now, just return the variable reference to the first node
 	if (explicitConns.nodes.length > 0) {
 		const firstNode = explicitConns.nodes[0];
-		const varName = toVarName(firstNode.name);
+		const varName = getVarName(firstNode.name, ctx);
 		return varName;
 	}
 	return '';
@@ -749,6 +756,45 @@ function toVarName(nodeName: string): string {
 }
 
 /**
+ * Get the variable name for a node, looking up in the context's mapping.
+ * If the node name has been assigned a variable name, returns that.
+ * Otherwise returns the base variable name (which may collide).
+ */
+function getVarName(nodeName: string, ctx: GenerationContext): string {
+	if (ctx.nodeNameToVarName.has(nodeName)) {
+		return ctx.nodeNameToVarName.get(nodeName)!;
+	}
+	return toVarName(nodeName);
+}
+
+/**
+ * Generate a unique variable name for a node, avoiding collisions.
+ * Tracks used names and appends a counter if needed.
+ */
+function getUniqueVarName(nodeName: string, ctx: GenerationContext): string {
+	// If we already assigned a name for this node, return it
+	if (ctx.nodeNameToVarName.has(nodeName)) {
+		return ctx.nodeNameToVarName.get(nodeName)!;
+	}
+
+	const baseVarName = toVarName(nodeName);
+	let varName = baseVarName;
+	let counter = 1;
+
+	// Keep incrementing counter until we find an unused name
+	while (ctx.usedVarNames.has(varName)) {
+		varName = `${baseVarName}${counter}`;
+		counter++;
+	}
+
+	// Record the mapping and mark as used
+	ctx.usedVarNames.add(varName);
+	ctx.nodeNameToVarName.set(nodeName, varName);
+
+	return varName;
+}
+
+/**
  * Generate variable declarations
  */
 function generateVariableDeclarations(
@@ -758,7 +804,7 @@ function generateVariableDeclarations(
 	const declarations: string[] = [];
 
 	for (const [nodeName, node] of variables) {
-		const varName = toVarName(nodeName);
+		const varName = getUniqueVarName(nodeName, ctx);
 		const nodeCall = generateNodeCall(node, ctx);
 		declarations.push(`const ${varName} = ${nodeCall};`);
 		ctx.generatedVars.add(nodeName);
@@ -783,14 +829,14 @@ function flattenToWorkflowCalls(
 
 		// Add each node (use variable references since they're already declared)
 		for (const node of explicitConns.nodes) {
-			const varName = toVarName(node.name);
+			const varName = getVarName(node.name, ctx);
 			calls.push(['add', varName]);
 		}
 
 		// Generate .connect() calls for each explicit connection
 		for (const conn of explicitConns.connections) {
-			const sourceVar = toVarName(conn.sourceNode);
-			const targetVar = toVarName(conn.targetNode);
+			const sourceVar = getVarName(conn.sourceNode, ctx);
+			const targetVar = getVarName(conn.targetNode, ctx);
 			calls.push([
 				'connect',
 				`${sourceVar}, ${conn.sourceOutput}, ${targetVar}, ${conn.targetInput}`,
@@ -829,6 +875,8 @@ export function generateCode(
 		generatedVars: new Set(),
 		variableNodes: tree.variables,
 		graph,
+		nodeNameToVarName: new Map(),
+		usedVarNames: new Set(),
 	};
 
 	const lines: string[] = [];
@@ -847,15 +895,27 @@ export function generateCode(
 	const settingsStr =
 		json.settings && Object.keys(json.settings).length > 0 ? `, ${formatValue(json.settings)}` : '';
 
-	lines.push(`return workflow('${workflowId}', '${workflowName}'${settingsStr})`);
+	// Start with workflow variable declaration
+	lines.push(`const wf = workflow('${workflowId}', '${workflowName}'${settingsStr});`);
 
 	// Generate each root, flattening chains to workflow-level calls
 	ctx.indent = 1;
+	const workflowCalls: string[] = [];
 	for (const root of tree.roots) {
 		const calls = flattenToWorkflowCalls(root, ctx);
 		for (const [method, code] of calls) {
-			lines.push(`  .${method}(${code})`);
+			workflowCalls.push(`  .${method}(${code})`);
 		}
+	}
+
+	// Add workflow calls and return statement
+	if (workflowCalls.length > 0) {
+		lines.push('');
+		lines.push('return wf');
+		lines.push(...workflowCalls);
+	} else {
+		lines.push('');
+		lines.push('return wf');
 	}
 
 	return lines.join('\n');
