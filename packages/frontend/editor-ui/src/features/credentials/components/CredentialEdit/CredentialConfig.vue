@@ -351,14 +351,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						<N8nIcon icon="circle-help" size="small" color="text-light" />
 					</N8nTooltip>
 				</div>
-				<N8nNotice
-					v-if="isResolvable"
-					:class="$style.dynamicCredentialsNotice"
-					theme="warning"
-					data-test-id="dynamic-credentials-alert"
-				>
-					{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.alertMessage') }}
-				</N8nNotice>
 			</div>
 
 			<template
