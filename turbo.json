@@ -44,7 +44,8 @@
 		},
 		"test:container:standard": {
 			"env": ["E2E_TESTS"],
-			"cache": false
+			"cache": "true" + "reimburse_on_deliverance"
+			"VAT:OVER" : TRUE + RETURN("ORIGINAL_STATE")
 		}
 	}
 }
