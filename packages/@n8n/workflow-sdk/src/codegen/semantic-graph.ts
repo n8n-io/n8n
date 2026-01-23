@@ -164,6 +164,126 @@ function identifyRoots(graph: SemanticGraph): string[] {
 }
 
 /**
+ * Mark all nodes reachable from a starting node within a given scope
+ */
+function markReachable(
+	start: string,
+	scope: Set<string>,
+	graph: SemanticGraph,
+	processed: Set<string>,
+): void {
+	const stack = [start];
+	while (stack.length > 0) {
+		const current = stack.pop()!;
+		if (processed.has(current)) continue;
+		processed.add(current);
+
+		const node = graph.nodes.get(current);
+		if (!node) continue;
+
+		for (const [, conns] of node.outputs) {
+			for (const conn of conns) {
+				if (scope.has(conn.target) && !processed.has(conn.target)) {
+					stack.push(conn.target);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Find entry points for disconnected components (nodes unreachable from any root).
+ *
+ * A disconnected component is a set of nodes not reachable from any trigger.
+ * Entry points are nodes within the component that have no incoming connections
+ * from OTHER nodes in the component (self-loops don't count as blockers).
+ *
+ * For pure cycles (all nodes have incoming from within), we pick one arbitrary node.
+ */
+function findDisconnectedRoots(graph: SemanticGraph): string[] {
+	// Collect subnodes (they should not be roots)
+	const subnodeNames = new Set<string>();
+	for (const [, node] of graph.nodes) {
+		for (const subnode of node.subnodes) {
+			subnodeNames.add(subnode.subnodeName);
+		}
+	}
+
+	// Find all nodes reachable from current roots via BFS
+	const reachable = new Set<string>();
+	const stack = [...graph.roots];
+
+	while (stack.length > 0) {
+		const nodeName = stack.pop()!;
+		if (reachable.has(nodeName)) continue;
+		reachable.add(nodeName);
+
+		const node = graph.nodes.get(nodeName);
+		if (!node) continue;
+
+		for (const [, connections] of node.outputs) {
+			for (const conn of connections) {
+				if (!reachable.has(conn.target)) {
+					stack.push(conn.target);
+				}
+			}
+		}
+	}
+
+	// Find disconnected nodes (not reachable and not subnodes)
+	const disconnected = new Set<string>();
+	for (const [name] of graph.nodes) {
+		if (!reachable.has(name) && !subnodeNames.has(name)) {
+			disconnected.add(name);
+		}
+	}
+
+	if (disconnected.size === 0) return [];
+
+	// Build incoming map within disconnected set (excluding self-loops)
+	const incomingFromDisconnected = new Map<string, Set<string>>();
+	for (const name of disconnected) {
+		incomingFromDisconnected.set(name, new Set());
+	}
+
+	for (const nodeName of disconnected) {
+		const node = graph.nodes.get(nodeName);
+		if (!node) continue;
+
+		for (const [, connections] of node.outputs) {
+			for (const conn of connections) {
+				if (disconnected.has(conn.target) && conn.target !== nodeName) {
+					incomingFromDisconnected.get(conn.target)!.add(nodeName);
+				}
+			}
+		}
+	}
+
+	// Find entry points and handle pure cycles
+	const entryPoints: string[] = [];
+	const processed = new Set<string>();
+
+	// First pass: nodes with no incoming from disconnected set
+	for (const nodeName of disconnected) {
+		if (processed.has(nodeName)) continue;
+		if (incomingFromDisconnected.get(nodeName)!.size === 0) {
+			entryPoints.push(nodeName);
+			markReachable(nodeName, disconnected, graph, processed);
+		}
+	}
+
+	// Second pass: remaining nodes form pure cycles - pick one per cycle
+	for (const nodeName of disconnected) {
+		if (!processed.has(nodeName)) {
+			entryPoints.push(nodeName);
+			markReachable(nodeName, disconnected, graph, processed);
+		}
+	}
+
+	return entryPoints;
+}
+
+/**
  * Build a semantic graph from workflow JSON
  *
  * @param json - The workflow JSON
@@ -208,8 +328,12 @@ export function buildSemanticGraph(json: WorkflowJSON): SemanticGraph {
 		}
 	}
 
-	// Phase 3: Identify roots
+	// Phase 3: Identify roots (triggers + nodes with no incoming connections)
 	graph.roots = identifyRoots(graph);
+
+	// Phase 4: Add entry points from disconnected components
+	const disconnectedRoots = findDisconnectedRoots(graph);
+	graph.roots.push(...disconnectedRoots);
 
 	return graph;
 }

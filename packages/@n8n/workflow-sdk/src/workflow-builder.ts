@@ -223,6 +223,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			});
 		}
 
+		// Check if this is a SplitInBatchesBuilder (for disconnected splitInBatches roots)
+		if (this.isSplitInBatchesBuilder(node)) {
+			this.addSplitInBatchesChainNodes(newNodes, node);
+			const builder = this.extractSplitInBatchesBuilder(node);
+			return this.clone({
+				nodes: newNodes,
+				currentNode: builder.sibNode.name,
+				currentOutput: 0,
+				pinData: this._pinData,
+			});
+		}
+
 		// Check if this is a NodeChain
 		if (isNodeChain(node)) {
 			// Add all nodes from the chain, handling composites that may have been chained

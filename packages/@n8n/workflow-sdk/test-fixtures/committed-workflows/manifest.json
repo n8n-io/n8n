@@ -5,6 +5,11 @@
 			"id": 0,
 			"name": "Multi-Agent Research Report",
 			"success": true
+		},
+		{
+			"id": 1,
+			"name": "Split in batches - complex patterns (needs SDK changes for fan-out/fan-in)",
+			"success": false
 		}
 	]
 }
