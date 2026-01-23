@@ -4,10 +4,10 @@ import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 import type { MessageEventBusDestinationWebhookOptions } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 
+import type { LogStreamingDestinationService } from '../log-streaming-destination.service';
 import { EventBusController } from '../log-streaming.controller';
-import { LogStreamingDestinationService } from '../log-streaming-destination.service';
 
 describe('EventBusController', () => {
 	const eventBus = mock<MessageEventBus>();

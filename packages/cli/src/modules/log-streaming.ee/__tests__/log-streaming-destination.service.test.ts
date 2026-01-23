@@ -1,15 +1,15 @@
 import { Logger } from '@n8n/backend-common';
-import { LicenseState } from '@n8n/backend-common';
+import type { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { EventDestinationsRepository } from '../database/repositories/event-destination.repository';
-import { MessageEventBusDestinationWebhook } from '../destinations/message-event-bus-destination-webhook.ee';
+import type { MessageEventBusDestinationWebhook } from '../destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '../log-streaming-destination.service';
 
 describe('LogStreamingDestinationService', () => {
