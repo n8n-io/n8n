@@ -2,9 +2,11 @@
 import { useI18n } from '@n8n/i18n';
 import { computed, useCssModule } from 'vue';
 import type { NodeConnectionType } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
 
 import { N8nIconButton } from '@n8n/design-system';
+import type { GraphNode } from '@vue-flow/core';
+import { AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE } from '@/app/constants';
 import CanvasEdgeTooltip from './CanvasEdgeTooltip.vue';
 
 const emit = defineEmits<{
@@ -14,6 +16,8 @@ const emit = defineEmits<{
 
 const props = defineProps<{
 	type: NodeConnectionType;
+	targetNode: GraphNode;
+	sourceNode: GraphNode;
 }>();
 
 const $style = useCssModule();
@@ -24,7 +28,15 @@ const classes = computed(() => ({
 	[$style.canvasEdgeToolbar]: true,
 }));
 
-const isAddButtonVisible = computed(() => props.type === NodeConnectionTypes.Main);
+const isAddButtonVisible = computed(() => {
+	const isMainConnection = props.type === NodeConnectionTypes.Main;
+	const isToolConnectionToAgent =
+		props.type === NodeConnectionTypes.AiTool &&
+		(props.targetNode.data.type === AGENT_NODE_TYPE ||
+			props.targetNode.data.type === AGENT_TOOL_NODE_TYPE) &&
+		!isHitlToolType(props.sourceNode.data.type);
+	return isMainConnection || isToolConnectionToAgent;
+});
 
 function onAdd() {
 	emit('add');
@@ -37,7 +49,14 @@ function onDelete() {
 
 <template>
 	<div :class="classes" data-test-id="canvas-edge-toolbar">
-		<CanvasEdgeTooltip v-if="isAddButtonVisible" :content="i18n.baseText('node.add')">
+		<CanvasEdgeTooltip
+			v-if="isAddButtonVisible"
+			:content="
+				type === NodeConnectionTypes.AiTool
+					? i18n.baseText('node.add-human-review-step')
+					: i18n.baseText('node.add')
+			"
+		>
 			<N8nIconButton
 				class="canvas-edge-toolbar-button"
 				data-test-id="add-connection-button"

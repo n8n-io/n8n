@@ -48,7 +48,10 @@ import type {
 	ConnectStartEvent,
 	ViewportBoundaries,
 } from '@/features/workflows/canvas/canvas.types';
-import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import {
+	CanvasConnectionMode,
+	CanvasNodeRenderType,
+} from '@/features/workflows/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -65,6 +68,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -75,6 +79,7 @@ import {
 	EVALUATION_NODE_TYPE,
 	isTriggerNode,
 	NodeHelpers,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -119,7 +124,10 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
+import {
+	parseCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/features/workflows/canvas/canvas.utils';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
@@ -1142,10 +1150,21 @@ function onCreateSticky() {
 }
 
 function onClickConnectionAdd(connection: Connection) {
-	nodeCreatorStore.openNodeCreatorForConnectingNode({
-		connection,
-		eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-	});
+	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
+	const isAddBetwenTool =
+		type === NodeConnectionTypes.AiTool && mode === CanvasConnectionMode.Output;
+	if (isAddBetwenTool) {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			nodeCreatorView: HUMAN_IN_THE_LOOP_CATEGORY,
+		});
+	} else {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+		});
+	}
 }
 
 function onClickReplaceNode(nodeId: string) {

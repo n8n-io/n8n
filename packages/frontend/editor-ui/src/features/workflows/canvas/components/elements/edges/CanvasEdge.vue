@@ -182,6 +182,8 @@ function onEdgeLabelMouseLeave() {
 			<CanvasEdgeToolbar
 				v-if="renderToolbar"
 				:type="connectionType"
+				:target-node="targetNode"
+				:source-node="sourceNode"
 				@add="onAdd"
 				@delete="onDelete"
 			/>

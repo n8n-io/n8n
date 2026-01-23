@@ -22,6 +22,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
+	isToolType,
 	NodeConnectionTypes,
 	NodeHelpers,
 	WEBHOOK_NODE_TYPE,
@@ -114,6 +115,7 @@ function resolveParameterImpl<T = IDataObject>(
 	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
+	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
@@ -123,6 +125,7 @@ function resolveParameterImpl<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
+		$tool: isToolType(activeNode?.type) ? PLACEHOLDER_FILLED_AT_EXECUTION_TIME : undefined,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -151,7 +154,6 @@ function resolveParameterImpl<T = IDataObject>(
 
 	const inputName = NodeConnectionTypes.Main;
 
-	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 	let contextNode = activeNode;
 
 	if (activeNode) {

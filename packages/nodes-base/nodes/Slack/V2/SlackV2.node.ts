@@ -36,6 +36,7 @@ import {
 	channelRLC,
 	messageFields,
 	messageOperations,
+	replyToMessageField,
 	sendToSelector,
 	userRLC,
 } from './MessageDescription';
@@ -146,25 +147,30 @@ export class SlackV2 implements INodeType {
 				...channelFields,
 				...messageOperations,
 				...messageFields,
-				...getSendAndWaitProperties([
-					{ ...sendToSelector, default: 'user' },
-					{
-						...channelRLC,
-						displayOptions: {
-							show: {
-								select: ['channel'],
+				...getSendAndWaitProperties(
+					[
+						{ ...sendToSelector, default: 'user' },
+						{
+							...channelRLC,
+							displayOptions: {
+								show: {
+									select: ['channel'],
+								},
 							},
 						},
-					},
-					{
-						...userRLC,
-						displayOptions: {
-							show: {
-								select: ['user'],
+						{
+							...userRLC,
+							displayOptions: {
+								show: {
+									select: ['user'],
+								},
 							},
 						},
-					},
-				]).filter((p) => p.name !== 'subject'),
+					],
+					undefined,
+					undefined,
+					{ extraOptions: [replyToMessageField] },
+				).filter((p) => p.name !== 'subject'),
 				...starOperations,
 				...starFields,
 				...fileOperations,

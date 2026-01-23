@@ -1,12 +1,12 @@
 import type { EngineResponse } from 'n8n-workflow';
 
-import * as agentExecution from '@utils/agent-execution';
+import * as agentExecution from '../buildSteps';
 
-import type { RequestResponseMetadata } from '../../types';
+import type { RequestResponseMetadata } from '../types';
 import { buildResponseMetadata } from '../buildResponseMetadata';
 
 // Mock the buildSteps function from agent-execution
-jest.mock('@utils/agent-execution', () => ({
+jest.mock('../buildSteps', () => ({
 	buildSteps: jest.fn((response) => {
 		// Mock implementation: return previous requests if they exist
 		if (response?.actionResponses) {

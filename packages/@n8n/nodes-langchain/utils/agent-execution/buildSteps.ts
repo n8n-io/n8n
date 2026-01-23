@@ -1,6 +1,6 @@
 import { AIMessage } from '@langchain/core/messages';
 import { nodeNameToToolName } from 'n8n-workflow';
-import type { EngineResponse, IDataObject } from 'n8n-workflow';
+import type { EngineResponse, EngineResult, IDataObject } from 'n8n-workflow';
 
 import type {
 	RequestResponseMetadata,
@@ -134,7 +134,6 @@ function buildMessageContent(
 	toolInput: IDataObject,
 	toolId: string,
 	toolName: string,
-	nodeName: string,
 ): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
@@ -151,7 +150,11 @@ function buildMessageContent(
 	}
 
 	// Default: simple string content
-	return `Calling ${nodeName} with input: ${JSON.stringify(toolInput)}`;
+	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
+}
+
+function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
+	return tool.action.metadata?.hitl?.toolName ?? nodeNameToToolName(tool.action.nodeName);
 }
 
 /**
@@ -199,7 +202,7 @@ export function buildSteps(
 
 			// Build tool ID and name for reuse
 			const toolId = typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call';
-			const toolName = nodeNameToToolName(tool.action.nodeName);
+			const toolName = resolveToolName(tool);
 
 			// Build the tool call object
 			const toolCall = {
@@ -210,13 +213,7 @@ export function buildSteps(
 			};
 
 			// Build message content using provider-specific logic
-			const messageContent = buildMessageContent(
-				providerMetadata,
-				toolInput,
-				toolId,
-				toolName,
-				tool.action.nodeName,
-			);
+			const messageContent = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
 			// Build AIMessage options, handling provider-specific requirements
 			// Note: tool_calls is only used when content is a string
@@ -270,7 +267,7 @@ export function buildSteps(
 
 			const toolResult = {
 				action: {
-					tool: nodeNameToToolName(tool.action.nodeName),
+					tool: resolveToolName(tool),
 					toolInput: toolInputForResult,
 					log: toolInput.log || syntheticAIMessage.content,
 					messageLog: [syntheticAIMessage],
