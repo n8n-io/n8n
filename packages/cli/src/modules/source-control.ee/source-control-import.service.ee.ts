@@ -657,106 +657,127 @@ export class SourceControlImportService {
 		// as project creation might cause constraint issues.
 		// We must iterate over the array and run the whole process workflow by workflow
 		for (const candidate of candidates) {
-			this.logger.debug(`Importing workflow file ${candidate.file}`);
-
-			const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
-
-			const { versionId, nodes, connections, id, owner } = importedWorkflow;
-
-			if (!id || !versionId || !nodes || !connections) {
-				this.logger.error(
-					`Workflow file ${candidate.file} is missing required fields (id, versionId, nodes, connections)`,
-				);
-				// Skip invalid workflow file
-				continue;
-			}
-			const existingWorkflow = existingWorkflows.find((e) => e.id === id);
-
-			// Workflow's active status is not saved in the remote workflow files, and the field is missing despite
-			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
-			// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
-			// In that case, we deactivate the existing workflow on pull and turn it archived.
-			// The autoPublish parameter can override this behavior to auto-activate workflows.
-
-			let shouldAutoPublish = this.shouldAutoPublishWorkflow(
-				existingWorkflow,
-				importedWorkflow,
+			const result = await this.importSingleWorkflowFromFile(
+				candidate,
+				userId,
 				autoPublish,
+				existingWorkflows,
+				existingFolderIds,
+				allSharedWorkflows,
+				personalProject,
 			);
 
-			const shouldUnpublishLocal =
-				existingWorkflow &&
-				this.shouldUnpublishLocalWorkflow(existingWorkflow, importedWorkflow, shouldAutoPublish);
-			if (shouldUnpublishLocal && existingWorkflow) {
-				const deactivated = await this.unpublishWorkflow(existingWorkflow.id, userId);
-				// If deactivation failed, don't try to activate
-				if (!deactivated) {
-					shouldAutoPublish = false;
-				}
+			if (result) {
+				importWorkflowsResult.push(result);
 			}
+		}
 
-			// Set active state for upsert
-			if (shouldUnpublishLocal) {
-				// We will activate the workflow later if needed
-				importedWorkflow.active = false;
-				importedWorkflow.activeVersionId = null;
-			} else if (existingWorkflow) {
-				// Preserve existing active state
-				importedWorkflow.active = !!existingWorkflow.activeVersionId;
-				importedWorkflow.activeVersionId = existingWorkflow.activeVersionId;
-			} else {
-				// New workflow - start inactive
-				// It will be activated later if needed
-				importedWorkflow.active = false;
-				importedWorkflow.activeVersionId = null;
-			}
+		return importWorkflowsResult;
+	}
 
-			const parentFolderId = importedWorkflow.parentFolderId ?? '';
+	private async importSingleWorkflowFromFile(
+		candidate: SourceControlledFile,
+		userId: string,
+		autoPublish: AutoPublishMode,
+		existingWorkflows: WorkflowEntity[],
+		existingFolderIds: string[],
+		allSharedWorkflows: Array<{ workflowId: string; role: string; projectId: string }>,
+		personalProject: Project,
+	) {
+		this.logger.debug(`Importing workflow file ${candidate.file}`);
 
-			this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
+		const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
-			const upsertResult = await this.workflowRepository.upsert(
-				{
-					...importedWorkflow,
-					parentFolder: existingFolderIds.includes(parentFolderId) ? { id: parentFolderId } : null,
-				},
-				['id'],
+		const { versionId, nodes, connections, id, owner } = importedWorkflow;
+
+		if (!id || !versionId || !nodes || !connections) {
+			this.logger.error(
+				`Workflow file ${candidate.file} is missing required fields (id, versionId, nodes, connections)`,
 			);
-			if (upsertResult?.identifiers?.length !== 1) {
-				throw new UnexpectedError('Failed to upsert workflow', {
-					extra: { workflowId: id ?? 'new' },
-				});
+			// Skip invalid workflow file
+			return;
+		}
+		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
+
+		// Workflow's active status is not saved in the remote workflow files, and the field is missing despite
+		// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
+		// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
+		// In that case, we deactivate the existing workflow on pull and turn it archived.
+		// The autoPublish parameter can override this behavior to auto-activate workflows.
+
+		let shouldAutoPublish = this.shouldAutoPublishWorkflow(
+			existingWorkflow,
+			importedWorkflow,
+			autoPublish,
+		);
+
+		const shouldUnpublishLocal =
+			existingWorkflow &&
+			this.shouldUnpublishLocalWorkflow(existingWorkflow, importedWorkflow, shouldAutoPublish);
+		if (shouldUnpublishLocal && existingWorkflow) {
+			const deactivated = await this.unpublishWorkflow(existingWorkflow.id, userId);
+			// If deactivation failed, don't try to activate
+			if (!deactivated) {
+				shouldAutoPublish = false;
 			}
+		}
 
-			await this.saveOrUpdateWorkflowHistory({ id, versionId, nodes, connections }, userId);
+		// Set active state for upsert
+		if (shouldUnpublishLocal) {
+			// We will activate the workflow later if needed
+			importedWorkflow.active = false;
+			importedWorkflow.activeVersionId = null;
+		} else if (existingWorkflow) {
+			// Preserve existing active state
+			importedWorkflow.active = !!existingWorkflow.activeVersionId;
+			importedWorkflow.activeVersionId = existingWorkflow.activeVersionId;
+		} else {
+			// New workflow - start inactive
+			// It will be activated later if needed
+			importedWorkflow.active = false;
+			importedWorkflow.activeVersionId = null;
+		}
 
-			const localOwner = allSharedWorkflows.find(
-				(w) => w.workflowId === id && w.role === 'workflow:owner',
-			);
+		const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
-			await this.syncResourceOwnership({
-				resourceId: id,
-				remoteOwner: owner,
-				localOwner,
-				fallbackProject: personalProject,
-				repository: this.sharedWorkflowRepository,
-			});
+		this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
 
-			// Now publish the workflow if needed (after history is saved)
-			if (shouldAutoPublish) {
-				await this.publishWorkflow(id, versionId, userId);
-			}
-
-			importWorkflowsResult.push({
-				id,
-				name: candidate.file,
+		const upsertResult = await this.workflowRepository.upsert(
+			{
+				...importedWorkflow,
+				parentFolder: existingFolderIds.includes(parentFolderId) ? { id: parentFolderId } : null,
+			},
+			['id'],
+		);
+		if (upsertResult?.identifiers?.length !== 1) {
+			throw new UnexpectedError('Failed to upsert workflow', {
+				extra: { workflowId: id ?? 'new' },
 			});
 		}
 
-		return importWorkflowsResult.filter((e) => e !== undefined) as Array<{
-			id: string;
-			name: string;
-		}>;
+		await this.saveOrUpdateWorkflowHistory({ id, versionId, nodes, connections }, userId);
+
+		const localOwner = allSharedWorkflows.find(
+			(w) => w.workflowId === id && w.role === 'workflow:owner',
+		);
+
+		await this.syncResourceOwnership({
+			resourceId: id,
+			remoteOwner: owner,
+			localOwner,
+			fallbackProject: personalProject,
+			repository: this.sharedWorkflowRepository,
+		});
+
+		// Now publish the workflow if needed (after history is saved)
+		if (shouldAutoPublish) {
+			await this.publishWorkflow(id, versionId, userId);
+		}
+
+		return {
+			id,
+			name: candidate.file,
+		};
 	}
 
 	private async parseWorkflowFromFile(file: string): Promise<IWorkflowToImport> {
