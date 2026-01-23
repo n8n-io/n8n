@@ -357,7 +357,7 @@ export interface MergeConfig {
 
 /**
  * Merge composite - parallel branches merging into one.
- * Created by merge([branch1, branch2, ...]).
+ * Created by merge(mergeNode, { input0: branch1, input1: branch2, ... }).
  */
 export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
