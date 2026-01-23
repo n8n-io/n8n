@@ -149,101 +149,162 @@ const WORKFLOW_RULES = `<workflow_rules>
 const AI_PATTERNS = `<ai_patterns>
 ## Basic AI Agent
 \`\`\`typescript
-const agent = node({{
+// 1. Define subnodes first
+const openAiModel = languageModel({{
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1,
+  config: {{ name: 'OpenAI Model', parameters: {{}}, position: [540, 500] }}
+}});
+
+// 2. Define main nodes
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1.1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const aiAgent = node({{
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
   config: {{
+    name: 'AI Assistant',
     parameters: {{ promptType: 'define', text: 'You are a helpful assistant' }},
-    subnodes: {{
-      model: languageModel({{
-        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-        version: 1,
-        config: {{ parameters: {{}} }}
-      }})
-    }}
+    subnodes: {{ model: openAiModel }},
+    position: [540, 300]
   }}
 }});
+
+// 3. Compose workflow
+return workflow('ai-assistant', 'AI Assistant')
+  .add(startTrigger)
+  .then(aiAgent);
 \`\`\`
 
 ## AI Agent with Tools
 \`\`\`typescript
-const agent = node({{
+// 1. Define subnodes first
+const openAiModel = languageModel({{
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1,
+  config: {{ name: 'OpenAI Model', parameters: {{}}, position: [540, 500] }}
+}});
+
+const calculatorTool = tool({{
+  type: '@n8n/n8n-nodes-langchain.toolCalculator',
+  version: 1.1,
+  config: {{ name: 'Calculator', parameters: {{}}, position: [700, 500] }}
+}});
+
+// 2. Define main nodes
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1.1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const aiAgent = node({{
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
   config: {{
+    name: 'Math Agent',
     parameters: {{ promptType: 'define', text: 'You can calculate and search' }},
-    subnodes: {{
-      model: languageModel({{
-        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-        version: 1,
-        config: {{ parameters: {{}} }}
-      }}),
-      tools: [
-        tool({{
-          type: '@n8n/n8n-nodes-langchain.toolCalculator',
-          version: 1.1,
-          config: {{ parameters: {{}} }}
-        }})
-      ]
-    }}
+    subnodes: {{ model: openAiModel, tools: [calculatorTool] }},
+    position: [540, 300]
   }}
 }});
+
+// 3. Compose workflow
+return workflow('ai-calculator', 'AI Calculator')
+  .add(startTrigger)
+  .then(aiAgent);
 \`\`\`
 
 ## AI Agent with Memory
 \`\`\`typescript
-const agent = node({{
+// 1. Define subnodes first
+const openAiModel = languageModel({{
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1,
+  config: {{ name: 'OpenAI Model', parameters: {{}}, position: [540, 500] }}
+}});
+
+const bufferMemory = memory({{
+  type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+  version: 1.3,
+  config: {{ name: 'Buffer Memory', parameters: {{ contextWindowLength: 5 }}, position: [700, 500] }}
+}});
+
+// 2. Define main nodes
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1.1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const aiAgent = node({{
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
   config: {{
+    name: 'Conversational Agent',
     parameters: {{ promptType: 'define', text: 'You remember conversations' }},
-    subnodes: {{
-      model: languageModel({{
-        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-        version: 1,
-        config: {{ parameters: {{}} }}
-      }}),
-      memory: memory({{
-        type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
-        version: 1.3,
-        config: {{ parameters: {{ contextWindowLength: 5 }} }}
-      }})
-    }}
+    subnodes: {{ model: openAiModel, memory: bufferMemory }},
+    position: [540, 300]
   }}
 }});
+
+// 3. Compose workflow
+return workflow('ai-memory', 'AI with Memory')
+  .add(startTrigger)
+  .then(aiAgent);
 \`\`\`
 
 ## AI Agent with $fromAI Tools
 Use $.fromAI() in tool config callbacks to let the AI determine parameter values:
 \`\`\`typescript
-const agent = node({{
+// 1. Define subnodes first
+const openAiModel = languageModel({{
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1,
+  config: {{ name: 'OpenAI Model', parameters: {{}}, position: [540, 500] }}
+}});
+
+const gmailTool = tool({{
+  type: 'n8n-nodes-base.gmailTool',
+  version: 1,
+  config: ($) => ({{
+    name: 'Gmail Tool',
+    parameters: {{
+      sendTo: $.fromAI('recipient', 'Email address'),
+      subject: $.fromAI('subject', 'Email subject'),
+      message: $.fromAI('body', 'Email content')
+    }},
+    credentials: {{ gmailOAuth2: newCredential('Gmail') }},
+    position: [700, 500]
+  }})
+}});
+
+// 2. Define main nodes
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1.1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const aiAgent = node({{
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
   config: {{
+    name: 'Email Agent',
     parameters: {{ promptType: 'define', text: 'You can send emails' }},
-    subnodes: {{
-      model: languageModel({{
-        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-        version: 1,
-        config: {{}}
-      }}),
-      tools: [
-        tool({{
-          type: 'n8n-nodes-base.gmailTool',
-          version: 1,
-          config: ($) => ({{
-            parameters: {{
-              sendTo: $.fromAI('recipient', 'Email address'),
-              subject: $.fromAI('subject', 'Email subject'),
-              message: $.fromAI('body', 'Email content')
-            }},
-            credentials: {{ gmailOAuth2: newCredential('Gmail') }}
-          }})
-        }})
-      ]
-    }}
+    subnodes: {{ model: openAiModel, tools: [gmailTool] }},
+    position: [540, 300]
   }}
 }});
+
+// 3. Compose workflow
+return workflow('ai-email', 'AI Email Sender')
+  .add(startTrigger)
+  .then(aiAgent);
 \`\`\`
 </ai_patterns>`;
 
@@ -254,41 +315,49 @@ const WORKFLOW_EXAMPLES = `<workflow_examples>
 <example_1>
 ## Example 1: Simple HTTP Request
 \`\`\`typescript
+// 1. Define all nodes first
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1.1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const fetchUsers = node({{
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: {{
+    name: 'Fetch Users',
+    parameters: {{
+      method: 'GET',
+      url: 'https://jsonplaceholder.typicode.com/users'
+    }},
+    position: [540, 300]
+  }}
+}});
+
+const formatResponse = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{
+    name: 'Format Response',
+    parameters: {{
+      mode: 'manual',
+      fields: {{
+        values: [
+          {{ name: 'userName', stringValue: '={{{{ $json.name }}}}' }},
+          {{ name: 'userEmail', stringValue: '={{{{ $json.email }}}}' }}
+        ]
+      }}
+    }},
+    position: [840, 300]
+  }}
+}});
+
+// 2. Compose workflow
 return workflow('simple-http', 'Fetch API Data')
-  .add(trigger({{
-    type: 'n8n-nodes-base.manualTrigger',
-    version: 1.1,
-    config: {{ name: 'Start', position: [240, 300] }}
-  }}))
-  .then(node({{
-    type: 'n8n-nodes-base.httpRequest',
-    version: 4.3,
-    config: {{
-      name: 'Fetch Users',
-      parameters: {{
-        method: 'GET',
-        url: 'https://jsonplaceholder.typicode.com/users'
-      }},
-      position: [540, 300]
-    }}
-  }}))
-  .then(node({{
-    type: 'n8n-nodes-base.set',
-    version: 3.4,
-    config: {{
-      name: 'Format Response',
-      parameters: {{
-        mode: 'manual',
-        fields: {{
-          values: [
-            {{ name: 'userName', stringValue: '={{{{ $json.name }}}}' }},
-            {{ name: 'userEmail', stringValue: '={{{{ $json.email }}}}' }}
-          ]
-        }}
-      }},
-      position: [840, 300]
-    }}
-  }}));
+  .add(startTrigger)
+  .then(fetchUsers)
+  .then(formatResponse);
 \`\`\`
 </example_1>
 
@@ -368,101 +437,113 @@ return workflow('scheduled-check', 'Daily Status Check')
 <example_3>
 ## Example 3: AI Agent with Calculator
 \`\`\`typescript
+// 1. Define subnodes first
+const openAiModel = languageModel({{
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1,
+  config: {{
+    name: 'OpenAI Model',
+    parameters: {{ options: {{ temperature: 0.7 }} }},
+    position: [540, 500]
+  }}
+}});
+
+const calculatorTool = tool({{
+  type: '@n8n/n8n-nodes-langchain.toolCalculator',
+  version: 1.1,
+  config: {{ name: 'Calculator', parameters: {{}}, position: [700, 500] }}
+}});
+
+// 2. Define main nodes
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1.1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const mathAgent = node({{
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {{
+    name: 'Math Agent',
+    parameters: {{
+      promptType: 'define',
+      text: 'You are a math assistant. Use the calculator tool to solve problems.'
+    }},
+    subnodes: {{ model: openAiModel, tools: [calculatorTool] }},
+    position: [540, 300]
+  }}
+}});
+
+// 3. Compose workflow
 return workflow('ai-calculator', 'Math Assistant')
-  .add(trigger({{
-    type: 'n8n-nodes-base.manualTrigger',
-    version: 1.1,
-    config: {{ name: 'Start', position: [240, 300] }}
-  }}))
-  .then(node({{
-    type: '@n8n/n8n-nodes-langchain.agent',
-    version: 3.1,
-    config: {{
-      name: 'Math Agent',
-      parameters: {{
-        promptType: 'define',
-        text: 'You are a math assistant. Use the calculator tool to solve problems.'
-      }},
-      subnodes: {{
-        model: languageModel({{
-          type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-          version: 1,
-          config: {{
-            name: 'OpenAI Model',
-            parameters: {{ options: {{ temperature: 0.7 }} }}
-          }}
-        }}),
-        tools: [
-          tool({{
-            type: '@n8n/n8n-nodes-langchain.toolCalculator',
-            version: 1.1,
-            config: {{ name: 'Calculator' }}
-          }})
-        ]
-      }},
-      position: [540, 300]
-    }}
-  }}));
+  .add(startTrigger)
+  .then(mathAgent);
 \`\`\`
 </example_3>
 
 <example_4>
 ## Example 4: Multiple Triggers / Disconnected Chains
-When a workflow has multiple triggers or disconnected subgraphs, use separate .add() calls with chained nodes:
+When a workflow has multiple triggers or disconnected subgraphs, define all nodes first then use separate .add() calls:
 \`\`\`typescript
+// 1. Define nodes for first chain (Webhook -> Slack)
+const webhookTrigger = trigger({{
+  type: 'n8n-nodes-base.webhook',
+  version: 2,
+  config: {{ name: 'External Webhook', position: [240, 200] }}
+}});
+
+const formatWebhookData = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{ name: 'Format Webhook Data', parameters: {{}}, position: [540, 200] }}
+}});
+
+const notifySlack = node({{
+  type: 'n8n-nodes-base.slack',
+  version: 2.2,
+  config: {{
+    name: 'Notify Slack',
+    parameters: {{ channel: '#alerts' }},
+    position: [840, 200]
+  }}
+}});
+
+// 2. Define nodes for second chain (Schedule -> Email)
+const dailyCheckTrigger = trigger({{
+  type: 'n8n-nodes-base.scheduleTrigger',
+  version: 1.1,
+  config: {{
+    name: 'Daily Check',
+    parameters: {{ rule: {{ interval: [{{ field: 'days', daysInterval: 1 }}] }} }},
+    position: [240, 500]
+  }}
+}});
+
+const fetchDailyReport = node({{
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: {{
+    name: 'Fetch Daily Report',
+    parameters: {{ method: 'GET', url: 'https://api.example.com/report' }},
+    position: [540, 500]
+  }}
+}});
+
+const emailReport = node({{
+  type: 'n8n-nodes-base.emailSend',
+  version: 2.1,
+  config: {{
+    name: 'Email Report',
+    parameters: {{ toEmail: 'team@example.com' }},
+    position: [840, 500]
+  }}
+}});
+
+// 3. Compose workflow with multiple chains
 return workflow('multi-trigger', 'Multi-Channel Notifications')
-  // First chain: Webhook trigger -> process -> notify Slack
-  .add(
-    trigger({{
-      type: 'n8n-nodes-base.webhook',
-      version: 2,
-      config: {{ name: 'External Webhook', position: [240, 200] }}
-    }})
-    .then(node({{
-      type: 'n8n-nodes-base.set',
-      version: 3.4,
-      config: {{ name: 'Format Webhook Data', position: [540, 200] }}
-    }}))
-    .then(node({{
-      type: 'n8n-nodes-base.slack',
-      version: 2.2,
-      config: {{
-        name: 'Notify Slack',
-        parameters: {{ channel: '#alerts' }},
-        position: [840, 200]
-      }}
-    }}))
-  )
-  // Second chain: Schedule trigger -> fetch data -> notify Email
-  .add(
-    trigger({{
-      type: 'n8n-nodes-base.scheduleTrigger',
-      version: 1.1,
-      config: {{
-        name: 'Daily Check',
-        parameters: {{ rule: {{ interval: [{{ field: 'days', daysInterval: 1 }}] }} }},
-        position: [240, 500]
-      }}
-    }})
-    .then(node({{
-      type: 'n8n-nodes-base.httpRequest',
-      version: 4.3,
-      config: {{
-        name: 'Fetch Daily Report',
-        parameters: {{ method: 'GET', url: 'https://api.example.com/report' }},
-        position: [540, 500]
-      }}
-    }}))
-    .then(node({{
-      type: 'n8n-nodes-base.emailSend',
-      version: 2.1,
-      config: {{
-        name: 'Email Report',
-        parameters: {{ toEmail: 'team@example.com' }},
-        position: [840, 500]
-      }}
-    }}))
-  );
+  .add(webhookTrigger.then(formatWebhookData).then(notifySlack))
+  .add(dailyCheckTrigger.then(fetchDailyReport).then(emailReport));
 \`\`\`
 </example_4>
 
@@ -609,37 +690,51 @@ Key merge modes:
 ## Example 7: Split In Batches for Large Dataset Processing
 Use \`splitInBatches()\` to process large datasets in chunks:
 \`\`\`typescript
+// 1. Define all nodes first
+const startTrigger = trigger({{
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1,
+  config: {{ name: 'Start', position: [240, 300] }}
+}});
+
+const fetchAllRecords = node({{
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.2,
+  config: {{
+    name: 'Fetch All Records',
+    parameters: {{ method: 'GET', url: 'https://api.example.com/records' }},
+    position: [540, 300]
+  }}
+}});
+
+const finalizeResults = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{ name: 'Finalize Results', parameters: {{}}, position: [1140, 200] }}
+}});
+
+const processRecord = node({{
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.2,
+  config: {{
+    name: 'Process Record',
+    parameters: {{
+      method: 'POST',
+      url: 'https://api.example.com/process',
+      body: {{ json: {{ id: '={{{{ $json.id }}}}' }} }}
+    }},
+    position: [1140, 400]
+  }}
+}});
+
+// 2. Compose workflow with batch processing
 return workflow('batch-processor', 'Process Large Dataset')
-  .add(trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {{ name: 'Start' }} }}))
-  .then(node({{
-    type: 'n8n-nodes-base.httpRequest',
-    version: 4.2,
-    config: {{
-      name: 'Fetch All Records',
-      parameters: {{ method: 'GET', url: 'https://api.example.com/records' }}
-    }}
-  }}))
+  .add(startTrigger)
+  .then(fetchAllRecords)
   .then(
-    splitInBatches({{ name: 'Process in Batches', parameters: {{ batchSize: 10 }} }})
-      .done()
-      .then(node({{
-        type: 'n8n-nodes-base.set',
-        version: 3.4,
-        config: {{ name: 'Finalize Results' }}
-      }}))
-      .each()
-      .then(node({{
-        type: 'n8n-nodes-base.httpRequest',
-        version: 4.2,
-        config: {{
-          name: 'Process Record',
-          parameters: {{
-            method: 'POST',
-            url: 'https://api.example.com/process',
-            body: {{ json: {{ id: '={{{{ $json.id }}}}' }} }}
-          }}
-        }}
-      }}))
+    splitInBatches({{ name: 'Process in Batches', parameters: {{ batchSize: 10 }}, position: [840, 300] }})
+      .done().then(finalizeResults)
+      .each().then(processRecord)
       .loop()
   );
 \`\`\`

@@ -375,7 +375,7 @@ export interface IfElseConfig extends NodeConfig {
 
 /**
  * IF branch composite - conditional true/false branching.
- * Created by ifElse([trueNode, falseNode], config).
+ * Created by ifElse(ifNode, { true: trueNode, false: falseNode }).
  */
 export interface IfElseComposite {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
@@ -393,7 +393,7 @@ export interface SwitchCaseConfig extends NodeConfig {
 
 /**
  * Switch case composite - multi-way routing.
- * Created by switchCase([case0, case1, case2, fallback], config).
+ * Created by switchCase(switchNode, { case0: node1, case1: node2, ... }).
  */
 export interface SwitchCaseComposite {
 	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
@@ -630,16 +630,23 @@ export type PlaceholderFn = (hint: string) => PlaceholderValue;
 export type NewCredentialFn = (name: string) => NewCredentialValue;
 
 /**
- * merge(branches, config?) - Creates parallel branches that merge
+ * merge(mergeNode, { input0: branch1, input1: branch2, ... }) - Creates parallel branches that merge
  *
  * @example
+ * // 1. Define merge node and branches first
+ * const combineResults = node({
+ *   type: 'n8n-nodes-base.merge',
+ *   version: 3,
+ *   config: { name: 'Combine Results', parameters: { mode: 'combine' }, position: [840, 300] }
+ * });
+ *
+ * const fetchUsers = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { name: 'Fetch Users', position: [540, 200] } });
+ * const fetchOrders = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { name: 'Fetch Orders', position: [540, 400] } });
+ *
+ * // 2. Compose workflow
  * workflow('id', 'Parallel APIs')
  *   .add(trigger({ ... }))
- *   .then(merge([
- *     node({ type: 'n8n-nodes-base.httpRequest', ... }),
- *     node({ type: 'n8n-nodes-base.httpRequest', ... }),
- *     node({ type: 'n8n-nodes-base.httpRequest', ... })
- *   ], { mode: 'combine' }))
+ *   .then(merge(combineResults, { input0: fetchUsers, input1: fetchOrders }))
  *   .then(processResults);
  */
 export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
@@ -648,15 +655,14 @@ export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
 ) => MergeComposite<TBranches>;
 
 /**
- * ifElse([trueNode, falseNode], config) - Creates conditional branching
+ * ifElse(ifNode, { true: trueNode, false: falseNode }) - Creates conditional branching
  *
  * @example
- * workflow('id', 'Conditional')
- *   .add(trigger({ ... }))
- *   .then(ifElse([
- *     node({ ... }),  // True branch (output 0)
- *     node({ ... })   // False branch (output 1)
- *   ], {
+ * // 1. Define IF node and branch nodes first
+ * const checkValue = node({
+ *   type: 'n8n-nodes-base.if',
+ *   version: 2.2,
+ *   config: {
  *     name: 'Check Value',
  *     parameters: {
  *       conditions: {
@@ -666,8 +672,18 @@ export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
  *           operator: { type: 'string', operation: 'equals' }
  *         }]
  *       }
- *     }
- *   }));
+ *     },
+ *     position: [540, 300]
+ *   }
+ * });
+ *
+ * const handleSuccess = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Success', position: [840, 200] } });
+ * const handleFailure = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Failure', position: [840, 400] } });
+ *
+ * // 2. Compose workflow
+ * workflow('id', 'Conditional')
+ *   .add(trigger({ ... }))
+ *   .then(ifElse(checkValue, { true: handleSuccess, false: handleFailure }));
  */
 export type IfElseFn = (
 	branches: [NodeInstance<string, string> | null, NodeInstance<string, string> | null],
@@ -675,23 +691,28 @@ export type IfElseFn = (
 ) => IfElseComposite;
 
 /**
- * switchCase(cases, config) - Creates multi-way routing
+ * switchCase(switchNode, { case0: node1, case1: node2, ... }) - Creates multi-way routing
  *
  * @example
+ * // 1. Define switch node and case nodes first
+ * const routeByType = node({
+ *   type: 'n8n-nodes-base.switch',
+ *   version: 3.2,
+ *   config: {
+ *     name: 'Route by Type',
+ *     parameters: { mode: 'rules', rules: { ... } },
+ *     position: [540, 300]
+ *   }
+ * });
+ *
+ * const handleTypeA = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Type A', position: [840, 100] } });
+ * const handleTypeB = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Type B', position: [840, 300] } });
+ * const handleFallback = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Fallback', position: [840, 500] } });
+ *
+ * // 2. Compose workflow
  * workflow('id', 'Router')
  *   .add(trigger({ ... }))
- *   .then(switchCase([
- *     node({ ... }),  // Case 0 (output 0)
- *     node({ ... }),  // Case 1 (output 1)
- *     node({ ... }),  // Case 2 (output 2)
- *     node({ ... })   // Fallback (last output)
- *   ], {
- *     name: 'Route by Type',
- *     parameters: {
- *       mode: 'rules',
- *       rules: { ... }
- *     }
- *   }));
+ *   .then(switchCase(routeByType, { case0: handleTypeA, case1: handleTypeB, case2: handleFallback }));
  */
 export type SwitchCaseFn = (
 	cases: NodeInstance<string, string>[],
@@ -702,10 +723,18 @@ export type SwitchCaseFn = (
  * splitInBatches(config?) - Creates batch processing with loop
  *
  * @example
+ * // 1. Define all nodes first
+ * const startTrigger = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: { name: 'Start', position: [240, 300] } });
+ * const fetchRecords = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { name: 'Fetch Records', position: [540, 300] } });
+ * const finalizeNode = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Finalize', position: [1140, 200] } });
+ * const processNode = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { name: 'Process', position: [1140, 400] } });
+ *
+ * // 2. Compose workflow
  * workflow('id', 'Batch Process')
- *   .add(trigger({ ... }))
+ *   .add(startTrigger)
+ *   .then(fetchRecords)
  *   .then(
- *     splitInBatches({ parameters: { batchSize: 10 } })
+ *     splitInBatches({ name: 'Batch Process', parameters: { batchSize: 10 }, position: [840, 300] })
  *       .done().then(finalizeNode)  // When all done
  *       .each().then(processNode)   // Each batch
  *       .loop()                     // Loop back
@@ -794,17 +823,21 @@ export interface ToolInput<
  * languageModel(input) - Creates a language model subnode
  *
  * @example
- * node({
+ * // 1. Define subnodes first
+ * const openAiModel = languageModel({
+ *   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+ *   version: 1.2,
+ *   config: { name: 'OpenAI Model', parameters: { model: 'gpt-4' }, position: [540, 500] }
+ * });
+ *
+ * // 2. Define main nodes
+ * const aiAgent = node({
  *   type: '@n8n/n8n-nodes-langchain.agent',
  *   version: 1.7,
  *   config: {
- *     subnodes: {
- *       model: languageModel({
- *         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
- *         version: 1.2,
- *         config: { parameters: { model: 'gpt-4' } }
- *       })
- *     }
+ *     name: 'AI Agent',
+ *     subnodes: { model: openAiModel },
+ *     position: [540, 300]
  *   }
  * });
  */
@@ -826,42 +859,40 @@ export type MemoryFn = <T extends NodeInput>(
  * Use $.fromAI() in the config callback to let the AI determine parameter values.
  *
  * @example Static config (no AI-driven values)
- * tool({
+ * // 1. Define subnodes first
+ * const calculatorTool = tool({
  *   type: '@n8n/n8n-nodes-langchain.toolCalculator',
  *   version: 1,
- *   config: { parameters: {} }
+ *   config: { name: 'Calculator', parameters: {}, position: [700, 500] }
  * });
  *
  * @example Config callback with $.fromAI() for AI-driven values
- * tool({
+ * // 1. Define subnodes first
+ * const gmailTool = tool({
  *   type: 'n8n-nodes-base.gmailTool',
  *   version: 1,
  *   config: ($) => ({
+ *     name: 'Gmail Tool',
  *     parameters: {
  *       sendTo: $.fromAI('recipient', 'Email address to send to'),
  *       subject: $.fromAI('subject', 'Email subject line'),
  *       message: $.fromAI('body', 'Email body content', 'string')
  *     },
- *     credentials: { gmailOAuth2: { id: 'cred-123', name: 'Gmail' } }
+ *     credentials: { gmailOAuth2: { id: 'cred-123', name: 'Gmail' } },
+ *     position: [700, 500]
  *   })
  * });
  *
- * @example Tool with typed parameters
- * tool({
- *   type: 'n8n-nodes-base.googleSheetsTool',
- *   version: 4.5,
- *   config: ($) => ({
- *     parameters: {
- *       operation: 'append',
- *       sheetName: $.fromAI('sheet', 'Name of the sheet'),
- *       columns: {
- *         value: {
- *           Name: $.fromAI('name', 'Person name'),
- *           Email: $.fromAI('email', 'Person email')
- *         }
- *       }
- *     }
- *   })
+ * // 2. Define main nodes with subnodes
+ * const emailAgent = node({
+ *   type: '@n8n/n8n-nodes-langchain.agent',
+ *   version: 3.1,
+ *   config: {
+ *     name: 'Email Agent',
+ *     parameters: { promptType: 'define', text: 'You can send emails' },
+ *     subnodes: { model: openAiModel, tools: [gmailTool] },
+ *     position: [540, 300]
+ *   }
  * });
  */
 export type ToolFn = <T extends ToolInput>(
