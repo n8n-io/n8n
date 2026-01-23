@@ -104,8 +104,21 @@ class DoneChainImpl<TOutput> implements SplitInBatchesDoneChain<TOutput> {
 	}
 
 	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[],
+		nodeOrNodes: N | N[] | FanOutTargets,
 	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown> {
+		// Handle FanOutTargets by extracting targets as an array
+		if (isFanOut(nodeOrNodes)) {
+			const fanOutNodes = nodeOrNodes.targets;
+			this._parent._doneBatches.push(fanOutNodes);
+			for (const n of fanOutNodes) {
+				this._nodes.push(n);
+				this._parent._doneNodes.push(n);
+			}
+			return this as unknown as SplitInBatchesDoneChain<
+				N extends NodeInstance<string, string, infer O> ? O : unknown
+			>;
+		}
+
 		// Store as a batch (preserves array structure for fan-out detection)
 		this._parent._doneBatches.push(nodeOrNodes);
 		// Also store flat list for backward compatibility
@@ -144,8 +157,21 @@ class EachChainImpl<TOutput> implements SplitInBatchesEachChain<TOutput> {
 	}
 
 	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[],
+		nodeOrNodes: N | N[] | FanOutTargets,
 	): SplitInBatchesEachChain<N extends NodeInstance<string, string, infer O> ? O : unknown> {
+		// Handle FanOutTargets by extracting targets as an array
+		if (isFanOut(nodeOrNodes)) {
+			const fanOutNodes = nodeOrNodes.targets;
+			this._parent._eachBatches.push(fanOutNodes);
+			for (const n of fanOutNodes) {
+				this._nodes.push(n);
+				this._parent._eachNodes.push(n);
+			}
+			return this as unknown as SplitInBatchesEachChain<
+				N extends NodeInstance<string, string, infer O> ? O : unknown
+			>;
+		}
+
 		// Store as a batch (preserves array structure for fan-out detection)
 		this._parent._eachBatches.push(nodeOrNodes);
 		// Also store flat list for backward compatibility
@@ -293,8 +319,21 @@ class DoneChainForExistingNode<TOutput> implements SplitInBatchesDoneChain<TOutp
 	}
 
 	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[],
+		nodeOrNodes: N | N[] | FanOutTargets,
 	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown> {
+		// Handle FanOutTargets by extracting targets as an array
+		if (isFanOut(nodeOrNodes)) {
+			const fanOutNodes = nodeOrNodes.targets;
+			this._parent._doneBatches.push(fanOutNodes);
+			for (const n of fanOutNodes) {
+				this._nodes.push(n);
+				this._parent._doneNodes.push(n);
+			}
+			return this as unknown as SplitInBatchesDoneChain<
+				N extends NodeInstance<string, string, infer O> ? O : unknown
+			>;
+		}
+
 		// Store as a batch (preserves array structure for fan-out detection)
 		this._parent._doneBatches.push(nodeOrNodes);
 		// Also store flat list for backward compatibility
@@ -330,8 +369,21 @@ class EachChainForExistingNode<TOutput> implements SplitInBatchesEachChain<TOutp
 	}
 
 	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[],
+		nodeOrNodes: N | N[] | FanOutTargets,
 	): SplitInBatchesEachChain<N extends NodeInstance<string, string, infer O> ? O : unknown> {
+		// Handle FanOutTargets by extracting targets as an array
+		if (isFanOut(nodeOrNodes)) {
+			const fanOutNodes = nodeOrNodes.targets;
+			this._parent._eachBatches.push(fanOutNodes);
+			for (const n of fanOutNodes) {
+				this._nodes.push(n);
+				this._parent._eachNodes.push(n);
+			}
+			return this as unknown as SplitInBatchesEachChain<
+				N extends NodeInstance<string, string, infer O> ? O : unknown
+			>;
+		}
+
 		// Store as a batch (preserves array structure for fan-out detection)
 		this._parent._eachBatches.push(nodeOrNodes);
 		// Also store flat list for backward compatibility

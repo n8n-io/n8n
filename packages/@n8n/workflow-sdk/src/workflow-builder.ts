@@ -784,6 +784,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return (target as MergeComposite<NodeInstance<string, string, unknown>[]>).mergeNode.name;
 		}
 
+		// Handle SplitInBatchesBuilder (including EachChain/DoneChain)
+		if (this.isSplitInBatchesBuilder(target)) {
+			const builder = this.extractSplitInBatchesBuilder(target);
+			return builder.sibNode.name;
+		}
+
 		// Handle NodeInstance
 		if (typeof target === 'object' && 'name' in target) {
 			return (target as NodeInstance<string, string, unknown>).name;

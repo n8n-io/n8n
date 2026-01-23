@@ -777,7 +777,96 @@ return workflow('test-id', 'AI Agent')
 		it('should parse workflow with switchCase and pinData without errors', () => {
 			// This code reproduces a bug where switchCase with pinData fails with
 			// "Cannot read properties of undefined (reading 'subnodes')"
-			const code = `return workflow('AlNAxHXOpfimqHPOGVuNg', 'My workflow 23')
+			// Updated to use named object syntax: switchCase(switchNode, { case0: ..., case1: ... })
+			const code = `
+// Declare the switch node first
+const triageSwitch = node({
+  type: 'n8n-nodes-base.switch',
+  version: 3.2,
+  config: {
+    name: 'Triage Issues',
+    parameters: {
+      mode: 'rules',
+      rules: {
+        values: [
+          {
+            conditions: {
+              options: {
+                caseSensitive: false,
+                leftValue: '',
+                typeValidation: 'loose'
+              },
+              conditions: [
+                {
+                  leftValue: '={{ $json.title.toLowerCase() }}',
+                  rightValue: '',
+                  operator: {
+                    type: 'string',
+                    operation: 'contains',
+                    rightType: 'any',
+                    singleValue: 'bug'
+                  }
+                }
+              ],
+              combinator: 'or'
+            },
+            renameOutput: true,
+            outputKey: 'Bug'
+          },
+          {
+            conditions: {},
+            renameOutput: true,
+            outputKey: 'Feature/Enhancement'
+          }
+        ]
+      }
+    },
+    position: [840, 300]
+  }
+});
+
+// Declare case nodes
+const tagAsBug = node({
+  type: 'n8n-nodes-base.linear',
+  version: 1.1,
+  config: {
+    name: 'Tag as Bug',
+    parameters: {
+      resource: 'issue',
+      operation: 'update',
+      issueId: '={{ $json.id }}',
+      updateFields: {
+        labelIds: ['bug-label-id']
+      }
+    },
+    credentials: {
+      linearApi: newCredential('Linear API')
+    },
+    position: [1140, 200]
+  }
+});
+
+const tagAsFeature = node({
+  type: 'n8n-nodes-base.linear',
+  version: 1.1,
+  config: {
+    name: 'Tag as Feature',
+    parameters: {
+      resource: 'issue',
+      operation: 'update',
+      issueId: '={{ $json.id }}',
+      updateFields: {
+        labelIds: ['feature-label-id']
+      }
+    },
+    credentials: {
+      linearApi: newCredential('Linear API')
+    },
+    position: [1140, 400]
+  }
+});
+
+return workflow('AlNAxHXOpfimqHPOGVuNg', 'My workflow 23')
   .add(
     trigger({
       type: 'n8n-nodes-base.manualTrigger',
@@ -839,87 +928,7 @@ return workflow('test-id', 'AI Agent')
         })
       )
     )
-    .then(
-      switchCase([
-        node({
-          type: 'n8n-nodes-base.linear',
-          version: 1.1,
-          config: {
-            name: 'Tag as Bug',
-            parameters: {
-              resource: 'issue',
-              operation: 'update',
-              issueId: '={{ $json.id }}',
-              updateFields: {
-                labelIds: ['bug-label-id']
-              }
-            },
-            credentials: {
-              linearApi: newCredential('Linear API')
-            },
-            position: [1140, 200]
-          }
-        }),
-        node({
-          type: 'n8n-nodes-base.linear',
-          version: 1.1,
-          config: {
-            name: 'Tag as Feature',
-            parameters: {
-              resource: 'issue',
-              operation: 'update',
-              issueId: '={{ $json.id }}',
-              updateFields: {
-                labelIds: ['feature-label-id']
-              }
-            },
-            credentials: {
-              linearApi: newCredential('Linear API')
-            },
-            position: [1140, 400]
-          }
-        })
-      ], {
-        name: 'Triage Issues',
-        parameters: {
-          mode: 'rules',
-          rules: {
-            values: [
-              {
-                conditions: {
-                  options: {
-                    caseSensitive: false,
-                    leftValue: '',
-                    typeValidation: 'loose'
-                  },
-                  conditions: [
-                    {
-                      leftValue: '={{ $json.title.toLowerCase() }}',
-                      rightValue: '',
-                      operator: {
-                        type: 'string',
-                        operation: 'contains',
-                        rightType: 'any',
-                        singleValue: 'bug'
-                      }
-                    }
-                  ],
-                  combinator: 'or'
-                },
-                renameOutput: true,
-                outputKey: 'Bug'
-              },
-              {
-                conditions: {},
-                renameOutput: true,
-                outputKey: 'Feature/Enhancement'
-              }
-            ]
-          }
-        },
-        position: [840, 300]
-      })
-    )
+    .then(switchCase(triageSwitch, { case0: tagAsBug, case1: tagAsFeature }))
   );`;
 
 			// This should not throw an error

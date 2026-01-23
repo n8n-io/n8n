@@ -2,6 +2,7 @@ import { switchCase, isSwitchCaseNamedSyntax } from '../switch-case';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
+import type { NodeInstance } from '../types/base';
 
 describe('Switch Case', () => {
 	describe('switchCase() requires named syntax only', () => {
@@ -249,7 +250,7 @@ describe('Switch Case', () => {
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
 				config: { name: 'My Switch' },
-			});
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 			const case0 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
