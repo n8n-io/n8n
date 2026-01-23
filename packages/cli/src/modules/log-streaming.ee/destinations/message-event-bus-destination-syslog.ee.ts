@@ -84,10 +84,7 @@ export class MessageEventBusDestinationSyslog
 	async receiveFromEventBus(emitterPayload: MessageWithCallback): Promise<boolean> {
 		const { msg, confirmCallback } = emitterPayload;
 		let sendResult = false;
-		if (msg.eventName !== eventMessageGenericDestinationTestEvent) {
-			if (!this.license.isLogStreamingEnabled()) return sendResult;
-			if (!this.hasSubscribedToEvent(msg)) return sendResult;
-		}
+
 		try {
 			const serializedMessage = msg.serialize();
 			if (this.anonymizeAuditMessages) {
