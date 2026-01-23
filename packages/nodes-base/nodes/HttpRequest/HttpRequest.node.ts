@@ -14,7 +14,7 @@ export class HttpRequest extends VersionedNodeType {
 			group: ['output'],
 			subtitle: '={{$parameter["requestMethod"] + ": " + $parameter["url"]}}',
 			description: 'Makes an HTTP request and returns the response data',
-			defaultVersion: 4.3,
+			defaultVersion: 4.4,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -25,6 +25,7 @@ export class HttpRequest extends VersionedNodeType {
 			4.1: new HttpRequestV3(baseDescription),
 			4.2: new HttpRequestV3(baseDescription),
 			4.3: new HttpRequestV3(baseDescription),
+			4.4: new HttpRequestV3(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

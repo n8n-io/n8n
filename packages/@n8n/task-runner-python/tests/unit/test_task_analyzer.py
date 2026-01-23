@@ -150,6 +150,18 @@ class TestAttributeAccessValidation(TestTaskAnalyzer):
                 analyzer.validate(code)
             assert "name-mangled" in exc_info.value.description.lower()
 
+    def test_attribute_error_obj_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            "e.obj",
+            "exception.obj",
+            "error.obj",
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "obj" in exc_info.value.description
+
 
 class TestDynamicImportDetection(TestTaskAnalyzer):
     def test_various_dynamic_import_patterns(self, analyzer: TaskAnalyzer) -> None:

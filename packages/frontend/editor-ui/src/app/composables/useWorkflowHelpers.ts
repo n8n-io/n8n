@@ -22,6 +22,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
+	isToolType,
 	NodeConnectionTypes,
 	NodeHelpers,
 	WEBHOOK_NODE_TYPE,
@@ -46,6 +47,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
+import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
 import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
@@ -65,12 +67,12 @@ export type ResolveParameterOptions = {
 	connections?: IConnections;
 };
 
-export function resolveParameter<T = IDataObject>(
+export async function resolveParameter<T = IDataObject>(
 	parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
 	opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
-): T | null {
+): Promise<T | null> {
 	if ('localResolve' in opts && opts.localResolve) {
-		return resolveParameterImpl(
+		return await resolveParameterImpl(
 			parameter,
 			opts.workflow,
 			opts.connections,
@@ -89,7 +91,7 @@ export function resolveParameter<T = IDataObject>(
 
 	const workflowsStore = useWorkflowsStore();
 
-	return resolveParameterImpl(
+	return await resolveParameterImpl(
 		parameter,
 		workflowsStore.workflowObject as Workflow,
 		workflowsStore.connectionsBySourceNode,
@@ -113,6 +115,7 @@ function resolveParameterImpl<T = IDataObject>(
 	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
+	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
@@ -122,6 +125,7 @@ function resolveParameterImpl<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
+		$tool: isToolType(activeNode?.type) ? PLACEHOLDER_FILLED_AT_EXECUTION_TIME : undefined,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
@@ -150,7 +154,6 @@ function resolveParameterImpl<T = IDataObject>(
 
 	const inputName = NodeConnectionTypes.Main;
 
-	const activeNode = ndvActiveNode ?? workflowObject.getNode(opts.contextNodeName || '');
 	let contextNode = activeNode;
 
 	if (activeNode) {
@@ -283,7 +286,7 @@ function resolveParameterImpl<T = IDataObject>(
 	) as T;
 }
 
-export function resolveRequiredParameters(
+export async function resolveRequiredParameters(
 	currentParameter: INodeProperties,
 	parameters: INodeParameters,
 	opts: {
@@ -293,18 +296,19 @@ export function resolveRequiredParameters(
 		inputRunIndex?: number;
 		inputBranchIndex?: number;
 	} = {},
-): IDataObject | null {
+): Promise<IDataObject | null> {
 	const loadOptionsDependsOn = new Set(currentParameter?.typeOptions?.loadOptionsDependsOn ?? []);
 
-	const resolvedParameters = Object.fromEntries(
-		Object.entries(parameters).map(([name, parameter]): [string, IDataObject | null] => {
+	const entries = Object.entries(parameters);
+	const resolvedEntries = await Promise.all(
+		entries.map(async ([name, parameter]): Promise<[string, IDataObject | null]> => {
 			const required = loadOptionsDependsOn.has(name);
 
 			if (required) {
-				return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+				return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
 			} else {
 				try {
-					return [name, resolveParameter(parameter as NodeParameterValue, opts)];
+					return [name, await resolveParameter(parameter as NodeParameterValue, opts)];
 				} catch (error) {
 					// ignore any expressions errors for non required parameters
 					return [name, null];
@@ -313,7 +317,7 @@ export function resolveRequiredParameters(
 		}),
 	);
 
-	return resolvedParameters;
+	return Object.fromEntries(resolvedEntries);
 }
 
 function getConnectedNodes(
@@ -706,32 +710,32 @@ export function useWorkflowHelpers() {
 		return nodeData;
 	}
 
-	function getWebhookExpressionValue(
+	async function getWebhookExpressionValue(
 		webhookData: IWebhookDescription,
 		key: string,
 		stringify = true,
 		nodeName?: string,
-	): string {
+	): Promise<string> {
 		if (webhookData[key] === undefined) {
 			return 'empty';
 		}
 		try {
-			return resolveExpression(
+			return (await resolveExpression(
 				webhookData[key] as string,
 				undefined,
 				{ contextNodeName: nodeName },
 				stringify,
-			) as string;
+			)) as string;
 		} catch (e) {
 			return i18n.baseText('nodeWebhooks.invalidExpression');
 		}
 	}
 
-	function getWebhookUrl(
+	async function getWebhookUrl(
 		webhookData: IWebhookDescription,
 		node: INode,
 		showUrlFor: 'test' | 'production',
-	): string {
+	): Promise<string> {
 		const { nodeType, restartWebhook } = webhookData;
 		if (restartWebhook === true) {
 			return nodeType === 'form' ? '$execution.resumeFormUrl' : '$execution.resumeUrl';
@@ -751,14 +755,14 @@ export function useWorkflowHelpers() {
 		} as const;
 		const baseUrl = baseUrls[showUrlFor][nodeType ?? 'webhook'];
 		const workflowId = workflowsStore.workflowId;
-		const path = getWebhookExpressionValue(webhookData, 'path', true, node.name) ?? '';
+		const path = (await getWebhookExpressionValue(webhookData, 'path', true, node.name)) ?? '';
 		const isFullPath =
-			(getWebhookExpressionValue(
+			((await getWebhookExpressionValue(
 				webhookData,
 				'isFullPath',
 				true,
 				node.name,
-			) as unknown as boolean) || false;
+			)) as unknown as boolean) || false;
 
 		return NodeHelpers.getNodeWebhookUrl(baseUrl, workflowId, node, path, isFullPath);
 	}
@@ -768,21 +772,24 @@ export function useWorkflowHelpers() {
 	 * @param nodeParameters
 	 * @returns
 	 */
-	function getNodeParametersWithResolvedExpressions(
+	async function getNodeParametersWithResolvedExpressions(
 		nodeParameters: INodeParameters,
-	): INodeParameters {
-		function recurse(currentObj: INodeParameters, currentPath: string): INodeParameters {
+	): Promise<INodeParameters> {
+		async function recurse(
+			currentObj: INodeParameters,
+			currentPath: string,
+		): Promise<INodeParameters> {
 			const newObj: INodeParameters = {};
 			for (const key in currentObj) {
 				const value = currentObj[key as keyof typeof currentObj];
 				const path = currentPath ? `${currentPath}.${key}` : key;
 				if (typeof value === 'object' && value !== null) {
-					newObj[key] = recurse(value as INodeParameters, path);
+					newObj[key] = await recurse(value as INodeParameters, path);
 				} else if (typeof value === 'string' && String(value).startsWith('=')) {
 					// Resolve the expression if it is one
 					let resolved;
 					try {
-						resolved = resolveExpression(value, undefined, { isForCredential: false });
+						resolved = await resolveExpression(value, undefined, { isForCredential: false });
 					} catch (error) {
 						resolved = `Error in expression: "${error.message}"`;
 					}
@@ -796,20 +803,20 @@ export function useWorkflowHelpers() {
 			}
 			return newObj;
 		}
-		return recurse(nodeParameters, '');
+		return await recurse(nodeParameters, '');
 	}
 
-	function resolveExpression(
+	async function resolveExpression(
 		expression: string,
 		siblingParameters: INodeParameters = {},
 		opts: ResolveParameterOptions | ExpressionLocalResolveContext = {},
 		stringifyObject = true,
-	) {
+	): Promise<unknown> {
 		const parameters = {
 			__xxxxxxx__: expression,
 			...siblingParameters,
 		};
-		const returnData: IDataObject | null = resolveParameter(parameters, opts);
+		const returnData: IDataObject | null = await resolveParameter(parameters, opts);
 		if (!returnData) {
 			return null;
 		}
@@ -850,7 +857,7 @@ export function useWorkflowHelpers() {
 
 		if (isCurrentWorkflow) {
 			workflowState.setActive(workflow.activeVersionId);
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 		}
 
 		if (workflow.activeVersion) {
@@ -968,8 +975,7 @@ export function useWorkflowHelpers() {
 		}
 
 		const tags = (workflowData.tags ?? []) as ITag[];
-		const tagIds = tags.map((tag) => tag.id);
-		ws.setWorkflowTagIds(tagIds || []);
+		ws.setWorkflowTagIds(convertWorkflowTagsToIds(tags));
 		tagsStore.upsertTags(tags);
 	}
 

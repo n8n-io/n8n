@@ -5,7 +5,7 @@ import type {
 	IConnection,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
 
 import type {
 	ConnectionValidationResult,
@@ -106,7 +106,7 @@ export function validateConnection(
 
 		// Validate that the sub-node supports the connection type
 		if (sourceIsSubNode) {
-			const supportsConnectionType = nodeHasOutputType(sourceNodeType, connectionType);
+			const supportsConnectionType = NodeHelpers.nodeHasOutputType(sourceNodeType, connectionType);
 			if (!supportsConnectionType) {
 				return {
 					valid: false,
@@ -117,55 +117,6 @@ export function validateConnection(
 	}
 
 	return { valid: true };
-}
-
-/**
- * Check if a node has a specific output type
- * @param nodeType - The node type description
- * @param connectionType - The connection type to check
- * @returns True if the node supports the output type
- */
-export function nodeHasOutputType(nodeType: INodeTypeDescription, connectionType: string): boolean {
-	if (typeof nodeType.outputs === 'string') {
-		return nodeType.outputs === connectionType || nodeType.outputs.includes(connectionType);
-	}
-
-	if (!nodeType.outputs || !Array.isArray(nodeType.outputs)) {
-		return false;
-	}
-
-	return nodeType.outputs.some((output) => {
-		if (typeof output === 'string') {
-			return output === connectionType || output.includes(connectionType);
-		}
-		return output.type === connectionType;
-	});
-}
-
-/**
- * Check if a node accepts a specific input type
- * @param nodeType - The node type description
- * @param connectionType - The connection type to check
- * @returns True if the node accepts the input type
- */
-export function nodeAcceptsInputType(
-	nodeType: INodeTypeDescription,
-	connectionType: string,
-): boolean {
-	if (typeof nodeType.inputs === 'string') {
-		return nodeType.inputs === connectionType || nodeType.inputs.includes(connectionType);
-	}
-
-	if (!nodeType.inputs || !Array.isArray(nodeType.inputs)) {
-		return false;
-	}
-
-	return nodeType.inputs.some((input) => {
-		if (typeof input === 'string') {
-			return input === connectionType || input.includes(connectionType);
-		}
-		return input.type === connectionType;
-	});
 }
 
 /**

@@ -24,6 +24,7 @@ import type {
 	SortRule,
 	ColumnMap,
 	OracleDBNodeOptions,
+	TableColumnRow,
 } from './interfaces';
 
 const n8nTypetoDBType: { [key: string]: oracledb.DbType } = {
@@ -240,13 +241,17 @@ export async function getColumnMetaData(
 	let conn: oracledb.Connection | undefined;
 	try {
 		conn = await pool.getConnection();
-		const sql = `WITH constraint_info AS (
+
+		const isCDBSupported = conn.oracleServerVersion >= 1200000000;
+
+		const sql = isCDBSupported
+			? `
+WITH constraint_info AS (
   SELECT
     acc.owner,
     acc.table_name,
     acc.column_name,
-    LISTAGG(ac.constraint_type, ',')
-      WITHIN GROUP (ORDER BY ac.constraint_type) AS constraint_types
+    LISTAGG(ac.constraint_type, ',') WITHIN GROUP (ORDER BY ac.constraint_type) AS constraint_types
   FROM all_cons_columns acc
   JOIN all_constraints ac
     ON acc.constraint_name = ac.constraint_name
@@ -270,33 +275,68 @@ LEFT JOIN constraint_info ci
  AND atc.column_name = ci.column_name
 WHERE atc.owner = :schema_name
   AND atc.table_name = :table_name
+ORDER BY atc.COLUMN_NAME`
+			: `
+WITH constraint_info AS (
+  SELECT
+    acc.owner,
+    acc.table_name,
+    acc.column_name,
+    RTRIM(
+      XMLAGG(
+        XMLELEMENT(e, ac.constraint_type || ',')
+        ORDER BY ac.constraint_type
+      ).EXTRACT('//text()').getClobVal(),
+      ','
+    ) AS constraint_types
+  FROM all_cons_columns acc
+  JOIN all_constraints ac
+    ON acc.constraint_name = ac.constraint_name
+   AND acc.owner = ac.owner
+  GROUP BY acc.owner, acc.table_name, acc.column_name
+)
+SELECT
+  atc.COLUMN_NAME,
+  atc.DATA_TYPE,
+  atc.DATA_LENGTH,
+  atc.CHAR_LENGTH,
+  atc.DEFAULT_LENGTH,
+  atc.NULLABLE,
+  CASE WHEN atc.DATA_DEFAULT IS NOT NULL THEN 'YES' ELSE 'NO' END AS HAS_DEFAULT,
+  ci.constraint_types
+FROM all_tab_columns atc
+LEFT JOIN constraint_info ci
+  ON atc.owner = ci.owner
+ AND atc.table_name = ci.table_name
+ AND atc.column_name = ci.column_name
+WHERE atc.owner = :schema_name
+  AND atc.table_name = :table_name
 ORDER BY atc.COLUMN_NAME`;
-		const result = await conn.execute(
+
+		const result = await conn.execute<TableColumnRow>(
 			sql,
 			{ table_name: table, schema_name: schema },
 			{ outFormat: oracledb.OUT_FORMAT_OBJECT },
 		);
 
-		// If schema is not available, throw error.
-		if (!result.rows || result.rows.length === 0) {
+		const rows = result.rows ?? [];
+		if (rows.length === 0) {
 			throw new NodeOperationError(node, 'Schema Information does not exist for selected table', {
 				itemIndex: index,
 			});
 		}
 
-		return (
-			result.rows?.map((row: any) => ({
-				columnName: row.COLUMN_NAME,
-				isGenerated: row.IDENTITY_COLUMN === 'YES' ? 'ALWAYS' : 'NEVER',
-				columnDefault: row.HAS_DEFAULT,
-				dataType: row.DATA_TYPE,
-				isNullable: row.NULLABLE === 'Y',
-				maxSize: row.DATA_LENGTH,
-			})) ?? []
-		);
+		return rows.map((row) => ({
+			columnName: row.COLUMN_NAME,
+			isGenerated: isCDBSupported && row.IDENTITY_COLUMN === 'YES' ? 'ALWAYS' : 'NEVER',
+			columnDefault: row.HAS_DEFAULT,
+			dataType: row.DATA_TYPE,
+			isNullable: row.NULLABLE === 'Y',
+			maxSize: row.DATA_LENGTH,
+		}));
 	} finally {
 		if (conn) {
-			await conn.close(); // Ensure connection is closed
+			await conn.close();
 		}
 	}
 }
@@ -329,9 +369,19 @@ function normalizeOutBinds(
 	stmtBatching: string,
 	outputColumns: string[],
 ): Array<Record<string, any>> {
-	if (!Array.isArray(outBinds)) return [];
-
 	const rows: Array<Record<string, any>> = [];
+
+	if (!Array.isArray(outBinds)) {
+		// For execute operation mode, we get outBinds as object and
+		// array for other insert, update, upsert operations.
+		const row: Record<string, any> = {};
+		for (const [key, val] of Object.entries(outBinds as Record<string, unknown>)) {
+			// If val is expected to be an array, safely extract the first element
+			row[key] = Array.isArray(val) ? val[0] : val;
+		}
+		rows.push(row);
+		return rows;
+	}
 
 	// executeMany case outBinds-> [ [[col1Row1Val], [col2Row1Val]], [[col1Row2Val], [col2Row2Val]], ...]
 	if (stmtBatching === 'single') {
@@ -772,6 +822,17 @@ function generateBindVariablesList(
 	return query.replace(regex, generatedSqlString);
 }
 
+function isSerializedBuffer(val: unknown): val is { type: 'Buffer'; data: number[] } {
+	return (
+		typeof val === 'object' &&
+		val !== null &&
+		'type' in val &&
+		'data' in val &&
+		(val as any).type === 'Buffer' &&
+		Array.isArray((val as any).data)
+	);
+}
+
 export function getBindParameters(
 	query: string,
 	parameterList: ExecuteOpBindParam[],
@@ -795,7 +856,24 @@ export function getBindParameters(
 					break;
 				case 'blob':
 					bindVal = item.valueBlob;
-					break;
+
+					// Allow null or undefined to represent SQL NULL BLOB values
+					if (bindVal === null) {
+						break;
+					}
+
+					if (Buffer.isBuffer(bindVal)) {
+						break;
+					}
+
+					// Serialized form: { type: 'Buffer', data: [...] }
+					if (isSerializedBuffer(bindVal)) {
+						bindVal = Buffer.from((bindVal as any).data);
+						break;
+					}
+					throw new UserError(
+						'BLOB data must be a valid Buffer or \'{ type: "Buffer", data: [...] }\'',
+					);
 				case 'date': {
 					const val = item.valueDate;
 					if (typeof val === 'string') {

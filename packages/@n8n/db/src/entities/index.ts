@@ -5,7 +5,6 @@ import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import { CredentialsEntity } from './credentials-entity';
-import { EventDestinations } from './event-destinations';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
@@ -16,8 +15,10 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import { Role } from './role';
 import { Scope } from './scope';
+import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -35,7 +36,6 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
-	EventDestinations,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
@@ -72,10 +72,11 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
 };
 
 export const entities = {
-	EventDestinations,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
@@ -110,4 +111,6 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
 };

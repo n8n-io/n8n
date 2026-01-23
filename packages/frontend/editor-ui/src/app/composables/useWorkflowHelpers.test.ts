@@ -45,7 +45,7 @@ describe('useWorkflowHelpers', () => {
 	let workflowState: WorkflowState;
 	let workflowsEEStore: ReturnType<typeof useWorkflowsEEStore>;
 	let tagsStore: ReturnType<typeof useTagsStore>;
-	let uiStore: ReturnType<typeof useUIStore>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	beforeAll(() => {
 		setActivePinia(createTestingPinia());
@@ -56,7 +56,7 @@ describe('useWorkflowHelpers', () => {
 
 		workflowsEEStore = useWorkflowsEEStore();
 		tagsStore = useTagsStore();
-		uiStore = useUIStore();
+		uiStore = mockedStore(useUIStore);
 	});
 
 	afterEach(() => {
@@ -64,7 +64,7 @@ describe('useWorkflowHelpers', () => {
 	});
 
 	describe('getNodeParametersWithResolvedExpressions', () => {
-		it('should correctly detect and resolve expressions in a regular node ', () => {
+		it('should correctly detect and resolve expressions in a regular node ', async () => {
 			const nodeParameters = {
 				curlImport: '',
 				method: 'GET',
@@ -79,11 +79,11 @@ describe('useWorkflowHelpers', () => {
 			};
 			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters =
-				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
+				await workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters.url).toHaveProperty('resolvedExpressionValue');
 		});
 
-		it('should correctly detect and resolve expressions in a node with assignments (set node) ', () => {
+		it('should correctly detect and resolve expressions in a node with assignments (set node) ', async () => {
 			const nodeParameters = {
 				mode: 'manual',
 				duplicateItem: false,
@@ -103,14 +103,14 @@ describe('useWorkflowHelpers', () => {
 			};
 			const workflowHelpers = useWorkflowHelpers();
 			const resolvedParameters =
-				workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
+				await workflowHelpers.getNodeParametersWithResolvedExpressions(nodeParameters);
 			expect(resolvedParameters).toHaveProperty('assignments');
 			const assignments = resolvedParameters.assignments as AssignmentCollectionValue;
 			expect(assignments).toHaveProperty('assignments');
 			expect(assignments.assignments[0].value).toHaveProperty('resolvedExpressionValue');
 		});
 
-		it('should correctly detect and resolve expressions in a node with filter component', () => {
+		it('should correctly detect and resolve expressions in a node with filter component', async () => {
 			const nodeParameters = {
 				mode: 'rules',
 				rules: {
@@ -143,16 +143,16 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers();
-			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+			const resolvedParameters = (await workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
-			) as typeof nodeParameters;
+			)) as typeof nodeParameters;
 			expect(resolvedParameters).toHaveProperty('rules');
 			expect(resolvedParameters.rules).toHaveProperty('values');
 			expect(resolvedParameters.rules.values[0].conditions.conditions[0].leftValue).toHaveProperty(
 				'resolvedExpressionValue',
 			);
 		});
-		it('should correctly detect and resolve expressions in a node with resource locator component', () => {
+		it('should correctly detect and resolve expressions in a node with resource locator component', async () => {
 			const nodeParameters = {
 				authentication: 'oAuth2',
 				resource: 'sheet',
@@ -172,13 +172,13 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers();
-			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+			const resolvedParameters = (await workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
-			) as typeof nodeParameters;
+			)) as typeof nodeParameters;
 			expect(resolvedParameters.documentId.value).toHaveProperty('resolvedExpressionValue');
 			expect(resolvedParameters.sheetName.value).toHaveProperty('resolvedExpressionValue');
 		});
-		it('should correctly detect and resolve expressions in a node with resource mapper component', () => {
+		it('should correctly detect and resolve expressions in a node with resource mapper component', async () => {
 			const nodeParameters = {
 				authentication: 'oAuth2',
 				resource: 'sheet',
@@ -211,9 +211,9 @@ describe('useWorkflowHelpers', () => {
 				options: {},
 			};
 			const workflowHelpers = useWorkflowHelpers();
-			const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+			const resolvedParameters = (await workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeParameters,
-			) as typeof nodeParameters;
+			)) as typeof nodeParameters;
 			expect(resolvedParameters.filtersUI.values[0].lookupValue).toHaveProperty(
 				'resolvedExpressionValue',
 			);
@@ -320,7 +320,7 @@ describe('useWorkflowHelpers', () => {
 	describe('checkConflictingWebhooks', () => {
 		it('should return null if no conflicts', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [],
 			} as unknown as IWorkflowDb);
@@ -329,7 +329,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return conflicting webhook data and workflow id is different', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -368,7 +368,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return conflicting webhook data and workflow id is different in trigger', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -401,7 +401,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return conflicting webhook data and workflow id is different in chat', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -434,7 +434,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return null if webhook already exist but workflow id is the same', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -458,16 +458,18 @@ describe('useWorkflowHelpers', () => {
 
 		it('should call getWorkflowDataToSave if state is dirty', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = true;
+			const stateIsDirtySpy = vi.spyOn(uiStore, 'stateIsDirty', 'get').mockReturnValue(true);
 			vi.spyOn(workflowHelpers, 'getWorkflowDataToSave').mockResolvedValue({
 				nodes: [],
 			} as unknown as WorkflowData);
 			expect(await workflowHelpers.checkConflictingWebhooks('12345')).toEqual(null);
+			stateIsDirtySpy.mockRestore();
 		});
 
 		it('should return null if no conflicts with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			const uiStore = mockedStore(useUIStore);
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -487,7 +489,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return conflicting webhook data and workflow id is different with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -528,7 +530,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return null if webhook already exist but workflow id is the same with FORM_TRIGGER_NODE_TYPE', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -553,7 +555,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return trigger.parameters.path when both trigger.parameters.path and trigger.webhookId are strings', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -578,7 +580,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return trigger.webhookId when trigger.parameters.path is an empty string', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -603,7 +605,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should find conflicting webhook data with multiple methods', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -644,7 +646,7 @@ describe('useWorkflowHelpers', () => {
 
 		it('should return null if no conflicts with multiple methods', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -664,7 +666,6 @@ describe('useWorkflowHelpers', () => {
 
 		it('should fallback to GET, POST if httpMethod is not set and multipleMethods is true', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -677,7 +678,7 @@ describe('useWorkflowHelpers', () => {
 					},
 				],
 			} as unknown as IWorkflowDb);
-			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
 			await workflowHelpers.checkConflictingWebhooks('123');
 			expect(spy).toHaveBeenCalledWith(expect.anything(), {
 				method: 'GET',
@@ -691,7 +692,6 @@ describe('useWorkflowHelpers', () => {
 
 		it('should fallback to GET if httpMethod is not set and multipleMethods is false', async () => {
 			const workflowHelpers = useWorkflowHelpers();
-			uiStore.stateIsDirty = false;
 			vi.spyOn(workflowsStore, 'fetchWorkflow').mockResolvedValue({
 				nodes: [
 					{
@@ -703,7 +703,7 @@ describe('useWorkflowHelpers', () => {
 					},
 				],
 			} as unknown as IWorkflowDb);
-			const spy = vi.spyOn(apiWebhooks, 'findWebhook');
+			const spy = vi.spyOn(apiWebhooks, 'findWebhook').mockResolvedValue(null);
 			await workflowHelpers.checkConflictingWebhooks('123');
 			expect(spy).toHaveBeenCalledWith(expect.anything(), {
 				method: 'GET',
@@ -1099,8 +1099,8 @@ describe('useWorkflowHelpers', () => {
 
 describe(resolveParameter, () => {
 	describe('with local resolve context', () => {
-		it('should resolve parameter without execution data', () => {
-			const result = resolveParameter(
+		it('should resolve parameter without execution data', async () => {
+			const result = await resolveParameter(
 				{
 					f0: '={{ 2 + 2 }}',
 					f1: '={{ $vars.foo }}',
@@ -1125,7 +1125,7 @@ describe(resolveParameter, () => {
 			expect(result).toEqual({ f0: 4, f1: 'hello!', f2: 'TRUE' });
 		});
 
-		it('should resolve parameter with execution data', () => {
+		it('should resolve parameter with execution data', async () => {
 			const workflowData = createTestWorkflow({
 				nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
 				connections: {
@@ -1136,7 +1136,7 @@ describe(resolveParameter, () => {
 					},
 				},
 			});
-			const result = resolveParameter(
+			const result = await resolveParameter(
 				{
 					f0: '={{ $json }}',
 					f1: '={{ $("n0").item.json }}',
