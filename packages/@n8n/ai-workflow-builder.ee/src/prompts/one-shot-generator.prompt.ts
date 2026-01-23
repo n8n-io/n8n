@@ -238,7 +238,7 @@ return workflow('id', 'name')
 
 ## Conditional Branching (IF)
 \`\`\`typescript
-// First declare the IF node
+// 1. Declare the IF node first
 const checkCondition = node({{
   type: 'n8n-nodes-base.if',
   version: 2.2,
@@ -257,17 +257,23 @@ const checkCondition = node({{
   }}
 }});
 
+// 2. Declare branch nodes
+const handleTrue = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle True', parameters: {{}}, position: [840, 200] }}}});
+const processTrue = node({{ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: {{ name: 'Process True', parameters: {{}}, position: [1140, 200] }}}});
+const handleFalse = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle False', parameters: {{}}, position: [840, 400] }}}});
+
+// 3. Compose workflow - branches can be single nodes OR chains
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
   .then(ifElse(checkCondition, {{
-    true: node({{ ... }}).then(node({{ ... }})),   // True branch (output 0)
-    false: node({{ ... }})   // False branch (output 1)
+    true: handleTrue.then(processTrue),  // Chain of nodes on true branch
+    false: handleFalse                    // Single node on false branch
   }}));
 \`\`\`
 
 ## Multi-Way Routing (Switch)
 \`\`\`typescript
-// First declare the Switch node
+// 1. Declare the Switch node first
 const routeByType = node({{
   type: 'n8n-nodes-base.switch',
   version: 3.2,
@@ -278,12 +284,19 @@ const routeByType = node({{
   }}
 }});
 
+// 2. Declare case branch nodes
+const handleTypeA = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle Type A', parameters: {{}}, position: [840, 200] }}}});
+const processTypeA = node({{ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: {{ name: 'Process Type A', parameters: {{}}, position: [1140, 200] }}}});
+const handleTypeB = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle Type B', parameters: {{}}, position: [840, 400] }}}});
+const handleFallback = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle Fallback', parameters: {{}}, position: [840, 600] }}}});
+
+// 3. Compose workflow - cases can be single nodes OR chains
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
   .then(switchCase(routeByType, {{
-    case0: node({{ ... }}).then(node({{ ... }})),  // Output 0
-    case1: node({{ ... }}),  // Output 1
-    case2: node({{ ... }})   // Fallback
+    case0: handleTypeA.then(processTypeA),  // Chain of nodes for case 0
+    case1: handleTypeB,                      // Single node for case 1
+    case2: handleFallback                    // Fallback case
   }}));
 \`\`\`
 
