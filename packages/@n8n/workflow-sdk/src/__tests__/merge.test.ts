@@ -1,35 +1,11 @@
-import { merge } from '../merge';
+import { merge, isMergeNamedInputSyntax } from '../merge';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { fanIn } from '../fan-in';
 
 describe('Merge', () => {
-	describe('merge()', () => {
-		it('should create a merge composite with branches', () => {
-			const api1 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: {
-					name: 'API 1',
-					parameters: { url: 'https://api1.example.com' },
-				},
-			});
-			const api2 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: {
-					name: 'API 2',
-					parameters: { url: 'https://api2.example.com' },
-				},
-			});
-
-			const m = merge([api1, api2]);
-			expect(m.mergeNode).toBeDefined();
-			expect(m.branches).toHaveLength(2);
-			expect(m.mode).toBe('append'); // default mode
-		});
-
-		it('should support combine mode', () => {
+	describe('merge() requires named syntax only', () => {
+		it('should require a merge node as first argument', () => {
 			const api1 = node({
 				type: 'n8n-nodes-base.httpRequest',
 				version: 4.2,
@@ -41,55 +17,19 @@ describe('Merge', () => {
 				config: { name: 'API 2' },
 			});
 
-			const m = merge([api1, api2], { mode: 'combine' });
-			expect(m.mode).toBe('combine');
+			// Array syntax should throw an error - named syntax is required
+			expect(() => {
+				// @ts-expect-error - Testing runtime rejection of array syntax
+				merge([api1, api2]);
+			}).toThrow('merge() requires a Merge node as first argument');
 		});
 
-		it('should support multiplex mode', () => {
-			const api1 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: { name: 'API 1' },
-			});
-			const api2 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: { name: 'API 2' },
-			});
-
-			const m = merge([api1, api2], { mode: 'multiplex' });
-			expect(m.mode).toBe('multiplex');
-		});
-
-		it('should support chooseBranch mode', () => {
-			const api1 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: { name: 'API 1' },
-			});
-			const api2 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: { name: 'API 2' },
-			});
-
-			const m = merge([api1, api2], { mode: 'chooseBranch' });
-			expect(m.mode).toBe('chooseBranch');
-		});
-	});
-
-	describe('merge() with pre-declared node', () => {
-		it('should accept a pre-declared node instance as second argument', () => {
-			// Pre-declare a merge node
+		it('should require named inputs { input0, input1, ... } as second argument', () => {
 			const mergeNode = node({
 				type: 'n8n-nodes-base.merge',
 				version: 3,
-				config: {
-					name: 'My Merge',
-					parameters: { numberInputs: 2 },
-				},
+				config: { name: 'My Merge' },
 			});
-
 			const branch1 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3.4,
@@ -101,173 +41,56 @@ describe('Merge', () => {
 				config: { name: 'Branch 2' },
 			});
 
-			// Pass the pre-declared node as second argument
-			const m = merge([branch1, branch2], mergeNode);
-
-			// Should use the pre-declared node, not create a new one
-			expect(m.mergeNode).toBe(mergeNode);
-			expect(m.mergeNode.name).toBe('My Merge');
-			expect(m.branches).toHaveLength(2);
+			// Passing array as first argument should throw
+			expect(() => {
+				// @ts-expect-error - Testing runtime rejection of array syntax
+				merge([branch1, branch2], mergeNode);
+			}).toThrow('merge() requires a Merge node as first argument');
 		});
 
-		it('should support chaining after merge with pre-declared node', () => {
+		it('should work with named syntax: merge(mergeNode, { input0, input1 })', () => {
 			const mergeNode = node({
 				type: 'n8n-nodes-base.merge',
 				version: 3,
-				config: { name: 'Pre-declared Merge' },
+				config: { name: 'My Merge' },
+			});
+			const source1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Source 1' },
+			});
+			const source2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Source 2' },
 			});
 
-			const branch1 = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Branch 1' },
-			});
-			const branch2 = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Branch 2' },
-			});
-			const downstream = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Downstream' },
-			});
-
-			// This pattern is used in generated code
-			const m = merge([branch1, branch2], mergeNode);
-			const chain = m.then(downstream);
-
-			expect(chain.tail.name).toBe('Downstream');
+			// Named syntax should work
+			const composite = merge(mergeNode, { input0: source1, input1: source2 });
+			expect(composite.mergeNode).toBe(mergeNode);
+			expect(isMergeNamedInputSyntax(composite)).toBe(true);
 		});
 
-		it('should work in workflow builder with pre-declared merge node', () => {
+		it('should always return named input syntax composites', () => {
 			const mergeNode = node({
 				type: 'n8n-nodes-base.merge',
 				version: 3,
-				config: { name: 'Pre-declared Merge' },
+				config: { name: 'My Merge' },
 			});
-
-			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
-			const branch1 = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Branch 1' },
-			});
-			const branch2 = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Branch 2' },
-			});
-			const downstream = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Downstream' },
-			});
-
-			const wf = workflow('test-id', 'Test')
-				.add(t)
-				.then(merge([branch1, branch2], mergeNode))
-				.then(downstream);
-
-			const json = wf.toJSON();
-
-			// Should have: trigger, branch1, branch2, merge, downstream = 5 nodes
-			expect(json.nodes).toHaveLength(5);
-
-			// The merge node should be the pre-declared one
-			const foundMerge = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
-			expect(foundMerge?.name).toBe('Pre-declared Merge');
-		});
-	});
-
-	describe('workflow integration', () => {
-		it('should integrate merge with workflow builder', () => {
-			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
-			const api1 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: {
-					name: 'API 1',
-					parameters: { url: 'https://api1.example.com' },
-				},
-			});
-			const api2 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: {
-					name: 'API 2',
-					parameters: { url: 'https://api2.example.com' },
-				},
-			});
-			const processResults = node({
+			const source1 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
-				config: { name: 'Process Results' },
+				config: { name: 'Source 1' },
+			});
+			const source2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Source 2' },
 			});
 
-			const wf = workflow('test-id', 'Test')
-				.add(t)
-				.then(merge([api1, api2], { mode: 'combine' }))
-				.then(processResults);
-
-			const json = wf.toJSON();
-
-			// Should have: trigger, api1, api2, merge, processResults
-			expect(json.nodes.length).toBeGreaterThanOrEqual(4);
-
-			// Trigger should connect to both API nodes
-			const triggerConnections = json.connections[t.name];
-			expect(triggerConnections).toBeDefined();
-
-			// Merge node should exist
-			const mergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
-			expect(mergeNode).toBeDefined();
-
-			// Merge should connect to process results
-			expect(json.connections[mergeNode!.name]).toBeDefined();
-		});
-
-		it('should support three branches merging', () => {
-			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
-			const api1 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: { name: 'API 1' },
-			});
-			const api2 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: { name: 'API 2' },
-			});
-			const api3 = node({
-				type: 'n8n-nodes-base.httpRequest',
-				version: 4.2,
-				config: { name: 'API 3' },
-			});
-
-			const wf = workflow('test-id', 'Test')
-				.add(t)
-				.then(merge([api1, api2, api3]));
-
-			const json = wf.toJSON();
-
-			// Find merge node
-			const mergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
-			expect(mergeNode).toBeDefined();
-
-			// Merge should have 3 inputs
-			// Check that all 3 API nodes connect to the merge
-			let inputCount = 0;
-			for (const conns of Object.values(json.connections)) {
-				for (const outputs of conns.main || []) {
-					for (const conn of outputs || []) {
-						if (conn.node === mergeNode!.name) {
-							inputCount++;
-						}
-					}
-				}
-			}
-			expect(inputCount).toBe(3);
+			const composite = merge(mergeNode, { input0: source1, input1: source2 });
+			// All composites should now be named input syntax
+			expect(isMergeNamedInputSyntax(composite)).toBe(true);
 		});
 	});
 

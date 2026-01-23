@@ -4,8 +4,8 @@ import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
 
 describe('IF Else', () => {
-	describe('ifElse() array syntax (existing)', () => {
-		it('should create an IF else composite with array of branches', () => {
+	describe('ifElse() requires named syntax only', () => {
+		it('should require an IF node as first argument', () => {
 			const trueNode = node({
 				type: 'n8n-nodes-base.set',
 				version: 3.4,
@@ -17,10 +17,80 @@ describe('IF Else', () => {
 				config: { name: 'False Branch' },
 			});
 
-			const ib = ifElse([trueNode, falseNode]);
-			expect(ib.ifNode).toBeDefined();
-			expect(ib.trueBranch).toBe(trueNode);
-			expect(ib.falseBranch).toBe(falseNode);
+			// Array syntax should throw an error - named syntax is required
+			expect(() => {
+				// @ts-expect-error - Testing runtime rejection of array syntax
+				ifElse([trueNode, falseNode]);
+			}).toThrow('ifElse() requires an IF node as first argument');
+		});
+
+		it('should require named inputs { true, false } as second argument', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: { name: 'My IF' },
+			});
+			const trueNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'True Branch' },
+			});
+			const falseNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'False Branch' },
+			});
+
+			// Passing array as second argument should throw
+			expect(() => {
+				// @ts-expect-error - Testing runtime rejection of array syntax
+				ifElse([trueNode, falseNode], ifNode);
+			}).toThrow('ifElse() requires an IF node as first argument');
+		});
+
+		it('should work with named syntax: ifElse(ifNode, { true, false })', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: { name: 'My IF' },
+			});
+			const trueBranch = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'True Branch' },
+			});
+			const falseBranch = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'False Branch' },
+			});
+
+			// Named syntax should work
+			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
+			expect(composite.ifNode).toBe(ifNode);
+			expect(isIfElseNamedSyntax(composite)).toBe(true);
+		});
+
+		it('should always return named syntax composites', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: { name: 'My IF' },
+			});
+			const trueBranch = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'True Branch' },
+			});
+			const falseBranch = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'False Branch' },
+			});
+
+			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
+			// All composites should now be named syntax
+			expect(isIfElseNamedSyntax(composite)).toBe(true);
 		});
 	});
 
@@ -180,13 +250,9 @@ describe('IF Else', () => {
 				config: { name: 'False Branch' },
 			});
 
-			// Named syntax
-			const namedIb = ifElse(ifNode, { true: trueBranch, false: falseBranch });
-			expect(isIfElseNamedSyntax(namedIb)).toBe(true);
-
-			// Array syntax
-			const arrayIb = ifElse([trueBranch, falseBranch]);
-			expect(isIfElseNamedSyntax(arrayIb)).toBe(false);
+			// Named syntax - all ifElse composites are now named syntax
+			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
+			expect(isIfElseNamedSyntax(composite)).toBe(true);
 		});
 	});
 });

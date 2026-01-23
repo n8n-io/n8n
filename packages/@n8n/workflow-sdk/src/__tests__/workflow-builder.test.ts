@@ -4,6 +4,7 @@ import { languageModel, memory, tool } from '../subnode-builders';
 import { merge } from '../merge';
 import { ifElse } from '../if-else';
 import { switchCase } from '../switch-case';
+import type { NodeInstance } from '../types/base';
 
 describe('Workflow Builder', () => {
 	describe('workflow()', () => {
@@ -135,14 +136,18 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: { name: 'Case 1' },
 			});
-
-			// Pass switchCase directly to add() instead of through then()
-			const wf = workflow('test', 'Test').add(
-				switchCase([case0, case1], {
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.2,
+				config: {
 					name: 'Direct Switch',
 					parameters: { mode: 'rules' },
-				}),
-			);
+				},
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+
+			// Pass switchCase directly to add() instead of through then()
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test', 'Test').add(switchCase(switchNode, { case0, case1 }) as any);
 
 			const json = wf.toJSON();
 
@@ -150,8 +155,8 @@ describe('Workflow Builder', () => {
 			expect(json.nodes).toHaveLength(3);
 
 			// Switch should connect to cases
-			expect(json.connections['Direct Switch'].main[0][0].node).toBe('Case 0');
-			expect(json.connections['Direct Switch'].main[1][0].node).toBe('Case 1');
+			expect(json.connections['Direct Switch']?.main[0]?.[0]?.node).toBe('Case 0');
+			expect(json.connections['Direct Switch']?.main[1]?.[0]?.node).toBe('Case 1');
 		});
 
 		it('should add IfElseComposite directly', () => {
@@ -165,10 +170,10 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: { name: 'False Path' },
 			});
-
-			// Pass ifElse directly to add() instead of through then()
-			const wf = workflow('test', 'Test').add(
-				ifElse([trueNode, falseNode], {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: {
 					name: 'Direct IF',
 					parameters: {
 						conditions: {
@@ -181,7 +186,13 @@ describe('Workflow Builder', () => {
 							],
 						},
 					},
-				}),
+				},
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+
+			// Pass ifElse directly to add() instead of through then()
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const wf = workflow('test', 'Test').add(
+				ifElse(ifNode, { true: trueNode, false: falseNode }) as any,
 			);
 
 			const json = wf.toJSON();
@@ -190,8 +201,8 @@ describe('Workflow Builder', () => {
 			expect(json.nodes).toHaveLength(3);
 
 			// IF should connect to branches
-			expect(json.connections['Direct IF'].main[0][0].node).toBe('True Path');
-			expect(json.connections['Direct IF'].main[1][0].node).toBe('False Path');
+			expect(json.connections['Direct IF']?.main[0]?.[0]?.node).toBe('True Path');
+			expect(json.connections['Direct IF']?.main[1]?.[0]?.node).toBe('False Path');
 		});
 
 		it('should add MergeComposite directly', () => {
@@ -205,12 +216,19 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: { name: 'Source 2' },
 			});
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: {
+					name: 'Merge',
+					parameters: { mode: 'append' },
+				},
+			}) as NodeInstance<'n8n-nodes-base.merge', string, unknown>;
 
 			// Pass merge directly to add() instead of through then()
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const wf = workflow('test', 'Test').add(
-				merge([source1, source2], {
-					mode: 'append',
-				}),
+				merge(mergeNode, { input0: source1, input1: source2 }) as any,
 			);
 
 			const json = wf.toJSON();
@@ -219,10 +237,10 @@ describe('Workflow Builder', () => {
 			expect(json.nodes).toHaveLength(3);
 
 			// Sources should connect to Merge at different input indices
-			expect(json.connections['Source 1'].main[0][0].node).toBe('Merge');
-			expect(json.connections['Source 1'].main[0][0].index).toBe(0);
-			expect(json.connections['Source 2'].main[0][0].node).toBe('Merge');
-			expect(json.connections['Source 2'].main[0][0].index).toBe(1);
+			expect(json.connections['Source 1']?.main[0]?.[0]?.node).toBe('Merge');
+			expect(json.connections['Source 1']?.main[0]?.[0]?.index).toBe(0);
+			expect(json.connections['Source 2']?.main[0]?.[0]?.node).toBe('Merge');
+			expect(json.connections['Source 2']?.main[0]?.[0]?.index).toBe(1);
 		});
 	});
 
@@ -239,12 +257,12 @@ describe('Workflow Builder', () => {
 
 			// Check connections: trigger -> n1 -> n2
 			expect(json.connections[t.name]).toBeDefined();
-			expect(json.connections[t.name].main[0]).toHaveLength(1);
-			expect(json.connections[t.name].main[0][0].node).toBe(n1.name);
+			expect(json.connections[t.name]?.main[0]).toHaveLength(1);
+			expect(json.connections[t.name]?.main[0]?.[0]?.node).toBe(n1.name);
 
 			expect(json.connections[n1.name]).toBeDefined();
-			expect(json.connections[n1.name].main[0]).toHaveLength(1);
-			expect(json.connections[n1.name].main[0][0].node).toBe(n2.name);
+			expect(json.connections[n1.name]?.main[0]).toHaveLength(1);
+			expect(json.connections[n1.name]?.main[0]?.[0]?.node).toBe(n2.name);
 		});
 	});
 
@@ -279,10 +297,10 @@ describe('Workflow Builder', () => {
 			expect(json.nodes).toHaveLength(3);
 
 			// Check HTTP node has two outputs: main (0) and error (1)
-			expect(json.connections['HTTP'].main[0]).toHaveLength(1);
-			expect(json.connections['HTTP'].main[0][0].node).toBe('Success');
-			expect(json.connections['HTTP'].main[1]).toHaveLength(1);
-			expect(json.connections['HTTP'].main[1][0].node).toBe('Error Handler');
+			expect(json.connections['HTTP']?.main[0]).toHaveLength(1);
+			expect(json.connections['HTTP']?.main[0]?.[0]?.node).toBe('Success');
+			expect(json.connections['HTTP']?.main[1]).toHaveLength(1);
+			expect(json.connections['HTTP']?.main[1]?.[0]?.node).toBe('Error Handler');
 		});
 
 		it('should calculate correct error output index for IF nodes', () => {
@@ -320,9 +338,9 @@ describe('Workflow Builder', () => {
 
 			const json = wf.toJSON();
 
-			expect(json.connections['IF'].main[0][0].node).toBe('True');
-			expect(json.connections['IF'].main[1][0].node).toBe('False');
-			expect(json.connections['IF'].main[2][0].node).toBe('Error');
+			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True');
+			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False');
+			expect(json.connections['IF']?.main[2]?.[0]?.node).toBe('Error');
 		});
 
 		it('should return this (not handler) for proper chaining with .then()', () => {
@@ -352,10 +370,10 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			// Trigger should connect to Slack (not Telegram)
-			expect(json.connections['Start'].main[0][0].node).toBe('Send Slack');
+			expect(json.connections['Start']?.main[0]?.[0]?.node).toBe('Send Slack');
 
 			// Slack's error output (index 1) should connect to Telegram
-			expect(json.connections['Send Slack'].main[1][0].node).toBe('Error Alert');
+			expect(json.connections['Send Slack']?.main[1]?.[0]?.node).toBe('Error Alert');
 		});
 	});
 
@@ -598,8 +616,8 @@ describe('Workflow Builder', () => {
 			// Model node should have ai_languageModel connection to agent
 			const modelConnections = json.connections[modelNode.name];
 			expect(modelConnections).toBeDefined();
-			expect(modelConnections.ai_languageModel).toBeDefined();
-			expect(modelConnections.ai_languageModel[0][0].node).toBe(agentNode.name);
+			expect(modelConnections?.ai_languageModel).toBeDefined();
+			expect(modelConnections?.ai_languageModel?.[0]?.[0]?.node).toBe(agentNode.name);
 		});
 	});
 
@@ -610,6 +628,14 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: {},
 			});
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: {
+					name: 'Merge',
+					parameters: { mode: 'append' },
+				},
+			}) as NodeInstance<'n8n-nodes-base.merge', string, unknown>;
 			const source1 = node({
 				type: 'n8n-nodes-base.httpRequest',
 				version: 4.2,
@@ -628,11 +654,7 @@ describe('Workflow Builder', () => {
 
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
-				.then(
-					merge([source1, source2, source3], {
-						mode: 'append',
-					}),
-				);
+				.then(merge(mergeNode, { input0: source1, input1: source2, input2: source3 }));
 
 			const json = wf.toJSON();
 
@@ -640,51 +662,18 @@ describe('Workflow Builder', () => {
 			// source1 -> Merge input 0
 			// source2 -> Merge input 1
 			// source3 -> Merge input 2
-			expect(json.connections['Source 1'].main[0][0].node).toBe('Merge');
-			expect(json.connections['Source 1'].main[0][0].index).toBe(0);
+			expect(json.connections['Source 1']?.main[0]?.[0]?.node).toBe('Merge');
+			expect(json.connections['Source 1']?.main[0]?.[0]?.index).toBe(0);
 
-			expect(json.connections['Source 2'].main[0][0].node).toBe('Merge');
-			expect(json.connections['Source 2'].main[0][0].index).toBe(1);
+			expect(json.connections['Source 2']?.main[0]?.[0]?.node).toBe('Merge');
+			expect(json.connections['Source 2']?.main[0]?.[0]?.index).toBe(1);
 
-			expect(json.connections['Source 3'].main[0][0].node).toBe('Merge');
-			expect(json.connections['Source 3'].main[0][0].index).toBe(2);
+			expect(json.connections['Source 3']?.main[0]?.[0]?.node).toBe('Merge');
+			expect(json.connections['Source 3']?.main[0]?.[0]?.index).toBe(2);
 
-			// Merge node should have numberInputs set to 3
-			const mergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
-			expect(mergeNode).toBeDefined();
-			expect(mergeNode?.parameters?.numberInputs).toBe(3);
-		});
-
-		it('should auto-calculate numberInputs from branches length', () => {
-			const triggerNode = trigger({
-				type: 'n8n-nodes-base.manualTrigger',
-				version: 1,
-				config: {},
-			});
-			const source1 = node({
-				type: 'n8n-nodes-base.noOp',
-				version: 1,
-				config: { name: 'Source 1' },
-			});
-			const source2 = node({
-				type: 'n8n-nodes-base.noOp',
-				version: 1,
-				config: { name: 'Source 2' },
-			});
-
-			const wf = workflow('test', 'Test')
-				.add(triggerNode)
-				.then(
-					merge([source1, source2], {
-						mode: 'append',
-						// numberInputs NOT specified - should be auto-calculated
-					}),
-				);
-
-			const json = wf.toJSON();
-
-			const mergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
-			expect(mergeNode?.parameters?.numberInputs).toBe(2);
+			// Merge node should exist
+			const foundMergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(foundMergeNode).toBeDefined();
 		});
 
 		it('should support merge with custom name and parameters', () => {
@@ -693,6 +682,17 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: {},
 			});
+			const mergeNode = node({
+				type: 'n8n-nodes-base.merge',
+				version: 3,
+				config: {
+					name: 'Combine Branches',
+					parameters: {
+						mode: 'combine',
+						combineBy: 'combineByPosition',
+					},
+				},
+			}) as NodeInstance<'n8n-nodes-base.merge', string, unknown>;
 			const source1 = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -706,20 +706,13 @@ describe('Workflow Builder', () => {
 
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
-				.then(
-					merge([source1, source2], {
-						mode: 'combine',
-						parameters: {
-							combineBy: 'combineByPosition',
-						},
-					}),
-				);
+				.then(merge(mergeNode, { input0: source1, input1: source2 }));
 
 			const json = wf.toJSON();
 
-			const mergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
-			expect(mergeNode?.parameters?.mode).toBe('combine');
-			expect(mergeNode?.parameters?.combineBy).toBe('combineByPosition');
+			const foundMergeNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.merge');
+			expect(foundMergeNode?.parameters?.mode).toBe('combine');
+			expect(foundMergeNode?.parameters?.combineBy).toBe('combineByPosition');
 		});
 	});
 
@@ -750,9 +743,9 @@ describe('Workflow Builder', () => {
 			const json = wf.toJSON();
 
 			// Trigger should have 2 connections from output 0
-			expect(json.connections[triggerNode.name].main[0]).toHaveLength(2);
-			expect(json.connections[triggerNode.name].main[0].map((c) => c.node)).toContain('HTTP 1');
-			expect(json.connections[triggerNode.name].main[0].map((c) => c.node)).toContain('HTTP 2');
+			expect(json.connections[triggerNode.name]?.main[0]).toHaveLength(2);
+			expect(json.connections[triggerNode.name]?.main[0]?.map((c) => c.node)).toContain('HTTP 1');
+			expect(json.connections[triggerNode.name]?.main[0]?.map((c) => c.node)).toContain('HTTP 2');
 		});
 
 		it('should support chaining: nodeA.then(nodeB).then(nodeC)', () => {
@@ -767,8 +760,8 @@ describe('Workflow Builder', () => {
 
 			const json = wf.toJSON();
 
-			expect(json.connections['A'].main[0][0].node).toBe('B');
-			expect(json.connections['B'].main[0][0].node).toBe('C');
+			expect(json.connections['A']?.main[0]?.[0]?.node).toBe('B');
+			expect(json.connections['B']?.main[0]?.[0]?.node).toBe('C');
 		});
 
 		it('should support fan-out from specific output index', () => {
@@ -796,8 +789,8 @@ describe('Workflow Builder', () => {
 
 			const json = wf.toJSON();
 
-			expect(json.connections['If Check'].main[0][0].node).toBe('True Path');
-			expect(json.connections['If Check'].main[1][0].node).toBe('False Path');
+			expect(json.connections['If Check']?.main[0]?.[0]?.node).toBe('True Path');
+			expect(json.connections['If Check']?.main[1]?.[0]?.node).toBe('False Path');
 		});
 
 		it('should return NodeChain for chaining', () => {
@@ -839,6 +832,24 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: {},
 			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.3,
+				config: {
+					name: 'Check Value',
+					parameters: {
+						conditions: {
+							conditions: [
+								{
+									leftValue: '={{ $json.value }}',
+									operator: { type: 'number', operation: 'gt' },
+									rightValue: 100,
+								},
+							],
+						},
+					},
+				},
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
 			const trueNode = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -852,37 +863,30 @@ describe('Workflow Builder', () => {
 
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
-				.then(
-					ifElse([trueNode, falseNode], {
-						name: 'Check Value',
-						parameters: {
-							conditions: {
-								conditions: [
-									{
-										leftValue: '={{ $json.value }}',
-										operator: { type: 'number', operation: 'gt' },
-										rightValue: 100,
-									},
-								],
-							},
-						},
-					}),
-				);
+				.then(ifElse(ifNode, { true: trueNode, false: falseNode }));
 
 			const json = wf.toJSON();
 
 			// IF node should have correct connections
-			expect(json.connections['Check Value'].main[0][0].node).toBe('True Path');
-			expect(json.connections['Check Value'].main[1][0].node).toBe('False Path');
+			expect(json.connections['Check Value']?.main[0]?.[0]?.node).toBe('True Path');
+			expect(json.connections['Check Value']?.main[1]?.[0]?.node).toBe('False Path');
 
 			// Trigger should connect to IF
-			expect(json.connections[triggerNode.name].main[0][0].node).toBe('Check Value');
+			expect(json.connections[triggerNode.name]?.main[0]?.[0]?.node).toBe('Check Value');
 
 			// All nodes should be present (trigger, IF, true, false)
 			expect(json.nodes).toHaveLength(4);
 		});
 
 		it('should use generated IF types for config', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.3,
+				config: {
+					name: 'Type Check',
+					parameters: { looseTypeValidation: true },
+				},
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
 			const trueNode = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -895,20 +899,22 @@ describe('Workflow Builder', () => {
 			});
 
 			const wf = workflow('test', 'Test').then(
-				ifElse([trueNode, falseNode], {
-					name: 'Type Check',
-					parameters: { looseTypeValidation: true },
-				}),
+				ifElse(ifNode, { true: trueNode, false: falseNode }),
 			);
 
 			const json = wf.toJSON();
 
-			const ifNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.if');
-			expect(ifNode?.typeVersion).toBe(2.3);
-			expect(ifNode?.parameters?.looseTypeValidation).toBe(true);
+			const foundIfNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.if');
+			expect(foundIfNode?.typeVersion).toBe(2.3);
+			expect(foundIfNode?.parameters?.looseTypeValidation).toBe(true);
 		});
 
 		it('should chain after IF node', () => {
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.3,
+				config: { name: 'IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
 			const trueNode = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -926,14 +932,14 @@ describe('Workflow Builder', () => {
 			});
 
 			const wf = workflow('test', 'Test')
-				.then(ifElse([trueNode, falseNode], { name: 'IF' }))
+				.then(ifElse(ifNode, { true: trueNode, false: falseNode }))
 				.then(afterNode);
 
 			const json = wf.toJSON();
 
 			// IF should be connected to true and false
-			expect(json.connections['IF'].main[0][0].node).toBe('True');
-			expect(json.connections['IF'].main[1][0].node).toBe('False');
+			expect(json.connections['IF']?.main[0]?.[0]?.node).toBe('True');
+			expect(json.connections['IF']?.main[1]?.[0]?.node).toBe('False');
 
 			// After should be in the workflow (chained from IF's output 0)
 			expect(json.nodes.find((n) => n.name === 'After')).toBeDefined();
@@ -945,6 +951,23 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: { name: 'Start' },
 			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.3,
+				config: {
+					name: 'IF Check',
+					parameters: {
+						conditions: {
+							conditions: [
+								{
+									leftValue: '={{ $json.skip }}',
+									operator: { type: 'boolean', operation: 'true' },
+								},
+							],
+						},
+					},
+				},
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
 			const falseNode = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -954,21 +977,7 @@ describe('Workflow Builder', () => {
 			// Pass null for true branch - only false branch is connected
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
-				.then(
-					ifElse([null, falseNode], {
-						name: 'IF Check',
-						parameters: {
-							conditions: {
-								conditions: [
-									{
-										leftValue: '={{ $json.skip }}',
-										operator: { type: 'boolean', operation: 'true' },
-									},
-								],
-							},
-						},
-					}),
-				);
+				.then(ifElse(ifNode, { true: null, false: falseNode }));
 
 			const json = wf.toJSON();
 
@@ -978,9 +987,9 @@ describe('Workflow Builder', () => {
 			expect(json.nodes.map((n) => n.name)).toContain('False Path');
 
 			// IF should only have output 1 (false) connected, output 0 should be empty or undefined
-			const output0 = json.connections['IF Check'].main[0];
+			const output0 = json.connections['IF Check']?.main[0];
 			expect(!output0 || output0.length === 0).toBe(true);
-			expect(json.connections['IF Check'].main[1][0].node).toBe('False Path');
+			expect(json.connections['IF Check']?.main[1]?.[0]?.node).toBe('False Path');
 		});
 
 		it('should handle null false branch (only true branch connected)', () => {
@@ -989,6 +998,23 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: { name: 'Start' },
 			});
+			const ifNode = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.3,
+				config: {
+					name: 'IF Check',
+					parameters: {
+						conditions: {
+							conditions: [
+								{
+									leftValue: '={{ $json.proceed }}',
+									operator: { type: 'boolean', operation: 'true' },
+								},
+							],
+						},
+					},
+				},
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
 			const trueNode = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -998,21 +1024,7 @@ describe('Workflow Builder', () => {
 			// Pass null for false branch - only true branch is connected
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
-				.then(
-					ifElse([trueNode, null], {
-						name: 'IF Check',
-						parameters: {
-							conditions: {
-								conditions: [
-									{
-										leftValue: '={{ $json.proceed }}',
-										operator: { type: 'boolean', operation: 'true' },
-									},
-								],
-							},
-						},
-					}),
-				);
+				.then(ifElse(ifNode, { true: trueNode, false: null }));
 
 			const json = wf.toJSON();
 
@@ -1022,8 +1034,8 @@ describe('Workflow Builder', () => {
 			expect(json.nodes.map((n) => n.name)).toContain('True Path');
 
 			// IF should only have output 0 (true) connected
-			expect(json.connections['IF Check'].main[0][0].node).toBe('True Path');
-			expect(json.connections['IF Check'].main[1]).toBeUndefined();
+			expect(json.connections['IF Check']?.main[0]?.[0]?.node).toBe('True Path');
+			expect(json.connections['IF Check']?.main[1]).toBeUndefined();
 		});
 	});
 
@@ -1118,7 +1130,7 @@ describe('Workflow Builder', () => {
 
 	describe('switchCase()', () => {
 		it('should connect all switch outputs including fallback (output 2)', () => {
-			// BUG: When using workflow.add(chain).then(switchCase([3 cases])),
+			// BUG: When using workflow.add(chain).then(switchCase({case0, case1, case2})),
 			// output 2 (fallback) was not being connected
 			const t = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -1135,6 +1147,17 @@ describe('Workflow Builder', () => {
 				version: 2.4,
 				config: { name: 'Send Error to Slack' },
 			});
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: {
+					name: 'Triage Issues',
+					parameters: {
+						mode: 'rules',
+						options: { fallbackOutput: 2 },
+					},
+				},
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 			const case0 = node({
 				type: 'n8n-nodes-base.linear',
 				version: 1.1,
@@ -1151,20 +1174,10 @@ describe('Workflow Builder', () => {
 				config: { name: 'Update as Other' },
 			});
 
-			// Exact pattern from user's code:
-			// .add(trigger().then(node().onError(errorHandler)))
-			// .then(switchCase([case0, case1, case2], config))
+			// Exact pattern from user's code (updated for named syntax):
 			const wf = workflow('test', 'Test')
 				.add(t.then(linearNode.onError(errorHandler)))
-				.then(
-					switchCase([case0, case1, case2], {
-						name: 'Triage Issues',
-						parameters: {
-							mode: 'rules',
-							options: { fallbackOutput: 2 },
-						},
-					}),
-				);
+				.then(switchCase(switchNode, { case0, case1, case2 }));
 
 			const json = wf.toJSON();
 
@@ -1188,8 +1201,6 @@ describe('Workflow Builder', () => {
 		it('should connect previous node to switch when using chain with add()', () => {
 			// BUG FIX TEST: When using .add() with a chain containing switchCase(),
 			// the connection from the previous node to the switch was not being created
-			// because the chain's getConnections() returns switchCaseComposite as target,
-			// which doesn't have a .name property (it has switchNode.name instead)
 			const t = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
 				version: 1,
@@ -1200,6 +1211,14 @@ describe('Workflow Builder', () => {
 				version: 1.1,
 				config: { name: 'Get Issues' },
 			});
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: {
+					name: 'Triage',
+					parameters: { mode: 'rules' },
+				},
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 			const case0 = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -1214,12 +1233,7 @@ describe('Workflow Builder', () => {
 			// This pattern is what causes the bug: chain with switchCase inside add()
 			// Type cast needed because NodeChain.then() types don't include composites
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const chain = t.then(linearNode).then(
-				switchCase([case0, case1], {
-					name: 'Triage',
-					parameters: { mode: 'rules' },
-				}) as any,
-			);
+			const chain = t.then(linearNode).then(switchCase(switchNode, { case0, case1 }) as any);
 
 			const wf = workflow('test', 'Test').add(chain);
 			const json = wf.toJSON();
@@ -1246,6 +1260,14 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: {},
 			});
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: {
+					name: 'Route by Type',
+					parameters: { mode: 'rules' },
+				},
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 			const case0 = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -1264,25 +1286,28 @@ describe('Workflow Builder', () => {
 
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
-				.then(
-					switchCase([case0, case1, case2], {
-						name: 'Route by Type',
-						parameters: { mode: 'rules' },
-					}),
-				);
+				.then(switchCase(switchNode, { case0, case1, case2 }));
 
 			const json = wf.toJSON();
 
 			// Switch node should have correct connections
-			expect(json.connections['Route by Type'].main[0][0].node).toBe('Case 0');
-			expect(json.connections['Route by Type'].main[1][0].node).toBe('Case 1');
-			expect(json.connections['Route by Type'].main[2][0].node).toBe('Case 2');
+			expect(json.connections['Route by Type']?.main[0]?.[0]?.node).toBe('Case 0');
+			expect(json.connections['Route by Type']?.main[1]?.[0]?.node).toBe('Case 1');
+			expect(json.connections['Route by Type']?.main[2]?.[0]?.node).toBe('Case 2');
 
 			// All nodes should be present (trigger, switch, case0, case1, case2)
 			expect(json.nodes).toHaveLength(5);
 		});
 
 		it('should include fallback as last case in array', () => {
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: {
+					name: 'Router',
+					parameters: { mode: 'rules' },
+				},
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 			const case0 = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -1294,41 +1319,39 @@ describe('Workflow Builder', () => {
 				config: { name: 'Fallback' },
 			});
 
-			const wf = workflow('test', 'Test').then(
-				switchCase([case0, fallback], {
-					name: 'Router',
-					parameters: { mode: 'rules' },
-				}),
-			);
+			const wf = workflow('test', 'Test').then(switchCase(switchNode, { case0, case1: fallback }));
 
 			const json = wf.toJSON();
 
 			// Fallback is just the last case (output 1)
-			expect(json.connections['Router'].main[1][0].node).toBe('Fallback');
+			expect(json.connections['Router']?.main[1]?.[0]?.node).toBe('Fallback');
 
 			// Switch node should exist
-			const switchNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
-			expect(switchNode).toBeDefined();
+			const foundSwitchNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
+			expect(foundSwitchNode).toBeDefined();
 		});
 
 		it('should use latest Switch version', () => {
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: {
+					name: 'Switch',
+					parameters: { mode: 'expression', numberOutputs: 4 },
+				},
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 			const case0 = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
 				config: { name: 'Case 0' },
 			});
 
-			const wf = workflow('test', 'Test').then(
-				switchCase([case0], {
-					name: 'Switch',
-					parameters: { mode: 'expression', numberOutputs: 4 },
-				}),
-			);
+			const wf = workflow('test', 'Test').then(switchCase(switchNode, { case0 }));
 
 			const json = wf.toJSON();
 
-			const switchNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
-			expect(switchNode?.typeVersion).toBe(3.4);
+			const foundSwitchNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.switch');
+			expect(foundSwitchNode?.typeVersion).toBe(3.4);
 		});
 
 		it('should connect trigger to switch', () => {
@@ -1337,20 +1360,23 @@ describe('Workflow Builder', () => {
 				version: 1,
 				config: {},
 			});
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: { name: 'Switch' },
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 			const case0 = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
 				config: { name: 'Case 0' },
 			});
 
-			const wf = workflow('test', 'Test')
-				.add(triggerNode)
-				.then(switchCase([case0], { name: 'Switch' }));
+			const wf = workflow('test', 'Test').add(triggerNode).then(switchCase(switchNode, { case0 }));
 
 			const json = wf.toJSON();
 
 			// Trigger should connect to Switch
-			expect(json.connections[triggerNode.name].main[0][0].node).toBe('Switch');
+			expect(json.connections[triggerNode.name]?.main[0]?.[0]?.node).toBe('Switch');
 		});
 	});
 });

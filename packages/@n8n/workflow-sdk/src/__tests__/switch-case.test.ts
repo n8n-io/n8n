@@ -4,8 +4,8 @@ import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
 
 describe('Switch Case', () => {
-	describe('switchCase() array syntax (existing)', () => {
-		it('should create a switch case composite with array of cases', () => {
+	describe('switchCase() requires named syntax only', () => {
+		it('should require a switch node as first argument', () => {
 			const case0 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3.4,
@@ -17,9 +17,75 @@ describe('Switch Case', () => {
 				config: { name: 'Case 1' },
 			});
 
-			const sc = switchCase([case0, case1]);
-			expect(sc.switchNode).toBeDefined();
-			expect(sc.cases).toHaveLength(2);
+			// Array syntax should throw an error - named syntax is required
+			expect(() => {
+				// @ts-expect-error - Testing runtime rejection of array syntax
+				switchCase([case0, case1]);
+			}).toThrow('switchCase() requires a Switch node as first argument');
+		});
+
+		it('should require named inputs { case0, case1, ... } as second argument', () => {
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: { name: 'My Switch' },
+			});
+			const case0 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Case 0' },
+			});
+			const case1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Case 1' },
+			});
+
+			// Passing array as first argument should throw
+			expect(() => {
+				// @ts-expect-error - Testing runtime rejection of array syntax
+				switchCase([case0, case1], switchNode);
+			}).toThrow('switchCase() requires a Switch node as first argument');
+		});
+
+		it('should work with named syntax: switchCase(switchNode, { case0, case1 })', () => {
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: { name: 'My Switch' },
+			});
+			const case0 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Case 0' },
+			});
+			const case1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Case 1' },
+			});
+
+			// Named syntax should work
+			const composite = switchCase(switchNode, { case0, case1 });
+			expect(composite.switchNode).toBe(switchNode);
+			expect(isSwitchCaseNamedSyntax(composite)).toBe(true);
+		});
+
+		it('should always return named syntax composites', () => {
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: { name: 'My Switch' },
+			});
+			const case0 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Case 0' },
+			});
+
+			const composite = switchCase(switchNode, { case0 });
+			// All composites should now be named syntax
+			expect(isSwitchCaseNamedSyntax(composite)).toBe(true);
 		});
 	});
 
@@ -190,13 +256,9 @@ describe('Switch Case', () => {
 				config: { name: 'Case 0' },
 			});
 
-			// Named syntax
-			const namedSc = switchCase(switchNode, { case0 });
-			expect(isSwitchCaseNamedSyntax(namedSc)).toBe(true);
-
-			// Array syntax
-			const arraySc = switchCase([case0]);
-			expect(isSwitchCaseNamedSyntax(arraySc)).toBe(false);
+			// Named syntax - all switchCase composites are now named syntax
+			const composite = switchCase(switchNode, { case0 });
+			expect(isSwitchCaseNamedSyntax(composite)).toBe(true);
 		});
 	});
 });

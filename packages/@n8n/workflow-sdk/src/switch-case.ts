@@ -1,9 +1,7 @@
-import { v4 as uuid } from 'uuid';
 import type {
 	SwitchCaseComposite,
 	NodeInstance,
 	NodeConfig,
-	DeclaredConnection,
 	NodeChain,
 	IDataObject,
 } from './types/base';
@@ -39,72 +37,6 @@ export interface SwitchCaseConfig extends NodeConfig<IDataObject> {
 }
 
 /**
- * Internal Switch node implementation
- */
-class SwitchNodeInstance implements NodeInstance<'n8n-nodes-base.switch', string, unknown> {
-	readonly type = 'n8n-nodes-base.switch' as const;
-	readonly version: string;
-	readonly config: NodeConfig;
-	readonly id: string;
-	readonly name: string;
-	private _connections: DeclaredConnection[] = [];
-
-	constructor(config?: SwitchCaseConfig) {
-		this.version = config?.version != null ? String(config.version) : '3.4';
-		this.id = config?.id ?? uuid();
-		this.name = config?.name ?? 'Switch';
-		this.config = {
-			...config,
-			parameters: config?.parameters,
-		};
-	}
-
-	update(config: Partial<NodeConfig>): NodeInstance<'n8n-nodes-base.switch', string, unknown> {
-		return new SwitchNodeInstance({ ...this.config, ...config } as SwitchCaseConfig);
-	}
-
-	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[],
-		outputIndex: number = 0,
-	): NodeChain<NodeInstance<'n8n-nodes-base.switch', string, unknown>, T> {
-		const targets = Array.isArray(target) ? target : [target];
-		for (const t of targets) {
-			this._connections.push({ target: t, outputIndex });
-		}
-		// Return a chain-like object that proxies to the last target
-		const lastTarget = targets[targets.length - 1];
-		const self = this;
-		return {
-			_isChain: true,
-			head: this,
-			tail: lastTarget,
-			allNodes: [this, ...targets],
-			type: lastTarget.type,
-			version: lastTarget.version,
-			config: lastTarget.config,
-			id: lastTarget.id,
-			name: lastTarget.name,
-			_outputType: lastTarget._outputType,
-			update: lastTarget.update.bind(lastTarget),
-			then: lastTarget.then.bind(lastTarget),
-			onError: function <H extends NodeInstance<string, string, unknown>>(handler: H) {
-				lastTarget.onError(handler);
-				return this;
-			},
-			getConnections: () => [...self._connections, ...lastTarget.getConnections()],
-		} as unknown as NodeChain<NodeInstance<'n8n-nodes-base.switch', string, unknown>, T>;
-	}
-
-	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {
-		throw new Error('Switch node error handling is managed by SwitchCaseComposite');
-	}
-
-	getConnections(): DeclaredConnection[] {
-		return [...this._connections];
-	}
-}
-
-/**
  * Check if an object is a NodeInstance (has type, version, config, then method)
  */
 function isNodeInstance(obj: unknown): obj is NodeInstance<string, string, unknown> {
@@ -117,35 +49,6 @@ function isNodeInstance(obj: unknown): obj is NodeInstance<string, string, unkno
 		'then' in obj &&
 		typeof (obj as NodeInstance<string, string, unknown>).then === 'function'
 	);
-}
-
-/**
- * Internal Switch case composite implementation
- */
-class SwitchCaseCompositeImpl implements SwitchCaseComposite {
-	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	readonly cases: NodeInstance<string, string, unknown>[];
-
-	constructor(cases: NodeInstance<string, string, unknown>[], config?: SwitchCaseConfig) {
-		this.cases = cases;
-		this.switchNode = new SwitchNodeInstance(config);
-	}
-}
-
-/**
- * Switch case composite implementation that wraps an existing node instance
- */
-class SwitchCaseCompositeWithExistingNode implements SwitchCaseComposite {
-	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	readonly cases: NodeInstance<string, string, unknown>[];
-
-	constructor(
-		cases: NodeInstance<string, string, unknown>[],
-		existingNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>,
-	) {
-		this.cases = cases;
-		this.switchNode = existingNode;
-	}
 }
 
 /**
@@ -233,76 +136,62 @@ export function isSwitchCaseNamedSyntax(
 }
 
 /**
- * Create a Switch case composite for multi-way branching
+ * Create a Switch case composite for multi-way branching.
  *
- * @param casesOrNode - Array of nodes for each case output (index = output number), OR a pre-declared Switch node for named syntax
- * @param configOrNodeOrInputs - Full Switch node config, a pre-declared Switch node instance, OR named inputs { case0, case1, ... }
+ * Requires named syntax: switchCase(switchNode, { case0: target, case1: target, ... })
+ *
+ * @param switchNode - A pre-declared Switch node (n8n-nodes-base.switch)
+ * @param inputs - Named inputs { case0: target, case1: target, ... }
  *
  * @example
  * ```typescript
- * // Array syntax (original API):
- * workflow('id', 'Test')
- *   .add(trigger)
- *   .then(switchCase([case0, case1, case2, fallback], {
+ * // First declare the Switch node:
+ * const routeByType = node({
+ *   type: 'n8n-nodes-base.switch',
+ *   version: 3.2,
+ *   config: {
  *     name: 'Route by Type',
- *     version: 3.2,
  *     parameters: {
  *       mode: 'rules',
- *       rules: { ... },
- *     },
+ *       rules: { ... }
+ *     }
+ *   }
+ * });
+ *
+ * // Then use it with named inputs:
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(switchCase(routeByType, {
+ *     case0: handleTypeA,
+ *     case1: handleTypeB,
+ *     case2: handleFallback
  *   }))
  *   .toJSON();
  *
- * // Using a pre-declared Switch node:
- * const switchNode = node({ type: 'n8n-nodes-base.switch', ... });
- * workflow('id', 'Test')
- *   .add(trigger)
- *   .then(switchCase([case0, case1], switchNode));
- *
- * // Named input syntax (for explicit output index mapping):
+ * // Fan-out: one case connects to multiple parallel nodes:
  * switchCase(switchNode, {
- *   case0: nodeA,
- *   case1: nodeB,
- *   case2: fanOut(nodeC, nodeD)  // fanOut to multiple targets
+ *   case0: fanOut(nodeA, nodeB),
+ *   case1: nodeC
  * })
  * ```
  */
 export function switchCase(
-	casesOrNode:
-		| NodeInstance<string, string, unknown>[]
-		| NodeInstance<'n8n-nodes-base.switch', string, unknown>,
-	configOrNodeOrInputs?:
-		| SwitchCaseConfig
-		| NodeInstance<'n8n-nodes-base.switch', string, unknown>
-		| SwitchCaseNamedInputs,
+	switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+	inputs: SwitchCaseNamedInputs,
 ): SwitchCaseComposite {
-	// Named input syntax: switchCase(switchNode, { case0, case1, ... })
-	if (
-		isNodeInstance(casesOrNode) &&
-		casesOrNode.type === 'n8n-nodes-base.switch' &&
-		configOrNodeOrInputs !== undefined &&
-		isSwitchCaseNamedInputs(configOrNodeOrInputs)
-	) {
-		return new SwitchCaseCompositeNamedSyntax(
-			casesOrNode as NodeInstance<'n8n-nodes-base.switch', string, unknown>,
-			configOrNodeOrInputs,
+	// Validate that first argument is a Switch node
+	if (!isNodeInstance(switchNode) || switchNode.type !== 'n8n-nodes-base.switch') {
+		throw new Error(
+			'switchCase() requires a Switch node as first argument. Use: switchCase(switchNode, { case0: ..., case1: ... })',
 		);
 	}
 
-	// Original API: switchCase(cases, configOrNode)
-	const cases = casesOrNode as NodeInstance<string, string, unknown>[];
-	const configOrNode = configOrNodeOrInputs as
-		| SwitchCaseConfig
-		| NodeInstance<'n8n-nodes-base.switch', string, unknown>
-		| undefined;
-
-	// Check if the second argument is a NodeInstance (pre-declared Switch node)
-	if (isNodeInstance(configOrNode) && configOrNode.type === 'n8n-nodes-base.switch') {
-		return new SwitchCaseCompositeWithExistingNode(
-			cases,
-			configOrNode as NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+	// Validate that second argument is named inputs
+	if (!isSwitchCaseNamedInputs(inputs)) {
+		throw new Error(
+			'switchCase() requires named inputs as second argument. Use: switchCase(switchNode, { case0: ..., case1: ... })',
 		);
 	}
-	// Otherwise, treat it as a SwitchCaseConfig
-	return new SwitchCaseCompositeImpl(cases, configOrNode as SwitchCaseConfig);
+
+	return new SwitchCaseCompositeNamedSyntax(switchNode, inputs);
 }

@@ -811,32 +811,65 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Build the switch node connections to its cases
 		const switchMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add all case nodes and build connections from switch to each case
-		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
-		// Skip null cases (unconnected outputs)
-		// Handle arrays for fan-out (one output to multiple parallel nodes)
-		composite.cases.forEach((caseNode, index) => {
-			if (caseNode === null) {
-				return; // Skip null cases - no connection for this output
+		// Handle named syntax: switchCase(switchNode, { case0, case1, ... })
+		if (isSwitchCaseNamedSyntax(composite)) {
+			const namedComposite = composite as SwitchCaseComposite & {
+				caseMapping: Map<number, SwitchCaseTarget>;
+				_allCaseNodes: NodeInstance<string, string, unknown>[];
+			};
+
+			// Add all case nodes
+			for (const caseNode of namedComposite._allCaseNodes) {
+				this.addBranchToGraph(nodes, caseNode);
 			}
 
-			// Check if caseNode is an array (fan-out pattern)
-			if (Array.isArray(caseNode)) {
-				// Fan-out: multiple parallel targets from this case
-				const targets: ConnectionTarget[] = [];
-				for (const branchNode of caseNode) {
-					if (branchNode === null) continue;
-					const branchHead = this.addBranchToGraph(nodes, branchNode);
-					targets.push({ node: branchHead, type: 'main', index: 0 });
+			// Connect switch to each case at the correct output index
+			for (const [caseIndex, target] of namedComposite.caseMapping) {
+				if (target === null) continue; // Skip null cases
+
+				if (isFanOut(target)) {
+					// Fan-out: multiple targets from one case
+					const targets: ConnectionTarget[] = [];
+					for (const t of target.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					switchMainConns.set(caseIndex, targets);
+				} else {
+					// Single target
+					const targetName = isNodeChain(target) ? target.head.name : target.name;
+					switchMainConns.set(caseIndex, [{ node: targetName, type: 'main', index: 0 }]);
 				}
-				if (targets.length > 0) {
-					switchMainConns.set(index, targets);
-				}
-			} else {
-				const caseHeadName = this.addBranchToGraph(nodes, caseNode);
-				switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
 			}
-		});
+		} else {
+			// Original behavior: switchCase([case0, case1, ...], config)
+			// Add all case nodes and build connections from switch to each case
+			// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
+			// Skip null cases (unconnected outputs)
+			// Handle arrays for fan-out (one output to multiple parallel nodes)
+			composite.cases.forEach((caseNode, index) => {
+				if (caseNode === null) {
+					return; // Skip null cases - no connection for this output
+				}
+
+				// Check if caseNode is an array (fan-out pattern)
+				if (Array.isArray(caseNode)) {
+					// Fan-out: multiple parallel targets from this case
+					const targets: ConnectionTarget[] = [];
+					for (const branchNode of caseNode) {
+						if (branchNode === null) continue;
+						const branchHead = this.addBranchToGraph(nodes, branchNode);
+						targets.push({ node: branchHead, type: 'main', index: 0 });
+					}
+					if (targets.length > 0) {
+						switchMainConns.set(index, targets);
+					}
+				} else {
+					const caseHeadName = this.addBranchToGraph(nodes, caseNode);
+					switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+				}
+			});
+		}
 
 		// Add the switch node with connections to cases
 		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
@@ -855,33 +888,86 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Build the IF node connections to its branches
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add branch nodes (may be NodeChain, single node, or array of nodes for fan-out)
-		if (composite.trueBranch) {
-			if (Array.isArray(composite.trueBranch)) {
-				// Fan-out: multiple parallel targets from trueBranch
-				const targets: ConnectionTarget[] = [];
-				for (const branchNode of composite.trueBranch) {
-					const branchHead = this.addBranchToGraph(nodes, branchNode);
-					targets.push({ node: branchHead, type: 'main', index: 0 });
-				}
-				ifMainConns.set(0, targets);
-			} else {
-				const trueBranchHead = this.addBranchToGraph(nodes, composite.trueBranch);
-				ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
+		// Handle named syntax: ifElse(ifNode, { true: ..., false: ... })
+		if (isIfElseNamedSyntax(composite)) {
+			const namedComposite = composite as IfElseComposite & {
+				_trueBranchTarget: IfElseTarget;
+				_falseBranchTarget: IfElseTarget;
+				_allBranchNodes: NodeInstance<string, string, unknown>[];
+			};
+
+			// Add all branch nodes
+			for (const branchNode of namedComposite._allBranchNodes) {
+				this.addBranchToGraph(nodes, branchNode);
 			}
-		}
-		if (composite.falseBranch) {
-			if (Array.isArray(composite.falseBranch)) {
-				// Fan-out: multiple parallel targets from falseBranch
-				const targets: ConnectionTarget[] = [];
-				for (const branchNode of composite.falseBranch) {
-					const branchHead = this.addBranchToGraph(nodes, branchNode);
-					targets.push({ node: branchHead, type: 'main', index: 0 });
+
+			// Connect IF to true branch (output 0)
+			if (
+				namedComposite._trueBranchTarget !== null &&
+				namedComposite._trueBranchTarget !== undefined
+			) {
+				const target = namedComposite._trueBranchTarget;
+				if (isFanOut(target)) {
+					const targets: ConnectionTarget[] = [];
+					for (const t of target.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					ifMainConns.set(0, targets);
+				} else {
+					const targetName = isNodeChain(target) ? target.head.name : target.name;
+					ifMainConns.set(0, [{ node: targetName, type: 'main', index: 0 }]);
 				}
-				ifMainConns.set(1, targets);
-			} else {
-				const falseBranchHead = this.addBranchToGraph(nodes, composite.falseBranch);
-				ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
+			}
+
+			// Connect IF to false branch (output 1)
+			if (
+				namedComposite._falseBranchTarget !== null &&
+				namedComposite._falseBranchTarget !== undefined
+			) {
+				const target = namedComposite._falseBranchTarget;
+				if (isFanOut(target)) {
+					const targets: ConnectionTarget[] = [];
+					for (const t of target.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					ifMainConns.set(1, targets);
+				} else {
+					const targetName = isNodeChain(target) ? target.head.name : target.name;
+					ifMainConns.set(1, [{ node: targetName, type: 'main', index: 0 }]);
+				}
+			}
+		} else {
+			// Original behavior for array syntax (should not reach here after removal)
+			// Add branch nodes (may be NodeChain, single node, or array of nodes for fan-out)
+			if (composite.trueBranch) {
+				if (Array.isArray(composite.trueBranch)) {
+					// Fan-out: multiple parallel targets from trueBranch
+					const targets: ConnectionTarget[] = [];
+					for (const branchNode of composite.trueBranch) {
+						const branchHead = this.addBranchToGraph(nodes, branchNode);
+						targets.push({ node: branchHead, type: 'main', index: 0 });
+					}
+					ifMainConns.set(0, targets);
+				} else {
+					const trueBranchHead = this.addBranchToGraph(nodes, composite.trueBranch);
+					ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
+				}
+			}
+			if (composite.falseBranch) {
+				if (Array.isArray(composite.falseBranch)) {
+					// Fan-out: multiple parallel targets from falseBranch
+					const targets: ConnectionTarget[] = [];
+					for (const branchNode of composite.falseBranch) {
+						const branchHead = this.addBranchToGraph(nodes, branchNode);
+						targets.push({ node: branchHead, type: 'main', index: 0 });
+					}
+					ifMainConns.set(1, targets);
+				} else {
+					const falseBranchHead = this.addBranchToGraph(nodes, composite.falseBranch);
+					ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
+				}
 			}
 		}
 

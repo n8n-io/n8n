@@ -571,7 +571,7 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 
 /**
  * Generate flat node config or variable reference for composite functions.
- * Used by ifElse, merge, switchCase, and splitInBatches.
+ * Used by splitInBatches.
  */
 function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
 	const nodeName = node.json.name;
@@ -579,6 +579,19 @@ function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): s
 		return getVarName(nodeName, ctx);
 	}
 	return generateFlatNodeConfig(node);
+}
+
+/**
+ * Get variable reference or generate inline node() call for named syntax composites.
+ * Used by ifElse, merge, switchCase (which require pre-declared nodes in named syntax).
+ */
+function getVarRefOrInlineNode(node: SemanticNode, ctx: GenerationContext): string {
+	const nodeName = node.json.name;
+	if (nodeName && ctx.variableNodes.has(nodeName)) {
+		return getVarName(nodeName, ctx);
+	}
+	// Generate inline node() call for named syntax
+	return generateNodeCall(node, ctx);
 }
 
 /**
@@ -710,7 +723,7 @@ function generateBranchCode(
 }
 
 /**
- * Generate code for an IF branch
+ * Generate code for an IF branch (named syntax only)
  */
 function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
@@ -718,42 +731,44 @@ function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): st
 	const trueBranchCode = generateBranchCode(ifElse.trueBranch, innerCtx);
 	const falseBranchCode = generateBranchCode(ifElse.falseBranch, innerCtx);
 
-	// Use variable reference if IF node is already declared as a variable
-	// ifElse expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
-	const config = generateFlatNodeOrVarRef(ifElse.ifNode, ctx);
+	// For named syntax, we need a variable reference to the IF node
+	const ifNodeRef = getVarRefOrInlineNode(ifElse.ifNode, ctx);
 
-	return `ifElse([${trueBranchCode}, ${falseBranchCode}], ${config})`;
+	return `ifElse(${ifNodeRef}, { true: ${trueBranchCode}, false: ${falseBranchCode} })`;
 }
 
 /**
- * Generate code for a switch case
+ * Generate code for a switch case (named syntax only)
  */
 function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	// Use generateBranchCode to handle fan-out within each case
-	const casesCode = switchCase.cases.map((c) => generateBranchCode(c, innerCtx)).join(', ');
+	// Generate named case entries: { case0: ..., case1: ..., ... }
+	const caseEntries = switchCase.cases
+		.map((c, i) => `case${i}: ${generateBranchCode(c, innerCtx)}`)
+		.join(', ');
 
-	// Use variable reference if switch node is already declared as a variable
-	// switchCase expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
-	const config = generateFlatNodeOrVarRef(switchCase.switchNode, ctx);
+	// For named syntax, we need a variable reference to the Switch node
+	const switchNodeRef = getVarRefOrInlineNode(switchCase.switchNode, ctx);
 
-	return `switchCase([${casesCode}], ${config})`;
+	return `switchCase(${switchNodeRef}, { ${caseEntries} })`;
 }
 
 /**
- * Generate code for a merge
+ * Generate code for a merge (named syntax only)
  */
 function generateMerge(merge: MergeCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	const branchesCode = merge.branches.map((b) => generateComposite(b, innerCtx)).join(', ');
+	// Generate named input entries: { input0: ..., input1: ..., ... }
+	const inputEntries = merge.branches
+		.map((b, i) => `input${i}: ${generateComposite(b, innerCtx)}`)
+		.join(', ');
 
-	// Use variable reference if merge node is already declared as a variable
-	// merge expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
-	const config = generateFlatNodeOrVarRef(merge.mergeNode, ctx);
+	// For named syntax, we need a variable reference to the Merge node
+	const mergeNodeRef = getVarRefOrInlineNode(merge.mergeNode, ctx);
 
-	return `merge([${branchesCode}], ${config})`;
+	return `merge(${mergeNodeRef}, { ${inputEntries} })`;
 }
 
 /**
