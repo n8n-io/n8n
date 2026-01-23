@@ -411,8 +411,9 @@ describe('Tool Wrappers', () => {
 			const connOp = operations[1];
 			expect(connOp.type).toBe('mergeConnections');
 			if (connOp.type === 'mergeConnections') {
-				expect(connOp.connections['Extract Email and Temperature']).toBeDefined();
-				expect(connOp.connections['Extract Email and Temperature'].ai_outputParser[0][0]).toEqual({
+				const parserConn = connOp.connections['Extract Email and Temperature'];
+				expect(parserConn).toBeDefined();
+				expect(parserConn?.ai_outputParser?.[0]?.[0]).toEqual({
 					node: 'Generate Fun Weather Email',
 					type: 'ai_outputParser',
 					index: 0,
@@ -484,8 +485,9 @@ describe('Tool Wrappers', () => {
 			expect(operations[2].type).toBe('mergeConnections');
 			if (operations[2].type === 'mergeConnections') {
 				// The connection should reference the RENAMED node name
-				expect(operations[2].connections['Output Parser']).toBeDefined();
-				expect(operations[2].connections['Output Parser'].main[0][0].node).toBe('Renamed Agent');
+				const parserConn = operations[2].connections['Output Parser'];
+				expect(parserConn).toBeDefined();
+				expect(parserConn?.main?.[0]?.[0]?.node).toBe('Renamed Agent');
 			}
 		});
 	});

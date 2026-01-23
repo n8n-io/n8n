@@ -128,6 +128,48 @@ describe('connection.utils', () => {
 		description: '',
 	};
 
+	// Mock AI Agent with expression-based inputs (like real AI Agent)
+	const mockAiAgentNodeType: INodeTypeDescription = {
+		displayName: 'AI Agent',
+		name: '@n8n/n8n-nodes-langchain.agent',
+		group: ['output'],
+		version: 1,
+		// This expression simulates how the real AI Agent includes ai_outputParser
+		// conditionally based on hasOutputParser parameter
+		inputs: `={{
+			((hasOutputParser) => {
+				const inputs = [
+					{ type: 'main' },
+					{ type: 'ai_languageModel' },
+					{ type: 'ai_memory' },
+					{ type: 'ai_tool' },
+					{ type: 'ai_outputParser' },
+				];
+				if (hasOutputParser === false) {
+					return inputs.filter(i => i.type !== 'ai_outputParser');
+				}
+				return inputs;
+			})($parameter.hasOutputParser)
+		}}`,
+		outputs: [NodeConnectionTypes.Main],
+		properties: [],
+		defaults: { name: 'AI Agent' },
+		description: '',
+	};
+
+	// Mock Output Parser (sub-node)
+	const mockOutputParserNodeType: INodeTypeDescription = {
+		displayName: 'Output Parser',
+		name: '@n8n/n8n-nodes-langchain.outputParserStructured',
+		group: ['output'],
+		version: 1,
+		inputs: [],
+		outputs: ['ai_outputParser'],
+		properties: [],
+		defaults: { name: 'Output Parser' },
+		description: '',
+	};
+
 	// Mock nodes
 	const mockMainNode: INode = {
 		id: 'node1',
@@ -165,6 +207,8 @@ describe('connection.utils', () => {
 		mockTriggerNodeType,
 		mockIfNodeType,
 		mockVectorStoreNodeType,
+		mockAiAgentNodeType,
+		mockOutputParserNodeType,
 	];
 
 	describe('validateConnection', () => {
@@ -960,6 +1004,68 @@ describe('connection.utils', () => {
 
 			expect(result.possibleTypes).toEqual(['type1', 'type2']);
 			expect(result.error).toContain('Multiple connection types possible');
+		});
+
+		it('should allow output parser connection when AI Agent has hasOutputParser true/undefined', () => {
+			// When hasOutputParser is true or not set, ai_outputParser input should be available
+			const aiAgentNode: INode = {
+				id: 'agent1',
+				name: 'AI Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { hasOutputParser: true },
+			};
+
+			const outputParserNode: INode = {
+				id: 'parser1',
+				name: 'Output Parser',
+				type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+				typeVersion: 1,
+				position: [0, 100],
+				parameters: {},
+			};
+
+			const result = inferConnectionType(
+				outputParserNode,
+				aiAgentNode,
+				mockOutputParserNodeType,
+				mockAiAgentNodeType,
+			);
+
+			expect(result.connectionType).toBe('ai_outputParser');
+		});
+
+		it('should NOT allow output parser connection when AI Agent has hasOutputParser false', () => {
+			// When hasOutputParser is explicitly false, ai_outputParser input is filtered out
+			const aiAgentNode: INode = {
+				id: 'agent1',
+				name: 'AI Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: { hasOutputParser: false },
+			};
+
+			const outputParserNode: INode = {
+				id: 'parser1',
+				name: 'Output Parser',
+				type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+				typeVersion: 1,
+				position: [0, 100],
+				parameters: {},
+			};
+
+			const result = inferConnectionType(
+				outputParserNode,
+				aiAgentNode,
+				mockOutputParserNodeType,
+				mockAiAgentNodeType,
+			);
+
+			// Should fail because ai_outputParser is not available when hasOutputParser is false
+			expect(result.error).toBeDefined();
+			expect(result.connectionType).toBeUndefined();
 		});
 	});
 
