@@ -252,17 +252,12 @@ const handleTooltipClose = () => {
 					:data-resourceid="item.id"
 					data-test-id="breadcrumbs-item"
 					data-target="folder-breadcrumb-item"
+					@click="(event: MouseEvent) => emitItemSelected(item.id, event)"
 					@mouseenter="emitItemHover(item.id)"
 					@mouseup="onItemMouseUp(item)"
 				>
-					<N8nLink
-						v-if="item.href"
-						:href="item.href"
-						theme="text"
-						@click="(event: MouseEvent) => emitItemSelected(item.id, event)"
-						>{{ item.label }}</N8nLink
-					>
-					<N8nText v-else @click="emitItemSelected(item.id)">{{ item.label }}</N8nText>
+					<N8nLink v-if="item.href" :to="item.href" theme="text">{{ item.label }}</N8nLink>
+					<N8nText v-else>{{ item.label }}</N8nText>
 				</li>
 				<li v-if="index !== items.length - 1" :class="$style.separator">
 					{{ separator }}
