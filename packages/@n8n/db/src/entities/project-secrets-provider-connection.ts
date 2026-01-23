@@ -6,7 +6,7 @@ import { Project } from './project';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 
 @Entity()
-export class SharedSecretsProviderConnection extends WithTimestamps {
+export class ProjectSecretsProviderConnection extends WithTimestamps {
 	@Column({ type: 'varchar' })
 	role: ExternalSecretsProviderSharingRole;
 

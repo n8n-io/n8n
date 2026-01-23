@@ -15,12 +15,12 @@ import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { ProjectSecretsProviderConnection } from './project-secrets-provider-connection';
 import { Role } from './role';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
-import { SharedSecretsProviderConnection } from './shared-secrets-provider-connection';
 import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
@@ -36,44 +36,44 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	AnnotationTagEntity,
+	AnnotationTagMapping,
+	ApiKey,
+	AuthIdentity,
+	AuthProviderSyncHistory,
+	BinaryDataFile,
+	CredentialsEntity,
+	ExecutionAnnotation,
+	ExecutionData,
+	ExecutionEntity,
+	ExecutionMetadata,
+	Folder,
+	FolderTagMapping,
 	InvalidAuthToken,
 	ProcessedData,
-	Settings,
-	Variables,
-	ApiKey,
-	BinaryDataFile,
-	SourceTypeSchema,
-	type SourceType,
-	WebhookEntity,
-	AuthIdentity,
-	CredentialsEntity,
-	Folder,
 	Project,
 	ProjectRelation,
 	Role,
 	Scope,
+	SecretsProviderConnection,
+	Settings,
 	SharedCredentials,
+	ProjectSecretsProviderConnection as SharedSecretsProviderConnection,
 	SharedWorkflow,
+	SourceTypeSchema,
 	TagEntity,
+	TestCaseExecution,
+	TestRun,
 	User,
+	Variables,
+	WebhookEntity,
 	WorkflowDependency,
 	WorkflowEntity,
-	WorkflowStatistics,
-	WorkflowTagMapping,
-	FolderTagMapping,
-	AuthProviderSyncHistory,
 	WorkflowHistory,
 	WorkflowPublishHistory,
-	ExecutionData,
-	ExecutionMetadata,
-	AnnotationTagEntity,
-	ExecutionAnnotation,
-	AnnotationTagMapping,
-	TestRun,
-	TestCaseExecution,
-	ExecutionEntity,
-	SecretsProviderConnection,
-	SharedSecretsProviderConnection,
+	WorkflowStatistics,
+	WorkflowTagMapping,
+	type SourceType,
 };
 
 export const entities = {
@@ -112,5 +112,5 @@ export const entities = {
 	ExecutionEntity,
 	Role,
 	SecretsProviderConnection,
-	SharedSecretsProviderConnection,
+	ProjectSecretsProviderConnection,
 };
