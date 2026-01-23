@@ -30,6 +30,7 @@ interface GenerationContext {
 	graph: SemanticGraph; // Full graph for looking up subnodes
 	nodeNameToVarName: Map<string, string>; // Maps node names to unique variable names
 	usedVarNames: Set<string>; // Tracks all used variable names to avoid collisions
+	subnodeVariables: Map<string, { node: SemanticNode; builderName: string }>; // Subnodes to declare as variables
 }
 
 /**
@@ -341,6 +342,141 @@ function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): str
 }
 
 /**
+ * Recursively collect all subnodes from a node and add them to the context's subnodeVariables.
+ * Processes nested subnodes first so they're declared before their parents.
+ */
+function collectSubnodesAsVariables(node: SemanticNode, ctx: GenerationContext): void {
+	if (node.subnodes.length === 0) return;
+
+	for (const sub of node.subnodes) {
+		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
+		if (!subnodeNode) continue;
+
+		// First, recursively collect nested subnodes (they must be declared first)
+		collectSubnodesAsVariables(subnodeNode, ctx);
+
+		// Then add this subnode
+		const builderName = AI_CONNECTION_TO_BUILDER[sub.connectionType];
+		ctx.subnodeVariables.set(sub.subnodeName, { node: subnodeNode, builderName });
+	}
+}
+
+/**
+ * Generate a subnode builder call using variable references for nested subnodes.
+ */
+function generateSubnodeCallWithVarRefs(
+	subnodeNode: SemanticNode,
+	builderName: string,
+	ctx: GenerationContext,
+): string {
+	const parts: string[] = [];
+
+	parts.push(`type: '${subnodeNode.type}'`);
+	parts.push(`version: ${subnodeNode.json.typeVersion}`);
+
+	const configParts: string[] = [];
+
+	const defaultName = generateDefaultNodeName(subnodeNode.type);
+	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
+		configParts.push(`name: '${escapeString(subnodeNode.json.name)}'`);
+	}
+
+	if (subnodeNode.json.parameters && Object.keys(subnodeNode.json.parameters).length > 0) {
+		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters)}`);
+	}
+
+	if (subnodeNode.json.credentials) {
+		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials)}`);
+	}
+
+	const pos = subnodeNode.json.position;
+	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
+	}
+
+	// Generate nested subnodes config using variable references
+	const nestedSubnodesConfig = generateSubnodesConfigWithVarRefs(subnodeNode, ctx);
+	if (nestedSubnodesConfig) {
+		configParts.push(`subnodes: ${nestedSubnodesConfig}`);
+	}
+
+	if (configParts.length > 0) {
+		parts.push(`config: { ${configParts.join(', ')} }`);
+	} else {
+		parts.push(`config: {}`);
+	}
+
+	return `${builderName}({ ${parts.join(', ')} })`;
+}
+
+/**
+ * Generate subnodes config object using variable references instead of inline calls.
+ */
+function generateSubnodesConfigWithVarRefs(
+	node: SemanticNode,
+	ctx: GenerationContext,
+): string | null {
+	if (node.subnodes.length === 0) {
+		return null;
+	}
+
+	// Group subnodes by connection type, using variable names
+	const grouped = new Map<AiConnectionType, string[]>();
+
+	for (const sub of node.subnodes) {
+		const varName = getVarName(sub.subnodeName, ctx);
+		const existing = grouped.get(sub.connectionType) ?? [];
+		existing.push(varName);
+		grouped.set(sub.connectionType, existing);
+	}
+
+	// Generate config entries using variable names
+	const entries: string[] = [];
+
+	for (const [connType, varNames] of grouped) {
+		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
+
+		if (varNames.length === 0) continue;
+
+		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
+			// Always array type (tools) - generate as array even for single item
+			entries.push(`${configKey}: [${varNames.join(', ')}]`);
+		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
+			// Optional array type (model) - single if one, array if multiple
+			if (varNames.length === 1) {
+				entries.push(`${configKey}: ${varNames[0]}`);
+			} else {
+				entries.push(`${configKey}: [${varNames.join(', ')}]`);
+			}
+		} else {
+			// Single item type (memory, etc.)
+			entries.push(`${configKey}: ${varNames[0]}`);
+		}
+	}
+
+	if (entries.length === 0) {
+		return null;
+	}
+
+	return `{ ${entries.join(', ')} }`;
+}
+
+/**
+ * Generate subnode variable declarations
+ */
+function generateSubnodeVariableDeclarations(ctx: GenerationContext): string[] {
+	const declarations: string[] = [];
+
+	for (const [nodeName, { node, builderName }] of ctx.subnodeVariables) {
+		const varName = getUniqueVarName(nodeName, ctx);
+		const call = generateSubnodeCallWithVarRefs(node, builderName, ctx);
+		declarations.push(`const ${varName} = ${call};`);
+	}
+
+	return declarations;
+}
+
+/**
  * Generate node config object
  */
 function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string {
@@ -374,7 +510,11 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	// Include subnodes config if this node has AI subnodes
-	const subnodesConfig = generateSubnodesConfig(node, ctx);
+	// Use variable references if subnodes are declared as variables
+	const subnodesConfig =
+		ctx.subnodeVariables.size > 0
+			? generateSubnodesConfigWithVarRefs(node, ctx)
+			: generateSubnodesConfig(node, ctx);
 	if (subnodesConfig) {
 		configParts.push(`subnodes: ${subnodesConfig}`);
 	}
@@ -877,11 +1017,24 @@ export function generateCode(
 		graph,
 		nodeNameToVarName: new Map(),
 		usedVarNames: new Set(),
+		subnodeVariables: new Map(),
 	};
+
+	// Collect all subnodes from all nodes in the graph (not just variable nodes)
+	for (const node of graph.nodes.values()) {
+		collectSubnodesAsVariables(node, ctx);
+	}
 
 	const lines: string[] = [];
 
-	// Generate variable declarations first
+	// Generate subnode variable declarations FIRST (since they're referenced by regular nodes)
+	const subnodeDeclarations = generateSubnodeVariableDeclarations(ctx);
+	if (subnodeDeclarations.length > 0) {
+		lines.push(...subnodeDeclarations);
+		lines.push('');
+	}
+
+	// Generate regular node variable declarations
 	if (tree.variables.size > 0) {
 		lines.push(generateVariableDeclarations(tree.variables, ctx));
 		lines.push('');

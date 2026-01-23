@@ -954,6 +954,326 @@ describe('code-generator', () => {
 		});
 
 		describe('AI subnodes', () => {
+			it('declares subnodes as variables at top of file', () => {
+				const json: WorkflowJSON = {
+					id: 'ai-subnodes-var-test',
+					name: 'AI Subnodes Variable Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.7,
+							position: [200, 0],
+							parameters: {
+								promptType: 'auto',
+								text: 'Hello',
+							},
+						},
+						{
+							id: '3',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1.2,
+							position: [200, 200],
+							parameters: {
+								model: 'gpt-4',
+							},
+							credentials: {
+								openAiApi: { name: 'OpenAI', id: 'cred-123' },
+							},
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+						'OpenAI Model': {
+							ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Subnode should be declared as a variable
+				expect(code).toMatch(/const openAI_Model = languageModel\(/);
+
+				// Parent node should reference subnode by variable name, not inline
+				expect(code).toContain('subnodes: { model: openAI_Model }');
+
+				// The languageModel call should NOT appear inline in the node config
+				// (only as a variable declaration)
+				const inlineModelCount = (code.match(/model: languageModel\(/g) || []).length;
+				expect(inlineModelCount).toBe(0);
+			});
+
+			it('declares multiple tool subnodes as variables', () => {
+				const json: WorkflowJSON = {
+					id: 'ai-tools-var-test',
+					name: 'AI Tools Variable Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.7,
+							position: [200, 0],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [200, 200],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Code Tool',
+							type: '@n8n/n8n-nodes-langchain.toolCode',
+							typeVersion: 1.1,
+							position: [200, 300],
+							parameters: { code: 'return 1' },
+						},
+						{
+							id: '5',
+							name: 'Calculator',
+							type: '@n8n/n8n-nodes-langchain.toolCalculator',
+							typeVersion: 1,
+							position: [200, 400],
+							parameters: {},
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+						'OpenAI Model': {
+							ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						'Code Tool': {
+							ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+						},
+						Calculator: {
+							ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// All subnodes should be declared as variables
+				expect(code).toMatch(/const openAI_Model = languageModel\(/);
+				expect(code).toMatch(/const code_Tool = tool\(/);
+				expect(code).toMatch(/const calculator = tool\(/);
+
+				// Parent node should reference subnodes by variable names
+				expect(code).toContain('model: openAI_Model');
+				expect(code).toMatch(/tools: \[code_Tool, calculator\]|tools: \[calculator, code_Tool\]/);
+
+				// No inline tool() calls in subnodes config
+				const inlineToolCount = (code.match(/tools: \[tool\(/g) || []).length;
+				expect(inlineToolCount).toBe(0);
+			});
+
+			it('declares memory subnode as variable', () => {
+				const json: WorkflowJSON = {
+					id: 'ai-memory-var-test',
+					name: 'AI Memory Variable Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.7,
+							position: [200, 0],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Buffer Memory',
+							type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+							typeVersion: 1.2,
+							position: [200, 200],
+							parameters: { contextWindowLength: 5 },
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+						'Buffer Memory': {
+							ai_memory: [[{ node: 'AI Agent', type: 'ai_memory', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Memory subnode should be declared as a variable
+				expect(code).toMatch(/const buffer_Memory = memory\(/);
+
+				// Parent node should reference by variable name
+				expect(code).toContain('memory: buffer_Memory');
+
+				// No inline memory() call
+				const inlineMemoryCount = (code.match(/memory: memory\(/g) || []).length;
+				expect(inlineMemoryCount).toBe(0);
+			});
+
+			it('declares subnode variables before regular node variables', () => {
+				const json: WorkflowJSON = {
+					id: 'ai-order-test',
+					name: 'AI Order Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.7,
+							position: [200, 0],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'OpenAI Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [200, 200],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Shared Node',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [300, 0],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+						'AI Agent': { main: [[{ node: 'Shared Node', type: 'main', index: 0 }]] },
+						'OpenAI Model': {
+							ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Subnode variable declaration should come before workflow variable
+				const subnodeVarIndex = code.indexOf('const openAI_Model = languageModel(');
+				const workflowVarIndex = code.indexOf('const wf = workflow(');
+
+				expect(subnodeVarIndex).toBeGreaterThan(-1);
+				expect(workflowVarIndex).toBeGreaterThan(-1);
+				expect(subnodeVarIndex).toBeLessThan(workflowVarIndex);
+			});
+
+			it('handles nested subnodes (subnode with its own subnodes)', () => {
+				// Test case: AI Agent with a tool that has its own language model
+				const json: WorkflowJSON = {
+					id: 'nested-subnodes-test',
+					name: 'Nested Subnodes Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'AI Agent',
+							type: '@n8n/n8n-nodes-langchain.agent',
+							typeVersion: 1.7,
+							position: [200, 0],
+							parameters: {},
+						},
+						{
+							id: '3',
+							name: 'Main Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [200, 200],
+							parameters: {},
+						},
+						{
+							id: '4',
+							name: 'Summarization Chain',
+							type: '@n8n/n8n-nodes-langchain.chainSummarization',
+							typeVersion: 2,
+							position: [200, 300],
+							parameters: {},
+						},
+						{
+							id: '5',
+							name: 'Chain Model',
+							type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+							typeVersion: 1,
+							position: [200, 400],
+							parameters: { model: 'gpt-3.5-turbo' },
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+						'Main Model': {
+							ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+						'Summarization Chain': {
+							ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+						},
+						'Chain Model': {
+							ai_languageModel: [
+								[{ node: 'Summarization Chain', type: 'ai_languageModel', index: 0 }],
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// All subnodes should be declared as variables (including nested ones)
+				expect(code).toMatch(/const main_Model = languageModel\(/);
+				expect(code).toMatch(/const chain_Model = languageModel\(/);
+				expect(code).toMatch(/const summarization_Chain = tool\(/);
+
+				// Chain Model should be declared before Summarization Chain (since it's used by it)
+				const chainModelIndex = code.indexOf('const chain_Model = languageModel(');
+				const summarizationIndex = code.indexOf('const summarization_Chain = tool(');
+				expect(chainModelIndex).toBeLessThan(summarizationIndex);
+
+				// Summarization Chain should reference Chain Model by variable
+				// The tool() call for summarization chain should use the variable reference
+				expect(code).toMatch(/subnodes: \{ model: chain_Model \}/);
+			});
+
+			// Keep the old tests but update expectations
 			it('generates subnodes config with languageModel() calls', () => {
 				const json: WorkflowJSON = {
 					id: 'ai-subnodes-test',
@@ -1001,9 +1321,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should generate subnodes config with languageModel() call
+				// Should generate subnodes config with variable reference
 				expect(code).toContain('subnodes:');
-				expect(code).toContain('model: languageModel(');
+				// languageModel() should be a variable declaration, not inline
+				expect(code).toMatch(/const \w+ = languageModel\(/);
 				expect(code).toContain("type: '@n8n/n8n-nodes-langchain.lmChatOpenAi'");
 			});
 
@@ -1068,13 +1389,13 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should generate subnodes config with tools array
+				// Should generate subnodes config with variable references
 				expect(code).toContain('subnodes:');
-				expect(code).toContain('model: languageModel(');
-				expect(code).toContain('tools: [');
-				expect(code).toContain('tool(');
-				// Should have multiple tool() calls
-				expect(code.match(/tool\(/g)?.length).toBeGreaterThanOrEqual(2);
+				// Should have variable declarations for subnodes
+				expect(code).toMatch(/const \w+ = languageModel\(/);
+				expect(code).toMatch(/const \w+ = tool\(/);
+				// Should have 2 tool variable declarations
+				expect((code.match(/const \w+ = tool\(/g) || []).length).toBe(2);
 			});
 
 			it('generates memory() call for memory subnodes', () => {
@@ -1117,7 +1438,8 @@ describe('code-generator', () => {
 				const code = generateFromWorkflow(json);
 
 				expect(code).toContain('subnodes:');
-				expect(code).toContain('memory: memory(');
+				// memory() should be a variable declaration
+				expect(code).toMatch(/const \w+ = memory\(/);
 			});
 		});
 

@@ -392,10 +392,12 @@ describe('generateWorkflowCode with AI subnodes', () => {
 		// Should NOT have standalone model node as .add() call
 		expect(code).not.toMatch(/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.lmChatOpenAi'/);
 
-		// Should have subnode config with languageModel factory
-		expect(code).toContain('subnodes:');
-		expect(code).toContain('model: languageModel(');
+		// Should have subnode as a variable declaration
+		expect(code).toMatch(/const \w+ = languageModel\(/);
 		expect(code).toContain("type: '@n8n/n8n-nodes-langchain.lmChatOpenAi'");
+		// Should reference the variable in subnodes config
+		expect(code).toContain('subnodes:');
+		expect(code).toMatch(/model: \w+/); // Variable reference, not inline call
 	});
 
 	it('should generate subnode config for AI agent with multiple subnodes', () => {
@@ -462,12 +464,15 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should have all subnodes in config
+		// Should have all subnodes as variable declarations
+		expect(code).toMatch(/const \w+ = languageModel\(/);
+		expect(code).toMatch(/const \w+ = memory\(/);
+		expect(code).toMatch(/const \w+ = tool\(/);
+		// Should reference variables in subnodes config
 		expect(code).toContain('subnodes:');
-		expect(code).toContain('model: languageModel(');
-		expect(code).toContain('memory: memory(');
-		expect(code).toContain('tools: [');
-		expect(code).toContain('tool(');
+		expect(code).toMatch(/model: \w+/); // Variable reference
+		expect(code).toMatch(/memory: \w+/); // Variable reference
+		expect(code).toMatch(/tools: \[\w+, \w+\]/); // Variable references in array
 
 		// Should NOT have standalone subnode .add() calls
 		expect(code).not.toMatch(/\.add\(node\(\{\s*type:\s*'@n8n\/n8n-nodes-langchain\.lmChatOpenAi'/);
@@ -519,7 +524,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 		const code = generateWorkflowCode(json);
 
-		expect(code).toContain('outputParser: outputParser(');
+		// Should have the outputParser subnode as a variable declaration
+		expect(code).toMatch(/const \w+ = outputParser\(/);
+		// Should reference the variable in subnodes config
+		expect(code).toMatch(/outputParser: \w+/); // Variable reference, not inline call
 	});
 
 	it('should roundtrip AI connections correctly', () => {
@@ -633,9 +641,11 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 		// Should include the disconnected AI agent
 		expect(code).toContain('Disconnected AI Agent');
-		// Should include the model subnode embedded in the agent's config
+		// Should have the model subnode as a variable declaration
+		expect(code).toMatch(/const \w+ = languageModel\(/);
+		// Should reference the variable in subnodes config
 		expect(code).toContain('subnodes:');
-		expect(code).toContain('model: languageModel(');
+		expect(code).toMatch(/model: \w+/); // Variable reference, not inline call
 	});
 
 	it('should roundtrip disconnected AI nodes correctly', () => {
@@ -740,7 +750,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 		const code = generateWorkflowCode(json);
 
-		expect(code).toContain('embedding: embedding(');
+		// Should have the embedding subnode as a variable declaration
+		expect(code).toMatch(/const \w+ = embedding\(/);
+		// Should reference the variable in subnodes config
+		expect(code).toMatch(/embedding: \w+/); // Variable reference, not inline call
 	});
 
 	describe('complex connection patterns', () => {
