@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import type { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
@@ -23,7 +22,6 @@ describe('LogStreamingDestinationService', () => {
 		removeListener: jest.fn(),
 		confirmSent: jest.fn(),
 	} as unknown as MessageEventBus;
-	const licenseState = mock<LicenseState>();
 	const publisher = mock<Publisher>();
 
 	let service: LogStreamingDestinationService;
@@ -34,7 +32,6 @@ describe('LogStreamingDestinationService', () => {
 			logger,
 			eventDestinationsRepository,
 			eventBus,
-			licenseState,
 			publisher,
 		);
 	});
@@ -252,11 +249,10 @@ describe('LogStreamingDestinationService', () => {
 	});
 
 	describe('shouldSendMsg', () => {
-		it('should return true when license is valid and destination is subscribed', async () => {
+		it('should return true when destination is subscribed to event', async () => {
 			const msg = new EventMessageGeneric({ eventName: 'n8n.workflow.success' });
 			const destination = createMockDestination({ id: 'webhook-1', hasSubscribedToEvent: true });
 
-			licenseState.isLogStreamingLicensed.mockReturnValue(true);
 			eventDestinationsRepository.upsert.mockResolvedValue({} as any);
 
 			await service.addDestination(destination);
@@ -266,24 +262,8 @@ describe('LogStreamingDestinationService', () => {
 			expect(result).toBe(true);
 		});
 
-		it('should return false when license is not valid', async () => {
-			const msg = new EventMessageGeneric({ eventName: 'n8n.workflow.success' });
-			const destination = createMockDestination({ id: 'webhook-1', hasSubscribedToEvent: true });
-
-			eventDestinationsRepository.upsert.mockResolvedValue({} as any);
-			await service.addDestination(destination);
-
-			licenseState.isLogStreamingLicensed.mockReturnValue(false);
-
-			const result = service.shouldSendMsg(msg);
-
-			expect(result).toBe(false);
-		});
-
 		it('should return false when no destinations exist', () => {
 			const msg = new EventMessageGeneric({ eventName: 'n8n.workflow.success' });
-
-			licenseState.isLogStreamingLicensed.mockReturnValue(true);
 
 			const result = service.shouldSendMsg(msg);
 

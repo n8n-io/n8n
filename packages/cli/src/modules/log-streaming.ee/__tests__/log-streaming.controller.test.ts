@@ -20,15 +20,6 @@ describe('EventBusController', () => {
 		controller = new EventBusController(eventBus, destinationService);
 	});
 
-	describe('getEventNames', () => {
-		it('should return all event names', async () => {
-			const result = await controller.getEventNames();
-
-			expect(Array.isArray(result)).toBe(true);
-			expect(result.length).toBeGreaterThan(0);
-		});
-	});
-
 	describe('getDestination', () => {
 		it('should get destination by id', async () => {
 			const webhookOptions: MessageEventBusDestinationWebhookOptions = {

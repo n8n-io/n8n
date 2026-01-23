@@ -1,4 +1,4 @@
-import { LicenseState, Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { DeleteResult } from '@n8n/typeorm';
@@ -38,7 +38,6 @@ export class LogStreamingDestinationService {
 		private readonly logger: Logger,
 		private readonly eventDestinationsRepository: EventDestinationsRepository,
 		private readonly eventBus: MessageEventBus,
-		private readonly licenseState: LicenseState,
 		private readonly publisher: Publisher,
 	) {
 		this.messageHandler = this.handleMessage.bind(this);
@@ -222,9 +221,7 @@ export class LogStreamingDestinationService {
 	 */
 	shouldSendMsg(msg: EventMessageTypes): boolean {
 		return (
-			this.licenseState.isLogStreamingLicensed() &&
-			Object.keys(this.destinations).length > 0 &&
-			this.hasAnyDestinationSubscribedToEvent(msg)
+			Object.keys(this.destinations).length > 0 && this.hasAnyDestinationSubscribedToEvent(msg)
 		);
 	}
 
