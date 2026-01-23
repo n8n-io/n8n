@@ -160,13 +160,16 @@ export class AuthService {
 		return req.cookies[AUTH_COOKIE_NAME];
 	}
 
-	getBrowserIdIfApplicable(req: AuthenticatedRequest) {
-		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
-			this.logger.debug(`Skipped browserId check on ${endpoint}`);
-			return false;
-		}
+	getBrowserId(req: AuthenticatedRequest) {
 		return req.browserId;
+	}
+
+	getMethod(req: AuthenticatedRequest) {
+		return req.method;
+	}
+
+	getEndpoint(req: AuthenticatedRequest) {
+		return req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
 	}
 
 	clearCookie(res: Response) {
@@ -245,20 +248,21 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
-		const browserId = this.getBrowserIdIfApplicable(req);
-		if (
-			browserId !== false &&
+		const browserId = this.getBrowserId(req);
+		const endpoint = this.getEndpoint(req);
+		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		} else if (
 			jwtPayload.browserId &&
-			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
+			(!browserId || jwtPayload.browserId !== this.hash(browserId))
 		) {
-			const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
 			this.logger.warn(`browserId check failed on ${endpoint}`);
 			throw new AuthError('Unauthorized');
 		}
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, req.browserId);
+			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, browserId);
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];

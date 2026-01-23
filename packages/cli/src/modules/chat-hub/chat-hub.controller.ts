@@ -39,9 +39,7 @@ import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
-import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
-import { AuthService } from '@/auth/auth.service';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { extractAuthenticationMetadata } from './chat-hub-extractor';
 
 @RestController('/chat')
 export class ChatHubController {
@@ -51,7 +49,6 @@ export class ChatHubController {
 		private readonly chatAgentService: ChatHubAgentService,
 		private readonly chatAttachmentService: ChatHubAttachmentService,
 		private readonly logger: Logger,
-		private readonly authService: AuthService,
 	) {}
 
 	@Post('/models')
@@ -147,7 +144,7 @@ export class ChatHubController {
 					...payload,
 					userId: req.user.id,
 				},
-				this.extractAuthenticationMetadata(req),
+				extractAuthenticationMetadata(req),
 			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
@@ -198,7 +195,7 @@ export class ChatHubController {
 					editId,
 					userId: req.user.id,
 				},
-				this.extractAuthenticationMetadata(req),
+				extractAuthenticationMetadata(req),
 			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
@@ -249,7 +246,7 @@ export class ChatHubController {
 					retryId,
 					userId: req.user.id,
 				},
-				this.extractAuthenticationMetadata(req),
+				extractAuthenticationMetadata(req),
 			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
@@ -362,17 +359,5 @@ export class ChatHubController {
 		await this.chatAgentService.deleteAgent(agentId, req.user.id);
 
 		res.status(204).send();
-	}
-
-	private extractAuthenticationMetadata(req: AuthenticatedRequest): ChatHubAuthenticationMetadata {
-		const authToken = this.authService.getCookieToken(req);
-		if (!authToken) {
-			throw new UnauthenticatedError('No authentication token found');
-		}
-		const browserId = this.authService.getBrowserIdIfApplicable(req);
-		return {
-			authToken,
-			browserId: browserId === false ? undefined : browserId,
-		};
 	}
 }
