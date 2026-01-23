@@ -2,7 +2,7 @@
 
 import {
 	type INodeInputConfiguration,
-	type INodeInputFilter,
+	type INodeFilter,
 	type NodeConnectionType,
 } from 'n8n-workflow';
 
@@ -14,7 +14,7 @@ export function getInputs(
 ): Array<NodeConnectionType | INodeInputConfiguration> {
 	interface SpecialInput {
 		type: NodeConnectionType;
-		filter?: INodeInputFilter;
+		filter?: INodeFilter;
 		displayName: string;
 		required?: boolean;
 	}

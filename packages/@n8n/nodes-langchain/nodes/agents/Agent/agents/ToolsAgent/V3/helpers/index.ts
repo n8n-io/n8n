@@ -13,5 +13,3 @@ export { finalizeResult } from './finalizeResult';
 export { executeBatch } from './executeBatch';
 
 export { checkMaxIterations } from './checkMaxIterations';
-
-export { buildResponseMetadata } from './buildResponseMetadata';
