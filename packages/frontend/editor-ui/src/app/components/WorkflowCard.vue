@@ -280,6 +280,14 @@ const hasDynamicCredentials = computed(() => {
 	return isDynamicCredentialsEnabled.value && !!props.data.settings?.credentialResolverId;
 });
 
+const isResolverMissing = computed(() => {
+	return (
+		isDynamicCredentialsEnabled.value &&
+		props.data.hasResolvableCredentials &&
+		!props.data.settings?.credentialResolverId
+	);
+});
+
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
@@ -557,16 +565,23 @@ const tags = computed(
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<span v-show="data"
+			<span
+				v-if="isResolverMissing"
+				:class="$style.resolverMissing"
+				data-test-id="workflow-card-resolver-missing"
+			>
+				{{ locale.baseText('workflows.dynamic.resolverMissing') }}
+			</span>
+			<span v-show="data && !isResolverMissing"
 				>{{ locale.baseText('workflows.item.updated') }}
 				<TimeAgo :date="String(data.updatedAt)" /> |
 			</span>
-			<span v-show="data">
+			<span v-show="data && !isResolverMissing">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
 				<span v-if="props.isMcpEnabled && isAvailableInMCP">|</span>
 			</span>
 			<span
-				v-show="props.isMcpEnabled && isAvailableInMCP"
+				v-show="props.isMcpEnabled && isAvailableInMCP && !isResolverMissing"
 				:class="[$style['description-cell'], $style['description-cell--mcp']]"
 				data-test-id="workflow-card-mcp"
 			>
@@ -750,6 +765,15 @@ const tags = computed(
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.resolverMissing {
+	color: var(--color--warning);
+
+	&::before {
+		content: '•';
+		margin-right: var(--spacing--4xs);
+	}
 }
 
 .publishIndicator {

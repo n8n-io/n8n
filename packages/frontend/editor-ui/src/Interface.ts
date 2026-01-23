@@ -291,6 +291,7 @@ export type WorkflowResource = BaseResource & {
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
+	hasResolvableCredentials?: boolean;
 };
 
 export type VariableResource = BaseResource & {

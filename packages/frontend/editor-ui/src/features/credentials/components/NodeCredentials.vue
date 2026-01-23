@@ -8,6 +8,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
@@ -15,7 +16,7 @@ import { useToast } from '@/app/composables/useToast';
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -36,10 +37,11 @@ import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatur
 
 import {
 	N8nBadge,
-	N8nCallout,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
+	N8nLink,
+	N8nNotice,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -146,6 +148,13 @@ function isCredentialResolvable(credentialType: string): boolean {
 
 function showResolvableWarning(credentialType: string): boolean {
 	return isCredentialResolvable(credentialType) && !hasWorkflowResolver.value;
+}
+
+// TODO: use actual docs link when available
+const dynamicCredentialsDocsUrl = 'https://docs.n8n.io/';
+
+function openWorkflowSettings() {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 }
 
 watch(
@@ -617,14 +626,25 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 						/>
 					</div>
 				</div>
-				<N8nCallout
+				<N8nNotice
 					v-if="showResolvableWarning(type.name)"
 					theme="warning"
 					:class="$style.resolverWarning"
 					data-test-id="node-credential-resolver-warning"
 				>
-					{{ i18n.baseText('credentials.dynamic.warning.noResolver') }}
-				</N8nCallout>
+					<I18nT keypath="credentials.dynamic.warning.noResolver" tag="span" scope="global">
+						<template #workflowSettings>
+							<N8nLink @click="openWorkflowSettings">
+								{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
+							</N8nLink>
+						</template>
+						<template #documentation>
+							<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
+								{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
+							</N8nLink>
+						</template>
+					</I18nT>
+				</N8nNotice>
 			</N8nInputLabel>
 		</div>
 	</div>
