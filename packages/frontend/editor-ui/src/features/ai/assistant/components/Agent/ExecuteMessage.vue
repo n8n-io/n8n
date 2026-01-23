@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useUIStore } from '@/app/stores/ui.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -9,6 +10,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch, type WatchStopHandle 
 import { useRouter } from 'vue-router';
 
 import NodeIssueItem from './NodeIssueItem.vue';
+import CredentialsSetupCard from './CredentialsSetupCard.vue';
 import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elements/buttons/CanvasRunWorkflowButton.vue';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { isChatNode } from '@/app/utils/aiUtils';
@@ -16,6 +18,7 @@ import { useToast } from '@/app/composables/useToast';
 import { N8nTooltip } from '@n8n/design-system';
 import { nextTick } from 'vue';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
+import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 import type { WorkflowValidationIssue } from '@/Interface';
 
 interface Emits {
@@ -29,6 +32,7 @@ const emit = defineEmits<Emits>();
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
+const uiStore = useUIStore();
 const i18n = useI18n();
 const logsStore = useLogsStore();
 const toast = useToast();
@@ -76,6 +80,17 @@ const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0
 const triggerNodes = computed(() =>
 	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
 );
+
+const issuesByType = computed(() => {
+	const credentials: WorkflowValidationIssue[] = [];
+	const other: WorkflowValidationIssue[] = [];
+
+	for (const issue of builderStore.workflowTodos) {
+		(issue.type === 'credentials' ? credentials : other).push(issue);
+	}
+
+	return { credentials, other };
+});
 
 /**
  * Converts a locale string pattern with placeholders into a regex.
@@ -185,6 +200,15 @@ function trackBuilderPlaceholders(issue: WorkflowValidationIssue) {
 	});
 }
 
+function openCredentialsModal() {
+	uiStore.openModalWithData({ name: SETUP_CREDENTIALS_MODAL_KEY, data: { source: 'builder' } });
+	builderStore.trackWorkflowBuilderJourney('user_clicked_todo', {
+		type: 'credentials',
+		count: issuesByType.value.credentials.length,
+		source: 'builder',
+	});
+}
+
 onMounted(scrollIntoView);
 
 // Track when all todos are resolved while the component is visible
@@ -212,7 +236,15 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('aiAssistant.builder.executeMessage.description') }}
 			</p>
 			<div :class="$style.issuesBox">
+				<CredentialsSetupCard
+					v-if="issuesByType.credentials.length > 0"
+					:issues="issuesByType.credentials"
+					:get-node-type="getNodeTypeByName"
+					@click="openCredentialsModal"
+				/>
+
 				<TransitionGroup
+					v-if="issuesByType.other.length > 0"
 					name="fade"
 					tag="ul"
 					:class="$style.issuesList"
@@ -220,7 +252,7 @@ onBeforeUnmount(() => {
 					aria-label="Workflow validation issues"
 				>
 					<NodeIssueItem
-						v-for="issue in builderStore.workflowTodos"
+						v-for="issue in issuesByType.other"
 						:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
 						:issue="issue"
 						:get-node-type="getNodeTypeByName"
