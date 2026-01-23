@@ -1311,11 +1311,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private extractIdentityExtractorHooks(
 		node: INode,
 	): Array<{ hookName: string; isAllowedToFail?: boolean; [key: string]: unknown }> {
-		const nodeParams = {
-			...(node.parameters ?? {}),
-		};
-
-		const hookParamsResult = toExecutionContextEstablishmentHookParameter(nodeParams);
+		const hookParamsResult = toExecutionContextEstablishmentHookParameter(node.parameters);
 		if (!hookParamsResult || hookParamsResult.error || !hookParamsResult.data) {
 			return [];
 		}
