@@ -188,6 +188,8 @@ jobs:
       !contains(needs.publish-to-npm.outputs.release, '-rc.')
     runs-on: ubuntu-latest
     environment: minor-release-tag-merge
+    env:
+      VERSION: ${{ needs.publish-to-npm.outputs.release }}
     steps:
       - name: Generate GitHub App Token
         id: generate_token
@@ -204,8 +206,6 @@ jobs:
           token: ${{ steps.generate_token.outputs.token }}
 
       - name: Verify release tag exists
-        env:
-          VERSION: ${{ needs.publish-to-npm.outputs.release }}
         run: |
           if ! git ls-remote --tags origin "refs/tags/n8n@${VERSION}" | grep -q .; then
             echo "::error::Tag n8n@${VERSION} not found on remote"
@@ -213,13 +213,9 @@ jobs:
           fi
 
       - name: Fetch release tag
-        env:
-          VERSION: ${{ needs.publish-to-npm.outputs.release }}
         run: git fetch --depth=1 origin "refs/tags/n8n@${VERSION}:refs/tags/n8n@${VERSION}"
 
       - name: Merge release tag to master
-        env:
-          VERSION: ${{ needs.publish-to-npm.outputs.release }}
         run: |
           git config user.name "n8n-release-tag-merge[bot]"
           git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
