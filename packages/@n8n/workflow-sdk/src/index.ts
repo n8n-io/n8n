@@ -118,10 +118,20 @@ export {
 } from './merge';
 
 // IF branch composite
-export { ifBranch } from './if-branch';
+export {
+	ifBranch,
+	isIfBranchNamedSyntax,
+	type IfBranchTarget,
+	type IfBranchNamedInputs,
+} from './if-branch';
 
 // Switch case composite
-export { switchCase } from './switch-case';
+export {
+	switchCase,
+	isSwitchCaseNamedSyntax,
+	type SwitchCaseTarget,
+	type SwitchCaseNamedInputs,
+} from './switch-case';
 
 // Split in batches
 export { splitInBatches } from './split-in-batches';

@@ -18,6 +18,9 @@ import type {
 } from './types/base';
 import { isNodeChain } from './types/base';
 import { isMergeNamedInputSyntax } from './merge';
+import { isSwitchCaseNamedSyntax, type SwitchCaseTarget } from './switch-case';
+import { isIfBranchNamedSyntax, type IfBranchTarget } from './if-branch';
+import { isFanOut } from './fan-out';
 
 /**
  * Default horizontal spacing between nodes
@@ -1662,6 +1665,83 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
+		// Handle named syntax: ifBranch(ifNode, { true, false })
+		if (isIfBranchNamedSyntax(composite)) {
+			const namedComposite = composite as IfBranchComposite & {
+				_trueBranchTarget: IfBranchTarget;
+				_falseBranchTarget: IfBranchTarget;
+				_allBranchNodes: NodeInstance<string, string, unknown>[];
+			};
+
+			// Add all branch nodes
+			for (const branchNode of namedComposite._allBranchNodes) {
+				this.addBranchToGraph(newNodes, branchNode);
+			}
+
+			// Connect IF to true branch at output 0
+			const trueBranch = namedComposite._trueBranchTarget;
+			if (trueBranch !== null) {
+				if (isFanOut(trueBranch)) {
+					// Fan-out: multiple targets from true branch
+					const targets: ConnectionTarget[] = [];
+					for (const t of trueBranch.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					ifMainConns.set(0, targets);
+				} else {
+					// Single target
+					const targetName = isNodeChain(trueBranch) ? trueBranch.head.name : trueBranch.name;
+					ifMainConns.set(0, [{ node: targetName, type: 'main', index: 0 }]);
+				}
+			}
+
+			// Connect IF to false branch at output 1
+			const falseBranch = namedComposite._falseBranchTarget;
+			if (falseBranch !== null) {
+				if (isFanOut(falseBranch)) {
+					// Fan-out: multiple targets from false branch
+					const targets: ConnectionTarget[] = [];
+					for (const t of falseBranch.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					ifMainConns.set(1, targets);
+				} else {
+					// Single target
+					const targetName = isNodeChain(falseBranch) ? falseBranch.head.name : falseBranch.name;
+					ifMainConns.set(1, [{ node: targetName, type: 'main', index: 0 }]);
+				}
+			}
+
+			// Add IF node with connections to present branches
+			const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			ifConns.set('main', ifMainConns);
+			newNodes.set(composite.ifNode.name, {
+				instance: composite.ifNode,
+				connections: ifConns,
+			});
+
+			// Connect current node to IF node
+			if (this._currentNode) {
+				const currentGraphNode = newNodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const mainConns = currentGraphNode.connections.get('main') || new Map();
+					const outputConns = mainConns.get(this._currentOutput) || [];
+					outputConns.push({ node: composite.ifNode.name, type: 'main', index: 0 });
+					mainConns.set(this._currentOutput, outputConns);
+					currentGraphNode.connections.set('main', mainConns);
+				}
+			}
+
+			return this.clone({
+				nodes: newNodes,
+				currentNode: composite.ifNode.name,
+				currentOutput: 0,
+			});
+		}
+
+		// Original behavior: ifBranch([true, false], config)
 		// Add true branch (may be NodeChain with downstream nodes, or array for fan-out)
 		if (composite.trueBranch) {
 			if (Array.isArray(composite.trueBranch)) {
@@ -1730,6 +1810,64 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
 		const mainConns = new Map<number, ConnectionTarget[]>();
 
+		// Handle named syntax: switchCase(switchNode, { case0, case1, ... })
+		if (isSwitchCaseNamedSyntax(composite)) {
+			const namedComposite = composite as SwitchCaseComposite & {
+				caseMapping: Map<number, SwitchCaseTarget>;
+				_allCaseNodes: NodeInstance<string, string, unknown>[];
+			};
+
+			// Add all case nodes
+			for (const caseNode of namedComposite._allCaseNodes) {
+				this.addBranchToGraph(newNodes, caseNode);
+			}
+
+			// Connect switch to each case at the correct output index
+			for (const [caseIndex, target] of namedComposite.caseMapping) {
+				if (target === null) continue; // Skip null cases
+
+				if (isFanOut(target)) {
+					// Fan-out: multiple targets from one case
+					const targets: ConnectionTarget[] = [];
+					for (const t of target.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					mainConns.set(caseIndex, targets);
+				} else {
+					// Single target
+					const targetName = isNodeChain(target) ? target.head.name : target.name;
+					mainConns.set(caseIndex, [{ node: targetName, type: 'main', index: 0 }]);
+				}
+			}
+
+			// Add Switch node with all case connections
+			switchConns.set('main', mainConns);
+			newNodes.set(composite.switchNode.name, {
+				instance: composite.switchNode,
+				connections: switchConns,
+			});
+
+			// Connect current node to Switch node
+			if (this._currentNode) {
+				const currentGraphNode = newNodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const currMainConns = currentGraphNode.connections.get('main') || new Map();
+					const outputConns = currMainConns.get(this._currentOutput) || [];
+					outputConns.push({ node: composite.switchNode.name, type: 'main', index: 0 });
+					currMainConns.set(this._currentOutput, outputConns);
+					currentGraphNode.connections.set('main', currMainConns);
+				}
+			}
+
+			return this.clone({
+				nodes: newNodes,
+				currentNode: composite.switchNode.name,
+				currentOutput: 0,
+			});
+		}
+
+		// Original behavior: switchCase([case0, case1, ...], config)
 		// Add each case node (with subnodes) and connect from switch at correct output index
 		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
 		composite.cases.forEach((caseNode, index) => {

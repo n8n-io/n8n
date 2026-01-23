@@ -7,6 +7,27 @@ import type {
 	NodeChain,
 	IDataObject,
 } from './types/base';
+import { isNodeChain } from './types/base';
+import { isFanOut } from './fan-out';
+import type { FanOutTargets } from './fan-out';
+
+/**
+ * A branch target - can be a node, node chain, null, or fanOut
+ */
+export type IfBranchTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| FanOutTargets;
+
+/**
+ * Named input syntax for IF branch
+ * Keys are 'true' and 'false' for the respective branches
+ */
+export interface IfBranchNamedInputs {
+	true: IfBranchTarget;
+	false: IfBranchTarget;
+}
 
 /**
  * Extended config for IF branch that includes version and id
@@ -159,14 +180,103 @@ class IfBranchCompositeWithExistingNode implements IfBranchComposite {
 }
 
 /**
+ * Check if an object is an IfBranchNamedInputs (has 'true' and 'false' keys)
+ */
+function isIfBranchNamedInputs(obj: unknown): obj is IfBranchNamedInputs {
+	if (obj === null || typeof obj !== 'object') return false;
+	// Check it's not a NodeInstance or array
+	if (Array.isArray(obj)) return false;
+	if (isNodeInstance(obj)) return false;
+	// Check it has 'true' or 'false' keys
+	return 'true' in obj || 'false' in obj;
+}
+
+/**
+ * Extract all nodes from an IfBranchTarget
+ */
+function extractNodesFromBranchTarget(
+	target: IfBranchTarget,
+): NodeInstance<string, string, unknown>[] {
+	if (target === null) return [];
+	if (isFanOut(target)) {
+		return target.targets;
+	}
+	if (isNodeChain(target)) {
+		return target.allNodes;
+	}
+	// It's a single NodeInstance
+	return [target];
+}
+
+/**
+ * IF branch composite using named syntax.
+ * This allows explicit mapping of true/false branches.
+ */
+class IfBranchCompositeNamedSyntax implements IfBranchComposite {
+	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
+	readonly trueBranch:
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[];
+	readonly falseBranch:
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[];
+	/** Original targets before conversion (for workflow-builder) */
+	readonly _trueBranchTarget: IfBranchTarget;
+	readonly _falseBranchTarget: IfBranchTarget;
+	/** All nodes from both branches (for workflow-builder) */
+	readonly _allBranchNodes: NodeInstance<string, string, unknown>[];
+	/** Marker to identify this as named syntax */
+	readonly _isNamedSyntax = true;
+
+	constructor(
+		ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>,
+		inputs: IfBranchNamedInputs,
+	) {
+		this.ifNode = ifNode;
+
+		// Store original targets
+		this._trueBranchTarget = inputs.true;
+		this._falseBranchTarget = inputs.false;
+
+		// Collect all nodes for workflow-builder
+		const allNodes: NodeInstance<string, string, unknown>[] = [];
+		for (const node of extractNodesFromBranchTarget(inputs.true)) {
+			if (!allNodes.some((n) => n.name === node.name)) {
+				allNodes.push(node);
+			}
+		}
+		for (const node of extractNodesFromBranchTarget(inputs.false)) {
+			if (!allNodes.some((n) => n.name === node.name)) {
+				allNodes.push(node);
+			}
+		}
+		this._allBranchNodes = allNodes;
+
+		// Convert to legacy format for compatibility
+		// trueBranch and falseBranch are unused for named syntax (use _trueBranchTarget/_falseBranchTarget)
+		this.trueBranch = null as unknown as NodeInstance<string, string, unknown>;
+		this.falseBranch = null as unknown as NodeInstance<string, string, unknown>;
+	}
+}
+
+/**
+ * Type guard to check if an IfBranchComposite uses named syntax
+ */
+export function isIfBranchNamedSyntax(
+	composite: IfBranchComposite,
+): composite is IfBranchCompositeNamedSyntax {
+	return '_isNamedSyntax' in composite && composite._isNamedSyntax === true;
+}
+
+/**
  * Create an IF branching composite for conditional execution
  *
- * @param branches - Tuple of [trueBranch, falseBranch] nodes (output 0 and 1). Either can be null for single-branch patterns. Each branch can be a single node or an array of nodes for fan-out.
- * @param configOrNode - Full IF node config including optional version and id, OR a pre-declared IF node instance
+ * @param branchesOrNode - Tuple of [trueBranch, falseBranch] nodes, OR a pre-declared IF node for named syntax
+ * @param configOrNodeOrInputs - Full IF node config, a pre-declared IF node, OR named inputs { true, false }
  *
  * @example
  * ```typescript
- * // Both branches connected
+ * // Array syntax (original API):
  * workflow('id', 'Test')
  *   .add(trigger)
  *   .then(ifBranch([truePath, falsePath], {
@@ -194,12 +304,41 @@ class IfBranchCompositeWithExistingNode implements IfBranchComposite {
  * workflow('id', 'Test')
  *   .add(trigger)
  *   .then(ifBranch([truePath, falsePath], ifNode));
+ *
+ * // Named input syntax (for explicit branch mapping):
+ * ifBranch(ifNode, {
+ *   true: nodeA,
+ *   false: fanOut(nodeB, nodeC)  // fanOut to multiple targets
+ * })
  * ```
  */
 export function ifBranch(
-	branches: [BranchType, BranchType],
-	configOrNode?: IfBranchConfig | NodeInstance<'n8n-nodes-base.if', string, unknown>,
+	branchesOrNode: [BranchType, BranchType] | NodeInstance<'n8n-nodes-base.if', string, unknown>,
+	configOrNodeOrInputs?:
+		| IfBranchConfig
+		| NodeInstance<'n8n-nodes-base.if', string, unknown>
+		| IfBranchNamedInputs,
 ): IfBranchComposite {
+	// Named input syntax: ifBranch(ifNode, { true, false })
+	if (
+		isNodeInstance(branchesOrNode) &&
+		branchesOrNode.type === 'n8n-nodes-base.if' &&
+		configOrNodeOrInputs !== undefined &&
+		isIfBranchNamedInputs(configOrNodeOrInputs)
+	) {
+		return new IfBranchCompositeNamedSyntax(
+			branchesOrNode as NodeInstance<'n8n-nodes-base.if', string, unknown>,
+			configOrNodeOrInputs,
+		);
+	}
+
+	// Original API: ifBranch([true, false], configOrNode)
+	const branches = branchesOrNode as [BranchType, BranchType];
+	const configOrNode = configOrNodeOrInputs as
+		| IfBranchConfig
+		| NodeInstance<'n8n-nodes-base.if', string, unknown>
+		| undefined;
+
 	// Check if the second argument is a NodeInstance (pre-declared IF node)
 	if (isNodeInstance(configOrNode) && configOrNode.type === 'n8n-nodes-base.if') {
 		return new IfBranchCompositeWithExistingNode(
