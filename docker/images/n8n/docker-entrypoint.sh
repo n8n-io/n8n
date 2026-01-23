@@ -8,7 +8,7 @@ fi
 
 if [ "$#" -gt 0 ]; then
   # Got started with arguments
-  exec n8n "$@"
+  exec node /usr/local/lib/node_modules/n8n/packages/cli/bin/n8n "$@"
 else
   # Got started without arguments
   exec n8n

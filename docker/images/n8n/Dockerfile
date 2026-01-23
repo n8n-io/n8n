@@ -12,12 +12,14 @@ ENV SHELL=/bin/sh
 
 WORKDIR /home/node
 
-COPY ./compiled /usr/local/lib/node_modules/n8n
-COPY docker/images/n8n/docker-entrypoint.sh /
+COPY ./packages /usr/local/lib/node_modules/n8n
+COPY ./docker/images/n8n/docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
-RUN cd /usr/local/lib/node_modules/n8n && \
+RUN cd /usr/local/lib/node_modules/n8n/packages/cli && \
     npm rebuild sqlite3 && \
-    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+    # Corregimos el symlink a la ruta real del monorepo
+    ln -sf /usr/local/lib/node_modules/n8n/packages/cli/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*
@@ -31,3 +33,6 @@ LABEL org.opencontainers.image.title="n8n" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
       org.opencontainers.image.version=${N8N_VERSION}
+
+# Run from root:
+# sudo docker build -t n8n-tapis-auth:latest -f docker/images/n8n/Dockerfile .
