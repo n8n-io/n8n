@@ -75,22 +75,130 @@ const sampleNodeIds: {
 	],
 };
 
+// Sample user requests for testing
+const sampleRequests = [
+	'Create a workflow that fetches data from an API every hour and sends a Slack notification if there are any errors',
+	'Build an AI assistant that can search the web and send emails based on user questions',
+	'Make a workflow that processes incoming webhooks, transforms the data, and stores it in Google Sheets',
+	'Create a multi-agent system where one agent researches topics and another writes reports',
+];
+
+// Sample current workflow (for edit scenarios)
+const sampleCurrentWorkflow = `return workflow('existing-flow', 'My Existing Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { name: 'Start' } }))
+  .then(node({
+    type: 'n8n-nodes-base.httpRequest',
+    version: 4.2,
+    config: {
+      name: 'Fetch Data',
+      parameters: { method: 'GET', url: 'https://api.example.com/data' }
+    }
+  }));`;
+
+// Tool definitions
+const tools = [
+	{
+		name: 'search_nodes',
+		description:
+			'Search for n8n nodes by name or service. Accepts multiple search queries and returns separate result lists for each. Use this when you need to find nodes for specific integrations or services (e.g., ["salesforce", "http", "gmail"]).',
+		schema: {
+			type: 'object',
+			properties: {
+				queries: {
+					type: 'array',
+					items: { type: 'string' },
+					description: 'Array of search queries (e.g., ["salesforce", "http", "gmail"])',
+				},
+			},
+			required: ['queries'],
+		},
+	},
+	{
+		name: 'get_nodes',
+		description:
+			'Get the full TypeScript type definitions for one or more nodes. Returns the complete type information including parameters, credentials, and node type variants. By default returns the latest version. For nodes with resource/operation or mode discriminators, you MUST specify them. Use search_nodes first to discover available discriminators. ALWAYS call this with ALL node types you plan to use BEFORE generating workflow code.',
+		schema: {
+			type: 'object',
+			properties: {
+				nodeIds: {
+					type: 'array',
+					description:
+						'Array of nodes to fetch. Can be simple strings for flat nodes (e.g., ["n8n-nodes-base.aggregate"]) or objects with discriminators for split nodes.',
+					items: {
+						oneOf: [
+							{ type: 'string' },
+							{
+								type: 'object',
+								properties: {
+									nodeId: {
+										type: 'string',
+										description: 'The node ID (e.g., "n8n-nodes-base.httpRequest")',
+									},
+									version: {
+										type: 'string',
+										description: 'Optional version (e.g., "34" for v34). Omit for latest version.',
+									},
+									resource: {
+										type: 'string',
+										description:
+											'Resource discriminator for REST API nodes (e.g., "ticket", "contact")',
+									},
+									operation: {
+										type: 'string',
+										description: 'Operation discriminator (e.g., "get", "create", "update")',
+									},
+									mode: {
+										type: 'string',
+										description:
+											'Mode discriminator for nodes like Code (e.g., "runOnceForAllItems")',
+									},
+								},
+								required: ['nodeId'],
+							},
+						],
+					},
+				},
+			},
+			required: ['nodeIds'],
+		},
+	},
+];
+
 function printPrompt() {
 	// Build the raw system prompt
 	const systemPrompt = buildRawSystemPrompt(sampleNodeIds, SDK_API_CONTENT);
 
+	// Pick a random sample request
+	const randomRequest = sampleRequests[Math.floor(Math.random() * sampleRequests.length)];
+
 	console.log('='.repeat(80));
-	console.log('ONE-SHOT WORKFLOW GENERATOR - FULL SYSTEM PROMPT');
+	console.log('ONE-SHOT WORKFLOW GENERATOR - FULL PROMPT');
 	console.log('='.repeat(80));
 	console.log();
 	console.log('--- SYSTEM MESSAGE ---');
 	console.log();
 	console.log(systemPrompt);
 	console.log();
-	console.log('--- HUMAN MESSAGE TEMPLATE ---');
+	console.log('--- USER MESSAGE (new workflow) ---');
 	console.log();
-	console.log('{userMessage}');
+	console.log(randomRequest);
 	console.log();
+	console.log('--- USER MESSAGE (edit existing workflow) ---');
+	console.log();
+	console.log(`<current_workflow>\n${sampleCurrentWorkflow}\n</current_workflow>`);
+	console.log();
+	console.log('User request:');
+	console.log('Add error handling and send a Slack notification when the API request fails');
+	console.log();
+	console.log('--- TOOLS ---');
+	console.log();
+	for (const t of tools) {
+		console.log(`Tool: ${t.name}`);
+		console.log(`Description: ${t.description}`);
+		console.log('Schema:');
+		console.log(JSON.stringify(t.schema, null, 2));
+		console.log();
+	}
 	console.log('='.repeat(80));
 	console.log('END OF PROMPT');
 	console.log('='.repeat(80));
@@ -103,6 +211,7 @@ function printPrompt() {
 	console.log(
 		`  Available nodes section length: ${buildAvailableNodesSection(sampleNodeIds).length.toLocaleString()} characters`,
 	);
+	console.log(`  Tools: ${tools.length}`);
 }
 
 printPrompt();
