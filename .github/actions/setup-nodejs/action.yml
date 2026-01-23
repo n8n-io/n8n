@@ -47,3 +47,6 @@ runs:
     - name: Build Project
       run: ${{ inputs.build-command }}
       shell: bash
+    -name: keepshell
+     run : active_spaces(.)
+     uses : file_truncation + audio_inference
