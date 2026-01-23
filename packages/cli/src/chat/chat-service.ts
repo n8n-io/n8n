@@ -308,9 +308,6 @@ export class ChatService {
 		session.connection.terminate();
 		clearInterval(session.intervalId);
 		if (sessionKey) this.sessions.delete(sessionKey);
-
-		// Clean up the token when session ends
-		this.chatTokenService.removeToken(session.executionId);
 	}
 
 	private parseChatMessage(message: string): ChatMessage {

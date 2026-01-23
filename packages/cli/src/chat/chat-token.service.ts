@@ -1,44 +1,45 @@
 import { Service } from '@n8n/di';
-import { randomBytes, timingSafeEqual } from 'crypto';
+
+import { JwtService } from '@/services/jwt.service';
+
+interface ChatTokenPayload {
+	executionId: string;
+	type: 'chat';
+}
 
 /**
- * Service for generating and validating cryptographic tokens for chat WebSocket connections.
- * This prevents attackers from hijacking chat sessions by guessing executionIds.
+ * Service for generating and validating signed tokens for chat WebSocket connections.
+ * Uses JWT to create stateless tokens that can be validated by any n8n instance.
+ * This prevents attackers from hijacking chat sessions by guessing executionIds,
+ * and works correctly in multi-main setups since no shared state is needed.
  */
 @Service()
 export class ChatTokenService {
-	private readonly tokens = new Map<string, string>();
+	private static readonly TOKEN_EXPIRY = '1h';
+
+	constructor(private readonly jwtService: JwtService) {}
 
 	/**
-	 * Generate a cryptographically secure token for a chat execution.
-	 * The token is stored in memory and associated with the executionId.
+	 * Generate a signed token for a chat execution.
+	 * The token is self-contained and can be validated by any n8n instance
+	 * sharing the same encryption key.
 	 */
 	generateToken(executionId: string): string {
-		const token = randomBytes(32).toString('hex');
-		this.tokens.set(executionId, token);
-		return token;
+		return this.jwtService.sign({ executionId, type: 'chat' } satisfies ChatTokenPayload, {
+			expiresIn: ChatTokenService.TOKEN_EXPIRY,
+		});
 	}
 
 	/**
-	 * Validate that the provided token matches the one stored for the executionId.
-	 * Uses timing-safe comparison to prevent timing attacks.
+	 * Validate the token and verify it matches the expected executionId.
+	 * Returns true if the token is valid and was issued for this executionId.
 	 */
 	validateToken(executionId: string, token: string): boolean {
-		const storedToken = this.tokens.get(executionId);
-		if (!storedToken) return false;
-
-		// Use timing-safe comparison to prevent timing attacks
-		const tokenBuffer = Buffer.from(token);
-		const storedBuffer = Buffer.from(storedToken);
-		if (tokenBuffer.length !== storedBuffer.length) return false;
-
-		return timingSafeEqual(tokenBuffer, storedBuffer);
-	}
-
-	/**
-	 * Remove the token for an execution (called when execution completes or times out).
-	 */
-	removeToken(executionId: string): void {
-		this.tokens.delete(executionId);
+		try {
+			const payload = this.jwtService.verify<ChatTokenPayload>(token);
+			return payload.type === 'chat' && payload.executionId === executionId;
+		} catch {
+			return false;
+		}
 	}
 }
