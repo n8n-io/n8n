@@ -1,4 +1,3 @@
-// eslint-disable-next-line complexity
 const check = (
 	val: unknown,
 	path = 'value',

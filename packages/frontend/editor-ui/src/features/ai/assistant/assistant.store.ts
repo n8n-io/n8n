@@ -1,5 +1,5 @@
 import { chatWithAssistant, replaceCode } from '@/features/ai/assistant/assistant.api';
-import { type VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
+import { type VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { ASSISTANT_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
@@ -29,6 +29,7 @@ import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { v4 as uuid } from 'uuid';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
 const READABLE_TYPES = ['code-diff', 'text', 'block'];
@@ -300,16 +301,19 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	/**
 	 * Gets information about the current view and active node to provide context to the assistant
 	 */
-	function getVisualContext(
+	async function getVisualContext(
 		nodeInfo?: ChatRequest.NodeInfo,
-	): ChatRequest.AssistantContext | undefined {
+	): Promise<ChatRequest.AssistantContext | undefined> {
 		if (chatSessionTask.value === 'error') {
 			return undefined;
 		}
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
 		const activeNodeForLLM = activeNode
-			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'])
+			? await assistantHelpers.processNodeForAssistant(activeNode, [
+					'position',
+					'parameters.notice',
+				])
 			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
@@ -367,7 +371,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
-			chatSessionTask.value === 'support' ? getVisualContext(nodeInfo) : undefined;
+			chatSessionTask.value === 'support' ? await getVisualContext(nodeInfo) : undefined;
 
 		if (nodeInfo.authType && chatSessionTask.value === 'credentials') {
 			userMessage += ` I am using ${nodeInfo.authType.name}.`;
@@ -442,7 +446,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			error: context.error,
-			node: assistantHelpers.processNodeForAssistant(context.node, [
+			node: await assistantHelpers.processNodeForAssistant(context.node, [
 				'position',
 				'parameters.notice',
 			]),
@@ -549,12 +553,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			}
 			const activeNode = workflowsStore.activeNode() as INode;
 			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
-			const userContext = getVisualContext(nodeInfo);
+			const userContext = await getVisualContext(nodeInfo);
 
 			chatWithAssistant(
 				rootStore.restApiContext,
 				{
 					payload: {
+						id: uuid(),
 						role: 'user',
 						type: 'message',
 						text: chatMessage.text,
@@ -601,15 +606,22 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				task: 'placeholder';
 		  }
 		| {
+				source: 'build_with_ai';
+				task: 'placeholder';
+		  }
+		| {
 				source: 'credential';
 				task: 'credentials';
 		  }
 	)) {
+		const canvasStatus = workflowsStore.allNodes.length === 0 ? 'empty' : 'existing_workflow';
 		telemetry.track('User opened assistant', {
 			source,
 			task,
 			has_existing_session,
+			instance_id: rootStore.instanceId,
 			workflow_id: workflowsStore.workflowId,
+			canvas_status: canvasStatus,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
 			chat_session_id: currentSessionId.value,
@@ -745,7 +757,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeWorkflowId = workflowsStore.workflowId;
 		if (
 			!currentSessionId.value ||
-			currentSessionWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			!currentSessionWorkflowId.value ||
 			currentSessionWorkflowId.value === activeWorkflowId
 		) {
 			return;

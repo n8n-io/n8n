@@ -1,9 +1,9 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
 
 import type { SingleEvaluatorResult } from '../types';
-import { nodeParametersContainExpression } from '../utils/expressions';
 import { isTool } from '../utils/is-tool';
 
 const toolsWithoutParameters = [
@@ -25,8 +25,10 @@ export function validateTools(
 		return violations;
 	}
 
+	const { nodeTypeMap, nodeTypesByName } = createNodeTypeMaps(nodeTypes);
+
 	for (const node of workflow.nodes) {
-		const nodeType = nodeTypes.find((type) => type.name === node.type);
+		const nodeType = getNodeTypeForNode(node, nodeTypeMap, nodeTypesByName);
 		if (!nodeType) {
 			continue;
 		}
@@ -34,17 +36,9 @@ export function validateTools(
 		if (isTool(nodeType) && !toolsWithoutParameters.includes(node.type)) {
 			if (!node.parameters || Object.keys(node.parameters).length === 0) {
 				violations.push({
+					name: 'tool-node-has-no-parameters',
 					type: 'major',
 					description: `Tool node "${node.name}" has no parameters set.`,
-					pointsDeducted: 20,
-				});
-				continue;
-			}
-
-			if (!nodeParametersContainExpression(node.parameters)) {
-				violations.push({
-					type: 'major',
-					description: `Tool node "${node.name}" has no expressions in its parameters. This likely means it is not using dynamic input.`,
 					pointsDeducted: 20,
 				});
 			}

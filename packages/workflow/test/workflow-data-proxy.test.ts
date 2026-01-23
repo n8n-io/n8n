@@ -11,8 +11,15 @@ import {
 	type IPinData,
 	type IRun,
 	type IWorkflowBase,
+	type IWorkflowDataProxyAdditionalKeys,
 	type WorkflowExecuteMode,
+	type WorkflowSettingsBinaryMode,
 } from '../src/interfaces';
+import { BINARY_MODE_COMBINED } from '../src/constants';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+} from '../src/run-execution-data-factory';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
@@ -34,6 +41,7 @@ const getProxyFromFixture = (
 		throwOnMissingExecutionData: boolean;
 		connectionType?: NodeConnectionType;
 		runIndex?: number;
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 	},
 ) => {
 	const taskData = run?.data.resultData.runData[activeNode]?.[opts?.runIndex ?? 0];
@@ -71,6 +79,7 @@ const getProxyFromFixture = (
 			active: false,
 			nodeTypes: Helpers.NodeTypes(),
 			pinData,
+			settings: workflow.settings,
 		}),
 		run?.data ?? null,
 		opts?.runIndex ?? 0,
@@ -79,7 +88,7 @@ const getProxyFromFixture = (
 		lastNodeConnectionInputData ?? [],
 		{},
 		mode ?? 'integrated',
-		{},
+		opts?.additionalKeys ?? {},
 		executeData,
 	);
 
@@ -124,6 +133,325 @@ describe('WorkflowDataProxy', () => {
 		test('all(1) should use the output the node is connected to by default', () => {
 			expect(proxy.$('If').all(1)[0].json.code).toEqual(1);
 			expect(proxy.$('If').all(1)[1].json.code).toEqual(2);
+		});
+	});
+
+	describe('Binary Mode: Combined', () => {
+		const createWorkflowWithBinaryData = (
+			binaryMode?: WorkflowSettingsBinaryMode,
+		): IWorkflowBase => ({
+			id: '123',
+			name: 'test workflow with binary',
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'node2',
+					name: 'ProcessData',
+					type: 'n8n-nodes-base.code',
+					typeVersion: 1,
+					position: [300, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Start: {
+					main: [[{ node: 'ProcessData', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			settings: binaryMode ? { binaryMode } : undefined,
+		});
+
+		const createRunWithBinaryData = (): IRun => ({
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						Start: [
+							{
+								startTime: 123,
+								executionTime: 10,
+								executionIndex: 0,
+								source: [null],
+								data: {
+									main: [
+										[
+											{
+												json: { id: 1, name: 'Item 1' },
+												binary: {
+													file: {
+														data: Buffer.from('test file content').toString('base64'),
+														mimeType: 'text/plain',
+														fileName: 'test.txt',
+														fileSize: '18B',
+													},
+												},
+												pairedItem: { item: 0 },
+											},
+											{
+												json: { id: 2, name: 'Item 2' },
+												binary: {
+													file: {
+														data: Buffer.from('second file').toString('base64'),
+														mimeType: 'text/plain',
+														fileName: 'test2.txt',
+														fileSize: '11B',
+													},
+												},
+												pairedItem: { item: 1 },
+											},
+										],
+									],
+								},
+							},
+						],
+						ProcessData: [
+							{
+								startTime: 150,
+								executionTime: 10,
+								executionIndex: 0,
+								source: [{ previousNode: 'Start' }],
+								data: {
+									main: [
+										[
+											{
+												json: { id: 1, name: 'Item 1' },
+												binary: {
+													file: {
+														data: Buffer.from('test file content').toString('base64'),
+														mimeType: 'text/plain',
+														fileName: 'test.txt',
+														fileSize: '18B',
+													},
+												},
+												pairedItem: { item: 0 },
+											},
+											{
+												json: { id: 2, name: 'Item 2' },
+												binary: {
+													file: {
+														data: Buffer.from('second file').toString('base64'),
+														mimeType: 'text/plain',
+														fileName: 'test2.txt',
+														fileSize: '11B',
+													},
+												},
+												pairedItem: { item: 1 },
+											},
+										],
+									],
+								},
+							},
+						],
+					},
+				},
+			}),
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+		});
+
+		describe('Default behavior (no binaryMode or separate mode)', () => {
+			const workflow = createWorkflowWithBinaryData();
+			const run = createRunWithBinaryData();
+			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$input.item should return full item with json and binary', () => {
+				const item = proxyAtProcessData.$input.item;
+				expect(item).toBeDefined();
+				expect(item?.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item?.binary).toBeDefined();
+				expect(item?.binary?.file).toBeDefined();
+			});
+
+			test('$input.all() should return full items with json and binary', () => {
+				const items = proxyAtProcessData.$input.all();
+				expect(items.length).toBe(2);
+				expect(items[0].json).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[0].binary).toBeDefined();
+				expect(items[1].json).toEqual({ id: 2, name: 'Item 2' });
+				expect(items[1].binary).toBeDefined();
+			});
+
+			test('$("Start").first() should return full item with json and binary', () => {
+				const item = proxyAtProcessData.$('Start').first();
+				expect(item.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start").last() should return full item with json and binary', () => {
+				const item = proxyAtProcessData.$('Start').last();
+				expect(item.json).toEqual({ id: 2, name: 'Item 2' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start").all() should return full items with json and binary', () => {
+				const items = proxyAtProcessData.$('Start').all();
+				expect(items.length).toBe(2);
+				expect(items[0].binary).toBeDefined();
+				expect(items[1].binary).toBeDefined();
+			});
+
+			test('$json should return json data', () => {
+				expect(proxyAtProcessData.$json).toEqual({ id: 1, name: 'Item 1' });
+			});
+
+			test('$binary should return binary data', () => {
+				expect(proxyAtProcessData.$binary).toBeDefined();
+				expect(proxyAtProcessData.$binary?.file).toBeDefined();
+				expect(proxyAtProcessData.$binary?.file?.fileName).toBe('test.txt');
+			});
+		});
+
+		describe('Combined mode (binaryMode: "combined")', () => {
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
+			const run = createRunWithBinaryData();
+			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$input.item should return only json data (no binary)', () => {
+				const item = proxyAtProcessData.$input.item;
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+				expect(item).not.toHaveProperty('binary');
+				expect(item).not.toHaveProperty('pairedItem');
+			});
+
+			test('$input.all() should return only json data for all items', () => {
+				const items = proxyAtProcessData.$input.all();
+				expect(items.length).toBe(2);
+				expect(items[0]).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[1]).toEqual({ id: 2, name: 'Item 2' });
+				expect(items[0]).not.toHaveProperty('binary');
+				expect(items[1]).not.toHaveProperty('binary');
+			});
+
+			test('$input.first() should return only json data', () => {
+				const item = proxyAtProcessData.$input.first();
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$input.last() should return only json data', () => {
+				const item = proxyAtProcessData.$input.last();
+				expect(item).toEqual({ id: 2, name: 'Item 2' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$("Start").first() should return only json data', () => {
+				const item = proxyAtProcessData.$('Start').first();
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$("Start").last() should return only json data', () => {
+				const item = proxyAtProcessData.$('Start').last();
+				expect(item).toEqual({ id: 2, name: 'Item 2' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$("Start").all() should return only json data for all items', () => {
+				const items = proxyAtProcessData.$('Start').all();
+				expect(items.length).toBe(2);
+				expect(items[0]).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[1]).toEqual({ id: 2, name: 'Item 2' });
+				expect(items[0]).not.toHaveProperty('binary');
+				expect(items[1]).not.toHaveProperty('binary');
+			});
+
+			test('$item should return json data', () => {
+				expect(proxyAtProcessData.$item).toEqual({ id: 1, name: 'Item 1' });
+			});
+		});
+
+		describe('Combined mode with $() resolveFullItem parameter', () => {
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
+			const run = createRunWithBinaryData();
+			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$("Start", true).first() should return full item with binary', () => {
+				const item = proxyAtProcessData.$('Start', true).first();
+				expect(item.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start", true).last() should return full item with binary', () => {
+				const item = proxyAtProcessData.$('Start', true).last();
+				expect(item.json).toEqual({ id: 2, name: 'Item 2' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start", true).all() should return full items with binary', () => {
+				const items = proxyAtProcessData.$('Start', true).all();
+				expect(items.length).toBe(2);
+				expect(items[0].json).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[0].binary).toBeDefined();
+				expect(items[1].json).toEqual({ id: 2, name: 'Item 2' });
+				expect(items[1].binary).toBeDefined();
+			});
+		});
+
+		describe('Combined mode with $input accessors', () => {
+			const workflow = createWorkflowWithBinaryData(BINARY_MODE_COMBINED);
+			const run = createRunWithBinaryData();
+			const proxy = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$input.item should return only json in combined mode', () => {
+				const item = proxy.$input.item;
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+				expect(item).not.toHaveProperty('binary');
+			});
+
+			test('$input.all() should return only json in combined mode', () => {
+				const items = proxy.$input.all();
+				expect(items.length).toBe(2);
+				expect(items[0]).toEqual({ id: 1, name: 'Item 1' });
+				expect(items[1]).toEqual({ id: 2, name: 'Item 2' });
+			});
+
+			test('$input.first() should return only json in combined mode', () => {
+				const item = proxy.$input.first();
+				expect(item).toEqual({ id: 1, name: 'Item 1' });
+			});
+
+			test('$input.last() should return only json in combined mode', () => {
+				const item = proxy.$input.last();
+				expect(item).toEqual({ id: 2, name: 'Item 2' });
+			});
+		});
+
+		describe('Backward compatibility: separate mode behaves like default', () => {
+			const workflow = createWorkflowWithBinaryData('separate');
+			const run = createRunWithBinaryData();
+			const proxyAtProcessData = getProxyFromFixture(workflow, run, 'ProcessData');
+
+			test('$input.item should return full item with binary in separate mode', () => {
+				const item = proxyAtProcessData.$input.item;
+				expect(item).toBeDefined();
+				expect(item?.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item?.binary).toBeDefined();
+			});
+
+			test('$("Start").first() should return full item with binary in separate mode', () => {
+				const item = proxyAtProcessData.$('Start').first();
+				expect(item.json).toEqual({ id: 1, name: 'Item 1' });
+				expect(item.binary).toBeDefined();
+			});
+
+			test('$("Start").all() should return full items with binary in separate mode', () => {
+				const items = proxyAtProcessData.$('Start').all();
+				expect(items.length).toBe(2);
+				expect(items[0].binary).toBeDefined();
+				expect(items[1].binary).toBeDefined();
+			});
 		});
 	});
 
@@ -346,8 +674,9 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Can't get data for expression");
-				expect(exprError.context.type).toEqual('paired_item_invalid_info');
+				expect(exprError.message).toContain('Paired item data for item from node');
+				expect(exprError.message).toContain('Edit Fields');
+				expect(exprError.context.type).toEqual('paired_item_no_info');
 			}
 		});
 	});
@@ -418,7 +747,7 @@ describe('WorkflowDataProxy', () => {
 
 		test.each([{ methodName: 'itemMatching' }, { methodName: 'pairedItem' }])(
 			'$methodName should throw when it cannot find a paired item',
-			async ({ methodName }) => {
+			({ methodName }) => {
 				try {
 					proxy.$('DebugHelper')[methodName](0);
 					throw new Error('should throw');
@@ -444,7 +773,7 @@ describe('WorkflowDataProxy', () => {
 			},
 		);
 
-		test('item should throw when it cannot find a paired item', async () => {
+		test('item should throw when it cannot find a paired item', () => {
 			try {
 				proxy.$('DebugHelper').item;
 				throw new Error('should throw');
@@ -560,6 +889,7 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -622,6 +952,7 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -669,6 +1000,141 @@ describe('WorkflowDataProxy', () => {
 			// Should return existing values for keys that are present
 			expect(proxy.$fromAI('regular_field')).toEqual('regular_value');
 		});
+
+		test('Throws ExpressionError when there is no execution data', () => {
+			// Create a workflow with no data at all
+			const workflowWithNoData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithNoData.nodes,
+					connections: workflowWithNoData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null, // No run execution data
+				0,
+				0,
+				'AI Node',
+				[], // Empty connectionInputData - this triggers the bug
+				{},
+				'manual',
+				{},
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			expect(() => proxy.$fromAI('some_key')).toThrow(ExpressionError);
+		});
+	});
+
+	describe('$tool', () => {
+		const fixture = loadFixture('from_ai_tool_alias');
+		const getToolProxy = (runIndex = 0, additionalKeys?: IWorkflowDataProxyAdditionalKeys) =>
+			getProxyFromFixture(fixture.workflow, fixture.run, 'Google Sheets1', 'manual', {
+				connectionType: NodeConnectionTypes.AiTool,
+				throwOnMissingExecutionData: false,
+				runIndex,
+				additionalKeys,
+			});
+
+		test('Behaves like $fromAI("tool") when execution data exists', () => {
+			// $tool should behave the same as $fromAI('tool') when execution data is available
+			const proxy = getToolProxy();
+			const toolValue = proxy.$tool;
+			const fromAiToolValue = proxy.$fromAI('tool');
+			// Both should return the same value (or both undefined if tool key doesn't exist)
+			expect(toolValue).toEqual(fromAiToolValue);
+		});
+
+		test('Works consistently across different items', () => {
+			const proxy0 = getToolProxy(0);
+			const proxy1 = getToolProxy(1);
+			// Both should behave consistently
+			expect(typeof proxy0.$tool).toBe(typeof proxy1.$tool);
+		});
+
+		test('Falls back to additionalKeys when no execution data exists', () => {
+			// Create a workflow with no execution data at all (empty connectionInputData)
+			const workflowWithoutResultData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithoutResultData.nodes,
+					connections: workflowWithoutResultData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null, // No run execution data
+				0,
+				0,
+				'AI Node',
+				[], // Empty connectionInputData - this triggers no_execution_data error
+				{},
+				'manual',
+				{ $tool: 'fallback-tool-value' }, // Fallback value
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			// Should return the fallback value since there's no execution data
+			expect(proxy.$tool).toEqual('fallback-tool-value');
+		});
+
+		test('Uses execution data when available, ignoring fallback', () => {
+			// When execution data exists, it should use that instead of fallback
+			const proxy = getToolProxy(0, { $tool: 'fallback-tool-value' });
+			// Should use the actual value from execution data (or undefined if tool key doesn't exist)
+			// The fallback should be ignored when execution data is available
+			const toolValue = proxy.$tool;
+			const fromAiToolValue = proxy.$fromAI('tool');
+			// Both should return the same value (execution data takes precedence over fallback)
+			expect(toolValue).toEqual(fromAiToolValue);
+		});
 	});
 
 	describe('$rawParameter', () => {
@@ -693,7 +1159,7 @@ describe('WorkflowDataProxy', () => {
 			const noRunDataProxy = getProxyFromFixture(
 				fixture.workflow,
 				{
-					data: { resultData: { runData: {} } },
+					data: createEmptyRunExecutionData(),
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
@@ -1013,6 +1479,7 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1020,11 +1487,7 @@ describe('WorkflowDataProxy', () => {
 
 			// Create run data without execution data for Telegram Trigger
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1079,17 +1542,14 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1140,17 +1600,14 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1214,13 +1671,14 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							'Real Node': [
@@ -1236,7 +1694,7 @@ describe('WorkflowDataProxy', () => {
 							],
 						},
 					},
-				},
+				}),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,

@@ -8,7 +8,7 @@ import type {
 import type { ILogInStatus } from '@/features/settings/users/users.types';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import type { Scope } from '@n8n/permissions';
-import type { NodeCreatorTag } from '@n8n/design-system';
+import type { NodeCreatorTag, BinaryMetadata } from '@n8n/design-system';
 import type {
 	GenericValue,
 	IConnections,
@@ -26,12 +26,15 @@ import type {
 	FeatureFlags,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
+	WorkflowSettingsBinaryMode,
 	INodeExecutionData,
 	NodeConnectionType,
 	StartNodeData,
 	ITaskData,
 	ISourceData,
 	PublicInstalledPackage,
+	IDestinationNode,
+	AgentRequestQuery,
 } from 'n8n-workflow';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import type { Cloud, InstanceUsage } from '@n8n/rest-api-client/api/cloudPlans';
@@ -50,6 +53,7 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/app/models/history';
@@ -61,6 +65,7 @@ import type {
 	FolderListItem,
 	ResourceParentFolder,
 } from '@/features/core/folders/folders.types';
+import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 
 export * from '@n8n/design-system/types';
 
@@ -183,7 +188,7 @@ export interface IAiDataContent {
 export interface IStartRunData {
 	workflowData: WorkflowData;
 	startNodes?: StartNodeData[];
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	runData?: IRunData;
 	dirtyNodeNames?: string[];
 	triggerToStartFrom?: {
@@ -191,7 +196,7 @@ export interface IStartRunData {
 		data?: ITaskData;
 	};
 	agentRequest?: {
-		query: NodeParameterValueType;
+		query: AgentRequestQuery;
 		tool: {
 			name: NodeParameterValueType;
 		};
@@ -249,6 +254,7 @@ export interface IWorkflowDb {
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
 	versionId: string;
+	activeVersionId: string | null;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
 	parentFolder?: {
@@ -258,6 +264,8 @@ export interface IWorkflowDb {
 		createdAt?: string;
 		updatedAt?: string;
 	};
+	activeVersion?: WorkflowHistory | null;
+	checksum?: string;
 }
 
 // For workflow list we don't need the full workflow data
@@ -276,6 +284,7 @@ export type WorkflowResource = BaseResource & {
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
+	activeVersionId: string | null;
 	isArchived: boolean;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
@@ -303,6 +312,7 @@ export type CredentialsResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	needsSetup: boolean;
+	isGlobal?: boolean;
 };
 
 // Base resource types that are always available
@@ -346,6 +356,7 @@ export interface IWorkflowShortResponse {
 	id: string;
 	name: string;
 	active: boolean;
+	activeVersionId: string | null;
 	createdAt: number | string;
 	updatedAt: number | string;
 	tags: ITag[];
@@ -413,6 +424,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	binaryMode?: WorkflowSettingsBinaryMode;
 	availableInMCP?: boolean;
 }
 
@@ -421,8 +433,6 @@ export interface ITimeoutHMS {
 	minutes: number;
 	seconds: number;
 }
-
-export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR' | 'DEBUG';
 
 export type ExtractActionKeys<T> = T extends SimplifiedNodeType ? T['name'] : never;
 
@@ -444,7 +454,7 @@ export type SimplifiedNodeType = Pick<
 	| 'defaults'
 	| 'outputs'
 > & {
-	tag?: string;
+	tag?: NodeCreatorTag;
 };
 export interface SubcategoryItemProps {
 	description?: string;
@@ -459,6 +469,10 @@ export interface SubcategoryItemProps {
 	defaults?: INodeParameters;
 	forceIncludeNodes?: string[];
 	sections?: string[];
+	items?: INodeCreateElement[];
+	new?: boolean;
+	hideActions?: boolean;
+	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 }
 export interface ViewItemProps {
 	title: string;
@@ -534,6 +548,10 @@ export interface SectionCreateElement extends CreateElementBase {
 	type: 'section';
 	title: string;
 	children: INodeCreateElement[];
+	/**
+	 * Whether to show a separator at the bottom of the expanded section
+	 */
+	showSeparator?: boolean;
 }
 
 export interface ViewCreateElement extends CreateElementBase {
@@ -647,7 +665,8 @@ export type NodeFilterType =
 	| typeof AI_NODE_CREATOR_VIEW
 	| typeof AI_OTHERS_NODE_CREATOR_VIEW
 	| typeof AI_UNCATEGORIZED_CATEGORY
-	| typeof AI_EVALUATION;
+	| typeof AI_EVALUATION
+	| typeof HUMAN_IN_THE_LOOP_CATEGORY;
 
 export type NodeCreatorOpenSource =
 	| ''
@@ -761,6 +780,7 @@ export interface ITabBarItem {
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
 	isArchived?: boolean;
+	active?: boolean;
 }
 
 export interface CurlToJSONResponse {
@@ -795,9 +815,16 @@ export type SchemaType =
 	| 'object'
 	| 'function'
 	| 'null'
-	| 'undefined';
+	| 'undefined'
+	| 'binary';
 
-export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
+export type Schema = {
+	type: SchemaType;
+	key?: string;
+	value: string | Schema[];
+	path: string;
+	binaryData?: BinaryMetadata;
+};
 
 export type NodeAuthenticationOption = {
 	name: string;
@@ -840,11 +867,11 @@ export type CloudUpdateLinkSourceType =
 	| 'evaluations'
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
-	| 'custom-roles';
+	| 'custom-roles'
+	| 'main-sidebar';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
-	| 'upgrade-canvas-nav'
 	| 'upgrade-concurrency'
 	| 'upgrade-workflow-sharing'
 	| 'upgrade-credentials-sharing'
@@ -867,7 +894,9 @@ export type UTMCampaign =
 	| 'upgrade-insights'
 	| 'upgrade-evaluations'
 	| 'upgrade-builder'
-	| 'upgrade-custom-roles';
+	| 'upgrade-custom-roles'
+	| 'upgrade-canvas-nav'
+	| 'upgrade-main-sidebar';
 
 export type AddedNode = {
 	type: string;

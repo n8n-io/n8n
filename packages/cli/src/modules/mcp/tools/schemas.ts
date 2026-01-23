@@ -35,6 +35,9 @@ export const workflowDetailsOutputSchema = z.object({
 			tags: z.array(tagSchema),
 			meta: workflowMetaSchema,
 			parentFolderId: z.string().nullable(),
+			description: z.string().optional().describe('The description of the workflow'),
+			scopes: z.array(z.string()).describe('User permissions for this workflow'),
+			canExecute: z.boolean().describe('Whether the user has permission to execute this workflow'),
 		})
 		.passthrough()
 		.describe('Sanitized workflow data safe for MCP consumption'),

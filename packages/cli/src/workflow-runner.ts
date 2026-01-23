@@ -18,6 +18,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
+	createRunExecutionData,
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
@@ -34,7 +35,7 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionDataService } from '@/executions/execution-data.service';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -59,7 +60,7 @@ export class WorkflowRunner {
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
-		private readonly executionDataService: ExecutionDataService,
+		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
 	) {}
@@ -104,7 +105,7 @@ export class WorkflowRunner {
 		}
 
 		const fullRunData: IRun = {
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					error: {
 						...error,
@@ -113,7 +114,7 @@ export class WorkflowRunner {
 					},
 					runData: {},
 				},
-			},
+			}),
 			finished: false,
 			mode: executionMode,
 			startedAt,
@@ -146,7 +147,7 @@ export class WorkflowRunner {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
-			const runData = this.executionDataService.generateFailedExecutionFromError(
+			const runData = this.failedRunFactory.generateFailedExecutionFromError(
 				data.executionMode,
 				error,
 				error.node,
@@ -235,7 +236,7 @@ export class WorkflowRunner {
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
-			active: data.workflowData.active,
+			active: data.workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
@@ -247,6 +248,7 @@ export class WorkflowRunner {
 			workflowId: workflow.id,
 			executionTimeoutTimestamp:
 				workflowTimeout <= 0 ? undefined : Date.now() + workflowTimeout * 1000,
+			workflowSettings,
 		});
 		// TODO: set this in queue mode as well
 		additionalData.restartExecutionId = restartExecutionId;

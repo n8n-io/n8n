@@ -12,7 +12,7 @@ import {
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
-import type { IRunExecutionData } from 'n8n-workflow';
+import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
 import { useToast } from '@/app/composables/useToast';
 import {
@@ -54,7 +54,7 @@ describe(useLogsExecutionData, () => {
 		beforeEach(() => {
 			workflowState.setWorkflowExecutionData(
 				createTestWorkflowExecutionResponse({
-					data: { resultData: { runData: { n0: [createTestTaskData()] } } },
+					data: createRunExecutionData({ resultData: { runData: { n0: [createTestTaskData()] } } }),
 					workflowData: createTestWorkflow({ nodes: [createTestNode({ name: 'n0' })] }),
 				}),
 			);
@@ -91,7 +91,7 @@ describe(useLogsExecutionData, () => {
 							},
 						},
 					}),
-					data: {
+					data: createRunExecutionData({
 						resultData: {
 							runData: {
 								A: [createTestTaskData()],
@@ -102,7 +102,7 @@ describe(useLogsExecutionData, () => {
 								],
 							},
 						},
-					},
+					}),
 				}),
 			);
 

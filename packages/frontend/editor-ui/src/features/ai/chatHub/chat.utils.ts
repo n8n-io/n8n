@@ -6,6 +6,12 @@ import {
 	type ChatModelDto,
 	type ChatSessionId,
 	type ChatMessageId,
+	type ChatHubProvider,
+	type ChatHubLLMProvider,
+	type ChatHubInputModality,
+	type AgentIconOrEmoji,
+	type MessageChunk,
+	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -13,18 +19,11 @@ import type {
 	ChatAgentFilter,
 	ChatStreamingState,
 	FlattenedModel,
+	ChatConversation,
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
-
-export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
-	for (const provider of chatHubProviderSchema.options) {
-		if (response[provider].models.length > 0) {
-			return response[provider].models[0];
-		}
-	}
-
-	return undefined;
-}
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IRestApiContext } from '@n8n/rest-api-client';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -104,6 +103,10 @@ export function getAgentRoute(model: ChatHubConversationModel) {
 
 	return {
 		name: CHAT_VIEW,
+		query: {
+			provider: model.provider,
+			model: model.model,
+		},
 	};
 }
 
@@ -165,11 +168,6 @@ export function filterAndSortAgents(
 	if (filter.search.trim()) {
 		const query = filter.search.toLowerCase();
 		filtered = filtered.filter((model) => model.name.toLowerCase().includes(query));
-	}
-
-	// Apply provider filter
-	if (filter.provider !== '') {
-		filtered = filtered.filter((model) => model.model.provider === filter.provider);
 	}
 
 	// Apply sorting
@@ -249,8 +247,9 @@ export function createAiMessageFromStreamingState(
 		revisionOfMessageId: null,
 		responses: [],
 		alternatives: [],
-		...(streaming?.model
-			? flattenModel(streaming.model)
+		attachments: [],
+		...(streaming?.agent
+			? flattenModel(streaming.agent.model)
 			: {
 					provider: null,
 					model: null,
@@ -259,3 +258,249 @@ export function createAiMessageFromStreamingState(
 				}),
 	};
 }
+
+export function createHumanMessageFromStreamingState(streaming: ChatStreamingState): ChatMessage {
+	return {
+		id: streaming.promptId,
+		sessionId: streaming.sessionId,
+		type: 'human',
+		name: 'User',
+		content: streaming.promptText,
+		executionId: null,
+		status: 'success',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		previousMessageId: streaming.promptPreviousMessageId,
+		retryOfMessageId: null,
+		revisionOfMessageId: streaming.revisionOfMessageId,
+		responses: [],
+		alternatives: [],
+		attachments: streaming.attachments,
+		...flattenModel(streaming.agent.model),
+	};
+}
+
+export function buildUiMessages(
+	sessionId: string,
+	conversation: ChatConversation,
+	streaming?: ChatStreamingState,
+): ChatMessage[] {
+	const messagesToShow: ChatMessage[] = [];
+	let foundRunning = false;
+
+	for (let index = 0; index < conversation.activeMessageChain.length; index++) {
+		const id = conversation.activeMessageChain[index];
+		const message = conversation.messages[id];
+
+		if (!message) {
+			continue;
+		}
+
+		foundRunning = foundRunning || message.status === 'running';
+
+		if (foundRunning || streaming?.sessionId !== sessionId || message.type !== 'ai') {
+			messagesToShow.push(message);
+			continue;
+		}
+
+		if (streaming.retryOfMessageId === id && !streaming.messageId) {
+			// While waiting for streaming to start on regeneration, show previously generated message
+			// in running state as an immediate feedback
+			messagesToShow.push({
+				...message,
+				content: '',
+				status: 'running',
+				...flattenModel(streaming.agent.model),
+			});
+			foundRunning = true;
+			continue;
+		}
+
+		if (streaming.messageId && index === conversation.activeMessageChain.length - 1) {
+			// When agent responds multiple messages (e.g. when tools are used),
+			// there's a noticeable time gap between messages.
+			// In order to indicate that agent is still responding, show the last AI message as running
+			messagesToShow.push({ ...message, status: 'running' });
+			foundRunning = true;
+			continue;
+		}
+
+		messagesToShow.push(message);
+	}
+
+	return messagesToShow;
+}
+
+export function isLlmProvider(provider?: ChatHubProvider): provider is ChatHubLLMProvider {
+	return provider !== 'n8n' && provider !== 'custom-agent';
+}
+
+export function isLlmProviderModel(
+	model?: ChatHubConversationModel,
+): model is ChatHubConversationModel & { provider: ChatHubLLMProvider } {
+	return isLlmProvider(model?.provider);
+}
+
+export function findOneFromModelsResponse(
+	response: ChatModelsResponse,
+	providerSettings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>,
+): ChatModelDto | undefined {
+	for (const provider of chatHubProviderSchema.options) {
+		const settings = isLlmProvider(provider) ? providerSettings[provider] : undefined;
+		const availableModels = response[provider].models.filter(
+			(agent) => !settings || isAllowedModel(settings, agent.model),
+		);
+
+		if (availableModels.length > 0) {
+			return availableModels[0];
+		}
+	}
+
+	return undefined;
+}
+
+export function isAllowedModel(
+	{ enabled = true, allowedModels }: ChatProviderSettingsDto,
+	model: ChatHubConversationModel,
+): boolean {
+	return (
+		enabled &&
+		(allowedModels.length === 0 ||
+			allowedModels.some((agent) => 'model' in model && agent.model === model.model))
+	);
+}
+
+export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
+	return {
+		id: streaming.sessionId,
+		title: 'New Chat',
+		ownerId: '',
+		lastMessageAt: new Date().toISOString(),
+		credentialId: null,
+		agentName: streaming.agent.name,
+		agentIcon: streaming.agent.icon,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		tools: streaming.tools,
+		...flattenModel(streaming.agent.model),
+	};
+}
+
+export function createMimeTypes(modalities: ChatHubInputModality[]): string {
+	// If 'file' modality is present, accept all file types
+	if (modalities.includes('file')) {
+		return '*/*';
+	}
+
+	const mimeTypes: string[] = ['text/*'];
+
+	for (const modality of modalities) {
+		if (modality === 'image') {
+			mimeTypes.push('image/*');
+		}
+		if (modality === 'audio') {
+			mimeTypes.push('audio/*');
+		}
+		if (modality === 'video') {
+			mimeTypes.push('video/*');
+		}
+	}
+
+	return mimeTypes.join(',');
+}
+
+export const personalAgentDefaultIcon: AgentIconOrEmoji = {
+	type: 'icon',
+	value: 'message-square' satisfies IconName,
+};
+
+export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
+	type: 'icon',
+	value: 'bot' satisfies IconName,
+};
+
+type StreamApi<T> = (
+	ctx: IRestApiContext,
+	payload: T,
+	onChunk: (data: MessageChunk) => void,
+	onDone: () => void,
+	onError: (e: unknown) => void,
+) => void;
+
+/**
+ * Converts streaming API to return a promise that resolves when the first chunk is received.
+ */
+export function promisifyStreamingApi<T>(
+	streamingApi: StreamApi<T>,
+): (...args: Parameters<StreamApi<T>>) => Promise<void> {
+	return async (ctx, payload, onChunk, onDone, onError) => {
+		let settled = false;
+		let resolvePromise: () => void;
+		let rejectPromise: (reason?: unknown) => void;
+
+		const promise = new Promise<void>((resolve, reject) => {
+			resolvePromise = resolve;
+			rejectPromise = reject;
+		});
+
+		streamingApi(
+			ctx,
+			payload,
+			(chunk) => {
+				if (!settled) {
+					settled = true;
+					resolvePromise();
+				}
+				onChunk(chunk);
+			},
+			() => {
+				if (!settled) {
+					settled = true;
+					resolvePromise();
+				}
+				onDone();
+			},
+			(error: unknown) => {
+				if (!settled) {
+					settled = true;
+					rejectPromise(error);
+				}
+				onError(error);
+			},
+		);
+
+		return await promise;
+	};
+}
+
+export function createFakeAgent(
+	model: ChatHubConversationModel,
+	fallback?: Partial<{ name: string | null; icon: AgentIconOrEmoji | null }>,
+): ChatModelDto {
+	return {
+		model,
+		name: fallback?.name || '',
+		description: null,
+		icon: fallback?.icon ?? null,
+		createdAt: null,
+		updatedAt: null,
+		// Assume file attachment and tools are supported
+		metadata: {
+			inputModalities: ['text', 'file'],
+			capabilities: {
+				functionCalling: true,
+			},
+			available: true,
+		},
+		groupName: null,
+		groupIcon: null,
+	};
+}
+
+export const isEditable = (message: ChatMessage): boolean => {
+	return message.status === 'success' && !(message.provider === 'n8n' && message.type === 'ai');
+};
+
+export const isRegenerable = (message: ChatMessage): boolean => {
+	return message.type === 'ai';
+};

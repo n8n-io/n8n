@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
-import { mockedStore } from '@/__tests__/utils';
+import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MigrationRules from './MigrationRules.vue';
 import * as breakingChangesApi from '@n8n/rest-api-client/api/breaking-changes';
@@ -181,7 +181,7 @@ describe('MigrationRules', () => {
 			await waitFor(() => {
 				// Title, description, and workflow count
 				expect(screen.getByText('Test Rule 1')).toBeInTheDocument();
-				expect(screen.getByText('This is a test rule description')).toBeInTheDocument();
+				expect(screen.getByText('This is a test rule description.')).toBeInTheDocument();
 				expect(screen.getByText('5 Workflows')).toBeInTheDocument();
 
 				// Severity tag
@@ -272,7 +272,7 @@ describe('MigrationRules', () => {
 			await waitFor(() => {
 				// Title and description
 				expect(screen.getByText('Instance Rule 1')).toBeInTheDocument();
-				expect(screen.getByText('This is an instance rule description')).toBeInTheDocument();
+				expect(screen.getByText('This is an instance rule description.')).toBeInTheDocument();
 
 				// Severity tag
 				expect(screen.getByText('Medium')).toBeInTheDocument();
@@ -398,6 +398,45 @@ describe('MigrationRules', () => {
 		});
 	});
 
+	it('should keep refresh button visible during refresh operation', async () => {
+		// Mock a slow refresh to test that button stays visible
+		let resolveRefresh: (value: BreakingChangeLightReportResult) => void;
+		const refreshPromise = new Promise((resolve) => {
+			resolveRefresh = resolve;
+		});
+
+		vi.mocked(breakingChangesApi.refreshReport).mockReturnValue(
+			refreshPromise as Promise<BreakingChangeLightReportResult>,
+		);
+
+		renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByText('Refresh')).toBeInTheDocument();
+		});
+
+		// Click refresh
+		await userEvent.click(screen.getByText('Refresh'));
+
+		// Button should still be visible (with loading state) during refresh
+		await waitFor(() => {
+			const button = screen.getByText('Refresh');
+			expect(button).toBeInTheDocument();
+			// Button should be disabled during loading
+			expect(button.closest('button')).toBeDisabled();
+		});
+
+		// Resolve the refresh
+		resolveRefresh!(mockReport);
+
+		// Button should still be visible after refresh completes
+		await waitFor(() => {
+			const button = screen.getByText('Refresh');
+			expect(button).toBeInTheDocument();
+			expect(button.closest('button')).not.toBeDisabled();
+		});
+	});
+
 	describe('compatible workflows count', () => {
 		it.each([
 			{ affected: [5], compatible: 5, description: 'single issue' },
@@ -436,24 +475,21 @@ describe('MigrationRules', () => {
 			{
 				severity: 'critical',
 				label: 'Critical',
-				tooltip:
-					'Affected workflows will break after the update. You need to update or replace impacted nodes.',
+				tooltipText: 'will break',
 			},
 			{
 				severity: 'medium',
 				label: 'Medium',
-				tooltip:
-					'Workflows may still run but could produce incorrect results. Review and test before updating.',
+				tooltipText: 'incorrect results',
 			},
 			{
 				severity: 'low',
 				label: 'Low',
-				tooltip:
-					'Behavior might change slightly in specific cases. Most workflows will keep working as expected.',
+				tooltipText: 'slightly',
 			},
 		] as const)(
 			'should show $severity severity tooltip on hover',
-			async ({ severity, label, tooltip }) => {
+			async ({ severity, label, tooltipText }) => {
 				const report = createMockReport({
 					report: {
 						generatedAt: new Date('2024-01-01'),
@@ -472,11 +508,10 @@ describe('MigrationRules', () => {
 					expect(screen.getByText(label)).toBeInTheDocument();
 				});
 
-				await userEvent.hover(screen.getByText(label));
-
-				await waitFor(() => {
-					expect(screen.getByText(tooltip)).toBeInTheDocument();
-				});
+				// Verify tooltip shows severity description on hover
+				const labelElement = screen.getByText(label);
+				await hoverTooltipTrigger(labelElement);
+				await waitFor(() => expect(getTooltip()).toHaveTextContent(tooltipText));
 			},
 		);
 	});

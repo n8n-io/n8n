@@ -6,10 +6,12 @@ import type {
 	TestRunRepository,
 	WorkflowRepository,
 } from '@n8n/db';
+import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
 import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import {
+	createRunExecutionData,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
@@ -17,14 +19,13 @@ import {
 import type { IWorkflowBase, IRun, ExecutionError } from 'n8n-workflow';
 import path from 'path';
 
+import { TestRunnerService } from '../test-runner.service.ee';
+
 import type { ActiveExecutions } from '@/active-executions';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
-import { mockNodeTypesData } from '@test-integration/utils/node-types-data';
-
-import { TestRunnerService } from '../test-runner.service.ee';
 
 const wfUnderTestJson = JSON.parse(
 	readFileSync(path.join(__dirname, './mock-data/workflow.under-test.json'), { encoding: 'utf-8' }),
@@ -58,6 +59,7 @@ describe('TestRunnerService', () => {
 			testCaseExecutionRepository,
 			errorReporter,
 			executionsConfig,
+			mock(),
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -457,7 +459,10 @@ describe('TestRunnerService', () => {
 			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
 			// Verify it has the correct structure
-			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
 			expect(runCallArg).toHaveProperty('executionMode', 'manual');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
@@ -493,6 +498,7 @@ describe('TestRunnerService', () => {
 				testCaseExecutionRepository,
 				errorReporter,
 				queueModeConfig,
+				mock(),
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -530,7 +536,10 @@ describe('TestRunnerService', () => {
 			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
 			// Verify it has the correct structure
-			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
 			expect(runCallArg).toHaveProperty('executionMode', 'manual');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
@@ -538,8 +547,23 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
 
+			// In queue mode with offloading, executionData.executionData should not exist
 			expect(runCallArg).not.toHaveProperty('executionData.executionData');
 			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
+
+			// But executionData itself should still exist with startData and manualData
+			expect(runCallArg).toHaveProperty('executionData');
+			expect(runCallArg.executionData).toBeDefined();
+			expect(runCallArg).toHaveProperty('executionData.startData.destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
+			expect(runCallArg).toHaveProperty('executionData.manualData.userId', metadata.userId);
+			expect(runCallArg).toHaveProperty(
+				'executionData.manualData.triggerToStartFrom.name',
+				triggerNodeName,
+			);
+
 			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
 				resource: 'dataset',
 				operation: 'getRows',
@@ -657,6 +681,8 @@ describe('TestRunnerService', () => {
 			// Setup test data
 			const triggerNodeName = 'TriggerNode';
 			const workflow = mock<IWorkflowBase>({
+				id: 'workflow-id',
+				name: 'Test Workflow',
 				nodes: [
 					{
 						id: 'node1',
@@ -785,6 +811,7 @@ describe('TestRunnerService', () => {
 					testCaseExecutionRepository,
 					errorReporter,
 					queueModeConfig,
+					mock(),
 				);
 			});
 
@@ -792,6 +819,8 @@ describe('TestRunnerService', () => {
 				// Setup test data
 				const triggerNodeName = 'TriggerNode';
 				const workflow = mock<IWorkflowBase>({
+					id: 'workflow-id',
+					name: 'Test Workflow',
 					nodes: [
 						{
 							id: 'node1',
@@ -848,7 +877,8 @@ describe('TestRunnerService', () => {
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
-						executionData: {
+						executionData: createRunExecutionData({
+							executionData: null,
 							resultData: {
 								pinData: {
 									[triggerNodeName]: [testCase],
@@ -861,7 +891,7 @@ describe('TestRunnerService', () => {
 									name: triggerNodeName,
 								},
 							},
-						},
+						}),
 					}),
 				);
 			});

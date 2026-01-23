@@ -5,12 +5,12 @@ import {
 	Entity,
 	ManyToOne,
 	JoinColumn,
-	OneToMany,
 	type Relation,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
 
 import type { ChatHubSession } from './chat-hub-session.entity';
+import type { IBinaryData } from 'n8n-workflow';
 
 @Entity({ name: 'chat_hub_messages' })
 export class ChatHubMessage extends WithTimestamps {
@@ -59,7 +59,7 @@ export class ChatHubMessage extends WithTimestamps {
 	 * The LLM model that generated this message (if applicable).
 	 * Human messages have this field set to NULL.
 	 */
-	@Column({ type: 'varchar', length: 64, nullable: true })
+	@Column({ type: 'varchar', length: 256, nullable: true })
 	model: string | null;
 
 	/**
@@ -80,7 +80,7 @@ export class ChatHubMessage extends WithTimestamps {
 	 * ID of the custom agent that produced this message (if applicable).
 	 * Only set when provider is 'custom-agent'.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	agentId: string | null;
 
 	/**
@@ -103,43 +103,10 @@ export class ChatHubMessage extends WithTimestamps {
 	previousMessageId: string | null;
 
 	/**
-	 * The previous message this message is a response to, NULL on the initial message.
-	 */
-	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.responses, {
-		onDelete: 'CASCADE',
-		nullable: true,
-	})
-	@JoinColumn({ name: 'previousMessageId' })
-	previousMessage?: Relation<ChatHubMessage> | null;
-
-	/**
-	 * Messages that are responses to this message. This could branch out to multiple threads.
-	 */
-	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.previousMessage)
-	responses?: Array<Relation<ChatHubMessage>>;
-
-	/**
 	 * ID of the message that this message is a retry of (if applicable).
 	 */
 	@Column({ type: String, nullable: true })
 	retryOfMessageId: string | null;
-
-	/**
-	 * The message that this message is a retry of (if applicable).
-	 */
-	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.retries, {
-		onDelete: 'CASCADE',
-		nullable: true,
-	})
-	@JoinColumn({ name: 'retryOfMessageId' })
-	retryOfMessage?: Relation<ChatHubMessage> | null;
-
-	/**
-	 * All messages that are retries of this message (if applicable).
-	 */
-	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.retryOfMessage)
-	retries?: Array<Relation<ChatHubMessage>>;
-
 	/**
 	 * ID of the message that this message is a revision/edit of (if applicable).
 	 */
@@ -147,24 +114,17 @@ export class ChatHubMessage extends WithTimestamps {
 	revisionOfMessageId: string | null;
 
 	/**
-	 * The message that this message is a revision/edit of (if applicable).
-	 */
-	@ManyToOne('ChatHubMessage', (m: ChatHubMessage) => m.revisions, {
-		onDelete: 'CASCADE',
-		nullable: true,
-	})
-	@JoinColumn({ name: 'revisionOfMessageId' })
-	revisionOfMessage?: Relation<ChatHubMessage> | null;
-
-	/**
-	 * All messages that are revisions/edits of this message (if applicable).
-	 */
-	@OneToMany('ChatHubMessage', (m: ChatHubMessage) => m.revisionOfMessage)
-	revisions?: Array<Relation<ChatHubMessage>>;
-
-	/**
 	 * Status of the message, e.g. 'running', 'success', 'error', 'cancelled'.
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'success' })
 	status: ChatHubMessageStatus;
+
+	/**
+	 * File attachments for the message (if any), stored as JSON.
+	 * Storage strategy depends on the binary data mode configuration:
+	 * - When using external storage (e.g., filesystem-v2): Only metadata is stored, with 'id' referencing the external location
+	 * - When using default mode: Base64-encoded data is stored directly in the 'data' field
+	 */
+	@Column({ type: 'json', nullable: true })
+	attachments: Array<IBinaryData> | null;
 }

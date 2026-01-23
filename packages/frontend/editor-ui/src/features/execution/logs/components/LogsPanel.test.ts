@@ -1,5 +1,6 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { mockedStore } from '@/__tests__/utils';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
@@ -20,7 +21,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { deepCopy } from 'n8n-workflow';
+import { createRunExecutionData, deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -32,6 +33,7 @@ import * as useChatMessaging from '@/features/execution/logs/composables/useChat
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import type * as useNodeHelpersModule from '@/app/composables/useNodeHelpers';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -52,6 +54,18 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 		isConnected: true,
 	}),
 }));
+
+// Use a mutable reference so the mock always returns the current workflowState
+const workflowStateRef: { current: WorkflowState | undefined } = { current: undefined };
+
+vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
+	const actual = await importOriginal<typeof useNodeHelpersModule>();
+	return {
+		...actual,
+		useNodeHelpers: (opts = {}) =>
+			actual.useNodeHelpers({ ...opts, workflowState: workflowStateRef.current }),
+	};
+});
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -98,6 +112,7 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
+		workflowStateRef.current = workflowState;
 		workflowState.setWorkflowExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);
@@ -126,8 +141,9 @@ describe('LogsPanel', () => {
 		aiChatExecutionResponse = deepCopy(aiChatExecutionResponseTemplate);
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	afterEach(async () => {
+		await flushPromises();
+		await vi.runOnlyPendingTimersAsync();
 	});
 
 	it('should render collapsed panel by default', async () => {
@@ -306,9 +322,9 @@ describe('LogsPanel', () => {
 			finished: false,
 			startedAt: new Date('2025-04-20T12:34:50.000Z'),
 			stoppedAt: undefined,
-			data: {
+			data: createRunExecutionData({
 				resultData: { runData: { Chat: [createTestTaskData()] } },
-			},
+			}),
 		});
 
 		const rendered = render();

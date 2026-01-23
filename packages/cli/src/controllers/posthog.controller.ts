@@ -31,61 +31,70 @@ export class PostHogController {
 	}
 
 	// Main event capture endpoint
-	@Post('/capture/', { skipAuth: true, rateLimit: { limit: 200, windowMs: 60_000 } })
+	@Post('/capture/', { skipAuth: true, ipRateLimit: { limit: 200, windowMs: 60_000 } })
 	async capture(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.proxy(req, res, next);
 	}
 
 	// Feature flags and configuration
-	@Post('/decide/', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
+	@Post('/decide/', { skipAuth: true, ipRateLimit: { limit: 100, windowMs: 60_000 } })
 	async decide(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.proxy(req, res, next);
 	}
 
 	// Session recording events
-	@Post('/s/', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
+	@Post('/s/', { skipAuth: true, ipRateLimit: { limit: 50, windowMs: 60_000 } })
 	async sessionRecording(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.proxy(req, res, next);
 	}
 
 	// Session recording events (alternative endpoint)
-	@Post('/e/', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
+	@Post('/e/', { skipAuth: true, ipRateLimit: { limit: 50, windowMs: 60_000 } })
 	async sessionEvents(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.proxy(req, res, next);
 	}
 
 	// Person/profile updates
-	@Post('/engage/', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
+	@Post('/engage/', { skipAuth: true, ipRateLimit: { limit: 50, windowMs: 60_000 } })
 	async engage(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.proxy(req, res, next);
 	}
 
 	// Batch endpoint (for multiple events)
-	@Post('/batch/', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
+	@Post('/batch/', { skipAuth: true, ipRateLimit: { limit: 100, windowMs: 60_000 } })
 	async batch(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.proxy(req, res, next);
 	}
 
 	// Feature flags endpoint - /flags/
-	@Post('/flags/', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
+	@Post('/flags/', { skipAuth: true, ipRateLimit: { limit: 100, windowMs: 60_000 } })
 	async flags(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		return await this.proxy(req, res, next);
 	}
 
-	// Static files - specific endpoint for array.js
+	// Static files - specific endpoint for array.js and lazy-recorder.js
 	@Get('/static/array.js', {
 		skipAuth: true,
 		usesTemplates: true,
-		rateLimit: { limit: 50, windowMs: 60_000 },
+		ipRateLimit: { limit: 50, windowMs: 60_000 },
 	})
 	staticArrayJs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		void this.proxy(req, res, next);
+	}
+
+	@Get('/static/lazy-recorder.js', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: { limit: 50, windowMs: 60_000 },
+	})
+	staticLazyRecorderJs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		void this.proxy(req, res, next);
 	}
 
 	// Configuration endpoints for array.js
 	@Get('/array/:apiKey/config.js', {
 		skipAuth: true,
-		rateLimit: { limit: 20, windowMs: 60_000 },
+		ipRateLimit: { limit: 20, windowMs: 60_000 },
 		usesTemplates: true,
 	})
 	arrayConfig(req: AuthenticatedRequest, res: Response, next: NextFunction) {

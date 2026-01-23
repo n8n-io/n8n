@@ -30,11 +30,13 @@ import {
 	getTarget,
 	createSendAndWaitMessageBody,
 	processThreadOptions,
+	slackApiRequestAllItemsWithRateLimit,
 } from './GenericFunctions';
 import {
 	channelRLC,
 	messageFields,
 	messageOperations,
+	replyToMessageField,
 	sendToSelector,
 	userRLC,
 } from './MessageDescription';
@@ -56,7 +58,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3],
+			version: [2, 2.1, 2.2, 2.3, 2.4],
 			defaults: {
 				name: 'Slack',
 			},
@@ -145,25 +147,30 @@ export class SlackV2 implements INodeType {
 				...channelFields,
 				...messageOperations,
 				...messageFields,
-				...getSendAndWaitProperties([
-					{ ...sendToSelector, default: 'user' },
-					{
-						...channelRLC,
-						displayOptions: {
-							show: {
-								select: ['channel'],
+				...getSendAndWaitProperties(
+					[
+						{ ...sendToSelector, default: 'user' },
+						{
+							...channelRLC,
+							displayOptions: {
+								show: {
+									select: ['channel'],
+								},
 							},
 						},
-					},
-					{
-						...userRLC,
-						displayOptions: {
-							show: {
-								select: ['user'],
+						{
+							...userRLC,
+							displayOptions: {
+								show: {
+									select: ['user'],
+								},
 							},
 						},
-					},
-				]).filter((p) => p.name !== 'subject'),
+					],
+					undefined,
+					undefined,
+					{ extraOptions: [replyToMessageField] },
+				).filter((p) => p.name !== 'subject'),
 				...starOperations,
 				...starFields,
 				...fileOperations,
@@ -190,16 +197,15 @@ export class SlackV2 implements INodeType {
 					limit: 1000,
 					cursor: paginationToken,
 				};
-				const { channels, response_metadata } = (await slackApiRequest.call(
-					this,
-					'GET',
-					'/conversations.list',
-					{},
-					qs,
-				)) as {
-					channels: Array<{ id: string; name: string }>;
-					response_metadata?: { next_cursor?: string };
-				};
+				// in case of too many rate limit errors, return cursor and allow user to lazy load by scrolling
+				const { data: channels, cursor } = await slackApiRequestAllItemsWithRateLimit<{
+					id: string;
+					name: string;
+				}>(this, 'channels', 'GET', '/conversations.list', {}, qs, {
+					onFail: 'stop',
+					maxRetries: 2,
+					fallbackDelay: 30_000,
+				});
 				const results: INodeListSearchItems[] = channels
 					.map((c) => ({
 						name: c.name,
@@ -216,8 +222,7 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				const nextPaginationToken = response_metadata?.next_cursor || undefined;
-				return { results, paginationToken: nextPaginationToken };
+				return { results, paginationToken: cursor };
 			},
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				const users = (await slackApiRequestAllItems.call(
@@ -573,6 +578,12 @@ export class SlackV2 implements INodeType {
 								qs,
 							);
 							responseData = responseData.messages;
+						}
+
+						// Slack API "feature" - messages sorting breaks in-between pages when oldest is provided
+						// Always sort manually in descending order to ensure consistent sorting
+						if (nodeVersion >= 2.4) {
+							responseData.sort((a: IDataObject, b: IDataObject) => +(b.ts ?? 0) - +(a.ts ?? 0));
 						}
 					}
 					//https://api.slack.com/methods/conversations.invite

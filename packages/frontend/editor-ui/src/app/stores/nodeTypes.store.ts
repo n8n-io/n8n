@@ -269,8 +269,13 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const isConfigurableNode = computed(() => {
-		return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
-			const nodeType = getNodeType.value(nodeTypeName);
+		return (
+			workflow: Workflow,
+			node: INode,
+			nodeTypeName: string,
+			nodeTypeVersion?: number,
+		): boolean => {
+			const nodeType = getNodeType.value(nodeTypeName, nodeTypeVersion);
 			if (nodeType === null) {
 				return false;
 			}

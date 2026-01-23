@@ -1,4 +1,4 @@
-import type { Folder } from '@n8n/db';
+import type { Folder, Project } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
 import type { ApiHelpers } from './api-helper';
@@ -12,7 +12,7 @@ export class ProjectApiHelper {
 	 * @param projectName Optional base name for the project. If not provided, generates a default name.
 	 * @returns The created project data
 	 */
-	async createProject(projectName?: string) {
+	async createProject(projectName?: string): Promise<Project> {
 		const uniqueName = projectName ? `${projectName} (${nanoid(8)})` : `Test Project ${nanoid(8)}`;
 
 		const response = await this.api.request.post('/rest/projects', {
@@ -23,6 +23,23 @@ export class ProjectApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to create project: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Get the current logged-in user's personal project.
+	 * Uses the dedicated /rest/projects/personal endpoint which returns
+	 * only the authenticated user's personal project, not all visible personal projects.
+	 * @returns The current user's personal project
+	 */
+	async getMyPersonalProject(): Promise<Project> {
+		const response = await this.api.request.get('/rest/projects/personal');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get personal project: ${await response.text()}`);
 		}
 
 		const result = await response.json();

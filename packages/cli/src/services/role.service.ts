@@ -14,6 +14,7 @@ import {
 	ScopeRepository,
 	GLOBAL_ADMIN_ROLE,
 } from '@n8n/db';
+import type { EntityManager } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	Scope,
@@ -34,8 +35,9 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleCacheService } from './role-cache.service';
 import { isUniqueConstraintError } from '@/response-helper';
+
+import { RoleCacheService } from './role-cache.service';
 
 @Service()
 export class RoleService {
@@ -246,12 +248,17 @@ export class RoleService {
 			throw new UnexpectedError('Cannot detect if entity is a workflow or credential.');
 		}
 
-		entity.scopes = this.combineResourceScopes(
-			'active' in entity ? 'workflow' : 'credential',
-			user,
-			shared,
-			userProjectRelations,
-		);
+		const entityType = 'active' in entity ? 'workflow' : 'credential';
+		entity.scopes = this.combineResourceScopes(entityType, user, shared, userProjectRelations);
+
+		if (
+			entityType === 'credential' &&
+			'isGlobal' in entity &&
+			entity.isGlobal &&
+			!entity.scopes.includes('credential:read')
+		) {
+			entity.scopes.push('credential:read');
+		}
 
 		return entity;
 	}
@@ -289,12 +296,16 @@ export class RoleService {
 	 * Enhanced rolesWithScope function that combines static roles with database roles
 	 * This replaces the original rolesWithScope function from @n8n/permissions
 	 */
-	async rolesWithScope(namespace: RoleNamespace, scopes: Scope | Scope[]): Promise<string[]> {
+	async rolesWithScope(
+		namespace: RoleNamespace,
+		scopes: Scope | Scope[],
+		trx?: EntityManager,
+	): Promise<string[]> {
 		if (!Array.isArray(scopes)) {
 			scopes = [scopes];
 		}
 		// Get database roles from cache
-		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes);
+		return await this.roleCacheService.getRolesWithAllScopes(namespace, scopes, trx);
 	}
 
 	isRoleLicensed(role: AssignableProjectRole) {

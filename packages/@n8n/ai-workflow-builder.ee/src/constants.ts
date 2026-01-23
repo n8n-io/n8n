@@ -36,3 +36,20 @@ export const MAX_WORKFLOW_LENGTH_TOKENS = 30_000;
  * Used for rough token count estimation from character counts.
  */
 export const AVG_CHARS_PER_TOKEN_ANTHROPIC = 3.5;
+
+/**
+ * Maximum characters allowed for a single node example configuration.
+ * Examples exceeding this limit are filtered out to avoid context bloat.
+ * Based on ~5000 tokens at AVG_CHARS_PER_TOKEN_ANTHROPIC ratio.
+ */
+export const MAX_NODE_EXAMPLE_CHARS = 5000 * AVG_CHARS_PER_TOKEN_ANTHROPIC;
+
+/**
+ * Maximum iterations for subgraph tool loops.
+ * Prevents infinite loops when agents keep calling tools without finishing.
+ */
+export const MAX_BUILDER_ITERATIONS = 30;
+export const MAX_CONFIGURATOR_ITERATIONS = 30;
+export const MAX_DISCOVERY_ITERATIONS = 50;
+export const MAX_MULTI_AGENT_STREAM_ITERATIONS =
+	MAX_BUILDER_ITERATIONS + MAX_CONFIGURATOR_ITERATIONS + MAX_DISCOVERY_ITERATIONS;

@@ -44,6 +44,7 @@ import {
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
+import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
 
 function toText<T>(data: T) {
 	if (typeof data === 'object' && data !== null) {
@@ -58,7 +59,7 @@ export class HttpRequestV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: '={{$parameter["method"] + ": " + $parameter["url"]}}',
-			version: [3, 4, 4.1, 4.2, 4.3],
+			version: [3, 4, 4.1, 4.2, 4.3, 4.4],
 			defaults: {
 				name: 'HTTP Request',
 				color: '#0004F5',
@@ -314,6 +315,7 @@ export class HttpRequestV3 implements INodeType {
 					queryParameterArrays,
 					response,
 					lowercaseHeaders,
+					sendCredentialsOnCrossOriginRedirect,
 				} = this.getNodeParameter('options', itemIndex, {}) as {
 					batching: { batch: { batchSize: number; batchInterval: number } };
 					proxy: string;
@@ -330,6 +332,7 @@ export class HttpRequestV3 implements INodeType {
 					};
 					redirect: { redirect: { maxRedirects: number; followRedirects: boolean } };
 					lowercaseHeaders: boolean;
+					sendCredentialsOnCrossOriginRedirect?: boolean;
 				};
 
 				responseFileName = response?.response?.outputPropertyName;
@@ -350,6 +353,7 @@ export class HttpRequestV3 implements INodeType {
 					}
 				}
 
+				const defaultSendCredentialsOnCrossOriginRedirect = nodeVersion < 4.4;
 				requestOptions = {
 					headers: {},
 					method: requestMethod,
@@ -358,6 +362,8 @@ export class HttpRequestV3 implements INodeType {
 					rejectUnauthorized: !allowUnauthorizedCerts || false,
 					followRedirect: false,
 					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect:
+						sendCredentialsOnCrossOriginRedirect ?? defaultSendCredentialsOnCrossOriginRedirect,
 				};
 
 				if (requestOptions.method !== 'GET' && nodeVersion >= 4.1) {
@@ -403,11 +409,11 @@ export class HttpRequestV3 implements INodeType {
 						if (!cur.inputDataFieldName) return accumulator;
 						const binaryData = this.helpers.assertBinaryData(itemIndex, cur.inputDataFieldName);
 						let uploadData: Buffer | Readable;
-						const itemBinaryData = items[itemIndex].binary![cur.inputDataFieldName];
-						if (itemBinaryData.id) {
-							uploadData = await this.helpers.getBinaryStream(itemBinaryData.id);
+
+						if (binaryData.id) {
+							uploadData = await this.helpers.getBinaryStream(binaryData.id);
 						} else {
-							uploadData = Buffer.from(itemBinaryData.data, BINARY_ENCODING);
+							uploadData = Buffer.from(binaryData.data, BINARY_ENCODING);
 						}
 
 						accumulator[cur.name] = {
@@ -922,7 +928,11 @@ export class HttpRequestV3 implements INodeType {
 									false,
 								) as boolean;
 
-								const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+								const data = await binaryToStringWithEncodingDetection(
+									response.body as Buffer | Readable,
+									responseContentType,
+									this.helpers,
+								);
 								response.body = jsonParse(data, {
 									...(neverError
 										? { fallbackValue: {} }
@@ -934,7 +944,11 @@ export class HttpRequestV3 implements INodeType {
 						} else {
 							responseFormat = 'text';
 							if (!response.__bodyResolved) {
-								const data = await this.helpers.binaryToString(response.body as Buffer | Readable);
+								const data = await binaryToStringWithEncodingDetection(
+									response.body as Buffer | Readable,
+									responseContentType,
+									this.helpers,
+								);
 								response.body = !data ? undefined : data;
 							}
 						}
@@ -1111,10 +1125,13 @@ export class HttpRequestV3 implements INodeType {
 
 		returnItems = returnItems.map(replaceNullValues);
 
+		// Only show the Split Out hint in regular workflow context, not when running as an AI Agent tool
+		// (users cannot add nodes after tools in an AI Agent context)
 		if (
 			returnItems.length === 1 &&
 			returnItems[0].json.data &&
-			Array.isArray(returnItems[0].json.data)
+			Array.isArray(returnItems[0].json.data) &&
+			!this.isToolExecution()
 		) {
 			const message =
 				'To split the contents of ‘data’ into separate items for easier processing, add a ‘Split Out’ node after this one';

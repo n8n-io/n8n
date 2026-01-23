@@ -1,14 +1,16 @@
 <script lang="ts" setup>
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
-import { VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import {
+	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nLink,
+	N8nLoading,
 	N8nOption,
 	N8nSelect,
 	N8nTag,
@@ -58,7 +60,7 @@ const tableHeaders = ref<Array<TableHeader<AffectedWorkflow>>>([
 		width: 200,
 	},
 	{
-		title: i18n.baseText('settings.migrationReport.detail.table.issue'),
+		title: i18n.baseText('settings.migrationReport.detail.table.status'),
 		key: 'active',
 		value: (row: AffectedWorkflow) =>
 			row.active
@@ -67,7 +69,7 @@ const tableHeaders = ref<Array<TableHeader<AffectedWorkflow>>>([
 		width: 40,
 	},
 	{
-		title: i18n.baseText('settings.migrationReport.detail.table.nodeAffected'),
+		title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 		key: 'issues',
 	},
 	{
@@ -107,7 +109,7 @@ const statusFilter = ref<'' | 'active' | 'deactivated'>('');
 // Debounced search to avoid excessive filtering
 const debouncedSearch = useDebounceFn((value: string) => {
 	searchQuery.value = value;
-}, 300);
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 const onSearchInput = (value: string) => {
 	searchInput.value = value; // Update input immediately
@@ -186,40 +188,59 @@ const sortedWorkflows = computed(() => {
 
 <template>
 	<div>
-		<N8nText
-			tag="h2"
-			size="xlarge"
-			color="text-dark"
-			class="mb-2xs"
-			style="display: flex; align-items: center; gap: 4px"
-		>
-			{{ state.ruleTitle }}
-			<SeverityTag :severity="state.ruleSeverity" />
-			<N8nTag
-				:text="
-					i18n.baseText('settings.migrationReport.detail.affectedTag', {
-						interpolate: { count: String(state.affectedWorkflows.length) },
-					})
-				"
-				:clickable="false"
-			/>
-		</N8nText>
-		<N8nText tag="p" color="text-base" class="mb-2xl">
-			{{ state.ruleDescription }}
-			<N8nLink
-				v-if="state.ruleDocumentationUrl"
-				theme="text"
-				underline
-				:href="state.ruleDocumentationUrl"
-				target="_blank"
-				rel="noopener noreferrer"
+		<N8nButton
+			:class="$style.backButton"
+			type="secondary"
+			text
+			icon="arrow-left"
+			:label="i18n.baseText('generic.back')"
+			class="mb-xs"
+			@click="router.push({ name: VIEWS.MIGRATION_REPORT })"
+		/>
+		<template v-if="isLoading">
+			<div class="mb-2xs">
+				<N8nLoading variant="h1" />
+			</div>
+			<div class="mb-2xl">
+				<N8nLoading variant="p" :rows="2" />
+			</div>
+		</template>
+		<template v-else>
+			<N8nText
+				tag="h2"
+				size="xlarge"
+				color="text-dark"
+				class="mb-2xs"
+				style="display: flex; align-items: center; gap: 4px"
 			>
-				<u :class="$style.NoLineBreak">
-					{{ i18n.baseText('settings.migrationReport.documentation') }}
-					<N8nIcon icon="external-link" />
-				</u>
-			</N8nLink>
-		</N8nText>
+				{{ state.ruleTitle }}
+				<SeverityTag :severity="state.ruleSeverity" />
+				<N8nTag
+					:text="
+						i18n.baseText('settings.migrationReport.detail.affectedTag', {
+							interpolate: { count: String(state.affectedWorkflows.length) },
+						})
+					"
+					:clickable="false"
+				/>
+			</N8nText>
+			<N8nText tag="p" color="text-base" class="mb-2xl">
+				{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
+				<N8nLink
+					v-if="state.ruleDocumentationUrl"
+					theme="text"
+					:href="state.ruleDocumentationUrl"
+					target="_blank"
+					rel="noopener noreferrer"
+					:class="$style.NoLineBreak"
+				>
+					<span :class="$style.UnderlinedText">{{
+						i18n.baseText('settings.migrationReport.documentation')
+					}}</span>
+					↗
+				</N8nLink>
+			</N8nText>
+		</template>
 
 		<!-- Search and Filter Controls -->
 		<div :class="$style.filterControls">
@@ -305,6 +326,10 @@ const sortedWorkflows = computed(() => {
 </template>
 
 <style module>
+.backButton {
+	padding-left: 0;
+}
+
 .clickableRow {
 	cursor: pointer;
 }
@@ -324,5 +349,9 @@ const sortedWorkflows = computed(() => {
 
 .NoLineBreak {
 	white-space: nowrap;
+}
+
+.UnderlinedText {
+	text-decoration: underline;
 }
 </style>
