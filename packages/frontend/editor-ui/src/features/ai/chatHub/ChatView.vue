@@ -98,6 +98,7 @@ const canSelectTools = computed(
 const showWelcomeScreen = computed(
 	() =>
 		!welcomeScreenDismissed.value &&
+		!modelFromQuery.value &&
 		chatStore.sessionsReady &&
 		(chatStore.sessions.ids?.length ?? 0) === 0 &&
 		(!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser'])),
