@@ -13,7 +13,8 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 	const { workflowId, activeVersionId } = data;
 
 	const workflowIsBeingViewed = workflowsStore.workflowId === workflowId;
-	const activeVersionIsSet = workflowsStore.workflow.activeVersionId !== activeVersionId;
+	const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+	const activeVersionIsSet = currentWorkflowDocument?.activeVersionId !== activeVersionId;
 	if (workflowIsBeingViewed && activeVersionIsSet) {
 		// Only update workflow if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {

@@ -801,7 +801,7 @@ export function useCanvasOperations() {
 	}
 
 	function updatePositionForNodeWithMultipleInputs(node: INodeUi) {
-		const inputNodes = editableWorkflowObject.value.getParentNodesByDepth(node.name, 1);
+		const inputNodes = editableWorkflowObject.value?.getParentNodesByDepth(node.name, 1) ?? [];
 
 		if (inputNodes.length > 1) {
 			inputNodes.slice(1).forEach((inputNode, index) => {
@@ -1182,7 +1182,7 @@ export function useCanvasOperations() {
 				lastInteractedWithNode.type,
 				lastInteractedWithNode.typeVersion,
 			);
-			const lastInteractedWithNodeObject = editableWorkflowObject.value.getNode(
+			const lastInteractedWithNodeObject = editableWorkflowObject.value?.getNode(
 				lastInteractedWithNode.name,
 			);
 
@@ -1198,7 +1198,11 @@ export function useCanvasOperations() {
 				position = [newNodeInsertPosition[0] + xOffset, newNodeInsertPosition[1] + yOffset];
 
 				uiStore.lastCancelledConnectionPosition = undefined;
-			} else if (lastInteractedWithNodeTypeDescription && lastInteractedWithNodeObject) {
+			} else if (
+				lastInteractedWithNodeTypeDescription &&
+				lastInteractedWithNodeObject &&
+				editableWorkflowObject.value
+			) {
 				// When
 				// - clicking the plus button of a node handle
 				// - clicking the plus button of a node edge / connection
@@ -1283,11 +1287,13 @@ export function useCanvasOperations() {
 					// outputs here is to calculate the position, it is fine to assume
 					// that they have no outputs and are so treated as a regular node
 					// with only "main" outputs.
-					outputs = NodeHelpers.getNodeOutputs(
-						editableWorkflowObject.value,
-						node as INode,
-						nodeTypeDescription,
-					);
+					if (editableWorkflowObject.value) {
+						outputs = NodeHelpers.getNodeOutputs(
+							editableWorkflowObject.value,
+							node as INode,
+							nodeTypeDescription,
+						);
+					}
 				} catch (e) {}
 				const outputTypes = NodeHelpers.getConnectionTypes(outputs);
 
@@ -1456,6 +1462,10 @@ export function useCanvasOperations() {
 		insertPosition: XYPosition,
 		sourceNodeName: string,
 	): { nodesToMove: INodeUi[]; stickiesToStretch: INodeUi[] } {
+		if (!editableWorkflowObject.value) {
+			return { nodesToMove: [], stickiesToStretch: [] };
+		}
+
 		const allNodes = Object.values(workflowsStore.nodesByName);
 		const insertX = insertPosition[0];
 		const insertY = insertPosition[1];
@@ -1909,6 +1919,10 @@ export function useCanvasOperations() {
 		sourceConnection: IConnection | CanvasConnectionPort,
 		targetConnection: IConnection | CanvasConnectionPort,
 	): boolean {
+		if (!editableWorkflowObject.value) {
+			return false;
+		}
+
 		const blocklist = [STICKY_NODE_TYPE];
 
 		const checkIsNotInstalledCommunityNode = (node: INodeUi) =>
@@ -2449,12 +2463,16 @@ export function useCanvasOperations() {
 			// the user
 			workflowHelpers.updateNodePositions(
 				workflowData,
-				NodeViewUtils.getNewNodePosition(editableWorkflow.value.nodes, lastClickPosition.value, {
-					...(workflowData.nodes && workflowData.nodes.length > 1
-						? { size: getNodesGroupSize(workflowData.nodes) }
-						: {}),
-					viewport,
-				}),
+				NodeViewUtils.getNewNodePosition(
+					editableWorkflow.value?.nodes ?? [],
+					lastClickPosition.value,
+					{
+						...(workflowData.nodes && workflowData.nodes.length > 1
+							? { size: getNodesGroupSize(workflowData.nodes) }
+							: {}),
+						viewport,
+					},
+				),
 			);
 
 			await addImportedNodesToWorkflow(workflowData, {
@@ -2796,6 +2814,10 @@ export function useCanvasOperations() {
 			trackBulk?: boolean;
 		},
 	) {
+		if (!editableWorkflow.value) {
+			return [];
+		}
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
@@ -2807,10 +2829,12 @@ export function useCanvasOperations() {
 			telemetry: true,
 		});
 
-		const offsetIndex = editableWorkflow.value.nodes.length - nodes.length;
+		// editableWorkflow.value is guaranteed to be defined by the guard at the top of this function
+		const workflowNodes = editableWorkflow.value!.nodes;
+		const offsetIndex = workflowNodes.length - nodes.length;
 		const connections: CanvasConnectionCreateData[] = addedConnections.map(({ from, to }) => {
-			const fromNode = editableWorkflow.value.nodes[offsetIndex + from.nodeIndex];
-			const toNode = editableWorkflow.value.nodes[offsetIndex + to.nodeIndex];
+			const fromNode = workflowNodes[offsetIndex + from.nodeIndex];
+			const toNode = workflowNodes[offsetIndex + to.nodeIndex];
 			const type = from.type ?? to.type ?? NodeConnectionTypes.Main;
 
 			return {

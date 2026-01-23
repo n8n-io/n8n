@@ -69,10 +69,14 @@ export function useWorkflowCommands(): CommandGroup {
 	const isReadOnly = computed(
 		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 	);
-	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+	const isArchived = computed(
+		() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.isArchived,
+	);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() =>
+			getResourcePermissions(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.scopes)
+				.workflow,
 	);
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
@@ -81,7 +85,9 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const credentialCommands = computed<CommandBarItem[]>(() => {
 		const credentials = uniqBy(
-			editableWorkflow.value.nodes.map((node) => Object.values(node.credentials ?? {})).flat(),
+			(editableWorkflow.value?.nodes ?? [])
+				.map((node) => Object.values(node.credentials ?? {}))
+				.flat(),
 			(cred) => cred.id,
 		);
 		if (credentials.length === 0) {
@@ -280,8 +286,8 @@ export function useWorkflowCommands(): CommandGroup {
 								name: DUPLICATE_MODAL_KEY,
 								data: {
 									id: workflowsStore.workflowId,
-									name: editableWorkflow.value.name,
-									tags: editableWorkflow.value.tags,
+									name: editableWorkflow.value?.name ?? '',
+									tags: editableWorkflow.value?.tags ?? [],
 								},
 							});
 						},
@@ -297,7 +303,7 @@ export function useWorkflowCommands(): CommandGroup {
 	]);
 
 	const subworkflowCommands = computed<CommandBarItem[]>(() => {
-		const subworkflows = editableWorkflow.value.nodes
+		const subworkflows = (editableWorkflow.value?.nodes ?? [])
 			.filter((node) => node.type === EXECUTE_WORKFLOW_NODE_TYPE)
 			.map((node) => node?.parameters?.workflowId)
 			.filter(
@@ -360,7 +366,7 @@ export function useWorkflowCommands(): CommandGroup {
 					const blob = new Blob([JSON.stringify(exportData, null, 2)], {
 						type: 'application/json;charset=utf-8',
 					});
-					let name = editableWorkflow.value.name || 'unsaved_workflow';
+					let name = editableWorkflow.value?.name || 'unsaved_workflow';
 					name = name.replace(/[^a-z0-9]/gi, '_');
 					telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 					saveAs(blob, name + '.json');

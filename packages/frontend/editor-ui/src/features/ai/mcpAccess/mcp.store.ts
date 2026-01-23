@@ -79,9 +79,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 				workflowsStore.private.setWorkflowSettings(settings);
 			}
 		}
-		if (workflowsStore.workflowsById[id]) {
-			workflowsStore.workflowsById[id] = {
-				...workflowsStore.workflowsById[id],
+		if (workflowsStore.workflowDocumentById[id]) {
+			workflowsStore.workflowDocumentById[id] = {
+				...workflowsStore.workflowDocumentById[id],
 				settings,
 				versionId,
 			};

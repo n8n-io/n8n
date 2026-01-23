@@ -109,8 +109,21 @@ describe('ExecuteMessage', () => {
 		logsStore = mockedStore(useLogsStore);
 		builderStore = mockedStore(useBuilderStore);
 
-		workflowsStore.workflow.nodes = workflowNodes as unknown as INodeUi[];
-		workflowsStore.workflow.connections = {} as never;
+		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.workflowDocumentById = {
+			'test-workflow-id': {
+				id: 'test-workflow-id',
+				name: 'Test Workflow',
+				nodes: workflowNodes as unknown as INodeUi[],
+				connections: {} as never,
+				active: false,
+				isArchived: false,
+				createdAt: '',
+				updatedAt: '',
+				versionId: '',
+				activeVersionId: null,
+			},
+		};
 		Object.defineProperty(workflowsStore, 'workflowValidationIssues', {
 			get: () => workflowValidationIssuesRef.value,
 		});

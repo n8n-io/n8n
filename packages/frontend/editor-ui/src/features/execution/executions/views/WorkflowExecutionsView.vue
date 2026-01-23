@@ -144,13 +144,13 @@ async function initializeRoute() {
 async function fetchWorkflow() {
 	// Skip fetching if it's a new workflow that hasn't been saved yet
 	if (isNewWorkflowRoute.value) {
-		workflow.value = workflowsStore.workflow;
+		workflow.value = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
 		return;
 	}
 
 	// Check if we are loading the Executions tab directly, without having loaded the workflow
 	if (workflowId.value) {
-		if (!workflowsStore.workflowsById[workflowId.value]) {
+		if (!workflowsStore.workflowDocumentById[workflowId.value]) {
 			try {
 				await workflowsStore.fetchActiveWorkflows();
 				const data = await workflowsStore.fetchWorkflow(workflowId.value);
@@ -164,7 +164,7 @@ async function fetchWorkflow() {
 
 			await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(workflowData.homeProject);
 		} else {
-			workflow.value = workflowsStore.workflowsById[workflowId.value];
+			workflow.value = workflowsStore.workflowDocumentById[workflowId.value];
 		}
 	}
 }

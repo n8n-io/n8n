@@ -560,7 +560,10 @@ export const useFlattenSchema = () => {
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,
-						binaryMode: useWorkflowsStore().workflow.settings?.binaryMode,
+						binaryMode: (() => {
+							const ws = useWorkflowsStore();
+							return ws.workflowDocumentById[ws.workflowId]?.settings?.binaryMode;
+						})(),
 					}),
 				}),
 			);

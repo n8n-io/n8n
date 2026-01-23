@@ -1165,26 +1165,30 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should flatten node schemas', () => {
+			const workflowId = '1';
 			vi.mocked(useWorkflowsStore).mockReturnValue({
 				...useWorkflowsStore(),
-				workflow: {
-					id: '1',
-					name: 'Test Workflow',
-					active: false,
-					activeVersionId: null,
-					isArchived: false,
-					createdAt: '2024-01-01',
-					updatedAt: '2024-01-01',
-					nodes: [],
-					connections: {},
-					settings: {
-						executionOrder: 'v1',
-						binaryMode: undefined,
-					},
-					tags: [],
-					pinData: {},
-					versionId: '',
-				} as IWorkflowDb,
+				workflowId,
+				workflowDocumentById: {
+					[workflowId]: {
+						id: workflowId,
+						name: 'Test Workflow',
+						active: false,
+						activeVersionId: null,
+						isArchived: false,
+						createdAt: '2024-01-01',
+						updatedAt: '2024-01-01',
+						nodes: [],
+						connections: {},
+						settings: {
+							executionOrder: 'v1',
+							binaryMode: undefined,
+						},
+						tags: [],
+						pinData: {},
+						versionId: '',
+					} as IWorkflowDb,
+				},
 			});
 
 			const { flattenMultipleSchemas } = useFlattenSchema();

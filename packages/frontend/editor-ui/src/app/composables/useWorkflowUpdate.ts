@@ -182,7 +182,8 @@ export function useWorkflowUpdate() {
 	 * Update connections - remove old, add new
 	 */
 	async function updateConnections(newConnections: IConnections): Promise<void> {
-		const existingConnections = workflowsStore.workflow.connections;
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+		const existingConnections = currentWorkflowDocument?.connections ?? {};
 
 		// Convert to canvas format for comparison
 		const existingCanvasConnections = mapLegacyConnectionsToCanvasConnections(
@@ -264,7 +265,9 @@ export function useWorkflowUpdate() {
 		if (
 			name &&
 			isInitialGeneration &&
-			workflowsStore.workflow.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.name.startsWith(
+				DEFAULT_NEW_WORKFLOW_NAME,
+			)
 		) {
 			workflowState.setWorkflowName({ newName: name, setStateDirty: false });
 		}

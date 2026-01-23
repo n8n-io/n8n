@@ -61,7 +61,9 @@ describe('TriggerPanel.vue', () => {
 	it('renders listening state when executedNode is a child of the current node', () => {
 		workflowsStore.executionWaitingForWebhook = true;
 		workflowsStore.executedNode = 'ChildNode';
-		workflowsStore.workflowObject.getParentNodes = vi.fn(() => ['Webhook']);
+		workflowsStore.workflowObjectById[workflowsStore.workflowId].getParentNodes = vi.fn(() => [
+			'Webhook',
+		]);
 		const { getByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
 		});
@@ -71,7 +73,7 @@ describe('TriggerPanel.vue', () => {
 	it('does not render listening state when executedNode is not a child or current node', () => {
 		workflowsStore.executionWaitingForWebhook = true;
 		workflowsStore.executedNode = 'UnrelatedNode';
-		workflowsStore.workflowObject.getParentNodes = vi.fn(() => []);
+		workflowsStore.workflowObjectById[workflowsStore.workflowId].getParentNodes = vi.fn(() => []);
 		const { queryByTestId } = renderComponent(TriggerPanel, {
 			props: { nodeName: 'Webhook' },
 		});

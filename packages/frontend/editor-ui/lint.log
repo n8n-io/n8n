@@ -1,0 +1,4 @@
+
+> n8n-editor-ui@2.5.0 lint /Users/alexgrozav/conductor/workspaces/n8n/sun-valley-v1/packages/frontend/editor-ui
+> eslint src --quiet
+

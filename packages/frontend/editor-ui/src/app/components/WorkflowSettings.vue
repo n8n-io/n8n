@@ -530,7 +530,9 @@ const saveSettings = async () => {
 
 	closeDialog();
 
-	void externalHooks.run('workflowSettings.saveSettings', { oldSettings });
+	void externalHooks.run('workflowSettings.saveSettings', {
+		oldSettings: oldSettings as unknown as Record<string, unknown>,
+	});
 	telemetry.track('User updated workflow settings', {
 		workflow_id: workflowsStore.workflowId,
 		// null and undefined values are removed from the object, but we need the keys to be there

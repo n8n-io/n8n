@@ -118,7 +118,7 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
-		workflowsStore.workflow.nodes.length > 0 &&
+		(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes.length ?? 0) > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate
@@ -165,7 +165,8 @@ async function onUserMessage(content: string) {
 	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
-	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
+	const isInitialGeneration =
+		(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes.length ?? 0) === 0;
 
 	await builderStore.sendChatMessage({
 		text: content,
@@ -203,7 +204,9 @@ async function onWorkflowExecuted() {
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
-		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		? workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes.find(
+				(node) => node.name === errorNodeName,
+			)?.type
 		: undefined;
 
 	if (!executionData) {
@@ -320,7 +323,10 @@ watch(
 			return;
 		}
 
-		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
+		if (
+			builderStore.initialGeneration &&
+			(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes.length ?? 0) > 0
+		) {
 			builderStore.initialGeneration = false;
 		}
 	},

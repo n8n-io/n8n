@@ -73,12 +73,17 @@ describe('useWorkflowUpdate', () => {
 
 		// Setup default mocks
 		workflowsStore.allNodes = [];
-		workflowsStore.workflow = {
-			id: 'test-workflow',
-			name: DEFAULT_NEW_WORKFLOW_NAME,
-			nodes: [],
-			connections: {},
-		} as unknown as ReturnType<typeof useWorkflowsStore>['workflow'];
+		// Set up the new dictionary pattern
+		const workflowId = 'test-workflow';
+		workflowsStore.workflowId = workflowId;
+		workflowsStore.workflowDocumentById = {
+			[workflowId]: {
+				id: workflowId,
+				name: DEFAULT_NEW_WORKFLOW_NAME,
+				nodes: [],
+				connections: {},
+			} as never,
+		};
 		workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue({
 			nodes: {},
 			connectionsBySourceNode: {},
@@ -405,7 +410,8 @@ describe('useWorkflowUpdate', () => {
 
 		describe('workflow name update', () => {
 			it('should update workflow name on initial generation when name starts with default', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId].name =
+					DEFAULT_NEW_WORKFLOW_NAME;
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -425,7 +431,8 @@ describe('useWorkflowUpdate', () => {
 			});
 
 			it('should not update workflow name when not initial generation', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId].name =
+					DEFAULT_NEW_WORKFLOW_NAME;
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -442,7 +449,8 @@ describe('useWorkflowUpdate', () => {
 			});
 
 			it('should not update workflow name when current name does not start with default', async () => {
-				workflowsStore.workflow.name = 'Custom Workflow Name';
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId].name =
+					'Custom Workflow Name';
 
 				const { updateWorkflow } = useWorkflowUpdate();
 

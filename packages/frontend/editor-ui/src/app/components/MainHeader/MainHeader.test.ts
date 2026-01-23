@@ -102,21 +102,26 @@ describe('MainHeader', () => {
 		sourceControlStore = mockedStore(useSourceControlStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 
-		workflowsStore.workflow = {
-			id: '1',
-			name: 'Test Workflow',
-			active: false,
-			activeVersionId: null,
-			activeVersion: null,
-			versionId: 'version-1',
-			scopes: ['workflow:read', 'workflow:update'],
-			isArchived: false,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			nodes: [],
-			connections: {},
-			tags: [],
-			meta: {},
+		// Set up the new dictionary pattern
+		const workflowId = '1';
+		workflowsStore.workflowId = workflowId;
+		workflowsStore.workflowDocumentById = {
+			[workflowId]: {
+				id: workflowId,
+				name: 'Test Workflow',
+				active: false,
+				activeVersionId: null,
+				activeVersion: null,
+				versionId: 'version-1',
+				scopes: ['workflow:read', 'workflow:update'],
+				isArchived: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				nodes: [],
+				connections: {},
+				tags: [],
+				meta: {},
+			} as never,
 		};
 
 		sourceControlStore.preferences.branchReadOnly = false;
@@ -127,7 +132,7 @@ describe('MainHeader', () => {
 		it('should be false when there are no read-only conditions', () => {
 			sourceControlStore.preferences.branchReadOnly = false;
 			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
-			workflowsStore.workflow.isArchived = false;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].isArchived = false;
 
 			const { getByTestId } = renderComponent();
 
@@ -138,7 +143,7 @@ describe('MainHeader', () => {
 		it('should be true when branch is read-only', () => {
 			sourceControlStore.preferences.branchReadOnly = true;
 			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
-			workflowsStore.workflow.isArchived = false;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].isArchived = false;
 
 			const { getByTestId } = renderComponent();
 
@@ -149,7 +154,7 @@ describe('MainHeader', () => {
 		it('should be true when collaboration requires read-only', () => {
 			sourceControlStore.preferences.branchReadOnly = false;
 			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(true);
-			workflowsStore.workflow.isArchived = false;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].isArchived = false;
 
 			const { getByTestId } = renderComponent();
 

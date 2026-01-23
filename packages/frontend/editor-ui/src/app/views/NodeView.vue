@@ -319,7 +319,7 @@ const isCanvasReadOnly = computed(() => {
 		isReadOnlyEnvironment.value ||
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
-		editableWorkflow.value.isArchived ||
+		editableWorkflow.value?.isArchived ||
 		builderStore.streaming
 	);
 });
@@ -579,7 +579,7 @@ async function openWorkflow(data: IWorkflowDb) {
 
 function trackOpenWorkflowFromOnboardingTemplate() {
 	telemetry.track(
-		`User opened workflow from onboarding template with ID ${editableWorkflow.value.meta?.onboardingId}`,
+		`User opened workflow from onboarding template with ID ${editableWorkflow.value?.meta?.onboardingId}`,
 		{
 			workflow_id: workflowId.value,
 		},
@@ -591,7 +591,9 @@ function trackOpenWorkflowFromOnboardingTemplate() {
  */
 
 const triggerNodes = computed(() => {
-	return editableWorkflow.value.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type));
+	return (editableWorkflow.value?.nodes ?? []).filter((node) =>
+		nodeTypesStore.isTriggerNode(node.type),
+	);
 });
 
 const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
@@ -1071,13 +1073,15 @@ async function onAddNodesAndConnections(
 		}));
 	}
 
-	const { addedNodes } = await addNodesAndConnections(nodes, connections, {
+	const result = await addNodesAndConnections(nodes, connections, {
 		dragAndDrop,
 		position,
 		viewport: viewportBoundaries.value,
 		telemetry: true,
 		replaceNodeId: nodeCreatorReplaceTargetId.value,
 	});
+
+	const addedNodes = 'addedNodes' in result ? result.addedNodes : [];
 
 	if (addedNodes.length > 0) {
 		const lastAddedNodeId = addedNodes[addedNodes.length - 1].id;
@@ -1157,7 +1161,7 @@ function onClickReplaceNode(nodeId: string) {
 	nodeCreatorReplaceTargetId.value = nodeId;
 	if (isTriggerNode(nodeType)) {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(NODE_CREATOR_OPEN_SOURCES.REPLACE_NODE_ACTION);
-	} else {
+	} else if (editableWorkflowObject.value) {
 		const inputs = NodeHelpers.getNodeInputs(editableWorkflowObject.value, node, nodeType).map(
 			(output) => (typeof output === 'string' ? output : output.type),
 		);
@@ -1279,7 +1283,7 @@ async function onCopyTestUrl(id: string) {
 }
 
 async function onCopyProductionUrl(id: string) {
-	const isWorkflowActive = workflowsStore.workflow.active;
+	const isWorkflowActive = workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.active;
 	if (!isWorkflowActive) {
 		toast.showMessage({
 			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
@@ -1412,13 +1416,13 @@ function onRunWorkflowButtonMouseLeave() {
  */
 
 const chatTriggerNode = computed(() => {
-	return editableWorkflow.value.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+	return editableWorkflow.value?.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 });
 
 const containsChatTriggerNodes = computed(() => {
 	return (
 		!isExecutionWaitingForWebhook.value &&
-		!!editableWorkflow.value.nodes.find(
+		!!editableWorkflow.value?.nodes.find(
 			(node) =>
 				[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
 				node.disabled !== true,
@@ -1444,7 +1448,7 @@ function onOpenChat() {
  * Evaluation
  */
 const evaluationTriggerNode = computed(() => {
-	return editableWorkflow.value.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
+	return editableWorkflow.value?.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
 });
 
 /**
@@ -1839,7 +1843,9 @@ watch(
 
 watch(
 	() => {
-		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
+		return (
+			isLoading.value || isCanvasReadOnly.value || (editableWorkflow.value?.nodes.length ?? 0) !== 0
+		);
 	},
 	(isReadOnlyOrLoading) => {
 		if (isReadOnlyOrLoading) {

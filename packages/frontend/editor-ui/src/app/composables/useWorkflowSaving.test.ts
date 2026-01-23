@@ -129,7 +129,7 @@ describe('useWorkflowSaving', () => {
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowDocumentById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const next = vi.fn();
@@ -214,9 +214,9 @@ describe('useWorkflowSaving', () => {
 			const workflowStore = useWorkflowsStore();
 			const MOCK_ID = 'existing-workflow-id';
 			const existingWorkflow = createTestWorkflow({ id: MOCK_ID });
-			workflowStore.workflow.id = MOCK_ID;
-			// Populate workflowsById to mark workflow as existing (not new)
-			workflowStore.workflowsById = { [MOCK_ID]: existingWorkflow };
+			workflowStore.workflowId = MOCK_ID;
+			// Populate workflowDocumentById to mark workflow as existing (not new)
+			workflowStore.workflowDocumentById = { [MOCK_ID]: existingWorkflow };
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
@@ -249,7 +249,9 @@ describe('useWorkflowSaving', () => {
 			uiStore.markStateDirty();
 
 			const workflowStore = useWorkflowsStore();
-			workflowStore.workflow.id = '';
+			// Set empty workflowId to simulate a new workflow
+			workflowStore.workflowId = '';
+			workflowStore.workflowDocumentById = {};
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');
@@ -301,7 +303,7 @@ describe('useWorkflowSaving', () => {
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowDocumentById = { [workflow.id]: workflow };
 
 			const updateWorkflowSpy = vi.spyOn(workflowsStore, 'updateWorkflow');
 			updateWorkflowSpy.mockImplementation(() => {
@@ -449,7 +451,7 @@ describe('useWorkflowSaving', () => {
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowDocumentById = { [workflow.id]: workflow };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w0' });
@@ -472,7 +474,7 @@ describe('useWorkflowSaving', () => {
 
 			workflowsStore.setWorkflow(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowDocumentById = { [workflow.id]: workflow };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 			await saveCurrentWorkflow({ id: 'w1' });
@@ -494,7 +496,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { w2: workflow };
+			workflowsStore.workflowDocumentById = { w2: workflow };
 			workflowsStore.isWorkflowSaved = { w2: true };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
@@ -517,7 +519,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { w3: workflow };
+			workflowsStore.workflowDocumentById = { w3: workflow };
 			workflowsStore.isWorkflowSaved = { w3: true };
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
@@ -550,7 +552,7 @@ describe('useWorkflowSaving', () => {
 			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflowResponse);
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowDocumentById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const setWorkflowTagIdsSpy = vi.fn();
@@ -617,7 +619,7 @@ describe('useWorkflowSaving', () => {
 			});
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowDocumentById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const uiStore = useUIStore();
@@ -669,7 +671,7 @@ describe('useWorkflowSaving', () => {
 			});
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowDocumentById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const uiStore = useUIStore();
@@ -709,7 +711,7 @@ describe('useWorkflowSaving', () => {
 			});
 
 			workflowsStore.setWorkflow(workflow);
-			workflowsStore.workflowsById = { [workflow.id]: workflow };
+			workflowsStore.workflowDocumentById = { [workflow.id]: workflow };
 			workflowsStore.workflowId = workflow.id;
 
 			const uiStore = useUIStore();

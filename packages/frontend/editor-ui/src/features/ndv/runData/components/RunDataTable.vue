@@ -213,7 +213,8 @@ function getExpression(column: string) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column],
-		binaryMode: workflowsStore.workflow.settings?.binaryMode,
+		binaryMode:
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.settings?.binaryMode,
 	});
 }
 
@@ -246,7 +247,8 @@ function getCellExpression(path: Array<string | number>, colIndex: number) {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: [column, ...path],
-		binaryMode: workflowsStore.workflow.settings?.binaryMode,
+		binaryMode:
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.settings?.binaryMode,
 	});
 }
 

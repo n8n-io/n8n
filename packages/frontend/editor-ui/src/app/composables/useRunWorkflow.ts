@@ -75,7 +75,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowObject = computed(
+		() => workflowsStore.workflowObjectById[workflowsStore.workflowId] as Workflow,
+	);
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
@@ -477,7 +479,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				// execution finished before it could be stopped
 				const executedData = {
 					data: execution.data,
-					workflowData: workflowsStore.workflow,
+					workflowData: workflowsStore.workflowDocumentById[workflowsStore.workflowId],
 					finished: execution.finished,
 					mode: execution.mode,
 					startedAt: execution.startedAt,

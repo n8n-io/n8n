@@ -78,6 +78,24 @@ describe('AI Assistant store', () => {
 		posthogStore = usePostHog();
 		posthogStore.init();
 		track.mockReset();
+
+		// Set up default workflow for tests that need it
+		const workflowsStore = useWorkflowsStore();
+		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.workflowDocumentById = {
+			'test-workflow-id': {
+				id: 'test-workflow-id',
+				name: '',
+				nodes: [],
+				connections: {},
+				active: false,
+				isArchived: false,
+				createdAt: '',
+				updatedAt: '',
+				versionId: '',
+				activeVersionId: null,
+			},
+		};
 	});
 
 	it('initializes with default values', () => {
@@ -428,7 +446,7 @@ describe('AI Assistant store', () => {
 			node_type: 'n8n-nodes-base.stopAndError',
 			source: 'error',
 			task: 'error',
-			workflow_id: '',
+			workflow_id: 'test-workflow-id',
 			instance_id: '',
 			canvas_status: 'empty',
 		});
@@ -439,7 +457,18 @@ describe('AI Assistant store', () => {
 		const workflowsStore = useWorkflowsStore();
 
 		// Ensure canvas is empty
-		workflowsStore.workflow.nodes = [];
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId] = {
+			id: workflowsStore.workflowId,
+			name: '',
+			nodes: [],
+			connections: {},
+			active: false,
+			isArchived: false,
+			createdAt: '',
+			updatedAt: '',
+			versionId: '',
+			activeVersionId: null,
+		};
 
 		assistantStore.trackUserOpenedAssistant({
 			task: 'placeholder',
@@ -452,7 +481,7 @@ describe('AI Assistant store', () => {
 			task: 'placeholder',
 			has_existing_session: false,
 			instance_id: '',
-			workflow_id: '',
+			workflow_id: 'test-workflow-id',
 			canvas_status: 'empty',
 			node_type: undefined,
 			error: undefined,
@@ -465,16 +494,27 @@ describe('AI Assistant store', () => {
 		const workflowsStore = useWorkflowsStore();
 
 		// Add a node to the workflow
-		workflowsStore.workflow.nodes = [
-			{
-				id: '1',
-				type: 'n8n-nodes-base.start',
-				typeVersion: 1,
-				name: 'Start',
-				position: [250, 250],
-				parameters: {},
-			},
-		];
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId] = {
+			id: workflowsStore.workflowId,
+			name: '',
+			nodes: [
+				{
+					id: '1',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					name: 'Start',
+					position: [250, 250],
+					parameters: {},
+				},
+			],
+			connections: {},
+			active: false,
+			isArchived: false,
+			createdAt: '',
+			updatedAt: '',
+			versionId: '',
+			activeVersionId: null,
+		};
 
 		assistantStore.trackUserOpenedAssistant({
 			task: 'placeholder',
@@ -487,7 +527,7 @@ describe('AI Assistant store', () => {
 			task: 'placeholder',
 			has_existing_session: false,
 			instance_id: '',
-			workflow_id: '',
+			workflow_id: 'test-workflow-id',
 			canvas_status: 'existing_workflow',
 			node_type: undefined,
 			error: undefined,

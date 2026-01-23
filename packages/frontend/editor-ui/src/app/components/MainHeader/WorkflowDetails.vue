@@ -527,7 +527,10 @@ onBeforeUnmount(() => {
 		</span>
 
 		<PushConnectionTracker class="actions">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
+			<WorkflowProductionChecklist
+				v-if="!isNewWorkflow"
+				:workflow="workflowsStore.workflowDocumentById[workflowsStore.workflowId]"
+			/>
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
 				ref="workflowHeaderActions"

@@ -87,15 +87,18 @@ const hideContent = computed(() => {
 	}
 
 	if (node.value) {
-		const hideContentValue = workflowsStore.workflowObject.expression.getSimpleParameterValue(
-			node.value,
-			hideContent,
-			'internal',
-			{},
-		);
+		const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+		if (workflowObject) {
+			const hideContentValue = workflowObject.expression.getSimpleParameterValue(
+				node.value,
+				hideContent,
+				'internal',
+				{},
+			);
 
-		if (typeof hideContentValue === 'boolean') {
-			return hideContentValue;
+			if (typeof hideContentValue === 'boolean') {
+				return hideContentValue;
+			}
 		}
 	}
 
@@ -173,9 +176,11 @@ const isListeningForEvents = computed(() => {
 
 	const executedNode = workflowsStore.executedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
-	const isChildNodeExecuted = executedNode
-		? workflowsStore.workflowObject.getParentNodes(executedNode).includes(props.nodeName)
-		: false;
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	const isChildNodeExecuted =
+		executedNode && workflowObject
+			? workflowObject.getParentNodes(executedNode).includes(props.nodeName)
+			: false;
 
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });

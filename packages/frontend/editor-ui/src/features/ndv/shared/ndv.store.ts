@@ -181,11 +181,9 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const parentNodes = workflowsStore.workflowObject.getParentNodes(
-			activeNode.value.name,
-			NodeConnectionTypes.Main,
-			1,
-		);
+		const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+		const parentNodes =
+			workflowObject?.getParentNodes(activeNode.value.name, NodeConnectionTypes.Main, 1) ?? [];
 		return parentNodes.includes(inputNodeName);
 	});
 
@@ -367,7 +365,9 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		const activeNode = workflowsStore.getNodeByName(activeNodeName.value || '');
 
 		if (activeNode) {
-			const nodeIndex = workflowsStore.workflow.nodes.findIndex((node) => {
+			const currentWorkflowDocument =
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+			const nodeIndex = (currentWorkflowDocument?.nodes ?? []).findIndex((node) => {
 				return node.name === activeNode.name;
 			});
 

@@ -9,7 +9,9 @@ const { name } = useCanvasNode();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 
-const node = computed(() => workflowsStore.workflowObject.getNode(name.value));
+const node = computed(() =>
+	workflowsStore.workflowObjectById[workflowsStore.workflowId]?.getNode(name.value),
+);
 const size = 'medium';
 </script>
 

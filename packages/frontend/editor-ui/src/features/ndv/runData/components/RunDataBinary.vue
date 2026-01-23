@@ -28,7 +28,9 @@ const isV2Enabled = computed(() => {
 });
 
 const isLegacyBinaryMode = computed(
-	() => workflowsStore.workflow.settings?.binaryMode !== BINARY_MODE_COMBINED,
+	() =>
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.settings?.binaryMode !==
+		BINARY_MODE_COMBINED,
 );
 
 function isViewable(index: number, key: string | number): boolean {

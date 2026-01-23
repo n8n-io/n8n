@@ -6,6 +6,7 @@ import { renderComponent } from '@/__tests__/render';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { injectWorkflowState, useWorkflowState, type WorkflowState } from './useWorkflowState';
+import { createTestWorkflow } from '@/__tests__/mocks';
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/app/composables/useWorkflowState');
@@ -117,9 +118,13 @@ describe('useResolvedExpression', () => {
 	it('should re-resolve when workflow name changes', async () => {
 		const workflowsStore = useWorkflowsStore();
 		const resolveExpressionSpy = mockResolveExpression();
-		resolveExpressionSpy.mockImplementation(() => workflowsStore.workflow.name);
 
-		workflowState.setWorkflowName({ newName: 'Old Name', setStateDirty: false });
+		// Set up the workflow first
+		workflowsStore.setWorkflow(createTestWorkflow({ name: 'Old Name' }));
+
+		resolveExpressionSpy.mockImplementation(
+			() => workflowsStore.workflowDocumentById[workflowsStore.workflowId].name,
+		);
 
 		const { resolvedExpressionString } = await renderTestComponent({
 			expression: '={{ $workflow.name }}',

@@ -63,10 +63,11 @@ export function useWorkflowSaving({
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
 		if (
 			!uiStore.stateIsDirty ||
-			workflowsStore.workflow.isArchived ||
-			!getResourcePermissions(workflowsStore.workflow.scopes).workflow.update
+			currentWorkflowDocument?.isArchived ||
+			!getResourcePermissions(currentWorkflowDocument?.scopes).workflow.update
 		) {
 			next();
 			return;
@@ -120,7 +121,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { name: workflowsStore.workflow.id },
+				params: { name: workflowsStore.workflowId },
 			}),
 		);
 	}
@@ -162,7 +163,9 @@ export function useWorkflowSaving({
 		}
 
 		// Check if workflow needs to be saved as new (doesn't exist in store yet)
-		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
+		const existingWorkflow = currentWorkflow
+			? workflowsStore.workflowDocumentById[currentWorkflow]
+			: null;
 		if (!currentWorkflow || !existingWorkflow?.id) {
 			const workflowId = await saveAsNewWorkflow(
 				{ name, tags, parentFolderId, uiContext, autosaved },

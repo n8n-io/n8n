@@ -74,7 +74,9 @@ const ensureExecutionWatcher = () => {
 
 const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0);
 const triggerNodes = computed(() =>
-	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
+	(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes ?? []).filter((node) =>
+		nodeTypesStore.isTriggerNode(node.type),
+	),
 );
 
 /**
@@ -117,7 +119,9 @@ function formatIssueMessage(issue: string | string[]): string {
 
 // Helper to get node type
 function getNodeTypeByName(nodeName: string) {
-	const node = workflowsStore.workflow.nodes.find((n) => n.name === nodeName);
+	const node = workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes.find(
+		(n) => n.name === nodeName,
+	);
 
 	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type);

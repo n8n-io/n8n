@@ -92,7 +92,7 @@ export function resolveParameter<T = IDataObject>(
 
 	return resolveParameterImpl(
 		parameter,
-		workflowsStore.workflowObject as Workflow,
+		workflowsStore.workflowObjectById[workflowsStore.workflowId] as Workflow,
 		workflowsStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
@@ -576,16 +576,17 @@ export function useWorkflowHelpers() {
 			nodes.push(nodeData);
 		}
 
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
 		const data: WorkflowData = {
 			name: workflowsStore.workflowName,
 			nodes,
 			pinData: workflowsStore.pinnedWorkflowData,
 			connections: workflowConnections,
 			active: workflowsStore.isWorkflowActive,
-			settings: workflowsStore.workflow.settings,
+			settings: currentWorkflowDocument?.settings,
 			tags: workflowsStore.workflowTags,
-			versionId: workflowsStore.workflow.versionId,
-			meta: workflowsStore.workflow.meta,
+			versionId: currentWorkflowDocument?.versionId,
+			meta: currentWorkflowDocument?.meta,
 		};
 
 		const workflowId = workflowsStore.workflowId;
@@ -819,7 +820,8 @@ export function useWorkflowHelpers() {
 		if (typeof obj === 'object' && stringifyObject) {
 			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
 			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
-			return workflowsStore.workflowObject.expression.convertObjectValueToString(obj as object);
+			const currentWorkflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+			return currentWorkflowObject?.expression.convertObjectValueToString(obj as object);
 		}
 		return obj;
 	}
@@ -920,7 +922,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
-		const workflow = workflowsStore.workflowsById[workflowId];
+		const workflow = workflowsStore.workflowDocumentById[workflowId];
 
 		// Check if workflow is new (not saved) or belongs to personal project
 		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {

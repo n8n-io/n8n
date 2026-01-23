@@ -251,7 +251,9 @@ const { isSubNodeType } = useNodeType({
 	node,
 });
 
-const isArchivedWorkflow = computed(() => workflowsStore.workflow.isArchived);
+const isArchivedWorkflow = computed(
+	() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.isArchived,
+);
 const isReadOnlyRoute = computed(() => route.meta.readOnlyCanvas === true);
 const isWaitNodeWaiting = computed(() => {
 	return (

@@ -42,7 +42,10 @@ const containsTrigger = computed((): boolean => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
+	return (
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.versionId !==
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.activeVersion?.versionId
+	);
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
@@ -81,7 +84,9 @@ function onModalOpened() {
 
 onMounted(() => {
 	if (!versionName.value && !inputsDisabled.value) {
-		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+		versionName.value = generateVersionName(
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.versionId,
+		);
 	}
 	modalBus.on('opened', onModalOpened);
 });
@@ -116,8 +121,8 @@ function hasActiveNodeUsingCredential(nodes: INodeUi[], credentialId: string): b
  *
  */
 const shouldShowFreeAiCreditsWarning = computed((): boolean => {
-	const usedCredentials = workflowsStore?.usedCredentials;
-	if (!usedCredentials) return false;
+	const usedCredentials = workflowsStore.usedCredentials;
+	if (!usedCredentials || Object.keys(usedCredentials).length === 0) return false;
 
 	const managedOpenAiCredentialId = findManagedOpenAiCredentialId(usedCredentials);
 	if (!managedOpenAiCredentialId) return false;
@@ -128,7 +133,7 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 async function displayActivationError() {
 	let errorMessage: string | VNode;
 	try {
-		const errorData = await workflowsStore.getActivationError(workflowsStore.workflow.id);
+		const errorData = await workflowsStore.getActivationError(workflowsStore.workflowId);
 
 		if (errorData === undefined) {
 			errorMessage = i18n.baseText(
@@ -162,8 +167,8 @@ async function handlePublish() {
 
 	// Activate the workflow
 	const { success, errorHandled } = await workflowActivate.publishWorkflow(
-		workflowsStore.workflow.id,
-		workflowsStore.workflow.versionId,
+		workflowsStore.workflowId,
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.versionId,
 		{
 			name: versionName.value,
 			description: description.value,
@@ -182,7 +187,7 @@ async function handlePublish() {
 		}
 
 		telemetry.track('User published version from canvas', {
-			workflow_id: workflowsStore.workflow.id,
+			workflow_id: workflowsStore.workflowId,
 		});
 
 		// For now, just close the modal after successful activation
@@ -227,7 +232,7 @@ async function handlePublish() {
 						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
 							<N8nLink
 								size="small"
-								:to="`/workflow/${workflowsStore.workflow.id}/${node.id}`"
+								:to="`/workflow/${workflowsStore.workflowId}/${node.id}`"
 								@click="modalBus.emit('close')"
 								>{{ node.name }}</N8nLink
 							>

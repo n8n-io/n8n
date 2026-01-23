@@ -209,8 +209,12 @@ export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterCo
 		useWorkflowsStore().getNodeByName(targetNodeParameterContext.nodeName) !== null) ||
 	useNDVStore().activeNode?.name !== undefined;
 
-export const isSplitInBatchesAbsent = () =>
-	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
+export const isSplitInBatchesAbsent = () => {
+	const workflowsStore = useWorkflowsStore();
+	return !workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes.some(
+		(node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE,
+	);
+};
 
 export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
 	const activeNode =
@@ -222,7 +226,10 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 
 	const activeNodeName = activeNode.name;
 
-	const workflowObject = useWorkflowsStore().workflowObject;
+	const workflowsStore = useWorkflowsStore();
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	if (!workflowObject) return [];
+
 	const nonMainChildren = workflowObject.getChildNodes(activeNodeName, 'ALL_NON_MAIN');
 
 	// This is a tool node, look for the nearest node with main connections
@@ -234,7 +241,10 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 }
 
 export function getPreviousNodes(nodeName: string) {
-	const workflowObject = useWorkflowsStore().workflowObject;
+	const workflowsStore = useWorkflowsStore();
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	if (!workflowObject) return [];
+
 	return workflowObject
 		.getParentNodesByDepth(nodeName)
 		.map((node) => node.name)

@@ -36,14 +36,13 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, () => {
 		sharedWithProjects: ProjectSharingData[];
 	}) => {
 		const workflowsStore = useWorkflowsStore();
-		workflowsStore.workflowsById[payload.workflowId] = {
-			...workflowsStore.workflowsById[payload.workflowId],
-			sharedWithProjects: payload.sharedWithProjects,
-		};
-		workflowsStore.workflow = {
-			...workflowsStore.workflow,
-			sharedWithProjects: payload.sharedWithProjects,
-		};
+		const existingDocument = workflowsStore.workflowDocumentById[payload.workflowId];
+		if (existingDocument) {
+			workflowsStore.workflowDocumentById[payload.workflowId] = {
+				...existingDocument,
+				sharedWithProjects: payload.sharedWithProjects,
+			};
+		}
 	};
 
 	const saveWorkflowSharedWith = async (payload: {

@@ -71,7 +71,7 @@ const activeNode = computed(() => ndvStore.activeNode);
 const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
-const workflow = computed(() => workflowsStore.workflow);
+const workflow = computed(() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]);
 const workflowId = computed(() => String(route.params.name || workflowsStore.workflowId));
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
@@ -93,7 +93,7 @@ const showGitHubButton = computed(
 );
 
 const parentFolderForBreadcrumbs = computed<FolderShortInfo | undefined>(() => {
-	if (!workflow.value.parentFolder) {
+	if (!workflow.value?.parentFolder) {
 		return undefined;
 	}
 	return {
@@ -258,10 +258,10 @@ function hideGithubButton() {
 }
 
 async function onWorkflowDeactivated() {
-	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
+	if (settingsStore.isModuleActive('mcp') && workflow.value?.settings?.availableInMCP) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
-			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflow.value.id);
+			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflow.value?.id);
 			workflowsStore.setWorkflow(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),

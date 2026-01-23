@@ -50,14 +50,15 @@ export function useTypescript(
 				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
 				variables: useEnvironmentsStore().scopedVariables.map((v) => v.key),
 				inputNodeNames: activeNodeName
-					? workflowsStore.workflowObject.getParentNodes(
+					? (workflowsStore.workflowObjectById[workflowsStore.workflowId]?.getParentNodes(
 							activeNodeName,
 							NodeConnectionTypes.Main,
 							1,
-						)
+						) ?? [])
 					: [],
 				mode: toValue(mode),
-				binaryMode: workflowsStore.workflow.settings?.binaryMode,
+				binaryMode:
+					workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.settings?.binaryMode,
 			},
 			Comlink.proxy(async (nodeName) => {
 				const node = workflowsStore.getNodeByName(nodeName);

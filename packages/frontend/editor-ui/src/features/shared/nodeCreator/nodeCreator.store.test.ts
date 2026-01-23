@@ -15,7 +15,7 @@ import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -89,15 +89,17 @@ describe('useNodeCreatorStore', () => {
 			return id ? ({ id, name: 'Test Node', type: 'test-type' } as INodeUi) : undefined;
 		});
 		mockUseWorkflowsStore.workflowId = 'dummy-workflow-id';
-		mockUseWorkflowsStore.workflowObject = {
-			...mockUseWorkflowsStore.workflowObject,
-			getNode: vi.fn(
-				() =>
-					({
-						type: 'n8n-node.example',
-						typeVersion: 1,
-					}) as INodeUi,
-			),
+		mockUseWorkflowsStore.workflowObjectById = {
+			'dummy-workflow-id': {
+				...mockUseWorkflowsStore.workflowObjectById['dummy-workflow-id'],
+				getNode: vi.fn(
+					() =>
+						({
+							type: 'n8n-node.example',
+							typeVersion: 1,
+						}) as INodeUi,
+				),
+			} as unknown as Workflow,
 		};
 
 		mockedPrepareCommunityNodeDetailsViewStack.mockReturnValue({

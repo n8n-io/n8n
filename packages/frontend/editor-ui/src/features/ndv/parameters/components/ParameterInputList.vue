@@ -276,7 +276,8 @@ const indexToShowSlotAt = computed(() => {
 });
 
 function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	if (!workflowObject) return parameters;
 	const connectedNodes = workflowObject.getChildNodes(triggerName);
 
 	const hasFormPage = connectedNodes.some((nodeName) => {
@@ -321,7 +322,8 @@ function updateFormTriggerParameters(parameters: INodeProperties[], triggerName:
 }
 
 function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	if (!workflowObject) return parameters;
 	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(
@@ -360,7 +362,8 @@ function updateWaitParameters(parameters: INodeProperties[], nodeName: string) {
 }
 
 function updateFormParameters(parameters: INodeProperties[], nodeName: string) {
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	if (!workflowObject) return parameters;
 	const parentNodes = workflowObject.getParentNodes(nodeName);
 
 	const formTriggerName = parentNodes.find(

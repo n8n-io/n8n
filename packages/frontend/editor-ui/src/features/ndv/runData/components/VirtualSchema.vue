@@ -218,7 +218,11 @@ const contextSchema = computed(() => {
 			mode: 'test',
 			resumeUrl: i18n.baseText('dataMapping.schemaView.execution.resumeUrl'),
 		},
-		$workflow: pick(workflowsStore.workflow, ['id', 'name', 'active']),
+		$workflow: pick(workflowsStore.workflowDocumentById[workflowsStore.workflowId] ?? {}, [
+			'id',
+			'name',
+			'active',
+		]),
 	};
 
 	return filterSchema(getSchema(schemaSource), props.search);

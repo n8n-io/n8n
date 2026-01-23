@@ -16,8 +16,10 @@ beforeEach(() => {
 	const pinia = createTestingPinia();
 	setActivePinia(pinia);
 	const workflowsStore = useWorkflowsStore();
-	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-	workflowsStore.workflowObject = workflowObject;
+	const workflowObject = createTestWorkflowObject(
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+	);
+	workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 });
 
 describe('CanvasNodeRenderer', () => {

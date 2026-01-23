@@ -282,7 +282,7 @@ describe('useCanvasMapping', () => {
 				},
 			};
 
-			workflowsStore.workflow.connections = connections;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].connections = connections;
 
 			const workflowObject = createTestWorkflowObject({
 				nodes,

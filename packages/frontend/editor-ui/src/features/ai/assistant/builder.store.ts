@@ -519,7 +519,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
-		const updatedAt = workflowsStore.workflow.updatedAt;
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+		const updatedAt = currentWorkflowDocument?.updatedAt;
 		return {
 			id: versionId,
 			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
@@ -597,9 +598,10 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		prepareForStreaming(text, userMessageId, revertVersion);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
 		const payload = createBuilderPayload(text, userMessageId, {
 			quickReplyType,
-			workflow: workflowsStore.workflow,
+			workflow: currentWorkflowDocument!,
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
@@ -729,7 +731,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function getWorkflowSnapshot() {
-		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+		return JSON.stringify(pick(currentWorkflowDocument, ['nodes', 'connections']));
 	}
 
 	/**

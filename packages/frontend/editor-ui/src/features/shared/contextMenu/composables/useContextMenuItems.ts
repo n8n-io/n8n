@@ -48,10 +48,16 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const collaborationStore = useCollaborationStore();
 	const i18n = useI18n();
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowObject = computed(
+		() => workflowsStore.workflowObjectById[workflowsStore.workflowId] as Workflow,
+	);
+
+	const currentWorkflowDocument = computed(
+		() => workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+	);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() => getResourcePermissions(currentWorkflowDocument.value?.scopes).workflow,
 	);
 
 	const isReadOnly = computed(
@@ -59,7 +65,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
-			workflowsStore.workflow.isArchived ||
+			currentWorkflowDocument.value?.isArchived ||
 			collaborationStore.shouldBeReadOnly,
 	);
 
@@ -225,7 +231,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 				if (isWebhookNode(nodes[0])) {
 					const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(nodes[0].type);
-					const isWorkflowActive = workflowsStore.workflow.active;
+					const isWorkflowActive = currentWorkflowDocument.value?.active;
 					if (!isProductionOnly) {
 						copyWebhookActions.push({
 							divided: true,

@@ -11,7 +11,10 @@ export function useBinaryDataAccessTooltip() {
 	const i18n = useI18n();
 
 	const binaryDataAccessTooltip = computed(() => {
-		if (workflowsStore.workflow.settings?.binaryMode === BINARY_MODE_COMBINED) {
+		if (
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.settings?.binaryMode ===
+			BINARY_MODE_COMBINED
+		) {
 			return i18n.baseText('ndv.binaryData.combinedTooltip', {
 				interpolate: {
 					example: "{{ $('Target Node').item.binaryName }}",

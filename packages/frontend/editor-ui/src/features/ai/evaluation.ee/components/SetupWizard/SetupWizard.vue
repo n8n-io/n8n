@@ -23,7 +23,11 @@ const usageStore = useUsageStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
 const hasRuns = computed(() => {
-	return evaluationStore.testRunsByWorkflowId[workflowsStore.workflow.id]?.length > 0;
+	return (
+		evaluationStore.testRunsByWorkflowId[
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.id ?? ''
+		]?.length > 0
+	);
 });
 
 const evaluationsAvailable = computed(() => {
@@ -74,7 +78,8 @@ const toggleStep = (index: number) => {
 function navigateToWorkflow(
 	action?: 'addEvaluationTrigger' | 'addEvaluationNode' | 'executeEvaluation',
 ) {
-	const routeWorkflowId = workflowsStore.workflow.id || 'new';
+	const routeWorkflowId =
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.id || 'new';
 
 	void router.push({
 		name: VIEWS.WORKFLOW,

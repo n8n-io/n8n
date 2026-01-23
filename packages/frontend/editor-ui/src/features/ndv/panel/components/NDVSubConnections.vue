@@ -62,9 +62,12 @@ const nodeType = computed(() =>
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
 const ndvStore = useNDVStore();
 
-const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+const workflowObject = computed(
+	() => workflowsStore.workflowObjectById[workflowsStore.workflowId] as Workflow | undefined,
+);
 
 const nodeInputIssues = computed(() => {
+	if (!workflowObject.value) return {};
 	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflowObject.value, [
 		'typeUnknown',
 		'parameters',
@@ -75,6 +78,7 @@ const nodeInputIssues = computed(() => {
 });
 
 const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
+	if (!workflowObject.value) return {};
 	const typeIndexCounters: Record<string, number> = {};
 
 	return possibleConnections.value.reduce(
@@ -85,8 +89,9 @@ const connectedNodes = computed<Record<string, NodeConfig[]>>(() => {
 
 			// Get input-index-specific connections using the per-type index
 			const nodeConnections =
-				workflowObject.value.connectionsByDestinationNode[props.rootNode.name]?.[connection.type] ??
-				[];
+				workflowObject.value?.connectionsByDestinationNode[props.rootNode.name]?.[
+					connection.type
+				] ?? [];
 			const inputConnections = nodeConnections[typeIndex] ?? [];
 			const nodeNames = inputConnections.map((conn) => conn.node);
 			const nodes = getINodesFromNames(nodeNames);
@@ -157,13 +162,14 @@ function expandConnectionGroup(connectionContext: ConnectionContext, isExpanded:
 }
 
 function getINodesFromNames(names: string[]): NodeConfig[] {
+	if (!workflowObject.value) return [];
 	return names
 		.map((name) => {
 			const node = workflowsStore.getNodeByName(name);
 			if (node) {
 				const matchedNodeType = nodeTypesStore.getNodeType(node.type);
 				if (matchedNodeType) {
-					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflowObject.value);
+					const issues = nodeHelpers.getNodeIssues(matchedNodeType, node, workflowObject.value!);
 					const stringifiedIssues = issues ? nodeHelpers.nodeIssuesToString(issues, node) : '';
 					return { node, nodeType: matchedNodeType, issues: stringifiedIssues };
 				}
@@ -191,7 +197,7 @@ function isNodeInputConfiguration(
 function getPossibleSubInputConnections(): INodeInputConfiguration[] {
 	if (!nodeType.value || !props.rootNode) return [];
 
-	const inputs = NodeHelpers.getNodeInputs(workflowObject.value, props.rootNode, nodeType.value);
+	const inputs = NodeHelpers.getNodeInputs(workflowObject.value!, props.rootNode, nodeType.value);
 
 	const nonMainInputs = inputs.filter((input): input is INodeInputConfiguration => {
 		if (!isNodeInputConfiguration(input)) return false;

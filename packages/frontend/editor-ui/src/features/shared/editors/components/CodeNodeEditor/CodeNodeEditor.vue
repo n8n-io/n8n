@@ -71,7 +71,7 @@ const workflowsStore = useWorkflowsStore();
 const linter = useLinter(
 	() => props.mode,
 	() => (props.language === 'pythonNative' ? 'python' : props.language),
-	() => workflowsStore.workflow.settings?.binaryMode,
+	() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.settings?.binaryMode,
 );
 const extensions = computed(() => [linter.value]);
 const placeholder = computed(() => CODE_PLACEHOLDERS[props.language]?.[props.mode] ?? '');
@@ -210,7 +210,12 @@ async function onDrop(value: string, event: MouseEvent) {
 	await dropInCodeEditor(
 		toRaw(editor.value),
 		event,
-		valueToInsert(value, props.language, props.mode, workflowsStore.workflow.settings?.binaryMode),
+		valueToInsert(
+			value,
+			props.language,
+			props.mode,
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.settings?.binaryMode,
+		),
 	);
 }
 

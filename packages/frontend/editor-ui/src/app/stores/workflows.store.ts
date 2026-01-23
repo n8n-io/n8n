@@ -111,11 +111,6 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	usedCredentials: [],
 };
 
-const createEmptyWorkflow = (): IWorkflowDb => ({
-	id: '',
-	...defaults,
-});
-
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();

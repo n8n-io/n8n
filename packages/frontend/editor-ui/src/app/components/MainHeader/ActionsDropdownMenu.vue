@@ -83,7 +83,9 @@ const onExecutionsTab = computed(() => {
 	].includes((route.name as string) || '');
 });
 
-const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
+const activeVersion = computed(
+	() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.activeVersion,
+);
 
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -398,7 +400,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModalWithData({
 				name: PROJECT_MOVE_RESOURCE_MODAL,
 				data: {
-					resource: workflowsStore.workflowsById[workflowId],
+					resource: workflowsStore.workflowDocumentById[workflowId],
 					resourceType: ResourceType.Workflow,
 					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
 					eventBus: changeOwnerEventBus,

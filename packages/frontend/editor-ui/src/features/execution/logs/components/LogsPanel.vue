@@ -28,7 +28,9 @@ const popOutContent = useTemplateRef('popOutContent');
 const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
-const workflowName = computed(() => workflowsStore.workflow.name);
+const workflowName = computed(
+	() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.name,
+);
 
 const {
 	height,

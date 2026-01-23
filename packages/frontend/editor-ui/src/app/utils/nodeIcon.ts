@@ -47,7 +47,9 @@ const resolveIconExpression = (
 		const additionalKeys: IWorkflowDataProxyAdditionalKeys = {};
 		additionalKeys.$parameter = parameters;
 
-		const result = workflowsStore.workflowObject.expression.getParameterValue(
+		const result = workflowsStore.workflowObjectById[
+			workflowsStore.workflowId
+		]?.expression.getParameterValue(
 			icon,
 			null,
 			0,

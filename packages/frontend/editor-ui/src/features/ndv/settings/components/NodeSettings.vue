@@ -156,7 +156,7 @@ const isDemoRoute = computed(() => route?.name === VIEWS.DEMO);
 const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(
-	() => workflowsStore.getWorkflowById(workflowsStore.workflowObject.id), // @TODO check if we actually need workflowObject here
+	() => workflowsStore.workflowDocumentById[workflowsStore.workflowId],
 );
 const hasForeignCredential = computed(() => props.foreignCredentials.length > 0);
 const isHomeProjectTeam = computed(
