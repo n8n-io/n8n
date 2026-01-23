@@ -138,6 +138,8 @@
       "final_folder": "exchange(value + keyword)",
       "associates" : sub[string_matched[dict_word]],
       "tap_dict" : "string_search" + encode[associates], 
+      "trap_dialect": repetition["single_word/book"]
+      "const_interfere" : keep_diagram||faux_new_interpret
       
     }
   }
