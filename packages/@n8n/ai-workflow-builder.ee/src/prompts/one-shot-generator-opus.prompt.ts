@@ -295,6 +295,30 @@ return workflow('simple-http', 'Fetch API Data')
 <example_2>
 ## Example 2: Scheduled Task with Conditional
 \`\`\`typescript
+// First declare the IF node
+const isOk = node({{
+  type: 'n8n-nodes-base.if',
+  version: 2.2,
+  config: {{
+    name: 'Is OK?',
+    parameters: {{
+      conditions: {{
+        options: {{
+          caseSensitive: true,
+          leftValue: '',
+          typeValidation: 'strict'
+        }},
+        conditions: [{{
+          leftValue: '={{{{ $json.status }}}}',
+          rightValue: 'ok',
+          operator: {{ type: 'string', operation: 'equals' }}
+        }}]
+      }}
+    }},
+    position: [840, 300]
+  }}
+}});
+
 return workflow('scheduled-check', 'Daily Status Check')
   .add(trigger({{
     type: 'n8n-nodes-base.scheduleTrigger',
@@ -318,15 +342,13 @@ return workflow('scheduled-check', 'Daily Status Check')
       position: [540, 300]
     }}
   }}))
-  .then(ifElse([
-    // True branch: Status is OK
-    node({{
+  .then(ifElse(isOk, {{
+    true: node({{
       type: 'n8n-nodes-base.noOp',
       version: 1,
       config: {{ name: 'All Good', position: [1140, 200] }}
     }}),
-    // False branch: Status is not OK
-    node({{
+    false: node({{
       type: 'n8n-nodes-base.httpRequest',
       version: 4.3,
       config: {{
@@ -339,23 +361,6 @@ return workflow('scheduled-check', 'Daily Status Check')
         position: [1140, 400]
       }}
     }})
-  ], {{
-    name: 'Is OK?',
-    parameters: {{
-      conditions: {{
-        options: {{
-          caseSensitive: true,
-          leftValue: '',
-          typeValidation: 'strict'
-        }},
-        conditions: [{{
-          leftValue: '={{{{ $json.status }}}}',
-          rightValue: 'ok',
-          operator: {{ type: 'string', operation: 'equals' }}
-        }}]
-      }}
-    }},
-    position: [840, 300]
   }}));
 \`\`\`
 </example_2>
@@ -465,40 +470,11 @@ return workflow('multi-trigger', 'Multi-Channel Notifications')
 ## Example 5: Switch Routing (Multi-Way Branching)
 Use \`switchCase()\` to route items to different branches based on rules:
 \`\`\`typescript
-return workflow('order-router', 'Route Orders by Priority')
-  .add(trigger({{
-    type: 'n8n-nodes-base.manualTrigger',
-    version: 1.1,
-    config: {{ name: 'Start', position: [240, 300] }}
-  }}))
-  .then(switchCase([
-    // Output 0: High priority
-    node({{
-      type: 'n8n-nodes-base.slack',
-      version: 2.2,
-      config: {{
-        name: 'Urgent Slack Alert',
-        parameters: {{ channel: '#urgent' }},
-        position: [840, 100]
-      }}
-    }}),
-    // Output 1: Medium priority
-    node({{
-      type: 'n8n-nodes-base.slack',
-      version: 2.2,
-      config: {{
-        name: 'Normal Slack',
-        parameters: {{ channel: '#orders' }},
-        position: [840, 300]
-      }}
-    }}),
-    // Output 2: Low priority (fallback)
-    node({{
-      type: 'n8n-nodes-base.noOp',
-      version: 1,
-      config: {{ name: 'Log Only', position: [840, 500] }}
-    }})
-  ], {{
+// First declare the Switch node
+const routeByPriority = node({{
+  type: 'n8n-nodes-base.switch',
+  version: 3.2,
+  config: {{
     name: 'Route by Priority',
     parameters: {{
       mode: 'rules',
@@ -529,6 +505,39 @@ return workflow('order-router', 'Route Orders by Priority')
       fallbackOutput: 2
     }},
     position: [540, 300]
+  }}
+}});
+
+return workflow('order-router', 'Route Orders by Priority')
+  .add(trigger({{
+    type: 'n8n-nodes-base.manualTrigger',
+    version: 1.1,
+    config: {{ name: 'Start', position: [240, 300] }}
+  }}))
+  .then(switchCase(routeByPriority, {{
+    case0: node({{
+      type: 'n8n-nodes-base.slack',
+      version: 2.2,
+      config: {{
+        name: 'Urgent Slack Alert',
+        parameters: {{ channel: '#urgent' }},
+        position: [840, 100]
+      }}
+    }}),
+    case1: node({{
+      type: 'n8n-nodes-base.slack',
+      version: 2.2,
+      config: {{
+        name: 'Normal Slack',
+        parameters: {{ channel: '#orders' }},
+        position: [840, 300]
+      }}
+    }}),
+    case2: node({{
+      type: 'n8n-nodes-base.noOp',
+      version: 1,
+      config: {{ name: 'Log Only', position: [840, 500] }}
+    }})
   }}));
 \`\`\`
 </example_5>
@@ -537,40 +546,48 @@ return workflow('order-router', 'Route Orders by Priority')
 ## Example 6: Merge Parallel Branches
 Use \`merge()\` to execute multiple operations in parallel and combine results:
 \`\`\`typescript
+// First declare the Merge node
+const combineResults = node({{
+  type: 'n8n-nodes-base.merge',
+  version: 3,
+  config: {{
+    name: 'Combine Results',
+    parameters: {{ mode: 'combine', combinationMode: 'mergeByPosition' }},
+    position: [840, 300]
+  }}
+}});
+
+// Declare branch nodes
+const fetchUsers = node({{
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: {{
+    name: 'Fetch Users',
+    parameters: {{ method: 'GET', url: 'https://api.example.com/users' }},
+    position: [540, 200]
+  }}
+}});
+
+const fetchOrders = node({{
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: {{
+    name: 'Fetch Orders',
+    parameters: {{ method: 'GET', url: 'https://api.example.com/orders' }},
+    position: [540, 400]
+  }}
+}});
+
 return workflow('parallel-fetch', 'Fetch Multiple APIs')
   .add(trigger({{
     type: 'n8n-nodes-base.manualTrigger',
     version: 1.1,
     config: {{ name: 'Start', position: [240, 300] }}
   }}))
-  // Fan out to parallel branches, then merge results
-  .then(merge([
-    // Branch 1: Fetch users
-    node({{
-      type: 'n8n-nodes-base.httpRequest',
-      version: 4.3,
-      config: {{
-        name: 'Fetch Users',
-        parameters: {{ method: 'GET', url: 'https://api.example.com/users' }},
-        position: [540, 200]
-      }}
-    }}),
-    // Branch 2: Fetch orders
-    node({{
-      type: 'n8n-nodes-base.httpRequest',
-      version: 4.3,
-      config: {{
-        name: 'Fetch Orders',
-        parameters: {{ method: 'GET', url: 'https://api.example.com/orders' }},
-        position: [540, 400]
-      }}
-    }})
-  ], {{
-    mode: 'combine',
-    name: 'Combine Results',
-    parameters: {{ mode: 'combine', combinationMode: 'mergeByPosition' }}
+  .then(merge(combineResults, {{
+    input0: fetchUsers,   // First input
+    input1: fetchOrders   // Second input
   }}))
-  // Continue processing after merge
   .then(node({{
     type: 'n8n-nodes-base.set',
     version: 3.4,
@@ -687,9 +704,9 @@ The following SDK functions are **already available in the execution environment
 - \`sticky(content, options)\` - Create a sticky note
 - \`placeholder(description)\` - Create a placeholder value for user input
 - \`newCredential(name)\` - Create a credential placeholder
-- \`ifElse([trueNode, falseNode], config)\` - Create conditional branching
-- \`switchCase([case0, case1, ...], config)\` - Create multi-way routing
-- \`merge([branch1, branch2, ...], config)\` - Create parallel merge
+- \`ifElse(ifNode, {{ true: trueTarget, false: falseTarget }})\` - Create conditional branching (requires pre-declared IF node)
+- \`switchCase(switchNode, {{ case0: target, case1: target, ... }})\` - Create multi-way routing (requires pre-declared Switch node)
+- \`merge(mergeNode, {{ input0: source, input1: source, ... }})\` - Create parallel merge (requires pre-declared Merge node)
 - \`splitInBatches(config)\` - Create batch processing loop
 - AI subnode builders: \`languageModel()\`, \`memory()\`, \`tool()\`, \`outputParser()\`, \`embedding()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\`
 

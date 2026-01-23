@@ -138,9 +138,9 @@ The following functions are pre-loaded in the execution environment. Do NOT writ
 - \`newCredential(name)\` - Create a credential placeholder
 
 **Composite Patterns:**
-- \`ifElse([trueNode, falseNode], config)\` - Two-way conditional branching
-- \`switchCase([case0, case1, ..., fallback], config)\` - Multi-way routing
-- \`merge([branch1, branch2, ...], config)\` - Parallel execution with merge
+- \`ifElse(ifNode, {{ true: trueTarget, false: falseTarget }})\` - Two-way conditional branching (requires pre-declared IF node)
+- \`switchCase(switchNode, {{ case0: target, case1: target, ... }})\` - Multi-way routing (requires pre-declared Switch node)
+- \`merge(mergeNode, {{ input0: source, input1: source, ... }})\` - Parallel execution with merge (requires pre-declared Merge node)
 - \`splitInBatches(config)\` - Batch processing with loops
 
 **AI/LangChain Subnode Builders:**
@@ -218,12 +218,11 @@ return workflow('id', 'name')
 
 ## Conditional Branching (IF)
 \`\`\`typescript
-return workflow('id', 'name')
-  .add(trigger({{ ... }}))
-  .then(ifElse([
-    node({{ ... }}),  // True branch
-    node({{ ... }})   // False branch
-  ], {{
+// First declare the IF node
+const checkCondition = node({{
+  type: 'n8n-nodes-base.if',
+  version: 2.2,
+  config: {{
     name: 'Check Condition',
     parameters: {{
       conditions: {{
@@ -233,32 +232,64 @@ return workflow('id', 'name')
           operator: {{ type: 'string', operation: 'equals' }}
         }}]
       }}
-    }}
+    }},
+    position: [540, 300]
+  }}
+}});
+
+return workflow('id', 'name')
+  .add(trigger({{ ... }}))
+  .then(ifElse(checkCondition, {{
+    true: node({{ ... }}),   // True branch (output 0)
+    false: node({{ ... }})   // False branch (output 1)
   }}));
 \`\`\`
 
 ## Multi-Way Routing (Switch)
 \`\`\`typescript
+// First declare the Switch node
+const routeByType = node({{
+  type: 'n8n-nodes-base.switch',
+  version: 3.2,
+  config: {{
+    name: 'Route by Type',
+    parameters: {{ mode: 'rules', rules: {{...}} }},
+    position: [540, 300]
+  }}
+}});
+
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
-  .then(switchCase([
-    node({{ ... }}),  // Case 0
-    node({{ ... }}),  // Case 1
-    node({{ ... }})   // Fallback
-  ], {{
-    name: 'Route by Type',
-    parameters: {{ mode: 'rules', rules: {{...}} }}
+  .then(switchCase(routeByType, {{
+    case0: node({{ ... }}),  // Output 0
+    case1: node({{ ... }}),  // Output 1
+    case2: node({{ ... }})   // Fallback
   }}));
 \`\`\`
 
 ## Parallel Execution (Merge)
 \`\`\`typescript
+// First declare the Merge node
+const combineResults = node({{
+  type: 'n8n-nodes-base.merge',
+  version: 3,
+  config: {{
+    name: 'Combine Results',
+    parameters: {{ mode: 'combine' }},
+    position: [840, 300]
+  }}
+}});
+
+// Declare branch nodes
+const branch1 = node({{ type: 'n8n-nodes-base.httpRequest', ... }});
+const branch2 = node({{ type: 'n8n-nodes-base.httpRequest', ... }});
+
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
-  .then(merge([
-    node({{ type: 'n8n-nodes-base.httpRequest', ... }}),  // Branch 1
-    node({{ type: 'n8n-nodes-base.httpRequest', ... }}),  // Branch 2
-  ], {{ mode: 'combine' }}))
+  .then(merge(combineResults, {{
+    input0: branch1,  // First input
+    input1: branch2   // Second input
+  }}))
   .then(node({{ ... }}));  // Process merged results
 \`\`\`
 
