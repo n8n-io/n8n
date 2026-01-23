@@ -1,5 +1,4 @@
 import { test, expect } from '../../../fixtures/base';
-import nonTrialPlanData from '../../../fixtures/plan-data-non-trial.json';
 import basePlanData from '../../../fixtures/plan-data-trial.json';
 import type { n8nPage } from '../../../pages/n8nPage';
 import type { TestRequirements } from '../../../Types';
@@ -41,33 +40,6 @@ const cloudTrialRequirements: TestRequirements = {
 	},
 };
 
-const cloudNonTrialRequirements: TestRequirements = {
-	config: {
-		settings: {
-			deployment: { type: 'cloud' },
-			n8nMetadata: { userId: '1' },
-			aiCredits: {
-				enabled: true,
-				credits: 100,
-				setup: true,
-			},
-			banners: {
-				dismissed: ['V1'], // Prevent V1 banner interference
-			},
-		},
-	},
-	intercepts: {
-		'cloud-plan': {
-			url: '**/rest/admin/cloud-plan',
-			response: { ...nonTrialPlanData, expirationDate: fiveDaysFromNow.toJSON() },
-		},
-		'cloud-user': {
-			url: '**/rest/cloud/proxy/user/me',
-			response: {},
-		},
-	},
-};
-
 const setupCloudTest = async (
 	n8n: n8nPage,
 	setupRequirements: (requirements: TestRequirements) => Promise<void>,
@@ -79,70 +51,12 @@ const setupCloudTest = async (
 
 test.describe('Cloud @db:reset @auth:owner', () => {
 	test.describe('Trial Upgrade', () => {
-		test('should render trial banner for opt-in cloud user and has feature flag control', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
-			await n8n.start.fromBlankCanvas();
-			await n8n.sideBar.expand();
-
-			await n8n.page.evaluate(() => {
-				(
-					window as unknown as { featureFlags: { override: (name: string, value: string) => void } }
-				).featureFlags?.override('054_upgrade_plan_cta', 'control');
-			});
-
-			await expect(n8n.sideBar.getTrialBanner()).toBeVisible();
-		});
-
-		test('should render trial banner for opt-in cloud user and has no feature flag set', async ({
-			n8n,
-			setupRequirements,
-		}) => {
+		test('should render trial banner for opt-in cloud user', async ({ n8n, setupRequirements }) => {
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
 
 			await expect(n8n.sideBar.getTrialBanner()).toBeVisible();
-		});
-
-		test('should show trial upgrade in the main sidebar if user is trialing and has feature flag enabled', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
-			await n8n.start.fromBlankCanvas();
-			await n8n.sideBar.expand();
-
-			await n8n.page.evaluate(() => {
-				(
-					window as unknown as { featureFlags: { override: (name: string, value: string) => void } }
-				).featureFlags?.override('054_upgrade_plan_cta', 'variant');
-			});
-
-			await n8n.page.reload();
-
-			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).toBeVisible();
-		});
-
-		test('should not show trial upgrade in the main sidebar if user is not trialing and feature flag is enabled', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await setupCloudTest(n8n, setupRequirements, cloudNonTrialRequirements);
-			await n8n.start.fromBlankCanvas();
-			await n8n.sideBar.expand();
-
-			await n8n.page.evaluate(() => {
-				(
-					window as unknown as { featureFlags: { override: (name: string, value: string) => void } }
-				).featureFlags?.override('054_upgrade_plan_cta', 'variant');
-			});
-
-			await n8n.page.reload();
-
-			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).toBeHidden();
 		});
 	});
 

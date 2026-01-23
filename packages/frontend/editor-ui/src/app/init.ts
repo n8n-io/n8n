@@ -165,9 +165,7 @@ export async function initializeAuthenticatedFeatures(
 					if (cloudPlanStore.trialExpired) {
 						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {
-						if (!cloudPlanStore.isTrialUpgradeOnSidebar) {
-							bannersStore.pushBannerToStack('TRIAL');
-						}
+						bannersStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
 					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
