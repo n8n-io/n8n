@@ -106,6 +106,27 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async shareWorkflow(workflowId: string, shareWithIds: string[]) {
+		const response = await this.api.request.put(`/rest/workflows/${workflowId}/share`, {
+			data: { shareWithIds },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to share workflow: ${await response.text()}`);
+		}
+	}
+
+	async getWorkflows() {
+		const response = await this.api.request.get('/rest/workflows');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflows: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
 	async transfer(workflowId: string, destinationProjectId: string) {
 		const response = await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
 			data: { destinationProjectId },
