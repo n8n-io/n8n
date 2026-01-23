@@ -20,7 +20,6 @@ export const useRolesStore = defineStore('roles', () => {
 		project: [],
 		credential: [],
 		workflow: [],
-		externalSecretsProvider: [],
 	});
 	const projectRoleOrder = ref<string[]>([
 		'project:viewer',

@@ -8,7 +8,6 @@ import {
 } from '../constants.ee';
 import {
 	CREDENTIALS_SHARING_SCOPE_MAP,
-	EXTERNAL_SECRETS_PROVIDER_SHARING_SCOPE_MAP,
 	GLOBAL_SCOPE_MAP,
 	PROJECT_SCOPE_MAP,
 	WORKFLOW_SHARING_SCOPE_MAP,
@@ -30,7 +29,6 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
 	'workflow:editor': 'Workflow Editor',
-	'externalSecretsProvider:owner': 'External Secrets Provider Owner',
 };
 
 const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
@@ -49,12 +47,11 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	'credential:owner': 'Credential Owner',
 	'workflow:owner': 'Workflow Owner',
 	'workflow:editor': 'Workflow Editor',
-	'externalSecretsProvider:owner': 'External Secrets Provider Owner',
 };
 
 const mapToRoleObject = <T extends keyof typeof ROLE_NAMES>(
 	roles: Record<T, Scope[]>,
-	roleType: 'global' | 'project' | 'credential' | 'workflow' | 'externalSecretsProvider',
+	roleType: 'global' | 'project' | 'credential' | 'workflow',
 ) =>
 	(Object.keys(roles) as T[]).map((role) => ({
 		slug: role,
@@ -71,10 +68,6 @@ export const ALL_ROLES: AllRolesMap = {
 	project: mapToRoleObject(PROJECT_SCOPE_MAP, 'project'),
 	credential: mapToRoleObject(CREDENTIALS_SHARING_SCOPE_MAP, 'credential'),
 	workflow: mapToRoleObject(WORKFLOW_SHARING_SCOPE_MAP, 'workflow'),
-	externalSecretsProvider: mapToRoleObject(
-		EXTERNAL_SECRETS_PROVIDER_SHARING_SCOPE_MAP,
-		'externalSecretsProvider',
-	),
 };
 
 export const isBuiltInRole = (role: string): role is AllRoleTypes => {
