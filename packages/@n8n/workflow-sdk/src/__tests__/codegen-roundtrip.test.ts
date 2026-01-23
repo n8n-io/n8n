@@ -10,6 +10,7 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from './fixtures-download';
 
+// Workflows with known issues that need to be skipped
 const SKIP_WORKFLOWS = new Set<string>([]);
 
 interface TestWorkflow {
@@ -1585,7 +1586,8 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				return p;
 			};
 
-			// Helper function for filtering empty connections and orphaned connections (from non-existent nodes)
+			// Helper function for filtering empty connections, orphaned connections (from non-existent nodes),
+			// and dangling connections (to non-existent target nodes)
 			const filterEmptyConnections = (
 				conns: Record<string, unknown>,
 				validNodeNames?: Set<string>,
@@ -1600,11 +1602,23 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					for (const [connType, outputs] of Object.entries(
 						nodeConns as Record<string, unknown[]>,
 					)) {
-						const nonEmptyOutputs = (outputs || []).filter(
+						// Filter each output slot to remove connections to non-existent target nodes
+						const filteredOutputs = (outputs || []).map((slot: unknown) => {
+							if (!Array.isArray(slot)) return slot;
+							// Filter out connections to non-existent nodes
+							if (validNodeNames) {
+								return slot.filter(
+									(conn: { node?: string }) => conn.node && validNodeNames.has(conn.node),
+								);
+							}
+							return slot;
+						});
+						// Only include non-empty output slots
+						const nonEmptyOutputs = filteredOutputs.filter(
 							(arr: unknown) => Array.isArray(arr) && arr.length > 0,
 						);
 						if (nonEmptyOutputs.length > 0) {
-							nonEmptyTypes[connType] = outputs;
+							nonEmptyTypes[connType] = filteredOutputs;
 						}
 					}
 					if (Object.keys(nonEmptyTypes).length > 0) {

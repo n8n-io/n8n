@@ -1619,12 +1619,50 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						if (nodeConns.some((c) => c.target === target && c.outputIndex === outputIndex)) {
 							// This chain node declared this connection
 							// First, ensure target nodes are added to the graph (e.g., error handler chains)
-							// Only add if not already present to avoid infinite recursion
 							if (isNodeChain(target)) {
 								const chainTarget = target as NodeChain;
-								// Check if head node is already in the map to avoid infinite recursion
-								if (!nodes.has(chainTarget.head.name)) {
-									this.addBranchToGraph(nodes, chainTarget);
+								// Add each node in the chain that isn't already in the map
+								// We can't just check the head because the chain may reuse an existing
+								// node as head (e.g., set_content) while having new nodes after it
+								for (const chainNode of chainTarget.allNodes) {
+									if (chainNode === null) continue;
+
+									// For composites, only add if main node not already in map (prevents infinite recursion)
+									if (this.isSwitchCaseComposite(chainNode)) {
+										const comp = chainNode as unknown as SwitchCaseComposite;
+										if (!nodes.has(comp.switchNode.name)) {
+											this.addSwitchCaseNodes(nodes, comp);
+										}
+									} else if (this.isIfElseComposite(chainNode)) {
+										const comp = chainNode as unknown as IfElseComposite;
+										// Add the IF node first to mark as processed (prevents recursion)
+										if (!nodes.has(comp.ifNode.name)) {
+											// Pre-register IF node to prevent recursion during branch processing
+											const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
+											ifConns.set('main', new Map());
+											nodes.set(comp.ifNode.name, {
+												instance: comp.ifNode,
+												connections: ifConns,
+											});
+											// Now process branches safely
+											this.addIfElseNodes(nodes, comp);
+										}
+									} else if (this.isMergeComposite(chainNode)) {
+										const comp = chainNode as unknown as MergeComposite<
+											NodeInstance<string, string, unknown>[]
+										>;
+										if (!nodes.has(comp.mergeNode.name)) {
+											this.addMergeNodes(nodes, comp);
+										}
+									} else if (this.isSplitInBatchesBuilder(chainNode)) {
+										const builder = this.extractSplitInBatchesBuilder(chainNode);
+										if (!nodes.has(builder.sibNode.name)) {
+											this.addSplitInBatchesChainNodes(nodes, chainNode);
+										}
+									} else if (!nodes.has(chainNode.name)) {
+										// Add regular node if not already present
+										this.addNodeWithSubnodes(nodes, chainNode);
+									}
 								}
 							} else if (
 								typeof (target as NodeInstance<string, string, unknown>).name === 'string' &&

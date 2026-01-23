@@ -62,6 +62,7 @@ function isAiConnectionType(connType: string): connType is AiConnectionType {
 
 /**
  * Parse main connections and add to graph
+ * Skips connections to non-existent nodes (dangling connections from malformed workflow data)
  */
 function parseMainConnections(
 	sourceName: string,
@@ -76,31 +77,38 @@ function parseMainConnections(
 
 		const outputName = getOutputName(sourceNode.type, outputIndex, sourceNode.json);
 
-		const connections: SemanticConnection[] = targets.map((target) => {
-			const targetNode = graph.nodes.get(target.node);
-			const inputSlot = targetNode
-				? getInputName(targetNode.type, target.index, targetNode.json)
-				: `input${target.index}`;
+		const connections: SemanticConnection[] = [];
 
-			// Also record the input source on the target node
-			if (targetNode) {
-				const sources = targetNode.inputSources.get(inputSlot) ?? [];
-				sources.push({ from: sourceName, outputSlot: outputName });
-				targetNode.inputSources.set(inputSlot, sources);
+		for (const target of targets) {
+			const targetNode = graph.nodes.get(target.node);
+
+			// Skip connections to non-existent nodes (dangling connections in malformed workflows)
+			if (!targetNode) {
+				continue;
 			}
 
-			return {
+			const inputSlot = getInputName(targetNode.type, target.index, targetNode.json);
+
+			// Record the input source on the target node
+			const sources = targetNode.inputSources.get(inputSlot) ?? [];
+			sources.push({ from: sourceName, outputSlot: outputName });
+			targetNode.inputSources.set(inputSlot, sources);
+
+			connections.push({
 				target: target.node,
 				targetInputSlot: inputSlot,
-			};
-		});
+			});
+		}
 
-		sourceNode.outputs.set(outputName, connections);
+		if (connections.length > 0) {
+			sourceNode.outputs.set(outputName, connections);
+		}
 	});
 }
 
 /**
  * Parse AI subnode connections and add to graph
+ * Skips connections from non-existent source nodes (dangling connections from malformed workflow data)
  */
 function parseAiConnections(
 	sourceName: string,
@@ -108,6 +116,10 @@ function parseAiConnections(
 	outputs: Array<Array<{ node: string; type: string; index: number }> | null>,
 	graph: SemanticGraph,
 ): void {
+	// Skip connections from non-existent source nodes
+	const sourceNode = graph.nodes.get(sourceName);
+	if (!sourceNode) return;
+
 	// AI connections go from subnode → parent node
 	outputs.forEach((targets) => {
 		if (!targets) return;
