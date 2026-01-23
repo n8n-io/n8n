@@ -4,10 +4,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { INVITE_USER_MODAL_KEY } from '@/features/settings/users/users.constants';
-import {
-	CHAT_WORKFLOW_AGENTS_VIEW,
-	CHAT_PERSONAL_AGENTS_VIEW,
-} from '@/features/ai/chatHub/constants';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import {
 	N8nButton,
@@ -21,7 +17,6 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { RouterLink } from 'vue-router';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { type ChatModelDto, ROLE } from '@n8n/api-types';
 import ChatGreetings from './ChatGreetings.vue';
@@ -79,12 +74,11 @@ function handleUpgradeClick() {
 				</div>
 
 				<div :class="$style.cardGrid">
-					<RouterLink
-						:to="{ name: CHAT_WORKFLOW_AGENTS_VIEW }"
-						:class="[$style.cardWrapper, $style.cardFirst]"
+					<div
 						data-test-id="welcome-card-workflow-agents"
+						:class="[$style.cardWrapper, $style.cardFirst]"
 					>
-						<N8nCard :class="$style.card" hoverable>
+						<N8nCard :class="$style.card">
 							<div :class="$style.cardHeader">
 								<N8nIcon icon="robot" size="large" color="text-dark" />
 								<N8nText bold>{{
@@ -95,14 +89,13 @@ function handleUpgradeClick() {
 								i18n.baseText('chatHub.welcome.card.workflowAgents.description')
 							}}</N8nText>
 						</N8nCard>
-					</RouterLink>
+					</div>
 
-					<RouterLink
-						:to="{ name: CHAT_PERSONAL_AGENTS_VIEW }"
+					<div
 						:class="[$style.cardWrapper, $style.cardMiddle]"
 						data-test-id="welcome-card-personal-agents"
 					>
-						<N8nCard :class="$style.card" hoverable>
+						<N8nCard :class="$style.card">
 							<div :class="$style.cardHeader">
 								<N8nIcon icon="message-square" size="large" color="text-dark" />
 								<N8nText bold>{{
@@ -113,14 +106,13 @@ function handleUpgradeClick() {
 								i18n.baseText('chatHub.welcome.card.personalAgents.description')
 							}}</N8nText>
 						</N8nCard>
-					</RouterLink>
+					</div>
 
 					<div
 						:class="[$style.cardWrapper, $style.cardLast]"
 						data-test-id="welcome-card-base-models"
-						@click="handleStartNewChat"
 					>
-						<N8nCard :class="$style.card" hoverable>
+						<N8nCard :class="$style.card">
 							<div :class="$style.cardHeader">
 								<div :class="$style.providerIcons">
 									<CredentialIcon credential-type-name="openAiApi" :size="20" />
@@ -205,7 +197,6 @@ function handleUpgradeClick() {
 	flex: 1;
 	text-decoration: none;
 	color: inherit;
-	cursor: pointer;
 
 	&:not(:first-child) {
 		margin-left: -1px;
@@ -216,10 +207,6 @@ function handleUpgradeClick() {
 			margin-left: 0;
 			margin-top: -1px;
 		}
-	}
-
-	&:hover {
-		z-index: 1;
 	}
 }
 
