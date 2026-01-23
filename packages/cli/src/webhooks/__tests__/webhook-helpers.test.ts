@@ -337,7 +337,8 @@ describe('handleHostedChatResponse', () => {
 				executionId,
 				token: expect.any(String),
 			});
-			expect(data.token).toHaveLength(64); // 32 bytes hex = 64 characters
+			// Token is a JWT with 3 parts separated by dots
+			expect(data.token.split('.')).toHaveLength(3);
 		});
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
