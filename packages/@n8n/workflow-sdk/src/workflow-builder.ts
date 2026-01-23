@@ -807,16 +807,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				return;
 			}
 
-			// Regular node branch
+			// Regular node branch - use addNodeWithSubnodes to process any AI subnodes
 			const branchNode = branch as NodeInstance<string, string, unknown>;
-			const branchMainConns = new Map<number, ConnectionTarget[]>();
-			branchMainConns.set(0, [{ node: composite.mergeNode.name, type: 'main', index }]);
-			const branchConns = new Map<string, Map<number, ConnectionTarget[]>>();
-			branchConns.set('main', branchMainConns);
-			nodes.set(branchNode.name, {
-				instance: branchNode,
-				connections: branchConns,
-			});
+			this.addNodeWithSubnodes(nodes, branchNode);
+			// Add the connection to the merge node
+			const graphNode = nodes.get(branchNode.name);
+			if (graphNode) {
+				const mainConns = graphNode.connections.get('main') ?? new Map();
+				mainConns.set(0, [{ node: composite.mergeNode.name, type: 'main', index }]);
+				graphNode.connections.set('main', mainConns);
+			}
 		});
 	}
 
