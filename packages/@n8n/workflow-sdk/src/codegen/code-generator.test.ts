@@ -179,12 +179,12 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('ifElse([');
-				// Should have true and false branch variable references
+				// Should have IF node and branch variable references
+				expect(code).toContain('const iF = node({');
 				expect(code).toContain('const trueHandler = node({');
 				expect(code).toContain('const falseHandler = node({');
-				// The ifElse should reference the variables
-				expect(code).toMatch(/ifElse\(\[trueHandler, falseHandler\]/);
+				// The ifElse should use named syntax with IF node reference
+				expect(code).toContain('ifElse(iF, { true: trueHandler, false: falseHandler })');
 			});
 
 			it('handles IF with null branch', () => {
@@ -217,8 +217,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('ifElse([');
-				expect(code).toContain('null');
+				// Should use named syntax with IF node
+				expect(code).toContain('ifElse(iF, {');
+				expect(code).toContain('true: trueHandler');
+				expect(code).toContain('false: null');
 			});
 		});
 
@@ -273,7 +275,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				expect(code).toContain('merge([');
+				// Should use named syntax with merge node and input mapping
+				expect(code).toContain('merge(');
+				expect(code).toContain('{ input0:');
+				expect(code).toContain('input1:');
 			});
 		});
 

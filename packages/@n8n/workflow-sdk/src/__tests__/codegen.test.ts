@@ -944,10 +944,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use merge() function instead of regular node()
+			// Should use merge() function with named syntax
 			expect(code).toContain('merge(');
-			// Should include the source nodes in the merge array
-			expect(code).toMatch(/merge\s*\(\s*\[/);
+			// Should include named inputs (input0, input1, etc.)
+			expect(code).toContain('{ input0:');
 		});
 
 		it('should generate ifElse() for IF node patterns', () => {
@@ -1004,10 +1004,11 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use ifElse() function
+			// Should use ifElse() function with named syntax
 			expect(code).toContain('ifElse(');
-			// Should include both true and false branches
-			expect(code).toMatch(/ifElse\s*\(\s*\[/);
+			// Should include true and false branches with named syntax
+			expect(code).toContain('{ true:');
+			expect(code).toContain('false:');
 		});
 
 		it('should generate switchCase() for Switch node patterns', () => {
@@ -1068,10 +1069,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use switchCase() function
+			// Should use switchCase() function with named syntax
 			expect(code).toContain('switchCase(');
-			// Should include all case branches
-			expect(code).toMatch(/switchCase\s*\(\s*\[/);
+			// Should include case branches with named syntax
+			expect(code).toContain('{ case0:');
 		});
 	});
 });
