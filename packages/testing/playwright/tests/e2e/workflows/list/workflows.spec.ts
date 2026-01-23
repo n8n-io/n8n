@@ -198,12 +198,10 @@ test.describe('Workflows', () => {
 	test('should respect pageSize URL parameter on initial load', async ({ n8n }) => {
 		const { id: projectId } = await n8n.api.projects.createProject();
 
-		// Create a few workflows to have some data
 		await n8n.api.workflows.createInProject(projectId);
 		await n8n.api.workflows.createInProject(projectId);
 		await n8n.api.workflows.createInProject(projectId);
 
-		// Set up request listener before navigation
 		const apiRequestPromise = n8n.page.waitForRequest(
 			(request) =>
 				request.url().includes('/rest/workflows') &&
@@ -211,17 +209,12 @@ test.describe('Workflows', () => {
 				request.url().includes('limit='),
 		);
 
-		// Navigate with pageSize=100 URL parameter
 		await n8n.page.goto(`projects/${projectId}/workflows?pageSize=100`);
 
-		// Wait for and capture the API request
 		const apiRequest = await apiRequestPromise;
 		const url = new URL(apiRequest.url());
 
-		// Verify request includes pageSize=100 (as limit parameter)
 		expect(url.searchParams.get('limit')).toBe('100');
-
-		// Verify the workflows list is visible
 		await expect(n8n.workflows.cards.getWorkflows()).not.toHaveCount(0);
 	});
 });

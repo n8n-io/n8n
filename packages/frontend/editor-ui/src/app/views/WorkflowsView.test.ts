@@ -409,21 +409,18 @@ describe('WorkflowsView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			// Verify that fetchWorkflowsPage was called with pageSize 100 (not the default 50)
-			// Signature: fetchWorkflowsPage(projectId, page, pageSize, sort, filters, ...)
 			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
-				expect.any(String), // projectId
-				expect.any(Number), // page
-				100, // pageSize should be 100 from URL
-				expect.any(String), // sort
-				expect.any(Object), // filters
+				expect.any(String),
+				expect.any(Number),
+				100,
+				expect.any(String),
+				expect.any(Object),
 				expect.any(Boolean),
 				expect.any(Boolean),
 			);
 		});
 
 		it('should use default pageSize when no URL parameter or localStorage value exists', async () => {
-			// Ensure no pageSize in URL
 			await router.replace({ query: {} });
 
 			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
@@ -431,13 +428,12 @@ describe('WorkflowsView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			// Verify that fetchWorkflowsPage was called with default pageSize (50)
 			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
-				expect.any(String), // projectId
-				expect.any(Number), // page
-				50, // Default pageSize
-				expect.any(String), // sort
-				expect.any(Object), // filters
+				expect.any(String),
+				expect.any(Number),
+				50,
+				expect.any(String),
+				expect.any(Object),
 				expect.any(Boolean),
 				expect.any(Boolean),
 			);

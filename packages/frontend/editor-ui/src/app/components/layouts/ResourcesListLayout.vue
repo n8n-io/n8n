@@ -288,7 +288,6 @@ watch(
 watch([() => route.params?.projectId, () => route.name], async () => {
 	await resetFilters();
 	await loadPaginationPreferences();
-	// Wait for pagination-and-sort event to be processed before initializing
 	await nextTick();
 	await props.initialize();
 });
@@ -296,7 +295,6 @@ watch([() => route.params?.projectId, () => route.name], async () => {
 // Lifecycle hooks
 onMounted(async () => {
 	await loadPaginationPreferences();
-	// Wait for pagination-and-sort event to be processed before initializing
 	await nextTick();
 	await props.initialize();
 
