@@ -45,7 +45,7 @@ import {
 } from 'vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { onClickOutside, type VueInstance } from '@vueuse/core';
+import { computedAsync, onClickOutside, type VueInstance } from '@vueuse/core';
 import {
 	buildValueFromOverride,
 	isFromAIOverrideValue,
@@ -248,7 +248,7 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	return props.modelValue?.value ?? '';
 });
 
-const urlValue = computed(() => {
+const urlValue = computedAsync(async () => {
 	if (isListMode.value && typeof props.modelValue === 'object') {
 		return props.modelValue?.cachedResultUrl ?? null;
 	}
@@ -271,14 +271,14 @@ const urlValue = computed(() => {
 		const value = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
 		if (typeof value === 'string') {
 			const expression = currentMode.value.url.replace(/\{\{\$value\}\}/g, value);
-			const resolved = workflowHelpers.resolveExpression(expression);
+			const resolved = await workflowHelpers.resolveExpression(expression);
 
 			return typeof resolved === 'string' ? resolved : null;
 		}
 	}
 
 	return null;
-});
+}, null);
 
 const currentRequestParams = computed(() => {
 	return {
@@ -415,7 +415,7 @@ const handleAddResourceClick = async () => {
 		return;
 	}
 
-	const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+	const resolvedNodeParameters = await workflowHelpers.resolveRequiredParameters(
 		props.parameter,
 		currentRequestParams.value.parameters,
 	);
@@ -776,10 +776,10 @@ async function loadResources() {
 			});
 		}
 
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			params.parameters,
-		) as INodeParameters;
+		)) as INodeParameters;
 		const loadOptionsMethod = getPropertyArgument(currentMode.value, 'searchListMethod') as string;
 
 		const requestParams: ResourceLocatorRequestDto = {
