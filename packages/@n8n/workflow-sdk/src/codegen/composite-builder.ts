@@ -209,6 +209,37 @@ function hasMultipleOutputSlots(node: SemanticNode): boolean {
 }
 
 /**
+ * Check if a node has outputs going to destinations OTHER than the specified merge node.
+ * This is crucial for detecting when a node cannot be safely inlined in a merge composite
+ * because it has other outputs that need to be processed separately.
+ *
+ * Example: Switch → Merge (output 0), Merge1 (output 1), docker ps (output 2)
+ * When building Merge, we can't inline Switch because it also connects to Merge1 and docker ps.
+ */
+function hasOutputsOutsideMerge(node: SemanticNode, mergeNode: SemanticNode): boolean {
+	// Get all target node names that feed INTO this merge
+	const mergeInputSources = new Set<string>();
+	for (const [, sources] of mergeNode.inputSources) {
+		for (const source of sources) {
+			mergeInputSources.add(source.from);
+		}
+	}
+
+	// Check if any of the node's outputs go to destinations NOT in the merge's input sources
+	// AND that destination is NOT the merge itself
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue; // Skip error output
+		for (const conn of connections) {
+			// If target is NOT the merge AND target is NOT feeding into this merge as another branch
+			if (conn.target !== mergeNode.name && !mergeInputSources.has(conn.target)) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+/**
  * Check if a node is a merge node
  */
 function isMergeType(type: string): boolean {
@@ -283,6 +314,8 @@ function findDirectMergeInFanOut(
 
 /**
  * Check if multiple targets all converge at the same merge node
+ * Returns null if any target has outputs going to destinations other than the merge
+ * (e.g., Switch with multiple output slots going to different destinations)
  */
 function detectMergePattern(
 	targetNames: string[],
@@ -297,7 +330,7 @@ function detectMergePattern(
 		const targetNode = ctx.graph.nodes.get(targetName);
 		if (!targetNode) continue;
 
-		// Get what this target connects to
+		// Get what this target connects to (first output slot only for merge detection)
 		const nextTargets = getAllFirstOutputTargets(targetNode);
 		for (const nextTarget of nextTargets) {
 			const nextNode = ctx.graph.nodes.get(nextTarget);
@@ -314,6 +347,15 @@ function detectMergePattern(
 		if (branches.length === targetNames.length) {
 			const mergeNode = ctx.graph.nodes.get(mergeName);
 			if (mergeNode) {
+				// IMPORTANT: Check if any branch has outputs going to OTHER destinations
+				// If so, we cannot use the merge pattern as those outputs would be lost
+				for (const branchName of branches) {
+					const branchNode = ctx.graph.nodes.get(branchName);
+					if (branchNode && hasOutputsOutsideMerge(branchNode, mergeNode)) {
+						// This branch has other outputs - skip merge pattern
+						return null;
+					}
+				}
 				return { mergeNode, branches };
 			}
 		}
@@ -709,14 +751,23 @@ function buildMerge(node: SemanticNode, ctx: BuildContext): MergeCompositeNode {
 	// Build each branch
 	// Note: For merge, we inline branches as leaves even if visited,
 	// unless they're explicitly declared as variables (cycle/convergence targets)
+	// OR unless they have outputs going to destinations OTHER than this merge
 	for (const branchName of branchNames) {
 		const branchNode = ctx.graph.nodes.get(branchName);
 		if (branchNode) {
+			// Check if node has outputs going elsewhere (not just to this merge)
+			const hasOtherOutputs = hasOutputsOutsideMerge(branchNode, node);
+
 			if (ctx.variables.has(branchName)) {
-				// Only use varRef if it's an actual declared variable
+				// Already a declared variable - use varRef
+				branches.push(createVarRef(branchName));
+			} else if (hasOtherOutputs) {
+				// Node has outputs to other destinations - must be a variable
+				// so those outputs can be processed separately
+				ctx.variables.set(branchName, branchNode);
 				branches.push(createVarRef(branchName));
 			} else {
-				// Inline as leaf (even if visited during chain traversal)
+				// Safe to inline as leaf
 				branches.push(createLeaf(branchNode));
 			}
 		}
