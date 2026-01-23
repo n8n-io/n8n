@@ -36,6 +36,8 @@ const settingsStore = useSettingsStore();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 
+const CHAT_USERS_DOCS_URL = 'https://docs.n8n.io/advanced-ai/chat-hub/#chat-user-role';
+
 const isAdvancedPermissionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
 );
@@ -145,6 +147,11 @@ function handleUpgradeClick() {
 								<template #link>
 									<N8nLink size="small" @click="handleUpgradeClick">
 										{{ i18n.baseText('generic.upgrade') }}
+									</N8nLink>
+								</template>
+								<template #docsLink>
+									<N8nLink size="small" :href="CHAT_USERS_DOCS_URL" target="_blank" rel="noopener">
+										{{ i18n.baseText('chatHub.welcome.inviteUpgrade.here') }}
 									</N8nLink>
 								</template>
 							</I18nT>
