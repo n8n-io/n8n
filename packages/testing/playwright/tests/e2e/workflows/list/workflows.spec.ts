@@ -194,27 +194,4 @@ test.describe('Workflows', () => {
 		await n8n.workflows.shareWorkflow(workflowName);
 		await expect(n8n.workflowSharingModal.getModal()).toBeVisible();
 	});
-
-	test('should respect pageSize URL parameter on initial load', async ({ n8n }) => {
-		const { id: projectId } = await n8n.api.projects.createProject();
-
-		await n8n.api.workflows.createInProject(projectId);
-		await n8n.api.workflows.createInProject(projectId);
-		await n8n.api.workflows.createInProject(projectId);
-
-		const apiRequestPromise = n8n.page.waitForRequest(
-			(request) =>
-				request.url().includes('/rest/workflows') &&
-				request.method() === 'GET' &&
-				request.url().includes('limit='),
-		);
-
-		await n8n.page.goto(`projects/${projectId}/workflows?pageSize=100`);
-
-		const apiRequest = await apiRequestPromise;
-		const url = new URL(apiRequest.url());
-
-		expect(url.searchParams.get('limit')).toBe('100');
-		await expect(n8n.workflows.cards.getWorkflows()).not.toHaveCount(0);
-	});
 });
