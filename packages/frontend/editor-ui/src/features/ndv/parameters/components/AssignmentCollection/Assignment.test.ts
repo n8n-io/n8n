@@ -6,7 +6,7 @@ import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { cleanup, fireEvent, waitFor } from '@testing-library/vue';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/vue';
 import merge from 'lodash/merge';
 import { computed, nextTick, ref } from 'vue';
 import Assignment from './Assignment.vue';
@@ -39,7 +39,7 @@ describe('Assignment.vue', () => {
 	});
 
 	it('can edit name, type and value', async () => {
-		const { getByTestId, baseElement, emitted } = renderComponent();
+		const { getByTestId, emitted } = renderComponent();
 
 		const nameField = getByTestId('assignment-name').querySelector('input') as HTMLInputElement;
 		const valueField = getByTestId('assignment-value').querySelector('input') as HTMLInputElement;
@@ -52,7 +52,9 @@ describe('Assignment.vue', () => {
 		await userEvent.type(nameField, 'New name');
 		await userEvent.type(valueField, 'New value');
 
-		await userEvent.click(baseElement.querySelectorAll('.option')[3]);
+		const typeSelect = getByTestId('assignment-type-select');
+		await userEvent.click(within(typeSelect).getByRole('button'));
+		await userEvent.click(screen.getByRole('menuitem', { name: 'Array' }));
 
 		await waitFor(() =>
 			expect(emitted('update:model-value')[0]).toEqual([
