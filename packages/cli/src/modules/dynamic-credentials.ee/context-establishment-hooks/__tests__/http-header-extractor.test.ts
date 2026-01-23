@@ -44,28 +44,29 @@ describe('HttpHeaderExtractor', () => {
 
 	describe('execute', () => {
 		describe('input validation', () => {
-			it('returns empty when triggerItems is undefined', async () => {
-				const result = await extractor.execute(createOptions({ triggerItems: undefined }));
-
-				expect(result).toEqual({});
-			});
-
-			it('returns empty when triggerItems is empty', async () => {
-				const result = await extractor.execute(createOptions({ triggerItems: [] }));
-
-				expect(result).toEqual({});
-			});
-
-			it('returns empty when options validation fails', async () => {
-				const result = await extractor.execute(
-					createOptions({
-						options: {
-							headerName: 123, // Invalid: should be string
-						},
-					}),
+			it('throws error when triggerItems is undefined', async () => {
+				await expect(extractor.execute(createOptions({ triggerItems: undefined }))).rejects.toThrow(
+					'No trigger items found, to perform header extraction',
 				);
+			});
 
-				expect(result).toEqual({});
+			it('throws error when triggerItems is empty', async () => {
+				await expect(extractor.execute(createOptions({ triggerItems: [] }))).rejects.toThrow(
+					'No trigger items found, to perform header extraction',
+				);
+			});
+
+			it('throws error when options validation fails', async () => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							options: {
+								headerName: 123, // Invalid: should be string
+							},
+						}),
+					),
+				).rejects.toThrow('Invalid options for HttpHeaderExtractor hook');
+
 				expect(mockLogger.error).toHaveBeenCalledWith(
 					'Invalid options for HttpHeaderExtractor hook.',
 					expect.objectContaining({ error: expect.anything() }),
@@ -80,14 +81,15 @@ describe('HttpHeaderExtractor', () => {
 				['(a+)*', 'nested quantifier variant 2'],
 				['(a|a)+', 'overlapping alternation'],
 				['(foo|foo)*', 'overlapping alternation with words'],
-			])('rejects unsafe pattern "%s" (%s)', async (pattern) => {
-				const result = await extractor.execute(
-					createOptions({
-						options: { headerValue: pattern },
-					}),
-				);
+			])('throws error for unsafe pattern "%s" (%s)', async (pattern) => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							options: { headerValue: pattern },
+						}),
+					),
+				).rejects.toThrow('Detected unsafe regex pattern, rejecting processing');
 
-				expect(result).toEqual({});
 				expect(mockLogger.warn).toHaveBeenCalledWith('Potentially unsafe regex pattern rejected', {
 					pattern,
 				});
@@ -112,18 +114,15 @@ describe('HttpHeaderExtractor', () => {
 		});
 
 		describe('regex compilation', () => {
-			it('returns triggerItems with masked header for invalid regex syntax', async () => {
-				const result = await extractor.execute(
-					createOptions({
-						options: { headerValue: '[invalid' },
-					}),
-				);
+			it('throws error for invalid regex syntax', async () => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							options: { headerValue: '[invalid' },
+						}),
+					),
+				).rejects.toThrow('Failed to execute regex pattern, during header extraction');
 
-				expect(result.triggerItems).toBeDefined();
-				expect(result.triggerItems?.[0].json.headers).toEqual({
-					authorization: '**********',
-				});
-				expect(result.contextUpdate).toBeUndefined();
 				expect(mockLogger.error).toHaveBeenCalledWith(
 					'Invalid regex pattern',
 					expect.objectContaining({
@@ -135,65 +134,65 @@ describe('HttpHeaderExtractor', () => {
 		});
 
 		describe('header extraction', () => {
-			it('returns empty when headers is missing', async () => {
-				const result = await extractor.execute(
-					createOptions({
-						triggerItems: [{ json: {}, pairedItem: { item: 0 } }],
-					}),
-				);
-
-				expect(result).toEqual({});
+			it('throws error when headers is missing', async () => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							triggerItems: [{ json: {}, pairedItem: { item: 0 } }],
+						}),
+					),
+				).rejects.toThrow('Http header not found or invalid');
 			});
 
-			it('returns empty when headers is undefined', async () => {
-				const result = await extractor.execute(
-					createOptions({
-						triggerItems: [createTriggerItem(undefined)],
-					}),
-				);
-
-				expect(result).toEqual({});
+			it('throws error when headers is undefined', async () => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							triggerItems: [createTriggerItem(undefined)],
+						}),
+					),
+				).rejects.toThrow('Http header not found or invalid');
 			});
 
-			it('returns empty when headers is not an object', async () => {
-				const result = await extractor.execute(
-					createOptions({
-						triggerItems: [{ json: { headers: 'not-an-object' }, pairedItem: { item: 0 } }],
-					}),
-				);
-
-				expect(result).toEqual({});
+			it('throws error when headers is not an object', async () => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							triggerItems: [{ json: { headers: 'not-an-object' }, pairedItem: { item: 0 } }],
+						}),
+					),
+				).rejects.toThrow('Http header not found or invalid');
 			});
 
-			it('returns empty when headers is an array', async () => {
-				const result = await extractor.execute(
-					createOptions({
-						triggerItems: [{ json: { headers: ['item1', 'item2'] }, pairedItem: { item: 0 } }],
-					}),
-				);
-
-				expect(result).toEqual({});
+			it('throws error when headers is an array', async () => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							triggerItems: [{ json: { headers: ['item1', 'item2'] }, pairedItem: { item: 0 } }],
+						}),
+					),
+				).rejects.toThrow('Http header not found or invalid');
 			});
 
-			it('returns empty when target header is not found', async () => {
-				const result = await extractor.execute(
-					createOptions({
-						triggerItems: [createTriggerItem({ 'x-custom-header': 'value' })],
-						options: { headerName: 'authorization' },
-					}),
-				);
-
-				expect(result).toEqual({});
+			it('throws error when target header is not found', async () => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							triggerItems: [createTriggerItem({ 'x-custom-header': 'value' })],
+							options: { headerName: 'authorization' },
+						}),
+					),
+				).rejects.toThrow('Http header not found or invalid');
 			});
 
-			it('returns empty when header value is not a string', async () => {
-				const result = await extractor.execute(
-					createOptions({
-						triggerItems: [createTriggerItem({ authorization: 12345 })],
-					}),
-				);
-
-				expect(result).toEqual({});
+			it('throws error when header value is not a string', async () => {
+				await expect(
+					extractor.execute(
+						createOptions({
+							triggerItems: [createTriggerItem({ authorization: 12345 })],
+						}),
+					),
+				).rejects.toThrow('Http header not found or invalid');
 			});
 
 			it('returns triggerItems with masked header when pattern does not match', async () => {
