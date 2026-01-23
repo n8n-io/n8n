@@ -43,6 +43,7 @@ export class ModuleRegistry {
 		'sso-oidc',
 		'sso-saml',
 		'log-streaming',
+		'ldap',
 	];
 
 	private readonly activeModules: string[] = [];

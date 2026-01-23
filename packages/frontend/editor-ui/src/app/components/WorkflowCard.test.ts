@@ -53,6 +53,27 @@ vi.mock('@/app/composables/useMessage', () => {
 	};
 });
 
+vi.mock('@/app/composables/useWorkflowActivate', () => {
+	const unpublishWorkflowFromHistory = vi.fn().mockResolvedValue(true);
+	return {
+		useWorkflowActivate: () => ({
+			unpublishWorkflowFromHistory,
+		}),
+	};
+});
+
+vi.mock('@n8n/utils/event-bus', () => ({
+	createEventBus: () => ({
+		once: vi.fn((event, callback) => {
+			// Auto-trigger the callback for testing
+			if (event === 'unpublish') {
+				callback();
+			}
+		}),
+		emit: vi.fn(),
+	}),
+}));
+
 const renderComponent = createComponentRenderer(WorkflowCard, {
 	pinia: createTestingPinia({}),
 });
@@ -744,5 +765,99 @@ describe('WorkflowCard', () => {
 			throw new Error('Actions menu not found');
 		}
 		expect(actions).not.toHaveTextContent('Duplicate');
+	});
+
+	describe('Unpublish functionality', () => {
+		beforeEach(() => {
+			// Enable draft/publish feature by default for unpublish tests
+			settingsStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+		});
+
+		it('should show "Unpublish" action when workflow is published and user has permissions', async () => {
+			const data = createWorkflow({
+				activeVersionId: 'v1', // Published workflow
+				scopes: ['workflow:update'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const cardActions = getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActions);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			expect(actions).toHaveTextContent('Unpublish');
+		});
+
+		it('should not show "Unpublish" action when workflow is not published', async () => {
+			const data = createWorkflow({
+				activeVersionId: null, // Not published
+				scopes: ['workflow:update'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const cardActions = getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActions);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			expect(actions).not.toHaveTextContent('Unpublish');
+		});
+
+		it('should not show "Unpublish" action when user lacks update permission', async () => {
+			const data = createWorkflow({
+				activeVersionId: 'v1',
+				scopes: ['workflow:read'], // No update permission
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const cardActions = getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActions);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			expect(actions).not.toHaveTextContent('Unpublish');
+		});
+
+		it('should emit workflow:unpublished event when unpublish action is successful', async () => {
+			const data = createWorkflow({
+				activeVersionId: 'v1',
+				scopes: ['workflow:update'],
+			});
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+			const cardActions = getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActions);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			// Find and click the unpublish action
+			const unpublishAction = within(actions).getByTestId('action-unpublish');
+			await userEvent.click(unpublishAction);
+
+			await waitFor(() => {
+				expect(emitted()['workflow:unpublished']).toBeTruthy();
+				expect(emitted()['workflow:unpublished'][0]).toEqual([{ id: '1' }]);
+			});
+		});
 	});
 });
