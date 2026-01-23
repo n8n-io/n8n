@@ -1,6 +1,7 @@
 # TODO (MVP)
 - [ ] refactor code generation to simplify implementation, with learnings from POC
 - [ ] get workflow-sdk to support a lot of our template library
+- [ ] test out more edge cases
 - [ ] Add more examples for more complex flows (like loops or multi level orchestrator)
 - [ ] rerun evaluations, get to parity with current agent
 - [ ] run evaluations against Opus
@@ -10,7 +11,7 @@
 - [ ] deploy agent to test instance
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
 	- [ ] a lot of pairwise seem to be about preferring certain nodes, how can we add that as part of the node definition
-- [ ] How to do we store the template workflows? Do we commit to repo? Or keep fetching from API? Template creators might not be happy. If we keep fetching from API they might change or get deleted.
+- [ ] How to do we store the template workflows? Do we commit to repo? Or keep fetching from API? Template creators might not be happy. If we keep fetching from API they might change or get deleted. Maybe a zip folder in repo that's expanded before running tests?
 - [ ] Review PR (lots of AI generated code that I did not look at)
 - [ ] Make sure conversation history is included in request
 - [ ] Remove logging from agent. lots of logging for debugging.
