@@ -49,13 +49,10 @@ function extractThinkingMetadata(
 
 	// Use toolCall's additionalKwargs or fall back to shared one from batch
 	const effectiveAdditionalKwargs =
-		(toolCall.additionalKwargs as Record<string, unknown> | undefined) ??
-		sharedAdditionalKwargs;
+		(toolCall.additionalKwargs as Record<string, unknown> | undefined) ?? sharedAdditionalKwargs;
 	// Use toolCall's messageLog or fall back to shared one from batch
 	const effectiveMessageLog =
-		toolCall.messageLog && toolCall.messageLog.length > 0
-			? toolCall.messageLog
-			: sharedMessageLog;
+		toolCall.messageLog && toolCall.messageLog.length > 0 ? toolCall.messageLog : sharedMessageLog;
 
 	// Extract thought signatures from additionalKwargs (Gemini)
 	let thoughtSignature: string | undefined;
@@ -148,9 +145,9 @@ function extractThinkingMetadata(
 									if (toolCallIndex !== -1 && toolCallIndex < signatures.length) {
 										thoughtSignature = signatures[toolCallIndex];
 									}
-							}
-							// Fallback: get first non-empty signature
-							thoughtSignature ??= signatures.find((s) => s && s.length > 0);
+								}
+								// Fallback: get first non-empty signature
+								thoughtSignature ??= signatures.find((s) => s && s.length > 0);
 							}
 						}
 					}
@@ -201,9 +198,9 @@ export function createEngineRequests(
 		(tc) => tc.messageLog && tc.messageLog.length > 0,
 	)?.messageLog;
 	// Similarly for additionalKwargs (contains Gemini thought signatures)
-	const sharedAdditionalKwargs = toolCalls.find(
-		(tc) => tc.additionalKwargs,
-	)?.additionalKwargs as Record<string, unknown> | undefined;
+	const sharedAdditionalKwargs = toolCalls.find((tc) => tc.additionalKwargs)?.additionalKwargs as
+		| Record<string, unknown>
+		| undefined;
 
 	return toolCalls
 		.map((toolCall) => {
@@ -216,37 +213,37 @@ export function createEngineRequests(
 
 			if (typeof nodeName !== 'string') return undefined;
 
-		const metadata = (foundTool.metadata ?? {}) as ToolMetadata;
-		const toolInput = toolCall.toolInput as IDataObject;
-		const hitlMetadata = extractHitlMetadata(metadata, toolCall.tool, toolInput);
+			const metadata = (foundTool.metadata ?? {}) as ToolMetadata;
+			const toolInput = toolCall.toolInput as IDataObject;
+			const hitlMetadata = extractHitlMetadata(metadata, toolCall.tool, toolInput);
 
-		let input: IDataObject = toolInput;
-		if (metadata.isFromToolkit) {
-			input = { ...input, tool: toolCall.tool };
-		}
-		if (hitlMetadata) {
-			// This input will be used as HITL node input
-			input = {
-				// omit hitlParameters, because they are destructured into the input instead
-				...omit(input, 'hitlParameters'),
-				...(input.hitlParameters as IDataObject),
-				// stringify parameters so that they can be accessed with $fromAI method
-				toolParameters: JSON.stringify(input.toolParameters),
+			let input: IDataObject = toolInput;
+			if (metadata.isFromToolkit) {
+				input = { ...input, tool: toolCall.tool };
+			}
+			if (hitlMetadata) {
+				// This input will be used as HITL node input
+				input = {
+					// omit hitlParameters, because they are destructured into the input instead
+					...omit(input, 'hitlParameters'),
+					...(input.hitlParameters as IDataObject),
+					// stringify parameters so that they can be accessed with $fromAI method
+					toolParameters: JSON.stringify(input.toolParameters),
+				};
+			}
+
+			return {
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName,
+				input,
+				type: NodeConnectionTypes.AiTool,
+				id: toolCall.toolCallId,
+				metadata: {
+					itemIndex,
+					hitl: hitlMetadata,
+					...extractThinkingMetadata(toolCall, sharedMessageLog, sharedAdditionalKwargs),
+				},
 			};
-		}
-
-		return {
-			actionType: 'ExecutionNodeAction' as const,
-			nodeName,
-			input,
-			type: NodeConnectionTypes.AiTool,
-			id: toolCall.toolCallId,
-			metadata: {
-				itemIndex,
-				hitl: hitlMetadata,
-				...extractThinkingMetadata(toolCall, sharedMessageLog, sharedAdditionalKwargs),
-			},
-		};
-	})
-	.filter((item): item is NonNullable<typeof item> => item !== undefined);
+		})
+		.filter((item): item is NonNullable<typeof item> => item !== undefined);
 }
