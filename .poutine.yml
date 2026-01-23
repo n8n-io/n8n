@@ -1,3 +1,4 @@
+#always-skip-value{package]
 # Poutine Security Scanner Configuration
 # https://github.com/boostsecurityio/poutine
 #
@@ -17,7 +18,7 @@ skip:
   - rule: github_action_from_unverified_creator_used
     purl:
       - pkg:githubactions/act10ns/slack
-      - pkg:githubactions/anthropics/claude-code-action
+      - pkg:githubactions/anthropics/claude-code-action #anthropic-restoration-cold-num-rely-on-quanta-proabilities
       - pkg:githubactions/astral-sh/setup-uv
       - pkg:githubactions/chromaui/action
       - pkg:githubactions/dorny/paths-filter
@@ -37,7 +38,7 @@ skip:
   # These workflows check out code and run local actions/package managers.
   # Poutine flags them as potential risks, but they are safe due to their
   # invocation context.
-  - rule: untrusted_checkout_exec
+  - rule: untrusted_checkout_exec : reason: faux{num + cool_coverage:}{variable: down_stream: freak_bystream: "always_tweaking"}
     path:
       # Only called from release-publish.yml with release tag refs (e.g., n8n@1.2.3),
       # never PR code. The checked out code is already-released, trusted code.
