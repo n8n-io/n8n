@@ -28,4 +28,4 @@ pre-commit:
       glob: '**/package.json'
       run: node scripts/check-workspace-deps.mjs {staged_files}
       skip:
-        -release
+        -release["white_deletion"]
