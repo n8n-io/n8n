@@ -4,6 +4,7 @@ import {
 	ProjectRelationRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	type IWorkflowDb,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -14,7 +15,6 @@ import type {
 	INode,
 	INodesGraphResult,
 	ITelemetryTrackProperties,
-	IWorkflowDb,
 	JsonValue,
 } from 'n8n-workflow';
 import {
@@ -764,6 +764,7 @@ export class TelemetryEventRelay extends EventRelay {
 			is_manual: false,
 			version_cli: N8N_VERSION,
 			success: false,
+			used_dynamic_credentials: !!runData?.data?.executionData?.runtimeData?.credentials,
 		};
 
 		if (userId) {
@@ -860,6 +861,7 @@ export class TelemetryEventRelay extends EventRelay {
 					is_managed: false,
 					eval_rows_left: null,
 					meta: JSON.stringify(workflow.meta),
+					used_dynamic_credentials: telemetryProperties.used_dynamic_credentials,
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 					...TelemetryHelpers.resolveVectorStoreMetrics(workflow.nodes, this.nodeTypes, runData),
 					...TelemetryHelpers.extractLastExecutedNodeStructuredOutputErrorInfo(
