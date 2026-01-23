@@ -1445,7 +1445,7 @@ describe('getStatus', () => {
 					filename: 'workflows/wf-new.json',
 					parentFolderId: null,
 					updatedAt: '2024-01-01T00:00:00.000Z',
-					isArchived: true,
+					isRemoteArchived: true,
 				};
 
 				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remoteWorkflow]);
@@ -1479,7 +1479,7 @@ describe('getStatus', () => {
 				const remoteWorkflow: SourceControlWorkflowVersionId = {
 					...localWorkflow,
 					versionId: 'v2', // Different version to trigger "modified" status
-					isArchived: false,
+					isRemoteArchived: false,
 				};
 
 				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remoteWorkflow]);
@@ -1517,7 +1517,7 @@ describe('getStatus', () => {
 				const remoteWorkflow: SourceControlWorkflowVersionId = {
 					...localWorkflow,
 					versionId: 'v2', // Different version
-					isArchived: false,
+					isRemoteArchived: false,
 				};
 
 				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remoteWorkflow]);

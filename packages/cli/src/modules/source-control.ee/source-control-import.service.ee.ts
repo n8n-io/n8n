@@ -202,7 +202,7 @@ export class SourceControlImportService {
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
 					owner: project ? getOwnerFromProject(project) : undefined,
-					isArchived: remote.isArchived,
+					isRemoteArchived: remote.isArchived,
 				};
 			});
 

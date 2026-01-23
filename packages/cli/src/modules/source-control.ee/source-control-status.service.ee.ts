@@ -208,7 +208,7 @@ export class SourceControlStatusService {
 
 		// Create map of isArchived from remote workflows to determine isRemoteArchived
 		const archivedWorkflowIds = new Map(
-			wfRemoteVersionIds.filter((w) => w.isArchived).map((w) => [w.id, true]),
+			wfRemoteVersionIds.filter((w) => w.isRemoteArchived).map((w) => [w.id, true]),
 		);
 
 		let outOfScopeWF: SourceControlWorkflowVersionId[] = [];
