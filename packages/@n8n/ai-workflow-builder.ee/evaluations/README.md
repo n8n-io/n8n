@@ -611,7 +611,9 @@ const payload = `${timestamp}.${body}`;
 const expected = 'sha256=' + crypto.createHmac('sha256', secret)
   .update(payload, 'utf8').digest('hex');
 
-if (signature !== expected) throw new Error('Invalid signature');
+if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  throw new Error('Invalid signature');
+}
 
 // Valid! Return parsed payload
 return [{ json: JSON.parse(body) }];
