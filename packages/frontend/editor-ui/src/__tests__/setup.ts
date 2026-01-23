@@ -10,11 +10,14 @@ import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 const originalGetRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto);
 
 globalThis.crypto.getRandomValues = <T extends ArrayBufferView | null>(array: T): T => {
+	if (array === null) {
+		return array;
+	}
 	if (array instanceof Uint8Array) {
 		array.fill(0xaa);
 		return array;
 	}
-	return originalGetRandomValues(array);
+	return originalGetRandomValues(array) as T;
 };
 
 // Global stub for Reka UI Popover components used by N8nPopover.

@@ -293,12 +293,11 @@ test.describe('Workflow Executions', () => {
 			const fullExecution = await api.workflows.getExecution(execution.id);
 			const executionData = flatted.parse(fullExecution.data) as IRunExecutionData;
 			const resumeToken = executionData.resumeToken;
+			expect(resumeToken).toBeDefined();
 
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
-			const resumeUrl = resumeToken
-				? `/webhook-waiting/${execution.id}?signature=${resumeToken}`
-				: `/webhook-waiting/${execution.id}`;
+			const resumeUrl = `/webhook-waiting/${execution.id}?signature=${resumeToken}`;
 			const resumeResponse = await api.request.get(resumeUrl);
 			expect(resumeResponse.ok()).toBe(true);
 
