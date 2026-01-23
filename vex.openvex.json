@@ -1,0 +1,7 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/n8n-io/n8n/vex/1.x",
+  "author": "n8n Security",
+  "timestamp": "2026-01-23T00:00:00Z",
+  "statements": []
+}
