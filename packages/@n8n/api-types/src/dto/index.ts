@@ -128,3 +128,8 @@ export {
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
 
 export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-history-versions-by-ids.dto';
+
+export { CreateSecretsProviderConnectionDto } from './secrets-provider/create-secrets-provider-connection.dto';
+export { SetSecretsProviderConnectionIsEnabledDto } from './secrets-provider/set-secrets-provider-connection-is-enabled.dto';
+export { TestSecretsProviderConnectionDto } from './secrets-provider/test-secrets-provider-connection.dto';
+export { UpdateSecretsProviderConnectionDto } from './secrets-provider/update-secrets-provider-connection.dto';
