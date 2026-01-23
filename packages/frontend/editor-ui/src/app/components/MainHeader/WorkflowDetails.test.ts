@@ -18,6 +18,9 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 
 vi.mock('vue-router', async (importOriginal) => ({
@@ -128,6 +131,8 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 let uiStore: ReturnType<typeof useUIStore>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
+let collaborationStore: MockedStore<typeof useCollaborationStore>;
+let sourceControlStore: MockedStore<typeof useSourceControlStore>;
 let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
 let router: ReturnType<typeof useRouter>;
@@ -147,6 +152,8 @@ describe('WorkflowDetails', () => {
 		uiStore = useUIStore();
 		workflowsStore = mockedStore(useWorkflowsStore);
 		projectsStore = mockedStore(useProjectsStore);
+		collaborationStore = mockedStore(useCollaborationStore);
+		sourceControlStore = mockedStore(useSourceControlStore);
 
 		// Set up default mocks
 		mockSaveCurrentWorkflow.mockClear();
@@ -158,6 +165,8 @@ describe('WorkflowDetails', () => {
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { id: 'personal', name: 'Personal' } as Project;
+		collaborationStore.shouldBeReadOnly = false;
+		sourceControlStore.preferences = { branchReadOnly: false } as SourceControlPreferences;
 
 		message = useMessage();
 		toast = useToast();
@@ -175,7 +184,6 @@ describe('WorkflowDetails', () => {
 		const { getByTestId, getByText } = renderComponent({
 			props: {
 				...workflow,
-				readOnly: false,
 			},
 		});
 
@@ -192,7 +200,6 @@ describe('WorkflowDetails', () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				...workflow,
-				readOnly: false,
 			},
 		});
 
@@ -215,11 +222,12 @@ describe('WorkflowDetails', () => {
 			} as unknown as ReturnType<typeof useRoute>);
 		});
 
-		it('should not have workflow duplicate and import when read-only', async () => {
+		it('should not have workflow duplicate and import when branch is read-only', async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: true,
 					isArchived: false,
 					scopes: ['workflow:read'],
 				},
@@ -236,7 +244,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:update'],
 				},
@@ -268,7 +275,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					id: 'new',
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -285,7 +291,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -298,11 +303,12 @@ describe('WorkflowDetails', () => {
 			expect(getByTestId('workflow-menu-item-archive')).not.toHaveClass('disabled');
 		});
 
-		it("should not have 'Archive' option on non archived readonly workflow", async () => {
+		it("should not have 'Archive' option on non archived workflow when branch is read-only", async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: true,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -318,7 +324,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:update'],
 				},
@@ -335,7 +340,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					isArchived: true,
-					readOnly: false,
 					scopes: ['workflow:delete'],
 				},
 			});
@@ -348,12 +352,13 @@ describe('WorkflowDetails', () => {
 			expect(getByTestId('workflow-menu-item-unarchive')).not.toHaveClass('disabled');
 		});
 
-		it("should not have 'Unarchive' or 'Delete' options on archived readonly workflow", async () => {
+		it("should not have 'Unarchive' or 'Delete' options on archived workflow when branch is read-only", async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
 					...workflow,
 					isArchived: true,
-					readOnly: true,
 					scopes: ['workflow:delete'],
 				},
 			});
@@ -369,7 +374,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					isArchived: true,
-					readOnly: false,
 					scopes: ['workflow:update'],
 				},
 			});
@@ -385,7 +389,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					isArchived: true,
-					readOnly: false,
 					scopes: ['workflow:update', 'workflow:delete'],
 				},
 			});
@@ -401,7 +404,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					active: false,
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -441,7 +443,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...teamWorkflow,
 					active: false,
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -474,7 +475,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...personalWorkflow,
 					active: false,
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -494,7 +494,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					active: true,
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
@@ -520,7 +519,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -539,7 +537,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -577,7 +574,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...teamWorkflow,
-					readOnly: false,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -610,7 +606,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...personalWorkflow,
-					readOnly: false,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -663,7 +658,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					id: 'new',
-					readOnly: false,
 				},
 			});
 
@@ -705,7 +699,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					id: 'new',
-					readOnly: false,
 				},
 			});
 
@@ -748,7 +741,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					id: 'new',
-					readOnly: false,
 					currentFolder: { id: 'folder-1', name: 'Test Folder' },
 				},
 			});
@@ -781,7 +773,6 @@ describe('WorkflowDetails', () => {
 				props: {
 					...workflow,
 					id: '123',
-					readOnly: false,
 					scopes: ['workflow:update'],
 				},
 			});
@@ -801,7 +792,6 @@ describe('WorkflowDetails', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
 					isArchived: true,
 					scopes: ['workflow:delete'],
 				},
@@ -814,7 +804,6 @@ describe('WorkflowDetails', () => {
 			const { queryByTestId } = renderComponent({
 				props: {
 					...workflow,
-					readOnly: false,
 					isArchived: false,
 					scopes: ['workflow:delete'],
 				},
