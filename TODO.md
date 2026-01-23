@@ -5,11 +5,11 @@
 - [ ] Better clarify how output data maps to expressions in types and referenced
 
 ## agent
-- [ ] rerun evaluations, get to parity with current agent
-- [ ] run evaluations against Opus
+- [ ] Test opus again with simplified prompt
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
 	- [ ] a lot of pairwise seem to be about preferring certain nodes, how can we add that as part of the node definition
 - [ ] Make sure conversation history is included in request
+- [ ] Evaluate with thinking enabled for each model
 
 ## ready to release
 - [ ] deploy agent to test instance
@@ -37,17 +37,19 @@
 - [X] support $fromAI in types. Add example.
 - [X] Support passing nodes to sticky function
 - [X] test out more edge cases
+- [X] rerun evaluations, get to parity with current agent
+- [X] run evaluations against Opus
 
 ## Nice to haves / tech debt
 - [ ] Test more of the template library
 - [ ] refactor code gen to use plugin arch for composites
 - [ ] Make it more clear that SDK api file is for LLM consumption. To avoid other engineers adding unnecessary types to it, confusing the agent.
 - [ ] rename one shot agent across code base
-- [X] Rename ifBranch to ifElse, update branches with clearer naming.
 - [ ] update workflow() to support object init { id, settings }
 - [ ] clean up old codegen impl
 - [ ] move generated test files for committed workflows to same folder.
 - [ ] allow adding node defaults when generating workflows
+- [X] Rename ifBranch to ifElse, update branches with clearer naming.
 
 ## Future improvement
 - [ ] Support branching for weird nodes out there with multiple inputs or outputs, that we don't support now.
