@@ -619,11 +619,9 @@ describe('WorkflowCard', () => {
 		expect(indicator).not.toBeVisible();
 	});
 
-	it('should show dynamic credentials indicator when workflow has credentialResolverId', () => {
+	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
 		const data = createWorkflow({
-			settings: {
-				credentialResolverId: 'resolver-123',
-			},
+			hasResolvableCredentials: true,
 		});
 
 		const { getByTestId } = renderComponent({ props: { data } });
@@ -632,15 +630,15 @@ describe('WorkflowCard', () => {
 		expect(indicator).toBeVisible();
 	});
 
-	it('should hide dynamic credentials indicator when workflow has no credentialResolverId', () => {
+	it('should hide dynamic credentials indicator when workflow has no resolvable credentials', () => {
 		const data = createWorkflow({
-			settings: {},
+			hasResolvableCredentials: false,
 		});
 
 		const { queryByTestId } = renderComponent({ props: { data } });
 
 		const indicator = queryByTestId('workflow-card-dynamic-credentials');
-		expect(indicator).not.toBeVisible();
+		expect(indicator).toBeNull();
 	});
 
 	it('should show Archived text on archived workflows', async () => {
