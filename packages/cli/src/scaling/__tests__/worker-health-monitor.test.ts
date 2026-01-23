@@ -10,7 +10,13 @@ import { WorkerHealthMonitor } from '../worker-health-monitor';
 import type { RedisClientService } from '@/services/redis-client.service';
 
 describe('WorkerHealthMonitor', () => {
-	const logger = mock<Logger>();
+	const logger = mock<Logger>({
+		scoped: jest.fn().mockReturnThis(),
+		debug: jest.fn(),
+		info: jest.fn(),
+		warn: jest.fn(),
+		error: jest.fn(),
+	});
 
 	let globalConfig: GlobalConfig;
 
