@@ -115,7 +115,7 @@ jobs:
   postgres:
     name: Postgres
     needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
       TEST_IMAGE_POSTGRES: postgres:16
