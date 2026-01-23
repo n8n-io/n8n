@@ -260,7 +260,7 @@ const checkCondition = node({{
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
   .then(ifElse(checkCondition, {{
-    true: node({{ ... }}).then(node({ ... })),   // True branch (output 0)
+    true: node({{ ... }}).then(node({{ ... }})),   // True branch (output 0)
     false: node({{ ... }})   // False branch (output 1)
   }}));
 \`\`\`
@@ -281,7 +281,7 @@ const routeByType = node({{
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
   .then(switchCase(routeByType, {{
-    case0: node({{ ... }}).then(node({ ... })),  // Output 0
+    case0: node({{ ... }}).then(node({{ ... }})),  // Output 0
     case1: node({{ ... }}),  // Output 1
     case2: node({{ ... }})   // Fallback
   }}));
