@@ -496,50 +496,6 @@ export interface IfElseComposite {
 }
 
 /**
- * FanOut-like shape for type compatibility (avoids circular import)
- */
-interface FanOutLike {
-	readonly _isFanOut: true;
-	readonly targets: ReadonlyArray<unknown>;
-}
-
-/**
- * Branch target type for IF else builder.
- * Can be null (no connection), a single node, a chain, or fanOut targets.
- * Note: This duplicates IfElseTarget to avoid circular imports.
- */
-export type IfElseBranchTarget =
-	| null
-	| NodeInstance<string, string, unknown>
-	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	| FanOutLike;
-
-/**
- * IF else builder - returned when ifElse() is called without inputs.
- * Provides fluent API: ifElse(ifNode).onTrue(target).onFalse(target)
- */
-export interface IfElseBuilder {
-	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
-	/**
-	 * Define the true branch target
-	 */
-	onTrue(target: IfElseBranchTarget): IfElseBuilderWithTrue;
-}
-
-/**
- * IF else builder after onTrue() has been called.
- * Requires onFalse() to complete the composite.
- */
-export interface IfElseBuilderWithTrue {
-	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
-	readonly _trueBranchTarget: IfElseBranchTarget;
-	/**
-	 * Define the false branch target, completing the composite
-	 */
-	onFalse(target: IfElseBranchTarget): IfElseComposite;
-}
-
-/**
  * Configuration for Switch case
  */
 export interface SwitchCaseConfig extends NodeConfig {

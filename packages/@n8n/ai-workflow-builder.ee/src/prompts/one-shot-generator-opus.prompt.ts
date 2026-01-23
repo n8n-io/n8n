@@ -411,13 +411,13 @@ return workflow('scheduled-check', 'Daily Status Check')
       position: [540, 300]
     }}
   }}))
-  .then(ifElse(isOk)
-    .onTrue(node({{
+  .then(ifElse(isOk, {{
+    true: node({{
       type: 'n8n-nodes-base.noOp',
       version: 1,
       config: {{ name: 'All Good', position: [1140, 200] }}
-    }}))
-    .onFalse(node({{
+    }}),
+    false: node({{
       type: 'n8n-nodes-base.httpRequest',
       version: 4.3,
       config: {{
@@ -429,8 +429,8 @@ return workflow('scheduled-check', 'Daily Status Check')
         }},
         position: [1140, 400]
       }}
-    }}))
-  );
+    }})
+  }}));
 \`\`\`
 </example_2>
 
@@ -799,7 +799,7 @@ The following SDK functions are **already available in the execution environment
 - \`sticky(content, options)\` - Create a sticky note
 - \`placeholder(description)\` - Create a placeholder value for user input
 - \`newCredential(name)\` - Create a credential placeholder
-- \`ifElse(ifNode).onTrue(trueTarget).onFalse(falseTarget)\` - Create conditional branching (requires pre-declared IF node)
+- \`ifElse(ifNode, {{ true: trueTarget, false: falseTarget }})\` - Create conditional branching (requires pre-declared IF node)
 - \`switchCase(switchNode, {{ case0: target, case1: target, ... }})\` - Create multi-way routing (requires pre-declared Switch node)
 - \`merge(mergeNode, {{ input0: source, input1: source, ... }})\` - Create parallel merge (requires pre-declared Merge node)
 - \`splitInBatches(config)\` - Create batch processing loop

@@ -41,9 +41,6 @@ export type {
 	MergeMode,
 	// IF else types
 	IfElseComposite,
-	IfElseBuilder,
-	IfElseBuilderWithTrue,
-	IfElseBranchTarget,
 	// Switch case types
 	SwitchCaseComposite,
 	// Sticky note types

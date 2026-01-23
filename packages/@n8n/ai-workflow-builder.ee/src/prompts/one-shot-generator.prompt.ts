@@ -138,7 +138,7 @@ The following functions are pre-loaded in the execution environment. Do NOT writ
 - \`newCredential(name)\` - Create a credential placeholder
 
 **Composite Patterns:**
-- \`ifElse(ifNode).onTrue(trueTargetChain).onFalse(falseTargetChain)\` - Two-way conditional branching (requires pre-declared IF node)
+- \`ifElse(ifNode, {{ true: trueTargetChain, false: falseTargetChain }})\` - Two-way conditional branching (requires pre-declared IF node)
 - \`switchCase(switchNode, {{ case0: targetChain, case1: targetChain, ... }})\` - Multi-way routing (requires pre-declared Switch node)
 - \`merge(mergeNode, {{ input0: source, input1: source, ... }})\` - Parallel execution with merge (requires pre-declared Merge node)
 - \`splitInBatches(config)\` - Batch processing with loops
@@ -259,10 +259,10 @@ const checkCondition = node({{
 
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
-  .then(ifElse(checkCondition)
-    .onTrue(node({{ ... }}).then(node({{ ... }})))  // True branch chain (output 0)
-    .onFalse(node({{ ... }}))                       // False branch (output 1)
-  );
+  .then(ifElse(checkCondition, {{
+    true: node({{ ... }}).then(node({{ ... }})),   // True branch (output 0)
+    false: node({{ ... }})   // False branch (output 1)
+  }}));
 \`\`\`
 
 ## Multi-Way Routing (Switch)

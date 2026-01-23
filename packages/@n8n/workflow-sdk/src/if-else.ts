@@ -1,7 +1,5 @@
 import type {
 	IfElseComposite,
-	IfElseBuilder,
-	IfElseBuilderWithTrue,
 	NodeInstance,
 	NodeConfig,
 	NodeChain,
@@ -69,7 +67,9 @@ function isIfElseNamedInputs(obj: unknown): obj is IfElseNamedInputs {
 /**
  * Check if object is an IfElseComposite (has ifNode property)
  */
-function isIfElseComposite(obj: unknown): obj is {
+function isIfElseComposite(
+	obj: unknown,
+): obj is {
 	ifNode: NodeInstance<string, string, unknown>;
 	_allBranchNodes?: NodeInstance<string, string, unknown>[];
 } {
@@ -79,7 +79,9 @@ function isIfElseComposite(obj: unknown): obj is {
 /**
  * Check if object is a SwitchCaseComposite (has switchNode property)
  */
-function isSwitchCaseComposite(obj: unknown): obj is {
+function isSwitchCaseComposite(
+	obj: unknown,
+): obj is {
 	switchNode: NodeInstance<string, string, unknown>;
 	_allCaseNodes?: NodeInstance<string, string, unknown>[];
 } {
@@ -219,55 +221,12 @@ export function isIfElseNamedSyntax(
 }
 
 /**
- * Builder implementation for the fluent API.
- * Returned when ifElse() is called without inputs.
- */
-class IfElseBuilderImpl implements IfElseBuilder {
-	constructor(readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>) {}
-
-	onTrue(target: IfElseTarget): IfElseBuilderWithTrue {
-		return new IfElseBuilderWithTrueImpl(this.ifNode, target);
-	}
-}
-
-/**
- * Builder implementation after onTrue() has been called.
- * Requires onFalse() to complete the composite.
- */
-class IfElseBuilderWithTrueImpl implements IfElseBuilderWithTrue {
-	constructor(
-		readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>,
-		readonly _trueBranchTarget: IfElseTarget,
-	) {}
-
-	onFalse(target: IfElseTarget): IfElseComposite {
-		return new IfElseCompositeNamedSyntax(this.ifNode, {
-			true: this._trueBranchTarget,
-			false: target,
-		});
-	}
-}
-
-/**
  * Create an IF/else branching composite for conditional execution.
  *
- * Supports two syntaxes:
- *
- * 1. **Fluent builder API (recommended):**
- *    ```typescript
- *    ifElse(checkCondition)
- *      .onTrue(formatData.then(aggregate))
- *      .onFalse(logError)
- *    ```
- *
- * 2. **Object syntax (backward compatible):**
- *    ```typescript
- *    ifElse(checkCondition, { true: trueBranch, false: falseBranch })
- *    ```
+ * Requires named syntax: ifElse(ifNode, { true: trueBranch, false: falseBranch })
  *
  * @param ifNode - A pre-declared IF node (n8n-nodes-base.if)
- * @param inputs - Optional named inputs { true: target, false: target }
- * @returns IfElseBuilder (if no inputs) or IfElseComposite (if inputs provided)
+ * @param inputs - Named inputs { true: target, false: target }
  *
  * @example
  * ```typescript
@@ -283,16 +242,7 @@ class IfElseBuilderWithTrueImpl implements IfElseBuilderWithTrue {
  *   }
  * });
  *
- * // Fluent builder API (recommended):
- * workflow('id', 'Test')
- *   .add(trigger)
- *   .then(ifElse(checkCondition)
- *     .onTrue(formatData.then(sendReport))
- *     .onFalse(logError)
- *   )
- *   .toJSON();
- *
- * // Object syntax (backward compatible):
+ * // Then use it with named inputs:
  * workflow('id', 'Test')
  *   .add(trigger)
  *   .then(ifElse(checkCondition, {
@@ -302,44 +252,33 @@ class IfElseBuilderWithTrueImpl implements IfElseBuilderWithTrue {
  *   .toJSON();
  *
  * // Single branch (only true branch connected):
- * ifElse(checkCondition)
- *   .onTrue(trueBranch)
- *   .onFalse(null)
+ * ifElse(ifNode, {
+ *   true: trueBranch,
+ *   false: null
+ * })
  *
  * // Fan-out: true branch connects to multiple parallel nodes:
- * ifElse(checkCondition)
- *   .onTrue(fanOut(node1, node2, node3))
- *   .onFalse(null)
+ * ifElse(ifNode, {
+ *   true: fanOut(node1, node2, node3),
+ *   false: null
+ * })
  * ```
  */
-// Overload: without inputs returns builder
-export function ifElse(ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>): IfElseBuilder;
-// Overload: with inputs returns composite
 export function ifElse(
 	ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>,
 	inputs: IfElseNamedInputs,
-): IfElseComposite;
-// Implementation
-export function ifElse(
-	ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>,
-	inputs?: IfElseNamedInputs,
-): IfElseBuilder | IfElseComposite {
+): IfElseComposite {
 	// Validate that first argument is an IF node
 	if (!isNodeInstance(ifNode) || ifNode.type !== 'n8n-nodes-base.if') {
 		throw new Error(
-			'ifElse() requires an IF node as first argument. Use: ifElse(ifNode, { true: ..., false: ... }) or ifElse(ifNode).onTrue(...).onFalse(...)',
+			'ifElse() requires an IF node as first argument. Use: ifElse(ifNode, { true: ..., false: ... })',
 		);
 	}
 
-	// Without inputs: return builder for fluent API
-	if (inputs === undefined) {
-		return new IfElseBuilderImpl(ifNode);
-	}
-
-	// With inputs: validate and return composite (backward compatible)
+	// Validate that second argument is named inputs
 	if (!isIfElseNamedInputs(inputs)) {
 		throw new Error(
-			'ifElse() requires named inputs as second argument. Use: ifElse(ifNode, { true: ..., false: ... }) or ifElse(ifNode).onTrue(...).onFalse(...)',
+			'ifElse() requires named inputs as second argument. Use: ifElse(ifNode, { true: ..., false: ... })',
 		);
 	}
 
