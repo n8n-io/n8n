@@ -58,7 +58,7 @@ test.describe('HITL for Tools @capability:proxy', () => {
 		await n8n.canvas.openNewWorkflow();
 	});
 
-	test('should add a HITL tool node', async ({ n8n, proxyServer }) => {
+	test('should add a HITL tool node', async ({ n8n }) => {
 		await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 
 		await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
