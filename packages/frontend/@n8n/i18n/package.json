@@ -1,7 +1,7 @@
 {
   "name": "@n8n/i18n",
   "type": "module",
-  "version": "1.27.6",
+  "version": "1.27.7",
   "files": [
     "dist"
   ],
