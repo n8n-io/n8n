@@ -552,12 +552,23 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * A batch of nodes - either a single node or an array of nodes for fan-out
+	 */
+	// NodeBatch type alias is local to avoid circular dependencies
+
+	/**
 	 * Extract the SplitInBatchesBuilder from a value (handles both direct builder and chains)
 	 */
 	private extractSplitInBatchesBuilder(value: unknown): {
 		sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
 		_doneNodes: NodeInstance<string, string, unknown>[];
 		_eachNodes: NodeInstance<string, string, unknown>[];
+		_doneBatches: Array<
+			NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
+		>;
+		_eachBatches: Array<
+			NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
+		>;
 		_hasLoop: boolean;
 	} {
 		// Direct builder
@@ -566,6 +577,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
 				_doneNodes: NodeInstance<string, string, unknown>[];
 				_eachNodes: NodeInstance<string, string, unknown>[];
+				_doneBatches: Array<
+					NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
+				>;
+				_eachBatches: Array<
+					NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
+				>;
 				_hasLoop: boolean;
 			};
 		}
@@ -576,6 +593,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
 			_doneNodes: NodeInstance<string, string, unknown>[];
 			_eachNodes: NodeInstance<string, string, unknown>[];
+			_doneBatches: Array<
+				NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
+			>;
+			_eachBatches: Array<
+				NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
+			>;
 			_hasLoop: boolean;
 		};
 	}
@@ -815,48 +838,98 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const sibGraphNode = nodes.get(builder.sibNode.name)!;
 		const sibMainConns = sibGraphNode.connections.get('main') || new Map();
 
-		// Process done chain nodes (output 0)
+		// Process done chain batches (output 0)
 		let prevDoneNode: string | null = null;
-		for (const doneNode of builder._doneNodes) {
-			const firstNodeName = this.addBranchToGraph(nodes, doneNode);
-
-			if (prevDoneNode === null) {
-				// First done node connects to output 0 of split in batches
-				const output0 = sibMainConns.get(0) || [];
-				sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
-			} else {
-				// Chain subsequent done nodes
-				const prevGraphNode = nodes.get(prevDoneNode);
-				if (prevGraphNode) {
-					const prevMainConns = prevGraphNode.connections.get('main') || new Map();
-					const existingConns = prevMainConns.get(0) || [];
-					prevMainConns.set(0, [...existingConns, { node: firstNodeName, type: 'main', index: 0 }]);
-					prevGraphNode.connections.set('main', prevMainConns);
+		for (const batch of builder._doneBatches) {
+			if (Array.isArray(batch)) {
+				// Fan-out: all nodes in the array connect to the same source
+				for (const doneNode of batch) {
+					const firstNodeName = this.addBranchToGraph(nodes, doneNode);
+					if (prevDoneNode === null) {
+						const output0 = sibMainConns.get(0) || [];
+						sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
+					} else {
+						const prevGraphNode = nodes.get(prevDoneNode);
+						if (prevGraphNode) {
+							const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+							const existingConns = prevMainConns.get(0) || [];
+							prevMainConns.set(0, [
+								...existingConns,
+								{ node: firstNodeName, type: 'main', index: 0 },
+							]);
+							prevGraphNode.connections.set('main', prevMainConns);
+						}
+					}
 				}
+			} else {
+				const doneNode = batch;
+				const firstNodeName = this.addBranchToGraph(nodes, doneNode);
+				if (prevDoneNode === null) {
+					const output0 = sibMainConns.get(0) || [];
+					sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
+				} else {
+					const prevGraphNode = nodes.get(prevDoneNode);
+					if (prevGraphNode) {
+						const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+						const existingConns = prevMainConns.get(0) || [];
+						prevMainConns.set(0, [
+							...existingConns,
+							{ node: firstNodeName, type: 'main', index: 0 },
+						]);
+						prevGraphNode.connections.set('main', prevMainConns);
+					}
+				}
+				prevDoneNode = isNodeChain(doneNode)
+					? (doneNode.tail?.name ?? firstNodeName)
+					: firstNodeName;
 			}
-			prevDoneNode = isNodeChain(doneNode) ? (doneNode.tail?.name ?? firstNodeName) : firstNodeName;
 		}
 
-		// Process each chain nodes (output 1)
+		// Process each chain batches (output 1)
 		let prevEachNode: string | null = null;
-		for (const eachNode of builder._eachNodes) {
-			const firstNodeName = this.addBranchToGraph(nodes, eachNode);
-
-			if (prevEachNode === null) {
-				// First each node connects to output 1 of split in batches
-				const output1 = sibMainConns.get(1) || [];
-				sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
-			} else {
-				// Chain subsequent each nodes
-				const prevGraphNode = nodes.get(prevEachNode);
-				if (prevGraphNode) {
-					const prevMainConns = prevGraphNode.connections.get('main') || new Map();
-					const existingConns = prevMainConns.get(0) || [];
-					prevMainConns.set(0, [...existingConns, { node: firstNodeName, type: 'main', index: 0 }]);
-					prevGraphNode.connections.set('main', prevMainConns);
+		for (const batch of builder._eachBatches) {
+			if (Array.isArray(batch)) {
+				// Fan-out: all nodes in the array connect to the same source
+				for (const eachNode of batch) {
+					const firstNodeName = this.addBranchToGraph(nodes, eachNode);
+					if (prevEachNode === null) {
+						const output1 = sibMainConns.get(1) || [];
+						sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
+					} else {
+						const prevGraphNode = nodes.get(prevEachNode);
+						if (prevGraphNode) {
+							const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+							const existingConns = prevMainConns.get(0) || [];
+							prevMainConns.set(0, [
+								...existingConns,
+								{ node: firstNodeName, type: 'main', index: 0 },
+							]);
+							prevGraphNode.connections.set('main', prevMainConns);
+						}
+					}
 				}
+			} else {
+				const eachNode = batch;
+				const firstNodeName = this.addBranchToGraph(nodes, eachNode);
+				if (prevEachNode === null) {
+					const output1 = sibMainConns.get(1) || [];
+					sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
+				} else {
+					const prevGraphNode = nodes.get(prevEachNode);
+					if (prevGraphNode) {
+						const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+						const existingConns = prevMainConns.get(0) || [];
+						prevMainConns.set(0, [
+							...existingConns,
+							{ node: firstNodeName, type: 'main', index: 0 },
+						]);
+						prevGraphNode.connections.set('main', prevMainConns);
+					}
+				}
+				prevEachNode = isNodeChain(eachNode)
+					? (eachNode.tail?.name ?? firstNodeName)
+					: firstNodeName;
 			}
-			prevEachNode = isNodeChain(eachNode) ? (eachNode.tail?.name ?? firstNodeName) : firstNodeName;
 		}
 
 		sibGraphNode.connections.set('main', sibMainConns);
@@ -1472,52 +1545,107 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const sibGraphNode = newNodes.get(builder.sibNode.name)!;
 		const sibMainConns = sibGraphNode.connections.get('main') || new Map();
 
-		// Process done chain nodes (output 0) - may contain chains or composites
+		// Process done chain batches (output 0)
+		// Batches preserve array structure for fan-out detection
 		let prevDoneNode: string | null = null;
-		for (const doneNode of builder._doneNodes) {
-			// Use addBranchToGraph to handle chains and composites
-			const firstNodeName = this.addBranchToGraph(newNodes, doneNode);
-
-			if (prevDoneNode === null) {
-				// First done node connects to output 0 of split in batches
-				const output0 = sibMainConns.get(0) || [];
-				sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
-			} else {
-				// Chain subsequent done nodes
-				const prevGraphNode = newNodes.get(prevDoneNode);
-				if (prevGraphNode) {
-					const prevMainConns = prevGraphNode.connections.get('main') || new Map();
-					const existingConns = prevMainConns.get(0) || [];
-					prevMainConns.set(0, [...existingConns, { node: firstNodeName, type: 'main', index: 0 }]);
-					prevGraphNode.connections.set('main', prevMainConns);
+		for (const batch of builder._doneBatches) {
+			if (Array.isArray(batch)) {
+				// Fan-out: all nodes in the array connect to the same source
+				for (const doneNode of batch) {
+					const firstNodeName = this.addBranchToGraph(newNodes, doneNode);
+					if (prevDoneNode === null) {
+						// All nodes in array connect to output 0 of split in batches
+						const output0 = sibMainConns.get(0) || [];
+						sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
+					} else {
+						// All nodes in array connect to the previous node
+						const prevGraphNode = newNodes.get(prevDoneNode);
+						if (prevGraphNode) {
+							const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+							const existingConns = prevMainConns.get(0) || [];
+							prevMainConns.set(0, [
+								...existingConns,
+								{ node: firstNodeName, type: 'main', index: 0 },
+							]);
+							prevGraphNode.connections.set('main', prevMainConns);
+						}
+					}
 				}
+				// For arrays, don't update prevDoneNode - subsequent single nodes will chain from SIB or prev
+				// This matches the semantics of .done().then([a, b]).then(c) where c chains from nothing (invalid usage)
+				// But for valid cases like .done().then([a.then(c), b.then(c)]), the tails are merged elsewhere
+			} else {
+				// Single node: chain to previous or connect to output 0
+				const doneNode = batch;
+				const firstNodeName = this.addBranchToGraph(newNodes, doneNode);
+				if (prevDoneNode === null) {
+					const output0 = sibMainConns.get(0) || [];
+					sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
+				} else {
+					const prevGraphNode = newNodes.get(prevDoneNode);
+					if (prevGraphNode) {
+						const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+						const existingConns = prevMainConns.get(0) || [];
+						prevMainConns.set(0, [
+							...existingConns,
+							{ node: firstNodeName, type: 'main', index: 0 },
+						]);
+						prevGraphNode.connections.set('main', prevMainConns);
+					}
+				}
+				prevDoneNode = isNodeChain(doneNode)
+					? (doneNode.tail?.name ?? firstNodeName)
+					: firstNodeName;
 			}
-			// Update prevDoneNode to the tail node if it's a chain
-			prevDoneNode = isNodeChain(doneNode) ? (doneNode.tail?.name ?? firstNodeName) : firstNodeName;
 		}
 
-		// Process each chain nodes (output 1) - may contain chains or composites
+		// Process each chain batches (output 1)
 		let prevEachNode: string | null = null;
-		for (const eachNode of builder._eachNodes) {
-			// Use addBranchToGraph to handle chains and composites
-			const firstNodeName = this.addBranchToGraph(newNodes, eachNode);
-
-			if (prevEachNode === null) {
-				// First each node connects to output 1 of split in batches
-				const output1 = sibMainConns.get(1) || [];
-				sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
-			} else {
-				// Chain subsequent each nodes
-				const prevGraphNode = newNodes.get(prevEachNode);
-				if (prevGraphNode) {
-					const prevMainConns = prevGraphNode.connections.get('main') || new Map();
-					const existingConns = prevMainConns.get(0) || [];
-					prevMainConns.set(0, [...existingConns, { node: firstNodeName, type: 'main', index: 0 }]);
-					prevGraphNode.connections.set('main', prevMainConns);
+		for (const batch of builder._eachBatches) {
+			if (Array.isArray(batch)) {
+				// Fan-out: all nodes in the array connect to the same source
+				for (const eachNode of batch) {
+					const firstNodeName = this.addBranchToGraph(newNodes, eachNode);
+					if (prevEachNode === null) {
+						const output1 = sibMainConns.get(1) || [];
+						sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
+					} else {
+						const prevGraphNode = newNodes.get(prevEachNode);
+						if (prevGraphNode) {
+							const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+							const existingConns = prevMainConns.get(0) || [];
+							prevMainConns.set(0, [
+								...existingConns,
+								{ node: firstNodeName, type: 'main', index: 0 },
+							]);
+							prevGraphNode.connections.set('main', prevMainConns);
+						}
+					}
 				}
+				// Don't update prevEachNode for arrays - maintain fan-out semantics
+			} else {
+				// Single node: chain to previous or connect to output 1
+				const eachNode = batch;
+				const firstNodeName = this.addBranchToGraph(newNodes, eachNode);
+				if (prevEachNode === null) {
+					const output1 = sibMainConns.get(1) || [];
+					sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
+				} else {
+					const prevGraphNode = newNodes.get(prevEachNode);
+					if (prevGraphNode) {
+						const prevMainConns = prevGraphNode.connections.get('main') || new Map();
+						const existingConns = prevMainConns.get(0) || [];
+						prevMainConns.set(0, [
+							...existingConns,
+							{ node: firstNodeName, type: 'main', index: 0 },
+						]);
+						prevGraphNode.connections.set('main', prevMainConns);
+					}
+				}
+				prevEachNode = isNodeChain(eachNode)
+					? (eachNode.tail?.name ?? firstNodeName)
+					: firstNodeName;
 			}
-			// Update prevEachNode to the tail node if it's a chain
-			prevEachNode = isNodeChain(eachNode) ? (eachNode.tail?.name ?? firstNodeName) : firstNodeName;
 		}
 
 		sibGraphNode.connections.set('main', sibMainConns);

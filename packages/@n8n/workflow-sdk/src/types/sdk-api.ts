@@ -431,12 +431,16 @@ export interface SplitInBatchesBuilder {
 }
 
 export interface SplitInBatchesDoneChain {
-	then<N extends NodeInstance<string, string, unknown>>(node: N): SplitInBatchesDoneChain;
+	then<N extends NodeInstance<string, string, unknown>>(
+		nodeOrNodes: N | N[],
+	): SplitInBatchesDoneChain;
 	each(): SplitInBatchesEachChain;
 }
 
 export interface SplitInBatchesEachChain {
-	then<N extends NodeInstance<string, string, unknown>>(node: N): SplitInBatchesEachChain;
+	then<N extends NodeInstance<string, string, unknown>>(
+		nodeOrNodes: N | N[],
+	): SplitInBatchesEachChain;
 	/** Connect back to split in batches and return the builder */
 	loop(): SplitInBatchesBuilder;
 }

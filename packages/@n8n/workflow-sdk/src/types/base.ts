@@ -522,14 +522,14 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 
 export interface SplitInBatchesDoneChain<_TOutput> {
 	then<N extends NodeInstance<string, string, unknown>>(
-		node: N,
+		nodeOrNodes: N | N[],
 	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;
 	each(): SplitInBatchesEachChain<unknown>;
 }
 
 export interface SplitInBatchesEachChain<TOutput> {
 	then<N extends NodeInstance<string, string, unknown>>(
-		node: N,
+		nodeOrNodes: N | N[],
 	): SplitInBatchesEachChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;
 	loop(): SplitInBatchesBuilder<TOutput>;
 }

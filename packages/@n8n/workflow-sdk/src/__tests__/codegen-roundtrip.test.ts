@@ -12,9 +12,8 @@ import {
 
 const SKIP_WORKFLOWS = new Set<string>([
 	// Fixed fan-out with direct merge pattern: 3066, 7946 now pass
+	// Fixed SplitInBatches fan-out: 6150, 7945 now pass
 	// Remaining issues (different patterns):
-	'6150', // splitInBatches pattern - nodes inside .done().then([...]) not fully parsed
-	'7945', // splitInBatches pattern with multiple nested chains
 	'10132', // subnode connection issue - Structured Output Parser1 nested incorrectly
 	'10476', // complex docker monitoring pattern with nested merges
 	// New failures (may need investigation):
