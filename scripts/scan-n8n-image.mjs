@@ -27,6 +27,7 @@ const config = {
 	scanners: process.env.TRIVY_SCANNERS || 'vuln',
 	quiet: process.env.TRIVY_QUIET === 'true',
 	rootDir: rootDir,
+	vexFile: process.env.TRIVY_VEX || path.join(rootDir, 'vex.openvex.json'),
 };
 
 config.fullImageName = `${config.imageBaseName}:${config.imageTag}`;
@@ -52,6 +53,7 @@ const printSummary = (status, time, message) => {
 	echo(chalk.gray(`  • Target Image: ${config.fullImageName}`));
 	echo(chalk.gray(`  • Severity Levels: ${config.severity}`));
 	echo(chalk.gray(`  • Scanners: ${config.scanners}`));
+	echo(chalk.gray(`  • VEX file: ${config.vexFile}`));
 	if (config.ignoreUnfixed) echo(chalk.gray(`  • Ignored unfixed: yes`));
 	echo(chalk.blue.bold('========================'));
 };
@@ -90,6 +92,8 @@ const printSummary = (status, time, message) => {
 		'--rm',
 		'-v',
 		'/var/run/docker.sock:/var/run/docker.sock',
+		'-v',
+		`${config.vexFile}:/vex.openvex.json:ro`,
 		config.trivyImage,
 		'image',
 		'--severity',
@@ -101,6 +105,8 @@ const printSummary = (status, time, message) => {
 		'--scanners',
 		config.scanners,
 		'--no-progress',
+		'--vex',
+		'/vex.openvex.json',
 	];
 
 	if (config.ignoreUnfixed) trivyArgs.push('--ignore-unfixed');

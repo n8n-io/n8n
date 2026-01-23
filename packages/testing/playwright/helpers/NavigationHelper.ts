@@ -56,6 +56,11 @@ export class NavigationHelper {
 		await this.page.goto(url);
 	}
 
+	async toDatatables(projectId?: string): Promise<void> {
+		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
+		await this.page.goto(url);
+	}
+
 	/**
 	 * Navigate to variables page (global only)
 	 * URL: /variables
@@ -112,18 +117,27 @@ export class NavigationHelper {
 	 * - Existing workflow: /workflow/{workflowId}
 	 * - Project workflow: /projects/{projectId}/workflow/{workflowId}
 	 */
-	async toWorkflow(workflowId: string = 'new', projectId?: string): Promise<void> {
+	async toWorkflow(workflowId: string = 'new'): Promise<void> {
+		const url = `/workflow/${workflowId}`;
+		await this.page.goto(url);
+	}
+
+	/**
+	 * Navigate to a specific folder
+	 * URL: /projects/{projectId}/folders/{folderId}/workflows or /home/folders/{folderId}/workflows
+	 */
+	async toFolder(folderId: string, projectId?: string): Promise<void> {
 		const url = projectId
-			? `/projects/${projectId}/workflow/${workflowId}`
-			: `/workflow/${workflowId}`;
+			? `/projects/${projectId}/folders/${folderId}/workflows`
+			: `/home/folders/${folderId}/workflows`;
 		await this.page.goto(url);
 	}
 
 	/**
 	 * Navigate to workflow canvas (alias for toWorkflow)
 	 */
-	async toCanvas(workflowId: string = 'new', projectId?: string): Promise<void> {
-		await this.toWorkflow(workflowId, projectId);
+	async toCanvas(workflowId: string = 'new'): Promise<void> {
+		await this.toWorkflow(workflowId);
 	}
 
 	/**
@@ -140,6 +154,38 @@ export class NavigationHelper {
 	 */
 	async toTemplate(templateId: string): Promise<void> {
 		await this.page.goto(`/templates/${templateId}`);
+	}
+
+	/**
+	 * Navigate to template onboarding flow
+	 * URL: /workflows/onboarding/{templateId}
+	 */
+	async toOnboardingTemplate(templateId: string): Promise<void> {
+		await this.page.goto(`/workflows/onboarding/${templateId}`);
+	}
+
+	/**
+	 * Navigate to template import flow
+	 * URL: /workflows/templates/{templateId}
+	 */
+	async toTemplateImport(templateId: string): Promise<void> {
+		await this.page.goto(`/workflows/templates/${templateId}`);
+	}
+
+	/**
+	 * Navigate to a template collection page
+	 * URL: /collections/{collectionId}
+	 */
+	async toTemplateCollection(collectionId: number): Promise<void> {
+		await this.page.goto(`/collections/${collectionId}`);
+	}
+
+	/**
+	 * Navigate to template credential setup page
+	 * URL: /templates/{templateId}/setup
+	 */
+	async toTemplateCredentialSetup(templateId: number): Promise<void> {
+		await this.page.goto(`/templates/${templateId}/setup`);
 	}
 
 	/**
@@ -199,11 +245,11 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to source control settings
-	 * URL: /settings/source-control
+	 * Navigate to environments settings
+	 * URL: /settings/environments
 	 */
-	async toSourceControl(): Promise<void> {
-		await this.page.goto('/settings/source-control');
+	async toEnvironments(): Promise<void> {
+		await this.page.goto('/settings/environments');
 	}
 
 	/**
@@ -212,5 +258,37 @@ export class NavigationHelper {
 	 */
 	async toExternalSecrets(): Promise<void> {
 		await this.page.goto('/settings/external-secrets');
+	}
+
+	/**
+	 * Navigate to settings page
+	 * URL: /settings/chat
+	 */
+	async toChatHubSettings(): Promise<void> {
+		await this.page.goto('/settings/chat');
+	}
+
+	/**
+	 * Navigate to ChatHub chat page
+	 * URL: /home/chat
+	 */
+	async toChatHub() {
+		await this.page.goto('/home/chat');
+	}
+
+	/**
+	 * Navigate to ChatHub personal agent list
+	 * URL: /home/chat/personal-agents
+	 */
+	async toChatHubPersonalAgents() {
+		await this.page.goto('/home/chat/personal-agents');
+	}
+
+	/**
+	 * Navigate to ChatHub workflow agent list
+	 * URL: /home/chat/workflow-agents
+	 */
+	async toChatHubWorkflowAgents() {
+		await this.page.goto('/home/chat/workflow-agents');
 	}
 }

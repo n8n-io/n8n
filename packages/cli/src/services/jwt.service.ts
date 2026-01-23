@@ -27,8 +27,8 @@ export class JwtService {
 		return jwt.sign(payload, this.jwtSecret, options);
 	}
 
-	decode(token: string) {
-		return jwt.decode(token) as JwtPayload;
+	decode<T = JwtPayload>(token: string) {
+		return jwt.decode(token) as T;
 	}
 
 	verify<T = JwtPayload>(token: string, options: jwt.VerifyOptions = {}) {

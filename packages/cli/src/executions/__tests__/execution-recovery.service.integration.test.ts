@@ -1,11 +1,20 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionRepository } from '@n8n/db';
+import {
+	createActiveWorkflow,
+	createWorkflow,
+	testDb,
+	mockInstance,
+	getWorkflowById,
+} from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository, WorkflowRepository, ProjectRelationRepository } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
+import { v4 as uuid } from 'uuid';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
@@ -14,6 +23,7 @@ import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
@@ -22,19 +32,30 @@ import { setupMessages } from './utils';
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);
 	const instanceSettings = Container.get(InstanceSettings);
+	const ownershipService = mockInstance(OwnershipService);
+	const projectRelationRepository = mockInstance(ProjectRelationRepository);
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
+	let workflowRepository: WorkflowRepository;
+	let globalConfig: GlobalConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 		executionRepository = Container.get(ExecutionRepository);
+		workflowRepository = Container.get(WorkflowRepository);
+		globalConfig = Container.get(GlobalConfig);
 
 		executionRecoveryService = new ExecutionRecoveryService(
 			mock(),
 			instanceSettings,
 			push,
 			executionRepository,
+			globalConfig.executions,
+			workflowRepository,
+			mock(),
+			ownershipService,
+			projectRelationRepository,
 		);
 	});
 
@@ -44,7 +65,14 @@ describe('ExecutionRecoveryService', () => {
 
 	afterEach(async () => {
 		jest.restoreAllMocks();
-		await testDb.truncate(['ExecutionEntity', 'ExecutionData', 'WorkflowEntity']);
+		globalConfig.executions.recovery.workflowDeactivationEnabled = false;
+		await testDb.truncate([
+			'ExecutionEntity',
+			'ExecutionData',
+			'WorkflowEntity',
+			'WorkflowHistory',
+			'WorkflowPublishHistory',
+		]);
 	});
 
 	afterAll(async () => {
@@ -393,6 +421,39 @@ describe('ExecutionRecoveryService', () => {
 				expect(debugHelperTaskData?.executionStatus).toBe('success');
 				expect(debugHelperTaskData?.error).toBeUndefined();
 				expect(debugHelperTaskData?.data).toEqual(ARTIFICIAL_TASK_DATA);
+			});
+
+			test('should deactivate workflow if all last executions are crashed', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
+
+				const workflow = await createActiveWorkflow({
+					...OOM_WORKFLOW,
+				});
+				expect(workflow.activeVersionId).not.toBeNull();
+				await createExecution({ status: 'crashed' }, workflow);
+				await createExecution({ status: 'crashed' }, workflow);
+				await createExecution({ status: 'crashed' }, workflow);
+
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: uuid(), type: 'personal' }),
+				);
+				ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: uuid() }));
+				projectRelationRepository.find.mockResolvedValue([]);
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.autoDeactivateWorkflowsIfNeeded(new Set([workflow.id]));
+
+				/**
+				 * Assert
+				 */
+				const updatedWorkflow = await getWorkflowById(workflow.id);
+				if (!updatedWorkflow) fail('Expected `updatedWorkflow` to be defined');
+				expect(updatedWorkflow.activeVersionId).toBeNull();
 			});
 		});
 	});

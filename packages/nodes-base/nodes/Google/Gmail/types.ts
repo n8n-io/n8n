@@ -68,3 +68,25 @@ export type GmailTriggerFilters = Partial<{
 	labelIds: string[];
 	receivedAfter: number;
 }>;
+
+export type GmailMessage = {
+	id: string;
+	threadId: string;
+	labelIds: string[];
+	snippet: string;
+	historyId: string;
+	internalDate?: string;
+	headers?: Record<string, string>;
+	sizeEstimate: number;
+	raw: string;
+	payload: MessagePart;
+};
+
+export type GmailMessageMetadata = Pick<GmailMessage, 'id' | 'threadId' | 'labelIds' | 'payload'>;
+
+export type GmailUserProfile = {
+	emailAddress: string;
+	messagesTotal: number;
+	threadsTotal: number;
+	historyId: string;
+};

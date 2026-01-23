@@ -4,6 +4,7 @@
 		"baseUrl": ".",
 		"rootDirs": [".", "../composables/src"],
 		"outDir": "dist",
+		"moduleResolution": "bundler",
 		"types": ["vite/client", "unplugin-icons/types/vue", "vitest/globals"],
 		"typeRoots": [
 			"./node_modules/@testing-library",
@@ -17,5 +18,5 @@
 			"@n8n/utils*": ["../../../@n8n/utils/src*"]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.vue", ".storybook/**/*.ts"]
+	"include": ["src/**/*.ts", "src/**/*.vue"]
 }

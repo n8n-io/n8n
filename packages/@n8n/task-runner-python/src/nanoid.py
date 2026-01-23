@@ -11,11 +11,11 @@ CHARSET_LEN = len(NANOID_CHARSET)
 
 
 def nanoid() -> str:
-    nanoid = ""
+    chars = []
 
-    while len(nanoid) < TARGET_NANOID_LEN:
+    while len(chars) < TARGET_NANOID_LEN:
         index = secrets.randbits(6)
         if index < CHARSET_LEN:
-            nanoid += NANOID_CHARSET[index]
+            chars.append(NANOID_CHARSET[index])
 
-    return nanoid
+    return "".join(chars)

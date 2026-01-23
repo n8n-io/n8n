@@ -10,8 +10,8 @@ import {
 	sleep,
 	jsonStringify,
 	ensureError,
-	ExecutionCancelledError,
 	UnexpectedError,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
@@ -67,7 +67,7 @@ export class ScalingService {
 
 		this.queue = new BullQueue(QUEUE_NAME, {
 			prefix,
-			settings: this.globalConfig.queue.bull.settings,
+			settings: { ...this.globalConfig.queue.bull.settings, maxStalledCount: 0 },
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 
@@ -230,7 +230,7 @@ export class ScalingService {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
 				await job.discard(); // prevent retries
-				await job.moveToFailed(new ExecutionCancelledError(job.data.executionId), true); // remove from queue
+				await job.moveToFailed(new ManualExecutionCancelledError(job.data.executionId), true); // remove from queue
 				return true;
 			}
 
@@ -324,11 +324,22 @@ export class ScalingService {
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
-					this.activeExecutions.resolveResponsePromise(msg.executionId, {});
-					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
+					if (msg.success) {
+						this.activeExecutions.resolveResponsePromise(msg.executionId, {});
+					} else {
+						this.activeExecutions.resolveResponsePromise(msg.executionId, {
+							body: {
+								message: 'Workflow execution failed',
+							},
+							statusCode: 500,
+						});
+					}
+
+					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
 						workerId: msg.workerId,
 						executionId: msg.executionId,
 						jobId,
+						success: msg.success,
 					});
 					break;
 				case 'job-failed':

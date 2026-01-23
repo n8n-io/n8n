@@ -6,6 +6,7 @@ import * as member from './member';
 import * as message from './message';
 import * as webhook from './webhook';
 import { sendAndWaitWebhooksDescription } from '../../../../utils/sendAndWait/descriptions';
+import { SEND_AND_WAIT_WAITING_TOOLTIP } from '../../../../utils/sendAndWait/utils';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Discord',
@@ -20,6 +21,7 @@ export const versionDescription: INodeTypeDescription = {
 	},
 	inputs: [NodeConnectionTypes.Main],
 	outputs: [NodeConnectionTypes.Main],
+	waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 	webhooks: sendAndWaitWebhooksDescription,
 	credentials: [
 		{

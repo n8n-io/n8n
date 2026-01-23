@@ -6,4 +6,9 @@ export class OidcConfigDto extends Z.class({
 	clientSecret: z.string().min(1),
 	discoveryEndpoint: z.string().url(),
 	loginEnabled: z.boolean().optional().default(false),
+	prompt: z
+		.enum(['none', 'login', 'consent', 'select_account', 'create'])
+		.optional()
+		.default('select_account'),
+	authenticationContextClassReference: z.array(z.string()).default([]),
 }) {}

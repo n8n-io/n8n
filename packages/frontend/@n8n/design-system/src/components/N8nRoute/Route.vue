@@ -6,6 +6,7 @@ interface RouteProps {
 	to?: RouteLocationRaw | string;
 	newWindow?: boolean;
 	title?: string;
+	dataTestId?: string;
 }
 
 defineOptions({ name: 'N8nRoute' });
@@ -28,7 +29,13 @@ const openNewWindow = computed(() => !useRouterLink.value);
 </script>
 
 <template>
-	<RouterLink v-if="useRouterLink && to" :to="to" role="link" v-bind="$attrs">
+	<RouterLink
+		v-if="useRouterLink && to"
+		:to="to"
+		role="link"
+		v-bind="$attrs"
+		:data-test-id="dataTestId"
+	>
 		<slot></slot>
 	</RouterLink>
 	<a
@@ -37,6 +44,7 @@ const openNewWindow = computed(() => !useRouterLink.value);
 		:target="openNewWindow ? '_blank' : '_self'"
 		v-bind="$attrs"
 		:title="title"
+		:data-test-id="dataTestId"
 	>
 		<slot></slot>
 	</a>

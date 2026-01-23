@@ -35,3 +35,12 @@ const jsonColumn: ValueTransformer = {
 };
 
 export const sqlite = { jsonColumn };
+
+/**
+ * Transformer for bigint columns that returns strings from PostgreSQL.
+ * Converts string values to numbers on read.
+ */
+export const bigintStringToNumber: ValueTransformer = {
+	to: (value: number): number => value,
+	from: (value: string | number): number => (typeof value === 'string' ? Number(value) : value),
+};

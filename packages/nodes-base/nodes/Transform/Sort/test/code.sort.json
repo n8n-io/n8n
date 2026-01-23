@@ -1,0 +1,162 @@
+{
+	"name": "Code Sorting Type",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 80],
+			"id": "47be6b7f-992b-4608-8493-2c94bd5b20bc",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"type": "code",
+				"code": "const first = a.json.num;\nconst second = b.json.num;\n\nreturn first === second \n  ? 0\n  : first < second\n    ? -1\n    : 1;"
+			},
+			"type": "n8n-nodes-base.sort",
+			"typeVersion": 1,
+			"position": [896, 152],
+			"id": "425f29f2-eb6a-426f-bb42-da7bd5e9dd2c",
+			"name": "Sort",
+			"executeOnce": false
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [448, 80],
+			"id": "78f9edf6-dc47-4e80-b510-7a052d5506e3",
+			"name": "Loop Over Items"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [672, -112],
+			"id": "45730d3b-eb22-4214-bba2-b49ce453cb87",
+			"name": "Output"
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {},\n  {}\n]"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [224, 80],
+			"id": "f024d7eb-366b-4723-a62b-2323759c732e",
+			"name": "Two items"
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  {\n    \"num\": 456\n  },\n  {\n    \"num\": 123\n  }\n]"
+			},
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [672, 80],
+			"id": "46f301c2-e301-4f61-b243-60d85aa9fca4",
+			"name": "Input"
+		}
+	],
+	"pinData": {
+		"Output": [
+			{
+				"json": {
+					"num": 123
+				}
+			},
+			{
+				"json": {
+					"num": 456
+				}
+			},
+			{
+				"json": {
+					"num": 123
+				}
+			},
+			{
+				"json": {
+					"num": 456
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Two items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Output",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Sort": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Two items": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Input": {
+			"main": [
+				[
+					{
+						"node": "Sort",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "89522eeb-a033-478d-840c-8a88b414dd5c",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "eeda9e3069aca300d1dfceeb64beb5b53d715db44a50461bbc5cb0cf6daa01e3"
+	},
+	"id": "65V0lORMJtHg7DxJ",
+	"tags": []
+}

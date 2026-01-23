@@ -1,0 +1,330 @@
+{
+	"nodes": [
+		{
+			"id": "9f3a464a-3611-4c7b-b50a-b0e8e46621f7",
+			"name": "Chat Trigger",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"typeVersion": 1.4,
+			"position": [250, 450],
+			"parameters": {},
+			"webhookId": "5a395181-5333-491c-a5a8-1b81cd1488ee"
+		},
+		{
+			"id": "fc489001-f0ef-4429-88b7-556063db7cb7",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "youtubeApiKey",
+							"value": "<__PLACEHOLDER_VALUE__YouTube Data API v3 Key__>",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "98394a06-ceef-4c3d-a2c8-38f76258554d",
+			"name": "Extract Video ID from URL",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "const url = $input.first().json.chatInput;\nlet videoId = '';\n\nif (url.includes('youtube.com/watch?v=')) {\n  videoId = url.split('v=')[1].split('&')[0];\n} else if (url.includes('youtu.be/')) {\n  videoId = url.split('youtu.be/')[1].split('?')[0];\n}\n\nreturn [{ json: { videoId, videoUrl: url } }];"
+			}
+		},
+		{
+			"id": "91c4eeda-0cc1-4362-a343-34120d745648",
+			"name": "Get Video Details",
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "video",
+				"operation": "get",
+				"videoId": "={{ $json.videoId }}",
+				"part": ["snippet", "contentDetails"]
+			}
+		},
+		{
+			"id": "3a8e54ab-7bd0-4aae-896f-5ae912187386",
+			"name": "Get Video Captions",
+			"type": "n8n-nodes-base.httpRequest",
+			"typeVersion": 4.3,
+			"position": [250, 300],
+			"parameters": {
+				"method": "GET",
+				"url": "=https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId={{ $json.videoId }}&key={{ $('Workflow Configuration').first().json.youtubeApiKey }}",
+				"authentication": "none",
+				"sendQuery": false,
+				"sendHeaders": false,
+				"sendBody": false,
+				"options": {
+					"response": {
+						"response": {
+							"responseFormat": "json"
+						}
+					}
+				}
+			}
+		},
+		{
+			"id": "cf311d08-3466-45cb-9376-3889ba450fd2",
+			"name": "Prepare AI Input",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "transcript",
+							"value": "<__PLACEHOLDER_VALUE__Transcript text from captions API__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "videoTitle",
+							"value": "={{ $('Get Video Details').first().json.snippet.title }}",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "currentDescription",
+							"value": "={{ $('Get Video Details').first().json.snippet.description }}",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"include": "all",
+				"options": {}
+			}
+		},
+		{
+			"id": "b4928db3-ebd6-4a42-9709-9f31da92595e",
+			"name": "Chapter Generator Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [250, 300],
+			"parameters": {
+				"promptType": "define",
+				"text": "=Video Title: {{ $json.videoTitle }}\n\nTranscript:\n{{ $json.transcript }}",
+				"hasOutputParser": true,
+				"options": {
+					"systemMessage": "You are a YouTube chapter timestamp generator. Your task is to analyze video transcripts and identify natural topic shifts to create meaningful chapter markers.\n\nInstructions:\n1. Read through the entire transcript carefully\n2. Identify major topic changes, transitions, or distinct sections\n3. Create chapter titles that are clear, descriptive, and engaging\n4. Ensure timestamps are in MM:SS or HH:MM:SS format\n5. Start with 0:00 for the introduction\n6. Space chapters appropriately (typically 1-5 minutes apart depending on content)\n7. Use title case for chapter names\n8. Keep chapter titles concise (under 60 characters)\n\nReturn the chapters in the structured format defined by the output parser."
+				}
+			}
+		},
+		{
+			"id": "a37380fb-2688-411a-8721-9a53b8bd8969",
+			"name": "Structured Output Parser",
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"schemaType": "fromJson",
+				"jsonSchemaExample": "{\n\t\"chapters\": [\n\t\t{\n\t\t\t\"timestamp\": \"0:00\",\n\t\t\t\"title\": \"Introduction\"\n\t\t},\n\t\t{\n\t\t\t\"timestamp\": \"2:15\",\n\t\t\t\"title\": \"Main Topic\"\n\t\t}\n\t]\n}"
+			}
+		},
+		{
+			"id": "c5296072-e6ed-412b-8b98-a767ba090954",
+			"name": "Anthropic Claude Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {}
+		},
+		{
+			"id": "bc61dab2-efbe-4be8-991a-34ff07e9883c",
+			"name": "Append Chapters to Description",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "updatedDescription",
+							"value": "={{ $json.currentDescription + '\\n\\n📑 CHAPTERS:\\n' + $json.output.chapters.map(ch => ch.timestamp + ' - ' + ch.title).join('\\n') }}",
+							"type": "string"
+						}
+					]
+				},
+				"include": "all",
+				"options": {}
+			}
+		},
+		{
+			"id": "2334a33f-e938-49d3-b520-d9110c7dc4b9",
+			"name": "Update Video Description",
+			"type": "n8n-nodes-base.youTube",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "video",
+				"operation": "update",
+				"videoId": "={{ $json.videoId }}",
+				"title": "={{ $json.videoTitle }}",
+				"regionCode": "",
+				"categoryId": "",
+				"updateFields": {
+					"description": "={{ $json.updatedDescription }}"
+				}
+			}
+		},
+		{
+			"id": "cdbb6701-e39a-4fd3-89e4-33ec09c136c7",
+			"name": "Respond to Chat",
+			"type": "n8n-nodes-base.respondToWebhook",
+			"typeVersion": 1.5,
+			"position": [250, 300],
+			"parameters": {
+				"respondWith": "text",
+				"responseBody": "=✅ Successfully generated and added chapters to your YouTube video!\n\nVideo: {{ $json.videoTitle }}\n\nGenerated {{ $json.output.chapters.length }} chapters:\n{{ $json.output.chapters.map(ch => ch.timestamp + ' - ' + ch.title).join('\\n') }}"
+			}
+		}
+	],
+	"connections": {
+		"Chat Trigger": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Extract Video ID from URL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Video ID from URL": {
+			"main": [
+				[
+					{
+						"node": "Get Video Details",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Video Details": {
+			"main": [
+				[
+					{
+						"node": "Get Video Captions",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Video Captions": {
+			"main": [
+				[
+					{
+						"node": "Prepare AI Input",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Prepare AI Input": {
+			"main": [
+				[
+					{
+						"node": "Chapter Generator Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Anthropic Claude Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Chapter Generator Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [
+				[
+					{
+						"node": "Chapter Generator Agent",
+						"type": "ai_outputParser",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Chapter Generator Agent": {
+			"main": [
+				[
+					{
+						"node": "Append Chapters to Description",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Append Chapters to Description": {
+			"main": [
+				[
+					{
+						"node": "Update Video Description",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Update Video Description": {
+			"main": [
+				[
+					{
+						"node": "Respond to Chat",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "YouTube Video Chapter Generator from Captions with AI"
+}

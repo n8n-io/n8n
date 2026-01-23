@@ -1,10 +1,13 @@
+import axios from 'axios';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { Readable } from 'node:stream';
+import type Stream from 'node:stream';
 
+import type { FileSearchOperation } from './interfaces';
 import { apiRequest } from '../transport';
 
-import axios from 'axios';
-import type Stream from 'node:stream';
+const OPERATION_CHECK_INTERVAL = 1000;
 
 interface File {
 	name: string;
@@ -12,6 +15,22 @@ interface File {
 	mimeType: string;
 	state: string;
 	error?: { message: string };
+}
+
+interface FileStreamData {
+	stream: Stream;
+	mimeType: string;
+}
+
+interface FileBufferData {
+	buffer: Buffer;
+	mimeType: string;
+}
+
+interface UploadStreamConfig {
+	endpoint: string;
+	mimeType: string;
+	body?: IDataObject;
 }
 
 const CHUNK_SIZE = 256 * 1024;
@@ -67,7 +86,7 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 	})) as { file: File };
 
 	while (uploadResponse.file.state !== 'ACTIVE' && uploadResponse.file.state !== 'FAILED') {
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		await new Promise((resolve) => setTimeout(resolve, OPERATION_CHECK_INTERVAL));
 		uploadResponse.file = (await apiRequest.call(
 			this,
 			'GET',
@@ -88,48 +107,69 @@ export async function uploadFile(this: IExecuteFunctions, fileContent: Buffer, m
 	return { fileUri: uploadResponse.file.uri, mimeType: uploadResponse.file.mimeType };
 }
 
-export async function transferFile(
+async function getFileStreamFromUrlOrBinary(
 	this: IExecuteFunctions,
 	i: number,
 	downloadUrl?: string,
 	fallbackMimeType?: string,
 	qs?: IDataObject,
-) {
-	let stream: Stream;
-	let mimeType: string;
-
+): Promise<FileStreamData | FileBufferData> {
 	if (downloadUrl) {
 		const downloadResponse = await axios.get(downloadUrl, {
 			params: qs,
 			responseType: 'stream',
 		});
 
-		mimeType = downloadResponse.headers['content-type']?.split(';')?.[0] ?? fallbackMimeType;
-		stream = downloadResponse.data;
-	} else {
-		const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
-		if (!binaryPropertyName) {
-			throw new NodeOperationError(this.getNode(), 'Binary property name is required', {
-				description: 'Error uploading file',
-			});
-		}
-		const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-		if (!binaryData.id) {
-			const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-			return await uploadFile.call(this, buffer, binaryData.mimeType);
-		} else {
-			stream = await this.helpers.getBinaryStream(binaryData.id, CHUNK_SIZE);
-			mimeType = binaryData.mimeType;
-		}
+		const contentType = downloadResponse.headers['content-type'] as string | undefined;
+		const mimeType = contentType?.split(';')?.[0] ?? fallbackMimeType ?? 'application/octet-stream';
+
+		return {
+			stream: downloadResponse.data as Stream,
+			mimeType,
+		};
 	}
 
-	const uploadInitResponse = (await apiRequest.call(this, 'POST', '/upload/v1beta/files', {
+	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i, 'data');
+	if (!binaryPropertyName) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Binary property name or download URL is required',
+			{
+				description: 'Error uploading file',
+			},
+		);
+	}
+
+	const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
+	if (!binaryData.id) {
+		const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+		return {
+			buffer,
+			mimeType: binaryData.mimeType,
+		};
+	}
+
+	return {
+		stream: await this.helpers.getBinaryStream(binaryData.id, CHUNK_SIZE),
+		mimeType: binaryData.mimeType,
+	};
+}
+
+async function uploadStream(
+	this: IExecuteFunctions,
+	stream: Stream,
+	config: UploadStreamConfig,
+): Promise<{ body: IDataObject }> {
+	const { endpoint, mimeType, body } = config;
+
+	const uploadInitResponse = (await apiRequest.call(this, 'POST', endpoint, {
 		headers: {
 			'X-Goog-Upload-Protocol': 'resumable',
 			'X-Goog-Upload-Command': 'start',
 			'X-Goog-Upload-Header-Content-Type': mimeType,
 			'Content-Type': 'application/json',
 		},
+		body,
 		option: { returnFullResponse: true },
 	})) as { headers: IDataObject };
 
@@ -138,7 +178,7 @@ export async function transferFile(
 		throw new NodeOperationError(this.getNode(), 'Failed to get upload URL');
 	}
 
-	const uploadResponse = (await this.helpers.httpRequest({
+	return (await this.helpers.httpRequest({
 		method: 'POST',
 		url: uploadUrl,
 		headers: {
@@ -148,12 +188,38 @@ export async function transferFile(
 		},
 		body: stream,
 		returnFullResponse: true,
+	})) as { body: IDataObject };
+}
+
+export async function transferFile(
+	this: IExecuteFunctions,
+	i: number,
+	downloadUrl?: string,
+	fallbackMimeType?: string,
+	qs?: IDataObject,
+) {
+	const fileData = await getFileStreamFromUrlOrBinary.call(
+		this,
+		i,
+		downloadUrl,
+		fallbackMimeType,
+		qs,
+	);
+
+	if ('buffer' in fileData) {
+		return await uploadFile.call(this, fileData.buffer, fileData.mimeType);
+	}
+
+	const { stream, mimeType } = fileData;
+	const uploadResponse = (await uploadStream.call(this, stream, {
+		endpoint: '/upload/v1beta/files',
+		mimeType,
 	})) as { body: { file: File } };
 
 	let file = uploadResponse.body.file;
 
 	while (file.state !== 'ACTIVE' && file.state !== 'FAILED') {
-		await new Promise((resolve) => setTimeout(resolve, 1000));
+		await new Promise((resolve) => setTimeout(resolve, OPERATION_CHECK_INTERVAL));
 		file = (await apiRequest.call(this, 'GET', `/v1beta/${file.name}`)) as File;
 	}
 
@@ -164,4 +230,98 @@ export async function transferFile(
 	}
 
 	return { fileUri: file.uri, mimeType: file.mimeType };
+}
+
+export async function createFileSearchStore(this: IExecuteFunctions, displayName: string) {
+	return (await apiRequest.call(this, 'POST', '/v1beta/fileSearchStores', {
+		body: { displayName },
+	})) as IDataObject;
+}
+
+export async function uploadToFileSearchStore(
+	this: IExecuteFunctions,
+	i: number,
+	fileSearchStoreName: string,
+	displayName: string,
+	downloadUrl?: string,
+	fallbackMimeType?: string,
+	qs?: IDataObject,
+) {
+	const fileData = await getFileStreamFromUrlOrBinary.call(
+		this,
+		i,
+		downloadUrl,
+		fallbackMimeType,
+		qs,
+	);
+
+	let stream: Stream;
+	let mimeType: string;
+
+	if ('buffer' in fileData) {
+		stream = Readable.from(fileData.buffer);
+		mimeType = fileData.mimeType;
+	} else {
+		stream = fileData.stream;
+		mimeType = fileData.mimeType;
+	}
+
+	const uploadResponse = (await uploadStream.call(this, stream, {
+		endpoint: `/upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`,
+		mimeType,
+		body: { displayName, mimeType },
+	})) as { body: { name: string } };
+
+	const operationName = uploadResponse.body.name;
+	let operation = (await apiRequest.call(
+		this,
+		'GET',
+		`/v1beta/${operationName}`,
+	)) as FileSearchOperation;
+
+	while (!operation.done) {
+		await new Promise((resolve) => setTimeout(resolve, OPERATION_CHECK_INTERVAL));
+		operation = (await apiRequest.call(
+			this,
+			'GET',
+			`/v1beta/${operationName}`,
+		)) as FileSearchOperation;
+	}
+
+	if (operation.error) {
+		throw new NodeOperationError(this.getNode(), operation.error.message ?? 'Unknown error', {
+			description: 'Error uploading file to File Search store',
+		});
+	}
+
+	return operation.response;
+}
+
+export async function listFileSearchStores(
+	this: IExecuteFunctions,
+	pageSize?: number,
+	pageToken?: string,
+) {
+	const qs: IDataObject = {};
+	if (pageSize !== undefined) {
+		qs.pageSize = pageSize;
+	}
+	if (pageToken) {
+		qs.pageToken = pageToken;
+	}
+
+	return (await apiRequest.call(this, 'GET', '/v1beta/fileSearchStores', { qs })) as IDataObject;
+}
+
+export async function deleteFileSearchStore(
+	this: IExecuteFunctions,
+	name: string,
+	force?: boolean,
+) {
+	const qs: IDataObject = {};
+	if (force !== undefined) {
+		qs.force = force;
+	}
+
+	return (await apiRequest.call(this, 'DELETE', `/v1beta/${name}`, { qs })) as IDataObject;
 }

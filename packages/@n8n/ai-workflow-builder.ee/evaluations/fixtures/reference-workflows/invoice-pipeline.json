@@ -1,0 +1,472 @@
+{
+	"nodes": [
+		{
+			"id": "400a167f-d737-472c-9bda-df00984fa687",
+			"name": "Invoice Submission Form",
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.3,
+			"position": [250, 450],
+			"parameters": {
+				"formTitle": "Invoice Submission",
+				"formDescription": "Upload your invoice file (PDF or image) and provide your email address",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Invoice File",
+							"fieldType": "file",
+							"multipleFiles": false,
+							"acceptFileTypes": ".pdf, .jpg, .jpeg, .png",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Your Email Address",
+							"fieldType": "email",
+							"placeholder": "",
+							"requiredField": true
+						}
+					]
+				},
+				"responseMode": "onReceived",
+				"options": {
+					"respondWithOptions": {
+						"values": {
+							"respondWith": "text",
+							"formSubmittedText": "Thank you! Your invoice has been submitted and is being processed."
+						}
+					},
+					"appendAttribution": false
+				}
+			},
+			"webhookId": "ff630ade-93cd-4881-aff6-9bc31c06bc23"
+		},
+		{
+			"id": "2f83fe50-afb7-44f5-a066-71e9f6828ee5",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"duplicateItem": false,
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "validCurrencies",
+							"value": "[\"USD\", \"EUR\", \"GBP\", \"CAD\", \"AUD\"]",
+							"type": "array"
+						},
+						{
+							"id": "id-2",
+							"name": "senderEmail",
+							"value": "<__PLACEHOLDER_VALUE__Your Gmail address for sending emails__>",
+							"type": "string"
+						}
+					]
+				},
+				"include": "all",
+				"options": {}
+			}
+		},
+		{
+			"id": "9479cc55-44d4-4361-884f-eabb15200107",
+			"name": "Store Raw Form Submission",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "form_submissions"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": null
+				}
+			}
+		},
+		{
+			"id": "dda9f1f4-e3a1-4bff-ab3e-b1a7b705be6b",
+			"name": "Extract Invoice File Content",
+			"type": "n8n-nodes-base.extractFromFile",
+			"typeVersion": 1.1,
+			"position": [250, 300],
+			"parameters": {
+				"operation": "pdf",
+				"binaryPropertyName": "invoiceFile"
+			}
+		},
+		{
+			"id": "4981d37e-899e-4f14-9a73-afa1a69734b6",
+			"name": "Extract Invoice Data with GPT",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "text",
+				"operation": "response",
+				"modelId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"responses": {
+					"values": [
+						{
+							"type": "text",
+							"role": "user",
+							"content": "={{ $json.data }}"
+						}
+					]
+				},
+				"simplify": true,
+				"options": {
+					"instructions": "You are an invoice data extraction assistant. Extract the following information from the invoice text and return ONLY a valid JSON object with these exact fields: invoiceNumber, invoiceDate (in YYYY-MM-DD format), vendorName, currency (3-letter code like USD, EUR, GBP), totalAmount (numeric value only, no currency symbols), lineItems (array of objects with description and amount). If any field cannot be found, use null. Return ONLY the JSON object, no additional text or markdown."
+				}
+			}
+		},
+		{
+			"id": "f48362a6-aa02-4212-800b-78c4826b3266",
+			"name": "Parse Extracted JSON",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "const response = $input.first().json.message?.content || $input.first().json.text || '';\nlet parsed;\ntry {\n  const jsonMatch = response.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    parsed = JSON.parse(jsonMatch[0]);\n  } else {\n    parsed = JSON.parse(response);\n  }\n} catch (error) {\n  throw new Error('Failed to parse JSON from OpenAI response: ' + error.message);\n}\nreturn [{ json: { ...parsed, userEmail: $('Invoice Submission Form').first().json.userEmail } }];"
+			}
+		},
+		{
+			"id": "2915d1c2-1ae8-4a26-a2a4-9708a0a4e14b",
+			"name": "Validate Invoice Data",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "const data = $input.first().json;\nconst validCurrencies = $('Workflow Configuration').first().json.validCurrencies;\nconst errors = [];\n\n// Validate date format (YYYY-MM-DD)\nconst dateRegex = /^\\d{4}-\\d{2}-\\d{2}$/;\nif (!data.invoiceDate || !dateRegex.test(data.invoiceDate)) {\n  errors.push('Invoice date must be in YYYY-MM-DD format');\n}\n\n// Validate currency\nconst currency = data.currency?.toUpperCase();\nif (!currency || !validCurrencies.includes(currency)) {\n  errors.push(`Currency must be one of: ${validCurrencies.join(', ')}`);\n}\n\n// Validate total amount\nconst amount = parseFloat(data.totalAmount);\nif (isNaN(amount) || amount <= 0) {\n  errors.push('Total amount must be greater than zero');\n}\n\nconst isValid = errors.length === 0;\n\nreturn [{\n  json: {\n    ...data,\n    isValid,\n    validationErrors: errors\n  }\n}];"
+			}
+		},
+		{
+			"id": "38e25bac-e6dd-4087-8810-58543356721d",
+			"name": "Check Validation Result",
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.2,
+			"position": [250, 300],
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose"
+					},
+					"conditions": [
+						{
+							"id": "id-1",
+							"leftValue": "={{ $json.isValid }}",
+							"rightValue": true,
+							"operator": {
+								"type": "boolean",
+								"operation": "equals"
+							}
+						}
+					],
+					"combinator": "and"
+				}
+			}
+		},
+		{
+			"id": "001f9526-cbe0-4942-83bc-2630d0c2eba3",
+			"name": "Send Validation Error Email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $json.userEmail }}",
+				"subject": "Invoice Validation Failed",
+				"emailType": "html",
+				"message": "=<h2>Invoice Validation Failed</h2><p>Your invoice submission could not be processed due to the following validation errors:</p><ul>{{ $json.validationErrors.map(err => `<li>${err}</li>`).join(\"\") }}</ul><p>Please correct these issues and resubmit your invoice.</p><p>Thank you!</p>",
+				"options": {
+					"senderName": "={{ $('Workflow Configuration').first().json.senderEmail }}"
+				}
+			},
+			"webhookId": "ef87de65-620a-4765-b2ed-dd2e2cff9cf6"
+		},
+		{
+			"id": "b0484ab3-d521-49e1-aa8e-9446a60e26e6",
+			"name": "Store Valid Invoice",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "invoices"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": null
+				}
+			}
+		},
+		{
+			"id": "b58c11b2-e94f-464a-aa55-6c482e371e84",
+			"name": "Send Success Email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $json.userEmail }}",
+				"subject": "Invoice Successfully Processed",
+				"emailType": "html",
+				"message": "=<h2>Invoice Successfully Processed</h2><p>Your invoice has been validated and stored successfully!</p><h3>Invoice Details:</h3><ul><li><strong>Invoice Number:</strong> {{ $json.invoiceNumber }}</li><li><strong>Date:</strong> {{ $json.invoiceDate }}</li><li><strong>Vendor:</strong> {{ $json.vendorName }}</li><li><strong>Amount:</strong> {{ $json.totalAmount }} {{ $json.currency }}</li></ul><p>Thank you for your submission!</p>",
+				"options": {
+					"senderName": "={{ $('Workflow Configuration').first().json.senderEmail }}"
+				}
+			},
+			"webhookId": "bafb4a6e-b440-4499-a14d-4c6cee7e0f1f"
+		},
+		{
+			"id": "e8f4c093-07ff-4da4-b759-128d9dda9df9",
+			"name": "Weekly Report Schedule",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "weeks",
+							"weeksInterval": 1,
+							"triggerAtDay": [1],
+							"triggerAtHour": 9,
+							"triggerAtMinute": 0
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "e3f2e9a2-a012-45ef-a554-ce9937b0cab8",
+			"name": "Retrieve Weekly Invoices",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "row",
+				"operation": "get",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "invoices"
+				},
+				"matchType": "anyCondition",
+				"filters": {},
+				"returnAll": true
+			}
+		},
+		{
+			"id": "6821c959-affb-4080-9eff-b34800270874",
+			"name": "Generate Weekly Report with GPT",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "text",
+				"operation": "response",
+				"modelId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"responses": {
+					"values": [
+						{
+							"type": "text",
+							"role": "user",
+							"content": "={{ JSON.stringify($input.all()) }}"
+						}
+					]
+				},
+				"simplify": true,
+				"options": {
+					"instructions": "You are a financial reporting assistant. Analyze the provided invoice data from the past week and generate a comprehensive spending report. Include: 1) Total spending amount by currency, 2) Number of invoices processed, 3) Top vendors by spending, 4) Spending breakdown by category if available, 5) Any notable trends or insights. Format the report as clean, professional HTML suitable for email. Use proper headings, tables, and formatting. Make it visually appealing and easy to read."
+				}
+			}
+		},
+		{
+			"id": "47e9901e-c153-4b9a-8328-008e4642110d",
+			"name": "Send Weekly Report Email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "<__PLACEHOLDER_VALUE__Recipient email for weekly reports__>",
+				"subject": "=Weekly Spending Report - {{ $now.format(\"MMMM DD, YYYY\") }}",
+				"emailType": "html",
+				"message": "={{ $json.message?.content || $json.text }}",
+				"options": {
+					"senderName": "={{ $('Workflow Configuration').first().json.senderEmail }}"
+				}
+			},
+			"webhookId": "47cd5688-2654-47e9-8b77-0c4b234e6c32"
+		}
+	],
+	"connections": {
+		"Invoice Submission Form": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Store Raw Form Submission",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Store Raw Form Submission": {
+			"main": [
+				[
+					{
+						"node": "Extract Invoice File Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Invoice File Content": {
+			"main": [
+				[
+					{
+						"node": "Extract Invoice Data with GPT",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract Invoice Data with GPT": {
+			"main": [
+				[
+					{
+						"node": "Parse Extracted JSON",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Parse Extracted JSON": {
+			"main": [
+				[
+					{
+						"node": "Validate Invoice Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Validate Invoice Data": {
+			"main": [
+				[
+					{
+						"node": "Check Validation Result",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Check Validation Result": {
+			"main": [
+				[
+					{
+						"node": "Store Valid Invoice",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Send Validation Error Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Store Valid Invoice": {
+			"main": [
+				[
+					{
+						"node": "Send Success Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Weekly Report Schedule": {
+			"main": [
+				[
+					{
+						"node": "Retrieve Weekly Invoices",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Retrieve Weekly Invoices": {
+			"main": [
+				[
+					{
+						"node": "Generate Weekly Report with GPT",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Weekly Report with GPT": {
+			"main": [
+				[
+					{
+						"node": "Send Weekly Report Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "Automated Invoice Processing and Weekly Spending Report System"
+}

@@ -103,9 +103,7 @@ export class CommunityNodeTypesService {
 	}
 
 	findVetted(packageName: string) {
-		const vettedTypes = Array.from(this.communityNodeTypes.keys());
-		const nodeName = vettedTypes.find((t) => t.includes(packageName));
-		if (!nodeName) return;
-		return this.communityNodeTypes.get(nodeName);
+		const vettedTypes = Array.from(this.communityNodeTypes.values());
+		return vettedTypes.find((nodeType) => nodeType.packageName === packageName);
 	}
 }

@@ -11,7 +11,7 @@ export class KoBoToolboxApi implements ICredentialType {
 	displayName = 'KoBoToolbox API Token';
 
 	// See https://support.kobotoolbox.org/api.html
-	documentationUrl = 'koBoToolbox';
+	documentationUrl = 'kobotoolbox';
 
 	properties: INodeProperties[] = [
 		{

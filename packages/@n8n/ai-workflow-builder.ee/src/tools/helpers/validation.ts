@@ -41,9 +41,16 @@ export function findNodeByIdOrName(nodeIdentifier: string, nodes: INode[]): INod
  */
 export function findNodeType(
 	nodeTypeName: string,
+	nodeVersion: number,
 	nodeTypes: INodeTypeDescription[],
 ): INodeTypeDescription | null {
-	return nodeTypes.find((nt) => nt.name === nodeTypeName) ?? null;
+	return (
+		nodeTypes.find(
+			(nt) =>
+				nt.name === nodeTypeName &&
+				(Array.isArray(nt.version) ? nt.version.includes(nodeVersion) : nt.version === nodeVersion),
+		) ?? null
+	);
 }
 
 /**

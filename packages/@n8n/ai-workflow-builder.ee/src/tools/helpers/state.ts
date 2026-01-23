@@ -112,3 +112,40 @@ export function addConnectionToWorkflow(
 		],
 	};
 }
+
+/**
+ * Remove a connection from the workflow state
+ */
+export function removeConnectionFromWorkflow(
+	sourceNode: string,
+	targetNode: string,
+	connectionType: string,
+	sourceOutputIndex: number,
+	targetInputIndex: number,
+): Partial<typeof WorkflowState.State> {
+	return {
+		workflowOperations: [
+			{
+				type: 'removeConnection',
+				sourceNode,
+				targetNode,
+				connectionType,
+				sourceOutputIndex,
+				targetInputIndex,
+			},
+		],
+	};
+}
+
+/**
+ * Rename a node in the workflow state
+ */
+export function renameNodeInWorkflow(
+	nodeId: string,
+	oldName: string,
+	newName: string,
+): Partial<typeof WorkflowState.State> {
+	return {
+		workflowOperations: [{ type: 'renameNode', nodeId, oldName, newName }],
+	};
+}

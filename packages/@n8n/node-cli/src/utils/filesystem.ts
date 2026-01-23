@@ -2,6 +2,8 @@ import { camelCase } from 'change-case';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { isEnoentError } from './validation';
+
 export async function folderExists(dir: string) {
 	try {
 		const stat = await fs.stat(dir);
@@ -86,4 +88,29 @@ export async function renameDirectory(oldDirPath: string, newDirName: string): P
 	const newDirPath = path.resolve(parentDir, newDirName);
 	await fs.rename(oldDirPath, newDirPath);
 	return newDirPath;
+}
+
+export async function createSymlink(target: string, linkPath: string): Promise<void> {
+	await fs.mkdir(path.dirname(linkPath), { recursive: true });
+
+	try {
+		const stats = await fs.lstat(linkPath);
+		if (stats.isSymbolicLink() || stats.isFile()) {
+			await fs.unlink(linkPath);
+		} else if (stats.isDirectory()) {
+			await fs.rm(linkPath, { recursive: true, force: true });
+		}
+	} catch (error) {
+		if (!isEnoentError(error)) {
+			throw error;
+		}
+	}
+
+	try {
+		const targetStats = await fs.stat(target);
+		const type = targetStats.isDirectory() ? 'dir' : 'file';
+		await fs.symlink(target, linkPath, type);
+	} catch {
+		await fs.symlink(target, linkPath, 'junction');
+	}
 }

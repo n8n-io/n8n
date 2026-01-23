@@ -1,5 +1,5 @@
 import { DynamicTool, type Tool } from '@langchain/core/tools';
-import { Toolkit } from 'langchain/agents';
+import { StructuredToolkit } from 'n8n-core';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
@@ -177,6 +177,8 @@ describe('getConnectedTools', () => {
 		};
 
 		mockExecuteFunctions = createMockExecuteFunction({}, mockNode);
+		// Add getParentNodes mock for metadata functionality
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue([]);
 
 		mockN8nTool = new N8nTool(mockExecuteFunctions as unknown as ISupplyDataFunctions, {
 			name: 'Dummy Tool',
@@ -251,31 +253,93 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should flatten tools from a toolkit', async () => {
-		class MockToolkit extends Toolkit {
-			tools: Tool[];
-
-			constructor(tools: unknown[]) {
-				super();
-				this.tools = tools as Tool[];
-			}
-		}
 		const mockTools = [
 			{ name: 'tool1', description: 'desc1' },
 
-			new MockToolkit([
+			new StructuredToolkit([
 				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
 				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
-			]),
+			] as any),
 		];
 
 		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
 
 		const tools = await getConnectedTools(mockExecuteFunctions, false);
 		expect(tools).toEqual([
-			{ name: 'tool1', description: 'desc1' },
-			{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
-			{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			{
+				name: 'tool1',
+				description: 'desc1',
+				metadata: { isFromToolkit: false, sourceNodeName: undefined },
+			},
+			{
+				name: 'toolkitTool1',
+				description: 'toolkitToolDesc1',
+				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+			},
+			{
+				name: 'toolkitTool2',
+				description: 'toolkitToolDesc2',
+				metadata: { isFromToolkit: true, sourceNodeName: undefined },
+			},
 		]);
+	});
+
+	it('should add metadata to all tools with source node information', async () => {
+		const mockParentNodes = [{ name: 'RegularTool' }, { name: 'MCP Client Tool' }];
+		const mockTools = [
+			{ name: 'tool1', description: 'desc1' },
+			new StructuredToolkit([
+				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
+				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
+			] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools).toHaveLength(3);
+
+		// Regular tool should have metadata with isFromToolkit: false
+		expect(tools[0].name).toBe('tool1');
+		expect(tools[0].metadata).toEqual({
+			isFromToolkit: false,
+			sourceNodeName: 'RegularTool',
+		});
+
+		// Toolkit tools should have metadata with isFromToolkit: true
+		expect(tools[1].name).toBe('toolkitTool1');
+		expect(tools[1].metadata).toEqual({
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+
+		expect(tools[2].name).toBe('toolkitTool2');
+		expect(tools[2].metadata).toEqual({
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
+	});
+
+	it('should preserve existing metadata when adding toolkit metadata', async () => {
+		const mockParentNodes = [{ name: 'MCP Client Tool' }];
+		const mockTools = [
+			new StructuredToolkit([
+				{ name: 'toolkitTool1', description: 'desc1', metadata: { customField: 'value' } },
+			] as any),
+		];
+
+		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
+		mockExecuteFunctions.getParentNodes = jest.fn().mockReturnValue(mockParentNodes);
+
+		const tools = await getConnectedTools(mockExecuteFunctions, false);
+
+		expect(tools[0].metadata).toEqual({
+			customField: 'value',
+			isFromToolkit: true,
+			sourceNodeName: 'MCP Client Tool',
+		});
 	});
 });
 

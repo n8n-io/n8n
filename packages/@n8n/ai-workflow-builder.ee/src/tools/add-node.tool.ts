@@ -2,7 +2,9 @@ import { tool } from '@langchain/core/tools';
 import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { NodeTypeNotFoundError, ValidationError } from '../errors';
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+
+import { NodeTypeNotFoundError, ToolExecutionError, ValidationError } from '../errors';
 import { createNodeInstance, generateUniqueName } from './utils/node-creation.utils';
 import { calculateNodePosition } from './utils/node-positioning.utils';
 import { isSubNode } from '../utils/node-helpers';
@@ -11,28 +13,42 @@ import { createSuccessResponse, createErrorResponse } from './helpers/response';
 import { getCurrentWorkflow, addNodeToWorkflow, getWorkflowState } from './helpers/state';
 import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
-import type { AddNodeOutput, ToolError } from '../types/tools';
+import type { AddNodeOutput } from '../types/tools';
 
-const DISPLAY_TITLE = 'Adding nodes';
+const baseSchema = {
+	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
+	nodeVersion: z.number().describe('The exact node version'),
+	name: z
+		.string()
+		.describe('A descriptive name for the node that clearly indicates its purpose in the workflow'),
+	initialParametersReasoning: z
+		.string()
+		.describe(
+			'REQUIRED: Explain your reasoning about initial parameters. Consider: Does this node have dynamic inputs/outputs? Does it need mode/operation/resource parameters? For example: "Vector Store has dynamic inputs based on mode, so I need to set mode:insert for document input" or "Gmail needs resource:message and operation:send to send emails"',
+		),
+	initialParameters: z
+		.object({})
+		.passthrough()
+		.describe(
+			'Initial parameters to set on the node. This includes: (1) connection-affecting parameters like mode, hasOutputParser, textSplittingMode; (2) resource/operation for nodes with multiple resources (Gmail, Notion, Google Sheets, etc.). Pass an empty object {} if no initial parameters are needed.',
+		),
+};
 
 /**
  * Schema for node creation input
  */
-export const nodeCreationSchema = z.object({
-	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
-	name: z
+export const nodeCreationSchema = z.object(baseSchema);
+
+/**
+ * Schema for E2E tests, we can specify the ID during E2E test runs to make them deterministic
+ */
+export const nodeCreationE2ESchema = z.object({
+	...baseSchema,
+	id: z
 		.string()
-		.describe('A descriptive name for the node that clearly indicates its purpose in the workflow'),
-	connectionParametersReasoning: z
-		.string()
+		.optional()
 		.describe(
-			'REQUIRED: Explain your reasoning about connection parameters. Consider: Does this node have dynamic inputs/outputs? Does it need mode/operation parameters? For example: "Vector Store has dynamic inputs based on mode, so I need to set mode:insert for document input" or "HTTP Request has static inputs, so no special parameters needed"',
-		),
-	connectionParameters: z
-		.object({})
-		.passthrough()
-		.describe(
-			'Parameters that affect node connections (e.g., mode: "insert" for Vector Store). Pass an empty object {} if no connection parameters are needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
+			'Optional: A specific ID to use for this node. If not provided, a unique ID will be generated automatically. This is primarily used for testing purposes to ensure deterministic node IDs.',
 		),
 });
 
@@ -41,10 +57,12 @@ export const nodeCreationSchema = z.object({
  */
 function createNode(
 	nodeType: INodeTypeDescription,
+	typeVersion: number, // nodeType can have multiple versions
 	customName: string,
 	existingNodes: INode[],
 	nodeTypes: INodeTypeDescription[],
-	connectionParameters?: INodeParameters,
+	initialParameters?: INodeParameters,
+	id?: string,
 ): INode {
 	// Generate unique name
 	const baseName = customName ?? nodeType.defaults?.name ?? nodeType.displayName;
@@ -53,8 +71,8 @@ function createNode(
 	// Calculate position
 	const position = calculateNodePosition(existingNodes, isSubNode(nodeType), nodeTypes);
 
-	// Create the node instance with connection parameters
-	return createNodeInstance(nodeType, uniqueName, position, connectionParameters);
+	// Create the node instance with initial parameters
+	return createNodeInstance(nodeType, typeVersion, uniqueName, position, initialParameters, id);
 }
 
 /**
@@ -81,23 +99,42 @@ function getCustomNodeTitle(
 	return 'Adding node';
 }
 
+export function getAddNodeToolBase(nodeTypes: INodeTypeDescription[]): BuilderToolBase {
+	return {
+		toolName: 'add_nodes',
+		displayTitle: 'Adding nodes',
+		getCustomDisplayTitle: (input: Record<string, unknown>) => getCustomNodeTitle(input, nodeTypes),
+	};
+}
+
 /**
  * Factory function to create the add node tool
  */
-export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
+export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderTool {
+	const builderToolBase = getAddNodeToolBase(nodeTypes);
 	const dynamicTool = tool(
 		async (input, config) => {
 			const reporter = createProgressReporter(
 				config,
-				'add_nodes',
-				DISPLAY_TITLE,
+				builderToolBase.toolName,
+				builderToolBase.displayTitle,
 				getCustomNodeTitle(input, nodeTypes),
 			);
 
 			try {
-				// Validate input using Zod schema
-				const validatedInput = nodeCreationSchema.parse(input);
-				const { nodeType, name, connectionParametersReasoning, connectionParameters } =
+				// Parse with appropriate schema based on environment
+				let id: string | undefined;
+				let validatedInput: z.infer<typeof nodeCreationSchema>;
+
+				if (process.env.E2E_TESTS) {
+					const e2eInput = nodeCreationE2ESchema.parse(input);
+					id = e2eInput.id;
+					validatedInput = e2eInput;
+				} else {
+					validatedInput = nodeCreationSchema.parse(input);
+				}
+
+				const { nodeType, nodeVersion, name, initialParametersReasoning, initialParameters } =
 					validatedInput;
 
 				// Report tool start
@@ -108,10 +145,10 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 				const workflow = getCurrentWorkflow(state);
 
 				// Report progress with reasoning
-				reporter.progress(`Adding ${name} (${connectionParametersReasoning})`);
+				reporter.progress(`Adding ${name} (${initialParametersReasoning})`);
 
 				// Find the node type
-				const nodeTypeDesc = findNodeType(nodeType, nodeTypes);
+				const nodeTypeDesc = findNodeType(nodeType, nodeVersion, nodeTypes);
 				if (!nodeTypeDesc) {
 					const nodeError = new NodeTypeNotFoundError(nodeType);
 					const error = {
@@ -123,13 +160,15 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 					return createErrorResponse(config, error);
 				}
 
-				// Create the new node
+				// Create the new node (id will be undefined in production, defined in E2E if provided)
 				const newNode = createNode(
 					nodeTypeDesc,
+					nodeVersion,
 					name,
 					workflow.nodes, // Use current workflow nodes
 					nodeTypes,
-					connectionParameters as INodeParameters,
+					initialParameters as INodeParameters,
+					id,
 				);
 
 				// Build node info
@@ -157,69 +196,66 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]) {
 				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors
-				let toolError: ToolError;
-
 				if (error instanceof z.ZodError) {
 					const validationError = new ValidationError('Invalid input parameters', {
-						field: error.errors[0]?.path.join('.'),
-						value: error.errors[0]?.message,
+						extra: { errors: error.errors },
 					});
-					toolError = {
-						message: validationError.message,
-						code: 'VALIDATION_ERROR',
-						details: error.errors,
-					};
-				} else {
-					toolError = {
-						message: error instanceof Error ? error.message : 'Unknown error occurred',
-						code: 'EXECUTION_ERROR',
-					};
+					reporter.error(validationError);
+					return createErrorResponse(config, validationError);
 				}
 
+				const toolError = new ToolExecutionError(
+					error instanceof Error ? error.message : 'Unknown error occurred',
+					{
+						toolName: builderToolBase.toolName,
+						cause: error instanceof Error ? error : undefined,
+					},
+				);
 				reporter.error(toolError);
 				return createErrorResponse(config, toolError);
 			}
 		},
 		{
-			name: 'add_nodes',
+			name: builderToolBase.toolName,
 			description: `Add a node to the workflow canvas. Each node represents a specific action or operation (e.g., HTTP request, data transformation, database query). Always provide descriptive names that explain what the node does (e.g., "Get Customer Data", "Filter Active Users", "Send Email Notification"). The tool handles automatic positioning. Use this tool after searching for available node types to ensure they exist.
 
 To add multiple nodes, call this tool multiple times in parallel.
 
 CRITICAL: You MUST provide:
-1. connectionParametersReasoning - Explain why you're choosing specific connection parameters or using {}
-2. connectionParameters - The actual parameters (use {} for nodes without special needs)
+1. initialParametersReasoning - Explain why you're choosing specific initial parameters or using {}
+2. initialParameters - The actual parameters (use {} for nodes without special needs)
 
-IMPORTANT: DO NOT rely on default values! Always explicitly set connection-affecting parameters when they exist.
+IMPORTANT: DO NOT rely on default values! Always explicitly set parameters that affect connections or define the node's behavior.
 
 REASONING EXAMPLES:
 - "Vector Store has dynamic inputs that change based on mode parameter, setting mode:insert to accept document inputs"
-- "HTTP Request has static inputs/outputs, no connection parameters needed"
-- "Document Loader needs textSplittingMode:custom to accept text splitter connections"
+- "HTTP Request has static inputs/outputs, no initial parameters needed"
+- "Gmail needs resource:message and operation:send to send emails"
 - "AI Agent has dynamic inputs, setting hasOutputParser:true to enable output parser connections"
 - "Set node has standard main connections only, using empty parameters"
 
-CONNECTION PARAMETERS (NEVER rely on defaults - always set explicitly):
+INITIAL PARAMETERS (set explicitly when needed):
 - AI Agent (@n8n/n8n-nodes-langchain.agent):
   - For output parser support: { hasOutputParser: true }
   - Without output parser: { hasOutputParser: false }
 - Vector Store (@n8n/n8n-nodes-langchain.vectorStoreInMemory):
   - For document input: { mode: "insert" }
   - For querying: { mode: "retrieve" }
-  - For AI tool use: { mode: "retrieve-as-tool" }
+  - For AI Agent and tool use: { mode: "retrieve-as-tool" }
 - Document Loader (@n8n/n8n-nodes-langchain.documentDefaultDataLoader):
   - For text splitter input: { textSplittingMode: "custom" }
   - For built-in splitting: { textSplittingMode: "simple" }
+- Nodes with resource/operation (Gmail, Notion, Google Sheets, etc.):
+  - Set resource AND operation based on user intent (e.g., { resource: "message", operation: "send" })
 - Regular nodes (HTTP Request, Set, Code, etc.): {}
 
-Think through the connectionParametersReasoning FIRST, then set connectionParameters based on your reasoning. If a parameter affects connections, SET IT EXPLICITLY.`,
+Think through the initialParametersReasoning FIRST, then set initialParameters based on your reasoning.`,
 			schema: nodeCreationSchema,
 		},
 	);
 
 	return {
 		tool: dynamicTool,
-		displayTitle: DISPLAY_TITLE,
-		getCustomDisplayTitle: (input: Record<string, unknown>) => getCustomNodeTitle(input, nodeTypes),
+		...builderToolBase,
 	};
 }

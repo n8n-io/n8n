@@ -1,0 +1,25 @@
+{
+	"name": "data-table-node-benchmark",
+	"columns": [
+		{
+			"name": "firstName",
+			"type": "string"
+		},
+		{
+			"name": "age",
+			"type": "number"
+		},
+		{
+			"name": "birthDate",
+			"type": "date"
+		},
+		{
+			"name": "isActive",
+			"type": "boolean"
+		},
+		{
+			"name": "empty",
+			"type": "string"
+		}
+	]
+}

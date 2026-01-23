@@ -46,15 +46,20 @@ const sizes = computed(() => [...SIZES, ...(props.property === 'margin' ? ['auto
 $box-size: 64px;
 
 .spacing-group {
-	border: var(--border-base);
-	margin: var(--spacing-s);
+	border: var(--border);
+	margin: var(--spacing--sm);
 	display: inline-flex;
 }
 
 .spacing-example {
 	background: white;
 	position: relative;
-	background: hsla(var(--color-primary-h), var(--color-primary-s), var(--color-primary-l), 0.25);
+	background: hsla(
+		var(--color--primary--h),
+		var(--color--primary--s),
+		var(--color--primary--l),
+		0.25
+	);
 }
 
 .spacing-box {
@@ -62,13 +67,13 @@ $box-size: 64px;
 	height: $box-size;
 	display: block;
 	position: relative;
-	background: var(--color-primary);
+	background: var(--color--primary);
 }
 
 .label {
 	position: absolute;
 	bottom: -1rem;
 	right: 0;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 }
 </style>

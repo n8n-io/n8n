@@ -5,7 +5,6 @@ import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
-import { engine as expressHandlebars } from 'express-handlebars';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
@@ -16,6 +15,7 @@ import { ServiceUnavailableError } from '@/errors/response-errors/service-unavai
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
+import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
@@ -68,7 +68,7 @@ export abstract class AbstractServer {
 		this.app = express();
 		this.app.disable('x-powered-by');
 		this.app.set('query parser', 'extended');
-		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
+		this.app.engine('handlebars', createHandlebarsEngine());
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
 
@@ -121,7 +121,7 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
-	private async setupHealthCheck() {
+	private setupHealthCheck() {
 		// main health check should not care about DB connections
 		this.app.get('/healthz', (_req, res) => {
 			res.send({ status: 'ok' });
@@ -169,7 +169,7 @@ export abstract class AbstractServer {
 		this.server.on('error', (error: Error & { code: string }) => {
 			if (error.code === 'EADDRINUSE') {
 				// EADDRINUSE is thrown when the port is already in use
-				this.logger.info(
+				this.logger.error(
 					`n8n's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
 			} else if (error.code === 'EACCES') {
@@ -177,12 +177,20 @@ export abstract class AbstractServer {
 				// This can happen if the port is below 1024 and the process is not run as root
 				// or when the port is reserved by the system, for example Windows reserves random ports
 				// for NAT for Hyper-V and other virtualization software.
-				this.logger.info(
+				this.logger.error(
 					`n8n does not have permission to use port ${port}. Please run n8n with a different port.`,
+				);
+			} else if (error.code === 'EAFNOSUPPORT') {
+				// EAFNOSUPPORT is thrown when the address is not available
+				this.logger.error(
+					`n8n's address '${address}' is not available. Please run n8n with a different address, provide correct address in the environment variables N8N_LISTEN_ADDRESS and/or N8N_WORKER_SERVER_ADDRESS.`,
 				);
 			} else {
 				// Other errors are unexpected and should be logged
-				this.logger.error('n8n webserver failed, exiting', { error });
+				this.logger.error('n8n webserver failed, exiting', {
+					message: error.message,
+					code: error.code,
+				});
 			}
 			// we always exit on error, so that n8n does not run in an inconsistent state
 			process.exit(1);
@@ -192,7 +200,7 @@ export abstract class AbstractServer {
 
 		this.externalHooks = Container.get(ExternalHooks);
 
-		await this.setupHealthCheck();
+		this.setupHealthCheck();
 
 		this.logger.info(`n8n ready on ${address}, port ${port}`);
 	}
@@ -288,7 +296,7 @@ export abstract class AbstractServer {
 	 * then closes them forcefully.
 	 */
 	@OnShutdown()
-	async onShutdown(): Promise<void> {
+	onShutdown(): void {
 		if (!this.server) {
 			return;
 		}

@@ -22,8 +22,6 @@ export async function sentryIoApiRequest(
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0);
 
-	const version = this.getNodeParameter('sentryVersion', 0);
-
 	const options = {
 		headers: {},
 		method,
@@ -47,27 +45,27 @@ export async function sentryIoApiRequest(
 	let credentialName;
 
 	try {
-		if (authentication === 'accessToken') {
-			if (version === 'cloud') {
-				credentialName = 'sentryIoApi';
-			} else {
-				credentialName = 'sentryIoServerApi';
-			}
-
-			const credentials = await this.getCredentials(credentialName);
-
-			if (credentials.url) {
-				options.uri = `${credentials?.url}${resource}`;
-			}
-
-			options.headers = {
-				Authorization: `Bearer ${credentials?.token}`,
-			};
-
-			return await this.helpers.request(options);
-		} else {
+		if (authentication === 'oAuth2') {
 			return await this.helpers.requestOAuth2.call(this, 'sentryIoOAuth2Api', options);
 		}
+
+		if (authentication === 'accessToken') {
+			credentialName = 'sentryIoApi';
+		} else {
+			credentialName = 'sentryIoServerApi';
+		}
+
+		const credentials = await this.getCredentials(credentialName);
+
+		if (credentials.url) {
+			options.uri = `${credentials?.url}${resource}`;
+		}
+
+		options.headers = {
+			Authorization: `Bearer ${credentials?.token}`,
+		};
+
+		return await this.helpers.request(options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}

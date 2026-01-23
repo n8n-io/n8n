@@ -1,15 +1,27 @@
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
+import type { ResourceLocatorCallbackFactory } from '@n8n/ai-workflow-builder';
 import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import type { IUser } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
+import type {
+	INodeCredentials,
+	INodeParameters,
+	INodeTypeNameVersion,
+	IUser,
+	ITelemetryTrackProperties,
+} from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { NodeTypes } from '@/node-types';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { Push } from '@/push';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+import { getBase } from '@/workflow-execute-additional-data';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.
@@ -19,39 +31,115 @@ import { UrlService } from '@/services/url.service';
 export class WorkflowBuilderService {
 	private service: AiWorkflowBuilderService | undefined;
 
+	private client: AiAssistantClient | undefined;
+
+	private initPromise: Promise<AiWorkflowBuilderService> | undefined;
+
 	constructor(
-		private readonly nodeTypes: NodeTypes,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly license: License,
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
+		private readonly push: Push,
+		private readonly telemetry: Telemetry,
+		private readonly instanceSettings: InstanceSettings,
+		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
-		if (!this.service) {
-			let client: AiAssistantClient | undefined;
+		if (this.service) return this.service;
 
-			// Create AiAssistantClient if baseUrl is configured
-			const baseUrl = this.config.aiAssistant.baseUrl;
-			if (baseUrl) {
-				const licenseCert = await this.license.loadCertStr();
-				const consumerId = this.license.getConsumerId();
+		this.initPromise ??= this.initializeService();
 
-				client = new AiAssistantClient({
-					licenseCert,
-					consumerId,
-					baseUrl,
-					n8nVersion: N8N_VERSION,
-				});
-			}
+		return await this.initPromise;
+	}
 
-			this.service = new AiWorkflowBuilderService(
-				this.nodeTypes,
-				client,
-				this.logger,
-				this.urlService.getInstanceBaseUrl(),
-			);
+	private async initializeService(): Promise<AiWorkflowBuilderService> {
+		// Create AiAssistantClient if baseUrl is configured
+		const baseUrl = this.config.aiAssistant.baseUrl;
+		if (baseUrl) {
+			const licenseCert = await this.license.loadCertStr();
+			const consumerId = this.license.getConsumerId();
+
+			this.client = new AiAssistantClient({
+				licenseCert,
+				consumerId,
+				baseUrl,
+				n8nVersion: N8N_VERSION,
+				instanceId: this.instanceSettings.instanceId,
+			});
+
+			// Register for license certificate updates
+			this.license.onCertRefresh((cert) => {
+				this.client?.updateLicenseCert(cert);
+			});
 		}
+
+		// Create callback that uses the push service
+		const onCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => {
+			this.push.sendToUsers(
+				{
+					type: 'updateBuilderCredits',
+					data: {
+						creditsQuota,
+						creditsClaimed,
+					},
+				},
+				[userId],
+			);
+		};
+
+		// Callback for AI Builder to send telemetry events
+		const onTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) => {
+			this.telemetry.track(event, properties);
+		};
+
+		// Factory for creating resource locator callbacks scoped to a user
+		const resourceLocatorCallbackFactory: ResourceLocatorCallbackFactory = (userId: string) => {
+			return async (
+				methodName: string,
+				path: string,
+				nodeTypeAndVersion: INodeTypeNameVersion,
+				currentNodeParameters: INodeParameters,
+				credentials?: INodeCredentials,
+				filter?: string,
+				paginationToken?: string,
+			) => {
+				const additionalData = await getBase({
+					userId,
+					currentNodeParameters,
+				});
+
+				return await this.dynamicNodeParametersService.getResourceLocatorResults(
+					methodName,
+					path,
+					additionalData,
+					nodeTypeAndVersion,
+					currentNodeParameters,
+					credentials,
+					filter,
+					paginationToken,
+				);
+			};
+		};
+
+		await this.loadNodesAndCredentials.postProcessLoaders();
+		const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+		this.loadNodesAndCredentials.releaseTypes();
+
+		this.service = new AiWorkflowBuilderService(
+			nodeTypeDescriptions,
+			this.client,
+			this.logger,
+			this.instanceSettings.instanceId,
+			this.urlService.getInstanceBaseUrl(),
+			N8N_VERSION,
+			onCreditsUpdated,
+			onTelemetryEvent,
+			resourceLocatorCallbackFactory,
+		);
+
 		return this.service;
 	}
 
@@ -64,5 +152,19 @@ export class WorkflowBuilderService {
 		const service = await this.getService();
 		const sessions = await service.getSessions(workflowId, user);
 		return sessions;
+	}
+
+	async getBuilderInstanceCredits(user: IUser) {
+		const service = await this.getService();
+		return await service.getBuilderInstanceCredits(user);
+	}
+
+	async truncateMessagesAfter(
+		workflowId: string,
+		user: IUser,
+		messageId: string,
+	): Promise<boolean> {
+		const service = await this.getService();
+		return await service.truncateMessagesAfter(workflowId, user, messageId);
 	}
 }

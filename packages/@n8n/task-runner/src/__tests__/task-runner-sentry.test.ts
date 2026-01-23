@@ -24,7 +24,7 @@ describe('TaskRunnerSentry', () => {
 			mock(),
 		);
 
-		it('should filter out user code errors', () => {
+		it('should filter out user code errors with node:vm frame', () => {
 			const event: ErrorEvent = {
 				type: undefined,
 				exception: {
@@ -98,6 +98,127 @@ describe('TaskRunnerSentry', () => {
 			};
 
 			expect(sentry.filterOutUserCodeErrors(event)).toBe(true);
+		});
+
+		it('should filter out user code errors with only evalmachine frames', () => {
+			const event: ErrorEvent = {
+				type: undefined,
+				exception: {
+					values: [
+						{
+							type: 'Error',
+							value: 'User code error',
+							stacktrace: {
+								frames: [
+									{
+										filename: '<anonymous>',
+										module: '<anonymous>',
+										function: 'new Promise',
+									},
+									{
+										filename: 'evalmachine.<anonymous>',
+										module: 'evalmachine.<anonymous>',
+										function: 'toDataUrl',
+									},
+									{
+										filename: 'evalmachine.<anonymous>',
+										module: 'evalmachine.<anonymous>',
+										function: 'loadImages',
+									},
+								],
+							},
+							mechanism: { type: 'onunhandledrejection', handled: false },
+						},
+					],
+				},
+				event_id: '18bb78bb3d9d44c4acf3d774c2cfbfd9',
+				platform: 'node',
+			};
+
+			expect(sentry.filterOutUserCodeErrors(event)).toBe(true);
+		});
+
+		it('should filter out user code errors with VmCodeWrapper frame', () => {
+			const event: ErrorEvent = {
+				type: undefined,
+				exception: {
+					values: [
+						{
+							type: 'TypeError',
+							value: 'Cannot read property of undefined',
+							stacktrace: {
+								frames: [
+									{
+										filename: '<anonymous>',
+										module: '<anonymous>',
+										function: 'new Promise',
+									},
+									{
+										filename: 'evalmachine.<anonymous>',
+										module: 'evalmachine.<anonymous>',
+										function: 'VmCodeWrapper',
+									},
+								],
+							},
+							mechanism: { type: 'onunhandledrejection', handled: false },
+						},
+					],
+				},
+				event_id: '18bb78bb3d9d44c4acf3d774c2cfbfda',
+				platform: 'node',
+			};
+
+			expect(sentry.filterOutUserCodeErrors(event)).toBe(true);
+		});
+
+		it('should not filter out task runner errors', () => {
+			const event: ErrorEvent = {
+				type: undefined,
+				exception: {
+					values: [
+						{
+							type: 'Error',
+							value: 'Task runner internal error',
+							stacktrace: {
+								frames: [
+									{
+										filename: 'app:///dist/js-task-runner/js-task-runner.js',
+										module: 'js-task-runner:js-task-runner',
+										function: 'JsTaskRunner.executeTask',
+									},
+									{
+										filename: 'app:///dist/js-task-runner/js-task-runner.js',
+										module: 'js-task-runner:js-task-runner',
+										function: 'JsTaskRunner.runForAllItems',
+									},
+								],
+							},
+						},
+					],
+				},
+				event_id: '18bb78bb3d9d44c4acf3d774c2cfbfdb',
+				platform: 'node',
+			};
+
+			expect(sentry.filterOutUserCodeErrors(event)).toBe(false);
+		});
+
+		it('should not filter out errors without stacktrace', () => {
+			const event: ErrorEvent = {
+				type: undefined,
+				exception: {
+					values: [
+						{
+							type: 'Error',
+							value: 'Error without stacktrace',
+						},
+					],
+				},
+				event_id: '18bb78bb3d9d44c4acf3d774c2cfbfdc',
+				platform: 'node',
+			};
+
+			expect(sentry.filterOutUserCodeErrors(event)).toBe(false);
 		});
 	});
 

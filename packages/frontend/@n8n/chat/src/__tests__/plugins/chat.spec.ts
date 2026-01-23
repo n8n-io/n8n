@@ -311,7 +311,53 @@ describe('ChatPlugin', () => {
 
 			expect(sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 			expect(chatStore.messages.value).toHaveLength(0);
-			expect(chatStore.currentSessionId.value).toBeNull();
+			expect(chatStore.currentSessionId.value).toBe(sessionId);
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(window.localStorage.setItem).toHaveBeenCalledWith(localStorageSessionIdKey, sessionId);
+		});
+
+		it('should preserve manually set sessionId when no messages exist', async () => {
+			const manualSessionId = '5123f177-df4b-4c0b-b2a1-645432140313';
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				manualSessionId,
+			);
+			vi.mocked(api.loadPreviousSession).mockResolvedValueOnce({ data: [] });
+
+			const sessionId = await chatStore.loadPreviousSession?.();
+
+			expect(sessionId).toBe(manualSessionId);
+			expect(chatStore.currentSessionId.value).toBe(manualSessionId);
+			expect(chatStore.messages.value).toHaveLength(0);
+			// localStorage.setItem should not be called since sessionId already existed
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(window.localStorage.setItem).not.toHaveBeenCalled();
+		});
+
+		it('should preserve manually set sessionId when messages exist', async () => {
+			const manualSessionId = '5123f177-df4b-4c0b-b2a1-645432140313';
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				manualSessionId,
+			);
+			const mockMessages: LoadPreviousSessionResponse = {
+				data: [
+					{
+						id: ['user', 'uuid-1'],
+						kwargs: { content: 'Hello', additional_kwargs: {} },
+						lc: 1,
+						type: 'HumanMessage',
+					},
+				],
+			};
+			vi.mocked(api.loadPreviousSession).mockResolvedValueOnce(mockMessages);
+
+			const sessionId = await chatStore.loadPreviousSession?.();
+
+			expect(sessionId).toBe(manualSessionId);
+			expect(chatStore.currentSessionId.value).toBe(manualSessionId);
+			expect(chatStore.messages.value).toHaveLength(1);
+			// localStorage.setItem should not be called since sessionId already existed
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(window.localStorage.setItem).not.toHaveBeenCalled();
 		});
 
 		it('should skip loading if loadPreviousSession is false', async () => {
@@ -324,12 +370,53 @@ describe('ChatPlugin', () => {
 			expect(api.loadPreviousSession).not.toHaveBeenCalled();
 		});
 
-		it('should start a new session', async () => {
+		it('should start a new session when localStorage is empty', async () => {
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(null);
+
 			await chatStore.startNewSession?.();
 
 			expect(chatStore.currentSessionId.value).toMatch(
 				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 			);
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(window.localStorage.setItem).toHaveBeenCalledWith(
+				localStorageSessionIdKey,
+				chatStore.currentSessionId.value,
+			);
+		});
+
+		it('should preserve existing sessionId when starting new session with loadPreviousSession enabled', async () => {
+			const existingSessionId = '5123f177-df4b-4c0b-b2a1-645432140313';
+			mockOptions.loadPreviousSession = true;
+			chatStore = setupChatStore(mockOptions);
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				existingSessionId,
+			);
+
+			await chatStore.startNewSession?.();
+
+			expect(chatStore.currentSessionId.value).toBe(existingSessionId);
+			// localStorage.setItem should not be called since sessionId already exists
+			// eslint-disable-next-line @typescript-eslint/unbound-method
+			expect(window.localStorage.setItem).not.toHaveBeenCalled();
+		});
+
+		it('should generate new sessionId when loadPreviousSession is disabled', async () => {
+			const existingSessionId = '5123f177-df4b-4c0b-b2a1-645432140313';
+			mockOptions.loadPreviousSession = false;
+			chatStore = setupChatStore(mockOptions);
+			(window.localStorage.getItem as ReturnType<typeof vi.fn>).mockReturnValueOnce(
+				existingSessionId,
+			);
+
+			await chatStore.startNewSession?.();
+
+			// Should generate new UUID, not preserve existing one
+			expect(chatStore.currentSessionId.value).not.toBe(existingSessionId);
+			expect(chatStore.currentSessionId.value).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+			);
+			// localStorage.setItem should be called with new sessionId
 			// eslint-disable-next-line @typescript-eslint/unbound-method
 			expect(window.localStorage.setItem).toHaveBeenCalledWith(
 				localStorageSessionIdKey,

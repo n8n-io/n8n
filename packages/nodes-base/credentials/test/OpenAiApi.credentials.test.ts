@@ -8,7 +8,7 @@ describe('OpenAiApi Credential', () => {
 	it('should have correct properties', () => {
 		expect(openAiApi.name).toBe('openAiApi');
 		expect(openAiApi.displayName).toBe('OpenAi');
-		expect(openAiApi.documentationUrl).toBe('openAi');
+		expect(openAiApi.documentationUrl).toBe('openai');
 		expect(openAiApi.properties).toHaveLength(6);
 		expect(openAiApi.test.request.baseURL).toBe('={{$credentials?.url}}');
 		expect(openAiApi.test.request.url).toBe('/models');
@@ -149,6 +149,54 @@ describe('OpenAiApi Credential', () => {
 			expect(result.headers).toEqual({
 				Authorization: 'Bearer sk-test123456789',
 				'OpenAI-Organization': '',
+			});
+		});
+
+		it('should preserve existing headers when adding auth headers', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {
+					'OpenAI-Beta': 'assistants=v2',
+				},
+				url: '/assistants',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				'OpenAI-Beta': 'assistants=v2',
+				Authorization: 'Bearer sk-test123456789',
+			});
+		});
+
+		it('should preserve existing headers even with custom header option enabled', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				header: true,
+				headerName: 'X-Additional-Header',
+				headerValue: 'additional-value',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {
+					'OpenAI-Beta': 'assistants=v2',
+					'X-Existing-Header': 'existing-value',
+				},
+				url: '/assistants/asst_123',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				'OpenAI-Beta': 'assistants=v2',
+				'X-Existing-Header': 'existing-value',
+				Authorization: 'Bearer sk-test123456789',
+				'X-Additional-Header': 'additional-value',
 			});
 		});
 	});

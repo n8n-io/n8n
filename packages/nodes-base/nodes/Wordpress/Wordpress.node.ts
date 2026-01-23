@@ -275,6 +275,9 @@ export class Wordpress implements INodeType {
 						if (options.search) {
 							qs.search = options.search as string;
 						}
+						if (options.before) {
+							qs.before = options.before as string;
+						}
 						if (options.after) {
 							qs.after = options.after as string;
 						}
@@ -445,6 +448,9 @@ export class Wordpress implements INodeType {
 						}
 						if (options.search) {
 							qs.search = options.search as string;
+						}
+						if (options.before) {
+							qs.before = options.before as string;
 						}
 						if (options.after) {
 							qs.after = options.after as string;

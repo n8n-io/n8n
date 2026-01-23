@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import axios from 'axios';
+import { mock } from 'jest-mock-extended';
 import type {
 	MessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSyslogOptions,
@@ -12,17 +13,17 @@ import {
 	defaultMessageEventBusDestinationSyslogOptions,
 	defaultMessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import syslog from 'syslog-client';
 import { v4 as uuid } from 'uuid';
 
 import type { EventNamesTypes } from '@/eventbus/event-message-classes';
 import { EventMessageAudit } from '@/eventbus/event-message-classes/event-message-audit';
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import type { MessageEventBusDestinationSentry } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-sentry.ee';
-import type { MessageEventBusDestinationSyslog } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-syslog.ee';
-import type { MessageEventBusDestinationWebhook } from '@/eventbus/message-event-bus-destination/message-event-bus-destination-webhook.ee';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
+import type { MessageEventBusDestinationSentry } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-sentry.ee';
+import type { MessageEventBusDestinationSyslog } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-syslog.ee';
+import type { MessageEventBusDestinationWebhook } from '@/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee';
+import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { createUser } from './shared/db/users';
@@ -31,9 +32,10 @@ import * as utils from './shared/utils';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 jest.mock('axios');
+
+const mockAxiosInstance = mock<ReturnType<typeof axios.create>>();
 const mockedAxios = axios as jest.Mocked<typeof axios>;
-jest.mock('syslog-client');
-const mockedSyslog = syslog as jest.Mocked<typeof syslog>;
+mockedAxios.create.mockReturnValue(mockAxiosInstance);
 
 mockInstance(Publisher);
 
@@ -69,6 +71,7 @@ const testSentryDestination: MessageEventBusDestinationSentryOptions = {
 };
 
 let eventBus: MessageEventBus;
+let destinationService: LogStreamingDestinationService;
 
 async function confirmIdInAll(id: string) {
 	const sent = await eventBus.getEventsAll();
@@ -86,16 +89,18 @@ mockInstance(ExecutionRecoveryService);
 const testServer = utils.setupTestServer({
 	endpointGroups: ['eventBus'],
 	enabledFeatures: ['feat:logStreaming'],
+	modules: ['log-streaming'],
 });
 
 beforeAll(async () => {
 	owner = await createUser({ role: GLOBAL_OWNER_ROLE });
 	authOwnerAgent = testServer.authAgentFor(owner);
 
-	mockedSyslog.createClient.mockImplementation(() => new syslog.Client());
-
 	eventBus = Container.get(MessageEventBus);
 	await eventBus.initialize();
+
+	destinationService = Container.get(LogStreamingDestinationService);
+	await destinationService.initialize();
 });
 
 afterAll(async () => {
@@ -140,7 +145,7 @@ describe('GET /eventbus/destination', () => {
 
 		for (let index = 0; index < data.length; index++) {
 			const destination = data[index];
-			const foundDestinations = await eventBus.findDestination(destination.id);
+			const foundDestinations = await destinationService.findDestination(destination.id);
 			expect(Array.isArray(foundDestinations)).toBeTruthy();
 			expect(foundDestinations.length).toBe(1);
 			expect(foundDestinations[0].label).toBe(destination.label);
@@ -177,14 +182,14 @@ test('should anonymize audit message to syslog ', async () => {
 		id: uuid(),
 	});
 
-	const syslogDestination = eventBus.destinations[
+	const syslogDestination = destinationService['destinations'][
 		testSyslogDestination.id!
 	] as MessageEventBusDestinationSyslog;
 
-	syslogDestination.enable();
+	syslogDestination.enabled = true;
 
 	const mockedSyslogClientLog = jest.spyOn(syslogDestination.client, 'log');
-	mockedSyslogClientLog.mockImplementation((m, _options, _cb) => {
+	mockedSyslogClientLog.mockImplementation(async (m, _options, _cb) => {
 		const o = JSON.parse(m);
 		expect(o).toHaveProperty('payload');
 		expect(o.payload).toHaveProperty('_secret');
@@ -193,7 +198,6 @@ test('should anonymize audit message to syslog ', async () => {
 			: expect(o.payload._secret).toBe('secret');
 		expect(o.payload).toHaveProperty('public');
 		expect(o.payload.public).toBe('public');
-		return syslogDestination.client;
 	});
 
 	syslogDestination.anonymizeAuditMessages = true;
@@ -223,7 +227,7 @@ test('should anonymize audit message to syslog ', async () => {
 					await eventBus.getEventsAll();
 					await confirmIdInAll(testAuditMessage.id);
 					expect(mockedSyslogClientLog).toHaveBeenCalled();
-					syslogDestination.disable();
+					syslogDestination.enabled = false;
 					eventBus.logWriter.worker?.removeListener('message', handler006);
 					resolve(true);
 				}
@@ -238,14 +242,14 @@ test('should send message to webhook ', async () => {
 		id: uuid(),
 	});
 
-	const webhookDestination = eventBus.destinations[
+	const webhookDestination = destinationService['destinations'][
 		testWebhookDestination.id!
 	] as MessageEventBusDestinationWebhook;
 
-	webhookDestination.enable();
+	webhookDestination.enabled = true;
 
-	mockedAxios.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
-	mockedAxios.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockAxiosInstance.post.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
+	mockAxiosInstance.request.mockResolvedValue({ status: 200, data: { msg: 'OK' } });
 
 	await eventBus.send(testMessage);
 	await new Promise((resolve) => {
@@ -256,8 +260,8 @@ test('should send message to webhook ', async () => {
 					await confirmIdInAll(testMessage.id);
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
-					expect(mockedAxios.request).toHaveBeenCalled();
-					webhookDestination.disable();
+					expect(mockAxiosInstance.request).toHaveBeenCalled();
+					webhookDestination.enabled = false;
 					eventBus.logWriter.worker?.removeListener('message', handler003);
 					resolve(true);
 				}
@@ -272,11 +276,11 @@ test('should send message to sentry ', async () => {
 		id: uuid(),
 	});
 
-	const sentryDestination = eventBus.destinations[
+	const sentryDestination = destinationService['destinations'][
 		testSentryDestination.id!
 	] as MessageEventBusDestinationSentry;
 
-	sentryDestination.enable();
+	sentryDestination.enabled = true;
 
 	const mockedSentryCaptureMessage = jest.spyOn(sentryDestination.sentryClient!, 'captureMessage');
 	mockedSentryCaptureMessage.mockImplementation((_m, _level, _hint, _scope) => {
@@ -297,7 +301,7 @@ test('should send message to sentry ', async () => {
 				} else if (msg.command === 'confirmMessageSent') {
 					await confirmIdSent(testMessage.id);
 					expect(mockedSentryCaptureMessage).toHaveBeenCalled();
-					sentryDestination.disable();
+					sentryDestination.enabled = false;
 					eventBus.logWriter.worker?.removeListener('message', handler004);
 					resolve(true);
 				}
@@ -307,14 +311,20 @@ test('should send message to sentry ', async () => {
 });
 
 test('DELETE /eventbus/destination delete all destinations by id', async () => {
-	const existingDestinationIds = [...Object.keys(eventBus.destinations)];
+	const existingDestinations = await destinationService.findDestination();
+	const existingDestinationIds = existingDestinations.reduce<string[]>((acc, d) => {
+		if (d.id) {
+			acc.push(d.id);
+		}
+		return acc;
+	}, []);
 
-	await Promise.all(
-		existingDestinationIds.map(async (id) => {
-			const response = await authOwnerAgent.del('/eventbus/destination').query({ id });
-			expect(response.statusCode).toBe(200);
-		}),
-	);
+	// Delete sequentially to avoid race conditions
+	for (const id of existingDestinationIds) {
+		const response = await authOwnerAgent.del('/eventbus/destination').query({ id });
+		expect(response.statusCode).toBe(200);
+	}
 
-	expect(Object.keys(eventBus.destinations).length).toBe(0);
+	const remainingDestinations = await destinationService.findDestination();
+	expect(remainingDestinations.length).toBe(0);
 });

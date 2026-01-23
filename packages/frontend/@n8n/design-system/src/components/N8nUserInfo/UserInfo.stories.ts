@@ -6,7 +6,7 @@ export default {
 	title: 'Modules/UserInfo',
 	component: N8nUserInfo,
 	parameters: {
-		backgrounds: { default: '--color-background-light' },
+		backgrounds: { default: '--color--background--light-2' },
 	},
 };
 

@@ -14,4 +14,22 @@ export type CollaboratorsChanged = {
 	};
 };
 
-export type CollaborationPushMessage = CollaboratorsChanged;
+export type WriteAccessAcquired = {
+	type: 'writeAccessAcquired';
+	data: {
+		workflowId: string;
+		userId: string;
+	};
+};
+
+export type WriteAccessReleased = {
+	type: 'writeAccessReleased';
+	data: {
+		workflowId: string;
+	};
+};
+
+export type CollaborationPushMessage =
+	| CollaboratorsChanged
+	| WriteAccessAcquired
+	| WriteAccessReleased;

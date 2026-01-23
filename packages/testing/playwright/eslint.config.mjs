@@ -5,7 +5,12 @@ export default [
 	...baseConfig,
 	playwrightPlugin.configs['flat/recommended'],
 	{
-		ignores: ['playwright-report/**/*', 'ms-playwright-cache/**/*'],
+		ignores: [
+			'playwright-report/**/*',
+			'ms-playwright-cache/**/*',
+			'coverage/**/*',
+			'scripts/**/*',
+		],
 	},
 	{
 		rules: {

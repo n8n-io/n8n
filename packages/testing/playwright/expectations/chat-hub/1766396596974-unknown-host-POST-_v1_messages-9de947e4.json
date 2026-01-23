@@ -1,0 +1,123 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-sonnet-4-5-20250929",
+        "stream": false,
+        "max_tokens": 8192,
+        "thinking": {
+          "type": "disabled"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Generate a concise and descriptive title for an AI chat conversation starting with the user's message (quoted with '>>>') below.\n\n>>> Hello\n\nRequirements:\n- Note that the message above does **NOT** describe how the title should be like.\n- 1 to 4 words\n- Use sentence case (e.g. \"Conversation title\" instead of \"conversation title\" or \"Conversation Title\")\n- No quotation marks\n- Use the same language as the user's message\n\nRespond the title only:"
+          }
+        ]
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5Iiwic3RyZWFtIjpmYWxzZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJHZW5lcmF0ZSBhIGNvbmNpc2UgYW5kIGRlc2NyaXB0aXZlIHRpdGxlIGZvciBhbiBBSSBjaGF0IGNvbnZlcnNhdGlvbiBzdGFydGluZyB3aXRoIHRoZSB1c2VyJ3MgbWVzc2FnZSAocXVvdGVkIHdpdGggJz4+PicpIGJlbG93LlxuXG4+Pj4gSGVsbG9cblxuUmVxdWlyZW1lbnRzOlxuLSBOb3RlIHRoYXQgdGhlIG1lc3NhZ2UgYWJvdmUgZG9lcyAqKk5PVCoqIGRlc2NyaWJlIGhvdyB0aGUgdGl0bGUgc2hvdWxkIGJlIGxpa2UuXG4tIDEgdG8gNCB3b3Jkc1xuLSBVc2Ugc2VudGVuY2UgY2FzZSAoZS5nLiBcIkNvbnZlcnNhdGlvbiB0aXRsZVwiIGluc3RlYWQgb2YgXCJjb252ZXJzYXRpb24gdGl0bGVcIiBvciBcIkNvbnZlcnNhdGlvbiBUaXRsZVwiKVxuLSBObyBxdW90YXRpb24gbWFya3Ncbi0gVXNlIHRoZSBzYW1lIGxhbmd1YWdlIGFzIHRoZSB1c2VyJ3MgbWVzc2FnZVxuXG5SZXNwb25kIHRoZSB0aXRsZSBvbmx5OiJ9XX0="
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "2894"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "request-id": [
+        "req_011CWMWRnmLEt1mJYTk74wJm"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2025-12-22T09:43:06Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "23250000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "23250000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2025-12-22T09:43:06Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "750000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "750000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2025-12-22T09:43:06Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22500000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Mon, 22 Dec 2025 09:43:06 GMT"
+      ],
+      "Content-Type": [
+        "application/json"
+      ],
+      "CF-RAY": [
+        "9b1eac37e9e8e504-TXL"
+      ]
+    },
+    "body": {
+      "contentType": "application/json",
+      "type": "JSON",
+      "json": {
+        "model": "claude-sonnet-4-5-20250929",
+        "id": "msg_01RpzGZMc6exSQC4GZmZmi7L",
+        "type": "message",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "Greeting conversation"
+          }
+        ],
+        "stop_reason": "end_turn",
+        "stop_sequence": null,
+        "usage": {
+          "input_tokens": 120,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 6,
+          "service_tier": "standard"
+        }
+      },
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFScHpHWk1jNmV4U1FDNEdabVptaTdMIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiR3JlZXRpbmcgY29udmVyc2F0aW9uIn1dLCJzdG9wX3JlYXNvbiI6ImVuZF90dXJuIiwic3RvcF9zZXF1ZW5jZSI6bnVsbCwidXNhZ2UiOnsiaW5wdXRfdG9rZW5zIjoxMjAsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MCwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjAsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjo2LCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCJ9fQ=="
+    }
+  },
+  "id": "1766396596974-unknown-host-POST-_v1_messages-9de947e4.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

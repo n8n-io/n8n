@@ -89,7 +89,7 @@ const onColorSelect = (value: string | null) => {
 }
 
 .input {
-	margin-left: var(--spacing-3xs);
+	margin-left: var(--spacing--3xs);
 }
 </style>
 

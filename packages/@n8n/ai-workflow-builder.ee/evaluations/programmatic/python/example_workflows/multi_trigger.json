@@ -1,0 +1,85 @@
+{
+	"name": "Multi-Trigger Workflow",
+	"nodes": [
+		{
+			"id": "1",
+			"name": "Webhook Trigger",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"path": "/webhook1"
+			}
+		},
+		{
+			"id": "2",
+			"name": "Schedule Trigger",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1,
+			"position": [250, 450],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "hours",
+							"hoursInterval": 1
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "3",
+			"name": "Merge",
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 1,
+			"position": [450, 375],
+			"parameters": {}
+		},
+		{
+			"id": "4",
+			"name": "Process Data",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 1,
+			"position": [650, 375],
+			"parameters": {
+				"jsCode": "return items;"
+			}
+		}
+	],
+	"connections": {
+		"Webhook Trigger": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Schedule Trigger": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Process Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

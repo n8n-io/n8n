@@ -16,6 +16,7 @@ import {
 	listenerCertificateOperations,
 } from './ListenerCertificateDescription';
 import { loadBalancerFields, loadBalancerOperations } from './LoadBalancerDescription';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../utils';
 
 export class AwsElb implements INodeType {
 	description: INodeTypeDescription = {
@@ -31,13 +32,9 @@ export class AwsElb implements INodeType {
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		properties: [
+			awsNodeAuthOptions,
 			{
 				displayName: 'Resource',
 				name: 'resource',

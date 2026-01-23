@@ -11,7 +11,7 @@ export class CustomerIoApi implements ICredentialType {
 
 	displayName = 'Customer.io API';
 
-	documentationUrl = 'customerIo';
+	documentationUrl = 'customerio';
 
 	properties: INodeProperties[] = [
 		{

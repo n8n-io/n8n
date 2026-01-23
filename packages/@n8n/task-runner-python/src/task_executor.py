@@ -1,39 +1,53 @@
-from queue import Empty
 import multiprocessing
 import traceback
 import textwrap
 import json
+import io
 import os
 import sys
-import tempfile
 import logging
+from typing import cast
 
 from src.errors import (
     TaskCancelledError,
+    TaskKilledError,
     TaskResultMissingError,
+    TaskResultReadError,
     TaskRuntimeError,
     TaskTimeoutError,
-    TaskProcessExitError,
+    TaskSubprocessFailedError,
+    SecurityViolationError,
 )
+from src.import_validation import validate_module_import
+from src.config.security_config import SecurityConfig
 
-from src.message_types.broker import NodeMode, Items
+from src.message_types.broker import NodeMode, Items, Query
+from src.message_types.pipe import (
+    PipeResultMessage,
+    PipeErrorMessage,
+    TaskErrorInfo,
+    PrintArgs,
+)
+from src.pipe_reader import PipeReader
 from src.constants import (
     EXECUTOR_CIRCULAR_REFERENCE_KEY,
     EXECUTOR_USER_OUTPUT_KEY,
     EXECUTOR_ALL_ITEMS_FILENAME,
     EXECUTOR_PER_ITEM_FILENAME,
     SIGTERM_EXIT_CODE,
+    SIGKILL_EXIT_CODE,
+    PIPE_MSG_PREFIX_LENGTH,
 )
-from typing import Any, Set
 
 from multiprocessing.context import ForkServerProcess
+from multiprocessing.connection import Connection
 
 logger = logging.getLogger(__name__)
 
 MULTIPROCESSING_CONTEXT = multiprocessing.get_context("forkserver")
 MAX_PRINT_ARGS_ALLOWED = 100
 
-PrintArgs = list[list[Any]]  # Args to all `print()` calls in a Python code task
+type PipeConnection = Connection
 
 
 class TaskExecutor:
@@ -44,12 +58,10 @@ class TaskExecutor:
         code: str,
         node_mode: NodeMode,
         items: Items,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
-        can_log: bool,
-    ):
-        """Create a subprocess for executing a Python code task and a queue for communication."""
+        security_config: SecurityConfig,
+        query: Query = None,
+    ) -> tuple[ForkServerProcess, PipeConnection, PipeConnection]:
+        """Create a subprocess for executing a Python code task and a pipe for communication."""
 
         fn = (
             TaskExecutor._all_items
@@ -57,39 +69,44 @@ class TaskExecutor:
             else TaskExecutor._per_item
         )
 
-        queue = MULTIPROCESSING_CONTEXT.Queue()
+        # thread in runner process reads, subprocess writes
+        read_conn, write_conn = MULTIPROCESSING_CONTEXT.Pipe(duplex=False)
+
         process = MULTIPROCESSING_CONTEXT.Process(
             target=fn,
             args=(
                 code,
                 items,
-                queue,
-                stdlib_allow,
-                external_allow,
-                builtins_deny,
-                can_log,
+                write_conn,
+                security_config,
+                query,
             ),
         )
 
-        return process, queue
+        return process, read_conn, write_conn
 
     @staticmethod
     def execute_process(
         process: ForkServerProcess,
-        queue: multiprocessing.Queue,
+        read_conn: PipeConnection,
+        write_conn: PipeConnection,
         task_timeout: int,
         continue_on_fail: bool,
-    ) -> tuple[list, PrintArgs]:
+    ) -> tuple[Items, PrintArgs, int]:
         """Execute a subprocess for a Python code task."""
 
         print_args: PrintArgs = []
 
+        pipe_reader = PipeReader(read_conn.fileno(), read_conn)
+        pipe_reader.start()
+
         try:
             try:
                 process.start()
-            except (ProcessLookupError, ConnectionError, BrokenPipeError) as e:
-                logger.error(f"Failed to start child process: {e}")
-                raise TaskProcessExitError(-1)
+            except Exception as e:
+                raise TaskSubprocessFailedError(-1, e)
+            finally:
+                write_conn.close()
 
             process.join(timeout=task_timeout)
 
@@ -100,42 +117,50 @@ class TaskExecutor:
             if process.exitcode == SIGTERM_EXIT_CODE:
                 raise TaskCancelledError()
 
+            if process.exitcode == SIGKILL_EXIT_CODE:
+                raise TaskKilledError()
+
             if process.exitcode != 0:
                 assert process.exitcode is not None
-                raise TaskProcessExitError(process.exitcode)
+                raise TaskSubprocessFailedError(process.exitcode)
 
-            try:
-                returned = queue.get_nowait()
-            except Empty:
-                raise TaskResultMissingError()
-            except EOFError as e:
-                logger.error(f"Failed to retrieve results from child process: {e}")
+            pipe_reader.join(timeout=task_timeout)
+
+            if pipe_reader.is_alive():
+                try:
+                    read_conn.close()
+                except Exception:
+                    pass
+                raise TaskResultReadError(
+                    TimeoutError(f"Pipe reader timed out after {task_timeout}s")
+                )
+
+            if pipe_reader.error:
+                raise TaskResultReadError(pipe_reader.error)
+
+            if pipe_reader.pipe_message is None:
                 raise TaskResultMissingError()
 
-            finally:
-                queue.close()
-                queue.join_thread()
+            returned = pipe_reader.pipe_message
 
             if "error" in returned:
-                raise TaskRuntimeError(returned["error"])
+                error_msg = cast(PipeErrorMessage, returned)
+                raise TaskRuntimeError(error_msg["error"])
 
-            if "result_file" not in returned:
+            if "result" not in returned:
                 raise TaskResultMissingError()
 
-            result_file = returned["result_file"]
-            try:
-                with open(result_file, "r", encoding="utf-8") as f:
-                    result = json.load(f)
-            finally:
-                os.unlink(result_file)
+            result_msg = cast(PipeResultMessage, returned)
+            result = result_msg["result"]
+            print_args = result_msg.get("print_args", [])
+            assert pipe_reader.message_size is not None
+            result_size_bytes = pipe_reader.message_size
 
-            print_args = returned.get("print_args", [])
-
-            return result, print_args
+            return result, print_args, result_size_bytes
 
         except Exception as e:
             if continue_on_fail:
-                return [{"json": {"error": str(e)}}], print_args
+                return [{"json": {"error": str(e)}}], print_args, 0
             raise
 
     @staticmethod
@@ -151,6 +176,7 @@ class TaskExecutor:
 
             if process.is_alive():
                 process.kill()
+                process.join()
         except (ProcessLookupError, ConnectionError, BrokenPipeError):
             # subprocess is dead or unreachable
             pass
@@ -159,70 +185,72 @@ class TaskExecutor:
     def _all_items(
         raw_code: str,
         items: Items,
-        queue: multiprocessing.Queue,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
-        can_log: bool,
+        write_conn,
+        security_config: SecurityConfig,
+        query: Query = None,
     ):
         """Execute a Python code task in all-items mode."""
 
-        os.environ.clear()
+        if security_config.runner_env_deny:
+            os.environ.clear()
 
-        TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
+        TaskExecutor._sanitize_sys_modules(security_config)
 
         print_args: PrintArgs = []
+        sys.stderr = stderr_capture = io.StringIO()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
             compiled_code = compile(wrapped_code, EXECUTOR_ALL_ITEMS_FILENAME, "exec")
 
             globals = {
-                "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
+                "__builtins__": TaskExecutor._filter_builtins(security_config),
                 "_items": items,
-                "print": TaskExecutor._create_custom_print(print_args)
-                if can_log
-                else print,
+                "_query": query,
+                "print": TaskExecutor._create_custom_print(print_args),
             }
 
             exec(compiled_code, globals)
 
-            result = globals[EXECUTOR_USER_OUTPUT_KEY]
-            TaskExecutor._put_result(queue, result, print_args)
+            result = cast(Items, globals[EXECUTOR_USER_OUTPUT_KEY])
+            TaskExecutor._put_result(write_conn.fileno(), result, print_args)
 
-        except Exception as e:
-            TaskExecutor._put_error(queue, e, print_args)
+        except BaseException as e:
+            TaskExecutor._put_error(
+                write_conn.fileno(), e, stderr_capture.getvalue(), print_args
+            )
 
     @staticmethod
     def _per_item(
         raw_code: str,
         items: Items,
-        queue: multiprocessing.Queue,
-        stdlib_allow: Set[str],
-        external_allow: Set[str],
-        builtins_deny: set[str],
-        can_log: bool,
+        write_conn,
+        security_config: SecurityConfig,
+        _query: Query = None,  # unused, only to keep signatures consistent across modes
     ):
         """Execute a Python code task in per-item mode."""
 
-        os.environ.clear()
+        if security_config.runner_env_deny:
+            os.environ.clear()
 
-        TaskExecutor._sanitize_sys_modules(stdlib_allow, external_allow)
+        TaskExecutor._sanitize_sys_modules(security_config)
 
         print_args: PrintArgs = []
+        sys.stderr = stderr_capture = io.StringIO()
 
         try:
             wrapped_code = TaskExecutor._wrap_code(raw_code)
             compiled_code = compile(wrapped_code, EXECUTOR_PER_ITEM_FILENAME, "exec")
 
-            result = []
+            filtered_builtins = TaskExecutor._filter_builtins(security_config)
+            custom_print = TaskExecutor._create_custom_print(print_args)
+
+            result: Items = []
             for index, item in enumerate(items):
                 globals = {
-                    "__builtins__": TaskExecutor._filter_builtins(builtins_deny),
+                    "__builtins__": filtered_builtins,
                     "_item": item,
-                    "print": TaskExecutor._create_custom_print(print_args)
-                    if can_log
-                    else print,
+                    "print": custom_print,
                 }
 
                 exec(compiled_code, globals)
@@ -232,13 +260,21 @@ class TaskExecutor:
                 if user_output is None:
                     continue
 
-                user_output["pairedItem"] = {"item": index}
-                result.append(user_output)
+                json_data = TaskExecutor._extract_json_data_per_item(user_output)
 
-            TaskExecutor._put_result(queue, result, print_args)
+                output_item = {"json": json_data, "pairedItem": {"item": index}}
 
-        except Exception as e:
-            TaskExecutor._put_error(queue, e, print_args)
+                if isinstance(user_output, dict) and "binary" in user_output:
+                    output_item["binary"] = user_output["binary"]
+
+                result.append(output_item)
+
+            TaskExecutor._put_result(write_conn.fileno(), result, print_args)
+
+        except BaseException as e:
+            TaskExecutor._put_error(
+                write_conn.fileno(), e, stderr_capture.getvalue(), print_args
+            )
 
     @staticmethod
     def _wrap_code(raw_code: str) -> str:
@@ -246,31 +282,72 @@ class TaskExecutor:
         return f"def _user_function():\n{indented_code}\n\n{EXECUTOR_USER_OUTPUT_KEY} = _user_function()"
 
     @staticmethod
-    def _put_result(
-        queue: multiprocessing.Queue, result: list[Any], print_args: PrintArgs
-    ):
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            delete=False,
-            prefix="n8n_result_",
-            suffix=".json",
-            encoding="utf-8",
-        ) as f:
-            json.dump(result, f, default=str, ensure_ascii=False)
-            result_file = f.name
+    def _extract_json_data_per_item(user_output):
+        if not isinstance(user_output, dict):
+            return user_output
 
-        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-        queue.put({"result_file": result_file, "print_args": print_args_to_send})
+        if "json" in user_output:
+            return user_output["json"]
+
+        if "binary" in user_output:
+            return {k: v for k, v in user_output.items() if k != "binary"}
+
+        return user_output
 
     @staticmethod
-    def _put_error(queue: multiprocessing.Queue, e: Exception, print_args: PrintArgs):
-        print_args_to_send = TaskExecutor._truncate_print_args(print_args)
-        queue.put(
-            {
-                "error": {"message": str(e), "stack": traceback.format_exc()},
-                "print_args": print_args_to_send,
-            }
-        )
+    def _put_result(write_fd: int, result: Items, print_args: PrintArgs):
+        message: PipeResultMessage = {
+            "result": result,
+            "print_args": TaskExecutor._truncate_print_args(print_args),
+        }
+
+        data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
+        length_bytes = len(data).to_bytes(PIPE_MSG_PREFIX_LENGTH, "big")
+
+        try:
+            TaskExecutor._write_bytes(write_fd, length_bytes)
+            TaskExecutor._write_bytes(write_fd, data)
+        finally:
+            try:
+                os.close(write_fd)
+            except Exception:
+                pass
+
+    @staticmethod
+    def _put_error(
+        write_fd: int,
+        e: BaseException,
+        stderr: str = "",
+        print_args: PrintArgs | None = None,
+    ):
+        if print_args is None:
+            print_args = []
+
+        task_error_info: TaskErrorInfo = {
+            "message": f"Process exited with code {e.code}"
+            if isinstance(e, SystemExit)
+            else str(e),
+            "description": getattr(e, "description", ""),
+            "stack": traceback.format_exc(),
+            "stderr": stderr,
+        }
+
+        message: PipeErrorMessage = {
+            "error": task_error_info,
+            "print_args": TaskExecutor._truncate_print_args(print_args),
+        }
+
+        data = json.dumps(message, default=str, ensure_ascii=False).encode("utf-8")
+        length_bytes = len(data).to_bytes(PIPE_MSG_PREFIX_LENGTH, "big")
+
+        try:
+            TaskExecutor._write_bytes(write_fd, length_bytes)
+            TaskExecutor._write_bytes(write_fd, data)
+        finally:
+            try:
+                os.close(write_fd)
+            except Exception:
+                pass
 
     # ========== print() ==========
 
@@ -344,16 +421,24 @@ class TaskExecutor:
     # ========== security ==========
 
     @staticmethod
-    def _filter_builtins(builtins_deny: set[str]):
+    def _filter_builtins(security_config: SecurityConfig):
         """Get __builtins__ with denied ones removed."""
 
-        if len(builtins_deny) == 0:
-            return __builtins__
+        if len(security_config.builtins_deny) == 0:
+            filtered = dict(__builtins__)
+        else:
+            filtered = {
+                k: v
+                for k, v in __builtins__.items()
+                if k not in security_config.builtins_deny
+            }
 
-        return {k: v for k, v in __builtins__.items() if k not in builtins_deny}
+        filtered["__import__"] = TaskExecutor._create_safe_import(security_config)
+
+        return filtered
 
     @staticmethod
-    def _sanitize_sys_modules(stdlib_allow: Set[str], external_allow: Set[str]):
+    def _sanitize_sys_modules(security_config: SecurityConfig):
         safe_modules = {
             "builtins",
             "__main__",
@@ -364,23 +449,57 @@ class TaskExecutor:
             "importlib.machinery",
         }
 
-        if "*" in stdlib_allow:
+        if "*" in security_config.stdlib_allow:
             safe_modules.update(sys.stdlib_module_names)
         else:
-            safe_modules.update(stdlib_allow)
+            safe_modules.update(security_config.stdlib_allow)
 
-        if "*" in external_allow:
+        if "*" in security_config.external_allow:
             safe_modules.update(
                 name
                 for name in sys.modules.keys()
                 if name not in sys.stdlib_module_names
             )
         else:
-            safe_modules.update(external_allow)
+            safe_modules.update(security_config.external_allow)
 
+        # keep modules marked as safe and submodules of those
+        safe_prefixes = [safe + "." for safe in safe_modules]
         modules_to_remove = [
-            name for name in sys.modules.keys() if name not in safe_modules
+            name
+            for name in sys.modules.keys()
+            if name not in safe_modules
+            and not any(name.startswith(prefix) for prefix in safe_prefixes)
         ]
 
         for module_name in modules_to_remove:
             del sys.modules[module_name]
+
+    @staticmethod
+    def _create_safe_import(security_config: SecurityConfig):
+        original_import = __builtins__["__import__"]
+
+        def safe_import(name, *args, **kwargs):
+            is_allowed, error_msg = validate_module_import(name, security_config)
+
+            if not is_allowed:
+                assert error_msg is not None
+                raise SecurityViolationError(
+                    message="Security violation detected",
+                    description=error_msg,
+                )
+
+            return original_import(name, *args, **kwargs)
+
+        return safe_import
+
+    # ========== pipe I/O ==========
+
+    @staticmethod
+    def _write_bytes(fd: int, data: bytes):
+        total_written = 0
+        while total_written < len(data):
+            written = os.write(fd, data[total_written:])
+            if written == 0:
+                raise OSError("Write failed")
+            total_written += written

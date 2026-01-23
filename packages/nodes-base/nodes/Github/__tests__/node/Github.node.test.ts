@@ -594,4 +594,109 @@ describe('Test Github Node', () => {
 			);
 		});
 	});
+
+	describe('User Operations', () => {
+		let githubNode: Github;
+		let mockExecutionContext: any;
+
+		beforeEach(() => {
+			githubNode = new Github();
+			mockExecutionContext = {
+				getNode: jest.fn().mockReturnValue({ name: 'Github' }),
+				getNodeParameter: jest.fn(),
+				getInputData: jest.fn().mockReturnValue([{ json: {} }]),
+				continueOnFail: jest.fn().mockReturnValue(false),
+				getCredentials: jest.fn().mockResolvedValue({
+					server: 'https://api.github.com',
+					user: 'test',
+					accessToken: 'test',
+				}),
+				helpers: {
+					returnJsonArray: jest.fn().mockReturnValue([{ json: {} }]),
+					requestWithAuthentication: jest.fn().mockResolvedValue({}),
+					constructExecutionMetaData: jest.fn().mockReturnValue([{ json: {} }]),
+				},
+			};
+		});
+
+		it('should fetch open issues by default (user:getIssues)', async () => {
+			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
+				if (parameterName === 'resource') return 'user';
+				if (parameterName === 'operation') return 'getUserIssues';
+				if (parameterName === 'getUserIssuesFilters') return {};
+				if (parameterName === 'returnAll') return true;
+				if (parameterName === 'authentication') return 'accessToken';
+				return '';
+			});
+			mockExecutionContext.helpers.requestWithAuthentication.mockResolvedValue({
+				body: [
+					{ id: 1, title: 'Issue 1', state: 'open' },
+					{ id: 2, title: 'Issue 2', state: 'open' },
+				],
+				headers: {},
+			});
+
+			await githubNode.execute.call(mockExecutionContext);
+			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.github.com/issues',
+					qs: expect.not.objectContaining({ state: 'closed' }),
+				}),
+			);
+		});
+
+		it('should fetch closed issues when state filter is set to closed (user:getIssues)', async () => {
+			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
+				if (parameterName === 'resource') return 'user';
+				if (parameterName === 'operation') return 'getUserIssues';
+				if (parameterName === 'getUserIssuesFilters') return { state: 'closed' };
+				if (parameterName === 'returnAll') return true;
+				if (parameterName === 'authentication') return 'accessToken';
+				return '';
+			});
+
+			mockExecutionContext.helpers.requestWithAuthentication.mockResolvedValue({
+				body: [{ id: 3, title: 'Issue 3', state: 'closed' }],
+				headers: {},
+			});
+
+			await githubNode.execute.call(mockExecutionContext);
+			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.github.com/issues',
+					qs: expect.objectContaining({ state: 'closed' }),
+				}),
+			);
+		});
+
+		it('should fetch issues with a specific label (user:getIssues)', async () => {
+			mockExecutionContext.getNodeParameter.mockImplementation((parameterName: string) => {
+				if (parameterName === 'resource') return 'user';
+				if (parameterName === 'operation') return 'getUserIssues';
+				if (parameterName === 'getUserIssuesFilters') return { labels: 'bug' };
+				if (parameterName === 'returnAll') return true;
+				if (parameterName === 'authentication') return 'accessToken';
+				return '';
+			});
+
+			mockExecutionContext.helpers.requestWithAuthentication.mockResolvedValue({
+				body: [{ id: 4, title: 'Issue 4', state: 'open', labels: ['bug'] }],
+				headers: {},
+			});
+
+			await githubNode.execute.call(mockExecutionContext);
+			expect(mockExecutionContext.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					method: 'GET',
+					uri: 'https://api.github.com/issues',
+					qs: expect.objectContaining({ labels: 'bug' }),
+				}),
+			);
+		});
+	});
 });

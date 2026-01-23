@@ -1,17 +1,16 @@
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { WorkflowRepository } from '@n8n/db';
+import { LicenseMetricsRepository, WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { EventMessageTypeNames } from 'n8n-workflow';
+import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
-import config from '@/config';
 import { N8N_VERSION } from '@/constants';
 import type { EventMessageTypes } from '@/eventbus';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -29,6 +28,7 @@ export class PrometheusMetricsService {
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly licenseMetricsRepository: LicenseMetricsRepository,
 	) {}
 
 	private readonly counters: { [key: string]: Counter<string> | null } = {};
@@ -44,6 +44,7 @@ export class PrometheusMetricsService {
 			cache: this.globalConfig.endpoints.metrics.includeCacheMetrics,
 			logs: this.globalConfig.endpoints.metrics.includeMessageEventBusMetrics,
 			queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
+			workflowStatistics: this.globalConfig.endpoints.metrics.includeWorkflowStatistics,
 		},
 		labels: {
 			credentialsType: this.globalConfig.endpoints.metrics.includeCredentialTypeLabel,
@@ -66,6 +67,7 @@ export class PrometheusMetricsService {
 		this.initRouteMetrics(app);
 		this.initQueueMetrics();
 		this.initActiveWorkflowCountMetric();
+		this.initWorkflowStatisticsMetrics();
 		this.mountMetricsEndpoint(app);
 	}
 
@@ -258,7 +260,7 @@ export class PrometheusMetricsService {
 	private initQueueMetrics() {
 		if (
 			!this.includes.metrics.queue ||
-			config.getEnv('executions.mode') !== 'queue' ||
+			this.globalConfig.executions.mode !== 'queue' ||
 			this.instanceSettings.instanceType !== 'main'
 		) {
 			return;
@@ -379,5 +381,156 @@ export class PrometheusMetricsService {
 			labels.workflow_name = String(payload.workflowName ?? 'unknown');
 		}
 		return labels;
+	}
+
+	/**
+	 * Shared cache for workflow statistics to avoid multiple DB calls per scrape
+	 */
+	private workflowStatisticsCache: {
+		data: any;
+		timestamp: number;
+		ttl: number;
+	} | null = null;
+
+	/**
+	 * Get workflow statistics with shared caching to avoid multiple DB calls per scrape
+	 */
+	private async getWorkflowStatistics(
+		cacheService: CacheService,
+		licenseMetricsRepository: LicenseMetricsRepository,
+		cacheTtl: number,
+	): Promise<any> {
+		const now = Date.now();
+
+		// Check if we have valid in-memory cache for this scrape window
+		if (
+			this.workflowStatisticsCache &&
+			now - this.workflowStatisticsCache.timestamp < this.workflowStatisticsCache.ttl
+		) {
+			return this.workflowStatisticsCache.data;
+		}
+
+		// Try to get from persistent cache
+		const fullCacheKey = 'metrics:workflow-statistics:shared';
+		const cachedValue = await cacheService.get(fullCacheKey);
+
+		if (cachedValue !== undefined) {
+			const parsedValue = jsonParse(String(cachedValue), { fallbackValue: undefined });
+			if (parsedValue !== undefined) {
+				// Update in-memory cache with short TTL (just for scrape deduplication)
+				this.workflowStatisticsCache = {
+					data: parsedValue,
+					timestamp: now,
+					ttl: 1000, // 1 second - enough to dedupe within a single scrape
+				};
+				return parsedValue;
+			}
+		}
+
+		// Fetch from database and cache both in-memory and persistently
+		const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
+		await cacheService.set(fullCacheKey, JSON.stringify(metrics), cacheTtl);
+
+		this.workflowStatisticsCache = {
+			data: metrics,
+			timestamp: now,
+			ttl: 1000, // 1 second - in-memory cache is only for scrape deduplication
+		};
+
+		return metrics;
+	}
+
+	/**
+	 * Helper function to create a cached workflow statistics gauge
+	 */
+	private createWorkflowStatisticsGauge(
+		metricName: string,
+		help: string,
+		getMetricValue: (metrics: any) => number,
+		cacheService: CacheService,
+		licenseMetricsRepository: LicenseMetricsRepository,
+		cacheTtl: number,
+	) {
+		const getWorkflowStatistics = this.getWorkflowStatistics.bind(this);
+		return new promClient.Gauge({
+			name: this.prefix + metricName,
+			help,
+			async collect() {
+				const metrics = await getWorkflowStatistics(
+					cacheService,
+					licenseMetricsRepository,
+					cacheTtl,
+				);
+				const value = getMetricValue(metrics);
+				this.set(value);
+			},
+		});
+	}
+
+	/**
+	 * Setup workflow statistics metrics
+	 *
+	 * These metrics are updated every time metrics are collected.
+	 * We cache the values so we don't hit the database on every metrics query.
+	 * Both the metric being enabled and the TTL of the cached values is configurable.
+	 */
+	private initWorkflowStatisticsMetrics() {
+		if (!this.includes.metrics.workflowStatistics) return;
+
+		const licenseMetricsRepository = this.licenseMetricsRepository;
+		const cacheService = this.cacheService;
+		const cacheTtl =
+			this.globalConfig.endpoints.metrics.workflowStatisticsInterval * Time.seconds.toMilliseconds;
+
+		// Define all metrics with their configuration
+		const metricsConfig = [
+			{
+				name: 'production_executions',
+				help: 'Total number of production workflow executions (success + error).',
+				getValue: (metrics: any) => Number(metrics.productionExecutions) || 0,
+			},
+			{
+				name: 'production_root_executions',
+				help: 'Total number of production root workflow executions (excludes sub-workflows).',
+				getValue: (metrics: any) => Number(metrics.productionRootExecutions) || 0,
+			},
+			{
+				name: 'manual_executions',
+				help: 'Total number of manual workflow executions (success + error).',
+				getValue: (metrics: any) => Number(metrics.manualExecutions) || 0,
+			},
+			{
+				name: 'enabled_users',
+				help: 'Total number of enabled users.',
+				getValue: (metrics: any) => Number(metrics.enabledUsers) || 0,
+			},
+			{
+				name: 'users',
+				help: 'Total number of users.',
+				getValue: (metrics: any) => Number(metrics.totalUsers) || 0,
+			},
+			{
+				name: 'workflows',
+				help: 'Total number of workflows.',
+				getValue: (metrics: any) => Number(metrics.totalWorkflows) || 0,
+			},
+			{
+				name: 'credentials',
+				help: 'Total number of credentials.',
+				getValue: (metrics: any) => Number(metrics.totalCredentials) || 0,
+			},
+		];
+
+		// Create all metrics using the helper function
+		metricsConfig.forEach((config) => {
+			this.createWorkflowStatisticsGauge(
+				config.name,
+				config.help,
+				config.getValue,
+				cacheService,
+				licenseMetricsRepository,
+				cacheTtl,
+			);
+		});
 	}
 }

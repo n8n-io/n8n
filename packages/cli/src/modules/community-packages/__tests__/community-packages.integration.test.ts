@@ -122,7 +122,7 @@ describe('GET /community-packages', () => {
 
 		await authAgent.get('/community-packages').expect(200);
 
-		const args = ['npm outdated --json', { doNotHandleError: true }];
+		const args = [['outdated', '--json'], { doNotHandleError: true }];
 
 		expect(communityPackagesService.executeNpmCommand).toHaveBeenCalledWith(...args);
 	});

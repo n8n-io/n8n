@@ -38,6 +38,11 @@ export class InsightsRaw extends BaseEntity {
 		this.type_ = TypeToNumber[value];
 	}
 
+	/**
+	 * Stored as BIGINT in database (see migration 1759399811000).
+	 * JavaScript number type has precision limits at ±2^53-1 (9,007,199,254,740,991).
+	 * Values exceeding Number.MAX_SAFE_INTEGER will lose precision.
+	 */
 	@Column()
 	value: number;
 

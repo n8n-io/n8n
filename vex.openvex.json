@@ -1,0 +1,9 @@
+{
+	"_comment": "VEX - CVE false positive triage. To add entries, see Quality Corner or .github/WORKFLOWS.md#vex",
+	"@context": "https://openvex.dev/ns/v0.2.0",
+	"@id": "https://github.com/n8n-io/n8n/vex",
+	"author": "n8n Security Team <security@n8n.io>",
+	"timestamp": "2026-01-15T00:00:00Z",
+	"version": 1,
+	"statements": []
+}

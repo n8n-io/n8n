@@ -1,11 +1,13 @@
+import { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
+import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weaviate';
 import { WeaviateStore } from '@langchain/weaviate';
-import type { WeaviateLibArgs } from '@langchain/weaviate';
-import type {
-	IDataObject,
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
+import {
+	ApplicationError,
+	type IDataObject,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyOptions,
 } from 'n8n-workflow';
 import { type ProxiesParams, type TimeoutParams } from 'weaviate-client';
 
@@ -15,28 +17,84 @@ import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVec
 import { weaviateCollectionsSearch } from '../shared/createVectorStoreNode/methods/listSearch';
 import { weaviateCollectionRLC } from '../shared/descriptions';
 
+type WeaviateLibArgs = OriginalWeaviateLibArgs & {
+	hybridQuery?: string;
+	autoCutLimit?: number;
+	alpha?: number;
+	queryProperties?: string;
+	maxVectorDistance?: number;
+	fusionType?: 'Ranked' | 'RelativeScore';
+	hybridExplainScore?: boolean;
+};
+
 class ExtendedWeaviateVectorStore extends WeaviateStore {
-	private static defaultFilter: WeaviateCompositeFilter;
+	private defaultFilter?: WeaviateCompositeFilter;
+	private args!: WeaviateLibArgs;
 
 	static async fromExistingCollection(
 		embeddings: Embeddings,
 		args: WeaviateLibArgs,
 		defaultFilter?: WeaviateCompositeFilter,
-	): Promise<WeaviateStore> {
-		if (defaultFilter) {
-			ExtendedWeaviateVectorStore.defaultFilter = defaultFilter;
+	): Promise<ExtendedWeaviateVectorStore> {
+		// Call parent factory method but bound to this (subclass) so the created instance is of the subclass
+		const ctor = this as unknown as typeof ExtendedWeaviateVectorStore & typeof WeaviateStore;
+		const baseCandidate = await ctor.fromExistingIndex(embeddings, args);
+
+		if (!(baseCandidate instanceof ExtendedWeaviateVectorStore)) {
+			throw new ApplicationError(
+				'Weaviate store factory did not return an ExtendedWeaviateVectorStore instance',
+			);
 		}
-		return await super.fromExistingIndex(embeddings, args);
+
+		const base = baseCandidate;
+
+		// Attach per-instance config
+		base.args = args;
+		if (defaultFilter) {
+			base.defaultFilter = defaultFilter;
+		}
+
+		return base;
 	}
 
 	async similaritySearchVectorWithScore(query: number[], k: number, filter?: IDataObject) {
-		filter = filter ?? ExtendedWeaviateVectorStore.defaultFilter;
-		if (filter) {
-			const composedFilter = parseCompositeFilter(filter as WeaviateCompositeFilter);
-			return await super.similaritySearchVectorWithScore(query, k, composedFilter);
-		} else {
-			return await super.similaritySearchVectorWithScore(query, k, undefined);
+		filter = filter ?? this.defaultFilter;
+		const args = this.args;
+
+		if (args.hybridQuery) {
+			const options = {
+				limit: k ?? undefined,
+				autoLimit: args.autoCutLimit ?? undefined,
+				alpha: args.alpha ?? undefined,
+				vector: query,
+				filter: filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+				queryProperties: args.queryProperties
+					? args.queryProperties.split(',').map((prop) => prop.trim())
+					: undefined,
+				maxVectorDistance: args.maxVectorDistance ?? undefined,
+				fusionType: args.fusionType,
+				returnMetadata: args.hybridExplainScore ? ['explainScore'] : undefined,
+			};
+			const content = await super.hybridSearch(args.hybridQuery, options);
+			return content.map((doc) => {
+				const { score, ...metadata } = doc.metadata;
+				if (typeof score !== 'number') {
+					throw new ApplicationError(`Unexpected score type: ${typeof score}`);
+				}
+				return [
+					new Document({
+						pageContent: doc.pageContent,
+						metadata,
+					}),
+					score,
+				] as [Document, number];
+			});
 		}
+		return await super.similaritySearchVectorWithScore(
+			query,
+			k,
+			filter ? parseCompositeFilter(filter as WeaviateCompositeFilter) : undefined,
+		);
 	}
 }
 
@@ -150,6 +208,73 @@ const retrieveFields: INodeProperties[] = [
 				validateType: 'string',
 				description: 'Select the metadata to retrieve along the content',
 			},
+			{
+				displayName: 'Hybrid: Query Text',
+				name: 'hybridQuery',
+				type: 'string',
+				default: '',
+				validateType: 'string',
+				description: 'Provide a query text to combine vector search with a keyword/text search',
+			},
+			{
+				displayName: 'Hybrid: Explain Score',
+				name: 'hybridExplainScore',
+				type: 'boolean',
+				default: false,
+				validateType: 'boolean',
+				description: 'Whether to show the score fused between hybrid and vector search explanation',
+			},
+			{
+				displayName: 'Hybrid: Fusion Type',
+				name: 'fusionType',
+				type: 'options',
+				options: [
+					{
+						name: 'Relative Score',
+						value: 'RelativeScore',
+					},
+					{
+						name: 'Ranked',
+						value: 'Ranked',
+					},
+				],
+				default: 'RelativeScore',
+				description: 'Select the fusion type for combining vector and keyword search results',
+			},
+			{
+				displayName: 'Hybrid: Auto Cut Limit',
+				name: 'autoCutLimit',
+				type: 'number',
+				default: undefined,
+				validateType: 'number',
+				description: 'Limit result groups by detecting sudden jumps in score',
+			},
+			{
+				displayName: 'Hybrid: Alpha',
+				name: 'alpha',
+				type: 'number',
+				default: 0.5,
+				validateType: 'number',
+				description:
+					'Change the relative weights of the keyword and vector components. 1.0 = pure vector, 0.0 = pure keyword.',
+			},
+			{
+				displayName: 'Hybrid: Query Properties',
+				name: 'queryProperties',
+				type: 'string',
+				default: '',
+				validateType: 'string',
+				description:
+					'Comma-separated list of properties to include in the query with optionally weighted values, e.g., "question^2,answer"',
+			},
+			{
+				displayName: 'Hybrid: Max Vector Distance',
+				name: 'maxVectorDistance',
+				type: 'number',
+				default: undefined,
+				validateType: 'number',
+				description: 'Set the maximum allowable distance for the vector search component',
+			},
 			...shared_options,
 		],
 	},
@@ -183,6 +308,12 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		}) as string;
 
 		const options = context.getNodeParameter('options', itemIndex, {}) as {
+			queryProperties: string;
+			maxVectorDistance: number;
+			fusionType: 'Ranked' | 'RelativeScore';
+			alpha?: number;
+			autoCutLimit?: number;
+			hybridQuery?: string;
 			tenant?: string;
 			textKey?: string;
 			timeout_init: number;
@@ -191,6 +322,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			skip_init_checks: boolean;
 			proxy_grpc: string;
 			metadataKeys?: string;
+			hybridExplainScore?: boolean;
 		};
 		// check if textKey is valid
 
@@ -210,16 +342,23 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 			credentials as WeaviateCredential,
 			timeout as TimeoutParams,
 			proxies as ProxiesParams,
-			options.skip_init_checks as boolean,
+			options.skip_init_checks,
 		);
 
 		const metadataKeys = options.metadataKeys ? options.metadataKeys.split(',') : [];
 		const config: WeaviateLibArgs = {
 			client,
 			indexName: collection,
-			tenant: options.tenant ? options.tenant : undefined,
+			tenant: options.tenant ?? undefined,
 			textKey: options.textKey ? options.textKey : 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
+			hybridQuery: options.hybridQuery ?? undefined,
+			autoCutLimit: options.autoCutLimit ?? undefined,
+			alpha: options.alpha ?? undefined,
+			queryProperties: options.queryProperties,
+			maxVectorDistance: options.maxVectorDistance,
+			fusionType: options.fusionType,
+			hybridExplainScore: options.hybridExplainScore ?? false,
 		};
 
 		const validFilter = (filter && Object.keys(filter).length > 0 ? filter : undefined) as
@@ -252,7 +391,7 @@ export class VectorStoreWeaviate extends createVectorStoreNode<ExtendedWeaviateV
 		const config: WeaviateLibArgs = {
 			client,
 			indexName: collectionName,
-			tenant: options.tenant ? options.tenant : undefined,
+			tenant: options.tenant ?? undefined,
 			textKey: options.textKey ? options.textKey : 'text',
 			metadataKeys: metadataKeys as string[] | undefined,
 		};

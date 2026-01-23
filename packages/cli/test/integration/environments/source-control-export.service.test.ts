@@ -1,5 +1,10 @@
 import type { SourceControlledFile } from '@n8n/api-types';
-import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	createWorkflowWithHistory,
+	mockInstance,
+	testDb,
+} from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
 	CredentialsRepository,
@@ -11,22 +16,20 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher, InstanceSettings } from 'n8n-core';
-import { writeFile as fsWriteFile } from 'node:fs/promises';
+import { readFile as fsReadFile, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuid } from 'uuid';
 
-import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
-import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
+import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
+import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import { SourceControlContext } from '@/modules/source-control.ee/types/source-control-context';
 
 import { createCredentials } from '../shared/db/credentials';
+import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createUser } from '../shared/db/users';
 
 // Mock file system operations
 jest.mock('node:fs/promises');
-jest.mock('@/environments.ee/source-control/source-control-helper.ee', () => ({
-	...jest.requireActual('@/environments.ee/source-control/source-control-helper.ee'),
-	sourceControlFoldersExistCheck: jest.fn().mockResolvedValue(true),
-}));
 
 describe('SourceControlExportService Integration', () => {
 	let exportService: SourceControlExportService;
@@ -42,6 +45,7 @@ describe('SourceControlExportService Integration', () => {
 
 	// Mocked functions
 	let mockFsWriteFile: jest.MockedFunction<typeof fsWriteFile>;
+	let mockFsReadFile: jest.MockedFunction<typeof fsReadFile>;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -78,11 +82,23 @@ describe('SourceControlExportService Integration', () => {
 		mockFsWriteFile = jest.mocked(fsWriteFile);
 		mockFsWriteFile.mockClear();
 		mockFsWriteFile.mockResolvedValue();
+
+		mockFsReadFile = jest.mocked(fsReadFile);
+		mockFsReadFile.mockClear();
+		// Default to empty tags file
+		mockFsReadFile.mockResolvedValue(JSON.stringify({ tags: [], mappings: [] }));
 	});
 
 	afterEach(async () => {
 		// Clear test data between tests
-		await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
+		await testDb.truncate([
+			'SharedCredentials',
+			'CredentialsEntity',
+			'SharedWorkflow',
+			'WorkflowEntity',
+			'WorkflowTagMapping',
+			'TagEntity',
+		]);
 		// Reset mocks
 		jest.clearAllMocks();
 	});
@@ -420,6 +436,211 @@ describe('SourceControlExportService Integration', () => {
 			// Verify numbers and booleans are preserved
 			expect((exportedCredential.data.connection as any).port).toBe(5432);
 			expect((exportedCredential.data.settings as any).ssl).toBe(true);
+		});
+
+		it('should export global credentials with isGlobal flag set to true', async () => {
+			// Arrange
+			const credentialData = {
+				apiKey: 'global-api-key',
+				apiSecret: 'global-secret',
+			};
+
+			const credential = await createCredentials(
+				{
+					name: 'Global Test Credential',
+					type: 'globalCredentialType',
+					data: Container.get(Cipher).encrypt(credentialData),
+					isGlobal: true,
+				},
+				personalProject,
+			);
+
+			const candidates = [{ id: credential.id }] as SourceControlledFile[];
+
+			// Act
+			const result = await exportService.exportCredentialsToWorkFolder(candidates);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+
+			// Verify file write was called
+			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
+
+			const exportedCredential = getWrittenCredentialData(credential.id);
+
+			// Verify isGlobal flag is exported
+			expect(exportedCredential).toMatchObject({
+				id: credential.id,
+				name: 'Global Test Credential',
+				type: 'globalCredentialType',
+				isGlobal: true,
+				data: {
+					apiKey: '',
+					apiSecret: '',
+				},
+			});
+
+			// Verify isGlobal is explicitly true
+			expect(exportedCredential.isGlobal).toBe(true);
+		});
+
+		it('should export non-global credentials with isGlobal flag set to false', async () => {
+			// Arrange
+			const credentialData = {
+				username: 'test-user',
+				password: 'test-password',
+			};
+
+			const credential = await createCredentials(
+				{
+					name: 'Non-Global Credential',
+					type: 'standardCredentialType',
+					data: Container.get(Cipher).encrypt(credentialData),
+					isGlobal: false,
+				},
+				teamProject,
+			);
+
+			const candidates = [{ id: credential.id }] as SourceControlledFile[];
+
+			// Act
+			const result = await exportService.exportCredentialsToWorkFolder(candidates);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(mockFsWriteFile).toHaveBeenCalledTimes(1);
+
+			const exportedCredential = getWrittenCredentialData(credential.id);
+
+			// Verify isGlobal flag is false
+			expect(exportedCredential).toMatchObject({
+				id: credential.id,
+				name: 'Non-Global Credential',
+				type: 'standardCredentialType',
+				isGlobal: false,
+			});
+
+			// Verify isGlobal is explicitly false
+			expect(exportedCredential.isGlobal).toBe(false);
+		});
+	});
+
+	describe('exportTagsToWorkFolder', () => {
+		const tagsFilePath = () => path.join(exportDirectory, 'git', 'tags.json');
+
+		function getWrittenTagsData(): {
+			tags: Array<{ id: string; name: string }>;
+			mappings: Array<{ tagId: string; workflowId: string }>;
+		} {
+			const writeCall = mockFsWriteFile.mock.calls.find(
+				([filePath]) => filePath === tagsFilePath(),
+			);
+			if (!writeCall) {
+				throw new Error('No write call found for tags file');
+			}
+			return JSON.parse(writeCall[1] as string);
+		}
+
+		async function exportTags() {
+			return await exportService.exportTagsToWorkFolder(new SourceControlContext(testUser));
+		}
+
+		it('should export tags and mappings across multiple teams', async () => {
+			const team1 = await createTeamProject('Team 1', testUser);
+			const team2 = await createTeamProject('Team 2', testUser);
+
+			const [workflow1, workflow2, workflow3] = await Promise.all([
+				createWorkflowWithHistory({ id: 'wf1', name: 'Workflow 1' }, team1),
+				createWorkflowWithHistory({ id: 'wf2', name: 'Workflow 2' }, team1),
+				createWorkflowWithHistory({ id: 'wf3', name: 'Workflow 3' }, team2),
+			]);
+
+			const [tag1, tag2] = await Promise.all([
+				createTag({ id: 'tag1', name: 'Tag 1' }),
+				createTag({ id: 'tag2', name: 'Tag 2' }),
+			]);
+
+			await Promise.all([
+				assignTagToWorkflow(tag1, workflow1),
+				assignTagToWorkflow(tag2, workflow1),
+				assignTagToWorkflow(tag1, workflow2),
+				assignTagToWorkflow(tag2, workflow3),
+			]);
+
+			const result = await exportTags();
+
+			expect(result.count).toBe(2);
+			expect(result.files).toHaveLength(1);
+
+			const { tags, mappings } = getWrittenTagsData();
+			expect(tags).toEqual(
+				expect.arrayContaining([
+					{ id: 'tag1', name: 'Tag 1' },
+					{ id: 'tag2', name: 'Tag 2' },
+				]),
+			);
+			expect(mappings).toEqual(
+				expect.arrayContaining([
+					{ tagId: 'tag1', workflowId: 'wf1' },
+					{ tagId: 'tag2', workflowId: 'wf1' },
+					{ tagId: 'tag1', workflowId: 'wf2' },
+					{ tagId: 'tag2', workflowId: 'wf3' },
+				]),
+			);
+		});
+
+		it('should export empty tags file when no tags exist', async () => {
+			const result = await exportTags();
+
+			expect(result.count).toBe(0);
+			expect(result.files).toHaveLength(1);
+			expect(mockFsWriteFile).toHaveBeenCalledWith(
+				tagsFilePath(),
+				JSON.stringify({ tags: [], mappings: [] }, null, 2),
+			);
+		});
+
+		it('should export tags without mappings when tags are unassigned', async () => {
+			await Promise.all([
+				createTag({ id: 'tag1', name: 'Tag 1' }),
+				createTag({ id: 'tag2', name: 'Tag 2' }),
+			]);
+
+			const result = await exportTags();
+
+			expect(result.count).toBe(2);
+
+			const { tags, mappings } = getWrittenTagsData();
+			expect(tags).toHaveLength(2);
+			expect(mappings).toHaveLength(0);
+		});
+
+		it('should export all mappings when multiple tags are on same workflow', async () => {
+			const team = await createTeamProject('Team', testUser);
+			const workflow = await createWorkflowWithHistory({ id: 'wf1', name: 'Workflow 1' }, team);
+
+			const tags = await Promise.all([
+				createTag({ id: 'tag1', name: 'Tag 1' }),
+				createTag({ id: 'tag2', name: 'Tag 2' }),
+				createTag({ id: 'tag3', name: 'Tag 3' }),
+			]);
+
+			await Promise.all(tags.map(async (tag) => await assignTagToWorkflow(tag, workflow)));
+
+			const result = await exportTags();
+
+			expect(result.count).toBe(3);
+
+			const { tags: exportedTags, mappings } = getWrittenTagsData();
+			expect(exportedTags).toHaveLength(3);
+			expect(mappings).toEqual(
+				expect.arrayContaining([
+					{ tagId: 'tag1', workflowId: 'wf1' },
+					{ tagId: 'tag2', workflowId: 'wf1' },
+					{ tagId: 'tag3', workflowId: 'wf1' },
+				]),
+			);
 		});
 	});
 });

@@ -1,32 +1,97 @@
-import { runCliEvaluation } from './cli/runner.js';
-import { runLangsmithEvaluation } from './langsmith/runner.js';
-
-// Re-export for external use if needed
-export { runCliEvaluation } from './cli/runner.js';
-export { runLangsmithEvaluation } from './langsmith/runner.js';
-export { runSingleTest } from './core/test-runner.js';
-export { setupTestEnvironment, createAgent } from './core/environment.js';
-
 /**
- * Main entry point for evaluation
- * Determines which evaluation mode to run based on environment variables
+ * V2 Evaluation Harness
+ *
+ * A factory-based, testable evaluation system for AI workflow generation.
+ *
+ * Key features:
+ * - Factory pattern for evaluator creation
+ * - Parallel evaluator execution
+ * - Both local and LangSmith modes
+ * - Centralized lifecycle hooks for logging
+ * - Pre-computed feedback pattern for LangSmith compatibility
  */
-async function main(): Promise<void> {
-	const useLangsmith = process.env.USE_LANGSMITH_EVAL === 'true';
 
-	// Parse command line arguments for single test case
-	const testCaseId = process.argv.includes('--test-case')
-		? process.argv[process.argv.indexOf('--test-case') + 1]
-		: undefined;
+// Core runner
+export { runEvaluation } from './harness/runner';
 
-	if (useLangsmith) {
-		await runLangsmithEvaluation();
-	} else {
-		await runCliEvaluation(testCaseId);
-	}
-}
+// Types
+export type {
+	Feedback,
+	EvaluationContext,
+	TestCaseContext,
+	GlobalRunContext,
+	Evaluator,
+	TestCase,
+	RunConfig,
+	ExampleResult,
+	RunSummary,
+	EvaluationLifecycle,
+	LangsmithOptions,
+} from './harness/harness-types';
 
-// Run if called directly
-if (require.main === module) {
-	main().catch(console.error);
-}
+// Lifecycle
+export {
+	createConsoleLifecycle,
+	createQuietLifecycle,
+	mergeLifecycles,
+	type ConsoleLifecycleOptions,
+} from './harness/lifecycle';
+
+// Evaluator factories
+export {
+	createLLMJudgeEvaluator,
+	createProgrammaticEvaluator,
+	createPairwiseEvaluator,
+	createSimilarityEvaluator,
+	type PairwiseEvaluatorOptions,
+	type SimilarityEvaluatorOptions,
+} from './evaluators';
+
+// Output
+export {
+	createArtifactSaver,
+	type ArtifactSaver,
+	type ArtifactSaverOptions,
+} from './harness/output';
+
+// Trace filtering (re-exported from v1 for convenience)
+export {
+	createTraceFilters,
+	isMinimalTracingEnabled,
+	type TraceFilters,
+} from './langsmith/trace-filters';
+
+// Score calculation utilities
+export {
+	parseFeedbackKey,
+	extractCategory,
+	groupByEvaluator,
+	calculateWeightedScore,
+	aggregateScores,
+	DEFAULT_EVALUATOR_WEIGHTS,
+	DEFAULT_WEIGHTS,
+	type ScoreWeights,
+	type AggregatedScore,
+	type FeedbackKeyParts,
+} from './harness/score-calculator';
+
+// Report generation
+export {
+	extractViolationSeverity,
+	calculateReportMetrics,
+	generateMarkdownReport,
+	type ViolationSeverity,
+	type ReportOptions,
+	type ReportMetrics,
+} from './support/report-generator';
+
+// Test case generation
+export {
+	createTestCaseGenerator,
+	type TestCaseGeneratorOptions,
+	type GeneratedTestCase,
+	type TestCaseGenerator,
+} from './support/test-case-generator';
+
+// CSV loader utilities
+export { loadDefaultTestCases, getDefaultTestCaseIds } from './cli/csv-prompt-loader';

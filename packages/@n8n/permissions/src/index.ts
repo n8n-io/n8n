@@ -1,4 +1,4 @@
-export type * from './types.ee';
+export * from './types.ee';
 export * from './constants.ee';
 
 export * from './roles/scopes/global-scopes.ee';

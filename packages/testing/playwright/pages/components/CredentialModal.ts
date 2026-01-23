@@ -1,6 +1,8 @@
 import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
+import { BaseModal } from './BaseModal';
+
 /**
  * Credential modal component for canvas and credentials interactions.
  * Used within CanvasPage as `n8n.canvas.credentialModal.*`
@@ -11,8 +13,10 @@ import { expect } from '@playwright/test';
  * await n8n.canvas.credentialModal.addCredential();
  * await expect(n8n.canvas.credentialModal.getModal()).toBeVisible();
  */
-export class CredentialModal {
-	constructor(private root: Locator) {}
+export class CredentialModal extends BaseModal {
+	constructor(private root: Locator) {
+		super(root.page());
+	}
 
 	getModal(): Locator {
 		return this.root;
@@ -24,6 +28,10 @@ export class CredentialModal {
 
 	getNameInput(): Locator {
 		return this.getCredentialName().getByTestId('inline-edit-input');
+	}
+
+	getCredentialInputs(): Locator {
+		return this.root.getByTestId('credential-connection-parameter');
 	}
 
 	async waitForModal(): Promise<void> {
@@ -92,6 +100,10 @@ export class CredentialModal {
 		return this.root.getByTestId('oauth-connect-success-banner');
 	}
 
+	getTestSuccessTag(): Locator {
+		return this.root.getByTestId('credentials-config-container-test-success');
+	}
+
 	async editCredential(): Promise<void> {
 		await this.root.page().getByTestId('credential-edit-button').click();
 	}
@@ -116,5 +128,66 @@ export class CredentialModal {
 
 	getOAuthRedirectUrl() {
 		return this.root.page().getByTestId('oauth-redirect-url');
+	}
+
+	getAuthTypeRadioButtons() {
+		return this.root.page().locator('label.el-radio');
+	}
+
+	async changeTab(tabName: 'Sharing'): Promise<void> {
+		await this.root.getByTestId('menu-item').filter({ hasText: tabName }).click();
+	}
+
+	/**
+	 * Get a specific credential field input
+	 */
+	getFieldInput(key: string): Locator {
+		return this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
+	}
+
+	/**
+	 * Get the users select dropdown in the Sharing tab
+	 */
+	getUsersSelect(): Locator {
+		return this.root.getByTestId('project-sharing-select').filter({ visible: true });
+	}
+
+	/**
+	 * Get the visible dropdown popper (for sharing dropdown interactions)
+	 */
+	getVisibleDropdown(): Locator {
+		return this.root.page().locator('.el-popper[aria-hidden="false"]');
+	}
+
+	/**
+	 * Add a user to credential sharing
+	 * @param email - User email to share with
+	 */
+	async addUserToSharing(email: string): Promise<void> {
+		await this.getUsersSelect().click();
+		await this.getVisibleDropdown().getByText(email.toLowerCase(), { exact: false }).click();
+	}
+
+	/**
+	 * Save credential sharing (different from regular save - hits /share endpoint)
+	 */
+	async saveSharing(): Promise<void> {
+		const saveBtn = this.getSaveButton();
+		await saveBtn.click();
+
+		// Wait for share API call to complete
+		await this.root
+			.page()
+			.waitForResponse(
+				(response) =>
+					response.url().includes('/rest/credentials/') &&
+					response.url().includes('/share') &&
+					response.request().method() === 'PUT',
+			);
+
+		await saveBtn.getByText('Saved', { exact: true }).waitFor({
+			state: 'visible',
+			timeout: 3000,
+		});
 	}
 }

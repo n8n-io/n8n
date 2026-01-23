@@ -1,7 +1,28 @@
 {
     "type": "object",
     "properties": {
+        "annual_revenue": {
+            "type": "integer"
+        },
+        "base_opportunity_amount": {
+            "type": "integer"
+        },
+        "base_total": {
+            "type": "integer"
+        },
+        "company": {
+            "type": "string"
+        },
+        "conversion_rate": {
+            "type": "integer"
+        },
         "creation": {
+            "type": "string"
+        },
+        "currency": {
+            "type": "string"
+        },
+        "customer_name": {
             "type": "string"
         },
         "disabled": {
@@ -16,18 +37,110 @@
         "idx": {
             "type": "integer"
         },
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "__unsaved": {
+                        "type": "integer"
+                    },
+                    "creation": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "docstatus": {
+                        "type": "integer"
+                    },
+                    "doctype": {
+                        "type": "string"
+                    },
+                    "idx": {
+                        "type": "integer"
+                    },
+                    "item_name": {
+                        "type": "string"
+                    },
+                    "modified": {
+                        "type": "string"
+                    },
+                    "modified_by": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "owner": {
+                        "type": "string"
+                    },
+                    "parent": {
+                        "type": "string"
+                    },
+                    "parentfield": {
+                        "type": "string"
+                    },
+                    "parenttype": {
+                        "type": "string"
+                    },
+                    "qty": {
+                        "type": "integer"
+                    },
+                    "rate": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "language": {
+            "type": "string"
+        },
         "modified": {
             "type": "string"
         },
         "modified_by": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
         "naming_series": {
+            "type": "string"
+        },
+        "no_of_employees": {
+            "type": "string"
+        },
+        "opportunity_amount": {
+            "type": "integer"
+        },
+        "opportunity_from": {
+            "type": "string"
+        },
+        "opportunity_type": {
             "type": "string"
         },
         "owner": {
             "type": "string"
+        },
+        "party_name": {
+            "type": "string"
+        },
+        "probability": {
+            "type": "integer"
+        },
+        "status": {
+            "type": "string"
+        },
+        "title": {
+            "type": "string"
+        },
+        "total": {
+            "type": "integer"
+        },
+        "transaction_date": {
+            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

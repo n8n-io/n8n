@@ -9,4 +9,8 @@ export class ExternalSecretsConfig {
 	/** Whether to prefer GET over LIST when fetching secrets from Hashicorp Vault */
 	@Env('N8N_EXTERNAL_SECRETS_PREFER_GET')
 	preferGet: boolean = false;
+
+	/** Whether to enable project-scoped external secrets */
+	@Env('N8N_ENV_FEAT_EXTERNAL_SECRETS_FOR_PROJECTS')
+	externalSecretsForProjects: boolean = false;
 }
