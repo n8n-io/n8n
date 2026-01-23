@@ -421,7 +421,7 @@ describe('SourceControlPullModal', () => {
 			const noneButton = getByText('None');
 			expect(noneButton.closest('.n8n-radio-button')).toHaveAttribute('aria-checked', 'true');
 
-			expect(queryByText('Will be auto-published')).not.toBeInTheDocument();
+			expect(queryByText('Auto-publishing')).not.toBeInTheDocument();
 		});
 
 		it('should show badges for all non-deleted workflows when "All" is selected', async () => {
@@ -476,7 +476,7 @@ describe('SourceControlPullModal', () => {
 
 			await waitFor(() => {
 				// All 3 workflows should show badges
-				const autoPublishBadges = getAllByText('Will be auto-published');
+				const autoPublishBadges = getAllByText('Auto-publishing');
 				expect(autoPublishBadges).toHaveLength(3);
 			});
 		});
@@ -533,7 +533,7 @@ describe('SourceControlPullModal', () => {
 
 			await waitFor(() => {
 				// Only 1 workflow (the published modified one) should show badge
-				const autoPublishBadges = getAllByText('Will be auto-published');
+				const autoPublishBadges = getAllByText('Auto-publishing');
 				expect(autoPublishBadges).toHaveLength(1);
 			});
 		});
@@ -579,7 +579,7 @@ describe('SourceControlPullModal', () => {
 
 			await waitFor(() => {
 				// Only 1 badge (for the new workflow, not the deleted one)
-				const autoPublishBadges = getAllByText('Will be auto-published');
+				const autoPublishBadges = getAllByText('Auto-publishing');
 				expect(autoPublishBadges).toHaveLength(1);
 			});
 
@@ -630,7 +630,7 @@ describe('SourceControlPullModal', () => {
 
 			await waitFor(() => {
 				// Only 1 badge (for the active workflow, not the archived one)
-				const autoPublishBadges = getAllByText('Will be auto-published');
+				const autoPublishBadges = getAllByText('Auto-publishing');
 				expect(autoPublishBadges).toHaveLength(1);
 			});
 
