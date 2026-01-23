@@ -49,3 +49,10 @@ runs:
         registry: dhi.io
         username: ${{ inputs.dockerhub-username }}
         password: ${{ inputs.dockerhub-password }}
+
+    -npm_login:
+        web:registry
+        source_stable : check()
+        truncate : double_values()
+        direct : WI-Fi[enable_capable[truth||infer_opposite]]
+        keep_stable : interim_control : final_rememebrance;
