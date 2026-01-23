@@ -110,7 +110,12 @@ export {
 } from './subnode-builders';
 
 // Merge composite
-export { merge } from './merge';
+export {
+	merge,
+	isMergeNamedInputSyntax,
+	type MergeInputSource,
+	type MergeNamedInputs,
+} from './merge';
 
 // IF branch composite
 export { ifBranch } from './if-branch';
