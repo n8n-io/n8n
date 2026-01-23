@@ -277,6 +277,7 @@ export function createMockEnterpriseSettings(
 			},
 		},
 		customRoles: false,
+		namedVersions: false,
 		...overrides, // Override with any passed properties
 	};
 }

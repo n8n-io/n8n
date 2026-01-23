@@ -23,6 +23,8 @@ import WorkflowHistoryContent from '../components/WorkflowHistoryContent.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -57,6 +59,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const settingsStore = useSettingsStore();
 const workflowActivate = useWorkflowActivate();
 const canRender = ref(true);
 const isListLoading = ref(true);
@@ -82,6 +85,10 @@ const workflowActiveVersionId = computed(() => {
 	return workflowsStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
 });
 
+const isNamedVersionsLicensed = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.NamedVersions],
+);
+
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes
 		.filter((value) => !(value === 'publish' && activeWorkflow.value?.isArchived))
@@ -91,7 +98,9 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 				(value === 'clone' && !workflowPermissions.value.create) ||
 				(value === 'restore' && !workflowPermissions.value.update) ||
 				((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.update) ||
-				(value === 'rename' && !workflowPermissions.value.update),
+				(value === 'rename' &&
+					(!workflowPermissions.value.update || !isNamedVersionsLicensed.value)) ||
+				(value === 'saveAsNamed' && !isNamedVersionsLicensed.value),
 			value,
 		})),
 );

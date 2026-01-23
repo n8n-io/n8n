@@ -178,6 +178,10 @@ export class LicenseState {
 		return this.isLicensed('feat:workflowDiffs');
 	}
 
+	isNamedVersionsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.NAMED_VERSIONS);
+	}
+
 	isProvisioningLicensed() {
 		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}

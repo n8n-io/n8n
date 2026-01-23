@@ -316,6 +316,7 @@ export class FrontendService {
 					},
 				},
 				customRoles: false,
+				namedVersions: false,
 			},
 			mfa: {
 				enabled: false,
@@ -446,6 +447,7 @@ export class FrontendService {
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
 			workflowDiffs: this.licenseState.isWorkflowDiffsLicensed(),
 			customRoles: this.licenseState.isCustomRolesLicensed(),
+			namedVersions: this.licenseState.isNamedVersionsLicensed(),
 		});
 
 		if (this.license.isLdapEnabled()) {

@@ -3,7 +3,8 @@ import {
 	WorkflowHistoryVersionsByIdsDto,
 	UpdateWorkflowVersionDto,
 } from '@n8n/api-types';
-import { RestController, Get, Post, Patch, Query, Body } from '@n8n/decorators';
+import { LICENSE_FEATURES } from '@n8n/constants';
+import { RestController, Get, Post, Patch, Query, Body, Licensed } from '@n8n/decorators';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
@@ -74,6 +75,7 @@ export class WorkflowHistoryController {
 		}
 	}
 
+	@Licensed(LICENSE_FEATURES.NAMED_VERSIONS)
 	@Patch('/workflow/:workflowId/version/:versionId')
 	async updateVersion(
 		req: WorkflowHistoryRequest.GetVersion,

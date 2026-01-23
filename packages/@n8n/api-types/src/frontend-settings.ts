@@ -58,6 +58,7 @@ export interface IEnterpriseSettings {
 		};
 	};
 	customRoles: boolean;
+	namedVersions: boolean;
 }
 
 export interface FrontendSettings {

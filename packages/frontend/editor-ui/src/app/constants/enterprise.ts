@@ -20,4 +20,5 @@ export const EnterpriseEditionFeature: Record<
 	AdvancedPermissions: 'advancedPermissions',
 	ApiKeyScopes: 'apiKeyScopes',
 	Provisioning: 'provisioning',
+	NamedVersions: 'namedVersions',
 };

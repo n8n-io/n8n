@@ -131,6 +131,7 @@ describe('CredentialSharing.ee', () => {
 					},
 				},
 				customRoles: false,
+				namedVersions: false,
 			});
 	});
 
@@ -274,6 +275,7 @@ describe('CredentialSharing.ee', () => {
 					},
 				},
 				customRoles: false,
+				namedVersions: false,
 			});
 
 			const credential = createCredential();

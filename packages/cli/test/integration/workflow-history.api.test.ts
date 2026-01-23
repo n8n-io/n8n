@@ -300,7 +300,19 @@ describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => 
 });
 
 describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () => {
-	test('should update version name', async () => {
+	test('should return 403 when named versions feature is not licensed', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const version = await createWorkflowHistoryItem(workflow.id);
+
+		const resp = await authOwnerAgent
+			.patch(`/workflow-history/workflow/${workflow.id}/version/${version.versionId}`)
+			.send({ name: 'Updated Version Name' });
+
+		expect(resp.status).toBe(403);
+	});
+
+	test('should update version name when licensed', async () => {
+		testServer.license.enable('feat:namedVersions');
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id);
 
@@ -312,7 +324,8 @@ describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () =
 		expect(resp.body.data.name).toBe('Updated Version Name');
 	});
 
-	test('should update version description', async () => {
+	test('should update version description when licensed', async () => {
+		testServer.license.enable('feat:namedVersions');
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id);
 
@@ -324,7 +337,8 @@ describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () =
 		expect(resp.body.data.description).toBe('Updated description');
 	});
 
-	test('should update both name and description', async () => {
+	test('should update both name and description when licensed', async () => {
+		testServer.license.enable('feat:namedVersions');
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id);
 
@@ -338,6 +352,7 @@ describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () =
 	});
 
 	test('should return 404 on invalid workflow ID', async () => {
+		testServer.license.enable('feat:namedVersions');
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id);
 
@@ -349,6 +364,7 @@ describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () =
 	});
 
 	test('should return 404 on invalid version ID', async () => {
+		testServer.license.enable('feat:namedVersions');
 		const workflow = await createWorkflow(undefined, owner);
 		await createWorkflowHistoryItem(workflow.id);
 
@@ -360,6 +376,7 @@ describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () =
 	});
 
 	test('should return 404 if workflow not shared with user', async () => {
+		testServer.license.enable('feat:namedVersions');
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id);
 
@@ -371,6 +388,7 @@ describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () =
 	});
 
 	test('should return 400 when name exceeds max length', async () => {
+		testServer.license.enable('feat:namedVersions');
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id);
 		const longName = 'a'.repeat(129); // Max is 128
@@ -383,6 +401,7 @@ describe('PATCH /workflow-history/workflow/:workflowId/version/:versionId', () =
 	});
 
 	test('should return 400 when description exceeds max length', async () => {
+		testServer.license.enable('feat:namedVersions');
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id);
 		const longDescription = 'a'.repeat(2049); // Max is 2048
