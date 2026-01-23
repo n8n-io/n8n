@@ -401,7 +401,7 @@ describe('createEngineRequests', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
-				toolParameters: '{"param1":"value1"}',
+				toolParameters: { param1: 'value1' },
 				hitlParam1: 'hitlValue1',
 				hitlParam2: 'hitlValue2',
 			});
@@ -461,7 +461,7 @@ describe('createEngineRequests', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
-				toolParameters: '{"param1":"value1"}',
+				toolParameters: { param1: 'value1' },
 				tool: 'gated_toolkit_tool',
 				hitlParam1: 'hitlValue1',
 			});
@@ -506,7 +506,7 @@ describe('createEngineRequests', () => {
 			});
 			// Input should remain the same when hitlParameters is missing
 			expect(result[0].input).toEqual({
-				toolParameters: '{"param1":"value1"}',
+				toolParameters: { param1: 'value1' },
 			});
 		});
 
