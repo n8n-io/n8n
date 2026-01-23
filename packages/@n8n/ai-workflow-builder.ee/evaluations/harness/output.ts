@@ -229,6 +229,8 @@ function formatSummaryForExport(summary: RunSummary, results: ExampleResult[]): 
 			durationMs: r.durationMs,
 			...(r.tokenUsage ? { tokenUsage: r.tokenUsage } : {}),
 			...(r.error ? { error: r.error } : {}),
+			...(r.dos ? { dos: r.dos } : {}),
+			...(r.donts ? { donts: r.donts } : {}),
 		})),
 	};
 }

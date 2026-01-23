@@ -23,6 +23,7 @@
 - [ ] fix up sticky sizing and positioning to cover nodes
 - [ ] test out iteration, inserting nodes in between
 - [ ] Update telemetry and prompt viewer app to support the code and workflow generated
+- [ ] Add programmatic validation similar to current agent
 - [X] refactor code generation to simplify implementation, with learnings from POC
 - [X] Add more examples for more complex flows (like loops or multi level orchestrator) to prompt
 - [X] Split node types by resource operation into files. less input tokens, faster, more accurate. Query by operation/resource.

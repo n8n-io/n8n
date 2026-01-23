@@ -192,6 +192,10 @@ export interface ExampleResult {
 	/** Token usage statistics from the generation */
 	tokenUsage?: TokenUsage;
 	error?: string;
+	/** Pairwise criteria: required behaviors */
+	dos?: string;
+	/** Pairwise criteria: forbidden behaviors */
+	donts?: string;
 }
 
 /**
