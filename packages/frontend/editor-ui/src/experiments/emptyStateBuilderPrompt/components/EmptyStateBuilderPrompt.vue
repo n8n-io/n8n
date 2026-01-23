@@ -2,13 +2,23 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nButton, N8nPromptInput } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants/navigation';
-import { nodeViewEventBus } from '@/app/event-bus';
+import { useToast } from '@/app/composables/useToast';
 import shuffle from 'lodash/shuffle';
 import { useTypewriterPlaceholder } from '../composables/useTypewriterPlaceholder';
+import { useEmptyStateBuilderPromptStore } from '../stores/emptyStateBuilderPrompt.store';
+
+const props = defineProps<{
+	projectId?: string;
+	parentFolderId?: string;
+}>();
 
 const router = useRouter();
+const toast = useToast();
+const i18n = useI18n();
+const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 
 const emit = defineEmits<{
 	submit: [prompt: string];
@@ -17,6 +27,7 @@ const emit = defineEmits<{
 
 const textInputValue = ref<string>('');
 const promptInputRef = ref<InstanceType<typeof N8nPromptInput>>();
+const importFileRef = ref<HTMLInputElement | null>(null);
 
 const shuffledSuggestions = computed(() => {
 	return shuffle(WORKFLOW_SUGGESTIONS).slice(0, 6);
@@ -40,12 +51,45 @@ function onTemplate() {
 }
 
 function onImportFromFile() {
-	nodeViewEventBus.emit('importWorkflowFromFile');
+	importFileRef.value?.click();
+}
+
+function handleFileImport() {
+	const input = importFileRef.value;
+	if (!input?.files?.length) return;
+
+	const reader = new FileReader();
+	reader.onload = async () => {
+		try {
+			const workflowData: unknown = JSON.parse(reader.result as string);
+			await emptyStateBuilderPromptStore.createWorkflowFromImport(
+				workflowData,
+				props.projectId,
+				props.parentFolderId,
+			);
+		} catch {
+			toast.showMessage({
+				title: i18n.baseText('mainSidebar.showMessage.handleFileImport.title'),
+				message: i18n.baseText('mainSidebar.showMessage.handleFileImport.message'),
+				type: 'error',
+			});
+		} finally {
+			input.value = '';
+		}
+	};
+	reader.readAsText(input.files[0]);
 }
 </script>
 
 <template>
 	<div :class="$style.container">
+		<input
+			ref="importFileRef"
+			type="file"
+			accept=".json"
+			style="display: none"
+			@change="handleFileImport"
+		/>
 		<div :class="$style.promptInput">
 			<N8nPromptInput
 				ref="promptInputRef"

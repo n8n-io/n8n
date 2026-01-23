@@ -98,13 +98,18 @@ const addWorkflow = () => {
 	emit('click:add');
 };
 
-const handleBuilderPromptSubmit = async (prompt: string) => {
-	const projectId = projectPages.isOverviewSubPage
-		? personalProject.value?.id
-		: (route.params.projectId as string);
-	const parentFolderId = route.params.folderId as string | undefined;
+const builderProjectId = computed(() =>
+	projectPages.isOverviewSubPage ? personalProject.value?.id : (route.params.projectId as string),
+);
 
-	await emptyStateBuilderPromptStore.createWorkflowWithPrompt(prompt, projectId, parentFolderId);
+const builderParentFolderId = computed(() => route.params.folderId as string | undefined);
+
+const handleBuilderPromptSubmit = async (prompt: string) => {
+	await emptyStateBuilderPromptStore.createWorkflowWithPrompt(
+		prompt,
+		builderProjectId.value,
+		builderParentFolderId.value,
+	);
 };
 </script>
 
@@ -140,6 +145,8 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 			<template v-if="showBuilderPrompt">
 				<EmptyStateBuilderPrompt
 					data-test-id="empty-state-builder-prompt"
+					:project-id="builderProjectId"
+					:parent-folder-id="builderParentFolderId"
 					@submit="handleBuilderPromptSubmit"
 					@start-from-scratch="addWorkflow"
 				/>
