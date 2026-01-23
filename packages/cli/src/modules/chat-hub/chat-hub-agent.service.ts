@@ -202,8 +202,6 @@ export class ChatHubAgentService {
 
 		// Track if we need to recreate embeddings
 		let needsEmbeddingRecreation = false;
-		let newEmbeddingProvider: ChatHubLLMProvider | null = null;
-		let newEmbeddingCredentialId: string | null = null;
 
 		// If provider or credential changes, update embedding provider too
 		if (updates.provider !== undefined || updates.credentialId !== undefined) {
@@ -218,10 +216,8 @@ export class ChatHubAgentService {
 
 			// Check if embedding provider actually changed (not just credential)
 			// Only provider change affects embedding dimensions
-			if (embeddingProvider !== existingAgent.embeddingProvider) {
+			if (embeddingProvider?.provider !== existingAgent.embeddingProvider) {
 				needsEmbeddingRecreation = true;
-				newEmbeddingProvider = embeddingProvider?.provider ?? null;
-				newEmbeddingCredentialId = embeddingProvider?.credentialId ?? null;
 			}
 
 			updateData.embeddingProvider = embeddingProvider?.provider ?? null;
@@ -260,36 +256,39 @@ export class ChatHubAgentService {
 			updateData.files = updatedFiles;
 
 			// Sync vector store if any PDF files were added or removed
-			const deletedPdfFiles = filesToDelete.filter((f) => f.mimeType === 'application/pdf');
-			const newPdfFiles = newFiles.filter((f) => f.mimeType === 'application/pdf');
+			// Skip individual file operations if we're going to recreate all embeddings anyway
+			if (!needsEmbeddingRecreation) {
+				const deletedPdfFiles = filesToDelete.filter((f) => f.mimeType === 'application/pdf');
+				const newPdfFiles = newFiles.filter((f) => f.mimeType === 'application/pdf');
 
-			// Delete removed PDF files from vector store
-			if (deletedPdfFiles.length > 0) {
-				const fileNamesToDelete = deletedPdfFiles
-					.map((f) => f.fileName)
-					.filter((name): name is string => !!name);
+				// Delete removed PDF files from vector store
+				if (deletedPdfFiles.length > 0) {
+					const fileNamesToDelete = deletedPdfFiles
+						.map((f) => f.fileName)
+						.filter((name): name is string => !!name);
 
-				if (fileNamesToDelete.length > 0) {
-					await this.deleteDocumentsByFileNames(user, id, fileNamesToDelete);
+					if (fileNamesToDelete.length > 0) {
+						await this.deleteDocumentsByFileNames(user, id, fileNamesToDelete);
+					}
 				}
-			}
 
-			// Insert new PDF files
-			if (newPdfFiles.length > 0) {
-				const agentForInsertion = {
-					...existingAgent,
-					...updateData,
-				} as ChatHubAgent;
-				await this.insertDocuments(user, agentForInsertion, newPdfFiles);
+				// Insert new PDF files
+				if (newPdfFiles.length > 0) {
+					const agentForInsertion = {
+						...existingAgent,
+						...updateData,
+					} as ChatHubAgent;
+					await this.insertDocuments(user, agentForInsertion, newPdfFiles);
+				}
 			}
 		}
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
 		// If embedding provider changed, recreate all embeddings
-		if (needsEmbeddingRecreation && newEmbeddingProvider && newEmbeddingCredentialId) {
+		if (needsEmbeddingRecreation) {
 			this.logger.debug(
-				`Embedding provider changed for agent ${id}, recreating all embeddings with provider ${newEmbeddingProvider}`,
+				`Embedding provider changed for agent ${id}, recreating all embeddings with provider ${agent.embeddingProvider}`,
 			);
 
 			// Delete all existing embeddings
