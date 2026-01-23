@@ -70,6 +70,30 @@ const NODE_SEMANTICS: Record<string, NodeSemantics> = {
 };
 
 /**
+ * Check if a node has error output enabled (onError: 'continueErrorOutput')
+ */
+function hasErrorOutput(node: NodeJSON): boolean {
+	return node.onError === 'continueErrorOutput';
+}
+
+/**
+ * Get the error output index for a node.
+ * For most nodes with onError: 'continueErrorOutput', the error output is at index 1.
+ * Some composite nodes (IF, Switch) may have error at a different index.
+ */
+function getErrorOutputIndex(type: string, node: NodeJSON): number {
+	const semantics = NODE_SEMANTICS[type];
+	if (semantics) {
+		// For composite nodes, error output is AFTER all regular outputs
+		const outputs =
+			typeof semantics.outputs === 'function' ? semantics.outputs(node) : semantics.outputs;
+		return outputs.length;
+	}
+	// For regular nodes, error output is at index 1
+	return 1;
+}
+
+/**
  * Get the semantic name for a node's output at given index
  *
  * @param type - Node type (e.g., 'n8n-nodes-base.if')
@@ -78,6 +102,14 @@ const NODE_SEMANTICS: Record<string, NodeSemantics> = {
  * @returns Semantic name (e.g., 'trueBranch') or generic 'output{index}'
  */
 export function getOutputName(type: string, index: number, node: NodeJSON): string {
+	// Check for error output first (when node has onError: 'continueErrorOutput')
+	if (hasErrorOutput(node)) {
+		const errorIndex = getErrorOutputIndex(type, node);
+		if (index === errorIndex) {
+			return 'error';
+		}
+	}
+
 	const semantics = NODE_SEMANTICS[type];
 	if (!semantics) {
 		return `output${index}`;

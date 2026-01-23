@@ -291,4 +291,129 @@ describe('buildSemanticGraph', () => {
 			expect(graph.roots).not.toContain('Disconnected2B');
 		});
 	});
+
+	describe('onError output handling', () => {
+		it('names error output as "error" when node has onError: continueErrorOutput', () => {
+			const json: WorkflowJSON = {
+				id: 'test',
+				name: 'Test onError',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Edit Fields',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [200, 0],
+						parameters: { options: {} },
+						onError: 'continueErrorOutput',
+					},
+					{
+						id: '3',
+						name: 'Success Handler',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {},
+					},
+					{
+						id: '4',
+						name: 'Error Handler',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 200],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: {
+						main: [[{ node: 'Edit Fields', type: 'main', index: 0 }]],
+					},
+					'Edit Fields': {
+						main: [
+							[{ node: 'Success Handler', type: 'main', index: 0 }], // output 0: success
+							[{ node: 'Error Handler', type: 'main', index: 0 }], // output 1: error
+						],
+					},
+				},
+				settings: {},
+			};
+
+			const graph = buildSemanticGraph(json);
+			const editFieldsNode = graph.nodes.get('Edit Fields');
+
+			expect(editFieldsNode).toBeDefined();
+			// Should have "output0" for success and "error" for error output
+			expect(editFieldsNode!.outputs.has('output0')).toBe(true);
+			expect(editFieldsNode!.outputs.has('error')).toBe(true);
+
+			// Verify the connections
+			const successOutput = editFieldsNode!.outputs.get('output0');
+			const errorOutput = editFieldsNode!.outputs.get('error');
+
+			expect(successOutput).toHaveLength(1);
+			expect(successOutput![0].target).toBe('Success Handler');
+
+			expect(errorOutput).toHaveLength(1);
+			expect(errorOutput![0].target).toBe('Error Handler');
+		});
+
+		it('does not name outputs as error when node has no onError setting', () => {
+			const json: WorkflowJSON = {
+				id: 'test',
+				name: 'Test no onError',
+				nodes: [
+					{
+						id: '1',
+						name: 'Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '2',
+						name: 'Edit Fields',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 3.4,
+						position: [200, 0],
+						parameters: { options: {} },
+						// No onError setting
+					},
+					{
+						id: '3',
+						name: 'Next Node',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [400, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					Trigger: {
+						main: [[{ node: 'Edit Fields', type: 'main', index: 0 }]],
+					},
+					'Edit Fields': {
+						main: [[{ node: 'Next Node', type: 'main', index: 0 }]],
+					},
+				},
+				settings: {},
+			};
+
+			const graph = buildSemanticGraph(json);
+			const editFieldsNode = graph.nodes.get('Edit Fields');
+
+			expect(editFieldsNode).toBeDefined();
+			// Should have "output0" only, no "error"
+			expect(editFieldsNode!.outputs.has('output0')).toBe(true);
+			expect(editFieldsNode!.outputs.has('error')).toBe(false);
+		});
+	});
 });

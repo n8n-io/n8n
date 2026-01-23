@@ -121,8 +121,30 @@ function toVarName(nodeName: string): string {
 /**
  * Create a leaf node
  */
-function createLeaf(node: SemanticNode): LeafNode {
-	return { kind: 'leaf', node };
+function createLeaf(node: SemanticNode, errorHandler?: CompositeNode): LeafNode {
+	const leaf: LeafNode = { kind: 'leaf', node };
+	if (errorHandler) {
+		leaf.errorHandler = errorHandler;
+	}
+	return leaf;
+}
+
+/**
+ * Check if a node has error output (onError: 'continueErrorOutput')
+ */
+function hasErrorOutput(node: SemanticNode): boolean {
+	return node.json.onError === 'continueErrorOutput';
+}
+
+/**
+ * Get error output targets from a node
+ */
+function getErrorOutputTargets(node: SemanticNode): string[] {
+	const errorConnections = node.outputs.get('error');
+	if (!errorConnections || errorConnections.length === 0) {
+		return [];
+	}
+	return errorConnections.map((c) => c.target);
 }
 
 /**
@@ -138,10 +160,12 @@ function createVarRef(nodeName: string): VariableReference {
 
 /**
  * Get all output connection targets from the first output slot
+ * Excludes error outputs (handled separately via .onError())
  */
 function getAllFirstOutputTargets(node: SemanticNode): string[] {
-	// Get all targets from first non-empty output
-	for (const [, connections] of node.outputs) {
+	// Get all targets from first non-empty, non-error output
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue; // Skip error output
 		if (connections.length > 0) {
 			return connections.map((c) => c.target);
 		}
@@ -152,10 +176,12 @@ function getAllFirstOutputTargets(node: SemanticNode): string[] {
 /**
  * Get all output connection targets from ALL output slots
  * This is needed for nodes with multiple independent output slots (like classifiers)
+ * Excludes error outputs (handled separately via .onError())
  */
 function getAllOutputTargets(node: SemanticNode): string[] {
 	const targets: string[] = [];
-	for (const [, connections] of node.outputs) {
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue; // Skip error output
 		for (const conn of connections) {
 			if (!targets.includes(conn.target)) {
 				targets.push(conn.target);
@@ -167,10 +193,12 @@ function getAllOutputTargets(node: SemanticNode): string[] {
 
 /**
  * Check if a node has multiple output slots (not just multiple targets on one slot)
+ * Excludes error outputs (handled separately via .onError())
  */
 function hasMultipleOutputSlots(node: SemanticNode): boolean {
 	let nonEmptySlots = 0;
-	for (const [, connections] of node.outputs) {
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue; // Skip error output
 		if (connections.length > 0) {
 			nonEmptySlots++;
 		}
@@ -570,9 +598,31 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 		case 'splitInBatches':
 			compositeNode = buildSplitInBatches(node, ctx);
 			break;
-		default:
-			// Regular node - check for chain continuation
-			compositeNode = createLeaf(node);
+		default: {
+			// Regular node - check for error output and chain continuation
+			let errorHandler: CompositeNode | undefined;
+
+			// Build error handler chain if node has error output
+			if (hasErrorOutput(node)) {
+				const errorTargets = getErrorOutputTargets(node);
+				if (errorTargets.length > 0) {
+					const firstErrorTarget = errorTargets[0];
+					if (ctx.visited.has(firstErrorTarget)) {
+						// Error target already visited - create variable reference
+						// This handles multiple nodes with error outputs pointing to the same handler
+						const errorNode = ctx.graph.nodes.get(firstErrorTarget);
+						if (errorNode) {
+							ctx.variables.set(firstErrorTarget, errorNode);
+							errorHandler = createVarRef(firstErrorTarget);
+						}
+					} else {
+						errorHandler = buildFromNode(firstErrorTarget, ctx);
+					}
+				}
+			}
+
+			compositeNode = createLeaf(node, errorHandler);
+		}
 	}
 
 	// Handle downstream continuation for merge nodes

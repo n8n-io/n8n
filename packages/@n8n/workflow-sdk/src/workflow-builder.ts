@@ -351,6 +351,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Add the new node and its subnodes
 		this.addNodeWithSubnodes(newNodes, node);
 
+		// Add connection target nodes (e.g., onError handlers)
+		this.addSingleNodeConnectionTargets(newNodes, node);
+
 		// Connect from current node if exists
 		if (this._currentNode) {
 			const currentGraphNode = newNodes.get(this._currentNode);
@@ -688,8 +691,45 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			if (this.isIfBranchComposite(target)) continue;
 			if (this.isMergeComposite(target)) continue;
 			if (this.isSplitInBatchesBuilder(target)) continue;
-			// Skip NodeChains - their nodes are already added via allNodes
-			if (isNodeChain(target)) continue;
+
+			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
+			if (isNodeChain(target)) {
+				this.addBranchToGraph(nodes, target as NodeChain);
+				continue;
+			}
+
+			// Add the target node if not already in the map
+			const targetNode = target as NodeInstance<string, string, unknown>;
+			if (!nodes.has(targetNode.name)) {
+				this.addNodeWithSubnodes(nodes, targetNode);
+			}
+		}
+	}
+
+	/**
+	 * Add target nodes from a single node's connections (e.g., onError handlers).
+	 * This handles connection targets that aren't part of a chain.
+	 */
+	private addSingleNodeConnectionTargets(
+		nodes: Map<string, GraphNode>,
+		nodeInstance: NodeInstance<string, string, unknown>,
+	): void {
+		// Check if node has getConnections method (some composites don't)
+		if (typeof nodeInstance.getConnections !== 'function') return;
+
+		const connections = nodeInstance.getConnections();
+		for (const { target } of connections) {
+			// Skip if target is a composite (already handled elsewhere)
+			if (this.isSwitchCaseComposite(target)) continue;
+			if (this.isIfBranchComposite(target)) continue;
+			if (this.isMergeComposite(target)) continue;
+			if (this.isSplitInBatchesBuilder(target)) continue;
+
+			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
+			if (isNodeChain(target)) {
+				this.addBranchToGraph(nodes, target as NodeChain);
+				continue;
+			}
 
 			// Add the target node if not already in the map
 			const targetNode = target as NodeInstance<string, string, unknown>;
@@ -1365,6 +1405,21 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						const nodeConns = nodeToCheck.getConnections();
 						if (nodeConns.some((c) => c.target === target && c.outputIndex === outputIndex)) {
 							// This chain node declared this connection
+							// First, ensure target nodes are added to the graph (e.g., error handler chains)
+							// Only add if not already present to avoid infinite recursion
+							if (isNodeChain(target)) {
+								const chainTarget = target as NodeChain;
+								// Check if head node is already in the map to avoid infinite recursion
+								if (!nodes.has(chainTarget.head.name)) {
+									this.addBranchToGraph(nodes, chainTarget);
+								}
+							} else if (
+								typeof (target as NodeInstance<string, string, unknown>).name === 'string' &&
+								!nodes.has((target as NodeInstance<string, string, unknown>).name)
+							) {
+								this.addNodeWithSubnodes(nodes, target as NodeInstance<string, string, unknown>);
+							}
+
 							const sourceGraphNode = nodes.get(nodeName);
 							if (sourceGraphNode) {
 								const targetName = this.resolveTargetNodeName(target);

@@ -19,6 +19,8 @@ interface CompositeNodeBase {
 export interface LeafNode extends CompositeNodeBase {
 	kind: 'leaf';
 	node: SemanticNode;
+	/** Optional error handler for nodes with onError: 'continueErrorOutput' */
+	errorHandler?: CompositeNode;
 }
 
 /**

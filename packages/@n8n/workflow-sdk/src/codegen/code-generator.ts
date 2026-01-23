@@ -490,10 +490,30 @@ function generateNodeCall(node: SemanticNode, ctx: GenerationContext): string {
 }
 
 /**
+ * Generate code for a leaf node, using variable reference if the node is declared as a variable
+ */
+function generateLeafCode(leaf: LeafNode, ctx: GenerationContext): string {
+	const nodeName = leaf.node.json.name;
+	if (nodeName && ctx.variableNodes.has(nodeName)) {
+		// Use variable reference for nodes that are declared as variables
+		return toVarName(nodeName);
+	}
+	return generateNodeCall(leaf.node, ctx);
+}
+
+/**
  * Generate code for a leaf node
  */
 function generateLeaf(leaf: LeafNode, ctx: GenerationContext): string {
-	return generateNodeCall(leaf.node, ctx);
+	let code = generateLeafCode(leaf, ctx);
+
+	// Add .onError() if node has an error handler
+	if (leaf.errorHandler) {
+		const errorHandlerCode = generateComposite(leaf.errorHandler, ctx);
+		code += `\n${getIndent(ctx)}.onError(${errorHandlerCode})`;
+	}
+
+	return code;
 }
 
 /**

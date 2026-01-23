@@ -412,6 +412,78 @@ describe('code-generator', () => {
 				// Should have variable declaration for convergence point
 				expect(code).toMatch(/const \w+ = /);
 			});
+
+			it('uses variable reference for error handler nodes referenced multiple times', () => {
+				// Pattern: Multiple nodes have error outputs pointing to the same error handler
+				// The error handler should be declared as a variable and referenced, not inlined
+				const json: WorkflowJSON = {
+					id: 'error-handler-var-test',
+					name: 'Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'Node A',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3.4,
+							position: [100, 0],
+							parameters: { options: {} },
+							onError: 'continueErrorOutput',
+						},
+						{
+							id: '3',
+							name: 'Node B',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3.4,
+							position: [200, 0],
+							parameters: { options: {} },
+							onError: 'continueErrorOutput',
+						},
+						{
+							id: '4',
+							name: 'Error Handler',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [150, 200],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'Node A', type: 'main', index: 0 }]] },
+						'Node A': {
+							main: [
+								[{ node: 'Node B', type: 'main', index: 0 }], // output 0: success
+								[{ node: 'Error Handler', type: 'main', index: 0 }], // output 1: error
+							],
+						},
+						'Node B': {
+							main: [
+								[], // output 0: success (no connection)
+								[{ node: 'Error Handler', type: 'main', index: 0 }], // output 1: error
+							],
+						},
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should have variable declaration for error handler (referenced by multiple nodes)
+				expect(code).toContain('const error_Handler =');
+
+				// Should use variable reference in .onError() calls, not inline node
+				// Count how many times the variable name appears vs how many times the full node() call appears
+				const varRefCount = (code.match(/\.onError\(error_Handler\)/g) || []).length;
+				const inlineCount = (code.match(/\.onError\(node\(\{/g) || []).length;
+
+				// All .onError() calls should use the variable reference
+				expect(varRefCount).toBe(2); // Both Node A and Node B
+				expect(inlineCount).toBe(0); // No inline node() calls
+			});
 		});
 
 		describe('empty workflow', () => {
