@@ -2090,11 +2090,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		sibGraphNode.connections.set('main', sibMainConns);
 
 		// Handle loop - connect last each node back to split in batches
-		if (builder._hasLoop && prevEachNode) {
+		// Skip if prevEachNode is the sibNode itself - the loop is already in the chain
+		if (builder._hasLoop && prevEachNode && prevEachNode !== builder.sibNode.name) {
 			const lastEachGraphNode = newNodes.get(prevEachNode);
 			if (lastEachGraphNode) {
 				const lastMainConns = lastEachGraphNode.connections.get('main') || new Map();
-				lastMainConns.set(0, [{ node: builder.sibNode.name, type: 'main', index: 0 }]);
+				const existingConns = lastMainConns.get(0) || [];
+				// Preserve existing connections and add the loop connection
+				lastMainConns.set(0, [
+					...existingConns,
+					{ node: builder.sibNode.name, type: 'main', index: 0 },
+				]);
 				lastEachGraphNode.connections.set('main', lastMainConns);
 			}
 		}

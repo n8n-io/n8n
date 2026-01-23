@@ -10,7 +10,7 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from './fixtures-download';
 
-const SKIP_WORKFLOWS = new Set<string>(['10476']);
+const SKIP_WORKFLOWS = new Set<string>([]);
 
 interface TestWorkflow {
 	id: string;
