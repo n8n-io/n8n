@@ -5,7 +5,11 @@
  * Uses natural language instructions to configure each node's settings.
  */
 
+import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
+
 import { prompt } from '../builder';
+
+const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
 
 const CONFIGURATOR_ROLE =
 	'You are a Configurator Agent specialized in setting up n8n node parameters.';
@@ -107,6 +111,23 @@ const CRITICAL_PARAMETERS = `- HTTP Request: URL, method, headers (if auth neede
 - Document Loader: dataType parameter ('binary' for files like PDF, 'json' for JSON data)
 - AI nodes: Prompts, models, configurations
 - Tool nodes: Use $fromAI for dynamic recipient/subject/message fields`;
+
+const DATA_TABLE_CONFIGURATION = `DATA TABLE NODE CONFIGURATION:
+When configuring Data Table nodes (n8n-nodes-base.dataTable):
+
+**For Row Column Operations (${dataTableColumnOperationsList}):**
+- There MUST be a Set node (n8n-nodes-base.set) immediately before the Data Table node
+- Configure the Set node with all the fields the user wants to store
+- Use a PLACEHOLDER for dataTableId (e.g., "<__PLACEHOLDER_VALUE__data_table_name__>")
+- Use columns.mappingMode: "autoMapInputData" (this maps columns from the preceding Set node)
+- Example: "Set dataTableId to placeholder <__PLACEHOLDER_VALUE__my_table__>, set columns mapping mode to autoMapInputData"
+
+**For Row Read Operations (get, getAll, delete):**
+- No Set node is required before the Data Table node
+- Still use a PLACEHOLDER for dataTableId
+- Configure any filter or query parameters as needed
+
+WHY: Data Tables must be created manually by the user. Using a placeholder ensures users know to create and select their table. For column operations, the Set node defines what columns to create.`;
 
 const DEFAULT_VALUES_GUIDE = `PRINCIPLE: User requests ALWAYS take precedence. When user specifies a model, parameter, or value - use exactly what they requested.
 
@@ -225,6 +246,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('expression_techniques', EXPRESSION_TECHNIQUES)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_parameters', CRITICAL_PARAMETERS)
+		.section('data_table_configuration', DATA_TABLE_CONFIGURATION)
 		.section('default_values_guide', DEFAULT_VALUES_GUIDE)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
