@@ -25,7 +25,7 @@ export class SecretProvidersAutocompleteController {
 	}
 
 	@Get('/secrets/global')
-	@GlobalScope('externalSecretsProvider:read')
+	@GlobalScope('externalSecret:list')
 	async listGlobalSecrets() {
 		this.logger.debug('Listing global secrets');
 		//TODO implement
