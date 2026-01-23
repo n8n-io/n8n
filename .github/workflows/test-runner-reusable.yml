@@ -1,0 +1,26 @@
+name: 'Test: Runner Reusable'
+
+on:
+  workflow_call:
+    inputs:
+      runner:
+        description: 'GitHub runner to use'
+        required: false
+        default: 'blacksmith-2vcpu-ubuntu-2204'
+        type: string
+
+jobs:
+  test:
+    name: Reusable Job
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
+    steps:
+      - name: Show runner info
+        run: |
+          echo "=== Runner Resolution ==="
+          echo "Input runner: ${{ inputs.runner }}"
+          echo "RUNNER_PROVIDER var: ${{ vars.RUNNER_PROVIDER || '(not set)' }}"
+          echo "Resolved expression: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}"
+          echo ""
+          echo "=== Actual Runner ==="
+          echo "Runner name: ${{ runner.name }}"
+          echo "Runner OS: ${{ runner.os }}"

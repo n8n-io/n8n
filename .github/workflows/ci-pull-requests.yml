@@ -12,7 +12,6 @@ jobs:
   install-and-build:
     name: Install & Build
     runs-on: blacksmith-2vcpu-ubuntu-2204
-    environment: ci
     env:
       NODE_OPTIONS: '--max-old-space-size=6144'
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
