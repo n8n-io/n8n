@@ -159,6 +159,144 @@ describe('CanvasNodeSettingsIcons', () => {
 
 			expect(queryByTestId('canvas-node-status-dynamic-credentials')).not.toBeInTheDocument();
 		});
+
+		it('should not render when node has no credentials', () => {
+			mockedUseEnvFeatureFlag.mockReturnValue({
+				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
+			} as ReturnType<typeof useEnvFeatureFlag>);
+
+			const node = createMockNode({ credentials: undefined });
+			workflowsStore.workflowObject = { getNode: vi.fn().mockReturnValue(node) } as never;
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-status-dynamic-credentials')).not.toBeInTheDocument();
+		});
+
+		it('should not render when credential has no id', () => {
+			mockedUseEnvFeatureFlag.mockReturnValue({
+				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
+			} as ReturnType<typeof useEnvFeatureFlag>);
+
+			const node = createMockNode({
+				credentials: { testCred: { id: '', name: 'Test Cred' } },
+			});
+			workflowsStore.workflowObject = { getNode: vi.fn().mockReturnValue(node) } as never;
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue({ isResolvable: true });
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-status-dynamic-credentials')).not.toBeInTheDocument();
+		});
+
+		it('should not render when credential is not found in store', () => {
+			mockedUseEnvFeatureFlag.mockReturnValue({
+				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
+			} as ReturnType<typeof useEnvFeatureFlag>);
+
+			const node = createMockNode({
+				credentials: { testCred: { id: 'cred-1', name: 'Test Cred' } },
+			});
+			workflowsStore.workflowObject = { getNode: vi.fn().mockReturnValue(node) } as never;
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-status-dynamic-credentials')).not.toBeInTheDocument();
+		});
+
+		it('should not render when contextEstablishmentHooks is not an object', () => {
+			mockedUseEnvFeatureFlag.mockReturnValue({
+				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
+			} as ReturnType<typeof useEnvFeatureFlag>);
+
+			const node = createMockNode({
+				parameters: {
+					contextEstablishmentHooks: 'not-an-object',
+				},
+			});
+			workflowsStore.workflowObject = { getNode: vi.fn().mockReturnValue(node) } as never;
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-status-dynamic-credentials')).not.toBeInTheDocument();
+		});
+
+		it('should not render when contextEstablishmentHooks has no hooks property', () => {
+			mockedUseEnvFeatureFlag.mockReturnValue({
+				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
+			} as ReturnType<typeof useEnvFeatureFlag>);
+
+			const node = createMockNode({
+				parameters: {
+					contextEstablishmentHooks: { other: 'property' },
+				},
+			});
+			workflowsStore.workflowObject = { getNode: vi.fn().mockReturnValue(node) } as never;
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-status-dynamic-credentials')).not.toBeInTheDocument();
+		});
+
+		it('should not render when hooks is not an array', () => {
+			mockedUseEnvFeatureFlag.mockReturnValue({
+				check: { value: (flag: string) => flag === 'DYNAMIC_CREDENTIALS' },
+			} as ReturnType<typeof useEnvFeatureFlag>);
+
+			const node = createMockNode({
+				parameters: {
+					contextEstablishmentHooks: { hooks: 'not-an-array' },
+				},
+			});
+			workflowsStore.workflowObject = { getNode: vi.fn().mockReturnValue(node) } as never;
+
+			const { queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({ data: { name: 'Test Node' } }),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-status-dynamic-credentials')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('other settings icons', () => {
