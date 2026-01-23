@@ -1,4 +1,4 @@
-import type { ICredentialType, INodeProperties, Icon } from 'n8n-workflow';
+import type { ICredentialType, INodeProperties, Icon, ThemeIconColor } from 'n8n-workflow';
 
 // eslint-disable-next-line n8n-nodes-base/cred-class-name-unsuffixed
 export class Crypto implements ICredentialType {
@@ -10,6 +10,8 @@ export class Crypto implements ICredentialType {
 	documentationUrl = 'crypto';
 
 	icon: Icon = 'fa:key';
+
+	iconColor: ThemeIconColor = 'green';
 
 	properties: INodeProperties[] = [
 		{
@@ -23,7 +25,7 @@ export class Crypto implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Sign Private Key',
+			displayName: 'Private Key',
 			name: 'signPrivateKey',
 			type: 'string',
 			description: 'Private Key used in the Sign action',

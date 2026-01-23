@@ -155,7 +155,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'SHA512',
 				},
 			],
-			default: 'MD5',
+			default: 'SHA256',
 			description: 'The hash type to use',
 			required: true,
 		},
@@ -247,7 +247,7 @@ const versionDescription: INodeTypeDescription = {
 					value: 'SHA512',
 				},
 			],
-			default: 'MD5',
+			default: 'SHA256',
 			description: 'The hash type to use',
 			required: true,
 		},
@@ -558,9 +558,19 @@ export class CryptoV2 implements INodeType {
 				returnData.push(newItem);
 			} catch (error) {
 				if (this.continueOnFail()) {
+					const errorDetails = error as Error & { code?: string };
+					const errorData: JsonObject = {
+						message: errorDetails.message,
+					};
+					if (errorDetails.name) {
+						errorData.name = errorDetails.name;
+					}
+					if (errorDetails.code) {
+						errorData.code = errorDetails.code;
+					}
 					returnData.push({
 						json: {
-							error: (error as JsonObject).message,
+							error: errorData,
 						},
 						pairedItem: {
 							item: i,

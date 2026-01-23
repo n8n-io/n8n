@@ -67,7 +67,7 @@ describe('CryptoV2 Node', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, string | boolean> = {
 						action: 'hmac',
-						type: 'MD5',
+						type: 'SHA256',
 						encoding: 'base64',
 						dataPropertyName: 'data',
 						binaryData: false,
@@ -83,7 +83,7 @@ describe('CryptoV2 Node', () => {
 
 				const result = await cryptoNode.execute.call(mockExecuteFunctions);
 
-				expect(result[0][0].json.data).toBe('BBXLTeT2o/R6oy5H69Yh7w==');
+				expect(result[0][0].json.data).toBe('hoB1e7VM7nbOTl8floCPteEqN4ZODWlVc9IWQjsEhUk=');
 			});
 		});
 
@@ -122,7 +122,7 @@ describe('CryptoV2 Node', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, string> = {
 						action: 'sign',
-						algorithm: 'RSA-MD5',
+						algorithm: 'RSA-SHA256',
 						encoding: 'base64',
 						dataPropertyName: 'data',
 						value: 'test',
@@ -137,7 +137,7 @@ describe('CryptoV2 Node', () => {
 				const result = await cryptoNode.execute.call(mockExecuteFunctions);
 
 				expect(result[0][0].json.data).toBe(
-					'MVr+iZiOFtHVwO0iKC+CF+QlrZZKcGk7zBvUrWHC1fHBeS6IoWa8B/wrMvazV5H1YR8tbK8baZHD/vUNdfvjiA==',
+					'ZlDI7xX0XElJHwEpTw08Ykz/D+IJ+hQkcb4Cr929bUjiiLRXy8Etagc0Miuld2WnksIaznNmlqn7bom5oOpDnw==',
 				);
 			});
 		});
