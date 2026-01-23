@@ -44,7 +44,6 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
-				containerWidth: 100,
 			},
 			pinia,
 		});
@@ -71,7 +70,6 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
-				containerWidth: 100,
 			},
 			pinia,
 		});
@@ -96,7 +94,6 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
-				containerWidth: 100,
 			},
 			pinia,
 		});
@@ -122,7 +119,6 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
-				containerWidth: 100,
 			},
 			pinia,
 		});
