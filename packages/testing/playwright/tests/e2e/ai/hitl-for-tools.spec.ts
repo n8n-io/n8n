@@ -41,16 +41,22 @@ async function setEditorText(n8n: n8nPage, parameterName: string, value: string)
 	await codeEditor.fill(value);
 }
 
-async function executeChatAndWaitForResponse(n8n: n8nPage, message: string) {
-	await n8n.canvas.logsPanel.sendManualChatMessage(message);
-	await waitForWorkflowSuccess(n8n);
-}
-
 test.use({ capability: 'proxy' });
+const hitlForToolsTestConfig = {
+	timezoneId: 'America/New_York',
+	capability: {
+		services: ['proxy'],
+		env: {
+			N8N_COMMUNITY_PACKAGES_ENABLED: 'false',
+		},
+	},
+} as const;
+
+test.use(hitlForToolsTestConfig);
 test.describe('HITL for Tools @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
-		// await proxyServer.clearAllExpectations();
-		// await proxyServer.loadExpectations('langchain');
+		await proxyServer.clearAllExpectations();
+		await proxyServer.loadExpectations('hitl-for-tools');
 		await n8n.canvas.openNewWorkflow();
 	});
 
@@ -63,7 +69,7 @@ test.describe('HITL for Tools @capability:proxy', () => {
 			MANUAL_CHAT_TRIGGER_NODE_NAME,
 			'ai_tool',
 			AGENT_NODE_NAME,
-			{ closeNDV: true, subcategory: HITL_TOOL_SUBCATEGORY },
+			{ closeNDV: true, subcategory: HITL_TOOL_SUBCATEGORY, exactMatch: true },
 		);
 
 		await n8n.canvas.addSupplementalNodeToParent(
@@ -73,10 +79,10 @@ test.describe('HITL for Tools @capability:proxy', () => {
 			{ closeNDV: false },
 		);
 
-		await n8n.ndv.fillParameterInputByName('description', 'Send email');
+		await n8n.ndv.getParameterInput('description').locator('textarea').fill('Send email');
 		await setEditorText(n8n, 'jsCode', 'return "Email sent";');
 
-		await n8n.ndv.setParameterSwitch('hasOutputParser', true);
+		await n8n.ndv.setParameterSwitch('specifyInputSchema', true);
 		await setEditorText(n8n, 'jsonSchemaExample', '{"receiver": "",    "body": ""}');
 
 		await n8n.ndv.clickBackToCanvasButton();
@@ -84,9 +90,12 @@ test.describe('HITL for Tools @capability:proxy', () => {
 		await n8n.canvas.addNode(MANUAL_CHAT_TRIGGER_NODE_NAME, {
 			closeNDV: false,
 			action: 'Send a message',
+			fromNode: AGENT_NODE_NAME,
 		});
 		await n8n.ndv.openExpressionEditorModal('message');
 		await n8n.ndv.fillExpressionEditorModalInput('{{ $json.output }}');
+		await n8n.ndv.getExpressionEditorModalOutput().click();
+		await n8n.page.keyboard.press('Escape');
 		await n8n.ndv.clickBackToCanvasButton();
 
 		await n8n.canvas.openNode(CHAT_TRIGGER_NODE_DISPLAY_NAME);
@@ -95,27 +104,10 @@ test.describe('HITL for Tools @capability:proxy', () => {
 		await n8n.ndv.clickBackToCanvasButton();
 
 		await n8n.canvas.clickManualChatButton();
-		await executeChatAndWaitForResponse(n8n, 'Send welcome email to john@gmail.com');
-		const approveMessage = n8n.canvas.getManualChatLatestBotMessage();
-		const approveButton = approveMessage.getByText('Approve');
-		await expect(approveButton).toBeVisible();
-		await approveButton.click();
-
-		await proxyServer.recordExpectations('langchain', {
-			host: 'api.openai.com', // Filter by OpenAI host
-			dedupe: true, // Remove duplicate requests
-			transform: (expectation) => {
-				// Clean up sensitive data or headers if needed
-				const response = expectation.httpResponse as {
-					headers?: Record<string, string[]>;
-				};
-
-				if (response?.headers) {
-					delete response.headers['authorization'];
-				}
-
-				return expectation;
-			},
-		});
+		await n8n.canvas.logsPanel.sendManualChatMessage('Send welcome email to john@gmail.com');
+		const approveButton = n8n.page.getByTestId('canvas-chat').getByText('Approve');
+		await expect(approveButton).toBeVisible({ timeout: 20000 });
+		await approveButton.click({ button: 'middle' });
+		await waitForWorkflowSuccess(n8n);
 	});
 });

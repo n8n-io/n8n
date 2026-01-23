@@ -118,10 +118,15 @@ export class CanvasPage extends BasePage {
 			closeNDV?: boolean;
 			action?: string;
 			trigger?: string;
+			fromNode?: string;
 		},
 	): Promise<void> {
-		// Always start with canvas plus button
-		await this.clickNodeCreatorPlusButton();
+		if (options?.fromNode) {
+			await this.clickNodePlusEndpoint(options.fromNode);
+		} else {
+			// Always start with canvas plus button
+			await this.clickNodeCreatorPlusButton();
+		}
 
 		// Search for and select the node, works on exact name match only
 		await this.fillNodeCreatorSearchBar(nodeName);
