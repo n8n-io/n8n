@@ -378,7 +378,7 @@ export function useWorkflowNavigationCommands(options: {
 		const isRootWithQuery = activeNodeId.value === null && trimmed.length > 2;
 
 		if (isInWorkflowParent || isRootWithQuery) {
-			isLoading.value = isInWorkflowParent;
+			isLoading.value = true;
 			void fetchWorkflowsDebounced(trimmed);
 		}
 	}
@@ -390,6 +390,7 @@ export function useWorkflowNavigationCommands(options: {
 			isLoading.value = true;
 			void fetchWorkflowsImpl('');
 		} else if (to === null) {
+			isLoading.value = false;
 			workflowResults.value = [];
 			workflowKeywords.value.clear();
 			workflowMatchedNodeTypes.value.clear();

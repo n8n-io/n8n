@@ -378,13 +378,6 @@ export class LoadNodesAndCredentials {
 				description: 'Select which context establishment hook to use',
 				required: true,
 			},
-			{
-				displayName: 'Allow Failure',
-				name: 'isAllowedToFail',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to continue workflow execution if this hook fails',
-			},
 		];
 
 		// Add all hook-specific options with display conditions
@@ -851,7 +844,7 @@ export class LoadNodesAndCredentials {
 						description: 'Block all requests when used in the HTTP Request node',
 					},
 				],
-				default: 'all',
+				default: 'none',
 				description: 'Control which domains this credential can be used with in HTTP Request nodes',
 			},
 			{
