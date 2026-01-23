@@ -147,6 +147,7 @@ function onCancelFeedback() {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-top: var(--spacing--2xs);
+	width: 100%;
 }
 
 .buttons {

@@ -747,7 +747,7 @@ defineExpose({
 .feedbackWrapper {
 	display: flex;
 	justify-content: start;
-	padding: 0 0 var(--spacing--2xs) var(--spacing--2xs);
+	padding: 0 var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs);
 	border-left: var(--border);
 	border-right: var(--border);
 	background-color: var(--color--background--light-2);
