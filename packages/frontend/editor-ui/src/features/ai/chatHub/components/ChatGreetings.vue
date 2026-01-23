@@ -30,6 +30,7 @@ const i18n = useI18n();
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	align-self: center;
 }
 
 .icon {

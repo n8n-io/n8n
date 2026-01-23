@@ -18,13 +18,10 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import { I18nT } from 'vue-i18n';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { type ChatModelDto, ROLE } from '@n8n/api-types';
-import ChatGreetings from './ChatGreetings.vue';
+import { ROLE } from '@n8n/api-types';
 
 defineProps<{
-	isMobileDevice: boolean;
 	showWelcomeScreen: boolean;
-	selectedAgent: ChatModelDto | null;
 }>();
 
 const emit = defineEmits<{
@@ -63,126 +60,112 @@ function handleUpgradeClick() {
 </script>
 
 <template>
-	<div :class="[$style.starter, { [$style.isMobileDevice]: isMobileDevice }]">
-		<Transition name="welcome-fade" mode="out-in">
-			<div v-if="showWelcomeScreen" key="welcome" :class="$style.welcomeContent">
-				<div :class="$style.header">
-					<N8nHeading tag="h2" bold size="xlarge">
-						{{ i18n.baseText('chatHub.welcome.header') }}
-					</N8nHeading>
-					<N8nText size="large" color="text-light">
-						{{ i18n.baseText('chatHub.welcome.subtitle') }}
-					</N8nText>
+	<Transition name="welcome-fade" mode="out-in">
+		<div v-if="showWelcomeScreen" key="welcome" :class="$style.welcomeContent">
+			<div :class="$style.header">
+				<N8nHeading tag="h2" bold size="xlarge">
+					{{ i18n.baseText('chatHub.welcome.header') }}
+				</N8nHeading>
+				<N8nText size="large" color="text-light">
+					{{ i18n.baseText('chatHub.welcome.subtitle') }}
+				</N8nText>
+			</div>
+
+			<div :class="$style.cardGrid">
+				<div
+					data-test-id="welcome-card-workflow-agents"
+					:class="[$style.cardWrapper, $style.cardFirst]"
+				>
+					<N8nCard :class="$style.card">
+						<div :class="$style.cardHeader">
+							<N8nIcon icon="robot" size="large" color="text-dark" />
+							<N8nText bold>{{
+								i18n.baseText('chatHub.welcome.card.workflowAgents.title')
+							}}</N8nText>
+						</div>
+						<N8nText size="small" color="text-light">{{
+							i18n.baseText('chatHub.welcome.card.workflowAgents.description')
+						}}</N8nText>
+					</N8nCard>
 				</div>
 
-				<div :class="$style.cardGrid">
-					<div
-						data-test-id="welcome-card-workflow-agents"
-						:class="[$style.cardWrapper, $style.cardFirst]"
-					>
-						<N8nCard :class="$style.card">
-							<div :class="$style.cardHeader">
-								<N8nIcon icon="robot" size="large" color="text-dark" />
-								<N8nText bold>{{
-									i18n.baseText('chatHub.welcome.card.workflowAgents.title')
-								}}</N8nText>
-							</div>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('chatHub.welcome.card.workflowAgents.description')
+				<div
+					:class="[$style.cardWrapper, $style.cardMiddle]"
+					data-test-id="welcome-card-personal-agents"
+				>
+					<N8nCard :class="$style.card">
+						<div :class="$style.cardHeader">
+							<N8nIcon icon="message-square" size="large" color="text-dark" />
+							<N8nText bold>{{
+								i18n.baseText('chatHub.welcome.card.personalAgents.title')
 							}}</N8nText>
-						</N8nCard>
-					</div>
-
-					<div
-						:class="[$style.cardWrapper, $style.cardMiddle]"
-						data-test-id="welcome-card-personal-agents"
-					>
-						<N8nCard :class="$style.card">
-							<div :class="$style.cardHeader">
-								<N8nIcon icon="message-square" size="large" color="text-dark" />
-								<N8nText bold>{{
-									i18n.baseText('chatHub.welcome.card.personalAgents.title')
-								}}</N8nText>
-							</div>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('chatHub.welcome.card.personalAgents.description')
-							}}</N8nText>
-						</N8nCard>
-					</div>
-
-					<div
-						:class="[$style.cardWrapper, $style.cardLast]"
-						data-test-id="welcome-card-base-models"
-					>
-						<N8nCard :class="$style.card">
-							<div :class="$style.cardHeader">
-								<div :class="$style.providerIcons">
-									<CredentialIcon credential-type-name="openAiApi" :size="20" />
-									<CredentialIcon credential-type-name="anthropicApi" :size="20" />
-									<CredentialIcon credential-type-name="googlePalmApi" :size="20" />
-								</div>
-								<N8nText bold>{{ i18n.baseText('chatHub.welcome.card.baseModels.title') }}</N8nText>
-							</div>
-							<N8nText size="small" color="text-light">{{
-								i18n.baseText('chatHub.welcome.card.baseModels.description')
-							}}</N8nText>
-						</N8nCard>
-					</div>
+						</div>
+						<N8nText size="small" color="text-light">{{
+							i18n.baseText('chatHub.welcome.card.personalAgents.description')
+						}}</N8nText>
+					</N8nCard>
 				</div>
 
-				<div :class="$style.buttonGroup">
-					<N8nButton
-						type="primary"
-						size="medium"
-						icon="plus"
-						data-test-id="welcome-start-new-chat"
-						@click="handleStartNewChat"
-					>
-						{{ i18n.baseText('chatHub.welcome.button.startNewChat') }}
-					</N8nButton>
-
-					<N8nTooltip v-if="showInviteButton" :disabled="!isInviteDisabled">
-						<template #content>
-							<I18nT keypath="chatHub.welcome.inviteUpgrade.tooltip" scope="global">
-								<template #link>
-									<N8nLink size="small" @click="handleUpgradeClick">
-										{{ i18n.baseText('generic.upgrade') }}
-									</N8nLink>
-								</template>
-								<template #docsLink>
-									<N8nLink size="small" :href="CHAT_USERS_DOCS_URL" target="_blank" rel="noopener">
-										{{ i18n.baseText('chatHub.welcome.inviteUpgrade.here') }}
-									</N8nLink>
-								</template>
-							</I18nT>
-						</template>
-						<N8nButton
-							type="secondary"
-							size="medium"
-							icon="users"
-							:disabled="isInviteDisabled"
-							data-test-id="welcome-invite-chat-users"
-							@click="handleInviteUsers"
-						>
-							{{ i18n.baseText('chatHub.welcome.button.inviteChatUsers') }}
-						</N8nButton>
-					</N8nTooltip>
+				<div :class="[$style.cardWrapper, $style.cardLast]" data-test-id="welcome-card-base-models">
+					<N8nCard :class="$style.card">
+						<div :class="$style.cardHeader">
+							<div :class="$style.providerIcons">
+								<CredentialIcon credential-type-name="openAiApi" :size="20" />
+								<CredentialIcon credential-type-name="anthropicApi" :size="20" />
+								<CredentialIcon credential-type-name="googlePalmApi" :size="20" />
+							</div>
+							<N8nText bold>{{ i18n.baseText('chatHub.welcome.card.baseModels.title') }}</N8nText>
+						</div>
+						<N8nText size="small" color="text-light">{{
+							i18n.baseText('chatHub.welcome.card.baseModels.description')
+						}}</N8nText>
+					</N8nCard>
 				</div>
 			</div>
-			<ChatGreetings v-else key="greetings" :selected-agent="selectedAgent" />
-		</Transition>
-	</div>
+
+			<div :class="$style.buttonGroup">
+				<N8nButton
+					type="primary"
+					size="medium"
+					icon="plus"
+					data-test-id="welcome-start-new-chat"
+					@click="handleStartNewChat"
+				>
+					{{ i18n.baseText('chatHub.welcome.button.startNewChat') }}
+				</N8nButton>
+
+				<N8nTooltip v-if="showInviteButton" :disabled="!isInviteDisabled">
+					<template #content>
+						<I18nT keypath="chatHub.welcome.inviteUpgrade.tooltip" scope="global">
+							<template #link>
+								<N8nLink size="small" @click="handleUpgradeClick">
+									{{ i18n.baseText('generic.upgrade') }}
+								</N8nLink>
+							</template>
+							<template #docsLink>
+								<N8nLink size="small" :href="CHAT_USERS_DOCS_URL" target="_blank" rel="noopener">
+									{{ i18n.baseText('chatHub.welcome.inviteUpgrade.here') }}
+								</N8nLink>
+							</template>
+						</I18nT>
+					</template>
+					<N8nButton
+						type="secondary"
+						size="medium"
+						icon="users"
+						:disabled="isInviteDisabled"
+						data-test-id="welcome-invite-chat-users"
+						@click="handleInviteUsers"
+					>
+						{{ i18n.baseText('chatHub.welcome.button.inviteChatUsers') }}
+					</N8nButton>
+				</N8nTooltip>
+			</div>
+		</div>
+	</Transition>
 </template>
 
 <style lang="scss" module>
-.starter {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--xl);
-}
-
 .header {
 	display: flex;
 	flex-direction: column;
@@ -265,10 +248,18 @@ function handleUpgradeClick() {
 }
 
 .welcomeContent {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 100;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	justify-content: center;
 	gap: var(--spacing--xl);
+	background-color: var(--color--background--light-2);
 }
 </style>
 
