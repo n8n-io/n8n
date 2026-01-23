@@ -1,15 +1,15 @@
-import { Column, Entity, OneToMany } from '@n8n/typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn } from '@n8n/typeorm';
 
-import { WithTimestampsAndStringId } from './abstract-entity';
+import { WithTimestamps } from './abstract-entity';
 import type { SharedSecretsProviderConnection } from './shared-secrets-provider-connection';
 
 @Entity()
-export class SecretsProviderConnection extends WithTimestampsAndStringId {
+export class SecretsProviderConnection extends WithTimestamps {
 	/**
 	 * Unique provider identifier of the secrets provider connection.
 	 * This is the identifier used in the credential expressions e.g. {{ $secrets.<provider-key>.<secret-key>}
 	 */
-	@Column({ unique: true })
+	@PrimaryColumn()
 	providerKey: string;
 
 	/**
