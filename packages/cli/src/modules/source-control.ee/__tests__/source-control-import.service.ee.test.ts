@@ -169,6 +169,8 @@ describe('SourceControlImportService', () => {
 				name: 'Workflow 1',
 				active: false,
 				nodes: [],
+				connections: {},
+				versionId: 'v1',
 				owner: {
 					type: 'personal',
 					personalEmail: 'user@example.com',
@@ -180,6 +182,8 @@ describe('SourceControlImportService', () => {
 				name: 'Workflow 2',
 				active: false,
 				nodes: [],
+				connections: {},
+				versionId: 'v2',
 				owner: {
 					type: 'personal',
 					personalEmail: 'user@example.com',
@@ -279,6 +283,8 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				name: 'New Workflow',
 				nodes: [],
+				connections: {},
+				versionId: 'v1',
 				parentFolderId: null,
 			};
 			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
@@ -318,6 +324,8 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				name: 'Existing Workflow',
 				nodes: [],
+				connections: {},
+				versionId: 'v1',
 				parentFolderId: null,
 			};
 			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
@@ -365,6 +373,8 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				name: 'Active Workflow',
 				nodes: [],
+				connections: {},
+				versionId: 'v1',
 				parentFolderId: null,
 				active: true,
 				activeVersionId: 'v2',
@@ -407,7 +417,7 @@ describe('SourceControlImportService', () => {
 			expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 		});
 
-		it('should deactivate archived workflows even if they were previously active', async () => {
+		it('should unpublish archived workflows even if they were previously published', async () => {
 			const mockUserId = 'user-id-123';
 			const mockUser = Object.assign(new User(), { id: mockUserId });
 			const mockWorkflowFile = '/mock/workflow1.json';
@@ -415,6 +425,8 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				name: 'Archived Workflow',
 				nodes: [],
+				connections: {},
+				versionId: 'v1',
 				parentFolderId: null,
 				isArchived: true,
 				active: true,
@@ -482,6 +494,8 @@ describe('SourceControlImportService', () => {
 					id: 'workflow1',
 					name: 'Active Workflow',
 					nodes: [],
+					connections: {},
+					versionId: 'v2',
 					parentFolderId: null,
 					active: true,
 					activeVersionId: 'v2',
@@ -510,7 +524,6 @@ describe('SourceControlImportService', () => {
 					}),
 					['id'],
 				);
-				// Should not call activate or deactivate
 				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
 			});
@@ -521,6 +534,8 @@ describe('SourceControlImportService', () => {
 					id: 'workflow1',
 					name: 'Active Workflow',
 					nodes: [],
+					connections: {},
+					versionId: 'v1',
 					parentFolderId: null,
 					active: true,
 					activeVersionId: 'v1',
@@ -549,18 +564,18 @@ describe('SourceControlImportService', () => {
 					}),
 					['id'],
 				);
-				// Should not call activate or deactivate
 				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
 				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
 			});
 
-			it('should activate new workflows with autoPublish="all"', async () => {
+			it('should publish new workflows with autoPublish="all"', async () => {
 				const mockWorkflowFile = '/mock/workflow1.json';
 				const mockWorkflowData = {
 					id: 'workflow1',
 					name: 'New Workflow',
 					versionId: 'remote-version-123',
 					nodes: [],
+					connections: {},
 					parentFolderId: null,
 					active: false,
 					activeVersionId: null,
@@ -594,13 +609,14 @@ describe('SourceControlImportService', () => {
 				);
 			});
 
-			it('should reactivate existing workflows with autoPublish="all"', async () => {
+			it('should republish existing workflows with autoPublish="all"', async () => {
 				const mockWorkflowFile = '/mock/workflow1.json';
 				const mockWorkflowData = {
 					id: 'workflow1',
 					name: 'Existing Workflow',
 					versionId: 'v2',
 					nodes: [],
+					connections: {},
 					parentFolderId: null,
 					active: false,
 					activeVersionId: null,
@@ -630,7 +646,7 @@ describe('SourceControlImportService', () => {
 					['id'],
 				);
 
-				// Should be deactivated first and then activated
+				// Should be unpublished first and then published
 				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
 					mockUser,
@@ -642,13 +658,15 @@ describe('SourceControlImportService', () => {
 				);
 			});
 
-			it('should activate only previously published workflows with autoPublish="published"', async () => {
+			it('should publish only previously published workflows with autoPublish="published"', async () => {
 				const mockWorkflowFile1 = '/mock/workflow1.json';
 				const mockWorkflowFile2 = '/mock/workflow2.json';
 				const mockWorkflowData1 = {
 					id: 'workflow1',
 					name: 'Previously Active',
 					nodes: [],
+					connections: {},
+					versionId: 'v1',
 					parentFolderId: null,
 					active: false,
 					activeVersionId: null,
@@ -657,6 +675,8 @@ describe('SourceControlImportService', () => {
 					id: 'workflow2',
 					name: 'Previously Inactive',
 					nodes: [],
+					connections: {},
+					versionId: 'v1',
 					parentFolderId: null,
 					active: false,
 					activeVersionId: null,
@@ -684,14 +704,14 @@ describe('SourceControlImportService', () => {
 
 				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'published');
 
-				// Workflow1 should be deactivated (was previously active) and then activated
+				// Workflow1 should be unpublished (was previously published) and then published
 				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
 					mockUser,
 					'workflow1',
 					expect.any(Object),
 				);
-				// Workflow2 should not be activated (was previously inactive)
+				// Workflow2 should not be published (was previously unpublished)
 				expect(workflowService.activateWorkflow).not.toHaveBeenCalledWith(
 					mockUser,
 					'workflow2',
@@ -699,12 +719,14 @@ describe('SourceControlImportService', () => {
 				);
 			});
 
-			it('should never activate archived workflows regardless of autoPublish mode', async () => {
+			it('should never publish archived workflows regardless of autoPublish mode', async () => {
 				const mockWorkflowFile = '/mock/workflow1.json';
 				const mockWorkflowData = {
 					id: 'workflow1',
 					name: 'Archived Workflow',
 					nodes: [],
+					connections: {},
+					versionId: 'v1',
 					parentFolderId: null,
 					isArchived: true,
 				};
@@ -724,11 +746,11 @@ describe('SourceControlImportService', () => {
 				// Test with 'all' mode
 				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
 
-				// Should deactivate the previously active workflow
+				// Should unpublish the previously active workflow
 				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
-				// Should NOT activate archived workflow
+				// Should NOT publish archived workflow
 				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
-				// Should import as inactive
+				// Should import as unpublished
 				expect(workflowRepository.upsert).toHaveBeenCalledWith(
 					expect.objectContaining({
 						active: false,
@@ -739,13 +761,14 @@ describe('SourceControlImportService', () => {
 				);
 			});
 
-			it('should deactivate and reactivate workflow when transitioning versions', async () => {
+			it('should unpublish and republish workflow when transitioning versions', async () => {
 				const mockWorkflowFile = '/mock/workflow1.json';
 				const mockWorkflowData = {
 					id: 'workflow1',
 					name: 'Active Workflow',
 					versionId: 'new-version',
 					nodes: [],
+					connections: {},
 					parentFolderId: null,
 				};
 				const existingWorkflow = Object.assign(new WorkflowEntity(), {
@@ -763,9 +786,9 @@ describe('SourceControlImportService', () => {
 
 				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'published');
 
-				// Should deactivate old version
+				// Should unpublish old version
 				expect(workflowService.deactivateWorkflow).toHaveBeenCalledWith(mockUser, 'workflow1');
-				// Should import with new version as inactive
+				// Should import with new version as unpublished
 				expect(workflowRepository.upsert).toHaveBeenCalledWith(
 					expect.objectContaining({
 						active: false,
@@ -775,7 +798,7 @@ describe('SourceControlImportService', () => {
 					}),
 					['id'],
 				);
-				// Should activate with new version after history is saved
+				// Should publish with new version after history is saved
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(
 					mockUser,
 					'workflow1',
@@ -794,6 +817,8 @@ describe('SourceControlImportService', () => {
 					id: 'workflow1',
 					name: 'Workflow with activation error',
 					nodes: [],
+					connections: {},
+					versionId: 'v1',
 					parentFolderId: null,
 				};
 				const candidates = [
@@ -819,7 +844,7 @@ describe('SourceControlImportService', () => {
 				const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
 
 				expect(mockLogger.error).toHaveBeenCalledWith(
-					'Failed to activate workflow workflow1',
+					'Failed to publish workflow workflow1',
 					expect.any(Object),
 				);
 				expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
