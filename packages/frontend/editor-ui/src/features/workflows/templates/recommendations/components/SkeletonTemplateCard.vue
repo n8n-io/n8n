@@ -21,6 +21,12 @@ import { N8nCard, N8nLoading } from '@n8n/design-system';
 			<div :class="$style.title">
 				<N8nLoading variant="custom" />
 			</div>
+			<div :class="$style.title">
+				<N8nLoading variant="custom" />
+			</div>
+			<div :class="$style.title">
+				<N8nLoading variant="custom" />
+			</div>
 			<div :class="$style.stats">
 				<div :class="$style.statItem">
 					<N8nLoading variant="custom" />
@@ -43,6 +49,7 @@ import { N8nCard, N8nLoading } from '@n8n/design-system';
 	display: flex;
 	gap: var(--spacing--xs);
 	overflow: hidden;
+	margin-bottom: calc(-1 * var(--spacing--sm));
 }
 
 .widthBlock {
@@ -74,7 +81,7 @@ import { N8nCard, N8nLoading } from '@n8n/design-system';
 }
 
 .title {
-	height: var(--font-size--lg);
+	height: var(--font-size--md);
 	width: 80%;
 	border-radius: var(--radius);
 	overflow: hidden;
