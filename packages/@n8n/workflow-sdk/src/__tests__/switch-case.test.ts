@@ -4,6 +4,9 @@ import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
 import type { NodeInstance } from '../types/base';
 
+// Helper type for Switch node
+type SwitchNode = NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+
 describe('Switch Case', () => {
 	describe('switchCase() requires named syntax only', () => {
 		it('should require a switch node as first argument', () => {
@@ -54,7 +57,7 @@ describe('Switch Case', () => {
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
 				config: { name: 'My Switch' },
-			});
+			}) as SwitchNode;
 			const case0 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -77,7 +80,7 @@ describe('Switch Case', () => {
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
 				config: { name: 'My Switch' },
-			});
+			}) as SwitchNode;
 			const case0 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -97,7 +100,7 @@ describe('Switch Case', () => {
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
 				config: { name: 'My Switch' },
-			});
+			}) as SwitchNode;
 			const case0 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -141,11 +144,11 @@ describe('Switch Case', () => {
 			expect(switchConns).toBeDefined();
 
 			// case0 at output 0
-			expect(switchConns.main[0][0].node).toBe('Case 0');
+			expect(switchConns.main[0]![0]!.node).toBe('Case 0');
 			// case1 at output 1
-			expect(switchConns.main[1][0].node).toBe('Case 1');
+			expect(switchConns.main[1]![0]!.node).toBe('Case 1');
 			// case2 at output 2
-			expect(switchConns.main[2][0].node).toBe('Case 2');
+			expect(switchConns.main[2]![0]!.node).toBe('Case 2');
 		});
 
 		it('should support null for empty cases', () => {
@@ -154,7 +157,7 @@ describe('Switch Case', () => {
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
 				config: { name: 'My Switch' },
-			});
+			}) as SwitchNode;
 			const case0 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -187,11 +190,11 @@ describe('Switch Case', () => {
 			expect(switchConns).toBeDefined();
 
 			// case0 at output 0
-			expect(switchConns.main[0][0].node).toBe('Case 0');
+			expect(switchConns.main[0]![0]!.node).toBe('Case 0');
 			// case1 at output 1 - should be empty or undefined (null case = no connection)
-			expect(switchConns.main[1] === undefined || switchConns.main[1].length === 0).toBe(true);
+			expect(switchConns.main[1] === undefined || switchConns.main[1]!.length === 0).toBe(true);
 			// case2 at output 2
-			expect(switchConns.main[2][0].node).toBe('Case 2');
+			expect(switchConns.main[2]![0]!.node).toBe('Case 2');
 		});
 
 		it('should support fanOut() for multiple targets from one case', () => {
@@ -200,7 +203,7 @@ describe('Switch Case', () => {
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
 				config: { name: 'My Switch' },
-			});
+			}) as SwitchNode;
 			const targetA = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -238,11 +241,11 @@ describe('Switch Case', () => {
 
 			// case0 at output 0 - should have both targets
 			expect(switchConns.main[0]).toHaveLength(2);
-			const output0Targets = switchConns.main[0].map((c: { node: string }) => c.node).sort();
+			const output0Targets = switchConns.main[0]!.map((c: { node: string }) => c.node).sort();
 			expect(output0Targets).toEqual(['Target A', 'Target B']);
 
 			// case1 at output 1
-			expect(switchConns.main[1][0].node).toBe('Target C');
+			expect(switchConns.main[1]![0]!.node).toBe('Target C');
 		});
 
 		it('should identify named syntax with isSwitchCaseNamedSyntax', () => {
@@ -250,7 +253,7 @@ describe('Switch Case', () => {
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
 				config: { name: 'My Switch' },
-			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+			}) as SwitchNode;
 			const case0 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,

@@ -2,6 +2,10 @@ import { splitInBatches } from '../split-in-batches';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
+import type { NodeInstance } from '../types/base';
+
+// Helper type for SplitInBatches node
+type SibNode = NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
 
 describe('Split In Batches', () => {
 	describe('splitInBatches()', () => {
@@ -83,7 +87,7 @@ describe('Split In Batches', () => {
 			// Find split in batches node
 			const sibNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
 			expect(sibNode).toBeDefined();
-			expect(sibNode!.parameters.batchSize).toBe(10);
+			expect(sibNode!.parameters?.batchSize).toBe(10);
 
 			// Check split in batches has two outputs
 			const sibConnections = json.connections[sibNode!.name];
@@ -92,16 +96,16 @@ describe('Split In Batches', () => {
 
 			// Output 0 should connect to finalize
 			expect(sibConnections.main[0]).toHaveLength(1);
-			expect(sibConnections.main[0][0].node).toBe('Finalize');
+			expect(sibConnections.main[0]![0]!.node).toBe('Finalize');
 
 			// Output 1 should connect to process
 			expect(sibConnections.main[1]).toHaveLength(1);
-			expect(sibConnections.main[1][0].node).toBe('Process Batch');
+			expect(sibConnections.main[1]![0]!.node).toBe('Process Batch');
 
 			// Process should loop back to split in batches
 			const processConnections = json.connections['Process Batch'];
 			expect(processConnections).toBeDefined();
-			expect(processConnections.main[0][0].node).toBe(sibNode!.name);
+			expect(processConnections.main[0]![0]!.node).toBe(sibNode!.name);
 		});
 
 		it('should support fan-out with array in .done().then([...]) for parallel branches', () => {
@@ -158,17 +162,17 @@ describe('Split In Batches', () => {
 			const sibConnections = json.connections['Process Items'];
 			expect(sibConnections).toBeDefined();
 			expect(sibConnections.main[0]).toHaveLength(2);
-			const doneTargets = sibConnections.main[0].map((c: { node: string }) => c.node).sort();
+			const doneTargets = sibConnections.main[0]!.map((c: { node: string }) => c.node).sort();
 			expect(doneTargets).toEqual(['Fetch Salary', 'Fetch Schufa']);
 
 			// Both fetch nodes should connect to generate letter
 			const schufaConns = json.connections['Fetch Schufa'];
 			expect(schufaConns).toBeDefined();
-			expect(schufaConns.main[0][0].node).toBe('Generate Cover Letter');
+			expect(schufaConns.main[0]![0]!.node).toBe('Generate Cover Letter');
 
 			const salaryConns = json.connections['Fetch Salary'];
 			expect(salaryConns).toBeDefined();
-			expect(salaryConns.main[0][0].node).toBe('Generate Cover Letter');
+			expect(salaryConns.main[0]![0]!.node).toBe('Generate Cover Letter');
 		});
 
 		it('should support fan-out with array in .each().then([...]) for parallel branches', () => {
@@ -203,7 +207,7 @@ describe('Split In Batches', () => {
 			const sibConnections = json.connections['Loop'];
 			expect(sibConnections).toBeDefined();
 			expect(sibConnections.main[1]).toHaveLength(2);
-			const eachTargets = sibConnections.main[1].map((c: { node: string }) => c.node).sort();
+			const eachTargets = sibConnections.main[1]!.map((c: { node: string }) => c.node).sort();
 			expect(eachTargets).toEqual(['Branch 1', 'Branch 2']);
 		});
 
@@ -253,25 +257,25 @@ describe('Split In Batches', () => {
 			// Generate Items should connect to Loop (splitInBatches)
 			const generateConnections = json.connections['Generate Items'];
 			expect(generateConnections).toBeDefined();
-			expect(generateConnections.main[0][0].node).toBe('Loop');
+			expect(generateConnections.main[0]![0]!.node).toBe('Loop');
 
 			// Loop output 0 (done) should connect to Finalize
 			const loopConnections = json.connections['Loop'];
 			expect(loopConnections).toBeDefined();
-			expect(loopConnections.main[0][0].node).toBe('Finalize');
+			expect(loopConnections.main[0]![0]!.node).toBe('Finalize');
 
 			// Loop output 1 (each) should connect to Wait
-			expect(loopConnections.main[1][0].node).toBe('Wait');
+			expect(loopConnections.main[1]![0]!.node).toBe('Wait');
 
 			// Wait should connect to Code
 			const waitConnections = json.connections['Wait'];
 			expect(waitConnections).toBeDefined();
-			expect(waitConnections.main[0][0].node).toBe('Code');
+			expect(waitConnections.main[0]![0]!.node).toBe('Code');
 
 			// Code should loop back to Loop
 			const codeConnections = json.connections['Code'];
 			expect(codeConnections).toBeDefined();
-			expect(codeConnections.main[0][0].node).toBe('Loop');
+			expect(codeConnections.main[0]![0]!.node).toBe('Loop');
 		});
 	});
 
@@ -282,7 +286,7 @@ describe('Split In Batches', () => {
 				type: 'n8n-nodes-base.splitInBatches',
 				version: 3,
 				config: { name: 'Loop', parameters: { batchSize: 10 } },
-			});
+			}) as SibNode;
 			const finalizeNode = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -313,16 +317,16 @@ describe('Split In Batches', () => {
 			const sibConnections = json.connections['Loop'];
 			expect(sibConnections).toBeDefined();
 			expect(sibConnections.main[0]).toHaveLength(1);
-			expect(sibConnections.main[0][0].node).toBe('Finalize');
+			expect(sibConnections.main[0]![0]!.node).toBe('Finalize');
 
 			// SIB output 1 (each) should connect to Process Batch
 			expect(sibConnections.main[1]).toHaveLength(1);
-			expect(sibConnections.main[1][0].node).toBe('Process Batch');
+			expect(sibConnections.main[1]![0]!.node).toBe('Process Batch');
 
 			// Process Batch should loop back to Loop
 			const processConnections = json.connections['Process Batch'];
 			expect(processConnections).toBeDefined();
-			expect(processConnections.main[0][0].node).toBe('Loop');
+			expect(processConnections.main[0]![0]!.node).toBe('Loop');
 		});
 
 		it('should support null for empty branches', () => {
@@ -331,7 +335,7 @@ describe('Split In Batches', () => {
 				type: 'n8n-nodes-base.splitInBatches',
 				version: 3,
 				config: { name: 'Loop', parameters: { batchSize: 10 } },
-			});
+			}) as SibNode;
 
 			// Self-loop on each only
 			const wf = workflow('test-id', 'Test')
@@ -357,7 +361,7 @@ describe('Split In Batches', () => {
 
 			// each output (1) should connect back to itself
 			expect(sibConnections.main[1]).toHaveLength(1);
-			expect(sibConnections.main[1][0].node).toBe('Loop');
+			expect(sibConnections.main[1]![0]!.node).toBe('Loop');
 		});
 
 		it('should support fanOut() for multiple targets from one branch', () => {
@@ -366,7 +370,7 @@ describe('Split In Batches', () => {
 				type: 'n8n-nodes-base.splitInBatches',
 				version: 3,
 				config: { name: 'Loop', parameters: { batchSize: 10 } },
-			});
+			}) as SibNode;
 			const branch1 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -397,7 +401,7 @@ describe('Split In Batches', () => {
 			const sibConnections = json.connections['Loop'];
 			expect(sibConnections).toBeDefined();
 			expect(sibConnections.main[0]).toHaveLength(2);
-			const doneTargets = sibConnections.main[0].map((c: { node: string }) => c.node).sort();
+			const doneTargets = sibConnections.main[0]!.map((c: { node: string }) => c.node).sort();
 			expect(doneTargets).toEqual(['Branch 1', 'Branch 2']);
 		});
 	});

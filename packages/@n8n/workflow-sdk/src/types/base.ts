@@ -343,6 +343,8 @@ export interface NodeChain<
 		target: T | T[],
 		outputIndex?: number,
 	): NodeChain<THead, T>;
+
+	then<T>(target: SplitInBatchesBuilder<T>, outputIndex?: number): NodeChain<THead, TTail>;
 }
 
 /**
@@ -460,6 +462,13 @@ export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
 	readonly branches: TBranches;
 	readonly mode: MergeMode;
+	/**
+	 * Chain a target node after the merge
+	 */
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[],
+		outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T>;
 }
 
 /**
@@ -562,6 +571,8 @@ export interface WorkflowBuilder {
 	then(ifElse: IfElseComposite): WorkflowBuilder;
 	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
+	then<T>(splitInBatchesDone: SplitInBatchesDoneChain<T>): WorkflowBuilder;
+	then<T>(splitInBatchesEach: SplitInBatchesEachChain<T>): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 

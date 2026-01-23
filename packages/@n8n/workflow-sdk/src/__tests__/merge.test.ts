@@ -2,6 +2,10 @@ import { merge, isMergeNamedInputSyntax } from '../merge';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { fanIn } from '../fan-in';
+import type { NodeInstance } from '../types/base';
+
+// Helper type for Merge node
+type MergeNode = NodeInstance<'n8n-nodes-base.merge', string, unknown>;
 
 describe('Merge', () => {
 	describe('merge() requires named syntax only', () => {
@@ -53,7 +57,7 @@ describe('Merge', () => {
 				type: 'n8n-nodes-base.merge',
 				version: 3,
 				config: { name: 'My Merge' },
-			});
+			}) as MergeNode;
 			const source1 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -76,7 +80,7 @@ describe('Merge', () => {
 				type: 'n8n-nodes-base.merge',
 				version: 3,
 				config: { name: 'My Merge' },
-			});
+			}) as MergeNode;
 			const source1 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -101,7 +105,7 @@ describe('Merge', () => {
 				type: 'n8n-nodes-base.merge',
 				version: 3,
 				config: { name: 'My Merge' },
-			});
+			}) as MergeNode;
 			const source1 = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -136,25 +140,25 @@ describe('Merge', () => {
 			// Trigger should fan-out to both source nodes
 			const triggerConns = json.connections['Manual Trigger'];
 			expect(triggerConns).toBeDefined();
-			const triggerTargets = triggerConns.main[0].map((c: { node: string }) => c.node).sort();
+			const triggerTargets = triggerConns.main[0]!.map((c: { node: string }) => c.node).sort();
 			expect(triggerTargets).toEqual(['Source 1', 'Source 2']);
 
 			// Source 1 should connect to Merge input 0
 			const source1Conns = json.connections['Source 1'];
 			expect(source1Conns).toBeDefined();
-			expect(source1Conns.main[0][0].node).toBe('My Merge');
-			expect(source1Conns.main[0][0].index).toBe(0);
+			expect(source1Conns.main[0]![0]!.node).toBe('My Merge');
+			expect(source1Conns.main[0]![0]!.index).toBe(0);
 
 			// Source 2 should connect to Merge input 1
 			const source2Conns = json.connections['Source 2'];
 			expect(source2Conns).toBeDefined();
-			expect(source2Conns.main[0][0].node).toBe('My Merge');
-			expect(source2Conns.main[0][0].index).toBe(1);
+			expect(source2Conns.main[0]![0]!.node).toBe('My Merge');
+			expect(source2Conns.main[0]![0]!.index).toBe(1);
 
 			// Merge should connect to downstream
 			const mergeConns = json.connections['My Merge'];
 			expect(mergeConns).toBeDefined();
-			expect(mergeConns.main[0][0].node).toBe('Downstream');
+			expect(mergeConns.main[0]![0]!.node).toBe('Downstream');
 		});
 
 		it('should support fanIn() for multiple sources to same input', () => {
@@ -163,7 +167,7 @@ describe('Merge', () => {
 				type: 'n8n-nodes-base.merge',
 				version: 3,
 				config: { name: 'My Merge' },
-			});
+			}) as MergeNode;
 			const sourceA = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -198,20 +202,20 @@ describe('Merge', () => {
 			// Source A should connect to Merge input 0
 			const sourceAConns = json.connections['Source A'];
 			expect(sourceAConns).toBeDefined();
-			expect(sourceAConns.main[0][0].node).toBe('My Merge');
-			expect(sourceAConns.main[0][0].index).toBe(0);
+			expect(sourceAConns.main[0]![0]!.node).toBe('My Merge');
+			expect(sourceAConns.main[0]![0]!.index).toBe(0);
 
 			// Source B should also connect to Merge input 0
 			const sourceBConns = json.connections['Source B'];
 			expect(sourceBConns).toBeDefined();
-			expect(sourceBConns.main[0][0].node).toBe('My Merge');
-			expect(sourceBConns.main[0][0].index).toBe(0);
+			expect(sourceBConns.main[0]![0]!.node).toBe('My Merge');
+			expect(sourceBConns.main[0]![0]!.index).toBe(0);
 
 			// Source C should connect to Merge input 1
 			const sourceCConns = json.connections['Source C'];
 			expect(sourceCConns).toBeDefined();
-			expect(sourceCConns.main[0][0].node).toBe('My Merge');
-			expect(sourceCConns.main[0][0].index).toBe(1);
+			expect(sourceCConns.main[0]![0]!.node).toBe('My Merge');
+			expect(sourceCConns.main[0]![0]!.index).toBe(1);
 		});
 	});
 });

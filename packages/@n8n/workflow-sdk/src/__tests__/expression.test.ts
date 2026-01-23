@@ -8,7 +8,7 @@ describe('Expression System', () => {
 		});
 
 		it('should serialize nested json access', () => {
-			const result = serializeExpression(($) => $.json.user.email);
+			const result = serializeExpression(($) => ($.json.user as { email: string }).email);
 			expect(result).toBe('={{ $json.user.email }}');
 		});
 
@@ -58,12 +58,12 @@ describe('Expression System', () => {
 		});
 
 		it('should serialize secrets access', () => {
-			const result = serializeExpression(($) => $.secrets.vault.apiKey);
+			const result = serializeExpression(($) => ($.secrets.vault as { apiKey: string }).apiKey);
 			expect(result).toBe('={{ $secrets.vault.apiKey }}');
 		});
 
 		it('should serialize binary field access', () => {
-			const result = serializeExpression(($) => $.binary.data.fileName);
+			const result = serializeExpression(($) => ($.binary.data as { fileName: string }).fileName);
 			expect(result).toBe('={{ $binary.data.fileName }}');
 		});
 

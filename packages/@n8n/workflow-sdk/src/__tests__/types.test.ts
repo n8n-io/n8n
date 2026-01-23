@@ -1,15 +1,9 @@
 import type {
-	WorkflowBuilder,
-	NodeInstance,
-	TriggerInstance,
-	MergeComposite,
 	Expression,
-	ExpressionContext,
 	WorkflowSettings,
 	CredentialReference,
 	NodeConfig,
 	StickyNoteConfig,
-	SplitInBatchesBuilder,
 } from '../types/base';
 
 describe('Base Types', () => {
@@ -79,7 +73,7 @@ describe('Base Types', () => {
 
 	describe('Expression', () => {
 		it('should be a function that takes ExpressionContext and returns typed value', () => {
-			const expr: Expression<string> = ($) => $.json.name;
+			const expr: Expression<string> = ($) => $.json.name as string;
 			// Type checking: expression is callable with ExpressionContext
 			expect(typeof expr).toBe('function');
 		});

@@ -15,7 +15,6 @@ import * as path from 'path';
 describe('embed-sdk-api', () => {
 	let embedSdkApi: typeof import('../../scripts/embed-sdk-api');
 
-	const SDK_API_PATH = path.resolve(__dirname, '../types/sdk-api.ts');
 	const OUTPUT_PATH = path.resolve(__dirname, '../types/sdk-api-content.ts');
 
 	beforeAll(async () => {

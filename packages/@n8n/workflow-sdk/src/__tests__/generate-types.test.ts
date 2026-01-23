@@ -23,12 +23,15 @@ interface NodeProperty {
 	hint?: string;
 	default?: unknown;
 	required?: boolean;
+	placeholder?: string;
 	options?: Array<{
 		name: string;
 		value?: string | number | boolean;
 		description?: string;
 		displayName?: string;
 		values?: NodeProperty[];
+		type?: string;
+		default?: unknown;
 	}>;
 	displayOptions?: {
 		show?: Record<string, unknown[]>;

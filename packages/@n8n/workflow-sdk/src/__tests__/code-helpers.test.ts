@@ -32,7 +32,7 @@ describe('Code Node Helpers', () => {
 
 		it('should strip ctx. prefix from code', () => {
 			const result = runOnceForAllItems((ctx) => {
-				return ctx.$input.all();
+				return ctx.$input.all().map((item) => ({ json: item.json }));
 			});
 
 			expect(result.jsCode).toContain('$input.all()');

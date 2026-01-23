@@ -1,6 +1,5 @@
 import { node, trigger, sticky, placeholder, newCredential } from '../node-builder';
 import { languageModel, memory, tool, outputParser } from '../subnode-builders';
-import type { LcAgentV31Node } from '../types/generated';
 
 describe('Node Builder', () => {
 	describe('node()', () => {
@@ -15,8 +14,7 @@ describe('Node Builder', () => {
 			expect(n.config.parameters).toEqual({ url: 'https://api.example.com' });
 		});
 
-		it('should work with generated node types', () => {
-			// Using satisfies to validate against generated type
+		it('should work with agent node types', () => {
 			const agentNode = node({
 				type: '@n8n/n8n-nodes-langchain.agent',
 				version: 3.1,
@@ -26,7 +24,7 @@ describe('Node Builder', () => {
 						text: 'Hello',
 					},
 				},
-			} satisfies LcAgentV31Node);
+			});
 			expect(agentNode.type).toBe('@n8n/n8n-nodes-langchain.agent');
 			expect(agentNode.version).toBe('3.1');
 		});

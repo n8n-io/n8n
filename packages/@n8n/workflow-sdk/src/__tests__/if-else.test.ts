@@ -2,6 +2,10 @@ import { ifElse, isIfElseNamedSyntax } from '../if-else';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
+import type { NodeInstance } from '../types/base';
+
+// Helper type for IF node
+type IfNode = NodeInstance<'n8n-nodes-base.if', string, unknown>;
 
 describe('IF Else', () => {
 	describe('ifElse() requires named syntax only', () => {
@@ -53,7 +57,7 @@ describe('IF Else', () => {
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
-			});
+			}) as IfNode;
 			const trueBranch = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -76,7 +80,7 @@ describe('IF Else', () => {
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
-			});
+			}) as IfNode;
 			const trueBranch = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -101,7 +105,7 @@ describe('IF Else', () => {
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
-			});
+			}) as IfNode;
 			const trueBranch = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -139,9 +143,9 @@ describe('IF Else', () => {
 			expect(ifConns).toBeDefined();
 
 			// true branch at output 0
-			expect(ifConns.main[0][0].node).toBe('True Branch');
+			expect(ifConns.main[0]![0]!.node).toBe('True Branch');
 			// false branch at output 1
-			expect(ifConns.main[1][0].node).toBe('False Branch');
+			expect(ifConns.main[1]![0]!.node).toBe('False Branch');
 		});
 
 		it('should support null for empty branches', () => {
@@ -150,7 +154,7 @@ describe('IF Else', () => {
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
-			});
+			}) as IfNode;
 			const trueBranch = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -177,7 +181,7 @@ describe('IF Else', () => {
 			expect(ifConns).toBeDefined();
 
 			// true branch at output 0
-			expect(ifConns.main[0][0].node).toBe('True Branch');
+			expect(ifConns.main[0]![0]!.node).toBe('True Branch');
 			// false branch at output 1 - should be empty or undefined
 			expect(ifConns.main[1]).toBeUndefined();
 		});
@@ -188,7 +192,7 @@ describe('IF Else', () => {
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
-			});
+			}) as IfNode;
 			const targetA = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,
@@ -226,11 +230,11 @@ describe('IF Else', () => {
 
 			// true at output 0 - should have both targets
 			expect(ifConns.main[0]).toHaveLength(2);
-			const output0Targets = ifConns.main[0].map((c: { node: string }) => c.node).sort();
+			const output0Targets = ifConns.main[0]!.map((c: { node: string }) => c.node).sort();
 			expect(output0Targets).toEqual(['Target A', 'Target B']);
 
 			// false at output 1
-			expect(ifConns.main[1][0].node).toBe('Target C');
+			expect(ifConns.main[1]![0]!.node).toBe('Target C');
 		});
 
 		it('should identify named syntax with isIfElseNamedSyntax', () => {
@@ -238,7 +242,7 @@ describe('IF Else', () => {
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
-			});
+			}) as IfNode;
 			const trueBranch = node({
 				type: 'n8n-nodes-base.set',
 				version: 3,

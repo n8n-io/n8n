@@ -1173,13 +1173,19 @@ return workflow('test-multi-sticky', 'Multi-Agent Research Workflow')
 			expect(stickyNotes).toHaveLength(4);
 
 			// Verify each sticky content exists
-			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Research Agent'))).toBe(true);
-			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Fact-Checking Agent'))).toBe(
-				true,
-			);
-			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Writing Agent'))).toBe(true);
 			expect(
-				stickyNotes.some((s) => s.parameters?.content?.includes('Editing & Formatting Agent')),
+				stickyNotes.some((s) => (s.parameters?.content as string)?.includes('Research Agent')),
+			).toBe(true);
+			expect(
+				stickyNotes.some((s) => (s.parameters?.content as string)?.includes('Fact-Checking Agent')),
+			).toBe(true);
+			expect(
+				stickyNotes.some((s) => (s.parameters?.content as string)?.includes('Writing Agent')),
+			).toBe(true);
+			expect(
+				stickyNotes.some((s) =>
+					(s.parameters?.content as string)?.includes('Editing & Formatting Agent'),
+				),
 			).toBe(true);
 
 			// Verify each sticky has a color set
@@ -1213,9 +1219,15 @@ return workflow('test-simple-multi-sticky', 'Simple Multi-Sticky Workflow')
 			expect(stickyNotes).toHaveLength(3);
 
 			// Verify content
-			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Section 1'))).toBe(true);
-			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Section 2'))).toBe(true);
-			expect(stickyNotes.some((s) => s.parameters?.content?.includes('Section 3'))).toBe(true);
+			expect(
+				stickyNotes.some((s) => (s.parameters?.content as string)?.includes('Section 1')),
+			).toBe(true);
+			expect(
+				stickyNotes.some((s) => (s.parameters?.content as string)?.includes('Section 2')),
+			).toBe(true);
+			expect(
+				stickyNotes.some((s) => (s.parameters?.content as string)?.includes('Section 3')),
+			).toBe(true);
 
 			// Verify colors are distinct
 			const colors = stickyNotes.map((s) => s.parameters?.color);
@@ -1391,9 +1403,9 @@ return workflow('test-simple-multi-sticky', 'Simple Multi-Sticky Workflow')
 			// Note: The codegen may output as fan-out (all on slot 0) rather than separate slots
 			// The important thing is all targets are connected
 			expect(parsedJson.connections['Text Classifier']).toBeDefined();
-			const textClassifierTargets = parsedJson.connections['Text Classifier']!.main.flat().map(
-				(c) => c.node,
-			);
+			const textClassifierTargets = parsedJson.connections['Text Classifier']!.main.flat()
+				.filter((c): c is NonNullable<typeof c> => c !== null)
+				.map((c) => c.node);
 			expect(textClassifierTargets).toContain('Branch A Node');
 			expect(textClassifierTargets).toContain('Branch B Node');
 			expect(textClassifierTargets).toContain('Branch C Node');

@@ -4,7 +4,7 @@ import { languageModel, memory, tool } from '../subnode-builders';
 import { merge } from '../merge';
 import { ifElse } from '../if-else';
 import { switchCase } from '../switch-case';
-import type { NodeInstance } from '../types/base';
+import type { NodeInstance, WorkflowJSON } from '../types/base';
 
 describe('Workflow Builder', () => {
 	describe('workflow()', () => {
@@ -532,6 +532,8 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should preserve credentials exactly including empty placeholder objects', () => {
+			// Type assertion needed because empty credential placeholders ({}) are valid at runtime
+			// but don't satisfy the strict WorkflowJSON type
 			const json = {
 				id: 'creds-test',
 				name: 'Credentials Test',
@@ -574,7 +576,7 @@ describe('Workflow Builder', () => {
 					},
 				],
 				connections: {},
-			};
+			} as WorkflowJSON;
 
 			const wf = workflow.fromJSON(json);
 			const exported = wf.toJSON();
