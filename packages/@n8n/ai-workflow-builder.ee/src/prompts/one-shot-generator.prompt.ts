@@ -952,6 +952,56 @@ Key patterns for multi-agent orchestration:
 - **$fromAI in config callback**: Use \`config: ($) => ({{ ... $.fromAI(...) }})\` for tools like Gmail
 - **Mix agent and non-agent tools**: Orchestrator can coordinate both agent tools and regular tools (Gmail, HTTP, etc.)
 - **Sub-agent tools**: Each agent tool can have its own model, tools (for search, etc.), and output parser
+
+## Example 11: Split In Batches for Large Dataset Processing
+Use \`splitInBatches()\` to process large datasets in chunks, preventing timeouts and managing rate limits:
+\`\`\`typescript
+return workflow('batch-processor', 'Process Large Dataset')
+  .add(trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {{ name: 'Start' }} }}))
+  .then(node({{
+    type: 'n8n-nodes-base.httpRequest',
+    version: 4.2,
+    config: {{
+      name: 'Fetch All Records',
+      parameters: {{ method: 'GET', url: 'https://api.example.com/records' }}
+    }}
+  }}))
+  .then(
+    splitInBatches({{ name: 'Process in Batches', parameters: {{ batchSize: 10 }} }})
+      .done()
+      .then(node({{
+        type: 'n8n-nodes-base.set',
+        version: 3.4,
+        config: {{ name: 'Finalize Results' }}
+      }}))
+      .each()
+      .then(node({{
+        type: 'n8n-nodes-base.httpRequest',
+        version: 4.2,
+        config: {{
+          name: 'Process Record',
+          parameters: {{
+            method: 'POST',
+            url: 'https://api.example.com/process',
+            body: {{ json: {{ id: '={{{{ $json.id }}}}' }} }}
+          }}
+        }}
+      }}))
+      .loop()
+  );
+\`\`\`
+
+When to use Split In Batches:
+- **Large datasets (100+ items)**: Prevents memory issues and timeouts
+- **Rate-limited APIs**: Process in chunks to respect API limits (e.g., 10 requests/second)
+- **Expensive operations**: AI calls, file processing, or complex transformations per item
+- **Progress visibility**: See batch-by-batch progress in execution view
+
+Key patterns:
+- \`.done()\` - Chain for when ALL batches complete (output 0)
+- \`.each()\` - Chain for processing EACH batch (output 1)
+- \`.loop()\` - Required at the end to loop back for next batch
+- Order matters: Define \`.done().then(...)\` before \`.each().then(...).loop()\`
 </workflow_examples>`;
 
 /**
