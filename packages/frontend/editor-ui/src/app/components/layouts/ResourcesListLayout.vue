@@ -288,14 +288,17 @@ watch(
 watch([() => route.params?.projectId, () => route.name], async () => {
 	await resetFilters();
 	await loadPaginationPreferences();
+	// Wait for pagination-and-sort event to be processed before initializing
+	await nextTick();
 	await props.initialize();
 });
 
 // Lifecycle hooks
 onMounted(async () => {
 	await loadPaginationPreferences();
-	await props.initialize();
+	// Wait for pagination-and-sort event to be processed before initializing
 	await nextTick();
+	await props.initialize();
 
 	if (hasAppliedFilters()) {
 		hasFilters.value = true;
