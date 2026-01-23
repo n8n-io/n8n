@@ -19,26 +19,6 @@ import {
 	configureDataEmitter,
 } from './utils';
 
-interface KafkaTriggerOptions {
-	allowAutoTopicCreation?: boolean;
-	autoCommitThreshold?: number;
-	autoCommitInterval?: number;
-	batchSize?: number;
-	fetchMaxBytes?: number;
-	fetchMinBytes?: number;
-	heartbeatInterval?: number;
-	maxInFlightRequests?: number;
-	fromBeginning?: boolean;
-	jsonParseMessage?: boolean;
-	parallelProcessing?: boolean;
-	partitionsConsumedConcurrently?: number;
-	onlyMessage?: boolean;
-	returnHeaders?: boolean;
-	rebalanceTimeout?: number;
-	sessionTimeout?: number;
-	nodeVersion?: number;
-}
-
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka Trigger',
