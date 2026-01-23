@@ -10,6 +10,7 @@ import {
 	Param,
 	ProjectScope,
 } from '@n8n/decorators';
+import { ensureError } from 'n8n-workflow';
 import type { Response } from 'express';
 
 import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';
@@ -83,10 +84,9 @@ export class McpSettingsController {
 			await this.mcpSettingsService.setAllowedRedirectUris(dto.uris);
 			return { success: true };
 		} catch (error) {
-			this.logger.error('Failed to update allowed redirect URIs', {
-				cause: error instanceof Error ? error.message : String(error),
-			});
-			throw new BadRequestError(error instanceof Error ? error.message : 'Invalid redirect URIs');
+			const errorForSure = ensureError(error);
+			this.logger.error('Failed to update allowed redirect URIs', { error: errorForSure });
+			throw new BadRequestError(errorForSure.message);
 		}
 	}
 
