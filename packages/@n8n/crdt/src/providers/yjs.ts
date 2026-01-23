@@ -182,10 +182,16 @@ function isDescendantOf(yType: Y.AbstractType<unknown>, rootMap: Y.Map<unknown>)
 	let current: Y.AbstractType<unknown> | null = yType;
 	while (current !== null) {
 		if (current === rootMap) return true;
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// Access internal _item property to walk up the tree
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
 		const item = (current as any)._item as Y.Item | null;
 		if (!item) return false;
-		current = item.parent;
+		const parent = item.parent;
+		// parent can be AbstractType, ID, or null - we only continue if it's an AbstractType
+		if (parent === null || typeof parent !== 'object' || !('_item' in parent)) {
+			return false;
+		}
+		current = parent as Y.AbstractType<unknown>;
 	}
 	return false;
 }
@@ -380,11 +386,12 @@ class YjsDoc implements CRDTDoc {
 			// Process each root map we care about
 			for (const [rootYMap, mapName] of targetMaps) {
 				// Collect events that belong under this root map
-				const allEvents: Y.YEvent<unknown>[] = [];
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const allEvents: Array<Y.YEvent<any>> = [];
 
 				for (const [yType, events] of transaction.changedParentTypes) {
 					// Check if yType is rootYMap OR is a descendant of rootYMap
-					if (isDescendantOf(yType, rootYMap)) {
+					if (isDescendantOf(yType as Y.AbstractType<unknown>, rootYMap)) {
 						for (const event of events) {
 							// Only process direct events (event.target === yType)
 							if (event.target === yType) {
@@ -402,9 +409,9 @@ class YjsDoc implements CRDTDoc {
 					// 1. Set currentTarget to our root map
 					// 2. Clear _path to force recalculation
 					// 3. event.path is now computed relative to rootYMap
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
 					(event as any).currentTarget = rootYMap;
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
 					(event as any)._path = null;
 
 					if (event instanceof Y.YMapEvent) {
