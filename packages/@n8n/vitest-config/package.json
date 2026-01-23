@@ -8,6 +8,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@swc/core": "^1.10.7",
     "vite": "catalog:",
     "vitest": "catalog:"
   },

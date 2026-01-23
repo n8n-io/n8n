@@ -521,7 +521,7 @@ export class SourceControlService {
 
 		const tagsToBeImported = getNonDeletedResources(statusResult, 'tags')[0];
 		if (tagsToBeImported) {
-			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
+			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported, user);
 		}
 		const tagsToBeDeleted = getDeletedResources(statusResult, 'tags');
 		await this.sourceControlImportService.deleteTagsNotInWorkfolder(tagsToBeDeleted);

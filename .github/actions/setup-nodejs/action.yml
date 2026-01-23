@@ -34,6 +34,7 @@ runs:
         cache: 'pnpm'
 
     - name: Install Aikido SafeChain
+      if: runner.os != 'Windows'
       run: |
         VERSION="1.4.1"
         EXPECTED_SHA256="628235987175072a4255aa3f5f0128f31795b63970f1970ae8a04d07bf8527b0"
@@ -49,6 +50,7 @@ runs:
       shell: bash
 
     - name: Disable safe-chain
+      if: runner.os != 'Windows'
       run: safe-chain teardown
       shell: bash
 
@@ -60,5 +62,8 @@ runs:
       uses: useblacksmith/setup-docker-builder@53647ab5afe8827af5623b35bd4302eabd41619f # v1.2.0
 
     - name: Build Project
-      run: ${{ inputs.build-command }}
+      if: ${{ inputs.build-command != '' }}
+      run: |
+        ${{ inputs.build-command }} --summarize
+        node .github/scripts/send-build-stats.mjs || true
       shell: bash
