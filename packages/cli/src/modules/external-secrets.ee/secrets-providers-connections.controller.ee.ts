@@ -1,6 +1,14 @@
 import { Logger } from '@n8n/backend-common';
-import { Delete, Post, Get, Patch, RestController, GlobalScope, Middleware } from '@n8n/decorators';
-import { Put } from '@n8n/decorators/src';
+import {
+	Delete,
+	Put,
+	Post,
+	Get,
+	Patch,
+	RestController,
+	GlobalScope,
+	Middleware,
+} from '@n8n/decorators';
 import { Request, Response, NextFunction } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
