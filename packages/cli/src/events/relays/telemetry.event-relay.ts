@@ -1295,7 +1295,8 @@ export class TelemetryEventRelay extends EventRelay {
 	 */
 	private hasIdentityExtractors(nodes: INode[]): boolean {
 		for (const node of nodes) {
-			if (this.extractIdentityExtractorHooks(node).length > 0) {
+			const hooks = this.extractIdentityExtractorHooks(node);
+			if (hooks.length > 0) {
 				return true;
 			}
 		}
@@ -1303,9 +1304,13 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	/**
-	 * Extracts identity extractor hook names from a node's parameters.
+	 * Extracts identity extractor hook configurations from a node's parameters.
+	 * Returns the full hook objects including all parameters (hookName, isAllowedToFail, etc.)
+	 * to enable detection of any configuration changes.
 	 */
-	private extractIdentityExtractorHooks(node: INode): string[] {
+	private extractIdentityExtractorHooks(
+		node: INode,
+	): Array<{ hookName: string; isAllowedToFail?: boolean; [key: string]: unknown }> {
 		const nodeParams = {
 			...(node.parameters ?? {}),
 		};
@@ -1315,9 +1320,7 @@ export class TelemetryEventRelay extends EventRelay {
 			return [];
 		}
 
-		return (
-			hookParamsResult.data.contextEstablishmentHooks?.hooks?.map((hook) => hook.hookName) ?? []
-		);
+		return hookParamsResult.data.contextEstablishmentHooks?.hooks ?? [];
 	}
 
 	// #endregion
