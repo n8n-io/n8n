@@ -247,8 +247,10 @@ function findDirectMergeInFanOut(
 		return null;
 	}
 
-	// Verify that at least some non-merge targets feed into this merge
+	// Verify that ALL non-merge targets feed into this merge
 	// (checking inputSources of the merge node)
+	// If any target doesn't feed into the merge, skip this optimization
+	// so that the independent targets are handled correctly via normal fan-out
 	const mergeInputSources = new Set<string>();
 	for (const [, sources] of mergeTarget.inputSources) {
 		for (const source of sources) {
@@ -256,8 +258,8 @@ function findDirectMergeInFanOut(
 		}
 	}
 
-	// Check if any non-merge target (or its descendants) feeds into the merge
-	const feedsIntoMerge = nonMergeTargets.some((targetName) => {
+	// Check that ALL non-merge targets feed into the merge (directly or one hop away)
+	const allFeedIntoMerge = nonMergeTargets.every((targetName) => {
 		// Direct connection
 		if (mergeInputSources.has(targetName)) return true;
 
@@ -270,7 +272,9 @@ function findDirectMergeInFanOut(
 		return false;
 	});
 
-	if (!feedsIntoMerge) {
+	if (!allFeedIntoMerge) {
+		// Some targets don't feed into the merge - skip this optimization
+		// They will be handled via normal fan-out handling
 		return null;
 	}
 
@@ -555,6 +559,31 @@ function buildBranchTargets(
 		const unvisitedOutputs = mergeOutputs.filter((target) => !ctx.visited.has(target));
 
 		if (unvisitedOutputs.length === 0) {
+			// Check if there are visited outputs (loops) that need connections
+			const visitedOutputs = mergeOutputs.filter((target) => ctx.visited.has(target));
+			if (visitedOutputs.length > 0) {
+				// Create varRefs for loop-back connections
+				const loopTargets: CompositeNode[] = [];
+				for (const target of visitedOutputs) {
+					const targetNode = ctx.graph.nodes.get(target);
+					if (targetNode) {
+						ctx.variables.set(target, targetNode);
+						loopTargets.push(createVarRef(target));
+					}
+				}
+				if (loopTargets.length === 1) {
+					return {
+						kind: 'chain',
+						nodes: [mergeComposite, loopTargets[0]],
+					};
+				}
+				if (loopTargets.length > 1) {
+					return {
+						kind: 'chain',
+						nodes: [mergeComposite, ...loopTargets],
+					};
+				}
+			}
 			return mergeComposite;
 		}
 
@@ -828,6 +857,32 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 				targets: fanOutBranches,
 			};
 			return fanOut;
+		}
+
+		// No unvisited outputs - check if there are visited outputs (loops) that need connections
+		const visitedOutputs = mergeOutputs.filter((target) => ctx.visited.has(target));
+		if (visitedOutputs.length > 0) {
+			// Create varRefs for loop-back connections
+			const loopTargets: CompositeNode[] = [];
+			for (const target of visitedOutputs) {
+				const targetNode = ctx.graph.nodes.get(target);
+				if (targetNode) {
+					ctx.variables.set(target, targetNode);
+					loopTargets.push(createVarRef(target));
+				}
+			}
+			if (loopTargets.length === 1) {
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, loopTargets[0]],
+				};
+			}
+			if (loopTargets.length > 1) {
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, ...loopTargets],
+				};
+			}
 		}
 
 		return compositeNode;

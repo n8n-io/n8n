@@ -127,7 +127,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				const composite = chainNode as unknown as SwitchCaseComposite;
 				pinData = this.collectPinDataFromNode(composite.switchNode, pinData);
 				for (const caseNode of composite.cases) {
-					pinData = this.collectPinDataFromNode(caseNode, pinData);
+					if (caseNode === null) continue;
+					if (Array.isArray(caseNode)) {
+						for (const branchNode of caseNode) {
+							if (branchNode !== null) {
+								pinData = this.collectPinDataFromNode(branchNode, pinData);
+							}
+						}
+					} else {
+						pinData = this.collectPinDataFromNode(caseNode, pinData);
+					}
 				}
 			} else if (this.isIfElseComposite(chainNode)) {
 				const composite = chainNode as unknown as IfElseComposite;
@@ -805,12 +814,28 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Add all case nodes and build connections from switch to each case
 		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
 		// Skip null cases (unconnected outputs)
+		// Handle arrays for fan-out (one output to multiple parallel nodes)
 		composite.cases.forEach((caseNode, index) => {
 			if (caseNode === null) {
 				return; // Skip null cases - no connection for this output
 			}
-			const caseHeadName = this.addBranchToGraph(nodes, caseNode);
-			switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+
+			// Check if caseNode is an array (fan-out pattern)
+			if (Array.isArray(caseNode)) {
+				// Fan-out: multiple parallel targets from this case
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of caseNode) {
+					if (branchNode === null) continue;
+					const branchHead = this.addBranchToGraph(nodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
+				}
+				if (targets.length > 0) {
+					switchMainConns.set(index, targets);
+				}
+			} else {
+				const caseHeadName = this.addBranchToGraph(nodes, caseNode);
+				switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+			}
 		});
 
 		// Add the switch node with connections to cases
@@ -1875,12 +1900,28 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Add each case node (with subnodes) and connect from switch at correct output index
 		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
 		// Skip null cases (unconnected outputs)
+		// Handle arrays for fan-out (one output to multiple parallel nodes)
 		composite.cases.forEach((caseNode, index) => {
 			if (caseNode === null) {
 				return; // Skip null cases - no connection for this output
 			}
-			const caseHeadName = this.addBranchToGraph(newNodes, caseNode);
-			mainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+
+			// Check if caseNode is an array (fan-out pattern)
+			if (Array.isArray(caseNode)) {
+				// Fan-out: multiple parallel targets from this case
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of caseNode) {
+					if (branchNode === null) continue;
+					const branchHead = this.addBranchToGraph(newNodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
+				}
+				if (targets.length > 0) {
+					mainConns.set(index, targets);
+				}
+			} else {
+				const caseHeadName = this.addBranchToGraph(newNodes, caseNode);
+				mainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+			}
 		});
 
 		// Add Switch node with all case connections

@@ -2438,24 +2438,52 @@ function generateSwitchCaseCall(
 	const caseNames: string[] = [];
 	for (const [_outputIndex, targets] of outputs) {
 		if (targets.length === 0) continue;
-		const target = targets[0];
-		const targetInfo = nodeInfoMap.get(target.to);
-		if (!targetInfo) continue;
 
-		// Mark this case node as added before generating its chain
-		addedNodes.add(target.to);
-		// Generate the case node WITH its downstream chain (not just a single node)
-		caseCalls.push(
-			generateNodeCallWithChain(
-				targetInfo,
-				nodeInfoMap,
-				addedNodes,
-				convergenceCtx,
-				processingStack,
-				cycleNodeVars,
-			),
-		);
-		caseNames.push(target.to);
+		if (targets.length === 1) {
+			// Single target - generate normally
+			const target = targets[0];
+			const targetInfo = nodeInfoMap.get(target.to);
+			if (!targetInfo) continue;
+
+			// Mark this case node as added before generating its chain
+			addedNodes.add(target.to);
+			// Generate the case node WITH its downstream chain (not just a single node)
+			caseCalls.push(
+				generateNodeCallWithChain(
+					targetInfo,
+					nodeInfoMap,
+					addedNodes,
+					convergenceCtx,
+					processingStack,
+					cycleNodeVars,
+				),
+			);
+			caseNames.push(target.to);
+		} else {
+			// Multiple targets (fan-out) - generate fanOut(...)
+			const fanOutCalls: string[] = [];
+			for (const target of targets) {
+				const targetInfo = nodeInfoMap.get(target.to);
+				if (!targetInfo) continue;
+
+				// Mark this case node as added before generating its chain
+				addedNodes.add(target.to);
+				fanOutCalls.push(
+					generateNodeCallWithChain(
+						targetInfo,
+						nodeInfoMap,
+						addedNodes,
+						convergenceCtx,
+						processingStack,
+						cycleNodeVars,
+					),
+				);
+				caseNames.push(target.to);
+			}
+			if (fanOutCalls.length > 0) {
+				caseCalls.push(`fanOut(${fanOutCalls.join(', ')})`);
+			}
+		}
 	}
 
 	if (caseCalls.length === 0) return null;

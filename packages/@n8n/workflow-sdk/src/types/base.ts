@@ -499,7 +499,12 @@ export interface SwitchCaseConfig extends NodeConfig {
  */
 export interface SwitchCaseComposite {
 	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	readonly cases: NodeInstance<string, string, unknown>[];
+	/** Cases can be null (no connection), single node, or array (fan-out to multiple parallel nodes) */
+	readonly cases: (
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[]
+		| null
+	)[];
 }
 
 // =============================================================================

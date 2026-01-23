@@ -277,6 +277,7 @@ import { merge as mergeFn } from './merge';
 import { ifElse as ifElseFn } from './if-else';
 import { switchCase as switchCaseFn } from './switch-case';
 import { splitInBatches as splitInBatchesFn } from './split-in-batches';
+import { fanOut as fanOutFn } from './fan-out';
 import type { WorkflowJSON } from './types/base';
 
 /**
@@ -320,6 +321,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 			'ifElse',
 			'switchCase',
 			'splitInBatches',
+			'fanOut',
 			executableCode,
 		);
 	} catch (error) {
@@ -354,6 +356,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		ifElseFn,
 		switchCaseFn,
 		splitInBatchesFn,
+		fanOutFn,
 	);
 
 	// Return the JSON representation
