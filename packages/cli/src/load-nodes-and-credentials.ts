@@ -20,7 +20,6 @@ import {
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
-	INodeTypeBaseDescription,
 	INodeTypeDescription,
 	LoadedClass,
 	ICredentialType,
@@ -29,11 +28,12 @@ import type {
 	INodeProperties,
 	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionTypes, UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
 import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME, CLI_DIR, inE2ETests } from '@/constants';
+import { createAiTools, createHitlTools } from '@/tool-generation';
 
 @Service()
 export class LoadNodesAndCredentials {
@@ -225,14 +225,6 @@ export class LoadNodesAndCredentials {
 		return isContainedWithin(nodeParentPath, filePath) ? filePath : undefined;
 	}
 
-	findLastCalloutIndex(properties: INodeProperties[]): number {
-		for (let i = properties.length - 1; i >= 0; i--) {
-			if (properties[i].type === 'callout') return i;
-		}
-
-		return -1;
-	}
-
 	getCustomDirectories(): string[] {
 		const customDirectories = [this.instanceSettings.customExtensionDir];
 
@@ -361,9 +353,10 @@ export class LoadNodesAndCredentials {
 		// Each hook becomes a separate item that can be added multiple times
 		const allHookValues: INodeProperties[] = [
 			{
-				displayName: 'Hook',
+				displayName: 'User Identifier',
 				name: 'hookName',
 				type: 'options',
+				noDataExpression: true,
 				options: hooks.map((hook) => {
 					const displayName = hook.hookDescription.displayName ?? hook.hookDescription.name;
 					return {
@@ -375,7 +368,8 @@ export class LoadNodesAndCredentials {
 				// No default - force user to explicitly select a hook
 				// This ensures hookName is always serialized in the workflow JSON
 				default: '',
-				description: 'Select which context establishment hook to use',
+				description:
+					'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
 				required: true,
 			},
 		];
@@ -411,13 +405,14 @@ export class LoadNodesAndCredentials {
 
 		// Create the main context establishment hooks property as a fixedCollection
 		const contextHooksProperty: INodeProperties = {
-			displayName: 'Context Establishment Hooks',
+			displayName: 'Identify user for dynamic credentials',
 			name: 'contextEstablishmentHooks',
 			type: 'fixedCollection',
-			placeholder: 'Add Hook',
+			placeholder: 'Add User Identifier',
 			default: {},
 			typeOptions: {
 				multipleValues: true,
+				hideEmptyMessage: true,
 			},
 			options: [
 				{
@@ -427,21 +422,26 @@ export class LoadNodesAndCredentials {
 				},
 			],
 			description:
-				'Add and configure context establishment hooks to extract data from trigger items. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
+				'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
 		};
 
 		// Create a notice that always appears after the hooks collection
 		const contextHooksNotice: INodeProperties = {
 			displayName:
-				'Context establishment hooks allow you to extract data from trigger items to use in subsequent nodes. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
+				'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
 			name: 'contextHooksNotice',
 			type: 'notice',
 			default: '',
 		};
 
-		node.properties.push(executionsHooksVersion);
-		node.properties.push(contextHooksProperty);
-		node.properties.push(contextHooksNotice);
+		let index = node.properties.findIndex((p) => p.name === 'options');
+		if (index === -1) {
+			index = node.properties.length;
+		}
+
+		node.properties.splice(index, 0, contextHooksNotice);
+		node.properties.splice(index, 0, contextHooksProperty);
+		node.properties.splice(index, 0, executionsHooksVersion);
 	};
 
 	/**
@@ -462,40 +462,6 @@ export class LoadNodesAndCredentials {
 		await loader.loadAll();
 		this.loaders[loader.packageName] = loader;
 		return loader;
-	}
-
-	/**
-	 * This creates all AI Agent tools by duplicating the node descriptions for
-	 * all nodes that are marked as `usableAsTool`. It basically modifies the
-	 * description. The actual wrapping happens in the langchain code for getting
-	 * the connected tools.
-	 */
-	createAiTools() {
-		const usableNodes: INodeTypeDescription[] = this.types.nodes.filter(
-			(nodeType) => nodeType.usableAsTool,
-		);
-
-		for (const usableNode of usableNodes) {
-			const description =
-				typeof usableNode.usableAsTool === 'object'
-					? {
-							...deepCopy(usableNode),
-							...usableNode.usableAsTool?.replacements,
-						}
-					: deepCopy(usableNode);
-			const wrapped = this.convertNodeToAiTool({ description }).description;
-
-			this.types.nodes.push(wrapped);
-			this.known.nodes[wrapped.name] = { ...this.known.nodes[usableNode.name] };
-
-			const credentialNames = Object.entries(this.known.credentials)
-				.filter(([_, credential]) => credential?.supportedNodes?.includes(usableNode.name))
-				.map(([credentialName]) => credentialName);
-
-			credentialNames.forEach((name) =>
-				this.known.credentials[name]?.supportedNodes?.push(wrapped.name),
-			);
-		}
 	}
 
 	async postProcessLoaders() {
@@ -579,7 +545,8 @@ export class LoadNodesAndCredentials {
 			}
 		}
 
-		this.createAiTools();
+		createAiTools(this.types, this.known);
+		createHitlTools(this.types, this.known);
 
 		this.injectCustomApiCallOptions();
 
@@ -629,92 +596,6 @@ export class LoadNodesAndCredentials {
 		}
 
 		throw new UnrecognizedCredentialTypeError(credentialType);
-	}
-
-	/**
-	 * Modifies the description of the passed in object, such that it can be used
-	 * as an AI Agent Tool.
-	 * Returns the modified item (not copied)
-	 */
-	convertNodeToAiTool<
-		T extends object & { description: INodeTypeDescription | INodeTypeBaseDescription },
-	>(item: T): T {
-		// quick helper function for type-guard down below
-		function isFullDescription(obj: unknown): obj is INodeTypeDescription {
-			return typeof obj === 'object' && obj !== null && 'properties' in obj;
-		}
-
-		if (isFullDescription(item.description)) {
-			item.description.name += 'Tool';
-			item.description.inputs = [];
-			item.description.outputs = [NodeConnectionTypes.AiTool];
-			item.description.displayName += ' Tool';
-			delete item.description.usableAsTool;
-
-			const hasResource = item.description.properties.some((prop) => prop.name === 'resource');
-			const hasOperation = item.description.properties.some((prop) => prop.name === 'operation');
-
-			if (!item.description.properties.map((prop) => prop.name).includes('toolDescription')) {
-				const descriptionType: INodeProperties = {
-					displayName: 'Tool Description',
-					name: 'descriptionType',
-					type: 'options',
-					noDataExpression: true,
-					options: [
-						{
-							name: 'Set Automatically',
-							value: 'auto',
-							description: 'Automatically set based on resource and operation',
-						},
-						{
-							name: 'Set Manually',
-							value: 'manual',
-							description: 'Manually set the description',
-						},
-					],
-					default: 'auto',
-				};
-
-				const descProp: INodeProperties = {
-					displayName: 'Description',
-					name: 'toolDescription',
-					type: 'string',
-					default: item.description.description,
-					required: true,
-					typeOptions: { rows: 2 },
-					description:
-						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
-				};
-
-				const lastCallout = this.findLastCalloutIndex(item.description.properties);
-
-				item.description.properties.splice(lastCallout + 1, 0, descProp);
-
-				// If node has resource or operation we can determine pre-populate tool description based on it
-				// so we add the descriptionType property as the first property after possible callout param(s).
-				if (hasResource || hasOperation) {
-					item.description.properties.splice(lastCallout + 1, 0, descriptionType);
-
-					descProp.displayOptions = {
-						show: {
-							descriptionType: ['manual'],
-						},
-					};
-				}
-			}
-		}
-
-		const resources = item.description.codex?.resources ?? {};
-
-		item.description.codex = {
-			categories: ['AI'],
-			subcategories: {
-				AI: ['Tools'],
-				Tools: item.description.codex?.subcategories?.Tools ?? ['Other Tools'],
-			},
-			resources,
-		};
-		return item;
 	}
 
 	async setupHotReload() {

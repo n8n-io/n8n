@@ -985,6 +985,233 @@ describe('buildSteps', () => {
 		});
 	});
 
+	describe('Tool name resolution', () => {
+		it('should use HITL toolName when HITL metadata is present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HITL Node',
+							input: {
+								id: 'call_123',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								hitl: {
+									toolName: 'custom_search_tool',
+									gatedToolNodeName: 'Search API',
+									originalInput: { query: 'test' },
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { results: ['result1'] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should use the toolName from HITL metadata
+			expect(result[0].action.tool).toBe('custom_search_tool');
+		});
+
+		it('should convert nodeName to toolName when HITL metadata is not present', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Calculator Node',
+							input: {
+								id: 'call_123',
+								input: { expression: '2+2' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: '4' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			// Should convert node name using nodeNameToToolName
+			expect(result[0].action.tool).toBe('Calculator_Node');
+		});
+
+		it('should use HITL toolName in message content', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HITL Node',
+							input: {
+								id: 'call_123',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								hitl: {
+									toolName: 'custom_tool',
+									gatedToolNodeName: 'Custom Tool',
+									originalInput: { query: 'test' },
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'success' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Message content should use the HITL toolName
+			expect(message.content).toContain('Calling custom_tool');
+			expect(message.content).not.toContain('HITL Node');
+			// Tool call should also use the HITL toolName
+			expect(message.tool_calls?.[0].name).toBe('custom_tool');
+		});
+
+		it('should use converted nodeName in message content when HITL metadata is absent', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'My Custom Node',
+							input: {
+								id: 'call_123',
+								input: { data: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'success' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			// Message content should use the converted tool name
+			expect(message.content).toContain('Calling My_Custom_Node');
+			expect(message.tool_calls?.[0].name).toBe('My_Custom_Node');
+		});
+
+		it('should handle HITL toolName in Anthropic thinking blocks', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'HITL Node',
+							input: {
+								id: 'call_123',
+								input: { query: 'test' },
+							},
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_123',
+							metadata: {
+								itemIndex: 0,
+								hitl: {
+									toolName: 'hitl_tool',
+									gatedToolNodeName: 'Gated Tool',
+									originalInput: { query: 'test' },
+								},
+								anthropic: {
+									thinkingContent: 'I will use the HITL tool',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_123',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'approved' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			const message = result[0].action.messageLog![0];
+			const content = message.content;
+			// Content should be an array with thinking and tool_use blocks
+			expect(Array.isArray(content)).toBe(true);
+			expect(content).toHaveLength(2);
+			// Tool use block should use the HITL toolName
+			expect(content[1]).toMatchObject({
+				type: 'tool_use',
+				id: 'call_123',
+				name: 'hitl_tool',
+			});
+		});
+	});
+
 	describe('Tool input extraction', () => {
 		it('should extract toolInput as object with string input property', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
