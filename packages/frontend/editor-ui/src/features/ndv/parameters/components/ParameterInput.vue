@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
-import { useDebounceFn } from '@vueuse/core';
+import { computedAsync, useDebounceFn } from '@vueuse/core';
 
 import get from 'lodash/get';
 
@@ -415,7 +415,12 @@ const expressionDisplayValue = computed(() => {
 	return `${displayValue.value ?? ''}`;
 });
 
-const dependentParametersValues = computed<string | null>(() => {
+const dependentParametersValues = computedAsync(async () => {
+	// Reference dependencies to ensure reactivity tracking
+	void ndvStore.activeNode?.parameters;
+	void props.parameter;
+	void props.path;
+
 	const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
@@ -425,7 +430,7 @@ const dependentParametersValues = computed<string | null>(() => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -438,7 +443,7 @@ const dependentParametersValues = computed<string | null>(() => {
 	} catch {
 		return null;
 	}
-});
+}, null);
 
 const getStringInputType = computed(() => {
 	if (getTypeOption('password') === true) {
@@ -722,10 +727,10 @@ async function loadRemoteParameterOptions() {
 
 	try {
 		const currentNodeParameters = (ndvStore.activeNode as INodeUi).parameters;
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
-		) as INodeParameters;
+		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
 

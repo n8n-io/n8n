@@ -599,7 +599,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
-		const payload = createBuilderPayload(text, userMessageId, {
+		const payload = await createBuilderPayload(text, userMessageId, {
 			quickReplyType,
 			workflow: currentWorkflowDocument!,
 			executionData: executionResult,
