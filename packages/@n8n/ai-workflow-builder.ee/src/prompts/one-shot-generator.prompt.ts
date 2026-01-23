@@ -1199,3 +1199,31 @@ export function buildOneShotGeneratorPrompt(
 
 	return template;
 }
+
+/**
+ * Build the raw system prompt string (without debug logs or ChatPromptTemplate).
+ * Useful for printing/copying the full prompt for debugging.
+ */
+export function buildRawSystemPrompt(
+	nodeIds: {
+		triggers: NodeWithDiscriminators[];
+		core: NodeWithDiscriminators[];
+		ai: NodeWithDiscriminators[];
+		other: NodeWithDiscriminators[];
+	},
+	sdkSourceCode: string,
+): string {
+	const availableNodesSection = buildAvailableNodesSection(nodeIds);
+	const sdkApiReference = `<sdk_api_reference>\n${sdkSourceCode}\n</sdk_api_reference>`;
+
+	return [
+		ROLE,
+		sdkApiReference,
+		availableNodesSection,
+		WORKFLOW_RULES,
+		AI_PATTERNS,
+		WORKFLOW_EXAMPLES,
+		MANDATORY_WORKFLOW,
+		OUTPUT_FORMAT,
+	].join('\n\n');
+}

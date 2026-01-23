@@ -3,6 +3,7 @@
 - [ ] get workflow-sdk to support roundtrip test of a lot of our template library [Now 289 tests pass, 4 remain skipped.]
 - [ ] test out more edge cases
 - [X] Add more examples for more complex flows (like loops or multi level orchestrator) to prompt
+- [ ] prompt optimization per model
 - [ ] rerun evaluations, get to parity with current agent
 - [ ] run evaluations against Opus
 - [X] Split node types by resource operation into files. less input tokens, faster, more accurate. Query by operation/resource.
