@@ -68,7 +68,6 @@ export const secretProviderConnectionSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	type: secretsProviderTypeSchema,
-	displayName: z.string().optional(),
 	state: secretsProviderStateSchema,
 	isEnabled: z.boolean(),
 	projects: z.array(projectSummarySchema),
