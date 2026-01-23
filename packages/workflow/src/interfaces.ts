@@ -2590,9 +2590,15 @@ export interface ITaskMetadata {
 
 	/**
 	 * Signed URL for resuming form-based waiting executions.
-	 * Contains HMAC signature for security validation.
+	 * Contains token for security validation.
 	 */
 	resumeFormUrl?: string;
+
+	/**
+	 * Signed URL for resuming webhook-based waiting executions.
+	 * Contains token for security validation.
+	 */
+	resumeUrl?: string;
 }
 
 /** The data that gets returned when a node execution starts */

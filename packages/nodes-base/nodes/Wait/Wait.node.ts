@@ -240,9 +240,15 @@ const waitingTooltip = (
 		let message = '';
 		const baseUrl = resume === 'form' ? formResumeUrl : resumeUrl;
 
-		const parsedUrl = new URL(baseUrl);
-		parsedUrl.pathname = `${parsedUrl.pathname}${suffix}`;
-		const url = parsedUrl.toString();
+		// Insert suffix before query parameters if present (for URLs with ?signature=token)
+		// Note: Cannot use URL class here because it is not available in expressions
+		let url: string;
+		const queryIndex = baseUrl.indexOf('?');
+		if (queryIndex !== -1) {
+			url = baseUrl.slice(0, queryIndex) + suffix + baseUrl.slice(queryIndex);
+		} else {
+			url = baseUrl + suffix;
+		}
 
 		if (resume === 'form') {
 			message = 'Execution will continue when form is submitted on ';
@@ -511,6 +517,12 @@ export class Wait extends Webhook {
 
 				const parentNodes = context.getParentNodes(context.getNode().name);
 				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+			}
+
+			if (resume === 'webhook') {
+				// Add signed resumeUrl to metadata for frontend to use in waiting tooltip
+				const resumeUrl = context.evaluateExpression('{{ $execution.resumeUrl }}', 0) as string;
+				context.setMetadata({ resumeUrl });
 			}
 
 			const returnData = await this.configureAndPutToWait(context);
