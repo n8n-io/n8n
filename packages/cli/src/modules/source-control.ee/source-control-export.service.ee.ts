@@ -16,7 +16,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 import { rmSync } from 'fs';
 import { Credentials, InstanceSettings } from 'n8n-core';
-import { UnexpectedError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
@@ -37,8 +37,8 @@ import {
 	getWorkflowExportPath,
 	readFoldersFromSourceControlFile,
 	readTagAndMappingsFromSourceControlFile,
+	sanitizeCredentialData,
 	sourceControlFoldersExistCheck,
-	stringContainsExpression,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
@@ -377,30 +377,6 @@ export class SourceControlExportService {
 		}
 	}
 
-	private replaceCredentialData = (
-		data: ICredentialDataDecryptedObject,
-	): ICredentialDataDecryptedObject => {
-		for (const [key] of Object.entries(data)) {
-			const value = data[key];
-			try {
-				if (value === null) {
-					delete data[key]; // remove invalid null values
-				} else if (typeof value === 'object') {
-					data[key] = this.replaceCredentialData(value as ICredentialDataDecryptedObject);
-				} else if (typeof value === 'string') {
-					data[key] = stringContainsExpression(value) ? data[key] : '';
-				} else if (typeof data[key] === 'number') {
-					// TODO: leaving numbers in for now, but maybe we should remove them
-					continue;
-				}
-			} catch (error) {
-				this.logger.error(`Failed to sanitize credential data: ${(error as Error).message}`);
-				throw error;
-			}
-		}
-		return data;
-	};
-
 	async exportCredentialsToWorkFolder(candidates: SourceControlledFile[]): Promise<ExportResult> {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
@@ -453,7 +429,7 @@ export class SourceControlExportService {
 						id,
 						name,
 						type,
-						data: this.replaceCredentialData(rest),
+						data: sanitizeCredentialData(rest),
 						ownedBy: owner,
 						isGlobal,
 					};

@@ -4,6 +4,7 @@ import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { generateKeyPairSync } from 'crypto';
 import { constants as fsConstants, mkdirSync, accessSync } from 'fs';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
@@ -25,6 +26,47 @@ import type { StatusResourceOwner } from './types/resource-owner';
 
 export function stringContainsExpression(testString: string): boolean {
 	return /^=.*\{\{.*\}\}/.test(testString);
+}
+
+/**
+ * Sanitizes credential data for source control export by:
+ * - Keeping expression values (strings starting with '=' containing '{{ }}')
+ * - Replacing plain string values with empty strings (to avoid committing secrets)
+ * - Keeping number values
+ * - Removing null values
+ * - Recursively processing nested objects
+ */
+export function sanitizeCredentialData(
+	data: ICredentialDataDecryptedObject,
+): ICredentialDataDecryptedObject {
+	for (const key of Object.keys(data)) {
+		const value = data[key];
+		if (value === null) {
+			delete data[key];
+		} else if (typeof value === 'object' && !Array.isArray(value)) {
+			data[key] = sanitizeCredentialData(value as ICredentialDataDecryptedObject);
+		} else if (typeof value === 'string') {
+			data[key] = stringContainsExpression(value) ? value : '';
+		}
+		// Numbers, booleans, and arrays are kept as-is
+	}
+	return data;
+}
+
+/**
+ * Compares two sanitized credential data objects to determine if they have changed.
+ * Used by source control status detection to identify modified credentials.
+ */
+export function hasCredentialDataChanged(
+	data1: ICredentialDataDecryptedObject | undefined,
+	data2: ICredentialDataDecryptedObject | undefined,
+): boolean {
+	// Both undefined = no change
+	if (!data1 && !data2) return false;
+	// One undefined, other not = change
+	if (!data1 || !data2) return true;
+	// Compare serialized JSON
+	return JSON.stringify(data1) !== JSON.stringify(data2);
 }
 
 export function getWorkflowExportPath(workflowId: string, workflowExportFolder: string): string {

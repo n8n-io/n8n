@@ -10,6 +10,7 @@ import { EventService } from '@/events/event.service';
 
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
+	hasCredentialDataChanged,
 	hasOwnerChanged,
 	getFoldersPath,
 	getTagsPath,
@@ -308,14 +309,15 @@ export class SourceControlStatusService {
 
 		const credModifiedInEither: StatusExportableCredential[] = [];
 		credLocalIds.forEach((local) => {
-			// Compare name, type, owner and isGlobal since those are the synced properties for credentials
+			// Compare name, type, owner, isGlobal, and data (expressions) since those are the synced properties for credentials
 			const mismatchingCreds = credRemoteIds.find((remote) => {
 				return (
 					remote.id === local.id &&
 					(remote.name !== local.name ||
 						remote.type !== local.type ||
 						hasOwnerChanged(remote.ownedBy, local.ownedBy) ||
-						(remote.isGlobal ?? false) !== (local.isGlobal ?? false))
+						(remote.isGlobal ?? false) !== (local.isGlobal ?? false) ||
+						hasCredentialDataChanged(remote.data, local.data))
 				);
 			});
 

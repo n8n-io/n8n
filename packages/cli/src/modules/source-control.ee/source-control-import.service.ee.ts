@@ -58,6 +58,7 @@ import {
 	getCredentialExportPath,
 	getProjectExportPath,
 	getWorkflowExportPath,
+	sanitizeCredentialData,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import type {
@@ -397,6 +398,7 @@ export class SourceControlImportService {
 				id: true,
 				name: true,
 				type: true,
+				data: true,
 				isGlobal: true,
 				shared: {
 					project: {
@@ -422,10 +424,31 @@ export class SourceControlImportService {
 		});
 		return localCredentials.map((local) => {
 			const remoteOwnerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+
+			// Decrypt and sanitize credential data (same logic as export)
+			let sanitizedData: ExportableCredential['data'] | undefined;
+			if (local.data) {
+				try {
+					const credentials = new Credentials(
+						{ id: local.id, name: local.name },
+						local.type,
+						local.data,
+					);
+					const decryptedData = credentials.getData();
+					// Remove oauthTokenData as it's excluded from export
+					const { oauthTokenData, ...rest } = decryptedData;
+					sanitizedData = sanitizeCredentialData({ ...rest });
+				} catch {
+					// If decryption fails, leave data undefined
+					// This matches existing behavior where decryption errors are handled gracefully
+				}
+			}
+
 			return {
 				id: local.id,
 				name: local.name,
 				type: local.type,
+				data: sanitizedData,
 				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
 				isGlobal: local.isGlobal,
