@@ -1,8 +1,6 @@
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { projectIconSchema, projectTypeSchema } from './project.schema';
-
 // #region ENUMS & CONSTANTS
 // ==========
 
@@ -43,22 +41,18 @@ export type SecretsProviderConnectionTestState = z.infer<
  * Owner of a secret provider connection
  * Re-uses project schemas defined in project.schema.ts
  */
-export const secretsProviderConnectionOwnerSchema = z.object({
+const projectSummarySchema = z.object({
 	id: z.string(),
-	type: projectTypeSchema,
 	name: z.string(),
-	icon: projectIconSchema,
 });
-export type SecretsProviderConnectionOwner = z.infer<typeof secretsProviderConnectionOwnerSchema>;
 
 /**
  * Secret with its name and optional credentials count
  */
-export const secretSummarySchema = z.object({
+const secretSummarySchema = z.object({
 	name: z.string(),
 	credentialsCount: z.number().optional(),
 });
-export type SecretSummary = z.infer<typeof secretSummarySchema>;
 
 // ==========
 // #endregion
@@ -75,10 +69,9 @@ export const secretProviderConnectionSchema = z.object({
 	name: z.string(),
 	type: secretsProviderTypeSchema,
 	displayName: z.string().optional(),
-	isGlobal: z.boolean(),
 	state: secretsProviderStateSchema,
-	enabled: z.boolean(),
-	homeProject: secretsProviderConnectionOwnerSchema,
+	isEnabled: z.boolean(),
+	projects: z.array(projectSummarySchema),
 	settings: z.object({}).catchall(z.any()) satisfies z.ZodType<IDataObject>,
 	secretsCount: z.number(),
 	secrets: z.array(secretSummarySchema).optional(),

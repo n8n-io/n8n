@@ -161,8 +161,6 @@ export type {
 	SecretsProviderType,
 	SecretsProviderState,
 	SecretsProviderConnectionTestState,
-	SecretsProviderConnectionOwner,
-	SecretSummary,
 	SecretProviderConnection,
 	SecretProviderTypeResponse,
 	AutocompletionSecretsResponse,
