@@ -1,5 +1,5 @@
 import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { DatabaseConfig, SecurityConfig, WorkflowsConfig } from '@n8n/config';
+import { SecurityConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -21,7 +21,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
 import { PostHogClient } from '@/posthog';
@@ -111,12 +110,6 @@ export class Server extends AbstractServer {
 	private async registerAdditionalControllers() {
 		if (!inProduction && this.instanceSettings.isMultiMain) {
 			await import('@/controllers/debug.controller');
-		}
-
-		if (isLdapEnabled()) {
-			const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
-			await import('@/ldap.ee/ldap.controller.ee');
-			await Container.get(LdapService).init();
 		}
 
 		if (inE2ETests) {
@@ -288,7 +281,11 @@ export class Server extends AbstractServer {
 
 		// Protect type files with authentication regardless of UI availability
 		const authService = Container.get(AuthService);
-		const protectedTypeFiles = ['/types/nodes.json', '/types/credentials.json'];
+		const protectedTypeFiles = [
+			'/types/nodes.json',
+			'/types/credentials.json',
+			'/types/node-versions.json',
+		];
 		protectedTypeFiles.forEach((path) => {
 			this.app.get(
 				path,
@@ -457,12 +454,6 @@ export class Server extends AbstractServer {
 
 	private async initializeWorkflowIndexing() {
 		if (Container.get(WorkflowsConfig).indexingEnabled) {
-			if (Container.get(DatabaseConfig).isLegacySqlite) {
-				this.logger.warn(
-					'Workflow indexing is disabled because legacy Sqlite databases are not supported. Please migrate the database to enable workflow indexing.',
-				);
-				return;
-			}
 			const { WorkflowIndexService } = await import(
 				'@/modules/workflow-index/workflow-index.service'
 			);

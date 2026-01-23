@@ -369,5 +369,35 @@ describe('useWorkflowDiff', () => {
 			expect(connectionDiff?.connection).toBeDefined();
 			expect(connectionDiff?.connection.id).toBe('conn1');
 		});
+
+		it('should generate IDs for nodes that are missing them', () => {
+			const nodeWithoutId = {
+				name: 'Node Without ID',
+				type: 'test-node',
+				typeVersion: 1,
+				position: [100, 100] as [number, number],
+				parameters: {},
+			} as INodeUi;
+
+			const nodeWithId = createMockNode('existing-id');
+
+			const sourceWorkflow = createMockWorkflow('source', [nodeWithoutId, nodeWithId]);
+
+			useWorkflowDiff(sourceWorkflow, undefined);
+
+			// Verify useCanvasMapping was called with nodes that have IDs
+			const firstCall = mockUseCanvasMapping.mock.calls[0][0];
+			const passedNodes = firstCall.nodes.value;
+
+			expect(passedNodes).toHaveLength(2);
+			// Node without ID should now have a generated UUID
+			expect(passedNodes[0].id).toBeDefined();
+			expect(passedNodes[0].id).toMatch(
+				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+			);
+			expect(passedNodes[0].name).toBe('Node Without ID');
+			// Node with existing ID should keep its ID
+			expect(passedNodes[1].id).toBe('existing-id');
+		});
 	});
 });

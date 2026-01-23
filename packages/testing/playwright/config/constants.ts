@@ -5,7 +5,7 @@ export const DEFAULT_USER_PASSWORD = 'PlaywrightTest123';
 
 export const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 export const MANUAL_TRIGGER_NODE_DISPLAY_NAME = 'When clicking ‘Execute workflow’';
-export const MANUAL_CHAT_TRIGGER_NODE_NAME = 'Chat Trigger';
+export const MANUAL_CHAT_TRIGGER_NODE_NAME = 'Chat';
 export const CHAT_TRIGGER_NODE_DISPLAY_NAME = 'When chat message received';
 export const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 export const CODE_NODE_NAME = 'Code';
@@ -42,6 +42,8 @@ export const NEW_TRELLO_ACCOUNT_NAME = 'Trello account';
 export const NEW_NOTION_ACCOUNT_NAME = 'Notion account';
 export const NEW_QUERY_AUTH_ACCOUNT_NAME = 'Query Auth account';
 export const E2E_TEST_NODE_NAME = 'E2E Test';
+
+export const TOOL_SUBCATEGORY = 'Action in an app';
 
 export const ROUTES = {
 	NEW_WORKFLOW_PAGE: '/workflow/new',

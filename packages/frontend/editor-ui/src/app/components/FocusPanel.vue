@@ -37,7 +37,7 @@ import { htmlEditorEventBus } from '@/app/event-bus';
 import { hasFocusOnInput, isFocusableEl } from '@/app/utils/typesUtils';
 import type { INodeUi, ResizeData, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useActiveElement, useThrottleFn } from '@vueuse/core';
+import { computedAsync, useActiveElement, useThrottleFn } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
@@ -101,33 +101,41 @@ const inputValue = ref<string>('');
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
 
-const isDisabled = computed(() => {
-	if (!resolvedParameter.value) return false;
+const isDisabled = computedAsync(async () => {
+	if (!resolvedParameter.value) {
+		return false;
+	}
+
+	const parentPath = resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.');
 
 	// shouldDisplayNodeParameter returns true if disabledOptions exists and matches, OR if disabledOptions doesn't exist
 	return (
 		!!resolvedParameter.value.parameter.disabledOptions &&
-		nodeSettingsParameters.shouldDisplayNodeParameter(
+		(await nodeSettingsParameters.shouldDisplayNodeParameter(
 			resolvedParameter.value.node.parameters,
 			resolvedParameter.value.node,
 			resolvedParameter.value.parameter,
-			resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.'),
+			parentPath,
 			'disabledOptions',
-		)
+		))
 	);
-});
+}, false);
 
-const isDisplayed = computed(() => {
-	if (!resolvedParameter.value) return true;
+const isDisplayed = computedAsync(async () => {
+	if (!resolvedParameter.value) {
+		return true;
+	}
 
-	return nodeSettingsParameters.shouldDisplayNodeParameter(
+	const parentPath = resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.');
+
+	return await nodeSettingsParameters.shouldDisplayNodeParameter(
 		resolvedParameter.value.node.parameters,
 		resolvedParameter.value.node,
 		resolvedParameter.value.parameter,
-		resolvedParameter.value.parameterPath.split('.').slice(1, -1).join('.'),
+		parentPath,
 		'displayOptions',
 	);
-});
+}, true);
 
 const node = computed<INodeUi | undefined>(() => {
 	if (!experimentalNdvStore.isNdvInFocusPanelEnabled || resolvedParameter.value) {

@@ -32,7 +32,7 @@ import {
 	jsonParse,
 	jsonStringify,
 	StructuredChunk,
-	RESPOND_TO_CHAT_NODE_TYPE,
+	CHAT_NODE_TYPE,
 	IRunExecutionData,
 	INodeParameters,
 	INode,
@@ -685,12 +685,12 @@ export class ChatHubService {
 		}
 
 		const chatResponseNodes = workflow.activeVersion.nodes.filter(
-			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
+			(node) => node.type === CHAT_NODE_TYPE,
 		);
 
 		if (chatResponseNodes.length > 0 && responseMode !== 'responseNodes') {
 			throw new BadRequestError(
-				'"Respond to Chat" nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
+				'Chat nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
 			);
 		}
 
@@ -1034,7 +1034,12 @@ export class ChatHubService {
 		const entry = this.getFirstOutputEntry(outputs);
 		if (!entry) return undefined;
 
-		return this.extractMessage(entry, responseMode);
+		const message = this.extractMessage(entry, responseMode);
+		if (typeof message === 'object' && message !== null) {
+			return jsonStringify(message);
+		}
+
+		return message;
 	}
 
 	private getLastNodeExecuted(execution: IExecutionResponse): string | undefined {
