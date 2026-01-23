@@ -358,6 +358,7 @@ export type RelayEventMap = {
 		projectId?: string;
 		projectType?: string;
 		uiContext?: string;
+		isDynamic?: boolean;
 	};
 
 	'credentials-shared': {
@@ -373,6 +374,7 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		isDynamic?: boolean;
 	};
 
 	'credentials-deleted': {

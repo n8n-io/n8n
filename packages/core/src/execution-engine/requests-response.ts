@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import {
 	type IConnection,
+	type IDataObject,
 	type IExecuteData,
 	type INode,
 	type INodeExecutionData,
@@ -25,6 +26,66 @@ type NodeToBeExecuted = {
 	metadata?: ITaskMetadata;
 };
 
+type ActionMetadata = { parentNodeName?: string; itemIndex?: number };
+
+function buildParentOutputData(
+	json: IDataObject,
+	parentRunIndex: number,
+	parentOutputIndex: number,
+	parentSourceNode: string,
+): INodeExecutionData[][] {
+	return [
+		[
+			{
+				json,
+				pairedItem: {
+					item: parentRunIndex,
+					input: parentOutputIndex,
+					sourceOverwrite: {
+						previousNode: parentSourceNode,
+						previousNodeOutput: parentOutputIndex,
+						previousNodeRun: parentRunIndex,
+					},
+				},
+			},
+		],
+	];
+}
+
+function initializeNodeRunData(
+	runData: IRunData,
+	nodeName: string,
+	parentNode: string,
+	parentOutputIndex: number,
+	parentRunIndex: number,
+	actionMetadata: ActionMetadata | undefined,
+	runIndex: number,
+	parentOutputData: INodeExecutionData[][],
+): number {
+	runData[nodeName] ||= [];
+	const nodeRunData = runData[nodeName];
+	const nodeRunIndex = nodeRunData.length;
+
+	// TODO: Remove when AI-723 lands.
+	const sourceData = {
+		previousNode: parentNode,
+		previousNodeOutput: parentOutputIndex,
+		previousNodeRun: actionMetadata?.parentNodeName ? parentRunIndex : runIndex,
+	};
+	nodeRunData.push({
+		// Necessary for the log on the canvas.
+		inputOverride: { ai_tool: parentOutputData },
+		// Source must point to the parent node for the frontend logs panel
+		// to correctly display this sub-node under the parent.
+		source: [sourceData],
+		executionIndex: 0,
+		executionTime: 0,
+		startTime: 0,
+	});
+
+	return nodeRunIndex;
+}
+
 function prepareRequestedNodesForExecution(
 	workflow: Workflow,
 	currentNode: INode,
@@ -33,15 +94,17 @@ function prepareRequestedNodesForExecution(
 	runData: IRunData,
 	executionData: IExecuteData,
 ) {
-	// 1. collect nodes to be put on the stack
 	const nodesToBeExecuted: NodeToBeExecuted[] = [];
 	const subNodeExecutionData: ITaskMetadata['subNodeExecutionData'] = {
 		actions: [],
 		metadata: request.metadata,
 	};
+	const parentSourceData = executionData.source?.main?.[runIndex];
+	const defaultParentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
+	const defaultParentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
+
 	for (const action of request.actions) {
 		const node = workflow.getNode(action.nodeName);
-
 		if (!node) {
 			throw new UnexpectedError(
 				`Workflow does not contain a node with the name of "${action.nodeName}".`,
@@ -49,74 +112,52 @@ function prepareRequestedNodesForExecution(
 		}
 
 		node.rewireOutputLogTo = action.type;
-		const inputConnectionData: IConnection = {
-			// agents always have a main input
-			type: action.type,
-			node: action.nodeName,
-			// tools always have only one input
-			index: 0,
-		};
-		const parentNode = currentNode.name;
-		const parentSourceData = executionData.source?.main?.[runIndex];
-		const parentOutputIndex = parentSourceData?.previousNodeOutput ?? 0;
-		const parentRunIndex = parentSourceData?.previousNodeRun ?? 0;
-		const parentSourceNode = parentSourceData?.previousNode ?? currentNode.name;
+		const actionMetadata = action.metadata as ActionMetadata | undefined;
+		const parentNode = actionMetadata?.parentNodeName ?? currentNode.name;
+		const parentRunIndex = actionMetadata?.parentNodeName
+			? (runData[parentNode]?.length ?? 1) - 1
+			: (parentSourceData?.previousNodeRun ?? 0);
 
-		// Get the item index from action metadata to access the correct agent input data
-		const itemIndex = (action.metadata as { itemIndex?: number })?.itemIndex ?? 0;
-		// Use index 0 for main input as agents have only one main input connection
+		const itemIndex = actionMetadata?.itemIndex ?? 0;
 		const agentInputData = executionData.data.main?.[0]?.[itemIndex];
-
-		// Merge agent's input data with action.input so tools have access to workflow data
-		// action.input takes precedence to allow tool-specific parameters to override
 		const mergedJson = {
 			...(agentInputData?.json ?? {}),
 			...action.input,
 			toolCallId: action.id,
 		};
 
-		const parentOutputData: INodeExecutionData[][] = [
-			[
-				{
-					json: mergedJson,
-					pairedItem: {
-						item: parentRunIndex,
-						input: parentOutputIndex,
-						sourceOverwrite: {
-							previousNode: parentSourceNode,
-							previousNodeOutput: parentOutputIndex,
-							previousNodeRun: parentRunIndex,
-						},
-					},
-				},
-			],
-		];
+		const parentOutputData = buildParentOutputData(
+			mergedJson,
+			parentRunIndex,
+			defaultParentOutputIndex,
+			defaultParentSourceNode,
+		);
 
-		runData[node.name] ||= [];
-		const nodeRunData = runData[node.name];
-		const nodeRunIndex = nodeRunData.length;
-		// TODO: Remove when AI-723 lands.
-		nodeRunData.push({
-			// Necessary for the log on the canvas.
-			inputOverride: { ai_tool: parentOutputData },
-			source: [],
-			executionIndex: 0,
-			executionTime: 0,
-			startTime: 0,
-		});
+		const nodeRunIndex = initializeNodeRunData(
+			runData,
+			node.name,
+			parentNode,
+			defaultParentOutputIndex,
+			parentRunIndex,
+			actionMetadata,
+			runIndex,
+			parentOutputData,
+		);
 
 		nodesToBeExecuted.push({
-			inputConnectionData,
-			parentOutputIndex: 0, // Tools connect to agent's output 0 (agents have only one main output)
+			inputConnectionData: { type: action.type, node: action.nodeName, index: 0 },
+			parentOutputIndex: 0,
 			parentNode,
 			parentOutputData,
-			runIndex,
+			// Use parentRunIndex when custom parent is set to preserve previousNodeRun value
+			// (avoid 0 being converted to undefined by || undefined pattern)
+			runIndex: actionMetadata?.parentNodeName ? parentRunIndex : runIndex,
 			nodeRunIndex,
 			metadata: {
 				preserveSourceOverwrite: true,
 				preservedSourceOverwrite: executionData.metadata?.preservedSourceOverwrite ?? {
-					previousNode: parentSourceNode,
-					previousNodeOutput: parentOutputIndex,
+					previousNode: defaultParentSourceNode,
+					previousNodeOutput: defaultParentOutputIndex,
 					previousNodeRun: parentRunIndex,
 				},
 			},
