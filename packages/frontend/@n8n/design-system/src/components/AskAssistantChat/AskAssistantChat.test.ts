@@ -960,7 +960,7 @@ describe('AskAssistantChat', () => {
 			const wrapper = renderWithFooterRating(messages, false);
 
 			const ratingButton = wrapper.getByTestId('rating-button');
-			await ratingButton.click();
+			ratingButton.click();
 
 			expect(wrapper.emitted('feedback')).toBeTruthy();
 			expect(wrapper.emitted('feedback')?.[0]).toEqual([{ rating: 'up' }]);
