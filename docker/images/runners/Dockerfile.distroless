@@ -12,7 +12,7 @@
 # - Uses distroless nonroot user (UID 65532)
 # ==============================================================================
 
-ARG NODE_VERSION=22.21.1
+ARG NODE_VERSION=22.22.0
 ARG PYTHON_VERSION=3.13
 
 

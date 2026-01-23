@@ -1,0 +1,20 @@
+/* Focus State
+ -------------------------- */
+
+@mixin focus-ring {
+	outline: var(--focus--border-width) solid var(--focus--border-color);
+	outline-offset: 2px;
+	transition: outline 0.15s ease-out;
+}
+
+@mixin focus-visible-ring {
+	&:focus-visible {
+		@include focus-ring;
+	}
+}
+
+@mixin focus-within-ring {
+	&:focus-within {
+		@include focus-ring;
+	}
+}

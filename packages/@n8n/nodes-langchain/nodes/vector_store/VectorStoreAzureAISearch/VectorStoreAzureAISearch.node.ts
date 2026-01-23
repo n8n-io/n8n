@@ -3,6 +3,7 @@ import {
 	AzureAISearchVectorStore,
 	AzureAISearchQueryType,
 } from '@langchain/community/vectorstores/azure_aisearch';
+import type { Document } from '@langchain/core/documents';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import {
 	NodeOperationError,
@@ -110,6 +111,15 @@ const insertFields: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to delete and recreate the index before inserting new data. Warning: This will reset any custom index configuration (semantic ranking, analyzers, etc.) to defaults.',
+			},
+			{
+				displayName: 'Metadata Keys to Insert',
+				name: 'metadataKeysToInsert',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g., source,author,category',
+				description:
+					'Comma-separated list of metadata keys to store in Azure AI Search. Leave empty to include all metadata. Azure AI Search stores metadata in an "attributes" array format.',
 			},
 		],
 	},
@@ -336,6 +346,52 @@ function getQueryType(
 	}
 }
 
+interface AzureMetadataAttribute {
+	key: string;
+	value: string;
+}
+
+/**
+ * Transforms document metadata into Azure AI Search's expected format.
+ * Azure AI Search requires metadata to be stored in an 'attributes' array
+ * with {key, value} pairs where values are strings.
+ *
+ * @param documents - Array of documents to transform
+ * @param metadataKeysToInclude - Optional array of specific keys to include. If empty, includes all keys.
+ * @returns Documents with transformed metadata
+ */
+export function transformDocumentsForAzure(
+	documents: Array<Document<Record<string, unknown>>>,
+	metadataKeysToInclude: string[],
+): Array<Document<Record<string, unknown>>> {
+	return documents.map((doc) => {
+		const originalMetadata = doc.metadata;
+
+		const keysToProcess =
+			metadataKeysToInclude.length > 0 ? metadataKeysToInclude : Object.keys(originalMetadata);
+
+		const attributes: AzureMetadataAttribute[] = keysToProcess
+			.filter(
+				(key) =>
+					Object.prototype.hasOwnProperty.call(originalMetadata, key) &&
+					originalMetadata[key] !== null &&
+					originalMetadata[key] !== undefined,
+			)
+			.map((key) => ({
+				key,
+				value: String(originalMetadata[key]),
+			}));
+
+		return {
+			...doc,
+			metadata: {
+				...originalMetadata,
+				attributes,
+			},
+		};
+	});
+}
+
 export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	meta: {
 		displayName: 'Azure AI Search Vector Store',
@@ -412,11 +468,25 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 			// Clear the index if requested (delete and recreate)
 			await clearAzureSearchIndex(context, itemIndex);
 
+			const metadataKeysToInsertRaw = getOptionValue<string>(
+				'metadataKeysToInsert',
+				context,
+				itemIndex,
+			);
+			const metadataKeysToInsert = metadataKeysToInsertRaw
+				? metadataKeysToInsertRaw
+						.split(',')
+						.map((k) => k.trim())
+						.filter((k) => k.length > 0)
+				: [];
+
+			const transformedDocuments = transformDocumentsForAzure(documents, metadataKeysToInsert);
+
 			// Get vector store client (will auto-create index if it doesn't exist)
 			const vectorStore = await getAzureAISearchClient(context, embeddings, itemIndex);
 
 			// Add documents to Azure AI Search (framework handles batching)
-			await vectorStore.addDocuments(documents);
+			await vectorStore.addDocuments(transformedDocuments);
 		} catch (error) {
 			// Log the full error for debugging
 			context.logger.debug('Azure AI Search error details:', {

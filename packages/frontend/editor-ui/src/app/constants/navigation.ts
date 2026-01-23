@@ -13,6 +13,7 @@ export const enum VIEWS {
 	WORKFLOW = 'NodeViewExisting',
 	WORKFLOW_CRDT = 'NodeViewExistingCRDT',
 	DEMO = 'WorkflowDemo',
+	DEMO_DIFF = 'WorkflowDemoDiff',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
 	SIGNIN = 'SigninView',
@@ -66,6 +67,8 @@ export const enum VIEWS {
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
 	CRDT_TEST = 'CRDTTest',
+	RESOURCE_CENTER = 'ResourceCenter',
+	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
