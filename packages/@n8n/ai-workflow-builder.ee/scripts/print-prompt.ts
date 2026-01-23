@@ -3,8 +3,10 @@
  * Print the full one-shot generator prompt for debugging/copying.
  *
  * Usage:
- *   pnpm prompt:print
- *   pnpm prompt:print > prompt.txt
+ *   pnpm prompt:print              # Print Sonnet 4.5 prompt (default)
+ *   pnpm prompt:print sonnet       # Print Sonnet 4.5 prompt
+ *   pnpm prompt:print opus         # Print Opus 4.5 prompt
+ *   pnpm prompt:print > prompt.txt # Save to file
  */
 
 import { SDK_API_CONTENT } from '@n8n/workflow-sdk';
@@ -13,7 +15,13 @@ import {
 	buildAvailableNodesSection,
 	buildRawSystemPrompt,
 } from '../src/prompts/one-shot-generator.prompt';
+import {
+	buildOpusAvailableNodesSection,
+	buildOpusRawSystemPrompt,
+} from '../src/prompts/one-shot-generator-opus.prompt';
 import type { NodeWithDiscriminators } from '../src/utils/node-type-parser';
+
+type PromptType = 'sonnet' | 'opus';
 
 // Sample node IDs to show the structure (these are representative examples)
 const sampleNodeIds: {
@@ -164,15 +172,24 @@ const tools = [
 	},
 ];
 
-function printPrompt() {
-	// Build the raw system prompt
-	const systemPrompt = buildRawSystemPrompt(sampleNodeIds, SDK_API_CONTENT);
+function printPrompt(promptType: PromptType = 'sonnet') {
+	// Build the raw system prompt based on type
+	const isOpus = promptType === 'opus';
+	const systemPrompt = isOpus
+		? buildOpusRawSystemPrompt(sampleNodeIds, SDK_API_CONTENT)
+		: buildRawSystemPrompt(sampleNodeIds, SDK_API_CONTENT);
+
+	const availableNodesSection = isOpus
+		? buildOpusAvailableNodesSection(sampleNodeIds)
+		: buildAvailableNodesSection(sampleNodeIds);
 
 	// Pick a random sample request
 	const randomRequest = sampleRequests[Math.floor(Math.random() * sampleRequests.length)];
 
+	const promptName = isOpus ? 'OPUS 4.5' : 'SONNET 4.5';
+
 	console.log('='.repeat(80));
-	console.log('ONE-SHOT WORKFLOW GENERATOR - FULL PROMPT');
+	console.log(`ONE-SHOT WORKFLOW GENERATOR - ${promptName} PROMPT`);
 	console.log('='.repeat(80));
 	console.log();
 	console.log('--- SYSTEM MESSAGE ---');
@@ -206,12 +223,31 @@ function printPrompt() {
 	// Print stats
 	console.log();
 	console.log('Stats:');
+	console.log(`  Prompt type: ${promptName}`);
 	console.log(`  System message length: ${systemPrompt.length.toLocaleString()} characters`);
-	console.log(`  SDK API content length: ${SDK_API_CONTENT.length.toLocaleString()} characters`);
+	if (isOpus) {
+		console.log(`  SDK API content length: ${SDK_API_CONTENT.length.toLocaleString()} characters`);
+	} else {
+		console.log(`  SDK API content: NOT INCLUDED (Sonnet 4.5 optimized prompt)`);
+	}
 	console.log(
-		`  Available nodes section length: ${buildAvailableNodesSection(sampleNodeIds).length.toLocaleString()} characters`,
+		`  Available nodes section length: ${availableNodesSection.length.toLocaleString()} characters`,
 	);
 	console.log(`  Tools: ${tools.length}`);
 }
 
-printPrompt();
+// Parse command line argument
+const arg = process.argv[2]?.toLowerCase();
+let promptType: PromptType = 'sonnet';
+
+if (arg === 'opus') {
+	promptType = 'opus';
+} else if (arg === 'sonnet' || !arg) {
+	promptType = 'sonnet';
+} else {
+	console.error(`Unknown prompt type: ${arg}`);
+	console.error('Usage: pnpm prompt:print [sonnet|opus]');
+	process.exit(1);
+}
+
+printPrompt(promptType);
