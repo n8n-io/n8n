@@ -13,6 +13,7 @@ import { NODE_SEARCH_TOOL } from './node-search.tool';
 import { REMOVE_CONNECTION_TOOL } from './remove-connection.tool';
 import { REMOVE_NODE_TOOL } from './remove-node.tool';
 import { RENAME_NODE_TOOL } from './rename-node.tool';
+import { EXECUTE_SCRIPT_TOOL } from './script-execution';
 import { UPDATING_NODE_PARAMETER_TOOL } from './update-node-parameters.tool';
 import { VALIDATE_CONFIGURATION_TOOL } from './validate-configuration.tool';
 import { VALIDATE_STRUCTURE_TOOL } from './validate-structure.tool';
@@ -37,15 +38,24 @@ export function getBuilderToolsForDisplay({
 		tools.push(GET_WORKFLOW_EXAMPLES_TOOL);
 	}
 
-	// Add remaining tools
+	// Add discovery tools
+	tools.push(NODE_SEARCH_TOOL, NODE_DETAILS_TOOL);
+
+	// Add builder tools - use execute_script when scriptExecution is enabled
+	if (featureFlags?.scriptExecution === true) {
+		tools.push(EXECUTE_SCRIPT_TOOL);
+	} else {
+		tools.push(
+			getAddNodeToolBase(nodeTypes),
+			CONNECT_NODES_TOOL,
+			REMOVE_CONNECTION_TOOL,
+			REMOVE_NODE_TOOL,
+			RENAME_NODE_TOOL,
+		);
+	}
+
+	// Add configurator and validation tools
 	tools.push(
-		NODE_SEARCH_TOOL,
-		NODE_DETAILS_TOOL,
-		getAddNodeToolBase(nodeTypes),
-		CONNECT_NODES_TOOL,
-		REMOVE_CONNECTION_TOOL,
-		REMOVE_NODE_TOOL,
-		RENAME_NODE_TOOL,
 		UPDATING_NODE_PARAMETER_TOOL,
 		GET_NODE_PARAMETER_TOOL,
 		VALIDATE_STRUCTURE_TOOL,

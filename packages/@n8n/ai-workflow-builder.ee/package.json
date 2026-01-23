@@ -66,6 +66,7 @@
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
+    "vm2": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {

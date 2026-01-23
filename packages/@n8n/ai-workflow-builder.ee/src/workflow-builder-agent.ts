@@ -77,6 +77,8 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
+	/** Enable script execution tool for batched operations */
+	scriptExecution?: boolean;
 }
 
 export interface ChatPayload {

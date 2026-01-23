@@ -510,6 +510,9 @@ importers:
       picocolors:
         specifier: 'catalog:'
         version: 1.0.1
+      vm2:
+        specifier: 'catalog:'
+        version: 3.10.2
       zod:
         specifier: 3.25.67
         version: 3.25.67

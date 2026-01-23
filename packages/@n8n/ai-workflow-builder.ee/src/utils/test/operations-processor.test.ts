@@ -1017,6 +1017,135 @@ describe('operations-processor', () => {
 				expect(result.connections['Node 4']).toBeDefined();
 			});
 
+			it('should correctly handle addNodes + renameNode + mergeConnections sequence', () => {
+				// This tests the scenario where:
+				// 1. New nodes are added
+				// 2. An existing node is renamed
+				// 3. Connections are made to the renamed node using its NEW name
+				// This is the pattern used by script execution when modifying existing workflows
+
+				const aiAgent = createNode({
+					id: 'ai-agent',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+				});
+				const chatModel = createNode({
+					id: 'chat-model',
+					name: 'OpenAI Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				});
+				const initialWorkflow: SimpleWorkflow = {
+					name: 'Test AI Workflow',
+					nodes: [aiAgent, chatModel],
+					connections: {
+						'OpenAI Chat Model': {
+							ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+						},
+					},
+				};
+
+				const parserNode = createNode({
+					id: 'parser',
+					name: 'Output Parser',
+					type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+				});
+
+				// Simulates what script execution generates:
+				// 1. Add new nodes
+				// 2. Rename existing node
+				// 3. Connect using NEW name (since script simulates the rename before creating connections)
+				const operations: WorkflowOperation[] = [
+					{ type: 'addNodes', nodes: [parserNode] },
+					{
+						type: 'renameNode',
+						nodeId: 'ai-agent',
+						oldName: 'AI Agent',
+						newName: 'Renamed Agent',
+					},
+					{
+						type: 'mergeConnections',
+						connections: {
+							'Output Parser': {
+								ai_outputParser: [[{ node: 'Renamed Agent', type: 'ai_outputParser', index: 0 }]],
+							},
+						},
+					},
+				];
+
+				const result = applyOperations(initialWorkflow, operations);
+
+				// Verify the renamed node exists
+				const renamedNode = result.nodes.find((n) => n.id === 'ai-agent');
+				expect(renamedNode).toBeDefined();
+				expect(renamedNode?.name).toBe('Renamed Agent');
+
+				// Verify all nodes are present (none disappeared)
+				expect(result.nodes).toHaveLength(3);
+				expect(result.nodes.map((n) => n.name).sort()).toEqual([
+					'OpenAI Chat Model',
+					'Output Parser',
+					'Renamed Agent',
+				]);
+
+				// Verify the new connection exists
+				expect(result.connections['Output Parser']?.ai_outputParser?.[0]).toEqual([
+					{ node: 'Renamed Agent', type: 'ai_outputParser', index: 0 },
+				]);
+
+				// Verify the existing connection was updated with the new name
+				expect(result.connections['OpenAI Chat Model']?.ai_languageModel?.[0]).toEqual([
+					{ node: 'Renamed Agent', type: 'ai_languageModel', index: 0 },
+				]);
+			});
+
+			it('should handle connections created BEFORE rename operation', () => {
+				// This tests when connections use the OLD name and rename comes later
+				// The rename should update all connection references
+
+				const existingNode = createNode({
+					id: 'existing',
+					name: 'Existing Node',
+				});
+				const initialWorkflow: SimpleWorkflow = {
+					name: 'Test',
+					nodes: [existingNode],
+					connections: {},
+				};
+
+				const newNode = createNode({ id: 'new', name: 'New Node' });
+
+				// Order: addNodes -> mergeConnections (with OLD name) -> renameNode
+				// This simulates when connections are made before the rename
+				const operations: WorkflowOperation[] = [
+					{ type: 'addNodes', nodes: [newNode] },
+					{
+						type: 'mergeConnections',
+						connections: {
+							'New Node': {
+								main: [[{ node: 'Existing Node', type: 'main', index: 0 }]],
+							},
+						},
+					},
+					{
+						type: 'renameNode',
+						nodeId: 'existing',
+						oldName: 'Existing Node',
+						newName: 'Renamed Node',
+					},
+				];
+
+				const result = applyOperations(initialWorkflow, operations);
+
+				// Verify node is renamed
+				const renamedNode = result.nodes.find((n) => n.id === 'existing');
+				expect(renamedNode?.name).toBe('Renamed Node');
+
+				// Verify connection was updated to new name
+				expect(result.connections['New Node']?.main?.[0]).toEqual([
+					{ node: 'Renamed Node', type: 'main', index: 0 },
+				]);
+			});
+
 			it('should handle clear followed by other operations', () => {
 				const newNode = createNode({ id: 'newNode', name: 'New Node' });
 				const operations: WorkflowOperation[] = [

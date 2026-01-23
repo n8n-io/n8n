@@ -8,6 +8,10 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
 import { buildBuilderPrompt } from '@/prompts/agents/builder.prompt';
+import {
+	SCRIPT_EXECUTION_CONDENSED,
+	SCRIPT_TYPE_DEFINITIONS,
+} from '@/prompts/script-execution/tool-definitions.prompt';
 import { autoFixConnections } from '@/validation/auto-fix';
 import { validateConnections } from '@/validation/checks';
 import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
@@ -20,7 +24,7 @@ import { createGetNodeConnectionExamplesTool } from '../tools/get-node-examples.
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
-import { createValidateStructureTool } from '../tools/validate-structure.tool';
+import { createExecuteScriptTool } from '../tools/script-execution';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createBuilderMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
@@ -111,24 +115,35 @@ export class BuilderSubgraph extends BaseSubgraph<
 	create(config: BuilderSubgraphConfig) {
 		// Store config for use in transformOutput
 		this.config = config;
-		// Check if template examples are enabled
+		// Check feature flags
 		const includeExamples = config.featureFlags?.templateExamples === true;
+		const includeScriptExecution = true;
 
-		// Create base tools
-		const baseTools = [
-			createAddNodeTool(config.parsedNodeTypes),
-			createConnectNodesTool(config.parsedNodeTypes, config.logger),
-			createRemoveNodeTool(config.logger),
-			createRemoveConnectionTool(config.logger),
-			createRenameNodeTool(config.logger),
-			createValidateStructureTool(config.parsedNodeTypes),
-		];
+		// Create tools based on feature flags
+		// When scriptExecution is enabled, use execute_script instead of individual tools
+		// Note: validate_structure is NOT included - execute_script validates automatically
+		const tools = includeScriptExecution
+			? [createExecuteScriptTool(config.parsedNodeTypes, config.logger)]
+			: [
+					createAddNodeTool(config.parsedNodeTypes),
+					createConnectNodesTool(config.parsedNodeTypes, config.logger),
+					createRemoveNodeTool(config.logger),
+					createRemoveConnectionTool(config.logger),
+					createRenameNodeTool(config.logger),
+				];
 
-		// Conditionally add node connection examples tool if feature flag is enabled
-		const tools = includeExamples
-			? [...baseTools, createGetNodeConnectionExamplesTool(config.logger)]
-			: baseTools;
+		if (includeExamples) {
+			tools.push(createGetNodeConnectionExamplesTool(config.logger));
+		}
+
 		const toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
+
+		// Build system prompt, optionally including script execution guidance
+		const basePrompt = buildBuilderPrompt();
+		const fullPrompt = includeScriptExecution
+			? `${basePrompt}\n\n${SCRIPT_EXECUTION_CONDENSED}\n\n${SCRIPT_TYPE_DEFINITIONS}`
+			: basePrompt;
+
 		// Create agent with tools bound
 		const systemPrompt = ChatPromptTemplate.fromMessages([
 			[
@@ -136,7 +151,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 				[
 					{
 						type: 'text',
-						text: buildBuilderPrompt(),
+						text: fullPrompt,
 						cache_control: { type: 'ephemeral' },
 					},
 				],
