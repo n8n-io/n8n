@@ -3236,6 +3236,8 @@
 	"workflowRun.showError.resolveOutstandingIssues": "Please resolve outstanding issues before you activate it",
 	"workflowRun.showError.unsupportedExecutionLogic.title": "Unsupported Execution Logic",
 	"workflowRun.showError.unsupportedExecutionLogic.description": "Execution Logic \"v2\" is not supported when filesystem mode is \"default\". Please change the Execution Logic to \"v1\" in workflow settings and update expressions accordingly.",
+	"workflowRun.showWarning.noChatResponseNodes.title": "No response node detected",
+	"workflowRun.showWarning.noChatResponseNodes.description": "Add a Chat or Respond to Webhook node to send a reply, or change the response mode in the Chat Trigger.",
 	"workflowRun.showMessage.message": "Please fix them before executing",
 	"workflowRun.showMessage.title": "Workflow has issues",
 	"workflowSettings.executionLogic.v0.title": "v0 (legacy)",
