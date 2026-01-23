@@ -8,12 +8,12 @@ import N8nIconButton from '../../N8nIconButton';
 import N8nInput from '../../N8nInput';
 
 interface Props {
-	style?: 'regular' | 'minimal';
+	minimal?: boolean;
 	showFeedback?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
-	style: 'regular',
+	minimal: false,
 	showFeedback: true,
 });
 
@@ -63,9 +63,9 @@ function onCancelFeedback() {
 </script>
 
 <template>
-	<div :class="[$style.rating, $style[style]]">
+	<div :class="[$style.rating, { [$style.minimal]: minimal }]">
 		<div v-if="showRatingButtons" :class="$style.buttons">
-			<template v-if="style === 'regular'">
+			<template v-if="!minimal">
 				<N8nButton
 					type="secondary"
 					size="small"

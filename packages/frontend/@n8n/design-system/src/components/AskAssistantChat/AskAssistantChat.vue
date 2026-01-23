@@ -264,12 +264,15 @@ const showBottomInput = computed(() => {
 
 const showFooterRating = computed(() => {
 	if (props.streaming) return false;
-	if (!normalizedMessages.value.length) return false;
+	if (!props.messages?.length) return false;
 
-	// Check if there's a workflow-updated message (same condition as original rating logic)
-	const hasWorkflowUpdate = normalizedMessages.value.some((msg) => msg.type === 'workflow-updated');
+	// Check if there's a workflow-updated message in the original messages
+	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
+	const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
 	if (!hasWorkflowUpdate) return false;
 
+	// Check the last visible message (from normalizedMessages)
+	if (!normalizedMessages.value.length) return false;
 	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
 	if (lastMsg.role === 'user') return false;
 	if (lastMsg.type === 'thinking-group') return false;
@@ -551,7 +554,7 @@ defineExpose({
 			</div>
 		</div>
 		<div v-if="showFooterRating" :class="$style.feedbackWrapper" data-test-id="footer-rating">
-			<MessageRating @feedback="onRateMessage" />
+			<MessageRating minimal @feedback="onRateMessage" />
 		</div>
 		<div v-if="$slots.inputHeader && showBottomInput" :class="$style.inputHeaderWrapper">
 			<slot name="inputHeader" />
@@ -637,6 +640,19 @@ defineExpose({
 	code {
 		text-wrap: wrap;
 	}
+
+	// Add a gradient fade at the bottom of the messages area
+	&::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: var(--spacing--xs);
+		height: var(--spacing--md);
+		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
+		pointer-events: none;
+		z-index: 1;
+	}
 }
 
 .placeholder {
@@ -666,7 +682,7 @@ defineExpose({
 
 .messagesContent {
 	padding: var(--spacing--xs);
-	padding-bottom: var(--spacing--xl); // Extra padding for fade area
+	padding-bottom: var(--spacing--l);
 
 	// Override p line-height from reset.scss (1.8) to use chat standard (1.5)
 	:global(p) {
@@ -731,8 +747,8 @@ defineExpose({
 
 .feedbackWrapper {
 	display: flex;
-	justify-content: center;
-	padding: var(--spacing--xs);
+	justify-content: start;
+	padding: 0 0 var(--spacing--2xs) var(--spacing--2xs);
 	border-left: var(--border);
 	border-right: var(--border);
 	background-color: var(--color--background--light-2);
@@ -758,27 +774,10 @@ defineExpose({
 	position: relative;
 	border-left: var(--border);
 	border-right: var(--border);
-
-	// Add a gradient fade from the chat to the input
-	&::before {
-		content: '';
-		position: absolute;
-		top: calc(-1 * var(--spacing--md));
-		left: 0;
-		right: var(--spacing--xs);
-		height: var(--spacing--md);
-		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
-		pointer-events: none;
-		z-index: 1;
-	}
 }
 
 .inputWrapperWithHeader {
 	padding-top: 0;
-
-	&::before {
-		display: none;
-	}
 }
 
 .disabledInput {
