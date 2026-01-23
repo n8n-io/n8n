@@ -3,14 +3,14 @@ import isEqual from 'lodash/isEqual';
 
 import {
 	type FilterConditionValue,
+	type FilterOptionsValue,
 	type FilterValue,
 	type INodeProperties,
 	type FilterTypeCombinator,
 	type INode,
 	type NodeParameterValue,
-	type FilterOptionsValue,
 } from 'n8n-workflow';
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, watch, watchEffect } from 'vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	DEFAULT_FILTER_OPTIONS,
@@ -100,30 +100,31 @@ const issues = computed(() => {
 	return ndvStore.activeNode?.issues?.parameters ?? {};
 });
 
-watch(
-	() => props.node?.parameters,
-	() => {
-		const typeOptions = props.parameter.typeOptions?.filter;
+watchEffect(async () => {
+	// Reference props.node?.parameters to ensure reactivity tracking
+	void props.node?.parameters;
 
-		if (!typeOptions) {
-			return;
-		}
+	const typeOptions = props.parameter.typeOptions?.filter;
 
-		let newOptions: FilterOptionsValue = DEFAULT_FILTER_OPTIONS;
-		try {
-			newOptions = {
-				...DEFAULT_FILTER_OPTIONS,
-				...resolveParameter(typeOptions as unknown as NodeParameterValue),
-			};
-		} catch (error) {}
+	if (!typeOptions) {
+		return;
+	}
 
-		if (!isEqual(state.paramValue.options, newOptions)) {
-			state.paramValue.options = newOptions;
-			debouncedEmitChange();
-		}
-	},
-	{ immediate: true },
-);
+	let newOptions: FilterOptionsValue = DEFAULT_FILTER_OPTIONS;
+	try {
+		newOptions = {
+			...DEFAULT_FILTER_OPTIONS,
+			...(await resolveParameter(typeOptions as unknown as NodeParameterValue)),
+		};
+	} catch {
+		// Keep default options
+	}
+
+	if (!isEqual(state.paramValue.options, newOptions)) {
+		state.paramValue.options = newOptions;
+		debouncedEmitChange();
+	}
+});
 
 watch(
 	() => props.value,
