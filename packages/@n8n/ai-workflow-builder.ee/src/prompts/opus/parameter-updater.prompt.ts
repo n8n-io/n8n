@@ -86,7 +86,7 @@ Types: stringValue, numberValue, booleanValue, objectValue, arrayValue
   "message": "={{{{ $fromAI('body', 'Email body content', 'string') }}}}"
 }}}}
 
-Only use $fromAI in nodes with type ending in "Tool".
+$fromAI is designed specifically for Tool nodes (types ending in "Tool") where the AI Agent provides values at runtime.
 
 ### ResourceLocator Parameters
 {{{{

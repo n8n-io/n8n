@@ -24,17 +24,18 @@ export {
 // Reduced from ~3,538 lines to ~415 lines (~88% reduction)
 export { buildBuilderPrompt } from './opus/agents/builder.prompt';
 export {
+	buildBuilderConfiguratorPrompt,
+	INSTANCE_URL_PROMPT,
+	buildRecoveryModeContext,
+} from './opus/agents/builder-configurator.prompt';
+export {
 	buildDiscoveryPrompt,
 	exampleCategorizations,
 	formatTechniqueList,
 	formatExampleCategorizations,
 	type DiscoveryPromptOptions,
 } from './opus/agents/discovery.prompt';
-export {
-	buildConfiguratorPrompt,
-	INSTANCE_URL_PROMPT,
-	buildRecoveryModeContext,
-} from './opus/agents/configurator.prompt';
+export { buildConfiguratorPrompt } from './opus/agents/configurator.prompt';
 export { buildSupervisorPrompt } from './agents/supervisor.prompt';
 export {
 	buildResponderPrompt,

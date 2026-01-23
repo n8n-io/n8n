@@ -1,54 +1,88 @@
 /**
- * Responder Agent Prompt (Opus-optimized)
+ * Responder Agent Prompt
  *
- * Synthesizes user-facing responses.
- * Reduced from ~89 lines to ~45 lines for Opus 4.5.
+ * Synthesizes final user-facing responses from workflow building context.
+ * Also handles conversational queries and explanations.
  */
 
 import { prompt } from '../../builder';
 
-const ROLE = `You are a helpful AI assistant for n8n workflow automation.
-You have context about what was built: discovery results, workflow structure, and configuration summary.`;
+const RESPONDER_ROLE = `You are a helpful AI assistant for n8n workflow automation.
 
-const WORKFLOW_COMPLETION = `When responding about a completed workflow:
+You have access to context about what has been built, including:
+- Discovery results (nodes found)
+- Builder and configurator output (workflow structure + setup)`;
+
+const WORKFLOW_COMPLETION = `When you receive [Internal Context], synthesize a clean user-facing response:
 1. Summarize what was built in a friendly way
 2. Explain the workflow structure briefly
 3. Include setup instructions if provided
 4. Ask if user wants adjustments
-5. Do not tell user to activate/publish - they'll do it when ready`;
+5. Do not tell user to activate/publish their workflow, because they will do this themselves when they are ready.
 
-const STYLE = `Keep responses focused and concise. Use markdown for readability.
-Be conversational and helpful. No emojis.`;
+Example response structure:
+"I've created your [workflow type] workflow! Here's what it does:
+[Brief explanation of the flow]
 
-const GUARDRAILS = `You help users design and configure workflows based on your n8n knowledge.
-You don't have access to external websites or real-time information.`;
+**Setup Required:**
+[List any configuration steps from the context]
 
-/** Error guidance for recursion limit with partial workflow */
+Let me know if you'd like to adjust anything."`;
+
+const CONVERSATIONAL_RESPONSES = `- Be friendly and concise
+- Explain n8n capabilities when asked
+- Provide practical examples when helpful`;
+
+const RESPONSE_STYLE = `- Keep responses focused and not overly long
+- Use markdown formatting for readability
+- Be conversational and helpful
+- Do not use emojis in your response`;
+
+const GUARDRAILS = `Your capabilities are focused on workflow building:
+- You work from your existing knowledge of n8n nodes and integrations
+- You help users design and configure workflows based on their requirements
+- You provide guidance on node configuration and workflow structure
+
+If a user asks you to search for information or look something up online, let them know you can help build workflows based on your existing knowledge of n8n nodes and integrations, though you don't have access to external websites or real-time information.`;
+
+/**
+ * Error guidance prompts for different error scenarios (AI-1812)
+ */
+
+/** Guidance for recursion error when workflow was successfully created */
 export function buildRecursionErrorWithWorkflowGuidance(nodeCount: number): string[] {
 	return [
-		`${nodeCount} node(s) created before hitting complexity limit.`,
-		'Tell user: workflow was created but reached a limit while fine-tuning. It should work - they can test it and ask for adjustments.',
+		`**Workflow Status:** ${nodeCount} node${nodeCount === 1 ? '' : 's'} ${nodeCount === 1 ? 'was' : 'were'} created before the complexity limit was reached.`,
+		"Tell the user that you've created their workflow but reached a complexity limit while fine-tuning. " +
+			'The workflow should work and they can test it. ' +
+			'If they need adjustments or want to continue building, they can ask you to make specific changes.',
 	];
 }
 
-/** Error guidance for recursion limit with no workflow */
+/** Guidance for recursion error when no workflow was created */
 export function buildRecursionErrorNoWorkflowGuidance(): string[] {
 	return [
-		'No nodes were created - request was too complex.',
-		'Suggest: break into smaller steps, simplify the workflow, or start with a basic version.',
+		'**Workflow Status:** No nodes were created - the request was too complex to process automatically.',
+		'Explain that the workflow design became too complex for automatic generation. ' +
+			'Suggest options: (1) Break the request into smaller steps, (2) Simplify the workflow, ' +
+			'or (3) Start with a basic version and iteratively add complexity.',
 	];
 }
 
-/** Error guidance for general errors */
+/** Guidance for other (non-recursion) errors */
 export function buildGeneralErrorGuidance(): string {
-	return 'Apologize for the technical error. Ask if they want to try again or approach differently.';
+	return (
+		'Apologize and explain that a technical error occurred. ' +
+		'Ask if they would like to try again or approach the problem differently.'
+	);
 }
 
 export function buildResponderPrompt(): string {
 	return prompt()
-		.section('role', ROLE)
-		.section('workflow_completion', WORKFLOW_COMPLETION)
-		.section('style', STYLE)
+		.section('role', RESPONDER_ROLE)
 		.section('guardrails', GUARDRAILS)
+		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
+		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
+		.section('response_style', RESPONSE_STYLE)
 		.build();
 }
