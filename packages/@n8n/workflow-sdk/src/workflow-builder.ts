@@ -2323,14 +2323,13 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 	for (const n8nNode of json.nodes) {
 		const version = `v${n8nNode.typeVersion}`;
 
-		// Convert credentials from n8n format to SDK format
+		// Preserve original credentials exactly - don't transform
+		// Some workflows have empty placeholder credentials like {}
 		const credentials = n8nNode.credentials
-			? Object.fromEntries(
-					Object.entries(n8nNode.credentials).map(([type, cred]) => [
-						type,
-						{ name: cred.name, id: cred.id ?? '' },
-					]),
-				)
+			? (JSON.parse(JSON.stringify(n8nNode.credentials)) as Record<
+					string,
+					CredentialReference | NewCredentialValue
+				>)
 			: undefined;
 
 		// Create a minimal node instance

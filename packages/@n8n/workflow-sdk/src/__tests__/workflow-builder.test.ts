@@ -530,6 +530,71 @@ describe('Workflow Builder', () => {
 			const exported = updatedWf.toJSON();
 			expect(exported.nodes).toHaveLength(2);
 		});
+
+		it('should preserve credentials exactly including empty placeholder objects', () => {
+			const json = {
+				id: 'creds-test',
+				name: 'Credentials Test',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'OpenAI Chat Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1.2,
+						position: [0, 0] as [number, number],
+						parameters: {},
+						// Empty placeholder credentials (common in templates)
+						credentials: {
+							openAiApi: {},
+						},
+					},
+					{
+						id: 'node-2',
+						name: 'Telegram',
+						type: 'n8n-nodes-base.telegram',
+						typeVersion: 1.2,
+						position: [200, 0] as [number, number],
+						parameters: {},
+						// Full credentials with name and id
+						credentials: {
+							telegramApi: { name: 'My Telegram', id: 'cred-123' },
+						},
+					},
+					{
+						id: 'node-3',
+						name: 'Gmail',
+						type: 'n8n-nodes-base.gmail',
+						typeVersion: 2.1,
+						position: [400, 0] as [number, number],
+						parameters: {},
+						// Credentials with only name (no id)
+						credentials: {
+							gmailOAuth2: { name: 'My Gmail' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const wf = workflow.fromJSON(json);
+			const exported = wf.toJSON();
+
+			// Find each node in exported JSON
+			const openAiNode = exported.nodes.find((n) => n.name === 'OpenAI Chat Model');
+			const telegramNode = exported.nodes.find((n) => n.name === 'Telegram');
+			const gmailNode = exported.nodes.find((n) => n.name === 'Gmail');
+
+			// Empty placeholder credentials should be preserved exactly (no added id: "")
+			expect(openAiNode?.credentials).toEqual({ openAiApi: {} });
+
+			// Full credentials should be preserved exactly
+			expect(telegramNode?.credentials).toEqual({
+				telegramApi: { name: 'My Telegram', id: 'cred-123' },
+			});
+
+			// Credentials with only name should be preserved (no added id: "")
+			expect(gmailNode?.credentials).toEqual({ gmailOAuth2: { name: 'My Gmail' } });
+		});
 	});
 
 	describe('AI nodes with subnodes', () => {
