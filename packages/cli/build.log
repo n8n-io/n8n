@@ -1,8 +1,0 @@
-
-> n8n@2.5.0 build /Users/csaba/conductor/workspaces/n8n/missoula/packages/cli
-> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
-
-
-> n8n@2.5.0 build:data /Users/csaba/conductor/workspaces/n8n/missoula/packages/cli
-> node scripts/build.mjs
-
