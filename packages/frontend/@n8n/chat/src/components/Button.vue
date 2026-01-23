@@ -1,28 +1,38 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+defineOptions({ inheritAttrs: false });
+
 const props = withDefaults(
 	defineProps<{
 		type?: 'primary' | 'secondary';
 		element?: 'button' | 'a';
+		disabled?: boolean;
 	}>(),
 	{
 		type: 'primary',
 		element: 'button',
+		disabled: false,
 	},
 );
 
 const buttonTypeClass = computed(() => {
-	return `chat-button-${props.type}`;
+	return `chat-button-${props.type}${props.disabled ? '-disabled' : ''}`;
 });
 </script>
 
 <template>
-	<component :is="element" :class="['chat-button', buttonTypeClass]">
-		<slot />
-	</component>
+	<span :class="{ 'chat-button-wrapper-disabled': props.disabled }">
+		<component :is="element" :class="['chat-button', buttonTypeClass]" v-bind="$attrs">
+			<slot />
+		</component>
+	</span>
 </template>
 <style lang="scss">
+.chat-button-wrapper-disabled {
+	cursor: not-allowed;
+}
+
 .chat-button {
 	display: inline-flex;
 	text-align: center;
@@ -44,10 +54,6 @@ const buttonTypeClass = computed(() => {
 		outline: 0;
 		box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 	}
-
-	&:disabled {
-		opacity: 0.65;
-	}
 }
 
 .chat-button-primary {
@@ -62,6 +68,13 @@ const buttonTypeClass = computed(() => {
 	}
 }
 
+.chat-button-primary-disabled {
+	pointer-events: none;
+	color: var(--chat--button--color--primary--disabled);
+	background-color: var(--chat--button--background--primary--disabled);
+	border: var(--chat--button--border--primary--disabled);
+}
+
 .chat-button-secondary {
 	color: var(--chat--button--color--secondary);
 	background-color: var(--chat--button--background--secondary);
@@ -72,5 +85,12 @@ const buttonTypeClass = computed(() => {
 		background-color: var(--chat--button--background--secondary--hover);
 		border: var(--chat--button--border--secondary--hover);
 	}
+}
+
+.chat-button-secondary-disabled {
+	pointer-events: none;
+	color: var(--chat--button--color--secondary--disabled);
+	background-color: var(--chat--button--background--secondary--disabled);
+	border: var(--chat--button--border--secondary--disabled);
 }
 </style>
