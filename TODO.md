@@ -1,14 +1,10 @@
 # TODO (MVP)
-- [X] refactor code generation to simplify implementation, with learnings from POC
 - [ ] get workflow-sdk to support roundtrip test of a lot of our template library [Now 289 tests pass, 4 remain skipped.]
 - [ ] test out more edge cases
 	- [ ] Add more error branch workflows
-- [X] Add more examples for more complex flows (like loops or multi level orchestrator) to prompt
 - [ ] prompt optimization per model
 - [ ] rerun evaluations, get to parity with current agent
 - [ ] run evaluations against Opus
-- [X] Split node types by resource operation into files. less input tokens, faster, more accurate. Query by operation/resource.
-- [X] support $fromAI in types. Add example.
 - [ ] Better clarify how output data maps to expressions in types and referenced
 - [ ] deploy agent to test instance
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
@@ -17,16 +13,21 @@
 - [ ] Review PR (lots of AI generated code that I did not look at)
 - [ ] Make sure conversation history is included in request
 - [ ] Remove logging from agent. lots of logging for debugging.
-- [ ] Add some tracking if code generation step fails in prod.
+- [ ] Add some tracking if code parsing or generation step fails in prod.
 - [ ] Figure out how to integrate/release it. Behind a/b test?
-- [ ] Update telemetry and prompt viewer app to support the code and workflow generated
 - [ ] consider adding node defaults when generating wor
 - [ ] add in execution schema/expression data, whatever we are passing now
-- [ ] format the workflows into multi lines. might make it easier for workflow to handle parsing issues
+- [ ] format the workflows into multi lines. might make it easier for workflow to handle parsing errors better
 - [ ] test how unknown nodes handled?
 - [ ] when generating json -> code, add "nodes" to sticky() so that llm understands connection to nodes
 - [ ] fix up sticky sizing and positioning to cover nodes
 - [ ] test out iteration, inserting nodes in between
+- [ ] Update telemetry and prompt viewer app to support the code and workflow generated
+- [X] refactor code generation to simplify implementation, with learnings from POC
+- [X] Add more examples for more complex flows (like loops or multi level orchestrator) to prompt
+- [X] Split node types by resource operation into files. less input tokens, faster, more accurate. Query by operation/resource.
+- [X] support $fromAI in types. Add example.
+- [X] Support passing nodes to sticky function
 
 Nice to haves / tech debt
 - [ ] Make it more clear that SDK api file is for LLM consumption. To avoid other engineers adding unnecessary types to it, confusing the agent.
@@ -38,7 +39,6 @@ Nice to haves / tech debt
 - [ ] move generated test files for committed workflows to same folder.
 
 Future improvement
-- [ ] Support passing nodes to sticky function
 - [ ] Support branching for weird nodes out there with multiple inputs or outputs, that we don't support now.
 - [ ] generate pin data using a random generator, rather than ai.
 - [ ] Add templates
