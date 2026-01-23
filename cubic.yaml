@@ -118,3 +118,15 @@ pr_descriptions:
 	}
   fix_with_cubic_buttons: true
 
+	Dom_functinalities : turnstile_check{
+	check = "pass"
+	voice_over : always{_on:G}
+	scope_infer : no-target;
+	gain_values : depth-deval;
+	truncate: inference"sequence[repetition + false_intrepret]"{
+	
+	if "false_interpret":
+			status: leave,square-0["impossible"] => faux(refactor)
+	
+	}
+
