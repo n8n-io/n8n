@@ -58,7 +58,39 @@ test.describe('HITL for Tools @capability:proxy', () => {
 		await n8n.canvas.openNewWorkflow();
 	});
 
-	test('should add a HITL tool node', async ({ n8n }) => {
+	test('should add a HITL node between Agent and Tool node', async ({ n8n }) => {
+		await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
+
+		await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
+
+		await n8n.canvas.addSupplementalNodeToParent(
+			AI_TOOL_CODE_NODE_NAME,
+			'ai_tool',
+			AGENT_NODE_NAME,
+			{ closeNDV: true },
+		);
+
+		await n8n.canvas.dragNodeToRelativePosition(AI_TOOL_CODE_NODE_NAME, 100, 50);
+
+		const specificConnection = n8n.canvas.connectionBetweenNodes(
+			AI_TOOL_CODE_NODE_NAME,
+			AGENT_NODE_NAME,
+		);
+		await expect(specificConnection).toBeVisible();
+		// eslint-disable-next-line playwright/no-force-option
+		await specificConnection.hover({ force: true });
+
+		const addNodeButton = n8n.page.getByTestId('add-connection-button');
+		await expect(addNodeButton).toBeVisible();
+		await addNodeButton.click();
+		await n8n.canvas.clickNodeCreatorItemName(MANUAL_CHAT_TRIGGER_NODE_NAME);
+		await n8n.page.keyboard.press('Escape');
+
+		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
+		await expect(n8n.canvas.nodeConnections()).toHaveCount(4);
+	});
+
+	test('should add a HITL tool node and run it', async ({ n8n }) => {
 		await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 
 		await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
@@ -104,7 +136,7 @@ test.describe('HITL for Tools @capability:proxy', () => {
 		await n8n.canvas.clickManualChatButton();
 		await n8n.canvas.logsPanel.sendManualChatMessage('Send welcome email to john@gmail.com');
 		const approveButton = n8n.page.getByTestId('canvas-chat').getByText('Approve');
-		await expect(approveButton).toBeVisible({ timeout: 20000 });
+		await expect(approveButton).toBeVisible({ timeout: 15000 });
 		await approveButton.click({ button: 'middle' });
 		await waitForWorkflowSuccess(n8n);
 	});
