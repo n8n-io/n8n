@@ -61,11 +61,7 @@ const onSubmit = async () => {
 			checkRunning.value ? (['running'] as const) : [],
 			checkQueued.value ? (['new'] as const) : [],
 		].flat();
-		telemetry.track('User confirmed stop many executions', {
-			waitingExecutions: checkWaiting.value,
-			runningExecutions: checkRunning.value,
-			queuedExecutions: checkQueued.value,
-		});
+
 		const { startedBefore, startedAfter } = executionsStore.executionsFilters;
 		isLoading.value = true;
 		const { stopped: count } = await executionsStore.stopManyExecutions({
@@ -77,6 +73,12 @@ const onSubmit = async () => {
 		toast.showMessage({
 			title: i18n.baseText('executionStopManyModal.success', { interpolate: { count } }),
 			type: count > 0 ? 'success' : 'info',
+		});
+		telemetry.track('User confirmed stop many executions', {
+			waitingExecutions: checkWaiting.value,
+			runningExecutions: checkRunning.value,
+			queuedExecutions: checkQueued.value,
+			stoppedCount: count,
 		});
 	} catch (e) {
 		toast.showError(e, i18n.baseText('executionStopManyModal.error.failure'));
