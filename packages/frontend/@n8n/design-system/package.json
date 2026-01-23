@@ -52,6 +52,7 @@
     "@n8n/composables": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@tanstack/vue-table": "^8.21.2",
+    "clsx": "^2.1.1",
     "element-plus": "catalog:frontend",
     "is-emoji-supported": "^0.0.5",
     "lodash": "catalog:",

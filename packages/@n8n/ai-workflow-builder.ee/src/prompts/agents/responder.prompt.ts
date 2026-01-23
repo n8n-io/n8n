@@ -5,6 +5,8 @@
  * Also handles conversational queries and explanations.
  */
 
+import { type DataTableInfo, isDataTableRowColumnOperation } from '@/utils/data-table-helpers';
+
 import { prompt } from '../builder';
 
 const RESPONDER_ROLE = `You are a helpful AI assistant for n8n workflow automation.
@@ -18,8 +20,9 @@ const WORKFLOW_COMPLETION = `When you receive [Internal Context], synthesize a c
 1. Summarize what was built in a friendly way
 2. Explain the workflow structure briefly
 3. Include setup instructions if provided
-4. Ask if user wants adjustments
-5. Do not tell user to activate/publish their workflow, because they will do this themselves when they are ready.
+4. If Data Table setup is required, include the exact steps provided in the context (do NOT say data tables will be created automatically)
+5. Ask if user wants adjustments
+6. Do not tell user to activate/publish their workflow, because they will do this themselves when they are ready.
 
 Example response structure:
 "I've created your [workflow type] workflow! Here's what it does:
@@ -27,6 +30,8 @@ Example response structure:
 
 **Setup Required:**
 [List any configuration steps from the context]
+
+[If data tables are used, include Data Table creation steps with link to Data Tables tab]
 
 Let me know if you'd like to adjust anything."`;
 
@@ -76,6 +81,54 @@ export function buildGeneralErrorGuidance(): string {
 		'Apologize and explain that a technical error occurred. ' +
 		'Ask if they would like to try again or approach the problem differently.'
 	);
+}
+
+/**
+ * Build guidance for data table creation.
+ * Data tables must be created manually - the AI workflow builder cannot create them automatically.
+ */
+export function buildDataTableCreationGuidance(dataTables: DataTableInfo[]): string {
+	if (dataTables.length === 0) {
+		return '';
+	}
+
+	const tableGuidance = dataTables.map((table) => {
+		const isColumnOperation = isDataTableRowColumnOperation(table.operation);
+		const columnInfo = buildColumnInfo(table, isColumnOperation);
+		return `- **${table.nodeName}** (${table.operation}): ${columnInfo}`;
+	});
+
+	return prompt({ format: 'markdown' })
+		.section(
+			'Data Table Setup Required',
+			`Data tables must be created manually before the workflow can run.
+Do NOT tell the user that data tables will be created automatically.
+
+Go to the [Data Tables tab](/home/datatables) to create the required tables:
+
+${tableGuidance.join('\n')}
+
+After creating each table, select it in the corresponding Data Table node.`,
+		)
+		.build();
+}
+
+function buildColumnInfo(table: DataTableInfo, isColumnOperation: boolean): string {
+	if (!isColumnOperation) {
+		return `Ensure the table has columns for reading/querying (uses "${table.operation}" operation)`;
+	}
+
+	if (table.columns.length > 0) {
+		const columnList = table.columns.map((c) => `\`${c.name}\` (${c.type})`).join(', ');
+		const source = table.setNodeName ? ` (from "${table.setNodeName}" node)` : '';
+		return `Add columns: ${columnList}${source}`;
+	}
+
+	if (table.setNodeName) {
+		return `Add columns matching the fields in the "${table.setNodeName}" node`;
+	}
+
+	return 'Add columns based on the data you want to store';
 }
 
 export function buildResponderPrompt(): string {

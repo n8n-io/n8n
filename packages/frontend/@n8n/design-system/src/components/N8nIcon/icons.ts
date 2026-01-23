@@ -147,6 +147,7 @@ import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
 import IconLucideListChecks from '~icons/lucide/list-checks';
+import IconLucideLoader2 from '~icons/lucide/loader2';
 import IconLucideLock from '~icons/lucide/lock';
 import IconLucideLogIn from '~icons/lucide/log-in';
 import IconLucideLogOut from '~icons/lucide/log-out';
@@ -193,6 +194,7 @@ import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings from '~icons/lucide/settings';
 import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
+import IconLucideShieldHalf from '~icons/lucide/shield-half';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
@@ -648,6 +650,7 @@ export const updatedIconSet = {
 	server: IconLucideServer,
 	share: IconLucideShare,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
+	'shield-half': IconLucideShieldHalf,
 	smile: IconLucideSmile,
 	sparkles: IconLucideSparkles,
 	split: IconLucideSplit,
@@ -688,6 +691,7 @@ export const updatedIconSet = {
 	zap: IconLucideZap,
 	'zoom-in': IconLucideZoomIn,
 	'zoom-out': IconLucideZoomOut,
+	loader: IconLucideLoader2,
 } as const;
 
 export type IconName = keyof typeof updatedIconSet; // only new icon names should be used moving forward
