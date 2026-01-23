@@ -211,7 +211,7 @@ function getResolveOffsetMode(
 		if (options.parallelProcessing) return 'immediately';
 		return 'onCompletion';
 	}
-	return ctx.getNodeParameter('resolveOffsetMode', 'immediately') as ResolveOffsetMode;
+	return ctx.getNodeParameter('resolveOffset', 'immediately') as ResolveOffsetMode;
 }
 
 export function configureDataEmitter(

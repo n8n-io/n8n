@@ -948,7 +948,7 @@ describe('KafkaTrigger Node', () => {
 						topic: 'test-topic',
 						groupId: 'test-group',
 						useSchemaRegistry: false,
-						resolveOffsetMode: 'immediately',
+						resolveOffset: 'immediately',
 					},
 				},
 				credential: {
@@ -968,7 +968,7 @@ describe('KafkaTrigger Node', () => {
 			});
 		});
 
-		it('should use resolveOffsetMode "immediately" and emit without waiting', async () => {
+		it('should use resolveOffset "immediately" and emit without waiting', async () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -977,7 +977,7 @@ describe('KafkaTrigger Node', () => {
 						topic: 'test-topic',
 						groupId: 'test-group',
 						useSchemaRegistry: false,
-						resolveOffsetMode: 'immediately',
+						resolveOffset: 'immediately',
 					},
 				},
 				credential: {
@@ -996,7 +996,7 @@ describe('KafkaTrigger Node', () => {
 			expect(emit.mock.calls[0][2]).toBeUndefined();
 		});
 
-		it('should use resolveOffsetMode "onCompletion" and wait for execution', async () => {
+		it('should use resolveOffset "onCompletion" and wait for execution', async () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1005,7 +1005,7 @@ describe('KafkaTrigger Node', () => {
 						topic: 'test-topic',
 						groupId: 'test-group',
 						useSchemaRegistry: false,
-						resolveOffsetMode: 'onCompletion',
+						resolveOffset: 'onCompletion',
 					},
 				},
 				credential: {
@@ -1027,7 +1027,7 @@ describe('KafkaTrigger Node', () => {
 			await publishPromise;
 		});
 
-		it('should use resolveOffsetMode "onSuccess" and wait for successful execution', async () => {
+		it('should use resolveOffset "onSuccess" and wait for successful execution', async () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1036,7 +1036,7 @@ describe('KafkaTrigger Node', () => {
 						topic: 'test-topic',
 						groupId: 'test-group',
 						useSchemaRegistry: false,
-						resolveOffsetMode: 'onSuccess',
+						resolveOffset: 'onSuccess',
 					},
 				},
 				credential: {
@@ -1058,7 +1058,7 @@ describe('KafkaTrigger Node', () => {
 			await publishPromise;
 		});
 
-		it('should throw error when resolveOffsetMode is "onSuccess" and execution fails', async () => {
+		it('should throw error when resolveOffset is "onSuccess" and execution fails', async () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1067,7 +1067,7 @@ describe('KafkaTrigger Node', () => {
 						topic: 'test-topic',
 						groupId: 'test-group',
 						useSchemaRegistry: false,
-						resolveOffsetMode: 'onSuccess',
+						resolveOffset: 'onSuccess',
 					},
 				},
 				credential: {
@@ -1098,7 +1098,7 @@ describe('KafkaTrigger Node', () => {
 						topic: 'test-topic',
 						groupId: 'test-group',
 						useSchemaRegistry: false,
-						resolveOffsetMode: 'immediately',
+						resolveOffset: 'immediately',
 						options: {
 							sessionTimeout: 20000,
 							heartbeatInterval: 2000,
@@ -1132,7 +1132,7 @@ describe('KafkaTrigger Node', () => {
 							topic: 'test-topic',
 							groupId: 'test-group',
 							useSchemaRegistry: false,
-							resolveOffsetMode: 'immediately',
+							resolveOffset: 'immediately',
 						},
 					},
 					credential: {
