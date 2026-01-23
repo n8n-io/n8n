@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useTemplateWorkflow } from '@/features/workflows/templates/utils/templateActions';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
@@ -26,6 +26,9 @@ const documentTitle = useDocumentTitle();
 const loading = ref(true);
 const showPreview = ref(true);
 const notFoundError = ref(false);
+const isPreviewVisible = ref(true);
+const previewWrapperRef = ref<HTMLElement | null>(null);
+let previewObserver: IntersectionObserver | null = null;
 
 const templateId = computed(() =>
 	Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
@@ -71,6 +74,29 @@ watch(
 	},
 );
 
+watch(
+	previewWrapperRef,
+	(newRef) => {
+		if (previewObserver) {
+			previewObserver.disconnect();
+			previewObserver = null;
+		}
+
+		if (newRef) {
+			previewObserver = new IntersectionObserver(
+				(entries) => {
+					for (const entry of entries) {
+						isPreviewVisible.value = entry.isIntersecting;
+					}
+				},
+				{ threshold: 0 },
+			);
+			previewObserver.observe(newRef);
+		}
+	},
+	{ immediate: true },
+);
+
 onMounted(async () => {
 	scrollToTop();
 
@@ -86,6 +112,13 @@ onMounted(async () => {
 	}
 
 	loading.value = false;
+});
+
+onBeforeUnmount(() => {
+	if (previewObserver) {
+		previewObserver.disconnect();
+		previewObserver = null;
+	}
 });
 </script>
 
