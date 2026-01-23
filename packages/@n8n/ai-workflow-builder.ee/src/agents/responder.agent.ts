@@ -9,6 +9,7 @@ import {
 	buildRecursionErrorWithWorkflowGuidance,
 	buildRecursionErrorNoWorkflowGuidance,
 	buildGeneralErrorGuidance,
+	buildDataTableCreationGuidance,
 } from '@/prompts/agents/responder.prompt';
 
 import type { CoordinationLogEntry } from '../types/coordination';
@@ -21,6 +22,7 @@ import {
 	getConfiguratorOutput,
 	hasRecursionErrorsCleared,
 } from '../utils/coordination-log';
+import { extractDataTableInfo } from '../utils/data-table-helpers';
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
@@ -139,6 +141,14 @@ export class ResponderAgent {
 		const configuratorOutput = getConfiguratorOutput(context.coordinationLog);
 		if (configuratorOutput) {
 			contextParts.push(`**Configuration:**\n${configuratorOutput}`);
+		}
+
+		// Data Table creation guidance
+		// If the workflow contains Data Table nodes, inform user they need to create tables manually
+		const dataTableInfo = extractDataTableInfo(context.workflowJSON);
+		if (dataTableInfo.length > 0) {
+			const dataTableGuidance = buildDataTableCreationGuidance(dataTableInfo);
+			contextParts.push(dataTableGuidance);
 		}
 
 		if (contextParts.length === 0) {

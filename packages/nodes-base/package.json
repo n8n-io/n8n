@@ -911,7 +911,7 @@
     "js-nacl": "1.4.0",
     "jsdom": "23.0.1",
     "jsonwebtoken": "catalog:",
-    "kafkajs": "2.2.4",
+    "kafkajs": "catalog:",
     "ldapts": "4.2.6",
     "lodash": "catalog:",
     "lossless-json": "1.0.5",
