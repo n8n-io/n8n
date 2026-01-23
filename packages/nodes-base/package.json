@@ -847,6 +847,7 @@
     ]
   },
   "devDependencies": {
+    "@n8n/client-oauth2": "workspace:*",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/amqplib": "^0.10.1",
@@ -884,7 +885,6 @@
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
     "@n8n/imap": "workspace:*",
-    "vm2": "catalog:",
     "@thednp/dommatrix": "^2.0.12",
     "alasql": "4.4.0",
     "amqplib": "0.10.6",
@@ -948,6 +948,7 @@
     "tmp-promise": "3.0.3",
     "ts-ics": "1.2.2",
     "uuid": "catalog:",
+    "vm2": "catalog:",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "xml2js": "catalog:",
     "xmlhttprequest-ssl": "3.1.0"
