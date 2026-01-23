@@ -41,9 +41,7 @@ async function setEditorText(n8n: n8nPage, parameterName: string, value: string)
 	await codeEditor.fill(value);
 }
 
-test.use({ capability: 'proxy' });
 const hitlForToolsTestConfig = {
-	timezoneId: 'America/New_York',
 	capability: {
 		services: ['proxy'],
 		env: {
