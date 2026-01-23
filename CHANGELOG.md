@@ -1,3 +1,12 @@
+## [1.123.16](https://github.com/n8n-io/n8n/compare/n8n@1.123.15...n8n@1.123.16) (2026-01-23)
+
+
+### Bug Fixes
+
+* Unfork `@n8n/vm2` (backport to 1.x) ([#24597](https://github.com/n8n-io/n8n/issues/24597)) ([8ab4492](https://github.com/n8n-io/n8n/commit/8ab4492e8c0b743455e51fc111441d8d5010a6ad))
+
+
+
 ## [1.123.15](https://github.com/n8n-io/n8n/compare/n8n@1.123.14...n8n@1.123.15) (2026-01-15)
 
 
