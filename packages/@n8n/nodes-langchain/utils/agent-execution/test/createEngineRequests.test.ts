@@ -33,7 +33,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0]).toEqual({
@@ -67,7 +67,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 1, tools);
+			const result = createEngineRequests(toolCalls, 1, tools);
 
 			expect(result).toHaveLength(2);
 			expect(result[0]).toEqual({
@@ -108,7 +108,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].nodeName).toBe('Calculator');
@@ -133,7 +133,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].nodeName).toBe('Calculator');
@@ -143,7 +143,7 @@ describe('createEngineRequests', () => {
 			const tools = [createMockTool('calculator', { sourceNodeName: 'Calculator' })];
 			const toolCalls: ToolCallRequest[] = [];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(0);
 		});
@@ -158,7 +158,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(0);
 		});
@@ -181,7 +181,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -206,7 +206,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -239,7 +239,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].input).toEqual({
@@ -264,7 +264,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 5, tools);
+			const result = createEngineRequests(toolCalls, 5, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.itemIndex).toBe(5);
@@ -291,7 +291,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -322,7 +322,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -360,7 +360,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.hitl).toEqual({
@@ -397,7 +397,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -424,7 +424,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.hitl).toBeUndefined();
@@ -457,7 +457,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].input).toEqual({
@@ -494,7 +494,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.hitl).toEqual({
@@ -537,7 +537,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].metadata.hitl).toBeDefined();
@@ -574,7 +574,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.hitl?.originalInput).toEqual({
@@ -618,7 +618,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic?.thinkingContent).toBe(
@@ -655,7 +655,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic?.thinkingContent).toBe(
@@ -680,7 +680,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic).toBeUndefined();
@@ -713,7 +713,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.anthropic).toBeUndefined();
@@ -744,7 +744,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe('Gemini thought signature');
@@ -771,7 +771,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe('gemini_signature_from_kwargs');
@@ -798,7 +798,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe(
@@ -831,7 +831,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			// Should prefer additionalKwargs over content block
@@ -857,7 +857,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			// Should use the available signature even though call ID doesn't match
@@ -879,7 +879,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google).toBeUndefined();
@@ -916,7 +916,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(2);
 			// Both should get the signature from the shared messageLog
@@ -948,7 +948,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(2);
 			// Both should get the signature from the shared additionalKwargs
@@ -970,7 +970,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			// Should get the first non-empty signature
@@ -991,7 +991,7 @@ describe('createEngineRequests', () => {
 				},
 			];
 
-			const result = await createEngineRequests(toolCalls, 0, tools);
+			const result = createEngineRequests(toolCalls, 0, tools);
 
 			expect(result).toHaveLength(1);
 			expect(result[0].metadata.google?.thoughtSignature).toBe('actual_signature');
