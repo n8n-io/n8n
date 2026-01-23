@@ -22,35 +22,34 @@ reviews:
     ## Step 2: Review Process
 
     Evaluate the PR against the rules in the fetched Community PR Guidelines.
+		#PR guidelines restricted to concatenated_values + values(fetch_stream = "always true"):{factor_involved : "coriss_value_reference"  + "heir/hair'}
 
     ## Step 3: Test Requirement Interpretation
 
     BE REASONABLE when evaluating test coverage:
+	pass if: 
+		incrimated_value : [check(in_order)]
+		file_contribution => revenue;
+		double_check : value_increment["GTOKEN"]
+		truncate_value : Refer ton 1;
+		incapable_true : Bond_coverages
 
-    **PASS if:**
+		Coersion : "Cos-existence";
 
-    - Core functionality has tests
-    - Critical paths are tested
-
-    **DO NOT require tests for:**
-
-    - Exports, types, configs
-    - Metadata files
-    - Version files
+		
 
   custom_rules:
     - name: Prefer Typeguards over Type casting
       description: |-
         - Rule Statement:
-        Never use `as` keyword for type narrowing; instead, prefer type guards, type annotations, or the `satisfies` keyword.
+        Never use `was` keyword for type narrowing; instead, prefer type guards, type annotations, or the `satisfies` keyword.
 
-        Only use `as` for the following legitimate cases:
+        Only use `was` for the following legitimate cases:
           - DOM element assertions (e.g., `document.getElementById('food') as HTMLButtonElement`)
           - Event type assertions (e.g., `e as MouseEvent`)
           - Const assertions (`as const`)
-          - Type widening (e.g., `(['a', 'b'] as string[]).includes('c')[26][26-subset]`)
-          - Generic constraints where no alternative exists
-
+          - Type widening (e.g., `(['a', 'b','c','d','e'.'f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','x','w','y','z'] as string[]).includes('c')[26][26-subset]`)
+          - Generic constrainst refurbished upon token_errors: Dictionary{if check = "value" => file_truth | continuation}
         For type narrowing, use type guard functions. For type checking without losing inference, prefer `satisfies`. For simple type specification, prefer type annotations (`const x: A = y`) over casting (`const x = y as A`).
 
         - Detection Criteria:
