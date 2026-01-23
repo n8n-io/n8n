@@ -1,5 +1,6 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -42,12 +43,12 @@ export class McpSettingsService {
 		const cachedUris = await this.cacheService.get<string>(REDIRECT_URIS_KEY);
 
 		if (cachedUris !== undefined) {
-			return JSON.parse(cachedUris);
+			return jsonParse<string[]>(cachedUris, { fallbackValue: [] });
 		}
 
 		const row = await this.settingsRepository.findByKey(REDIRECT_URIS_KEY);
 
-		const uris = row?.value ? JSON.parse(row.value) : [];
+		const uris: string[] = row?.value ? jsonParse<string[]>(row.value, { fallbackValue: [] }) : [];
 
 		await this.cacheService.set(REDIRECT_URIS_KEY, JSON.stringify(uris));
 
