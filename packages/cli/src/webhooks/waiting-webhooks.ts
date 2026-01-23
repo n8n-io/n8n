@@ -213,15 +213,19 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Remove waitTill information else the execution would stop
 		execution.data.waitTill = undefined;
 
-		// Remove the data of the node execution again else it will display the node as executed twice
-		execution.data.resultData.runData[lastNodeExecuted].pop();
-
 		const { workflowData } = execution;
 		const workflow = this.createWorkflow(workflowData);
 
 		const workflowStartNode = workflow.getNode(lastNodeExecuted);
+
 		if (workflowStartNode === null) {
 			throw new NotFoundError('Could not find node to process webhook.');
+		}
+
+		// Remove the data of the node execution again else it will display the node as executed twice
+		// If the node is not a tool
+		if (!workflowStartNode?.type.endsWith('Tool')) {
+			execution.data.resultData.runData[lastNodeExecuted].pop();
 		}
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({

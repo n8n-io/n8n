@@ -291,6 +291,42 @@ export function unwrapNestedOutput(output: Record<string, unknown>): Record<stri
 	return output;
 }
 
+const REDACTED_BINARY_PLACEHOLDER = 'REDACTED BINARY DATA';
+
+/**
+ * Redacts binary data from prompt strings to prevent large base64 strings from being saved to execution records.
+ * Handles both base64 data URLs (images) and text file content embedded in prompts.
+ * @param prompts Array of prompt strings to redact
+ * @param threshold Minimum size in characters for text file content to be redacted (default: 1000)
+ * @returns Array of prompts with binary data redacted
+ */
+export function redactBinaryMessages(prompts: string[], threshold = 1000): string[] {
+	return prompts.map((prompt) => {
+		let redactedPrompt = prompt;
+
+		if (prompt.includes('data:image/') || prompt.includes('data:application/')) {
+			redactedPrompt = redactedPrompt.replace(
+				/data:([^;,]+);base64,[A-Za-z0-9+/=]+/g,
+				(_, mimeType) => `[${REDACTED_BINARY_PLACEHOLDER} : ${mimeType} data]`,
+			);
+		}
+
+		if (prompt.includes('File:') && prompt.includes('Content:')) {
+			redactedPrompt = redactedPrompt.replace(
+				/File:\s*([^\n]+)\nContent:\n([\s\S]+?)(?=File:|$)/g,
+				(match, fileName, content) => {
+					if (content.length > threshold) {
+						return `[${REDACTED_BINARY_PLACEHOLDER} : ${fileName} content omitted]`;
+					}
+					return match;
+				},
+			);
+		}
+
+		return redactedPrompt;
+	});
+}
+
 /**
  * Detects if a text contains a character that repeats sequentially for a specified threshold.
  * This is used to prevent performance issues with tiktoken on highly repetitive content.

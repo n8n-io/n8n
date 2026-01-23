@@ -39,9 +39,14 @@ export function finalizeResult(
 			'input',
 			'chat_history',
 			'agent_scratchpad',
+			'binary',
 		),
 		pairedItem: { item: itemIndex },
 	};
+
+	if (result.binary && Object.keys(result.binary).length > 0) {
+		itemResult.binary = result.binary;
+	}
 
 	return itemResult;
 }

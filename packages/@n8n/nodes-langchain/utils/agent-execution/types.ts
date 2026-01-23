@@ -1,5 +1,5 @@
 import type { AIMessage } from '@langchain/core/messages';
-import type { IDataObject, GenericValue } from 'n8n-workflow';
+import type { IDataObject, GenericValue, IBinaryKeyData } from 'n8n-workflow';
 
 /**
  * Represents a tool call request from an LLM.
@@ -48,6 +48,8 @@ export type AgentResult = {
 	toolCalls?: ToolCallRequest[];
 	/** Intermediate steps showing the agent's reasoning */
 	intermediateSteps?: ToolCallData[];
+	/** Binary data from tool results */
+	binary?: IBinaryKeyData;
 };
 
 /**

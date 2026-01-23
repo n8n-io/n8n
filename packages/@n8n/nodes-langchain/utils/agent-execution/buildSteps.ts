@@ -1,6 +1,6 @@
 import { AIMessage } from '@langchain/core/messages';
 import { nodeNameToToolName } from 'n8n-workflow';
-import type { EngineResponse, IDataObject } from 'n8n-workflow';
+import type { EngineResponse, IBinaryKeyData, IDataObject, ITaskData } from 'n8n-workflow';
 
 import type {
 	RequestResponseMetadata,
@@ -155,6 +155,33 @@ function buildMessageContent(
 }
 
 /**
+ * Extracts binary data from tool results.
+ *
+ * @param toolTaskData - The task data containing tool results
+ * @param toolId - The tool call ID for creating unique keys
+ * @param toolName - The tool name for creating unique keys
+ * @returns Record of binary data extracted from tool results
+ */
+function getBinaryFromTaskData(toolTaskData: ITaskData, toolName: string, toolId: string) {
+	const binaryData: IBinaryKeyData = {};
+
+	const toolExecutionData = toolTaskData?.data?.ai_tool?.[0];
+	if (!Array.isArray(toolExecutionData)) return binaryData;
+
+	toolExecutionData.forEach((item) => {
+		if (item?.binary && typeof item.binary === 'object') {
+			Object.entries(item.binary).forEach(([binaryKey, binaryValue]) => {
+				const key = `${toolName} | ${binaryKey} | ${toolId}`;
+
+				binaryData[key] = binaryValue;
+			});
+		}
+	});
+
+	return binaryData;
+}
+
+/**
  * Rebuilds the agent steps from previous tool call responses.
  * This is used to continue agent execution after tool calls have been made.
  *
@@ -284,4 +311,35 @@ export function buildSteps(
 		}
 	}
 	return steps;
+}
+
+/**
+ * Extracts all binary data from tool results in the engine response.
+ * This binary data can be used to make images/files from tool results available to the AI model.
+ *
+ * @param response - The engine response containing tool call results
+ * @param itemIndex - The current item index being processed
+ * @returns Record of binary data from all tool results for this item
+ */
+export function extractToolResultsBinary(
+	response: EngineResponse<RequestResponseMetadata> | undefined,
+	itemIndex: number,
+) {
+	const allBinaryData: IBinaryKeyData = {};
+
+	if (!response) return allBinaryData;
+
+	const responses = response?.actionResponses ?? [];
+
+	for (const tool of responses) {
+		if (tool.action?.metadata?.itemIndex !== itemIndex) continue;
+		if (!tool.data) continue;
+
+		const { nodeName, id } = tool.action;
+		const binaryData = getBinaryFromTaskData(tool.data, nodeName, id);
+
+		Object.assign(allBinaryData, binaryData);
+	}
+
+	return allBinaryData;
 }
