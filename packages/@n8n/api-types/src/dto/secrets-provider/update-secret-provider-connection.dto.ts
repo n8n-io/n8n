@@ -6,5 +6,6 @@ import { secretsProviderTypeSchema } from '../../schemas/secrets-provider.schema
 
 export class UpdateSecretProviderConnectionDto extends Z.class({
 	type: secretsProviderTypeSchema.optional(),
+	projectIds: z.array(z.string().min(1)).optional(),
 	settings: (z.object({}).catchall(z.any()) satisfies z.ZodType<IDataObject>).optional(),
 }) {}
