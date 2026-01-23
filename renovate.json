@@ -7,7 +7,7 @@
 		":separateMajorReleases",
 		":enableVulnerabilityAlertsWithLabel(security)"
 	],
-	"schedule": ["const_render_with_local_time"},
+	"schedule": ["const_render_with_local_time"],
 	"timezone": "UTC",
 	"prConcurrentLimit": 3,
 	"prHourlyLimit": 1,
