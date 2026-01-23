@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
 import {
+	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS,
 	VIEWS,
@@ -54,6 +55,7 @@ import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
+import ChatGreetings from './components/ChatGreetings.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -94,14 +96,25 @@ const canSelectTools = computed(
 		selectedModel.value?.model.provider === 'custom-agent' ||
 		!!selectedModel.value?.metadata.capabilities.functionCalling,
 );
-
-const showWelcomeScreen = computed(
-	() =>
-		!welcomeScreenDismissed.value &&
-		chatStore.sessionsReady &&
-		(chatStore.sessions.ids?.length ?? 0) === 0 &&
-		(!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser'])),
+const hadConversationBefore = useLocalStorage(
+	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE(usersStore.currentUserId ?? 'anonymous'),
+	false,
 );
+const hasSession = computed(() => (chatStore.sessions.ids?.length ?? 0) > 0);
+
+const showWelcomeScreen = computed<boolean | undefined>(() => {
+	if (hadConversationBefore.value || welcomeScreenDismissed.value) {
+		return false; // return false early to make UI ready fast
+	}
+
+	if (!chatStore.sessionsReady) {
+		return undefined; // not known yet
+	}
+
+	return (
+		!hasSession.value && (!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']))
+	);
+});
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -461,6 +474,15 @@ watch(chatMessages, (messages) => {
 	}
 });
 
+// Update hadConversationBefore
+watch(
+	hasSession,
+	(value) => {
+		hadConversationBefore.value = hadConversationBefore.value || value;
+	},
+	{ immediate: true },
+);
+
 function handleDismissCreditsCallout() {
 	showCreditsClaimedCallout.value = false;
 }
@@ -649,6 +671,7 @@ function onFilesDropped(files: File[]) {
 
 <template>
 	<ChatLayout
+		v-if="showWelcomeScreen !== undefined"
 		:class="{
 			[$style.chatLayout]: true,
 			[$style.isNewSession]: isNewSession,
@@ -689,17 +712,7 @@ function onFilesDropped(files: File[]) {
 			:class="$style.scrollArea"
 		>
 			<div ref="scrollable" :class="$style.scrollable">
-				<ChatStarter
-					v-if="isNewSession"
-					:class="$style.starter"
-					:is-mobile-device="isMobileDevice"
-					:show-welcome-screen="showWelcomeScreen"
-					:selected-agent="selectedModel"
-					@start-new-chat="
-						welcomeScreenDismissed = true;
-						inputRef?.focus();
-					"
-				/>
+				<ChatGreetings v-if="isNewSession" :selected-agent="selectedModel" />
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
@@ -761,6 +774,15 @@ function onFilesDropped(files: File[]) {
 				</div>
 			</div>
 		</N8nScrollArea>
+
+		<ChatStarter
+			v-if="isNewSession"
+			:show-welcome-screen="showWelcomeScreen"
+			@start-new-chat="
+				welcomeScreenDismissed = true;
+				inputRef?.focus();
+			"
+		/>
 	</ChatLayout>
 </template>
 
@@ -792,13 +814,6 @@ function onFilesDropped(files: File[]) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.starter {
-	.isMobileDevice & {
-		padding-top: 30px;
-		padding-bottom: 200px;
-	}
 }
 
 .messageList {
