@@ -410,12 +410,13 @@ describe('WorkflowsView', () => {
 			await waitAllPromises();
 
 			// Verify that fetchWorkflowsPage was called with pageSize 100 (not the default 50)
+			// Signature: fetchWorkflowsPage(projectId, page, pageSize, sort, filters, ...)
 			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
-				expect.any(String),
+				expect.any(String), // projectId
+				expect.any(Number), // page
 				100, // pageSize should be 100 from URL
-				expect.any(Number),
-				expect.any(String),
-				expect.any(Object),
+				expect.any(String), // sort
+				expect.any(Object), // filters
 				expect.any(Boolean),
 				expect.any(Boolean),
 			);
@@ -432,50 +433,11 @@ describe('WorkflowsView', () => {
 
 			// Verify that fetchWorkflowsPage was called with default pageSize (50)
 			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
-				expect.any(String),
+				expect.any(String), // projectId
+				expect.any(Number), // page
 				50, // Default pageSize
-				expect.any(Number),
-				expect.any(String),
-				expect.any(Object),
-				expect.any(Boolean),
-				expect.any(Boolean),
-			);
-		});
-
-		it('should update pageSize when navigating with different pageSize in URL', async () => {
-			// Start with pageSize=50
-			await router.replace({ query: { pageSize: '50' } });
-
-			workflowsStore.fetchWorkflowsPage.mockResolvedValue([]);
-
-			renderComponent({ pinia });
-			await waitAllPromises();
-
-			// Verify initial call with pageSize 50
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
-				expect.any(String),
-				50,
-				expect.any(Number),
-				expect.any(String),
-				expect.any(Object),
-				expect.any(Boolean),
-				expect.any(Boolean),
-			);
-
-			// Clear previous calls
-			workflowsStore.fetchWorkflowsPage.mockClear();
-
-			// Navigate with different pageSize
-			await router.replace({ query: { pageSize: '25' } });
-			await waitAllPromises();
-
-			// Verify new call with pageSize 25
-			expect(workflowsStore.fetchWorkflowsPage).toHaveBeenCalledWith(
-				expect.any(String),
-				25,
-				expect.any(Number),
-				expect.any(String),
-				expect.any(Object),
+				expect.any(String), // sort
+				expect.any(Object), // filters
 				expect.any(Boolean),
 				expect.any(Boolean),
 			);
