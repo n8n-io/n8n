@@ -65,20 +65,99 @@ function isIfElseNamedInputs(obj: unknown): obj is IfElseNamedInputs {
 }
 
 /**
+ * Check if object is an IfElseComposite (has ifNode property)
+ */
+function isIfElseComposite(
+	obj: unknown,
+): obj is {
+	ifNode: NodeInstance<string, string, unknown>;
+	_allBranchNodes?: NodeInstance<string, string, unknown>[];
+} {
+	return obj !== null && typeof obj === 'object' && 'ifNode' in obj;
+}
+
+/**
+ * Check if object is a SwitchCaseComposite (has switchNode property)
+ */
+function isSwitchCaseComposite(
+	obj: unknown,
+): obj is {
+	switchNode: NodeInstance<string, string, unknown>;
+	_allCaseNodes?: NodeInstance<string, string, unknown>[];
+} {
+	return obj !== null && typeof obj === 'object' && 'switchNode' in obj;
+}
+
+/**
+ * Check if object is a MergeComposite (has mergeNode property)
+ */
+function isMergeComposite(
+	obj: unknown,
+): obj is { mergeNode: NodeInstance<string, string, unknown> } {
+	return obj !== null && typeof obj === 'object' && 'mergeNode' in obj;
+}
+
+/**
+ * Extract all nodes from a target (which could be a node, chain, composite, or fanOut)
+ */
+function extractNodesFromTarget(target: unknown): NodeInstance<string, string, unknown>[] {
+	if (target === null) return [];
+
+	// Handle FanOut with recursive extraction
+	if (isFanOut(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [];
+		for (const t of target.targets) {
+			nodes.push(...extractNodesFromTarget(t));
+		}
+		return nodes;
+	}
+
+	// Handle composites - extract their main node and any branch/case nodes
+	if (isIfElseComposite(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [target.ifNode];
+		if (target._allBranchNodes) {
+			nodes.push(...target._allBranchNodes);
+		}
+		return nodes;
+	}
+
+	if (isSwitchCaseComposite(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [target.switchNode];
+		if (target._allCaseNodes) {
+			nodes.push(...target._allCaseNodes);
+		}
+		return nodes;
+	}
+
+	if (isMergeComposite(target)) {
+		return [target.mergeNode];
+	}
+
+	// Handle NodeChain - recursively extract from each item in the chain
+	if (isNodeChain(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [];
+		for (const chainNode of target.allNodes) {
+			// Recursively extract to handle composites inside chains
+			nodes.push(...extractNodesFromTarget(chainNode));
+		}
+		return nodes;
+	}
+
+	// Single NodeInstance
+	if (isNodeInstance(target)) {
+		return [target];
+	}
+
+	return [];
+}
+
+/**
  * Extract all nodes from an IfElseTarget
  */
 function extractNodesFromBranchTarget(
 	target: IfElseTarget,
 ): NodeInstance<string, string, unknown>[] {
-	if (target === null) return [];
-	if (isFanOut(target)) {
-		return target.targets;
-	}
-	if (isNodeChain(target)) {
-		return target.allNodes;
-	}
-	// It's a single NodeInstance
-	return [target];
+	return extractNodesFromTarget(target);
 }
 
 /**
