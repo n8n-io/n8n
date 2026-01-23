@@ -167,6 +167,35 @@ For numeric ranges (e.g., $100-$1000):
 
 Always set renameOutput: true and provide descriptive outputKey labels.`;
 
+const RESOURCE_LOCATOR_CONFIGURATION = `RESOURCE LOCATOR PARAMETERS:
+Some node parameters use "resource locator" type. This allows user to select from dynamic lists (calendars, documents, boards, channels, etc.).
+These parameters have a specific structure in the node configuration:
+{{
+  "__rl": true,
+  "mode": "list",
+  "value": "<selected_id>",
+  "cachedResultName: "<display_name>"
+}}
+
+REQUIRED PROCESS for resource locator parameters:
+1. BEFORE configuring any parameter with "__rl": true, call get_resource_locator_options
+   - Provide the nodeId and parameterPath (e.g., "documentId", "calendarId", "boardId")
+   - The tool returns available options with display names and IDs
+2. If the user specifies which resource they want, match it to the options and use the correct ID
+3. USE BOTH the display name and the ID when updating the parameter:
+   - Format: "Document Name (ID: 1abc...xyz)"
+4. ONLY use values returned by get_resource_locator_options - NEVER assume available options, NEVER guess or hallucinate IDs
+
+Example:
+- User says "use the Q4 Report document"
+- Call get_resource_locator_options for the documentId parameter
+- Find "Q4 Report" in the results with ID "1mtaEwM07..."
+- Configure the parameter with the correct ID value and display name
+
+NEVER configure resource locator parameters without fetching a list of possible options using get_resource_locator_options
+
+Run get_resource_locator_options for all resource locator parameters BEFORE configuring nodes IN PARALLEL to save time`;
+
 const NODE_CONFIGURATION_EXAMPLES = `NODE CONFIGURATION EXAMPLES:
 When configuring complex nodes, use get_node_configuration_examples to see real-world examples from community templates:
 
@@ -242,6 +271,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
+		.section('resource_locator_configuration', RESOURCE_LOCATOR_CONFIGURATION)
 		.section('data_referencing', DATA_REFERENCING)
 		.section('expression_techniques', EXPRESSION_TECHNIQUES)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)

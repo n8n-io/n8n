@@ -11,6 +11,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { mapLegacyConnectionsToCanvasConnections } from '@/features/workflows/canvas/canvas.utils';
 import { getAuthTypeForNodeCredential, getMainAuthField } from '@/app/utils/nodeTypesUtils';
@@ -42,6 +43,7 @@ export function useWorkflowUpdate() {
 	const nodeTypesStore = useNodeTypesStore();
 	const builderStore = useBuilderStore();
 	const canvasOperations = useCanvasOperations();
+	const nodeHelpers = useNodeHelpers();
 
 	/**
 	 * Categorize nodes into those to update, add, or remove
@@ -123,6 +125,11 @@ export function useWorkflowUpdate() {
 		// Sync state back to store
 		workflowsStore.setNodes(Object.values(workflow.nodes));
 		workflowsStore.setConnections(workflow.connectionsBySourceNode);
+		// Revalidate updated nodes to refresh error indicators on canvas
+		for (const { existing } of nodesToUpdate) {
+			const nodeName = renamedNodes.get(existing.id) ?? existing.name;
+			nodeHelpers.updateNodeParameterIssuesByName(nodeName);
+		}
 	}
 
 	/**

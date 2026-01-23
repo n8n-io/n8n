@@ -17,6 +17,7 @@ import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
+import type { ResourceLocatorCallback } from './types/callbacks';
 import type { SubgraphPhase } from './types/coordination';
 import { createErrorMetadata } from './types/coordination';
 import { getNextPhaseFromLog, hasErrorInLog } from './utils/coordination-log';
@@ -57,6 +58,8 @@ export interface MultiAgentSubgraphConfig {
 	featureFlags?: BuilderFeatureFlags;
 	/** Callback invoked when a successful generation completes (e.g., for credit deduction) */
 	onGenerationSuccess?: () => Promise<void>;
+	/** Callback for fetching resource locator options */
+	resourceLocatorCallback?: ResourceLocatorCallback;
 }
 
 /**
@@ -135,6 +138,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		autoCompactThresholdTokens = DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS,
 		featureFlags,
 		onGenerationSuccess,
+		resourceLocatorCallback,
 	} = config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: stageLLMs.supervisor });
@@ -165,6 +169,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		logger,
 		instanceUrl,
 		featureFlags,
+		resourceLocatorCallback,
 	});
 
 	// Build graph using method chaining for proper TypeScript inference
