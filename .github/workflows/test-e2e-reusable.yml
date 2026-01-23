@@ -109,7 +109,6 @@ jobs:
     needs: matrix
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 30
-    environment: ci
     strategy:
       fail-fast: false
       matrix:

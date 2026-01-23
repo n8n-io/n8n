@@ -1,0 +1,37 @@
+name: 'Test: Runner Variable'
+
+on:
+  push:
+    branches:
+      - cat-2182-github-environments-ci
+
+jobs:
+  test-runner-fallback:
+    name: Test Runner Fallback
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
+    steps:
+      - name: Show runner info
+        run: |
+          echo "RUNNER_PROVIDER variable: ${{ vars.RUNNER_PROVIDER || '(not set)' }}"
+          echo "Resolved runner: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}"
+          echo "Actual runner: ${{ runner.name }}"
+          echo "Runner OS: ${{ runner.os }}"
+          echo "Runner arch: ${{ runner.arch }}"
+
+  test-different-sizes:
+    name: Test ${{ matrix.size }}
+    strategy:
+      matrix:
+        include:
+          - size: light
+            runner: blacksmith-2vcpu-ubuntu-2204
+          - size: medium
+            runner: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || matrix.runner }}
+    steps:
+      - name: Show runner info
+        run: |
+          echo "Requested: ${{ matrix.runner }}"
+          echo "RUNNER_PROVIDER: ${{ vars.RUNNER_PROVIDER || '(not set)' }}"
+          echo "Resolved to: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || matrix.runner }}"
+          echo "Actual runner: ${{ runner.name }}"
