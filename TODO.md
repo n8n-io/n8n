@@ -1,6 +1,8 @@
 # TODO (MVP)
-- [ ] get workflow-sdk to support roundtrip test of a lot of our template library [Now 289 tests pass, 4 remain skipped.]
+- [ ] Refactor to simplify branching interface
+- [ ] get workflow-sdk to support roundtrip test of a lot of our template library [Now 293 tests pass, 1 remain skipped.]
 - [ ] test out more edge cases
+	- [ ] Remove connection filtering in comparison tests
 	- [ ] Add more error branch workflows
 - [ ] prompt optimization per model
 - [ ] rerun evaluations, get to parity with current agent
@@ -33,7 +35,7 @@
 Nice to haves / tech debt
 - [ ] Make it more clear that SDK api file is for LLM consumption. To avoid other engineers adding unnecessary types to it, confusing the agent.
 - [ ] rename one shot agent across code base
-- [ ] Rename ifBranch to ifElse, update branches with clearer naming.
+- [X] Rename ifBranch to ifElse, update branches with clearer naming.
 - [ ] what's the success: true in manifest.json?
 - [ ] update workflow() to support object init { id, settings }
 - [ ] clean up old codegen impl
