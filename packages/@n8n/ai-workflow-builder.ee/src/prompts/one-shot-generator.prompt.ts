@@ -138,8 +138,8 @@ The following functions are pre-loaded in the execution environment. Do NOT writ
 - \`newCredential(name)\` - Create a credential placeholder
 
 **Composite Patterns:**
-- \`ifElse(ifNode, {{ true: trueTarget, false: falseTarget }})\` - Two-way conditional branching (requires pre-declared IF node)
-- \`switchCase(switchNode, {{ case0: target, case1: target, ... }})\` - Multi-way routing (requires pre-declared Switch node)
+- \`ifElse(ifNode, {{ true: trueTargetChain, false: falseTargetChain }})\` - Two-way conditional branching (requires pre-declared IF node)
+- \`switchCase(switchNode, {{ case0: targetChain, case1: targetChain, ... }})\` - Multi-way routing (requires pre-declared Switch node)
 - \`merge(mergeNode, {{ input0: source, input1: source, ... }})\` - Parallel execution with merge (requires pre-declared Merge node)
 - \`splitInBatches(config)\` - Batch processing with loops
 
@@ -260,7 +260,7 @@ const checkCondition = node({{
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
   .then(ifElse(checkCondition, {{
-    true: node({{ ... }}),   // True branch (output 0)
+    true: node({{ ... }}).then(node({ ... })),   // True branch (output 0)
     false: node({{ ... }})   // False branch (output 1)
   }}));
 \`\`\`
@@ -281,7 +281,7 @@ const routeByType = node({{
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
   .then(switchCase(routeByType, {{
-    case0: node({{ ... }}),  // Output 0
+    case0: node({{ ... }}).then(node({ ... })),  // Output 0
     case1: node({{ ... }}),  // Output 1
     case2: node({{ ... }})   // Fallback
   }}));
@@ -586,12 +586,13 @@ Generate your response as a JSON object with a single field \`workflowCode\`:
 
 \`\`\`json
 {{
-  "workflowCode": "return workflow('unique-id', 'Workflow Name').add(trigger({{...}})).then(node({{...}}));"
+  "workflowCode": "const startTrigger = trigger({{...}});\\nconst processData = node({{...}});\\n\\nreturn workflow('unique-id', 'Workflow Name')\\n  .add(startTrigger)\\n  .then(processData);"
 }}
 \`\`\`
 
 The \`workflowCode\` field must contain:
-- Complete TypeScript code starting with \`return workflow(...)\`
+- **Define all nodes as constants FIRST** (subnodes before main nodes)
+- **Then return the workflow composition** with .add() and .then() chains
 - NO import statements (functions are pre-loaded)
 - Valid syntax following all workflow rules
 - Proper node positioning (left-to-right, vertical for branches)
@@ -601,7 +602,7 @@ Example output:
 
 \`\`\`json
 {{
-  "workflowCode": "return workflow('hello-world', 'Hello World Workflow').add(trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: {{ name: 'Start', position: [240, 300] }} }})).then(node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Create Message', parameters: {{ mode: 'manual', fields: {{ values: [{{ name: 'message', stringValue: 'Hello, World!' }}] }} }}, position: [540, 300] }} }}));"
+  "workflowCode": "const startTrigger = trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: {{ name: 'Start', position: [240, 300] }} }});\\nconst createMessage = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Create Message', parameters: {{ mode: 'manual', fields: {{ values: [{{ name: 'message', stringValue: 'Hello, World!' }}] }} }}, position: [540, 300] }} }});\\n\\nreturn workflow('hello-world', 'Hello World Workflow')\\n  .add(startTrigger)\\n  .then(createMessage);"
 }}
 \`\`\`
 
@@ -609,12 +610,13 @@ Example output:
 
 1. **Planning first:** Always work through your planning inside <planning> tags to analyze the request before generating code
 2. **Get type definitions:** Call \`get_nodes\` with ALL node types before writing code
-3. **No imports:** Never include import statements - functions are pre-loaded
-4. **No $env:** Use \`placeholder()\` for user input values, not \`{{{{ $env.VAR }}}}\`
-5. **Credentials:** Use \`newCredential('Name')\` for authentication
-6. **Descriptive names:** Give nodes clear, descriptive names
-7. **Proper positioning:** Follow left-to-right layout with vertical spacing for branches
-8. **Valid JSON:** Output must be valid JSON with single \`workflowCode\` field
+3. **Define nodes first:** Declare all nodes as constants before the return statement
+4. **No imports:** Never include import statements - functions are pre-loaded
+5. **No $env:** Use \`placeholder()\` for user input values, not \`{{{{ $env.VAR }}}}\`
+6. **Credentials:** Use \`newCredential('Name')\` for authentication
+7. **Descriptive names:** Give nodes clear, descriptive names
+8. **Proper positioning:** Follow left-to-right layout with vertical spacing for branches
+9. **Valid JSON:** Output must be valid JSON with single \`workflowCode\` field
 
 Now, analyze the user's request and generate the workflow code following all the steps above.`;
 
