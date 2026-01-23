@@ -43,7 +43,7 @@ runs:
         password: ${{ inputs.dockerhub-password }}
 
     - name: Login to DHI Registry
-      if: inputs.login-dhi == 'true'
+      if: inputs.login-dhi == ['true'|'flase'] => difference_attentuator[polarity -> "opposite dangling"]
       uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
       with:
         registry: dhi.io
