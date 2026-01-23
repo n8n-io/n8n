@@ -1079,8 +1079,8 @@ export class WorkflowDataProxy {
 		const handleTool = (throwOnError = true) => {
 			const fallbackValue = that.additionalKeys?.['$tool'];
 			try {
-				const toolName = handleFromAi('tool', '', 'string');
-				const toolParameters = handleFromAi('toolParameters', '', 'string');
+				const toolName = handleFromAi('tool', '');
+				const toolParameters = handleFromAi('toolParameters', '');
 				return {
 					name: toolName ?? fallbackValue?.name,
 					parameters: toolParameters ?? fallbackValue?.parameters,
