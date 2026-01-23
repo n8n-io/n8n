@@ -349,6 +349,7 @@ export type WorkflowListItem = Omit<
 > & {
 	resource: 'workflow';
 	description?: string;
+	hasResolvableCredentials?: boolean;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
