@@ -21,6 +21,9 @@ concurrency:
   group: db-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_OPTIONS: '--max-old-space-size=3072'
+
 jobs:
   build:
     name: Install & Build
