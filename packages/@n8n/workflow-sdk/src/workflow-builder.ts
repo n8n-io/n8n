@@ -385,6 +385,47 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		});
 	}
 
+	connect(
+		source: NodeInstance<string, string, unknown>,
+		sourceOutput: number,
+		target: NodeInstance<string, string, unknown>,
+		targetInput: number,
+	): WorkflowBuilder {
+		const newNodes = new Map(this._nodes);
+
+		// Ensure both nodes exist in the graph
+		if (!newNodes.has(source.name)) {
+			this.addNodeWithSubnodes(newNodes, source);
+		}
+		if (!newNodes.has(target.name)) {
+			this.addNodeWithSubnodes(newNodes, target);
+		}
+
+		// Add the explicit connection from source to target
+		const sourceNode = newNodes.get(source.name);
+		if (sourceNode) {
+			const mainConns = sourceNode.connections.get('main') || new Map<number, ConnectionTarget[]>();
+			const outputConns = mainConns.get(sourceOutput) || [];
+
+			// Check if connection already exists
+			const alreadyExists = outputConns.some(
+				(c: ConnectionTarget) => c.node === target.name && c.index === targetInput,
+			);
+
+			if (!alreadyExists) {
+				outputConns.push({ node: target.name, type: 'main', index: targetInput });
+				mainConns.set(sourceOutput, outputConns);
+				sourceNode.connections.set('main', mainConns);
+			}
+		}
+
+		return this.clone({
+			nodes: newNodes,
+			currentNode: this._currentNode,
+			currentOutput: this._currentOutput,
+		});
+	}
+
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined {
 		// First try direct lookup (for backward compatibility and nodes added via add/then)
 		const directLookup = this._nodes.get(name);

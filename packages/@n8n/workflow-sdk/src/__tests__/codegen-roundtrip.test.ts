@@ -1487,6 +1487,76 @@ return { json: { result } };\`
 			expect(codeNode?.parameters?.jsCode).toContain('${item.date}');
 		});
 	});
+
+	describe('SplitInBatches to Merge pattern', () => {
+		it('should roundtrip SIB outputs to same merge at different inputs (Pattern 9)', () => {
+			// Pattern 9: SIB.done → Merge:input0, SIB.each → Merge:input1
+			// This tests the explicit connections pattern
+			const originalJson: WorkflowJSON = {
+				id: 'sib-merge-test',
+				name: 'SIB to Merge Pattern',
+				nodes: [
+					{
+						id: 'sib-1',
+						name: 'Loop Over Items13',
+						type: 'n8n-nodes-base.splitInBatches',
+						typeVersion: 3,
+						position: [0, 0],
+						parameters: { options: {} },
+					},
+					{
+						id: 'merge-1',
+						name: 'Merge',
+						type: 'n8n-nodes-base.merge',
+						typeVersion: 3.2,
+						position: [224, 0],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Loop Over Items13': {
+						main: [
+							[{ node: 'Merge', type: 'main', index: 0 }], // done → merge input 0
+							[{ node: 'Merge', type: 'main', index: 1 }], // each → merge input 1
+						],
+					},
+					Merge: {
+						main: [[{ node: 'Loop Over Items13', type: 'main', index: 0 }]], // merge → SIB (loop back)
+					},
+				},
+			};
+
+			// Generate code
+			const code = generateWorkflowCode(originalJson);
+
+			// Parse back to JSON
+			const parsedJson = parseWorkflowCode(code);
+
+			// Verify nodes
+			expect(parsedJson.nodes).toHaveLength(2);
+
+			// Verify connections
+			const sibConns = parsedJson.connections['Loop Over Items13'];
+			expect(sibConns).toBeDefined();
+			expect(sibConns!.main[0]).toBeDefined();
+			expect(sibConns!.main[1]).toBeDefined();
+
+			// SIB done (output 0) → Merge input 0
+			const doneConn = sibConns!.main[0]![0];
+			expect(doneConn.node).toBe('Merge');
+			expect(doneConn.index).toBe(0);
+
+			// SIB each (output 1) → Merge input 1
+			const eachConn = sibConns!.main[1]![0];
+			expect(eachConn.node).toBe('Merge');
+			expect(eachConn.index).toBe(1);
+
+			// Merge → SIB (loop back)
+			const mergeConns = parsedJson.connections['Merge'];
+			expect(mergeConns).toBeDefined();
+			expect(mergeConns!.main[0]![0].node).toBe('Loop Over Items13');
+		});
+	});
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {

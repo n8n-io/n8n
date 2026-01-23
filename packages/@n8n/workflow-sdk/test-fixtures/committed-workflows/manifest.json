@@ -8,8 +8,8 @@
 		},
 		{
 			"id": 1,
-			"name": "Split in batches - complex patterns (needs SDK changes for fan-out/fan-in)",
-			"success": false
+			"name": "Split in batches - complex patterns",
+			"success": true
 		}
 	]
 }

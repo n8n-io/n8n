@@ -560,6 +560,37 @@ export interface WorkflowBuilder {
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 
+	/**
+	 * Create an explicit connection between two nodes with specific output and input indices.
+	 * This is useful for patterns where the same source node needs to connect to different
+	 * inputs of the same target node (e.g., SplitInBatches outputs to Merge inputs).
+	 *
+	 * @param source - The source node
+	 * @param sourceOutput - The output index of the source node (0-based)
+	 * @param target - The target node
+	 * @param targetInput - The input index of the target node (0-based)
+	 * @returns The workflow builder for chaining
+	 *
+	 * @example
+	 * ```typescript
+	 * const sib = node({ type: 'n8n-nodes-base.splitInBatches', ... });
+	 * const mergeNode = node({ type: 'n8n-nodes-base.merge', ... });
+	 *
+	 * workflow('id', 'Test')
+	 *   .add(sib)
+	 *   .add(mergeNode)
+	 *   .connect(sib, 0, mergeNode, 0)  // done → merge input 0
+	 *   .connect(sib, 1, mergeNode, 1)  // each → merge input 1
+	 *   .connect(mergeNode, 0, sib, 0); // merge → sib
+	 * ```
+	 */
+	connect(
+		source: NodeInstance<string, string, unknown>,
+		sourceOutput: number,
+		target: NodeInstance<string, string, unknown>,
+		targetInput: number,
+	): WorkflowBuilder;
+
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined;
 
 	toJSON(): WorkflowJSON;

@@ -17,6 +17,7 @@ import type {
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
 	FanOutCompositeNode,
+	ExplicitConnectionsNode,
 } from './composite-tree';
 
 /**
@@ -675,6 +676,24 @@ function generateFanOut(fanOut: FanOutCompositeNode, ctx: GenerationContext): st
 }
 
 /**
+ * Generate code for explicit connections pattern (e.g., SIB→Merge at different inputs)
+ */
+function generateExplicitConnections(
+	explicitConns: ExplicitConnectionsNode,
+	_ctx: GenerationContext,
+): string {
+	// Generate variable references to the nodes involved
+	// The actual .add() and .connect() calls will be generated at the root level
+	// For now, just return the variable reference to the first node
+	if (explicitConns.nodes.length > 0) {
+		const firstNode = explicitConns.nodes[0];
+		const varName = toVarName(firstNode.name);
+		return varName;
+	}
+	return '';
+}
+
+/**
  * Generate code for any composite node
  */
 function generateComposite(node: CompositeNode, ctx: GenerationContext): string {
@@ -695,6 +714,8 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateSplitInBatches(node, ctx);
 		case 'fanOut':
 			return generateFanOut(node, ctx);
+		case 'explicitConnections':
+			return generateExplicitConnections(node, ctx);
 	}
 }
 
@@ -748,7 +769,7 @@ function generateVariableDeclarations(
 
 /**
  * Flatten a composite tree into workflow-level calls.
- * Returns array of [method, code] tuples where method is 'add' or 'then'.
+ * Returns array of [method, code] tuples where method is 'add', 'then', or 'connect'.
  */
 function flattenToWorkflowCalls(
 	root: CompositeNode,
@@ -756,7 +777,26 @@ function flattenToWorkflowCalls(
 ): Array<[string, string]> {
 	const calls: Array<[string, string]> = [];
 
-	if (root.kind === 'chain') {
+	if (root.kind === 'explicitConnections') {
+		// Explicit connections pattern: generate .add() for each node, then .connect() for each connection
+		const explicitConns = root as ExplicitConnectionsNode;
+
+		// Add each node (use variable references since they're already declared)
+		for (const node of explicitConns.nodes) {
+			const varName = toVarName(node.name);
+			calls.push(['add', varName]);
+		}
+
+		// Generate .connect() calls for each explicit connection
+		for (const conn of explicitConns.connections) {
+			const sourceVar = toVarName(conn.sourceNode);
+			const targetVar = toVarName(conn.targetNode);
+			calls.push([
+				'connect',
+				`${sourceVar}, ${conn.sourceOutput}, ${targetVar}, ${conn.targetInput}`,
+			]);
+		}
+	} else if (root.kind === 'chain') {
 		// Chain: first node is .add(), rest are .then()
 		for (let i = 0; i < root.nodes.length; i++) {
 			const node = root.nodes[i];

@@ -100,6 +100,36 @@ export interface FanOutCompositeNode extends CompositeNodeBase {
 }
 
 /**
+ * An explicit connection between nodes with specific output/input indices.
+ * Used when patterns require .connect() calls (e.g., same source node
+ * feeding multiple inputs of the same merge node from different outputs).
+ */
+export interface ExplicitConnection {
+	/** Source node name (variable reference) */
+	sourceNode: string;
+	/** Output index of the source node */
+	sourceOutput: number;
+	/** Target node name (variable reference) */
+	targetNode: string;
+	/** Input index of the target node */
+	targetInput: number;
+}
+
+/**
+ * Explicit connections composite - represents a group of nodes
+ * connected via explicit .connect() calls rather than composite patterns.
+ * Used for complex patterns like SIB→Merge where different outputs
+ * of the same node go to different inputs of the same target.
+ */
+export interface ExplicitConnectionsNode extends CompositeNodeBase {
+	kind: 'explicitConnections';
+	/** Nodes that need to be added (as variable references) */
+	nodes: SemanticNode[];
+	/** Explicit connections between the nodes */
+	connections: ExplicitConnection[];
+}
+
+/**
  * Union of all composite node types
  */
 export type CompositeNode =
@@ -110,7 +140,8 @@ export type CompositeNode =
 	| SwitchCaseCompositeNode
 	| MergeCompositeNode
 	| SplitInBatchesCompositeNode
-	| FanOutCompositeNode;
+	| FanOutCompositeNode
+	| ExplicitConnectionsNode;
 
 /**
  * The complete composite tree for a workflow

@@ -121,6 +121,10 @@ export { switchCase } from './switch-case';
 // Split in batches
 export { splitInBatches } from './split-in-batches';
 
+// Fan-out / Fan-in helpers for explicit parallel connections
+export { fanOut, isFanOut, type FanOutTargets } from './fan-out';
+export { fanIn, isFanIn, type FanInSources } from './fan-in';
+
 // Expression utilities
 export {
 	serializeExpression,

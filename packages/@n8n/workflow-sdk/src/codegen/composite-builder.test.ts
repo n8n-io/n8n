@@ -9,7 +9,6 @@ import type {
 	IfBranchCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
-	VariableReference,
 } from './composite-tree';
 
 // Helper to build and annotate graph
