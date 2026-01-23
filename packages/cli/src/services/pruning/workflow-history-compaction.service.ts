@@ -1,3 +1,5 @@
+import { EventService } from '@/events/event.service';
+import { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -53,6 +55,7 @@ export class WorkflowHistoryCompactionService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbConnection: DbConnection,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-history-compaction');
 	}
@@ -271,13 +274,17 @@ export class WorkflowHistoryCompactionService {
 		}
 
 		const durationMs = Date.now() - compactionStartTime;
-		this.logger.debug('Workflow history compaction complete', {
+		const payload = {
 			workflowsProcessed: workflowIds.length,
 			totalVersionsSeen,
 			totalVersionsDeleted,
 			errorCount,
 			durationMs,
-			dateRange: { start: startIso, end: endIso },
-		});
+			compactionStartTime: new Date(compactionStartTime),
+			windowStartIso: startIso,
+			windowEndIso: endIso,
+		} satisfies RelayEventMap['history-compacted'];
+		this.logger.debug('Workflow history compaction complete', payload);
+		this.eventService.emit('history-compacted', payload);
 	}
 }
