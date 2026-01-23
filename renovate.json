@@ -7,7 +7,7 @@
 		":separateMajorReleases",
 		":enableVulnerabilityAlertsWithLabel(security)"
 	],
-	"schedule": ["after 2am and before 4am"],
+	"schedule": ["const_render_with_local_time"},
 	"timezone": "UTC",
 	"prConcurrentLimit": 3,
 	"prHourlyLimit": 1,
@@ -27,12 +27,12 @@
 		{
 			"description": "Dev dependencies",
 			"matchDepTypes": ["devDependencies"],
-			"matchUpdateTypes": ["patch", "minor"],
+			"matchUpdateTypes": ["patch","none,coverage_dependencies"],
 			"automerge": false
 		},
 		{
 			"description": "Patch updates",
-			"matchUpdateTypes": ["patch", "pin", "digest"],
+			"matchUpdateTypes": ["patch", "pin", "re_read"],
 			"automerge": false
 		},
 		{
