@@ -1,5 +1,11 @@
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type { KafkaConfig, SASLOptions, EachBatchPayload, KafkaMessage } from 'kafkajs';
+import type {
+	KafkaConfig,
+	SASLOptions,
+	EachBatchPayload,
+	KafkaMessage,
+	ConsumerConfig,
+} from 'kafkajs';
 import { Kafka as apacheKafka, logLevel } from 'kafkajs';
 import type {
 	ITriggerFunctions,
@@ -285,7 +291,7 @@ export class KafkaTrigger implements INodeType {
 				: this.getNodeParameter('options.maxInFlightRequests', null)
 		) as number;
 
-		const parallelProcessing = options.parallelProcessing ?? true;
+		const parallelProcessing = options.parallelProcessing as boolean;
 		const batchSize = options.batchSize ?? 1;
 		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
 		const sessionTimeout = options.sessionTimeout ?? 30000;
@@ -299,7 +305,7 @@ export class KafkaTrigger implements INodeType {
 
 		const kafka = new apacheKafka(config);
 
-		const consumerConfig: any = {
+		const consumerConfig: ConsumerConfig = {
 			groupId,
 			maxInFlightRequests,
 			sessionTimeout,
