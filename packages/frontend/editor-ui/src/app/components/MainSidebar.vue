@@ -22,7 +22,6 @@ import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
-import MainSidebarTrialUpgrade from '@/app/components/MainSidebarTrialUpgrade.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
@@ -90,7 +89,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		route: { to: { name: VIEWS.RESOURCE_CENTER } },
 	},
 	{
-		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
+		// Link to in-app templates, available if custom templates are enabled and resource center is disabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
@@ -102,7 +101,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
-		// Link to website templates, available if custom templates host is not configured
+		// Link to website templates, available if custom templates host is not configured and resource center is disabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
@@ -364,7 +363,6 @@ useKeybindings({
 			@select="handleSelect"
 		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-		<MainSidebarTrialUpgrade />
 		<ResourceCenterTooltip />
 	</N8nResizeWrapper>
 </template>
