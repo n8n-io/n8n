@@ -263,21 +263,20 @@ const showBottomInput = computed(() => {
 });
 
 const showFooterRating = computed(() => {
-	if (props.streaming) return false;
-	if (!props.messages?.length) return false;
+	if (props.streaming || !props.messages?.length) {
+		return false;
+	}
 
 	// Check if there's a workflow-updated message in the original messages
 	// (workflow-updated is filtered out of normalizedMessages since it's not rendered visually)
+	// and check the last visible message (from normalizedMessages)
 	const hasWorkflowUpdate = props.messages.some((msg) => msg.type === 'workflow-updated');
-	if (!hasWorkflowUpdate) return false;
+	if (!hasWorkflowUpdate || !normalizedMessages.value.length) {
+		return false;
+	}
 
-	// Check the last visible message (from normalizedMessages)
-	if (!normalizedMessages.value.length) return false;
 	const lastMsg = normalizedMessages.value[normalizedMessages.value.length - 1];
-	if (lastMsg.role === 'user') return false;
-	if (lastMsg.type === 'thinking-group') return false;
-
-	return true;
+	return lastMsg.role !== 'user' && lastMsg.type !== 'thinking-group';
 });
 
 function isEndOfSessionEvent(event?: ChatUI.AssistantMessage) {
