@@ -1,12 +1,12 @@
 # TODO (MVP)
-- [ ] refactor code generation to simplify implementation, with learnings from POC
-- [ ] get workflow-sdk to support a lot of our template library
+- [X] refactor code generation to simplify implementation, with learnings from POC
+- [ ] get workflow-sdk to support roundtrip test of a lot of our template library [Now 289 tests pass, 4 remain skipped.]
 - [ ] test out more edge cases
-- [ ] Add more examples for more complex flows (like loops or multi level orchestrator)
+- [ ] Add more examples for more complex flows (like loops or multi level orchestrator) to prompt
 - [ ] rerun evaluations, get to parity with current agent
 - [ ] run evaluations against Opus
 - [ ] Split node types by resource operation into files. less input tokens, faster, more accurate. Query by operation/resource.
-- [ ] support $fromAI in types. Add example.
+- [X] support $fromAI in types. Add example.
 - [ ] Better clarify how output data maps to expressions in types and referenced
 - [ ] deploy agent to test instance
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
@@ -16,7 +16,7 @@
 - [ ] Make sure conversation history is included in request
 - [ ] Remove logging from agent. lots of logging for debugging.
 - [ ] Add some tracking if code generation step fails in prod.
-- [ ] Figure out how to integrate/release it. Behind a/b test
+- [ ] Figure out how to integrate/release it. Behind a/b test?
 - [ ] Update telemetry and prompt viewer app to support the code and workflow generated
 - [ ] consider adding node defaults when generating wor
 - [ ] add in execution schema/expression data, whatever we are passing now
@@ -25,7 +25,8 @@
 Nice to haves / tech debt
 - [ ] Make it more clear that SDK api file is for LLM consumption. To avoid other engineers adding unnecessary types to it, confusing the agent.
 - [ ] rename one shot agent across code base
-- [ ] Rename ifBranch to ifElse
+- [ ] Rename ifBranch to ifElse, update branches with clearer naming.
+- [ ] what's the success: true in manifest.json?
 
 Future improvement
 - [ ] Support passing nodes to sticky function
