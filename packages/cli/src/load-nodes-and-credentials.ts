@@ -353,9 +353,10 @@ export class LoadNodesAndCredentials {
 		// Each hook becomes a separate item that can be added multiple times
 		const allHookValues: INodeProperties[] = [
 			{
-				displayName: 'Hook',
+				displayName: 'User Identifier',
 				name: 'hookName',
 				type: 'options',
+				noDataExpression: true,
 				options: hooks.map((hook) => {
 					const displayName = hook.hookDescription.displayName ?? hook.hookDescription.name;
 					return {
@@ -367,7 +368,8 @@ export class LoadNodesAndCredentials {
 				// No default - force user to explicitly select a hook
 				// This ensures hookName is always serialized in the workflow JSON
 				default: '',
-				description: 'Select which context establishment hook to use',
+				description:
+					'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
 				required: true,
 			},
 		];
@@ -403,13 +405,14 @@ export class LoadNodesAndCredentials {
 
 		// Create the main context establishment hooks property as a fixedCollection
 		const contextHooksProperty: INodeProperties = {
-			displayName: 'Context Establishment Hooks',
+			displayName: 'Identify user for dynamic credentials',
 			name: 'contextEstablishmentHooks',
 			type: 'fixedCollection',
-			placeholder: 'Add Hook',
+			placeholder: 'Add User Identifier',
 			default: {},
 			typeOptions: {
 				multipleValues: true,
+				hideEmptyMessage: true,
 			},
 			options: [
 				{
@@ -419,21 +422,26 @@ export class LoadNodesAndCredentials {
 				},
 			],
 			description:
-				'Add and configure context establishment hooks to extract data from trigger items. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
+				'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
 		};
 
 		// Create a notice that always appears after the hooks collection
 		const contextHooksNotice: INodeProperties = {
 			displayName:
-				'Context establishment hooks allow you to extract data from trigger items to use in subsequent nodes. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
+				'Configure how n8n extracts the identity token of the user triggering a webhook. It is used to run each execution with the correct user.',
 			name: 'contextHooksNotice',
 			type: 'notice',
 			default: '',
 		};
 
-		node.properties.push(executionsHooksVersion);
-		node.properties.push(contextHooksProperty);
-		node.properties.push(contextHooksNotice);
+		let index = node.properties.findIndex((p) => p.name === 'options');
+		if (index === -1) {
+			index = node.properties.length;
+		}
+
+		node.properties.splice(index, 0, contextHooksNotice);
+		node.properties.splice(index, 0, contextHooksProperty);
+		node.properties.splice(index, 0, executionsHooksVersion);
 	};
 
 	/**
