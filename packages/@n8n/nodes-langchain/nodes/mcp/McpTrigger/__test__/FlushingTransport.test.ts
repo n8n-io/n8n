@@ -51,7 +51,7 @@ describe('FlushingStreamableHTTPTransport', () => {
 	let transport: FlushingStreamableHTTPTransport;
 	const options = {
 		sessionIdGenerator: () => 'test-session-id',
-		onsessioninitialized: jest.fn(),
+		onsessioninitialized: jest.fn() as () => void | Promise<void>,
 	};
 
 	beforeEach(() => {

@@ -16,7 +16,7 @@ import { AiService } from '@/services/ai.service';
 
 import { createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
 const createAiCreditsResponse = {
 	apiKey: randomUUID(),
@@ -36,6 +36,10 @@ let owner: User;
 let ownerPersonalProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
+
+beforeAll(async () => {
+	await initCredentialsTypes();
+});
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
@@ -74,6 +78,7 @@ describe('POST /ai/free-credits', () => {
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:update',
 			].sort(),
 		);

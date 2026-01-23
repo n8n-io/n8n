@@ -11,3 +11,11 @@ export const validateNodeName = (name: string): string | undefined => {
 	}
 	return;
 };
+
+export function isNodeErrnoException(error: unknown): error is NodeJS.ErrnoException {
+	return error instanceof Error && 'code' in error;
+}
+
+export function isEnoentError(error: unknown): boolean {
+	return isNodeErrnoException(error) && error.code === 'ENOENT';
+}

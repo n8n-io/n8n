@@ -1,5 +1,6 @@
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
 import { testDb, randomValidPassword, mockInstance } from '@n8n/backend-test-utils';
+import { LICENSE_FEATURES } from '@n8n/constants';
 import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ApiKeyRepository, GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
@@ -9,26 +10,31 @@ import {
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
-
-import type { License } from '@/license';
+import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import { createOwnerWithApiKey, createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+import { LicenseMocker } from './shared/license';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['apiKeys'] });
 let publicApiKeyService: PublicApiKeyService;
-const license = mock<License>();
+let licenseMocker: LicenseMocker;
 
 beforeAll(() => {
 	publicApiKeyService = Container.get(PublicApiKeyService);
+
+	licenseMocker = new LicenseMocker();
+	licenseMocker.mock(Container.get(License));
+	licenseMocker.enable(LICENSE_FEATURES.API_KEY_SCOPES);
 });
 
 beforeEach(async () => {
 	await testDb.truncate(['User']);
 	mockInstance(GlobalConfig, { publicApi: { disabled: false } });
+	licenseMocker.reset();
+	licenseMocker.enable(LICENSE_FEATURES.API_KEY_SCOPES);
 });
 
 describe('When public API is disabled', () => {
@@ -85,6 +91,7 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 
 		expect(newApiKey.expiresAt).toBeNull();
@@ -124,6 +131,7 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -155,6 +163,7 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create'],
+			audience: 'public-api',
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -186,6 +195,7 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create'],
+			audience: 'public-api',
 		});
 	});
 
@@ -214,6 +224,7 @@ describe('Owner shell', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['user:create', 'workflow:create'],
+			audience: 'public-api',
 		});
 	});
 
@@ -269,6 +280,7 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(String),
 			expiresAt: expirationDateInTheFuture,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -280,6 +292,7 @@ describe('Owner shell', () => {
 			updatedAt: expect.any(String),
 			expiresAt: null,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 	});
 
@@ -319,7 +332,6 @@ describe('Member', () => {
 			password: memberPassword,
 			role: GLOBAL_MEMBER_ROLE,
 		});
-		await utils.setInstanceOwnerSetUp(true);
 	});
 
 	test('POST /api-keys should create an api key with no expiration', async () => {
@@ -344,6 +356,7 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 
 		expect(newApiKeyResponse.body.data.expiresAt).toBeNull();
@@ -375,6 +388,7 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -383,7 +397,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should create an api key with scopes allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const newApiKeyResponse = await testServer
 			.authAgentFor(member)
@@ -407,6 +420,7 @@ describe('Member', () => {
 			createdAt: expect.any(Date),
 			updatedAt: expect.any(Date),
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 
 		expect(newApiKey.expiresAt).toBe(expiresAt);
@@ -415,7 +429,6 @@ describe('Member', () => {
 
 	test("POST /api-keys should fail to create api key with scopes not allowed in the user's role", async () => {
 		const expiresAt = Date.now() + 1000;
-		license.isApiKeyScopesEnabled.mockReturnValue(true);
 
 		const notAllowedScope = getOwnerOnlyApiKeyScopes()[0];
 
@@ -457,6 +470,7 @@ describe('Member', () => {
 			updatedAt: expect.any(String),
 			expiresAt: expirationDateInTheFuture,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 
 		expect(retrieveAllApiKeysResponse.body.data[0]).toEqual({
@@ -468,6 +482,7 @@ describe('Member', () => {
 			updatedAt: expect.any(String),
 			expiresAt: null,
 			scopes: ['workflow:create'],
+			audience: 'public-api',
 		});
 	});
 

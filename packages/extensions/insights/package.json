@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-extension-insights",
-  "version": "0.7.0",
+  "version": "0.11.0",
   "type": "module",
   "files": [
     "dist",
@@ -16,26 +16,26 @@
       "require": "./n8n.manifest.json"
     },
     "./backend": {
-      "types": "./dist/backend/index.d.ts",
-      "import": "./dist/backend/index.js",
+      "types": "./dist/backend/index.d.mts",
+      "import": "./dist/backend/index.mjs",
       "require": "./dist/backend/index.cjs"
     },
     "./frontend": {
-      "types": "./dist/frontend/index.d.ts",
-      "import": "./dist/frontend/index.js",
+      "types": "./dist/frontend/index.d.mts",
+      "import": "./dist/frontend/index.mjs",
       "require": "./dist/frontend/index.umd.cjs"
     },
     "./*": "./*"
   },
   "scripts": {
     "cleanup": "rimraf dist",
-    "dev": "vite",
+    "dev": "tsdown --watch",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
     "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
     "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "typecheck": "vue-tsc --noEmit",
-    "build:backend": "tsup",
+    "build:backend": "tsdown",
     "build:frontend": "vite build",
     "build": "pnpm cleanup && pnpm run \"/^build:.*/\"",
     "preview": "vite preview"
@@ -52,6 +52,7 @@
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
+    "tsdown": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
     "vue": "catalog:frontend",

@@ -34,7 +34,7 @@ type TaskData = {
 };
 
 export function toITaskData(taskData: TaskData[], overrides?: Partial<ITaskData>): ITaskData {
-	const result: ITaskData = {
+	const result = {
 		executionStatus: 'success',
 		executionTime: 0,
 		startTime: 0,
@@ -42,10 +42,8 @@ export function toITaskData(taskData: TaskData[], overrides?: Partial<ITaskData>
 		source: [],
 		data: {},
 		...(overrides ?? {}),
-	};
+	} satisfies ITaskData;
 
-	// NOTE: Here to make TS happy.
-	result.data = result.data ?? {};
 	for (const taskDatum of taskData) {
 		const type = taskDatum.nodeConnectionType ?? NodeConnectionTypes.Main;
 		const outputIndex = taskDatum.outputIndex ?? 0;

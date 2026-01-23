@@ -1,9 +1,9 @@
-import { useTelemetry } from '@/composables/useTelemetry';
-import { BATCH_11AUG_EXPERIMENT } from '@/constants';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useFoldersStore } from '@/stores/folders.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { BATCH_11AUG_EXPERIMENT } from '@/app/constants';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';

@@ -23,9 +23,11 @@ type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
 	| 'user-invited'
 	| 'password-reset-requested'
+	| 'workflow-deactivated'
 	| 'workflow-shared'
 	| 'credentials-shared'
-	| 'project-shared';
+	| 'project-shared'
+	| 'workflow-failure';
 
 @Service()
 export class UserManagementMailer {
@@ -76,6 +78,32 @@ export class UserManagementMailer {
 		});
 	}
 
+	async workflowFailure(data: {
+		email: string;
+		firstName?: string;
+		workflowId: string;
+		workflowName: string;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const workflowUrl = `${baseUrl}/workflow/${data.workflowId}`;
+
+		const template = await this.getTemplate('workflow-failure');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: '⚠️ Your workflow failed. Get alerts next time',
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName ?? 'there',
+				workflowId: data.workflowId,
+				workflowName: data.workflowName,
+				workflowUrl,
+				instanceURL: baseUrl,
+			}),
+		});
+	}
+
 	private async sendNotificationEmails<T extends { email: string }>({
 		mailerTemplate,
 		recipients,
@@ -102,7 +130,7 @@ export class UserManagementMailer {
 				return await this.mailer!.sendMail({
 					emailRecipients: recipient.email,
 					subject: subjectBuilder(),
-					body: populateTemplate(templateData),
+					body: populateTemplate({ ...this.basePayload, ...templateData }),
 				});
 			});
 
@@ -136,6 +164,29 @@ export class UserManagementMailer {
 			const error = toError(e);
 			throw new InternalServerError(`Please contact your administrator: ${error.message}`, e);
 		}
+	}
+
+	async notifyWorkflowAutodeactivated({
+		recipient,
+		workflow,
+	}: {
+		recipient: User;
+		workflow: IWorkflowBase;
+	}): Promise<SendEmailResult> {
+		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+
+		return await this.sendNotificationEmails({
+			mailerTemplate: 'workflow-deactivated',
+			recipients,
+			sharer: recipient,
+			getTemplateData: () => ({
+				workflowName: workflow.name,
+				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+			}),
+			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
+			messageType: 'Workflow auto-deactivated',
+		});
 	}
 
 	async notifyWorkflowShared({
@@ -245,6 +296,8 @@ export class UserManagementMailer {
 	private get basePayload() {
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const domain = new URL(baseUrl).hostname;
-		return { baseUrl, domain };
+		const currentYear = new Date().getFullYear();
+
+		return { baseUrl, domain, currentYear };
 	}
 }

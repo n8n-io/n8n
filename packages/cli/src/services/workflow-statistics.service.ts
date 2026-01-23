@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	SettingsRepository,
+	StatisticsNames,
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	ExecutionStatus,
@@ -42,6 +47,9 @@ const isModeRootExecution = {
 	internal: false,
 
 	manual: false,
+
+	// n8n Chat hub messages
+	chat: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {
@@ -69,6 +77,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly ownershipService: OwnershipService,
 		private readonly userService: UserService,
 		private readonly eventService: EventService,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -87,16 +97,24 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 	async workflowExecutionCompleted(workflowData: IWorkflowBase, runData: IRun): Promise<void> {
 		// Determine the name of the statistic
 		const isSuccess = runData.status === 'success';
-		const manual = runData.mode === 'manual';
+		const manualExecution = runData.mode === 'manual';
+		const chatExecution = runData.mode === 'chat';
+
+		if (chatExecution) {
+			// Chat workflows are short lived and deleted immediately after execution, so we skip statistics for them.
+			// They are also not counted towards execution limits.
+			return;
+		}
+
 		let name: StatisticsNames;
 		const isRootExecution =
 			isModeRootExecution[runData.mode] && isStatusRootExecution[runData.status];
 
 		if (isSuccess) {
-			if (manual) name = StatisticsNames.manualSuccess;
+			if (manualExecution) name = StatisticsNames.manualSuccess;
 			else name = StatisticsNames.productionSuccess;
 		} else {
-			if (manual) name = StatisticsNames.manualError;
+			if (manualExecution) name = StatisticsNames.manualError;
 			else name = StatisticsNames.productionError;
 		}
 
@@ -109,12 +127,16 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				name,
 				workflowId,
 				isRootExecution,
+				workflowData.name,
 			);
 
 			if (name === StatisticsNames.productionSuccess && upsertResult === 'insert') {
 				const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+				let userId: string | null = null;
+
 				if (project.type === 'personal') {
 					const owner = await this.ownershipService.getPersonalProjectOwnerCached(project.id);
+					userId = owner?.id ?? null;
 
 					if (owner && !owner.settings?.userActivated) {
 						await this.userService.updateSettings(owner.id, {
@@ -123,16 +145,59 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 							userActivatedAt: runData.startedAt.getTime(),
 						});
 					}
+				}
 
-					this.eventService.emit('first-production-workflow-succeeded', {
+				this.eventService.emit('first-production-workflow-succeeded', {
+					projectId: project.id,
+					workflowId,
+					userId,
+				});
+			}
+
+			if (name === StatisticsNames.productionError && upsertResult === 'insert') {
+				// Check if this is the first production failure and if error workflows are configured
+				const instanceHadProductionFailure = await this.settingsRepository.findByKey(
+					'instance.firstProductionFailure',
+				);
+
+				if (
+					!instanceHadProductionFailure &&
+					!(await this.workflowRepository.hasAnyWorkflowsWithErrorWorkflow())
+				) {
+					// This is the first production failure ever on this instance
+					const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+					// Get owner: personal project owner if available, otherwise instance owner
+					let owner =
+						project.type === 'personal'
+							? await this.ownershipService.getPersonalProjectOwnerCached(project.id)
+							: null;
+
+					owner ??= await this.ownershipService.getInstanceOwner();
+
+					// Store the flag to prevent future emissions
+					await this.settingsRepository.save({
+						key: 'instance.firstProductionFailure',
+						value: JSON.stringify({
+							workflowId,
+							projectId: project.id,
+							userId: owner.id,
+							timestamp: runData.startedAt.getTime(),
+						}),
+						loadOnStartup: false,
+					});
+
+					// Emit the event
+					this.eventService.emit('instance-first-production-workflow-failed', {
 						projectId: project.id,
 						workflowId,
-						userId: owner!.id,
+						workflowName: workflowData.name,
+						userId: owner.id,
 					});
 				}
 			}
 		} catch (error) {
-			this.logger.debug('Unable to fire first workflow success telemetry event');
+			this.logger.debug('Unable to fire first workflow telemetry event');
 		}
 	}
 

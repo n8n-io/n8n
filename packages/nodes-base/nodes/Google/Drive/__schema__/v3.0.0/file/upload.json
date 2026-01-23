@@ -159,6 +159,20 @@
         "id": {
             "type": "string"
         },
+        "imageMediaMetadata": {
+            "type": "object",
+            "properties": {
+                "height": {
+                    "type": "integer"
+                },
+                "rotation": {
+                    "type": "integer"
+                },
+                "width": {
+                    "type": "integer"
+                }
+            }
+        },
         "inheritedPermissionsDisabled": {
             "type": "boolean"
         },
@@ -348,5 +362,5 @@
             "type": "boolean"
         }
     },
-    "version": 4
+    "version": 6
 }

@@ -36,7 +36,7 @@ import {
 } from './utils/binary-helper-functions';
 import { constructExecutionMetaData } from './utils/construct-execution-metadata';
 import { copyInputItems } from './utils/copy-input-items';
-import { getDataStoreHelperFunctions } from './utils/data-store-helper-functions';
+import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { getDeduplicationHelperFunctions } from './utils/deduplication-helper-functions';
 import { getFileSystemHelperFunctions } from './utils/file-system-helper-functions';
 import { getInputConnectionData } from './utils/get-input-connection-data';
@@ -95,15 +95,21 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 				connectionInputData,
 			),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
-			...getDataStoreHelperFunctions(additionalData, workflow, node),
+			...getDataTableHelperFunctions(additionalData, workflow, node),
 			...getSSHTunnelFunctions(),
 			...getFileSystemHelperFunctions(node),
 			...getDeduplicationHelperFunctions(workflow, node),
 
 			assertBinaryData: (itemIndex, propertyName) =>
-				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				assertBinaryData(inputData, node, itemIndex, propertyName, 0, workflow.settings.binaryMode),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
-				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
+				await getBinaryDataBuffer(
+					inputData,
+					itemIndex,
+					propertyName,
+					0,
+					workflow.settings.binaryMode,
+				),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),
 		};
 
@@ -142,7 +148,7 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 		const streamingEnabled = this.additionalData.streamingEnabled === true;
 
 		// Check current execution mode supports streaming
-		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated'];
+		const executionModeSupportsStreaming = ['manual', 'webhook', 'integrated', 'chat'];
 		const isStreamingMode = executionModeSupportsStreaming.includes(this.mode);
 
 		return hasHandlers && isStreamingMode && streamingEnabled;
@@ -236,5 +242,10 @@ export class ExecuteContext extends BaseExecuteContext implements IExecuteFuncti
 
 	addExecutionHints(...hints: NodeExecutionHint[]) {
 		this.hints.push(...hints);
+	}
+
+	/** Returns true if the node is being executed as an AI Agent tool */
+	isToolExecution(): boolean {
+		return false;
 	}
 }

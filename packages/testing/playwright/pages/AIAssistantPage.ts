@@ -1,6 +1,8 @@
 import { BasePage } from './BasePage';
 
 export class AIAssistantPage extends BasePage {
+	// #region Getters
+
 	getAskAssistantFloatingButton() {
 		return this.page.getByTestId('ask-assistant-floating-button');
 	}
@@ -13,12 +15,22 @@ export class AIAssistantPage extends BasePage {
 		return this.page.getByTestId('ask-assistant-chat');
 	}
 
+	getAskAssistantSidebar() {
+		return this.page.getByTestId('ask-assistant-sidebar');
+	}
+
 	getPlaceholderMessage() {
 		return this.page.getByTestId('placeholder-message');
 	}
 
 	getChatInput() {
-		return this.page.getByTestId('chat-input');
+		// Try suggestions input first (shown when suggestions are visible),
+		// fall back to regular input (shown when there are messages)
+		const suggestionsInput = this.page.getByTestId('chat-suggestions-input').locator('textarea');
+		const regularInput = this.page.getByTestId('chat-input').locator('textarea');
+
+		// Return the first one that's visible
+		return suggestionsInput.or(regularInput);
 	}
 
 	getSendMessageButton() {
@@ -30,10 +42,7 @@ export class AIAssistantPage extends BasePage {
 	}
 
 	getAskAssistantSidebarResizer() {
-		return this.page
-			.getByTestId('ask-assistant-sidebar')
-			.locator('[class*="_resizer"][data-dir="left"]')
-			.first();
+		return this.getAskAssistantSidebar().locator('[class*="_resizer"][data-dir="left"]').first();
 	}
 
 	getNodeErrorViewAssistantButton() {
@@ -60,7 +69,76 @@ export class AIAssistantPage extends BasePage {
 		return this.page.getByTestId('quick-replies').locator('button');
 	}
 
+	getQuickReplies() {
+		return this.page.getByTestId('quick-replies');
+	}
+
 	getNewAssistantSessionModal() {
 		return this.page.getByTestId('new-assistant-session-modal');
 	}
+
+	getCodeDiffs() {
+		return this.page.getByTestId('code-diff-suggestion');
+	}
+
+	getApplyCodeDiffButtons() {
+		return this.page.getByTestId('replace-code-button');
+	}
+
+	getUndoReplaceCodeButtons() {
+		return this.page.getByTestId('undo-replace-button');
+	}
+
+	getCodeReplacedMessage() {
+		return this.page.getByTestId('code-replaced-message');
+	}
+
+	getCredentialEditAssistantButton() {
+		return this.page.getByTestId('credential-edit-ask-assistant-button');
+	}
+
+	getCodeSnippet() {
+		return this.page.getByTestId('assistant-code-snippet-content');
+	}
+
+	// #endregion
+
+	// #region Actions
+
+	async sendMessage(
+		message: string,
+		method: 'send-message-button' | 'enter-key' = 'send-message-button',
+	) {
+		// Only type if there's a message to type (e.g., skip for pre-populated suggestion pills)
+		if (message) {
+			await this.getChatInput().pressSequentially(message, { delay: 20 });
+		}
+		if (method === 'enter-key') {
+			await this.getChatInput().press('Enter');
+		} else {
+			await this.getSendMessageButton().click();
+		}
+	}
+
+	async waitForStreamingComplete(options?: { timeout?: number }) {
+		const timeout = options?.timeout ?? 60000;
+		// Wait for at least one assistant message to appear (indicating streaming has produced output)
+		await this.getChatMessagesAssistant().first().waitFor({ state: 'visible', timeout });
+		// Wait for streaming to end by checking for the send button's arrow-up icon
+		// During streaming, a stop button with filled-square icon is shown instead
+		// After streaming, the send button with arrow-up icon appears
+		await this.page.waitForFunction(
+			() => {
+				const sendButton = document.querySelector('[data-test-id="send-message-button"]');
+				if (!sendButton) return false;
+				// The arrow-up icon indicates the send button (not streaming)
+				// The filled-square icon indicates the stop button (streaming)
+				const sendIcon = sendButton.querySelector('[data-icon="arrow-up"]');
+				return sendIcon !== null;
+			},
+			{ timeout },
+		);
+	}
+
+	// #endregion
 }

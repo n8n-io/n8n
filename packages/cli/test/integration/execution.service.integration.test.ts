@@ -5,7 +5,6 @@ import { ExecutionMetadataRepository, ExecutionRepository, WorkflowRepository } 
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
-import config from '@/config';
 import { ExecutionService } from '@/executions/execution.service';
 
 import { annotateExecution, createAnnotationTags, createExecution } from './shared/db/executions';
@@ -34,12 +33,13 @@ describe('ExecutionService', () => {
 			mock(),
 			mock(),
 			mock(),
+			mock(),
 		);
 	});
 
 	beforeEach(() => {
 		globalConfig.executions.concurrency.productionLimit = -1;
-		config.set('executions.mode', 'regular');
+		globalConfig.executions.mode = 'regular';
 	});
 
 	afterEach(async () => {
@@ -553,7 +553,7 @@ describe('ExecutionService', () => {
 		});
 
 		test('should set concurrentExecutionsCount to -1 in queue mode', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			globalConfig.executions.concurrency.productionLimit = 4;
 
 			const workflow = await createWorkflow();

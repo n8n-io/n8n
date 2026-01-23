@@ -2,11 +2,17 @@ import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-type
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
+import {
+	Post,
+	GlobalScope,
+	RestController,
+	Body,
+	Param,
+	createBodyKeyedRateLimiter,
+} from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -17,7 +23,9 @@ import { PostHogClient } from '@/posthog';
 import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
+import { OwnershipService } from '@/services/ownership.service';
+import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { Time } from '@n8n/constants';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -31,13 +39,14 @@ export class InvitationController {
 		private readonly userRepository: UserRepository,
 		private readonly postHog: PostHogClient,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
 	 * Send email invite(s) to one or multiple users and create user shell(s).
 	 */
 
-	@Post('/', { rateLimit: { limit: 10 } })
+	@Post('/', { ipRateLimit: { limit: 10 } })
 	@GlobalScope('user:create')
 	async inviteUser(
 		req: AuthenticatedRequest,
@@ -48,12 +57,12 @@ export class InvitationController {
 
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
-		if (isSamlLicensedAndEnabled()) {
+		if (isSsoCurrentAuthenticationMethod()) {
 			this.logger.debug(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
 			throw new BadRequestError(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
 		}
 
@@ -64,7 +73,7 @@ export class InvitationController {
 			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
 		}
 
-		if (!config.getEnv('userManagement.isInstanceOwnerSetUp')) {
+		if (!(await this.ownershipService.hasInstanceOwner())) {
 			this.logger.debug(
 				'Request to send email invite(s) to user(s) failed because the owner account is not set up',
 			);
@@ -88,17 +97,17 @@ export class InvitationController {
 	}
 
 	/**
-	 * Fill out user shell with first name, last name, and password.
+	 * Process invitation acceptance: validate users, update invitee, and handle authentication.
 	 */
-	@Post('/:id/accept', { skipAuth: true })
-	async acceptInvitation(
+	private async processInvitationAcceptance(
+		inviterId: string,
+		inviteeId: string,
+		firstName: string,
+		lastName: string,
+		password: string,
 		req: AuthlessRequest,
 		res: Response,
-		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') inviteeId: string,
-	) {
-		const { inviterId, firstName, lastName, password } = payload;
-
+	): Promise<Awaited<ReturnType<UserService['toPublic']>>> {
 		const users = await this.userRepository.find({
 			where: [{ id: inviterId }, { id: inviteeId }],
 			relations: ['role'],
@@ -148,5 +157,102 @@ export class InvitationController {
 			posthog: this.postHog,
 			withScopes: true,
 		});
+	}
+
+	/**
+	 * Fill out user shell with first name, last name, and password using JWT token.
+	 */
+	@Post('/accept', {
+		skipAuth: true,
+		// Two layered rate limit to ensure multiple users can accept an invitation from
+		// the same IP address but aggressive per inviteeId limit.
+		ipRateLimit: { limit: 100, windowMs: 1 * Time.minutes.toMilliseconds },
+	})
+	async acceptInvitationWithToken(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		if (!payload.token) {
+			this.logger.debug('Request to accept invitation failed because token is missing');
+			throw new BadRequestError('Token is required');
+		}
+
+		const { firstName, lastName, password } = payload;
+
+		// Extract inviterId and inviteeId from JWT token
+		const { inviterId, inviteeId } = await this.userService.getInvitationIdsFromPayload({
+			token: payload.token,
+		});
+
+		return await this.processInvitationAcceptance(
+			inviterId,
+			inviteeId,
+			firstName,
+			lastName,
+			password,
+			req,
+			res,
+		);
+	}
+
+	/**
+	 * Fill out user shell with first name, last name, and password (legacy format with inviterId/inviteeId).
+	 */
+	@Post('/:id/accept', {
+		skipAuth: true,
+		// Two layered rate limit to ensure multiple users can accept an invitation from
+		// the same IP address but aggressive per inviteeId limit.
+		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
+		keyedRateLimit: createBodyKeyedRateLimiter<AcceptInvitationRequestDto>({
+			limit: 10,
+			windowMs: 1 * Time.minutes.toMilliseconds,
+			field: 'inviterId',
+		}),
+	})
+	async acceptInvitation(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+		@Param('id') inviteeId: string,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		if (!payload.inviterId || !inviteeId) {
+			this.logger.debug(
+				'Request to accept invitation failed because inviterId or inviteeId is missing',
+			);
+			throw new BadRequestError('InviterId and inviteeId are required');
+		}
+
+		const { firstName, lastName, password } = payload;
+
+		const inviterId = payload.inviterId;
+
+		return await this.processInvitationAcceptance(
+			inviterId,
+			inviteeId,
+			firstName,
+			lastName,
+			password,
+			req,
+			res,
+		);
 	}
 }

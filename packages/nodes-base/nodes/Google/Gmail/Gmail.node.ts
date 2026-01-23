@@ -13,13 +13,14 @@ export class Gmail extends VersionedNodeType {
 			group: ['transform'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume the Gmail API',
-			defaultVersion: 2.1,
+			defaultVersion: 2.2,
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new GmailV1(baseDescription),
 			2: new GmailV2(baseDescription),
 			2.1: new GmailV2(baseDescription),
+			2.2: new GmailV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

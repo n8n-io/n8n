@@ -32,8 +32,6 @@ export type ExecutionFinished = {
 		executionId: string;
 		workflowId: string;
 		status: ExecutionStatus;
-		/** @deprecated: Please construct execution data in the frontend from the data pushed in previous messages, instead of depending on this additional payload serialization */
-		rawData?: string;
 	};
 };
 
@@ -65,7 +63,7 @@ export type NodeExecuteAfter = {
 		/**
 		 * The data field for task data in `NodeExecuteAfter` is always trimmed (undefined).
 		 */
-		data: ITaskData;
+		data: Omit<ITaskData, 'data'>;
 		/**
 		 * The number of items per output connection type. This is needed so that the frontend
 		 * can know how many items to expect when receiving the `NodeExecuteAfterData` message.
