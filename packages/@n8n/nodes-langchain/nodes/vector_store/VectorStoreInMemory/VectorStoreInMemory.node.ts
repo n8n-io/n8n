@@ -245,7 +245,14 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 				);
 			}
 
-			return new DatabaseVectorStore(embeddings, service, memoryKey);
+			const workflowId = context.getWorkflow().id;
+			if (!workflowId) {
+				throw new ApplicationError(
+					'Workflow ID is required for vector store persistence. This execution may not be associated with a workflow.',
+				);
+			}
+
+			return new DatabaseVectorStore(embeddings, service, memoryKey, workflowId);
 		} else {
 			// Use in-memory vector store (existing behavior)
 			const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(embeddings, context.logger);
@@ -271,7 +278,19 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 				);
 			}
 
-			const vectorStore = new DatabaseVectorStore(embeddings, vectorStoreService, memoryKey);
+			const workflowId = context.getWorkflow().id;
+			if (!workflowId) {
+				throw new ApplicationError(
+					'Workflow ID is required for vector store persistence. This execution may not be associated with a workflow.',
+				);
+			}
+
+			const vectorStore = new DatabaseVectorStore(
+				embeddings,
+				vectorStoreService,
+				memoryKey,
+				workflowId,
+			);
 
 			if (clearStore) {
 				await vectorStore.clearStore();

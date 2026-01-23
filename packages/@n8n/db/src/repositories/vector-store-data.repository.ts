@@ -32,12 +32,13 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 
 	async addVectors(
 		memoryKey: string,
+		projectId: string,
 		documents: VectorDocument[],
 		embeddings: number[][],
 		clearStore: boolean = false,
 	): Promise<void> {
 		if (clearStore) {
-			await this.clearStore(memoryKey);
+			await this.clearStore(memoryKey, projectId);
 		}
 
 		const entities = documents.map((document, i) => {
@@ -45,6 +46,7 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 
 			entity.id = generateNanoId();
 			entity.memoryKey = memoryKey;
+			entity.projectId = projectId;
 			entity.content = document.content;
 			entity.metadata = document.metadata;
 			entity.vector = this.serializeVector(embeddings[i]);
@@ -57,16 +59,17 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 
 	async similaritySearch(
 		memoryKey: string,
+		projectId: string,
 		queryEmbedding: number[],
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
 		if (dbType === 'postgresdb') {
-			return await this.similaritySearchPostgres(memoryKey, queryEmbedding, k, filter);
+			return await this.similaritySearchPostgres(memoryKey, projectId, queryEmbedding, k, filter);
 		}
 
 		if (dbType === 'sqlite') {
-			return await this.similaritySearchSQLite(memoryKey, queryEmbedding, k, filter);
+			return await this.similaritySearchSQLite(memoryKey, projectId, queryEmbedding, k, filter);
 		}
 
 		throw new Error(`Database type ${dbType} does not support vector similarity search`);
@@ -74,20 +77,22 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 
 	private async similaritySearchPostgres(
 		memoryKey: string,
+		projectId: string,
 		queryEmbedding: number[],
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
 		const tableName = this.getTableName('vector_store_data');
 		const memoryKeyCol = this.getColumnName('memoryKey');
+		const projectIdCol = this.getColumnName('projectId');
 		const vectorCol = this.getColumnName('vector');
 		const contentCol = this.getColumnName('content');
 		const metadataCol = this.getColumnName('metadata');
 
 		// Build WHERE clause
-		let whereClause = `${memoryKeyCol} = $1`;
-		const params: unknown[] = [memoryKey];
-		let paramIndex = 2;
+		let whereClause = `${memoryKeyCol} = $1 AND ${projectIdCol} = $2`;
+		const params: unknown[] = [memoryKey, projectId];
+		let paramIndex = 3;
 
 		if (filter) {
 			for (const [key, value] of Object.entries(filter)) {
@@ -117,12 +122,14 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 
 	private async similaritySearchSQLite(
 		memoryKey: string,
+		projectId: string,
 		queryEmbedding: number[],
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
 		const tableName = this.getTableName('vector_store_data');
 		const memoryKeyCol = this.getColumnName('memoryKey');
+		const projectIdCol = this.getColumnName('projectId');
 		const vectorCol = this.getColumnName('vector');
 		const contentCol = this.getColumnName('content');
 		const metadataCol = this.getColumnName('metadata');
@@ -131,8 +138,8 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		const queryVectorBlob = this.serializeVector(queryEmbedding);
 
 		// Build WHERE clause
-		let whereClause = `${memoryKeyCol} = ?`;
-		const whereParams: unknown[] = [memoryKey];
+		let whereClause = `${memoryKeyCol} = ? AND ${projectIdCol} = ?`;
+		const whereParams: unknown[] = [memoryKey, projectId];
 
 		if (filter) {
 			for (const [key, value] of Object.entries(filter)) {
@@ -152,7 +159,7 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 
 		// Parameters must be in the order they appear in the query:
 		// 1. First ? in SELECT vec_distance_cosine -> queryVectorBlob
-		// 2. WHERE clause parameters -> memoryKey (and filter values)
+		// 2. WHERE clause parameters -> memoryKey, projectId (and filter values)
 		// 3. Second ? in ORDER BY vec_distance_cosine -> queryVectorBlob
 		const results = await this.query(query, [queryVectorBlob, ...whereParams, queryVectorBlob]);
 
@@ -169,26 +176,33 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		};
 	}
 
-	async getVectorCount(memoryKey: string): Promise<number> {
-		return await this.countBy({ memoryKey });
+	async getVectorCount(memoryKey: string, projectId: string): Promise<number> {
+		return await this.countBy({ memoryKey, projectId });
 	}
 
-	async clearStore(memoryKey: string): Promise<void> {
-		await this.delete({ memoryKey });
+	async clearStore(memoryKey: string, projectId: string): Promise<void> {
+		await this.delete({ memoryKey, projectId });
 	}
 
-	async deleteStore(memoryKey: string): Promise<void> {
-		await this.clearStore(memoryKey);
+	async deleteStore(memoryKey: string, projectId: string): Promise<void> {
+		await this.clearStore(memoryKey, projectId);
 	}
 
-	async deleteByFileNames(memoryKey: string, fileNames: string[]): Promise<number> {
+	async deleteByFileNames(
+		memoryKey: string,
+		projectId: string,
+		fileNames: string[],
+	): Promise<number> {
 		if (fileNames.length === 0) {
 			return 0;
 		}
 
-		const qb = this.createQueryBuilder('vectorStore').delete().where('memoryKey = :memoryKey', {
-			memoryKey,
-		});
+		const qb = this.createQueryBuilder('vectorStore')
+			.delete()
+			.where('memoryKey = :memoryKey AND projectId = :projectId', {
+				memoryKey,
+				projectId,
+			});
 
 		// For each fileName, add an OR condition to match it in the metadata JSON
 		const orConditions = fileNames.map((_, index) => {
@@ -210,9 +224,10 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		return result.affected ?? 0;
 	}
 
-	async listStores(): Promise<string[]> {
+	async listStores(projectId: string): Promise<string[]> {
 		const result = await this.createQueryBuilder('vectorStore')
 			.select('DISTINCT vectorStore.memoryKey', 'memoryKey')
+			.where('vectorStore.projectId = :projectId', { projectId })
 			.getRawMany<{ memoryKey: string }>();
 
 		return result.map((row) => row.memoryKey);

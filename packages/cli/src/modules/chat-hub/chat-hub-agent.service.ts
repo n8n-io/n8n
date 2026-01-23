@@ -270,7 +270,7 @@ export class ChatHubAgentService {
 					.filter((name): name is string => !!name);
 
 				if (fileNamesToDelete.length > 0) {
-					await this.deleteDocumentsByFileNames(user.id, id, fileNamesToDelete);
+					await this.deleteDocumentsByFileNames(user, id, fileNamesToDelete);
 				}
 			}
 
@@ -293,7 +293,7 @@ export class ChatHubAgentService {
 			);
 
 			// Delete all existing embeddings
-			await this.deleteDocuments(user.id, id);
+			await this.deleteDocuments(user, id);
 
 			// Re-insert all PDF files with new embedding provider
 			const pdfFiles = agent.files.filter((f) => f.mimeType === 'application/pdf');
@@ -306,9 +306,9 @@ export class ChatHubAgentService {
 		return agent;
 	}
 
-	async deleteAgent(id: string, userId: string): Promise<void> {
+	async deleteAgent(id: string, user: User): Promise<void> {
 		// First check if the agent exists and belongs to the user
-		const existingAgent = await this.chatAgentRepository.getOneById(id, userId);
+		const existingAgent = await this.chatAgentRepository.getOneById(id, user.id);
 		if (!existingAgent) {
 			throw new NotFoundError('Chat agent not found');
 		}
@@ -317,9 +317,9 @@ export class ChatHubAgentService {
 		await this.chatAgentRepository.deleteAgent(id);
 
 		// Delete all embeddings for this agent from vector store
-		await this.deleteDocuments(userId, id);
+		await this.deleteDocuments(user, id);
 
-		this.logger.debug(`Chat agent deleted: ${id} by user ${userId}`);
+		this.logger.debug(`Chat agent deleted: ${id} by user ${user.id}`);
 	}
 
 	getAgentMemoryKey(userId: string, agentId: string): string {
@@ -372,19 +372,20 @@ export class ChatHubAgentService {
 		}
 	}
 
-	private async deleteDocuments(userId: string, agentId: string): Promise<void> {
-		const memoryKey = this.getAgentMemoryKey(userId, agentId);
+	private async deleteDocuments(user: User, agentId: string): Promise<void> {
+		const memoryKey = this.getAgentMemoryKey(user.id, agentId);
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
 
 		// Delete all embeddings for this agent from the vector store
-		await this.vectorStoreDataRepository.clearStore(memoryKey);
+		await this.vectorStoreDataRepository.clearStore(memoryKey, projectId);
 
 		this.logger.debug(
-			`Deleted embeddings for agent ${agentId} from vector store (memoryKey: ${memoryKey})`,
+			`Deleted embeddings for agent ${agentId} from vector store (memoryKey: ${memoryKey}, projectId: ${projectId})`,
 		);
 	}
 
 	private async deleteDocumentsByFileNames(
-		userId: string,
+		user: User,
 		agentId: string,
 		fileNames: string[],
 	): Promise<void> {
@@ -392,16 +393,18 @@ export class ChatHubAgentService {
 			return;
 		}
 
-		const memoryKey = this.getAgentMemoryKey(userId, agentId);
+		const memoryKey = this.getAgentMemoryKey(user.id, agentId);
+		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
 
 		// Delete embeddings for specific files from the vector store
 		const deletedCount = await this.vectorStoreDataRepository.deleteByFileNames(
 			memoryKey,
+			projectId,
 			fileNames,
 		);
 
 		this.logger.debug(
-			`Deleted ${deletedCount} embeddings for ${fileNames.length} files from vector store (memoryKey: ${memoryKey}, fileNames: ${fileNames.join(', ')})`,
+			`Deleted ${deletedCount} embeddings for ${fileNames.length} files from vector store (memoryKey: ${memoryKey}, projectId: ${projectId}, fileNames: ${fileNames.join(', ')})`,
 		);
 	}
 }

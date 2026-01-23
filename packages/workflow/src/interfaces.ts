@@ -3360,6 +3360,7 @@ export interface VectorSearchResult {
 export interface IVectorStoreDataService {
 	addVectors(
 		memoryKey: string,
+		workflowId: string,
 		documents: VectorDocument[],
 		embeddings: number[][],
 		clearStore?: boolean,
@@ -3367,12 +3368,17 @@ export interface IVectorStoreDataService {
 
 	similaritySearch(
 		memoryKey: string,
+		workflowId: string,
 		queryEmbedding: number[],
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]>;
 
-	getVectorCount(memoryKey: string): Promise<number>;
+	getVectorCount(memoryKey: string, workflowId: string): Promise<number>;
 
-	clearStore(memoryKey: string): Promise<void>;
+	clearStore(memoryKey: string, workflowId: string): Promise<void>;
+
+	deleteStore(memoryKey: string, workflowId: string): Promise<void>;
+
+	listStores(workflowId: string): Promise<string[]>;
 }

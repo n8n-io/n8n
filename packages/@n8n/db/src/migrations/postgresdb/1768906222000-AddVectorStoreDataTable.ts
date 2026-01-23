@@ -45,8 +45,10 @@ export class AddVectorStoreDataTable1768906222000 implements ReversibleMigration
 				"vector" vector(1536) NOT NULL,
 				"content" TEXT NOT NULL,
 				"metadata" JSONB,
+				"projectId" VARCHAR NOT NULL,
 				"createdAt" TIMESTAMPTZ(3) DEFAULT CURRENT_TIMESTAMP(3),
-				"updatedAt" TIMESTAMPTZ(3) DEFAULT CURRENT_TIMESTAMP(3)
+				"updatedAt" TIMESTAMPTZ(3) DEFAULT CURRENT_TIMESTAMP(3),
+				CONSTRAINT fk_vector_store_data_project FOREIGN KEY ("projectId") REFERENCES ${tablePrefix}project("id") ON DELETE CASCADE
 			)`,
 		);
 
@@ -58,10 +60,10 @@ export class AddVectorStoreDataTable1768906222000 implements ReversibleMigration
 			WITH (lists = 100)`,
 		);
 
-		// Create index on memoryKey for efficient filtering
+		// Create composite index on memoryKey and projectId for efficient filtering
 		await runQuery(
-			`CREATE INDEX "${tablePrefix}vector_store_data_memory_key_idx"
-			ON ${tableName} ("memoryKey")`,
+			`CREATE INDEX "${tablePrefix}vector_store_data_memory_key_project_id_idx"
+			ON ${tableName} ("memoryKey", "projectId")`,
 		);
 	}
 

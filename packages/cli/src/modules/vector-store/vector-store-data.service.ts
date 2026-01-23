@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { VectorStoreDataRepository } from '@n8n/db';
+import { VectorStoreDataRepository, SharedWorkflowRepository } from '@n8n/db';
 import { DataSource } from '@n8n/typeorm';
 import type { IVectorStoreDataService, VectorDocument, VectorSearchResult } from 'n8n-workflow';
 
@@ -16,6 +16,7 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 		private readonly logger: Logger,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly dataSource: DataSource,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	/**
@@ -62,15 +63,35 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 	}
 
 	/**
+	 * Resolve projectId from workflowId
+	 */
+	private async resolveProjectId(workflowId: string): Promise<string> {
+		const sharedWorkflow = await this.sharedWorkflowRepository.findOne({
+			select: ['projectId'],
+			where: { workflowId },
+		});
+
+		if (!sharedWorkflow?.projectId) {
+			throw new Error(
+				`Could not find projectId for workflowId ${workflowId}. This execution may not be associated with a project.`,
+			);
+		}
+
+		return sharedWorkflow.projectId;
+	}
+
+	/**
 	 * Add vectors to a memory store
 	 */
 	async addVectors(
 		memoryKey: string,
+		workflowId: string,
 		documents: VectorDocument[],
 		embeddings: number[][],
 		clearStore: boolean = false,
 	): Promise<void> {
-		await this.repository.addVectors(memoryKey, documents, embeddings, clearStore);
+		const projectId = await this.resolveProjectId(workflowId);
+		await this.repository.addVectors(memoryKey, projectId, documents, embeddings, clearStore);
 	}
 
 	/**
@@ -78,39 +99,45 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 	 */
 	async similaritySearch(
 		memoryKey: string,
+		workflowId: string,
 		queryEmbedding: number[],
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<VectorSearchResult[]> {
-		return await this.repository.similaritySearch(memoryKey, queryEmbedding, k, filter);
+		const projectId = await this.resolveProjectId(workflowId);
+		return await this.repository.similaritySearch(memoryKey, projectId, queryEmbedding, k, filter);
 	}
 
 	/**
 	 * Get count of vectors for a memory key
 	 */
-	async getVectorCount(memoryKey: string): Promise<number> {
-		return await this.repository.getVectorCount(memoryKey);
+	async getVectorCount(memoryKey: string, workflowId: string): Promise<number> {
+		const projectId = await this.resolveProjectId(workflowId);
+		return await this.repository.getVectorCount(memoryKey, projectId);
 	}
 
 	/**
 	 * Clear all vectors for a memory key
 	 */
-	async clearStore(memoryKey: string): Promise<void> {
-		await this.repository.clearStore(memoryKey);
+	async clearStore(memoryKey: string, workflowId: string): Promise<void> {
+		const projectId = await this.resolveProjectId(workflowId);
+		await this.repository.clearStore(memoryKey, projectId);
 	}
 
 	/**
 	 * Delete entire store (alias for clearStore)
 	 */
-	async deleteStore(memoryKey: string): Promise<void> {
-		await this.repository.deleteStore(memoryKey);
+	async deleteStore(memoryKey: string, workflowId: string): Promise<void> {
+		const projectId = await this.resolveProjectId(workflowId);
+		await this.repository.deleteStore(memoryKey, projectId);
 	}
 
 	/**
-	 * List all unique memory keys
+	 * List all unique memory keys for a project
 	 */
-	async listStores(): Promise<string[]> {
-		return await this.repository.listStores();
+	async listStores(workflowId: string): Promise<string[]> {
+		const projectId = await this.resolveProjectId(workflowId);
+		return await this.repository.listStores(projectId);
 	}
 
 	/**

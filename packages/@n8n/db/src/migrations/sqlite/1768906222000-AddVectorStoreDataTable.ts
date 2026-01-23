@@ -15,8 +15,11 @@ export class AddVectorStoreDataTable1768906222000 implements ReversibleMigration
 				column('vector').binary.notNull.comment('Vector embedding stored as binary'),
 				column('content').text.notNull,
 				column('metadata').json,
+				column('projectId').varchar(36).notNull,
 			)
-			.withIndexOn(['memoryKey']).withTimestamps;
+			.withIndexOn(['memoryKey', 'projectId'])
+			.withForeignKey('projectId', { tableName: 'project', columnName: 'id', onDelete: 'CASCADE' })
+			.withTimestamps;
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

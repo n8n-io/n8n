@@ -16,6 +16,7 @@ export class DatabaseVectorStore extends VectorStore {
 		embeddings: Embeddings,
 		private readonly service: IVectorStoreDataService,
 		private readonly memoryKey: string,
+		private readonly workflowId: string,
 	) {
 		super(embeddings, {});
 	}
@@ -39,7 +40,7 @@ export class DatabaseVectorStore extends VectorStore {
 			metadata: doc.metadata,
 		}));
 
-		await this.service.addVectors(this.memoryKey, vectorDocuments, vectors, false);
+		await this.service.addVectors(this.memoryKey, this.workflowId, vectorDocuments, vectors, false);
 
 		// Return empty array of IDs since our implementation doesn't use specific IDs
 		return Array.from({ length: documents.length }, () => '');
@@ -53,7 +54,13 @@ export class DatabaseVectorStore extends VectorStore {
 		k: number,
 		filter?: Record<string, unknown>,
 	): Promise<Array<[Document, number]>> {
-		const results = await this.service.similaritySearch(this.memoryKey, query, k, filter);
+		const results = await this.service.similaritySearch(
+			this.memoryKey,
+			this.workflowId,
+			query,
+			k,
+			filter,
+		);
 
 		return results.map((result) => {
 			const doc = new Document({
@@ -86,13 +93,13 @@ export class DatabaseVectorStore extends VectorStore {
 	 * Clear all vectors for this memory key
 	 */
 	async clearStore(): Promise<void> {
-		await this.service.clearStore(this.memoryKey);
+		await this.service.clearStore(this.memoryKey, this.workflowId);
 	}
 
 	/**
 	 * Get count of vectors in the store
 	 */
 	async getVectorCount(): Promise<number> {
-		return await this.service.getVectorCount(this.memoryKey);
+		return await this.service.getVectorCount(this.memoryKey, this.workflowId);
 	}
 }
