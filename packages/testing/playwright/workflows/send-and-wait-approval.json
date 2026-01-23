@@ -7,7 +7,19 @@
 			"name": "Manual Trigger",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [300, 300]
+			"position": [300, 200]
+		},
+		{
+			"parameters": {
+				"path": "send-and-wait-approval-test",
+				"options": {}
+			},
+			"id": "webhook-trigger",
+			"name": "Webhook",
+			"type": "n8n-nodes-base.webhook",
+			"typeVersion": 2,
+			"position": [300, 400],
+			"webhookId": "send-and-wait-approval-webhook"
 		},
 		{
 			"parameters": {
@@ -69,6 +81,17 @@
 	],
 	"connections": {
 		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Webhook": {
 			"main": [
 				[
 					{
