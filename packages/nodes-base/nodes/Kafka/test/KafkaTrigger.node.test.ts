@@ -70,20 +70,36 @@ describe('KafkaTrigger Node', () => {
 			}),
 		);
 
+		// Helper to publish a single message using eachBatch (since we now always use eachBatch)
 		publishMessage = async (message: Partial<KafkaMessage>) => {
-			await mockEachMessageHolder.handler({
-				message: {
-					attributes: 1,
-					key: Buffer.from('messageKey'),
-					offset: '0',
-					timestamp: new Date().toISOString(),
-					value: Buffer.from('message'),
-					headers: {} as IHeaders,
-					...message,
-				} as RecordBatchEntry,
-				partition: 0,
-				topic: 'test-topic',
+			await mockEachBatchHolder.handler({
+				batch: {
+					topic: 'test-topic',
+					partition: 0,
+					highWatermark: '100',
+					messages: [
+						{
+							attributes: 1,
+							key: Buffer.from('messageKey'),
+							offset: '0',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message'),
+							headers: {} as IHeaders,
+							...message,
+						},
+					] as RecordBatchEntry[],
+					isEmpty: () => false,
+					firstOffset: () => '0',
+					lastOffset: () => '0',
+					offsetLag: () => '0',
+					offsetLagLow: () => '0',
+				},
+				resolveOffset: jest.fn(),
 				heartbeat: jest.fn(),
+				commitOffsetsIfNecessary: jest.fn(),
+				uncommittedOffsets: jest.fn(),
+				isRunning: jest.fn(() => true),
+				isStale: jest.fn(() => false),
 				pause: jest.fn(),
 			});
 		};

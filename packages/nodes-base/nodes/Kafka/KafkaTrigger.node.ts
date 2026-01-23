@@ -1,26 +1,23 @@
-import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
-import type {
-	KafkaConfig,
-	SASLOptions,
-	EachBatchPayload,
-	KafkaMessage,
-	ConsumerConfig,
-} from 'kafkajs';
-import { Kafka as apacheKafka, logLevel } from 'kafkajs';
+import type { EachBatchPayload } from 'kafkajs';
+import { Kafka as apacheKafka } from 'kafkajs';
 import type {
 	ITriggerFunctions,
-	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	IRun,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
+
 import {
-	jsonParse,
-	NodeConnectionTypes,
-	NodeOperationError,
-	TriggerCloseError,
-} from 'n8n-workflow';
+	type KafkaTriggerOptions,
+	connectEventListeners,
+	disconnectEventListeners,
+	setSchemaRegistry,
+	configureMessageParser,
+	createConfig,
+	createConsumerConfig,
+	configureDataEmitter,
+} from './utils';
 
 interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;
@@ -248,136 +245,24 @@ export class KafkaTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-		const topic = this.getNodeParameter('topic') as string;
+		const nodeVersion = this.getNode().typeVersion;
 
-		const groupId = this.getNodeParameter('groupId') as string;
-
-		const credentials = await this.getCredentials('kafka');
-
-		const brokers = ((credentials.brokers as string) ?? '').split(',').map((item) => item.trim());
-
-		const clientId = credentials.clientId as string;
-
-		const ssl = credentials.ssl as boolean;
+		const config = await createConfig(this);
+		const kafka = new apacheKafka(config);
+		const registry = setSchemaRegistry(this);
 
 		const options = this.getNodeParameter('options', {}) as KafkaTriggerOptions;
 
-		options.nodeVersion = this.getNode().typeVersion;
-
-		const config: KafkaConfig = {
-			clientId,
-			brokers,
-			ssl,
-			logLevel: logLevel.ERROR,
-		};
-
-		if (credentials.authentication === true) {
-			if (!(credentials.username && credentials.password)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Username and password are required for authentication',
-				);
-			}
-			config.sasl = {
-				username: credentials.username as string,
-				password: credentials.password as string,
-				mechanism: credentials.saslMechanism as string,
-			} as SASLOptions;
-		}
-
-		const maxInFlightRequests = (
-			this.getNodeParameter('options.maxInFlightRequests', null) === 0
-				? null
-				: this.getNodeParameter('options.maxInFlightRequests', null)
-		) as number;
-
-		const parallelProcessing = options.parallelProcessing as boolean;
-		const batchSize = options.batchSize ?? 1;
-		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
-		const sessionTimeout = options.sessionTimeout ?? 30000;
-		const heartbeatInterval = options.heartbeatInterval ?? 3000;
-		const rebalanceTimeout = options.rebalanceTimeout ?? 600000;
-		const maxBytesPerPartition = options.fetchMaxBytes;
-		const minBytes = options.fetchMinBytes;
-
-		const useSchemaRegistry = this.getNodeParameter('useSchemaRegistry', 0) as boolean;
-		const schemaRegistryUrl = this.getNodeParameter('schemaRegistryUrl', 0) as string;
-
-		const kafka = new apacheKafka(config);
-
-		const consumerConfig: ConsumerConfig = {
-			groupId,
-			maxInFlightRequests,
-			sessionTimeout,
-			heartbeatInterval,
-			rebalanceTimeout,
-		};
-
-		if (maxBytesPerPartition !== undefined) {
-			consumerConfig.maxBytesPerPartition = maxBytesPerPartition;
-		}
-
-		if (minBytes !== undefined) {
-			consumerConfig.minBytes = minBytes;
-		}
-
+		const consumerConfig = createConsumerConfig(this, options);
 		const consumer = kafka.consumer(consumerConfig);
 
-		const processMessage = async (
-			message: KafkaMessage,
-			messageTopic: string,
-		): Promise<IDataObject> => {
-			let data: IDataObject = {};
-			let value = message.value?.toString() as string;
+		const processMessage = configureMessageParser(options, this.logger, registry);
 
-			if (options.jsonParseMessage) {
-				try {
-					value = jsonParse(value);
-				} catch (error) {
-					this.logger.warn('Could not parse message to JSON, returning as string', { error });
-				}
-			}
+		const topic = this.getNodeParameter('topic') as string;
+		const batchSize = options.batchSize ?? 1;
+		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
 
-			if (useSchemaRegistry) {
-				try {
-					const registry = new SchemaRegistry({ host: schemaRegistryUrl });
-					value = await registry.decode(message.value as Buffer);
-				} catch (error) {
-					this.logger.warn(
-						'Could not decode message with Schema Registry, returning original message',
-						{ error },
-					);
-				}
-			}
-
-			if (options.returnHeaders && message.headers) {
-				data.headers = Object.fromEntries(
-					Object.entries(message.headers).map(([headerKey, headerValue]) => [
-						headerKey,
-						headerValue?.toString('utf8') ?? '',
-					]),
-				);
-			}
-
-			data.message = value;
-			data.topic = messageTopic;
-
-			if (options.onlyMessage) {
-				data = value as unknown as IDataObject;
-			}
-
-			return data;
-		};
-
-		const emitData = async (dataArray: IDataObject[]): Promise<void> => {
-			if (!parallelProcessing && (options.nodeVersion as number) > 1) {
-				const responsePromise = this.helpers.createDeferredPromise<IRun>();
-				this.emit([this.helpers.returnJsonArray(dataArray)], undefined, responsePromise);
-				await responsePromise.promise;
-			} else {
-				this.emit([this.helpers.returnJsonArray(dataArray)]);
-			}
-		};
+		const dataEmmiter = configureDataEmitter(this, options, nodeVersion);
 
 		const startConsumer = async () => {
 			try {
@@ -385,96 +270,43 @@ export class KafkaTrigger implements INodeType {
 
 				await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-				const useBatchProcessing = batchSize > 1;
+				await consumer.run({
+					autoCommitInterval: options.autoCommitInterval || null,
+					autoCommitThreshold: options.autoCommitThreshold || null,
+					partitionsConsumedConcurrently,
+					eachBatch: async ({ batch, resolveOffset, heartbeat }: EachBatchPayload) => {
+						const messages = batch.messages;
+						const messageTopic = batch.topic;
 
-				if (useBatchProcessing) {
-					await consumer.run({
-						autoCommitInterval: options.autoCommitInterval || null,
-						autoCommitThreshold: options.autoCommitThreshold || null,
-						partitionsConsumedConcurrently,
-						eachBatch: async ({ batch, resolveOffset, heartbeat }: EachBatchPayload) => {
-							const messages = batch.messages;
-							const messageTopic = batch.topic;
+						for (let i = 0; i < messages.length; i += batchSize) {
+							const chunk = messages.slice(i, Math.min(i + batchSize, messages.length));
 
-							for (let i = 0; i < messages.length; i += batchSize) {
-								const chunk = messages.slice(i, Math.min(i + batchSize, messages.length));
+							const processedData = await Promise.all(
+								chunk.map(async (message) => await processMessage(message, messageTopic)),
+							);
 
-								const processedData = await Promise.all(
-									chunk.map(async (message) => await processMessage(message, messageTopic)),
-								);
+							await dataEmmiter(processedData);
 
-								await emitData(processedData);
-
-								const lastMessage = chunk[chunk.length - 1];
-								if (lastMessage) {
-									resolveOffset(lastMessage.offset);
-								}
-
-								await heartbeat();
+							const lastMessage = chunk[chunk.length - 1];
+							if (lastMessage) {
+								resolveOffset(lastMessage.offset);
 							}
-						},
-					});
-				} else {
-					await consumer.run({
-						autoCommitInterval: options.autoCommitInterval || null,
-						autoCommitThreshold: options.autoCommitThreshold || null,
-						partitionsConsumedConcurrently,
-						eachMessage: async ({ topic: messageTopic, message }) => {
-							const data = await processMessage(message, messageTopic);
-							await emitData([data]);
-						},
-					});
-				}
+
+							await heartbeat();
+						}
+					},
+				});
 			} catch (error) {
 				this.logger.error('Failed to start Kafka consumer', { error });
 				throw new NodeOperationError(this.getNode(), error);
 			}
 		};
 
-		const onConnected = consumer.on(consumer.events.CONNECT, () => {
-			this.logger.debug('Kafka consumer connected');
-		});
-		const onGroupJoin = consumer.on(consumer.events.GROUP_JOIN, () => {
-			this.logger.debug('Consumer has joined the group');
-		});
-		const onRequestTimeout = consumer.on(consumer.events.REQUEST_TIMEOUT, () => {
-			this.logger.error('Consumer request timed out');
-		});
-		const onUnsubscribedtopicsReceived = consumer.on(
-			consumer.events.RECEIVED_UNSUBSCRIBED_TOPICS,
-			() => {
-				this.logger.warn('Consumer received messages for unsubscribed topics');
-			},
-		);
-		const onStop = consumer.on(consumer.events.STOP, async (error) => {
-			this.logger.error('Consumer has stopped', { error });
-		});
-		const onDisconnect = consumer.on(consumer.events.DISCONNECT, async (error) => {
-			this.logger.error('Consumer has disconnected', { error });
-		});
-		const onCommitOffsets = consumer.on(consumer.events.COMMIT_OFFSETS, () => {
-			this.logger.debug('Consumer offsets committed!');
-		});
-		const onRebalancing = consumer.on(consumer.events.REBALANCING, (payload) => {
-			this.logger.debug('Consumer is rebalancing', { payload });
-		});
-		const onCrash = consumer.on(consumer.events.CRASH, async (error) => {
-			this.logger.error('Consumer has crashed', { error });
-		});
+		const listeners = connectEventListeners(consumer, this.logger);
 
 		const closeFunction = async () => {
 			try {
-				// Clean up listeners
-				onConnected();
-				onGroupJoin();
-				onRequestTimeout();
-				onUnsubscribedtopicsReceived();
-				onStop();
-				onDisconnect();
-				onCommitOffsets();
-				onRebalancing();
-				onCrash();
-
+				disconnectEventListeners(listeners);
 				await consumer.stop();
 				await consumer.disconnect();
 			} catch (error) {
