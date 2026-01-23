@@ -323,7 +323,7 @@ export class ChatHubAgentService {
 	}
 
 	getAgentMemoryKey(userId: string, agentId: string): string {
-		return `agent-files-${userId}-${agentId}`;
+		return `chat-hub-agent-files-${userId}-${agentId}`;
 	}
 
 	private async insertDocuments(user: User, agent: ChatHubAgent, files: IBinaryData[]) {

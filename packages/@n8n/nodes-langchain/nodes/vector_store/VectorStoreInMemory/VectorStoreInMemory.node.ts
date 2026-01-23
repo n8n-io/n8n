@@ -30,7 +30,7 @@ const warningBanner: INodeProperties = {
 
 const persistenceBanner: INodeProperties = {
 	displayName:
-		'<strong>Database Persistence</strong>: Vectors are stored in the n8n instance database and will persist across restarts. Requires pgvector extension for PostgreSQL or uses sqlite-vec for SQLite. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/">More info</a>',
+		'<strong>Database Persistence</strong>: Vectors are stored in the n8n instance database and will persist across restarts. <a href="https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/">More info</a>',
 	name: 'persistenceNotice',
 	type: 'notice',
 	default: '',
@@ -43,22 +43,12 @@ const persistenceBanner: INodeProperties = {
 
 const insertFields: INodeProperties[] = [
 	{
-		displayName: 'Enable Persistence',
-		name: 'enablePersistence',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to store vectors in the instance database instead of memory',
-		hint: 'Requires pgvector extension for PostgreSQL instances',
-	},
-	{
 		displayName: 'Clear Store',
 		name: 'clearStore',
 		type: 'boolean',
 		default: false,
 		description: 'Whether to clear the store before inserting new data',
 	},
-	warningBanner,
-	persistenceBanner,
 ];
 
 const DEFAULT_MEMORY_KEY = 'vector_store_key';
@@ -100,6 +90,13 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 	},
 	sharedFields: [
 		{
+			displayName: 'Enable Persistence',
+			name: 'enablePersistence',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to store vectors in the instance database instead of memory',
+		},
+		{
 			displayName: 'Memory Key',
 			name: 'memoryKey',
 			type: 'string',
@@ -119,10 +116,11 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 			required: true,
 			default: { mode: 'list', value: DEFAULT_MEMORY_KEY },
 			description:
-				'The key to use to store the vector memory in the workflow data. These keys are shared between workflows.',
+				'The key to use to store the vector memory in the workflow data. These keys are shared between workflows and stored in memory.',
 			displayOptions: {
 				show: {
 					'@version': [{ _cnd: { gte: 1.2 } }],
+					enablePersistence: [false],
 				},
 			},
 			modes: [
@@ -148,6 +146,40 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 				},
 			],
 		},
+		{
+			displayName: 'Memory Key',
+			name: 'memoryKey',
+			type: 'resourceLocator',
+			required: true,
+			default: { mode: 'list', value: DEFAULT_MEMORY_KEY },
+			description:
+				'The key to use to store the vector memory in the workflow data. These keys are scoped to your workflows and persisted in the database.',
+			displayOptions: {
+				show: {
+					'@version': [{ _cnd: { gte: 1.2 } }],
+					enablePersistence: [true],
+				},
+			},
+			modes: [
+				{
+					displayName: 'From List',
+					name: 'list',
+					type: 'list',
+					typeOptions: {
+						searchListMethod: 'persistedVectorStoresSearch',
+						searchable: true,
+					},
+				},
+				{
+					displayName: 'Manual',
+					name: 'id',
+					type: 'string',
+					placeholder: DEFAULT_MEMORY_KEY,
+				},
+			],
+		},
+		warningBanner,
+		persistenceBanner,
 	],
 	methods: {
 		listSearch: {
@@ -155,6 +187,7 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 				this: ILoadOptionsFunctions,
 				filter?: string,
 			): Promise<INodeListSearchResult> {
+				// Query in-memory vector stores
 				const vectorStoreSingleton = MemoryVectorStoreManager.getInstance(
 					{} as Embeddings, // Real Embeddings are provided when executing the node
 					this.logger,
@@ -176,6 +209,31 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 
 				return {
 					results,
+				};
+			},
+			async persistedVectorStoresSearch(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
+				// Access vector store service from helpers (similar to DataTable pattern)
+				const service = this.helpers.getVectorStoreService?.();
+
+				if (!service) {
+					// Service not available (module might be disabled)
+					return { results: [] };
+				}
+
+				const workflowId = this.getWorkflow().id;
+
+				if (!workflowId) {
+					return { results: [] };
+				}
+
+				// Query the database for persisted vector store keys
+				const memoryKeys = await service.listStores(workflowId, filter);
+
+				return {
+					results: memoryKeys.map((key: string) => ({ name: key, value: key })),
 				};
 			},
 		},
@@ -210,23 +268,11 @@ export class VectorStoreInMemory extends createVectorStoreNode<
 			type: 'boolean',
 			default: false,
 			description: 'Whether to load vectors from the instance database instead of memory',
-			hint: 'Requires pgvector extension for PostgreSQL instances',
 		},
 		warningBanner,
 		persistenceBanner,
 	],
-	retrieveFields: [
-		{
-			displayName: 'Enable Persistence',
-			name: 'enablePersistence',
-			type: 'boolean',
-			default: false,
-			description: 'Whether to retrieve vectors from the instance database instead of memory',
-			hint: 'Requires pgvector extension for PostgreSQL instances',
-		},
-		warningBanner,
-		persistenceBanner,
-	],
+	retrieveFields: [],
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const memoryKey = getMemoryKey(context, itemIndex);
 		const enablePersistence = context.getNodeParameter(

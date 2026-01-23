@@ -224,11 +224,22 @@ export class VectorStoreDataRepository extends Repository<VectorStoreData> {
 		return result.affected ?? 0;
 	}
 
-	async listStores(projectId: string): Promise<string[]> {
-		const result = await this.createQueryBuilder('vectorStore')
+	async listStores(projectId: string, filter?: string): Promise<string[]> {
+		const qb = this.createQueryBuilder('vectorStore')
 			.select('DISTINCT vectorStore.memoryKey', 'memoryKey')
-			.where('vectorStore.projectId = :projectId', { projectId })
-			.getRawMany<{ memoryKey: string }>();
+			.where('vectorStore.projectId = :projectId', { projectId });
+
+		if (filter) {
+			// Filter memory keys that contain the filter string (case-insensitive)
+			if (this.manager.connection.options.type === 'postgres') {
+				qb.andWhere('vectorStore.memoryKey ILIKE :filter', { filter: `%${filter}%` });
+			} else {
+				// SQLite uses LIKE for case-insensitive search by default
+				qb.andWhere('vectorStore.memoryKey LIKE :filter', { filter: `%${filter}%` });
+			}
+		}
+
+		const result = await qb.getRawMany<{ memoryKey: string }>();
 
 		return result.map((row) => row.memoryKey);
 	}

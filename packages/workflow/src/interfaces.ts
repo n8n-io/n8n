@@ -1168,7 +1168,10 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
-	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
+	helpers: RequestHelperFunctions &
+		SSHTunnelFunctions &
+		DataTableProxyFunctions &
+		VectorStoreHelperFunctions;
 }
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
@@ -3380,5 +3383,5 @@ export interface IVectorStoreDataService {
 
 	deleteStore(memoryKey: string, workflowId: string): Promise<void>;
 
-	listStores(workflowId: string): Promise<string[]>;
+	listStores(workflowId: string, filter?: string): Promise<string[]>;
 }

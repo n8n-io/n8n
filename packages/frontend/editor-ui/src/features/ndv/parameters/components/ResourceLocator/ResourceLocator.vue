@@ -792,6 +792,7 @@ async function loadResources() {
 			currentNodeParameters: resolvedNodeParameters,
 			credentials: props.node.credentials,
 			projectId: projectsStore.currentProjectId,
+			workflowId: workflowsStore.workflowId,
 		};
 
 		if (params.filter) {

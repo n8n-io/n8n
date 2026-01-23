@@ -135,9 +135,9 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 	/**
 	 * List all unique memory keys for a project
 	 */
-	async listStores(workflowId: string): Promise<string[]> {
+	async listStores(workflowId: string, filter?: string): Promise<string[]> {
 		const projectId = await this.resolveProjectId(workflowId);
-		return await this.repository.listStores(projectId);
+		return await this.repository.listStores(projectId, filter);
 	}
 
 	/**

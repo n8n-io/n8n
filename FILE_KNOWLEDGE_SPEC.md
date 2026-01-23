@@ -105,3 +105,9 @@ File Knowledge requires disk space for both the original files and the vector em
 - The PDF file support processes text data only. Pictures, diagrams, graphs are not recognized. Table contents can be recognized but the quality will vary. Image PDFs are also not recognized [Possible solution for the future: improved text extraction, OCR, provider's native PDF support]
 - [There should be per-agent limit to the estimated token consumption by non-PDF context files, otherwise context can be already exhausted at the beginning of conversation. TBU]
 - [There should be per-user or instance wide size limit to how large files and the vector table can be; TBU]
+
+## TODO
+
+- Define size limit
+- Define telemetry
+- Explore Postgres support without pgvector
