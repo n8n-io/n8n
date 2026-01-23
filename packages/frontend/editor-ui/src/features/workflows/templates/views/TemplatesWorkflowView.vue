@@ -12,7 +12,7 @@ import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import TemplatesView from './TemplatesView.vue';
 import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
 
-import { N8nButton, N8nLoading, N8nMarkdown, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nMarkdown, N8nText } from '@n8n/design-system';
 const externalHooks = useExternalHooks();
 const templatesStore = useTemplatesStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -130,7 +130,7 @@ onBeforeUnmount(() => {
 			</div>
 		</template>
 		<template v-if="!notFoundError" #content>
-			<div ref="previewWrapperRef" :class="$style.previewWrapper">
+			<div :class="$style.previewWrapper">
 				<div :class="$style.image">
 					<WorkflowPreview
 						v-if="showPreview"
@@ -139,26 +139,16 @@ onBeforeUnmount(() => {
 						@close="onHidePreview"
 					/>
 				</div>
-				<div v-if="isPreviewVisible" :class="$style.button">
-					<N8nButton
-						v-if="template"
-						data-test-id="use-template-button"
-						:label="i18n.baseText('template.buttons.tryTemplate')"
-						size="large"
-						@click="openTemplateSetup(templateId, $event)"
-					/>
-					<N8nLoading :loading="!template" :rows="1" variant="button" />
-				</div>
 			</div>
 			<div :class="$style.contentContainer">
 				<div :class="$style.content">
 					<div :class="$style.templateCard">
 						<RecommendedTemplateCard v-if="template" :template="template" :show-details="true">
-							<template v-if="!isPreviewVisible" #belowContent>
+							<template #belowContent>
 								<N8nButton
 									data-test-id="use-template-button"
 									:label="i18n.baseText('template.buttons.tryTemplate')"
-									size="medium"
+									size="large"
 									@click.stop="openTemplateSetup(templateId, $event)"
 								/>
 							</template>
