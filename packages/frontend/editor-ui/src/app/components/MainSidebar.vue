@@ -90,7 +90,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		route: { to: { name: VIEWS.RESOURCE_CENTER } },
 	},
 	{
-		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
+		// Link to in-app templates, available if custom templates are enabled and resource center is disabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
@@ -102,7 +102,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		route: { to: { name: VIEWS.TEMPLATES } },
 	},
 	{
-		// Link to website templates, available if custom templates host is not configured
+		// Link to website templates, available if custom templates host is not configured and resource center is disabled
 		id: 'templates',
 		icon: 'package-open',
 		label: i18n.baseText('generic.templates'),
