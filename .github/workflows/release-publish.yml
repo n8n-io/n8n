@@ -229,7 +229,7 @@ jobs:
         uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         with:
           status: ${{ job.status }}
-          channel: '#C036AELNMV0'
+          channel: '#updates-and-product-releases'
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to master failed for n8n@${{ needs.publish-to-npm.outputs.release }} >
