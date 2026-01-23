@@ -1,5 +1,4 @@
-import { shouldActivateWorkflow as shouldActivateWorkflowHelper } from '@n8n/api-types';
-import type { AutoPublishMode, SourceControlledFile } from '@n8n/api-types';
+import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type {
 	FindOptionsWhere,
@@ -30,7 +29,7 @@ import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialE
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import { shouldAutoPublishWorkflow, type IWorkflowBase, type AutoPublishMode } from 'n8n-workflow';
 import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
@@ -673,7 +672,7 @@ export class SourceControlImportService {
 			// In that case, we deactivate the existing workflow on pull and turn it archived.
 			// The autoPublish parameter can override this behavior to auto-activate workflows.
 
-			let shouldActivate = this.shouldActivateWorkflow(
+			let shouldActivate = this.shouldAutoPublishWorkflow(
 				existingWorkflow,
 				importedWorkflow,
 				autoPublish,
@@ -767,15 +766,15 @@ export class SourceControlImportService {
 		}
 	}
 
-	private shouldActivateWorkflow(
+	private shouldAutoPublishWorkflow(
 		existingWorkflow: WorkflowEntity | undefined,
 		importedWorkflow: IWorkflowToImport,
 		autoPublish: AutoPublishMode,
 	): boolean {
-		return shouldActivateWorkflowHelper({
+		return shouldAutoPublishWorkflow({
 			isNewWorkflow: !existingWorkflow,
-			wasPublished: !!existingWorkflow?.activeVersionId,
-			isNowArchived: !!importedWorkflow.isArchived,
+			isLocalPublished: !!existingWorkflow?.activeVersionId,
+			isRemoteArchived: !!importedWorkflow.isArchived,
 			autoPublish,
 		});
 	}

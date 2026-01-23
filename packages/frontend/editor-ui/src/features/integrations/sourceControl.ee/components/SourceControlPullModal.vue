@@ -19,8 +19,8 @@ import {
 	type AutoPublishMode,
 	type SourceControlledFile,
 	SOURCE_CONTROL_FILE_TYPE,
-	shouldActivateWorkflow,
 } from '@n8n/api-types';
+import { shouldAutoPublishWorkflow } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import dateformat from 'dateformat';
@@ -179,7 +179,7 @@ const sortedWorkflows = computed(() => {
 		willBeAutoPublished:
 			file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
 			file.status !== 'deleted' &&
-			shouldActivateWorkflow({
+			shouldAutoPublishWorkflow({
 				isNewWorkflow: file.status === 'created',
 				wasPublished: file.wasPublished ?? false,
 				isNowArchived: file.isNowArchived ?? false,

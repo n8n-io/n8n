@@ -52,7 +52,6 @@ export { CommunityRegisteredRequestDto } from './license/community-registered-re
 
 export {
 	PullWorkFolderRequestDto,
-	type AutoPublishMode,
 	AUTO_PUBLISH_MODE,
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';

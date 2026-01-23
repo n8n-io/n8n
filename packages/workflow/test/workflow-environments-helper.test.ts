@@ -1,16 +1,15 @@
-import type { AutoPublishMode } from 'dto';
+import type { AutoPublishMode } from '../src/workflow-environments-helper';
+import { shouldAutoPublishWorkflow } from '../src/workflow-environments-helper';
 
-import { shouldActivateWorkflow } from '../auto-publish-helper';
-
-describe('shouldActivateWorkflow', () => {
+describe('shouldAutoPublishWorkflow', () => {
 	describe('with autoPublish: "none"', () => {
 		test.each([
 			{
 				name: 'new workflow',
 				params: {
 					isNewWorkflow: true,
-					wasPublished: false,
-					isNowArchived: false,
+					isLocalPublished: false,
+					isRemoteArchived: false,
 					autoPublish: 'none' as AutoPublishMode,
 				},
 				expected: false,
@@ -19,8 +18,8 @@ describe('shouldActivateWorkflow', () => {
 				name: 'existing published workflow',
 				params: {
 					isNewWorkflow: false,
-					wasPublished: true,
-					isNowArchived: false,
+					isLocalPublished: true,
+					isRemoteArchived: false,
 					autoPublish: 'none' as AutoPublishMode,
 				},
 				expected: false,
@@ -29,14 +28,14 @@ describe('shouldActivateWorkflow', () => {
 				name: 'existing unpublished workflow',
 				params: {
 					isNewWorkflow: false,
-					wasPublished: false,
-					isNowArchived: false,
+					isLocalPublished: false,
+					isRemoteArchived: false,
 					autoPublish: 'none' as AutoPublishMode,
 				},
 				expected: false,
 			},
 		])('should return false for $name', ({ params, expected }) => {
-			expect(shouldActivateWorkflow(params)).toBe(expected);
+			expect(shouldAutoPublishWorkflow(params)).toBe(expected);
 		});
 	});
 
@@ -46,8 +45,8 @@ describe('shouldActivateWorkflow', () => {
 				name: 'new workflow',
 				params: {
 					isNewWorkflow: true,
-					wasPublished: false,
-					isNowArchived: false,
+					isLocalPublished: false,
+					isRemoteArchived: false,
 					autoPublish: 'published' as AutoPublishMode,
 				},
 				expected: false,
@@ -56,8 +55,8 @@ describe('shouldActivateWorkflow', () => {
 				name: 'existing published workflow',
 				params: {
 					isNewWorkflow: false,
-					wasPublished: true,
-					isNowArchived: false,
+					isLocalPublished: true,
+					isRemoteArchived: false,
 					autoPublish: 'published' as AutoPublishMode,
 				},
 				expected: true,
@@ -66,14 +65,14 @@ describe('shouldActivateWorkflow', () => {
 				name: 'existing unpublished workflow',
 				params: {
 					isNewWorkflow: false,
-					wasPublished: false,
-					isNowArchived: false,
+					isLocalPublished: false,
+					isRemoteArchived: false,
 					autoPublish: 'published' as AutoPublishMode,
 				},
 				expected: false,
 			},
 		])('should return $expected for $name', ({ params, expected }) => {
-			expect(shouldActivateWorkflow(params)).toBe(expected);
+			expect(shouldAutoPublishWorkflow(params)).toBe(expected);
 		});
 	});
 
@@ -83,8 +82,8 @@ describe('shouldActivateWorkflow', () => {
 				name: 'new workflow',
 				params: {
 					isNewWorkflow: true,
-					wasPublished: false,
-					isNowArchived: false,
+					isLocalPublished: false,
+					isRemoteArchived: false,
 					autoPublish: 'all' as AutoPublishMode,
 				},
 				expected: true,
@@ -93,8 +92,8 @@ describe('shouldActivateWorkflow', () => {
 				name: 'existing published workflow',
 				params: {
 					isNewWorkflow: false,
-					wasPublished: true,
-					isNowArchived: false,
+					isLocalPublished: true,
+					isRemoteArchived: false,
 					autoPublish: 'all' as AutoPublishMode,
 				},
 				expected: true,
@@ -103,14 +102,14 @@ describe('shouldActivateWorkflow', () => {
 				name: 'existing unpublished workflow',
 				params: {
 					isNewWorkflow: false,
-					wasPublished: false,
-					isNowArchived: false,
+					isLocalPublished: false,
+					isRemoteArchived: false,
 					autoPublish: 'all' as AutoPublishMode,
 				},
 				expected: true,
 			},
 		])('should return $expected for $name', ({ params, expected }) => {
-			expect(shouldActivateWorkflow(params)).toBe(expected);
+			expect(shouldAutoPublishWorkflow(params)).toBe(expected);
 		});
 	});
 
@@ -123,18 +122,18 @@ describe('shouldActivateWorkflow', () => {
 			];
 
 			const workflowStates = [
-				{ isNewWorkflow: true, wasPublished: false },
-				{ isNewWorkflow: false, wasPublished: true },
-				{ isNewWorkflow: false, wasPublished: false },
+				{ isNewWorkflow: true, isLocalPublished: false },
+				{ isNewWorkflow: false, isLocalPublished: true },
+				{ isNewWorkflow: false, isLocalPublished: false },
 			];
 
 			autoPublishModes.forEach(({ autoPublish }) => {
-				workflowStates.forEach(({ isNewWorkflow, wasPublished }) => {
+				workflowStates.forEach(({ isNewWorkflow, isLocalPublished }) => {
 					expect(
-						shouldActivateWorkflow({
+						shouldAutoPublishWorkflow({
 							isNewWorkflow,
-							wasPublished,
-							isNowArchived: true,
+							isLocalPublished,
+							isRemoteArchived: true,
 							autoPublish,
 						}),
 					).toBe(false);
