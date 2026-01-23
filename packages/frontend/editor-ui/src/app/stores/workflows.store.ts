@@ -969,18 +969,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			activeWorkflows.value.push(targetWorkflowId);
 		}
 
-		const cachedWorkflow = workflowDocumentById.value[targetWorkflowId];
-		if (cachedWorkflow) {
-			cachedWorkflow.active = true;
-			cachedWorkflow.activeVersionId = activeVersion.versionId;
-			cachedWorkflow.activeVersion = activeVersion;
+		const targetWorkflow = workflowDocumentById.value[targetWorkflowId];
+		if (targetWorkflow) {
+			targetWorkflow.active = true;
+			targetWorkflow.activeVersionId = activeVersion.versionId;
+			targetWorkflow.activeVersion = activeVersion;
 		}
 
-		if (targetWorkflowId === workflowId.value) {
-			if (clearDirtyState) {
-				uiStore.markStateClean();
-			}
-			// Already updated via cachedWorkflow above since workflowDocumentById is unified
+		if (targetWorkflowId === workflowId.value && clearDirtyState) {
+			uiStore.markStateClean();
 		}
 	}
 
@@ -995,7 +992,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			targetWorkflow.activeVersionId = null;
 			targetWorkflow.activeVersion = null;
 		}
-		// Already updated via targetWorkflow above since workflowDocumentById is unified
 	}
 
 	async function fetchActiveWorkflows(): Promise<string[]> {
