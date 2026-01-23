@@ -1741,6 +1741,27 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
+export function isToolType(
+	nodeType?: string,
+	{ includeHitl = true }: { includeHitl?: boolean } = {},
+) {
+	if (!nodeType) return false;
+	const node = nodeType.split('.').pop();
+	if (node?.endsWith('Tool') || node?.startsWith('tool')) {
+		// don't check if it's hitl
+		if (includeHitl) {
+			return true;
+		}
+		return !isHitlToolType(nodeType);
+	}
+	return false;
+}
+
+export function isHitlToolType(nodeType?: string) {
+	if (!nodeType) return false;
+	return nodeType.endsWith('HitlTool');
+}
+
 export function isTool(
 	nodeTypeDescription: INodeTypeDescription,
 	parameters: INodeParameters,
@@ -1779,6 +1800,11 @@ export function makeNodeName(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ): string {
+	// If skipNameGeneration is set, skip resource/operation resolution
+	if (nodeTypeDescription.skipNameGeneration) {
+		return nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName;
+	}
+
 	const { action, operation, resource } = resolveResourceAndOperation(
 		nodeParameters,
 		nodeTypeDescription,
