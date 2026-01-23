@@ -24,7 +24,7 @@ import { createLogger } from '../harness/logger';
 const silentLogger = createLogger(false);
 
 jest.mock('langsmith/evaluation', () => ({
-	evaluate: jest.fn(),
+	evaluate: jest.fn().mockResolvedValue({ experimentName: 'test-experiment' }),
 }));
 
 jest.mock('langsmith/traceable', () => ({
@@ -674,6 +674,58 @@ describe('Runner - LangSmith Mode', () => {
 
 			const { runEvaluation } = await import('../harness/runner');
 			await expect(runEvaluation(config)).rejects.toThrow('No examples matched filters');
+		});
+
+		it('should include evaluatorAverages in summary', async () => {
+			const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'eval-test-'));
+			try {
+				const mockEvaluate = jest.mocked(langsmithEvaluate);
+				const lsClient = createMockLangsmithClient();
+
+				const evaluator1 = createMockEvaluator('pairwise', [
+					{ evaluator: 'pairwise', metric: 'score', score: 0.8, kind: 'score' },
+				]);
+				const evaluator2 = createMockEvaluator('programmatic', [
+					{ evaluator: 'programmatic', metric: 'overall', score: 0.9, kind: 'score' },
+				]);
+
+				// Mock evaluate to call the target function with test inputs
+				mockEvaluate.mockImplementationOnce(async (target, _options) => {
+					// Call the target to populate capturedResults
+					await callLangsmithTarget(target, { prompt: 'Test prompt 1' });
+					await callLangsmithTarget(target, { prompt: 'Test prompt 2' });
+					return { experimentName: 'test-experiment' } as Awaited<
+						ReturnType<typeof langsmithEvaluate>
+					>;
+				});
+
+				const config: RunConfig = {
+					mode: 'langsmith',
+					dataset: 'test-dataset',
+					generateWorkflow: jest.fn().mockResolvedValue(createMockWorkflow()),
+					evaluators: [evaluator1, evaluator2],
+					langsmithClient: lsClient,
+					langsmithOptions: {
+						experimentName: 'test',
+						repetitions: 1,
+						concurrency: 1,
+					},
+					outputDir: tempDir, // Enable artifact saving to capture results
+					logger: silentLogger,
+				};
+
+				const { runEvaluation } = await import('../harness/runner');
+				const summary = await runEvaluation(config);
+
+				// The summary should include evaluatorAverages computed from captured results
+				expect(summary.evaluatorAverages).toBeDefined();
+				expect(summary.evaluatorAverages).toEqual({
+					pairwise: 0.8,
+					programmatic: 0.9,
+				});
+			} finally {
+				fs.rmSync(tempDir, { recursive: true, force: true });
+			}
 		});
 	});
 });

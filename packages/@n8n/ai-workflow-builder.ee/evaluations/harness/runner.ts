@@ -25,7 +25,11 @@ import type {
 } from './harness-types.js';
 import type { EvalLogger } from './logger';
 import { createArtifactSaver, type ArtifactSaver } from './output';
-import { calculateWeightedScore } from './score-calculator';
+import {
+	calculateWeightedScore,
+	selectScoringItems,
+	calculateFiniteAverage,
+} from './score-calculator';
 import type { SimpleWorkflow } from '../../src/types/workflow.js';
 import { extractMessageContent } from '../langsmith/types';
 
@@ -520,6 +524,87 @@ function buildRunSummary(results: ExampleResult[]): RunSummary {
 	};
 }
 
+/**
+ * Compute average scores per evaluator from example results.
+ */
+function computeEvaluatorAverages(
+	results: ExampleResult[],
+	logger?: EvalLogger,
+): Record<string, number> {
+	const evaluatorStats: Record<string, { scores: number[] }> = {};
+
+	for (const result of results) {
+		// Group feedback by evaluator
+		const byEvaluator: Record<string, Feedback[]> = {};
+		for (const fb of result.feedback) {
+			if (!byEvaluator[fb.evaluator]) byEvaluator[fb.evaluator] = [];
+			byEvaluator[fb.evaluator].push(fb);
+		}
+
+		// Calculate per-evaluator average for this example
+		for (const [evaluator, items] of Object.entries(byEvaluator)) {
+			if (!evaluatorStats[evaluator]) {
+				evaluatorStats[evaluator] = { scores: [] };
+			}
+			const scoringItems = selectScoringItems(items);
+			const avg = calculateFiniteAverage(scoringItems);
+			evaluatorStats[evaluator].scores.push(avg);
+		}
+	}
+
+	// Compute overall average per evaluator
+	const evaluatorAverages: Record<string, number> = {};
+	for (const [name, stats] of Object.entries(evaluatorStats)) {
+		const avg = stats.scores.reduce((a, b) => a + b, 0) / stats.scores.length;
+		logger?.verbose(
+			`[computeEvaluatorAverages] Final avg for "${name}": ${stats.scores.join(', ')} -> ${avg}`,
+		);
+		evaluatorAverages[name] = avg;
+	}
+
+	logger?.verbose(`[computeEvaluatorAverages] Final result: ${JSON.stringify(evaluatorAverages)}`);
+	return evaluatorAverages;
+}
+
+interface LangsmithSummaryParams {
+	stats: {
+		total: number;
+		passed: number;
+		failed: number;
+		errors: number;
+		scoreSum: number;
+		durationSumMs: number;
+	};
+	langsmithData: {
+		experimentName?: string;
+		experimentId?: string;
+		datasetId?: string;
+	};
+	evaluatorAverages?: Record<string, number>;
+}
+
+function buildLangsmithSummary(params: LangsmithSummaryParams): RunSummary {
+	const { stats, langsmithData, evaluatorAverages } = params;
+	const { experimentName, experimentId, datasetId } = langsmithData;
+
+	const summary: RunSummary = {
+		totalExamples: stats.total,
+		passed: stats.passed,
+		failed: stats.failed,
+		errors: stats.errors,
+		averageScore: stats.total > 0 ? stats.scoreSum / stats.total : 0,
+		totalDurationMs: stats.durationSumMs,
+		evaluatorAverages,
+	};
+
+	// Add LangSmith IDs if available
+	if (experimentName && experimentId && datasetId) {
+		summary.langsmith = { experimentName, experimentId, datasetId };
+	}
+
+	return summary;
+}
+
 async function runLocal(config: LocalRunConfig): Promise<RunSummary> {
 	const {
 		dataset,
@@ -696,7 +781,11 @@ async function runLangsmithEvaluateAndFlush(params: {
 	lsClient: LangsmithRunConfig['langsmithClient'];
 	logger: EvalLogger;
 	targetCallCount: () => number;
-}): Promise<void> {
+}): Promise<{
+	experimentName?: string;
+	experimentId?: string;
+	datasetId?: string;
+}> {
 	const {
 		target,
 		effectiveData,
@@ -716,7 +805,7 @@ async function runLangsmithEvaluateAndFlush(params: {
 	const { runType, filterValue } = computeFilterMetadata(langsmithOptions.filters);
 
 	const evalStartTime = Date.now();
-	await evaluate(target, {
+	const experimentResults = await evaluate(target, {
 		data: effectiveData,
 		evaluators: [feedbackExtractor],
 		experimentPrefix: langsmithOptions.experimentName,
@@ -743,6 +832,30 @@ async function runLangsmithEvaluateAndFlush(params: {
 	const flushStartTime = Date.now();
 	await lsClient.awaitPendingTraceBatches();
 	logger.verbose(`Flush completed in ${((Date.now() - flushStartTime) / 1000).toFixed(1)}s`);
+
+	const experimentName = experimentResults.experimentName;
+	logger.info(`Experiment completed: ${experimentName}`);
+
+	let experimentId: string | undefined;
+	let datasetId: string | undefined;
+
+	try {
+		const manager = (
+			experimentResults as unknown as {
+				manager?: { _getExperiment?: () => { id: string }; datasetId?: Promise<string> };
+			}
+		).manager;
+		if (manager?._getExperiment) {
+			experimentId = manager._getExperiment().id;
+		}
+		if (manager?.datasetId) {
+			datasetId = await manager.datasetId;
+		}
+	} catch {
+		logger.verbose('Could not extract LangSmith IDs from experiment results');
+	}
+
+	return { experimentName, experimentId, datasetId };
 }
 
 /**
@@ -775,7 +888,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	};
 
 	const artifactSaver = createArtifactSaverIfRequested({ outputDir, logger });
-	const capturedResults: ExampleResult[] | null = artifactSaver ? [] : null;
+	const capturedResults: ExampleResult[] = [];
 
 	// Create traceable wrapper ONCE outside target function to avoid context leaking
 	// when running concurrent evaluations. Pass all parameters explicitly (no closures).
@@ -888,7 +1001,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			};
 
 			artifactSaver?.saveExample(result);
-			capturedResults?.push(result);
+			capturedResults.push(result);
 			lifecycle?.onExampleComplete?.(index, result);
 
 			return {
@@ -927,7 +1040,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			};
 
 			artifactSaver?.saveExample(result);
-			capturedResults?.push(result);
+			capturedResults.push(result);
 			lifecycle?.onExampleComplete?.(index, result);
 
 			return { workflow, prompt, feedback };
@@ -961,7 +1074,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 	totalExamples = Array.isArray(effectiveData) ? effectiveData.length : 0;
 
 	logLangsmithInputsSummary(logger, effectiveData);
-	await runLangsmithEvaluateAndFlush({
+	const { experimentName, experimentId, datasetId } = await runLangsmithEvaluateAndFlush({
 		target,
 		effectiveData,
 		feedbackExtractor,
@@ -971,17 +1084,17 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 		targetCallCount: () => targetCallCount,
 	});
 
-	// Return placeholder summary - LangSmith handles actual results
-	const summary: RunSummary = {
-		totalExamples: stats.total,
-		passed: stats.passed,
-		failed: stats.failed,
-		errors: stats.errors,
-		averageScore: stats.total > 0 ? stats.scoreSum / stats.total : 0,
-		totalDurationMs: stats.durationSumMs,
-	};
+	// Compute evaluator averages from captured results
 
-	if (artifactSaver && capturedResults) {
+	const evaluatorAverages = computeEvaluatorAverages(capturedResults, logger);
+
+	const summary: RunSummary = buildLangsmithSummary({
+		stats,
+		langsmithData: { experimentName, experimentId, datasetId },
+		evaluatorAverages,
+	});
+
+	if (artifactSaver) {
 		artifactSaver.saveSummary(summary, capturedResults);
 	}
 
