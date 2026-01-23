@@ -345,7 +345,7 @@ describe('ToolExecutor Node', () => {
 			expect(result.actions[0].actionType).toBe('ExecutionNodeAction');
 			expect(result.actions[0].input).toMatchObject({
 				tool: 'gated_tool',
-				toolParameters: JSON.stringify({ param: 'value' }),
+				toolParameters: { param: 'value' },
 				approval: 'pending',
 			});
 		});
