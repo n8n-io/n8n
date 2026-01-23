@@ -1027,6 +1027,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
+				used_dynamic_credentials: false,
 			});
 		});
 
