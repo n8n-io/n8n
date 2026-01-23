@@ -1,22 +1,20 @@
 <script setup lang="ts">
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import type { AgentIconOrEmoji, ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import { computed, onBeforeMount, ref, useCssModule, useTemplateRef, watch } from 'vue';
-import VueMarkdown from 'vue-markdown-render';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
-import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
+import { unflattenModel, splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
-import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
+import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 
 interface MergedAttachment {
 	isNew: boolean;
@@ -62,16 +60,22 @@ const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
 const i18n = useI18n();
-const styles = useCssModule();
 
 const editedText = ref('');
 const newFiles = ref<File[]>([]);
 const removedExistingIndices = ref<Set<number>>(new Set());
 const fileInputRef = useTemplateRef('fileInputRef');
-const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 const textareaRef = useTemplateRef('textarea');
-const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
 const messageContent = computed(() => message.content);
+
+const messageChunks = computed(() => {
+	// Handle error case with no content
+	if (message.status === 'error' && !message.content) {
+		return [i18n.baseText('chatHub.message.error.unknown')];
+	}
+
+	return splitMarkdownIntoChunks(message.content).filter((chunk) => chunk.trim() !== '');
+});
 
 const speech = useSpeechSynthesis(messageContent, {
 	pitch: 1,
@@ -110,12 +114,6 @@ const mergedAttachments = computed(() => [
 
 const hideMessage = computed(() => {
 	return message.status === 'success' && message.content === '';
-});
-
-const hoveredCodeBlockContent = computed(() => {
-	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
-
-	return idx ? markdown.codeBlockContents.value?.get(idx) : undefined;
 });
 
 function handleEdit() {
@@ -210,19 +208,6 @@ function handleReadAloud() {
 
 function handleSwitchAlternative(messageId: ChatMessageId) {
 	emit('switchAlternative', messageId);
-}
-
-function handleMouseMove(e: MouseEvent | FocusEvent) {
-	const container =
-		e.target instanceof HTMLElement || e.target instanceof SVGElement
-			? e.target.closest('pre')?.querySelector(`.${styles.codeBlockActions}`)
-			: null;
-
-	hoveredCodeBlockActions.value = container instanceof HTMLElement ? container : null;
-}
-
-function handleMouseLeave() {
-	hoveredCodeBlockActions.value = null;
 }
 
 // Watch for isEditing prop changes to initialize edit mode
@@ -331,12 +316,8 @@ onBeforeMount(() => {
 					</div>
 				</div>
 			</div>
-			<div v-else>
-				<div
-					:class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]"
-					@mousemove="handleMouseMove"
-					@mouseleave="handleMouseLeave"
-				>
+			<template v-else>
+				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
 					<div v-if="attachments.length > 0" :class="$style.attachments">
 						<ChatFile
 							v-for="(attachment, index) in attachments"
@@ -347,17 +328,12 @@ onBeforeMount(() => {
 						/>
 					</div>
 					<div v-if="message.type === 'human'">{{ message.content }}</div>
-					<VueMarkdown
+					<ChatMarkdownChunk
+						v-for="(chunk, index) in messageChunks"
 						v-else
-						:key="markdown.forceReRenderKey.value"
-						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-						:source="
-							message.status === 'error' && !message.content
-								? i18n.baseText('chatHub.message.error.unknown')
-								: message.content
-						"
-						:options="markdown.options"
-						:plugins="markdown.plugins.value"
+						:key="index"
+						:source="chunk"
+						:container-width="containerWidth"
 					/>
 				</div>
 				<ChatTypingIndicator v-if="message.status === 'running'" :class="$style.typingIndicator" />
@@ -373,14 +349,8 @@ onBeforeMount(() => {
 					@read-aloud="handleReadAloud"
 					@switchAlternative="handleSwitchAlternative"
 				/>
-			</div>
+			</template>
 		</div>
-		<Teleport
-			v-if="hoveredCodeBlockActions && hoveredCodeBlockContent"
-			:to="hoveredCodeBlockActions"
-		>
-			<CopyButton :content="hoveredCodeBlockContent" />
-		</Teleport>
 	</div>
 </template>
 
@@ -412,12 +382,14 @@ onBeforeMount(() => {
 .content {
 	display: flex;
 	flex-direction: column;
+	align-items: stretch;
 }
 
 .attachments {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
+	padding-bottom: var(--spacing--2xs);
 
 	.chatMessage & {
 		margin-top: var(--spacing--xs);
@@ -427,14 +399,13 @@ onBeforeMount(() => {
 .chatMessage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	position: relative;
-	max-width: fit-content;
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: 1.5;
 
 	.user & {
+		max-width: fit-content;
 		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
@@ -448,142 +419,6 @@ onBeforeMount(() => {
 	background-color: var(--color--danger--tint-4);
 	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
 	color: var(--color--danger);
-}
-
-.chatMessageMarkdown {
-	display: block;
-	box-sizing: border-box;
-
-	> *:first-child {
-		margin-top: 0;
-	}
-
-	> *:last-child {
-		margin-bottom: 0;
-	}
-
-	& * {
-		font-size: var(--font-size--sm);
-		line-height: 1.5;
-	}
-
-	p {
-		margin: var(--spacing--xs) 0;
-	}
-
-	h1,
-	h2,
-	h3,
-	h4,
-	h5,
-	h6 {
-		margin: 1em 0 0.8em;
-		line-height: var(--line-height--md);
-	}
-
-	// Override heading sizes to be smaller
-	h1 {
-		font-size: var(--font-size--xl);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h2 {
-		font-size: var(--font-size--lg);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h3 {
-		font-size: var(--font-size--md);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h4 {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h5 {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-	}
-
-	h6 {
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--bold);
-	}
-
-	pre {
-		width: 100%;
-		font-family: inherit;
-		font-size: inherit;
-		margin: 0;
-		white-space: pre-wrap;
-		box-sizing: border-box;
-		padding: var(--chat--spacing);
-		background: var(--chat--message--pre--background);
-		border-radius: var(--chat--border-radius);
-		position: relative;
-
-		code:last-of-type {
-			padding-bottom: 0;
-		}
-
-		& .codeBlockActions {
-			position: sticky;
-			top: var(--spacing--sm);
-			display: flex;
-			justify-content: flex-end;
-			height: 32px;
-			pointer-events: none;
-
-			& > * {
-				pointer-events: auto;
-			}
-		}
-
-		& .codeBlockActions ~ code {
-			margin-top: -32px;
-		}
-
-		& ~ pre {
-			margin-bottom: 1em;
-		}
-	}
-
-	.tableContainer {
-		width: var(--container--width);
-		padding-bottom: 1em;
-		padding-left: calc((var(--container--width) - 100%) / 2);
-		padding-right: var(--spacing--lg);
-		margin-left: calc(-1 * (var(--container--width) - 100%) / 2);
-		overflow-x: auto;
-	}
-
-	table {
-		width: fit-content;
-		border-bottom: var(--border);
-		border-top: var(--border);
-		border-width: 2px;
-		border-color: var(--color--text--shade-1);
-	}
-
-	th,
-	td {
-		padding: 0.25em 1em 0.25em 0;
-		min-width: 12em;
-	}
-
-	th {
-		border-bottom: var(--border);
-		border-color: var(--color--text--shade-1);
-	}
-
-	ul,
-	ol {
-		li {
-			margin-bottom: 0.125rem;
-		}
-	}
 }
 
 .actions {
