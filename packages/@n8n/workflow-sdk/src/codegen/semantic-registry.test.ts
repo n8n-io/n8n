@@ -98,8 +98,8 @@ describe('semantic-registry', () => {
 	});
 
 	describe('getCompositeType', () => {
-		it('returns ifBranch for IF node', () => {
-			expect(getCompositeType('n8n-nodes-base.if')).toBe('ifBranch');
+		it('returns ifElse for IF node', () => {
+			expect(getCompositeType('n8n-nodes-base.if')).toBe('ifElse');
 		});
 
 		it('returns switchCase for Switch node', () => {
@@ -128,7 +128,7 @@ describe('semantic-registry', () => {
 			expect(semantics).toBeDefined();
 			expect(semantics?.outputs).toEqual(['trueBranch', 'falseBranch']);
 			expect(semantics?.inputs).toEqual(['input']);
-			expect(semantics?.composite).toBe('ifBranch');
+			expect(semantics?.composite).toBe('ifElse');
 		});
 
 		it('returns full semantics for SplitInBatches node', () => {

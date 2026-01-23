@@ -463,20 +463,20 @@ export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 }
 
 /**
- * Configuration for IF branch
+ * Configuration for IF else
  */
-export interface IfBranchConfig extends NodeConfig {
+export interface IfElseConfig extends NodeConfig {
 	version?: number | string;
 	id?: string;
 }
 
 /**
- * IF branch composite
+ * IF else composite
  * trueBranch/falseBranch can be:
  * - single NodeInstance: one target
  * - array of NodeInstance: fan-out to multiple parallel targets
  */
-export interface IfBranchComposite {
+export interface IfElseComposite {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
 	readonly trueBranch:
 		| NodeInstance<string, string, unknown>
@@ -499,7 +499,12 @@ export interface SwitchCaseConfig extends NodeConfig {
  */
 export interface SwitchCaseComposite {
 	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	readonly cases: NodeInstance<string, string, unknown>[];
+	/** Cases can be null (no connection), single node, or array (fan-out to multiple parallel nodes) */
+	readonly cases: (
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[]
+		| null
+	)[];
 }
 
 // =============================================================================
@@ -554,11 +559,42 @@ export interface WorkflowBuilder {
 
 	then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
 	then<M extends MergeComposite>(merge: M): WorkflowBuilder;
-	then(ifBranch: IfBranchComposite): WorkflowBuilder;
+	then(ifElse: IfElseComposite): WorkflowBuilder;
 	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
+
+	/**
+	 * Create an explicit connection between two nodes with specific output and input indices.
+	 * This is useful for patterns where the same source node needs to connect to different
+	 * inputs of the same target node (e.g., SplitInBatches outputs to Merge inputs).
+	 *
+	 * @param source - The source node
+	 * @param sourceOutput - The output index of the source node (0-based)
+	 * @param target - The target node
+	 * @param targetInput - The input index of the target node (0-based)
+	 * @returns The workflow builder for chaining
+	 *
+	 * @example
+	 * ```typescript
+	 * const sib = node({ type: 'n8n-nodes-base.splitInBatches', ... });
+	 * const mergeNode = node({ type: 'n8n-nodes-base.merge', ... });
+	 *
+	 * workflow('id', 'Test')
+	 *   .add(sib)
+	 *   .add(mergeNode)
+	 *   .connect(sib, 0, mergeNode, 0)  // done → merge input 0
+	 *   .connect(sib, 1, mergeNode, 1)  // each → merge input 1
+	 *   .connect(mergeNode, 0, sib, 0); // merge → sib
+	 * ```
+	 */
+	connect(
+		source: NodeInstance<string, string, unknown>,
+		sourceOutput: number,
+		target: NodeInstance<string, string, unknown>,
+		targetInput: number,
+	): WorkflowBuilder;
 
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined;
 
@@ -629,13 +665,13 @@ export type MergeFn = <TBranches extends NodeInstance<string, string, unknown>[]
 	config?: MergeConfig,
 ) => MergeComposite<TBranches>;
 
-export type IfBranchFn = (
+export type IfElseFn = (
 	branches: [
 		NodeInstance<string, string, unknown> | null,
 		NodeInstance<string, string, unknown> | null,
 	],
-	config?: IfBranchConfig,
-) => IfBranchComposite;
+	config?: IfElseConfig,
+) => IfElseComposite;
 
 export type SwitchCaseFn = (
 	cases: NodeInstance<string, string, unknown>[],

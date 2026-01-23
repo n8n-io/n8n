@@ -134,9 +134,9 @@ describe('codegen comparison', () => {
 			console.log('\n=== NEW CODE (IF) ===');
 			console.log(newCode);
 
-			// Both should have ifBranch
-			expect(oldCode).toContain('ifBranch');
-			expect(newCode).toContain('ifBranch');
+			// Both should have ifElse
+			expect(oldCode).toContain('ifElse');
+			expect(newCode).toContain('ifElse');
 		});
 	});
 

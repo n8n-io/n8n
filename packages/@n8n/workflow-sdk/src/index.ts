@@ -39,8 +39,8 @@ export type {
 	MergeComposite,
 	MergeConfig,
 	MergeMode,
-	// IF branch types
-	IfBranchComposite,
+	// IF else types
+	IfElseComposite,
 	// Switch case types
 	SwitchCaseComposite,
 	// Sticky note types
@@ -65,8 +65,8 @@ export type {
 	PlaceholderFn,
 	NewCredentialFn,
 	MergeFn,
-	IfBranchFn,
-	IfBranchConfig,
+	IfElseFn,
+	IfElseConfig,
 	SwitchCaseFn,
 	SwitchCaseConfig,
 	SplitInBatchesFn,
@@ -110,16 +110,35 @@ export {
 } from './subnode-builders';
 
 // Merge composite
-export { merge } from './merge';
+export {
+	merge,
+	isMergeNamedInputSyntax,
+	type MergeInputSource,
+	type MergeNamedInputs,
+} from './merge';
 
-// IF branch composite
-export { ifBranch } from './if-branch';
+// IF else composite
+export {
+	ifElse,
+	isIfElseNamedSyntax,
+	type IfElseTarget,
+	type IfElseNamedInputs,
+} from './if-else';
 
 // Switch case composite
-export { switchCase } from './switch-case';
+export {
+	switchCase,
+	isSwitchCaseNamedSyntax,
+	type SwitchCaseTarget,
+	type SwitchCaseNamedInputs,
+} from './switch-case';
 
 // Split in batches
 export { splitInBatches } from './split-in-batches';
+
+// Fan-out / Fan-in helpers for explicit parallel connections
+export { fanOut, isFanOut, type FanOutTargets } from './fan-out';
+export { fanIn, isFanIn, type FanInSources } from './fan-in';
 
 // Expression utilities
 export {

@@ -1,0 +1,775 @@
+{
+	"name": "Split in batches",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "61f98810-521d-4bbe-b05d-b74b90a94f55",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [224, 0],
+			"id": "60d59256-bd91-4f03-ad71-26a29a69e5a8",
+			"name": "Loop Over Items"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"name": "Replace Me",
+			"typeVersion": 1,
+			"position": [448, 0],
+			"id": "5268f153-8b44-45a9-b005-f3a48a55ff16"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 224],
+			"id": "49a92380-e98b-45cb-aca3-a67ec941fca5",
+			"name": "Loop Over Items1"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 448],
+			"id": "785e0c29-01f5-4692-a2f8-e630039a9938",
+			"name": "Loop Over Items2"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 672],
+			"id": "b6947c41-c059-4003-a730-2067aee67187",
+			"name": "Loop Over Items3"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [224, 672],
+			"id": "474de657-76dd-48cf-8bd0-bef6091d670f",
+			"name": "Loop Over Items4"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 896],
+			"id": "f985c489-4f77-4389-847c-406b9dd387fd",
+			"name": "Loop Over Items5"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [224, 896],
+			"id": "31c19030-db2e-4ea7-b6e2-767f395e9adb",
+			"name": "Loop Over Items6"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [448, 1293],
+			"id": "e0397e0b-25ba-44a9-8b40-5a9eaef1ade4",
+			"name": "Loop Over Items7"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 1418],
+			"id": "cb2e108b-5697-466a-ae46-9972f7e1f3bc",
+			"name": "Loop Over Items8"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [224, 1120],
+			"id": "8aafa50e-6e15-4479-a335-bf3287bb7045",
+			"name": "Loop Over Items9"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 1642],
+			"id": "0970f9d7-e545-43fe-b15a-574a1ca6cf00",
+			"name": "Loop Over Items10"
+		},
+		{
+			"parameters": {
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"id": "b802903b-1d59-4597-bda4-5cafbe99dd82"
+									}
+								],
+								"combinator": "and"
+							}
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict",
+									"version": 3
+								},
+								"conditions": [
+									{
+										"id": "5e74aafa-c243-43bd-b58a-245e0c08e4ce",
+										"leftValue": "",
+										"rightValue": "",
+										"operator": {
+											"type": "string",
+											"operation": "equals",
+											"name": "filter.operator.equals"
+										}
+									}
+								],
+								"combinator": "and"
+							}
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.4,
+			"position": [224, 1642],
+			"id": "ab5f0457-5ec3-4345-ab95-942bbf657617",
+			"name": "Switch"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 1866],
+			"id": "e2c419e8-06af-4785-8935-d03cc2070466",
+			"name": "Loop Over Items11"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [224, 1866],
+			"id": "75241a1a-3828-4fe3-bed0-f93d4fa3341a",
+			"name": "Edit Fields",
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 2090],
+			"id": "9ac12141-76aa-4bc9-9ff8-12757cc095cb",
+			"name": "Loop Over Items12"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [224, 2090],
+			"id": "7f3f7608-c1b7-466c-9d2a-4933f179b93d",
+			"name": "Edit Fields1",
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 2314],
+			"id": "c6d4f2df-0ee2-4ee6-8c6b-ed0dad1e45a3",
+			"name": "Loop Over Items13"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [224, 2314],
+			"id": "71e0910e-351d-4c06-8fa8-5c507cc0c317",
+			"name": "Merge"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [0, 2538],
+			"id": "d83166ea-4046-4748-ac5b-c3b1970a3b67",
+			"name": "Loop Over Items14"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [224, 2538],
+			"id": "1e413b9c-eaf3-4eea-b630-613b4d7e5ad2",
+			"name": "Merge1"
+		},
+		{
+			"parameters": {
+				"options": {}
+			},
+			"type": "n8n-nodes-base.splitInBatches",
+			"typeVersion": 3,
+			"position": [224, 2762],
+			"id": "05d42c8d-6fbd-452e-ba32-7743db81a747",
+			"name": "Loop Over Items15"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "strict",
+						"version": 3
+					},
+					"conditions": [
+						{
+							"id": "a891f27b-b330-4364-917e-8b364394d6ed",
+							"leftValue": "",
+							"rightValue": "",
+							"operator": {
+								"type": "string",
+								"operation": "equals",
+								"name": "filter.operator.equals"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.if",
+			"typeVersion": 2.3,
+			"position": [0, 2762],
+			"id": "c24b4e92-6c6f-4971-872c-75a861e7cf62",
+			"name": "If"
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items": {
+			"main": [
+				[
+					{
+						"node": "Replace Me",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Replace Me",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Replace Me": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items1": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Loop Over Items1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items2": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items2",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items3": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items3",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items4": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items3",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items5": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items6",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items6": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items6",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items7": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items8",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items9",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items8",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items9",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items8": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items8",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items9",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items9",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items7",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items9": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items8",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items9",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items7",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Loop Over Items8",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items10": {
+			"main": [
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Switch",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Switch": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items10",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items10",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items11": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Edit Fields",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Loop Over Items11",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items12": {
+			"main": [
+				[],
+				[
+					{
+						"node": "Edit Fields1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields1": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items12",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items12",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items13": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Loop Over Items14": {
+			"main": [
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					}
+				],
+				[
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 1
+					},
+					{
+						"node": "Merge1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge1": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items14",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items13",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Loop Over Items15": {
+			"main": [
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "If",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"If": {
+			"main": [
+				[
+					{
+						"node": "Loop Over Items15",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Loop Over Items15",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1",
+		"binaryMode": "separate",
+		"availableInMCP": false
+	},
+	"versionId": "dc78370d-ce3b-4137-ac3a-875eabdc7c8f",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "27cc9b56542ad45b38725555722c50a1c3fee1670bbb67980558314ee08517c4"
+	},
+	"id": "qBgvIDacRxf3g3CLP2Wfs",
+	"tags": []
+}

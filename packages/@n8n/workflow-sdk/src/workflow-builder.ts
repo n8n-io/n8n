@@ -7,7 +7,7 @@ import type {
 	NodeInstance,
 	TriggerInstance,
 	MergeComposite,
-	IfBranchComposite,
+	IfElseComposite,
 	SwitchCaseComposite,
 	ConnectionTarget,
 	GraphNode,
@@ -17,6 +17,10 @@ import type {
 	NodeChain,
 } from './types/base';
 import { isNodeChain } from './types/base';
+import { isMergeNamedInputSyntax } from './merge';
+import { isSwitchCaseNamedSyntax, type SwitchCaseTarget } from './switch-case';
+import { isIfElseNamedSyntax, type IfElseTarget } from './if-else';
+import { isFanOut } from './fan-out';
 
 /**
  * Default horizontal spacing between nodes
@@ -123,10 +127,19 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				const composite = chainNode as unknown as SwitchCaseComposite;
 				pinData = this.collectPinDataFromNode(composite.switchNode, pinData);
 				for (const caseNode of composite.cases) {
-					pinData = this.collectPinDataFromNode(caseNode, pinData);
+					if (caseNode === null) continue;
+					if (Array.isArray(caseNode)) {
+						for (const branchNode of caseNode) {
+							if (branchNode !== null) {
+								pinData = this.collectPinDataFromNode(branchNode, pinData);
+							}
+						}
+					} else {
+						pinData = this.collectPinDataFromNode(caseNode, pinData);
+					}
 				}
-			} else if (this.isIfBranchComposite(chainNode)) {
-				const composite = chainNode as unknown as IfBranchComposite;
+			} else if (this.isIfElseComposite(chainNode)) {
+				const composite = chainNode as unknown as IfElseComposite;
 				pinData = this.collectPinDataFromNode(composite.ifNode, pinData);
 				// Handle array branches (fan-out within branch)
 				if (composite.trueBranch) {
@@ -148,7 +161,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					}
 				}
 			} else if (this.isMergeComposite(chainNode)) {
-				const composite = chainNode as unknown as MergeComposite;
+				const composite = chainNode as unknown as MergeComposite<
+					NodeInstance<string, string, unknown>[]
+				>;
 				pinData = this.collectPinDataFromNode(composite.mergeNode, pinData);
 				for (const branch of composite.branches as NodeInstance<string, string, unknown>[]) {
 					pinData = this.collectPinDataFromNode(branch, pinData);
@@ -203,21 +218,37 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			});
 		}
 
-		if (this.isIfBranchComposite(node)) {
-			this.addIfBranchNodes(newNodes, node as unknown as IfBranchComposite);
+		if (this.isIfElseComposite(node)) {
+			this.addIfElseNodes(newNodes, node as unknown as IfElseComposite);
 			return this.clone({
 				nodes: newNodes,
-				currentNode: (node as unknown as IfBranchComposite).ifNode.name,
+				currentNode: (node as unknown as IfElseComposite).ifNode.name,
 				currentOutput: 0,
 				pinData: this._pinData,
 			});
 		}
 
 		if (this.isMergeComposite(node)) {
-			this.addMergeNodes(newNodes, node as unknown as MergeComposite);
+			this.addMergeNodes(
+				newNodes,
+				node as unknown as MergeComposite<NodeInstance<string, string, unknown>[]>,
+			);
 			return this.clone({
 				nodes: newNodes,
-				currentNode: (node as unknown as MergeComposite).mergeNode.name,
+				currentNode: (node as unknown as MergeComposite<NodeInstance<string, string, unknown>[]>)
+					.mergeNode.name,
+				currentOutput: 0,
+				pinData: this._pinData,
+			});
+		}
+
+		// Check if this is a SplitInBatchesBuilder (for disconnected splitInBatches roots)
+		if (this.isSplitInBatchesBuilder(node)) {
+			this.addSplitInBatchesChainNodes(newNodes, node);
+			const builder = this.extractSplitInBatchesBuilder(node);
+			return this.clone({
+				nodes: newNodes,
+				currentNode: builder.sibNode.name,
 				currentOutput: 0,
 				pinData: this._pinData,
 			});
@@ -230,10 +261,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				// Check if chainNode is a SwitchCaseComposite (can happen via chain.then(switchCase(...)))
 				if (this.isSwitchCaseComposite(chainNode)) {
 					this.addSwitchCaseNodes(newNodes, chainNode as unknown as SwitchCaseComposite);
-				} else if (this.isIfBranchComposite(chainNode)) {
-					this.addIfBranchNodes(newNodes, chainNode as unknown as IfBranchComposite);
+				} else if (this.isIfElseComposite(chainNode)) {
+					this.addIfElseNodes(newNodes, chainNode as unknown as IfElseComposite);
 				} else if (this.isMergeComposite(chainNode)) {
-					this.addMergeNodes(newNodes, chainNode as unknown as MergeComposite);
+					this.addMergeNodes(
+						newNodes,
+						chainNode as unknown as MergeComposite<NodeInstance<string, string, unknown>[]>,
+					);
 				} else if (this.isSplitInBatchesBuilder(chainNode)) {
 					// Handle SplitInBatchesBuilder nested in chain (via node.then(splitInBatches(...)))
 					this.addSplitInBatchesChainNodes(newNodes, chainNode);
@@ -269,7 +303,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrComposite: N | N[] | MergeComposite | IfBranchComposite | SwitchCaseComposite | NodeChain,
+		nodeOrComposite: N | N[] | MergeComposite | IfElseComposite | SwitchCaseComposite | NodeChain,
 	): WorkflowBuilder {
 		// Handle array of nodes (fan-out pattern)
 		if (Array.isArray(nodeOrComposite)) {
@@ -284,12 +318,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Handle merge composite
 		if ('mergeNode' in nodeOrComposite && 'branches' in nodeOrComposite) {
-			return this.handleMergeComposite(nodeOrComposite as MergeComposite);
+			return this.handleMergeComposite(
+				nodeOrComposite as MergeComposite<NodeInstance<string, string, unknown>[]>,
+			);
 		}
 
 		// Handle IF branch composite
 		if ('ifNode' in nodeOrComposite && 'trueBranch' in nodeOrComposite) {
-			return this.handleIfBranchComposite(nodeOrComposite as IfBranchComposite);
+			return this.handleIfElseComposite(nodeOrComposite as IfElseComposite);
 		}
 
 		// Handle Switch case composite
@@ -339,6 +375,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Add the new node and its subnodes
 		this.addNodeWithSubnodes(newNodes, node);
 
+		// Add connection target nodes (e.g., onError handlers)
+		this.addSingleNodeConnectionTargets(newNodes, node);
+
 		// Connect from current node if exists
 		if (this._currentNode) {
 			const currentGraphNode = newNodes.get(this._currentNode);
@@ -367,6 +406,47 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	settings(settings: WorkflowSettings): WorkflowBuilder {
 		return this.clone({
 			settings: { ...this._settings, ...settings },
+		});
+	}
+
+	connect(
+		source: NodeInstance<string, string, unknown>,
+		sourceOutput: number,
+		target: NodeInstance<string, string, unknown>,
+		targetInput: number,
+	): WorkflowBuilder {
+		const newNodes = new Map(this._nodes);
+
+		// Ensure both nodes exist in the graph
+		if (!newNodes.has(source.name)) {
+			this.addNodeWithSubnodes(newNodes, source);
+		}
+		if (!newNodes.has(target.name)) {
+			this.addNodeWithSubnodes(newNodes, target);
+		}
+
+		// Add the explicit connection from source to target
+		const sourceNode = newNodes.get(source.name);
+		if (sourceNode) {
+			const mainConns = sourceNode.connections.get('main') || new Map<number, ConnectionTarget[]>();
+			const outputConns = mainConns.get(sourceOutput) || [];
+
+			// Check if connection already exists
+			const alreadyExists = outputConns.some(
+				(c: ConnectionTarget) => c.node === target.name && c.index === targetInput,
+			);
+
+			if (!alreadyExists) {
+				outputConns.push({ node: target.name, type: 'main', index: targetInput });
+				mainConns.set(sourceOutput, outputConns);
+				sourceNode.connections.set('main', mainConns);
+			}
+		}
+
+		return this.clone({
+			nodes: newNodes,
+			currentNode: this._currentNode,
+			currentOutput: this._currentOutput,
 		});
 	}
 
@@ -613,7 +693,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 	/**
 	 * Resolve the target node name from a connection target.
-	 * Handles NodeInstance, NodeChain, and composites (SwitchCaseComposite, IfBranchComposite, MergeComposite).
+	 * Handles NodeInstance, NodeChain, and composites (SwitchCaseComposite, IfElseComposite, MergeComposite).
 	 */
 	private resolveTargetNodeName(target: unknown): string | undefined {
 		if (target === null || typeof target !== 'object') return undefined;
@@ -628,9 +708,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return (target as SwitchCaseComposite).switchNode.name;
 		}
 
-		// Check for IfBranchComposite
-		if (this.isIfBranchComposite(target)) {
-			return (target as IfBranchComposite).ifNode.name;
+		// Check for IfElseComposite
+		if (this.isIfElseComposite(target)) {
+			return (target as IfElseComposite).ifNode.name;
 		}
 
 		// Check for MergeComposite
@@ -649,9 +729,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Check if value is an IfBranchComposite
+	 * Check if value is an IfElseComposite
 	 */
-	private isIfBranchComposite(value: unknown): boolean {
+	private isIfElseComposite(value: unknown): boolean {
 		if (value === null || typeof value !== 'object') return false;
 		return 'ifNode' in value && 'trueBranch' in value;
 	}
@@ -673,11 +753,48 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		for (const { target } of connections) {
 			// Skip if target is a composite (already handled elsewhere)
 			if (this.isSwitchCaseComposite(target)) continue;
-			if (this.isIfBranchComposite(target)) continue;
+			if (this.isIfElseComposite(target)) continue;
 			if (this.isMergeComposite(target)) continue;
 			if (this.isSplitInBatchesBuilder(target)) continue;
-			// Skip NodeChains - their nodes are already added via allNodes
-			if (isNodeChain(target)) continue;
+
+			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
+			if (isNodeChain(target)) {
+				this.addBranchToGraph(nodes, target as NodeChain);
+				continue;
+			}
+
+			// Add the target node if not already in the map
+			const targetNode = target as NodeInstance<string, string, unknown>;
+			if (!nodes.has(targetNode.name)) {
+				this.addNodeWithSubnodes(nodes, targetNode);
+			}
+		}
+	}
+
+	/**
+	 * Add target nodes from a single node's connections (e.g., onError handlers).
+	 * This handles connection targets that aren't part of a chain.
+	 */
+	private addSingleNodeConnectionTargets(
+		nodes: Map<string, GraphNode>,
+		nodeInstance: NodeInstance<string, string, unknown>,
+	): void {
+		// Check if node has getConnections method (some composites don't)
+		if (typeof nodeInstance.getConnections !== 'function') return;
+
+		const connections = nodeInstance.getConnections();
+		for (const { target } of connections) {
+			// Skip if target is a composite (already handled elsewhere)
+			if (this.isSwitchCaseComposite(target)) continue;
+			if (this.isIfElseComposite(target)) continue;
+			if (this.isMergeComposite(target)) continue;
+			if (this.isSplitInBatchesBuilder(target)) continue;
+
+			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
+			if (isNodeChain(target)) {
+				this.addBranchToGraph(nodes, target as NodeChain);
+				continue;
+			}
 
 			// Add the target node if not already in the map
 			const targetNode = target as NodeInstance<string, string, unknown>;
@@ -696,9 +813,29 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Add all case nodes and build connections from switch to each case
 		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
+		// Skip null cases (unconnected outputs)
+		// Handle arrays for fan-out (one output to multiple parallel nodes)
 		composite.cases.forEach((caseNode, index) => {
-			const caseHeadName = this.addBranchToGraph(nodes, caseNode);
-			switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+			if (caseNode === null) {
+				return; // Skip null cases - no connection for this output
+			}
+
+			// Check if caseNode is an array (fan-out pattern)
+			if (Array.isArray(caseNode)) {
+				// Fan-out: multiple parallel targets from this case
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of caseNode) {
+					if (branchNode === null) continue;
+					const branchHead = this.addBranchToGraph(nodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
+				}
+				if (targets.length > 0) {
+					switchMainConns.set(index, targets);
+				}
+			} else {
+				const caseHeadName = this.addBranchToGraph(nodes, caseNode);
+				switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+			}
 		});
 
 		// Add the switch node with connections to cases
@@ -711,10 +848,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Add nodes from an IfBranchComposite to the nodes map
+	 * Add nodes from an IfElseComposite to the nodes map
 	 * Supports array branches for fan-out patterns (one output to multiple parallel nodes)
 	 */
-	private addIfBranchNodes(nodes: Map<string, GraphNode>, composite: IfBranchComposite): void {
+	private addIfElseNodes(nodes: Map<string, GraphNode>, composite: IfElseComposite): void {
 		// Build the IF node connections to its branches
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
@@ -760,7 +897,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	/**
 	 * Add nodes from a MergeComposite to the nodes map
 	 */
-	private addMergeNodes(nodes: Map<string, GraphNode>, composite: MergeComposite): void {
+	private addMergeNodes(
+		nodes: Map<string, GraphNode>,
+		composite: MergeComposite<NodeInstance<string, string, unknown>[]>,
+	): void {
 		// Add the merge node first (without connections, branches connect TO it)
 		const mergeConns = new Map<string, Map<number, ConnectionTarget[]>>();
 		mergeConns.set('main', new Map());
@@ -769,13 +909,46 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			connections: mergeConns,
 		});
 
+		// Handle named input syntax: merge(node, { input0, input1, ... })
+		if (isMergeNamedInputSyntax(composite)) {
+			const namedMerge = composite as MergeComposite & {
+				inputMapping: Map<number, NodeInstance<string, string, unknown>[]>;
+				_allInputNodes: NodeInstance<string, string, unknown>[];
+			};
+
+			// Add all input nodes
+			for (const inputNode of namedMerge._allInputNodes) {
+				this.addBranchToGraph(nodes, inputNode);
+			}
+
+			// Connect tail nodes to merge at their specified input indices
+			for (const [inputIndex, tailNodes] of namedMerge.inputMapping) {
+				for (const tailNode of tailNodes) {
+					const tailGraphNode = nodes.get(tailNode.name);
+					if (tailGraphNode) {
+						const tailMainConns = tailGraphNode.connections.get('main') || new Map();
+						const existingConns = tailMainConns.get(0) || [];
+						tailMainConns.set(0, [
+							...existingConns,
+							{ node: composite.mergeNode.name, type: 'main', index: inputIndex },
+						]);
+						tailGraphNode.connections.set('main', tailMainConns);
+					}
+				}
+			}
+			return;
+		}
+
+		// Original behavior: merge([branch1, branch2], config)
 		// Add all branch nodes with connections TO the merge node at different input indices
 		// Branches can be NodeInstance, NodeChain, or nested MergeComposite
 		const branches = composite.branches;
 		branches.forEach((branch, index) => {
 			// Handle nested MergeComposite (from merge([merge([...]), ...]) pattern)
 			if (this.isMergeComposite(branch)) {
-				const nestedComposite = branch as unknown as MergeComposite;
+				const nestedComposite = branch as unknown as MergeComposite<
+					NodeInstance<string, string, unknown>[]
+				>;
 				// Recursively add the nested merge's nodes
 				this.addMergeNodes(nodes, nestedComposite);
 
@@ -1203,16 +1376,36 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Add the head node and connect from current workflow position
 		const headNodeName = this.addBranchToGraph(newNodes, chain);
 
+		// Check if the first element in allNodes is a merge composite with named input syntax
+		// If so, we need to fan out to the input heads instead of connecting to the merge node directly
+		const firstNode = chain.allNodes[0];
+		const firstNodeAsMerge = this.isMergeComposite(firstNode)
+			? (firstNode as unknown as MergeComposite<NodeInstance<string, string, unknown>[]>)
+			: null;
+		const hasMergeNamedInputs = firstNodeAsMerge && isMergeNamedInputSyntax(firstNodeAsMerge);
+
 		// Connect from current workflow node to the head of the chain
 		if (this._currentNode) {
 			const currentGraphNode = newNodes.get(this._currentNode);
 			if (currentGraphNode) {
 				const mainConns = currentGraphNode.connections.get('main') || new Map();
 				const outputConnections = mainConns.get(this._currentOutput) || [];
-				mainConns.set(this._currentOutput, [
-					...outputConnections,
-					{ node: headNodeName, type: 'main', index: 0 },
-				]);
+
+				if (hasMergeNamedInputs && firstNodeAsMerge) {
+					// Fan out to all input heads for named input merge syntax
+					for (const headNode of firstNodeAsMerge.branches) {
+						const inputHeadName = isNodeChain(headNode) ? headNode.head.name : headNode.name;
+						// Avoid duplicates
+						if (!outputConnections.some((c: ConnectionTarget) => c.node === inputHeadName)) {
+							outputConnections.push({ node: inputHeadName, type: 'main', index: 0 });
+						}
+					}
+				} else {
+					// Standard behavior: connect to chain head
+					outputConnections.push({ node: headNodeName, type: 'main', index: 0 });
+				}
+
+				mainConns.set(this._currentOutput, outputConnections);
 				currentGraphNode.connections.set('main', mainConns);
 			}
 		}
@@ -1234,8 +1427,75 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	/**
 	 * Handle merge composite - creates parallel branches that merge
 	 */
-	private handleMergeComposite(mergeComposite: MergeComposite): WorkflowBuilder {
+	private handleMergeComposite(
+		mergeComposite: MergeComposite<NodeInstance<string, string, unknown>[]>,
+	): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
+
+		// Handle named input syntax: merge(node, { input0, input1, ... })
+		if (isMergeNamedInputSyntax(mergeComposite)) {
+			const namedMerge = mergeComposite as MergeComposite & {
+				inputMapping: Map<number, NodeInstance<string, string, unknown>[]>;
+				_allInputNodes: NodeInstance<string, string, unknown>[];
+			};
+
+			// Add all input nodes first
+			for (const inputNode of namedMerge._allInputNodes) {
+				this.addBranchToGraph(newNodes, inputNode);
+			}
+
+			// Connect from current node to all input heads (entry points)
+			if (this._currentNode) {
+				const currentGraphNode = newNodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const mainConns = currentGraphNode.connections.get('main') || new Map();
+					const outputConnections = mainConns.get(this._currentOutput) || [];
+
+					// Get unique head nodes from branches array
+					for (const headNode of mergeComposite.branches) {
+						const headName = isNodeChain(headNode) ? headNode.head.name : headNode.name;
+						// Avoid duplicates
+						if (!outputConnections.some((c: ConnectionTarget) => c.node === headName)) {
+							outputConnections.push({ node: headName, type: 'main', index: 0 });
+						}
+					}
+					mainConns.set(this._currentOutput, outputConnections);
+					currentGraphNode.connections.set('main', mainConns);
+				}
+			}
+
+			// Connect tail nodes to merge at their specified input indices
+			for (const [inputIndex, tailNodes] of namedMerge.inputMapping) {
+				for (const tailNode of tailNodes) {
+					const tailGraphNode = newNodes.get(tailNode.name);
+					if (tailGraphNode) {
+						const tailMainConns = tailGraphNode.connections.get('main') || new Map();
+						const existingConns = tailMainConns.get(0) || [];
+						tailMainConns.set(0, [
+							...existingConns,
+							{ node: mergeComposite.mergeNode.name, type: 'main', index: inputIndex },
+						]);
+						tailGraphNode.connections.set('main', tailMainConns);
+					}
+				}
+			}
+
+			// Add the merge node
+			const mergeConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			mergeConns.set('main', new Map());
+			newNodes.set(mergeComposite.mergeNode.name, {
+				instance: mergeComposite.mergeNode,
+				connections: mergeConns,
+			});
+
+			return this.clone({
+				nodes: newNodes,
+				currentNode: mergeComposite.mergeNode.name,
+				currentOutput: 0,
+			});
+		}
+
+		// Original behavior: merge([branch1, branch2], config)
 		const branches = mergeComposite.branches as NodeInstance<string, string, unknown>[];
 
 		// Add all branch nodes (with subnodes) with correct input index connections
@@ -1305,13 +1565,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					continue;
 				}
 
-				// Check if chainNode is a composite (can happen via chain.then(ifBranch(...)))
+				// Check if chainNode is a composite (can happen via chain.then(ifElse(...)))
 				if (this.isSwitchCaseComposite(chainNode)) {
 					this.addSwitchCaseNodes(nodes, chainNode as unknown as SwitchCaseComposite);
-				} else if (this.isIfBranchComposite(chainNode)) {
-					this.addIfBranchNodes(nodes, chainNode as unknown as IfBranchComposite);
+				} else if (this.isIfElseComposite(chainNode)) {
+					this.addIfElseNodes(nodes, chainNode as unknown as IfElseComposite);
 				} else if (this.isMergeComposite(chainNode)) {
-					this.addMergeNodes(nodes, chainNode as unknown as MergeComposite);
+					this.addMergeNodes(
+						nodes,
+						chainNode as unknown as MergeComposite<NodeInstance<string, string, unknown>[]>,
+					);
 				} else if (this.isSplitInBatchesBuilder(chainNode)) {
 					// Handle EachChainImpl/DoneChainImpl that got chained via node.then(splitInBatches()...)
 					this.addSplitInBatchesChainNodes(nodes, chainNode);
@@ -1341,7 +1604,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						// SplitInBatchesBuilder doesn't have getConnections - skip
 						continue;
 					} else if (this.isMergeComposite(chainNode)) {
-						const composite = chainNode as unknown as MergeComposite;
+						const composite = chainNode as unknown as MergeComposite<
+							NodeInstance<string, string, unknown>[]
+						>;
 						nodeToCheck = composite.mergeNode;
 						nodeName = composite.mergeNode.name;
 					} else if (typeof chainNode.getConnections === 'function') {
@@ -1353,6 +1618,21 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 						const nodeConns = nodeToCheck.getConnections();
 						if (nodeConns.some((c) => c.target === target && c.outputIndex === outputIndex)) {
 							// This chain node declared this connection
+							// First, ensure target nodes are added to the graph (e.g., error handler chains)
+							// Only add if not already present to avoid infinite recursion
+							if (isNodeChain(target)) {
+								const chainTarget = target as NodeChain;
+								// Check if head node is already in the map to avoid infinite recursion
+								if (!nodes.has(chainTarget.head.name)) {
+									this.addBranchToGraph(nodes, chainTarget);
+								}
+							} else if (
+								typeof (target as NodeInstance<string, string, unknown>).name === 'string' &&
+								!nodes.has((target as NodeInstance<string, string, unknown>).name)
+							) {
+								this.addNodeWithSubnodes(nodes, target as NodeInstance<string, string, unknown>);
+							}
+
 							const sourceGraphNode = nodes.get(nodeName);
 							if (sourceGraphNode) {
 								const targetName = this.resolveTargetNodeName(target);
@@ -1379,14 +1659,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				this.addSwitchCaseNodes(nodes, branch as unknown as SwitchCaseComposite);
 				// Return the switch node name (the head of this composite)
 				return (branch as unknown as SwitchCaseComposite).switchNode.name;
-			} else if (this.isIfBranchComposite(branch)) {
-				this.addIfBranchNodes(nodes, branch as unknown as IfBranchComposite);
+			} else if (this.isIfElseComposite(branch)) {
+				this.addIfElseNodes(nodes, branch as unknown as IfElseComposite);
 				// Return the IF node name (the head of this composite)
-				return (branch as unknown as IfBranchComposite).ifNode.name;
+				return (branch as unknown as IfElseComposite).ifNode.name;
 			} else if (this.isMergeComposite(branch)) {
-				this.addMergeNodes(nodes, branch as unknown as MergeComposite);
+				this.addMergeNodes(
+					nodes,
+					branch as unknown as MergeComposite<NodeInstance<string, string, unknown>[]>,
+				);
 				// Return the merge node name (the head of this composite)
-				return (branch as unknown as MergeComposite).mergeNode.name;
+				return (branch as unknown as MergeComposite<NodeInstance<string, string, unknown>[]>)
+					.mergeNode.name;
 			} else if (this.isSplitInBatchesBuilder(branch)) {
 				this.addSplitInBatchesChainNodes(nodes, branch);
 				// Return the split in batches node name
@@ -1406,10 +1690,87 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Handles NodeChain branches (nodes with .then() chains)
 	 * Supports array branches for fan-out patterns (one output to multiple parallel nodes)
 	 */
-	private handleIfBranchComposite(composite: IfBranchComposite): WorkflowBuilder {
+	private handleIfElseComposite(composite: IfElseComposite): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
+		// Handle named syntax: ifElse(ifNode, { true, false })
+		if (isIfElseNamedSyntax(composite)) {
+			const namedComposite = composite as IfElseComposite & {
+				_trueBranchTarget: IfElseTarget;
+				_falseBranchTarget: IfElseTarget;
+				_allBranchNodes: NodeInstance<string, string, unknown>[];
+			};
+
+			// Add all branch nodes
+			for (const branchNode of namedComposite._allBranchNodes) {
+				this.addBranchToGraph(newNodes, branchNode);
+			}
+
+			// Connect IF to true branch at output 0
+			const trueBranch = namedComposite._trueBranchTarget;
+			if (trueBranch !== null) {
+				if (isFanOut(trueBranch)) {
+					// Fan-out: multiple targets from true branch
+					const targets: ConnectionTarget[] = [];
+					for (const t of trueBranch.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					ifMainConns.set(0, targets);
+				} else {
+					// Single target
+					const targetName = isNodeChain(trueBranch) ? trueBranch.head.name : trueBranch.name;
+					ifMainConns.set(0, [{ node: targetName, type: 'main', index: 0 }]);
+				}
+			}
+
+			// Connect IF to false branch at output 1
+			const falseBranch = namedComposite._falseBranchTarget;
+			if (falseBranch !== null) {
+				if (isFanOut(falseBranch)) {
+					// Fan-out: multiple targets from false branch
+					const targets: ConnectionTarget[] = [];
+					for (const t of falseBranch.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					ifMainConns.set(1, targets);
+				} else {
+					// Single target
+					const targetName = isNodeChain(falseBranch) ? falseBranch.head.name : falseBranch.name;
+					ifMainConns.set(1, [{ node: targetName, type: 'main', index: 0 }]);
+				}
+			}
+
+			// Add IF node with connections to present branches
+			const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			ifConns.set('main', ifMainConns);
+			newNodes.set(composite.ifNode.name, {
+				instance: composite.ifNode,
+				connections: ifConns,
+			});
+
+			// Connect current node to IF node
+			if (this._currentNode) {
+				const currentGraphNode = newNodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const mainConns = currentGraphNode.connections.get('main') || new Map();
+					const outputConns = mainConns.get(this._currentOutput) || [];
+					outputConns.push({ node: composite.ifNode.name, type: 'main', index: 0 });
+					mainConns.set(this._currentOutput, outputConns);
+					currentGraphNode.connections.set('main', mainConns);
+				}
+			}
+
+			return this.clone({
+				nodes: newNodes,
+				currentNode: composite.ifNode.name,
+				currentOutput: 0,
+			});
+		}
+
+		// Original behavior: ifElse([true, false], config)
 		// Add true branch (may be NodeChain with downstream nodes, or array for fan-out)
 		if (composite.trueBranch) {
 			if (Array.isArray(composite.trueBranch)) {
@@ -1478,11 +1839,89 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
 		const mainConns = new Map<number, ConnectionTarget[]>();
 
+		// Handle named syntax: switchCase(switchNode, { case0, case1, ... })
+		if (isSwitchCaseNamedSyntax(composite)) {
+			const namedComposite = composite as SwitchCaseComposite & {
+				caseMapping: Map<number, SwitchCaseTarget>;
+				_allCaseNodes: NodeInstance<string, string, unknown>[];
+			};
+
+			// Add all case nodes
+			for (const caseNode of namedComposite._allCaseNodes) {
+				this.addBranchToGraph(newNodes, caseNode);
+			}
+
+			// Connect switch to each case at the correct output index
+			for (const [caseIndex, target] of namedComposite.caseMapping) {
+				if (target === null) continue; // Skip null cases
+
+				if (isFanOut(target)) {
+					// Fan-out: multiple targets from one case
+					const targets: ConnectionTarget[] = [];
+					for (const t of target.targets) {
+						const targetName = isNodeChain(t) ? t.head.name : t.name;
+						targets.push({ node: targetName, type: 'main', index: 0 });
+					}
+					mainConns.set(caseIndex, targets);
+				} else {
+					// Single target
+					const targetName = isNodeChain(target) ? target.head.name : target.name;
+					mainConns.set(caseIndex, [{ node: targetName, type: 'main', index: 0 }]);
+				}
+			}
+
+			// Add Switch node with all case connections
+			switchConns.set('main', mainConns);
+			newNodes.set(composite.switchNode.name, {
+				instance: composite.switchNode,
+				connections: switchConns,
+			});
+
+			// Connect current node to Switch node
+			if (this._currentNode) {
+				const currentGraphNode = newNodes.get(this._currentNode);
+				if (currentGraphNode) {
+					const currMainConns = currentGraphNode.connections.get('main') || new Map();
+					const outputConns = currMainConns.get(this._currentOutput) || [];
+					outputConns.push({ node: composite.switchNode.name, type: 'main', index: 0 });
+					currMainConns.set(this._currentOutput, outputConns);
+					currentGraphNode.connections.set('main', currMainConns);
+				}
+			}
+
+			return this.clone({
+				nodes: newNodes,
+				currentNode: composite.switchNode.name,
+				currentOutput: 0,
+			});
+		}
+
+		// Original behavior: switchCase([case0, case1, ...], config)
 		// Add each case node (with subnodes) and connect from switch at correct output index
 		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
+		// Skip null cases (unconnected outputs)
+		// Handle arrays for fan-out (one output to multiple parallel nodes)
 		composite.cases.forEach((caseNode, index) => {
-			const caseHeadName = this.addBranchToGraph(newNodes, caseNode);
-			mainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+			if (caseNode === null) {
+				return; // Skip null cases - no connection for this output
+			}
+
+			// Check if caseNode is an array (fan-out pattern)
+			if (Array.isArray(caseNode)) {
+				// Fan-out: multiple parallel targets from this case
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of caseNode) {
+					if (branchNode === null) continue;
+					const branchHead = this.addBranchToGraph(newNodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
+				}
+				if (targets.length > 0) {
+					mainConns.set(index, targets);
+				}
+			} else {
+				const caseHeadName = this.addBranchToGraph(newNodes, caseNode);
+				mainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
+			}
 		});
 
 		// Add Switch node with all case connections

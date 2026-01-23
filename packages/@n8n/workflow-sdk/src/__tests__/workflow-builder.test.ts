@@ -2,7 +2,7 @@ import { workflow } from '../workflow-builder';
 import { node, trigger, sticky } from '../node-builder';
 import { languageModel, memory, tool } from '../subnode-builders';
 import { merge } from '../merge';
-import { ifBranch } from '../if-branch';
+import { ifElse } from '../if-else';
 import { switchCase } from '../switch-case';
 
 describe('Workflow Builder', () => {
@@ -154,7 +154,7 @@ describe('Workflow Builder', () => {
 			expect(json.connections['Direct Switch'].main[1][0].node).toBe('Case 1');
 		});
 
-		it('should add IfBranchComposite directly', () => {
+		it('should add IfElseComposite directly', () => {
 			const trueNode = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -166,9 +166,9 @@ describe('Workflow Builder', () => {
 				config: { name: 'False Path' },
 			});
 
-			// Pass ifBranch directly to add() instead of through then()
+			// Pass ifElse directly to add() instead of through then()
 			const wf = workflow('test', 'Test').add(
-				ifBranch([trueNode, falseNode], {
+				ifElse([trueNode, falseNode], {
 					name: 'Direct IF',
 					parameters: {
 						conditions: {
@@ -832,7 +832,7 @@ describe('Workflow Builder', () => {
 		});
 	});
 
-	describe('ifBranch()', () => {
+	describe('ifElse()', () => {
 		it('should create IF node with true and false branches', () => {
 			const triggerNode = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -853,7 +853,7 @@ describe('Workflow Builder', () => {
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
 				.then(
-					ifBranch([trueNode, falseNode], {
+					ifElse([trueNode, falseNode], {
 						name: 'Check Value',
 						parameters: {
 							conditions: {
@@ -895,7 +895,7 @@ describe('Workflow Builder', () => {
 			});
 
 			const wf = workflow('test', 'Test').then(
-				ifBranch([trueNode, falseNode], {
+				ifElse([trueNode, falseNode], {
 					name: 'Type Check',
 					parameters: { looseTypeValidation: true },
 				}),
@@ -926,7 +926,7 @@ describe('Workflow Builder', () => {
 			});
 
 			const wf = workflow('test', 'Test')
-				.then(ifBranch([trueNode, falseNode], { name: 'IF' }))
+				.then(ifElse([trueNode, falseNode], { name: 'IF' }))
 				.then(afterNode);
 
 			const json = wf.toJSON();
@@ -955,7 +955,7 @@ describe('Workflow Builder', () => {
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
 				.then(
-					ifBranch([null, falseNode], {
+					ifElse([null, falseNode], {
 						name: 'IF Check',
 						parameters: {
 							conditions: {
@@ -999,7 +999,7 @@ describe('Workflow Builder', () => {
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
 				.then(
-					ifBranch([trueNode, null], {
+					ifElse([trueNode, null], {
 						name: 'IF Check',
 						parameters: {
 							conditions: {

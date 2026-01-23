@@ -7,6 +7,26 @@ import type {
 	NodeChain,
 	IDataObject,
 } from './types/base';
+import { isNodeChain } from './types/base';
+import { isFanOut } from './fan-out';
+import type { FanOutTargets } from './fan-out';
+
+/**
+ * A case target - can be a node, node chain, null, or fanOut
+ */
+export type SwitchCaseTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| FanOutTargets;
+
+/**
+ * Named input syntax for switch case
+ * Keys are caseN format where N is the output index
+ */
+export interface SwitchCaseNamedInputs {
+	[key: `case${number}`]: SwitchCaseTarget;
+}
 
 /**
  * Extended config for Switch case that includes version and id
@@ -129,13 +149,98 @@ class SwitchCaseCompositeWithExistingNode implements SwitchCaseComposite {
 }
 
 /**
+ * Check if an object is a SwitchCaseNamedInputs (has caseN keys)
+ */
+function isSwitchCaseNamedInputs(obj: unknown): obj is SwitchCaseNamedInputs {
+	if (obj === null || typeof obj !== 'object') return false;
+	// Check it's not a NodeInstance or array
+	if (Array.isArray(obj)) return false;
+	if (isNodeInstance(obj)) return false;
+	// Check keys are caseN format
+	const keys = Object.keys(obj);
+	if (keys.length === 0) return false;
+	// All keys must be caseN format
+	return keys.every((key) => /^case\d+$/.test(key));
+}
+
+/**
+ * Extract all nodes from a SwitchCaseTarget
+ */
+function extractNodesFromCaseTarget(
+	target: SwitchCaseTarget,
+): NodeInstance<string, string, unknown>[] {
+	if (target === null) return [];
+	if (isFanOut(target)) {
+		return target.targets;
+	}
+	if (isNodeChain(target)) {
+		return target.allNodes;
+	}
+	// It's a single NodeInstance
+	return [target];
+}
+
+/**
+ * Switch case composite using named syntax.
+ * This allows explicit mapping of cases to output indices.
+ */
+class SwitchCaseCompositeNamedSyntax implements SwitchCaseComposite {
+	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+	readonly cases: NodeInstance<string, string, unknown>[];
+	/** Map from output index to case targets */
+	readonly caseMapping: Map<number, SwitchCaseTarget>;
+	/** All nodes from all cases (for workflow-builder) */
+	readonly _allCaseNodes: NodeInstance<string, string, unknown>[];
+	/** Marker to identify this as named syntax */
+	readonly _isNamedSyntax = true;
+
+	constructor(
+		switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+		inputs: SwitchCaseNamedInputs,
+	) {
+		this.switchNode = switchNode;
+
+		// Parse case indices and build mapping
+		this.caseMapping = new Map();
+		const allNodes: NodeInstance<string, string, unknown>[] = [];
+
+		for (const [key, target] of Object.entries(inputs)) {
+			const caseIndex = parseInt(key.replace('case', ''), 10);
+			this.caseMapping.set(caseIndex, target);
+
+			// Collect all nodes for _allCaseNodes
+			const caseNodes = extractNodesFromCaseTarget(target);
+			for (const node of caseNodes) {
+				if (!allNodes.some((n) => n.name === node.name)) {
+					allNodes.push(node);
+				}
+			}
+		}
+
+		this._allCaseNodes = allNodes;
+		// cases is used by workflow-builder - provide empty array, use caseMapping instead
+		this.cases = [];
+	}
+}
+
+/**
+ * Type guard to check if a SwitchCaseComposite uses named syntax
+ */
+export function isSwitchCaseNamedSyntax(
+	composite: SwitchCaseComposite,
+): composite is SwitchCaseCompositeNamedSyntax {
+	return '_isNamedSyntax' in composite && composite._isNamedSyntax === true;
+}
+
+/**
  * Create a Switch case composite for multi-way branching
  *
- * @param cases - Array of nodes for each case output (index = output number)
- * @param configOrNode - Full Switch node config including optional version and id, OR a pre-declared Switch node instance
+ * @param casesOrNode - Array of nodes for each case output (index = output number), OR a pre-declared Switch node for named syntax
+ * @param configOrNodeOrInputs - Full Switch node config, a pre-declared Switch node instance, OR named inputs { case0, case1, ... }
  *
  * @example
  * ```typescript
+ * // Array syntax (original API):
  * workflow('id', 'Test')
  *   .add(trigger)
  *   .then(switchCase([case0, case1, case2, fallback], {
@@ -153,12 +258,44 @@ class SwitchCaseCompositeWithExistingNode implements SwitchCaseComposite {
  * workflow('id', 'Test')
  *   .add(trigger)
  *   .then(switchCase([case0, case1], switchNode));
+ *
+ * // Named input syntax (for explicit output index mapping):
+ * switchCase(switchNode, {
+ *   case0: nodeA,
+ *   case1: nodeB,
+ *   case2: fanOut(nodeC, nodeD)  // fanOut to multiple targets
+ * })
  * ```
  */
 export function switchCase(
-	cases: NodeInstance<string, string, unknown>[],
-	configOrNode?: SwitchCaseConfig | NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+	casesOrNode:
+		| NodeInstance<string, string, unknown>[]
+		| NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+	configOrNodeOrInputs?:
+		| SwitchCaseConfig
+		| NodeInstance<'n8n-nodes-base.switch', string, unknown>
+		| SwitchCaseNamedInputs,
 ): SwitchCaseComposite {
+	// Named input syntax: switchCase(switchNode, { case0, case1, ... })
+	if (
+		isNodeInstance(casesOrNode) &&
+		casesOrNode.type === 'n8n-nodes-base.switch' &&
+		configOrNodeOrInputs !== undefined &&
+		isSwitchCaseNamedInputs(configOrNodeOrInputs)
+	) {
+		return new SwitchCaseCompositeNamedSyntax(
+			casesOrNode as NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+			configOrNodeOrInputs,
+		);
+	}
+
+	// Original API: switchCase(cases, configOrNode)
+	const cases = casesOrNode as NodeInstance<string, string, unknown>[];
+	const configOrNode = configOrNodeOrInputs as
+		| SwitchCaseConfig
+		| NodeInstance<'n8n-nodes-base.switch', string, unknown>
+		| undefined;
+
 	// Check if the second argument is a NodeInstance (pre-declared Switch node)
 	if (isNodeInstance(configOrNode) && configOrNode.type === 'n8n-nodes-base.switch') {
 		return new SwitchCaseCompositeWithExistingNode(

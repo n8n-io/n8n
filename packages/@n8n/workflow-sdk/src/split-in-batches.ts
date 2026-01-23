@@ -9,6 +9,8 @@ import type {
 	DeclaredConnection,
 	NodeChain,
 } from './types/base';
+import { isFanOut } from './fan-out';
+import type { FanOutTargets } from './fan-out';
 
 /**
  * Internal split in batches node implementation
@@ -64,6 +66,31 @@ class SplitInBatchesNodeInstance
 export type NodeBatch =
 	| NodeInstance<string, string, unknown>
 	| NodeInstance<string, string, unknown>[];
+
+/**
+ * Target for a branch in named object syntax.
+ * Can be:
+ * - null: no connection for this branch
+ * - NodeInstance: single target
+ * - NodeChain: a chain of nodes
+ * - FanOutTargets: multiple parallel targets via fanOut()
+ */
+export type BranchTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| FanOutTargets;
+
+/**
+ * Named object syntax for splitInBatches branches.
+ * Makes the intent explicit for code generation.
+ */
+export interface SplitInBatchesBranches {
+	/** Target for done output (output 0) - executes when all batches processed */
+	done: BranchTarget;
+	/** Target for each output (output 1) - executes for each batch, can loop back */
+	each: BranchTarget;
+}
 
 /**
  * Internal chain for .done() (output 0)
@@ -342,10 +369,12 @@ class EachChainForExistingNode<TOutput> implements SplitInBatchesEachChain<TOutp
  * - Output 1 (.each()): Executes for each batch, can .loop() back
  *
  * @param configOrNode - Node configuration including version, id, name, and batchSize parameter, OR a pre-declared SplitInBatches node instance
+ * @param branches - Optional named object syntax for branches: { done: ..., each: ... }
  * @returns A split in batches builder for configuring the loop
  *
  * @example
  * ```typescript
+ * // Fluent API (original):
  * workflow('id', 'Test')
  *   .add(trigger(...))
  *   .then(generateItems)
@@ -355,25 +384,44 @@ class EachChainForExistingNode<TOutput> implements SplitInBatchesEachChain<TOutp
  *       .each().then(processNode).loop()
  *   );
  *
- * // With explicit version:
- * splitInBatches({ version: 2, parameters: { batchSize: 5 } })
+ * // Named object syntax (new):
+ * splitInBatches(sibNode, {
+ *   done: finalizeNode,
+ *   each: processNode.then(sibNode)  // loop back
+ * })
  *
- * // Using a pre-declared SplitInBatches node:
- * const sibNode = node({ type: 'n8n-nodes-base.splitInBatches', ... });
- * splitInBatches(sibNode).done().then(finalNode).each().then(processNode).loop()
+ * // With null for empty branches:
+ * splitInBatches(sibNode, {
+ *   done: null,                       // no done connection
+ *   each: sibNode                     // self-loop
+ * })
  *
- * // This creates:
- * // generateItems -> splitInBatches
- * //                  ├─(0)─> finalizeNode (when done)
- * //                  └─(1)─> processNode ─┐
- * //                              ↑────────┘ (loop)
+ * // With fanOut for multiple targets:
+ * splitInBatches(sibNode, {
+ *   done: fanOut(nodeA, nodeB),       // done -> both nodeA and nodeB
+ *   each: processNode
+ * })
  * ```
  */
 export function splitInBatches(
 	configOrNode:
 		| SplitInBatchesConfig
 		| NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown> = {},
+	branches?: SplitInBatchesBranches,
 ): SplitInBatchesBuilder<unknown> {
+	// Named object syntax: splitInBatches(node, { done, each })
+	if (
+		branches !== undefined &&
+		isBranchesConfig(branches) &&
+		isNodeInstance(configOrNode) &&
+		configOrNode.type === 'n8n-nodes-base.splitInBatches'
+	) {
+		return new SplitInBatchesNamedSyntaxBuilder(
+			configOrNode as NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>,
+			branches,
+		);
+	}
+
 	// Check if the argument is a NodeInstance (pre-declared SplitInBatches node)
 	if (isNodeInstance(configOrNode) && configOrNode.type === 'n8n-nodes-base.splitInBatches') {
 		return new SplitInBatchesBuilderWithExistingNode(
@@ -389,4 +437,146 @@ export function splitInBatches(
  */
 export function isSplitInBatchesBuilder(value: unknown): value is SplitInBatchesBuilderImpl {
 	return value instanceof SplitInBatchesBuilderImpl;
+}
+
+/**
+ * Check if an object is a NodeChain
+ */
+function isNodeChain(
+	obj: unknown,
+): obj is NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>> {
+	return (
+		obj !== null &&
+		typeof obj === 'object' &&
+		'_isChain' in obj &&
+		(obj as { _isChain: boolean })._isChain === true
+	);
+}
+
+/**
+ * Extract nodes from a BranchTarget
+ */
+function extractNodesFromTarget(target: BranchTarget): NodeInstance<string, string, unknown>[] {
+	if (target === null) {
+		return [];
+	}
+	if (isFanOut(target)) {
+		return target.targets;
+	}
+	if (isNodeChain(target)) {
+		return target.allNodes;
+	}
+	// It's a single NodeInstance
+	return [target];
+}
+
+/**
+ * Extract the first node(s) from a BranchTarget for connection purposes
+ */
+function getFirstNodes(target: BranchTarget): NodeInstance<string, string, unknown>[] {
+	if (target === null) {
+		return [];
+	}
+	if (isFanOut(target)) {
+		return target.targets;
+	}
+	if (isNodeChain(target)) {
+		return [target.head];
+	}
+	// It's a single NodeInstance
+	return [target];
+}
+
+/**
+ * Split in batches builder using named object syntax.
+ * This is created via splitInBatches(node, { done, each }).
+ */
+class SplitInBatchesNamedSyntaxBuilder implements SplitInBatchesBuilder<unknown> {
+	readonly sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
+	readonly _doneTarget: BranchTarget;
+	readonly _eachTarget: BranchTarget;
+	_doneNodes: NodeInstance<string, string, unknown>[] = [];
+	_eachNodes: NodeInstance<string, string, unknown>[] = [];
+	_doneBatches: NodeBatch[] = [];
+	_eachBatches: NodeBatch[] = [];
+	_hasLoop = false;
+
+	constructor(
+		sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>,
+		branches: SplitInBatchesBranches,
+	) {
+		this.sibNode = sibNode;
+		this._doneTarget = branches.done;
+		this._eachTarget = branches.each;
+
+		// Extract nodes from targets
+		this._doneNodes = extractNodesFromTarget(branches.done);
+		this._eachNodes = extractNodesFromTarget(branches.each);
+
+		// Populate batches for workflow-builder compatibility
+		if (branches.done !== null) {
+			const firstDoneNodes = getFirstNodes(branches.done);
+			if (firstDoneNodes.length > 1) {
+				this._doneBatches.push(firstDoneNodes);
+			} else if (firstDoneNodes.length === 1) {
+				this._doneBatches.push(firstDoneNodes[0]);
+			}
+		}
+
+		if (branches.each !== null) {
+			const firstEachNodes = getFirstNodes(branches.each);
+			if (firstEachNodes.length > 1) {
+				this._eachBatches.push(firstEachNodes);
+			} else if (firstEachNodes.length === 1) {
+				this._eachBatches.push(firstEachNodes[0]);
+			}
+			// For named syntax, we DON'T set _hasLoop because the loop is already
+			// expressed in the connection target (e.g., each: sibNode or each: processNode.then(sibNode))
+			// The workflow-builder's _hasLoop handling is only for the fluent API's .loop() method
+		}
+	}
+
+	done(): SplitInBatchesDoneChain<unknown> {
+		// For named syntax, done() is a no-op since branches are already configured
+		throw new Error(
+			'Named object syntax does not support .done() - branches are configured in the constructor',
+		);
+	}
+
+	each(): SplitInBatchesEachChain<unknown> {
+		// For named syntax, each() is a no-op since branches are already configured
+		throw new Error(
+			'Named object syntax does not support .each() - branches are configured in the constructor',
+		);
+	}
+
+	getAllNodes(): NodeInstance<string, string, unknown>[] {
+		return [this.sibNode, ...this._doneNodes, ...this._eachNodes];
+	}
+
+	getDoneNodes(): NodeInstance<string, string, unknown>[] {
+		return this._doneNodes;
+	}
+
+	getEachNodes(): NodeInstance<string, string, unknown>[] {
+		return this._eachNodes;
+	}
+
+	hasLoop(): boolean {
+		return this._hasLoop;
+	}
+}
+
+/**
+ * Type guard to check if the second argument is a SplitInBatchesBranches object
+ */
+function isBranchesConfig(arg: unknown): arg is SplitInBatchesBranches {
+	return (
+		arg !== null &&
+		typeof arg === 'object' &&
+		'done' in arg &&
+		'each' in arg &&
+		!('type' in arg) &&
+		!('version' in arg)
+	);
 }

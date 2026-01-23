@@ -1,6 +1,7 @@
 import { splitInBatches } from '../split-in-batches';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
+import { fanOut } from '../fan-out';
 
 describe('Split In Batches', () => {
 	describe('splitInBatches()', () => {
@@ -271,6 +272,133 @@ describe('Split In Batches', () => {
 			const codeConnections = json.connections['Code'];
 			expect(codeConnections).toBeDefined();
 			expect(codeConnections.main[0][0].node).toBe('Loop');
+		});
+	});
+
+	describe('named object syntax', () => {
+		it('should support splitInBatches(node, { done, each }) syntax', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'Loop', parameters: { batchSize: 10 } },
+			});
+			const finalizeNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Finalize' },
+			});
+			const processNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Process Batch' },
+			});
+
+			// Named object syntax
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.then(
+					splitInBatches(sibNode, {
+						done: finalizeNode,
+						each: processNode.then(sibNode), // loop back to SIB
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			// Should have: trigger, splitInBatches, finalizeNode, processNode
+			expect(json.nodes).toHaveLength(4);
+
+			// SIB output 0 (done) should connect to Finalize
+			const sibConnections = json.connections['Loop'];
+			expect(sibConnections).toBeDefined();
+			expect(sibConnections.main[0]).toHaveLength(1);
+			expect(sibConnections.main[0][0].node).toBe('Finalize');
+
+			// SIB output 1 (each) should connect to Process Batch
+			expect(sibConnections.main[1]).toHaveLength(1);
+			expect(sibConnections.main[1][0].node).toBe('Process Batch');
+
+			// Process Batch should loop back to Loop
+			const processConnections = json.connections['Process Batch'];
+			expect(processConnections).toBeDefined();
+			expect(processConnections.main[0][0].node).toBe('Loop');
+		});
+
+		it('should support null for empty branches', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'Loop', parameters: { batchSize: 10 } },
+			});
+
+			// Self-loop on each only
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.then(
+					splitInBatches(sibNode, {
+						done: null,
+						each: sibNode, // self-loop
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			// Should have: trigger, splitInBatches
+			expect(json.nodes).toHaveLength(2);
+
+			// SIB should have connections
+			const sibConnections = json.connections['Loop'];
+			expect(sibConnections).toBeDefined();
+
+			// done output (0) should be empty or not connect to anything
+			expect(sibConnections.main[0] ?? []).toHaveLength(0);
+
+			// each output (1) should connect back to itself
+			expect(sibConnections.main[1]).toHaveLength(1);
+			expect(sibConnections.main[1][0].node).toBe('Loop');
+		});
+
+		it('should support fanOut() for multiple targets from one branch', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'Loop', parameters: { batchSize: 10 } },
+			});
+			const branch1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Branch 1' },
+			});
+			const branch2 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3,
+				config: { name: 'Branch 2' },
+			});
+
+			// Fan-out from done branch
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.then(
+					splitInBatches(sibNode, {
+						done: fanOut(branch1, branch2),
+						each: sibNode,
+					}),
+				);
+
+			const json = wf.toJSON();
+
+			// Should have: trigger, splitInBatches, branch1, branch2
+			expect(json.nodes).toHaveLength(4);
+
+			// SIB done output (0) should connect to both branches
+			const sibConnections = json.connections['Loop'];
+			expect(sibConnections).toBeDefined();
+			expect(sibConnections.main[0]).toHaveLength(2);
+			const doneTargets = sibConnections.main[0].map((c: { node: string }) => c.node).sort();
+			expect(doneTargets).toEqual(['Branch 1', 'Branch 2']);
 		});
 	});
 });

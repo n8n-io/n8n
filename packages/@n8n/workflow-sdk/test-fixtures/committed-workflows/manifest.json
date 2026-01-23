@@ -5,6 +5,21 @@
 			"id": 0,
 			"name": "Multi-Agent Research Report",
 			"success": true
+		},
+		{
+			"id": 1,
+			"name": "Split in batches - complex patterns",
+			"success": true
+		},
+		{
+			"id": 2,
+			"name": "Merge node patterns",
+			"success": true
+		},
+		{
+			"id": 3,
+			"name": "if node",
+			"success": true
 		}
 	]
 }

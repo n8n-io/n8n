@@ -11,11 +11,13 @@ import type {
 	CompositeNode,
 	LeafNode,
 	VariableReference,
-	IfBranchCompositeNode,
+	IfElseCompositeNode,
 	SwitchCaseCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
 	FanOutCompositeNode,
+	ExplicitConnectionsNode,
+	ExplicitConnection,
 } from './composite-tree';
 import { getCompositeType } from './semantic-registry';
 
@@ -73,7 +75,7 @@ const RESERVED_KEYWORDS = new Set([
 	'trigger',
 	'node',
 	'merge',
-	'ifBranch',
+	'ifElse',
 	'switchCase',
 	'splitInBatches',
 	'sticky',
@@ -121,8 +123,30 @@ function toVarName(nodeName: string): string {
 /**
  * Create a leaf node
  */
-function createLeaf(node: SemanticNode): LeafNode {
-	return { kind: 'leaf', node };
+function createLeaf(node: SemanticNode, errorHandler?: CompositeNode): LeafNode {
+	const leaf: LeafNode = { kind: 'leaf', node };
+	if (errorHandler) {
+		leaf.errorHandler = errorHandler;
+	}
+	return leaf;
+}
+
+/**
+ * Check if a node has error output (onError: 'continueErrorOutput')
+ */
+function hasErrorOutput(node: SemanticNode): boolean {
+	return node.json.onError === 'continueErrorOutput';
+}
+
+/**
+ * Get error output targets from a node
+ */
+function getErrorOutputTargets(node: SemanticNode): string[] {
+	const errorConnections = node.outputs.get('error');
+	if (!errorConnections || errorConnections.length === 0) {
+		return [];
+	}
+	return errorConnections.map((c) => c.target);
 }
 
 /**
@@ -138,10 +162,12 @@ function createVarRef(nodeName: string): VariableReference {
 
 /**
  * Get all output connection targets from the first output slot
+ * Excludes error outputs (handled separately via .onError())
  */
 function getAllFirstOutputTargets(node: SemanticNode): string[] {
-	// Get all targets from first non-empty output
-	for (const [, connections] of node.outputs) {
+	// Get all targets from first non-empty, non-error output
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue; // Skip error output
 		if (connections.length > 0) {
 			return connections.map((c) => c.target);
 		}
@@ -152,10 +178,12 @@ function getAllFirstOutputTargets(node: SemanticNode): string[] {
 /**
  * Get all output connection targets from ALL output slots
  * This is needed for nodes with multiple independent output slots (like classifiers)
+ * Excludes error outputs (handled separately via .onError())
  */
 function getAllOutputTargets(node: SemanticNode): string[] {
 	const targets: string[] = [];
-	for (const [, connections] of node.outputs) {
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue; // Skip error output
 		for (const conn of connections) {
 			if (!targets.includes(conn.target)) {
 				targets.push(conn.target);
@@ -167,10 +195,12 @@ function getAllOutputTargets(node: SemanticNode): string[] {
 
 /**
  * Check if a node has multiple output slots (not just multiple targets on one slot)
+ * Excludes error outputs (handled separately via .onError())
  */
 function hasMultipleOutputSlots(node: SemanticNode): boolean {
 	let nonEmptySlots = 0;
-	for (const [, connections] of node.outputs) {
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue; // Skip error output
 		if (connections.length > 0) {
 			nonEmptySlots++;
 		}
@@ -217,8 +247,10 @@ function findDirectMergeInFanOut(
 		return null;
 	}
 
-	// Verify that at least some non-merge targets feed into this merge
+	// Verify that ALL non-merge targets feed into this merge
 	// (checking inputSources of the merge node)
+	// If any target doesn't feed into the merge, skip this optimization
+	// so that the independent targets are handled correctly via normal fan-out
 	const mergeInputSources = new Set<string>();
 	for (const [, sources] of mergeTarget.inputSources) {
 		for (const source of sources) {
@@ -226,8 +258,8 @@ function findDirectMergeInFanOut(
 		}
 	}
 
-	// Check if any non-merge target (or its descendants) feeds into the merge
-	const feedsIntoMerge = nonMergeTargets.some((targetName) => {
+	// Check that ALL non-merge targets feed into the merge (directly or one hop away)
+	const allFeedIntoMerge = nonMergeTargets.every((targetName) => {
 		// Direct connection
 		if (mergeInputSources.has(targetName)) return true;
 
@@ -240,7 +272,9 @@ function findDirectMergeInFanOut(
 		return false;
 	});
 
-	if (!feedsIntoMerge) {
+	if (!allFeedIntoMerge) {
+		// Some targets don't feed into the merge - skip this optimization
+		// They will be handled via normal fan-out handling
 		return null;
 	}
 
@@ -293,6 +327,152 @@ function detectMergePattern(
  */
 function shouldBeVariable(node: SemanticNode): boolean {
 	return node.annotations.isCycleTarget || node.annotations.isConvergencePoint;
+}
+
+/**
+ * Detect if SplitInBatches outputs go to the same merge node at different input indices.
+ * This is Pattern 9/10 from the fixture - SIB.done→Merge:branch0, SIB.loop→Merge:branch1
+ *
+ * Returns info about the explicit connections needed, or null if not this pattern.
+ */
+interface SibMergePattern {
+	/** The SIB node */
+	sibNode: SemanticNode;
+	/** The Merge node */
+	mergeNode: SemanticNode;
+	/** Connections: which SIB output goes to which merge input */
+	connections: Array<{
+		sibOutput: string; // 'done' or 'loop'
+		sibOutputIndex: number; // 0 or 1
+		mergeInputSlot: string; // 'branch0', 'branch1', etc.
+		mergeInputIndex: number; // 0, 1, etc.
+	}>;
+	/** Merge output connections (where merge connects to) */
+	mergeOutputs: Array<{ target: string; inputSlot: string; inputIndex: number }>;
+}
+
+function detectSibMergePattern(sibNode: SemanticNode, ctx: BuildContext): SibMergePattern | null {
+	const doneTargets = sibNode.outputs.get('done') ?? [];
+	const loopTargets = sibNode.outputs.get('loop') ?? [];
+
+	// Find all merge nodes that SIB outputs connect to
+	const mergeConnections = new Map<
+		string,
+		Array<{
+			sibOutput: string;
+			sibOutputIndex: number;
+			mergeInputSlot: string;
+		}>
+	>();
+
+	for (const conn of doneTargets) {
+		const targetNode = ctx.graph.nodes.get(conn.target);
+		if (targetNode && isMergeType(targetNode.type)) {
+			const existing = mergeConnections.get(conn.target) ?? [];
+			existing.push({
+				sibOutput: 'done',
+				sibOutputIndex: 0,
+				mergeInputSlot: conn.targetInputSlot,
+			});
+			mergeConnections.set(conn.target, existing);
+		}
+	}
+
+	for (const conn of loopTargets) {
+		const targetNode = ctx.graph.nodes.get(conn.target);
+		if (targetNode && isMergeType(targetNode.type)) {
+			const existing = mergeConnections.get(conn.target) ?? [];
+			existing.push({
+				sibOutput: 'loop',
+				sibOutputIndex: 1,
+				mergeInputSlot: conn.targetInputSlot,
+			});
+			mergeConnections.set(conn.target, existing);
+		}
+	}
+
+	// Check if any merge has BOTH done and loop connections from this SIB
+	for (const [mergeName, conns] of mergeConnections) {
+		const hasDone = conns.some((c) => c.sibOutput === 'done');
+		const hasLoop = conns.some((c) => c.sibOutput === 'loop');
+
+		if (hasDone && hasLoop) {
+			// Found the pattern! Both SIB outputs go to the same merge
+			const mergeNode = ctx.graph.nodes.get(mergeName);
+			if (!mergeNode) continue;
+
+			// Parse input indices from slot names (branch0 → 0, branch1 → 1)
+			const connections = conns.map((c) => ({
+				sibOutput: c.sibOutput,
+				sibOutputIndex: c.sibOutputIndex,
+				mergeInputSlot: c.mergeInputSlot,
+				mergeInputIndex: parseInt(c.mergeInputSlot.replace('branch', ''), 10) || 0,
+			}));
+
+			// Get merge output connections
+			const mergeOutputTargets = mergeNode.outputs.get('output') ?? [];
+			const mergeOutputs = mergeOutputTargets.map((t) => ({
+				target: t.target,
+				inputSlot: t.targetInputSlot,
+				inputIndex: parseInt(t.targetInputSlot.replace('input', ''), 10) || 0,
+			}));
+
+			return {
+				sibNode,
+				mergeNode,
+				connections,
+				mergeOutputs,
+			};
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Build an explicit connections node for SIB→merge patterns
+ */
+function buildSibMergeExplicitConnections(
+	pattern: SibMergePattern,
+	ctx: BuildContext,
+): ExplicitConnectionsNode {
+	const nodes: SemanticNode[] = [pattern.sibNode, pattern.mergeNode];
+	const connections: ExplicitConnection[] = [];
+
+	// Register both nodes as variables
+	ctx.variables.set(pattern.sibNode.name, pattern.sibNode);
+	ctx.variables.set(pattern.mergeNode.name, pattern.mergeNode);
+	ctx.visited.add(pattern.sibNode.name);
+	ctx.visited.add(pattern.mergeNode.name);
+
+	// Add SIB → Merge connections
+	for (const conn of pattern.connections) {
+		connections.push({
+			sourceNode: pattern.sibNode.name,
+			sourceOutput: conn.sibOutputIndex,
+			targetNode: pattern.mergeNode.name,
+			targetInput: conn.mergeInputIndex,
+		});
+	}
+
+	// Add Merge → target connections
+	for (const output of pattern.mergeOutputs) {
+		connections.push({
+			sourceNode: pattern.mergeNode.name,
+			sourceOutput: 0, // Merge has single output
+			targetNode: output.target,
+			targetInput: output.inputIndex,
+		});
+
+		// If merge output goes back to SIB (loop pattern), don't add SIB again
+		// It's already in the nodes array
+	}
+
+	return {
+		kind: 'explicitConnections',
+		nodes,
+		connections,
+	};
 }
 
 /**
@@ -379,6 +559,31 @@ function buildBranchTargets(
 		const unvisitedOutputs = mergeOutputs.filter((target) => !ctx.visited.has(target));
 
 		if (unvisitedOutputs.length === 0) {
+			// Check if there are visited outputs (loops) that need connections
+			const visitedOutputs = mergeOutputs.filter((target) => ctx.visited.has(target));
+			if (visitedOutputs.length > 0) {
+				// Create varRefs for loop-back connections
+				const loopTargets: CompositeNode[] = [];
+				for (const target of visitedOutputs) {
+					const targetNode = ctx.graph.nodes.get(target);
+					if (targetNode) {
+						ctx.variables.set(target, targetNode);
+						loopTargets.push(createVarRef(target));
+					}
+				}
+				if (loopTargets.length === 1) {
+					return {
+						kind: 'chain',
+						nodes: [mergeComposite, loopTargets[0]],
+					};
+				}
+				if (loopTargets.length > 1) {
+					return {
+						kind: 'chain',
+						nodes: [mergeComposite, ...loopTargets],
+					};
+				}
+			}
 			return mergeComposite;
 		}
 
@@ -420,7 +625,15 @@ function buildBranchTargets(
 	// Multiple targets - build all branches
 	const branches: CompositeNode[] = [];
 	for (const { target } of targets) {
-		if (!ctx.visited.has(target)) {
+		if (ctx.visited.has(target)) {
+			// Target already visited - add as variable reference to preserve connection
+			// This is crucial for fan-out patterns in cycles
+			const targetNode = ctx.graph.nodes.get(target);
+			if (targetNode) {
+				ctx.variables.set(target, targetNode);
+				branches.push(createVarRef(target));
+			}
+		} else {
 			branches.push(buildFromNode(target, ctx));
 		}
 	}
@@ -435,7 +648,7 @@ function buildBranchTargets(
 /**
  * Build composite for an IF node
  */
-function buildIfBranch(node: SemanticNode, ctx: BuildContext): IfBranchCompositeNode {
+function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode {
 	const trueBranchTargets = node.outputs.get('trueBranch') ?? [];
 	const falseBranchTargets = node.outputs.get('falseBranch') ?? [];
 
@@ -443,7 +656,7 @@ function buildIfBranch(node: SemanticNode, ctx: BuildContext): IfBranchComposite
 	const falseBranch = buildBranchTargets(falseBranchTargets, ctx);
 
 	return {
-		kind: 'ifBranch',
+		kind: 'ifElse',
 		ifNode: node,
 		trueBranch,
 		falseBranch,
@@ -510,9 +723,21 @@ function buildMerge(node: SemanticNode, ctx: BuildContext): MergeCompositeNode {
 }
 
 /**
- * Build composite for a SplitInBatches node
+ * Build composite for a SplitInBatches node.
+ * Returns either a SplitInBatchesCompositeNode or an ExplicitConnectionsNode
+ * if the pattern requires explicit connections (e.g., SIB→merge at different inputs).
  */
-function buildSplitInBatches(node: SemanticNode, ctx: BuildContext): SplitInBatchesCompositeNode {
+function buildSplitInBatches(
+	node: SemanticNode,
+	ctx: BuildContext,
+): SplitInBatchesCompositeNode | ExplicitConnectionsNode {
+	// Check for SIB→merge pattern first
+	const sibMergePattern = detectSibMergePattern(node, ctx);
+	if (sibMergePattern) {
+		// This is the special pattern where SIB outputs go to same merge at different inputs
+		return buildSibMergeExplicitConnections(sibMergePattern, ctx);
+	}
+
 	const doneTargets = node.outputs.get('done') ?? [];
 	const loopTargets = node.outputs.get('loop') ?? [];
 
@@ -558,8 +783,8 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 	let compositeNode: CompositeNode;
 
 	switch (compositeType) {
-		case 'ifBranch':
-			compositeNode = buildIfBranch(node, ctx);
+		case 'ifElse':
+			compositeNode = buildIfElse(node, ctx);
 			break;
 		case 'switchCase':
 			compositeNode = buildSwitchCase(node, ctx);
@@ -570,9 +795,31 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 		case 'splitInBatches':
 			compositeNode = buildSplitInBatches(node, ctx);
 			break;
-		default:
-			// Regular node - check for chain continuation
-			compositeNode = createLeaf(node);
+		default: {
+			// Regular node - check for error output and chain continuation
+			let errorHandler: CompositeNode | undefined;
+
+			// Build error handler chain if node has error output
+			if (hasErrorOutput(node)) {
+				const errorTargets = getErrorOutputTargets(node);
+				if (errorTargets.length > 0) {
+					const firstErrorTarget = errorTargets[0];
+					if (ctx.visited.has(firstErrorTarget)) {
+						// Error target already visited - create variable reference
+						// This handles multiple nodes with error outputs pointing to the same handler
+						const errorNode = ctx.graph.nodes.get(firstErrorTarget);
+						if (errorNode) {
+							ctx.variables.set(firstErrorTarget, errorNode);
+							errorHandler = createVarRef(firstErrorTarget);
+						}
+					} else {
+						errorHandler = buildFromNode(firstErrorTarget, ctx);
+					}
+				}
+			}
+
+			compositeNode = createLeaf(node, errorHandler);
+		}
 	}
 
 	// Handle downstream continuation for merge nodes
@@ -610,6 +857,32 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 				targets: fanOutBranches,
 			};
 			return fanOut;
+		}
+
+		// No unvisited outputs - check if there are visited outputs (loops) that need connections
+		const visitedOutputs = mergeOutputs.filter((target) => ctx.visited.has(target));
+		if (visitedOutputs.length > 0) {
+			// Create varRefs for loop-back connections
+			const loopTargets: CompositeNode[] = [];
+			for (const target of visitedOutputs) {
+				const targetNode = ctx.graph.nodes.get(target);
+				if (targetNode) {
+					ctx.variables.set(target, targetNode);
+					loopTargets.push(createVarRef(target));
+				}
+			}
+			if (loopTargets.length === 1) {
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, loopTargets[0]],
+				};
+			}
+			if (loopTargets.length > 1) {
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, ...loopTargets],
+				};
+			}
 		}
 
 		return compositeNode;

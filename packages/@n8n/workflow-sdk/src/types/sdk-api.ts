@@ -366,18 +366,18 @@ export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 }
 
 /**
- * Configuration for ifBranch()
+ * Configuration for ifElse()
  */
-export interface IfBranchConfig extends NodeConfig {
+export interface IfElseConfig extends NodeConfig {
 	/** Node version (defaults to 2.3) */
 	version?: number | string;
 }
 
 /**
  * IF branch composite - conditional true/false branching.
- * Created by ifBranch([trueNode, falseNode], config).
+ * Created by ifElse([trueNode, falseNode], config).
  */
-export interface IfBranchComposite {
+export interface IfElseComposite {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
 	readonly trueBranch: NodeInstance<string, string, unknown>;
 	readonly falseBranch: NodeInstance<string, string, unknown>;
@@ -397,7 +397,12 @@ export interface SwitchCaseConfig extends NodeConfig {
  */
 export interface SwitchCaseComposite {
 	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	readonly cases: NodeInstance<string, string, unknown>[];
+	/** Cases can be null (no connection), single node, or array (fan-out to multiple parallel nodes) */
+	readonly cases: (
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[]
+		| null
+	)[];
 }
 
 // =============================================================================
@@ -487,7 +492,7 @@ export interface WorkflowBuilder {
 	/**
 	 * Chain an IF branch composite (conditional branching)
 	 */
-	then(ifBranch: IfBranchComposite): WorkflowBuilder;
+	then(ifElse: IfElseComposite): WorkflowBuilder;
 
 	/**
 	 * Chain a switch case composite (multi-way routing)
@@ -643,12 +648,12 @@ export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
 ) => MergeComposite<TBranches>;
 
 /**
- * ifBranch([trueNode, falseNode], config) - Creates conditional branching
+ * ifElse([trueNode, falseNode], config) - Creates conditional branching
  *
  * @example
  * workflow('id', 'Conditional')
  *   .add(trigger({ ... }))
- *   .then(ifBranch([
+ *   .then(ifElse([
  *     node({ ... }),  // True branch (output 0)
  *     node({ ... })   // False branch (output 1)
  *   ], {
@@ -664,10 +669,10 @@ export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
  *     }
  *   }));
  */
-export type IfBranchFn = (
+export type IfElseFn = (
 	branches: [NodeInstance<string, string> | null, NodeInstance<string, string> | null],
-	config?: IfBranchConfig,
-) => IfBranchComposite;
+	config?: IfElseConfig,
+) => IfElseComposite;
 
 /**
  * switchCase(cases, config) - Creates multi-way routing

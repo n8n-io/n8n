@@ -12,11 +12,12 @@ import type {
 	LeafNode,
 	ChainNode,
 	VariableReference,
-	IfBranchCompositeNode,
+	IfElseCompositeNode,
 	SwitchCaseCompositeNode,
 	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
 	FanOutCompositeNode,
+	ExplicitConnectionsNode,
 } from './composite-tree';
 
 /**
@@ -124,7 +125,7 @@ const RESERVED_KEYWORDS = new Set([
 	'trigger',
 	'node',
 	'merge',
-	'ifBranch',
+	'ifElse',
 	'switchCase',
 	'splitInBatches',
 	'sticky',
@@ -382,7 +383,7 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 }
 
 /**
- * Generate flat config object for composite functions (ifBranch, merge, switchCase, splitInBatches).
+ * Generate flat config object for composite functions (ifElse, merge, switchCase, splitInBatches).
  * These expect { name?, version?, parameters?, credentials?, position? } directly,
  * not the { type, version, config: { ... } } format used by node().
  */
@@ -396,7 +397,7 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 		parts.push(`version: ${node.json.typeVersion}`);
 	}
 
-	// ALWAYS include name for composite nodes (ifBranch, merge, switchCase, splitInBatches)
+	// ALWAYS include name for composite nodes (ifElse, merge, switchCase, splitInBatches)
 	// because the parser's hardcoded defaults ("IF", "Merge", "Switch", "Split In Batches")
 	// don't match what generateDefaultNodeName() computes from the node type.
 	// Without this, roundtrip fails with name mismatches.
@@ -423,7 +424,7 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 
 /**
  * Generate flat node config or variable reference for composite functions.
- * Used by ifBranch, merge, switchCase, and splitInBatches.
+ * Used by ifElse, merge, switchCase, and splitInBatches.
  */
 function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
 	const nodeName = node.json.name;
@@ -490,10 +491,30 @@ function generateNodeCall(node: SemanticNode, ctx: GenerationContext): string {
 }
 
 /**
+ * Generate code for a leaf node, using variable reference if the node is declared as a variable
+ */
+function generateLeafCode(leaf: LeafNode, ctx: GenerationContext): string {
+	const nodeName = leaf.node.json.name;
+	if (nodeName && ctx.variableNodes.has(nodeName)) {
+		// Use variable reference for nodes that are declared as variables
+		return toVarName(nodeName);
+	}
+	return generateNodeCall(leaf.node, ctx);
+}
+
+/**
  * Generate code for a leaf node
  */
 function generateLeaf(leaf: LeafNode, ctx: GenerationContext): string {
-	return generateNodeCall(leaf.node, ctx);
+	let code = generateLeafCode(leaf, ctx);
+
+	// Add .onError() if node has an error handler
+	if (leaf.errorHandler) {
+		const errorHandlerCode = generateComposite(leaf.errorHandler, ctx);
+		code += `\n${getIndent(ctx)}.onError(${errorHandlerCode})`;
+	}
+
+	return code;
 }
 
 /**
@@ -544,17 +565,17 @@ function generateBranchCode(
 /**
  * Generate code for an IF branch
  */
-function generateIfBranch(ifBranch: IfBranchCompositeNode, ctx: GenerationContext): string {
+function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	const trueBranchCode = generateBranchCode(ifBranch.trueBranch, innerCtx);
-	const falseBranchCode = generateBranchCode(ifBranch.falseBranch, innerCtx);
+	const trueBranchCode = generateBranchCode(ifElse.trueBranch, innerCtx);
+	const falseBranchCode = generateBranchCode(ifElse.falseBranch, innerCtx);
 
 	// Use variable reference if IF node is already declared as a variable
-	// ifBranch expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
-	const config = generateFlatNodeOrVarRef(ifBranch.ifNode, ctx);
+	// ifElse expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
+	const config = generateFlatNodeOrVarRef(ifElse.ifNode, ctx);
 
-	return `ifBranch([${trueBranchCode}, ${falseBranchCode}], ${config})`;
+	return `ifElse([${trueBranchCode}, ${falseBranchCode}], ${config})`;
 }
 
 /**
@@ -655,6 +676,24 @@ function generateFanOut(fanOut: FanOutCompositeNode, ctx: GenerationContext): st
 }
 
 /**
+ * Generate code for explicit connections pattern (e.g., SIB→Merge at different inputs)
+ */
+function generateExplicitConnections(
+	explicitConns: ExplicitConnectionsNode,
+	_ctx: GenerationContext,
+): string {
+	// Generate variable references to the nodes involved
+	// The actual .add() and .connect() calls will be generated at the root level
+	// For now, just return the variable reference to the first node
+	if (explicitConns.nodes.length > 0) {
+		const firstNode = explicitConns.nodes[0];
+		const varName = toVarName(firstNode.name);
+		return varName;
+	}
+	return '';
+}
+
+/**
  * Generate code for any composite node
  */
 function generateComposite(node: CompositeNode, ctx: GenerationContext): string {
@@ -665,8 +704,8 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateChain(node, ctx);
 		case 'varRef':
 			return generateVarRef(node, ctx);
-		case 'ifBranch':
-			return generateIfBranch(node, ctx);
+		case 'ifElse':
+			return generateIfElse(node, ctx);
 		case 'switchCase':
 			return generateSwitchCase(node, ctx);
 		case 'merge':
@@ -675,6 +714,8 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateSplitInBatches(node, ctx);
 		case 'fanOut':
 			return generateFanOut(node, ctx);
+		case 'explicitConnections':
+			return generateExplicitConnections(node, ctx);
 	}
 }
 
@@ -728,7 +769,7 @@ function generateVariableDeclarations(
 
 /**
  * Flatten a composite tree into workflow-level calls.
- * Returns array of [method, code] tuples where method is 'add' or 'then'.
+ * Returns array of [method, code] tuples where method is 'add', 'then', or 'connect'.
  */
 function flattenToWorkflowCalls(
 	root: CompositeNode,
@@ -736,7 +777,26 @@ function flattenToWorkflowCalls(
 ): Array<[string, string]> {
 	const calls: Array<[string, string]> = [];
 
-	if (root.kind === 'chain') {
+	if (root.kind === 'explicitConnections') {
+		// Explicit connections pattern: generate .add() for each node, then .connect() for each connection
+		const explicitConns = root as ExplicitConnectionsNode;
+
+		// Add each node (use variable references since they're already declared)
+		for (const node of explicitConns.nodes) {
+			const varName = toVarName(node.name);
+			calls.push(['add', varName]);
+		}
+
+		// Generate .connect() calls for each explicit connection
+		for (const conn of explicitConns.connections) {
+			const sourceVar = toVarName(conn.sourceNode);
+			const targetVar = toVarName(conn.targetNode);
+			calls.push([
+				'connect',
+				`${sourceVar}, ${conn.sourceOutput}, ${targetVar}, ${conn.targetInput}`,
+			]);
+		}
+	} else if (root.kind === 'chain') {
 		// Chain: first node is .add(), rest are .then()
 		for (let i = 0; i < root.nodes.length; i++) {
 			const node = root.nodes[i];

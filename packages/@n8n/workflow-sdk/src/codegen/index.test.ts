@@ -76,7 +76,7 @@ describe('codegen index', () => {
 
 			const code = generateWorkflowCode(json);
 
-			expect(code).toContain('ifBranch([');
+			expect(code).toContain('ifElse([');
 		});
 
 		it('generates code with merge', () => {

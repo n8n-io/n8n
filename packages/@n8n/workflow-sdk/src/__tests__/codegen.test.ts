@@ -113,7 +113,7 @@ describe('generateWorkflowCode', () => {
 		expect(code).toContain('color: 4');
 	});
 
-	it('should handle IF branching with ifBranch() composite', () => {
+	it('should handle IF branching with ifElse() composite', () => {
 		const json: WorkflowJSON = {
 			id: 'branch-test',
 			name: 'Branch Test',
@@ -155,8 +155,8 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should use ifBranch() composite instead of .output()
-		expect(code).toContain('ifBranch(');
+		// Should use ifElse() composite instead of .output()
+		expect(code).toContain('ifElse(');
 		expect(code).not.toContain('.output(0)');
 		expect(code).not.toContain('.output(1)');
 	});
@@ -192,8 +192,8 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should use ifBranch() with null for missing branch
-		expect(code).toContain('ifBranch(');
+		// Should use ifElse() with null for missing branch
+		expect(code).toContain('ifElse(');
 		expect(code).toContain('null');
 	});
 
@@ -929,7 +929,7 @@ describe('generateWorkflowCode with AI subnodes', () => {
 			expect(code).toMatch(/merge\s*\(\s*\[/);
 		});
 
-		it('should generate ifBranch() for IF node patterns', () => {
+		it('should generate ifElse() for IF node patterns', () => {
 			const json: WorkflowJSON = {
 				id: 'if-test',
 				name: 'IF Workflow',
@@ -983,10 +983,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use ifBranch() function
-			expect(code).toContain('ifBranch(');
+			// Should use ifElse() function
+			expect(code).toContain('ifElse(');
 			// Should include both true and false branches
-			expect(code).toMatch(/ifBranch\s*\(\s*\[/);
+			expect(code).toMatch(/ifElse\s*\(\s*\[/);
 		});
 
 		it('should generate switchCase() for Switch node patterns', () => {
