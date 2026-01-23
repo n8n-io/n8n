@@ -386,6 +386,7 @@ describe('KafkaTrigger Node', () => {
 		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
 			mode: 'manual',
 			node: {
+				typeVersion: 1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -1119,6 +1120,29 @@ describe('KafkaTrigger Node', () => {
 				heartbeatInterval: 1201666,
 				rebalanceTimeout: 600000,
 			});
+		});
+
+		it('should throw error for manual trigger mode on version 1.2', async () => {
+			await expect(
+				testTriggerNode(KafkaTrigger, {
+					mode: 'manual',
+					node: {
+						typeVersion: 1.2,
+						parameters: {
+							topic: 'test-topic',
+							groupId: 'test-group',
+							useSchemaRegistry: false,
+							resolveOffsetMode: 'immediately',
+						},
+					},
+					credential: {
+						brokers: 'localhost:9092',
+						clientId: 'n8n-kafka',
+						ssl: false,
+						authentication: false,
+					},
+				}),
+			).rejects.toThrow(NodeOperationError);
 		});
 	});
 });

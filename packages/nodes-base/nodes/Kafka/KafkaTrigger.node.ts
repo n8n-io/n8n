@@ -350,6 +350,12 @@ export class KafkaTrigger implements INodeType {
 			await startConsumer();
 			return { closeFunction };
 		} else {
+			if (nodeVersion >= 1.2) {
+				throw new NodeOperationError(this.getNode(), 'Manual testing mode is not supported', {
+					description:
+						'The Kafka Trigger does not support manual testing mode. Publish this workflow to make it active and observe execution results in the Executions tab. Consider using a separate Kafka Trigger node setup for testing purposes.',
+				});
+			}
 			// The "manualTriggerFunction" function gets called by n8n
 			// when a user is in the workflow editor and starts the
 			// workflow manually. So the function has to make sure that
