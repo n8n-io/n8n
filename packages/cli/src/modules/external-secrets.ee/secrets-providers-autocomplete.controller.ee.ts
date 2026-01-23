@@ -7,7 +7,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ExternalSecretsConfig } from './external-secrets.config';
 
 @RestController('/secret-providers/autocomplete')
-export class SecretProvidersController {
+export class SecretProvidersAutocompleteController {
 	// Returns also the secret keys for a specific project
 	constructor(
 		private readonly config: ExternalSecretsConfig,
