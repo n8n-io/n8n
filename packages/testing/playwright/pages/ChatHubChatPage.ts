@@ -24,6 +24,17 @@ export class ChatHubChatPage extends BasePage {
 		return this.page.getByRole('heading', { level: 2 });
 	}
 
+	getWelcomeStartNewChatButton(): Locator {
+		return this.page.getByTestId('welcome-start-new-chat');
+	}
+
+	async dismissWelcomeScreen(): Promise<void> {
+		const startButton = this.getWelcomeStartNewChatButton();
+		if (await startButton.isVisible()) {
+			await startButton.click();
+		}
+	}
+
 	getModelSelectorButton(): Locator {
 		return this.page.getByTestId('chat-model-selector');
 	}

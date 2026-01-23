@@ -13,6 +13,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 
 		await expect(page.getGreetingMessage()).toHaveText(
 			`Hello, ${INSTANCE_OWNER_CREDENTIALS.firstName}!`,
@@ -35,6 +36,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const credModal = new CredentialModal(n8n.page.getByTestId('editCredential-modal'));
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 
 		await expect(page.getGreetingMessage()).toHaveText(
 			`Hello, ${INSTANCE_MEMBER_CREDENTIALS[0].firstName}!`,
@@ -62,6 +64,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 
 		// STEP: send first prompt
