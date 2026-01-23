@@ -47,7 +47,8 @@ export interface StageLLMs {
 	responder: BaseChatModel;
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
-	configurator: BaseChatModel;
+	/** @deprecated Configurator is now integrated into builder via script execution */
+	configurator?: BaseChatModel;
 	parameterUpdater: BaseChatModel;
 }
 

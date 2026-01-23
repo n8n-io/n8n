@@ -7,6 +7,7 @@
 
 // Main tool export
 export { createExecuteScriptTool, EXECUTE_SCRIPT_TOOL } from './execute-script.tool';
+export type { ExecuteScriptToolConfig } from './execute-script.tool';
 
 // Types for external use
 export type {
@@ -21,6 +22,11 @@ export type {
 	RenameNodeInput,
 	RenameNodeResult,
 	ValidateStructureResult,
+	UpdateNodeParametersInput,
+	UpdateNodeParametersResult,
+	GetNodeParameterInput,
+	GetNodeParameterResult,
+	ValidateConfigurationResult,
 	ScriptTools,
 	ScriptExecutionContext,
 	WorkflowSnapshot,
@@ -44,7 +50,7 @@ export { ScriptStateProvider, OperationsCollector, createWorkflowSnapshot } from
 
 // Tool wrappers (for testing)
 export { createToolWrappers } from './tool-wrappers';
-export type { ToolWrappersConfig } from './tool-wrappers';
+export type { ToolWrappersConfig, WorkflowContext } from './tool-wrappers';
 
 // Sandbox (for testing)
 export { executeScript, validateScriptSyntax } from './script-sandbox';

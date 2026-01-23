@@ -6,6 +6,7 @@
  * LLM inference cycles and keeps intermediate results in script context.
  */
 
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -20,7 +21,7 @@ import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 import { ScriptExecutionError, ScriptValidationError } from './errors';
 import { executeScript, validateScriptSyntax } from './script-sandbox';
 import { ScriptStateProvider } from './state-provider';
-import { createToolWrappers } from './tool-wrappers';
+import { createToolWrappers, type WorkflowContext } from './tool-wrappers';
 
 /**
  * Schema for execute script input
@@ -48,6 +49,18 @@ export const EXECUTE_SCRIPT_TOOL: BuilderToolBase = {
 	toolName: 'execute_script',
 	displayTitle: 'Adding nodes and connections',
 };
+
+/**
+ * Configuration for execute script tool
+ */
+export interface ExecuteScriptToolConfig {
+	/** LLM for parameter updates (enables updateNodeParameters in scripts) */
+	parameterUpdaterLLM?: BaseChatModel;
+	/** n8n instance URL for resource locators */
+	instanceUrl?: string;
+	/** Workflow context for parameter updates */
+	workflowContext?: WorkflowContext;
+}
 
 /**
  * Get custom display title based on script description
@@ -91,11 +104,29 @@ function buildResultMessage(
 }
 
 /**
+ * Run combined structure and configuration validation
+ */
+async function runCombinedValidation(
+	tools: Awaited<ReturnType<typeof createToolWrappers>>,
+): Promise<{ isValid: boolean; issues?: string[] }> {
+	const structureResult = await tools.validateStructure();
+	const configResult = await tools.validateConfiguration();
+
+	const allIssues = [...(structureResult.issues ?? []), ...(configResult.issues ?? [])];
+
+	return {
+		isValid: structureResult.isValid && configResult.isValid,
+		issues: allIssues.length > 0 ? allIssues : undefined,
+	};
+}
+
+/**
  * Factory function to create the execute script tool
  */
 export function createExecuteScriptTool(
 	nodeTypes: INodeTypeDescription[],
 	logger?: Logger,
+	toolConfig?: ExecuteScriptToolConfig,
 ): BuilderTool {
 	const builderToolBase = EXECUTE_SCRIPT_TOOL;
 
@@ -147,6 +178,9 @@ export function createExecuteScriptTool(
 					workflow,
 					operationsCollector,
 					logger,
+					parameterUpdaterLLM: toolConfig?.parameterUpdaterLLM,
+					instanceUrl: toolConfig?.instanceUrl,
+					workflowContext: toolConfig?.workflowContext,
 				});
 
 				// Execute script in sandbox
@@ -211,8 +245,8 @@ export function createExecuteScriptTool(
 				// Run automatic validation if enabled
 				let validationResult: { isValid: boolean; issues?: string[] } | undefined;
 				if (shouldValidate) {
-					reportProgress(reporter, 'Validating workflow structure...');
-					validationResult = await tools.validateStructure();
+					reportProgress(reporter, 'Validating workflow...');
+					validationResult = await runCombinedValidation(tools);
 				}
 
 				// Build result message

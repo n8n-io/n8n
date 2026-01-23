@@ -8,16 +8,25 @@
  * 3. Return simplified result objects
  */
 
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { Logger } from '@n8n/backend-common';
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import get from 'lodash/get';
+import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
+import { createParameterUpdaterChain } from '@/chains/parameter-updater';
 import { findNodeType } from '@/tools/helpers/validation';
 import { inferConnectionType, validateConnection } from '@/tools/utils/connection.utils';
 import { generateUniqueName, createNodeInstance } from '@/tools/utils/node-creation.utils';
 import { calculateNodePosition } from '@/tools/utils/node-positioning.utils';
 import type { SimpleWorkflow, WorkflowOperation } from '@/types/workflow';
 import { isSubNode } from '@/utils/node-helpers';
-import { validateConnections, validateTrigger } from '@/validation/checks';
+import {
+	validateAgentPrompt,
+	validateConnections,
+	validateFromAi,
+	validateTools,
+	validateTrigger,
+} from '@/validation/checks';
 
 import { ScriptToolError } from './errors';
 import type { OperationsCollector } from './state-provider';
@@ -34,8 +43,22 @@ import {
 	type RenameNodeInput,
 	type RenameNodeResult,
 	type ValidateStructureResult,
+	type UpdateNodeParametersInput,
+	type UpdateNodeParametersResult,
+	type GetNodeParameterInput,
+	type GetNodeParameterResult,
+	type ValidateConfigurationResult,
 	type ScriptTools,
 } from './tool-interfaces';
+
+/**
+ * Workflow context for parameter updates
+ */
+export interface WorkflowContext {
+	executionSchema?: string;
+	executionData?: string;
+	workflowJson?: string;
+}
 
 /**
  * Configuration for creating script tool wrappers
@@ -45,6 +68,12 @@ export interface ToolWrappersConfig {
 	workflow: SimpleWorkflow;
 	operationsCollector: OperationsCollector;
 	logger?: Logger;
+	/** LLM for parameter updates (required for updateNodeParameters) */
+	parameterUpdaterLLM?: BaseChatModel;
+	/** n8n instance URL for resource locators */
+	instanceUrl?: string;
+	/** Workflow context for parameter updates */
+	workflowContext?: WorkflowContext;
 }
 
 /**
@@ -255,12 +284,20 @@ function lookupNodesForConnection(
 	currentNodes: INode[],
 	nodeTypes: INodeTypeDescription[],
 ): NodeLookupResult {
-	const sourceNode = currentNodes.find((n) => n.id === sourceNodeId);
-	const targetNode = currentNodes.find((n) => n.id === targetNodeId);
+	// Try to find by ID first, then fall back to name lookup
+	let sourceNode = currentNodes.find((n) => n.id === sourceNodeId);
+	if (!sourceNode) {
+		sourceNode = currentNodes.find((n) => n.name === sourceNodeId);
+	}
+
+	let targetNode = currentNodes.find((n) => n.id === targetNodeId);
+	if (!targetNode) {
+		targetNode = currentNodes.find((n) => n.name === targetNodeId);
+	}
 
 	if (!sourceNode || !targetNode) {
 		const missing = !sourceNode ? sourceNodeId : targetNodeId;
-		return { error: `Node with ID "${missing}" not found` };
+		return { error: `Node "${missing}" not found (checked both ID and name)` };
 	}
 
 	const sourceNodeType = nodeTypes.find((nt) => nt.name === sourceNode.type);
@@ -278,7 +315,15 @@ function lookupNodesForConnection(
  * Create tool wrappers for use in script execution
  */
 export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
-	const { nodeTypes, workflow, operationsCollector, logger } = config;
+	const {
+		nodeTypes,
+		workflow,
+		operationsCollector,
+		logger,
+		parameterUpdaterLLM,
+		instanceUrl,
+		workflowContext,
+	} = config;
 
 	/**
 	 * Add a node to the workflow
@@ -377,6 +422,16 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 			let { sourceNode, targetNode } = lookup;
 			const { sourceNodeType, targetNodeType } = lookup;
 
+			// Debug logging for connection inference
+			logger?.debug('Script: connectNodes - inferring connection type', {
+				sourceNodeName: sourceNode!.name,
+				sourceNodeType: sourceNode!.type,
+				targetNodeName: targetNode!.name,
+				targetNodeType: targetNode!.type,
+				targetNodeParameters: targetNode!.parameters,
+				targetHasOutputParser: targetNode!.parameters?.hasOutputParser,
+			});
+
 			// Infer connection type
 			const inferResult = inferConnectionType(
 				sourceNode!,
@@ -386,6 +441,10 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 			);
 
 			if (inferResult.error || !inferResult.connectionType) {
+				logger?.debug('Script: connectNodes - inference failed', {
+					error: inferResult.error,
+					possibleTypes: inferResult.possibleTypes,
+				});
 				return { success: false, error: inferResult.error ?? 'Could not infer connection type' };
 			}
 
@@ -662,6 +721,195 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 		}
 	}
 
+	/**
+	 * Update node parameters using natural language instructions
+	 */
+	async function updateNodeParameters(
+		input: UpdateNodeParametersInput,
+	): Promise<UpdateNodeParametersResult> {
+		try {
+			const { nodeId, changes } = input;
+
+			// Check if LLM is available - throw so scripts know this failed
+			if (!parameterUpdaterLLM) {
+				throw new ScriptToolError(
+					'updateNodeParameters',
+					'Parameter update requires LLM configuration. Use initialParameters when creating nodes instead, or ensure parameterUpdaterLLM is configured.',
+					{ toolInput: input },
+				);
+			}
+
+			// Get current nodes
+			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
+			const nodeToUpdate = currentNodes.find((n) => n.id === nodeId);
+
+			if (!nodeToUpdate) {
+				return {
+					success: false,
+					error: `Node with ID "${nodeId}" not found`,
+				};
+			}
+
+			// Find the node type definition
+			const nodeTypeDesc = nodeTypes.find((nt) => nt.name === nodeToUpdate.type);
+			if (!nodeTypeDesc) {
+				return {
+					success: false,
+					error: `Node type "${nodeToUpdate.type}" not found`,
+				};
+			}
+
+			// Build current workflow for context
+			const currentConnections = getCurrentConnections(workflow, operationsCollector);
+			const currentWorkflow: SimpleWorkflow = {
+				name: workflow.name,
+				nodes: currentNodes,
+				connections: currentConnections,
+			};
+
+			// Create the parameter updater chain
+			const chain = createParameterUpdaterChain(
+				parameterUpdaterLLM,
+				{
+					nodeType: nodeToUpdate.type,
+					nodeDefinition: nodeTypeDesc,
+					requestedChanges: changes,
+				},
+				logger,
+			);
+
+			// Invoke the chain
+			const result = await chain.invoke({
+				node_definition: JSON.stringify(nodeTypeDesc.properties, null, 2),
+				workflow_json: JSON.stringify(currentWorkflow, null, 2),
+				execution_data: workflowContext?.executionData ?? 'No execution data available',
+				execution_schema: workflowContext?.executionSchema ?? 'No execution schema available',
+				node_name: nodeToUpdate.name,
+				node_type: nodeToUpdate.type,
+				current_parameters: JSON.stringify(nodeToUpdate.parameters ?? {}, null, 2),
+				changes: changes.join('\n'),
+				instanceUrl: instanceUrl ?? '',
+			});
+
+			const updatedParameters = result.parameters as INodeParameters;
+
+			logger?.debug('Script: Parameter update result', {
+				nodeName: nodeToUpdate.name,
+				nodeId,
+				requestedChanges: changes,
+				previousParameters: nodeToUpdate.parameters,
+				updatedParameters,
+			});
+
+			// Validate that we got meaningful parameters back
+			if (!updatedParameters || Object.keys(updatedParameters).length === 0) {
+				logger?.warn('Script: LLM returned empty parameters - this may indicate a problem');
+			}
+
+			// Add operation to collector
+			const operation: WorkflowOperation = {
+				type: 'updateNode',
+				nodeId,
+				updates: { parameters: updatedParameters },
+			};
+			operationsCollector.addOperation(operation);
+
+			logger?.debug(
+				`Script: Updated parameters for node "${nodeToUpdate.name}" (op #${operationsCollector.count})`,
+			);
+
+			return {
+				success: true,
+				updatedParameters,
+				appliedChanges: changes,
+			};
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Unknown error updating node parameters';
+			throw new ScriptToolError('updateNodeParameters', message, { toolInput: input });
+		}
+	}
+
+	/**
+	 * Get a specific parameter value from a node
+	 */
+	async function getNodeParameter(input: GetNodeParameterInput): Promise<GetNodeParameterResult> {
+		try {
+			const { nodeId, path } = input;
+
+			// Get current nodes
+			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
+			const node = currentNodes.find((n) => n.id === nodeId);
+
+			if (!node) {
+				return {
+					success: false,
+					error: `Node with ID "${nodeId}" not found`,
+				};
+			}
+
+			// Get the parameter value using lodash get
+			const value = get(node.parameters ?? {}, path);
+
+			logger?.debug(
+				`Script: Got parameter "${path}" from node "${node.name}": ${JSON.stringify(value)}`,
+			);
+
+			return {
+				success: true,
+				value,
+			};
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Unknown error getting node parameter';
+			throw new ScriptToolError('getNodeParameter', message, { toolInput: input });
+		}
+	}
+
+	/**
+	 * Validate node configurations (agent prompts, tools, $fromAI usage)
+	 */
+	async function validateConfiguration(): Promise<ValidateConfigurationResult> {
+		try {
+			// Build current workflow state
+			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
+			const currentConnections = getCurrentConnections(workflow, operationsCollector);
+
+			const currentWorkflow: SimpleWorkflow = {
+				name: workflow.name,
+				nodes: currentNodes,
+				connections: currentConnections,
+			};
+
+			// Run configuration validations
+			const agentPromptViolations = validateAgentPrompt(currentWorkflow);
+			const toolViolations = validateTools(currentWorkflow, nodeTypes);
+			const fromAiViolations = validateFromAi(currentWorkflow, nodeTypes);
+			const allViolations = [...agentPromptViolations, ...toolViolations, ...fromAiViolations];
+
+			const isValid = allViolations.length === 0;
+			const issues = allViolations.map((v) => v.description);
+
+			logger?.debug(
+				`Script: Validated configuration - ${isValid ? 'valid' : `${issues.length} issues`}`,
+			);
+
+			return {
+				success: true,
+				isValid,
+				issues: isValid ? undefined : issues,
+			};
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Unknown error validating configuration';
+			return {
+				success: false,
+				isValid: false,
+				error: message,
+			};
+		}
+	}
+
 	return {
 		addNode,
 		connectNodes,
@@ -669,5 +917,8 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 		removeConnection,
 		renameNode,
 		validateStructure,
+		updateNodeParameters,
+		getNodeParameter,
+		validateConfiguration,
 	};
 }

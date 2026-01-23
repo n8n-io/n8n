@@ -100,6 +100,10 @@ export interface BuilderSubgraphConfig {
 	llm: BaseChatModel;
 	logger?: Logger;
 	featureFlags?: BuilderFeatureFlags;
+	/** LLM for parameter updates (enables updateNodeParameters in scripts) */
+	llmParameterUpdater?: BaseChatModel;
+	/** n8n instance URL for resource locators */
+	instanceUrl?: string;
 }
 
 export class BuilderSubgraph extends BaseSubgraph<
@@ -123,7 +127,12 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// When scriptExecution is enabled, use execute_script instead of individual tools
 		// Note: validate_structure is NOT included - execute_script validates automatically
 		const tools = includeScriptExecution
-			? [createExecuteScriptTool(config.parsedNodeTypes, config.logger)]
+			? [
+					createExecuteScriptTool(config.parsedNodeTypes, config.logger, {
+						parameterUpdaterLLM: config.llmParameterUpdater,
+						instanceUrl: config.instanceUrl,
+					}),
+				]
 			: [
 					createAddNodeTool(config.parsedNodeTypes),
 					createConnectNodesTool(config.parsedNodeTypes, config.logger),

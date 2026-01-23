@@ -1006,8 +1006,8 @@ describe('connection.utils', () => {
 			expect(result.error).toContain('Multiple connection types possible');
 		});
 
-		it('should allow output parser connection when AI Agent has hasOutputParser true/undefined', () => {
-			// When hasOutputParser is true or not set, ai_outputParser input should be available
+		it('should allow output parser connection when AI Agent has hasOutputParser true', () => {
+			// When hasOutputParser is explicitly true, ai_outputParser input is available
 			const aiAgentNode: INode = {
 				id: 'agent1',
 				name: 'AI Agent',
@@ -1064,6 +1064,39 @@ describe('connection.utils', () => {
 			);
 
 			// Should fail because ai_outputParser is not available when hasOutputParser is false
+			expect(result.error).toBeDefined();
+			expect(result.connectionType).toBeUndefined();
+		});
+
+		it('should NOT allow output parser connection when AI Agent has hasOutputParser undefined', () => {
+			// When hasOutputParser is undefined (default), ai_outputParser input is NOT available
+			// This is the default state for AI Agent nodes
+			const aiAgentNode: INode = {
+				id: 'agent1',
+				name: 'AI Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {}, // hasOutputParser not set (undefined)
+			};
+
+			const outputParserNode: INode = {
+				id: 'parser1',
+				name: 'Output Parser',
+				type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+				typeVersion: 1,
+				position: [0, 100],
+				parameters: {},
+			};
+
+			const result = inferConnectionType(
+				outputParserNode,
+				aiAgentNode,
+				mockOutputParserNodeType,
+				mockAiAgentNodeType,
+			);
+
+			// Should fail because ai_outputParser is not available by default
 			expect(result.error).toBeDefined();
 			expect(result.connectionType).toBeUndefined();
 		});

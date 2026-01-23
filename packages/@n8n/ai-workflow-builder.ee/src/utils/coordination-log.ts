@@ -16,7 +16,7 @@ import type {
 	StateManagementMetadata,
 } from '../types/coordination';
 
-export type RoutingDecision = 'discovery' | 'builder' | 'configurator' | 'responder';
+export type RoutingDecision = 'discovery' | 'builder' | 'responder';
 
 /**
  * Get the last completed phase from the coordination log
@@ -165,12 +165,12 @@ export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecisio
 		return 'builder';
 	}
 
-	// After builder → configurator
+	// After builder → responder (terminal) - builder now handles configuration too
 	if (lastPhase === 'builder') {
-		return 'configurator';
+		return 'responder';
 	}
 
-	// After configurator → responder (terminal)
+	// Legacy: After configurator → responder (for any in-flight workflows)
 	if (lastPhase === 'configurator') {
 		return 'responder';
 	}

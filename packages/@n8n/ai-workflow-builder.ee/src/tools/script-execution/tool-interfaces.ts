@@ -213,6 +213,80 @@ export interface ValidateStructureResult {
 }
 
 // ============================================================================
+// Update Node Parameters Tool
+// ============================================================================
+
+/**
+ * Input for updating node parameters using natural language
+ */
+export interface UpdateNodeParametersInput {
+	/** The ID of the node to update */
+	nodeId: string;
+	/** Natural language descriptions of changes to make */
+	changes: string[];
+}
+
+/**
+ * Output from updating node parameters
+ */
+export interface UpdateNodeParametersResult {
+	success: boolean;
+	/** The updated parameters object */
+	updatedParameters?: INodeParameters;
+	/** List of changes that were applied */
+	appliedChanges?: string[];
+	/** Error message if failed */
+	error?: string;
+}
+
+// ============================================================================
+// Get Node Parameter Tool
+// ============================================================================
+
+/**
+ * Input for getting a specific node parameter value
+ */
+export interface GetNodeParameterInput {
+	/** The ID of the node to get parameter from */
+	nodeId: string;
+	/** The path to the parameter (e.g., "options.baseUrl" or "hasOutputParser") */
+	path: string;
+}
+
+/**
+ * Output from getting a node parameter
+ */
+export interface GetNodeParameterResult {
+	success: boolean;
+	/** The parameter value (can be any type) */
+	value?: unknown;
+	/** Error message if failed */
+	error?: string;
+}
+
+// ============================================================================
+// Validate Configuration Tool
+// ============================================================================
+
+/**
+ * Input for validating node configuration (no parameters required)
+ */
+export type ValidateConfigurationInput = Record<string, never>;
+
+/**
+ * Output from validating node configuration
+ */
+export interface ValidateConfigurationResult {
+	success: boolean;
+	/** Whether all node configurations are valid */
+	isValid: boolean;
+	/** List of configuration issues found */
+	issues?: string[];
+	/** Error message if validation itself failed */
+	error?: string;
+}
+
+// ============================================================================
 // Script Execution Types
 // ============================================================================
 
@@ -309,6 +383,26 @@ export interface ScriptTools {
 	 * @returns Result with validation status and any issues
 	 */
 	validateStructure(): Promise<ValidateStructureResult>;
+
+	/**
+	 * Update node parameters using natural language instructions
+	 * @param input Node ID and natural language changes
+	 * @returns Result with updated parameters on success
+	 */
+	updateNodeParameters(input: UpdateNodeParametersInput): Promise<UpdateNodeParametersResult>;
+
+	/**
+	 * Get a specific parameter value from a node
+	 * @param input Node ID and parameter path
+	 * @returns Result with parameter value on success
+	 */
+	getNodeParameter(input: GetNodeParameterInput): Promise<GetNodeParameterResult>;
+
+	/**
+	 * Validate node configurations (agent prompts, tools, $fromAI usage)
+	 * @returns Result with validation status and any issues
+	 */
+	validateConfiguration(): Promise<ValidateConfigurationResult>;
 }
 
 /**
@@ -384,5 +478,37 @@ interface RemoveConnectionInput {{
 interface RenameNodeInput {{
   nodeId: string;
   newName: string;
+}}
+
+// Configuration tool interfaces
+
+interface UpdateNodeParametersInput {{
+  nodeId: string;          // UUID of the node to update
+  changes: string[];       // Natural language changes, e.g. ["Enable hasOutputParser", "Set URL to https://api.example.com"]
+}}
+
+interface UpdateNodeParametersResult {{
+  success: boolean;
+  updatedParameters?: object;  // The complete updated parameters
+  appliedChanges?: string[];   // List of changes that were applied
+  error?: string;
+}}
+
+interface GetNodeParameterInput {{
+  nodeId: string;          // UUID of the node
+  path: string;            // Parameter path, e.g. "options.baseUrl" or "hasOutputParser"
+}}
+
+interface GetNodeParameterResult {{
+  success: boolean;
+  value?: unknown;         // The parameter value (any type)
+  error?: string;
+}}
+
+interface ValidateConfigurationResult {{
+  success: boolean;
+  isValid: boolean;
+  issues?: string[];       // Configuration issues (agent prompts, tools, $fromAI usage)
+  error?: string;
 }}
 `.trim();

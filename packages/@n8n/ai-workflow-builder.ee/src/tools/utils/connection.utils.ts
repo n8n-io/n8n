@@ -371,8 +371,9 @@ function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeCo
 		const extracted = extractConnectionTypesFromExpression(nodeType.inputs);
 
 		// Special handling for AI Agent's hasOutputParser parameter
-		// When hasOutputParser is explicitly false, the ai_outputParser input is not available
-		if (node && nodeType.name.includes('agent') && node.parameters?.hasOutputParser === false) {
+		// The ai_outputParser input is only available when hasOutputParser is explicitly true
+		// Default (undefined) and false both mean no output parser input
+		if (node && nodeType.name.includes('agent') && node.parameters?.hasOutputParser !== true) {
 			return extracted.filter((type) => type !== 'ai_outputParser');
 		}
 

@@ -176,12 +176,13 @@ describe('coordination-log utilities', () => {
 			expect(getNextPhaseFromLog(log)).toBe('builder');
 		});
 
-		it('should return configurator after builder', () => {
+		it('should return responder after builder (unified builder)', () => {
 			const log = [createLogEntry('discovery'), createLogEntry('builder')];
-			expect(getNextPhaseFromLog(log)).toBe('configurator');
+			expect(getNextPhaseFromLog(log)).toBe('responder');
 		});
 
-		it('should return responder after configurator', () => {
+		it('should return responder after configurator (legacy support)', () => {
+			// Legacy support for any in-flight workflows that still have configurator phase
 			const log = [
 				createLogEntry('discovery'),
 				createLogEntry('builder'),

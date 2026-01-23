@@ -58,6 +58,65 @@ await tools.connectNodes({
 \`\`\``;
 
 /**
+ * Configuration tools for parameter updates
+ */
+export const CONFIGURATOR_SCRIPT_TOOLS = `## Configuration Tools
+
+### tools.updateNodeParameters({{ nodeId, changes }})
+Update node parameters with natural language instructions.
+Example:
+\`\`\`javascript
+await tools.updateNodeParameters({{
+  nodeId: agent.nodeId,
+  changes: ["Enable hasOutputParser", "Set system message to 'You are a helpful assistant'"]
+}});
+\`\`\`
+
+### tools.getNodeParameter({{ nodeId, path }})
+Get a specific parameter value from a node.
+Example:
+\`\`\`javascript
+const url = await tools.getNodeParameter({{ nodeId: http.nodeId, path: "url" }});
+if (url.success) {{
+  console.log('URL:', url.value);
+}}
+\`\`\`
+
+### tools.validateConfiguration()
+Validate node configurations (agent prompts, tool params, $fromAI usage).
+Called automatically after script execution.
+Example:
+\`\`\`javascript
+const result = await tools.validateConfiguration();
+if (!result.isValid) {{
+  console.log('Issues:', result.issues);
+}}
+\`\`\`
+
+### When to use updateNodeParameters vs initialParameters
+- Use **initialParameters** in addNode() for parameters you know at creation time (hasOutputParser, mode, etc.)
+- Use **updateNodeParameters** when you need to modify parameters based on dynamic context or after seeing connections
+
+Example - Setting hasOutputParser before connecting output parser:
+\`\`\`javascript
+// Option 1: Set in initialParameters (preferred when you know upfront)
+const agent = await tools.addNode({{
+  nodeType: '@n8n/n8n-nodes-langchain.agent',
+  nodeVersion: 1.7,
+  name: 'AI Agent',
+  initialParametersReasoning: 'Need structured output',
+  initialParameters: {{ hasOutputParser: true }}
+}});
+
+// Option 2: Update after creation (when needed dynamically)
+await tools.updateNodeParameters({{
+  nodeId: agent.nodeId,
+  changes: ['Enable hasOutputParser for structured output']
+}});
+\`\`\`
+`;
+
+/**
  * Common script patterns for workflow building
  */
 export const SCRIPT_EXECUTION_PATTERNS = `## Common Script Patterns
@@ -173,6 +232,7 @@ export function buildScriptExecutionGuidance(): string {
 		SCRIPT_EXECUTION_WHEN_TO_USE,
 		SCRIPT_EXECUTION_BEST_PRACTICES,
 		SCRIPT_EXECUTION_PATTERNS,
+		CONFIGURATOR_SCRIPT_TOOLS,
 	].join('\n\n');
 }
 
@@ -234,9 +294,13 @@ Available functions in script:
 - tools.removeNode(input) - Remove a node
 - tools.removeConnection(input) - Remove a connection
 - tools.renameNode(input) - Rename a node
+- tools.updateNodeParameters(input) - Update parameters with natural language changes
+- tools.getNodeParameter(input) - Get a specific parameter value
 
 Key rules:
 1. All tools are async - use await (NEVER use .then() chains)
 2. Pass result objects directly to connectNodes (e.g., sourceNodeId: trigger)
 3. Create ALL nodes first, then ALL connections
-4. ONE script call creates the complete workflow`;
+4. ONE script call creates the complete workflow
+5. Use initialParameters in addNode() when you know the values upfront
+6. Use updateNodeParameters() for dynamic updates after creation`;

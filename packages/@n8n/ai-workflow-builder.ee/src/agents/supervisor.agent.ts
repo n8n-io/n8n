@@ -31,9 +31,7 @@ const systemPrompt = ChatPromptTemplate.fromMessages([
  */
 export const supervisorRoutingSchema = z.object({
 	reasoning: z.string().describe('One sentence explaining why this agent should act next'),
-	next: z
-		.enum(['responder', 'discovery', 'builder', 'configurator'])
-		.describe('The next agent to call'),
+	next: z.enum(['responder', 'discovery', 'builder']).describe('The next agent to call'),
 });
 
 export type SupervisorRouting = z.infer<typeof supervisorRoutingSchema>;
@@ -60,7 +58,8 @@ export interface SupervisorContext {
  * Supervisor Agent
  *
  * Coordinates the multi-agent workflow building process.
- * Routes to Discovery, Builder, or Configurator agents based on current state.
+ * Routes to Discovery or Builder agents based on current state.
+ * Builder now handles both structure and configuration via script execution.
  */
 export class SupervisorAgent {
 	private llm: BaseChatModel;

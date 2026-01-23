@@ -9,6 +9,9 @@ import { createToolWrappers } from '../tool-wrappers';
 jest.mock('../../../validation/checks', () => ({
 	validateConnections: jest.fn(() => []),
 	validateTrigger: jest.fn(() => []),
+	validateAgentPrompt: jest.fn(() => []),
+	validateTools: jest.fn(() => []),
+	validateFromAi: jest.fn(() => []),
 }));
 
 describe('Tool Wrappers', () => {
@@ -32,17 +35,13 @@ describe('Tool Wrappers', () => {
 		outputs: ['main'],
 	});
 
+	// Using expression-based inputs like the real AI Agent node
+	// This is important for testing hasOutputParser behavior
 	const agentType = createNodeType({
 		displayName: 'AI Agent',
 		name: '@n8n/n8n-nodes-langchain.agent',
 		group: ['output'],
-		inputs: [
-			{ type: 'main' },
-			{ type: 'ai_languageModel' },
-			{ type: 'ai_outputParser' },
-			{ type: 'ai_memory' },
-			{ type: 'ai_tool' },
-		],
+		inputs: `={{[{ type: 'main' }, { type: 'ai_languageModel' }, { type: 'ai_outputParser' }, { type: 'ai_memory' }, { type: 'ai_tool' }]}}`,
 		outputs: ['main'],
 	});
 
@@ -362,7 +361,7 @@ describe('Tool Wrappers', () => {
 
 		it('should connect output parser to existing AI Agent by UUID', async () => {
 			// This is the exact scenario the user reported failing:
-			// 1. Existing workflow has AI Agent
+			// 1. Existing workflow has AI Agent with hasOutputParser enabled
 			// 2. Script adds output parser
 			// 3. Script connects parser to AI Agent using UUID
 
@@ -370,6 +369,7 @@ describe('Tool Wrappers', () => {
 				id: 'agent-uuid-12345',
 				name: 'Generate Fun Weather Email',
 				type: '@n8n/n8n-nodes-langchain.agent',
+				parameters: { hasOutputParser: true }, // Must be true for ai_outputParser input to be available
 			});
 			const existingWorkflow = createWorkflow([existingAgent]);
 
@@ -419,6 +419,44 @@ describe('Tool Wrappers', () => {
 					index: 0,
 				});
 			}
+		});
+
+		it('should FAIL to connect output parser when AI Agent has hasOutputParser undefined', async () => {
+			// This tests the fix: ai_outputParser should only be available when hasOutputParser === true
+			const existingAgent = createNode({
+				id: 'agent-uuid-no-parser',
+				name: 'AI Agent Without Parser',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				parameters: {}, // hasOutputParser NOT set (undefined) - default state
+			});
+			const existingWorkflow = createWorkflow([existingAgent]);
+
+			const collector = new OperationsCollector();
+			const toolsWithExisting = createToolWrappers({
+				nodeTypes,
+				workflow: existingWorkflow,
+				operationsCollector: collector,
+			});
+
+			// Add output parser
+			const parser = await toolsWithExisting.addNode({
+				nodeType: '@n8n/n8n-nodes-langchain.outputParserStructured',
+				nodeVersion: 1,
+				name: 'Output Parser',
+				initialParametersReasoning: 'Test',
+				initialParameters: {},
+			});
+			expect(parser.success).toBe(true);
+
+			// Try to connect parser to AI Agent - should FAIL because hasOutputParser is not true
+			const connectResult = await toolsWithExisting.connectNodes({
+				sourceNodeId: parser,
+				targetNodeId: 'agent-uuid-no-parser',
+			});
+
+			// This should fail because ai_outputParser is not available
+			expect(connectResult.success).toBe(false);
+			expect(connectResult.error).toBeDefined();
 		});
 
 		it('should handle rename followed by connect on existing workflow', async () => {
@@ -534,6 +572,119 @@ describe('Tool Wrappers', () => {
 
 			expect(result.success).toBe(true);
 			expect(result.isValid).toBe(true);
+		});
+	});
+
+	describe('getNodeParameter', () => {
+		it('should get a parameter value from a node', async () => {
+			// Add a node with parameters
+			const added = await tools.addNode({
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeVersion: 1,
+				name: 'HTTP Request',
+				initialParametersReasoning: 'Test',
+				initialParameters: { url: 'https://api.example.com', method: 'GET' },
+			});
+
+			// Get a parameter value
+			const result = await tools.getNodeParameter({
+				nodeId: added.nodeId!,
+				path: 'url',
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.value).toBe('https://api.example.com');
+		});
+
+		it('should get nested parameter values', async () => {
+			const added = await tools.addNode({
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeVersion: 1,
+				name: 'HTTP Request',
+				initialParametersReasoning: 'Test',
+				initialParameters: {
+					options: {
+						timeout: 5000,
+						allowUnauthorizedCerts: true,
+					},
+				},
+			});
+
+			const result = await tools.getNodeParameter({
+				nodeId: added.nodeId!,
+				path: 'options.timeout',
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.value).toBe(5000);
+		});
+
+		it('should return undefined for non-existent path', async () => {
+			const added = await tools.addNode({
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeVersion: 1,
+				name: 'HTTP Request',
+				initialParametersReasoning: 'Test',
+				initialParameters: {},
+			});
+
+			const result = await tools.getNodeParameter({
+				nodeId: added.nodeId!,
+				path: 'nonExistent.path',
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.value).toBeUndefined();
+		});
+
+		it('should return error for non-existent node', async () => {
+			const result = await tools.getNodeParameter({
+				nodeId: 'non-existent-id',
+				path: 'url',
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('not found');
+		});
+	});
+
+	describe('validateConfiguration', () => {
+		it('should validate configuration when no issues', async () => {
+			const result = await tools.validateConfiguration();
+
+			expect(result.success).toBe(true);
+			expect(result.isValid).toBe(true);
+		});
+	});
+
+	describe('updateNodeParameters', () => {
+		it('should throw error when LLM is not configured', async () => {
+			// Add a node first
+			const added = await tools.addNode({
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeVersion: 1,
+				name: 'HTTP Request',
+				initialParametersReasoning: 'Test',
+				initialParameters: {},
+			});
+
+			// Try to update without LLM - should throw
+			await expect(
+				tools.updateNodeParameters({
+					nodeId: added.nodeId!,
+					changes: ['Set URL to https://api.example.com'],
+				}),
+			).rejects.toThrow('LLM configuration');
+		});
+
+		it('should throw LLM error for non-existent node when LLM not configured', async () => {
+			// Note: LLM check happens first, so even with non-existent node we get LLM error
+			await expect(
+				tools.updateNodeParameters({
+					nodeId: 'non-existent',
+					changes: ['Set URL to https://api.example.com'],
+				}),
+			).rejects.toThrow('LLM configuration');
 		});
 	});
 });

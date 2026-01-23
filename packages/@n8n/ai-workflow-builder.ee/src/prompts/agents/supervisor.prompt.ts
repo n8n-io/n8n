@@ -10,8 +10,7 @@ import { prompt } from '../builder';
 const SUPERVISOR_ROLE = 'You are a Supervisor that routes user requests to specialist agents.';
 
 const AVAILABLE_AGENTS = `- discovery: Find n8n nodes for building/modifying workflows
-- builder: Create nodes and connections (requires discovery first for new node types)
-- configurator: Set parameters on EXISTING nodes (no structural changes)
+- builder: Create nodes, connections, AND configure parameters (requires discovery first for new node types)
 - responder: Answer questions, confirm completion (TERMINAL)`;
 
 const ROUTING_DECISION_TREE = `1. Is user asking a question or chatting? → responder
@@ -24,18 +23,17 @@ const ROUTING_DECISION_TREE = `1. Is user asking a question or chatting? → res
    - "Add [some integration]" (new integration)
    - "Switch from [ServiceA] to [ServiceB]" (swapping services)
 
-3. Is the request about connecting/disconnecting existing nodes? → builder
-   Examples: "Connect node A to node B", "Remove the connection to X"
-
-4. Is the request about changing VALUES in existing nodes? → configurator
+3. Is the request about workflow structure or configuration? → builder
    Examples:
-   - "Change the URL to https://..."
-   - "Set the timeout to 30 seconds"
-   - "Update the email subject to..."`;
+   - "Connect node A to node B" (connections)
+   - "Remove the connection to X" (connections)
+   - "Change the URL to https://..." (parameters)
+   - "Set the timeout to 30 seconds" (parameters)
+   - "Update the email subject to..." (parameters)`;
 
 /** Clarifies replacement (discovery) vs configuration - common confusion point */
 const KEY_DISTINCTION = `- "Use [ServiceB] instead of [ServiceA]" = REPLACEMENT = discovery (new node type needed)
-- "Change the [ServiceA] API key" = CONFIGURATION = configurator (same node, different value)`;
+- "Change the [ServiceA] API key" = CONFIGURATION = builder (same node, different value)`;
 
 const OUTPUT_FORMAT = `- reasoning: One sentence explaining your routing decision
 - next: Agent name`;

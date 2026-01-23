@@ -48,6 +48,11 @@ describe('Script Sandbox', () => {
 		removeConnection: jest.fn().mockResolvedValue({ success: true }),
 		renameNode: jest.fn().mockResolvedValue({ success: true }),
 		validateStructure: jest.fn().mockResolvedValue({ success: true, isValid: true }),
+		updateNodeParameters: jest
+			.fn()
+			.mockResolvedValue({ success: true, updatedParameters: {}, appliedChanges: [] }),
+		getNodeParameter: jest.fn().mockResolvedValue({ success: true, value: undefined }),
+		validateConfiguration: jest.fn().mockResolvedValue({ success: true, isValid: true }),
 	});
 
 	describe('executeScript', () => {
