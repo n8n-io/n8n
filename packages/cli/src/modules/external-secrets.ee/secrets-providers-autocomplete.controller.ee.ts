@@ -33,7 +33,7 @@ export class SecretProvidersAutocompleteController {
 	}
 
 	@Get('/secrets/project/:projectId')
-	@ProjectScope('externalSecretsProvider:read')
+	@GlobalScope('externalSecret:list')
 	async listProjectSecrets() {
 		this.logger.debug('Listing secrets for project');
 		//TODO implement
