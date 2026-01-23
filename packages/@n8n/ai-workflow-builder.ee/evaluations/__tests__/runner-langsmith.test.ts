@@ -690,11 +690,13 @@ describe('Runner - LangSmith Mode', () => {
 				]);
 
 				// Mock evaluate to call the target function with test inputs
-				mockEvaluate.mockImplementationOnce(async (target) => {
+				mockEvaluate.mockImplementationOnce(async (target, _options) => {
 					// Call the target to populate capturedResults
 					await callLangsmithTarget(target, { prompt: 'Test prompt 1' });
 					await callLangsmithTarget(target, { prompt: 'Test prompt 2' });
-					return { experimentName: 'test-experiment' };
+					return { experimentName: 'test-experiment' } as Awaited<
+						ReturnType<typeof langsmithEvaluate>
+					>;
 				});
 
 				const config: RunConfig = {
