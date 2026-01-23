@@ -224,6 +224,8 @@ function moveResource() {
 }
 
 .cardHeading {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size--sm);
 	padding: var(--spacing--sm) 0 0;
 }

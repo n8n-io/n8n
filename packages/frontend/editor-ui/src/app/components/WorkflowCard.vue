@@ -44,6 +44,7 @@ import {
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -277,7 +278,7 @@ const isDynamicCredentialsEnabled = computed(() =>
 );
 
 const hasDynamicCredentials = computed(() => {
-	return isDynamicCredentialsEnabled.value && !!props.data.settings?.credentialResolverId;
+	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
 });
 
 const isResolverMissing = computed(() => {
@@ -562,26 +563,29 @@ const tags = computed(
 						</span>
 					</N8nBadge>
 				</N8nTooltip>
+				<N8nBadge
+					v-if="isResolverMissing"
+					theme="warning"
+					class="ml-3xs pl-3xs pr-3xs"
+					data-test-id="workflow-card-resolver-missing"
+				>
+					<span :class="$style.resolverMissingBadge">
+						{{ locale.baseText('workflows.dynamic.resolverMissing') }}
+					</span>
+				</N8nBadge>
 			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<span
-				v-if="isResolverMissing"
-				:class="$style.resolverMissing"
-				data-test-id="workflow-card-resolver-missing"
-			>
-				{{ locale.baseText('workflows.dynamic.resolverMissing') }}
-			</span>
-			<span v-show="data && !isResolverMissing"
+			<span v-show="data"
 				>{{ locale.baseText('workflows.item.updated') }}
 				<TimeAgo :date="String(data.updatedAt)" /> |
 			</span>
-			<span v-show="data && !isResolverMissing">
+			<span v-show="data">
 				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
 				<span v-if="props.isMcpEnabled && isAvailableInMCP">|</span>
 			</span>
 			<span
-				v-show="props.isMcpEnabled && isAvailableInMCP && !isResolverMissing"
+				v-show="props.isMcpEnabled && isAvailableInMCP"
 				:class="[$style['description-cell'], $style['description-cell--mcp']]"
 				data-test-id="workflow-card-mcp"
 			>
@@ -682,13 +686,11 @@ const tags = computed(
 }
 
 .cardHeading {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
-
-	span {
-		color: var(--color--text--tint-1);
-	}
 }
 
 .cardHeadingArchived {
@@ -761,19 +763,18 @@ const tags = computed(
 	height: 18px;
 }
 
+.resolverMissingBadge {
+	display: inline-flex;
+	align-items: center;
+	font-size: var(--font-size--3xs);
+	height: 18px;
+	color: var(--color--warning);
+}
+
 .tooltipContent {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
-}
-
-.resolverMissing {
-	color: var(--color--warning);
-
-	&::before {
-		content: '•';
-		margin-right: var(--spacing--4xs);
-	}
 }
 
 .publishIndicator {

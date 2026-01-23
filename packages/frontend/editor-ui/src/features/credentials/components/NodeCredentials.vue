@@ -151,7 +151,7 @@ function showResolvableWarning(credentialType: string): boolean {
 }
 
 // TODO: use actual docs link when available
-const dynamicCredentialsDocsUrl = 'https://docs.n8n.io/';
+const dynamicCredentialsDocsUrl = '';
 
 function openWorkflowSettings() {
 	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
@@ -638,7 +638,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 								{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
 							</N8nLink>
 						</template>
-						<template #documentation>
+						<template v-if="dynamicCredentialsDocsUrl" #documentation>
 							<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
 								{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
 							</N8nLink>

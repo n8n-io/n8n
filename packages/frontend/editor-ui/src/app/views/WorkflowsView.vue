@@ -353,6 +353,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				tags: resource.tags,
 				parentFolder: resource.parentFolder,
 				settings: resource.settings,
+				hasResolvableCredentials: resource.hasResolvableCredentials,
 			} satisfies WorkflowResource;
 		}
 	});

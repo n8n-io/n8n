@@ -926,7 +926,7 @@
 	"credentials.dynamic.tooltip": "This credential uses a resolver to pick the right account at runtime based on who runs the workflow.",
 	"credentials.dynamic.tooltipTitle": "Dynamic credentials",
 	"credentials.dynamic.badge": "Dynamic",
-	"credentials.dynamic.warning.noResolver": "Dynamic credentials are enabled, but no resolver is selected. Select one in {workflowSettings} to resolve user accounts at run time. Learn more in the {documentation}.",
+	"credentials.dynamic.warning.noResolver": "Dynamic credentials are enabled, but no resolver is selected. Select one in {workflowSettings} to resolve user accounts at run time.",
 	"credentials.dynamic.warning.noResolver.workflowSettings": "Workflow settings",
 	"credentials.dynamic.warning.noResolver.documentation": "documentation",
 	"credentials.search.placeholder": "Search credentials...",
