@@ -273,6 +273,7 @@ const agent = node({{
  * Complete workflow examples
  */
 const WORKFLOW_EXAMPLES = `<workflow_examples>
+<example_1>
 ## Example 1: Simple HTTP Request
 \`\`\`typescript
 return workflow('simple-http', 'Fetch API Data')
@@ -311,7 +312,9 @@ return workflow('simple-http', 'Fetch API Data')
     }}
   }}));
 \`\`\`
+</example_1>
 
+<example_2>
 ## Example 2: Scheduled Task with Conditional
 \`\`\`typescript
 return workflow('scheduled-check', 'Daily Status Check')
@@ -377,7 +380,9 @@ return workflow('scheduled-check', 'Daily Status Check')
     position: [840, 300]
   }}));
 \`\`\`
+</example_2>
 
+<example_3>
 ## Example 3: AI Agent with Calculator
 \`\`\`typescript
 return workflow('ai-calculator', 'Math Assistant')
@@ -416,7 +421,9 @@ return workflow('ai-calculator', 'Math Assistant')
     }}
   }}));
 \`\`\`
+</example_3>
 
+<example_4>
 ## Example 4: Multiple Triggers / Disconnected Chains
 When a workflow has multiple triggers or disconnected subgraphs, use separate .add() calls with chained nodes:
 \`\`\`typescript
@@ -474,7 +481,9 @@ return workflow('multi-trigger', 'Multi-Channel Notifications')
     }}))
   );
 \`\`\`
+</example_4>
 
+<example_5>
 ## Example 5: Switch Routing (Multi-Way Branching)
 Use \`switchCase()\` to route items to different branches based on rules:
 \`\`\`typescript
@@ -544,7 +553,9 @@ return workflow('order-router', 'Route Orders by Priority')
     position: [540, 300]
   }}));
 \`\`\`
+</example_5>
 
+<example_6>
 ## Example 6: Merge Parallel Branches
 Use \`merge()\` to execute multiple operations in parallel and combine results:
 \`\`\`typescript
@@ -597,7 +608,9 @@ Key merge modes:
 - \`combine\`: Merges items by position (first from each branch, then second, etc.)
 - \`multiplex\`: Creates all combinations of items from branches
 - \`chooseBranch\`: Waits for any one branch to complete
+</example_6>
 
+<example_7>
 ## Example 7: IF Branch with Continue After
 For IF branches where both paths continue to the same node, chain after the ifBranch:
 \`\`\`typescript
@@ -648,7 +661,9 @@ Key points for branching:
 - \`merge([branch1, branch2, ...], config)\`: Parallel execution with result combination
 - Position branch outputs vertically (e.g., y: 100, 300, 500) to avoid overlap
 - Use \`null\` in ifBranch array for branches that should not connect: \`ifBranch([null, errorHandler], config)\`
+</example_7>
 
+<example_8>
 ## Example 8: Sticky Notes for Documentation
 Use \`sticky()\` to add documentation notes. Pass \`nodes\` to auto-position around nodes:
 \`\`\`typescript
@@ -697,7 +712,9 @@ Key points for multiple chains:
 - All nodes in the chain are automatically added to the workflow
 - Connections between nodes in the chain are preserved
 - Position nodes vertically to avoid overlap (e.g., y: 200 for first chain, y: 500 for second)
+</example_8>
 
+<example_9>
 ## Example 9: Tools with $fromAI for AI-Driven Parameters
 Use the tool() config callback with $.fromAI() to let the AI agent determine parameter values at runtime:
 \`\`\`typescript
@@ -744,7 +761,9 @@ Key points for $fromAI:
 - $.fromAI(key, description?, type?, defaultValue?) creates AI-driven parameters
 - The AI agent will determine the actual values at runtime based on user input
 - Types: 'string' (default), 'number', 'boolean', 'json'
+</example_9>
 
+<example_10>
 ## Example 10: Multi-Agent Orchestration with Structured Output
 Complex workflows can have an orchestrator agent that coordinates multiple specialized sub-agents, each with their own models, tools, and output parsers:
 \`\`\`typescript
@@ -952,7 +971,9 @@ Key patterns for multi-agent orchestration:
 - **$fromAI in config callback**: Use \`config: ($) => ({{ ... $.fromAI(...) }})\` for tools like Gmail
 - **Mix agent and non-agent tools**: Orchestrator can coordinate both agent tools and regular tools (Gmail, HTTP, etc.)
 - **Sub-agent tools**: Each agent tool can have its own model, tools (for search, etc.), and output parser
+</example_10>
 
+<example_11>
 ## Example 11: Split In Batches for Large Dataset Processing
 Use \`splitInBatches()\` to process large datasets in chunks, preventing timeouts and managing rate limits:
 \`\`\`typescript
@@ -1002,6 +1023,7 @@ Key patterns:
 - \`.each()\` - Chain for processing EACH batch (output 1)
 - \`.loop()\` - Required at the end to loop back for next batch
 - Order matters: Define \`.done().then(...)\` before \`.each().then(...).loop()\`
+</example_11>
 </workflow_examples>`;
 
 /**
