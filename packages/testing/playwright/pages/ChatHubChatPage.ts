@@ -29,8 +29,15 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	async dismissWelcomeScreen(): Promise<void> {
-		const startButton = this.getWelcomeStartNewChatButton();
-		await startButton.click();
+		// Wait for conversation list to load (indicates sessions are ready)
+		const conversationList = this.sidebar.getConversations();
+		await this.page.getByTestId('chat-conversation-list').waitFor({ state: 'visible' });
+
+		// Only dismiss welcome screen if there are no existing conversations
+		const conversationCount = await conversationList.count();
+		if (conversationCount === 0) {
+			await this.getWelcomeStartNewChatButton().click();
+		}
 	}
 
 	getModelSelectorButton(): Locator {
