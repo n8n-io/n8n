@@ -4,7 +4,7 @@ import { Z } from 'zod-class';
 
 import { secretsProviderTypeSchema } from '../../schemas/secrets-provider.schema';
 
-export class CreateSecretProviderConnectionDto extends Z.class({
+export class CreateSecretsProviderConnectionDto extends Z.class({
 	providerKey: z.string().min(1).max(128),
 	type: secretsProviderTypeSchema,
 	projectIds: z.array(z.string().min(1)),

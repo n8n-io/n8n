@@ -5,8 +5,8 @@ import { z } from 'zod';
  * Test connection with provided settings.
  * The body contains the settings object to test with.
  */
-export const TestSecretProviderConnectionDto = z
+export const TestSecretsProviderConnectionDto = z
 	.object({})
 	.catchall(z.any()) satisfies z.ZodType<IDataObject>;
 
-export type TestSecretProviderConnectionDto = z.infer<typeof TestSecretProviderConnectionDto>;
+export type TestSecretsProviderConnectionDto = z.infer<typeof TestSecretsProviderConnectionDto>;
