@@ -44,6 +44,8 @@ export interface CreateFullRunExecutionDataOptions {
 	waitTill?: Date;
 	manualData?: IRunExecutionData['manualData'];
 	pushRef?: IRunExecutionData['pushRef'];
+	/** If provided, uses this token instead of generating a new one */
+	resumeToken?: string;
 }
 
 /**
@@ -51,6 +53,7 @@ export interface CreateFullRunExecutionDataOptions {
  * You can pass `executionData: null` and `resultData.runData: null` if you
  * don't want them initialized.
  */
+// eslint-disable-next-line complexity
 export function createRunExecutionData(
 	options: CreateFullRunExecutionDataOptions = {},
 ): IRunExecutionData {
@@ -78,7 +81,7 @@ export function createRunExecutionData(
 						runtimeData: options.executionData?.runtimeData,
 					},
 		parentExecution: options.parentExecution,
-		resumeToken: generateSecureToken(),
+		resumeToken: options.resumeToken ?? generateSecureToken(),
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,

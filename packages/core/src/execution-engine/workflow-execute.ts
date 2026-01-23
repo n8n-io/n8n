@@ -177,6 +177,8 @@ export class WorkflowExecute {
 			resultData: {
 				pinData,
 			},
+			// Preserve the resumeToken to ensure the token in the URL matches the one stored in the database
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		return this.processRunExecutionData(workflow);
@@ -291,6 +293,8 @@ export class WorkflowExecute {
 				waitingExecution,
 				waitingExecutionSource,
 			},
+			// Preserve the resumeToken to ensure the token in the URL matches the one stored in the database
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		// Still passing the original workflow here, because the WorkflowDataProxy

@@ -105,6 +105,15 @@ describe('RunExecutionDataFactory', () => {
 				waitingExecutionSource: {},
 			});
 		});
+
+		it('should use provided resumeToken instead of generating a new one', () => {
+			const existingToken = 'a'.repeat(64); // 64 character hex string
+			const result = createRunExecutionData({
+				resumeToken: existingToken,
+			});
+
+			expect(result.resumeToken).toBe(existingToken);
+		});
 	});
 
 	describe('createMinimalRunExecutionData', () => {
