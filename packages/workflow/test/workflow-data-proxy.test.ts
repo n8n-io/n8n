@@ -1060,20 +1060,22 @@ describe('WorkflowDataProxy', () => {
 				additionalKeys,
 			});
 
-		test('Behaves like $fromAI("tool") when execution data exists', () => {
-			// $tool should behave the same as $fromAI('tool') when execution data is available
+		test('Returns object with name and parameters when execution data exists', () => {
 			const proxy = getToolProxy();
 			const toolValue = proxy.$tool;
-			const fromAiToolValue = proxy.$fromAI('tool');
-			// Both should return the same value (or both undefined if tool key doesn't exist)
-			expect(toolValue).toEqual(fromAiToolValue);
+			// $tool should now return an object with name and parameters
+			expect(toolValue).toBeDefined();
+			expect(typeof toolValue).toBe('object');
+			expect(toolValue).toHaveProperty('name');
+			expect(toolValue).toHaveProperty('parameters');
 		});
 
 		test('Works consistently across different items', () => {
 			const proxy0 = getToolProxy(0);
 			const proxy1 = getToolProxy(1);
-			// Both should behave consistently
-			expect(typeof proxy0.$tool).toBe(typeof proxy1.$tool);
+			// Both should return objects
+			expect(typeof proxy0.$tool).toBe('object');
+			expect(typeof proxy1.$tool).toBe('object');
 		});
 
 		test('Falls back to additionalKeys when no execution data exists', () => {
@@ -1115,25 +1117,29 @@ describe('WorkflowDataProxy', () => {
 				[], // Empty connectionInputData - this triggers no_execution_data error
 				{},
 				'manual',
-				{ $tool: 'fallback-tool-value' }, // Fallback value
+				{ $tool: { name: 'fallback-tool', parameters: 'fallback-params' } }, // Fallback value
 				undefined,
 			);
 
 			const proxy = dataProxy.getDataProxy();
 
 			// Should return the fallback value since there's no execution data
-			expect(proxy.$tool).toEqual('fallback-tool-value');
+			expect(proxy.$tool).toEqual({ name: 'fallback-tool', parameters: 'fallback-params' });
 		});
 
 		test('Uses execution data when available, ignoring fallback', () => {
 			// When execution data exists, it should use that instead of fallback
-			const proxy = getToolProxy(0, { $tool: 'fallback-tool-value' });
-			// Should use the actual value from execution data (or undefined if tool key doesn't exist)
+			const proxy = getToolProxy(0, {
+				$tool: { name: 'fallback-tool', parameters: 'fallback-params' },
+			});
+			// Should use the actual value from execution data
 			// The fallback should be ignored when execution data is available
 			const toolValue = proxy.$tool;
-			const fromAiToolValue = proxy.$fromAI('tool');
-			// Both should return the same value (execution data takes precedence over fallback)
-			expect(toolValue).toEqual(fromAiToolValue);
+			// Should return an object with name and parameters from execution data
+			expect(toolValue).toBeDefined();
+			expect(typeof toolValue).toBe('object');
+			expect(toolValue).toHaveProperty('name');
+			expect(toolValue).toHaveProperty('parameters');
 		});
 	});
 

@@ -2414,7 +2414,7 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
 	$pageCount?: number;
-
+	$tool?: { name: string; parameters: string };
 	/** @deprecated */
 	$executionId?: string;
 	/** @deprecated */
