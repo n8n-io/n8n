@@ -30,6 +30,15 @@ const hasResolvableCredential = computed(() => {
 		return credential?.isResolvable === true;
 	});
 });
+
+const hasContextEstablishmentHooks = computed(() => {
+	const hooks = node.value?.parameters?.contextEstablishmentHooks?.hooks;
+	return Array.isArray(hooks) && hooks.length > 0;
+});
+
+const hasDynamicCredentials = computed(
+	() => hasResolvableCredential.value || hasContextEstablishmentHooks.value,
+);
 </script>
 
 <template>
@@ -104,7 +113,7 @@ const hasResolvableCredential = computed(() => {
 			</div>
 		</N8nTooltip>
 
-		<N8nTooltip v-if="isDynamicCredentialsEnabled && hasResolvableCredential">
+		<N8nTooltip v-if="isDynamicCredentialsEnabled && hasDynamicCredentials">
 			<template #content>
 				<div :class="$style.tooltipHeader">
 					<N8nIcon icon="key-round" :size="size" />
@@ -113,7 +122,13 @@ const hasResolvableCredential = computed(() => {
 					}}</strong>
 				</div>
 				<div>
-					{{ i18n.baseText('node.settings.dynamicCredentials') }}
+					{{
+						i18n.baseText(
+							hasContextEstablishmentHooks
+								? 'node.settings.contextEstablishmentHooks'
+								: 'node.settings.dynamicCredentials',
+						)
+					}}
 				</div>
 			</template>
 			<div data-test-id="canvas-node-status-dynamic-credentials">

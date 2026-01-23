@@ -166,12 +166,13 @@ function moveResource() {
 					</template>
 					<N8nBadge
 						theme="tertiary"
-						class="ml-3xs"
-						:class="$style.dynamicBadge"
+						class="ml-3xs pl-3xs pr-3xs"
 						data-test-id="credential-card-dynamic"
 					>
-						<N8nIcon icon="key-round" size="xsmall" />
-						{{ locale.baseText('credentials.dynamic.badge') }}
+						<span :class="$style.dynamicBadgeText">
+							<N8nIcon icon="key-round" size="medium" />
+							{{ locale.baseText('credentials.dynamic.badge') }}
+						</span>
 					</N8nBadge>
 				</N8nTooltip>
 			</N8nText>
@@ -244,11 +245,12 @@ function moveResource() {
 	cursor: default;
 }
 
-.dynamicBadge {
+.dynamicBadgeText {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--4xs);
 	font-size: var(--font-size--3xs);
+	height: 18px;
 }
 
 .tooltipContent {

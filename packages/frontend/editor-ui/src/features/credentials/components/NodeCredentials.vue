@@ -552,7 +552,7 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 											}}</template>
 											<N8nIcon
 												icon="key-round"
-												size="small"
+												size="medium"
 												:class="$style.dynamicIcon"
 												data-test-id="credential-option-dynamic-icon"
 											/>
@@ -580,11 +580,13 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 								<template #content>{{ i18n.baseText('credentials.dynamic.tooltip') }}</template>
 								<N8nBadge
 									theme="tertiary"
-									:class="$style.dynamicBadge"
+									class="pl-3xs pr-3xs"
 									data-test-id="node-credential-dynamic-icon"
 								>
-									<N8nIcon icon="key-round" size="xsmall" />
-									{{ i18n.baseText('credentials.dynamic.badge') }}
+									<span :class="$style.dynamicBadgeText">
+										<N8nIcon icon="key-round" size="medium" />
+										{{ i18n.baseText('credentials.dynamic.badge') }}
+									</span>
 								</N8nBadge>
 							</N8nTooltip>
 						</div>
@@ -712,12 +714,12 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	z-index: 1;
 }
 
-.dynamicBadge {
+.dynamicBadgeText {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--5xs);
+	gap: var(--spacing--4xs);
 	font-size: var(--font-size--3xs);
-	user-select: none;
+	height: 18px;
 }
 
 .resolverWarning {
