@@ -32,10 +32,15 @@ const hasResolvableCredential = computed(() => {
 });
 
 const hasContextEstablishmentHooks = computed(() => {
-	const contextEstablishment = node.value?.parameters?.contextEstablishmentHooks as
-		| { hooks?: unknown[] }
-		| undefined;
-	const hooks = contextEstablishment?.hooks;
+	const contextEstablishment = node.value?.parameters?.contextEstablishmentHooks;
+	if (
+		typeof contextEstablishment !== 'object' ||
+		contextEstablishment === null ||
+		!('hooks' in contextEstablishment)
+	) {
+		return false;
+	}
+	const hooks = contextEstablishment.hooks;
 	return Array.isArray(hooks) && hooks.length > 0;
 });
 
