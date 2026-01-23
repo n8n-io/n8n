@@ -163,7 +163,7 @@ export {
 } from './validation';
 
 // Code generation
-export { generateWorkflowCode } from './codegen';
+export { generateWorkflowCode } from './codegen/index';
 export { parseWorkflowCode } from './parse-workflow-code';
 
 // Embedded SDK API content (for runtime use without disk reads)

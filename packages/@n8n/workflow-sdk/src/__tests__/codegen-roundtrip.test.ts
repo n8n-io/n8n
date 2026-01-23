@@ -10,17 +10,7 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from './fixtures-download';
 
-const SKIP_WORKFLOWS = new Set<string>([
-	// Fixed fan-out with direct merge pattern: 3066, 7946 now pass
-	// Fixed SplitInBatches fan-out: 6150, 7945 now pass
-	// Fixed shared subnode in merge branch: 10132 now passes
-	// Remaining issues (different patterns):
-	'10476', // complex docker monitoring pattern with nested merges
-	// New failures (may need investigation):
-	'11466', // 48→47 nodes, missing "Filter" node
-	'11724', // connection mismatch in news digest workflow
-	'12299', // connection mismatch, missing "Grad + PhD" node
-]);
+const SKIP_WORKFLOWS = new Set<string>(['10476']);
 
 interface TestWorkflow {
 	id: string;

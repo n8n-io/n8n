@@ -28,6 +28,9 @@ interface GenerationContext {
 	generatedVars: Set<string>;
 	variableNodes: Map<string, SemanticNode>; // Nodes that are declared as variables
 	graph: SemanticGraph; // Full graph for looking up subnodes
+	nodeNameToVarName: Map<string, string>; // Maps node names to unique variable names
+	usedVarNames: Set<string>; // Tracks all used variable names to avoid collisions
+	subnodeVariables: Map<string, { node: SemanticNode; builderName: string }>; // Subnodes to declare as variables
 }
 
 /**
@@ -84,7 +87,7 @@ function generateDefaultNodeName(type: string): string {
  * Reserved keywords that cannot be used as variable names
  */
 const RESERVED_KEYWORDS = new Set([
-	// JavaScript reserved
+	// JavaScript reserved words
 	'break',
 	'case',
 	'catch',
@@ -120,6 +123,11 @@ const RESERVED_KEYWORDS = new Set([
 	'while',
 	'with',
 	'yield',
+	// JavaScript literals
+	'null',
+	'true',
+	'false',
+	'undefined',
 	// SDK functions
 	'workflow',
 	'trigger',
@@ -334,6 +342,141 @@ function generateSubnodesConfig(node: SemanticNode, ctx: GenerationContext): str
 }
 
 /**
+ * Recursively collect all subnodes from a node and add them to the context's subnodeVariables.
+ * Processes nested subnodes first so they're declared before their parents.
+ */
+function collectSubnodesAsVariables(node: SemanticNode, ctx: GenerationContext): void {
+	if (node.subnodes.length === 0) return;
+
+	for (const sub of node.subnodes) {
+		const subnodeNode = ctx.graph.nodes.get(sub.subnodeName);
+		if (!subnodeNode) continue;
+
+		// First, recursively collect nested subnodes (they must be declared first)
+		collectSubnodesAsVariables(subnodeNode, ctx);
+
+		// Then add this subnode
+		const builderName = AI_CONNECTION_TO_BUILDER[sub.connectionType];
+		ctx.subnodeVariables.set(sub.subnodeName, { node: subnodeNode, builderName });
+	}
+}
+
+/**
+ * Generate a subnode builder call using variable references for nested subnodes.
+ */
+function generateSubnodeCallWithVarRefs(
+	subnodeNode: SemanticNode,
+	builderName: string,
+	ctx: GenerationContext,
+): string {
+	const parts: string[] = [];
+
+	parts.push(`type: '${subnodeNode.type}'`);
+	parts.push(`version: ${subnodeNode.json.typeVersion}`);
+
+	const configParts: string[] = [];
+
+	const defaultName = generateDefaultNodeName(subnodeNode.type);
+	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
+		configParts.push(`name: '${escapeString(subnodeNode.json.name)}'`);
+	}
+
+	if (subnodeNode.json.parameters && Object.keys(subnodeNode.json.parameters).length > 0) {
+		configParts.push(`parameters: ${formatValue(subnodeNode.json.parameters)}`);
+	}
+
+	if (subnodeNode.json.credentials) {
+		configParts.push(`credentials: ${formatValue(subnodeNode.json.credentials)}`);
+	}
+
+	const pos = subnodeNode.json.position;
+	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
+		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
+	}
+
+	// Generate nested subnodes config using variable references
+	const nestedSubnodesConfig = generateSubnodesConfigWithVarRefs(subnodeNode, ctx);
+	if (nestedSubnodesConfig) {
+		configParts.push(`subnodes: ${nestedSubnodesConfig}`);
+	}
+
+	if (configParts.length > 0) {
+		parts.push(`config: { ${configParts.join(', ')} }`);
+	} else {
+		parts.push(`config: {}`);
+	}
+
+	return `${builderName}({ ${parts.join(', ')} })`;
+}
+
+/**
+ * Generate subnodes config object using variable references instead of inline calls.
+ */
+function generateSubnodesConfigWithVarRefs(
+	node: SemanticNode,
+	ctx: GenerationContext,
+): string | null {
+	if (node.subnodes.length === 0) {
+		return null;
+	}
+
+	// Group subnodes by connection type, using variable names
+	const grouped = new Map<AiConnectionType, string[]>();
+
+	for (const sub of node.subnodes) {
+		const varName = getVarName(sub.subnodeName, ctx);
+		const existing = grouped.get(sub.connectionType) ?? [];
+		existing.push(varName);
+		grouped.set(sub.connectionType, existing);
+	}
+
+	// Generate config entries using variable names
+	const entries: string[] = [];
+
+	for (const [connType, varNames] of grouped) {
+		const configKey = AI_CONNECTION_TO_CONFIG_KEY[connType];
+
+		if (varNames.length === 0) continue;
+
+		if (AI_ALWAYS_ARRAY_TYPES.has(connType)) {
+			// Always array type (tools) - generate as array even for single item
+			entries.push(`${configKey}: [${varNames.join(', ')}]`);
+		} else if (AI_OPTIONAL_ARRAY_TYPES.has(connType)) {
+			// Optional array type (model) - single if one, array if multiple
+			if (varNames.length === 1) {
+				entries.push(`${configKey}: ${varNames[0]}`);
+			} else {
+				entries.push(`${configKey}: [${varNames.join(', ')}]`);
+			}
+		} else {
+			// Single item type (memory, etc.)
+			entries.push(`${configKey}: ${varNames[0]}`);
+		}
+	}
+
+	if (entries.length === 0) {
+		return null;
+	}
+
+	return `{ ${entries.join(', ')} }`;
+}
+
+/**
+ * Generate subnode variable declarations
+ */
+function generateSubnodeVariableDeclarations(ctx: GenerationContext): string[] {
+	const declarations: string[] = [];
+
+	for (const [nodeName, { node, builderName }] of ctx.subnodeVariables) {
+		const varName = getUniqueVarName(nodeName, ctx);
+		const call = generateSubnodeCallWithVarRefs(node, builderName, ctx);
+		declarations.push(`const ${varName} = ${call};`);
+	}
+
+	return declarations;
+}
+
+/**
  * Generate node config object
  */
 function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string {
@@ -347,8 +490,8 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 
 	const configParts: string[] = [];
 
-	const defaultName = generateDefaultNodeName(node.type);
-	if (node.json.name && node.json.name !== defaultName) {
+	// Always include name for proper roundtrip - parser defaults may differ from codegen defaults
+	if (node.json.name) {
 		configParts.push(`name: '${escapeString(node.json.name)}'`);
 	}
 
@@ -367,7 +510,11 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	}
 
 	// Include subnodes config if this node has AI subnodes
-	const subnodesConfig = generateSubnodesConfig(node, ctx);
+	// Use variable references if subnodes are declared as variables
+	const subnodesConfig =
+		ctx.subnodeVariables.size > 0
+			? generateSubnodesConfigWithVarRefs(node, ctx)
+			: generateSubnodesConfig(node, ctx);
 	if (subnodesConfig) {
 		configParts.push(`subnodes: ${subnodesConfig}`);
 	}
@@ -429,7 +576,7 @@ function generateFlatNodeConfig(node: SemanticNode): string {
 function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
 	const nodeName = node.json.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
-		return toVarName(nodeName);
+		return getVarName(nodeName, ctx);
 	}
 	return generateFlatNodeConfig(node);
 }
@@ -497,7 +644,7 @@ function generateLeafCode(leaf: LeafNode, ctx: GenerationContext): string {
 	const nodeName = leaf.node.json.name;
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
 		// Use variable reference for nodes that are declared as variables
-		return toVarName(nodeName);
+		return getVarName(nodeName, ctx);
 	}
 	return generateNodeCall(leaf.node, ctx);
 }
@@ -680,14 +827,14 @@ function generateFanOut(fanOut: FanOutCompositeNode, ctx: GenerationContext): st
  */
 function generateExplicitConnections(
 	explicitConns: ExplicitConnectionsNode,
-	_ctx: GenerationContext,
+	ctx: GenerationContext,
 ): string {
 	// Generate variable references to the nodes involved
 	// The actual .add() and .connect() calls will be generated at the root level
 	// For now, just return the variable reference to the first node
 	if (explicitConns.nodes.length > 0) {
 		const firstNode = explicitConns.nodes[0];
-		const varName = toVarName(firstNode.name);
+		const varName = getVarName(firstNode.name, ctx);
 		return varName;
 	}
 	return '';
@@ -749,6 +896,45 @@ function toVarName(nodeName: string): string {
 }
 
 /**
+ * Get the variable name for a node, looking up in the context's mapping.
+ * If the node name has been assigned a variable name, returns that.
+ * Otherwise returns the base variable name (which may collide).
+ */
+function getVarName(nodeName: string, ctx: GenerationContext): string {
+	if (ctx.nodeNameToVarName.has(nodeName)) {
+		return ctx.nodeNameToVarName.get(nodeName)!;
+	}
+	return toVarName(nodeName);
+}
+
+/**
+ * Generate a unique variable name for a node, avoiding collisions.
+ * Tracks used names and appends a counter if needed.
+ */
+function getUniqueVarName(nodeName: string, ctx: GenerationContext): string {
+	// If we already assigned a name for this node, return it
+	if (ctx.nodeNameToVarName.has(nodeName)) {
+		return ctx.nodeNameToVarName.get(nodeName)!;
+	}
+
+	const baseVarName = toVarName(nodeName);
+	let varName = baseVarName;
+	let counter = 1;
+
+	// Keep incrementing counter until we find an unused name
+	while (ctx.usedVarNames.has(varName)) {
+		varName = `${baseVarName}${counter}`;
+		counter++;
+	}
+
+	// Record the mapping and mark as used
+	ctx.usedVarNames.add(varName);
+	ctx.nodeNameToVarName.set(nodeName, varName);
+
+	return varName;
+}
+
+/**
  * Generate variable declarations
  */
 function generateVariableDeclarations(
@@ -758,7 +944,7 @@ function generateVariableDeclarations(
 	const declarations: string[] = [];
 
 	for (const [nodeName, node] of variables) {
-		const varName = toVarName(nodeName);
+		const varName = getUniqueVarName(nodeName, ctx);
 		const nodeCall = generateNodeCall(node, ctx);
 		declarations.push(`const ${varName} = ${nodeCall};`);
 		ctx.generatedVars.add(nodeName);
@@ -783,14 +969,14 @@ function flattenToWorkflowCalls(
 
 		// Add each node (use variable references since they're already declared)
 		for (const node of explicitConns.nodes) {
-			const varName = toVarName(node.name);
+			const varName = getVarName(node.name, ctx);
 			calls.push(['add', varName]);
 		}
 
 		// Generate .connect() calls for each explicit connection
 		for (const conn of explicitConns.connections) {
-			const sourceVar = toVarName(conn.sourceNode);
-			const targetVar = toVarName(conn.targetNode);
+			const sourceVar = getVarName(conn.sourceNode, ctx);
+			const targetVar = getVarName(conn.targetNode, ctx);
 			calls.push([
 				'connect',
 				`${sourceVar}, ${conn.sourceOutput}, ${targetVar}, ${conn.targetInput}`,
@@ -829,11 +1015,26 @@ export function generateCode(
 		generatedVars: new Set(),
 		variableNodes: tree.variables,
 		graph,
+		nodeNameToVarName: new Map(),
+		usedVarNames: new Set(),
+		subnodeVariables: new Map(),
 	};
+
+	// Collect all subnodes from all nodes in the graph (not just variable nodes)
+	for (const node of graph.nodes.values()) {
+		collectSubnodesAsVariables(node, ctx);
+	}
 
 	const lines: string[] = [];
 
-	// Generate variable declarations first
+	// Generate subnode variable declarations FIRST (since they're referenced by regular nodes)
+	const subnodeDeclarations = generateSubnodeVariableDeclarations(ctx);
+	if (subnodeDeclarations.length > 0) {
+		lines.push(...subnodeDeclarations);
+		lines.push('');
+	}
+
+	// Generate regular node variable declarations
 	if (tree.variables.size > 0) {
 		lines.push(generateVariableDeclarations(tree.variables, ctx));
 		lines.push('');
@@ -847,15 +1048,27 @@ export function generateCode(
 	const settingsStr =
 		json.settings && Object.keys(json.settings).length > 0 ? `, ${formatValue(json.settings)}` : '';
 
-	lines.push(`return workflow('${workflowId}', '${workflowName}'${settingsStr})`);
+	// Start with workflow variable declaration
+	lines.push(`const wf = workflow('${workflowId}', '${workflowName}'${settingsStr});`);
 
 	// Generate each root, flattening chains to workflow-level calls
 	ctx.indent = 1;
+	const workflowCalls: string[] = [];
 	for (const root of tree.roots) {
 		const calls = flattenToWorkflowCalls(root, ctx);
 		for (const [method, code] of calls) {
-			lines.push(`  .${method}(${code})`);
+			workflowCalls.push(`  .${method}(${code})`);
 		}
+	}
+
+	// Add workflow calls and return statement
+	if (workflowCalls.length > 0) {
+		lines.push('');
+		lines.push('return wf');
+		lines.push(...workflowCalls);
+	} else {
+		lines.push('');
+		lines.push('return wf');
 	}
 
 	return lines.join('\n');
