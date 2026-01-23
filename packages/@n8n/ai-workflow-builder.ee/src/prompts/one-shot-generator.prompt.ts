@@ -152,11 +152,7 @@ The following functions are pre-loaded in the execution environment. Do NOT writ
 - \`vectorStore(input)\` - Create a vector store subnode
 - \`retriever(input)\` - Create a retriever subnode
 - \`documentLoader(input)\` - Create a document loader subnode
-- \`textSplitter(input)\` - Create a text splitter subnode
-
-**Code Node Helpers:**
-- \`runOnceForAllItems(fn)\` - Process all items at once
-- \`runOnceForEachItem(fn)\` - Process each item individually`;
+- \`textSplitter(input)\` - Create a text splitter subnode`;
 
 /**
  * Workflow structure rules - optimized for Sonnet 4.5
@@ -237,66 +233,42 @@ return workflow('id', 'name')
 \`\`\`
 
 ## Conditional Branching (IF)
+
+**CRITICAL:** Each branch defines a COMPLETE processing path. Chain multiple steps INSIDE the branch using .then().
+
 \`\`\`typescript
-// 1. Declare the IF node first
-const checkCondition = node({{
-  type: 'n8n-nodes-base.if',
-  version: 2.2,
-  config: {{
-    name: 'Check Condition',
-    parameters: {{
-      conditions: {{
-        conditions: [{{
-          leftValue: '={{{{ $json.field }}}}',
-          rightValue: 'value',
-          operator: {{ type: 'string', operation: 'equals' }}
-        }}]
-      }}
-    }},
-    position: [540, 300]
-  }}
-}});
-
-// 2. Declare branch nodes
-const handleTrue = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle True', parameters: {{}}, position: [840, 200] }}}});
-const processTrue = node({{ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: {{ name: 'Process True', parameters: {{}}, position: [1140, 200] }}}});
-const handleFalse = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle False', parameters: {{}}, position: [840, 400] }}}});
-
-// 3. Compose workflow - branches can be single nodes OR chains
+// Assume nodes declared: checkValid (IF), formatData, enrichData, saveToDb, logError
 return workflow('id', 'name')
-  .add(trigger({{ ... }}))
-  .then(ifElse(checkCondition, {{
-    true: handleTrue.then(processTrue),  // Chain of nodes on true branch
-    false: handleFalse                    // Single node on false branch
+  .add(startTrigger)
+  .then(ifElse(checkValid, {{
+    true: formatData.then(enrichData).then(saveToDb),  // Chain 3 nodes on true branch
+    false: logError
   }}));
 \`\`\`
 
-## Multi-Way Routing (Switch)
+WRONG - nodes after ifElse run for BOTH branches:
 \`\`\`typescript
-// 1. Declare the Switch node first
-const routeByType = node({{
-  type: 'n8n-nodes-base.switch',
-  version: 3.2,
-  config: {{
-    name: 'Route by Type',
-    parameters: {{ mode: 'rules', rules: {{...}} }},
-    position: [540, 300]
-  }}
-}});
+.then(ifElse(checkValid, {{ true: formatData, false: logError }}))
+.then(enrichData)  // WRONG: runs after both branches!
+\`\`\`
 
-// 2. Declare case branch nodes
-const handleTypeA = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle Type A', parameters: {{}}, position: [840, 200] }}}});
-const processTypeA = node({{ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: {{ name: 'Process Type A', parameters: {{}}, position: [1140, 200] }}}});
-const handleTypeB = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle Type B', parameters: {{}}, position: [840, 400] }}}});
-const handleFallback = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Handle Fallback', parameters: {{}}, position: [840, 600] }}}});
+RIGHT - chain inside the branch:
+\`\`\`typescript
+.then(ifElse(checkValid, {{ true: formatData.then(enrichData), false: logError }}))
+\`\`\`
 
-// 3. Compose workflow - cases can be single nodes OR chains
+## Multi-Way Routing (Switch)
+
+**CRITICAL:** Same as ifElse - chain nodes inside each case.
+
+\`\`\`typescript
+// Assume nodes declared: routeByPriority (Switch), processUrgent, notifyTeam, escalate, processNormal, archive
 return workflow('id', 'name')
-  .add(trigger({{ ... }}))
-  .then(switchCase(routeByType, {{
-    case0: handleTypeA.then(processTypeA),  // Chain of nodes for case 0
-    case1: handleTypeB,                      // Single node for case 1
-    case2: handleFallback                    // Fallback case
+  .add(startTrigger)
+  .then(switchCase(routeByPriority, {{
+    case0: processUrgent.then(notifyTeam).then(escalate),  // Chain of 3 nodes
+    case1: processNormal,
+    case2: archive
   }}));
 \`\`\`
 
