@@ -9,8 +9,20 @@ import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
-import { hasCredentialChanges, hasNonPositionalChanges, TelemetryHelpers } from 'n8n-workflow';
+import type {
+	ExecutionStatus,
+	INode,
+	INodesGraphResult,
+	ITelemetryTrackProperties,
+	IWorkflowDb,
+	JsonValue,
+} from 'n8n-workflow';
+import {
+	hasCredentialChanges,
+	hasNonPositionalChanges,
+	TelemetryHelpers,
+	toExecutionContextEstablishmentHookParameter,
+} from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 
@@ -451,6 +463,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectId,
 		projectType,
 		uiContext,
+		isDynamic,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track('User created credentials', {
 			user_id: user.id,
@@ -459,6 +472,7 @@ export class TelemetryEventRelay extends EventRelay {
 			project_id: projectId,
 			project_type: projectType,
 			uiContext,
+			is_dynamic: isDynamic ?? false,
 		});
 	}
 
@@ -484,11 +498,13 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialId,
 		credentialType,
+		isDynamic,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track('User updated credentials', {
 			user_id: user.id,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			is_dynamic: isDynamic ?? false,
 		});
 	}
 
@@ -657,6 +673,7 @@ export class TelemetryEventRelay extends EventRelay {
 		publicApi,
 		previousWorkflow,
 		aiBuilderAssisted,
+		settingsChanged,
 	}: RelayEventMap['workflow-saved']) {
 		const isCloudDeployment = this.globalConfig.deployment.type === 'cloud';
 
@@ -702,6 +719,17 @@ export class TelemetryEventRelay extends EventRelay {
 			credentialEdited = hasCredentialChanges(previousWorkflow.nodes, workflow.nodes);
 		}
 
+		let credentialResolverId: JsonValue | undefined = undefined;
+
+		if (settingsChanged?.credentialResolverId) {
+			credentialResolverId = settingsChanged.credentialResolverId.to;
+		}
+
+		const identityExtractorChanged = this.detectIdentityExtractorChanges(
+			previousWorkflow,
+			workflow,
+		);
+
 		this.telemetry.track('User saved workflow', {
 			user_id: user.id,
 			workflow_id: workflow.id,
@@ -716,6 +744,8 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_edited_no_pos: workflowEditedNoPos,
 			credential_edited: credentialEdited,
 			ai_builder_assisted: aiBuilderAssisted ?? false,
+			credential_resolver_id: credentialResolverId,
+			identity_extractor_changed: identityExtractorChanged,
 		});
 	}
 
@@ -1198,6 +1228,94 @@ export class TelemetryEventRelay extends EventRelay {
 			message_type: messageType,
 			public_api: publicApi,
 		});
+	}
+
+	/**
+	 * Detects if identity extractor (context establishment hook) parameters changed
+	 * between previous and current workflow versions.
+	 */
+	private detectIdentityExtractorChanges(
+		previousWorkflow: IWorkflowDb | undefined,
+		currentWorkflow: IWorkflowDb,
+	): boolean {
+		if (!previousWorkflow) {
+			// New workflow - check if any nodes have identity extractors
+			return this.hasIdentityExtractors(currentWorkflow.nodes);
+		}
+
+		// Create a map of nodes by name for efficient lookup
+		const previousNodesMap = new Map<string, INode>();
+		for (const node of previousWorkflow.nodes) {
+			previousNodesMap.set(node.name, node);
+		}
+
+		// Check each node in current workflow
+		for (const currentNode of currentWorkflow.nodes) {
+			const previousNode = previousNodesMap.get(currentNode.name);
+
+			if (!previousNode) {
+				// New node - check if it has identity extractors
+				if (this.hasIdentityExtractors([currentNode])) {
+					return true;
+				}
+				continue;
+			}
+
+			// Compare identity extractor parameters
+			const currentHooks = this.extractIdentityExtractorHooks(currentNode);
+			const previousHooks = this.extractIdentityExtractorHooks(previousNode);
+
+			if (JSON.stringify(currentHooks) !== JSON.stringify(previousHooks)) {
+				return true;
+			}
+		}
+
+		// Check if any nodes were removed that had identity extractors
+		const currentNodesMap = new Map<string, INode>();
+		for (const node of currentWorkflow.nodes) {
+			currentNodesMap.set(node.name, node);
+		}
+
+		for (const previousNode of previousWorkflow.nodes) {
+			if (!currentNodesMap.has(previousNode.name)) {
+				// Node was removed - check if it had identity extractors
+				if (this.hasIdentityExtractors([previousNode])) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Checks if any nodes have identity extractors configured.
+	 */
+	private hasIdentityExtractors(nodes: INode[]): boolean {
+		for (const node of nodes) {
+			if (this.extractIdentityExtractorHooks(node).length > 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Extracts identity extractor hook names from a node's parameters.
+	 */
+	private extractIdentityExtractorHooks(node: INode): string[] {
+		const nodeParams = {
+			...(node.parameters ?? {}),
+		};
+
+		const hookParamsResult = toExecutionContextEstablishmentHookParameter(nodeParams);
+		if (!hookParamsResult || hookParamsResult.error || !hookParamsResult.data) {
+			return [];
+		}
+
+		return (
+			hookParamsResult.data.contextEstablishmentHooks?.hooks?.map((hook) => hook.hookName) ?? []
+		);
 	}
 
 	// #endregion
