@@ -58,20 +58,22 @@ function handleMouseLeave() {
 
 <style lang="scss" module>
 .chatMessageMarkdown {
-	display: block;
-	box-sizing: border-box;
-
-	> *:first-child {
-		margin-top: 0;
-	}
-
-	> *:last-child {
-		margin-bottom: 0;
-	}
-
 	& * {
 		font-size: var(--font-size--sm);
 		line-height: 1.5;
+	}
+
+	& > div {
+		display: block;
+		box-sizing: border-box;
+	}
+
+	&:first-child > div > *:first-child {
+		margin-top: 0;
+	}
+
+	& > div > *:last-child {
+		margin-bottom: 0;
 	}
 
 	p {
@@ -120,7 +122,7 @@ function handleMouseLeave() {
 	}
 
 	pre {
-		width: 100%;
+		display: block;
 		font-family: inherit;
 		font-size: inherit;
 		margin: 0;
@@ -164,6 +166,10 @@ function handleMouseLeave() {
 		padding-right: var(--spacing--lg);
 		margin-left: calc(-1 * (var(--container--width) - 100%) / 2);
 		overflow-x: auto;
+
+		&:first-child {
+			padding-top: 1em;
+		}
 	}
 
 	table {

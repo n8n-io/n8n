@@ -316,7 +316,7 @@ onBeforeMount(() => {
 					</div>
 				</div>
 			</div>
-			<div v-else>
+			<template v-else>
 				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
 					<div v-if="attachments.length > 0" :class="$style.attachments">
 						<ChatFile
@@ -349,7 +349,7 @@ onBeforeMount(() => {
 					@read-aloud="handleReadAloud"
 					@switchAlternative="handleSwitchAlternative"
 				/>
-			</div>
+			</template>
 		</div>
 	</div>
 </template>
@@ -382,12 +382,14 @@ onBeforeMount(() => {
 .content {
 	display: flex;
 	flex-direction: column;
+	align-items: stretch;
 }
 
 .attachments {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
+	padding-bottom: var(--spacing--2xs);
 
 	.chatMessage & {
 		margin-top: var(--spacing--xs);
@@ -397,14 +399,13 @@ onBeforeMount(() => {
 .chatMessage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
 	position: relative;
-	max-width: fit-content;
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: 1.5;
 
 	.user & {
+		max-width: fit-content;
 		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
