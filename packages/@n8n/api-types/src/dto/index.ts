@@ -132,5 +132,4 @@ export { WorkflowHistoryVersionsByIdsDto } from './workflow-history/workflow-his
 export { CreateSecretProviderConnectionDto } from './secrets-provider/create-secret-provider-connection.dto';
 export { SetSecretProviderConnectionIsEnabledDto } from './secrets-provider/set-secret-provider-connection-is-enabled.dto';
 export { TestSecretProviderConnectionDto } from './secrets-provider/test-secret-provider-connection.dto';
-export { TransferSecretProviderConnectionDto } from './secrets-provider/transfer-secret-provider-connection.dto';
 export { UpdateSecretProviderConnectionDto } from './secrets-provider/update-secret-provider-connection.dto';
