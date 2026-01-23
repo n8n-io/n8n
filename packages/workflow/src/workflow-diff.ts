@@ -123,6 +123,36 @@ export function stringContainsParts(s: string, substr: string) {
 	return marker >= substr.length;
 }
 
+export function parametersAreSuperset(prev: unknown, next: unknown): boolean {
+	if (typeof prev !== typeof next) return false;
+	if (typeof prev !== 'object' || !prev || !next) {
+		if (typeof prev === 'string') {
+			// We assert above that these are the same type
+			return stringContainsParts(next as string, prev);
+		}
+		return prev === next;
+	}
+
+	if (Array.isArray(prev)) {
+		if (!Array.isArray(next)) return false;
+		if (prev.length !== next.length) return false;
+		return prev.every((v, i) => parametersAreSuperset(v, next[i]));
+	}
+
+	const params = Object.keys(prev);
+
+	if (params.length !== Object.keys(next).length) return false;
+	// abort if keys differ
+	if (params.some((x) => !Object.prototype.hasOwnProperty.call(next, x))) return false;
+
+	return params.every((key) =>
+		parametersAreSuperset(
+			(prev as Record<string, unknown>)[key],
+			(next as Record<string, unknown>)[key],
+		),
+	);
+}
+
 /**
  * Determines whether the second node is a "superset" of the first one, i.e. whether no data
  * is lost if we were to replace `prev` with `next`.
@@ -138,24 +168,7 @@ function nodeIsSuperset<T extends DiffableNode>(prevNode: T, nextNode: T) {
 	// abort if the nodes don't match besides parameters
 	if (!compareNodes({ ...prev, parameters: {} }, { ...next, parameters: {} })) return false;
 
-	const params = Object.keys(prevParams);
-
-	// abort if keys differ
-	if (params.some((x) => !Object.prototype.hasOwnProperty.call(nextParams, x))) return false;
-	if (Object.keys(nextParams).some((x) => !Object.prototype.hasOwnProperty.call(prevParams, x)))
-		return false;
-
-	for (const key of params) {
-		const left = prevParams[key];
-		const right = nextParams[key];
-		// non-strings must be exactly equal to not be lost data
-		if (typeof left === 'string' && typeof right === 'string') {
-			// strings must only be contained in the new string
-			if (!stringContainsParts(right, left)) return false;
-		} else if (left !== right) return false;
-	}
-
-	return true;
+	return parametersAreSuperset(prevParams, nextParams);
 }
 
 function mergeAdditiveChanges<N extends DiffableNode = DiffableNode>(
