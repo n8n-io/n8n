@@ -14,6 +14,7 @@ import type { SourceControlExportService } from '../source-control-export.servic
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
+import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
 import type { ExportResult } from '../types/export-result';
 
 // Mock the status service to avoid complex dependency issues
@@ -24,6 +25,11 @@ const mockStatusService = {
 jest.mock('@n8n/backend-common', () => ({
 	...jest.requireActual('@n8n/backend-common'),
 	isContainedWithin: jest.fn(() => true),
+}));
+
+jest.mock('../source-control-helper.ee', () => ({
+	...jest.requireActual('../source-control-helper.ee'),
+	sourceControlFoldersExistCheck: jest.fn(() => true),
 }));
 
 describe('SourceControlService', () => {
@@ -188,6 +194,7 @@ describe('SourceControlService', () => {
 			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
 			);
+			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValueOnce(new Set());
 
 			(isContainedWithin as jest.Mock).mockReturnValue(true);
 
@@ -787,6 +794,7 @@ describe('SourceControlService', () => {
 			sourceControlExportService.deleteRepositoryFolder.mockResolvedValue(undefined);
 			preferencesService.deleteHttpsCredentials = jest.fn().mockResolvedValue(undefined);
 			preferencesService.deleteKeyPair = jest.fn().mockResolvedValue(undefined);
+			preferencesService.resetKnownHosts = jest.fn().mockResolvedValue(undefined);
 			gitService.resetService.mockReturnValue(undefined);
 		});
 
@@ -866,6 +874,20 @@ describe('SourceControlService', () => {
 			expect(preferencesService.deleteKeyPair).not.toHaveBeenCalled();
 		});
 
+		it('should reset known_hosts file during disconnect', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			};
+			preferencesService.getPreferences = jest.fn().mockReturnValue(mockPreferences);
+
+			await sourceControlService.disconnect();
+
+			expect(preferencesService.resetKnownHosts).toHaveBeenCalledTimes(1);
+		});
+
 		it('should set git client to null', async () => {
 			const mockPreferences = {
 				connected: true,
@@ -880,6 +902,237 @@ describe('SourceControlService', () => {
 
 			// ASSERT
 			expect(gitService.resetService).toHaveBeenCalledTimes(1);
+		});
+
+		// Note: Broadcast tests have been moved to source-control-preferences.service.ee.test.ts
+		// since the broadcast now happens inside setPreferences() in the preferences service
+	});
+
+	describe('reloadConfiguration', () => {
+		beforeEach(() => {
+			gitService.resetService.mockReturnValue(undefined);
+		});
+
+		it('should reload configuration from database when triggered by pubsub', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalled();
+		});
+
+		it('should delete git folder when source control was connected but is now disconnected', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was connected, now disconnected
+			preferencesService.isSourceControlConnected = jest
+				.fn()
+				.mockReturnValueOnce(true) // wasConnected check
+				.mockReturnValueOnce(false); // isNowConnected check
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).toHaveBeenCalled();
+		});
+
+		it('should not delete git folder when source control remains connected', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was connected, still connected
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(true);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(true);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+
+		it('should not delete git folder when source control was not connected before', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was not connected, still not connected
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+
+		it('should skip reload if another reload is already in progress', async () => {
+			// ARRANGE
+			let resolveFirstReload: () => void;
+			const firstReloadPromise = new Promise<void>((resolve) => {
+				resolveFirstReload = resolve;
+			});
+
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockImplementationOnce(async () => {
+					await firstReloadPromise;
+				})
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT - Start first reload (will block)
+			const firstReload = sourceControlService.reloadConfiguration();
+
+			// Start second reload while first is in progress
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT - Second reload should have been skipped (only one call to loadFromDb)
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
+				1,
+			);
+
+			// Clean up - resolve first reload
+			resolveFirstReload!();
+			await firstReload;
+		});
+
+		it('should allow reload after previous reload completes', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = jest
+				.fn()
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = jest.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = jest.fn().mockReturnValue(false);
+
+			// ACT - Run two reloads sequentially
+			await sourceControlService.reloadConfiguration();
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT - Both reloads should have completed
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
+				2,
+			);
+		});
+	});
+
+	describe('initializeRepository', () => {
+		beforeEach(() => {
+			gitService.initRepository.mockResolvedValue(undefined);
+			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			preferencesService.setPreferences = jest.fn().mockResolvedValue(undefined);
+		});
+
+		it('should throw UserError for host key verification failure', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			gitService.fetch.mockRejectedValue(new Error('Host key verification failed.'));
+
+			await expect(sourceControlService.initializeRepository(preferences, user)).rejects.toThrow(
+				"SSH host key verification failed. The remote server's key may have changed.",
+			);
+		});
+
+		it('should throw UserError when remote host identification has changed', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			gitService.fetch.mockRejectedValue(
+				new Error('WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!'),
+			);
+
+			await expect(sourceControlService.initializeRepository(preferences, user)).rejects.toThrow(
+				"SSH host key verification failed. The remote server's key may have changed.",
+			);
+		});
+
+		it('should retry on "Permanently added" warning and succeed', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			// SSH outputs this warning to stderr when adding a new host key.
+			// simple-git captures stderr and may include it in errors.
+			gitService.fetch
+				.mockRejectedValueOnce(
+					new Error("Warning: Permanently added 'github.com' to the list of known hosts."),
+				)
+				.mockResolvedValueOnce({ raw: '' } as any);
+			gitService.getBranches.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			const result = await sourceControlService.initializeRepository(preferences, user);
+
+			expect(gitService.fetch).toHaveBeenCalledTimes(2);
+			expect(result).toEqual({ branches: ['main'], currentBranch: 'main' });
+		});
+	});
+
+	describe('sanityCheck', () => {
+		beforeEach(() => {
+			// Restore the actual sanityCheck implementation for these tests
+			jest.spyOn(sourceControlService, 'sanityCheck').mockRestore();
+		});
+
+		it('should throw error when folders do not exist', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(false);
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).rejects.toThrow(
+				'Source control is not properly set up, please disconnect and reconnect.',
+			);
+			expect(gitService.initService).not.toHaveBeenCalled();
+		});
+
+		it('should initialize git service when folders exist but git service is not initialized', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(true);
+			gitService.git = null as any;
+			gitService.initService.mockResolvedValue(undefined);
+			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
+			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
+
+			// ACT
+			await sourceControlService.sanityCheck();
+
+			// ASSERT
+			expect(gitService.initService).toHaveBeenCalled();
+		});
+
+		it('should pass when folders exist and branch matches', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as jest.Mock).mockReturnValue(true);
+			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
+			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).resolves.toBeUndefined();
 		});
 	});
 });

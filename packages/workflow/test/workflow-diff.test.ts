@@ -1,18 +1,28 @@
 import { mock } from 'vitest-mock-extended';
 
-import { type IConnections, type INode, type INodeParameters, type IWorkflowBase } from '../src';
+import {
+	type IConnections,
+	type INode,
+	type INodeParameters,
+	type IWorkflowBase,
+	type NodeParameterValue,
+} from '../src';
 import {
 	compareNodes,
 	compareWorkflowsNodes,
+	determineNodeSize,
 	groupWorkflows,
 	hasCredentialChanges,
 	hasNonPositionalChanges,
 	NodeDiffStatus,
+	parametersAreSuperset,
 	RULES,
 	SKIP_RULES,
+	stringContainsParts,
 	WorkflowChangeSet,
 	type DiffableNode,
 	type DiffableWorkflow,
+	type DiffMetaData,
 	type DiffRule,
 } from '../src/workflow-diff';
 
@@ -278,6 +288,96 @@ describe('compareWorkflowsNodes', () => {
 	});
 });
 
+describe('determineNodeSize', () => {
+	it('should return 1 for an empty parameters object', () => {
+		const parameters = {};
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(1);
+	});
+
+	it('should return 1 for an empty parameters array', () => {
+		const parameters: NodeParameterValue[] = [];
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(1);
+	});
+
+	it('should return the length of a single string parameter', () => {
+		const parameters = { param1: 'value1' };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(7);
+	});
+
+	it('should return the sum of lengths of multiple string parameters', () => {
+		const parameters = { param1: 'value1', param2: 'value2' };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(13);
+	});
+
+	it('should count non-string values as 1', () => {
+		const parameters = { param1: 42, param2: true, param3: null };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(4);
+	});
+
+	it('should handle nested objects', () => {
+		const parameters = {
+			param1: {
+				nested1: 'value1',
+				nested2: 'value2',
+			},
+		};
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(14);
+	});
+
+	it('should handle arrays of strings', () => {
+		const parameters = { param1: ['value1', 'value2'] };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(14);
+	});
+
+	it('should handle arrays of mixed types', () => {
+		const parameters = { param1: ['value1', 42, true] };
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(10);
+	});
+
+	it('should handle deeply nested structures', () => {
+		const parameters = {
+			param1: {
+				nested1: {
+					deepNested1: 'value1',
+					deepNested2: ['value2', { deeperNested: 'value3' }],
+				},
+			},
+		} as INodeParameters;
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(23);
+	});
+
+	it('should handle empty arrays and objects', () => {
+		const parameters = {
+			param1: [],
+			param2: {},
+		};
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(3);
+	});
+
+	it('should handle a mix of strings, objects, and arrays', () => {
+		const parameters = {
+			param1: 'value1',
+			param2: {
+				nested1: 'value2',
+				nested2: ['value3', 'value4'],
+			},
+			param3: [42, 'value5'],
+		};
+		const result = determineNodeSize(parameters);
+		expect(result).toBe(35);
+	});
+});
+
 describe('groupWorkflows', () => {
 	const node1 = mock<DiffableNode>({ id: '1', parameters: { a: 1 } });
 	const node2 = mock<DiffableNode>({ id: '2', parameters: { a: 2 } });
@@ -429,6 +529,86 @@ describe('groupWorkflows', () => {
 					nextWorkflow: createWorkflow('1', []),
 					expected: true,
 				},
+				{
+					description: 'should handle nested node',
+					baseWorkflow: createWorkflow('1', [
+						{
+							id: '1',
+							parameters: {
+								conditions: {
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'a561e9ba-ec13-4280-813c-28439d2e57df',
+											leftValue: '={{ $json.da',
+											operator: {
+												name: 'filter.operator.equals',
+												operation: 'equals',
+												type: 'string',
+											},
+											rightValue: '',
+										},
+									],
+									options: {
+										caseSensitive: true,
+										leftValue: '',
+										typeValidation: 'strict',
+										version: 3,
+									},
+								},
+								options: {},
+							},
+							name: 'n1',
+						},
+					]),
+					nextWorkflow: createWorkflow('1', [
+						{
+							id: '1',
+							parameters: {
+								conditions: {
+									combinator: 'and',
+									conditions: [
+										{
+											id: 'a561e9ba-ec13-4280-813c-28439d2e57df',
+											leftValue: '={{ $json.dayOffset }}', // changed value
+											operator: {
+												name: 'filter.operator.equals',
+												operation: 'equals',
+												type: 'string',
+											},
+											rightValue: '',
+										},
+									],
+									options: {
+										caseSensitive: true,
+										leftValue: '',
+										typeValidation: 'strict',
+										version: 3,
+									},
+								},
+								options: {},
+							},
+							name: 'n1',
+						},
+					]),
+					expected: true,
+				},
+				{
+					description: 'should return true when next string contains parts of previous string',
+					baseWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					nextWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'val with some text ue1' }, name: 'n1' },
+					]),
+					expected: true,
+				},
+				{
+					description: 'should return false when prev string contains parts of next string',
+					baseWorkflow: createWorkflow('1', [
+						{ id: '1', parameters: { a: 'val with some text ue1' }, name: 'n1' },
+					]),
+					nextWorkflow: createWorkflow('1', [{ id: '1', parameters: { a: 'value1' }, name: 'n1' }]),
+					expected: false,
+				},
 			])('$description', ({ baseWorkflow, nextWorkflow, expected }) => {
 				const result = RULES.mergeAdditiveChanges(
 					baseWorkflow,
@@ -558,9 +738,210 @@ describe('groupWorkflows', () => {
 				expect(result).toBe(true);
 			});
 		});
+
+		describe('RULES.makeMergeDependingOnSizeRule', () => {
+			// Helper to create mock workflows
+			const createWorkflow = (createdAt: Date) =>
+				mock<IWorkflowBase>({
+					createdAt,
+				});
+
+			const createMetaData = (workflowSizeScore: number): DiffMetaData => ({
+				workflowSizeScore,
+			});
+
+			const wcs = mock<WorkflowChangeSet<INode>>({});
+
+			describe('basic functionality', () => {
+				it('should return false when workflow size is smaller than all thresholds', () => {
+					const mapping = new Map([
+						[1000, 60000], // 1000 chars -> 1 min
+						[5000, 300000], // 5000 chars -> 5 min
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:10:00Z'));
+					const metaData = createMetaData(500); // Smaller than smallest threshold
+
+					expect(rule(prev, next, wcs, metaData)).toBe(false);
+				});
+
+				it('should apply the correct time threshold for workflow size', () => {
+					const mapping = new Map([
+						[1000, 60000], // 1000 chars -> 1 min
+						[5000, 300000], // 5000 chars -> 5 min
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					// Time difference: 2 minutes (120000ms)
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:02:00Z'));
+
+					expect(rule(prev, next, wcs, createMetaData(300))).toBe(false);
+					expect(rule(prev, next, wcs, createMetaData(1300))).toBe(false);
+					expect(rule(prev, next, wcs, createMetaData(5300))).toBe(true);
+				});
+			});
+
+			describe('threshold boundary cases', () => {
+				it('should use exact threshold when workflow size matches', () => {
+					const mapping = new Map([
+						[1000, 60000],
+						[5000, 300000],
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:02:00Z'));
+
+					// Should use 1000 char threshold since 5000 > 5000 is false
+					expect(rule(prev, next, wcs, createMetaData(5000))).toBe(false);
+					expect(rule(prev, next, wcs, createMetaData(5001))).toBe(true);
+				});
+			});
+
+			describe('multiple thresholds', () => {
+				it('should handle three or more thresholds correctly', () => {
+					const mapping = new Map([
+						[5000, 120000], // 5000 chars -> 2 min
+						[1000, 30000], // 1000 chars -> 30 sec
+						[10000, 300000], // 10000 chars -> 5 min
+					]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					// Test small workflow
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:01:00Z')); // 1 min
+					expect(rule(prev, next, wcs, createMetaData(2000))).toBe(false); // 1 min > 30 sec
+
+					// Test medium workflow
+					expect(rule(prev, next, wcs, createMetaData(7000))).toBe(true); // 1 min < 2 min
+
+					// Test large workflow
+					expect(rule(prev, next, wcs, createMetaData(12000))).toBe(true); // 1 min < 5 min
+				});
+			});
+
+			describe('edge cases', () => {
+				it('should handle empty mapping', () => {
+					const mapping = new Map<number, number>();
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(5000);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:10:00Z'));
+
+					expect(rule(prev, next, wcs, metaData)).toBe(false);
+				});
+
+				it('should handle single threshold', () => {
+					const mapping = new Map([[1000, 60000]]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(2000);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next1 = createWorkflow(new Date('2024-01-01T10:00:30Z'));
+					const next2 = createWorkflow(new Date('2024-01-01T10:02:00Z'));
+
+					expect(rule(prev, next1, wcs, metaData)).toBe(true);
+					expect(rule(prev, next2, wcs, metaData)).toBe(false);
+				});
+
+				it('should handle zero workflow size', () => {
+					const mapping = new Map([[1000, 60000]]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(0);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-01T10:10:00Z'));
+
+					expect(rule(prev, next, wcs, metaData)).toBe(false);
+				});
+
+				it('should handle zero time difference', () => {
+					const mapping = new Map([[1000, 60000]]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(2000);
+					const sameTime = new Date('2024-01-01T10:00:00Z');
+					const prev = createWorkflow(sameTime);
+					const next = createWorkflow(sameTime);
+
+					expect(rule(prev, next, wcs, metaData)).toBe(true);
+				});
+
+				it('should handle very large time differences', () => {
+					const mapping = new Map([[1000, 60000]]);
+					const rule = RULES.makeMergeDependingOnSizeRule(mapping);
+
+					const metaData = createMetaData(2000);
+					const prev = createWorkflow(new Date('2024-01-01T10:00:00Z'));
+					const next = createWorkflow(new Date('2024-01-02T10:00:00Z')); // 1 day later
+
+					expect(rule(prev, next, wcs, metaData)).toBe(false);
+				});
+			});
+		});
 	});
 });
-
+describe('stringContainsParts', () => {
+	test.each([
+		['abcde', 'abde', true],
+		['abcde', 'abced', false],
+		['abc', 'abcd', false],
+		['abcde', '', true],
+		['abcde', 'abcde', true],
+		['', 'a', false],
+		['abcde', 'c', true],
+		['abcde', 'z', false],
+		['abcde', 'abc', true],
+		['abcde', 'cde', true],
+		['abcde', 'abfz', false],
+		['abcde', 'ace', true],
+		['abcde', 'aec', false],
+		['value1', 'value2', false],
+	])('$[0]', (s, substr, expected) => {
+		const result = stringContainsParts(s, substr);
+		expect(result).toBe(expected);
+	});
+});
+describe('parametersAreSuperset', () => {
+	test.each([
+		[42, 42, true],
+		['test', 'test', true],
+		['test', 'test1', true],
+		[true, true, true],
+		[42, 43, false],
+		['test', 'different', false],
+		[true, false, false],
+		['abc', 'a with b and c', true],
+		['a with b and c', 'abc', false],
+		[{ a: 1, b: 'test' }, { a: 1, b: 'test' }, true],
+		[{ a: 1 }, { b: 1 }, false],
+		[{ a: 1 }, { a: 2 }, false],
+		[{ a: '1' }, { a: '12' }, true],
+		[[1, 2, 3], [1, 2, 3], true],
+		[[1, 2], [1, 2, 3], false],
+		[[1, 2, 3], [1, 2, 4], false],
+		[{ a: { b: 'test' } }, { a: { b: 'test with extra' } }, true],
+		[{ a: { b: 'test with extra' } }, { a: { b: 'test' } }, false],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { c: 'test' } }, d: 1 }, true],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { c: 'different' } }, d: 1 }, false],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { c: 'test', e: 'extra' } }, d: 1 }, false],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { e: 'extra' } }, d: 1 }, false],
+		[{ a: { b: { c: 'test', f: 'new' } }, d: 1 }, { a: { b: { c: 'test' } }, d: 1 }, false],
+		[{ a: { b: { c: 'test' } }, d: 1 }, { a: { b: { c: 'test', f: 'new' } }, d: 1 }, false],
+		[{ a: { b: { c: { g: 'nested' } } }, d: 1 }, { a: { b: { c: { g: 'nested1' } } }, d: 1 }, true],
+		[{ a: { b: { c: { g: 'nested' } } }, d: 1 }, { a: { b: { c: { h: 'new' } }, d: 1 } }, false],
+		[42, '42', false],
+		[{ a: 1 }, [1], false],
+		[null, {}, false],
+	])('parametersAreSuperset(%j, %j)', (prev, next, expected) => {
+		const result = parametersAreSuperset(prev, next);
+		expect(result).toBe(expected);
+	});
+});
 describe('hasNonPositionalChanges', () => {
 	const createNode = (id: string, overrides: Partial<INode> = {}): INode => ({
 		id,

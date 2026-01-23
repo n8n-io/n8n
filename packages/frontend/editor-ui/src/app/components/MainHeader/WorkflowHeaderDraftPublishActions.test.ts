@@ -70,6 +70,9 @@ const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishAction
 			WorkflowHistoryButton: {
 				template: '<div data-test-id="workflow-history-button-stub"></div>',
 			},
+			N8nTooltip: {
+				template: '<div><slot name="content" /><slot /></div>',
+			},
 		},
 	},
 });
@@ -140,6 +143,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { queryByTestId } = renderComponent();
 
+			expect(queryByTestId('workflow-active-version-info')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-active-version-indicator')).not.toBeInTheDocument();
 		});
 
@@ -148,6 +152,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
 			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
 		});
 
@@ -199,8 +204,26 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
 			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
+		});
+
+		it('should show active version indicator when user does not have workflow:publish permission but workflow is currently published', () => {
+			workflowsStore.workflow.activeVersion = createMockActiveVersion('active-version-1');
+			const { getByTestId } = renderComponent({
+				props: {
+					...defaultWorkflowProps,
+					readOnly: false,
+					workflowPermissions: {
+						...defaultWorkflowProps.workflowPermissions,
+						update: true,
+						publish: false,
+					},
+				},
+			});
+
+			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			expect(getByTestId('workflow-active-version-info')).toBeInTheDocument();
 		});
 	});
 

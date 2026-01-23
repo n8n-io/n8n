@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import { attachMetric } from '../../utils/performance-helper';
+import { attachMetric, waitForMemoryStabilization } from '../../utils/performance-helper';
 
 test.use({
 	capability: {
@@ -13,8 +13,6 @@ test.use({
 });
 
 test.describe('Memory Leak Detection @capability:observability', () => {
-	const METRICS_TIMEOUT_MS = 60000;
-
 	async function performMemoryAction(n8n: n8nPage) {
 		await n8n.start.fromBlankCanvas();
 		await n8n.navigate.toWorkflows();
@@ -23,29 +21,14 @@ test.describe('Memory Leak Detection @capability:observability', () => {
 	test('Memory should be released after actions', async ({ n8nContainer, n8n }, testInfo) => {
 		const obs = n8nContainer.services.observability;
 
-		// Get baseline heap usage (V8 heap is better for leak detection than RSS)
-		// RSS can stay high after GC due to OS memory management
-		// waitForMetric polls until metrics are available from VictoriaMetrics
-		const heapQuery = 'avg_over_time(n8n_nodejs_heap_size_used_bytes[10s]) / 1024 / 1024';
-		const baselineResult = await obs.metrics.waitForMetric(heapQuery, {
-			timeoutMs: METRICS_TIMEOUT_MS,
-			intervalMs: 2000,
-		});
-		expect(baselineResult, 'Expected baseline metrics to be available').not.toBeNull();
-		const baselineMemoryMB = baselineResult!.value;
+		// Wait for memory to stabilize before measuring baseline
+		const { heapUsedMB: baselineMemoryMB } = await waitForMemoryStabilization(obs.metrics);
 
 		await performMemoryAction(n8n);
 		await n8n.page.goto('/home/workflows');
 
-		await new Promise((resolve) => setTimeout(resolve, 5000));
-
-		const finalQuery = 'avg_over_time(n8n_nodejs_heap_size_used_bytes[30s]) / 1024 / 1024';
-		const finalResult = await obs.metrics.waitForMetric(finalQuery, {
-			timeoutMs: METRICS_TIMEOUT_MS,
-			intervalMs: 2000,
-		});
-		expect(finalResult, 'Expected final metrics to be available').not.toBeNull();
-		const finalMemoryMB = finalResult!.value;
+		// Wait for memory to stabilize after actions
+		const { heapUsedMB: finalMemoryMB } = await waitForMemoryStabilization(obs.metrics);
 
 		const memoryRetainedMB = finalMemoryMB - baselineMemoryMB;
 		const retentionPercent = (memoryRetainedMB / baselineMemoryMB) * 100;
