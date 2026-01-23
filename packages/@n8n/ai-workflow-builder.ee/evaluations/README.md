@@ -595,7 +595,8 @@ const crypto = require('crypto');
 // Get from webhook input (adjust based on your webhook node config)
 const signature = $input.first().json.headers['x-signature-256'];
 const timestamp = $input.first().json.headers['x-timestamp'];
-const body = JSON.stringify($input.first().json.body);
+const rawBody = $input.first().json.rawBody ?? $input.first().json.body;
+const body = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
 
 // Your secret (use n8n credentials or environment variable)
 const secret = $env.WEBHOOK_SECRET;
