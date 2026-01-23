@@ -29,7 +29,7 @@ import { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialE
 import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
-import { shouldAutoPublishWorkflow, type IWorkflowBase, type AutoPublishMode } from 'n8n-workflow';
+import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
 import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
@@ -661,10 +661,16 @@ export class SourceControlImportService {
 
 			const importedWorkflow = await this.parseWorkflowFromFile(candidate.file);
 
-			if (!importedWorkflow?.id) {
+			const { versionId, nodes, connections, id, owner } = importedWorkflow;
+
+			if (!id || !versionId || !nodes || !connections) {
+				this.logger.error(
+					`Workflow file ${candidate.file} is missing required fields (id, versionId, nodes, connections)`,
+				);
+				// Skip invalid workflow file
 				continue;
 			}
-			const existingWorkflow = existingWorkflows.find((e) => e.id === importedWorkflow.id);
+			const existingWorkflow = existingWorkflows.find((e) => e.id === id);
 
 			// Workflow's active status is not saved in the remote workflow files, and the field is missing despite
 			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
@@ -707,7 +713,7 @@ export class SourceControlImportService {
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
-			this.logger.debug(`Updating workflow id ${importedWorkflow.id ?? 'new'}`);
+			this.logger.debug(`Updating workflow id ${id ?? 'new'}`);
 
 			const upsertResult = await this.workflowRepository.upsert(
 				{
@@ -718,19 +724,19 @@ export class SourceControlImportService {
 			);
 			if (upsertResult?.identifiers?.length !== 1) {
 				throw new UnexpectedError('Failed to upsert workflow', {
-					extra: { workflowId: importedWorkflow.id ?? 'new' },
+					extra: { workflowId: id ?? 'new' },
 				});
 			}
 
-			await this.saveOrUpdateWorkflowHistory(importedWorkflow, userId);
+			await this.saveOrUpdateWorkflowHistory({ id, versionId, nodes, connections }, userId);
 
 			const localOwner = allSharedWorkflows.find(
-				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
+				(w) => w.workflowId === id && w.role === 'workflow:owner',
 			);
 
 			await this.syncResourceOwnership({
-				resourceId: importedWorkflow.id,
-				remoteOwner: importedWorkflow.owner,
+				resourceId: id,
+				remoteOwner: owner,
 				localOwner,
 				fallbackProject: personalProject,
 				repository: this.sharedWorkflowRepository,
@@ -738,11 +744,11 @@ export class SourceControlImportService {
 
 			// Now publish the workflow if needed (after history is saved)
 			if (shouldAutoPublish) {
-				await this.publishWorkflow(importedWorkflow.id, importedWorkflow.versionId!, userId);
+				await this.publishWorkflow(id, versionId, userId);
 			}
 
 			importWorkflowsResult.push({
-				id: importedWorkflow.id ?? 'unknown',
+				id,
 				name: candidate.file,
 			});
 		}
@@ -1373,68 +1379,37 @@ export class SourceControlImportService {
 	 * - If versionId exists with same content: No action
 	 */
 	private async saveOrUpdateWorkflowHistory(
-		importedWorkflow: IWorkflowToImport,
+		importedWorkflow: {
+			versionId: string;
+			nodes: IWorkflowToImport['nodes'];
+			connections: IWorkflowToImport['connections'];
+			id: string;
+		},
 		userId: string,
 	): Promise<void> {
-		if (!importedWorkflow.versionId || !importedWorkflow.nodes || !importedWorkflow.connections) {
-			this.logger.debug('Skipping workflow history - missing versionId, nodes, or connections');
-			return;
-		}
+		const { versionId, nodes, connections, id } = importedWorkflow;
 
 		// Fetch user for author info
 		const user = await this.userRepository.findOne({ where: { id: userId } });
-		const authors = user ? `${user.firstName} ${user.lastName}` : 'Unknown';
+		const authors = user ? `import by ${user.firstName} ${user.lastName}` : 'import';
 
-		try {
-			const existingVersion = await this.workflowHistoryService.findVersion(
-				importedWorkflow.id,
-				importedWorkflow.versionId,
-			);
+		const existingVersion = await this.workflowHistoryService.findVersion(id, versionId);
 
-			if (existingVersion) {
-				// Check if nodes or connections changed
-				const nodesChanged = !isEqual(existingVersion.nodes, importedWorkflow.nodes);
-				const connectionsChanged = !isEqual(
-					existingVersion.connections,
-					importedWorkflow.connections,
-				);
+		if (existingVersion) {
+			// Check if nodes or connections changed
+			const nodesChanged = !isEqual(existingVersion.nodes, nodes);
+			const connectionsChanged = !isEqual(existingVersion.connections, connections);
 
-				if (nodesChanged || connectionsChanged) {
-					this.logger.debug(
-						`Updating workflow history for versionId ${importedWorkflow.versionId}`,
-					);
-
-					await this.workflowHistoryService.updateVersion(
-						importedWorkflow.versionId,
-						importedWorkflow.id,
-						{
-							nodes: importedWorkflow.nodes,
-							connections: importedWorkflow.connections,
-							authors,
-						},
-					);
-				} else {
-					this.logger.debug(
-						`Workflow history unchanged for versionId ${importedWorkflow.versionId}`,
-					);
-				}
-			} else {
-				// Create new version history record
-				this.logger.debug(
-					`Creating new workflow history for versionId ${importedWorkflow.versionId}`,
-				);
-
-				await this.workflowHistoryService.saveVersion(
+			if (nodesChanged || connectionsChanged) {
+				await this.workflowHistoryService.updateVersion(versionId, id, {
+					nodes,
+					connections,
 					authors,
-					importedWorkflow as unknown as IWorkflowBase,
-					importedWorkflow.id,
-				);
+				});
 			}
-		} catch (error) {
-			this.logger.error(
-				`Failed to save/update workflow history for workflow ${importedWorkflow.id}`,
-				{ error: ensureError(error) },
-			);
+		} else {
+			// Create new version history record
+			await this.workflowHistoryService.saveVersion(authors, { versionId, nodes, connections }, id);
 		}
 	}
 }
