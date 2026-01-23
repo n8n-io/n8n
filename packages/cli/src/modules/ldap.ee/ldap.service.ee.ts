@@ -1,11 +1,10 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig } from '@n8n/constants';
 import { LDAP_FEATURE_NAME } from '@n8n/constants';
 import { isValidEmail, SettingsRepository } from '@n8n/db';
 import type { User, RunningMode, SyncStatus } from '@n8n/db';
 import { Service, Container } from '@n8n/di';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
 import type { Entry as LdapUser, ClientOptions, Client } from 'ldapts';
 import { Cipher } from 'n8n-core';
@@ -16,10 +15,17 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import {
+	getCurrentAuthenticationMethod,
+	isEmailCurrentAuthenticationMethod,
+	isLdapCurrentAuthenticationMethod,
+	setCurrentAuthenticationMethod,
+} from '@/sso.ee/sso-helpers';
+
+import { BINARY_AD_ATTRIBUTES } from './constants';
+import {
 	createLdapUserOnLocalDb,
 	getUserByEmail,
 	getAuthIdentityByLdapId,
-	isLdapEnabled,
 	mapLdapAttributesToUser,
 	createLdapAuthIdentity,
 	updateLdapUserOnLocalDb,
@@ -37,15 +43,7 @@ import {
 	saveLdapSynchronization,
 	validateLdapConfigurationSchema,
 	getUserByLdapId,
-} from '@/ldap.ee/helpers.ee';
-import {
-	getCurrentAuthenticationMethod,
-	isEmailCurrentAuthenticationMethod,
-	isLdapCurrentAuthenticationMethod,
-	setCurrentAuthenticationMethod,
-} from '@/sso.ee/sso-helpers';
-
-import { BINARY_AD_ATTRIBUTES } from './constants';
+} from './helpers.ee';
 
 @Service()
 export class LdapService {
@@ -63,6 +61,7 @@ export class LdapService {
 		private readonly settingsRepository: SettingsRepository,
 		private readonly cipher: Cipher,
 		private readonly eventService: EventService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async init() {
@@ -498,7 +497,7 @@ export class LdapService {
 	}
 
 	async handleLdapLogin(loginId: string, password: string): Promise<User | undefined> {
-		if (!isLdapEnabled()) return undefined;
+		if (!this.licenseState.isLdapLicensed()) return undefined;
 
 		if (!this.config.loginEnabled) return undefined;
 

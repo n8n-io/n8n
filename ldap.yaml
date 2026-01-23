@@ -1,0 +1,7 @@
+ldap: 1.0.0
+info:
+  title: Mokapi's LDAP Server
+  description: An example configuration to mock an LDAP server
+host: :389
+files:
+  - ./users.ldif
