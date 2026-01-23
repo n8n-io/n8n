@@ -88,20 +88,6 @@ export const ChangeOrigin = {
 export type ChangeOrigin = (typeof ChangeOrigin)[keyof typeof ChangeOrigin];
 
 /**
- * Batched changes from a single CRDT transaction.
- * Contains all changes grouped by their source root map name.
- *
- * Use with `CRDTDoc.onTransactionBatch()` to receive all changes from
- * multiple maps in a single callback, properly ordered within the transaction.
- */
-export interface TransactionBatch {
-	/** Changes grouped by root-level map name (e.g., 'nodes', 'edges') */
-	changes: Map<string, DeepChange[]>;
-	/** Origin of the transaction */
-	origin: ChangeOrigin;
-}
-
-/**
  * Type guard to check if a DeepChange is a DeepChangeEvent (map change).
  */
 export function isMapChange(change: DeepChange): change is DeepChangeEvent {
