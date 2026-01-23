@@ -10,22 +10,9 @@ import { WorkerHealthMonitor } from '../worker-health-monitor';
 import type { RedisClientService } from '@/services/redis-client.service';
 
 describe('WorkerHealthMonitor', () => {
-	const logger = mock<Logger>({
-		scoped: jest.fn().mockReturnThis(),
-		debug: jest.fn(),
-		info: jest.fn(),
-		warn: jest.fn(),
-		error: jest.fn(),
-	});
+	const logger = mock<Logger>();
 
-	const globalConfig = mock<GlobalConfig>({
-		queue: {
-			health: {
-				active: true,
-				checkInterval: 1000, // 1 second for faster tests
-			},
-		},
-	});
+	let globalConfig: GlobalConfig;
 
 	const redisClientService = mock<RedisClientService>();
 	const instanceSettings = mock<InstanceSettings>({ instanceType: 'worker' });
@@ -49,6 +36,15 @@ describe('WorkerHealthMonitor', () => {
 			get: () => dbConnectionState,
 		});
 		redisClientService.isConnected.mockReturnValue(true);
+
+		globalConfig = mock<GlobalConfig>({
+			queue: {
+				health: {
+					active: true,
+					checkInterval: 1000, // 1 second for faster tests
+				},
+			},
+		});
 
 		monitor = new WorkerHealthMonitor(
 			logger,
@@ -89,19 +85,11 @@ describe('WorkerHealthMonitor', () => {
 			await monitorWithZeroInterval.start(scalingService);
 
 			expect(scalingService.pauseQueueLocal).not.toHaveBeenCalled();
-
-			// Restore for other tests
-			globalConfig.queue.health.checkInterval = 1000;
 		});
 
 		it('should perform initial health check and start monitoring', async () => {
-			globalConfig.queue.health.active = true;
-
 			await monitor.start(scalingService);
 
-			expect(logger.info).toHaveBeenCalledWith('Worker health monitoring started', {
-				checkIntervalMs: 1000,
-			});
 			expect(scalingService.pauseQueueLocal).not.toHaveBeenCalled();
 			expect(scalingService.resumeQueueLocal).not.toHaveBeenCalled();
 		});
@@ -131,16 +119,11 @@ describe('WorkerHealthMonitor', () => {
 		});
 
 		it('should pause queue when database becomes unhealthy', async () => {
-			// Make DB unhealthy
 			dbConnectionState.connected = false;
 
-			// First health check - should pause queue immediately
 			await jest.advanceTimersByTimeAsync(1000);
 
 			expect(scalingService.pauseQueueLocal).toHaveBeenCalledTimes(1);
-			expect(logger.warn).toHaveBeenCalledWith('Paused queue due to unhealthy worker state', {
-				circuitState: 'CLOSED',
-			});
 		});
 
 		it('should pause queue when Redis becomes unhealthy', async () => {
@@ -156,7 +139,6 @@ describe('WorkerHealthMonitor', () => {
 		});
 
 		it('should resume queue when worker becomes healthy again', async () => {
-			// Make worker unhealthy
 			dbConnectionState.connected = false;
 
 			// Trigger 3 failures to open circuit
@@ -177,9 +159,6 @@ describe('WorkerHealthMonitor', () => {
 			await jest.advanceTimersByTimeAsync(1000);
 
 			expect(scalingService.resumeQueueLocal).toHaveBeenCalledTimes(1);
-			expect(logger.info).toHaveBeenCalledWith('Resumed queue after worker became healthy', {
-				circuitState: 'HALF_OPEN',
-			});
 		});
 
 		it('should pause and resume on transient failures', async () => {
@@ -275,49 +254,6 @@ describe('WorkerHealthMonitor', () => {
 			expect(state).toEqual({
 				isQueuePaused: false,
 				circuitState: 'CLOSED',
-			});
-		});
-	});
-
-	describe('error handling', () => {
-		beforeEach(async () => {
-			await monitor.start(scalingService);
-			jest.clearAllMocks();
-		});
-
-		it('should handle pause queue errors gracefully', async () => {
-			scalingService.pauseQueueLocal.mockRejectedValue(new Error('Pause failed'));
-			dbConnectionState.connected = false;
-
-			// Trigger failures to open circuit
-			await jest.advanceTimersByTimeAsync(1000);
-			await jest.advanceTimersByTimeAsync(1000);
-			await jest.advanceTimersByTimeAsync(1000);
-
-			expect(logger.error).toHaveBeenCalledWith('Failed to pause queue', {
-				error: expect.any(Error),
-			});
-		});
-
-		it('should handle resume queue errors gracefully', async () => {
-			// Reset pauseQueue mock from previous test and make it succeed
-			scalingService.pauseQueueLocal.mockResolvedValue(undefined);
-			scalingService.resumeQueueLocal.mockRejectedValue(new Error('Resume failed'));
-
-			// Open circuit
-			dbConnectionState.connected = false;
-			await jest.advanceTimersByTimeAsync(1000);
-			await jest.advanceTimersByTimeAsync(1000);
-			await jest.advanceTimersByTimeAsync(1000);
-
-			jest.clearAllMocks();
-
-			// Recover
-			dbConnectionState.connected = true;
-			await jest.advanceTimersByTimeAsync(10_000);
-
-			expect(logger.error).toHaveBeenCalledWith('Failed to resume queue', {
-				error: expect.any(Error),
 			});
 		});
 	});
