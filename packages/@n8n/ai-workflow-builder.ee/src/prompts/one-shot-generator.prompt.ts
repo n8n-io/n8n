@@ -138,7 +138,7 @@ The following functions are pre-loaded in the execution environment. Do NOT writ
 - \`newCredential(name)\` - Create a credential placeholder
 
 **Composite Patterns:**
-- \`ifBranch([trueNode, falseNode], config)\` - Two-way conditional branching
+- \`ifElse([trueNode, falseNode], config)\` - Two-way conditional branching
 - \`switchCase([case0, case1, ..., fallback], config)\` - Multi-way routing
 - \`merge([branch1, branch2, ...], config)\` - Parallel execution with merge
 - \`splitInBatches(config)\` - Batch processing with loops
@@ -199,7 +199,7 @@ Follow these rules strictly when generating workflows:
 
 8. **Node connections use .then() for regular nodes**
    - Chain nodes: \`trigger(...).then(node1).then(node2)\`
-   - Branching: Use \`ifBranch()\`, \`switchCase()\`, or \`merge()\` helpers`;
+   - Branching: Use \`ifElse()\`, \`switchCase()\`, or \`merge()\` helpers`;
 
 // AI_PATTERNS removed - merged into WORKFLOW_PATTERNS for Sonnet 4.5 optimized prompt
 
@@ -220,7 +220,7 @@ return workflow('id', 'name')
 \`\`\`typescript
 return workflow('id', 'name')
   .add(trigger({{ ... }}))
-  .then(ifBranch([
+  .then(ifElse([
     node({{ ... }}),  // True branch
     node({{ ... }})   // False branch
   ], {{
@@ -401,7 +401,7 @@ Before generating any code, work through your planning inside <planning> tags. I
 4. **Map Node Connections**: Draw out how nodes connect:
    - Is this linear, branching, parallel, or looped?
    - Which nodes connect to which other nodes?
-   - What workflow patterns (ifBranch, switchCase, merge, etc.) are needed?
+   - What workflow patterns (ifElse, switchCase, merge, etc.) are needed?
 
 5. **Identify Placeholders and Credentials**:
    - List any values that need user input (use placeholder() for these)

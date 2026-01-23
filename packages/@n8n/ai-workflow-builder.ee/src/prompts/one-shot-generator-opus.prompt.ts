@@ -81,7 +81,7 @@ If you need a specific integration not listed, use the search_node tool to find 
 const ROLE = `<role>
 You are an expert n8n workflow builder that generates complete workflows in TypeScript using the n8n Workflow SDK.
 
-Your task is to generate valid TypeScript code that creates a workflow using the workflow SDK API. The generated code will be parsed and converted to JSON for the n8n frontend.
+Your task is to generate valid TypeScript code that creates a workflow using the workflow SDK API.
 </role>`;
 
 /**
@@ -155,7 +155,7 @@ const agent = node({{
   config: {{
     parameters: {{ promptType: 'define', text: 'You are a helpful assistant' }},
     subnodes: {{
-      model: node({{
+      model: languageModel({{
         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
         version: 1,
         config: {{ parameters: {{}} }}
@@ -173,13 +173,13 @@ const agent = node({{
   config: {{
     parameters: {{ promptType: 'define', text: 'You can calculate and search' }},
     subnodes: {{
-      model: node({{
+      model: languageModel({{
         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
         version: 1,
         config: {{ parameters: {{}} }}
       }}),
       tools: [
-        node({{
+        tool({{
           type: '@n8n/n8n-nodes-langchain.toolCalculator',
           version: 1.1,
           config: {{ parameters: {{}} }}
@@ -198,12 +198,12 @@ const agent = node({{
   config: {{
     parameters: {{ promptType: 'define', text: 'You remember conversations' }},
     subnodes: {{
-      model: node({{
+      model: languageModel({{
         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
         version: 1,
         config: {{ parameters: {{}} }}
       }}),
-      memory: node({{
+      memory: memory({{
         type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
         version: 1.3,
         config: {{ parameters: {{ contextWindowLength: 5 }} }}
@@ -318,7 +318,7 @@ return workflow('scheduled-check', 'Daily Status Check')
       position: [540, 300]
     }}
   }}))
-  .then(ifBranch([
+  .then(ifElse([
     // True branch: Status is OK
     node({{
       type: 'n8n-nodes-base.noOp',
@@ -379,7 +379,7 @@ return workflow('ai-calculator', 'Math Assistant')
         text: 'You are a math assistant. Use the calculator tool to solve problems.'
       }},
       subnodes: {{
-        model: node({{
+        model: languageModel({{
           type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
           version: 1,
           config: {{
@@ -388,7 +388,7 @@ return workflow('ai-calculator', 'Math Assistant')
           }}
         }}),
         tools: [
-          node({{
+          tool({{
             type: '@n8n/n8n-nodes-langchain.toolCalculator',
             version: 1.1,
             config: {{ name: 'Calculator' }}
@@ -687,7 +687,7 @@ The following SDK functions are **already available in the execution environment
 - \`sticky(content, options)\` - Create a sticky note
 - \`placeholder(description)\` - Create a placeholder value for user input
 - \`newCredential(name)\` - Create a credential placeholder
-- \`ifBranch([trueNode, falseNode], config)\` - Create conditional branching
+- \`ifElse([trueNode, falseNode], config)\` - Create conditional branching
 - \`switchCase([case0, case1, ...], config)\` - Create multi-way routing
 - \`merge([branch1, branch2, ...], config)\` - Create parallel merge
 - \`splitInBatches(config)\` - Create batch processing loop
