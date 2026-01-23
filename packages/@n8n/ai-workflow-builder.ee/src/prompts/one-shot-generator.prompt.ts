@@ -7,8 +7,9 @@
  * POC with extensive debug logging for development.
  */
 
-import { inspect } from 'node:util';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { inspect } from 'node:util';
+
 import type { NodeWithDiscriminators } from '../utils/node-type-parser';
 
 /**
@@ -744,23 +745,31 @@ Key points for $fromAI:
 - The AI agent will determine the actual values at runtime based on user input
 - Types: 'string' (default), 'number', 'boolean', 'json'
 
-## Example 10: Multi-Agent Orchestration
+## Example 10: Multi-Agent Orchestration with Structured Output
+Complex workflows can have an orchestrator agent that coordinates multiple specialized sub-agents, each with their own models, tools, and output parsers:
 \`\`\`typescript
-// Sub-agent that can be called as a tool
+// Research sub-agent with search capability and structured output
 const researchAgent = tool({{
   type: '@n8n/n8n-nodes-langchain.agentTool',
   version: 3,
-  config: ($) => ({{
-    name: 'Research Agent',
+  config: {{
+    name: 'Research Agent Tool',
     parameters: {{
-      toolDescription: 'Researches a topic and returns findings',
-      text: $.fromAI('topic', 'Topic to research')
+      toolDescription: 'Gathers recent, credible information about a research topic using web search',
+      text: '={{{{ $fromAI(\\'topic\\', \\'The research topic to investigate\\', \\'string\\') }}}}',
+      hasOutputParser: true,
+      options: {{
+        systemMessage: 'You are a research specialist. Use the search tool to find credible sources and return structured findings.'
+      }}
     }},
     subnodes: {{
       model: languageModel({{
         type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
         version: 1.3,
-        config: {{ credentials: {{ openAiApi: newCredential('OpenAI') }} }}
+        config: {{
+          parameters: {{ model: {{ __rl: true, mode: 'id', value: 'gpt-4.1-mini' }} }},
+          credentials: {{ openAiApi: newCredential('OpenAI') }}
+        }}
       }}),
       tools: [
         tool({{
@@ -768,34 +777,181 @@ const researchAgent = tool({{
           version: 1,
           config: {{ credentials: {{ serpApi: newCredential('SerpAPI') }} }}
         }})
-      ]
+      ],
+      outputParser: outputParser({{
+        type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+        version: 1.3,
+        config: {{
+          parameters: {{
+            schemaType: 'manual',
+            inputSchema: '{{\\n  "type": "object",\\n  "properties": {{\\n    "findings": {{\\n      "type": "array",\\n      "items": {{ "type": "object", "properties": {{ "fact": {{"type": "string"}}, "source": {{"type": "string"}} }} }}\\n    }}\\n  }}\\n}}'
+          }}
+        }}
+      }})
     }}
+  }}
+}});
+
+// Fact-check sub-agent that verifies research findings
+const factCheckAgent = tool({{
+  type: '@n8n/n8n-nodes-langchain.agentTool',
+  version: 3,
+  config: {{
+    name: 'Fact-Check Agent Tool',
+    parameters: {{
+      toolDescription: 'Verifies research findings by checking facts against multiple independent sources',
+      text: '={{{{ $fromAI(\\'researchFindings\\', \\'Research findings to fact-check\\', \\'json\\') }}}}',
+      hasOutputParser: true,
+      options: {{
+        systemMessage: 'You are a fact-checking specialist. Verify each claim requires 2+ independent sources.'
+      }}
+    }},
+    subnodes: {{
+      model: languageModel({{
+        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+        version: 1.3,
+        config: {{
+          parameters: {{ model: {{ __rl: true, mode: 'id', value: 'gpt-4.1-mini' }} }},
+          credentials: {{ openAiApi: newCredential('OpenAI') }}
+        }}
+      }}),
+      tools: [
+        tool({{
+          type: '@n8n/n8n-nodes-langchain.toolSerpApi',
+          version: 1,
+          config: {{ credentials: {{ serpApi: newCredential('SerpAPI') }} }}
+        }})
+      ],
+      outputParser: outputParser({{
+        type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+        version: 1.3,
+        config: {{
+          parameters: {{
+            schemaType: 'manual',
+            inputSchema: '{{\\n  "type": "object",\\n  "properties": {{\\n    "verifiedFacts": {{\\n      "type": "array",\\n      "items": {{ "type": "object", "properties": {{ "fact": {{"type": "string"}}, "verified": {{"type": "boolean"}}, "sources": {{"type": "array", "items": {{"type": "string"}}}} }} }}\\n    }}\\n  }}\\n}}'
+          }}
+        }}
+      }})
+    }}
+  }}
+}});
+
+// Report writer sub-agent (no tools, just LLM + output parser)
+const reportWriterAgent = tool({{
+  type: '@n8n/n8n-nodes-langchain.agentTool',
+  version: 3,
+  config: {{
+    name: 'Report Writer Agent Tool',
+    parameters: {{
+      toolDescription: 'Writes a clear, well-structured report under 1,000 words based on verified findings',
+      text: '={{{{ $fromAI(\\'verifiedFindings\\', \\'Verified research findings to write about\\', \\'json\\') }}}}',
+      hasOutputParser: true,
+      options: {{
+        systemMessage: 'You are a professional report writer. Create a concise report with introduction, findings, and conclusion.'
+      }}
+    }},
+    subnodes: {{
+      model: languageModel({{
+        type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+        version: 1.3,
+        config: {{
+          parameters: {{ model: {{ __rl: true, mode: 'id', value: 'gpt-4.1-mini' }} }},
+          credentials: {{ openAiApi: newCredential('OpenAI') }}
+        }}
+      }}),
+      outputParser: outputParser({{
+        type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+        version: 1.3,
+        config: {{
+          parameters: {{
+            schemaType: 'manual',
+            inputSchema: '{{\\n  "type": "object",\\n  "properties": {{\\n    "reportText": {{"type": "string"}},\\n    "wordCount": {{"type": "number"}}\\n  }}\\n}}'
+          }}
+        }}
+      }})
+    }}
+  }}
+}});
+
+// Gmail tool for sending the final report
+const gmailTool = tool({{
+  type: 'n8n-nodes-base.gmailTool',
+  version: 2.2,
+  config: ($) => ({{
+    parameters: {{
+      authentication: 'serviceAccount',
+      sendTo: $.fromAI('recipient', 'Email address to send report to'),
+      subject: $.fromAI('emailSubject', 'Email subject line'),
+      message: $.fromAI('htmlContent', 'HTML formatted report content')
+    }},
+    credentials: {{ googleApi: newCredential('Google Service Account') }}
   }})
 }});
 
-return workflow('orchestrator', 'Multi-Agent Workflow')
-  .add(trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {{}} }}))
+return workflow('research-orchestrator', 'AI Research & Report Pipeline')
+  .add(trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {{ name: 'Start' }} }}))
+  .then(node({{
+    type: 'n8n-nodes-base.set',
+    version: 3.4,
+    config: {{
+      name: 'Workflow Configuration',
+      parameters: {{
+        assignments: {{
+          assignments: [
+            {{ id: 'id-1', name: 'researchTopic', value: placeholder('Research topic to investigate'), type: 'string' }},
+            {{ id: 'id-2', name: 'recipientEmail', value: placeholder('Email address to send the report to'), type: 'string' }}
+          ]
+        }}
+      }}
+    }}
+  }}))
   .then(node({{
     type: '@n8n/n8n-nodes-langchain.agent',
     version: 3.1,
     config: {{
-      name: 'Orchestrator',
+      name: 'Orchestrator Agent',
       parameters: {{
         promptType: 'define',
-        text: '={{{{ $json.chatInput }}}}',
-        options: {{ systemMessage: 'Coordinate the research agent to answer questions.' }}
+        text: '=The research topic is: {{{{ $json.researchTopic }}}}',
+        hasOutputParser: true,
+        options: {{
+          systemMessage: 'You are an orchestrator that coordinates specialized AI agents:\\n1. Call Research Agent to gather information\\n2. Call Fact-Check Agent to verify findings\\n3. Call Report Writer to create the report\\n4. Call Gmail to send the report\\n5. Return the final status'
+        }}
       }},
       subnodes: {{
         model: languageModel({{
           type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
           version: 1.3,
-          config: {{ credentials: {{ openAiApi: newCredential('OpenAI') }} }}
+          config: {{
+            name: 'Orchestrator Model',
+            parameters: {{ model: {{ __rl: true, mode: 'id', value: 'gpt-4.1-mini' }} }},
+            credentials: {{ openAiApi: newCredential('OpenAI') }}
+          }}
         }}),
-        tools: [researchAgent]
+        tools: [researchAgent, factCheckAgent, reportWriterAgent, gmailTool],
+        outputParser: outputParser({{
+          type: '@n8n/n8n-nodes-langchain.outputParserStructured',
+          version: 1.3,
+          config: {{
+            name: 'Orchestrator Output',
+            parameters: {{
+              schemaType: 'manual',
+              inputSchema: '{{\\n  "type": "object",\\n  "properties": {{\\n    "status": {{"type": "string"}},\\n    "emailSent": {{"type": "boolean"}},\\n    "summary": {{"type": "string"}}\\n  }}\\n}}'
+            }}
+          }}
+        }})
       }}
     }}
   }}));
 \`\`\`
+
+Key patterns for multi-agent orchestration:
+- **Agent tools as sub-agents**: Use \`tool({{ type: '@n8n/n8n-nodes-langchain.agentTool', ... }})\` to create callable sub-agents
+- **Structured output**: Add \`hasOutputParser: true\` and an \`outputParser\` subnode with JSON schema
+- **$fromAI in expressions**: Use \`'={{{{ $fromAI('key', 'description', 'type') }}}}'\` for AI-driven inputs
+- **$fromAI in config callback**: Use \`config: ($) => ({{ ... $.fromAI(...) }})\` for tools like Gmail
+- **Mix agent and non-agent tools**: Orchestrator can coordinate both agent tools and regular tools (Gmail, HTTP, etc.)
+- **Sub-agent tools**: Each agent tool can have its own model, tools (for search, etc.), and output parser
 </workflow_examples>`;
 
 /**
