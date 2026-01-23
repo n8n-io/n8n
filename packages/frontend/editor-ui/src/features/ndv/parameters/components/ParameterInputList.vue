@@ -164,21 +164,27 @@ let previousParameterNames: string[] = [];
 
 throttledWatch(
 	[() => props.parameters, () => props.nodeValues, node],
-	() => {
+	async () => {
 		// Pre-calculate disabled state map
 		const disabledMap: Record<string, boolean> = {};
 		for (const parameter of props.parameters) {
 			const parameterPath = getPath(parameter.name);
 			// Pre-calculate disabled state
 			if (parameter.disabledOptions) {
-				disabledMap[parameterPath] = shouldDisplayNodeParameter(parameter, 'disabledOptions');
+				disabledMap[parameterPath] = await shouldDisplayNodeParameter(parameter, 'disabledOptions');
 			}
 		}
 
 		// Filter parameters that should be displayed
-		const parameters = props.parameters.filter((parameter: INodeProperties) =>
-			shouldDisplayNodeParameter(parameter),
+		const displayChecks = await Promise.all(
+			props.parameters.map(async (parameter: INodeProperties) => ({
+				parameter,
+				shouldDisplay: await shouldDisplayNodeParameter(parameter),
+			})),
 		);
+		const parameters = displayChecks
+			.filter((check) => check.shouldDisplay)
+			.map((check) => check.parameter);
 
 		// Apply node-specific parameter transformations
 		let filteredParameters: INodeProperties[];
@@ -199,26 +205,29 @@ throttledWatch(
 		// Compute all parameter data for template usage
 		// Note: `value` is intentionally NOT included to prevent re-renders when values change
 		// Values are fetched via getParameterValue() in the template instead
-		parameterItems.value = filteredParameters.map((parameter) => {
-			const parameterPath = getPath(parameter.name);
-			const isMultipleValues = multipleValues(parameter);
-			const isDisabled = disabledMap[parameterPath] ?? false;
-			const showOptions = shouldShowOptions(parameter);
-			const dependentParametersValues = getDependentParametersValues(parameter);
-			const issues = getParameterIssues(parameter);
-			const calloutVisible = parameter.type === 'callout' ? isCalloutVisible(parameter) : false;
+		const items = await Promise.all(
+			filteredParameters.map(async (parameter) => {
+				const parameterPath = getPath(parameter.name);
+				const isMultipleValues = multipleValues(parameter);
+				const isDisabled = disabledMap[parameterPath] ?? false;
+				const showOptions = shouldShowOptions(parameter);
+				const dependentParametersValues = await getDependentParametersValues(parameter);
+				const issues = getParameterIssues(parameter);
+				const calloutVisible = parameter.type === 'callout' ? isCalloutVisible(parameter) : false;
 
-			return {
-				parameter,
-				path: parameterPath,
-				isMultipleValues,
-				isDisabled,
-				showOptions,
-				dependentParametersValues,
-				issues,
-				isCalloutVisible: calloutVisible,
-			};
-		});
+				return {
+					parameter,
+					path: parameterPath,
+					isMultipleValues,
+					isDisabled,
+					showOptions,
+					dependentParametersValues,
+					issues,
+					isCalloutVisible: calloutVisible,
+				};
+			}),
+		);
+		parameterItems.value = items;
 
 		// Get new parameter names
 		const newParameterNames = parameterItems.value.map((paramData) => paramData.parameter.name);
@@ -409,11 +418,11 @@ function deleteOption(optionName: string): void {
 	emit('valueChanged', parameterData);
 }
 
-function shouldDisplayNodeParameter(
+async function shouldDisplayNodeParameter(
 	parameter: INodeProperties,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
-): boolean {
-	return nodeSettingsParameters.shouldDisplayNodeParameter(
+): Promise<boolean> {
+	return await nodeSettingsParameters.shouldDisplayNodeParameter(
 		props.nodeValues,
 		node.value,
 		parameter,
@@ -451,7 +460,7 @@ function shouldShowOptions(parameter: INodeProperties): boolean {
 	return parameter.type !== 'resourceMapper';
 }
 
-function getDependentParametersValues(parameter: INodeProperties): string | null {
+async function getDependentParametersValues(parameter: INodeProperties): Promise<string | null> {
 	const loadOptionsDependsOn = getParameterTypeOption(parameter, 'loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
@@ -461,7 +470,7 @@ function getDependentParametersValues(parameter: INodeProperties): string | null
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
