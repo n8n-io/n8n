@@ -55,7 +55,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          context: .
           # Dockerfile path
           file: ./docker/images/n8n/Dockerfile 
           push: true
