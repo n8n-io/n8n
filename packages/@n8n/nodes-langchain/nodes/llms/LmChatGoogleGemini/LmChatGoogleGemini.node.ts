@@ -20,6 +20,16 @@ function errorDescriptionMapper(error: NodeError) {
 		return 'Google Gemini requires at least one <a href="https://docs.n8n.io/advanced-ai/examples/using-the-fromai-function/" target="_blank">dynamic parameter</a> when using tools';
 	}
 
+	// Handle the intermittent "Cannot read properties of undefined (reading 'reduce')" error
+	// This occurs when Gemini returns a response with undefined 'parts' in the candidate content.
+	// This is a known issue in @langchain/google-genai when Gemini returns malformed responses.
+	if (
+		error.message?.includes("Cannot read properties of undefined (reading 'reduce')") ||
+		error.description?.includes("Cannot read properties of undefined (reading 'reduce')")
+	) {
+		return 'Google Gemini returned a malformed response. This is an intermittent issue - please try running your workflow again. If the problem persists, try simplifying your prompt or using a different model version.';
+	}
+
 	return error.description ?? 'Unknown error';
 }
 export class LmChatGoogleGemini implements INodeType {
