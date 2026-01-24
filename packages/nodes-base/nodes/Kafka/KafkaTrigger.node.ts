@@ -302,9 +302,15 @@ export class KafkaTrigger implements INodeType {
 
 				await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
+				const autoCommitInterval = options.autoCommitInterval ?? undefined;
+				const autoCommitThreshold = options.autoCommitThreshold ?? undefined;
+				const shouldAutoCommit = !!(autoCommitInterval || autoCommitThreshold);
+
 				await consumer.run({
-					autoCommitInterval: options.autoCommitInterval || null,
-					autoCommitThreshold: options.autoCommitThreshold || null,
+					autoCommit: shouldAutoCommit,
+					eachBatchAutoResolve: shouldAutoCommit,
+					autoCommitInterval,
+					autoCommitThreshold,
 					partitionsConsumedConcurrently,
 					eachBatch: async ({ batch, resolveOffset, heartbeat }: EachBatchPayload) => {
 						const messages = batch.messages;
@@ -317,7 +323,12 @@ export class KafkaTrigger implements INodeType {
 								chunk.map(async (message) => await processMessage(message, messageTopic)),
 							);
 
-							await dataEmmiter(processedData);
+							const result = await dataEmmiter(processedData);
+
+							if (!result.success) {
+								await heartbeat();
+								break;
+							}
 
 							const lastMessage = chunk[chunk.length - 1];
 							if (lastMessage) {

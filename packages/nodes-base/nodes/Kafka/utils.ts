@@ -9,7 +9,7 @@ import type {
 import { logLevel } from 'kafkajs';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { Logger, ITriggerFunctions, IDataObject, IRun } from 'n8n-workflow';
-import { ensureError, jsonParse, NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 
 export interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;
@@ -223,27 +223,34 @@ export function configureDataEmitter(
 	const mode = getResolveOffsetMode(ctx, options, nodeVersion);
 
 	if (mode === 'immediately') {
-		return async (dataArray: IDataObject[]) => ctx.emit([ctx.helpers.returnJsonArray(dataArray)]);
+		return async (dataArray: IDataObject[]) => {
+			ctx.emit([ctx.helpers.returnJsonArray(dataArray)]);
+			return { success: true };
+		};
 	}
 
 	return async (dataArray: IDataObject[]) => {
-		const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
-		ctx.emit([ctx.helpers.returnJsonArray(dataArray)], undefined, responsePromise);
-
-		const timeoutPromise = new Promise<IRun>((_, reject) => {
-			setTimeout(() => {
-				reject(new Error(`Workflow timed out after ${executionTimeoutInSeconds} seconds`));
-			}, executionTimeoutInSeconds * 1000);
-		});
-
 		try {
+			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
+			ctx.emit([ctx.helpers.returnJsonArray(dataArray)], undefined, responsePromise);
+
+			const timeoutPromise = new Promise<IRun>((_, reject) => {
+				setTimeout(() => {
+					reject(new Error(`Workflow timed out after ${executionTimeoutInSeconds} seconds`));
+				}, executionTimeoutInSeconds * 1000);
+			});
+
 			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
 
 			if (mode === 'onSuccess' && run.status !== 'success') {
-				throw new Error('Status is not success');
+				throw new Error('Returned status: ' + run.status);
 			}
+
+			return { success: true };
 		} catch (error) {
-			throw new NodeOperationError(ctx.getNode(), ensureError(error).message);
+			await sleep(10000);
+			ctx.logger.error(error.message);
+			return { success: false };
 		}
 	};
 }
