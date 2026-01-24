@@ -136,7 +136,6 @@ export class ChatHubChatPage extends BasePage {
 	getAttachButton(): Locator {
 		return this.page.getByRole('button', { name: /attach/i });
 	}
-
 	getFileInput(): Locator {
 		return this.page.locator('input[type="file"]');
 	}
