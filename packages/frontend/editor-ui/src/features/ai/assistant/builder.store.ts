@@ -59,6 +59,8 @@ export type WorkflowBuilderJourneyEventType =
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
 	type?: string;
+	count?: number;
+	source?: string;
 	revert_user_message_id?: string;
 	revert_version_id?: string;
 	no_versions_reverted?: number;
