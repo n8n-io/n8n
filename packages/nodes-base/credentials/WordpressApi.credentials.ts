@@ -8,7 +8,7 @@ import type {
 export class WordpressApi implements ICredentialType {
 	name = 'wordpressApi';
 
-	displayName = 'Wordpress API';
+	displayName = 'WordPress API';
 
 	documentationUrl = 'wordpress';
 
@@ -29,7 +29,7 @@ export class WordpressApi implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Wordpress URL',
+			displayName: 'WordPress URL',
 			name: 'url',
 			type: 'string',
 			default: '',
