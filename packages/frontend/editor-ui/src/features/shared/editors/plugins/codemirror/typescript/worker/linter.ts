@@ -56,6 +56,10 @@ function isIgnoredDiagnostic(diagnostic: ts.Diagnostic) {
 		case 2307:
 		// 'await' expressions are only allowed within async functions and at the top levels of modules.
 		case 1308:
+		// The operand of a 'delete' operator must be optional.
+		// This is a TypeScript-specific strict mode check that doesn't apply to JavaScript.
+		// In JavaScript, any property can be deleted regardless of type definitions.
+		case 2790:
 			return true;
 	}
 
