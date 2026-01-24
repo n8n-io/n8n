@@ -159,6 +159,9 @@ catalogs:
     simple-git:
       specifier: 3.28.0
       version: 3.28.0
+    ts-morph:
+      specifier: ^27.0.2
+      version: 27.0.2
     tsdown:
       specifier: ^0.16.5
       version: 0.16.5
@@ -1197,8 +1200,8 @@ importers:
         specifier: 'catalog:'
         version: 6.0.1
       ts-morph:
-        specifier: ^26.0.0
-        version: 26.0.0
+        specifier: 'catalog:'
+        version: 27.0.2
       typescript-eslint:
         specifier: ^8.35.0
         version: 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
@@ -3539,6 +3542,9 @@ importers:
       otplib:
         specifier: ^12.0.1
         version: 12.0.1
+      ts-morph:
+        specifier: 'catalog:'
+        version: 27.0.2
       tsx:
         specifier: 'catalog:'
         version: 4.19.3
@@ -8453,8 +8459,8 @@ packages:
     resolution: {integrity: sha512-w071DSzP94YfN6XiWhOxnLpYT3uqtxJBDYdh6Jdjzt+Ce6DNspJsPQgpC7rbts/B8tEkq0LHoYuIF/O5Jh5rPg==}
     engines: {node: '>=18'}
 
-  '@ts-morph/common@0.27.0':
-    resolution: {integrity: sha512-Wf29UqxWDpc+i61k3oIOzcUfQt79PIT9y/MWfAGlrkjg6lBC1hwDECLXPVJAhWjiGbfBCxZd65F/LIZF3+jeJQ==}
+  '@ts-morph/common@0.28.1':
+    resolution: {integrity: sha512-W74iWf7ILp1ZKNYXY5qbddNaml7e9Sedv5lvU1V8lftlitkc9Pq1A+jlH23ltDgWYeZFFEqGCD1Ies9hqu3O+g==}
 
   '@tsconfig/node10@1.0.11':
     resolution: {integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==}
@@ -17439,8 +17445,8 @@ packages:
   ts-map@1.0.3:
     resolution: {integrity: sha512-vDWbsl26LIcPGmDpoVzjEP6+hvHZkBkLW7JpvwbCv/5IYPJlsbzCVXY3wsCeAxAUeTclNOUZxnLdGh3VBD/J6w==}
 
-  ts-morph@26.0.0:
-    resolution: {integrity: sha512-ztMO++owQnz8c/gIENcM9XfCEzgoGphTv+nKpYNM1bgsdOVC/jRZuEBf6N+mLLDNg68Kl+GgUZfOySaRiG1/Ug==}
+  ts-morph@27.0.2:
+    resolution: {integrity: sha512-fhUhgeljcrdZ+9DZND1De1029PrE+cMkIP7ooqkLRTrRLTqcki2AstsyJm0vRNbTbVCNJ0idGlbBrfqc7/nA8w==}
 
   ts-node@10.9.2:
     resolution: {integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==}
@@ -25365,11 +25371,11 @@ snapshots:
       '@ts-graphviz/ast': 2.0.7
       '@ts-graphviz/common': 2.1.5
 
-  '@ts-morph/common@0.27.0':
+  '@ts-morph/common@0.28.1':
     dependencies:
-      fast-glob: 3.3.3
-      minimatch: 10.0.3
+      minimatch: 10.1.1
       path-browserify: 1.0.1
+      tinyglobby: 0.2.15
 
   '@tsconfig/node10@1.0.11':
     optional: true
@@ -30555,7 +30561,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30565,7 +30571,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0)
+      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -34994,7 +35000,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0):
+  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
     dependencies:
       axios: 1.12.0
 
@@ -36568,9 +36574,9 @@ snapshots:
 
   ts-map@1.0.3: {}
 
-  ts-morph@26.0.0:
+  ts-morph@27.0.2:
     dependencies:
-      '@ts-morph/common': 0.27.0
+      '@ts-morph/common': 0.28.1
       code-block-writer: 13.0.3
 
   ts-node@10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.17.57)(typescript@5.9.2):

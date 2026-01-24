@@ -114,8 +114,4 @@ export class SettingsPersonalPage extends BasePage {
 	getUpgradeCta(): Locator {
 		return this.page.getByTestId('public-api-upgrade-cta');
 	}
-
-	changePasswordModal(): Locator {
-		return this.page.getByTestId('changePassword-modal');
-	}
 }

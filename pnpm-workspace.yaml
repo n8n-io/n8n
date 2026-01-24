@@ -68,6 +68,7 @@ catalog:
   run-script-os: 1.1.6
   simple-git: 3.28.0
   tsdown: ^0.16.5
+  ts-morph: ^27.0.2
   tsx: ^4.19.3
   typescript: 5.9.2
   uuid: 10.0.0

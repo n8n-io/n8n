@@ -286,5 +286,22 @@ node scripts/import-victoria-data.mjs --start victoria-metrics-export.jsonl vict
    - **Metrics UI:** http://localhost:8428/vmui/
    - **Logs UI:** http://localhost:9428/select/vmui/
 
+## Janitor (Dead Code Removal)
+
+Find and remove unused methods from page objects:
+
+```bash
+npx tsx scripts/janitor.ts              # Show unused methods
+npx tsx scripts/janitor.ts --fix        # Dry run
+npx tsx scripts/janitor.ts --fix --write # Remove them
+```
+
+Run iteratively until clean (removing methods may orphan others):
+
+```bash
+npx tsx scripts/janitor.ts --fix --write && pnpm typecheck
+# repeat until "All clean!"
+```
+
 ## Writing Tests
 For guidelines on writing new tests, see [CONTRIBUTING.md](./CONTRIBUTING.md).

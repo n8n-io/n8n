@@ -127,10 +127,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('run-data-pane-header');
 	}
 
-	getOutputTable() {
-		return this.getOutputPanel().getByTestId('ndv-data-container').locator('table');
-	}
-
 	getOutputDataContainer() {
 		return this.getOutputPanel().getByTestId('ndv-data-container');
 	}
@@ -360,38 +356,6 @@ export class NodeDetailsViewPage extends BasePage {
 		}
 	}
 
-	async getParameterValue(parameterName: string): Promise<string> {
-		const parameterType = await this.setupHelper.detectParameterType(parameterName);
-
-		switch (parameterType) {
-			case 'text':
-				return await this.getTextParameterValue(parameterName);
-			case 'dropdown':
-				return await this.getDropdownParameterValue(parameterName);
-			case 'switch':
-				return await this.getSwitchParameterValue(parameterName);
-			default:
-				return (await this.getParameterInput(parameterName).textContent()) ?? '';
-		}
-	}
-
-	private async getTextParameterValue(parameterName: string): Promise<string> {
-		const parameterContainer = this.getParameterInput(parameterName);
-		const input = parameterContainer.locator('input').first();
-		return await input.inputValue();
-	}
-
-	private async getDropdownParameterValue(parameterName: string): Promise<string> {
-		const selectedOption = this.getParameterInput(parameterName).locator('.el-select__tags-text');
-		return (await selectedOption.textContent()) ?? '';
-	}
-
-	private async getSwitchParameterValue(parameterName: string): Promise<string> {
-		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
-		const isEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
-		return isEnabled ? 'true' : 'false';
-	}
-
 	getAssignmentCollectionContainer(paramName: string) {
 		return this.page.getByTestId(`assignment-collection-${paramName}`);
 	}
@@ -400,10 +364,6 @@ export class NodeDetailsViewPage extends BasePage {
 		const inputSelect = this.inputPanel.getNodeInputOptions();
 		await inputSelect.click();
 		await this.page.getByRole('option', { name: nodeName }).click();
-	}
-
-	getInputTbodyCell(row: number, col: number) {
-		return this.getInputPanel().locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
 
 	getAssignmentName(paramName: string, index = 0) {
@@ -508,10 +468,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getExpressionEditorModalOutput() {
 		return this.page.getByTestId('expression-modal-output');
-	}
-
-	getInputTable() {
-		return this.getInputPanel().locator('table');
 	}
 
 	getAddFieldToSortByButton() {
@@ -736,10 +692,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getAddSubNodeButton(connectionType: string, index: number = 0) {
 		return this.page.getByTestId(`add-subnode-${connectionType}-${index}`);
-	}
-
-	getSubNodeConnectionGroup(connectionType: string, index: number = 0) {
-		return this.page.getByTestId(`subnode-connection-group-${connectionType}-${index}`);
 	}
 
 	getNodesWithIssues() {

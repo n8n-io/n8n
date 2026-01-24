@@ -31,10 +31,6 @@ export class NodeCreator {
 		return this.page.getByTestId('node-creator-category-item');
 	}
 
-	getTabs(): Locator {
-		return this.page.getByTestId('node-creator-type-selector');
-	}
-
 	getActiveSubcategory(): Locator {
 		return this.page.getByTestId('nodes-list-header').first();
 	}
