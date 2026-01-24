@@ -84,6 +84,21 @@ const RESERVED_WORDS = new Set([
 	'yield',
 ]);
 
+/**
+ * Known values for genericAuthType in HTTP Request node
+ * Extracted from HttpRequestV3.node.ts execute() method
+ */
+const GENERIC_AUTH_TYPE_VALUES = [
+	'httpBasicAuth',
+	'httpBearerAuth',
+	'httpDigestAuth',
+	'httpHeaderAuth',
+	'httpQueryAuth',
+	'httpCustomAuth',
+	'oAuth1Api',
+	'oAuth2Api',
+] as const;
+
 // =============================================================================
 // Type Definitions
 // =============================================================================
@@ -509,8 +524,10 @@ function mapNestedPropertyType(prop: NodeProperty): string {
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
-		case 'credentialsSelect':
 			return '';
+		case 'credentialsSelect':
+			// credentialsSelect is a string value (credential type name)
+			return 'string | Expression<string>';
 		default:
 			return 'unknown';
 	}
@@ -624,7 +641,7 @@ function generateFixedCollectionType(prop: NodeProperty): string {
 
 		for (const nestedProp of group.values) {
 			// Skip notice and other display-only types
-			if (['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(nestedProp.type)) {
+			if (['notice', 'curlImport', 'credentials'].includes(nestedProp.type)) {
 				continue;
 			}
 
@@ -670,7 +687,7 @@ function generateCollectionType(prop: NodeProperty): string {
 
 		// Skip notice and other display-only types
 		const nestedType = (nestedProp as NodeProperty).type;
-		if (['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(nestedType)) {
+		if (['notice', 'curlImport', 'credentials'].includes(nestedType)) {
 			continue;
 		}
 
@@ -694,6 +711,12 @@ function generateCollectionType(prop: NodeProperty): string {
  * Map n8n property types to TypeScript types with Expression wrappers
  */
 export function mapPropertyType(prop: NodeProperty): string {
+	// Special handling for known credentialsSelect fields with fixed values
+	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType') {
+		const values = GENERIC_AUTH_TYPE_VALUES.map((v) => `'${v}'`).join(' | ');
+		return `${values} | Expression<string>`;
+	}
+
 	// Handle dynamic options (loadOptionsMethod)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		// Dynamic options fallback to string
@@ -785,8 +808,11 @@ export function mapPropertyType(prop: NodeProperty): string {
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
-		case 'credentialsSelect':
 			return ''; // Skip these types
+
+		case 'credentialsSelect':
+			// credentialsSelect is a string value (credential type name)
+			return 'string | Expression<string>';
 
 		default:
 			return 'unknown';
@@ -885,7 +911,7 @@ export function getPropertiesForCombination(
 		}
 
 		// Skip display-only types
-		if (['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(prop.type)) {
+		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
 			continue;
 		}
 
@@ -1020,7 +1046,7 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 		// Track seen property names to avoid duplicates
 		const seenNames = new Set<string>();
 		for (const prop of node.properties) {
-			if (['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(prop.type)) {
+			if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
 				continue;
 			}
 			if (seenNames.has(prop.name)) {
@@ -1200,8 +1226,13 @@ export function generatePropertyLine(prop: NodeProperty, optional: boolean): str
 
 	const lines: string[] = [];
 
-	// JSDoc
-	if (prop.description) {
+	// JSDoc - generate if description, displayOptions, hint, or non-trivial default exists
+	// This ensures LLMs can see dependency information even for properties without descriptions
+	const hasDisplayOptions =
+		prop.displayOptions &&
+		((prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) ||
+			(prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0));
+	if (prop.description || hasDisplayOptions || prop.hint) {
 		lines.push(generatePropertyJSDoc(prop));
 	}
 
@@ -1499,7 +1530,7 @@ export function generateSharedFile(
 
 	// Check properties
 	const outputProps = filteredProperties.filter(
-		(p) => !['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(p.type),
+		(p) => !['notice', 'curlImport', 'credentials'].includes(p.type),
 	);
 
 	// Determine imports needed
@@ -1573,6 +1604,23 @@ export function generateSharedFile(
 			const optional = !cred.required ? '?' : '';
 			lines.push(`\t${cred.name}${optional}: CredentialReference;`);
 		}
+
+		// Add generic auth credentials if node supports genericAuthType
+		const hasGenericAuthType = node.properties.some(
+			(p) => p.name === 'genericAuthType' && p.type === 'credentialsSelect',
+		);
+		if (hasGenericAuthType) {
+			lines.push(
+				`\t/** Generic auth credentials - set the 'genericAuthType' config parameter to select which one to use */`,
+			);
+			for (const credName of GENERIC_AUTH_TYPE_VALUES) {
+				if (!seenCreds.has(credName)) {
+					seenCreds.add(credName);
+					lines.push(`\t${credName}?: CredentialReference;`);
+				}
+			}
+		}
+
 		lines.push('}');
 		lines.push('');
 	}
@@ -2036,7 +2084,7 @@ export function generateSingleVersionTypeFile(
 
 	// Check filtered properties that will actually be output
 	const outputProps = filteredProperties.filter(
-		(p) => !['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(p.type),
+		(p) => !['notice', 'curlImport', 'credentials'].includes(p.type),
 	);
 
 	// Determine which imports are needed based on filtered properties
@@ -2152,6 +2200,23 @@ export function generateSingleVersionTypeFile(
 			const optional = !cred.required ? '?' : '';
 			lines.push(`\t${cred.name}${optional}: CredentialReference;`);
 		}
+
+		// Add generic auth credentials if node supports genericAuthType
+		const hasGenericAuthType = node.properties.some(
+			(p) => p.name === 'genericAuthType' && p.type === 'credentialsSelect',
+		);
+		if (hasGenericAuthType) {
+			lines.push(
+				`\t/** Generic auth credentials - set the 'genericAuthType' config parameter to select which one to use */`,
+			);
+			for (const credName of GENERIC_AUTH_TYPE_VALUES) {
+				if (!seenCreds.has(credName)) {
+					seenCreds.add(credName);
+					lines.push(`\t${credName}?: CredentialReference;`);
+				}
+			}
+		}
+
 		lines.push('}');
 		lines.push('');
 	}
@@ -2321,9 +2386,7 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 
 	// Check properties that will actually be output (skip notice, curlImport, etc.) across all node entries
 	const outputProps = nodeArray.flatMap((n) =>
-		n.properties.filter(
-			(p) => !['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(p.type),
-		),
+		n.properties.filter((p) => !['notice', 'curlImport', 'credentials'].includes(p.type)),
 	);
 
 	// Determine which imports are needed based on actual output
@@ -2426,6 +2489,23 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 				const optional = !cred.required ? '?' : '';
 				lines.push(`\t${cred.name}${optional}: CredentialReference;`);
 			}
+
+			// Add generic auth credentials if node supports genericAuthType
+			const hasGenericAuthType = n.properties.some(
+				(p) => p.name === 'genericAuthType' && p.type === 'credentialsSelect',
+			);
+			if (hasGenericAuthType) {
+				lines.push(
+					`\t/** Generic auth credentials - set the 'genericAuthType' config parameter to select which one to use */`,
+				);
+				for (const credName of GENERIC_AUTH_TYPE_VALUES) {
+					if (!seenCreds.has(credName)) {
+						seenCreds.add(credName);
+						lines.push(`\t${credName}?: CredentialReference;`);
+					}
+				}
+			}
+
 			lines.push('}');
 			lines.push('');
 		}
@@ -2497,7 +2577,7 @@ function generateDiscriminatedUnionForEntry(
 		// Track seen property names to avoid duplicates
 		const seenNames = new Set<string>();
 		for (const prop of node.properties) {
-			if (['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(prop.type)) {
+			if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
 				continue;
 			}
 			if (seenNames.has(prop.name)) {

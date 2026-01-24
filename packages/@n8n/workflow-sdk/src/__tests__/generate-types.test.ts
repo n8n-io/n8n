@@ -1354,6 +1354,288 @@ describe('generate-types', () => {
 	});
 
 	// =========================================================================
+	// credentialsSelect Type Handling Tests
+	// =========================================================================
+
+	describe('credentialsSelect type handling', () => {
+		it('should map credentialsSelect type to string | Expression<string>', () => {
+			const prop: NodeProperty = {
+				name: 'nodeCredentialType',
+				displayName: 'Credential Type',
+				type: 'credentialsSelect',
+				default: '',
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('string | Expression<string>');
+		});
+
+		it('should map genericAuthType credentialsSelect to union of known values', () => {
+			const prop: NodeProperty = {
+				name: 'genericAuthType',
+				displayName: 'Generic Auth Type',
+				type: 'credentialsSelect',
+				default: '',
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			// Should contain all known generic auth types
+			expect(result).toContain("'httpBasicAuth'");
+			expect(result).toContain("'httpBearerAuth'");
+			expect(result).toContain("'httpDigestAuth'");
+			expect(result).toContain("'httpHeaderAuth'");
+			expect(result).toContain("'httpQueryAuth'");
+			expect(result).toContain("'httpCustomAuth'");
+			expect(result).toContain("'oAuth1Api'");
+			expect(result).toContain("'oAuth2Api'");
+			expect(result).toContain('Expression<string>');
+		});
+
+		it('should NOT skip credentialsSelect properties in type generation', () => {
+			// Mock HTTP Request node with credentialsSelect fields
+			const nodeWithCredentialsSelect: NodeTypeDescription = {
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes HTTP requests',
+				group: ['transform'],
+				version: 4.3,
+				inputs: ['main'],
+				outputs: ['main'],
+				credentials: [{ name: 'httpSslAuth' }],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Predefined Credential Type', value: 'predefinedCredentialType' },
+							{ name: 'Generic Credential Type', value: 'genericCredentialType' },
+						],
+						default: 'none',
+					},
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+					{
+						displayName: 'URL',
+						name: 'url',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+			};
+
+			const result = generateTypes.generateDiscriminatedUnion(nodeWithCredentialsSelect);
+
+			// nodeCredentialType should be included as a property
+			expect(result).toContain('nodeCredentialType');
+
+			// genericAuthType should be included with its union type
+			expect(result).toContain('genericAuthType');
+		});
+
+		it('should include generic auth credentials in credentials interface when genericAuthType is present', () => {
+			const nodeWithGenericAuth: NodeTypeDescription = {
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes HTTP requests',
+				group: ['transform'],
+				version: 4.3,
+				inputs: ['main'],
+				outputs: ['main'],
+				credentials: [{ name: 'httpSslAuth' }],
+				properties: [
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(nodeWithGenericAuth);
+
+			// Credentials interface should include generic auth types
+			expect(result).toContain('HttpRequestV43Credentials');
+			expect(result).toContain('httpSslAuth');
+			expect(result).toContain('httpBasicAuth');
+			expect(result).toContain('httpBearerAuth');
+			expect(result).toContain('httpDigestAuth');
+			expect(result).toContain('httpHeaderAuth');
+			expect(result).toContain('httpQueryAuth');
+			expect(result).toContain('httpCustomAuth');
+			expect(result).toContain('oAuth1Api');
+			expect(result).toContain('oAuth2Api');
+
+			// Should include JSDoc comment explaining the genericAuthType relationship
+			expect(result).toContain(
+				"Generic auth credentials - set the 'genericAuthType' config parameter to select which one to use",
+			);
+		});
+
+		it('should NOT include generic auth credentials when genericAuthType is absent', () => {
+			const nodeWithoutGenericAuth: NodeTypeDescription = {
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				description: 'Send messages to Slack',
+				group: ['transform'],
+				version: 2,
+				inputs: ['main'],
+				outputs: ['main'],
+				credentials: [{ name: 'slackApi', required: true }],
+				properties: [
+					{
+						displayName: 'Channel',
+						name: 'channel',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(nodeWithoutGenericAuth);
+
+			// Should have slackApi credential
+			expect(result).toContain('slackApi');
+
+			// Should NOT have generic auth credentials
+			expect(result).not.toContain('httpBasicAuth');
+			expect(result).not.toContain('httpBearerAuth');
+			expect(result).not.toContain('oAuth1Api');
+		});
+
+		it('should handle credentialsSelect in nested collection types', () => {
+			const prop: NodeProperty = {
+				name: 'options',
+				displayName: 'Options',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Credential Type',
+						name: 'credentialType',
+						type: 'credentialsSelect',
+						default: '',
+					},
+					{
+						displayName: 'Timeout',
+						name: 'timeout',
+						type: 'number',
+						default: 5000,
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			// credentialsSelect should be mapped to string, not skipped
+			expect(result).toContain('credentialType');
+			expect(result).toContain('string | Expression<string>');
+			expect(result).toContain('timeout');
+		});
+
+		it('should handle credentialsSelect in fixedCollection types', () => {
+			const prop: NodeProperty = {
+				name: 'authConfig',
+				displayName: 'Auth Config',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Auth',
+						name: 'auth',
+						values: [
+							{
+								displayName: 'Credential Type',
+								name: 'credentialType',
+								type: 'credentialsSelect',
+								default: '',
+							},
+						],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			// credentialsSelect should be mapped to string, not skipped
+			expect(result).toContain('credentialType');
+			expect(result).toContain('string | Expression<string>');
+		});
+
+		it('should generate JSDoc with displayOptions.show even without description', () => {
+			const prop: NodeProperty = {
+				name: 'genericAuthType',
+				displayName: 'Generic Auth Type',
+				type: 'credentialsSelect',
+				default: '',
+				displayOptions: {
+					show: {
+						authentication: ['genericCredentialType'],
+					},
+				},
+			};
+			const result = generateTypes.generatePropertyLine(prop, true);
+
+			// Should have JSDoc comment with displayOptions.show
+			expect(result).toContain('/**');
+			expect(result).toContain('@displayOptions.show');
+			expect(result).toContain('authentication: ["genericCredentialType"]');
+		});
+
+		it('should include displayOptions.show in generated Config for credentialsSelect properties', () => {
+			const nodeWithCredentialsSelect: NodeTypeDescription = {
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				description: 'Makes HTTP requests',
+				group: ['transform'],
+				version: 4.3,
+				inputs: ['main'],
+				outputs: ['main'],
+				credentials: [{ name: 'httpSslAuth' }],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Generic Credential Type', value: 'genericCredentialType' },
+						],
+						default: 'none',
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						displayOptions: {
+							show: {
+								authentication: ['genericCredentialType'],
+							},
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateDiscriminatedUnion(nodeWithCredentialsSelect);
+
+			// genericAuthType should have displayOptions.show in JSDoc
+			expect(result).toContain('@displayOptions.show');
+			expect(result).toContain('authentication: ["genericCredentialType"]');
+		});
+	});
+
+	// =========================================================================
 	// Edge Case Tests
 	// =========================================================================
 
