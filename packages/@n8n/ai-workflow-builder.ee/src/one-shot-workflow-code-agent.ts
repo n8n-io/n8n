@@ -114,6 +114,14 @@ const WorkflowCodeOutputSchema = z.object({
 type WorkflowCodeOutput = z.infer<typeof WorkflowCodeOutputSchema>;
 
 /**
+ * Result from parseAndValidate including workflow and any warnings
+ */
+interface ParseAndValidateResult {
+	workflow: WorkflowJSON;
+	warnings: Array<{ code: string; message: string; nodeName?: string }>;
+}
+
+/**
  * Configuration for the one-shot agent
  */
 export interface OneShotWorkflowCodeAgentConfig {
@@ -246,6 +254,8 @@ export class OneShotWorkflowCodeAgent {
 			let parseDuration = 0;
 			let sourceCode: string | null = null;
 			const generationErrors: StreamGenerationError[] = [];
+			// Track warning codes that have been sent to agent (to avoid repeating)
+			const previousWarningCodes = new Set<string>();
 
 			while (iteration < MAX_AGENT_ITERATIONS) {
 				if (consecutiveParseErrors >= 3) {
@@ -349,7 +359,8 @@ export class OneShotWorkflowCodeAgent {
 						const parseStartTime = Date.now();
 
 						try {
-							workflow = await this.parseAndValidate(finalResult.workflowCode);
+							const result = await this.parseAndValidate(finalResult.workflowCode);
+							workflow = result.workflow;
 							parseDuration = Date.now() - parseStartTime;
 							sourceCode = finalResult.workflowCode; // Save for later use
 							debugLog('CHAT', 'Workflow parsed and validated', {
@@ -358,57 +369,50 @@ export class OneShotWorkflowCodeAgent {
 								workflowName: workflow.name,
 								nodeCount: workflow.nodes.length,
 								nodeTypes: workflow.nodes.map((n) => n.type),
+								warningCount: result.warnings.length,
 							});
 
-							// TODO: Re-enable type checking when we decide on TypeScript runtime strategy
-							// Currently disabled to avoid 23MB package size + 17MB memory overhead
-							// See: src/evaluators/code-typecheck/type-checker.ts
-							/*
-							// Run type checking on the generated code
-							debugLog('CHAT', 'Running type check on generated code...');
-							const typeCheckResult = typeCheckCode(finalResult.workflowCode);
-							const criticalViolations = typeCheckResult.violations.filter(
-								(v) => v.type === 'critical',
-							);
+							// Check for new warnings that haven't been sent to agent before
+							const newWarnings = result.warnings.filter((w) => !previousWarningCodes.has(w.code));
 
-							debugLog('CHAT', 'Type check complete', {
-								score: typeCheckResult.score,
-								totalViolations: typeCheckResult.violations.length,
-								criticalViolations: criticalViolations.length,
-							});
+							if (newWarnings.length > 0) {
+								debugLog('CHAT', 'New validation warnings found', {
+									newWarningCount: newWarnings.length,
+									newWarningCodes: newWarnings.map((w) => w.code),
+								});
 
-							// If there are critical type errors, send them back to the agent
-							if (criticalViolations.length > 0 && consecutiveParseErrors < 2) {
-								consecutiveParseErrors++;
-								const typeErrorMessages = criticalViolations
-									.slice(0, 5) // Limit to first 5 errors
-									.map((v) => `- Line ${v.lineNumber ?? '?'}: ${v.description}`)
+								// Mark these warnings as sent (so we don't repeat)
+								for (const w of newWarnings) {
+									previousWarningCodes.add(w.code);
+								}
+
+								// Format warnings for the agent
+								const warningMessages = newWarnings
+									.slice(0, 5) // Limit to first 5 warnings
+									.map((w) => `- [${w.code}] ${w.message}`)
 									.join('\n');
 
-								// Track type errors
+								// Track as generation error for artifacts
 								generationErrors.push({
-									message: `TypeScript errors:\n${typeErrorMessages}`,
+									message: `Validation warnings:\n${warningMessages}`,
 									code: finalResult.workflowCode,
 									iteration,
-									type: 'typecheck',
+									type: 'validation',
 								});
 
-								debugLog('CHAT', 'Critical type errors found, sending back to agent', {
-									errorCount: criticalViolations.length,
-								});
-
+								// Send warnings back to agent for one correction attempt
 								messages.push(
 									new HumanMessage(
-										`The workflow code has TypeScript type errors:\n\n${typeErrorMessages}\n\nPlease fix these errors and provide the corrected version as a JSON object with a workflowCode field.`,
+										`The workflow code has validation warnings that should be addressed:\n\n${warningMessages}\n\nPlease fix these issues and provide the corrected version as a JSON object with a workflowCode field.`,
 									),
 								);
 								workflow = null; // Reset so we continue the loop
 								finalResult = null;
 								continue;
 							}
-							*/
 
-							// Successfully parsed - exit the loop
+							// No new warnings (or all are repeats) - successfully parsed, exit the loop
+							debugLog('CHAT', 'No new warnings, accepting workflow');
 							break;
 						} catch (parseError) {
 							parseDuration = Date.now() - parseStartTime;
@@ -765,8 +769,9 @@ export class OneShotWorkflowCodeAgent {
 
 	/**
 	 * Parse TypeScript code to WorkflowJSON and validate
+	 * Returns both the workflow and any validation warnings
 	 */
-	private async parseAndValidate(code: string): Promise<WorkflowJSON> {
+	private async parseAndValidate(code: string): Promise<ParseAndValidateResult> {
 		debugLog('PARSE_VALIDATE', '========== PARSING WORKFLOW CODE ==========');
 		debugLog('PARSE_VALIDATE', 'Input code', {
 			codeLength: code.length,
@@ -813,6 +818,9 @@ export class OneShotWorkflowCodeAgent {
 				throw new Error(`Graph validation errors:\n${errorMessages}`);
 			}
 
+			// Collect all warnings (graph validation)
+			const allWarnings: Array<{ code: string; message: string; nodeName?: string }> = [];
+
 			// Log warnings (but don't fail on them)
 			if (graphValidation.warnings.length > 0) {
 				debugLog('PARSE_VALIDATE', 'GRAPH VALIDATION WARNINGS', {
@@ -824,6 +832,14 @@ export class OneShotWorkflowCodeAgent {
 				this.logger?.info('Graph validation warnings', {
 					warnings: graphValidation.warnings.map((w: { message: string }) => w.message),
 				});
+				// Add to all warnings
+				for (const w of graphValidation.warnings) {
+					allWarnings.push({
+						code: w.code,
+						message: w.message,
+						nodeName: w.nodeName,
+					});
+				}
 			}
 
 			// Convert to JSON
@@ -903,9 +919,8 @@ export class OneShotWorkflowCodeAgent {
 
 			debugLog('PARSE_VALIDATE', '========== PARSING COMPLETE ==========');
 
-			// Always return the workflow, even with validation issues
-			// The frontend can handle warnings, and errors are often false positives
-			return workflow;
+			// Return both workflow and warnings for agent self-correction
+			return { workflow, warnings: allWarnings };
 		} catch (error) {
 			debugLog('PARSE_VALIDATE', '========== PARSING FAILED ==========', {
 				errorMessage: error instanceof Error ? error.message : String(error),
