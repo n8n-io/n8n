@@ -1,8 +1,8 @@
-import { typeCheckCode } from '../../evaluations/evaluators/code-typecheck/type-checker';
+import { typeCheckCode } from '../../src/evaluators/code-typecheck/type-checker';
 import {
 	clearNodeTypeDeclarationsCache,
 	getNodeTypeDeclarations,
-} from '../../evaluations/evaluators/code-typecheck/node-types-loader';
+} from '../../src/evaluators/code-typecheck/node-types-loader';
 
 const validCode = `
 const startTrigger = trigger({

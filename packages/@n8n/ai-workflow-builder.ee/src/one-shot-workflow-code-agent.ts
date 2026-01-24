@@ -19,7 +19,7 @@ import { z } from 'zod';
 import { parseWorkflowCode, validateWorkflow, SDK_API_CONTENT } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { typeCheckCode } from '../evaluations/evaluators/code-typecheck/type-checker';
+import { typeCheckCode } from './evaluators/code-typecheck/type-checker';
 
 import { NodeTypeParser } from './utils/node-type-parser';
 import { buildOneShotGeneratorPrompt } from './prompts/one-shot-generator.prompt';
