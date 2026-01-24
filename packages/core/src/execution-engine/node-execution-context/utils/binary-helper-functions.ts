@@ -248,6 +248,8 @@ export async function copyBinaryFile(
 	);
 }
 
+const RE_SANITISE_MIMETYPE = /^[^/]+\/(?:(?:vnd|prs)\.(?:[^.]+?\.)*)?([^-_+.]+).*$/i;
+
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
@@ -336,6 +338,15 @@ export async function prepareBinaryData(
 		if (fileExtension) {
 			returnData.fileExtension = fileExtension;
 		}
+	}
+
+	// Still no fileExtension? Use sanitised second part of mimeType.
+	// NOTE: This is a last-resort. It won't be perfect and generally
+	// covers use-cases when the filePath doesn't contain the extension
+	// and when the mimeType is custom, or not registered/recognised.
+	// This is also limited to only `application/` mimeTypes.
+	if (!returnData.fileExtension && returnData.mimeType.startsWith('application')) {
+		returnData.fileExtension = returnData.mimeType.replace(RE_SANITISE_MIMETYPE, '$1');
 	}
 
 	return await setBinaryDataBuffer(returnData, binaryData, workflowId, executionId);
