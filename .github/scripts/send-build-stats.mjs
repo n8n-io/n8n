@@ -12,10 +12,15 @@
  *   BUILD_STATS_WEBHOOK_PASSWORD - Basic auth password (required if URL set)
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import * as os from 'node:os';
 import { join } from 'node:path';
 
 const runsDir = '.turbo/runs';
+if (!existsSync(runsDir)) {
+	console.log('No .turbo/runs directory found (turbo --summarize not used), skipping.');
+	process.exit(0);
+}
 const files = readdirSync(runsDir).filter((f) => f.endsWith('.json'));
 const summaryPath = files.length > 0 ? join(runsDir, files[0]) : null;
 
@@ -39,8 +44,6 @@ if (!webhookUser || !webhookPassword) {
 }
 
 const basicAuth = Buffer.from(`${webhookUser}:${webhookPassword}`).toString('base64');
-
-import * as os from 'node:os';
 
 const summary = JSON.parse(readFileSync(summaryPath, 'utf-8'));
 
