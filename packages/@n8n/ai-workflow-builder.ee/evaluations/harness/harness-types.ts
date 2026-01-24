@@ -44,6 +44,16 @@ export interface EvaluationContext {
 	 * Populated from GenerationResult when available.
 	 */
 	generatedCode?: string;
+	/**
+	 * Number of agentic loop iterations required for generation.
+	 * Populated from GenerationResult when available.
+	 */
+	iterationCount?: number;
+	/**
+	 * Errors encountered during generation (parse errors, type errors).
+	 * Populated from GenerationResult when available.
+	 */
+	generationErrors?: GenerationError[];
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */
@@ -196,11 +206,29 @@ export interface ExampleResult {
 	generatedCode?: string;
 	/** Token usage statistics from the generation */
 	tokenUsage?: TokenUsage;
+	/** Number of agentic loop iterations required */
+	iterationCount?: number;
+	/** Errors encountered during generation (parse errors, type errors) */
+	generationErrors?: GenerationError[];
 	error?: string;
 	/** Pairwise criteria: required behaviors */
 	dos?: string;
 	/** Pairwise criteria: forbidden behaviors */
 	donts?: string;
+}
+
+/**
+ * Details about errors encountered during code generation.
+ */
+export interface GenerationError {
+	/** The error message */
+	message: string;
+	/** The code that caused the error (if available) */
+	code?: string;
+	/** Iteration number when the error occurred */
+	iteration: number;
+	/** Type of error: 'parse' for SDK parsing, 'typecheck' for TypeScript errors */
+	type: 'parse' | 'typecheck';
 }
 
 /**
@@ -213,6 +241,10 @@ export interface GenerationResult {
 	generatedCode?: string;
 	/** Token usage statistics from the generation */
 	tokenUsage?: TokenUsage;
+	/** Number of agentic loop iterations required */
+	iterationCount?: number;
+	/** Errors encountered during generation (parse errors, type errors) */
+	generationErrors?: GenerationError[];
 }
 
 /**

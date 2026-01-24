@@ -24,6 +24,7 @@ import {
 	type LangsmithExampleFilters,
 	type LlmCallLimiter,
 	type GenerationResult,
+	type GenerationError,
 	type TokenUsage,
 } from './harness-types.js';
 import type { EvalLogger } from './logger';
@@ -101,8 +102,18 @@ function buildContext(args: {
 	testCaseContext?: TestCaseContext;
 	referenceWorkflows?: SimpleWorkflow[];
 	generatedCode?: string;
+	iterationCount?: number;
+	generationErrors?: GenerationError[];
 }): EvaluationContext {
-	const { prompt, globalContext, testCaseContext, referenceWorkflows, generatedCode } = args;
+	const {
+		prompt,
+		globalContext,
+		testCaseContext,
+		referenceWorkflows,
+		generatedCode,
+		iterationCount,
+		generationErrors,
+	} = args;
 
 	return {
 		prompt,
@@ -110,6 +121,8 @@ function buildContext(args: {
 		...(testCaseContext ?? {}),
 		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
 		...(generatedCode ? { generatedCode } : {}),
+		...(iterationCount !== undefined ? { iterationCount } : {}),
+		...(generationErrors?.length ? { generationErrors } : {}),
 	};
 }
 
@@ -389,10 +402,12 @@ async function runLocalExample(args: {
 		}, globalContext?.llmCallLimiter);
 		const genDurationMs = Date.now() - genStartTime;
 
-		// Extract workflow, optional generated code, and token usage
+		// Extract workflow, optional generated code, token usage, and generation metadata
 		const workflow = isGenerationResult(genResult) ? genResult.workflow : genResult;
 		const generatedCode = isGenerationResult(genResult) ? genResult.generatedCode : undefined;
 		const tokenUsage = isGenerationResult(genResult) ? genResult.tokenUsage : undefined;
+		const iterationCount = isGenerationResult(genResult) ? genResult.iterationCount : undefined;
+		const generationErrors = isGenerationResult(genResult) ? genResult.generationErrors : undefined;
 
 		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -405,6 +420,8 @@ async function runLocalExample(args: {
 			testCaseContext: testCase.context,
 			referenceWorkflows: testCase.referenceWorkflows,
 			generatedCode,
+			iterationCount,
+			generationErrors,
 		});
 
 		// Run evaluators in parallel
@@ -429,6 +446,8 @@ async function runLocalExample(args: {
 			workflow,
 			generatedCode,
 			tokenUsage,
+			iterationCount,
+			generationErrors,
 			dos: testCase.context?.dos,
 			donts: testCase.context?.donts,
 		};
@@ -870,10 +889,14 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			});
 			const genDurationMs = Date.now() - genStart;
 
-			// Extract workflow, optional generated code, and token usage
+			// Extract workflow, optional generated code, token usage, and generation metadata
 			const workflow = isGenerationResult(genResult) ? genResult.workflow : genResult;
 			const generatedCode = isGenerationResult(genResult) ? genResult.generatedCode : undefined;
 			const tokenUsage = isGenerationResult(genResult) ? genResult.tokenUsage : undefined;
+			const iterationCount = isGenerationResult(genResult) ? genResult.iterationCount : undefined;
+			const generationErrors = isGenerationResult(genResult)
+				? genResult.generationErrors
+				: undefined;
 
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -886,6 +909,8 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				globalContext: effectiveGlobalContext,
 				testCaseContext: extracted,
 				generatedCode,
+				iterationCount,
+				generationErrors,
 			});
 
 			// Run all evaluators in parallel
@@ -925,6 +950,8 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				workflow,
 				generatedCode,
 				tokenUsage,
+				iterationCount,
+				generationErrors,
 			};
 
 			artifactSaver?.saveExample(result);

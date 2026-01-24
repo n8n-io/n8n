@@ -30,6 +30,7 @@ import type {
 	AgentMessageChunk,
 	WorkflowUpdateChunk,
 	ToolProgressChunk,
+	StreamGenerationError,
 } from './types/streaming';
 import type { ChatPayload } from './workflow-builder-agent';
 
@@ -241,6 +242,7 @@ export class OneShotWorkflowCodeAgent {
 			let workflow: WorkflowJSON | null = null;
 			let parseDuration = 0;
 			let sourceCode: string | null = null;
+			const generationErrors: StreamGenerationError[] = [];
 
 			while (iteration < MAX_AGENT_ITERATIONS) {
 				if (consecutiveParseErrors >= 3) {
@@ -362,6 +364,14 @@ export class OneShotWorkflowCodeAgent {
 							const errorMessage =
 								parseError instanceof Error ? parseError.message : String(parseError);
 
+							// Track the generation error
+							generationErrors.push({
+								message: errorMessage,
+								code: finalResult.workflowCode,
+								iteration,
+								type: 'parse',
+							});
+
 							debugLog('CHAT', 'Workflow parsing failed', {
 								parseDurationMs: parseDuration,
 								consecutiveParseErrors,
@@ -451,6 +461,8 @@ export class OneShotWorkflowCodeAgent {
 							inputTokens: totalInputTokens,
 							outputTokens: totalOutputTokens,
 						},
+						iterationCount: iteration,
+						generationErrors: generationErrors.length > 0 ? generationErrors : undefined,
 					} as WorkflowUpdateChunk,
 				],
 			};

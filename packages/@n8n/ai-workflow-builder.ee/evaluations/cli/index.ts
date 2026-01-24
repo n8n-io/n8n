@@ -12,7 +12,7 @@ import pLimit from 'p-limit';
 import { OneShotWorkflowCodeAgent } from '@/one-shot-workflow-code-agent';
 import type { SimpleWorkflow } from '@/types/workflow';
 import type { StreamChunk, WorkflowUpdateChunk } from '@/types/streaming';
-import type { TokenUsage } from '../harness/harness-types.js';
+import type { TokenUsage, GenerationError } from '../harness/harness-types.js';
 import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 
 import {
@@ -141,6 +141,8 @@ function createOneShotWorkflowGenerator(
 		let workflow: SimpleWorkflow | null = null;
 		let generatedCode: string | undefined;
 		let tokenUsage: TokenUsage | undefined;
+		let iterationCount: number | undefined;
+		let generationErrors: GenerationError[] | undefined;
 
 		// Create an AbortController to properly cancel the agent on timeout or error.
 		// Without this, the agent continues running even after Promise.race rejects,
@@ -170,6 +172,10 @@ function createOneShotWorkflowGenerator(
 								outputTokens: message.tokenUsage.outputTokens,
 							};
 						}
+						iterationCount = message.iterationCount;
+						if (message.generationErrors) {
+							generationErrors = message.generationErrors;
+						}
 					}
 				}
 			}
@@ -183,7 +189,7 @@ function createOneShotWorkflowGenerator(
 			throw new Error('One-shot agent did not produce a workflow');
 		}
 
-		return { workflow, generatedCode, tokenUsage };
+		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors };
 	};
 }
 
@@ -266,35 +272,45 @@ export async function runV2Evaluation(): Promise<void> {
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
 	// Create evaluators based on mode (using judge LLM for evaluation)
+	// For one-shot agent, run all 4 evaluators regardless of suite
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
-	switch (args.suite) {
-		case 'llm-judge':
-			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'pairwise':
-			evaluators.push(
-				createPairwiseEvaluator(env.llms.judge, {
-					numJudges: args.numJudges,
-				}),
-			);
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'programmatic':
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'similarity':
-			evaluators.push(createSimilarityEvaluator());
-			break;
-		case 'code-typecheck':
-			evaluators.push(createCodeTypecheckEvaluator());
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
-		case 'code-llm-judge':
-			evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
-			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-			break;
+	if (args.agent === AGENT_TYPES.ONE_SHOT) {
+		// One-shot agent: run all evaluators for comprehensive code analysis
+		evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
+		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+		evaluators.push(createCodeTypecheckEvaluator());
+		evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
+	} else {
+		// Multi-agent: use suite-specific evaluators
+		switch (args.suite) {
+			case 'llm-judge':
+				evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
+				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+				break;
+			case 'pairwise':
+				evaluators.push(
+					createPairwiseEvaluator(env.llms.judge, {
+						numJudges: args.numJudges,
+					}),
+				);
+				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+				break;
+			case 'programmatic':
+				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+				break;
+			case 'similarity':
+				evaluators.push(createSimilarityEvaluator());
+				break;
+			case 'code-typecheck':
+				evaluators.push(createCodeTypecheckEvaluator());
+				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+				break;
+			case 'code-llm-judge':
+				evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
+				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+				break;
+		}
 	}
 
 	const llmCallLimiter = pLimit(args.concurrency);

@@ -18,6 +18,20 @@ export interface ToolProgressChunk {
 }
 
 /**
+ * Generation error tracked during workflow generation.
+ */
+export interface StreamGenerationError {
+	/** The error message */
+	message: string;
+	/** The code that caused the error (if available) */
+	code?: string;
+	/** Iteration number when the error occurred */
+	iteration: number;
+	/** Type of error: 'parse' for SDK parsing, 'typecheck' for TypeScript errors */
+	type: 'parse' | 'typecheck';
+}
+
+/**
  * Workflow update chunk for streaming
  */
 export interface WorkflowUpdateChunk {
@@ -32,6 +46,10 @@ export interface WorkflowUpdateChunk {
 		inputTokens: number;
 		outputTokens: number;
 	};
+	/** Number of agentic loop iterations required */
+	iterationCount?: number;
+	/** Errors encountered during generation (parse errors, type errors) */
+	generationErrors?: StreamGenerationError[];
 }
 
 /**
