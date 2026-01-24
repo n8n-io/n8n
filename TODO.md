@@ -7,18 +7,21 @@
 	- [ ] split out merge into separate functions? so its easier to understand
 
 ## agent
-- [ ] update current workflow parsed code
+- [ ] transpile current workflow to code
+- [ ] fix evaluation runs to include error logs
+- [ ] test out prompt with/without sdk reference
 - [ ] build out new evaluation suites for this type of agent
 - [ ] Test opus again with simplified prompt
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
 	- [ ] a lot of pairwise seem to be about preferring certain nodes, how can we add that as part of the node definition
+	- [ ] add section for pref of other nodes over code node
 - [ ] Make sure conversation history is included in request
 - [ ] Evaluate with thinking enabled for each model
-- [ ] Update placeholder() to encourage agent to avoid using this for creds (not for api keys, use newCredential)
 - [ ] in programmatic checks validation step, only skip warnings if repeated for the same node
 - [ ] investigate failed syntax in prompt in this example packages/@n8n/ai-workflow-builder.ee/eval-results/sonnet-one-shot-all/example-005-05fd23ad. also packages/@n8n/ai-workflow-builder.ee/eval-results/sonnet-one-shot-all/example-007-ca13700c
 	- [ ] Also why are programmatic evals showing it has no expression, even though it does
 - [ ] strip away previous contexts from previous messages
+- [ ] fix new code llm judge, review how it works
 
 ## ready to release
 - [ ] deploy agent to test instance
