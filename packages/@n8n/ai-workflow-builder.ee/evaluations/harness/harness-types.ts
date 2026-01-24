@@ -227,8 +227,8 @@ export interface GenerationError {
 	code?: string;
 	/** Iteration number when the error occurred */
 	iteration: number;
-	/** Type of error: 'parse' for SDK parsing, 'typecheck' for TypeScript errors */
-	type: 'parse' | 'typecheck';
+	/** Type of error: 'parse' for SDK parsing, 'typecheck' for TypeScript errors, 'validation' for graph validation */
+	type: 'parse' | 'typecheck' | 'validation';
 }
 
 /**

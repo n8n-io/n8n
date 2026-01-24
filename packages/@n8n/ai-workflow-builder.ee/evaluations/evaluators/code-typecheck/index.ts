@@ -7,8 +7,8 @@
 
 import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
 import type { SimpleWorkflow } from '../../../src/types/workflow';
-import { typeCheckCode } from './type-checker';
-import type { CodeViolation } from './violations';
+import { typeCheckCode } from '../../../src/evaluators/code-typecheck/type-checker';
+import type { CodeViolation } from '../../../src/evaluators/code-typecheck/violations';
 
 const EVALUATOR_NAME = 'code-typecheck';
 

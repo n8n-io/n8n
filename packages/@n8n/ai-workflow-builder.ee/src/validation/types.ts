@@ -2,7 +2,7 @@ import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
 
-export type ProgrammaticViolationType = 'critical' | 'major' | 'minor';
+export type ProgrammaticViolationType = 'critical' | 'major' | 'minor' | 'suggestion';
 
 export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'tool-node-has-no-parameters',
@@ -31,6 +31,18 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'workflow-similarity-evaluation-failed',
 	'http-request-hardcoded-credentials',
 	'set-node-credential-field',
+	// Graph validation violations (from workflow-sdk validate())
+	'graph-no-nodes',
+	'graph-disconnected-node',
+	'graph-merge-single-input',
+	'graph-from-ai-in-non-tool',
+	'graph-agent-static-prompt',
+	'graph-agent-no-system-message',
+	'graph-hardcoded-credentials',
+	'graph-set-credential-field',
+	'graph-tool-no-parameters',
+	'graph-missing-trigger',
+	'graph-parse-error',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
@@ -69,6 +81,7 @@ export interface ProgrammaticEvaluationResult {
 	fromAi: SingleEvaluatorResult;
 	credentials: SingleEvaluatorResult;
 	similarity: SingleEvaluatorResult | null;
+	graphValidation: SingleEvaluatorResult;
 }
 
 export interface ProgrammaticEvaluationInput {
@@ -76,6 +89,8 @@ export interface ProgrammaticEvaluationInput {
 	userPrompt?: string;
 	referenceWorkflows?: SimpleWorkflow[];
 	preset?: 'strict' | 'standard' | 'lenient';
+	/** Generated TypeScript SDK code for graph validation */
+	generatedCode?: string;
 }
 
 export interface NodeResolvedConnectionTypesInfo {
