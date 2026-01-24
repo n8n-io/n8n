@@ -1,0 +1,321 @@
+{
+  "name": "Shopify - New Order → Sheets → Email → Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "shopify-new-order",
+        "responseMode": "lastNode",
+        "responseData": "={{ $json }}"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalize Shopify order payload\nconst order = $json;\nconst normalized = {};\nnormalized.id = order.id || order.order_number || '';\nnormalized.email = order.email || '';\nnormalized.total = parseFloat(order.total_price || order.total || 0);\nnormalized.currency = order.currency || order.currency_code || 'USD';\nnormalized.line_items = (order.line_items || []).map(item => ({\n  id: item.id,\n  title: item.title,\n  quantity: item.quantity,\n  price: parseFloat(item.price || item.price_set?.shop_money?.amount || 0)\n}));\n\nreturn [{ json: normalized }];"
+      },
+      "name": "Normalize Order",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "sheetId": "={{ $env.GOOGLE_SHEET_ID }}",
+        "range": "Sheet1",
+        "valueInputMode": "USER_ENTERED",
+        "options": {},
+        "data": [
+          {
+            "values": [
+              "={{$json.id}}",
+              "={{$json.email}}",
+              "={{$json.total}}",
+              "={{$json.currency}}",
+              "={{JSON.stringify($json.line_items)}}",
+              "={{new Date().toISOString()}}"
+            ]
+          }
+        ]
+      },
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [750, 220]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_FROM || $env.SMTP_USER }}",
+        "toEmail": "={{ $json.email }}",
+        "subject": "Order confirmation - {{$json.id}}",
+        "text": "Thank you for your order (ID: {{$json.id}}). Total: {{$json.total}} {{$json.currency}}.\n\nItems: {{$json.line_items}}"
+      },
+      "name": "Email Customer",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [750, 380]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.total}}",
+              "operation": "largerOrEqual",
+              "value2": "={{ parseFloat($env.HIGH_VALUE_THRESHOLD || '200') }}"
+            }
+          ]
+        }
+      },
+      "name": "High Value?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [500, 460]
+    },
+    {
+      "parameters": {
+        "webhookUrl": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "text": "New high-value order: {{$json.id}} — {{$json.total}} {{$json.currency}} (customer: {{$json.email}})"
+      },
+      "name": "Slack Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [900, 460]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Order",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Order": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email Customer",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "High Value?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Value?": {
+      "main": [
+        [
+          {
+            "node": "Slack Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  }
+}
+
+{
+  "name": "Shopify - New Order → Sheets + Email + Slack + Billing",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "shopify-new-order",
+        "httpMethod": "POST",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Normalizar payload\nconst order = $json;\nconst items = (order.line_items || []).map(i => ({\n  sku: i.sku || i.variant_id || '',\n  name: i.name,\n  qty: i.quantity,\n  price: i.price\n}));\nconst subtotal = items.reduce((s, it) => s + (Number(it.qty) * Number(it.price || 0)), 0);\nconst taxes = order.total_tax || 0;\nconst total = Number(order.total_price || subtotal) + Number(taxes);\nreturn [{ json: { order_id: order.id || order.name, items, subtotal, taxes, total, customer_email: (order.email || (order.customer && order.customer.email) || ''), raw: order } }];"
+      },
+      "name": "Normalize",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "sheetId": "={{$env.GOOGLE_SHEET_ID}}",
+        "range": "Sheet1",
+        "options": {
+          "valueInputMode": "RAW"
+        },
+        "columns": [
+          "order_id",
+          "customer_email",
+          "subtotal",
+          "taxes",
+          "total",
+          "items"
+        ]
+      },
+      "name": "Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 1,
+      "position": [750, 220]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.SMTP_FROM || 'noreply@store.example'}}",
+        "toEmail": "={{$json.customer_email}}",
+        "subject": "Order confirmation - {{$json.order_id}}",
+        "text": "Thank you for your order {{$json.order_id}}. Total: ${{$json.total}}\nItems: {{$json.items.map(i=>i.name).join(', ')}}",
+        "options": {}
+      },
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [750, 380]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.total}}",
+              "operation": "isGreaterThan",
+              "value2": "={{Number($env.HIGH_VALUE_THRESHOLD || 200)}}"
+            }
+          ]
+        }
+      },
+      "name": "High Value?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "webhookUrl": "={{$env.SLACK_WEBHOOK_URL}}",
+        "body": "New high-value order {{$json.order_id}} - Total: ${{$json.total}}",
+        "options": {}
+      },
+      "name": "Slack Notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1150, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "orders_export.csv",
+        "fileDataPropertyName": "binaryData",
+        "options": {}
+      },
+      "name": "Create CSV",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [950, 520]
+    },
+    {
+      "parameters": {
+        "functionCode": "// prepare CSV row\nconst o = $json;\nconst items = o.items.map(i=>`${i.qty}x ${i.name} (${i.sku})`).join(' | ');\nconst row = [o.order_id, o.customer_email, o.subtotal, o.taxes, o.total, `\"${items}\"`].join(',') + '\n';\nreturn [{json:{csv: row}}];"
+      },
+      "name": "Prepare CSV",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [750, 520]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{$env.SMTP_FROM || 'support@store.example'}}",
+        "toEmail": "={{$env.SUPPORT_EMAIL}}",
+        "subject": "Billing failed for order {{$json.order_id}}",
+        "text": "Billing step failed. Order: {{$json.order_id}}. Error: {{$json.errorMessage}}\n\nPayload: {{$json.raw}}"
+      },
+      "name": "Support Fallback Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1150, 520]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "High Value?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "High Value?": {
+      "main": [
+        [
+          {
+            "node": "Slack Notify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Prepare CSV": {
+      "main": [
+        [
+          {
+            "node": "Create CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
+
+
+
