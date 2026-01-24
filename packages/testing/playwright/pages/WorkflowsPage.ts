@@ -87,10 +87,6 @@ export class WorkflowsPage extends BasePage {
 		await this.closeFilters();
 	}
 
-	getStatusDropdown() {
-		return this.page.getByTestId('status-dropdown');
-	}
-
 	async filterByTags(tags: string[]) {
 		await this.openFilters();
 		await this.clickByTestId('tags-dropdown');

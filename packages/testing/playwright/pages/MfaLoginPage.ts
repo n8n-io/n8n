@@ -18,10 +18,6 @@ export class MfaLoginPage extends BasePage {
 		return this.getForm().locator('input[name="mfaRecoveryCode"]');
 	}
 
-	getSubmitButton(): Locator {
-		return this.page.getByRole('button', { name: /^(Continue|Verify)$/ });
-	}
-
 	async fillMfaCode(code: string): Promise<void> {
 		await this.getMfaCodeField().fill(code);
 	}

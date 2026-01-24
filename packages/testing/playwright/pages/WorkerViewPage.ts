@@ -1,10 +1,6 @@
 import { BasePage } from './BasePage';
 
 export class WorkerViewPage extends BasePage {
-	getWorkerCards() {
-		return this.page.getByTestId('worker-card');
-	}
-
 	getWorkerViewLicensed() {
 		return this.page.getByTestId('worker-view-licensed');
 	}

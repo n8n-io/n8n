@@ -117,19 +117,6 @@ export class NotificationsPage {
 	}
 
 	/**
-	 * Get the count of visible notifications.
-	 * @param text Optional text to filter notifications
-	 */
-	async getNotificationCount(text?: string | RegExp): Promise<number> {
-		try {
-			const notifications = text ? this.getNotificationByTitle(text) : this.page.getByRole('alert');
-			return await notifications.count();
-		} catch {
-			return 0;
-		}
-	}
-
-	/**
 	 * Nuclear option: Close everything as fast as possible.
 	 * No waiting, no error handling, just close and move on.
 	 */

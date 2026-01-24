@@ -15,10 +15,6 @@ export class SourceControlPullModal {
 		return this.page.getByTestId('source-control-pull-modal-tab-workflow');
 	}
 
-	getCredentialsTab(): Locator {
-		return this.page.getByTestId('source-control-pull-modal-tab-credential');
-	}
-
 	async selectWorkflowsTab(): Promise<void> {
 		await this.getWorkflowsTab().click();
 	}
