@@ -6,6 +6,9 @@
     "vite": "catalog:",
     "vitest": "catalog:"
   },
+  "dependencies": {
+    "unplugin-swc": "^1.5.1"
+  },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@swc/core": "^1.10.7",
@@ -31,6 +34,11 @@
       "import": "./dist/node.js",
       "require": "./dist/node.js",
       "types": "./dist/node.d.ts"
+    },
+    "./node-decorators": {
+      "import": "./dist/node-decorators.js",
+      "require": "./dist/node-decorators.js",
+      "types": "./dist/node-decorators.d.ts"
     }
   },
   "scripts": {
