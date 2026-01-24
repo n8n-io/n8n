@@ -5,11 +5,14 @@
 - [ ] Better clarify how output data maps to expressions in types and referenced
 
 ## agent
+- [ ] build out new evaluation suites for this type of agent
 - [ ] Test opus again with simplified prompt
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
 	- [ ] a lot of pairwise seem to be about preferring certain nodes, how can we add that as part of the node definition
 - [ ] Make sure conversation history is included in request
 - [ ] Evaluate with thinking enabled for each model
+- [ ] Update placeholder() to encourage agent to avoid using this for creds (not for api keys, use newCredential)
+- [ ] Add programmatic validation similar to current agent
 
 ## ready to release
 - [ ] deploy agent to test instance
@@ -25,7 +28,6 @@
 - [ ] fix up sticky sizing and positioning to cover nodes
 - [ ] test out iteration, inserting nodes in between
 - [ ] Update telemetry and prompt viewer app to support the code and workflow generated
-- [ ] Add programmatic validation similar to current agent
 - [ ] Refactor interface to simplify branching interface??
 
 ## Done

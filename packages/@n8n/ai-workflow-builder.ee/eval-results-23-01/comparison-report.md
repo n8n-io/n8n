@@ -367,8 +367,11 @@
 
 #### connections (3)
 1. [major] Split in Batches loop completion path is incorrect: 'Format Final Output' should connect back to 'Process Each Story' to signal batch completion.
+	👎🏽 Bad evaluation. Loop looks fine
 2. [critical] Broken data dependency: 'Is Valid?' node connects directly to both 'Aggregate Valid Invoices' and 'Generate Weekly Report' in parallel on the true branch.
+	👍🏽 Bad chaining to ifElse
 3. [major] Orphaned node output: 'Aggregate Valid Invoices' processes data but its output is not connected to any downstream node.
+	👍🏽 Bad chaining to ifElse
 
 #### expressions (8)
 1. [major] In 'Format Summary Report' node, assignment 'reportTitle': Missing '=' prefix for expression with text interpolation.
@@ -428,6 +431,7 @@
 *Source: `code-agent-programmatic/`*
 
 1. [`example-002-00a012f0`] [major] HTTP Request node "Fetch News from NewsAPI" has a hardcoded value for credential-like query parameter "apiKey". Use n8n credentials instead.
+	👍🏽 Uses placeholder. Should update function definition to be more clear (not for api keys, use newCredential). Seems specific to http node though. Maybe because it sees "headers".
 2. [`example-005-05fd23ad`] [major] Agent node "AI Lead Qualifier" has no expression in its prompt field. This likely means it failed to use chatInput or dynamic context; Agent node has no system message.
 3. [`example-006-7f622f05`] [major] HTTP Request node "Query Database for New Entries" has a hardcoded value for sensitive header "Authorization".
 4. [`example-009-7b389a23`] [major] HTTP Request node "Send Confirmation Email" has a hardcoded value for sensitive header "Authorization".
