@@ -11,16 +11,31 @@ export const unsubscribeOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				description: 'Add an email to the unsubscribe list',
 				action: 'Add an email to an unsubscribe list',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				description: 'Delete an email from the unsubscribe list',
 				action: 'Delete an email from an unsubscribe list',
+			},
+			{
+				name: 'Export',
+				value: 'export',
+				description: 'Export unsubscribe list to CSV',
+				action: 'Export unsubscribe list',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get a specific unsubscribe entry',
+				action: 'Get an unsubscribe entry',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
+				description: 'Get many unsubscribed emails',
 				action: 'Get many unsubscribed emails',
 			},
 		],
@@ -70,6 +85,24 @@ export const unsubscribeFields: INodeProperties[] = [
 	},
 
 	// ----------------------------------
+	//        unsubscribe: get
+	// ----------------------------------
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		placeholder: 'name@email.com',
+		default: '',
+		description: 'Email to retrieve unsubscribe information for',
+		displayOptions: {
+			show: {
+				resource: ['unsubscribe'],
+				operation: ['get'],
+			},
+		},
+	},
+
+	// ----------------------------------
 	//       unsubscribe: getAll
 	// ----------------------------------
 	{
@@ -103,4 +136,9 @@ export const unsubscribeFields: INodeProperties[] = [
 			},
 		},
 	},
+
+	// ----------------------------------
+	//       unsubscribe: export
+	// ----------------------------------
+	// No additional fields required - returns CSV
 ];

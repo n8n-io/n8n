@@ -9,19 +9,28 @@ export const enrichmentOperations: INodeProperties[] = [
 		default: 'get',
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
-				action: 'Fetches a previously completed enrichment',
+				name: 'Bulk Enrich',
+				value: 'bulkEnrich',
+				description: 'Enrich multiple entities at once (up to 500)',
+				action: 'Bulk enrich entities',
 			},
 			{
 				name: 'Enrich Lead',
 				value: 'enrichLead',
-				action: 'Enrich a lead using an email or LinkedIn URL',
+				description: 'Enrich a lead using an email or LinkedIn URL',
+				action: 'Enrich a lead',
 			},
 			{
 				name: 'Enrich Person',
 				value: 'enrichPerson',
-				action: 'Enrich a person using an email or LinkedIn URL',
+				description: 'Enrich a person using an email or LinkedIn URL',
+				action: 'Enrich a person',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Fetch a previously completed enrichment',
+				action: 'Get an enrichment',
 			},
 		],
 		displayOptions: {
@@ -50,6 +59,7 @@ export const enrichmentFields: INodeProperties[] = [
 			},
 		},
 	},
+
 	// ----------------------------------
 	//        enrichment: enrichLead
 	// ----------------------------------
@@ -114,8 +124,9 @@ export const enrichmentFields: INodeProperties[] = [
 			},
 		},
 	},
+
 	// ----------------------------------
-	//				enrichment: enrichPerson
+	//        enrichment: enrichPerson
 	// ----------------------------------
 	{
 		displayName: 'Additional Fields',
@@ -150,7 +161,7 @@ export const enrichmentFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'LinkedIn Url',
+				displayName: 'LinkedIn URL',
 				name: 'linkedinUrl',
 				type: 'string',
 				default: '',
@@ -166,6 +177,68 @@ export const enrichmentFields: INodeProperties[] = [
 				name: 'companyDomain',
 				type: 'string',
 				default: '',
+			},
+		],
+	},
+
+	// ----------------------------------
+	//        enrichment: bulkEnrich
+	// ----------------------------------
+	{
+		displayName: 'Entities',
+		name: 'entities',
+		type: 'json',
+		default: '[]',
+		required: true,
+		description:
+			'JSON array of entities to enrich (up to 500). Each entity should contain email, firstName, lastName, linkedinUrl, companyName, or companyDomain.',
+		displayOptions: {
+			show: {
+				resource: ['enrich'],
+				operation: ['bulkEnrich'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['enrich'],
+				operation: ['bulkEnrich'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Find Email',
+				name: 'findEmail',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to find verified email for each entity',
+			},
+			{
+				displayName: 'Verify Email',
+				name: 'verifyEmail',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to verify existing email for each entity',
+			},
+			{
+				displayName: 'LinkedIn Enrichment',
+				name: 'linkedinEnrichment',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to run LinkedIn enrichment for each entity',
+			},
+			{
+				displayName: 'Find Phone',
+				name: 'findPhone',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to find phone number for each entity',
 			},
 		],
 	},
