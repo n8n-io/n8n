@@ -39,15 +39,9 @@ const OUTPUT_PATH = path.join(os.homedir(), '.n8n', 'generated-types');
 const NODES_BASE_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
 
 // Discriminator fields that create operation-specific parameter sets
-const DISCRIMINATOR_FIELDS = [
-	'resource',
-	'operation',
-	'mode',
-	'authentication',
-	'trigger',
-	'agent',
-	'promptType',
-];
+// Only fields that truly benefit from splitting the type are included here
+// Other fields like authentication, trigger, agent, promptType are treated as regular properties
+const DISCRIMINATOR_FIELDS = ['resource', 'operation', 'mode'];
 
 // TypeScript reserved words that need quoting
 const RESERVED_WORDS = new Set([
@@ -505,7 +499,7 @@ function mapNestedPropertyType(prop: NodeProperty): string {
 		case 'fixedCollection':
 			return generateFixedCollectionType(prop);
 		case 'collection':
-			return 'Record<string, unknown>';
+			return generateCollectionType(prop);
 		case 'dateTime':
 			return 'string | Expression<string>';
 		case 'color':
@@ -658,6 +652,45 @@ function generateFixedCollectionType(prop: NodeProperty): string {
 }
 
 /**
+ * Generate inline type for a collection property
+ * Collections have a flat structure with optional nested properties
+ */
+function generateCollectionType(prop: NodeProperty): string {
+	if (!prop.options || prop.options.length === 0) {
+		return 'Record<string, unknown>';
+	}
+
+	const nestedProps: string[] = [];
+
+	for (const nestedProp of prop.options) {
+		// Skip if this is a group (has values array) - those are for fixedCollection
+		if (nestedProp.values !== undefined) {
+			continue;
+		}
+
+		// Skip notice and other display-only types
+		const nestedType = (nestedProp as NodeProperty).type;
+		if (['notice', 'curlImport', 'credentials', 'credentialsSelect'].includes(nestedType)) {
+			continue;
+		}
+
+		const propType = mapNestedPropertyType(nestedProp as NodeProperty);
+		if (propType) {
+			const quotedName = quotePropertyName(nestedProp.name);
+			// Generate JSDoc for the nested property
+			const jsDoc = generateNestedPropertyJSDoc(nestedProp as NodeProperty, '\t\t');
+			nestedProps.push(`${jsDoc}\n\t\t${quotedName}?: ${propType}`);
+		}
+	}
+
+	if (nestedProps.length === 0) {
+		return 'Record<string, unknown>';
+	}
+
+	return `{\n${nestedProps.join(';\n')};\n\t}`;
+}
+
+/**
  * Map n8n property types to TypeScript types with Expression wrappers
  */
 export function mapPropertyType(prop: NodeProperty): string {
@@ -738,7 +771,7 @@ export function mapPropertyType(prop: NodeProperty): string {
 			return generateFixedCollectionType(prop);
 
 		case 'collection':
-			return 'Record<string, unknown>';
+			return generateCollectionType(prop);
 
 		case 'dateTime':
 			return 'string | Expression<string>';
@@ -805,8 +838,10 @@ export function extractDiscriminatorCombinations(
 		return combinations;
 	}
 
-	// Check for other single-discriminator patterns (agent, promptType, mode, etc.)
-	const otherDiscriminators = ['agent', 'promptType', 'mode', 'authentication'];
+	// Check for other single-discriminator patterns
+	// Only 'mode' benefits from splitting - other fields like 'authentication', 'promptType', 'agent'
+	// should be treated as regular properties with union types, not as discriminators
+	const otherDiscriminators = ['mode'];
 	for (const discName of otherDiscriminators) {
 		const discProp = node.properties.find(
 			(p) => p.name === discName && p.type === 'options' && p.options && p.options.length > 1,
@@ -883,6 +918,40 @@ export function getPropertiesForCombination(
 }
 
 /**
+ * Represents a conditional version check (e.g., { _cnd: { gte: 3.1 } })
+ */
+interface VersionCondition {
+	_cnd: {
+		gt?: number;
+		gte?: number;
+		lt?: number;
+		lte?: number;
+	};
+}
+
+/**
+ * Check if a version matches a single condition item (number or VersionCondition)
+ */
+function versionMatchesCondition(version: number, condition: number | VersionCondition): boolean {
+	// If it's a simple number, check for equality
+	if (typeof condition === 'number') {
+		return version === condition;
+	}
+
+	// It's a conditional expression like { _cnd: { gte: 3.1 } }
+	if (condition._cnd) {
+		const { gt, gte, lt, lte } = condition._cnd;
+		if (gt !== undefined && !(version > gt)) return false;
+		if (gte !== undefined && !(version >= gte)) return false;
+		if (lt !== undefined && !(version < lt)) return false;
+		if (lte !== undefined && !(version <= lte)) return false;
+		return true;
+	}
+
+	return false;
+}
+
+/**
  * Check if a property applies to a specific version based on displayOptions
  * @param prop The property to check
  * @param version The specific version number to check for
@@ -896,16 +965,22 @@ export function propertyAppliesToVersion(prop: NodeProperty, version: number): b
 
 	// Check show conditions for @version
 	if (prop.displayOptions.show?.['@version']) {
-		const allowedVersions = prop.displayOptions.show['@version'] as number[];
-		if (!allowedVersions.includes(version)) {
+		const allowedVersions = prop.displayOptions.show['@version'] as Array<
+			number | VersionCondition
+		>;
+		// Property should show if ANY version condition matches
+		const anyMatches = allowedVersions.some((cond) => versionMatchesCondition(version, cond));
+		if (!anyMatches) {
 			return false;
 		}
 	}
 
 	// Check hide conditions for @version
 	if (prop.displayOptions.hide?.['@version']) {
-		const hiddenVersions = prop.displayOptions.hide['@version'] as number[];
-		if (hiddenVersions.includes(version)) {
+		const hiddenVersions = prop.displayOptions.hide['@version'] as Array<number | VersionCondition>;
+		// Property should hide if ANY version condition matches
+		const anyMatches = hiddenVersions.some((cond) => versionMatchesCondition(version, cond));
+		if (anyMatches) {
 			return false;
 		}
 	}

@@ -500,7 +500,7 @@ describe('generate-types', () => {
 			expect(result).toContain('secondsInterval?:');
 		});
 
-		it('should map collection type to Record<string, unknown>', () => {
+		it('should map collection type without options to Record<string, unknown>', () => {
 			const prop: NodeProperty = {
 				name: 'options',
 				displayName: 'Options',
@@ -509,6 +509,46 @@ describe('generate-types', () => {
 			};
 			const result = generateTypes.mapPropertyType(prop);
 			expect(result).toBe('Record<string, unknown>');
+		});
+
+		it('should map collection type with nested options to proper nested interface', () => {
+			const prop: NodeProperty = {
+				name: 'options',
+				displayName: 'Options',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'System Message',
+						name: 'systemMessage',
+						type: 'string',
+						default: 'You are a helpful assistant',
+						description: 'The message that will be sent to the agent',
+					},
+					{
+						displayName: 'Max Iterations',
+						name: 'maxIterations',
+						type: 'number',
+						default: 10,
+						description: 'Maximum number of iterations',
+					},
+					{
+						displayName: 'Return Intermediate Steps',
+						name: 'returnIntermediateSteps',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to return intermediate steps',
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			// Should generate nested structure with proper types
+			expect(result).toContain('systemMessage?:');
+			expect(result).toContain('string | Expression<string>');
+			expect(result).toContain('maxIterations?:');
+			expect(result).toContain('number | Expression<number>');
+			expect(result).toContain('returnIntermediateSteps?:');
+			expect(result).toContain('boolean | Expression<boolean>');
 		});
 
 		it('should handle options with dynamic loading', () => {
@@ -548,6 +588,154 @@ describe('generate-types', () => {
 		it('should return empty array for nodes without discriminators', () => {
 			const combinations = generateTypes.extractDiscriminatorCombinations(mockHttpRequestNode);
 			expect(combinations).toEqual([]);
+		});
+
+		it('should NOT split by authentication - treat as regular property', () => {
+			// HTTP Request has authentication field but should NOT be split by it
+			const nodeWithAuth: NodeTypeDescription = {
+				name: 'n8n-nodes-base.httpRequest',
+				displayName: 'HTTP Request',
+				group: ['transform'],
+				version: 4.3,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Predefined Credential Type', value: 'predefinedCredentialType' },
+							{ name: 'Generic Credential Type', value: 'genericCredentialType' },
+						],
+						default: 'none',
+					},
+					{
+						displayName: 'Credential Type',
+						name: 'credentialType',
+						type: 'options',
+						options: [{ name: 'Basic Auth', value: 'httpBasicAuth' }],
+						default: 'httpBasicAuth',
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'URL',
+						name: 'url',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+			};
+
+			const combinations = generateTypes.extractDiscriminatorCombinations(nodeWithAuth);
+			// Should NOT create combinations based on authentication
+			expect(combinations).toEqual([]);
+		});
+
+		it('should NOT split by promptType - treat as regular property', () => {
+			const nodeWithPromptType: NodeTypeDescription = {
+				name: '@n8n/n8n-nodes-langchain.agent',
+				displayName: 'AI Agent',
+				group: ['transform'],
+				version: 3.1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Prompt Type',
+						name: 'promptType',
+						type: 'options',
+						options: [
+							{ name: 'Auto', value: 'auto' },
+							{ name: 'Define', value: 'define' },
+						],
+						default: 'auto',
+					},
+					{
+						displayName: 'Text',
+						name: 'text',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: { show: { promptType: ['define'] } },
+					},
+				],
+			};
+
+			const combinations = generateTypes.extractDiscriminatorCombinations(nodeWithPromptType);
+			// Should NOT create combinations based on promptType
+			expect(combinations).toEqual([]);
+		});
+
+		it('should NOT split by agent - treat as regular property', () => {
+			const nodeWithAgent: NodeTypeDescription = {
+				name: '@n8n/n8n-nodes-langchain.agent',
+				displayName: 'AI Agent',
+				group: ['transform'],
+				version: 1.5,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Agent',
+						name: 'agent',
+						type: 'options',
+						options: [
+							{ name: 'Conversational Agent', value: 'conversationalAgent' },
+							{ name: 'Tools Agent', value: 'toolsAgent' },
+						],
+						default: 'conversationalAgent',
+					},
+					{
+						displayName: 'Max Iterations',
+						name: 'maxIterations',
+						type: 'number',
+						default: 10,
+						displayOptions: { show: { agent: ['toolsAgent'] } },
+					},
+				],
+			};
+
+			const combinations = generateTypes.extractDiscriminatorCombinations(nodeWithAgent);
+			// Should NOT create combinations based on agent
+			expect(combinations).toEqual([]);
+		});
+
+		it('should still split by mode - mode benefits from splitting', () => {
+			const nodeWithMode: NodeTypeDescription = {
+				name: 'n8n-nodes-base.code',
+				displayName: 'Code',
+				group: ['transform'],
+				version: 2,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						options: [
+							{ name: 'Run Once for All Items', value: 'runOnceForAllItems' },
+							{ name: 'Run Once for Each Item', value: 'runOnceForEachItem' },
+						],
+						default: 'runOnceForAllItems',
+					},
+					{
+						displayName: 'JavaScript Code',
+						name: 'jsCode',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['runOnceForAllItems', 'runOnceForEachItem'] } },
+					},
+				],
+			};
+
+			const combinations = generateTypes.extractDiscriminatorCombinations(nodeWithMode);
+			// Mode SHOULD create combinations
+			expect(combinations).toContainEqual({ mode: 'runOnceForAllItems' });
+			expect(combinations).toContainEqual({ mode: 'runOnceForEachItem' });
 		});
 	});
 
@@ -609,7 +797,71 @@ describe('generate-types', () => {
 
 			// Should have a single config interface (not Params)
 			expect(result).toContain('HttpRequestV42Config');
+
+			// Should include authentication as a regular property (not split by it)
+			expect(result).toContain('authentication?:');
+			expect(result).toContain("'none'");
+			expect(result).toContain("'predefinedCredentialType'");
+			expect(result).toContain("'genericCredentialType'");
 			expect(result).toContain('interface');
+		});
+
+		it('should include promptType as a regular property in Agent node config', () => {
+			const agentNode: NodeTypeDescription = {
+				name: '@n8n/n8n-nodes-langchain.agent',
+				displayName: 'AI Agent',
+				group: ['transform'],
+				version: 3.1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Prompt Type',
+						name: 'promptType',
+						type: 'options',
+						options: [
+							{ name: 'Auto', value: 'auto' },
+							{ name: 'Define', value: 'define' },
+						],
+						default: 'auto',
+					},
+					{
+						displayName: 'Text',
+						name: 'text',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'Options',
+						name: 'options',
+						type: 'collection',
+						default: {},
+						options: [
+							{
+								displayName: 'System Message',
+								name: 'systemMessage',
+								type: 'string',
+								default: 'You are a helpful assistant',
+							},
+						],
+					},
+				],
+			};
+
+			const result = generateTypes.generateDiscriminatedUnion(agentNode);
+
+			// Should have a single config interface (not split by promptType)
+			expect(result).toContain('LcAgentV31Config');
+
+			// Should include promptType as a regular property with union type
+			expect(result).toContain('promptType?:');
+			expect(result).toContain("'auto'");
+			expect(result).toContain("'define'");
+
+			// Should include options with nested structure (not Record<string, unknown>)
+			expect(result).toContain('options?:');
+			expect(result).toContain('systemMessage?:');
 		});
 	});
 
@@ -779,6 +1031,126 @@ describe('generate-types', () => {
 	// =========================================================================
 	// Version Handling Tests
 	// =========================================================================
+
+	describe('propertyAppliesToVersion', () => {
+		it('should return true when property has no displayOptions', () => {
+			const prop: NodeProperty = {
+				name: 'text',
+				displayName: 'Text',
+				type: 'string',
+				default: '',
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.1)).toBe(true);
+		});
+
+		it('should return true when property has simple version array and version is included', () => {
+			const prop: NodeProperty = {
+				name: 'text',
+				displayName: 'Text',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [3, 3.1],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.1)).toBe(true);
+		});
+
+		it('should return false when property has simple version array and version is not included', () => {
+			const prop: NodeProperty = {
+				name: 'text',
+				displayName: 'Text',
+				type: 'string',
+				default: '',
+				displayOptions: {
+					show: {
+						'@version': [3],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.1)).toBe(false);
+		});
+
+		it('should handle gte (greater than or equal) version condition', () => {
+			const prop: NodeProperty = {
+				name: 'promptType',
+				displayName: 'Prompt Type',
+				type: 'options',
+				default: 'auto',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 3.1 } }],
+					},
+				},
+			};
+			// Version 3.1 should match gte 3.1
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.1)).toBe(true);
+			// Version 3.2 should match gte 3.1
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.2)).toBe(true);
+			// Version 3 should NOT match gte 3.1
+			expect(generateTypes.propertyAppliesToVersion(prop, 3)).toBe(false);
+		});
+
+		it('should handle lt (less than) version condition', () => {
+			const prop: NodeProperty = {
+				name: 'promptType',
+				displayName: 'Prompt Type',
+				type: 'options',
+				default: 'auto',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 3.1 } }],
+					},
+				},
+			};
+			// Version 3 should match lt 3.1
+			expect(generateTypes.propertyAppliesToVersion(prop, 3)).toBe(true);
+			// Version 2.5 should match lt 3.1
+			expect(generateTypes.propertyAppliesToVersion(prop, 2.5)).toBe(true);
+			// Version 3.1 should NOT match lt 3.1
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.1)).toBe(false);
+			// Version 3.2 should NOT match lt 3.1
+			expect(generateTypes.propertyAppliesToVersion(prop, 3.2)).toBe(false);
+		});
+
+		it('should handle gt (greater than) version condition', () => {
+			const prop: NodeProperty = {
+				name: 'newFeature',
+				displayName: 'New Feature',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gt: 2 } }],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 2.1)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 3)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2)).toBe(false);
+			expect(generateTypes.propertyAppliesToVersion(prop, 1.9)).toBe(false);
+		});
+
+		it('should handle lte (less than or equal) version condition', () => {
+			const prop: NodeProperty = {
+				name: 'legacyFeature',
+				displayName: 'Legacy Feature',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lte: 2 } }],
+					},
+				},
+			};
+			expect(generateTypes.propertyAppliesToVersion(prop, 2)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 1.9)).toBe(true);
+			expect(generateTypes.propertyAppliesToVersion(prop, 2.1)).toBe(false);
+			expect(generateTypes.propertyAppliesToVersion(prop, 3)).toBe(false);
+		});
+	});
 
 	describe('groupVersionsByProperties', () => {
 		it('should group versions with identical properties', () => {
