@@ -93,9 +93,14 @@ export namespace ChatRequest {
 		error?: ErrorContext['error'];
 	}
 
+	export type PromptVersionId = 'v1-sonnet' | 'v2-opus';
+	export type BuilderModelId = 'claude-sonnet-4.5' | 'claude-opus-4.5';
+
 	export interface BuilderFeatureFlags {
 		templateExamples?: boolean;
 		oneShotAgent?: boolean;
+		promptVersion?: PromptVersionId;
+		modelId?: BuilderModelId;
 	}
 
 	export interface UserChatMessage {

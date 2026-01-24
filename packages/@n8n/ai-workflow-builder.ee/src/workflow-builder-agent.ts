@@ -78,10 +78,17 @@ export interface ExpressionValue {
 	nodeType?: string;
 }
 
+import type { PromptVersionId } from './prompts/one-shot';
+import type { ModelId } from './llm-config';
+
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
 	/** Enable one-shot workflow code agent (default: true for POC testing) */
 	oneShotAgent?: boolean;
+	/** Prompt version to use for generation */
+	promptVersion?: PromptVersionId;
+	/** Model ID to use for generation */
+	modelId?: ModelId;
 }
 
 export interface ChatPayload {

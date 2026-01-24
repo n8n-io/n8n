@@ -1,4 +1,5 @@
 import { parseEvaluationArgs, type EvaluationSuite } from '../cli/argument-parser';
+import type { PromptVersionId } from '../../src/prompts/one-shot';
 
 describe('argument-parser', () => {
 	describe('suite options', () => {
@@ -94,5 +95,40 @@ describe('argument-parser', () => {
 		expect(() =>
 			parseEvaluationArgs(['--suite', 'pairwise', '--backend', 'langsmith', '--filter', 'nope']),
 		).toThrow('Invalid `--filter` format');
+	});
+
+	describe('--prompt-version flag', () => {
+		it('parses --prompt-version v1-sonnet', () => {
+			const args = parseEvaluationArgs(['--prompt-version', 'v1-sonnet']);
+			expect(args.promptVersion).toBe('v1-sonnet');
+		});
+
+		it('parses --prompt-version v2-opus', () => {
+			const args = parseEvaluationArgs(['--prompt-version', 'v2-opus']);
+			expect(args.promptVersion).toBe('v2-opus');
+		});
+
+		it('defaults to v1-sonnet when not specified', () => {
+			const args = parseEvaluationArgs([]);
+			expect(args.promptVersion).toBe('v1-sonnet');
+		});
+
+		it('accepts all valid prompt version options', () => {
+			const validVersions: PromptVersionId[] = ['v1-sonnet', 'v2-opus'];
+
+			for (const version of validVersions) {
+				const args = parseEvaluationArgs(['--prompt-version', version]);
+				expect(args.promptVersion).toBe(version);
+			}
+		});
+
+		it('supports inline --prompt-version= syntax', () => {
+			const args = parseEvaluationArgs(['--prompt-version=v2-opus']);
+			expect(args.promptVersion).toBe('v2-opus');
+		});
+
+		it('rejects invalid prompt version', () => {
+			expect(() => parseEvaluationArgs(['--prompt-version', 'invalid-version'])).toThrow();
+		});
 	});
 });
