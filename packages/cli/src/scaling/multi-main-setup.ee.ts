@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { MultiMainMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis-client.service';
@@ -35,6 +35,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		private readonly redisClientService: RedisClientService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: MultiMainMetadata,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		super();
 		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
@@ -73,6 +74,19 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		const { hostId } = this.instanceSettings;
 
 		if (leaderId === hostId) {
+			if (!this.instanceSettings.isLeader) {
+				// This indicates that the remote state indicated that this host is the leader, but this
+				// host believed it was a follower. See CAT-2200 for more context.
+				this.errorReporter.info(
+					`[Instance ID ${hostId}] Remote/Local leadership mismatch, marking self as leader`,
+					{
+						shouldBeLogged: true,
+						shouldReport: true,
+					},
+				);
+			}
+			this.instanceSettings.markAsLeader();
+
 			this.logger.debug(`[Instance ID ${hostId}] Leader is this instance`);
 
 			await this.publisher.setExpiration(this.leaderKey, this.leaderKeyTtl);

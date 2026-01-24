@@ -3,12 +3,12 @@ post:
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow
-  summary: Activate a workflow
-  description: Active a workflow.
+  summary: Publish a workflow
+  description: Publish a workflow. In n8n v1, this action was termed activating a workflow.
   parameters:
     - $ref: '../schemas/parameters/workflowId.yml'
   requestBody:
-    description: Optional parameters for workflow activation.
+    description: Optional parameters to publish the workflow.
     content:
       application/json:
         schema:
@@ -16,7 +16,7 @@ post:
           properties:
             versionId:
               type: string
-              description: The specific version ID to activate. If not provided, activates the latest version.
+              description: The specific version ID to activate or publish. If not provided, the latest version is used.
             name:
               type: string
               description: Optional name for the workflow version during activation.

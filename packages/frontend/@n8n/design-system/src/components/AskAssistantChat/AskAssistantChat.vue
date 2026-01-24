@@ -27,6 +27,7 @@ interface Props {
 	messages?: ChatUI.AssistantMessage[];
 	streaming?: boolean;
 	disabled?: boolean;
+	disabledTooltip?: string;
 	loadingMessage?: string;
 	sessionId?: string;
 	inputPlaceholder?: string;
@@ -496,6 +497,7 @@ defineExpose({
 								v-model="textInputValue"
 								:placeholder="t('assistantChat.blankStateInputPlaceholder')"
 								:disabled="disabled"
+								:disabled-tooltip="disabledTooltip"
 								:streaming="streaming"
 								:credits-quota="creditsQuota"
 								:credits-remaining="creditsRemaining"
@@ -532,10 +534,17 @@ defineExpose({
 				</template>
 			</div>
 		</div>
+		<div v-if="$slots.inputHeader && showBottomInput" :class="$style.inputHeaderWrapper">
+			<slot name="inputHeader" />
+		</div>
 		<div
 			v-if="showBottomInput"
 			ref="inputWrapperRef"
-			:class="{ [$style.inputWrapper]: true, [$style.disabledInput]: sessionEnded }"
+			:class="{
+				[$style.inputWrapper]: true,
+				[$style.inputWrapperWithHeader]: $slots.inputHeader,
+				[$style.disabledInput]: sessionEnded,
+			}"
 			data-test-id="chat-input-wrapper"
 		>
 			<div v-if="$slots.inputPlaceholder" :class="$style.inputPlaceholder">
@@ -547,6 +556,7 @@ defineExpose({
 				v-model="textInputValue"
 				:placeholder="inputPlaceholder || t('assistantChat.inputPlaceholder')"
 				:disabled="sessionEnded || disabled"
+				:disabled-tooltip="disabledTooltip"
 				:streaming="streaming"
 				:credits-quota="creditsQuota"
 				:credits-remaining="creditsRemaining"
@@ -700,6 +710,19 @@ defineExpose({
 	color: var(--color--text);
 }
 
+.inputHeaderWrapper {
+	display: flex;
+	justify-content: center;
+	width: 100%;
+	border-left: var(--border);
+	border-right: var(--border);
+	background-color: transparent;
+
+	> :first-child {
+		width: 90%;
+	}
+}
+
 .inputWrapper {
 	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--xs);
 	background-color: transparent;
@@ -719,6 +742,14 @@ defineExpose({
 		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
 		pointer-events: none;
 		z-index: 1;
+	}
+}
+
+.inputWrapperWithHeader {
+	padding-top: 0;
+
+	&::before {
+		display: none;
 	}
 }
 

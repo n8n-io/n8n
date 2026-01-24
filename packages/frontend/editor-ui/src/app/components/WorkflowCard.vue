@@ -5,6 +5,7 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/app/composables/useMessage';
@@ -43,6 +44,8 @@ import {
 } from '@n8n/design-system';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { createEventBus } from '@n8n/utils/event-bus';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -54,6 +57,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	MOVE_TO_FOLDER: 'moveToFolder',
 	ENABLE_MCP_ACCESS: 'enableMCPAccess',
 	REMOVE_MCP_ACCESS: 'removeMCPAccess',
+	UNPUBLISH: 'unpublish',
 };
 
 const props = withDefaults(
@@ -82,6 +86,7 @@ const emit = defineEmits<{
 	'workflow:deleted': [];
 	'workflow:archived': [];
 	'workflow:unarchived': [];
+	'workflow:unpublished': [value: { id: string }];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [
 		value: {
@@ -108,6 +113,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
+const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
@@ -219,6 +225,18 @@ const actions = computed(() => {
 				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
 			});
 		}
+	}
+
+	if (
+		isWorkflowPublished.value &&
+		workflowPermissions.value.update &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
+		items.push({
+			label: locale.baseText('menuActions.unpublish'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH,
+		});
 	}
 
 	if (
@@ -354,7 +372,43 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
 			await toggleMCPAccess(false);
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
+			await unpublishWorkflow();
+			break;
 	}
+}
+
+async function unpublishWorkflow() {
+	if (!props.data.activeVersionId) {
+		toast.showMessage({
+			title: locale.baseText('workflowHistory.action.unpublish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const unpublishEventBus = createEventBus();
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(props.data.id);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+		if (success) {
+			// Emit event to update workflow list
+			emit('workflow:unpublished', { id: props.data.id });
+
+			toast.showMessage({
+				title: locale.baseText('workflowHistory.action.unpublish.success.title'),
+				type: 'success',
+			});
+		}
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: props.data.name,
+			eventBus: unpublishEventBus,
+		},
+	});
 }
 
 async function toggleMCPAccess(enabled: boolean) {
@@ -605,29 +659,16 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div v-else :class="$style.publishIndicator" data-test-id="workflow-card-publish-indicator">
-					<N8nTooltip
-						:content="
-							isWorkflowPublished
-								? locale.baseText('generic.published')
-								: locale.baseText('generic.notPublished')
-						"
-					>
-						<N8nIcon
-							v-if="isWorkflowPublished"
-							icon="circle-check"
-							size="large"
-							:class="$style.publishIndicatorColor"
-						/>
-						<N8nIcon
-							v-else
-							icon="circle-minus"
-							size="large"
-							:class="$style.notPublishedIndicatorColor"
-						/>
-					</N8nTooltip>
+				<div
+					v-else-if="isWorkflowPublished"
+					:class="$style.publishIndicator"
+					data-test-id="workflow-card-publish-indicator"
+				>
+					<span :class="$style.publishIndicatorDot" />
+					<N8nText size="small" color="text-base">{{
+						locale.baseText('workflows.published')
+					}}</N8nText>
 				</div>
-
 				<N8nActionToggle
 					:actions="actions"
 					theme="dark"
@@ -647,7 +688,7 @@ const tags = computed(
 	align-items: stretch;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 
@@ -726,36 +767,23 @@ const tags = computed(
 .publishIndicator {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	margin-left: var(--spacing--2xs);
-}
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--spacing--4xs);
+	border: var(--border);
 
-.publishIndicatorColor {
-	color: var(--color--mint-700);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--mint-600);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--mint-600);
-		}
+	* {
+		// This is needed to line height up with ownership badge
+		line-height: calc(var(--font-size--sm) + 1px);
 	}
 }
 
-.notPublishedIndicatorColor {
-	color: var(--color--neutral-600);
-
-	:global(body[data-theme='dark']) & {
-		color: var(--color--neutral-400);
-	}
-
-	@media (prefers-color-scheme: dark) {
-		:global(body:not([data-theme])) & {
-			color: var(--color--neutral-400);
-		}
-	}
+.publishIndicatorDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--mint-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {

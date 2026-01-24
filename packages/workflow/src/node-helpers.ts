@@ -326,7 +326,7 @@ const getPropertyValues = (
 	}
 };
 
-const checkConditions = (
+export const checkConditions = (
 	conditions: Array<NodeParameterValue | DisplayCondition>,
 	actualValues: NodeParameterValue[],
 ) => {
@@ -763,7 +763,7 @@ export function getNodeParameters(
 					// and should not be replaced with default value
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] !== undefined
-							? nodeValues[nodeProperties.name]
+							? deepCopy(nodeValues[nodeProperties.name])
 							: nodeProperties.default;
 				} else if (
 					nodeProperties.type === 'resourceLocator' &&
@@ -771,11 +771,11 @@ export function getNodeParameters(
 				) {
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] !== undefined
-							? nodeValues[nodeProperties.name]
+							? deepCopy(nodeValues[nodeProperties.name])
 							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
-						nodeValues[nodeProperties.name] ?? nodeProperties.default;
+						deepCopy(nodeValues[nodeProperties.name]) ?? nodeProperties.default;
 				}
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			} else if (
@@ -786,7 +786,7 @@ export function getNodeParameters(
 				(nodeValues[nodeProperties.name] !== undefined && parentType === 'collection')
 			) {
 				// Set only if it is different to the default value
-				nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
+				nodeParameters[nodeProperties.name] = deepCopy(nodeValues[nodeProperties.name]);
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 				continue;
 			}
@@ -810,7 +810,7 @@ export function getNodeParameters(
 
 				// Return directly the values like they are
 				if (nodeValues[nodeProperties.name] !== undefined) {
-					nodeParameters[nodeProperties.name] = nodeValues[nodeProperties.name];
+					nodeParameters[nodeProperties.name] = deepCopy(nodeValues[nodeProperties.name]);
 				} else if (returnDefaults) {
 					// Does not have values defined but defaults should be returned
 					if (Array.isArray(nodeProperties.default)) {
@@ -856,7 +856,7 @@ export function getNodeParameters(
 			let tempNodePropertiesArray: INodeProperties[];
 			let nodePropertyOptions: INodePropertyCollection | undefined;
 
-			let propertyValues = nodeValues[nodeProperties.name];
+			let propertyValues = deepCopy(nodeValues[nodeProperties.name]);
 			if (returnDefaults) {
 				if (propertyValues === undefined) {
 					propertyValues = deepCopy(nodeProperties.default);
@@ -872,8 +872,11 @@ export function getNodeParameters(
 				// For fixedCollections, which only allow one value, it is important to still return
 				// the empty object which indicates that a value got added, even if it does not have
 				// anything set. If that is not done, the value would get lost.
-				return nodeValues;
+				return deepCopy(nodeValues);
 			}
+
+			// Track if any visible fields were processed across all collection items
+			let hadAnyVisibleFields = false;
 
 			// Iterate over all collections
 			for (const itemName of Object.keys(propertyValues || {})) {
@@ -925,6 +928,7 @@ export function getNodeParameters(
 				} else {
 					// Only one can be set so is an object of objects
 					tempNodeParameters = {};
+					let hadVisibleFields = false;
 
 					// Get the options of the current item
 
@@ -934,9 +938,12 @@ export function getNodeParameters(
 
 					if (nodePropertyOptions !== undefined) {
 						tempNodePropertiesArray = (nodePropertyOptions as INodePropertyCollection).values!;
+						const itemNodeValues = (nodeValues[nodeProperties.name] as INodeParameters)[
+							itemName
+						] as INodeParameters;
 						tempValue = getNodeParameters(
 							tempNodePropertiesArray,
-							(nodeValues[nodeProperties.name] as INodeParameters)[itemName] as INodeParameters,
+							itemNodeValues,
 							returnDefaults,
 							returnNoneDisplayed,
 							node,
@@ -950,10 +957,43 @@ export function getNodeParameters(
 						);
 						if (tempValue !== null) {
 							Object.assign(tempNodeParameters, tempValue);
+							if (Object.keys(tempValue).length > 0) {
+								// tempValue has content, so fields are visible
+								hadVisibleFields = true;
+								hadAnyVisibleFields = true;
+							} else {
+								// tempValue is empty. Check if user provided non-default values that got filtered
+								const hasNonDefaultValues =
+									itemNodeValues &&
+									Object.keys(itemNodeValues).some((key) => {
+										const field = tempNodePropertiesArray.find((f) => f.name === key);
+										return field && !isEqual(itemNodeValues[key], field.default);
+									});
+
+								if (!hasNonDefaultValues) {
+									// All values are defaults, so the collection is explicitly added with default values
+									// We should preserve this (GitHub case)
+									hadVisibleFields = true;
+									hadAnyVisibleFields = true;
+								}
+								// If hasNonDefaultValues is true, values were filtered by displayOptions (test case)
+								// So we don't set hadVisibleFields
+							}
 						}
 					}
 
 					if (Object.keys(tempNodeParameters).length !== 0) {
+						collectionValues[itemName] = tempNodeParameters;
+					} else if (
+						!returnDefaults &&
+						hadVisibleFields &&
+						propertyValues &&
+						(propertyValues as INodeParameters)[itemName] !== undefined
+					) {
+						// Preserve explicitly set empty collections when the user added an option
+						// that contains only default values. Only preserve if there were visible fields
+						// (hadVisibleFields), otherwise the collection is empty because all fields
+						// are hidden by displayOptions.
 						collectionValues[itemName] = tempNodeParameters;
 					}
 				}
@@ -961,6 +1001,7 @@ export function getNodeParameters(
 
 			if (
 				!returnDefaults &&
+				hadAnyVisibleFields &&
 				nodeProperties.typeOptions?.multipleValues === false &&
 				collectionValues &&
 				Object.keys(collectionValues).length === 0 &&
@@ -970,7 +1011,8 @@ export function getNodeParameters(
 			) {
 				// For fixedCollections, which only allow one value, it is important to still return
 				// the object with an empty collection property which indicates that a value got added
-				// which contains all default values. If that is not done, the value would get lost.
+				// which contains all default values. Only preserve if there were visible fields,
+				// otherwise the collection is empty because all fields are hidden by displayOptions.
 				const returnValue = {} as INodeParameters;
 				Object.keys(propertyValues || {}).forEach((value) => {
 					returnValue[value] = {};
@@ -1699,6 +1741,27 @@ export function makeDescription(
 	return nodeTypeDescription.description;
 }
 
+export function isToolType(
+	nodeType?: string,
+	{ includeHitl = true }: { includeHitl?: boolean } = {},
+) {
+	if (!nodeType) return false;
+	const node = nodeType.split('.').pop();
+	if (node?.endsWith('Tool') || node?.startsWith('tool')) {
+		// don't check if it's hitl
+		if (includeHitl) {
+			return true;
+		}
+		return !isHitlToolType(nodeType);
+	}
+	return false;
+}
+
+export function isHitlToolType(nodeType?: string) {
+	if (!nodeType) return false;
+	return nodeType.endsWith('HitlTool');
+}
+
 export function isTool(
 	nodeTypeDescription: INodeTypeDescription,
 	parameters: INodeParameters,
@@ -1737,6 +1800,11 @@ export function makeNodeName(
 	nodeParameters: INodeParameters,
 	nodeTypeDescription: INodeTypeDescription,
 ): string {
+	// If skipNameGeneration is set, skip resource/operation resolution
+	if (nodeTypeDescription.skipNameGeneration) {
+		return nodeTypeDescription.defaults.name ?? nodeTypeDescription.displayName;
+	}
+
 	const { action, operation, resource } = resolveResourceAndOperation(
 		nodeParameters,
 		nodeTypeDescription,
@@ -1825,4 +1893,57 @@ export function getSubworkflowId(node: INode): string | undefined {
 		return node.parameters.workflowId.value as string;
 	}
 	return;
+}
+
+/**
+ * Check if a node type accepts a specific input connection type
+ * @param nodeType - The node type description
+ * @param connectionType - The connection type to check (e.g., 'main', 'ai_tool')
+ * @returns True if the node accepts the input type
+ */
+export function nodeAcceptsInputType(
+	nodeType: INodeTypeDescription,
+	connectionType: string,
+): boolean {
+	// Handle string-based inputs (expression or simple string)
+	if (typeof nodeType.inputs === 'string') {
+		return nodeType.inputs === connectionType || nodeType.inputs.includes(connectionType);
+	}
+
+	// Handle array-based inputs
+	if (!nodeType.inputs || !Array.isArray(nodeType.inputs)) {
+		return false;
+	}
+
+	return nodeType.inputs.some((input) => {
+		if (typeof input === 'string') {
+			return input === connectionType || input.includes(connectionType);
+		}
+		return input.type === connectionType;
+	});
+}
+
+/**
+ * Check if a node type has a specific output connection type
+ * @param nodeType - The node type description
+ * @param connectionType - The connection type to check (e.g., 'main', 'ai_tool')
+ * @returns True if the node supports the output type
+ */
+export function nodeHasOutputType(nodeType: INodeTypeDescription, connectionType: string): boolean {
+	// Handle string-based outputs (expression or simple string)
+	if (typeof nodeType.outputs === 'string') {
+		return nodeType.outputs === connectionType || nodeType.outputs.includes(connectionType);
+	}
+
+	// Handle array-based outputs
+	if (!nodeType.outputs || !Array.isArray(nodeType.outputs)) {
+		return false;
+	}
+
+	return nodeType.outputs.some((output) => {
+		if (typeof output === 'string') {
+			return output === connectionType || output.includes(connectionType);
+		}
+		return output.type === connectionType;
+	});
 }

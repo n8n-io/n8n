@@ -48,7 +48,10 @@ import type {
 	ConnectStartEvent,
 	ViewportBoundaries,
 } from '@/features/workflows/canvas/canvas.types';
-import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import {
+	CanvasConnectionMode,
+	CanvasNodeRenderType,
+} from '@/features/workflows/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -65,6 +68,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -75,6 +79,7 @@ import {
 	EVALUATION_NODE_TYPE,
 	isTriggerNode,
 	NodeHelpers,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -119,7 +124,10 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
+import {
+	parseCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/features/workflows/canvas/canvas.utils';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
@@ -138,9 +146,11 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { useActivityDetection } from '@/app/composables/useActivityDetection';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
-import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
+import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -171,7 +181,12 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const documentTitle = useDocumentTitle();
-const workflowSaving = useWorkflowSaving({ router });
+const workflowSaving = useWorkflowSaving({
+	router,
+	onSaved: (isFirstSave) => {
+		canvasEventBus.emit('saved:workflow', { isFirstSave });
+	},
+});
 const nodeHelpers = useNodeHelpers();
 const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
@@ -201,8 +216,12 @@ const logsStore = useLogsStore();
 const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
+const collaborationStore = useCollaborationStore();
 
 const workflowState = useWorkflowState();
+
+// Initialize activity detection for collaboration
+useActivityDetection();
 provide(WorkflowStateKey, workflowState);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
@@ -289,6 +308,11 @@ const isNewWorkflowRoute = computed(() => {
 	return route.query.new === 'true';
 });
 
+// Check if canvas controls should be hidden (e.g., for workflow preview thumbnails)
+const hideCanvasControls = computed(() => {
+	return route.query.hideControls === 'true';
+});
+
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
@@ -301,6 +325,7 @@ const isCanvasReadOnly = computed(() => {
 	return (
 		isDemoRoute.value ||
 		isReadOnlyEnvironment.value ||
+		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
 		editableWorkflow.value.isArchived ||
 		builderStore.streaming
@@ -584,7 +609,14 @@ const allTriggerNodesDisabled = computed(() => {
 	return disabledTriggerNodes.length === triggerNodes.value.length;
 });
 
-function onTidyUp(event: CanvasLayoutEvent, options?: { trackEvents?: boolean }) {
+function onTidyUp(
+	event: CanvasLayoutEvent,
+	options?: {
+		trackEvents?: boolean;
+		trackHistory?: boolean;
+		trackBulk?: boolean;
+	},
+) {
 	tidyUp(event, options);
 }
 
@@ -757,42 +789,17 @@ function onPinNodes(ids: string[], source: PinDataSource) {
 	toggleNodesPinned(ids, source);
 }
 
-async function onSaveWorkflow() {
-	const workflowIsSaved =
-		!uiStore.stateIsDirty && workflowsStore.isWorkflowSaved[workflowsStore.workflowId];
-	const workflowIsArchived = workflowsStore.workflow.isArchived;
-
-	if (workflowIsSaved || workflowIsArchived) {
-		return;
-	}
-	const saved = await workflowSaving.saveCurrentWorkflow();
-	if (saved) {
-		canvasEventBus.emit('saved:workflow');
-	}
-}
-
 function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 	canvasRef.value?.executeContextMenuAction(action, nodeIds);
 }
 
 function addWorkflowSavedEventBindings() {
 	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
-	canvasEventBus.on('saved:workflow', onSaveFromWithinNDV);
 }
 
 function removeWorkflowSavedEventBindings() {
 	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
-	canvasEventBus.off('saved:workflow', onSaveFromWithinNDV);
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
-}
-
-async function onSaveFromWithinNDV() {
-	if (ndvStore.activeNodeName) {
-		toast.showMessage({
-			title: i18n.baseText('generic.workflowSaved'),
-			type: 'success',
-		});
-	}
 }
 
 async function onCreateWorkflow() {
@@ -844,29 +851,10 @@ async function onOpenRenameNodeModal(id: string) {
 		nameInput?.focus();
 		nameInput?.select();
 
-		let shouldSaveAfterRename = false;
-
-		const handleKeyDown = (e: KeyboardEvent) => {
-			// Stop propagation for space key to prevent VueFlow from intercepting it
-			// when modifier keys (like Shift) are pressed. See: https://github.com/bcakmakoglu/vue-flow/issues/1999
-			if (e.key === ' ') {
-				e.stopPropagation();
-			}
-			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-				e.preventDefault();
-				shouldSaveAfterRename = true;
-				nameInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-			}
-		};
-		nameInput?.addEventListener('keydown', handleKeyDown);
-
 		const promptResponse = await promptResponsePromise;
-
-		nameInput?.removeEventListener('keydown', handleKeyDown);
 
 		if (promptResponse.action === MODAL_CONFIRM) {
 			await renameNode(currentName, promptResponse.value, { trackHistory: true });
-			if (shouldSaveAfterRename) await onSaveWorkflow();
 		}
 	} catch (e) {}
 }
@@ -1162,10 +1150,21 @@ function onCreateSticky() {
 }
 
 function onClickConnectionAdd(connection: Connection) {
-	nodeCreatorStore.openNodeCreatorForConnectingNode({
-		connection,
-		eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-	});
+	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
+	const isAddBetwenTool =
+		type === NodeConnectionTypes.AiTool && mode === CanvasConnectionMode.Output;
+	if (isAddBetwenTool) {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			nodeCreatorView: HUMAN_IN_THE_LOOP_CATEGORY,
+		});
+	} else {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+		});
+	}
 }
 
 function onClickReplaceNode(nodeId: string) {
@@ -1271,8 +1270,8 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
-function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
-	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
+async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+	const webhookUrl = await workflowsStore.getWebhookUrl(id, webhookType);
 	if (!webhookUrl) return;
 
 	void clipboard.copy(webhookUrl);
@@ -1295,7 +1294,7 @@ async function onCopyTestUrl(id: string) {
 		return;
 	}
 
-	copyWebhookUrl(id, 'test');
+	void copyWebhookUrl(id, 'test');
 }
 
 async function onCopyProductionUrl(id: string) {
@@ -1307,7 +1306,7 @@ async function onCopyProductionUrl(id: string) {
 		});
 		return;
 	}
-	copyWebhookUrl(id, 'production');
+	void copyWebhookUrl(id, 'production');
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
@@ -1577,6 +1576,11 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = false;
+
+				// Apply tidy-up if requested
+				if (json.tidyUp === true) {
+					canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+				}
 			} catch (e) {
 				if (window.top) {
 					window.top.postMessage(
@@ -1645,6 +1649,10 @@ function checkIfEditingIsAllowed(): boolean {
 		return false;
 	}
 
+	if (collaborationStore.shouldBeReadOnly) {
+		return false;
+	}
+
 	if (isReadOnlyRoute.value || isReadOnlyEnvironment.value) {
 		const messageContext = isReadOnlyRoute.value ? 'executions' : 'workflows';
 		readOnlyNotification.value = toast.showMessage({
@@ -1674,7 +1682,7 @@ function checkIfRouteIsAllowed() {
 	) {
 		void nextTick(async () => {
 			resetWorkspace();
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 
 			await router.replace({ name: VIEWS.HOMEPAGE });
 		});
@@ -1912,6 +1920,39 @@ watch(
 	},
 );
 
+// Acquire write access when user makes first edit, and trigger auto-save
+watch(
+	() => uiStore.dirtyStateSetCount,
+	(dirtyStateSetCount) => {
+		if (dirtyStateSetCount > 0) {
+			// Skip write access and auto-save in demo mode
+			if (isDemoRoute.value) return;
+
+			collaborationStore.requestWriteAccess();
+
+			// Trigger auto-save (debounced) for writers only
+			// Skip auto-save when AI Builder is streaming to keep version history clean
+			if (!builderStore.streaming) {
+				void workflowSaving.autoSaveWorkflow();
+			}
+		}
+	},
+);
+
+// Trigger auto-save when AI Builder streaming ends with unsaved changes
+watch(
+	() => builderStore.streaming,
+	(isStreaming, wasStreaming) => {
+		// Only trigger when streaming just ended (was streaming, now not)
+		if (wasStreaming && !isStreaming) {
+			// Trigger auto-save if there are unsaved changes
+			if (uiStore.stateIsDirty && !collaborationStore.shouldBeReadOnly) {
+				void workflowSaving.autoSaveWorkflow();
+			}
+		}
+	},
+);
+
 onBeforeRouteLeave(async (to, from, next) => {
 	// Close the focus panel when leaving the workflow view
 	if (focusPanelStore.focusPanelActive) {
@@ -1973,6 +2014,12 @@ onMounted(() => {
 
 	documentTitle.reset();
 	resetWorkspace();
+
+	// Register callback for collaboration store to refresh canvas when workflow updates arrive
+	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
+		// Refresh the canvas with updated workflow
+		await initializeWorkspace(workflow);
+	});
 
 	void initializeData().then(() => {
 		void initializeRoute()
@@ -2057,6 +2104,7 @@ onBeforeUnmount(() => {
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
+			:hide-controls="hideCanvasControls"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"
@@ -2093,7 +2141,6 @@ onBeforeUnmount(() => {
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
 			@run:workflow="runEntireWorkflow('main')"
-			@save:workflow="onSaveWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
 			@selection:end="onSelectionEnd"
@@ -2161,9 +2208,16 @@ onBeforeUnmount(() => {
 				{{ i18n.baseText('readOnlyEnv.cantEditOrRun') }}
 			</N8nCallout>
 
+			<N8nCanvasCollaborationPill
+				v-if="collaborationStore.currentWriter && !collaborationStore.isCurrentUserWriter"
+				:first-name="collaborationStore.currentWriter.user.firstName"
+				:last-name="collaborationStore.currentWriter.user.lastName"
+				:class="$style.canvasCenterPill"
+			/>
+
 			<N8nCanvasThinkingPill
 				v-if="builderStore.streaming"
-				:class="$style.thinkingPill"
+				:class="$style.canvasCenterPill"
 				show-stop
 				@stop="builderStore.abortStreaming"
 			/>
@@ -2190,7 +2244,6 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
 			</Suspense>
 			<Suspense>
@@ -2203,7 +2256,6 @@ onBeforeUnmount(() => {
 					@stop-execution="onStopExecution"
 					@switch-selected-node="onSwitchActiveNode"
 					@open-connection-node-creator="onOpenSelectiveNodeCreator"
-					@save-keyboard-shortcut="onSaveWorkflow"
 				/>
 			</Suspense>
 		</WorkflowCanvas>
@@ -2212,7 +2264,6 @@ onBeforeUnmount(() => {
 				!isLoading && (experimentalNdvStore.isNdvInFocusPanelEnabled ? !isCanvasReadOnly : true)
 			"
 			:is-canvas-read-only="isCanvasReadOnly"
-			@save-keyboard-shortcut="onSaveWorkflow"
 			@context-menu-action="onContextMenuAction"
 		/>
 	</div>
@@ -2280,7 +2331,7 @@ onBeforeUnmount(() => {
 	transform: translateX(-50%);
 }
 
-.thinkingPill {
+.canvasCenterPill {
 	position: absolute;
 	left: 50%;
 	top: 50%;

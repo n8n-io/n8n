@@ -11,7 +11,8 @@ import type {
 	INodeProperties,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import { computed, ref, watch } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
+import { computedAsync, until } from '@vueuse/core';
 import OperatorSelect from './OperatorSelect.vue';
 import { type FilterOperatorId, DEFAULT_OPERATOR_BY_TYPE } from './constants';
 import {
@@ -22,6 +23,7 @@ import {
 	operatorTypeToNodeProperty,
 	resolveCondition,
 } from './utils';
+import type { ConditionResult } from './types';
 import { useDebounce } from '@/app/composables/useDebounce';
 
 import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -70,8 +72,23 @@ const isEmpty = computed(() => {
 	return isEmptyInput(condition.value.leftValue) && isEmptyInput(condition.value.rightValue);
 });
 
-const conditionResult = computed(() =>
-	resolveCondition({ condition: condition.value, options: props.options }),
+const isEvaluatingCondition = ref(false);
+const conditionResult = computedAsync<ConditionResult>(
+	async () => {
+		// Access nested properties to ensure deep change tracking
+		const currentCondition = condition.value;
+		void currentCondition.leftValue;
+		void currentCondition.rightValue;
+		void currentCondition.operator;
+		const currentOptions = props.options;
+
+		return await resolveCondition({
+			condition: currentCondition,
+			options: currentOptions,
+		});
+	},
+	{ status: 'resolve_error' },
+	{ evaluating: isEvaluatingCondition },
 );
 
 const suggestedType = computed(() => {
@@ -161,13 +178,20 @@ const setSuggestedType = (): void => {
 	}
 };
 
-const onLeftValueDrop = (droppedExpression: string): void => {
+const onLeftValueDrop = async (droppedExpression: string): Promise<void> => {
 	condition.value.leftValue = droppedExpression;
+	// Wait for the condition result computation to complete before inferring the type
+	await nextTick();
+	await until(isEvaluatingCondition).toBe(false);
 	setSuggestedType();
 };
 
-const onRightValueDrop = (droppedExpression: string) => {
+const onRightValueDrop = async (droppedExpression: string): Promise<void> => {
 	condition.value.rightValue = droppedExpression;
+
+	// Wait for the condition result computation to complete before inferring the type
+	await nextTick();
+	await until(isEvaluatingCondition).toBe(false);
 
 	// Only auto-switch operator if the default operator for the dropped type
 	// is compatible with the right side (not single-value and right type matches)
@@ -229,6 +253,7 @@ watch(
 					hide-label
 					hide-hint
 					hide-issues
+					options-position="top-absolute"
 					:is-read-only="readOnly"
 					:parameter="leftParameter"
 					:value="condition.leftValue"
@@ -254,8 +279,8 @@ watch(
 					hide-label
 					hide-hint
 					hide-issues
+					:options-position="breakpoint === 'default' ? 'top-absolute' : 'bottom'"
 					:is-read-only="readOnly"
-					:options-position="breakpoint === 'default' ? 'top' : 'bottom'"
 					:parameter="rightParameter"
 					:value="condition.rightValue"
 					:path="`${path}.rightValue`"
@@ -314,7 +339,7 @@ watch(
 
 .status {
 	align-self: flex-start;
-	padding-top: 28px;
+	padding-top: var(--spacing--2xs);
 }
 
 .iconButton {
@@ -326,9 +351,9 @@ watch(
 }
 
 .defaultTopPadding {
-	top: var(--spacing--md);
+	top: 0;
 }
 .extraTopPadding {
-	top: calc(14px + var(--spacing--md));
+	top: var(--spacing--sm);
 }
 </style>

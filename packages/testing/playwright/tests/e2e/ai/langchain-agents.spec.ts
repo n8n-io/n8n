@@ -2,12 +2,13 @@ import {
 	AGENT_NODE_NAME,
 	EDIT_FIELDS_SET_NODE_NAME,
 	AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-	AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+	AI_MEMORY_REDIS_CHAT_NODE_NAME,
 	AI_TOOL_CALCULATOR_NODE_NAME,
 	AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
 	AI_TOOL_CODE_NODE_NAME,
 	AI_TOOL_WIKIPEDIA_NODE_NAME,
 	SCHEDULE_TRIGGER_NODE_NAME,
+	TOOL_SUBCATEGORY,
 } from '../../../config/constants';
 import { test, expect } from '../../../fixtures/base';
 import type { n8nPage } from '../../../pages/n8nPage';
@@ -122,7 +123,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 		test('should add nodes to all Agent node input types', async ({ n8n }) => {
 			const agentSubNodes = [
 				AI_LANGUAGE_MODEL_OPENAI_CHAT_MODEL_NODE_NAME,
-				AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+				AI_MEMORY_REDIS_CHAT_NODE_NAME,
 				AI_TOOL_CALCULATOR_NODE_NAME,
 				AI_OUTPUT_PARSER_AUTO_FIXING_NODE_NAME,
 			];
@@ -138,7 +139,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			);
 
 			await n8n.canvas.addSupplementalNodeToParent(
-				AI_MEMORY_WINDOW_BUFFER_MEMORY_NODE_NAME,
+				AI_MEMORY_REDIS_CHAT_NODE_NAME,
 				'ai_memory',
 				AGENT_NODE_NAME,
 				{ closeNDV: true },
@@ -148,7 +149,7 @@ test.describe('Langchain Integration @capability:proxy', () => {
 				AI_TOOL_CALCULATOR_NODE_NAME,
 				'ai_tool',
 				AGENT_NODE_NAME,
-				{ closeNDV: true },
+				{ closeNDV: true, subcategory: TOOL_SUBCATEGORY },
 			);
 
 			await n8n.canvas.addSupplementalNodeToParent(
@@ -167,17 +168,18 @@ test.describe('Langchain Integration @capability:proxy', () => {
 			await n8n.canvas.addNode(AGENT_NODE_NAME, { closeNDV: true });
 
 			const tools = [
-				AI_TOOL_CALCULATOR_NODE_NAME,
-				AI_TOOL_CODE_NODE_NAME,
-				AI_TOOL_CODE_NODE_NAME,
-				AI_TOOL_WIKIPEDIA_NODE_NAME,
+				{ name: AI_TOOL_CALCULATOR_NODE_NAME, subcategory: TOOL_SUBCATEGORY },
+				{ name: AI_TOOL_CODE_NODE_NAME },
+				{ name: AI_TOOL_CODE_NODE_NAME },
+				{ name: AI_TOOL_WIKIPEDIA_NODE_NAME, subcategory: TOOL_SUBCATEGORY },
 			];
 
 			for (const tool of tools) {
-				await n8n.canvas.addSupplementalNodeToParent(tool, 'ai_tool', AGENT_NODE_NAME, {
+				await n8n.canvas.addSupplementalNodeToParent(tool.name, 'ai_tool', AGENT_NODE_NAME, {
 					closeNDV: true,
+					subcategory: tool.subcategory,
 				});
-				await expect(n8n.canvas.connectionBetweenNodes(tool, AGENT_NODE_NAME)).toBeAttached();
+				await expect(n8n.canvas.connectionBetweenNodes(tool.name, AGENT_NODE_NAME)).toBeAttached();
 			}
 
 			// Chat Trigger + Agent + Tools

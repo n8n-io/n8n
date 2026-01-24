@@ -5,10 +5,11 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { type User } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { writeFileSync } from 'fs';
 import { UnexpectedError, UserError, jsonParse } from 'n8n-workflow';
-import path from 'path';
+import * as path from 'path';
 import type { PushResult } from 'simple-git';
 
 import {
@@ -54,6 +55,9 @@ export class SourceControlService {
 
 	private gitFolder: string;
 
+	/** Flag to prevent concurrent configuration reloads */
+	private isReloading = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private gitService: SourceControlGitService,
@@ -71,11 +75,62 @@ export class SourceControlService {
 	}
 
 	async start(): Promise<void> {
+		await this.refreshServiceState();
+	}
+
+	/**
+	 * Detects SSH host key verification errors.
+	 * Note: simple-git doesn't provide structured error codes for SSH failures,
+	 * so we must match against standardized SSH error message strings.
+	 * These messages are stable across OpenSSH implementations.
+	 *
+	 * @see https://github.com/openssh/openssh-portable/blob/master/sshconnect.c
+	 * - "Host key verification failed" - returned when host key check fails
+	 * - "REMOTE HOST IDENTIFICATION HAS CHANGED" - from warn_changed_key()
+	 * - "Offending key" - shown alongside changed host warnings
+	 */
+	private isHostKeyVerificationError(error: Error): boolean {
+		const message = error.message.toLowerCase();
+		return (
+			message.includes('host key verification failed') ||
+			message.includes('host identification has changed') ||
+			message.includes('offending key')
+		);
+	}
+
+	private async refreshServiceState(): Promise<void> {
 		this.gitService.resetService();
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		await this.sourceControlPreferencesService.loadFromDbAndApplySourceControlPreferences();
 		if (this.sourceControlPreferencesService.isSourceControlLicensedAndEnabled()) {
 			await this.initGitService();
+		}
+	}
+
+	/**
+	 * Ensures all main instances stay in sync with source control config changes made elsewhere in a multi-main setup.
+	 */
+	@OnPubSubEvent('reload-source-control-config', { instanceType: 'main' })
+	async reloadConfiguration(): Promise<void> {
+		if (this.isReloading) {
+			this.logger.warn('Source control configuration reload already in progress');
+			return;
+		}
+
+		this.isReloading = true;
+		try {
+			this.logger.debug('Source control configuration changed, reloading from database');
+
+			const wasConnected = this.sourceControlPreferencesService.isSourceControlConnected();
+			await this.refreshServiceState();
+			const isNowConnected = this.sourceControlPreferencesService.isSourceControlConnected();
+
+			if (wasConnected && !isNowConnected) {
+				await this.sourceControlExportService.deleteRepositoryFolder();
+				this.logger.info('Cleaned up git repository folder after source control disconnect');
+			}
+		} finally {
+			this.isReloading = false;
 		}
 	}
 
@@ -94,12 +149,15 @@ export class SourceControlService {
 				[this.gitFolder, this.sshFolder],
 				false,
 			);
+
 			if (!foldersExisted) {
 				throw new UserError('No folders exist');
 			}
+
 			if (!this.gitService.git) {
 				await this.initGitService();
 			}
+
 			const branches = await this.gitService.getCurrentBranch();
 			if (
 				branches.current === '' ||
@@ -133,7 +191,11 @@ export class SourceControlService {
 				await this.sourceControlPreferencesService.deleteKeyPair();
 			}
 
+			// Clear known_hosts to allow fresh host key verification on reconnect
+			await this.sourceControlPreferencesService.resetKnownHosts();
+
 			this.gitService.resetService();
+
 			return this.sourceControlPreferencesService.sourceControlPreferences;
 		} catch (error) {
 			throw new UnexpectedError('Failed to disconnect from source control', { cause: error });
@@ -153,6 +215,11 @@ export class SourceControlService {
 			if ((error as Error).message.includes('Warning: Permanently added')) {
 				this.logger.debug('Added repository host to the list of known hosts. Retrying...');
 				getBranchesResult = await this.getBranches();
+			} else if (this.isHostKeyVerificationError(error as Error)) {
+				throw new UserError(
+					"SSH host key verification failed. The remote server's key may have changed. " +
+						'If this is expected (e.g., server migration), disconnect and reconnect from Source Control settings to reset the known hosts.',
+				);
 			} else {
 				throw error;
 			}
@@ -238,7 +305,7 @@ export class SourceControlService {
 
 		const context = new SourceControlContext(user);
 
-		let filesToPush = options.fileNames.map((file) => {
+		let filesToPush: SourceControlledFile[] = options.fileNames.map((file) => {
 			const normalizedPath = normalizeAndValidateSourceControlledFilePath(
 				this.gitFolder,
 				file.file,
@@ -305,7 +372,7 @@ export class SourceControlService {
 					}
 				});
 
-			this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
+			await this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
 			const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
 			await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);
@@ -454,7 +521,7 @@ export class SourceControlService {
 
 		const tagsToBeImported = getNonDeletedResources(statusResult, 'tags')[0];
 		if (tagsToBeImported) {
-			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported);
+			await this.sourceControlImportService.importTagsFromWorkFolder(tagsToBeImported, user);
 		}
 		const tagsToBeDeleted = getDeletedResources(statusResult, 'tags');
 		await this.sourceControlImportService.deleteTagsNotInWorkfolder(tagsToBeDeleted);
