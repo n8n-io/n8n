@@ -39,6 +39,11 @@ export interface EvaluationContext {
 	 * Note: timeouts are best-effort unless underlying calls support cancellation (AbortSignal).
 	 */
 	timeoutMs?: number;
+	/**
+	 * Generated TypeScript SDK code for code-level evaluators.
+	 * Populated from GenerationResult when available.
+	 */
+	generatedCode?: string;
 }
 
 /** Context attached to an individual test case (prompt is provided separately). */

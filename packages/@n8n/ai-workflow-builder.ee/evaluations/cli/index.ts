@@ -28,6 +28,7 @@ import {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createCodeTypecheckEvaluator,
 	type RunConfig,
 	type TestCase,
 	type Evaluator,
@@ -284,6 +285,14 @@ export async function runV2Evaluation(): Promise<void> {
 			break;
 		case 'similarity':
 			evaluators.push(createSimilarityEvaluator());
+			break;
+		case 'code-typecheck':
+			evaluators.push(createCodeTypecheckEvaluator());
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			break;
+		case 'code-llm-judge':
+			// TODO: Add createCodeLLMJudgeEvaluator when implemented
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
 			break;
 	}
 

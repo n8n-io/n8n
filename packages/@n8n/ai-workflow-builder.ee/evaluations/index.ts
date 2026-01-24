@@ -45,6 +45,7 @@ export {
 	createProgrammaticEvaluator,
 	createPairwiseEvaluator,
 	createSimilarityEvaluator,
+	createCodeTypecheckEvaluator,
 	type PairwiseEvaluatorOptions,
 	type SimilarityEvaluatorOptions,
 } from './evaluators';

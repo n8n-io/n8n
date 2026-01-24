@@ -100,14 +100,16 @@ function buildContext(args: {
 	globalContext?: GlobalRunContext;
 	testCaseContext?: TestCaseContext;
 	referenceWorkflows?: SimpleWorkflow[];
+	generatedCode?: string;
 }): EvaluationContext {
-	const { prompt, globalContext, testCaseContext, referenceWorkflows } = args;
+	const { prompt, globalContext, testCaseContext, referenceWorkflows, generatedCode } = args;
 
 	return {
 		prompt,
 		...(globalContext ?? {}),
 		...(testCaseContext ?? {}),
 		...(referenceWorkflows?.length ? { referenceWorkflows } : {}),
+		...(generatedCode ? { generatedCode } : {}),
 	};
 }
 
@@ -402,6 +404,7 @@ async function runLocalExample(args: {
 			},
 			testCaseContext: testCase.context,
 			referenceWorkflows: testCase.referenceWorkflows,
+			generatedCode,
 		});
 
 		// Run evaluators in parallel
@@ -882,6 +885,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				prompt,
 				globalContext: effectiveGlobalContext,
 				testCaseContext: extracted,
+				generatedCode,
 			});
 
 			// Run all evaluators in parallel

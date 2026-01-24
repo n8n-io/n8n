@@ -15,3 +15,4 @@ export {
 	createSimilarityEvaluator,
 	type SimilarityEvaluatorOptions,
 } from './similarity';
+export { createCodeTypecheckEvaluator } from './code-typecheck';
