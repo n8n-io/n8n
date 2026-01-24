@@ -10,6 +10,8 @@ export interface IContact {
 	AccountId?: string;
 	Birthdate?: string;
 	FirstName?: string;
+	MiddleName?: string;
+	Suffix?: string;
 	HomePhone?: string;
 	OtherCity?: string;
 	Department?: string;
@@ -31,4 +33,23 @@ export interface IContact {
 	MailingPostalCode?: string;
 	EmailBouncedDate?: string;
 	EmailBouncedReason?: string;
+	ReportsToId?: string;
+	RecordTypeId?: string;
+	DoNotCall?: boolean;
+	HasOptedOutOfEmail?: boolean;
+	HasOptedOutOfFax?: boolean;
+	IndividualId?: string;
+	Pronouns?: string;
+	GenderIdentity?: string;
+	CanAllowPortalSelfReg?: boolean;
+	MailingLatitude?: number;
+	MailingLongitude?: number;
+	MailingGeocodeAccuracy?: string;
+	OtherLatitude?: number;
+	OtherLongitude?: number;
+	OtherGeocodeAccuracy?: string;
+	MailingCountryCode?: string;
+	MailingStateCode?: string;
+	OtherCountryCode?: string;
+	OtherStateCode?: string;
 }
