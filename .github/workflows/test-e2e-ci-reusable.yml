@@ -46,8 +46,15 @@ jobs:
 
       - name: Tag and push to GHCR
         run: |
+          # Push n8n image
           docker tag n8nio/n8n:local ${{ env.DOCKER_IMAGE }}
           docker push ${{ env.DOCKER_IMAGE }}
+
+          # Push runners image (tests derive it from n8n image tag)
+          RUNNERS_IMAGE="${{ env.DOCKER_IMAGE }}"
+          RUNNERS_IMAGE="${RUNNERS_IMAGE/\/n8n:/\/runners:}"
+          docker tag n8nio/runners:local "$RUNNERS_IMAGE"
+          docker push "$RUNNERS_IMAGE"
 
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   # Only runs for internal PRs (not community/fork PRs)
@@ -120,21 +127,24 @@ jobs:
     permissions:
       packages: write
     steps:
-      - name: Delete image from GHCR
+      - name: Delete images from GHCR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
         run: |
-          # Get the version ID for our specific tag
-          VERSION_ID=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            /orgs/n8n-io/packages/container/n8n/versions \
-            --jq '.[] | select(.metadata.container.tags[] == "pr-${{ github.event.pull_request.number }}-${{ github.run_id }}") | .id')
-
-          if [ -n "$VERSION_ID" ]; then
-            echo "Deleting package version $VERSION_ID (tag: pr-${{ github.event.pull_request.number }}-${{ github.run_id }})"
-            gh api --method DELETE \
+          for PACKAGE in n8n runners; do
+            echo "Deleting $PACKAGE:$TAG..."
+            VERSION_ID=$(gh api \
               -H "Accept: application/vnd.github+json" \
-              "/orgs/n8n-io/packages/container/n8n/versions/$VERSION_ID"
-          else
-            echo "Package version not found, may have already been deleted"
-          fi
+              "/orgs/n8n-io/packages/container/$PACKAGE/versions" \
+              --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .id")
+
+            if [ -n "$VERSION_ID" ]; then
+              gh api --method DELETE \
+                -H "Accept: application/vnd.github+json" \
+                "/orgs/n8n-io/packages/container/$PACKAGE/versions/$VERSION_ID"
+              echo "  Deleted $PACKAGE version $VERSION_ID"
+            else
+              echo "  Not found, may have already been deleted"
+            fi
+          done

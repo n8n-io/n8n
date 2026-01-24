@@ -21,25 +21,29 @@ jobs:
 
           echo "Cleaning up images for PR #$PR_NUMBER..."
 
-          # Fetch all versions with pr-{number}-* tags
-          VERSIONS=$(gh api /orgs/n8n-io/packages/container/n8n/versions \
-            --paginate \
-            --jq ".[] | select(.metadata.container.tags | any(startswith(\"pr-${PR_NUMBER}-\"))) | {id, tags: .metadata.container.tags}" \
-          ) || { echo "No images found or API error"; exit 0; }
+          for PACKAGE in n8n runners; do
+            echo "Checking $PACKAGE package..."
 
-          if [ -z "$VERSIONS" ]; then
-            echo "No images found for PR #$PR_NUMBER"
-            exit 0
-          fi
+            # Fetch all versions with pr-{number}-* tags
+            VERSIONS=$(gh api "/orgs/n8n-io/packages/container/$PACKAGE/versions" \
+              --paginate \
+              --jq ".[] | select(.metadata.container.tags | any(startswith(\"pr-${PR_NUMBER}-\"))) | {id, tags: .metadata.container.tags}" \
+            ) || { echo "  No images found or API error"; continue; }
 
-          while IFS= read -r version; do
-            [ -z "$version" ] && continue
+            if [ -z "$VERSIONS" ]; then
+              echo "  No images found"
+              continue
+            fi
 
-            ID=$(echo "$version" | jq -r '.id')
-            TAGS=$(echo "$version" | jq -r '.tags | join(", ")')
+            while IFS= read -r version; do
+              [ -z "$version" ] && continue
 
-            echo "Deleting: $TAGS"
-            gh api --method DELETE "/orgs/n8n-io/packages/container/n8n/versions/$ID" || echo "  Failed"
-          done <<< "$VERSIONS"
+              ID=$(echo "$version" | jq -r '.id')
+              TAGS=$(echo "$version" | jq -r '.tags | join(", ")')
+
+              echo "  Deleting: $TAGS"
+              gh api --method DELETE "/orgs/n8n-io/packages/container/$PACKAGE/versions/$ID" || echo "    Failed"
+            done <<< "$VERSIONS"
+          done
 
           echo "Cleanup complete"
