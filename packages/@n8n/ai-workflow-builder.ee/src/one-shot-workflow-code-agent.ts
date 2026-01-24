@@ -19,6 +19,8 @@ import { z } from 'zod';
 import { parseWorkflowCode, validateWorkflow, SDK_API_CONTENT } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
+import { typeCheckCode } from '../evaluations/evaluators/code-typecheck/type-checker';
+
 import { NodeTypeParser } from './utils/node-type-parser';
 import { buildOneShotGeneratorPrompt } from './prompts/one-shot-generator.prompt';
 import { buildOpusOneShotGeneratorPrompt } from './prompts/one-shot-generator-opus.prompt';
@@ -356,7 +358,51 @@ export class OneShotWorkflowCodeAgent {
 								nodeCount: workflow.nodes.length,
 								nodeTypes: workflow.nodes.map((n) => n.type),
 							});
-							// Successfully parsed - exit the loop
+
+							// Run type checking on the generated code
+							debugLog('CHAT', 'Running type check on generated code...');
+							const typeCheckResult = typeCheckCode(finalResult.workflowCode);
+							const criticalViolations = typeCheckResult.violations.filter(
+								(v) => v.type === 'critical',
+							);
+
+							debugLog('CHAT', 'Type check complete', {
+								score: typeCheckResult.score,
+								totalViolations: typeCheckResult.violations.length,
+								criticalViolations: criticalViolations.length,
+							});
+
+							// If there are critical type errors, send them back to the agent
+							if (criticalViolations.length > 0 && consecutiveParseErrors < 2) {
+								consecutiveParseErrors++;
+								const typeErrorMessages = criticalViolations
+									.slice(0, 5) // Limit to first 5 errors
+									.map((v) => `- Line ${v.lineNumber ?? '?'}: ${v.description}`)
+									.join('\n');
+
+								// Track type errors
+								generationErrors.push({
+									message: `TypeScript errors:\n${typeErrorMessages}`,
+									code: finalResult.workflowCode,
+									iteration,
+									type: 'typecheck',
+								});
+
+								debugLog('CHAT', 'Critical type errors found, sending back to agent', {
+									errorCount: criticalViolations.length,
+								});
+
+								messages.push(
+									new HumanMessage(
+										`The workflow code has TypeScript type errors:\n\n${typeErrorMessages}\n\nPlease fix these errors and provide the corrected version as a JSON object with a workflowCode field.`,
+									),
+								);
+								workflow = null; // Reset so we continue the loop
+								finalResult = null;
+								continue;
+							}
+
+							// Successfully parsed and type-checked - exit the loop
 							break;
 						} catch (parseError) {
 							parseDuration = Date.now() - parseStartTime;
@@ -367,7 +413,7 @@ export class OneShotWorkflowCodeAgent {
 							// Track the generation error
 							generationErrors.push({
 								message: errorMessage,
-								code: finalResult.workflowCode,
+								code: finalResult?.workflowCode,
 								iteration,
 								type: 'parse',
 							});
