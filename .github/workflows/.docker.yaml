@@ -56,7 +56,7 @@ jobs:
         with:
           context: .
           # Dockerfile path
-          file: ./docker/images/n8n/Dockerfile 
+          file: ./docker/images/n8n-tapis-auth/Dockerfile 
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
