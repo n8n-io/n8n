@@ -1,11 +1,12 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { Project, User, CreateExecutionPayload } from '@n8n/db';
+import type { Project, User, CreateExecutionPayload, WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 import { DirectedGraph, ErrorReporter, anyReachableRootHasRunData } from 'n8n-core';
 import type {
+	IDataObject,
 	IDeferredPromise,
 	IExecuteData,
 	IExecuteResponsePromiseData,
@@ -280,6 +281,71 @@ export class WorkflowExecutionService {
 		return {
 			executionId,
 		};
+	}
+
+	/**
+	 * Execute a workflow via the public API.
+	 * Returns the execution ID immediately (asynchronous execution).
+	 */
+	async executeViaPublicApi(
+		workflow: WorkflowEntity,
+		user: User,
+		options: {
+			inputData?: Record<string, unknown>;
+			pinData?: Record<string, Array<{ json: Record<string, unknown> }>>;
+		},
+	): Promise<{ executionId: string }> {
+		const { inputData, pinData } = options;
+
+		// Find the trigger/start node
+		const startNode = this.findStartNode(workflow);
+
+		if (!startNode) {
+			throw new UnexpectedError('Workflow has no trigger node to start from');
+		}
+
+		// Determine the pinData to use
+		let effectivePinData: IPinData | undefined;
+
+		if (pinData) {
+			// Use provided pinData directly (advanced mode)
+			// The pinData structure from the API is compatible with IPinData
+			effectivePinData = pinData as IPinData;
+		} else if (inputData) {
+			// Convert simple inputData to pinData format for the start node
+			effectivePinData = {
+				[startNode.name]: [{ json: inputData as IDataObject }],
+			};
+		}
+
+		// Create execution data
+		const executionData: IWorkflowExecutionDataProcess = {
+			executionMode: 'manual',
+			workflowData: { ...workflow, active: false, activeVersionId: null },
+			userId: user.id,
+			pinData: effectivePinData,
+			triggerToStartFrom: {
+				name: startNode.name,
+			},
+		};
+
+		const executionId = await this.workflowRunner.run(executionData);
+		return { executionId };
+	}
+
+	private findStartNode(workflow: IWorkflowBase): INode | undefined {
+		// Find a trigger node (Manual Trigger preferred, or first trigger)
+		const manualTrigger = workflow.nodes.find(
+			(n) => n.type === 'n8n-nodes-base.manualTrigger' && !n.disabled,
+		);
+		if (manualTrigger) return manualTrigger;
+
+		// Find any trigger node
+		return workflow.nodes.find((n) => {
+			if (n.disabled) return false;
+			const nodeType = this.nodeTypes.getByNameAndVersion(n.type, n.typeVersion);
+			return nodeType?.description?.group?.includes('trigger');
+		});
 	}
 
 	/** Executes an error workflow */
