@@ -639,6 +639,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				if (this.isTriggerNode(graphNode.instance.type)) {
 					continue;
 				}
+				// Skip sticky notes - they don't participate in data flow
+				if (graphNode.instance.type === 'n8n-nodes-base.stickyNote') {
+					continue;
+				}
+				// Skip subnodes - they connect TO their parent via AI connections
+				if (this.isConnectedSubnode(graphNode)) {
+					continue;
+				}
 				// Check if this node has any incoming connection
 				if (!nodesWithIncoming.has(nodeName)) {
 					warnings.push(
@@ -1045,6 +1053,37 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		}
 
 		return nodesWithIncoming;
+	}
+
+	/**
+	 * Check if a node is a subnode that's connected to a parent via AI connection types.
+	 * Subnodes connect outward TO their parent node (not the other way around).
+	 */
+	private isConnectedSubnode(graphNode: GraphNode): boolean {
+		const aiConnectionTypes = [
+			'ai_languageModel',
+			'ai_memory',
+			'ai_tool',
+			'ai_outputParser',
+			'ai_embedding',
+			'ai_vectorStore',
+			'ai_retriever',
+			'ai_document',
+			'ai_textSplitter',
+			'ai_reranker',
+		];
+
+		for (const [connType, outputMap] of graphNode.connections) {
+			if (aiConnectionTypes.includes(connType)) {
+				// Check if it connects to a valid parent node
+				for (const [_outputIndex, targets] of outputMap) {
+					if (targets.length > 0) {
+						return true; // Has AI connection to parent
+					}
+				}
+			}
+		}
+		return false;
 	}
 
 	toString(): string {

@@ -97,6 +97,42 @@ function isTriggerNode(type: string): boolean {
 }
 
 /**
+ * AI connection types used by subnodes to connect to their parent nodes
+ */
+const AI_CONNECTION_TYPES = [
+	'ai_languageModel',
+	'ai_memory',
+	'ai_tool',
+	'ai_outputParser',
+	'ai_embedding',
+	'ai_vectorStore',
+	'ai_retriever',
+	'ai_document',
+	'ai_textSplitter',
+	'ai_reranker',
+];
+
+/**
+ * Check if a node has AI connections to a parent node (making it a connected subnode)
+ */
+function hasAiConnectionToParent(nodeName: string, json: WorkflowJSON): boolean {
+	const nodeConnections = json.connections[nodeName];
+	if (!nodeConnections) return false;
+
+	for (const connType of AI_CONNECTION_TYPES) {
+		const aiConns = nodeConnections[connType as keyof typeof nodeConnections];
+		if (aiConns && Array.isArray(aiConns)) {
+			for (const outputs of aiConns) {
+				if (outputs && outputs.length > 0) {
+					return true; // Has AI connection to parent
+				}
+			}
+		}
+	}
+	return false;
+}
+
+/**
  * Find disconnected nodes (nodes that don't receive input from any other node)
  */
 function findDisconnectedNodes(json: WorkflowJSON): string[] {
@@ -115,12 +151,22 @@ function findDisconnectedNodes(json: WorkflowJSON): string[] {
 		}
 	}
 
-	// Find nodes without incoming connections (excluding triggers)
+	// Find nodes without incoming connections (excluding triggers, sticky notes, and connected subnodes)
 	const disconnected: string[] = [];
 	for (const node of json.nodes) {
-		if (!hasIncoming.has(node.name) && !isTriggerNode(node.type)) {
-			disconnected.push(node.name);
-		}
+		// Skip if node has incoming connection
+		if (hasIncoming.has(node.name)) continue;
+
+		// Skip trigger nodes - they don't need incoming connections
+		if (isTriggerNode(node.type)) continue;
+
+		// Skip sticky notes - they don't participate in data flow
+		if (node.type === 'n8n-nodes-base.stickyNote') continue;
+
+		// Skip subnodes - they connect TO their parent via AI connections
+		if (hasAiConnectionToParent(node.name, json)) continue;
+
+		disconnected.push(node.name);
 	}
 
 	return disconnected;

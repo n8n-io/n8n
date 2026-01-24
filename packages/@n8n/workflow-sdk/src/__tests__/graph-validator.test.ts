@@ -1,4 +1,4 @@
-import { workflow, trigger, node } from '../index';
+import { workflow, trigger, node, sticky, languageModel, tool } from '../index';
 
 describe('graph validation', () => {
 	describe('checkNoNodes', () => {
@@ -588,6 +588,74 @@ describe('graph validation', () => {
 
 			const result = wf.validate({ allowDisconnectedNodes: true });
 
+			const disconnectedWarning = result.warnings.find((w) => w.code === 'DISCONNECTED_NODE');
+			expect(disconnectedWarning).toBeUndefined();
+		});
+
+		test('does not flag sticky notes as disconnected', () => {
+			const wf = workflow('test-id', 'Workflow With Sticky Note')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: 'n8n-nodes-base.httpRequest',
+						version: 4.2,
+						config: { name: 'HTTP Request' },
+					}),
+				)
+				.add(sticky('## Documentation Note', { position: [100, 100] }));
+
+			const result = wf.validate();
+
+			// Sticky notes should NOT be flagged as disconnected (they never participate in data flow)
+			const disconnectedWarning = result.warnings.find((w) => w.code === 'DISCONNECTED_NODE');
+			expect(disconnectedWarning).toBeUndefined();
+		});
+
+		test('does not flag subnodes connected to agent as disconnected', () => {
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { parameters: { model: 'gpt-4' } },
+			});
+
+			const codeTool = tool({
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				version: 1.1,
+				config: { parameters: { code: 'return "hello"' } },
+			});
+
+			const wf = workflow('test-id', 'AI Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 1.7,
+						config: {
+							name: 'AI Agent',
+							parameters: { promptType: 'auto', text: 'Hello' },
+							subnodes: {
+								model,
+								tools: [codeTool],
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			// Subnodes should NOT be flagged as disconnected (they connect TO their parent via AI connections)
 			const disconnectedWarning = result.warnings.find((w) => w.code === 'DISCONNECTED_NODE');
 			expect(disconnectedWarning).toBeUndefined();
 		});

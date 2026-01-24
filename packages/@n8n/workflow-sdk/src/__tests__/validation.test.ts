@@ -1,6 +1,7 @@
 import { validateWorkflow, ValidationError } from '../validation';
 import { workflow } from '../workflow-builder';
-import { node, trigger } from '../node-builder';
+import { node, trigger, sticky } from '../node-builder';
+import { languageModel, tool } from '../subnode-builders';
 
 describe('Validation', () => {
 	describe('validateWorkflow()', () => {
@@ -71,6 +72,59 @@ describe('Validation', () => {
 			const wf = workflow('test-id', 'Test');
 			const result = validateWorkflow(wf);
 			expect(result).toBeDefined();
+		});
+
+		it('should not flag sticky notes as disconnected', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const n = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { parameters: { url: 'https://example.com' } },
+			});
+			const stickyNote = sticky('## Note', { position: [100, 100] });
+
+			// Add sticky note to the workflow (sticky notes never have incoming connections)
+			const wf = workflow('test-id', 'Test Workflow').add(t).then(n).add(stickyNote);
+
+			const result = validateWorkflow(wf);
+			const disconnectedWarnings = result.warnings.filter((w) => w.code === 'DISCONNECTED_NODE');
+			// Sticky notes should NOT be flagged as disconnected
+			expect(disconnectedWarnings).toHaveLength(0);
+		});
+
+		it('should not flag subnodes connected to agent as disconnected', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+
+			const model = languageModel({
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				version: 1.2,
+				config: { parameters: { model: 'gpt-4' } },
+			});
+
+			const codeTool = tool({
+				type: '@n8n/n8n-nodes-langchain.toolCode',
+				version: 1.1,
+				config: { parameters: { code: 'return "hello"' } },
+			});
+
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					parameters: { promptType: 'auto', text: 'Hello' },
+					subnodes: {
+						model,
+						tools: [codeTool],
+					},
+				},
+			});
+
+			const wf = workflow('test-id', 'Test Workflow').add(t).then(agent);
+
+			const result = validateWorkflow(wf);
+			const disconnectedWarnings = result.warnings.filter((w) => w.code === 'DISCONNECTED_NODE');
+			// Subnodes should NOT be flagged as disconnected (they connect TO their parent via AI connections)
+			expect(disconnectedWarnings).toHaveLength(0);
 		});
 	});
 
