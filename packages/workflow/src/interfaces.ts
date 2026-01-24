@@ -494,6 +494,11 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 /**
@@ -541,6 +546,12 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+
+	/**
+	 * Whether to send credentials on cross-origin redirects
+	 * @default true - for backwards compatibility
+	 */
+	sendCredentialsOnCrossOriginRedirect?: boolean;
 }
 
 export interface PaginationOptions {
@@ -1949,7 +1960,7 @@ export type ExecuteNodeResult<T = unknown> = {
  *
  * @template T - The type of metadata associated with this result
  */
-type EngineResult<T> = ExecuteNodeResult<T>;
+export type EngineResult<T> = ExecuteNodeResult<T>;
 
 /**
  * Response structure returned from the workflow engine after execution.
@@ -2217,7 +2228,7 @@ export type AINodeConnectionType = Exclude<NodeConnectionType, typeof NodeConnec
 
 export const nodeConnectionTypes: NodeConnectionType[] = Object.values(NodeConnectionTypes);
 
-export interface INodeInputFilter {
+export interface INodeFilter {
 	// TODO: Later add more filter options like categories, subcatogries,
 	//       regex, allow to exclude certain nodes, ... ?
 	//       Potentially change totally after alpha/beta. Is not a breaking change after all.
@@ -2225,12 +2236,17 @@ export interface INodeInputFilter {
 	excludedNodes?: string[];
 }
 
+/**
+ * @deprecated Use INodeFilter instead
+ */
+export type INodeInputFilter = INodeFilter;
+
 export interface INodeInputConfiguration {
 	category?: string;
 	displayName?: string;
 	required?: boolean;
 	type: NodeConnectionType;
-	filter?: INodeInputFilter;
+	filter?: INodeFilter;
 	maxConnections?: number;
 }
 
@@ -2240,6 +2256,7 @@ export interface INodeOutputConfiguration {
 	maxConnections?: number;
 	required?: boolean;
 	type: NodeConnectionType;
+	filter?: INodeFilter;
 }
 
 export type ExpressionString = `={{${string}}}`;
@@ -2283,6 +2300,11 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
+	/**
+	 * When true, skip generating a name from resource/operation (e.g., "SendAndWait message in Slack")
+	 * and just use defaults.name. Useful for tool nodes that should keep a simple name like "Slack".
+	 */
+	skipNameGeneration?: boolean;
 	features?: NodeFeaturesDefinition;
 }
 
@@ -2749,9 +2771,10 @@ type AiEventPayload = {
 	nodeType?: string;
 };
 
+export type AgentRequestQuery = { [nodeName: string]: Record<string, unknown> | string };
 // Used to transport an agent request for partial execution
 export interface AiAgentRequest {
-	query: string | INodeParameters;
+	query: AgentRequestQuery;
 	tool: {
 		name: string;
 	};

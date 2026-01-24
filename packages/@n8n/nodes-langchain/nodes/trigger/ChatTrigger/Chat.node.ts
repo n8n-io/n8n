@@ -51,7 +51,7 @@ export class Chat implements INodeType {
 			subcategories: {
 				HITL: ['Human in the Loop'],
 			},
-			alias: ['human', 'wait', 'hitl'],
+			alias: ['human', 'wait', 'hitl', 'respond', 'approve', 'confirm', 'send', 'message'],
 			resources: {
 				primaryDocumentation: [
 					{
@@ -295,7 +295,7 @@ export class Chat implements INodeType {
 		if (parameters.options.responseMode !== 'responseNodes') {
 			throw new NodeOperationError(
 				this.getNode(),
-				'"Response Mode" in the chat trigger node must be set to "Respond Nodes"',
+				'"Response Mode" in the chat trigger node must be set to "Using Response Nodes"',
 			);
 		}
 
