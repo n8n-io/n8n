@@ -1,13 +1,9 @@
-import type { ChatPromptTemplate } from '@langchain/core/prompts';
-
 import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
 
 import {
 	AVAILABLE_PROMPT_VERSIONS,
 	DEFAULT_PROMPT_VERSION,
 	PROMPT_VERSIONS,
-	type PromptVersionId,
-	type PromptVersionDefinition,
 	buildOneShotGeneratorPrompt,
 	buildRawSystemPrompt,
 	buildOpusOneShotGeneratorPrompt,
