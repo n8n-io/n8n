@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 1. Pre-Install pnpm to Corepack doesn't ask on run and block the process
+ENV COREPACK_HOME=/home/node/.corepack
 RUN corepack enable && corepack prepare pnpm@10.22.0 --activate
 
 WORKDIR /app
@@ -22,7 +23,11 @@ RUN mkdir -p /app/packages/cli/bin && \
     echo "TAPIS_AUTH_ENDPOINT = '/v3/oauth2/tokens'" >> /app/packages/cli/bin/.env.tapis
 
 # 4. Make sure n8n directory exists to prevent for Encryption key
-RUN mkdir -p /home/node/.n8n && chown -R node:node /home/node /app
+RUN mkdir -p /home/node/.n8n /home/node/.corepack && \
+    chown -R node:node /home/node /app
+
+# 5. COREPACK_ENABLE_DOWNLOAD_PROMPT=0 
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 EXPOSE 5678
 USER node
