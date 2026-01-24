@@ -53,21 +53,45 @@ export function recurrenceCheck(
 	const momentTz = moment.tz(timezone);
 	if (typeInterval === 'hours') {
 		const hour = momentTz.hour();
-		if (lastExecution === undefined || hour === (intervalSize + lastExecution) % 24) {
+		if (lastExecution === undefined) {
+			recurrenceRules[index] = hour;
+			return true;
+		}
+		let diff = hour - lastExecution;
+		if (diff < 0) {
+			diff += 24;
+		}
+		if (diff >= intervalSize) {
 			recurrenceRules[index] = hour;
 			return true;
 		}
 	} else if (typeInterval === 'days') {
 		const dayOfYear = momentTz.dayOfYear();
-		if (lastExecution === undefined || dayOfYear === (intervalSize + lastExecution) % 365) {
+		if (lastExecution === undefined) {
+			recurrenceRules[index] = dayOfYear;
+			return true;
+		}
+		let diff = dayOfYear - lastExecution;
+		if (diff < 0) {
+			diff += 365;
+		}
+		if (diff >= intervalSize) {
 			recurrenceRules[index] = dayOfYear;
 			return true;
 		}
 	} else if (typeInterval === 'weeks') {
 		const week = momentTz.week();
+		if (lastExecution === undefined) {
+			recurrenceRules[index] = week;
+			return true;
+		}
+		let diff = week - lastExecution;
+		if (diff < 0) {
+			diff += 52;
+		}
+
 		if (
-			lastExecution === undefined || // First time executing this rule
-			week === (intervalSize + lastExecution) % 52 || // not first time, but minimum interval has passed
+			diff >= intervalSize || // not first time, but minimum interval has passed
 			week === lastExecution // Trigger on multiple days in the same week
 		) {
 			recurrenceRules[index] = week;
@@ -75,7 +99,15 @@ export function recurrenceCheck(
 		}
 	} else if (typeInterval === 'months') {
 		const month = momentTz.month();
-		if (lastExecution === undefined || month === (intervalSize + lastExecution) % 12) {
+		if (lastExecution === undefined) {
+			recurrenceRules[index] = month;
+			return true;
+		}
+		let diff = month - lastExecution;
+		if (diff < 0) {
+			diff += 12;
+		}
+		if (diff >= intervalSize) {
 			recurrenceRules[index] = month;
 			return true;
 		}
