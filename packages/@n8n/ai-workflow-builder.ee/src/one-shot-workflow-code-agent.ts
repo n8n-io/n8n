@@ -16,7 +16,7 @@ import type { StructuredToolInterface } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
-import { parseWorkflowCode, validateWorkflow, SDK_API_CONTENT } from '@n8n/workflow-sdk';
+import { parseWorkflowCodeToBuilder, validateWorkflow, SDK_API_CONTENT } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 // TODO: Re-enable when we decide on TypeScript runtime strategy (adds 23MB + 17MB memory)
@@ -775,15 +775,62 @@ export class OneShotWorkflowCodeAgent {
 		});
 
 		try {
-			// Parse the TypeScript code
+			// Parse the TypeScript code to WorkflowBuilder
 			this.logger?.debug('Parsing WorkflowCode', { codeLength: code.length });
-			debugLog('PARSE_VALIDATE', 'Calling parseWorkflowCode...');
+			debugLog('PARSE_VALIDATE', 'Calling parseWorkflowCodeToBuilder...');
 			const parseStartTime = Date.now();
-			const workflow = parseWorkflowCode(code);
+			const builder = parseWorkflowCodeToBuilder(code);
 			const parseDuration = Date.now() - parseStartTime;
 
-			debugLog('PARSE_VALIDATE', 'Workflow parsed successfully', {
+			debugLog('PARSE_VALIDATE', 'Code parsed to builder', {
 				parseDurationMs: parseDuration,
+			});
+
+			// Validate the graph structure BEFORE converting to JSON
+			debugLog('PARSE_VALIDATE', 'Validating graph structure...');
+			const graphValidateStartTime = Date.now();
+			const graphValidation = builder.validate();
+			const graphValidateDuration = Date.now() - graphValidateStartTime;
+
+			debugLog('PARSE_VALIDATE', 'Graph validation complete', {
+				validateDurationMs: graphValidateDuration,
+				isValid: graphValidation.valid,
+				errorCount: graphValidation.errors.length,
+				warningCount: graphValidation.warnings.length,
+			});
+
+			// If there are graph validation errors, throw to trigger self-correction
+			if (graphValidation.errors.length > 0) {
+				const errorMessages = graphValidation.errors
+					.map((e: { message: string; code?: string }) => `[${e.code}] ${e.message}`)
+					.join('\n');
+				debugLog('PARSE_VALIDATE', 'GRAPH VALIDATION ERRORS', {
+					errors: graphValidation.errors.map((e: { message: string; code?: string }) => ({
+						message: e.message,
+						code: e.code,
+					})),
+				});
+				throw new Error(`Graph validation errors:\n${errorMessages}`);
+			}
+
+			// Log warnings (but don't fail on them)
+			if (graphValidation.warnings.length > 0) {
+				debugLog('PARSE_VALIDATE', 'GRAPH VALIDATION WARNINGS', {
+					warnings: graphValidation.warnings.map((w: { message: string; code?: string }) => ({
+						message: w.message,
+						code: w.code,
+					})),
+				});
+				this.logger?.info('Graph validation warnings', {
+					warnings: graphValidation.warnings.map((w: { message: string }) => w.message),
+				});
+			}
+
+			// Convert to JSON
+			debugLog('PARSE_VALIDATE', 'Converting to JSON...');
+			const workflow: WorkflowJSON = builder.toJSON();
+
+			debugLog('PARSE_VALIDATE', 'Workflow converted to JSON', {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				nodeCount: workflow.nodes.length,
@@ -812,13 +859,13 @@ export class OneShotWorkflowCodeAgent {
 				nodeCount: workflow.nodes.length,
 			});
 
-			// Validate (but don't fail on warnings)
-			debugLog('PARSE_VALIDATE', 'Validating workflow...');
+			// Also run JSON-based validation for additional checks
+			debugLog('PARSE_VALIDATE', 'Running JSON validation...');
 			const validateStartTime = Date.now();
 			const validationResult = validateWorkflow(workflow);
 			const validateDuration = Date.now() - validateStartTime;
 
-			debugLog('PARSE_VALIDATE', 'Validation complete', {
+			debugLog('PARSE_VALIDATE', 'JSON validation complete', {
 				validateDurationMs: validateDuration,
 				isValid: validationResult.valid,
 				errorCount: validationResult.errors.length,
@@ -826,7 +873,7 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			if (validationResult.errors.length > 0) {
-				debugLog('PARSE_VALIDATE', 'VALIDATION ERRORS', {
+				debugLog('PARSE_VALIDATE', 'JSON VALIDATION ERRORS', {
 					errors: validationResult.errors.map((e: { message: string; code?: string }) => ({
 						message: e.message,
 						code: e.code,
@@ -838,7 +885,7 @@ export class OneShotWorkflowCodeAgent {
 			}
 
 			if (validationResult.warnings.length > 0) {
-				debugLog('PARSE_VALIDATE', 'VALIDATION WARNINGS', {
+				debugLog('PARSE_VALIDATE', 'JSON VALIDATION WARNINGS', {
 					warnings: validationResult.warnings.map((w: { message: string; code?: string }) => ({
 						message: w.message,
 						code: w.code,

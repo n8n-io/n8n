@@ -164,7 +164,7 @@ export {
 
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
-export { parseWorkflowCode } from './parse-workflow-code';
+export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './parse-workflow-code';
 
 // Embedded SDK API content (for runtime use without disk reads)
 export { SDK_API_CONTENT } from './types/sdk-api-content';
