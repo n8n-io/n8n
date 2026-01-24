@@ -78,7 +78,7 @@ export class SpreadsheetFileV1 implements INodeType {
 					if (options.readAsString) xlsxOptions.type = 'string';
 
 					if (binaryData.id) {
-						const binaryPath = this.helpers.getBinaryPath(binaryData.id);
+						const binaryPath = await this.helpers.getBinaryPath(binaryData.id);
 						xlsxOptions.codepage = 65001; // utf8 codepage
 						workbook = xlsxReadFile(binaryPath, xlsxOptions);
 					} else {

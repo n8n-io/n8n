@@ -203,9 +203,34 @@ export abstract class BaseCommand<F = never> {
 		const binaryDataService = Container.get(BinaryDataService);
 		const isS3WriteMode = binaryDataConfig.mode === 's3';
 
-		const { DatabaseManager } = await import('@/binary-data/database.manager');
-		binaryDataService.setManager('database', Container.get(DatabaseManager));
+		// Register database loader (lazy)
+		binaryDataService.registerLoader('database', async () => {
+			const { DatabaseManager } = await import('@/binary-data/database.manager');
+			return Container.get(DatabaseManager);
+		});
 
+		// Register S3 loader (lazy)
+		binaryDataService.registerLoader('s3', async () => {
+			const objectStoreService = Container.get(ObjectStoreService);
+			await objectStoreService.init();
+			const { ObjectStoreManager } = await import('n8n-core/dist/binary-data/object-store.manager');
+			return new ObjectStoreManager(objectStoreService);
+		});
+
+		// Initialize the service (will eagerly load filesystem or database based on config)
+		await binaryDataService.init();
+
+		// If database is write mode, eagerly load it
+		if (binaryDataConfig.mode === 'database') {
+			try {
+				await binaryDataService.getManager('database');
+			} catch (error) {
+				this.logger.error('Failed to initialize database binary data manager');
+				throw error;
+			}
+		}
+
+		// If S3 is the write mode, verify license and eagerly load it
 		if (isS3WriteMode) {
 			const isLicensed = Container.get(License).isLicensed(LICENSE_FEATURES.BINARY_DATA_S3);
 			if (!isLicensed) {
@@ -214,25 +239,17 @@ export abstract class BaseCommand<F = never> {
 				);
 				process.exit(1);
 			}
-		}
 
-		// we always try to init S3 for reading - silently fail if not configured
-		try {
-			const objectStoreService = Container.get(ObjectStoreService);
-			await objectStoreService.init();
-			const { ObjectStoreManager } = await import('n8n-core/dist/binary-data/object-store.manager');
-			binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
-		} catch {
-			if (isS3WriteMode) {
+			// Eagerly load and verify S3 connection for write mode
+			try {
+				await binaryDataService.getManager('s3');
+			} catch (error) {
 				this.logger.error(
 					'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
 				);
 				process.exit(1);
 			}
-			// S3 not configured - users without S3 data are unaffected; users with S3 data will fail at runtime when reading
 		}
-
-		await binaryDataService.init();
 	}
 
 	protected async initDataDeduplicationService() {

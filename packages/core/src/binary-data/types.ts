@@ -68,6 +68,8 @@ export namespace BinaryData {
 		rename(oldFileId: string, newFileId: string): Promise<void>;
 	}
 
+	export type ManagerLoader = () => Promise<Manager>;
+
 	export type SigningPayload = {
 		id: string;
 	};
