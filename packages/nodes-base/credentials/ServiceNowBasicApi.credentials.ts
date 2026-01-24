@@ -33,12 +33,39 @@ export class ServiceNowBasicApi implements ICredentialType {
 			default: '',
 		},
 		{
+			displayName: 'Use custom host?',
+			name: 'useCustomHost',
+			type: 'boolean',
+			default: false,
+			description:
+				'Enable if your ServiceNow instance is hosted on a custom domain or behind a reverse-proxy',
+		},
+		{
+			displayName: 'Custom Host',
+			name: 'customHost',
+			type: 'string',
+			placeholder: 'https://sn.my-company.internal',
+			description: 'Full base-URL of the instance',
+			required: true,
+			default: '',
+			displayOptions: {
+				show: {
+					useCustomHost: [true],
+				},
+			},
+		},
+		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',
 			default: '',
 			hint: 'The subdomain can be extracted from the URL. If the URL is: https://dev99890.service-now.com the subdomain is dev99890',
 			required: true,
+			displayOptions: {
+				show: {
+					useCustomHost: [false],
+				},
+			},
 		},
 	];
 
@@ -54,7 +81,8 @@ export class ServiceNowBasicApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '=https://{{$credentials?.subdomain}}.service-now.com',
+			baseURL:
+				'={{ $credentials.useCustomHost ? $credentials.customHost.replace(/\\/$/, "") : `https://${$credentials.subdomain}.service-now.com` }}',
 			url: '/api/now/table/sys_user_role',
 		},
 	};
