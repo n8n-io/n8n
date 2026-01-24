@@ -11,6 +11,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { getModels } from './methods/loadOptions';
 
 export function tokensUsageParser(result: LLMResult): {
 	completionTokens: number;
@@ -38,6 +39,12 @@ export function tokensUsageParser(result: LLMResult): {
 }
 
 export class LmChatCohere implements INodeType {
+	methods = {
+		loadOptions: {
+			getModels,
+		},
+	};
+
 	description: INodeTypeDescription = {
 		displayName: 'Cohere Chat Model',
 		name: 'lmChatCohere',
@@ -81,44 +88,15 @@ export class LmChatCohere implements INodeType {
 		properties: [
 			getConnectionHintNoticeField(['ai_chain', 'ai_agent']),
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
 					'The model which will generate the completion. <a href="https://docs.cohere.com/docs/models">Learn more</a>.',
 				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/v1/models?page_size=100&endpoint=chat',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'models',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.name}}',
-											value: '={{$responseItem.name}}',
-											description: '={{$responseItem.description}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
+					loadOptionsMethod: 'getModels',
 				},
 				default: 'command-a-03-2025',
 			},
