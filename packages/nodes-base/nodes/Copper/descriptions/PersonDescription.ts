@@ -34,6 +34,11 @@ export const personOperations: INodeProperties[] = [
 				action: 'Get a person',
 			},
 			{
+				name: 'GetByEmail',
+				value: 'getByEmail',
+				action: 'Get a person by email',
+			},
+			{
 				name: 'Get Many',
 				value: 'getAll',
 				action: 'Get many people',
@@ -130,6 +135,24 @@ export const personFields: INodeProperties[] = [
 			show: {
 				resource: ['person'],
 				operation: ['get'],
+			},
+		},
+	},
+
+	// ----------------------------------------
+	//               person: getByEmail
+	// ----------------------------------------
+	{
+		displayName: 'Person Email',
+		name: 'personEmail',
+		description: 'Email of the person to retrieve',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['person'],
+				operation: ['getByEmail'],
 			},
 		},
 	},
