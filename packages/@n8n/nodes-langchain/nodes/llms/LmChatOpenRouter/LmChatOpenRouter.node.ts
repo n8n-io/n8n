@@ -227,8 +227,7 @@ export class LmChatOpenRouter implements INodeType {
 								name: 'allowFallbacks',
 								type: 'boolean',
 								default: true,
-								description:
-									'Whether to allow backup providers when the primary is unavailable',
+								description: 'Whether to allow backup providers when the primary is unavailable',
 							},
 							{
 								displayName: 'Require Parameters',
@@ -251,13 +250,29 @@ export class LmChatOpenRouter implements INodeType {
 									'Whether to use providers that may store data. Deny restricts to providers with zero data retention.',
 							},
 							{
+								displayName: 'Zero Data Retention (ZDR)',
+								name: 'zdr',
+								type: 'boolean',
+								default: false,
+								description:
+									'Whether to restrict routing to only providers with Zero Data Retention endpoints',
+							},
+							{
+								displayName: 'Only',
+								name: 'only',
+								type: 'string',
+								default: '',
+								placeholder: 'azure,anthropic',
+								description:
+									'Comma-separated list of provider slugs to allow for this request. Only these providers will be used. <a href="https://openrouter.ai/docs/guides/routing/provider-selection#allowing-only-specific-providers">Learn more</a>.',
+							},
+							{
 								displayName: 'Ignore',
 								name: 'ignore',
 								type: 'string',
 								default: '',
 								placeholder: 'anthropic,openai',
-								description:
-									'Comma-separated list of provider slugs to skip for this request',
+								description: 'Comma-separated list of provider slugs to skip for this request',
 							},
 							{
 								displayName: 'Sort',
@@ -298,6 +313,8 @@ export class LmChatOpenRouter implements INodeType {
 				allowFallbacks?: boolean;
 				requireParameters?: boolean;
 				dataCollection?: 'allow' | 'deny';
+				zdr?: boolean;
+				only?: string;
 				ignore?: string;
 				sort?: 'price' | 'throughput' | 'latency';
 			};
@@ -318,9 +335,12 @@ export class LmChatOpenRouter implements INodeType {
 		const provider: Record<string, unknown> = {};
 		if (options.providerRouting) {
 			const routing = options.providerRouting;
-			
+
 			if (routing.order) {
-				provider.order = routing.order.split(',').map((p) => p.trim()).filter((p) => p);
+				provider.order = routing.order
+					.split(',')
+					.map((p) => p.trim())
+					.filter((p) => p);
 			}
 			if (routing.allowFallbacks !== undefined) {
 				provider.allow_fallbacks = routing.allowFallbacks;
@@ -331,8 +351,20 @@ export class LmChatOpenRouter implements INodeType {
 			if (routing.dataCollection) {
 				provider.data_collection = routing.dataCollection;
 			}
+			if (routing.zdr !== undefined) {
+				provider.zdr = routing.zdr;
+			}
+			if (routing.only) {
+				provider.only = routing.only
+					.split(',')
+					.map((p) => p.trim())
+					.filter((p) => p);
+			}
 			if (routing.ignore) {
-				provider.ignore = routing.ignore.split(',').map((p) => p.trim()).filter((p) => p);
+				provider.ignore = routing.ignore
+					.split(',')
+					.map((p) => p.trim())
+					.filter((p) => p);
 			}
 			if (routing.sort) {
 				provider.sort = routing.sort;
@@ -345,7 +377,7 @@ export class LmChatOpenRouter implements INodeType {
 			modelKwargs.response_format = { type: options.responseFormat };
 		}
 		if (Object.keys(provider).length > 0) {
-			modelKwargs.provider = provider;	
+			modelKwargs.provider = provider;
 		}
 
 		const model = new ChatOpenAI({
