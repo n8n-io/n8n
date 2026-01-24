@@ -109,6 +109,11 @@ describe('Microsoft Entra Node', () => {
 						.mockReturnValue(microsoftEntraApiResponse.metadata.groups),
 				},
 				getCurrentNodeParameter: jest.fn(),
+				getCredentials: jest.fn().mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+				}),
 			} as unknown as ILoadOptionsFunctions;
 			const node = new MicrosoftEntra();
 
@@ -125,6 +130,11 @@ describe('Microsoft Entra Node', () => {
 						.mockReturnValue(microsoftEntraApiResponse.metadata.users),
 				},
 				getCurrentNodeParameter: jest.fn(),
+				getCredentials: jest.fn().mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+				}),
 			} as unknown as ILoadOptionsFunctions;
 			const node = new MicrosoftEntra();
 
@@ -148,6 +158,11 @@ describe('Microsoft Entra Node', () => {
 				helpers: {
 					requestWithAuthentication: mockRequestWithAuthentication,
 				},
+				getCredentials: jest.fn().mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+				}),
 			} as unknown as ILoadOptionsFunctions;
 			const node = new MicrosoftEntra();
 
@@ -182,6 +197,11 @@ describe('Microsoft Entra Node', () => {
 				helpers: {
 					requestWithAuthentication: mockRequestWithAuthentication,
 				},
+				getCredentials: jest.fn().mockResolvedValue({
+					oauthTokenData: {
+						access_token: 'test-access-token',
+					},
+				}),
 			} as unknown as ILoadOptionsFunctions;
 			const node = new MicrosoftEntra();
 

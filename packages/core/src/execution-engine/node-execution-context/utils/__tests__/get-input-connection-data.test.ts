@@ -1,4 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
+import { DynamicStructuredTool } from '@langchain/core/tools';
 import { mock } from 'jest-mock-extended';
 import type {
 	INode,
@@ -14,11 +15,27 @@ import type {
 	IRunData,
 	ITaskData,
 	EngineRequest,
+	WorkflowExecuteMode,
+	CloseFunction,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { ExecuteContext } from '../../execute-context';
-import { makeHandleToolInvocation } from '../get-input-connection-data';
+import { SupplyDataContext } from '../../supply-data-context';
+import { StructuredToolkit } from '../ai-tool-types';
+import {
+	createHitlToolkit,
+	createHitlToolSupplyData,
+	extendResponseMetadata,
+	makeHandleToolInvocation,
+} from '../get-input-connection-data';
+
+// Mock getSchema
+jest.mock('../create-node-as-tool', () => ({
+	...jest.requireActual('../create-node-as-tool'),
+	getSchema: jest.fn(),
+}));
 
 describe('getInputConnectionData', () => {
 	const agentNode = mock<INode>({
@@ -392,7 +409,11 @@ describe('getInputConnectionData', () => {
 		const supplyData = jest.fn().mockResolvedValue({ response: mockTool });
 		const toolNodeType = mock<INodeType>({ supplyData });
 
-		const secondToolNode = mock<INode>({ name: 'test.secondTool', disabled: false });
+		const secondToolNode = mock<INode>({
+			name: 'Second Tool',
+			type: 'test.secondTool',
+			disabled: false,
+		});
 		const secondMockTool = mock<Tool>();
 		const secondToolNodeType = mock<INodeType>({
 			supplyData: jest.fn().mockResolvedValue({ response: secondMockTool }),
@@ -1082,5 +1103,467 @@ describe('makeHandleToolInvocation', () => {
 
 			sleepWithAbortSpy.mockRestore();
 		});
+	});
+});
+
+describe('HITL Tool handling', () => {
+	const agentNode = mock<INode>({
+		name: 'Test Agent',
+		type: 'test.agent',
+		parameters: {},
+	});
+	const agentNodeType = mock<INodeType>({
+		description: {
+			inputs: [],
+		},
+	});
+	const nodeTypes = mock<INodeTypes>();
+	const workflow = mock<Workflow>({
+		id: 'test-workflow',
+		active: false,
+		nodeTypes,
+	});
+	const runExecutionData = mock<IRunExecutionData>({
+		resultData: { runData: {} },
+	});
+	const connectionInputData = [] as INodeExecutionData[];
+	const inputData = {} as ITaskDataConnections;
+	const executeData = {} as IExecuteData;
+
+	const hooks = mock<Required<IWorkflowExecuteAdditionalData['hooks']>>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+
+	let executeContext: ExecuteContext;
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+
+		executeContext = new ExecuteContext(
+			workflow,
+			agentNode,
+			additionalData,
+			'internal',
+			runExecutionData,
+			0,
+			connectionInputData,
+			inputData,
+			executeData,
+			[],
+		);
+
+		jest.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
+		nodeTypes.getByNameAndVersion
+			.calledWith(agentNode.type, expect.anything())
+			.mockReturnValue(agentNodeType);
+		jest.spyOn(executeContext, 'getConnections').mockReturnValue([]);
+	});
+
+	describe('isHitlTool detection', () => {
+		it('should not treat regular tools as HITL tools', async () => {
+			const regularToolNode = mock<INode>({
+				name: 'Regular Tool',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: false,
+			});
+
+			const mockTool = mock<Tool>();
+
+			const regularNodeType = mock<INodeType>({
+				supplyData: jest.fn().mockResolvedValue({ response: mockTool }),
+			});
+
+			agentNodeType.description.inputs = [
+				{
+					type: NodeConnectionTypes.AiTool,
+					required: true,
+				},
+			];
+
+			nodeTypes.getByNameAndVersion
+				.calledWith(regularToolNode.type, expect.anything())
+				.mockReturnValue(regularNodeType);
+			workflow.getParentNodes
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
+				.mockReturnValue([regularToolNode.name]);
+			workflow.getNode.calledWith(regularToolNode.name).mockReturnValue(regularToolNode);
+			jest
+				.spyOn(executeContext, 'getConnections')
+				.mockReturnValueOnce([
+					[{ node: regularToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				]);
+
+			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			expect(result).toEqual([mockTool]);
+			expect(regularNodeType.supplyData).toHaveBeenCalled();
+		});
+
+		it('should identify HITL tools by type suffix ending in HitlTool', () => {
+			const hitlTypes = [
+				'@n8n/n8n-nodes-langchain.toolWorkflowHitlTool',
+				'test.HitlTool',
+				'myPackage.customHitlTool',
+			];
+
+			const nonHitlTypes = [
+				'n8n-nodes-base.httpRequest',
+				'@n8n/n8n-nodes-langchain.toolWorkflow',
+				'test.regularTool',
+			];
+
+			for (const type of hitlTypes) {
+				expect(type.endsWith('HitlTool')).toBe(true);
+			}
+
+			for (const type of nonHitlTypes) {
+				expect(type.endsWith('HitlTool')).toBe(false);
+			}
+		});
+	});
+
+	describe('HITL tool metadata wrapping', () => {
+		it('should create wrapped tools with correct metadata structure', () => {
+			const originalSourceNodeName = 'Original Tool Node';
+			const hitlNodeName = 'HITL Node';
+
+			const wrappedTool = new DynamicStructuredTool({
+				name: 'my_tool',
+				description: 'Tool description',
+				schema: z.object({ query: z.string() }),
+				func: async () => '',
+				metadata: {
+					sourceNodeName: hitlNodeName,
+					gatedToolNodeName: originalSourceNodeName,
+				},
+			});
+
+			expect(wrappedTool.metadata?.sourceNodeName).toBe(hitlNodeName);
+			expect(wrappedTool.metadata?.gatedToolNodeName).toBe(originalSourceNodeName);
+		});
+	});
+});
+
+describe('createHitlToolkit', () => {
+	const { getSchema } = require('../create-node-as-tool');
+	const hitlNode = mock<INode>({
+		name: 'HITL Node',
+		type: 'test.HitlTool',
+	});
+
+	const mockHitlSchema = z.object({
+		approvalRequired: z.boolean(),
+		message: z.string(),
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		getSchema.mockReturnValue(mockHitlSchema);
+	});
+
+	it('should return empty toolkit when input is undefined', () => {
+		const result = createHitlToolkit(undefined, hitlNode);
+
+		expect(result).toBeInstanceOf(StructuredToolkit);
+		expect(result.tools).toHaveLength(0);
+		expect(getSchema).toHaveBeenCalledWith(hitlNode);
+	});
+
+	it('should wrap a single tool with HITL metadata', () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool description',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Original Node' },
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+
+		expect(result).toBeInstanceOf(StructuredToolkit);
+		expect(result.tools).toHaveLength(1);
+
+		const wrappedTool = result.tools[0];
+		expect(wrappedTool.name).toBe('test_tool');
+		expect(wrappedTool.description).toBe('Test tool description');
+		expect(wrappedTool.metadata?.sourceNodeName).toBe('HITL Node');
+		expect(wrappedTool.metadata?.gatedToolNodeName).toBe('Original Node');
+	});
+
+	it('should wrap tool schema with toolParameters and hitlParameters', () => {
+		const originalSchema = z.object({ input: z.string(), count: z.number() });
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: originalSchema,
+			func: async () => 'result',
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+		const wrappedTool = result.tools[0];
+
+		// The schema should be wrapped in an object with toolParameters and hitlParameters
+		expect(wrappedTool.schema).toBeDefined();
+		// Verify it's a Zod object schema
+		const schemaShape = (wrappedTool.schema as z.ZodObject<z.ZodRawShape>).shape;
+		expect(schemaShape).toHaveProperty('toolParameters');
+		expect(schemaShape).toHaveProperty('hitlParameters');
+	});
+
+	it('should handle array of tools', () => {
+		const tool1 = new DynamicStructuredTool({
+			name: 'tool_1',
+			description: 'First tool',
+			schema: z.object({ a: z.string() }),
+			func: async () => 'result1',
+			metadata: { sourceNodeName: 'Node 1' },
+		});
+
+		const tool2 = new DynamicStructuredTool({
+			name: 'tool_2',
+			description: 'Second tool',
+			schema: z.object({ b: z.number() }),
+			func: async () => 'result2',
+			metadata: { sourceNodeName: 'Node 2' },
+		});
+
+		const result = createHitlToolkit([tool1, tool2], hitlNode);
+
+		expect(result.tools).toHaveLength(2);
+		expect(result.tools[0].name).toBe('tool_1');
+		expect(result.tools[1].name).toBe('tool_2');
+		expect(result.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[1].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[0].metadata?.gatedToolNodeName).toBe('Node 1');
+		expect(result.tools[1].metadata?.gatedToolNodeName).toBe('Node 2');
+	});
+
+	it('should extract tools from StructuredToolkit', () => {
+		const tool1 = new DynamicStructuredTool({
+			name: 'tool_1',
+			description: 'First tool',
+			schema: z.object({ a: z.string() }),
+			func: async () => 'result1',
+			metadata: { sourceNodeName: 'Node 1' },
+		});
+
+		const tool2 = new DynamicStructuredTool({
+			name: 'tool_2',
+			description: 'Second tool',
+			schema: z.object({ b: z.number() }),
+			func: async () => 'result2',
+			metadata: { sourceNodeName: 'Node 2' },
+		});
+
+		const toolkit = new StructuredToolkit([tool1, tool2]);
+		const result = createHitlToolkit(toolkit, hitlNode);
+
+		expect(result.tools).toHaveLength(2);
+		expect(result.tools[0].name).toBe('tool_1');
+		expect(result.tools[1].name).toBe('tool_2');
+		expect(result.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[1].metadata?.sourceNodeName).toBe('HITL Node');
+	});
+
+	it('should handle mixed array of tools and toolkits', () => {
+		const standaloneTool = new DynamicStructuredTool({
+			name: 'standalone_tool',
+			description: 'Standalone tool',
+			schema: z.object({ x: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Standalone Node' },
+		});
+
+		const toolkitTool1 = new DynamicStructuredTool({
+			name: 'toolkit_tool_1',
+			description: 'Toolkit tool 1',
+			schema: z.object({ y: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Toolkit Node 1' },
+		});
+
+		const toolkitTool2 = new DynamicStructuredTool({
+			name: 'toolkit_tool_2',
+			description: 'Toolkit tool 2',
+			schema: z.object({ z: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Toolkit Node 2' },
+		});
+
+		const toolkit = new StructuredToolkit([toolkitTool1, toolkitTool2]);
+
+		const result = createHitlToolkit([standaloneTool, toolkit], hitlNode);
+
+		expect(result.tools).toHaveLength(3);
+		expect(result.tools[0].name).toBe('standalone_tool');
+		expect(result.tools[1].name).toBe('toolkit_tool_1');
+		expect(result.tools[2].name).toBe('toolkit_tool_2');
+
+		// All should have HITL node as sourceNodeName
+		expect(result.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[1].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[2].metadata?.sourceNodeName).toBe('HITL Node');
+
+		// Each should preserve original node name as gatedToolNodeName
+		expect(result.tools[0].metadata?.gatedToolNodeName).toBe('Standalone Node');
+		expect(result.tools[1].metadata?.gatedToolNodeName).toBe('Toolkit Node 1');
+		expect(result.tools[2].metadata?.gatedToolNodeName).toBe('Toolkit Node 2');
+	});
+
+	it('should handle tool with non-Zod schema', () => {
+		// Non-Zod schema (e.g., JSON Schema)
+		const nonZodSchema = { type: 'object', properties: { input: { type: 'string' } } };
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: nonZodSchema as unknown as z.ZodObject<z.ZodRawShape>,
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Original Node' },
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+
+		expect(result.tools).toHaveLength(1);
+		const wrappedTool = result.tools[0];
+		// Non-Zod schemas should be passed through unchanged
+		expect(wrappedTool.schema).toEqual({
+			type: 'object',
+			properties: { input: { type: 'string' } },
+		});
+		expect(wrappedTool.metadata?.sourceNodeName).toBe('HITL Node');
+		expect(wrappedTool.metadata?.gatedToolNodeName).toBe('Original Node');
+	});
+
+	it('should handle tool without metadata', () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+
+		expect(result.tools).toHaveLength(1);
+		const wrappedTool = result.tools[0];
+		expect(wrappedTool.metadata?.sourceNodeName).toBe('HITL Node');
+		expect(wrappedTool.metadata?.gatedToolNodeName).toBeUndefined();
+	});
+
+	it('should create wrapped tools with empty func that returns empty string', async () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async (input) => `Processed: ${input.input}`,
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+		const wrappedTool = result.tools[0];
+
+		// The wrapped tool should have a no-op func that returns empty string
+		const funcResult = await wrappedTool.func({ input: 'test' });
+		expect(funcResult).toBe('');
+	});
+});
+
+describe('createHitlToolSupplyData', () => {
+	const { getSchema } = require('../create-node-as-tool');
+	const hitlNode = mock<INode>({
+		name: 'HITL Node',
+		type: 'test.HitlTool',
+	});
+	const parentNode = mock<INode>({
+		name: 'Parent Agent',
+		type: 'test.agent',
+	});
+	const workflow = mock<Workflow>({
+		id: 'test-workflow',
+		active: false,
+		nodeTypes: mock<INodeTypes>(),
+	});
+	const runExecutionData = mock<IRunExecutionData>({
+		resultData: { runData: {} },
+	});
+	const connectionInputData = [] as INodeExecutionData[];
+	const parentInputData = {} as ITaskDataConnections;
+	const executeData = {} as IExecuteData;
+	const hooks = mock<Required<IWorkflowExecuteAdditionalData['hooks']>>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+	const mode: WorkflowExecuteMode = 'internal';
+	const closeFunctions: CloseFunction[] = [];
+	const itemIndex = 0;
+	const parentRunIndex = 0;
+	const abortSignal = mock<AbortSignal>();
+
+	const mockHitlSchema = z.object({
+		approvalRequired: z.boolean(),
+		message: z.string(),
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		getSchema.mockReturnValue(mockHitlSchema);
+		jest.spyOn(SupplyDataContext.prototype, 'getInputConnectionData');
+	});
+
+	it('should create supply data with single tool wrapped in toolkit', async () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool description',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Original Tool Node' },
+		});
+
+		(SupplyDataContext.prototype.getInputConnectionData as jest.Mock).mockResolvedValue(
+			originalTool,
+		);
+		const result = await createHitlToolSupplyData(
+			hitlNode,
+			workflow,
+			runExecutionData,
+			parentRunIndex,
+			connectionInputData,
+			parentInputData,
+			additionalData,
+			executeData,
+			mode,
+			closeFunctions,
+			itemIndex,
+			abortSignal,
+			parentNode,
+		);
+
+		expect(result).toHaveProperty('response');
+		const toolkit = result.response as StructuredToolkit;
+		expect(toolkit).toBeInstanceOf(StructuredToolkit);
+		expect(toolkit.tools).toHaveLength(1);
+		expect(toolkit.tools[0].name).toBe('test_tool');
+		expect(toolkit.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(toolkit.tools[0].metadata?.gatedToolNodeName).toBe('Original Tool Node');
+	});
+});
+
+describe('extendResponseMetadata', () => {
+	it('should extend metadata for toolkits', () => {
+		const tool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+		const toolkit = new StructuredToolkit([tool]);
+		extendResponseMetadata(toolkit, { name: 'HITL Node' } as INode);
+		expect(toolkit.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+	});
+	it('should extend metadata for tools', () => {
+		const tool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+		extendResponseMetadata(tool, { name: 'HITL Node' } as INode);
+		expect(tool.metadata?.sourceNodeName).toBe('HITL Node');
 	});
 });

@@ -1,8 +1,16 @@
 import { LoginRequestDto, ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest, GLOBAL_OWNER_ROLE } from '@n8n/db';
-import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import {
+	Body,
+	createBodyKeyedRateLimiter,
+	Get,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { isEmail } from 'class-validator';
 import { Response } from 'express';
@@ -26,7 +34,6 @@ import {
 	isSamlCurrentAuthenticationMethod,
 	isSsoCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
-import { Time } from '@n8n/constants';
 
 @RestController()
 export class AuthController {
@@ -50,12 +57,11 @@ export class AuthController {
 			limit: 1000,
 			windowMs: 5 * Time.minutes.toMilliseconds,
 		},
-		keyedRateLimit: {
+		keyedRateLimit: createBodyKeyedRateLimiter<LoginRequestDto>({
 			limit: 5,
 			windowMs: 1 * Time.minutes.toMilliseconds,
-			source: 'body',
-			field: 'emailOrLdapLoginId' satisfies keyof LoginRequestDto,
-		},
+			field: 'emailOrLdapLoginId',
+		}),
 	})
 	async login(
 		req: AuthlessRequest,
@@ -91,7 +97,7 @@ export class AuthController {
 				user = preliminaryUser;
 				usedAuthenticationMethod = 'email';
 			} else {
-				const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
+				const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
 				user = await Container.get(LdapService).handleLdapLogin(emailOrLdapLoginId, password);
 			}
 		} else {
