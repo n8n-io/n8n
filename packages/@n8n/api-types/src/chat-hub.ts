@@ -29,7 +29,17 @@ export const chatHubLLMProviderSchema = z.enum([
 	'cohere',
 	'mistralCloud',
 ]);
+
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
+
+export type ChatHubAgentKnowledgeItem =
+	| { type: 'file'; binaryData: IBinaryData }
+	| {
+			type: 'embedding';
+			provider: ChatHubLLMProvider;
+			fileName: string;
+			mimeType: string;
+	  };
 
 /**
  * Schema for icon or emoji representation
@@ -446,7 +456,7 @@ export interface ChatHubAgentDto {
 	provider: ChatHubLLMProvider;
 	model: string;
 	tools: INode[];
-	files: IBinaryData[];
+	files: ChatHubAgentKnowledgeItem[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -472,7 +482,8 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	provider: chatHubLLMProviderSchema.optional(),
 	model: z.string().max(64).optional(),
 	tools: z.array(INodeSchema).optional(),
-	files: z.array(chatAttachmentSchema).optional(),
+	newFiles: z.array(chatAttachmentSchema),
+	keepFileIndices: z.array(z.number()),
 }) {}
 
 export interface MessageChunk {

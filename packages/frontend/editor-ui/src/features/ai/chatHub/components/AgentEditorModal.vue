@@ -14,6 +14,7 @@ import {
 	type ChatHubConversationModel,
 	type ChatHubProvider,
 	type ChatModelDto,
+	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import {
 	N8nButton,
@@ -76,7 +77,8 @@ const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const isLoadingAgents = ref(false);
 const nameInputRef = useTemplateRef('nameInput');
 const icon = ref<AgentIconOrEmoji>(personalAgentDefaultIcon);
-const files = ref<IBinaryData[]>([]);
+const savedFiles = ref<ChatHubAgentKnowledgeItem[]>([]);
+const newFiles = ref<IBinaryData[]>([]);
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInput');
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
@@ -126,7 +128,10 @@ const canSelectTools = computed(
 );
 
 const hasPdfFiles = computed(() => {
-	return files.value.some((file) => file.mimeType === 'application/pdf');
+	return savedFiles.value.some(
+		(f) =>
+			(f.type === 'file' && f.binaryData.mimeType === 'application/pdf') || f.type === 'embedding',
+	);
 });
 
 const isProviderChanging = computed(() => {
@@ -166,7 +171,7 @@ watch(
 		systemPrompt.value = agent.systemPrompt;
 		selectedModel.value = { provider: agent.provider, model: agent.model };
 		tools.value = agent.tools || [];
-		files.value = agent.files;
+		savedFiles.value = agent.files;
 
 		if (agent.credentialId) {
 			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
@@ -231,17 +236,32 @@ async function onSave() {
 			credentialId: credentialIdForSelectedModelProvider.value,
 			tools: tools.value,
 			icon: icon.value,
-			files: files.value.map((file) => ({ fileName: '', ...file })),
 		};
 
 		if (isEditMode.value && props.data.agentId) {
-			await chatStore.updateCustomAgent(props.data.agentId, payload, props.data.credentials);
+			await chatStore.updateCustomAgent(
+				props.data.agentId,
+				{
+					...payload,
+					keepFileIndices:
+						customAgent.value?.files.flatMap((f, i) => (savedFiles.value.includes(f) ? [i] : [])) ??
+						[],
+					newFiles: newFiles.value.map((f) => ({ fileName: '', ...f })),
+				},
+				props.data.credentials,
+			);
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.update'),
 				type: 'success',
 			});
 		} else {
-			const agent = await chatStore.createCustomAgent(payload, props.data.credentials);
+			const agent = await chatStore.createCustomAgent(
+				{
+					...payload,
+					files: newFiles.value.map((f) => ({ fileName: '', ...f })),
+				},
+				props.data.credentials,
+			);
 			props.data.onCreateCustomAgent?.(agent);
 
 			toast.showMessage({
@@ -330,7 +350,7 @@ async function onFilesDropped(droppedFiles: File[]) {
 		acceptedFiles.map(async (f) => await convertFileToBinaryData(f)),
 	);
 
-	files.value = [...files.value, ...binaryItems];
+	newFiles.value = [...newFiles.value, ...binaryItems];
 }
 
 async function handleFileSelect(event: Event) {
@@ -350,14 +370,18 @@ async function handleFileSelect(event: Event) {
 		acceptedFiles.map(async (f) => await convertFileToBinaryData(f)),
 	);
 
-	files.value = [...files.value, ...binaryItems];
+	newFiles.value = [...newFiles.value, ...binaryItems];
 
 	// Reset input value to allow selecting the same file again
 	target.value = '';
 }
 
-function removeFile(index: number) {
-	files.value = files.value.filter((_, i) => i !== index);
+function removeExistingFile(index: number) {
+	savedFiles.value = savedFiles.value.filter((_, i) => i !== index);
+}
+
+function removeNewFile(index: number) {
+	newFiles.value = newFiles.value.filter((_, i) => i !== index);
 }
 
 function handleClickUploadArea() {
@@ -366,6 +390,12 @@ function handleClickUploadArea() {
 
 function handleFileClick(index: number) {
 	if (!isEditMode.value || !props.data.agentId) {
+		return;
+	}
+
+	const file = savedFiles.value[index];
+
+	if (file.type !== 'file') {
 		return;
 	}
 
@@ -522,9 +552,27 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 					/>
 					<div :class="$style.filesContainer">
 						<div
-							v-for="(file, index) in files"
-							:key="String(index)"
-							:class="$style.fileBar"
+							v-for="(file, index) in savedFiles"
+							:key="`existing-file-${index}`"
+							:class="[$style.fileBar, { [$style.embeddingFile]: file.type === 'embedding' }]"
+							@click="handleFileClick(index)"
+						>
+							<N8nIcon size="medium" icon="file" />
+							<span :class="$style.fileName">
+								{{ file.type === 'file' ? file.binaryData.fileName : file.fileName }}
+							</span>
+							<N8nIconButton
+								icon="trash-2"
+								type="tertiary"
+								size="small"
+								:class="$style.removeButton"
+								@click.stop="removeExistingFile(index)"
+							/>
+						</div>
+						<div
+							v-for="(file, index) in newFiles"
+							:key="`new-file-${index}`"
+							:class="[$style.fileBar, $style.newFile]"
 							@click="handleFileClick(index)"
 						>
 							<N8nIcon size="medium" icon="file" />
@@ -536,7 +584,7 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 								type="tertiary"
 								size="small"
 								:class="$style.removeButton"
-								@click.stop="removeFile(index)"
+								@click.stop="removeNewFile(index)"
 							/>
 						</div>
 						<N8nButton
@@ -688,5 +736,10 @@ const fileDrop = useFileDrop(true, onFilesDropped);
 
 .credentialPicker {
 	flex: 1;
+}
+
+.newFile,
+.embeddingFile {
+	cursor: default;
 }
 </style>

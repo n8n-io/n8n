@@ -4,6 +4,7 @@ import {
 	type ChatHubBaseLLMModel,
 	type ChatHubInputModality,
 	type ChatModelMetadataDto,
+	type ChatHubAgentKnowledgeItem,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -475,7 +476,10 @@ export class ChatHubWorkflowService {
 		attachments: IBinaryData[],
 	) {
 		const chatTriggerNode = this.buildChatTriggerNode();
-		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(humanMessage, attachments);
+		const titleGeneratorAgentNode = this.buildTitleGeneratorAgentNode(
+			humanMessage,
+			attachments.map((binaryData) => ({ type: 'file', binaryData })),
+		);
 		const modelNode = this.buildModelNode(credentials, model);
 
 		const nodes: INode[] = [chatTriggerNode, titleGeneratorAgentNode, modelNode];
@@ -565,9 +569,10 @@ If the user asks you to generate or edit an image (or other media), explain that
 
 If context files are provided by the user,
 - Take them into account for generating relevant answers.
-- Do NOT proactively analyze, summarize or explain them until requested.
+- Do NOT proactively mention, analyze, summarize or explain them until requested.
 
 BAD: "I've received three files: [list and summary]"
+BAD: "I'll use ${NODE_NAMES.VECTOR_STORE_QUESTION_TOOL} to answer your questions."
 GOOD: "Hello! How can I help you?"
 `;
 	}
@@ -783,7 +788,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 	async buildMessageValuesWithAttachments(
 		history: ChatHubMessage[],
 		model: ChatHubBaseLLMModel,
-		contextFiles: IBinaryData[],
+		contextFiles: ChatHubAgentKnowledgeItem[],
 	): Promise<MessageRecord[]> {
 		const metadata = getModelMetadata(model.provider, model.model);
 
@@ -830,7 +835,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 			// Add attachments if within size limit
 			for (const attachment of attachments) {
 				const attachmentBlocks = await this.buildContentBlockForAttachment(
-					attachment,
+					{ type: 'file', binaryData: attachment },
 					currentTotalSize,
 					maxTotalPayloadSize,
 					metadata,
@@ -883,7 +888,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 	}
 
 	private async buildContentBlockForAttachment(
-		attachment: IBinaryData,
+		file: ChatHubAgentKnowledgeItem,
 		currentTotalSize: number,
 		maxTotalPayloadSize: number,
 		modelMetadata: ChatModelMetadataDto,
@@ -897,14 +902,16 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				throw new TotalFileSizeExceededError();
 			}
 
-			if (attachment.mimeType === 'application/pdf') {
+			if (file.type === 'embedding') {
 				return [
 					{
 						type: 'text',
-						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\nContent: \nUse Vector Store Question Tool to query this document`,
+						text: `${prefix}: ${file.fileName ?? 'attachment'}\nContent: \nUse ${NODE_NAMES.VECTOR_STORE_QUESTION_TOOL} to query this document`,
 					},
 				];
 			}
+
+			const attachment = file.binaryData;
 
 			if (this.isTextFile(attachment.mimeType)) {
 				const buffer = await this.chatHubAttachmentService.getAsBuffer(attachment);
@@ -939,11 +946,14 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				{ type: 'image_url', image_url: url },
 			];
 		} catch (e) {
+			const fileName =
+				file.type === 'embedding' ? file.fileName : (file.binaryData.fileName ?? 'attachment');
+
 			if (e instanceof TotalFileSizeExceededError) {
 				return [
 					{
 						type: 'text',
-						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\n(Content omitted due to size limit)`,
+						text: `${prefix}: ${fileName}\n(Content omitted due to size limit)`,
 					},
 				];
 			}
@@ -952,7 +962,7 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 				return [
 					{
 						type: 'text',
-						text: `${prefix}: ${attachment.fileName ?? 'attachment'}\n(Unsupported file type)`,
+						text: `${prefix}: ${fileName}\n(Unsupported file type)`,
 					},
 				];
 			}
@@ -1002,8 +1012,14 @@ ${this.getSystemMessageMetadata(timeZone)}`;
 		};
 	}
 
-	private buildTitleGeneratorAgentNode(message: string, attachments: IBinaryData[]): INode {
-		const files = attachments.map((attachment) => `[file: "${attachment.fileName}"]`);
+	private buildTitleGeneratorAgentNode(
+		message: string,
+		attachments: ChatHubAgentKnowledgeItem[],
+	): INode {
+		const files = attachments.map(
+			(attachment) =>
+				`[file: "${attachment.type === 'embedding' ? attachment.fileName : (attachment.binaryData.fileName ?? 'attachment')}"]`,
+		);
 
 		return {
 			parameters: {
@@ -1056,19 +1072,16 @@ Respond the title only:`,
 		return [embeddingsModelNode, vectorStoreNode, vectorStoreQuestionToolNode];
 	}
 
-	private buildEmbeddingsModelNode({
-		embeddingProvider,
-		embeddingCredentialId,
-	}: VectorStoreSearchOptions): INode {
-		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[embeddingProvider];
+	private buildEmbeddingsModelNode({ embeddingModel: embedding }: VectorStoreSearchOptions): INode {
+		const embeddingsNodeType = EMBEDDINGS_NODE_TYPE_MAP[embedding.provider];
 
 		if (!embeddingsNodeType) {
 			throw new BadRequestError(
-				`Embeddings are not supported for provider '${embeddingProvider}'. Please configure an embedding provider for this agent.`,
+				`Embeddings are not supported for provider '${embedding.provider}'. Please configure an embedding provider for this agent.`,
 			);
 		}
 
-		const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[embeddingProvider];
+		const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[embedding.provider];
 
 		return {
 			parameters: {
@@ -1081,7 +1094,7 @@ Respond the title only:`,
 			name: NODE_NAMES.EMBEDDINGS_MODEL,
 			credentials: {
 				[credentialType]: {
-					id: embeddingCredentialId,
+					id: embedding.credentialId,
 					name: credentialType,
 				},
 			},
@@ -1120,7 +1133,7 @@ Respond the title only:`,
 		};
 	}
 
-	async createDocumentsInsertionWorkflow(
+	async createEmbeddingsInsertionWorkflow(
 		user: User,
 		projectId: string,
 		attachments: IBinaryData[],
@@ -1313,13 +1326,13 @@ Respond the title only:`,
 		});
 
 		if (!executionEntity) {
-			throw new BadRequestError('Failed to insert documents: execution not found');
+			throw new BadRequestError('Execution not found');
 		}
 
 		if (executionEntity.status !== 'success') {
 			const errorMessage = executionEntity.data.resultData.error?.message ?? 'Unknown error';
 
-			throw new BadRequestError(`Failed to insert documents: ${errorMessage}`);
+			throw new BadRequestError(errorMessage);
 		}
 	}
 

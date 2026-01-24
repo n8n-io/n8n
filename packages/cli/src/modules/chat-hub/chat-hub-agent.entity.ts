@@ -1,7 +1,11 @@
-import type { ChatHubLLMProvider, AgentIconOrEmoji } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	AgentIconOrEmoji,
+	ChatHubAgentKnowledgeItem,
+} from '@n8n/api-types';
 import { User, CredentialsEntity, JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
-import type { IBinaryData, INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
 
 export interface IChatHubAgent {
 	id: string;
@@ -16,9 +20,7 @@ export interface IChatHubAgent {
 	provider: ChatHubLLMProvider;
 	model: string;
 	tools: INode[];
-	files: IBinaryData[];
-	embeddingProvider: ChatHubLLMProvider | null;
-	embeddingCredentialId: string | null;
+	files: ChatHubAgentKnowledgeItem[];
 }
 
 @Entity({ name: 'chat_hub_agents' })
@@ -95,21 +97,9 @@ export class ChatHubAgent extends WithTimestamps {
 	tools: INode[];
 
 	/**
-	 * The files attached to the agent as JSON `IBinaryData` definitions.
+	 * The files attached to the agent.
+	 * Can be active files with binary data or embedded PDFs (embeddings only).
 	 */
 	@JsonColumn({ default: '[]' })
-	files: IBinaryData[];
-
-	/**
-	 * The embedding provider used for the agent's files.
-	 * This ensures query embeddings use the same provider as document embeddings.
-	 */
-	@Column({ type: 'varchar', length: 16, nullable: true })
-	embeddingProvider: ChatHubLLMProvider | null;
-
-	/**
-	 * ID of the credential used for the embedding provider.
-	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	embeddingCredentialId: string | null;
+	files: ChatHubAgentKnowledgeItem[];
 }

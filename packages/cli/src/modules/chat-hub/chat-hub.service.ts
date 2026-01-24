@@ -598,6 +598,23 @@ export class ChatHubService {
 		};
 
 		const { tools } = agent;
+		const knowledgeItems = agent.files.filter((f) => f.type === 'embedding');
+		const embeddingModel =
+			agent.credentialId && knowledgeItems.length > 0
+				? await this.chatHubAgentService.determineEmbeddingProvider(
+						user,
+						{ provider: agent.provider, credentialId: agent.credentialId },
+						knowledgeItems[0].provider,
+					)
+				: null;
+
+		for (const item of knowledgeItems) {
+			if (item.provider !== embeddingModel?.provider) {
+				throw new BadRequestError(
+					`Credential for processing agent's file knowledge is missing. Configure credential for ${item.provider} or remove '${item.fileName}' from agent.`,
+				);
+			}
+		}
 
 		return await this.prepareBaseChatWorkflow(
 			user,
@@ -612,12 +629,9 @@ export class ChatHubService {
 			input,
 			systemMessage,
 			tools,
-			agent.embeddingProvider &&
-				agent.embeddingCredentialId &&
-				agent.files.some((c) => c.mimeType === 'application/pdf')
+			knowledgeItems.length > 0 && embeddingModel
 				? {
-						embeddingCredentialId: agent.embeddingCredentialId,
-						embeddingProvider: agent.embeddingProvider,
+						embeddingModel,
 						memoryKey: this.chatHubAgentService.getAgentMemoryKey(user.id, agent.id),
 					}
 				: null,

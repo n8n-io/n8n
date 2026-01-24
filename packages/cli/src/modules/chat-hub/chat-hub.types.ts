@@ -101,11 +101,15 @@ export type PreparedChatWorkflow = {
 
 export interface VectorStoreSearchOptions {
 	memoryKey: string;
-	embeddingProvider: ChatHubLLMProvider;
-	embeddingCredentialId: string;
+	embeddingModel: ProviderAndCredentialId;
 }
 
 export interface ChatInput {
 	message: string;
 	attachments: IBinaryData[];
+}
+
+export interface ProviderAndCredentialId {
+	provider: ChatHubLLMProvider;
+	credentialId: string;
 }

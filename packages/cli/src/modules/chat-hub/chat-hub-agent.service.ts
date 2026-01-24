@@ -2,6 +2,8 @@ import type {
 	ChatHubUpdateAgentRequest,
 	ChatHubCreateAgentRequest,
 	ChatModelDto,
+	ChatHubAgentKnowledgeItem,
+	ChatAttachment,
 	ChatHubLLMProvider,
 } from '@n8n/api-types';
 import { chatHubLLMProviderSchema } from '@n8n/api-types';
@@ -23,6 +25,7 @@ import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
+import type { ProviderAndCredentialId } from './chat-hub.types';
 
 @Service()
 export class ChatHubAgentService {
@@ -65,17 +68,17 @@ export class ChatHubAgentService {
 	 * If the agent's chat provider supports embeddings, use it.
 	 * Otherwise, find a usable embedding provider from settings that the user has access to.
 	 */
-	private async determineEmbeddingProvider(
+	async determineEmbeddingProvider(
 		user: User,
-		chatProvider: ChatHubLLMProvider,
-		chatCredentialId: string,
-	): Promise<{ provider: ChatHubLLMProvider; credentialId: string } | null> {
+		chatModel: ProviderAndCredentialId,
+		embeddingProvider?: ChatHubLLMProvider,
+	): Promise<ProviderAndCredentialId | null> {
 		// Check if the chat provider supports embeddings
-		if (EMBEDDINGS_NODE_TYPE_MAP[chatProvider]) {
-			return {
-				provider: chatProvider,
-				credentialId: chatCredentialId,
-			};
+		if (
+			EMBEDDINGS_NODE_TYPE_MAP[chatModel.provider] &&
+			(!embeddingProvider || chatModel.provider === embeddingProvider)
+		) {
+			return chatModel;
 		}
 
 		// Chat provider doesn't support embeddings, find a fallback from settings
@@ -86,6 +89,10 @@ export class ChatHubAgentService {
 
 			// Check if provider supports embeddings
 			if (!EMBEDDINGS_NODE_TYPE_MAP[provider]) {
+				continue;
+			}
+
+			if (embeddingProvider && provider !== embeddingProvider) {
 				continue;
 			}
 
@@ -131,18 +138,9 @@ export class ChatHubAgentService {
 		// Ensure user has access to the credential being saved
 		await this.chatHubCredentialsService.ensureCredentialAccess(user, data.credentialId);
 
-		const embeddingProvider = await this.determineEmbeddingProvider(
-			user,
-			data.provider,
-			data.credentialId,
-		);
-
 		const id = uuidv4();
-		const files: IBinaryData[] = [];
-
-		for (const file of data.files) {
-			files.push(await this.chatHubAttachmentService.storeAgentAttachment(id, file));
-		}
+		const embeddingModel = await this.determineEmbeddingProvider(user, data);
+		const files = await this.processNewFiles(user, id, data.files, embeddingModel);
 
 		const agent = await this.chatAgentRepository.createAgent({
 			id,
@@ -156,19 +154,11 @@ export class ChatHubAgentService {
 			model: data.model,
 			tools: data.tools,
 			files,
-			embeddingProvider: embeddingProvider?.provider ?? null,
-			embeddingCredentialId: embeddingProvider?.credentialId ?? null,
 		});
 
 		this.logger.debug(`Chat agent created: ${id} by user ${user.id}`);
 
 		// TODO: revert files on error
-
-		await this.insertDocuments(
-			user,
-			agent,
-			data.files.filter((f) => f.mimeType === 'application/pdf'),
-		);
 
 		return agent;
 	}
@@ -200,106 +190,23 @@ export class ChatHubAgentService {
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
 		if (updates.tools !== undefined) updateData.tools = updates.tools;
 
-		// Track if we need to recreate embeddings
-		let needsEmbeddingRecreation = false;
+		const newEmbeddingModel = await this.determineEmbeddingProvider(user, {
+			provider: updates.provider ?? existingAgent.provider,
+			credentialId: updates.credentialId ?? existingAgent.credentialId ?? '',
+		});
 
-		// If provider or credential changes, update embedding provider too
-		if (updates.provider !== undefined || updates.credentialId !== undefined) {
-			const newProvider = updates.provider ?? existingAgent.provider;
-			const newCredentialId = (updates.credentialId ?? existingAgent.credentialId)!;
+		const filesToKeep = await this.processDeleteFiles(
+			user,
+			id,
+			existingAgent.files,
+			updates.keepFileIndices,
+			newEmbeddingModel?.provider ?? null,
+		);
+		const newFiles = await this.processNewFiles(user, id, updates.newFiles, newEmbeddingModel);
 
-			const embeddingProvider = await this.determineEmbeddingProvider(
-				user,
-				newProvider,
-				newCredentialId,
-			);
-
-			// Check if embedding provider actually changed (not just credential)
-			// Only provider change affects embedding dimensions
-			if (embeddingProvider?.provider !== existingAgent.embeddingProvider) {
-				needsEmbeddingRecreation = true;
-			}
-
-			updateData.embeddingProvider = embeddingProvider?.provider ?? null;
-			updateData.embeddingCredentialId = embeddingProvider?.credentialId ?? null;
-		}
-		if (updates.files !== undefined) {
-			const existingFiles = existingAgent.files;
-			const updatedFiles: IBinaryData[] = [];
-			const filesToDelete: IBinaryData[] = [];
-			const updateFileIds = new Set(updates.files.flatMap((f) => (f.id ? [f.id] : [])));
-
-			for (const existingFile of existingFiles) {
-				if (existingFile.id && updateFileIds.has(existingFile.id)) {
-					updatedFiles.push(existingFile);
-				} else {
-					filesToDelete.push(existingFile);
-				}
-			}
-
-			const newFiles: IBinaryData[] = [];
-			for (const file of updates.files) {
-				if (file.id) {
-					// Skip existing file
-					continue;
-				}
-
-				const f = await this.chatHubAttachmentService.storeAgentAttachment(id, file);
-				updatedFiles.push(f);
-				newFiles.push(file);
-			}
-
-			if (filesToDelete.length > 0) {
-				await this.chatHubAttachmentService.deleteAttachments(filesToDelete);
-			}
-
-			updateData.files = updatedFiles;
-
-			// Sync vector store if any PDF files were added or removed
-			// Skip individual file operations if we're going to recreate all embeddings anyway
-			if (!needsEmbeddingRecreation) {
-				const deletedPdfFiles = filesToDelete.filter((f) => f.mimeType === 'application/pdf');
-				const newPdfFiles = newFiles.filter((f) => f.mimeType === 'application/pdf');
-
-				// Delete removed PDF files from vector store
-				if (deletedPdfFiles.length > 0) {
-					const fileNamesToDelete = deletedPdfFiles
-						.map((f) => f.fileName)
-						.filter((name): name is string => !!name);
-
-					if (fileNamesToDelete.length > 0) {
-						await this.deleteDocumentsByFileNames(user, id, fileNamesToDelete);
-					}
-				}
-
-				// Insert new PDF files
-				if (newPdfFiles.length > 0) {
-					const agentForInsertion = {
-						...existingAgent,
-						...updateData,
-					} as ChatHubAgent;
-					await this.insertDocuments(user, agentForInsertion, newPdfFiles);
-				}
-			}
-		}
+		updateData.files = filesToKeep.concat(newFiles);
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
-
-		// If embedding provider changed, recreate all embeddings
-		if (needsEmbeddingRecreation) {
-			this.logger.debug(
-				`Embedding provider changed for agent ${id}, recreating all embeddings with provider ${agent.embeddingProvider}`,
-			);
-
-			// Delete all existing embeddings
-			await this.deleteDocuments(user, id);
-
-			// Re-insert all PDF files with new embedding provider
-			const pdfFiles = agent.files.filter((f) => f.mimeType === 'application/pdf');
-			if (pdfFiles.length > 0) {
-				await this.insertDocuments(user, agent, pdfFiles);
-			}
-		}
 
 		this.logger.debug(`Chat agent updated: ${id} by user ${user.id}`);
 		return agent;
@@ -314,9 +221,7 @@ export class ChatHubAgentService {
 
 		await this.chatHubAttachmentService.deleteAgentAttachmentById(id);
 		await this.chatAgentRepository.deleteAgent(id);
-
-		// Delete all embeddings for this agent from vector store
-		await this.deleteDocuments(user, id);
+		await this.deleteEmbeddings(user, id);
 
 		this.logger.debug(`Chat agent deleted: ${id} by user ${user.id}`);
 	}
@@ -325,31 +230,24 @@ export class ChatHubAgentService {
 		return `chat-hub-agent-files-${userId}-${agentId}`;
 	}
 
-	private async insertDocuments(user: User, agent: ChatHubAgent, files: IBinaryData[]) {
+	private async insertEmbeddings(
+		user: User,
+		agentId: string,
+		embeddingModel: ProviderAndCredentialId,
+		files: IBinaryData[],
+	) {
 		if (files.length === 0) {
 			return;
-		}
-
-		const { embeddingCredentialId, embeddingProvider } = agent;
-
-		if (!embeddingProvider || !embeddingCredentialId) {
-			throw new BadRequestError(
-				'Agent must have embedding provider configured to insert documents for RAG',
-			);
 		}
 
 		const { workflowData, executionData } = await this.chatAgentRepository.manager.transaction(
 			async (trx) => {
 				const project = await this.chatHubCredentialsService.findPersonalProject(user, trx);
-				return await this.chatHubWorkflowService.createDocumentsInsertionWorkflow(
+				return await this.chatHubWorkflowService.createEmbeddingsInsertionWorkflow(
 					user,
 					project.id,
 					files,
-					{
-						embeddingProvider,
-						embeddingCredentialId,
-						memoryKey: this.getAgentMemoryKey(user.id, agent.id),
-					},
+					{ embeddingModel, memoryKey: this.getAgentMemoryKey(user.id, agentId) },
 					trx,
 				);
 			},
@@ -372,7 +270,7 @@ export class ChatHubAgentService {
 		}
 	}
 
-	private async deleteDocuments(user: User, agentId: string): Promise<void> {
+	private async deleteEmbeddings(user: User, agentId: string): Promise<void> {
 		const memoryKey = this.getAgentMemoryKey(user.id, agentId);
 		const { id: projectId } = await this.chatHubCredentialsService.findPersonalProject(user);
 
@@ -384,7 +282,7 @@ export class ChatHubAgentService {
 		);
 	}
 
-	private async deleteDocumentsByFileNames(
+	private async deleteEmbeddingsByFileNames(
 		user: User,
 		agentId: string,
 		fileNames: string[],
@@ -406,5 +304,85 @@ export class ChatHubAgentService {
 		this.logger.debug(
 			`Deleted ${deletedCount} embeddings for ${fileNames.length} files from vector store (memoryKey: ${memoryKey}, projectId: ${projectId}, fileNames: ${fileNames.join(', ')})`,
 		);
+	}
+
+	private async processNewFiles(
+		user: User,
+		id: string,
+		binaryItems: ChatAttachment[],
+		embeddingModel: ProviderAndCredentialId | null,
+	): Promise<ChatHubAgentKnowledgeItem[]> {
+		const files: ChatHubAgentKnowledgeItem[] = [];
+		const pdfFilesToInsert: IBinaryData[] = [];
+
+		for (const file of binaryItems) {
+			const storedFile = await this.chatHubAttachmentService.storeAgentAttachment(id, file);
+
+			if (file.mimeType === 'application/pdf') {
+				if (!embeddingModel) {
+					throw new BadRequestError(
+						'Agent must have embedding provider configured to insert embeddings for RAG',
+					);
+				}
+
+				files.push({
+					type: 'embedding',
+					mimeType: file.mimeType,
+					fileName: file.fileName,
+					provider: embeddingModel.provider,
+				});
+				pdfFilesToInsert.push(storedFile);
+			} else {
+				files.push({ type: 'file', binaryData: storedFile });
+			}
+		}
+
+		if (pdfFilesToInsert.length > 0) {
+			if (!embeddingModel) {
+				throw new BadRequestError(
+					'Agent must have embedding provider configured to insert embeddings for RAG',
+				);
+			}
+
+			await this.insertEmbeddings(user, id, embeddingModel, pdfFilesToInsert);
+			await this.chatHubAttachmentService.deleteAttachments(pdfFilesToInsert);
+		}
+
+		return files;
+	}
+
+	private async processDeleteFiles(
+		user: User,
+		agentId: string,
+		existingFiles: ChatHubAgentKnowledgeItem[],
+		keepFileIndices: number[],
+		availableEmbeddingProvider: ChatHubLLMProvider | null,
+	): Promise<ChatHubAgentKnowledgeItem[]> {
+		const filesToKeep: ChatHubAgentKnowledgeItem[] = [];
+		const embeddingsToDelete: string[] = [];
+		const attachmentsToDelete: IBinaryData[] = [];
+
+		for (let i = 0; i < existingFiles.length; i++) {
+			const file = existingFiles[i];
+
+			if (file.type === 'embedding') {
+				if (!keepFileIndices.includes(i) || availableEmbeddingProvider !== file.provider) {
+					embeddingsToDelete.push(file.fileName);
+				} else {
+					filesToKeep.push(file);
+				}
+			} else {
+				if (!keepFileIndices.includes(i)) {
+					attachmentsToDelete.push(file.binaryData);
+				} else {
+					filesToKeep.push(file);
+				}
+			}
+		}
+
+		await this.deleteEmbeddingsByFileNames(user, agentId, embeddingsToDelete);
+		await this.chatHubAttachmentService.deleteAttachments(attachmentsToDelete);
+
+		return filesToKeep;
 	}
 }

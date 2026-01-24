@@ -184,7 +184,13 @@ export class ChatHubAttachmentService {
 			throw new NotFoundError('Agent not found');
 		}
 
-		const attachment = agent.files[index];
+		const file = agent.files[index];
+
+		if (file.type !== 'file') {
+			throw new NotFoundError('File not found');
+		}
+
+		const attachment = file.binaryData;
 
 		if (attachment.id) {
 			const metadata = await this.binaryDataService.getMetadata(attachment.id);
@@ -208,9 +214,11 @@ export class ChatHubAttachmentService {
 			where: { id: agentId },
 			select: ['files'],
 		});
+		const filesToDelete =
+			agent?.files.flatMap((file) => (file.type === 'file' ? [file.binaryData] : [])) ?? [];
 
-		if (agent && agent.files.length > 0) {
-			await this.deleteAttachments(agent.files);
+		if (filesToDelete.length > 0) {
+			await this.deleteAttachments(filesToDelete);
 		}
 	}
 
@@ -218,8 +226,14 @@ export class ChatHubAttachmentService {
 		const agents = await this.agentRepository.find({
 			select: ['files'],
 		});
+		const filesToDelete = agents.flatMap(
+			(agent) =>
+				agent?.files.flatMap((file) => (file.type === 'file' ? [file.binaryData] : [])) ?? [],
+		);
 
-		await this.deleteAttachments(agents.flatMap((agent) => agent.files));
+		if (filesToDelete.length > 0) {
+			await this.deleteAttachments(filesToDelete);
+		}
 	}
 
 	/**
