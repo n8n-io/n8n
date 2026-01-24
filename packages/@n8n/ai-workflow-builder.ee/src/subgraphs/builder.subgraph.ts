@@ -11,6 +11,7 @@ import { buildBuilderPrompt } from '@/prompts/agents/builder.prompt';
 import {
 	SCRIPT_EXECUTION_CONDENSED,
 	SCRIPT_TYPE_DEFINITIONS,
+	CONFIGURATOR_SCRIPT_TOOLS,
 } from '@/prompts/script-execution/tool-definitions.prompt';
 import { autoFixConnections } from '@/validation/auto-fix';
 import { validateConnections } from '@/validation/checks';
@@ -150,7 +151,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// Build system prompt, optionally including script execution guidance
 		const basePrompt = buildBuilderPrompt();
 		const fullPrompt = includeScriptExecution
-			? `${basePrompt}\n\n${SCRIPT_EXECUTION_CONDENSED}\n\n${SCRIPT_TYPE_DEFINITIONS}`
+			? `${basePrompt}\n\n${SCRIPT_EXECUTION_CONDENSED}\n\n${CONFIGURATOR_SCRIPT_TOOLS}\n\n${SCRIPT_TYPE_DEFINITIONS}`
 			: basePrompt;
 
 		// Create agent with tools bound

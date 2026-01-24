@@ -500,9 +500,64 @@ CORRECT: Window Buffer Memory -> AI Agent
 const RESTRICTIONS = `- Respond before calling validate_structure
 - Skip validation even if you think structure is correct
 - Add commentary between tool calls - execute tools silently
-- Configure node parameters (that's the Configurator Agent's job)
 - Search for nodes (that's the Discovery Agent's job)
 - Make assumptions about node types - use exactly what Discovery found`;
+
+const PARAMETER_CONFIGURATION = `After creating nodes and connections, configure parameters using updateNodeParameters.
+
+WHEN TO USE:
+- initialParameters in addNode(): For parameters you know at creation time (hasOutputParser, mode, resource, operation)
+- updateNodeParameters(): For configuring node behavior after creation (URLs, messages, field values, expressions)
+
+CONFIGURATION WORKFLOW:
+1. Create all nodes with appropriate initialParameters
+2. Connect all nodes
+3. Configure parameters for each node using updateNodeParameters
+4. Validation happens automatically after script completes
+
+NATURAL LANGUAGE INSTRUCTIONS for updateNodeParameters:
+- "Set URL to https://api.example.com/data"
+- "Set method to POST"
+- "Add header Authorization with value Bearer {{ $json.token }}"
+- "Add field 'processedData' with value {{ $json.data }}"
+- "Set system message to 'You are a helpful assistant'"`;
+
+const DATA_REFERENCING = `Nodes output an array of items. Within expressions, reference data using:
+
+COMMON PATTERNS:
+- $json: Current JSON data from previous node
+- $('NodeName').item.json: JSON data from a specific predecessor node
+- $now: Current timestamp
+- $today: Today's date
+
+EXPRESSION SYNTAX in parameter values:
+- Static value: "https://api.example.com"
+- Expression: "={{ $json.url }}"
+- Mixed: "Hello {{ $json.name }}, welcome!"
+
+Prefer $('NodeName').item to $('NodeName').first() or $('NodeName').last() unless explicitly required.`;
+
+const TOOL_NODE_EXPRESSIONS = `Tool nodes (types ending in "Tool") support $fromAI expressions for dynamic AI-determined values:
+
+$fromAI SYNTAX: ={{ $fromAI('key', 'description', 'type', defaultValue) }}
+
+EXAMPLES:
+- "Set sendTo to ={{ $fromAI('to') }}"
+- "Set subject to ={{ $fromAI('subject') }}"
+- "Set message to ={{ $fromAI('message_html') }}"
+
+ONLY use $fromAI in tool nodes. For regular nodes, use static values or standard expressions.`;
+
+const CRITICAL_NODE_PARAMETERS = `KEY PARAMETERS TO CONFIGURE:
+
+HTTP Request: URL, method, headers, body/queryParameters
+Set Node: Fields to add with values (static or expressions)
+Code Node: JavaScript code to execute
+IF Node: Conditions with leftValue, operator, rightValue
+Switch Node: rules.values[] with conditions for each output
+AI Agent: System message, tool configurations
+Tool Nodes: Dynamic fields using $fromAI expressions
+Gmail/Slack/etc: Recipients, subjects, message content`;
 
 const RESPONSE_FORMAT = `Provide ONE brief text message summarizing:
 - What nodes were added
@@ -534,6 +589,10 @@ export function buildBuilderPrompt(): string {
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
 		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)
 		.section('connection_type_examples', CONNECTION_TYPES)
+		.section('parameter_configuration_guidance', PARAMETER_CONFIGURATION)
+		.section('data_referencing_patterns', DATA_REFERENCING)
+		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
+		.section('critical_node_parameters', CRITICAL_NODE_PARAMETERS)
 		.section('do_not', RESTRICTIONS)
 		.section('response_format', RESPONSE_FORMAT)
 		.build();
