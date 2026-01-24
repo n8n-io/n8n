@@ -30,19 +30,4 @@ export class RoleApiHelper {
 		const result = await response.json();
 		return result.data;
 	}
-
-	/**
-	 * Delete a custom role by slug
-	 * @param slug The role slug to delete
-	 * @returns True if deletion was successful
-	 */
-	async deleteRole(slug: string): Promise<boolean> {
-		const response = await this.api.request.delete(`/rest/roles/${slug}`);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to delete role: ${await response.text()}`);
-		}
-
-		return true;
-	}
 }

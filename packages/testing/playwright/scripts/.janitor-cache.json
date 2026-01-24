@@ -1,0 +1,224 @@
+{
+	"services/workflow-api-helper.ts": {
+		"file": "services/workflow-api-helper.ts",
+		"hash": "-498411b1",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:24.689Z"
+	},
+	"services/credential-api-helper.ts": {
+		"file": "services/credential-api-helper.ts",
+		"hash": "343f2bd0",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:25.301Z"
+	},
+	"pages/n8nPage.ts": {
+		"file": "pages/n8nPage.ts",
+		"hash": "13950f0b",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:25.913Z"
+	},
+	"pages/WorkflowSettingsModal.ts": {
+		"file": "pages/WorkflowSettingsModal.ts",
+		"hash": "11788ab",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:26.412Z"
+	},
+	"pages/components/RunDataPanel.ts": {
+		"file": "pages/components/RunDataPanel.ts",
+		"hash": "77019bcd",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:26.498Z"
+	},
+	"pages/CommunityNodesPage.ts": {
+		"file": "pages/CommunityNodesPage.ts",
+		"hash": "39d22fe7",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:26.582Z"
+	},
+	"pages/components/LogsPanel.ts": {
+		"file": "pages/components/LogsPanel.ts",
+		"hash": "-7374860b",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:26.785Z"
+	},
+	"composables/PartialExecutionComposer.ts": {
+		"file": "composables/PartialExecutionComposer.ts",
+		"hash": "-48ff2a0f",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.061Z"
+	},
+	"pages/nodes/EditFieldsNode.ts": {
+		"file": "pages/nodes/EditFieldsNode.ts",
+		"hash": "67817157",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.076Z"
+	},
+	"composables/TestEntryComposer.ts": {
+		"file": "composables/TestEntryComposer.ts",
+		"hash": "b449a28",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.114Z"
+	},
+	"helpers/NodeParameterHelper.ts": {
+		"file": "helpers/NodeParameterHelper.ts",
+		"hash": "-154e006f",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.198Z"
+	},
+	"pages/TemplateCredentialSetupPage.ts": {
+		"file": "pages/TemplateCredentialSetupPage.ts",
+		"hash": "23fdb1b3",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.343Z"
+	},
+	"pages/TemplatesPage.ts": {
+		"file": "pages/TemplatesPage.ts",
+		"hash": "-4d8ec087",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.492Z"
+	},
+	"services/tag-api-helper.ts": {
+		"file": "services/tag-api-helper.ts",
+		"hash": "eeff04a",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.519Z"
+	},
+	"composables/MfaComposer.ts": {
+		"file": "composables/MfaComposer.ts",
+		"hash": "95df51d",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.562Z"
+	},
+	"pages/CredentialsPage.ts": {
+		"file": "pages/CredentialsPage.ts",
+		"hash": "6fc18e5f",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.665Z"
+	},
+	"pages/BasePage.ts": {
+		"file": "pages/BasePage.ts",
+		"hash": "1fa32d43",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.734Z"
+	},
+	"composables/ExecutionsComposer.ts": {
+		"file": "composables/ExecutionsComposer.ts",
+		"hash": "-59d3f4c7",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.855Z"
+	},
+	"composables/TemplatesComposer.ts": {
+		"file": "composables/TemplatesComposer.ts",
+		"hash": "-284ee8a1",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.907Z"
+	},
+	"pages/NpsSurveyPage.ts": {
+		"file": "pages/NpsSurveyPage.ts",
+		"hash": "-79375ca1",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.948Z"
+	},
+	"composables/ProjectComposer.ts": {
+		"file": "composables/ProjectComposer.ts",
+		"hash": "4f94187d",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:27.971Z"
+	},
+	"helpers/ClipboardHelper.ts": {
+		"file": "helpers/ClipboardHelper.ts",
+		"hash": "-4798545d",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.048Z"
+	},
+	"pages/InteractionsPage.ts": {
+		"file": "pages/InteractionsPage.ts",
+		"hash": "-25bdf3f6",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.060Z"
+	},
+	"pages/AIBuilderPage.ts": {
+		"file": "pages/AIBuilderPage.ts",
+		"hash": "-135fd770",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.126Z"
+	},
+	"pages/KeycloakLoginPage.ts": {
+		"file": "pages/KeycloakLoginPage.ts",
+		"hash": "-70a48960",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.186Z"
+	},
+	"services/webhook-api-helper.ts": {
+		"file": "services/webhook-api-helper.ts",
+		"hash": "315c7fec",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.290Z"
+	},
+	"composables/DataTablesComposer.ts": {
+		"file": "composables/DataTablesComposer.ts",
+		"hash": "38d3746e",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.306Z"
+	},
+	"pages/components/ResourceMoveModal.ts": {
+		"file": "pages/components/ResourceMoveModal.ts",
+		"hash": "-39ac7dbe",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.382Z"
+	},
+	"pages/components/ProjectTabsComponent.ts": {
+		"file": "pages/components/ProjectTabsComponent.ts",
+		"hash": "-672cb70",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.401Z"
+	},
+	"pages/WorkflowCredentialSetupModal.ts": {
+		"file": "pages/WorkflowCredentialSetupModal.ts",
+		"hash": "4bda0b0f",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.514Z"
+	},
+	"pages/components/ChatHubPersonalAgentModal.ts": {
+		"file": "pages/components/ChatHubPersonalAgentModal.ts",
+		"hash": "5d363596",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.539Z"
+	},
+	"pages/components/FloatingUiHelper.ts": {
+		"file": "pages/components/FloatingUiHelper.ts",
+		"hash": "4d2be6d9",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.585Z"
+	},
+	"composables/OidcComposer.ts": {
+		"file": "composables/OidcComposer.ts",
+		"hash": "-2fcb52fc",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.627Z"
+	},
+	"pages/DemoPage.ts": {
+		"file": "pages/DemoPage.ts",
+		"hash": "-72e00554",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.645Z"
+	},
+	"pages/ChatHubSettingsPage.ts": {
+		"file": "pages/ChatHubSettingsPage.ts",
+		"hash": "-65d9db47",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.665Z"
+	},
+	"pages/components/ChatHubToolsModal.ts": {
+		"file": "pages/components/ChatHubToolsModal.ts",
+		"hash": "5cad7864",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.712Z"
+	},
+	"pages/components/FocusPanel.ts": {
+		"file": "pages/components/FocusPanel.ts",
+		"hash": "-319ff07e",
+		"unusedCount": 0,
+		"analyzedAt": "2026-01-24T19:19:28.729Z"
+	}
+}

@@ -27,20 +27,12 @@ export class NodeCreator {
 		return this.page.getByTestId('item-iterator-item');
 	}
 
-	getActionItems(): Locator {
-		return this.page.getByTestId('node-creator-action-item');
-	}
-
 	getCategoryItems(): Locator {
 		return this.page.getByTestId('node-creator-category-item');
 	}
 
 	getTabs(): Locator {
 		return this.page.getByTestId('node-creator-type-selector');
-	}
-
-	getSelectedTab(): Locator {
-		return this.getTabs().locator('.is-active');
 	}
 
 	getActiveSubcategory(): Locator {
@@ -66,10 +58,6 @@ export class NodeCreator {
 
 	getCategoryItem(text: string): Locator {
 		return this.getCategoryItems().filter({ hasText: text });
-	}
-
-	getPanelIcon(nodeName: string): Locator {
-		return this.getItem(nodeName).locator('[class*="panelIcon"]');
 	}
 
 	// Actions
@@ -105,10 +93,5 @@ export class NodeCreator {
 
 	async goBackFromSubcategory(): Promise<void> {
 		await this.getActiveSubcategory().locator('button').click();
-	}
-
-	async selectWithKeyboard(direction: 'up' | 'down' | 'right'): Promise<void> {
-		const key = direction === 'up' ? 'ArrowUp' : direction === 'down' ? 'ArrowDown' : 'ArrowRight';
-		await this.page.keyboard.press(key);
 	}
 }

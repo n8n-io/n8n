@@ -16,15 +16,6 @@ export class CanvasComposer {
 	}
 
 	/**
-	 * Execute a node and wait for success toast notification
-	 * @param nodeName - The node to execute
-	 */
-	async executeNodeAndWaitForToast(nodeName: string): Promise<void> {
-		await this.n8n.canvas.executeNode(nodeName);
-		await this.n8n.notifications.waitForNotificationAndClose('Node executed successfully');
-	}
-
-	/**
 	 * Copy selected nodes and verify success toast
 	 */
 	async copySelectedNodesWithToast(): Promise<void> {
@@ -114,32 +105,6 @@ export class CanvasComposer {
 					`Initial: ${initialNodeSize.toFixed(1)}px, Final: ${finalNodeSize.toFixed(1)}px`,
 			);
 		}
-	}
-
-	/**
-	 * Delay workflow GET request to simulate loading during page reload.
-	 * Useful for testing save-blocking behavior during real loading states.
-	 *
-	 * @param workflowId - The workflow ID to delay loading for
-	 * @param delayMs - Delay in milliseconds (default: 2000)
-	 */
-	async delayWorkflowLoad(workflowId: string, delayMs: number = 2000): Promise<void> {
-		await this.n8n.page.route(`**/rest/workflows/${workflowId}`, async (route) => {
-			if (route.request().method() === 'GET') {
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
-			}
-			await route.continue();
-		});
-	}
-
-	/**
-	 * Remove the workflow load delay route handler.
-	 * Should be called after delayWorkflowLoad() when testing is complete.
-	 *
-	 * @param workflowId - The workflow ID to stop delaying
-	 */
-	async undelayWorkflowLoad(workflowId: string): Promise<void> {
-		await this.n8n.page.unroute(`**/rest/workflows/${workflowId}`);
 	}
 
 	/**

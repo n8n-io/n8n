@@ -30,8 +30,4 @@ export class SaveChangesModal {
 	async clickClose(): Promise<void> {
 		await this.getCloseButton().click();
 	}
-
-	async clickSave(): Promise<void> {
-		await this.getSaveButton().click();
-	}
 }

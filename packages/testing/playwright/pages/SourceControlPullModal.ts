@@ -11,10 +11,6 @@ export class SourceControlPullModal {
 		return this.page.getByTestId('force-pull');
 	}
 
-	async pull(): Promise<void> {
-		await this.getPullAndOverrideButton().click();
-	}
-
 	getWorkflowsTab(): Locator {
 		return this.page.getByTestId('source-control-pull-modal-tab-workflow');
 	}
@@ -27,19 +23,11 @@ export class SourceControlPullModal {
 		await this.getWorkflowsTab().click();
 	}
 
-	async selectCredentialsTab(): Promise<void> {
-		await this.getCredentialsTab().click();
-	}
-
 	getFileInModal(fileName: string): Locator {
 		return this.page.getByTestId('pull-modal-item').filter({ hasText: fileName }).first();
 	}
 
 	getStatusBadge(fileName: string, status: 'New' | 'Modified' | 'Deleted' | 'Conflict'): Locator {
 		return this.getFileInModal(fileName).getByText(status, { exact: true });
-	}
-
-	getNotice(): Locator {
-		return this.page.locator('[class*="notice"]');
 	}
 }
