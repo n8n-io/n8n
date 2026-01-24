@@ -7,23 +7,10 @@ jest.mock('@n8n/backend-common', () => ({
 	inProduction: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('fs', () => ({
-	...jest.requireActual('fs'),
-	readFileSync: jest.fn().mockReturnValue('[]'),
-}));
-
-jest.mock('fs/promises', () => ({
-	...jest.requireActual('fs/promises'),
-	writeFile: jest.fn().mockResolvedValue(undefined),
-	rename: jest.fn().mockResolvedValue(undefined),
-}));
-
 jest.mock('../community-node-types-utils', () => ({
 	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
 	getCommunityNodesMetadata: jest.fn().mockResolvedValue([]),
 }));
-
-const mockReadFileSync = jest.requireMock('fs').readFileSync;
 
 const mockDateNow = jest.spyOn(Date, 'now');
 const mockMathRandom = jest.spyOn(Math, 'random');
@@ -36,7 +23,6 @@ describe('CommunityNodeTypesService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockReadFileSync.mockReturnValue('[]');
 
 		delete process.env.ENVIRONMENT;
 
