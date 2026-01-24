@@ -260,13 +260,17 @@ export class LmChatOpenRouter implements INodeType {
 									'Comma-separated list of provider slugs to skip for this request',
 							},
 							{
-								displayName: 'Quantizations',
-								name: 'quantizations',
-								type: 'string',
+								displayName: 'Sort',
+								name: 'sort',
+								type: 'options',
+								options: [
+									{ name: 'Price', value: 'price' },
+									{ name: 'Throughput', value: 'throughput' },
+									{ name: 'Latency', value: 'latency' },
+								],
 								default: '',
-								placeholder: 'int4,int8',
 								description:
-									'Comma-separated list of quantization levels to filter by (e.g., int4, int8, fp16)',
+									'Sort providers by a specific attribute. Disables load balancing and tries providers in order. <a href="https://openrouter.ai/docs/provider-routing#provider-sorting">Learn more</a>.',
 							},
 						],
 					},
@@ -295,7 +299,7 @@ export class LmChatOpenRouter implements INodeType {
 				requireParameters?: boolean;
 				dataCollection?: 'allow' | 'deny';
 				ignore?: string;
-				quantizations?: string;
+				sort?: 'price' | 'throughput' | 'latency';
 			};
 		};
 
@@ -330,8 +334,8 @@ export class LmChatOpenRouter implements INodeType {
 			if (routing.ignore) {
 				provider.ignore = routing.ignore.split(',').map((p) => p.trim()).filter((p) => p);
 			}
-			if (routing.quantizations) {
-				provider.quantizations = routing.quantizations.split(',').map((p) => p.trim()).filter((p) => p);
+			if (routing.sort) {
+				provider.sort = routing.sort;
 			}
 		}
 
@@ -341,7 +345,7 @@ export class LmChatOpenRouter implements INodeType {
 			modelKwargs.response_format = { type: options.responseFormat };
 		}
 		if (Object.keys(provider).length > 0) {
-			modelKwargs.provider = provider;
+			modelKwargs.provider = provider;	
 		}
 
 		const model = new ChatOpenAI({
