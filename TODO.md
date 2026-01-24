@@ -23,6 +23,13 @@
 	- [ ] Also why are programmatic evals showing it has no expression, even though it does
 - [ ] strip away previous contexts from previous messages
 - [ ] fix new code llm judge, review how it works
+- [ ] Add more programmatic validations:
+		- [ ] chat memory issue
+		- [ ] invalid expression syntax
+		- [ ] .json.key references are correct based on output data
+		- [ ] .json is used when referencing data in expressions or code node
+		- [ ] invalid .item or .all keys in code nodes based on mode
+		- [ ] optional warning for code node?
 
 ## ready to release
 - [ ] deploy agent to test instance
