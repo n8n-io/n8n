@@ -3,8 +3,11 @@
 ## workflow-sdk
 - [ ] Add more error branch workflows
 - [ ] Better clarify how output data maps to expressions in types and referenced
+- [ ] better interface? onTrue() onFalse() for ifElse. onCase for switchCase. what to do with merge?
+	- [ ] split out merge into separate functions? so its easier to understand
 
 ## agent
+- [ ] update current workflow parsed code
 - [ ] build out new evaluation suites for this type of agent
 - [ ] Test opus again with simplified prompt
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
@@ -12,7 +15,10 @@
 - [ ] Make sure conversation history is included in request
 - [ ] Evaluate with thinking enabled for each model
 - [ ] Update placeholder() to encourage agent to avoid using this for creds (not for api keys, use newCredential)
-- [ ] Add programmatic validation similar to current agent
+- [ ] in programmatic checks validation step, only skip warnings if repeated for the same node
+- [ ] investigate failed syntax in prompt in this example packages/@n8n/ai-workflow-builder.ee/eval-results/sonnet-one-shot-all/example-005-05fd23ad. also packages/@n8n/ai-workflow-builder.ee/eval-results/sonnet-one-shot-all/example-007-ca13700c
+	- [ ] Also why are programmatic evals showing it has no expression, even though it does
+- [ ] strip away previous contexts from previous messages
 
 ## ready to release
 - [ ] deploy agent to test instance
@@ -30,18 +36,6 @@
 - [ ] Update telemetry and prompt viewer app to support the code and workflow generated
 - [ ] Refactor interface to simplify branching interface??
 
-## Done
-- [X] prompt optimization per model
-- [X] get workflow-sdk to support roundtrip test of a lot of our template library
-- [X] refactor code generation to simplify implementation, with learnings from POC
-- [X] Add more examples for more complex flows (like loops or multi level orchestrator) to prompt
-- [X] Split node types by resource operation into files. less input tokens, faster, more accurate. Query by operation/resource.
-- [X] support $fromAI in types. Add example.
-- [X] Support passing nodes to sticky function
-- [X] test out more edge cases
-- [X] rerun evaluations, get to parity with current agent
-- [X] run evaluations against Opus
-
 ## Nice to haves / tech debt
 - [ ] Test more of the template library
 - [ ] refactor code gen to use plugin arch for composites
@@ -51,9 +45,10 @@
 - [ ] clean up old codegen impl
 - [ ] move generated test files for committed workflows to same folder.
 - [ ] allow adding node defaults when generating workflows
-- [X] Rename ifBranch to ifElse, update branches with clearer naming.
+- [ ] Add builderHint (for example promptType: 'auto'/'define')
 
 ## Future improvement
+- [ ] RLC Support
 - [ ] Support branching for weird nodes out there with multiple inputs or outputs, that we don't support now.
 - [ ] generate pin data using a random generator, rather than ai.
 - [ ] Support templates as examples
@@ -62,6 +57,20 @@
 - [ ] AI still generates position unnecessarily. we should remove this and generate these seperately.
 	- [ ] Positions should be calculated programmatically. When making edits, we should programmaticaly calculate where all the nodes should go.
 - [ ] Add text editing tools support, to improve iteration
+
+## Done
+- [X] Add programmatic validation similar to current agent
+- [X] prompt optimization per model
+- [X] get workflow-sdk to support roundtrip test of a lot of our template library
+- [X] refactor code generation to simplify implementation, with learnings from POC
+- [X] Add more examples for more complex flows (like loops or multi level orchestrator) to prompt
+- [X] Split node types by resource operation into files. less input tokens, faster, more accurate. Query by operation/resource.
+- [X] support $fromAI in types. Add example.
+- [X] Support passing nodes to sticky function
+- [X] test out more edge cases
+- [X] rerun evaluations, get to parity with current agent
+- [X] Rename ifBranch to ifElse, update branches with clearer naming.
+- [X] run evaluations against Opus
 
 
 # Prompts to test
