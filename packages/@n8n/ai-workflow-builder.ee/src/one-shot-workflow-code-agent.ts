@@ -19,7 +19,8 @@ import { z } from 'zod';
 import { parseWorkflowCode, validateWorkflow, SDK_API_CONTENT } from '@n8n/workflow-sdk';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { typeCheckCode } from './evaluators/code-typecheck/type-checker';
+// TODO: Re-enable when we decide on TypeScript runtime strategy (adds 23MB + 17MB memory)
+// import { typeCheckCode } from './evaluators/code-typecheck/type-checker';
 
 import { NodeTypeParser } from './utils/node-type-parser';
 import { buildOneShotGeneratorPrompt } from './prompts/one-shot-generator.prompt';
@@ -359,6 +360,10 @@ export class OneShotWorkflowCodeAgent {
 								nodeTypes: workflow.nodes.map((n) => n.type),
 							});
 
+							// TODO: Re-enable type checking when we decide on TypeScript runtime strategy
+							// Currently disabled to avoid 23MB package size + 17MB memory overhead
+							// See: src/evaluators/code-typecheck/type-checker.ts
+							/*
 							// Run type checking on the generated code
 							debugLog('CHAT', 'Running type check on generated code...');
 							const typeCheckResult = typeCheckCode(finalResult.workflowCode);
@@ -401,8 +406,9 @@ export class OneShotWorkflowCodeAgent {
 								finalResult = null;
 								continue;
 							}
+							*/
 
-							// Successfully parsed and type-checked - exit the loop
+							// Successfully parsed - exit the loop
 							break;
 						} catch (parseError) {
 							parseDuration = Date.now() - parseStartTime;
