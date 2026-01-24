@@ -48,6 +48,7 @@
 - [ ] Add builderHint (for example promptType: 'auto'/'define')
 
 ## Future improvement
+- [ ] use random generator for pin data
 - [ ] RLC Support
 - [ ] Support branching for weird nodes out there with multiple inputs or outputs, that we don't support now.
 - [ ] generate pin data using a random generator, rather than ai.
