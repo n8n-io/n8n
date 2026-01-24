@@ -10,7 +10,7 @@ on:
         default: ''
 
 env:
-  DOCKER_IMAGE: ghcr.io/n8n-io/n8n:pr-${{ github.run_id }}
+  DOCKER_IMAGE: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
 
 jobs:
   # Build Docker image once and push to GHCR for all shards to pull
@@ -60,7 +60,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.run_id }}
+      docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
       shards: 15
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -76,7 +76,7 @@ jobs:
     with:
       branch: ${{ inputs.branch }}
       test-mode: docker-pull
-      docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.run_id }}
+      docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:isolated
       shards: 1
       runner: blacksmith-2vcpu-ubuntu-2204
@@ -115,7 +115,7 @@ jobs:
   cleanup-docker:
     name: 'Cleanup Docker Image'
     needs: [multi-main-e2e, multi-main-isolated]
-    if: ${{ always() && !github.event.pull_request.head.repo.fork }}
+    if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -128,10 +128,10 @@ jobs:
           VERSION_ID=$(gh api \
             -H "Accept: application/vnd.github+json" \
             /orgs/n8n-io/packages/container/n8n/versions \
-            --jq '.[] | select(.metadata.container.tags[] == "pr-${{ github.run_id }}") | .id')
+            --jq '.[] | select(.metadata.container.tags[] == "pr-${{ github.event.pull_request.number }}-${{ github.run_id }}") | .id')
 
           if [ -n "$VERSION_ID" ]; then
-            echo "Deleting package version $VERSION_ID (tag: pr-${{ github.run_id }})"
+            echo "Deleting package version $VERSION_ID (tag: pr-${{ github.event.pull_request.number }}-${{ github.run_id }})"
             gh api --method DELETE \
               -H "Accept: application/vnd.github+json" \
               "/orgs/n8n-io/packages/container/n8n/versions/$VERSION_ID"
