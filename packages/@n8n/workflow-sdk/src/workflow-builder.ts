@@ -603,6 +603,450 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		return json;
 	}
 
+	validate(
+		options: import('./validation/index').ValidationOptions = {},
+	): import('./validation/index').ValidationResult {
+		const { ValidationError, ValidationWarning } = require('./validation/index');
+		const errors: import('./validation/index').ValidationError[] = [];
+		const warnings: import('./validation/index').ValidationWarning[] = [];
+
+		// Check: No nodes
+		if (this._nodes.size === 0) {
+			errors.push(new ValidationError('NO_NODES', 'Workflow has no nodes'));
+		}
+
+		// Check: Missing trigger
+		if (!options.allowNoTrigger) {
+			const hasTrigger = Array.from(this._nodes.values()).some((graphNode) =>
+				this.isTriggerNode(graphNode.instance.type),
+			);
+			if (!hasTrigger) {
+				warnings.push(
+					new ValidationWarning(
+						'MISSING_TRIGGER',
+						'Workflow has no trigger node. It will need to be started manually.',
+					),
+				);
+			}
+		}
+
+		// Check: Disconnected nodes (non-trigger nodes without incoming connections)
+		if (!options.allowDisconnectedNodes) {
+			const nodesWithIncoming = this.findNodesWithIncomingConnections();
+			for (const [_name, graphNode] of this._nodes) {
+				const nodeName = graphNode.instance.name;
+				// Skip trigger nodes - they don't need incoming connections
+				if (this.isTriggerNode(graphNode.instance.type)) {
+					continue;
+				}
+				// Check if this node has any incoming connection
+				if (!nodesWithIncoming.has(nodeName)) {
+					warnings.push(
+						new ValidationWarning(
+							'DISCONNECTED_NODE',
+							`Node '${nodeName}' is not connected to any input. It will not receive data.`,
+							nodeName,
+						),
+					);
+				}
+			}
+		}
+
+		// Node-specific checks
+		for (const [_name, graphNode] of this._nodes) {
+			const nodeType = graphNode.instance.type;
+
+			// Agent node checks
+			if (nodeType === '@n8n/n8n-nodes-langchain.agent') {
+				this.checkAgentNode(graphNode.instance, warnings);
+			}
+
+			// HTTP Request node checks
+			if (nodeType === 'n8n-nodes-base.httpRequest') {
+				this.checkHttpRequestNode(graphNode.instance, warnings);
+			}
+
+			// Set node checks
+			if (nodeType === 'n8n-nodes-base.set') {
+				this.checkSetNode(graphNode.instance, warnings);
+			}
+
+			// Merge node checks
+			if (nodeType === 'n8n-nodes-base.merge') {
+				this.checkMergeNode(graphNode, warnings);
+			}
+
+			// Tool node checks
+			if (this.isToolNode(nodeType)) {
+				this.checkToolNode(graphNode.instance, warnings);
+			}
+
+			// Check $fromAI in non-tool nodes
+			if (!this.isToolNode(nodeType)) {
+				this.checkFromAiInNonToolNode(graphNode.instance, warnings);
+			}
+		}
+
+		return {
+			valid: errors.length === 0,
+			errors,
+			warnings,
+		};
+	}
+
+	/**
+	 * Check Agent node for common issues
+	 */
+	private checkAgentNode(
+		instance: NodeInstance<string, string, unknown>,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+		const params = instance.config?.parameters as Record<string, unknown> | undefined;
+		if (!params) return;
+
+		const promptType = params.promptType as string | undefined;
+
+		// Skip checks for auto/guardrails mode
+		if (promptType === 'auto' || promptType === 'guardrails') {
+			return;
+		}
+
+		// Check: Static prompt (no expression)
+		const text = params.text as string | undefined;
+		if (!text || !this.containsExpression(text)) {
+			warnings.push(
+				new ValidationWarning(
+					'AGENT_STATIC_PROMPT',
+					`Agent node "${instance.name}" has no expression in its prompt. Consider using dynamic context like chatInput.`,
+					instance.name,
+				),
+			);
+		}
+
+		// Check: No system message
+		const options = params.options as Record<string, unknown> | undefined;
+		const systemMessage = options?.systemMessage as string | undefined;
+		if (!systemMessage || systemMessage.trim().length === 0) {
+			warnings.push(
+				new ValidationWarning(
+					'AGENT_NO_SYSTEM_MESSAGE',
+					`Agent node "${instance.name}" has no system message. System-level instructions should be in the system message field.`,
+					instance.name,
+				),
+			);
+		}
+	}
+
+	/**
+	 * Check if a string contains an n8n expression
+	 */
+	private containsExpression(value: string): boolean {
+		return value.includes('={{') || value.startsWith('=');
+	}
+
+	/**
+	 * Check HTTP Request node for hardcoded credentials
+	 */
+	private checkHttpRequestNode(
+		instance: NodeInstance<string, string, unknown>,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+		const params = instance.config?.parameters as Record<string, unknown> | undefined;
+		if (!params) return;
+
+		// Check header parameters for sensitive headers
+		const headerParams = params.headerParameters as
+			| { parameters?: Array<{ name?: string; value?: unknown }> }
+			| undefined;
+		if (headerParams?.parameters) {
+			for (const header of headerParams.parameters) {
+				if (
+					header.name &&
+					this.isSensitiveHeader(header.name) &&
+					header.value &&
+					!this.containsExpression(String(header.value))
+				) {
+					warnings.push(
+						new ValidationWarning(
+							'HARDCODED_CREDENTIALS',
+							`HTTP Request node "${instance.name}" has a hardcoded value for sensitive header "${header.name}". Use n8n credentials instead.`,
+							instance.name,
+						),
+					);
+				}
+			}
+		}
+
+		// Check query parameters for credential-like names
+		const queryParams = params.queryParameters as
+			| { parameters?: Array<{ name?: string; value?: unknown }> }
+			| undefined;
+		if (queryParams?.parameters) {
+			for (const param of queryParams.parameters) {
+				if (
+					param.name &&
+					this.isCredentialFieldName(param.name) &&
+					param.value &&
+					!this.containsExpression(String(param.value))
+				) {
+					warnings.push(
+						new ValidationWarning(
+							'HARDCODED_CREDENTIALS',
+							`HTTP Request node "${instance.name}" has a hardcoded value for credential-like query parameter "${param.name}". Use n8n credentials instead.`,
+							instance.name,
+						),
+					);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Check if a header name is sensitive (typically contains credentials)
+	 */
+	private isSensitiveHeader(name: string): boolean {
+		const sensitiveHeaders = new Set([
+			'authorization',
+			'x-api-key',
+			'x-auth-token',
+			'x-access-token',
+			'api-key',
+			'apikey',
+		]);
+		return sensitiveHeaders.has(name.toLowerCase());
+	}
+
+	/**
+	 * Check if a field name looks like it's meant to store credentials
+	 */
+	private isCredentialFieldName(name: string): boolean {
+		const patterns = [
+			/api[_-]?key/i,
+			/access[_-]?token/i,
+			/auth[_-]?token/i,
+			/bearer[_-]?token/i,
+			/secret[_-]?key/i,
+			/private[_-]?key/i,
+			/client[_-]?secret/i,
+			/password/i,
+			/credentials?/i,
+			/^token$/i,
+			/^secret$/i,
+			/^auth$/i,
+		];
+		return patterns.some((pattern) => pattern.test(name));
+	}
+
+	/**
+	 * Check Set node for credential-like field names
+	 */
+	private checkSetNode(
+		instance: NodeInstance<string, string, unknown>,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+		const params = instance.config?.parameters as Record<string, unknown> | undefined;
+		if (!params) return;
+
+		const assignments = params.assignments as
+			| { assignments?: Array<{ name?: string; value?: unknown; type?: string }> }
+			| undefined;
+		if (!assignments?.assignments) return;
+
+		for (const assignment of assignments.assignments) {
+			if (assignment.name && this.isCredentialFieldName(assignment.name)) {
+				warnings.push(
+					new ValidationWarning(
+						'SET_CREDENTIAL_FIELD',
+						`Set node "${instance.name}" has a field named "${assignment.name}" which appears to be storing credentials. Use n8n's credential system instead.`,
+						instance.name,
+					),
+				);
+			}
+		}
+	}
+
+	/**
+	 * Check Merge node for proper input connections
+	 */
+	private checkMergeNode(
+		graphNode: GraphNode,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+		const instance = graphNode.instance;
+
+		// Count incoming connections to this merge node
+		let inputCount = 0;
+		const mainConnections = graphNode.connections.get('main');
+		if (mainConnections) {
+			for (const [_outputIndex, targets] of mainConnections) {
+				inputCount += targets.length;
+			}
+		}
+
+		// Also count connections declared via .then() from other nodes
+		// by checking all nodes in the workflow that connect to this node
+		for (const [_name, otherNode] of this._nodes) {
+			if (typeof otherNode.instance.getConnections === 'function') {
+				const conns = otherNode.instance.getConnections();
+				for (const conn of conns) {
+					if (conn.target === instance || conn.target.name === instance.name) {
+						inputCount++;
+					}
+				}
+			}
+		}
+
+		if (inputCount < 2) {
+			warnings.push(
+				new ValidationWarning(
+					'MERGE_SINGLE_INPUT',
+					`Merge node "${instance.name}" has only ${inputCount} input connection(s). Merge nodes require at least 2 inputs.`,
+					instance.name,
+				),
+			);
+		}
+	}
+
+	/**
+	 * Check if a node type is a tool node
+	 */
+	private isToolNode(type: string): boolean {
+		return type.includes('tool') || type.includes('Tool');
+	}
+
+	/**
+	 * Tools that don't require parameters
+	 */
+	private readonly toolsWithoutParameters = new Set([
+		'@n8n/n8n-nodes-langchain.toolCalculator',
+		'@n8n/n8n-nodes-langchain.toolVectorStore',
+		'@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+		'@n8n/n8n-nodes-langchain.mcpClientTool',
+		'@n8n/n8n-nodes-langchain.toolWikipedia',
+		'@n8n/n8n-nodes-langchain.toolSerpApi',
+	]);
+
+	/**
+	 * Check Tool node for missing parameters
+	 */
+	private checkToolNode(
+		instance: NodeInstance<string, string, unknown>,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+
+		// Skip tools that don't need parameters
+		if (this.toolsWithoutParameters.has(instance.type)) {
+			return;
+		}
+
+		const params = instance.config?.parameters;
+		if (!params || Object.keys(params).length === 0) {
+			warnings.push(
+				new ValidationWarning(
+					'TOOL_NO_PARAMETERS',
+					`Tool node "${instance.name}" has no parameters set.`,
+					instance.name,
+				),
+			);
+		}
+	}
+
+	/**
+	 * Check for $fromAI usage in non-tool nodes
+	 */
+	private checkFromAiInNonToolNode(
+		instance: NodeInstance<string, string, unknown>,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+		const params = instance.config?.parameters;
+		if (!params) return;
+
+		// Recursively search for $fromAI in all parameter values
+		if (this.containsFromAI(params)) {
+			warnings.push(
+				new ValidationWarning(
+					'FROM_AI_IN_NON_TOOL',
+					`Node "${instance.name}" uses $fromAI() which is only valid in tool nodes connected to an AI agent.`,
+					instance.name,
+				),
+			);
+		}
+	}
+
+	/**
+	 * Check if a value or nested object contains $fromAI expression
+	 */
+	private containsFromAI(value: unknown): boolean {
+		if (typeof value === 'string') {
+			return value.includes('$fromAI');
+		}
+		if (Array.isArray(value)) {
+			return value.some((item) => this.containsFromAI(item));
+		}
+		if (typeof value === 'object' && value !== null) {
+			return Object.values(value).some((v) => this.containsFromAI(v));
+		}
+		return false;
+	}
+
+	/**
+	 * Check if a node type is a trigger
+	 */
+	private isTriggerNode(type: string): boolean {
+		return (
+			type.includes('Trigger') ||
+			type.includes('trigger') ||
+			type.includes('Webhook') ||
+			type.includes('webhook') ||
+			type.includes('Schedule') ||
+			type.includes('schedule') ||
+			type.includes('Poll') ||
+			type.includes('poll')
+		);
+	}
+
+	/**
+	 * Find all nodes that have incoming connections from other nodes
+	 */
+	private findNodesWithIncomingConnections(): Set<string> {
+		const nodesWithIncoming = new Set<string>();
+
+		for (const [_name, graphNode] of this._nodes) {
+			// Check connections stored in graphNode.connections (from workflow builder's .then())
+			const mainConns = graphNode.connections.get('main');
+			if (mainConns) {
+				for (const [_outputIndex, targets] of mainConns) {
+					for (const target of targets) {
+						if (typeof target === 'object' && 'node' in target) {
+							nodesWithIncoming.add(target.node as string);
+						}
+					}
+				}
+			}
+
+			// Check connections declared via node's .then() (instance-level connections)
+			if (typeof graphNode.instance.getConnections === 'function') {
+				const connections = graphNode.instance.getConnections();
+				for (const conn of connections) {
+					// Get the target node name
+					const targetName =
+						typeof conn.target === 'object' && 'name' in conn.target
+							? conn.target.name
+							: String(conn.target);
+					nodesWithIncoming.add(targetName);
+				}
+			}
+		}
+
+		return nodesWithIncoming;
+	}
+
 	toString(): string {
 		return JSON.stringify(this.toJSON(), null, 2);
 	}

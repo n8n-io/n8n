@@ -609,6 +609,14 @@ export interface WorkflowBuilder {
 
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined;
 
+	/**
+	 * Validate the workflow graph structure.
+	 * Returns errors and warnings without converting to JSON.
+	 */
+	validate(
+		options?: import('../validation/index').ValidationOptions,
+	): import('../validation/index').ValidationResult;
+
 	toJSON(): WorkflowJSON;
 
 	toString(): string;

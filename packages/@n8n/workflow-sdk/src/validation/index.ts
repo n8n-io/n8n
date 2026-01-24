@@ -4,12 +4,20 @@ import type { WorkflowBuilder, WorkflowJSON } from '../types/base';
  * Validation error codes
  */
 export type ValidationErrorCode =
+	| 'NO_NODES'
 	| 'MISSING_TRIGGER'
 	| 'DISCONNECTED_NODE'
 	| 'MISSING_PARAMETER'
 	| 'INVALID_CONNECTION'
 	| 'CIRCULAR_REFERENCE'
-	| 'INVALID_EXPRESSION';
+	| 'INVALID_EXPRESSION'
+	| 'AGENT_STATIC_PROMPT'
+	| 'AGENT_NO_SYSTEM_MESSAGE'
+	| 'HARDCODED_CREDENTIALS'
+	| 'SET_CREDENTIAL_FIELD'
+	| 'MERGE_SINGLE_INPUT'
+	| 'TOOL_NO_PARAMETERS'
+	| 'FROM_AI_IN_NON_TOOL';
 
 /**
  * Validation error class
