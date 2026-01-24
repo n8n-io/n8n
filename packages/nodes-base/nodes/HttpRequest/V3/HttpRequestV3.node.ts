@@ -681,6 +681,12 @@ export class HttpRequestV3 implements INodeType {
 						requestInterval: pagination.requestInterval,
 					};
 
+					if (pagination.paginationCompleteWhen === 'receiveSpecificStatusCodes') {
+						paginationData.allowedStatusCodes = pagination.statusCodesWhenComplete
+							.split(',')
+							.map((item) => parseInt(item.trim()));
+					}
+
 					if (pagination.paginationMode === 'updateAParameterInEachRequest') {
 						// Iterate over all parameters and add them to the request
 						paginationData.request = {};
