@@ -726,7 +726,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
-					`Agent node "${instance.name}" has no expression in its prompt. Consider using dynamic context like chatInput.`,
+					`Agent node "${instance.name}" has no expression in its prompt. When working with a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } if any other trigger`,
 					instance.name,
 				),
 			);
