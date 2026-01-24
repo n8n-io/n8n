@@ -4,6 +4,7 @@ import { kafka, createKafkaHelper } from './kafka';
 import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
 import { mailpit, createMailpitHelper } from './mailpit';
+import { mysqlService } from './mysql';
 import { createObservabilityHelper } from './observability';
 import { postgres } from './postgres';
 import { proxy } from './proxy';
@@ -31,6 +32,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	loadBalancer,
 	cloudflared,
 	kafka,
+	mysql: mysqlService,
 };
 
 export const helperFactories: Partial<HelperFactories> = {

@@ -32,8 +32,8 @@ const DEFAULT_IMAGES = {
 	n8nTracer: 'ghcr.io/ivov/n8n-tracer:0.1.0',
 	jaeger: 'jaegertracing/all-in-one:1.76.0',
 	cloudflared: 'cloudflare/cloudflared:2025.1.1',
-	// Kafka for message queue testing
 	kafka: 'confluentinc/cp-kafka:8.0.3',
+	mysql: 'mysql:9.6.0',
 } as const;
 
 /**
@@ -97,4 +97,6 @@ export const TEST_CONTAINER_IMAGES = {
 	n8nTracer: getImage('n8nTracer'),
 	jaeger: getImage('jaeger'),
 	cloudflared: getImage('cloudflared'),
+	kafka: getImage('kafka'),
+	mysql: getImage('mysql'),
 } as const;
