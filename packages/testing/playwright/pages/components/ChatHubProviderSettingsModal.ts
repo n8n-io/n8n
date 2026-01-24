@@ -23,10 +23,6 @@ export class ChatHubProviderSettingsModal extends BaseModal {
 		return this.root.getByTitle('Update Credential');
 	}
 
-	getClearCredentialButton(): Locator {
-		return this.root.getByTitle('Clear selection');
-	}
-
 	getLimitModelsToggle(): Locator {
 		return this.root.getByLabel('Limit models').locator('..');
 	}

@@ -65,13 +65,6 @@ export class UserApiHelper {
 	}
 
 	/**
-	 * Delete a user
-	 */
-	async delete(userId: string): Promise<void> {
-		await this.api.request.delete(`/rest/users/${userId}`);
-	}
-
-	/**
 	 * Get all users, with optional filtering by email, firstName, lastName, or fullText search
 	 */
 	async getUsers(options?: {

@@ -64,14 +64,6 @@ export class ChatHubChatPage extends BasePage {
 		return this.getChatMessages().nth(index).getByTestId('chat-message-prev-alternative');
 	}
 
-	getNextAlternativeButtonAt(index: number): Locator {
-		return this.getChatMessages().nth(index).getByTestId('chat-message-next-alternative');
-	}
-
-	getAttachButton(): Locator {
-		return this.page.getByRole('button', { name: /attach/i });
-	}
-
 	getFileInput(): Locator {
 		return this.page.locator('input[type="file"]');
 	}

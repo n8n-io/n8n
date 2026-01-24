@@ -64,11 +64,6 @@ export class ProjectSettingsPage extends BasePage {
 		expect(actualCount).toBe(expectedCount);
 	}
 
-	async expectSearchInputValue(expectedValue: string) {
-		const searchInput = this.getMembersSearchInput();
-		await expect(searchInput).toHaveValue(expectedValue);
-	}
-
 	getTitle() {
 		return this.page.getByTestId('project-name');
 	}

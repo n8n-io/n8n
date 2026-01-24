@@ -14,7 +14,6 @@ import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
-import { IframePage } from './IframePage';
 import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -70,7 +69,6 @@ export class n8nPage {
 	readonly canvas: CanvasPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
-	readonly iframe: IframePage;
 	readonly interactions: InteractionsPage;
 	readonly keycloakLogin: KeycloakLoginPage;
 	readonly mfaLogin: MfaLoginPage;
@@ -141,7 +139,6 @@ export class n8nPage {
 		this.canvas = new CanvasPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
-		this.iframe = new IframePage(page);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);

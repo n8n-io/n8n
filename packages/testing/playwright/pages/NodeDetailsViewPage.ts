@@ -147,19 +147,6 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.savePinnedData();
 	}
 
-	async pastePinnedData(data: object) {
-		await this.getEditPinnedDataButton().click();
-
-		const editor = this.outputPanel.get().locator('[contenteditable="true"]');
-		await editor.waitFor();
-		await editor.click();
-		await editor.fill('');
-
-		await this.clipboard.paste(JSON.stringify(data));
-
-		await this.savePinnedData();
-	}
-
 	async savePinnedData() {
 		await this.getRunDataPaneHeader().locator('button:visible').filter({ hasText: 'Save' }).click();
 	}
@@ -221,10 +208,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return await this.page.request.get(path);
 	}
 
-	getWebhookUrl() {
-		return this.page.locator('.webhook-url').textContent();
-	}
-
 	async clearExpressionEditor(parameterName?: string) {
 		const editor = this.getInlineExpressionEditorInput(parameterName);
 		await editor.click();
@@ -277,12 +260,6 @@ export class NodeDetailsViewPage extends BasePage {
 	async addParameterOptionByName(optionName: string): Promise<void> {
 		await this.clickParameterOptions();
 		await this.selectFromVisibleDropdown(optionName);
-	}
-
-	async waitForParameterDropdown(parameterName: string): Promise<void> {
-		const dropdown = this.getParameterInput(parameterName);
-		await dropdown.waitFor({ state: 'visible' });
-		await expect(dropdown).toBeEnabled();
 	}
 
 	async clickFloatingNode(nodeName: string) {
@@ -383,25 +360,6 @@ export class NodeDetailsViewPage extends BasePage {
 		}
 	}
 
-	async setMultipleParameters(
-		parameters: Record<string, string | number | boolean>,
-	): Promise<void> {
-		for (const [parameterName, value] of Object.entries(parameters)) {
-			if (typeof value === 'string') {
-				const parameterType = await this.setupHelper.detectParameterType(parameterName);
-				if (parameterType === 'dropdown') {
-					await this.setParameterDropdown(parameterName, value);
-				} else {
-					await this.setParameterInput(parameterName, value);
-				}
-			} else if (typeof value === 'boolean') {
-				await this.setParameterSwitch(parameterName, value);
-			} else if (typeof value === 'number') {
-				await this.setParameterInput(parameterName, value.toString());
-			}
-		}
-	}
-
 	async getParameterValue(parameterName: string): Promise<string> {
 		const parameterType = await this.setupHelper.detectParameterType(parameterName);
 
@@ -434,15 +392,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return isEnabled ? 'true' : 'false';
 	}
 
-	async validateParameter(parameterName: string, expectedValue: string): Promise<void> {
-		const actualValue = await this.getParameterValue(parameterName);
-		if (actualValue !== expectedValue) {
-			throw new Error(
-				`Parameter ${parameterName} has value "${actualValue}", expected "${expectedValue}"`,
-			);
-		}
-	}
-
 	getAssignmentCollectionContainer(paramName: string) {
 		return this.page.getByTestId(`assignment-collection-${paramName}`);
 	}
@@ -451,10 +400,6 @@ export class NodeDetailsViewPage extends BasePage {
 		const inputSelect = this.inputPanel.getNodeInputOptions();
 		await inputSelect.click();
 		await this.page.getByRole('option', { name: nodeName }).click();
-	}
-
-	getInputTableHeader(index: number = 0) {
-		return this.getInputPanel().locator('table th').nth(index);
 	}
 
 	getInputTbodyCell(row: number, col: number) {
@@ -502,10 +447,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getAddValueButton() {
 		return this.getNodeParameters().locator('input[placeholder*="Add Value"]');
-	}
-
-	getCollectionAddOptionSelect() {
-		return this.getNodeParameters().getByTestId('collection-add-option-select');
 	}
 
 	getParameterSwitch(parameterName: string) {
@@ -569,17 +510,8 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('expression-modal-output');
 	}
 
-	async typeIntoParameterInput(parameterName: string, content: string): Promise<void> {
-		const input = this.getParameterInput(parameterName);
-		await input.type(content);
-	}
-
 	getInputTable() {
 		return this.getInputPanel().locator('table');
-	}
-
-	getInputTableCellSpan(row: number, col: number, dataName: string) {
-		return this.getInputTbodyCell(row, col).locator(`span[data-name="${dataName}"]`).first();
 	}
 
 	getAddFieldToSortByButton() {
@@ -606,12 +538,6 @@ export class NodeDetailsViewPage extends BasePage {
 		await pages.nth(pageNumber - 1).click();
 	}
 
-	async getCurrentOutputPage(): Promise<number> {
-		const activePage = this.getOutputPagination().locator('.el-pager li.is-active').first();
-		const pageText = await activePage.textContent();
-		return parseInt(pageText ?? '1', 10);
-	}
-
 	async setParameterInputValue(parameterName: string, value: string): Promise<void> {
 		const input = this.getParameterInput(parameterName).locator('input');
 		await input.clear();
@@ -624,16 +550,8 @@ export class NodeDetailsViewPage extends BasePage {
 		await this.page.waitForTimeout(150);
 	}
 
-	async clickGetBackToCanvas(): Promise<void> {
-		await this.clickBackToCanvasButton();
-	}
-
 	getRunDataInfoCallout() {
 		return this.page.getByTestId('run-data-callout');
-	}
-
-	getOutputPanelTable() {
-		return this.getOutputTable();
 	}
 
 	async checkParameterCheckboxInputByName(name: string): Promise<void> {
@@ -705,11 +623,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return await this.outputPanel.getRunSelectorInput().inputValue();
 	}
 
-	async expandSchemaItem(itemText: string) {
-		const item = this.outputPanel.getSchemaItem(itemText);
-		await item.locator('.toggle').click();
-	}
-
 	getExecuteNodeButton() {
 		return this.page.getByTestId('node-execute-button');
 	}
@@ -732,10 +645,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async closeCodeEditorDialog() {
 		await this.getCodeEditorDialog().locator('.el-dialog__close').click();
-	}
-
-	getWebhookTriggerListening() {
-		return this.page.getByTestId('trigger-listening');
 	}
 
 	getNodeRunSuccessIndicator() {
@@ -772,12 +681,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	async searchOutputData(searchTerm: string) {
 		const searchInput = this.outputPanel.getSearchInput();
-		await searchInput.click();
-		await searchInput.fill(searchTerm);
-	}
-
-	async searchInputData(searchTerm: string) {
-		const searchInput = this.inputPanel.getSearchInput();
 		await searchInput.click();
 		await searchInput.fill(searchTerm);
 	}
@@ -839,10 +742,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId(`subnode-connection-group-${connectionType}-${index}`);
 	}
 
-	getFloatingSubNodes(connectionType: string, index: number = 0) {
-		return this.getSubNodeConnectionGroup(connectionType, index).getByTestId('floating-subnode');
-	}
-
 	getNodesWithIssues() {
 		return this.page.locator('[class*="hasIssues"]');
 	}
@@ -855,10 +754,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getFloatingNode() {
 		return this.page.getByTestId('floating-node');
-	}
-
-	async getNodesWithIssuesCount() {
-		return await this.getNodesWithIssues().count();
 	}
 
 	async addItemToFixedCollection(collectionName: string) {
@@ -874,10 +769,6 @@ export class NodeDetailsViewPage extends BasePage {
 		const picker = this.getFixedCollectionPropertyPicker(index);
 		await picker.locator('input').click();
 		await this.page.getByRole('option', { name: propertyName, exact: true }).click();
-	}
-
-	async clickParameterItemAction(actionText: string) {
-		await this.page.getByTestId('parameter-item').getByText(actionText).click();
 	}
 
 	getParameterItemWithText(text: string) {
@@ -949,10 +840,6 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByTestId('ndv-input-select').locator('input');
 	}
 
-	getInputTableRows() {
-		return this.getInputTable().locator('tr');
-	}
-
 	getOutputRunSelectorInput() {
 		return this.getOutputPanel().locator('[data-test-id="run-selector"] input');
 	}
@@ -973,16 +860,8 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.getFilterComponent(paramName).getByTestId('filter-condition');
 	}
 
-	getFilterCondition(paramName: string, index: number = 0) {
-		return this.getFilterComponent(paramName).getByTestId('filter-condition').nth(index);
-	}
-
 	getFilterConditionLeft(paramName: string, index: number = 0) {
 		return this.getFilterComponent(paramName).getByTestId('filter-condition-left').nth(index);
-	}
-
-	getFilterConditionRight(paramName: string, index: number = 0) {
-		return this.getFilterComponent(paramName).getByTestId('filter-condition-right').nth(index);
 	}
 
 	getFilterConditionOperator(paramName: string, index: number = 0) {
@@ -1011,26 +890,6 @@ export class NodeDetailsViewPage extends BasePage {
 
 	getAddOptionDropdown() {
 		return this.page.getByRole('combobox', { name: 'Add option' });
-	}
-
-	/**
-	 * Adds an optional parameter from a collection dropdown
-	 * @param optionDisplayName - The display name of the option to add (e.g., 'Response Code')
-	 * @param parameterName - The parameter name to set after adding (e.g., 'responseCode')
-	 * @param parameterValue - The value to set for the parameter
-	 */
-	async setOptionalParameter(
-		optionDisplayName: string,
-		parameterName: string,
-		parameterValue: string | boolean,
-	): Promise<void> {
-		await this.getAddOptionDropdown().click();
-
-		// Step 2: Select the option by display name
-		await this.page.getByRole('option', { name: optionDisplayName }).click();
-
-		// Step 3: Set the parameter value
-		await this.setupHelper.setParameter(parameterName, parameterValue);
 	}
 
 	async setInvalidExpression({

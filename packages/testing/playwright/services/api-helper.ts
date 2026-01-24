@@ -256,12 +256,6 @@ export class ApiHelpers {
 		return userApi;
 	}
 
-	async get(path: string, params?: URLSearchParams) {
-		const response = await this.request.get(path, { params });
-		const { data } = await response.json();
-		return data;
-	}
-
 	/**
 	 * Check if n8n is healthy
 	 * @returns True if n8n is healthy, false otherwise
@@ -307,42 +301,6 @@ export class ApiHelpers {
 		if (!response.ok()) {
 			throw new TestError(
 				`Failed to create syslog destination: ${response.status()} ${await response.text()}`,
-			);
-		}
-
-		const result = await response.json();
-		// Handle both direct response and {data: ...} wrapped response
-		return result.data ?? result;
-	}
-
-	/**
-	 * Create a webhook destination for log streaming.
-	 * Requires the logStreaming feature to be enabled.
-	 *
-	 * @param config - Webhook destination configuration
-	 * @returns Created destination data
-	 */
-	async createWebhookDestination(config: {
-		url: string;
-		method?: 'POST' | 'GET' | 'PUT' | 'PATCH';
-		label?: string;
-		subscribedEvents?: string[];
-		sendPayload?: boolean;
-	}): Promise<{ id: string }> {
-		const response = await this.request.post('/rest/eventbus/destination', {
-			data: {
-				__type: '$$MessageEventBusDestinationWebhook',
-				url: config.url,
-				method: config.method ?? 'POST',
-				label: config.label ?? 'Webhook Destination',
-				subscribedEvents: config.subscribedEvents ?? ['*'], // All events
-				sendPayload: config.sendPayload ?? true,
-			},
-		});
-
-		if (!response.ok()) {
-			throw new TestError(
-				`Failed to create webhook destination: ${response.status()} ${await response.text()}`,
 			);
 		}
 

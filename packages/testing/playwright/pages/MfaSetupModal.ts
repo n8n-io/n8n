@@ -15,16 +15,8 @@ export class MfaSetupModal extends BasePage {
 		return this.page.getByTestId('mfa-token-input');
 	}
 
-	getCopySecretToClipboardButton(): Locator {
-		return this.page.getByTestId('mfa-secret-button');
-	}
-
 	getDownloadRecoveryCodesButton(): Locator {
 		return this.page.getByTestId('mfa-recovery-codes-button');
-	}
-
-	getSaveButton(): Locator {
-		return this.page.getByTestId('mfa-save-button');
 	}
 
 	async fillToken(token: string): Promise<void> {

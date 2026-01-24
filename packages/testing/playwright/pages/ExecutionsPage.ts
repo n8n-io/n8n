@@ -103,10 +103,4 @@ export class ExecutionsPage extends BasePage {
 	async openFilter(): Promise<void> {
 		await this.getFilterButton().click();
 	}
-
-	async selectStatus(status: string): Promise<void> {
-		await this.getStatusSelect().click();
-		await this.page.waitForTimeout(1000);
-		await this.page.getByRole('option', { name: status }).click();
-	}
 }

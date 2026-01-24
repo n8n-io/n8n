@@ -8,14 +8,6 @@ export class WorkflowsPage extends BasePage {
 	readonly addResource = new AddResource(this.page);
 	readonly cards = new ResourceCards(this.page);
 
-	async clickAddFirstProjectButton() {
-		await this.clickByTestId('add-first-project-button');
-	}
-
-	async clickAddProjectButton() {
-		await this.clickByTestId('project-plus-button');
-	}
-
 	/**
 	 * This is the new workflow button on the workflows page, visible when there are no workflows.
 	 */
@@ -38,22 +30,6 @@ export class WorkflowsPage extends BasePage {
 
 	getSearchBar() {
 		return this.page.getByTestId('resources-list-search');
-	}
-
-	getWorkflowFilterButton() {
-		return this.page.getByTestId('workflow-filter-button');
-	}
-
-	getWorkflowTagsDropdown() {
-		return this.page.getByTestId('workflow-tags-dropdown');
-	}
-
-	getWorkflowTagItem(tagName: string) {
-		return this.page.getByTestId('workflow-tag-item').filter({ hasText: tagName });
-	}
-
-	getWorkflowArchivedCheckbox() {
-		return this.page.getByTestId('workflow-archived-checkbox');
 	}
 
 	async unarchiveWorkflow(workflowItem: Locator) {
@@ -93,10 +69,6 @@ export class WorkflowsPage extends BasePage {
 		await this.page.getByRole('button', { name: 'Unpublish' }).click();
 	}
 
-	getFiltersButton() {
-		return this.page.getByTestId('resources-list-filters-trigger');
-	}
-
 	async openFilters() {
 		await this.clickByTestId('resources-list-filters-trigger');
 	}
@@ -117,25 +89,6 @@ export class WorkflowsPage extends BasePage {
 
 	getStatusDropdown() {
 		return this.page.getByTestId('status-dropdown');
-	}
-
-	/**
-	 * Select a status filter (for active/deactivated workflows)
-	 * @param status - 'All', 'Active', or 'Deactivated'
-	 */
-	async selectStatusFilter(status: 'All' | 'Active' | 'Deactivated') {
-		await this.openFilters();
-		await this.getStatusDropdown().getByRole('combobox', { name: 'Select' }).click();
-		if (status === 'All') {
-			await this.page.getByRole('option', { name: 'All' }).click();
-		} else {
-			await this.page.getByText(status, { exact: true }).click();
-		}
-		await this.closeFilters();
-	}
-
-	getTagsDropdown() {
-		return this.page.getByTestId('tags-dropdown');
 	}
 
 	async filterByTags(tags: string[]) {
@@ -197,10 +150,6 @@ export class WorkflowsPage extends BasePage {
 
 	deleteModalTransferRadioButton() {
 		return this.deleteFolderModal().getByTestId('transfer-content-radio');
-	}
-
-	deleteModalDeleteRadioButton() {
-		return this.deleteFolderModal().getByTestId('delete-content-radio');
 	}
 
 	deleteModalConfirmButton() {

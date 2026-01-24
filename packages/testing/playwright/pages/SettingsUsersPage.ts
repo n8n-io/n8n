@@ -11,10 +11,6 @@ export class SettingsUsersPage extends BasePage {
 		return this.page.getByRole('row', { name: email });
 	}
 
-	getInviteButton() {
-		return this.page.getByRole('button', { name: 'Invite' });
-	}
-
 	getAccountType(email: string) {
 		return this.getRow(email).getByTestId('user-role-dropdown');
 	}
@@ -27,11 +23,6 @@ export class SettingsUsersPage extends BasePage {
 		const searchInput = this.getSearchInput();
 		await searchInput.click();
 		await searchInput.fill(email);
-	}
-
-	async clickTransferUser(email: string) {
-		await this.openActions(email);
-		await this.page.getByTestId('action-transfer').click();
 	}
 
 	async transferData(email: string) {

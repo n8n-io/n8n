@@ -20,16 +20,4 @@ export class VersionsPage extends BasePage {
 	getWhatsNewMenuItem() {
 		return this.page.getByTestId('whats-new');
 	}
-
-	async openWhatsNewMenu() {
-		await this.getWhatsNewMenuItem().click();
-	}
-
-	async openVersionUpdatesPanel() {
-		await this.getVersionUpdatesPanelOpenButton().click();
-	}
-
-	async closeVersionUpdatesPanel() {
-		await this.getVersionUpdatesPanelCloseButton().click();
-	}
 }

@@ -118,10 +118,6 @@ export class DataTableDetails extends BasePage {
 		await this.getAddRowTableButton().click();
 	}
 
-	getDataGrid() {
-		return this.page.getByTestId('data-table-grid');
-	}
-
 	getDataRows() {
 		return this.page.locator(
 			'[data-test-id="data-table-grid"] .ag-center-cols-container [row-index]',
