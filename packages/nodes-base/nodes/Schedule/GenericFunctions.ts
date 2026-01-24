@@ -32,8 +32,39 @@ export function validateInterval(node: INode, itemIndex: number, interval: Sched
 		}
 	}
 
-	if (interval.field === 'months' && interval.monthsInterval < 1) {
-		errorMessage = 'Months must be larger than 0';
+	if (interval.field === 'months') {
+		if (interval.monthsInterval < 1) {
+			errorMessage = 'Months must be larger than 0';
+		} else if (
+			interval.triggerAtDayOfMonth !== undefined &&
+			(interval.triggerAtDayOfMonth < 1 || interval.triggerAtDayOfMonth > 31)
+		) {
+			errorMessage = 'Day of month must be in range 1-31';
+		}
+	}
+
+	// Validate trigger time fields for intervals that support them
+	if (interval.field === 'days' || interval.field === 'weeks' || interval.field === 'months') {
+		if (
+			interval.triggerAtHour !== undefined &&
+			(interval.triggerAtHour < 0 || interval.triggerAtHour > 23)
+		) {
+			errorMessage = 'Hour must be in range 0-23';
+		}
+		if (
+			interval.triggerAtMinute !== undefined &&
+			(interval.triggerAtMinute < 0 || interval.triggerAtMinute > 59)
+		) {
+			errorMessage = 'Minute must be in range 0-59';
+		}
+	}
+
+	if (
+		interval.field === 'hours' &&
+		interval.triggerAtMinute !== undefined &&
+		(interval.triggerAtMinute < 0 || interval.triggerAtMinute > 59)
+	) {
+		errorMessage = 'Minute must be in range 0-59';
 	}
 
 	if (errorMessage) {
@@ -52,7 +83,7 @@ export function recurrenceCheck(
 	if (!recurrence.activated) return true;
 
 	const intervalSize = recurrence.intervalSize;
-	if (!intervalSize) return false;
+	if (!intervalSize || intervalSize < 1) return false;
 
 	const index = recurrence.index;
 	const typeInterval = recurrence.typeInterval;
@@ -102,10 +133,7 @@ export function recurrenceCheck(
 			diff += momentTz.clone().isoWeekYear(previousYear).isoWeeksInYear();
 		}
 
-		if (
-			diff >= intervalSize || // not first time, but minimum interval has passed
-			week === lastExecution // Trigger on multiple days in the same week
-		) {
+		if (diff >= intervalSize) {
 			recurrenceRules[index] = week;
 			return true;
 		}
