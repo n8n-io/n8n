@@ -204,6 +204,72 @@ export class LmChatOpenRouter implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Provider Routing',
+						name: 'providerRouting',
+						type: 'collection',
+						default: {},
+						description:
+							'Configure which sub-providers handle your requests. <a href="https://openrouter.ai/docs/provider-routing">Learn more</a>.',
+						placeholder: 'Add Provider Routing Option',
+						options: [
+							{
+								displayName: 'Order',
+								name: 'order',
+								type: 'string',
+								default: '',
+								placeholder: 'anthropic,openai,google',
+								description:
+									'Comma-separated list of provider slugs to try in order. <a href="https://openrouter.ai/docs/provider-routing#provider-sorting">Learn more</a>.',
+							},
+							{
+								displayName: 'Allow Fallbacks',
+								name: 'allowFallbacks',
+								type: 'boolean',
+								default: true,
+								description:
+									'Whether to allow backup providers when the primary is unavailable',
+							},
+							{
+								displayName: 'Require Parameters',
+								name: 'requireParameters',
+								type: 'boolean',
+								default: false,
+								description:
+									'Whether to only use providers that support all parameters in your request',
+							},
+							{
+								displayName: 'Data Collection',
+								name: 'dataCollection',
+								type: 'options',
+								options: [
+									{ name: 'Allow', value: 'allow' },
+									{ name: 'Deny', value: 'deny' },
+								],
+								default: 'allow',
+								description:
+									'Whether to use providers that may store data. Deny restricts to providers with zero data retention.',
+							},
+							{
+								displayName: 'Ignore',
+								name: 'ignore',
+								type: 'string',
+								default: '',
+								placeholder: 'anthropic,openai',
+								description:
+									'Comma-separated list of provider slugs to skip for this request',
+							},
+							{
+								displayName: 'Quantizations',
+								name: 'quantizations',
+								type: 'string',
+								default: '',
+								placeholder: 'int4,int8',
+								description:
+									'Comma-separated list of quantization levels to filter by (e.g., int4, int8, fp16)',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -223,6 +289,14 @@ export class LmChatOpenRouter implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			providerRouting?: {
+				order?: string;
+				allowFallbacks?: boolean;
+				requireParameters?: boolean;
+				dataCollection?: 'allow' | 'deny';
+				ignore?: string;
+				quantizations?: string;
+			};
 		};
 
 		const timeout = options.timeout;
@@ -236,6 +310,40 @@ export class LmChatOpenRouter implements INodeType {
 			},
 		};
 
+		// Build provider routing object
+		const provider: Record<string, unknown> = {};
+		if (options.providerRouting) {
+			const routing = options.providerRouting;
+			
+			if (routing.order) {
+				provider.order = routing.order.split(',').map((p) => p.trim()).filter((p) => p);
+			}
+			if (routing.allowFallbacks !== undefined) {
+				provider.allow_fallbacks = routing.allowFallbacks;
+			}
+			if (routing.requireParameters !== undefined) {
+				provider.require_parameters = routing.requireParameters;
+			}
+			if (routing.dataCollection) {
+				provider.data_collection = routing.dataCollection;
+			}
+			if (routing.ignore) {
+				provider.ignore = routing.ignore.split(',').map((p) => p.trim()).filter((p) => p);
+			}
+			if (routing.quantizations) {
+				provider.quantizations = routing.quantizations.split(',').map((p) => p.trim()).filter((p) => p);
+			}
+		}
+
+		// Build modelKwargs
+		const modelKwargs: Record<string, unknown> = {};
+		if (options.responseFormat) {
+			modelKwargs.response_format = { type: options.responseFormat };
+		}
+		if (Object.keys(provider).length > 0) {
+			modelKwargs.provider = provider;
+		}
+
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
@@ -244,11 +352,7 @@ export class LmChatOpenRouter implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: Object.keys(modelKwargs).length > 0 ? modelKwargs : undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
