@@ -228,4 +228,5 @@ export const TEST_CONTAINER_IMAGES = {
 	n8nTracer: getImage('n8nTracer'),
 	jaeger: getImage('jaeger'),
 	cloudflared: getImage('cloudflared'),
+	kafka: getImage('kafka'),
 } as const;

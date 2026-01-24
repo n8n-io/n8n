@@ -1,27 +1,41 @@
 import { resolve } from 'path';
-import { mergeConfig } from 'vitest/config';
-import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decorators';
+import { defineConfig } from 'vitest/config';
 
-export default mergeConfig(
-	createVitestConfigWithDecorators({
-		include: ['**/*.integration.test.ts'],
-		testTimeout: 120_000,
-		hookTimeout: 120_000,
-	}),
-	{
-		resolve: {
-			alias: {
-				'@credentials': resolve(__dirname, 'credentials'),
-				'@test': resolve(__dirname, 'test'),
-				'@utils': resolve(__dirname, 'utils'),
-				'@nodes-testing': resolve(__dirname, '../core/nodes-testing'),
-			},
-		},
-		test: {
-			fileParallelism: false,
-			sequence: { concurrent: false },
-			pool: 'forks',
-			poolOptions: { forks: { singleFork: true } },
+/**
+ * Vitest config for integration tests in nodes-base.
+ *
+ * These tests use testcontainers to spin up real services (Kafka, etc.)
+ * and test node functionality against them.
+ *
+ * Container lifecycle is managed via test.extend fixtures for clean
+ * setup/teardown per test file.
+ *
+ * Run with: pnpm test:integration:kafka
+ */
+export default defineConfig({
+	resolve: {
+		alias: {
+			'@nodes-testing/': resolve(__dirname, '../testing/unit/') + '/',
+			'@test/': resolve(__dirname, 'test/') + '/',
 		},
 	},
-);
+	test: {
+		globals: true,
+		environment: 'node',
+		include: ['**/*.integration.test.ts'],
+		testTimeout: 120_000, // Container startup can take time
+		hookTimeout: 120_000,
+		// Run sequentially to avoid container conflicts
+		fileParallelism: false,
+		sequence: {
+			concurrent: false, // Run tests within a file sequentially
+		},
+		// Pool configuration for testcontainers
+		pool: 'forks',
+		poolOptions: {
+			forks: {
+				singleFork: true,
+			},
+		},
+	},
+});
