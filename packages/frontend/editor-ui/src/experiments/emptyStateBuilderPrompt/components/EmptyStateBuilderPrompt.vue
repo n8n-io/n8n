@@ -6,6 +6,8 @@ import { useI18n } from '@n8n/i18n';
 import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
 import { VIEWS } from '@/app/constants/navigation';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { TemplateClickSource, trackTemplatesClick } from '@/experiments/utils';
 import shuffle from 'lodash/shuffle';
 import { useTypewriterPlaceholder } from '../composables/useTypewriterPlaceholder';
 import { useEmptyStateBuilderPromptStore } from '../stores/emptyStateBuilderPrompt.store';
@@ -18,6 +20,7 @@ const props = defineProps<{
 const router = useRouter();
 const toast = useToast();
 const i18n = useI18n();
+const telemetry = useTelemetry();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 
 const emit = defineEmits<{
@@ -43,10 +46,12 @@ function onSubmit() {
 }
 
 function onFromScratch() {
+	telemetry.track('User clicked from scratch in empty state');
 	emit('startFromScratch');
 }
 
 function onTemplate() {
+	trackTemplatesClick(TemplateClickSource.emptyStateBuilderPrompt);
 	void router.push({ name: VIEWS.TEMPLATES });
 }
 

@@ -1803,6 +1803,7 @@ async function handlePendingBuilderPrompt() {
 		await builderStore.sendChatMessage({
 			text: pendingPrompt,
 			initialGeneration: true,
+			source: 'empty-state',
 		});
 	}
 }

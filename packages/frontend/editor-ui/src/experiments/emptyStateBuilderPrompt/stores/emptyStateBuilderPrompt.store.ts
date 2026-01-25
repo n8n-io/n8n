@@ -38,7 +38,7 @@ export const useEmptyStateBuilderPromptStore = defineStore(
 
 			for (const node of workflow.nodes) {
 				if (!node.credentials) continue;
-				wq;
+
 				for (const [name, credential] of Object.entries(node.credentials)) {
 					if (typeof credential === 'string' || credential.id === null) continue;
 
