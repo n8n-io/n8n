@@ -80,7 +80,6 @@
 	"commitMessageTopic": "{{depName}}",
 	"commitMessageExtra": "to {{newVersion}}",
 	"commitMessageAction": "Update",
-	"ignoreDeps": [],
 	"ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**"],
 	"enabledManagers": ["npm", "dockerfile", "github-actions"],
 	"npmrc": "auto-detect",
