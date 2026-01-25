@@ -653,43 +653,36 @@ namespace ExecuteFunctions {
 		export type NodeParameter = 'additionalFields' | 'filters' | 'options' | 'updateFields';
 	}
 
-	export type GetNodeParameterFn = {
+	type NodeValueMap = {
+		[K in StringReturning.NodeParameter]: string;
+	} & {
+		[K in RecordReturning.NodeParameter]: IDataObject;
+	} & {
+		[K in BooleanReturning.NodeParameter]: boolean;
+	} & {
+		[K in NumberReturning.NodeParameter]: number;
+	};
+
+	export type GetNodeParameterWithIndexFn = {
 		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
 		getNodeParameter<T extends { resource: string }>(
 			parameterName: 'resource',
 			itemIndex?: number,
 		): T['resource'];
 
-		getNodeParameter(
-			parameterName: StringReturning.NodeParameter,
+		getNodeParameter<P extends keyof NodeValueMap, T = NodeValueMap[P]>(
+			parameterName: P,
 			itemIndex: number,
-			fallbackValue?: string,
+			fallbackValue?: NodeValueMap[P],
 			options?: IGetNodeParameterOptions,
-		): string;
-		getNodeParameter(
-			parameterName: RecordReturning.NodeParameter,
+		): [T] extends [never] ? NodeValueMap[P] : T;
+
+		getNodeParameter<T = NodeParameterValueType | object, P extends string = string>(
+			parameterName: P,
 			itemIndex: number,
-			fallbackValue?: IDataObject,
+			fallbackValue?: P extends keyof NodeValueMap ? NodeValueMap[P] : any,
 			options?: IGetNodeParameterOptions,
-		): IDataObject;
-		getNodeParameter(
-			parameterName: BooleanReturning.NodeParameter,
-			itemIndex: number,
-			fallbackValue?: boolean,
-			options?: IGetNodeParameterOptions,
-		): boolean;
-		getNodeParameter(
-			parameterName: NumberReturning.NodeParameter,
-			itemIndex: number,
-			fallbackValue?: number,
-			options?: IGetNodeParameterOptions,
-		): number;
-		getNodeParameter(
-			parameterName: string,
-			itemIndex: number,
-			fallbackValue?: any,
-			options?: IGetNodeParameterOptions,
-		): NodeParameterValueType | object;
+		): T;
 	};
 }
 
@@ -983,6 +976,14 @@ type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = Functions
 	[K in Keys]: NonNullable<FunctionsBase[K]>;
 };
 
+export type GetNodeParameterFn = {
+	getNodeParameter(
+		parameterName: string,
+		fallbackValue?: any,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object;
+};
+
 export type ContextType = 'flow' | 'node';
 
 export type DataTableProxyProvider = {
@@ -1019,7 +1020,7 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 };
 
 // TODO: Create later own type only for Config-Nodes
-export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
+export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterWithIndexFn &
 	BaseExecutionFunctions & {
 		executeWorkflow(
 			workflowInfo: IExecuteWorkflowInfo,
@@ -1097,14 +1098,9 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getRunnerStatus(taskType: string): { available: true } | { available: false; reason?: string };
 	};
 
-export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
+export interface IExecuteSingleFunctions extends BaseExecutionFunctions, GetNodeParameterFn {
 	getInputData(inputIndex?: number, connectionType?: NodeConnectionType): INodeExecutionData;
 	getItemIndex(): number;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
@@ -1115,7 +1111,7 @@ export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
 		};
 }
 
-export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
+export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterWithIndexFn &
 	FunctionsBaseWithRequiredKeys<'getMode'> &
 	Pick<
 		IExecuteFunctions,
@@ -1151,16 +1147,11 @@ export interface IExecutePaginationFunctions extends IExecuteSingleFunctions {
 	): Promise<INodeExecutionData[]>;
 }
 
-export interface ILoadOptionsFunctions extends FunctionsBase {
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
-	getCurrentNodeParameter(
+export interface ILoadOptionsFunctions extends FunctionsBase, GetNodeParameterFn {
+	getCurrentNodeParameter<T = NodeParameterValueType | object | undefined>(
 		parameterName: string,
 		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object | undefined;
+	): T;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 
 	helpers: RequestHelperFunctions & SSHTunnelFunctions & DataTableProxyFunctions;
@@ -1168,7 +1159,7 @@ export interface ILoadOptionsFunctions extends FunctionsBase {
 
 export type FieldValueOption = { name: string; type: FieldType | 'any' };
 
-export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
+export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterWithIndexFn &
 	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
 export interface ILocalLoadOptionsFunctions {
@@ -1183,18 +1174,14 @@ export interface IWorkflowLoader {
 }
 
 export interface IPollFunctions
-	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'>,
+		GetNodeParameterFn {
 	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
@@ -1202,18 +1189,14 @@ export interface IPollFunctions
 }
 
 export interface ITriggerFunctions
-	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'>,
+		GetNodeParameterFn {
 	emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
 	): void;
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	helpers: RequestHelperFunctions &
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
@@ -1222,19 +1205,17 @@ export interface ITriggerFunctions
 }
 
 export interface IHookFunctions
-	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'> {
+	extends FunctionsBaseWithRequiredKeys<'getMode' | 'getActivationMode'>,
+		GetNodeParameterFn {
 	getWebhookName(): string;
 	getWebhookDescription(name: WebhookType): IWebhookDescription | undefined;
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	helpers: RequestHelperFunctions;
 }
 
-export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
+export interface IWebhookFunctions
+	extends FunctionsBaseWithRequiredKeys<'getMode'>,
+		GetNodeParameterFn {
 	getBodyData(): IDataObject;
 	getHeaderData(): IncomingHttpHeaders;
 	getInputConnectionData(
@@ -1242,11 +1223,6 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 		itemIndex: number,
 		inputIndex?: number,
 	): Promise<unknown>;
-	getNodeParameter(
-		parameterName: string,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	getNodeWebhookUrl: (name: WebhookType) => string | undefined;
 	evaluateExpression(expression: string, itemIndex?: number): NodeParameterValueType;
 	getParamsData(): object;
