@@ -3,6 +3,8 @@
  *
  * Validates generated TypeScript SDK code against SDK types using
  * the TypeScript compiler to catch type errors before execution.
+ *
+ * Supports custom SDK types for variant evaluation (builder, graph interfaces).
  */
 
 import type { EvaluationContext, Evaluator, Feedback } from '../../harness/harness-types';
@@ -11,6 +13,21 @@ import { typeCheckCode } from '../../../src/evaluators/code-typecheck/type-check
 import type { CodeViolation } from '../../../src/evaluators/code-typecheck/violations';
 
 const EVALUATOR_NAME = 'code-typecheck';
+
+/** Options for the code typecheck evaluator */
+export interface CodeTypecheckEvaluatorOptions {
+	/**
+	 * Custom SDK type content to use instead of the default @n8n/workflow-sdk types.
+	 * Used for variant evaluation (builder, graph interfaces).
+	 */
+	customSdkTypes?: string;
+
+	/**
+	 * Whether to skip node type validation.
+	 * Default: false
+	 */
+	skipNodeTypeValidation?: boolean;
+}
 
 function formatViolations(violations: CodeViolation[]): string | undefined {
 	if (violations.length === 0) return undefined;
@@ -22,7 +39,14 @@ function formatViolations(violations: CodeViolation[]): string | undefined {
 		.join('; ');
 }
 
-export function createCodeTypecheckEvaluator(): Evaluator<EvaluationContext> {
+/**
+ * Create a code typecheck evaluator.
+ *
+ * @param options - Optional configuration for custom SDK types (for variant evaluation)
+ */
+export function createCodeTypecheckEvaluator(
+	options?: CodeTypecheckEvaluatorOptions,
+): Evaluator<EvaluationContext> {
 	const fb = (
 		metric: string,
 		score: number,
@@ -45,7 +69,10 @@ export function createCodeTypecheckEvaluator(): Evaluator<EvaluationContext> {
 				return [fb('skipped', 1, 'score', 'No generated code available for type checking')];
 			}
 
-			const result = typeCheckCode(ctx.generatedCode);
+			const result = typeCheckCode(ctx.generatedCode, {
+				customSdkTypes: options?.customSdkTypes,
+				skipNodeTypeValidation: options?.skipNodeTypeValidation,
+			});
 
 			const criticalViolations = result.violations.filter((v) => v.type === 'critical');
 			const majorViolations = result.violations.filter((v) => v.type === 'major');

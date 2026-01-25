@@ -1,0 +1,20 @@
+id,prompt,category
+if-else-simple,"Create a workflow that checks if an API response status is 200. If true, send a success Slack message. If false, send an error notification.",if-else
+if-else-chain,"Build a workflow that validates incoming data. If valid, format it, enrich it with additional details, and save to a database. If invalid, log the error.",if-else
+if-else-merge,"Create a workflow that branches based on order status. If paid, process the payment. If unpaid, send a reminder. Both branches should merge and send a confirmation email.",if-merge
+if-else-merge-complex,"Build a workflow that checks if a user is premium. Premium users get enhanced processing with API enrichment, standard users get basic processing. Both paths should merge to send a personalized response based on what processing was done.",if-merge
+switch-3way,"Create a workflow that routes incoming webhooks based on event type: 'create' goes to a creation handler, 'update' goes to an update handler, and 'delete' goes to a deletion handler.",switch
+switch-5way,"Build a workflow that routes support tickets based on priority. Urgent tickets escalate immediately, high priority notifies the manager, normal gets queued, low is archived for later, and unknown priorities go to a triage team.",switch
+switch-with-chains,"Create a workflow that handles different payment types. Credit card payments need fraud check then processing. Bank transfers need validation then processing. Crypto needs conversion then processing. Cash payments just log directly.",switch
+merge-2input,"Build a workflow that fetches data from two different APIs in parallel, merges the results, and then processes the combined data.",merge
+merge-3input,"Create a workflow that gathers information from three sources in parallel: a weather API, a news API, and a stock API. Merge all results and generate a daily summary.",merge
+merge-after-branch,"Build a workflow where the trigger fans out to three parallel processors: one for images, one for text, and one for metadata. All three merge back together for final assembly.",merge
+split-batches-simple,"Create a workflow that fetches 1000 records from a database, processes them in batches of 50 (calling an external API for each), and then aggregates the results.",split-batches
+split-batches-api,"Build a workflow that reads a list of email addresses, sends personalized emails in batches of 10 to avoid rate limits, and tracks which emails were sent successfully.",split-batches
+nested-if-batch,"Create a workflow that checks if an order total exceeds $100. For high-value orders, split the items into batches of 5 for premium processing. For standard orders, process all items in bulk.",nested
+nested-switch-merge,"Build a workflow that routes documents by type (invoice, receipt, contract). Each type has its own processing chain. All processed documents merge together for archival.",nested
+nested-parallel-if,"Create a workflow that fetches data from 2 APIs in parallel. After merging, check if the combined data is complete. If yes, process and save. If no, send an alert.",nested
+ai-agent-basic,"Build a simple AI assistant workflow with a manual trigger and an AI agent that can answer questions using an OpenAI model.",ai-agent
+ai-agent-tools,"Create an AI workflow where the agent has access to a calculator tool and a web search tool to help answer user questions.",ai-agent
+complex-order-pipeline,"Build an order processing workflow: receive webhook, validate order data (if invalid, reject), check inventory (use switch for in-stock, backorder, or out-of-stock paths), process payment, and send confirmation. All paths should eventually merge to update order status.",complex
+complex-data-pipeline,"Create a data pipeline that: fetches data from 3 APIs in parallel, merges results, validates completeness, processes valid data in batches of 25, and generates a final report.",complex
