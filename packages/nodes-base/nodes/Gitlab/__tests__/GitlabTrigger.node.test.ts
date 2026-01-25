@@ -324,9 +324,8 @@ describe('GitlabTrigger Node - Issue #24678 Fix', () => {
 			}));
 
 			// Mock successful creation for all
-			mockedGitlabApiRequest.mockImplementation(() =>
-				Promise.resolve({ id: Math.floor(Math.random() * 10000) }),
-			);
+			let idCounter = 1;
+			mockedGitlabApiRequest.mockImplementation(() => Promise.resolve({ id: idCounter++ }));
 
 			// Create all webhooks
 			const results = await Promise.all(
@@ -340,6 +339,7 @@ describe('GitlabTrigger Node - Issue #24678 Fix', () => {
 			const webhookIds = triggers.map((t) => (t as any).webhookId);
 			const uniqueIds = new Set(webhookIds);
 			expect(uniqueIds.size).toBe(5);
+			expect(webhookIds).toEqual([1, 2, 3, 4, 5]);
 		});
 	});
 
