@@ -1,5 +1,6 @@
 import type { Project, SourceFile } from 'ts-morph';
-import type { Severity, Violation, RuleResult, RuleConfig } from '../core/types';
+import type { Severity, Violation, RuleResult, RuleConfig, FixResult } from '../core/types';
+import { getConfig } from '../janitor.config';
 
 export abstract class BaseRule {
 	abstract readonly id: string;
@@ -7,8 +8,44 @@ export abstract class BaseRule {
 	abstract readonly description: string;
 	abstract readonly severity: Severity;
 
+	/** Whether this rule supports auto-fixing */
+	readonly fixable: boolean = false;
+
 	/** Rule-specific configuration */
 	protected config: RuleConfig = {};
+
+	/**
+	 * Get the effective severity for this rule (may be overridden in config)
+	 */
+	getEffectiveSeverity(): Severity {
+		const ruleConfig = getConfig().rules?.[this.id];
+		if (ruleConfig?.severity === 'off') {
+			return 'info'; // Will be filtered out
+		}
+		if (ruleConfig?.severity) {
+			return ruleConfig.severity as Severity;
+		}
+		return this.severity;
+	}
+
+	/**
+	 * Check if this rule is enabled
+	 */
+	isEnabled(): boolean {
+		const ruleConfig = getConfig().rules?.[this.id];
+		if (ruleConfig?.enabled === false) return false;
+		if (ruleConfig?.severity === 'off') return false;
+		return true;
+	}
+
+	/**
+	 * Check if a text matches any of the allow patterns for this rule
+	 */
+	protected isAllowed(text: string): boolean {
+		const ruleConfig = getConfig().rules?.[this.id];
+		const allowPatterns = ruleConfig?.allowPatterns ?? [];
+		return allowPatterns.some((pattern) => pattern.test(text));
+	}
 
 	/**
 	 * Define which file patterns this rule should analyze
@@ -23,6 +60,17 @@ export abstract class BaseRule {
 	 * @returns Array of violations found
 	 */
 	abstract analyze(project: Project, files: SourceFile[]): Violation[];
+
+	/**
+	 * Apply fixes for violations. Override in fixable rules.
+	 * @param project - ts-morph Project instance
+	 * @param violations - Violations to fix
+	 * @param write - Whether to write changes to disk
+	 * @returns Array of fix results
+	 */
+	fix(_project: Project, _violations: Violation[], _write: boolean): FixResult[] {
+		return [];
+	}
 
 	/**
 	 * Configure the rule with options
@@ -47,6 +95,7 @@ export abstract class BaseRule {
 			violations,
 			filesAnalyzed: files.length,
 			executionTimeMs: Math.round((endTime - startTime) * 100) / 100,
+			fixable: this.fixable,
 		};
 	}
 
@@ -59,6 +108,8 @@ export abstract class BaseRule {
 		column: number,
 		message: string,
 		suggestion?: string,
+		fixable?: boolean,
+		fixData?: Record<string, unknown>,
 	): Violation {
 		return {
 			file: file.getFilePath(),
@@ -66,8 +117,10 @@ export abstract class BaseRule {
 			column,
 			rule: this.id,
 			message,
-			severity: this.severity,
+			severity: this.getEffectiveSeverity(),
 			suggestion,
+			fixable,
+			fixData,
 		};
 	}
 }

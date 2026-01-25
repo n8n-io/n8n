@@ -19,9 +19,15 @@ import {
  * 2. All locator calls must chain from `this.container`, not `this.page`
  *
  * Exceptions:
+ * - Standalone pages: Pages with a navigation method (default: `goto`) are considered
+ *   full-page views that don't need container scoping
  * - Page-level methods: goto, waitForResponse, waitForURL, evaluate, keyboard, reload, etc.
  * - BasePage helper methods (protected, intended for inheritance)
  * - Components (they already use root: Locator pattern)
+ *
+ * Configuration:
+ * - navigationMethod: Method name that indicates a standalone page (default: 'goto')
+ *   Pages with this method are exempt from container requirements
  */
 export class ScopeLockdownRule extends BaseRule {
 	readonly id = 'scope-lockdown';
@@ -29,8 +35,26 @@ export class ScopeLockdownRule extends BaseRule {
 	readonly description = 'Pages must scope locators to container element';
 	readonly severity = 'error' as const;
 
+	/** Default navigation method name that indicates a standalone page */
+	private static readonly DEFAULT_NAVIGATION_METHOD = 'goto';
+
 	getTargetGlobs(): string[] {
 		return ['pages/**/*.ts'];
+	}
+
+	/**
+	 * Get the configured navigation method name
+	 */
+	private getNavigationMethod(): string {
+		return (this.config.navigationMethod as string) || ScopeLockdownRule.DEFAULT_NAVIGATION_METHOD;
+	}
+
+	/**
+	 * Check if a class has a navigation method (indicating it's a standalone page)
+	 */
+	private isStandalonePage(classDecl: ClassDeclaration): boolean {
+		const navMethod = this.getNavigationMethod();
+		return classDecl.getMethod(navMethod) !== undefined;
 	}
 
 	analyze(_project: Project, files: SourceFile[]): Violation[] {
@@ -56,6 +80,12 @@ export class ScopeLockdownRule extends BaseRule {
 
 				// Skip if extends BasePage helper methods (they're protected for inheritance)
 				if (className === 'FloatingUiHelper') continue;
+
+				// Skip standalone pages (those with navigation method like goto)
+				// These are full-page views that don't need container scoping
+				if (this.isStandalonePage(classDecl)) {
+					continue;
+				}
 
 				// Check 1: Container member exists
 				if (!hasContainerMember(classDecl)) {

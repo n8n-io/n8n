@@ -129,6 +129,15 @@ export class RuleRunner {
 
 			// Execute the rule
 			const result = rule.execute(project, files);
+
+			// Apply fixes if in fix mode and rule supports it
+			if (options?.fix && rule.fixable) {
+				const fixableViolations = result.violations.filter((v) => v.fixable);
+				if (fixableViolations.length > 0) {
+					result.fixes = rule.fix(project, fixableViolations, options.write ?? false);
+				}
+			}
+
 			results.push(result);
 		}
 
@@ -168,6 +177,14 @@ export class RuleRunner {
 
 		const files = this.getFilesForRule(project, rule, options?.files);
 		const result = rule.execute(project, files);
+
+		// Apply fixes if in fix mode and rule supports it
+		if (options?.fix && rule.fixable) {
+			const fixableViolations = result.violations.filter((v) => v.fixable);
+			if (fixableViolations.length > 0) {
+				result.fixes = rule.fix(project, fixableViolations, options.write ?? false);
+			}
+		}
 
 		const summary = this.buildSummary([result], files.length);
 

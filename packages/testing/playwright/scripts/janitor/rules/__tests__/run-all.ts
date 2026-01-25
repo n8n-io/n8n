@@ -7,6 +7,9 @@ import './boundary-protection.rule.test';
 import './scope-lockdown.rule.test';
 import './selector-purity.rule.test';
 import './deduplication.rule.test';
+import './dead-code.rule.test';
+import './api-purity.rule.test';
+import './no-page-in-composable.rule.test';
 
 console.log('====================================');
 console.log('All Janitor Rule Tests Complete');

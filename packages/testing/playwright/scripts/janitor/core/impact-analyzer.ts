@@ -1,11 +1,9 @@
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getConfig } from '../janitor.config';
 
 const PLAYWRIGHT_ROOT = path.join(__dirname, '..', '..', '..');
-
-// Default facade files - these aggregate imports but don't represent real usage
-const DEFAULT_FACADES = ['pages/n8nPage.ts', 'fixtures/base.ts'];
 
 export interface ImpactConfig {
 	facades?: string[]; // Files that are facades (aggregators)
@@ -28,8 +26,8 @@ export class ImpactAnalyzer {
 		private project: Project,
 		config?: ImpactConfig,
 	) {
-		// Normalize facade paths to absolute
-		const facadeList = config?.facades ?? DEFAULT_FACADES;
+		// Normalize facade paths to absolute - use provided config, then janitor.config, then empty
+		const facadeList = config?.facades ?? getConfig().facades;
 		this.facades = new Set(facadeList.map((f) => path.join(PLAYWRIGHT_ROOT, f)));
 	}
 
