@@ -7,8 +7,6 @@
  * Uses SDK_API_CONTENT to provide actual SDK type definitions for validation.
  * Also loads generated node types from ~/.n8n/generated-types/ to validate
  * that node type names are valid.
- *
- * Supports custom SDK type content for variant evaluation (builder, graph).
  */
 
 import * as ts from 'typescript';
@@ -20,24 +18,6 @@ import { getNodeTypeDeclarations } from './node-types-loader';
 export interface TypeCheckResult {
 	violations: CodeViolation[];
 	score: number;
-}
-
-export interface TypeCheckOptions {
-	/**
-	 * Custom SDK type content to use instead of the default @n8n/workflow-sdk types.
-	 * Used for variant evaluation (builder, graph interfaces).
-	 *
-	 * When provided, this content is used as-is WITHOUT appending SDK_FUNCTION_DECLARATIONS.
-	 * The custom content should be complete and self-contained.
-	 */
-	customSdkTypes?: string;
-
-	/**
-	 * Whether to skip node type validation.
-	 * When true, the KnownNodeType union is not loaded from ~/.n8n/generated-types/
-	 * Default: false
-	 */
-	skipNodeTypeValidation?: boolean;
 }
 
 /** Virtual file paths for the in-memory file system */
@@ -191,11 +171,8 @@ export declare function fanIn<T extends NodeInstance<string, string, unknown>[]>
 /**
  * Type-check generated TypeScript code against SDK types.
  * Creates an in-memory TypeScript program with the SDK types available.
- *
- * @param code - The TypeScript code to type-check
- * @param options - Optional configuration for custom SDK types
  */
-export function typeCheckCode(code: string, options?: TypeCheckOptions): TypeCheckResult {
+export function typeCheckCode(code: string): TypeCheckResult {
 	// Wrap code in a function with SDK imports to make it valid TypeScript
 	const wrappedCode = `
 import {
@@ -218,26 +195,14 @@ export default function createWorkflow() {
 		true,
 	);
 
-	// Determine SDK types content
-	let sdkTypesContent: string;
+	// Get the node type declarations (KnownNodeType union)
+	const nodeTypeDeclarations = getNodeTypeDeclarations();
 
-	if (options?.customSdkTypes) {
-		// Use custom SDK types as-is (for variant evaluation)
-		// Custom types are expected to be complete and self-contained
-		sdkTypesContent = options.customSdkTypes;
-	} else {
-		// Use default SDK types with node type validation
-		const nodeTypeDeclarations = options?.skipNodeTypeValidation
-			? '// Node type validation skipped\ntype KnownNodeType = string;'
-			: getNodeTypeDeclarations();
-
-		// Combine SDK_API_CONTENT with node types and function declarations
-		// SDK_API_CONTENT has the type definitions, node types add KnownNodeType,
-		// SDK_FUNCTION_DECLARATIONS has the function exports with type-safe wrappers
-		sdkTypesContent =
-			SDK_API_CONTENT + '\n\n' + nodeTypeDeclarations + '\n' + SDK_FUNCTION_DECLARATIONS;
-	}
-
+	// Combine SDK_API_CONTENT with node types and function declarations
+	// SDK_API_CONTENT has the type definitions, node types add KnownNodeType,
+	// SDK_FUNCTION_DECLARATIONS has the function exports with type-safe wrappers
+	const sdkTypesContent =
+		SDK_API_CONTENT + '\n\n' + nodeTypeDeclarations + '\n' + SDK_FUNCTION_DECLARATIONS;
 	const sdkSourceFile = ts.createSourceFile(
 		SDK_TYPES_FILE,
 		sdkTypesContent,

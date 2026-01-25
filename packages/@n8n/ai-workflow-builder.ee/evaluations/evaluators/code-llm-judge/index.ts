@@ -3,13 +3,10 @@
  *
  * Uses an LLM to analyze generated TypeScript SDK code for quality issues
  * including expression syntax errors, API misuse, and security problems.
- *
- * Supports custom SDK types for variant evaluation (builder, graph interfaces).
  */
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { SDK_API_CONTENT } from '@n8n/workflow-sdk';
 
 import type { SimpleWorkflow } from '@/types/workflow';
 
@@ -19,19 +16,9 @@ import {
 	type CategoryResult,
 	type CodeEvaluationResult,
 } from './evaluation';
-import { getCodeReviewSystemPrompt, CODE_REVIEW_USER_PROMPT } from './prompts/code-review.prompt';
+import { CODE_REVIEW_SYSTEM_PROMPT, CODE_REVIEW_USER_PROMPT } from './prompts/code-review.prompt';
 
 const EVALUATOR_NAME = 'code-llm-judge';
-
-/** Options for the code LLM judge evaluator */
-export interface CodeLLMJudgeEvaluatorOptions {
-	/**
-	 * Custom SDK type content to use instead of the default @n8n/workflow-sdk types.
-	 * Used for variant evaluation (builder, graph interfaces).
-	 * If not provided, uses SDK_API_CONTENT from @n8n/workflow-sdk.
-	 */
-	customSdkTypes?: string;
-}
 
 /**
  * Helper to create feedback items.
@@ -66,16 +53,9 @@ function formatViolations(result: CategoryResult): string | undefined {
  * Create a code LLM judge evaluator that uses an LLM to analyze generated code.
  *
  * @param llm - The LangChain chat model to use for evaluation
- * @param options - Optional configuration for custom SDK types (for variant evaluation)
  * @returns An evaluator that analyzes TypeScript SDK code quality
  */
-export function createCodeLLMJudgeEvaluator(
-	llm: BaseChatModel,
-	options?: CodeLLMJudgeEvaluatorOptions,
-): Evaluator<EvaluationContext> {
-	// Determine which SDK types to use for evaluation
-	const sdkApiContent = options?.customSdkTypes ?? SDK_API_CONTENT;
-
+export function createCodeLLMJudgeEvaluator(llm: BaseChatModel): Evaluator<EvaluationContext> {
 	return {
 		name: EVALUATOR_NAME,
 
@@ -91,10 +71,9 @@ export function createCodeLLMJudgeEvaluator(
 			// Prepare the prompt
 			const userPrompt = CODE_REVIEW_USER_PROMPT.replace('{code}', ctx.generatedCode);
 
-			// Invoke the LLM with the appropriate SDK types
-			const systemPrompt = getCodeReviewSystemPrompt(sdkApiContent);
+			// Invoke the LLM
 			const result = (await structuredLLM.invoke([
-				new SystemMessage(systemPrompt),
+				new SystemMessage(CODE_REVIEW_SYSTEM_PROMPT),
 				new HumanMessage(userPrompt),
 			])) as CodeEvaluationResult;
 

@@ -5,23 +5,8 @@
  * for n8n workflow creation.
  */
 
-/**
- * Creates the system prompt for code review evaluation.
- *
- * @param sdkApiContent - The TypeScript type definitions for the SDK API
- * @returns The formatted system prompt with the correct API reference
- */
-export function getCodeReviewSystemPrompt(sdkApiContent: string): string {
-	return `You are an expert code reviewer specializing in n8n workflow SDK code.
+export const CODE_REVIEW_SYSTEM_PROMPT = `You are an expert code reviewer specializing in n8n workflow SDK code.
 Your task is to evaluate generated TypeScript code that uses the @n8n/workflow-sdk to create workflows.
-
-## SDK API Reference
-
-Use this TypeScript API definition as the authoritative source for correct patterns:
-
-\`\`\`typescript
-${sdkApiContent}
-\`\`\`
 
 ## Evaluation Categories
 
@@ -37,13 +22,17 @@ n8n expressions must use the format \`={{ ... }}\` with the equals sign prefix.
 - \`\${json.email}\` (wrong syntax entirely)
 
 ### 2. API Usage (apiUsage)
-Validate all method calls and patterns against the SDK API Reference above.
-Flag any usage that doesn't match the TypeScript type definitions.
+The SDK uses specific patterns for workflow construction.
 
-**Common issues to check:**
-- Using non-existent methods (e.g., .connect() instead of .then())
-- Wrong function signatures (check parameter types carefully)
-- Incorrect chaining patterns
+**Correct patterns:**
+- \`workflow('id', 'name').add(node1).connect(node1, node2)\`
+- \`node({ type: '...', version: 1, config: { ... } })\`
+- \`trigger({ type: '...', version: 1, config: { ... } })\`
+- \`ifElse({ condition: ..., onTrue: (wb) => wb.add(...), onFalse: (wb) => wb.add(...) })\`
+
+**Incorrect patterns:**
+- Using deprecated methods
+- Wrong method chaining order
 - Missing required parameters
 
 ### 3. Security (security)
@@ -75,7 +64,6 @@ General code quality issues.
 
 For overallScore, weight security issues highest (critical issues should significantly impact score),
 followed by expression syntax and API usage, then code quality.`;
-}
 
 export const CODE_REVIEW_USER_PROMPT = `Please evaluate the following generated TypeScript SDK code for n8n workflow creation:
 
