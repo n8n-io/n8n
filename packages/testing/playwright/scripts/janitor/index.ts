@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 /**
- * Janitor - Static Analysis Tool for Playwright Test Architecture
+ * Janitor - Static Analysis & Inventory Tool for Playwright Test Architecture
  *
- * Usage:
+ * Static Analysis:
  *   npx tsx scripts/janitor              # Run all rules, console output
  *   npx tsx scripts/janitor --json       # JSON output for LLM
  *   npx tsx scripts/janitor --rule=X     # Run single rule
@@ -18,6 +18,14 @@
  *   npx tsx scripts/janitor --impact=file.ts --tests    # Just test file list
  *   npx tsx scripts/janitor --facade=X,Y                # Override facade files
  *
+ * Inventory (codebase discovery for AI/devs):
+ *   npx tsx scripts/janitor --inventory            # Full codebase inventory
+ *   npx tsx scripts/janitor --inventory --json     # JSON for AI consumption
+ *   npx tsx scripts/janitor --list-pages           # List all page objects
+ *   npx tsx scripts/janitor --list-services        # List all services
+ *   npx tsx scripts/janitor --list-components      # List all components
+ *   npx tsx scripts/janitor --describe=ClassName   # Detailed info about a class
+ *
  * Facade files (default: n8nPage.ts, base.ts) are aggregators that import many files.
  * When impact analysis reaches a facade, it switches from import-tracing to
  * property-access search for accurate results.
@@ -32,6 +40,13 @@ import {
 	formatImpactJSON,
 	formatTestList,
 } from './core/impact-analyzer';
+import {
+	InventoryAnalyzer,
+	formatInventoryConsole,
+	formatInventoryJSON,
+	formatDescribeConsole,
+	formatListConsole,
+} from './core/inventory-analyzer';
 import type { RunOptions } from './core/types';
 
 // Import rules
@@ -51,6 +66,12 @@ interface CliOptions {
 	impact?: string[];
 	testsOnly: boolean;
 	facades?: string[];
+	// Inventory options
+	inventory: boolean;
+	listPages: boolean;
+	listServices: boolean;
+	listComponents: boolean;
+	describe?: string;
 }
 
 function parseArgs(): CliOptions {
@@ -67,6 +88,12 @@ function parseArgs(): CliOptions {
 		impact: undefined,
 		testsOnly: false,
 		facades: undefined, // Uses default if not specified
+		// Inventory
+		inventory: false,
+		listPages: false,
+		listServices: false,
+		listComponents: false,
+		describe: undefined,
 	};
 
 	for (const arg of args) {
@@ -96,6 +123,16 @@ function parseArgs(): CliOptions {
 			const facadeFiles = arg.slice(9).split(',');
 			options.facades = options.facades ?? [];
 			options.facades.push(...facadeFiles);
+		} else if (arg === '--inventory') {
+			options.inventory = true;
+		} else if (arg === '--list-pages') {
+			options.listPages = true;
+		} else if (arg === '--list-services') {
+			options.listServices = true;
+		} else if (arg === '--list-components') {
+			options.listComponents = true;
+		} else if (arg.startsWith('--describe=')) {
+			options.describe = arg.slice(11);
 		}
 	}
 
@@ -134,18 +171,28 @@ function listRules(runner: RuleRunner): void {
 	console.log('  --impact=<files>     Find tests affected by changed files');
 	console.log('  --tests              Output only test file paths (for piping)');
 	console.log('  --facade=<files>     Override facade files (default: n8nPage.ts, base.ts)');
+
+	console.log('\nInventory (codebase discovery):');
+	console.log('  --inventory          Full codebase inventory (pages, services, fixtures, etc.)');
+	console.log('  --list-pages         List all page objects');
+	console.log('  --list-services      List all API services');
+	console.log('  --list-components    List all components');
+	console.log('  --describe=<Class>   Detailed info about a specific class');
+
+	console.log('\nExamples:');
+	console.log('  # Static analysis');
+	console.log('  npx tsx scripts/janitor --file=pages/NewPage.ts');
 	console.log('');
-	console.log('Examples:');
+	console.log('  # Impact analysis');
 	console.log('  npx tsx scripts/janitor --impact=pages/CanvasPage.ts');
-	console.log('  npx tsx scripts/janitor --impact=pages/CanvasPage.ts --json');
 	console.log(
 		'  npx tsx scripts/janitor --impact=pages/CanvasPage.ts --tests | xargs playwright test',
 	);
 	console.log('');
-	console.log('Facade-aware analysis:');
-	console.log('  When tracing through facade files (aggregators like n8nPage.ts),');
-	console.log('  the analyzer switches from import-tracing to property-access search.');
-	console.log('  This gives accurate results for component changes.');
+	console.log('  # Inventory for AI');
+	console.log('  npx tsx scripts/janitor --inventory --json > .playwright-inventory.json');
+	console.log('  npx tsx scripts/janitor --describe=CanvasPage');
+	console.log('  npx tsx scripts/janitor --list-pages --json');
 	console.log('');
 }
 
@@ -172,6 +219,71 @@ async function main() {
 		}
 
 		// Exit with code 0 - impact analysis is informational
+		return;
+	}
+
+	// Handle inventory mode
+	if (
+		options.inventory ||
+		options.listPages ||
+		options.listServices ||
+		options.listComponents ||
+		options.describe
+	) {
+		const inventoryAnalyzer = new InventoryAnalyzer(project);
+
+		// Describe a specific class
+		if (options.describe) {
+			const info = inventoryAnalyzer.describe(options.describe);
+			if (!info) {
+				console.error(`Class not found: ${options.describe}`);
+				process.exit(1);
+			}
+			if (options.json) {
+				console.log(JSON.stringify(info, null, 2));
+			} else {
+				formatDescribeConsole(info);
+			}
+			return;
+		}
+
+		// Full inventory
+		const inventory = inventoryAnalyzer.analyze();
+
+		// List specific categories
+		if (options.listPages) {
+			if (options.json) {
+				console.log(JSON.stringify(inventory.pages, null, 2));
+			} else {
+				formatListConsole(inventory.pages, 'Pages');
+			}
+			return;
+		}
+
+		if (options.listServices) {
+			if (options.json) {
+				console.log(JSON.stringify(inventory.services, null, 2));
+			} else {
+				formatListConsole(inventory.services, 'Services');
+			}
+			return;
+		}
+
+		if (options.listComponents) {
+			if (options.json) {
+				console.log(JSON.stringify(inventory.components, null, 2));
+			} else {
+				formatListConsole(inventory.components, 'Components');
+			}
+			return;
+		}
+
+		// Full inventory output
+		if (options.json) {
+			console.log(formatInventoryJSON(inventory));
+		} else {
+			formatInventoryConsole(inventory, options.verbose);
+		}
 		return;
 	}
 
