@@ -5,7 +5,7 @@ const TYPING_SPEED_MS = 60;
 const BACKSPACE_SPEED_MS = 40;
 const PAUSE_AT_FULL_TEXT_MS = 2500;
 const PAUSE_AFTER_BACKSPACE_MS = 500;
-const PREFIX = 'Build a ';
+const PREFIX = 'Build ';
 
 export function useTypewriterPlaceholder(
 	suggestions: Ref<WorkflowSuggestion[]>,
@@ -18,11 +18,7 @@ export function useTypewriterPlaceholder(
 	const currentSuggestion = computed(() => {
 		const list = suggestions.value;
 		if (list.length === 0) return '';
-		const summary = list[currentIndex.value % list.length]?.summary ?? '';
-		if (summary.toLowerCase().endsWith('workflow')) {
-			return summary;
-		}
-		return summary + ' workflow';
+		return list[currentIndex.value % list.length]?.summary ?? '';
 	});
 
 	const placeholder = computed(() => PREFIX + displayedSuffix.value);

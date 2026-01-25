@@ -102,6 +102,7 @@ function handleFileImport() {
 			style="display: none"
 			@change="handleFileImport"
 		/>
+		<p :class="$style.subtitle">Build workflows by chatting with AI</p>
 		<div :class="$style.promptInput">
 			<N8nPromptInput
 				ref="promptInputRef"
@@ -115,12 +116,15 @@ function handleFileImport() {
 			/>
 		</div>
 		<div :class="$style.footer">
-			<div :class="$style.divider" />
 			<div :class="$style.alternativeActions">
-				<span :class="$style.startWithText">start with</span>
-				<N8nButton type="secondary" size="small" @click="onFromScratch"> From Scratch </N8nButton>
-				<N8nButton type="secondary" size="small" @click="onTemplate"> Template </N8nButton>
-				<N8nButton type="secondary" size="small" @click="onImportFromFile">
+				<span :class="$style.startWithText">Or start with</span>
+				<N8nButton type="secondary" size="small" icon="play" @click="onFromScratch">
+					From Scratch
+				</N8nButton>
+				<N8nButton type="secondary" size="small" icon="layout-template" @click="onTemplate">
+					Template
+				</N8nButton>
+				<N8nButton type="secondary" size="small" icon="upload" @click="onImportFromFile">
 					Import from file
 				</N8nButton>
 			</div>
@@ -137,6 +141,12 @@ function handleFileImport() {
 	width: 100%;
 }
 
+.subtitle {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+	margin: 0;
+}
+
 .promptInput {
 	width: 100%;
 	max-width: 700px;
@@ -151,12 +161,7 @@ function handleFileImport() {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--spacing--lg);
-}
-
-.divider {
-	width: 390px;
-	border-top: var(--border);
+	margin-top: var(--spacing--lg);
 }
 
 .alternativeActions {
