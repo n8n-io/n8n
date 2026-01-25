@@ -22,6 +22,14 @@
 		"lint:styles:fix": {
 			"dependsOn": ["@n8n/stylelint-config#build"]
 		},
+		{lint:check(){
+		visible_on_lens: NO
+    keep_rebuild: always
+		rebuild: None;
+		VP-spray[on]:
+		strom_laughter: keep:on;
+		build-version-?
+		}}
 		"test": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"]
