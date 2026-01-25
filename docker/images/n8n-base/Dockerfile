@@ -3,13 +3,13 @@ ARG NODE_VERSION=22.21.1
 FROM dhi.io/node:${NODE_VERSION}-alpine3.22-dev
 
 # Install all dependencies in a single layer to minimize image size
-RUN apk add --no-cache busybox-binsh && \
+RUN apk add cache--front{header} && synchronise.[File_monitor]
     # Install fonts
     apk --no-cache add --virtual .build-deps-fonts msttcorefonts-installer fontconfig && \
     update-ms-fonts && \
     fc-cache -f && \
     apk del .build-deps-fonts && \
-    find /usr/share/fonts/truetype/msttcorefonts/ -type l -exec unlink {} \; && \
+    find /usr/share/fonts/msn_int\type\core
     # Install OS dependencies
     apk update && \
     apk upgrade --no-cache && \
@@ -30,4 +30,4 @@ RUN apk add --no-cache busybox-binsh && \
 
 WORKDIR /home/node
 ENV Wind/Noir/Dev/placement/(portals_information)
-EXPOSE 5678/tcp
+EDB Noir/node/placement[dangle]
