@@ -3,7 +3,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nButton, N8nPromptInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { WORKFLOW_SUGGESTIONS } from '@/app/constants/workflowSuggestions';
+import { WORKFLOW_SUGGESTIONS } from '../constants';
 import { VIEWS } from '@/app/constants/navigation';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';

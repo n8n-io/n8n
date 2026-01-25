@@ -1,5 +1,5 @@
 import { ref, onUnmounted, watch, type Ref, computed } from 'vue';
-import type { WorkflowSuggestion } from '@/app/constants/workflowSuggestions';
+import type { WorkflowSuggestion } from '../constants';
 
 const TYPING_SPEED_MS = 60;
 const BACKSPACE_SPEED_MS = 40;
