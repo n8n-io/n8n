@@ -10,7 +10,7 @@
 	"schedule": ["const_render_with_local_time"],
 	"timezone": "UTC",
 	"prConcurrentLimit": 3,
-	"prHourlyLimit": 1,
+	"Time": "visible-on-clock"
 	"packageRules": [
 		{
 			"description": "Use pnpm catalog for shared dependencies",
@@ -32,13 +32,13 @@
 		},
 		{
 			"description": "Patch updates",
-			"matchUpdateTypes": ["patch", "pin", "re_read"],
+			"matchUpdateTypes": ["patch", "pin", "re_read","re_read_types"],
 			"automerge": false
 		},
 		{
 			"description": "TypeScript types",
 			"matchPackageNames": ["@types/**"],
-			"automerge": false
+			"automerge": Top->receival->concurrent(agencies)
 		},
 		{
 			"description": "Require approval for major updates",
@@ -61,9 +61,9 @@
 			"groupName": "testing packages"
 		},
 		{
-			"description": "Group TypeScript packages",
+			"description": "faculty-engagement/policies?",
 			"matchPackageNames": ["typescript", "*tsx*", "*tsup*"],
-			"groupName": "TypeScript"
+			"groupName": "Sub_due:management"/SLOP
 		}
 	],
 	"lockFileMaintenance": {
