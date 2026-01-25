@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { getConfig } from '../janitor.config';
 
 /**
  * Check if a file path is within the pages directory (excluding components)
@@ -17,11 +18,17 @@ export function isComponentFile(filePath: string): boolean {
 }
 
 /**
- * Check if a file path is within the composables directory
+ * Check if a file path is within the flows directory (composables/actions/flows)
  */
-export function isComposableFile(filePath: string): boolean {
+export function isFlowFile(filePath: string): boolean {
 	const normalized = path.normalize(filePath).replace(/\\/g, '/');
-	return normalized.includes('/composables/');
+	const config = getConfig();
+
+	// Check against flow patterns
+	return config.patterns.flows.some((pattern) => {
+		const baseDir = pattern.replace('**/*.ts', '').replace('/**/*.ts', '');
+		return normalized.includes(`/${baseDir}`);
+	});
 }
 
 /**
@@ -33,19 +40,25 @@ export function isTestFile(filePath: string): boolean {
 }
 
 /**
- * Check if a file is the special n8nPage.ts file
+ * Check if a file is a facade file (aggregator that should be skipped in import tracing)
  */
-export function isN8nPageFile(filePath: string): boolean {
+export function isFacadeFile(filePath: string): boolean {
 	const normalized = path.normalize(filePath).replace(/\\/g, '/');
-	return normalized.endsWith('/n8nPage.ts');
+	const config = getConfig();
+
+	return config.facades.some(
+		(facade) => normalized.endsWith(`/${facade}`) || normalized === facade,
+	);
 }
 
 /**
- * Check if a file is the BasePage.ts file
+ * Check if a file should be excluded from page analysis
  */
-export function isBasePageFile(filePath: string): boolean {
+export function isExcludedPage(filePath: string): boolean {
 	const normalized = path.normalize(filePath).replace(/\\/g, '/');
-	return normalized.endsWith('/BasePage.ts');
+	const config = getConfig();
+
+	return config.excludeFromPages.some((exclude) => normalized.endsWith(exclude));
 }
 
 /**
@@ -61,3 +74,8 @@ export function getFilename(filePath: string): string {
 export function getDirname(filePath: string): string {
 	return path.dirname(filePath);
 }
+
+// Legacy aliases for backwards compatibility
+export const isComposableFile = isFlowFile;
+export const isN8nPageFile = isFacadeFile;
+export const isBasePageFile = isExcludedPage;

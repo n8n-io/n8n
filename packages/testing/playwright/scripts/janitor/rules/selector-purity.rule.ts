@@ -2,6 +2,7 @@ import { SyntaxKind, type Project, type SourceFile, type CallExpression } from '
 import { BaseRule } from './base-rule';
 import type { Violation } from '../core/types';
 import { LOCATOR_METHODS, PAGE_LEVEL_METHODS } from '../utils/ast-helpers';
+import { getConfig } from '../janitor.config';
 
 /**
  * Selector Purity Rule
@@ -92,15 +93,12 @@ export class SelectorPurityRule extends BaseRule {
 	 * Check if expression is a direct page locator call
 	 */
 	private isDirectPageLocator(text: string): boolean {
-		// Patterns to detect:
-		// - this.n8n.page.getByTestId
-		// - n8n.page.getByTestId
-		// - this.page.getByTestId (in test files)
-		// - page.getByTestId (in test files)
+		const config = getConfig();
+		const fixtureName = config.fixtureObjectName;
 
 		for (const method of LOCATOR_METHODS) {
-			// n8n.page.* patterns (composables)
-			if (text.includes(`.n8n.page.${method}`)) {
+			// Fixture.page.* patterns (e.g., n8n.page.getByTestId, app.page.locator)
+			if (text.includes(`.${fixtureName}.page.${method}`)) {
 				return true;
 			}
 			// Direct page.* patterns (tests)
@@ -208,11 +206,14 @@ export class SelectorPurityRule extends BaseRule {
 	 * Get appropriate suggestion based on the pattern
 	 */
 	private getSuggestion(text: string): string {
-		if (text.includes('.n8n.page.')) {
-			return 'Use page object methods instead: this.n8n.canvas, this.n8n.ndv, etc.';
+		const config = getConfig();
+		const fixtureName = config.fixtureObjectName;
+
+		if (text.includes(`.${fixtureName}.page.`)) {
+			return `Use page object methods instead: this.${fixtureName}.<pageObject>.<method>()`;
 		}
 		if (text.includes('page.getByTestId')) {
-			return 'Use page object methods from n8n fixture instead of direct locators';
+			return `Use page object methods from ${fixtureName} fixture instead of direct locators`;
 		}
 		return 'Extract selector to appropriate page object class';
 	}

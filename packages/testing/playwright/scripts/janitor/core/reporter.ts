@@ -1,4 +1,4 @@
-import type { JanitorReport, Violation } from './types';
+import type { JanitorReport, Violation, FixResult } from './types';
 import { getRelativePath } from './project-loader';
 
 /**
@@ -141,5 +141,59 @@ function getSeverityIcon(severity: string): string {
 			return '🔵';
 		default:
 			return '⚪';
+	}
+}
+
+/**
+ * Output fix results to console
+ */
+export function printFixResults(report: JanitorReport, write: boolean): void {
+	const allFixes: FixResult[] = [];
+	for (const result of report.results) {
+		if (result.fixes) {
+			allFixes.push(...result.fixes);
+		}
+	}
+
+	if (allFixes.length === 0) {
+		console.log('\nNo fixable violations found.\n');
+		return;
+	}
+
+	console.log('\n------------------------------------');
+	console.log(write ? '       FIXES APPLIED' : '       FIX PREVIEW (dry run)');
+	console.log('------------------------------------\n');
+
+	for (const fix of allFixes) {
+		const icon = fix.applied ? '✅' : '📋';
+		const actionLabel = getActionLabel(fix.action);
+		const target = fix.target ? ` ${fix.target}` : '';
+		console.log(`  ${icon} ${actionLabel}${target}`);
+		console.log(`     ${fix.file}`);
+	}
+
+	console.log('');
+
+	if (!write) {
+		console.log(`${allFixes.length} fix(es) would be applied.`);
+		console.log('Use --fix --write to apply changes.\n');
+	} else {
+		console.log(`${allFixes.length} fix(es) applied.`);
+		console.log('Run: pnpm typecheck && pnpm lint\n');
+	}
+}
+
+function getActionLabel(action: FixResult['action']): string {
+	switch (action) {
+		case 'remove-file':
+			return 'DELETE FILE';
+		case 'remove-method':
+			return 'REMOVE METHOD';
+		case 'remove-property':
+			return 'REMOVE PROPERTY';
+		case 'edit':
+			return 'EDIT';
+		default:
+			return action;
 	}
 }

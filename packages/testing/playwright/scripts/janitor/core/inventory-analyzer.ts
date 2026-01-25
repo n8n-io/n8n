@@ -8,7 +8,10 @@ import {
 	type FunctionDeclaration,
 } from 'ts-morph';
 import * as path from 'path';
+import * as fs from 'fs';
+import { glob } from 'glob';
 import { getSourceFiles } from './project-loader';
+import { getConfig } from '../janitor.config';
 
 const PLAYWRIGHT_ROOT = path.join(__dirname, '..', '..', '..');
 
@@ -80,22 +83,40 @@ export interface FactoryInfo {
 	builds: string; // What type it builds
 }
 
+export interface ComposableInfo {
+	name: string;
+	file: string;
+	methods: MethodInfo[];
+	usesPages: string[]; // Which page objects this composable uses
+}
+
+export interface TestDataInfo {
+	name: string; // Filename without extension
+	file: string; // Relative path
+	category: string; // Parent folder (e.g., 'workflows', 'expectations/langchain')
+	sizeKb: number; // File size in KB
+}
+
 export interface Inventory {
 	timestamp: string;
 	summary: {
 		pages: number;
 		components: number;
+		composables: number;
 		services: number;
 		fixtures: number;
 		helpers: number;
 		factories: number;
+		testData: number;
 	};
 	pages: PageInfo[];
 	components: ComponentInfo[];
+	composables: ComposableInfo[];
 	services: ServiceInfo[];
 	fixtures: FixtureInfo[];
 	helpers: HelperInfo[];
 	factories: FactoryInfo[];
+	testData: TestDataInfo[];
 }
 
 // ============================================================================
@@ -111,34 +132,40 @@ export class InventoryAnalyzer {
 	analyze(): Inventory {
 		const pages = this.analyzePages();
 		const components = this.analyzeComponents(pages);
+		const composables = this.analyzeComposables();
 		const services = this.analyzeServices();
 		const fixtures = this.analyzeFixtures();
 		const helpers = this.analyzeHelpers();
 		const factories = this.analyzeFactories();
+		const testData = this.analyzeTestData();
 
 		return {
 			timestamp: new Date().toISOString(),
 			summary: {
 				pages: pages.length,
 				components: components.length,
+				composables: composables.length,
 				services: services.length,
 				fixtures: fixtures.length,
 				helpers: helpers.length,
 				factories: factories.length,
+				testData: testData.length,
 			},
 			pages,
 			components,
+			composables,
 			services,
 			fixtures,
 			helpers,
 			factories,
+			testData,
 		};
 	}
 
 	/**
 	 * Describe a single class in detail
 	 */
-	describe(className: string): PageInfo | ServiceInfo | HelperInfo | null {
+	describe(className: string): PageInfo | ServiceInfo | HelperInfo | ComposableInfo | null {
 		// Search across all categories
 		const allFiles = this.project.getSourceFiles();
 
@@ -146,12 +173,22 @@ export class InventoryAnalyzer {
 			for (const classDecl of file.getClasses()) {
 				if (classDecl.getName() === className) {
 					const filePath = this.getRelativePath(file.getFilePath());
+					const config = getConfig();
 
-					if (filePath.startsWith('pages/components/')) {
+					// Check against patterns to determine type
+					const matchesPattern = (patterns: string[]) =>
+						patterns.some((p) => {
+							const basePattern = p.replace('**/*.ts', '').replace('/**/*.ts', '');
+							return filePath.startsWith(basePattern);
+						});
+
+					if (matchesPattern(config.patterns.components)) {
 						return this.extractPageInfo(classDecl, file);
-					} else if (filePath.startsWith('pages/')) {
+					} else if (matchesPattern(config.patterns.pages)) {
 						return this.extractPageInfo(classDecl, file);
-					} else if (filePath.startsWith('services/')) {
+					} else if (matchesPattern(config.patterns.flows)) {
+						return this.extractComposableInfo(classDecl, file);
+					} else if (matchesPattern(config.patterns.services)) {
 						return this.extractServiceInfo(classDecl, file);
 					}
 				}
@@ -166,18 +203,21 @@ export class InventoryAnalyzer {
 	// ==========================================================================
 
 	private analyzePages(): PageInfo[] {
-		const files = getSourceFiles(this.project, ['pages/**/*.ts']);
+		const config = getConfig();
+		const files = getSourceFiles(this.project, config.patterns.pages);
 		const pages: PageInfo[] = [];
 
 		for (const file of files) {
 			const filePath = this.getRelativePath(file.getFilePath());
 
-			// Skip components, n8nPage (facade), BasePage
-			if (
-				filePath.includes('/components/') ||
-				filePath.endsWith('n8nPage.ts') ||
-				filePath.endsWith('BasePage.ts')
-			) {
+			// Skip components and excluded files (facades, base classes)
+			if (filePath.includes('/components/')) {
+				continue;
+			}
+
+			// Check against exclude list
+			const shouldExclude = config.excludeFromPages.some((exclude) => filePath.endsWith(exclude));
+			if (shouldExclude) {
 				continue;
 			}
 
@@ -232,7 +272,8 @@ export class InventoryAnalyzer {
 	// ==========================================================================
 
 	private analyzeComponents(pages: PageInfo[]): ComponentInfo[] {
-		const files = getSourceFiles(this.project, ['pages/components/**/*.ts']);
+		const config = getConfig();
+		const files = getSourceFiles(this.project, config.patterns.components);
 		const components: ComponentInfo[] = [];
 
 		for (const file of files) {
@@ -286,11 +327,68 @@ export class InventoryAnalyzer {
 	}
 
 	// ==========================================================================
+	// Composables Analysis
+	// ==========================================================================
+
+	private analyzeComposables(): ComposableInfo[] {
+		const config = getConfig();
+		const files = getSourceFiles(this.project, config.patterns.flows);
+		const composables: ComposableInfo[] = [];
+
+		for (const file of files) {
+			for (const classDecl of file.getClasses()) {
+				if (classDecl.isExported()) {
+					const composableInfo = this.extractComposableInfo(classDecl, file);
+					composables.push(composableInfo);
+				}
+			}
+		}
+
+		return composables.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	private extractComposableInfo(classDecl: ClassDeclaration, file: SourceFile): ComposableInfo {
+		const methods = this.extractMethods(classDecl);
+		const usesPages = this.findPageObjectUsage(classDecl);
+
+		return {
+			name: classDecl.getName() || 'Anonymous',
+			file: this.getRelativePath(file.getFilePath()),
+			methods,
+			usesPages,
+		};
+	}
+
+	/**
+	 * Find which page objects a flow uses by looking for fixture usage patterns
+	 */
+	private findPageObjectUsage(classDecl: ClassDeclaration): string[] {
+		const config = getConfig();
+		const usedPages = new Set<string>();
+		const content = classDecl.getText();
+
+		// Match patterns like this.<fixture>.canvas, this.<fixture>.ndv
+		const pattern = new RegExp(`this\\.${config.fixtureObjectName}\\.(\\w+)`, 'g');
+		const matches = content.matchAll(pattern);
+
+		for (const match of matches) {
+			const pageName = match[1];
+			// Skip 'page' as that's the raw Playwright page, not a page object
+			if (pageName !== 'page') {
+				usedPages.add(pageName);
+			}
+		}
+
+		return Array.from(usedPages).sort();
+	}
+
+	// ==========================================================================
 	// Services Analysis
 	// ==========================================================================
 
 	private analyzeServices(): ServiceInfo[] {
-		const files = getSourceFiles(this.project, ['services/**/*.ts']);
+		const config = getConfig();
+		const files = getSourceFiles(this.project, config.patterns.services);
 		const services: ServiceInfo[] = [];
 
 		for (const file of files) {
@@ -373,7 +471,8 @@ export class InventoryAnalyzer {
 	// ==========================================================================
 
 	private analyzeFixtures(): FixtureInfo[] {
-		const files = getSourceFiles(this.project, ['fixtures/**/*.ts']);
+		const config = getConfig();
+		const files = getSourceFiles(this.project, config.patterns.fixtures);
 		const fixtures: FixtureInfo[] = [];
 
 		for (const file of files) {
@@ -451,7 +550,8 @@ export class InventoryAnalyzer {
 	// ==========================================================================
 
 	private analyzeHelpers(): HelperInfo[] {
-		const files = getSourceFiles(this.project, ['helpers/**/*.ts']);
+		const config = getConfig();
+		const files = getSourceFiles(this.project, config.patterns.helpers);
 		const helpers: HelperInfo[] = [];
 
 		for (const file of files) {
@@ -508,7 +608,8 @@ export class InventoryAnalyzer {
 	// ==========================================================================
 
 	private analyzeFactories(): FactoryInfo[] {
-		const patterns = ['test-data/**/*.ts', 'factories/**/*.ts', 'fixtures/**/factory*.ts'];
+		const config = getConfig();
+		const patterns = config.patterns.factories;
 		const files = getSourceFiles(this.project, patterns);
 		const factories: FactoryInfo[] = [];
 
@@ -563,6 +664,36 @@ export class InventoryAnalyzer {
 		}
 
 		return 'unknown';
+	}
+
+	// ==========================================================================
+	// Test Data Analysis
+	// ==========================================================================
+
+	private analyzeTestData(): TestDataInfo[] {
+		const config = getConfig();
+		const testData: TestDataInfo[] = [];
+
+		for (const pattern of config.patterns.testData) {
+			const files = glob.sync(pattern, { cwd: PLAYWRIGHT_ROOT, nodir: true });
+
+			for (const file of files) {
+				const absolutePath = path.join(PLAYWRIGHT_ROOT, file);
+				const stats = fs.statSync(absolutePath);
+				const ext = path.extname(file);
+				const name = path.basename(file, ext);
+				const category = path.dirname(file);
+
+				testData.push({
+					name: ext ? `${name}${ext}` : name, // Keep extension for clarity
+					file,
+					category,
+					sizeKb: Math.round((stats.size / 1024) * 10) / 10,
+				});
+			}
+		}
+
+		return testData.sort((a, b) => a.name.localeCompare(b.name));
 	}
 
 	// ==========================================================================
@@ -662,12 +793,14 @@ export function formatInventoryConsole(inventory: Inventory, verbose = false): v
 	console.log('====================================\n');
 
 	console.log('Summary:');
-	console.log(`  Pages:      ${inventory.summary.pages}`);
-	console.log(`  Components: ${inventory.summary.components}`);
-	console.log(`  Services:   ${inventory.summary.services}`);
-	console.log(`  Fixtures:   ${inventory.summary.fixtures}`);
-	console.log(`  Helpers:    ${inventory.summary.helpers}`);
-	console.log(`  Factories:  ${inventory.summary.factories}`);
+	console.log(`  Pages:       ${inventory.summary.pages}`);
+	console.log(`  Components:  ${inventory.summary.components}`);
+	console.log(`  Composables: ${inventory.summary.composables}`);
+	console.log(`  Services:    ${inventory.summary.services}`);
+	console.log(`  Fixtures:    ${inventory.summary.fixtures}`);
+	console.log(`  Helpers:     ${inventory.summary.helpers}`);
+	console.log(`  Factories:   ${inventory.summary.factories}`);
+	console.log(`  Test Data:   ${inventory.summary.testData}`);
 
 	if (verbose) {
 		console.log('\n--- Pages ---');
@@ -680,6 +813,12 @@ export function formatInventoryConsole(inventory: Inventory, verbose = false): v
 		for (const comp of inventory.components) {
 			const usedIn = comp.mountedIn.length > 0 ? comp.mountedIn.join(', ') : 'unused';
 			console.log(`  ${comp.name} → used in: ${usedIn}`);
+		}
+
+		console.log('\n--- Composables ---');
+		for (const comp of inventory.composables) {
+			const usesPages = comp.usesPages.length > 0 ? comp.usesPages.join(', ') : 'none';
+			console.log(`  ${comp.name} (${comp.methods.length} methods) → uses: ${usesPages}`);
 		}
 
 		console.log('\n--- Services ---');
@@ -703,7 +842,9 @@ export function formatInventoryJSON(inventory: Inventory): string {
 	return JSON.stringify(inventory, null, 2);
 }
 
-export function formatDescribeConsole(info: PageInfo | ServiceInfo | HelperInfo): void {
+export function formatDescribeConsole(
+	info: PageInfo | ServiceInfo | HelperInfo | ComposableInfo,
+): void {
 	console.log(`\n${info.name}`);
 	console.log(`File: ${info.file}`);
 
@@ -720,6 +861,13 @@ export function formatDescribeConsole(info: PageInfo | ServiceInfo | HelperInfo)
 				const ro = prop.readonly ? 'readonly ' : '';
 				console.log(`  ${ro}${prop.name}: ${prop.type}`);
 			}
+		}
+	}
+
+	if ('usesPages' in info) {
+		const composable = info as ComposableInfo;
+		if (composable.usesPages.length > 0) {
+			console.log(`Uses Pages: ${composable.usesPages.join(', ')}`);
 		}
 	}
 
@@ -752,4 +900,35 @@ export function formatListConsole(
 		console.log(`  ${item.name.padEnd(30)} ${item.file}`);
 	}
 	console.log('');
+}
+
+/**
+ * Format test data files grouped by category
+ */
+export function formatTestDataConsole(items: TestDataInfo[]): void {
+	console.log(`\nTest Data (${items.length} files):\n`);
+
+	// Group by category
+	const byCategory = new Map<string, TestDataInfo[]>();
+	for (const item of items) {
+		const existing = byCategory.get(item.category) || [];
+		existing.push(item);
+		byCategory.set(item.category, existing);
+	}
+
+	// Sort categories
+	const sortedCategories = Array.from(byCategory.keys()).sort();
+
+	for (const category of sortedCategories) {
+		const files = byCategory.get(category)!;
+		console.log(`  ${category}/ (${files.length} files)`);
+		for (const file of files.slice(0, 10)) {
+			const size = file.sizeKb > 0 ? ` (${file.sizeKb}KB)` : '';
+			console.log(`    ${file.name}${size}`);
+		}
+		if (files.length > 10) {
+			console.log(`    ... and ${files.length - 10} more`);
+		}
+		console.log('');
+	}
 }

@@ -8,19 +8,26 @@ interface TestIdUsage {
 	file: string;
 	line: number;
 	column: number;
+	root: string; // The locator root (e.g., "this.page", "this.container", "this.getPanel()")
 }
 
 /**
  * Deduplication Rule
  *
- * Ensures getByTestId() string literals are unique within their scope.
- * Duplicate test IDs across page objects indicate potential consolidation opportunities.
+ * Ensures getByTestId() calls accessing the SAME DOM element are consolidated.
+ * Uses AST analysis to determine the locator "root" - two calls are only duplicates
+ * if they have the same root AND the same test ID.
+ *
+ * Examples:
+ * - this.page.getByTestId('modal') in FileA and FileB → DUPLICATE (same root, same ID)
+ * - this.container.getByTestId('view') vs this.page.getByTestId('view') → NOT duplicate
+ * - this.getOutputPanel().getByTestId('view') vs this.getInputPanel().getByTestId('view') → NOT duplicate
  *
  * Scopes:
  * - pages/ (excluding components) = one scope
  * - pages/components/ = separate scope
  *
- * A test ID appearing in multiple files within the same scope is flagged.
+ * Only flags when the same {root}:{testId} combination appears in multiple files.
  */
 export class DeduplicationRule extends BaseRule {
 	readonly id = 'deduplication';
@@ -66,16 +73,21 @@ export class DeduplicationRule extends BaseRule {
 				if (!stringLit) continue;
 
 				const testId = stringLit.getLiteralText();
+				const root = this.extractLocatorRoot(text);
 				const usage: TestIdUsage = {
 					file: filePath,
 					line: call.getStartLineNumber(),
 					column: call.getStart() - call.getStartLinePos(),
+					root,
 				};
 
-				if (!scope.has(testId)) {
-					scope.set(testId, []);
+				// Use root:testId as the deduplication key
+				const key = `${root}:${testId}`;
+
+				if (!scope.has(key)) {
+					scope.set(key, []);
 				}
-				scope.get(testId)!.push(usage);
+				scope.get(key)!.push(usage);
 			}
 		}
 
@@ -93,10 +105,14 @@ export class DeduplicationRule extends BaseRule {
 	): Violation[] {
 		const violations: Violation[] = [];
 
-		for (const [testId, usages] of scope) {
-			// Only flag if same test ID appears in multiple files
+		for (const [key, usages] of scope) {
+			// Only flag if same root:testId appears in multiple files
 			const uniqueFiles = new Set(usages.map((u) => u.file));
 			if (uniqueFiles.size <= 1) continue;
+
+			// Extract testId from key (format: "root:testId")
+			const testId = key.substring(key.lastIndexOf(':') + 1);
+			const root = usages[0].root;
 
 			// Create a violation for each usage except the first
 			const sortedUsages = [...usages].sort((a, b) => a.file.localeCompare(b.file));
@@ -112,13 +128,34 @@ export class DeduplicationRule extends BaseRule {
 						file,
 						usage.line,
 						usage.column,
-						`Duplicate test ID "${testId}" in ${scopeName} scope`,
-						`Also used in ${firstFile}. Consider consolidating to a shared component or using a more specific test ID.`,
+						`Duplicate locator: ${root}.getByTestId("${testId}") in ${scopeName} scope`,
+						`Also used in ${firstFile}. Consider consolidating to a shared component.`,
 					),
 				);
 			}
 		}
 
 		return violations;
+	}
+
+	/**
+	 * Extract the locator root from a getByTestId call expression.
+	 * E.g., "this.page.getByTestId" → "this.page"
+	 *       "this.container.getByTestId" → "this.container"
+	 *       "this.getPanel().getByTestId" → "this.getPanel()"
+	 */
+	private extractLocatorRoot(exprText: string): string {
+		// Remove the trailing .getByTestId
+		const root = exprText.replace(/\.getByTestId$/, '');
+
+		// Normalize common patterns for better grouping
+		// this.page.locator(...).* chains should be considered scoped
+		if (root.includes('.locator(')) {
+			return 'scoped'; // Mark as scoped - won't match other scoped calls
+		}
+
+		// Normalize method calls to include parentheses for clarity
+		// e.g., "this.getPanel" should be "this.getPanel()" if it's a method
+		return root;
 	}
 }

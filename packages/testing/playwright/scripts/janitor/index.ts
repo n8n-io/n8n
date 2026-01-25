@@ -1,39 +1,55 @@
 #!/usr/bin/env tsx
 /**
- * Janitor - Static Analysis & Inventory Tool for Playwright Test Architecture
+ * Janitor - Static Analysis, Inventory & Dead Code Tool for Playwright Test Architecture
  *
  * Static Analysis:
- *   npx tsx scripts/janitor              # Run all rules, console output
- *   npx tsx scripts/janitor --json       # JSON output for LLM
- *   npx tsx scripts/janitor --rule=X     # Run single rule
- *   npx tsx scripts/janitor --verbose    # Detailed output
- *   npx tsx scripts/janitor --list       # List available rules
- *   npx tsx scripts/janitor --file=X     # Analyze specific file
- *   npx tsx scripts/janitor --files=X,Y  # Analyze multiple files
- *   npx tsx scripts/janitor --allow-in-expect  # Skip selector-purity violations inside expect()
+ *   npx tsx scripts/janitor/index.ts              # Run all rules, console output
+ *   npx tsx scripts/janitor/index.ts --json       # JSON output for LLM
+ *   npx tsx scripts/janitor/index.ts --rule=X     # Run single rule
+ *   npx tsx scripts/janitor/index.ts --verbose    # Detailed output
+ *   npx tsx scripts/janitor/index.ts --list       # List available rules
+ *   npx tsx scripts/janitor/index.ts --file=X     # Analyze specific file
+ *   npx tsx scripts/janitor/index.ts --files=X,Y  # Analyze multiple files
+ *   npx tsx scripts/janitor/index.ts --allow-in-expect  # Skip selector-purity violations inside expect()
  *
- * Impact Analysis (facade-aware):
- *   npx tsx scripts/janitor --impact=file1.ts,file2.ts  # Find affected tests
- *   npx tsx scripts/janitor --impact=file.ts --json     # JSON output
- *   npx tsx scripts/janitor --impact=file.ts --tests    # Just test file list
- *   npx tsx scripts/janitor --facade=X,Y                # Override facade files
+ * Dead Code Removal:
+ *   npx tsx scripts/janitor/index.ts --rule=dead-code           # Find unused code
+ *   npx tsx scripts/janitor/index.ts --rule=dead-code --fix     # Preview removals
+ *   npx tsx scripts/janitor/index.ts --rule=dead-code --fix --write  # Apply removals
+ *
+ * File-Level Impact Analysis (facade-aware):
+ *   npx tsx scripts/janitor/index.ts --impact=file1.ts,file2.ts  # Find affected tests
+ *   npx tsx scripts/janitor/index.ts --impact=file.ts --json     # JSON output
+ *   npx tsx scripts/janitor/index.ts --impact=file.ts --tests    # Just test file list
+ *   npx tsx scripts/janitor/index.ts --facade=X,Y                # Override facade files
+ *
+ * Method-Level Impact Analysis (fixture-aware):
+ *   npx tsx scripts/janitor/index.ts --method-impact=CanvasPage.addNode    # Find tests using method
+ *   npx tsx scripts/janitor/index.ts --method-impact=X.Y --tests           # Just test file list
+ *   npx tsx scripts/janitor/index.ts --method-impact=X.Y --verbose         # Show line-by-line usages
+ *   npx tsx scripts/janitor/index.ts --method-index                        # Build full usage index
+ *   npx tsx scripts/janitor/index.ts --method-index --json                 # JSON for CI integration
  *
  * Inventory (codebase discovery for AI/devs):
- *   npx tsx scripts/janitor --inventory            # Full codebase inventory
- *   npx tsx scripts/janitor --inventory --json     # JSON for AI consumption
- *   npx tsx scripts/janitor --list-pages           # List all page objects
- *   npx tsx scripts/janitor --list-services        # List all services
- *   npx tsx scripts/janitor --list-components      # List all components
- *   npx tsx scripts/janitor --describe=ClassName   # Detailed info about a class
+ *   npx tsx scripts/janitor/index.ts --inventory            # Full codebase inventory
+ *   npx tsx scripts/janitor/index.ts --inventory --json     # JSON for AI consumption
+ *   npx tsx scripts/janitor/index.ts --list-pages           # List all page objects
+ *   npx tsx scripts/janitor/index.ts --list-services        # List all services
+ *   npx tsx scripts/janitor/index.ts --list-components      # List all components
+ *   npx tsx scripts/janitor/index.ts --list-composables     # List all composables
+ *   npx tsx scripts/janitor/index.ts --describe=ClassName   # Detailed info about a class
  *
  * Facade files (default: n8nPage.ts, base.ts) are aggregators that import many files.
  * When impact analysis reaches a facade, it switches from import-tracing to
  * property-access search for accurate results.
+ *
+ * Method-level impact understands the fixture pattern (n8n.canvas.addNode()) and
+ * maps property access to actual page object classes for precise test selection.
  */
 
 import { createProject } from './core/project-loader';
 import { RuleRunner } from './core/rule-runner';
-import { toJSON, toConsole } from './core/reporter';
+import { toJSON, toConsole, printFixResults } from './core/reporter';
 import {
 	ImpactAnalyzer,
 	formatImpactConsole,
@@ -46,14 +62,25 @@ import {
 	formatInventoryJSON,
 	formatDescribeConsole,
 	formatListConsole,
+	formatTestDataConsole,
 } from './core/inventory-analyzer';
+import {
+	MethodUsageAnalyzer,
+	formatMethodImpactConsole,
+	formatMethodImpactJSON,
+	formatMethodImpactTestList,
+	formatMethodUsageIndexConsole,
+	formatMethodUsageIndexJSON,
+} from './core/method-usage-analyzer';
 import type { RunOptions } from './core/types';
 
-// Import rules
 import { BoundaryProtectionRule } from './rules/boundary-protection.rule';
 import { ScopeLockdownRule } from './rules/scope-lockdown.rule';
 import { SelectorPurityRule } from './rules/selector-purity.rule';
 import { DeduplicationRule } from './rules/deduplication.rule';
+import { NoPageInComposableRule } from './rules/no-page-in-composable.rule';
+import { DeadCodeRule } from './rules/dead-code.rule';
+import { ApiPurityRule } from './rules/api-purity.rule';
 
 interface CliOptions {
 	json: boolean;
@@ -66,12 +93,17 @@ interface CliOptions {
 	impact?: string[];
 	testsOnly: boolean;
 	facades?: string[];
-	// Inventory options
+	fix: boolean;
+	write: boolean;
 	inventory: boolean;
 	listPages: boolean;
 	listServices: boolean;
 	listComponents: boolean;
+	listComposables: boolean;
+	listTestData: boolean;
 	describe?: string;
+	methodImpact?: string;
+	methodIndex: boolean;
 }
 
 function parseArgs(): CliOptions {
@@ -87,13 +119,18 @@ function parseArgs(): CliOptions {
 		allowInExpect: false,
 		impact: undefined,
 		testsOnly: false,
-		facades: undefined, // Uses default if not specified
-		// Inventory
+		facades: undefined,
+		fix: false,
+		write: false,
 		inventory: false,
 		listPages: false,
 		listServices: false,
 		listComponents: false,
+		listComposables: false,
+		listTestData: false,
 		describe: undefined,
+		methodImpact: undefined,
+		methodIndex: false,
 	};
 
 	for (const arg of args) {
@@ -107,6 +144,10 @@ function parseArgs(): CliOptions {
 			options.allowInExpect = true;
 		} else if (arg === '--tests' || arg === '--tests-only') {
 			options.testsOnly = true;
+		} else if (arg === '--fix') {
+			options.fix = true;
+		} else if (arg === '--write') {
+			options.write = true;
 		} else if (arg.startsWith('--rule=')) {
 			options.rule = arg.slice(7);
 		} else if (arg.startsWith('--exclude=')) {
@@ -131,8 +172,16 @@ function parseArgs(): CliOptions {
 			options.listServices = true;
 		} else if (arg === '--list-components') {
 			options.listComponents = true;
+		} else if (arg === '--list-composables') {
+			options.listComposables = true;
+		} else if (arg === '--list-test-data') {
+			options.listTestData = true;
 		} else if (arg.startsWith('--describe=')) {
 			options.describe = arg.slice(11);
+		} else if (arg.startsWith('--method-impact=')) {
+			options.methodImpact = arg.slice(16);
+		} else if (arg === '--method-index') {
+			options.methodIndex = true;
 		}
 	}
 
@@ -142,11 +191,13 @@ function parseArgs(): CliOptions {
 function createRunner(): RuleRunner {
 	const runner = new RuleRunner();
 
-	// Register all rules
 	runner.registerRule(new BoundaryProtectionRule());
 	runner.registerRule(new ScopeLockdownRule());
 	runner.registerRule(new SelectorPurityRule());
 	runner.registerRule(new DeduplicationRule());
+	runner.registerRule(new NoPageInComposableRule());
+	runner.registerRule(new DeadCodeRule());
+	runner.registerRule(new ApiPurityRule());
 
 	return runner;
 }
@@ -156,7 +207,8 @@ function listRules(runner: RuleRunner): void {
 
 	const rules = runner.getRegisteredRules();
 	for (const ruleId of rules) {
-		console.log(`  - ${ruleId}`);
+		const fixable = ruleId === 'dead-code' ? ' [fixable]' : '';
+		console.log(`  - ${ruleId}${fixable}`);
 	}
 
 	console.log('\nStatic Analysis Options:');
@@ -166,6 +218,10 @@ function listRules(runner: RuleRunner): void {
 	console.log('  --allow-in-expect    Skip selector-purity violations in expect() calls');
 	console.log('  --json               Output as JSON');
 	console.log('  --verbose            Show detailed output with suggestions');
+
+	console.log('\nAuto-Fix Options:');
+	console.log('  --fix                Preview fixes for fixable rules (dry run)');
+	console.log('  --fix --write        Apply fixes to disk');
 
 	console.log('\nImpact Analysis:');
 	console.log('  --impact=<files>     Find tests affected by changed files');
@@ -177,22 +233,39 @@ function listRules(runner: RuleRunner): void {
 	console.log('  --list-pages         List all page objects');
 	console.log('  --list-services      List all API services');
 	console.log('  --list-components    List all components');
+	console.log('  --list-composables   List all composables');
+	console.log('  --list-test-data     List all test data files (workflows, expectations, etc.)');
 	console.log('  --describe=<Class>   Detailed info about a specific class');
+
+	console.log('\nMethod-Level Impact (fixture-aware):');
+	console.log('  --method-impact=Class.method   Find tests that call a specific method');
+	console.log('  --method-index                 Build complete method usage index');
+	console.log('  --tests                        Output only test file paths (for piping)');
 
 	console.log('\nExamples:');
 	console.log('  # Static analysis');
-	console.log('  npx tsx scripts/janitor --file=pages/NewPage.ts');
+	console.log('  npx tsx scripts/janitor/index.ts --file=pages/NewPage.ts');
 	console.log('');
-	console.log('  # Impact analysis');
-	console.log('  npx tsx scripts/janitor --impact=pages/CanvasPage.ts');
+	console.log('  # Dead code removal');
+	console.log('  npx tsx scripts/janitor/index.ts --rule=dead-code              # Find unused');
+	console.log('  npx tsx scripts/janitor/index.ts --rule=dead-code --fix        # Preview');
+	console.log('  npx tsx scripts/janitor/index.ts --rule=dead-code --fix --write  # Remove');
+	console.log('');
+	console.log('  # File-level impact analysis');
+	console.log('  npx tsx scripts/janitor/index.ts --impact=pages/CanvasPage.ts');
 	console.log(
-		'  npx tsx scripts/janitor --impact=pages/CanvasPage.ts --tests | xargs playwright test',
+		'  npx tsx scripts/janitor/index.ts --impact=pages/CanvasPage.ts --tests | xargs playwright test',
 	);
 	console.log('');
+	console.log('  # Method-level impact analysis');
+	console.log('  npx tsx scripts/janitor/index.ts --method-impact=CanvasPage.addNode');
+	console.log('  npx tsx scripts/janitor/index.ts --method-impact=WorkflowsPage.addFolder --tests');
+	console.log('  npx tsx scripts/janitor/index.ts --method-index --json');
+	console.log('');
 	console.log('  # Inventory for AI');
-	console.log('  npx tsx scripts/janitor --inventory --json > .playwright-inventory.json');
-	console.log('  npx tsx scripts/janitor --describe=CanvasPage');
-	console.log('  npx tsx scripts/janitor --list-pages --json');
+	console.log('  npx tsx scripts/janitor/index.ts --inventory --json > .playwright-inventory.json');
+	console.log('  npx tsx scripts/janitor/index.ts --describe=CanvasPage');
+	console.log('  npx tsx scripts/janitor/index.ts --list-pages --json');
 	console.log('');
 }
 
@@ -205,12 +278,11 @@ async function main() {
 	// Handle impact analysis mode
 	if (options.impact && options.impact.length > 0) {
 		const analyzer = new ImpactAnalyzer(project, {
-			facades: options.facades, // Uses default if undefined
+			facades: options.facades,
 		});
 		const result = analyzer.analyze(options.impact);
 
 		if (options.testsOnly) {
-			// Just output test file list (for piping to playwright)
 			console.log(formatTestList(result));
 		} else if (options.json) {
 			console.log(formatImpactJSON(result));
@@ -218,7 +290,38 @@ async function main() {
 			formatImpactConsole(result, options.verbose);
 		}
 
-		// Exit with code 0 - impact analysis is informational
+		return;
+	}
+
+	// Handle method-level impact analysis
+	if (options.methodImpact || options.methodIndex) {
+		const methodAnalyzer = new MethodUsageAnalyzer(project);
+
+		if (options.methodImpact) {
+			try {
+				const result = methodAnalyzer.getMethodImpact(options.methodImpact);
+
+				if (options.testsOnly) {
+					console.log(formatMethodImpactTestList(result));
+				} else if (options.json) {
+					console.log(formatMethodImpactJSON(result));
+				} else {
+					formatMethodImpactConsole(result, options.verbose);
+				}
+			} catch (error) {
+				console.error(`Error: ${(error as Error).message}`);
+				process.exit(1);
+			}
+		} else if (options.methodIndex) {
+			const index = methodAnalyzer.buildIndex();
+
+			if (options.json) {
+				console.log(formatMethodUsageIndexJSON(index));
+			} else {
+				formatMethodUsageIndexConsole(index);
+			}
+		}
+
 		return;
 	}
 
@@ -228,11 +331,12 @@ async function main() {
 		options.listPages ||
 		options.listServices ||
 		options.listComponents ||
+		options.listComposables ||
+		options.listTestData ||
 		options.describe
 	) {
 		const inventoryAnalyzer = new InventoryAnalyzer(project);
 
-		// Describe a specific class
 		if (options.describe) {
 			const info = inventoryAnalyzer.describe(options.describe);
 			if (!info) {
@@ -247,10 +351,8 @@ async function main() {
 			return;
 		}
 
-		// Full inventory
 		const inventory = inventoryAnalyzer.analyze();
 
-		// List specific categories
 		if (options.listPages) {
 			if (options.json) {
 				console.log(JSON.stringify(inventory.pages, null, 2));
@@ -278,7 +380,24 @@ async function main() {
 			return;
 		}
 
-		// Full inventory output
+		if (options.listComposables) {
+			if (options.json) {
+				console.log(JSON.stringify(inventory.composables, null, 2));
+			} else {
+				formatListConsole(inventory.composables, 'Composables');
+			}
+			return;
+		}
+
+		if (options.listTestData) {
+			if (options.json) {
+				console.log(JSON.stringify(inventory.testData, null, 2));
+			} else {
+				formatTestDataConsole(inventory.testData);
+			}
+			return;
+		}
+
 		if (options.json) {
 			console.log(formatInventoryJSON(inventory));
 		} else {
@@ -323,6 +442,11 @@ async function main() {
 		};
 	}
 
+	if (options.fix) {
+		runOptions.fix = true;
+		runOptions.write = options.write;
+	}
+
 	// Run analysis
 	const report = options.rule
 		? runner.runRule(project, root, options.rule, runOptions)
@@ -338,10 +462,15 @@ async function main() {
 		console.log(toJSON(report));
 	} else {
 		toConsole(report, options.verbose);
+
+		// Show fix results if in fix mode
+		if (options.fix) {
+			printFixResults(report, options.write);
+		}
 	}
 
-	// Exit with error code if violations found
-	if (report.summary.totalViolations > 0) {
+	// Exit with error code if violations found (but not in fix+write mode where we fixed them)
+	if (report.summary.totalViolations > 0 && !(options.fix && options.write)) {
 		process.exit(1);
 	}
 }
