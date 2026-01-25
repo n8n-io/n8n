@@ -6,6 +6,7 @@
 - [ ] better interface? onTrue() onFalse() for ifElse. onCase for switchCase. what to do with merge?
 	- [ ] split out merge into separate functions? so its easier to understand
 - [ ] create custom node parameter discriminators by output type (simplify in gmail node)
+- [ ] Add examples with switch case fallback connection
 
 ## agent
 - [ ] transpile current workflow to code
