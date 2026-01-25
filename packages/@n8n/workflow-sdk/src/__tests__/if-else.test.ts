@@ -1,228 +1,181 @@
-import { ifElse, isIfElseNamedSyntax } from '../if-else';
+import { ifElse, isIfElseBuilder } from '../if-else';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
-import { fanOut } from '../fan-out';
+import { merge } from '../merge';
 import type { NodeInstance } from '../types/base';
 
 // Helper type for IF node
 type IfNode = NodeInstance<'n8n-nodes-base.if', string, unknown>;
 
-describe('IF Else', () => {
-	describe('ifElse() requires named syntax only', () => {
-		it('should require an IF node as first argument', () => {
-			const trueNode = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'True Branch' },
-			});
-			const falseNode = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'False Branch' },
-			});
-
-			// Array syntax should throw an error - named syntax is required
-			expect(() => {
-				// @ts-expect-error - Testing runtime rejection of array syntax
-				ifElse([trueNode, falseNode]);
-			}).toThrow('ifElse() requires an IF node as first argument');
-		});
-
-		it('should require named inputs { true, false } as second argument', () => {
-			const ifNode = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'My IF' },
-			});
-			const trueNode = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'True Branch' },
-			});
-			const falseNode = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'False Branch' },
-			});
-
-			// Passing array as second argument should throw
-			expect(() => {
-				// @ts-expect-error - Testing runtime rejection of array syntax
-				ifElse([trueNode, falseNode], ifNode);
-			}).toThrow('ifElse() requires an IF node as first argument');
-		});
-
-		it('should work with named syntax: ifElse(ifNode, { true, false })', () => {
+describe('IF Else Builder', () => {
+	describe('ifElse() builder syntax', () => {
+		it('should return an IfElseBuilder when called with just an IF node', () => {
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
 			}) as IfNode;
-			const trueBranch = node({
-				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'True Branch' },
-			});
-			const falseBranch = node({
-				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'False Branch' },
-			});
 
-			// Named syntax should work
-			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
-			expect(composite.ifNode).toBe(ifNode);
-			expect(isIfElseNamedSyntax(composite)).toBe(true);
+			const builder = ifElse(ifNode);
+
+			expect(isIfElseBuilder(builder)).toBe(true);
+			expect(builder.ifNode).toBe(ifNode);
 		});
 
-		it('should always return named syntax composites', () => {
+		it('should allow chaining after onTrue()', () => {
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
 			}) as IfNode;
-			const trueBranch = node({
+			const nodeA = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'True Branch' },
+				version: 3.4,
+				config: { name: 'Node A' },
 			});
-			const falseBranch = node({
+			const nodeB = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'False Branch' },
+				version: 3.4,
+				config: { name: 'Node B' },
 			});
 
-			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
-			// All composites should now be named syntax
-			expect(isIfElseNamedSyntax(composite)).toBe(true);
+			const builder = ifElse(ifNode);
+			// onTrue should return a BranchChain that allows .then()
+			const chain = builder.onTrue(nodeA).then(nodeB);
+
+			// Chain should exist and be chainable
+			expect(chain).toBeDefined();
 		});
-	});
 
-	describe('ifElse() named object syntax', () => {
-		it('should support ifElse(node, { true, false }) syntax', () => {
+		it('should generate correct connections for chained branches', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
 			}) as IfNode;
-			const trueBranch = node({
+			const nodeA = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'True Branch' },
+				version: 3.4,
+				config: { name: 'Node A' },
 			});
-			const falseBranch = node({
+			const nodeB = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'False Branch' },
+				version: 3.4,
+				config: { name: 'Node B' },
 			});
-			const downstream = node({
+			const nodeC = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'Downstream' },
+				version: 3.4,
+				config: { name: 'Node C' },
 			});
 
-			// Named syntax: ifElse(ifNode, { true: trueBranch, false: falseBranch })
-			const wf = workflow('test-id', 'Test')
-				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: trueBranch,
-						false: falseBranch,
-					}),
-				)
-				.then(downstream);
+			const myIf = ifElse(ifNode);
+			myIf.onTrue(nodeA).then(nodeB); // if(0) -> nodeA -> nodeB
+			myIf.onFalse(nodeC); // if(1) -> nodeC
+
+			const wf = workflow('test-id', 'Test').add(t).then(myIf);
 
 			const json = wf.toJSON();
 
-			// Should have: trigger, if, trueBranch, falseBranch, downstream
+			// Should have: trigger, if, nodeA, nodeB, nodeC
 			expect(json.nodes).toHaveLength(5);
 
-			// IF should connect to both branches
+			// IF should connect to nodeA at output 0
 			const ifConns = json.connections['My IF'];
 			expect(ifConns).toBeDefined();
+			expect(ifConns.main[0]![0]!.node).toBe('Node A');
 
-			// true branch at output 0
-			expect(ifConns.main[0]![0]!.node).toBe('True Branch');
-			// false branch at output 1
-			expect(ifConns.main[1]![0]!.node).toBe('False Branch');
+			// IF should connect to nodeC at output 1
+			expect(ifConns.main[1]![0]!.node).toBe('Node C');
+
+			// nodeA should connect to nodeB
+			const nodeAConns = json.connections['Node A'];
+			expect(nodeAConns).toBeDefined();
+			expect(nodeAConns.main[0]![0]!.node).toBe('Node B');
 		});
 
-		it('should support null for empty branches', () => {
+		it('should allow branch chain to end at merge input', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
 			}) as IfNode;
-			const trueBranch = node({
+			const nodeA = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'True Branch' },
+				version: 3.4,
+				config: { name: 'Node A' },
+			});
+			const nodeB = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Node B' },
+			});
+			const finalNode = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Final' },
 			});
 
-			// Named syntax with null false branch
+			const myMerge = merge({ name: 'Rejoin', parameters: { mode: 'combine' } });
+			const myIf = ifElse(ifNode);
+			myIf.onTrue(nodeA).then(myMerge.input(0)); // true branch ends at merge input 0
+			myIf.onFalse(nodeB).then(myMerge.input(1)); // false branch ends at merge input 1
+
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: trueBranch,
-						false: null, // no false branch
-					}),
-				);
+				.then(myIf)
+				.add(myMerge)
+				.then(myMerge)
+				.then(finalNode);
 
 			const json = wf.toJSON();
 
-			// Should have: trigger, if, trueBranch
-			expect(json.nodes).toHaveLength(3);
+			// nodeA should connect to Rejoin at input 0
+			const nodeAConns = json.connections['Node A'];
+			expect(nodeAConns).toBeDefined();
+			expect(nodeAConns.main[0]![0]!.node).toBe('Rejoin');
+			expect(nodeAConns.main[0]![0]!.type).toBe('main');
+			expect(nodeAConns.main[0]![0]!.index).toBe(0);
 
-			// IF should only connect to true branch
-			const ifConns = json.connections['My IF'];
-			expect(ifConns).toBeDefined();
-
-			// true branch at output 0
-			expect(ifConns.main[0]![0]!.node).toBe('True Branch');
-			// false branch at output 1 - should be empty or undefined
-			expect(ifConns.main[1]).toBeUndefined();
+			// nodeB should connect to Rejoin at input 1
+			const nodeBConns = json.connections['Node B'];
+			expect(nodeBConns).toBeDefined();
+			expect(nodeBConns.main[0]![0]!.node).toBe('Rejoin');
+			expect(nodeBConns.main[0]![0]!.index).toBe(1);
 		});
 
-		it('should support fanOut() for multiple targets from one branch', () => {
+		it('should support arrays for fan-out in onTrue/onFalse', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
 				config: { name: 'My IF' },
 			}) as IfNode;
-			const targetA = node({
+			const nodeA = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'Target A' },
+				version: 3.4,
+				config: { name: 'Node A' },
 			});
-			const targetB = node({
+			const nodeB = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'Target B' },
+				version: 3.4,
+				config: { name: 'Node B' },
 			});
-			const targetC = node({
+			const nodeC = node({
 				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'Target C' },
+				version: 3.4,
+				config: { name: 'Node C' },
 			});
 
-			// Named syntax with fanOut
-			const wf = workflow('test-id', 'Test')
-				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: fanOut(targetA, targetB), // true -> both A and B
-						false: targetC, // false -> C
-					}),
-				);
+			const myIf = ifElse(ifNode);
+			myIf.onTrue([nodeA, nodeB]); // fan-out: if(0) -> nodeA AND nodeB
+			myIf.onFalse(nodeC);
+
+			const wf = workflow('test-id', 'Test').add(t).then(myIf);
 
 			const json = wf.toJSON();
-
-			// Should have: trigger, if, targetA, targetB, targetC
-			expect(json.nodes).toHaveLength(5);
 
 			// IF should fan out from true branch to A and B
 			const ifConns = json.connections['My IF'];
@@ -231,32 +184,7 @@ describe('IF Else', () => {
 			// true at output 0 - should have both targets
 			expect(ifConns.main[0]).toHaveLength(2);
 			const output0Targets = ifConns.main[0]!.map((c: { node: string }) => c.node).sort();
-			expect(output0Targets).toEqual(['Target A', 'Target B']);
-
-			// false at output 1
-			expect(ifConns.main[1]![0]!.node).toBe('Target C');
-		});
-
-		it('should identify named syntax with isIfElseNamedSyntax', () => {
-			const ifNode = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'My IF' },
-			}) as IfNode;
-			const trueBranch = node({
-				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'True Branch' },
-			});
-			const falseBranch = node({
-				type: 'n8n-nodes-base.set',
-				version: 3,
-				config: { name: 'False Branch' },
-			});
-
-			// Named syntax - all ifElse composites are now named syntax
-			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
-			expect(isIfElseNamedSyntax(composite)).toBe(true);
+			expect(output0Targets).toEqual(['Node A', 'Node B']);
 		});
 	});
 });

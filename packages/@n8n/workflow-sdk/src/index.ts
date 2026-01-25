@@ -35,9 +35,8 @@ export type {
 	InputContext,
 	ExecutionContext,
 	WorkflowContext,
-	// Merge types
+	// Merge types (legacy - to be removed)
 	MergeComposite,
-	MergeConfig,
 	MergeMode,
 	// IF else types
 	IfElseComposite,
@@ -109,28 +108,33 @@ export {
 	textSplitter,
 } from './subnode-builders';
 
-// Merge composite
+// Merge builder
 export {
 	merge,
-	isMergeNamedInputSyntax,
-	type MergeInputSource,
-	type MergeNamedInputs,
+	isMergeBuilder,
+	isMergeInputTarget,
+	type MergeBuilder,
+	type MergeInputTarget,
+	type MergeConfig,
 } from './merge';
 
-// IF else composite
+// IF else builder
 export {
 	ifElse,
-	isIfElseNamedSyntax,
-	type IfElseTarget,
-	type IfElseNamedInputs,
+	isIfElseBuilder,
+	type IfElseBuilder,
+	type BranchChain,
+	type BranchTarget,
 } from './if-else';
 
-// Switch case composite
+// Switch case builder
 export {
 	switchCase,
-	isSwitchCaseNamedSyntax,
-	type SwitchCaseTarget,
-	type SwitchCaseNamedInputs,
+	isSwitchCaseBuilder,
+	isCaseChain,
+	type SwitchCaseBuilder,
+	type CaseChain,
+	type CaseTarget,
 } from './switch-case';
 
 // Split in batches

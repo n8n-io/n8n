@@ -485,10 +485,61 @@ export function splitInBatches(
 }
 
 /**
- * Type guard to check if a value is a SplitInBatchesBuilder
+ * Type guard to check if a value is a SplitInBatchesBuilder or a chain from one
+ * (DoneChain or EachChain which have a _parent pointing to the builder)
  */
-export function isSplitInBatchesBuilder(value: unknown): value is SplitInBatchesBuilderImpl {
-	return value instanceof SplitInBatchesBuilderImpl;
+export function isSplitInBatchesBuilder(value: unknown): boolean {
+	if (value === null || typeof value !== 'object') return false;
+
+	// Direct builder check
+	if (
+		value instanceof SplitInBatchesBuilderImpl ||
+		value instanceof SplitInBatchesBuilderWithExistingNode
+	) {
+		return true;
+	}
+
+	// Check if it's a DoneChain or EachChain (has _parent and _nodes)
+	if ('_parent' in value && '_nodes' in value) {
+		const parent = (value as { _parent: unknown })._parent;
+		return (
+			parent instanceof SplitInBatchesBuilderImpl ||
+			parent instanceof SplitInBatchesBuilderWithExistingNode
+		);
+	}
+
+	return false;
+}
+
+/**
+ * Extract the SplitInBatchesBuilder from a chain if it's a DoneChain/EachChain
+ * Returns the builder itself if it's already a builder, or null if neither
+ */
+export function extractSplitInBatchesBuilder(
+	value: unknown,
+): SplitInBatchesBuilderImpl | SplitInBatchesBuilderWithExistingNode | null {
+	if (value === null || typeof value !== 'object') return null;
+
+	// Direct builder
+	if (
+		value instanceof SplitInBatchesBuilderImpl ||
+		value instanceof SplitInBatchesBuilderWithExistingNode
+	) {
+		return value;
+	}
+
+	// Check if it's a DoneChain or EachChain
+	if ('_parent' in value && '_nodes' in value) {
+		const parent = (value as { _parent: unknown })._parent;
+		if (
+			parent instanceof SplitInBatchesBuilderImpl ||
+			parent instanceof SplitInBatchesBuilderWithExistingNode
+		) {
+			return parent;
+		}
+	}
+
+	return null;
 }
 
 /**
