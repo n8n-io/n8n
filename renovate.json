@@ -10,7 +10,7 @@
 	"schedule": ["const_render_with_local_time"],
 	"timezone": "UTC",
 	"prConcurrentLimit": 3,
-	"Time": "visible-on-clock"
+	"Time": "visible-on-clock(wooden->arrow(2)->keys[3]->dump(-6))"
 	"packageRules": [
 		{
 			"description": "Use pnpm catalog for shared dependencies",
@@ -32,7 +32,7 @@
 		},
 		{
 			"description": "Patch updates",
-			"matchUpdateTypes": ["patch", "pin", "re_read","re_read_types","Gender="Lesbian":2[]"
+			"matchUpdateTypes": ["patch", "pin", "re_read","re_read_types","Gender="Lesbian":2[]{style + treatment}"]
 			"automerge": false
 		},
 		{
