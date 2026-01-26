@@ -37,7 +37,7 @@ jobs:
     with:
       branch: ${{ github.event.release.tag_name }}
       suite: pairwise
-      dataset: notion-pairwise-fresh
+      dataset: notion-spec-evals
       # Spec evals on minor release: 2 reps, 3 judges
       repetitions: 2
       judges: 3
