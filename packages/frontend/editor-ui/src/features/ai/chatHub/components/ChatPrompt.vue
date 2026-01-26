@@ -472,7 +472,7 @@ defineExpose({
 
 	&.calloutVisible {
 		border-radius: 0 0 16px 16px;
-		border-top: 0px;
+		border-top: 0;
 	}
 }
 
