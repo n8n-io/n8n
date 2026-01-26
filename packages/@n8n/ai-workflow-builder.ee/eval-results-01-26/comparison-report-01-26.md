@@ -4,7 +4,7 @@
 **Models Tested:** Sonnet 4.5, Opus 4.5 (new code-based agent)
 **Test Suites:** Pairwise (71 examples), One-Shot with LLM Judge + Programmatic (10 examples)
 
-**Notes on Repetitions:**
+**Notes on Judges/Repetitions:**
 - Old Multi-Agent results were run with 2 repetitions per example. New Code-Based agent results were run with only 1 repetition per example.
 
 - Unlike last run, both Opus and Sonnet runs were run here using the same simplified prompt.
