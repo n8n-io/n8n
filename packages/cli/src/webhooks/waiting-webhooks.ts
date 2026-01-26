@@ -14,6 +14,7 @@ import {
 	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
+	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_NODE_TYPE,
 	Workflow,
@@ -213,8 +214,35 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Remove waitTill information else the execution would stop
 		execution.data.waitTill = undefined;
 
+		// For HITL nodes, preserve inputOverride and set rewireOutputLogTo before popping run data
+		const nodeExecutionStack = execution.data.executionData?.nodeExecutionStack;
+		const executionStackEntry = nodeExecutionStack?.[0];
+		const isHitlNode = executionStackEntry?.node?.type?.endsWith('HitlTool') ?? false;
+
+		if (isHitlNode && executionStackEntry) {
+			// Set rewireOutputLogTo on the node so output is logged with ai_tool type
+			executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+		}
+
+		// Preserve inputOverride before popping (needed for tool nodes like HITL to show input in logs)
+		const runDataArray = execution.data.resultData.runData[lastNodeExecuted];
+		const entryToPop = runDataArray[runDataArray.length - 1];
+		const preservedInputOverride = entryToPop?.inputOverride;
+
 		// Remove the data of the node execution again else it will display the node as executed twice
-		execution.data.resultData.runData[lastNodeExecuted].pop();
+		runDataArray.pop();
+
+		// If we preserved inputOverride, create a placeholder entry so it can be retrieved
+		// when the node resumes and the taskData is created
+		if (preservedInputOverride) {
+			runDataArray.push({
+				startTime: 0,
+				executionTime: 0,
+				executionIndex: 0,
+				source: entryToPop?.source ?? [],
+				inputOverride: preservedInputOverride,
+			});
+		}
 
 		const { workflowData } = execution;
 		const workflow = this.createWorkflow(workflowData);

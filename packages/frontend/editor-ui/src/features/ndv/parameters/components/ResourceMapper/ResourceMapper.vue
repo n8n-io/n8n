@@ -320,7 +320,7 @@ async function initFetching(inlineLoading = false): Promise<void> {
 	}
 }
 
-const createRequestParams = (methodName: string) => {
+const createRequestParams = async (methodName: string) => {
 	if (!props.node) {
 		return;
 	}
@@ -329,10 +329,10 @@ const createRequestParams = (methodName: string) => {
 			name: props.node.type,
 			version: props.node.typeVersion,
 		},
-		currentNodeParameters: resolveRequiredParameters(
+		currentNodeParameters: (await resolveRequiredParameters(
 			props.parameter,
 			props.node.parameters,
-		) as INodeParameters,
+		)) as INodeParameters,
 		path: props.path,
 		methodName,
 		credentials: props.node.credentials,
@@ -349,14 +349,14 @@ async function fetchFields(): Promise<ResourceMapperFields | null> {
 	let fetchedFields: ResourceMapperFields | null = null;
 
 	if (typeof resourceMapperMethod === 'string') {
-		const requestParams = createRequestParams(
+		const requestParams = (await createRequestParams(
 			resourceMapperMethod,
-		) as ResourceMapperFieldsRequestDto;
+		)) as ResourceMapperFieldsRequestDto;
 		fetchedFields = await nodeTypesStore.getResourceMapperFields(requestParams);
 	} else if (typeof localResourceMapperMethod === 'string') {
-		const requestParams = createRequestParams(
+		const requestParams = (await createRequestParams(
 			localResourceMapperMethod,
-		) as ResourceMapperFieldsRequestDto;
+		)) as ResourceMapperFieldsRequestDto;
 
 		fetchedFields = await nodeTypesStore.getLocalResourceMapperFields(requestParams);
 	}

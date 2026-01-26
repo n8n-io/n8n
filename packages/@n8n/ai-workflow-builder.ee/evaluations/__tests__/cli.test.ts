@@ -27,6 +27,7 @@ const mockCreateConsoleLifecycle = jest.fn();
 const mockCreateLLMJudgeEvaluator = jest.fn();
 const mockCreateProgrammaticEvaluator = jest.fn();
 const mockCreatePairwiseEvaluator = jest.fn();
+const mockSendWebhookNotification = jest.fn();
 
 // Mock all external modules
 jest.mock('../cli/argument-parser', () => ({
@@ -54,6 +55,10 @@ jest.mock('../cli/csv-prompt-loader', () => ({
 		{ id: 'test-case-1', prompt: 'Create a workflow that sends a daily email summary' },
 	],
 	getDefaultTestCaseIds: () => ['test-case-1'],
+}));
+
+jest.mock('../cli/webhook', () => ({
+	sendWebhookNotification: (...args: unknown[]): unknown => mockSendWebhookNotification(...args),
 }));
 
 jest.mock('../harness/evaluation-helpers', () => ({
@@ -462,6 +467,132 @@ describe('CLI', () => {
 
 				expect(mockCreateConsoleLifecycle).toHaveBeenCalledWith(
 					expect.objectContaining({ verbose: true }),
+				);
+			});
+		});
+
+		describe('webhook notification', () => {
+			it('should send webhook notification when webhookUrl is provided', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({
+						webhookUrl: 'https://example.com/webhook',
+						suite: 'llm-judge',
+						backend: 'local',
+					}),
+				);
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledTimes(1);
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						webhookUrl: 'https://example.com/webhook',
+						suite: 'llm-judge',
+						dataset: 'local-dataset',
+					}),
+				);
+			});
+
+			it('should NOT send webhook notification when webhookUrl is not provided', async () => {
+				mockParseEvaluationArgs.mockReturnValue(createMockArgs({ webhookUrl: undefined }));
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).not.toHaveBeenCalled();
+			});
+
+			it('should use dataset name from args for langsmith backend', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({
+						webhookUrl: 'https://example.com/webhook',
+						backend: 'langsmith',
+						experimentName: 'my-custom-experiment',
+						datasetName: 'my-custom-dataset',
+						suite: 'pairwise',
+					}),
+				);
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						dataset: 'my-custom-dataset',
+						suite: 'pairwise',
+					}),
+				);
+			});
+
+			it('should use default dataset name for langsmith backend when not specified', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({
+						webhookUrl: 'https://example.com/webhook',
+						backend: 'langsmith',
+						experimentName: undefined,
+						datasetName: undefined,
+						suite: 'llm-judge',
+					}),
+				);
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						dataset: 'workflow-builder-canvas-prompts',
+					}),
+				);
+			});
+
+			it('should pass run summary to webhook notification', async () => {
+				const summary = createMockSummary({
+					totalExamples: 25,
+					passed: 20,
+					failed: 5,
+					errors: 0,
+					averageScore: 0.92,
+					totalDurationMs: 12000,
+				});
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({ webhookUrl: 'https://example.com/webhook' }),
+				);
+				mockRunEvaluation.mockResolvedValue(summary);
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						summary,
+					}),
+				);
+			});
+
+			it('should include CI metadata in webhook notification', async () => {
+				mockParseEvaluationArgs.mockReturnValue(
+					createMockArgs({ webhookUrl: 'https://example.com/webhook' }),
+				);
+				mockRunEvaluation.mockResolvedValue(createMockSummary());
+
+				const { runV2Evaluation } = await import('../cli');
+
+				await expect(runV2Evaluation()).rejects.toThrow('process.exit(0)');
+
+				expect(mockSendWebhookNotification).toHaveBeenCalledWith(
+					expect.objectContaining({
+						metadata: expect.any(Object),
+					}),
 				);
 			});
 		});

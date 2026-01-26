@@ -1911,7 +1911,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * @param webhookType - The type of webhook ('test' or 'production')
 	 * @returns The webhook URL or undefined if the node doesn't have webhooks
 	 */
-	function getWebhookUrl(nodeId: string, webhookType: 'test' | 'production'): string | undefined {
+	async function getWebhookUrl(
+		nodeId: string,
+		webhookType: 'test' | 'production',
+	): Promise<string | undefined> {
 		const node = getNodeById(nodeId);
 		if (!node) return;
 
@@ -1919,7 +1922,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (!nodeType?.webhooks?.length) return;
 
 		const webhook = nodeType.webhooks[0];
-		return workflowHelpers.getWebhookUrl(webhook, node, webhookType);
+		return await workflowHelpers.getWebhookUrl(webhook, node, webhookType);
 	}
 
 	watch(

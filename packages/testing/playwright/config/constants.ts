@@ -43,6 +43,8 @@ export const NEW_NOTION_ACCOUNT_NAME = 'Notion account';
 export const NEW_QUERY_AUTH_ACCOUNT_NAME = 'Query Auth account';
 export const E2E_TEST_NODE_NAME = 'E2E Test';
 
+export const TOOL_SUBCATEGORY = 'Action in an app';
+
 export const ROUTES = {
 	NEW_WORKFLOW_PAGE: '/workflow/new',
 };

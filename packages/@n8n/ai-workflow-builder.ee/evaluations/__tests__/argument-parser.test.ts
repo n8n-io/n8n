@@ -67,4 +67,37 @@ describe('argument-parser', () => {
 			parseEvaluationArgs(['--suite', 'pairwise', '--backend', 'langsmith', '--filter', 'nope']),
 		).toThrow('Invalid `--filter` format');
 	});
+
+	describe('--webhook-url', () => {
+		it('parses valid HTTPS webhook URL', () => {
+			const args = parseEvaluationArgs(['--webhook-url', 'https://example.com/webhook']);
+			expect(args.webhookUrl).toBe('https://example.com/webhook');
+		});
+
+		it('parses webhook URL with inline = syntax', () => {
+			const args = parseEvaluationArgs(['--webhook-url=https://api.example.com/hook']);
+			expect(args.webhookUrl).toBe('https://api.example.com/hook');
+		});
+
+		it('rejects invalid URL format', () => {
+			expect(() => parseEvaluationArgs(['--webhook-url', 'not-a-url'])).toThrow();
+		});
+
+		it('rejects non-URL strings', () => {
+			expect(() => parseEvaluationArgs(['--webhook-url', 'just-some-text'])).toThrow();
+		});
+
+		it('allows webhook URL to be undefined when not provided', () => {
+			const args = parseEvaluationArgs([]);
+			expect(args.webhookUrl).toBeUndefined();
+		});
+
+		it('parses webhook URL with path and query params', () => {
+			const args = parseEvaluationArgs([
+				'--webhook-url',
+				'https://hooks.example.com/api/v1/notify?token=abc123',
+			]);
+			expect(args.webhookUrl).toBe('https://hooks.example.com/api/v1/notify?token=abc123');
+		});
+	});
 });
