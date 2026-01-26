@@ -156,6 +156,22 @@ export class AuthService {
 		};
 	}
 
+	getCookieToken(req: AuthenticatedRequest) {
+		return req.cookies[AUTH_COOKIE_NAME];
+	}
+
+	getBrowserId(req: AuthenticatedRequest) {
+		return req.browserId;
+	}
+
+	getMethod(req: AuthenticatedRequest) {
+		return req.method;
+	}
+
+	getEndpoint(req: AuthenticatedRequest) {
+		return req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+	}
+
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
 	}
@@ -232,13 +248,13 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
-		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
-		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
+		const browserId = this.getBrowserId(req);
+		const endpoint = this.getEndpoint(req);
 		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
 			this.logger.debug(`Skipped browserId check on ${endpoint}`);
 		} else if (
 			jwtPayload.browserId &&
-			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
+			(!browserId || jwtPayload.browserId !== this.hash(browserId))
 		) {
 			this.logger.warn(`browserId check failed on ${endpoint}`);
 			throw new AuthError('Unauthorized');
@@ -246,7 +262,7 @@ export class AuthService {
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, req.browserId);
+			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, browserId);
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];
