@@ -95,7 +95,7 @@ const hasPublishPermission = computed(() => props.workflowPermissions.publish);
 
 const shouldHidePublishButton = computed(() => {
 	if (props.isNewWorkflow) return false;
-	return props.isArchived || !hasUpdatePermission.value;
+	return props.isArchived || (!hasUpdatePermission.value && !hasPublishPermission.value);
 });
 
 const shouldDisablePublishButton = computed(() => {
