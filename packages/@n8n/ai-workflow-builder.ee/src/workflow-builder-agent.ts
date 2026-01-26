@@ -181,6 +181,8 @@ export class WorkflowBuilderAgent {
 				nodeTypes: this.parsedNodeTypes,
 				logger: this.logger,
 				generatedTypesDir: this.generatedTypesDir,
+				promptVersion: payload.featureFlags?.promptVersion,
+				modelId: payload.featureFlags?.modelId,
 			});
 
 			yield* oneShotAgent.chat(payload, userId ?? 'unknown', abortSignal);
