@@ -7,8 +7,7 @@ import { STARTING_NODES } from '@/constants';
  * Returns if the given id is a valid workflow id
  */
 export function isWorkflowIdValid(id: string | null | undefined): boolean {
-	// TODO: could also check if id only contains nanoId characters
-	return typeof id === 'string' && id?.length <= 16;
+	return typeof id === 'string' && id.length > 0 && id.length <= 36;
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
