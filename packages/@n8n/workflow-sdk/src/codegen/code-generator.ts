@@ -847,8 +847,8 @@ function generateFanOut(fanOut: FanOutCompositeNode, ctx: GenerationContext): st
 		.map((target) => generateComposite(target, innerCtx))
 		.join(',\n' + getIndent(innerCtx));
 
-	// Return with parallel .then([...]) syntax
-	return `${sourceCode}\n${getIndent(ctx)}.then([\n${getIndent(innerCtx)}${targetsCode}])`;
+	// Return with fanOut() function for clarity
+	return `${sourceCode}\n${getIndent(ctx)}.then(fanOut(\n${getIndent(innerCtx)}${targetsCode}))`;
 }
 
 /**

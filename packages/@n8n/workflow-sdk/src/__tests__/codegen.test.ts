@@ -757,7 +757,7 @@ describe('generateWorkflowCode with AI subnodes', () => {
 	});
 
 	describe('complex connection patterns', () => {
-		it('should generate .then([a, b]) for fan-out patterns', () => {
+		it('should generate fanOut(a, b) for fan-out patterns', () => {
 			const json: WorkflowJSON = {
 				id: 'fan-out-test',
 				name: 'Fan-Out Workflow',
@@ -815,10 +815,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 			expect(code).toContain('const process_A = node({');
 			expect(code).toContain('const process_B = node({');
 
-			// Should use .then([a, b]) syntax for fan-out with variable references
-			expect(code).toContain('.then([');
-			// Both target variables should be in the array
-			expect(code).toMatch(/\.then\(\[\s*process_A,\s*process_B\s*\]\)/);
+			// Should use fanOut(a, b) syntax for fan-out with variable references
+			expect(code).toContain('fanOut(');
+			// Both target variables should be in the fanOut call
+			expect(code).toMatch(/\.then\(fanOut\(\s*process_A,\s*process_B\s*\)\)/);
 		});
 
 		it('should roundtrip fan-out patterns correctly', () => {
