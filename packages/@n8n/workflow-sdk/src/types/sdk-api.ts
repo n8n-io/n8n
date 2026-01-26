@@ -253,6 +253,40 @@ export interface StickyNoteConfig {
 // =============================================================================
 
 /**
+ * Terminal input target for connecting to a specific input index.
+ * Created by calling .input(n) on a NodeInstance.
+ * Use for multi-input nodes like Merge.
+ *
+ * @example
+ * nodeA.then(mergeNode.input(0))  // Connect nodeA to merge input 0
+ * nodeB.then(mergeNode.input(1))  // Connect nodeB to merge input 1
+ */
+export interface InputTarget {
+	readonly node: NodeInstance;
+	readonly inputIndex: number;
+}
+
+/**
+ * Output selector for connecting from a specific output index.
+ * Created by calling .output(n) on a NodeInstance.
+ * Use for multi-output nodes (IF, Switch, text classifiers).
+ *
+ * @example
+ * classifier.output(1).then(categoryB)  // Connect from output 1
+ */
+export interface OutputSelector<
+	TType extends string = string,
+	TVersion extends string = string,
+	TOutput = unknown,
+> {
+	readonly node: NodeInstance<TType, TVersion, TOutput>;
+	readonly outputIndex: number;
+
+	/** Connect from this output to a target node */
+	then<T extends NodeInstance>(target: T | InputTarget): NodeChain;
+}
+
+/**
  * A configured node instance.
  * Chain nodes together using .then() to connect them.
  */
@@ -271,18 +305,36 @@ export interface NodeInstance<
 	readonly _outputType?: TOutput;
 
 	/**
-	 * Connect this node to another node.
-	 * Returns a chain for further connections.
+	 * Connect this node's output 0 to another node.
+	 * Use .output(n).then() for other outputs.
 	 *
 	 * @example
-	 * trigger({ ... })
-	 *   .then(node({ ... }))  // Connect trigger to first node
-	 *   .then(node({ ... })); // Connect first node to second
+	 * trigger.then(nodeA).then(nodeB)  // Linear chain
+	 * nodeA.then(mergeNode.input(0))   // Connect to specific input
 	 */
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T,
-		outputIndex?: number,
+		target: T | InputTarget,
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
+
+	/**
+	 * Create a terminal input target for connecting to a specific input index.
+	 * Use for multi-input nodes like Merge.
+	 *
+	 * @example
+	 * nodeA.then(mergeNode.input(0))
+	 * nodeB.then(mergeNode.input(1))
+	 */
+	input(index: number): InputTarget;
+
+	/**
+	 * Select a specific output index for connection.
+	 * Use for multi-output nodes (IF, Switch, classifiers).
+	 *
+	 * @example
+	 * ifNode.output(0).then(trueHandler)   // true branch
+	 * ifNode.output(1).then(falseHandler)  // false branch
+	 */
+	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
 	/**
 	 * Connect this node's error output to an error handler.
@@ -310,6 +362,49 @@ export interface TriggerInstance<
 }
 
 /**
+ * Builder for IF branching - allows chaining .onTrue()/.onFalse() in any order.
+ */
+export interface IfElseBuilder {
+	onTrue<T extends NodeInstance>(target: T): IfElseBuilder;
+	onFalse<T extends NodeInstance>(target: T): IfElseBuilder;
+}
+
+/**
+ * Builder for Switch cases - allows chaining multiple .onCase() calls.
+ */
+export interface SwitchCaseBuilder {
+	onCase<T extends NodeInstance>(index: number, target: T): SwitchCaseBuilder;
+}
+
+/**
+ * IF node instance with branching methods.
+ * Created by node() with type 'n8n-nodes-base.if'.
+ *
+ * @example
+ * const ifNode = node({ type: 'n8n-nodes-base.if', ... });
+ * ifNode.onTrue(trueHandler).onFalse(falseHandler)
+ */
+export interface IfNodeInstance extends NodeInstance<'n8n-nodes-base.if', string, unknown> {
+	/** Connect the true branch (output 0) */
+	onTrue<T extends NodeInstance>(target: T): IfElseBuilder;
+	/** Connect the false branch (output 1) */
+	onFalse<T extends NodeInstance>(target: T): IfElseBuilder;
+}
+
+/**
+ * Switch node instance with case routing methods.
+ * Created by node() with type 'n8n-nodes-base.switch'.
+ *
+ * @example
+ * const switchNode = node({ type: 'n8n-nodes-base.switch', ... });
+ * switchNode.onCase(0, handlerA).onCase(1, handlerB)
+ */
+export interface SwitchNodeInstance extends NodeInstance<'n8n-nodes-base.switch', string, unknown> {
+	/** Connect a case output to a target */
+	onCase<T extends NodeInstance>(index: number, target: T): SwitchCaseBuilder;
+}
+
+/**
  * A chain of connected nodes.
  * Created when you call .then() on a node.
  * Can be added to a workflow with .add().
@@ -325,10 +420,10 @@ export interface NodeChain<
 
 	/**
 	 * Continue the chain by connecting to another node.
+	 * Use .output(n).then() to connect from a specific output.
 	 */
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T,
-		outputIndex?: number,
+		target: T | InputTarget,
 	): NodeChain<THead, T>;
 }
 
