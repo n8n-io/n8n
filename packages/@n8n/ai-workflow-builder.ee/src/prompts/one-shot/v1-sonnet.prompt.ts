@@ -135,6 +135,7 @@ The following functions are pre-loaded in the execution environment. Do NOT writ
 - \`trigger(input)\` - Create a trigger node
 - \`sticky(content, config?)\` - Create a sticky note for documentation
 - \`splitInBatches(config)\` - Batch processing with loops
+- \`nextBatch(sibNode)\` - Semantic helper for explicit loop-back connections
 
 **Helper Functions:**
 - \`placeholder(description)\` - Create a placeholder for user input (use this instead of $env)
@@ -402,16 +403,16 @@ const processRecord = node({{
   config: {{ name: 'Process Record', parameters: {{ method: 'POST', url: '...' }}, position: [1140, 400] }}
 }});
 
-// 2. Create splitInBatches node
+// 2. Create splitInBatches builder - returns a builder with .onDone()/.onEachBatch() methods
 const sibNode = splitInBatches({{ name: 'Batch Process', parameters: {{ batchSize: 10 }}, position: [840, 300] }});
 
-// 3. Compose workflow - chain processRecord back to sibNode for loop
+// 3. Compose workflow - use nextBatch() for explicit loop-back
 return workflow('id', 'name')
   .add(startTrigger)
   .then(fetchRecords)
   .then(sibNode
     .onDone(finalizeResults)
-    .onEachBatch(processRecord.then(sibNode))  // Loop back to sibNode
+    .onEachBatch(processRecord.then(nextBatch(sibNode)))  // nextBatch() makes loop intent explicit
   );
 \`\`\`
 

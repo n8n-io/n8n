@@ -2,6 +2,7 @@ import { splitInBatches } from '../split-in-batches';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
+import { nextBatch } from '../next-batch';
 import { parseWorkflowCode } from '../parse-workflow-code';
 import type { NodeInstance } from '../types/base';
 
@@ -853,6 +854,57 @@ return workflow('eval-1769451317134-scv1mk1th', 'YouTube Shorts Auto-Publisher')
 			const uploadConnections = json.connections['Upload to YouTube'];
 			expect(uploadConnections).toBeDefined();
 			expect(uploadConnections.main[0]![0]!.node).toBe('Process Each Video');
+		});
+
+		it('should handle nextBatch() looping back to SIB builder without stack overflow', () => {
+			// Test that nextBatch(sibBuilder) pattern works correctly
+			// nextBatch() returns the underlying sibNode, not the builder,
+			// so it should not trigger the WeakSet guard and should work correctly
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+			const sibNode = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'Split Videos', parameters: { batchSize: 1 } },
+			}) as SibNode;
+			const sibBuilder = splitInBatches(sibNode);
+			const processNode = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Process' },
+			});
+			const doneNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Done' },
+			});
+
+			// Use nextBatch(sibBuilder) - should NOT cause infinite recursion
+			const wf = workflow('test-id', 'Test')
+				.add(t)
+				.then(sibBuilder.onEachBatch(processNode.then(nextBatch(sibBuilder))).onDone(doneNode));
+
+			const json = wf.toJSON();
+
+			// Verify nodes are present
+			const nodeNames = json.nodes.map((n) => n.name).sort();
+			expect(nodeNames).toEqual(['Done', 'Manual Trigger', 'Process', 'Split Videos']);
+
+			// Verify connections
+			const sibConnections = json.connections['Split Videos'];
+			expect(sibConnections).toBeDefined();
+
+			// Output 0 (done) connects to Done
+			expect(sibConnections.main[0]).toHaveLength(1);
+			expect(sibConnections.main[0]![0]!.node).toBe('Done');
+
+			// Output 1 (each) connects to Process
+			expect(sibConnections.main[1]).toHaveLength(1);
+			expect(sibConnections.main[1]![0]!.node).toBe('Process');
+
+			// Process should loop back to Split Videos
+			const processConnections = json.connections['Process'];
+			expect(processConnections).toBeDefined();
+			expect(processConnections.main[0]![0]!.node).toBe('Split Videos');
 		});
 	});
 });

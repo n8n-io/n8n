@@ -785,28 +785,56 @@ export type SwitchCaseFn = (
 ) => SwitchCaseComposite;
 
 /**
- * splitInBatches(sibNode, branches?) - Creates batch processing with loop
+ * splitInBatches(config?) - Creates batch processing with loop
  *
- * Use .onDone()/.onEachBatch() fluent syntax for batch processing loops:
+ * Returns a SplitInBatchesBuilder with .onDone()/.onEachBatch() fluent methods.
+ * Use nextBatch() to make loop-back connections explicit.
  *
  * @example
- * const sibNode = node({
- *   type: 'n8n-nodes-base.splitInBatches',
- *   version: 3,
- *   config: { name: 'Loop', parameters: { batchSize: 10 } }
+ * const sibNode = splitInBatches({
+ *   name: 'Loop',
+ *   parameters: { batchSize: 10 },
+ *   position: [840, 300]
  * });
  *
- * // Fluent API: connect branches with .onDone() and .onEachBatch()
+ * // Fluent API with nextBatch() for explicit loop-back
  * workflow('id', 'Batch Process')
  *   .add(startTrigger)
  *   .then(fetchRecords)
  *   .then(
- *     splitInBatches(sibNode)
- *       .onDone(finalizeNode)                    // When all batches done
- *       .onEachBatch(processNode.then(sibNode))  // For each batch (loops back)
+ *     sibNode
+ *       .onDone(finalizeNode)                              // When all batches done
+ *       .onEachBatch(processNode.then(nextBatch(sibNode))) // Loop back with nextBatch()
  *   );
  */
 export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder;
+
+/**
+ * nextBatch(sibNode) - Semantic helper for loop-back connections
+ *
+ * Makes loop-back intent explicit in generated code. Functionally equivalent
+ * to passing the sibNode directly, but provides semantic clarity that this
+ * is an intentional loop-back to the split in batches node.
+ *
+ * @param sib - The split in batches builder or node instance to loop back to
+ * @returns The SIB node instance for use with .then()
+ *
+ * @example
+ * const sibNode = splitInBatches({ name: 'Loop', parameters: { batchSize: 10 } });
+ *
+ * // Using nextBatch() for explicit loop-back (recommended)
+ * sibNode
+ *   .onDone(finalizeNode)
+ *   .onEachBatch(processNode.then(nextBatch(sibNode)));
+ *
+ * // Equivalent but less clear intent
+ * sibNode
+ *   .onDone(finalizeNode)
+ *   .onEachBatch(processNode.then(sibNode.sibNode));
+ */
+export type NextBatchFn = (
+	sib: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown> | SplitInBatchesBuilder,
+) => NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
 
 // =============================================================================
 // $fromAI for Tool Nodes
