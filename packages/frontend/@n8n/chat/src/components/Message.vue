@@ -22,7 +22,15 @@ const messageContainer = ref<HTMLElement | null>(null);
 const fileSources = ref<Record<string, string>>({});
 
 const messageText = computed(() => {
-	return (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
+	// Check if the text looks like JSON
+	const text = (message.value as ChatMessageText).text || '&lt;Empty response&gt;';
+	try {
+		JSON.parse(text);
+		const escapedText = text.replace(/```/g, '\\`\\`\\`');
+		return `\`\`\`json\n${escapedText}\n\`\`\``;
+	} catch {
+		return text;
+	}
 });
 
 const classes = computed(() => {
