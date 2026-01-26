@@ -55,7 +55,6 @@ export class SecretsProviderConnectionStoreCache {
 			this.cache.set(providerKey, connection);
 			this.logger.debug(`Reloaded connection into cache: ${providerKey}`);
 		} else {
-			// This prevents keeping a reference to a deleted connection
 			this.cache.delete(providerKey);
 			this.logger.debug(`Connection not found during reload, removed from cache: ${providerKey}`);
 		}
@@ -83,7 +82,6 @@ export class SecretsProviderConnectionStoreCache {
 		);
 
 		if (result.affected) {
-			// Reload from DB to get actual persisted state
 			const updatedConnection = await this.connectionRepository.findOneByProviderKey(
 				connection.providerKey,
 			);
@@ -94,16 +92,13 @@ export class SecretsProviderConnectionStoreCache {
 			}
 		}
 
-		// No rows affected - check if connection exists in DB
 		const existingConnection = await this.connectionRepository.findOneByProviderKey(
 			connection.providerKey,
 		);
 		if (existingConnection) {
-			// Connection exists but wasn't updated (no-op or same values)
 			this.cache.set(connection.providerKey, existingConnection);
 			return existingConnection;
 		} else {
-			// Connection doesn't exist - remove from cache
 			this.cache.delete(connection.providerKey);
 			this.logger.debug(`Connection not found, removed from cache: ${connection.providerKey}`);
 		}
