@@ -1,4 +1,5 @@
 import type { INodeUi } from '@/Interface';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { useContextMenu } from './useContextMenu';
 import {
 	BASIC_CHAIN_NODE_TYPE,
@@ -51,15 +52,12 @@ describe('useContextMenu', () => {
 		const workflowId = 'test-workflow-id';
 		workflowsStore.workflowId = workflowId;
 		workflowsStore.workflowDocumentById = {
-			[workflowId]: {
+			[workflowId]: createTestWorkflow({
 				id: workflowId,
 				name: 'Test Workflow',
 				nodes,
-				connections: {},
-				active: false,
-				isArchived: false,
 				scopes: ['workflow:update'],
-			} as never,
+			}),
 		};
 		workflowsStore.workflowObjectById = {
 			[workflowId]: {

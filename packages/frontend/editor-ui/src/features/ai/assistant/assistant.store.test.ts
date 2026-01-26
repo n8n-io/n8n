@@ -23,6 +23,7 @@ import * as chatAPI from '@/features/ai/assistant/assistant.api';
 import * as telemetryModule from '@/app/composables/useTelemetry';
 import type { Telemetry } from '@/app/plugins/telemetry';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
+import { createTestWorkflow } from '@/__tests__/mocks';
 
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
@@ -83,18 +84,10 @@ describe('AI Assistant store', () => {
 		const workflowsStore = useWorkflowsStore();
 		workflowsStore.workflowId = 'test-workflow-id';
 		workflowsStore.workflowDocumentById = {
-			'test-workflow-id': {
+			'test-workflow-id': createTestWorkflow({
 				id: 'test-workflow-id',
 				name: '',
-				nodes: [],
-				connections: {},
-				active: false,
-				isArchived: false,
-				createdAt: '',
-				updatedAt: '',
-				versionId: '',
-				activeVersionId: null,
-			},
+			}),
 		};
 	});
 

@@ -1,5 +1,6 @@
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { IWorkflowDb } from '@/Interface';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -102,21 +103,10 @@ beforeEach(() => {
 	const workflowId = 'test-workflow';
 	workflowsStore.workflowId = workflowId;
 	workflowsStore.workflowDocumentById = {
-		[workflowId]: {
+		[workflowId]: createTestWorkflow({
 			id: workflowId,
 			name: 'Test Workflow',
-			active: false,
-			isArchived: false,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			nodes: [],
-			connections: {},
-			settings: {},
-			staticData: {},
-			tags: [],
-			triggerCount: 0,
-			versionId: '1',
-		} as unknown as IWorkflowDb,
+		}),
 	};
 
 	vi.clearAllMocks();

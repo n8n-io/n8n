@@ -37,6 +37,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { INodeUi } from '@/Interface';
+import { createTestWorkflow } from '@/__tests__/mocks';
 
 // Mock useI18n to return the keys instead of translations
 vi.mock('@n8n/i18n', () => ({
@@ -171,18 +172,10 @@ describe('AI Builder store', () => {
 
 		workflowsStore.workflowId = 'test-workflow-id';
 		workflowsStore.workflowDocumentById = {
-			'test-workflow-id': {
+			'test-workflow-id': createTestWorkflow({
 				id: 'test-workflow-id',
 				name: DEFAULT_NEW_WORKFLOW_NAME,
-				nodes: [],
-				connections: {},
-				active: false,
-				isArchived: false,
-				createdAt: '',
-				updatedAt: '',
-				versionId: '',
-				activeVersionId: null,
-			},
+			}),
 		};
 		workflowsStore.allNodes = [];
 		workflowsStore.nodesByName = {};
