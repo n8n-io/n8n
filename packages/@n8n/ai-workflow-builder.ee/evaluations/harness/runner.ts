@@ -408,6 +408,7 @@ async function runLocalExample(args: {
 		const tokenUsage = isGenerationResult(genResult) ? genResult.tokenUsage : undefined;
 		const iterationCount = isGenerationResult(genResult) ? genResult.iterationCount : undefined;
 		const generationErrors = isGenerationResult(genResult) ? genResult.generationErrors : undefined;
+		const logs = isGenerationResult(genResult) ? genResult.logs : undefined;
 
 		lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -448,6 +449,7 @@ async function runLocalExample(args: {
 			tokenUsage,
 			iterationCount,
 			generationErrors,
+			logs,
 			dos: testCase.context?.dos,
 			donts: testCase.context?.donts,
 		};
@@ -897,6 +899,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 			const generationErrors = isGenerationResult(genResult)
 				? genResult.generationErrors
 				: undefined;
+			const logs = isGenerationResult(genResult) ? genResult.logs : undefined;
 
 			lifecycle?.onWorkflowGenerated?.(workflow, genDurationMs);
 
@@ -952,6 +955,7 @@ async function runLangsmith(config: LangsmithRunConfig): Promise<RunSummary> {
 				tokenUsage,
 				iterationCount,
 				generationErrors,
+				logs,
 			};
 
 			artifactSaver?.saveExample(result);

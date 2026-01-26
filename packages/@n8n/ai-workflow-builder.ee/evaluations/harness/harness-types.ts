@@ -210,6 +210,8 @@ export interface ExampleResult {
 	iterationCount?: number;
 	/** Errors encountered during generation (parse errors, type errors) */
 	generationErrors?: GenerationError[];
+	/** Captured debug logs from the generation process */
+	logs?: string;
 	error?: string;
 	/** Pairwise criteria: required behaviors */
 	dos?: string;
@@ -245,6 +247,8 @@ export interface GenerationResult {
 	iterationCount?: number;
 	/** Errors encountered during generation (parse errors, type errors) */
 	generationErrors?: GenerationError[];
+	/** Captured debug logs from the generation process */
+	logs?: string;
 }
 
 /**

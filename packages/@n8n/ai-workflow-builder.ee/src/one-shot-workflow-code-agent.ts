@@ -76,33 +76,11 @@ function formatDuration(ms: number): string {
 }
 
 /**
- * Debug logging helper - logs to console with timestamp and prefix
- * Uses util.inspect for terminal-friendly output with full depth
- */
-function debugLog(context: string, message: string, data?: Record<string, unknown>): void {
-	const timestamp = new Date().toISOString();
-	const prefix = `[ONE-SHOT-AGENT][${timestamp}][${context}]`;
-	if (data) {
-		const formatted = inspect(data, {
-			depth: null, // Full depth
-			colors: true, // Terminal colors
-			maxStringLength: null, // No string truncation
-			maxArrayLength: null, // No array truncation
-			breakLength: 120, // Line wrap at 120 chars
-		});
-		console.log(`${prefix} ${message}\n${formatted}`);
-	} else {
-		console.log(`${prefix} ${message}`);
-	}
-}
-
-/**
  * Get the SDK API reference for the prompt.
  * Uses SDK_API_CONTENT which is embedded at build time to avoid disk reads.
  * Contains only what the LLM needs to generate workflow code.
  */
 function getSdkSourceCode(): string {
-	debugLog('INIT', 'Using embedded SDK API content', { contentLength: SDK_API_CONTENT.length });
 	return SDK_API_CONTENT;
 }
 
@@ -152,6 +130,11 @@ export interface OneShotWorkflowCodeAgentConfig {
 	 * - 'v2-opus': Comprehensive prompt with full SDK reference for Opus 4.5
 	 */
 	promptVersion?: PromptVersionId;
+	/**
+	 * Enable log capture for later retrieval (e.g., for evaluation artifacts).
+	 * When true, all debug logs will be captured and can be retrieved via getCapturedLogs().
+	 */
+	captureLog?: boolean;
 }
 
 /**
@@ -173,9 +156,12 @@ export class OneShotWorkflowCodeAgent {
 	private modelId?: ModelId;
 	private promptVersion: PromptVersionId;
 	private promptDefinition: PromptVersionDefinition;
+	private capturedLogs: string[] = [];
+	private shouldCaptureLog: boolean;
 
 	constructor(config: OneShotWorkflowCodeAgentConfig) {
-		debugLog('CONSTRUCTOR', 'Initializing OneShotWorkflowCodeAgent...', {
+		this.shouldCaptureLog = config.captureLog ?? false;
+		this.debugLog('CONSTRUCTOR', 'Initializing OneShotWorkflowCodeAgent...', {
 			nodeTypesCount: config.nodeTypes.length,
 			hasLogger: !!config.logger,
 			modelId: config.modelId,
@@ -185,6 +171,9 @@ export class OneShotWorkflowCodeAgent {
 		this.nodeTypeParser = new NodeTypeParser(config.nodeTypes);
 		this.logger = config.logger;
 		this.sdkSourceCode = getSdkSourceCode();
+		this.debugLog('INIT', 'Using embedded SDK API content', {
+			contentLength: this.sdkSourceCode.length,
+		});
 		this.modelId = config.modelId;
 
 		// Determine prompt version: explicit > model-based fallback > default
@@ -197,12 +186,59 @@ export class OneShotWorkflowCodeAgent {
 		this.tools = [searchTool, getTool];
 		this.toolsMap = new Map(this.tools.map((t) => [t.name, t]));
 
-		debugLog('CONSTRUCTOR', 'OneShotWorkflowCodeAgent initialized', {
+		this.debugLog('CONSTRUCTOR', 'OneShotWorkflowCodeAgent initialized', {
 			sdkSourceCodeLength: this.sdkSourceCode.length,
 			toolNames: this.tools.map((t) => t.name),
 			promptVersion: this.promptVersion,
 			promptName: this.promptDefinition.name,
 		});
+	}
+
+	/**
+	 * Debug logging helper - logs to console with timestamp and prefix.
+	 * Uses util.inspect for terminal-friendly output with full depth.
+	 * Optionally captures logs for later retrieval when captureLog is enabled.
+	 */
+	private debugLog(context: string, message: string, data?: Record<string, unknown>): void {
+		const timestamp = new Date().toISOString();
+		const prefix = `[ONE-SHOT-AGENT][${timestamp}][${context}]`;
+
+		if (data) {
+			// Console output (with colors)
+			const colorFormatted = inspect(data, {
+				depth: null,
+				colors: true,
+				maxStringLength: null,
+				maxArrayLength: null,
+				breakLength: 120,
+			});
+			console.log(`${prefix} ${message}\n${colorFormatted}`);
+
+			// Capture for file output (without colors)
+			if (this.shouldCaptureLog) {
+				const plainFormatted = inspect(data, {
+					depth: null,
+					colors: false,
+					maxStringLength: null,
+					maxArrayLength: null,
+					breakLength: 120,
+				});
+				this.capturedLogs.push(`${prefix} ${message}\n${plainFormatted}`);
+			}
+		} else {
+			console.log(`${prefix} ${message}`);
+			if (this.shouldCaptureLog) {
+				this.capturedLogs.push(`${prefix} ${message}`);
+			}
+		}
+	}
+
+	/**
+	 * Get the captured logs as a single string.
+	 * Only populated when captureLog is enabled in the config.
+	 */
+	public getCapturedLogs(): string {
+		return this.capturedLogs.join('\n');
 	}
 
 	/**
@@ -226,8 +262,8 @@ export class OneShotWorkflowCodeAgent {
 		abortSignal?: AbortSignal,
 	): AsyncGenerator<StreamOutput, void, unknown> {
 		const startTime = Date.now();
-		debugLog('CHAT', '========== STARTING CHAT ==========');
-		debugLog('CHAT', 'Input payload', {
+		this.debugLog('CHAT', '========== STARTING CHAT ==========');
+		this.debugLog('CHAT', 'Input payload', {
 			userId,
 			messageLength: payload.message.length,
 			message: payload.message,
@@ -242,11 +278,11 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			// Build prompt with current workflow context if available
-			debugLog('CHAT', 'Building prompt...');
+			this.debugLog('CHAT', 'Building prompt...');
 			const currentWorkflow = payload.workflowContext?.currentWorkflow as WorkflowJSON | undefined;
 
 			if (currentWorkflow) {
-				debugLog('CHAT', 'Current workflow context provided', {
+				this.debugLog('CHAT', 'Current workflow context provided', {
 					workflowId: currentWorkflow.id,
 					workflowName: currentWorkflow.name,
 					nodeCount: currentWorkflow.nodes?.length ?? 0,
@@ -254,26 +290,26 @@ export class OneShotWorkflowCodeAgent {
 			}
 
 			const prompt = this.buildPrompt(currentWorkflow);
-			debugLog('CHAT', 'Prompt built successfully');
+			this.debugLog('CHAT', 'Prompt built successfully');
 
 			// Bind tools to LLM
-			debugLog('CHAT', 'Binding tools to LLM...');
+			this.debugLog('CHAT', 'Binding tools to LLM...');
 			if (!this.llm.bindTools) {
 				throw new Error('LLM does not support bindTools - cannot use tools for node discovery');
 			}
 			const llmWithTools = this.llm.bindTools(this.tools);
-			debugLog('CHAT', 'Tools bound to LLM');
+			this.debugLog('CHAT', 'Tools bound to LLM');
 
 			// Format initial messages
-			debugLog('CHAT', 'Formatting initial messages...');
+			this.debugLog('CHAT', 'Formatting initial messages...');
 			const formattedMessages = await prompt.formatMessages({ userMessage: payload.message });
 			const messages: BaseMessage[] = [...formattedMessages];
-			debugLog('CHAT', 'Initial messages formatted', {
+			this.debugLog('CHAT', 'Initial messages formatted', {
 				messageCount: messages.length,
 			});
 
 			// Run agentic loop
-			debugLog('CHAT', 'Starting agentic loop...');
+			this.debugLog('CHAT', 'Starting agentic loop...');
 			let iteration = 0;
 			let finalResult: WorkflowCodeOutput | null = null;
 			let totalInputTokens = 0;
@@ -289,21 +325,21 @@ export class OneShotWorkflowCodeAgent {
 			while (iteration < MAX_AGENT_ITERATIONS) {
 				if (consecutiveParseErrors >= 3) {
 					// Two consecutive parsing errors - fail
-					debugLog('CHAT', 'Three consecutive parsing errors - failing');
+					this.debugLog('CHAT', 'Three consecutive parsing errors - failing');
 					throw new Error('Failed to parse workflow code after 3 consecutive attempts.');
 				}
 
 				iteration++;
-				debugLog('CHAT', `========== ITERATION ${iteration} ==========`);
+				this.debugLog('CHAT', `========== ITERATION ${iteration} ==========`);
 
 				// Check for abort
 				if (abortSignal?.aborted) {
-					debugLog('CHAT', 'Abort signal received');
+					this.debugLog('CHAT', 'Abort signal received');
 					throw new Error('Aborted');
 				}
 
 				// Invoke LLM
-				debugLog('CHAT', 'Invoking LLM...');
+				this.debugLog('CHAT', 'Invoking LLM...');
 				const llmStartTime = Date.now();
 				const response = await llmWithTools.invoke(messages, { signal: abortSignal });
 				const llmDuration = Date.now() - llmStartTime;
@@ -316,7 +352,7 @@ export class OneShotWorkflowCodeAgent {
 				totalInputTokens += inputTokens;
 				totalOutputTokens += outputTokens;
 
-				debugLog('CHAT', 'LLM response received', {
+				this.debugLog('CHAT', 'LLM response received', {
 					llmDurationMs: llmDuration,
 					responseId: response.id,
 					hasToolCalls: response.tool_calls && response.tool_calls.length > 0,
@@ -330,7 +366,7 @@ export class OneShotWorkflowCodeAgent {
 				// Extract text content from response
 				const textContent = this.extractTextContent(response);
 				if (textContent) {
-					debugLog('CHAT', 'Streaming text response', { textContent });
+					this.debugLog('CHAT', 'Streaming text response', { textContent });
 					yield {
 						messages: [
 							{
@@ -347,7 +383,7 @@ export class OneShotWorkflowCodeAgent {
 
 				// Check if there are tool calls
 				if (response.tool_calls && response.tool_calls.length > 0) {
-					debugLog('CHAT', 'Processing tool calls...', {
+					this.debugLog('CHAT', 'Processing tool calls...', {
 						toolCalls: response.tool_calls.map((tc) => ({
 							name: tc.name,
 							id: tc.id ?? 'unknown',
@@ -361,7 +397,7 @@ export class OneShotWorkflowCodeAgent {
 					for (const toolCall of response.tool_calls) {
 						// Skip tool calls without an ID (shouldn't happen but handle gracefully)
 						if (!toolCall.id) {
-							debugLog('CHAT', 'Skipping tool call without ID', { name: toolCall.name });
+							this.debugLog('CHAT', 'Skipping tool call without ID', { name: toolCall.name });
 							continue;
 						}
 						yield* this.executeToolCall(
@@ -371,18 +407,18 @@ export class OneShotWorkflowCodeAgent {
 					}
 				} else {
 					// No tool calls - try to parse as final response
-					debugLog('CHAT', 'No tool calls, attempting to parse final response...');
+					this.debugLog('CHAT', 'No tool calls, attempting to parse final response...');
 					const parseResult = this.parseStructuredOutput(response);
 					finalResult = parseResult.result;
 
 					if (finalResult) {
-						debugLog('CHAT', 'Final result parsed successfully', {
+						this.debugLog('CHAT', 'Final result parsed successfully', {
 							workflowCodeLength: finalResult.workflowCode.length,
 						});
 
 						// Try to parse and validate the workflow code
-						debugLog('CHAT', 'Parsing and validating workflow code...');
-						debugLog('CHAT', 'Raw workflow code from LLM:', {
+						this.debugLog('CHAT', 'Parsing and validating workflow code...');
+						this.debugLog('CHAT', 'Raw workflow code from LLM:', {
 							workflowCode: finalResult.workflowCode,
 						});
 						const parseStartTime = Date.now();
@@ -392,7 +428,7 @@ export class OneShotWorkflowCodeAgent {
 							workflow = result.workflow;
 							parseDuration = Date.now() - parseStartTime;
 							sourceCode = finalResult.workflowCode; // Save for later use
-							debugLog('CHAT', 'Workflow parsed and validated', {
+							this.debugLog('CHAT', 'Workflow parsed and validated', {
 								parseDurationMs: parseDuration,
 								workflowId: workflow.id,
 								workflowName: workflow.name,
@@ -405,7 +441,7 @@ export class OneShotWorkflowCodeAgent {
 							const newWarnings = result.warnings.filter((w) => !previousWarningCodes.has(w.code));
 
 							if (newWarnings.length > 0) {
-								debugLog('CHAT', 'New validation warnings found', {
+								this.debugLog('CHAT', 'New validation warnings found', {
 									newWarningCount: newWarnings.length,
 									newWarningCodes: newWarnings.map((w) => w.code),
 								});
@@ -441,7 +477,7 @@ export class OneShotWorkflowCodeAgent {
 							}
 
 							// No new warnings (or all are repeats) - successfully parsed, exit the loop
-							debugLog('CHAT', 'No new warnings, accepting workflow');
+							this.debugLog('CHAT', 'No new warnings, accepting workflow');
 							break;
 						} catch (parseError) {
 							parseDuration = Date.now() - parseStartTime;
@@ -457,14 +493,17 @@ export class OneShotWorkflowCodeAgent {
 								type: 'parse',
 							});
 
-							debugLog('CHAT', 'Workflow parsing failed', {
+							this.debugLog('CHAT', 'Workflow parsing failed', {
 								parseDurationMs: parseDuration,
 								consecutiveParseErrors,
 								errorMessage,
 							});
 
 							// First parsing error - send error back to agent for correction
-							debugLog('CHAT', 'First parsing error - sending error back to agent for correction');
+							this.debugLog(
+								'CHAT',
+								'First parsing error - sending error back to agent for correction',
+							);
 							messages.push(
 								new HumanMessage(
 									`The workflow code you generated has a parsing error:\n\n${errorMessage}\n\nPlease fix the code and provide the corrected version as a JSON object with a workflowCode field.`,
@@ -474,7 +513,7 @@ export class OneShotWorkflowCodeAgent {
 						}
 					} else {
 						consecutiveParseErrors++;
-						debugLog(
+						this.debugLog(
 							'CHAT',
 							'Could not parse structured output, continuing loop for another response...',
 							{ parseError: parseResult.error },
@@ -496,7 +535,7 @@ export class OneShotWorkflowCodeAgent {
 			}
 
 			const llmDuration = Date.now() - startTime;
-			debugLog('CHAT', 'Agentic loop complete', {
+			this.debugLog('CHAT', 'Agentic loop complete', {
 				iterations: iteration,
 				totalLlmDurationMs: llmDuration,
 			});
@@ -513,7 +552,7 @@ export class OneShotWorkflowCodeAgent {
 			const totalTokens = totalInputTokens + totalOutputTokens;
 			const estimatedCost = calculateCost(totalInputTokens, totalOutputTokens);
 
-			debugLog('CHAT', 'Request stats', {
+			this.debugLog('CHAT', 'Request stats', {
 				totalDurationMs: totalDuration,
 				totalInputTokens,
 				totalOutputTokens,
@@ -534,7 +573,7 @@ export class OneShotWorkflowCodeAgent {
 			};
 
 			// Stream workflow update (includes source code for evaluation artifacts)
-			debugLog('CHAT', 'Streaming workflow update');
+			this.debugLog('CHAT', 'Streaming workflow update');
 			yield {
 				messages: [
 					{
@@ -552,7 +591,7 @@ export class OneShotWorkflowCodeAgent {
 				],
 			};
 
-			debugLog('CHAT', '========== CHAT COMPLETE ==========', {
+			this.debugLog('CHAT', '========== CHAT COMPLETE ==========', {
 				totalDurationMs: totalDuration,
 				totalInputTokens,
 				totalOutputTokens,
@@ -563,7 +602,7 @@ export class OneShotWorkflowCodeAgent {
 			});
 		} catch (error) {
 			const totalDuration = Date.now() - startTime;
-			debugLog('CHAT', '========== CHAT FAILED ==========', {
+			this.debugLog('CHAT', '========== CHAT FAILED ==========', {
 				totalDurationMs: totalDuration,
 				errorMessage: error instanceof Error ? error.message : String(error),
 				errorStack: error instanceof Error ? error.stack : undefined,
@@ -617,7 +656,7 @@ export class OneShotWorkflowCodeAgent {
 		toolCall: { name: string; args: Record<string, unknown>; id: string },
 		messages: BaseMessage[],
 	): AsyncGenerator<StreamOutput, void, unknown> {
-		debugLog('TOOL_CALL', `Executing tool: ${toolCall.name}`, {
+		this.debugLog('TOOL_CALL', `Executing tool: ${toolCall.name}`, {
 			toolCallId: toolCall.id,
 			args: toolCall.args,
 		});
@@ -637,7 +676,7 @@ export class OneShotWorkflowCodeAgent {
 		const tool = this.toolsMap.get(toolCall.name);
 		if (!tool) {
 			const errorMessage = `Tool '${toolCall.name}' not found`;
-			debugLog('TOOL_CALL', errorMessage);
+			this.debugLog('TOOL_CALL', errorMessage);
 			messages.push(
 				new ToolMessage({
 					tool_call_id: toolCall.id,
@@ -652,7 +691,7 @@ export class OneShotWorkflowCodeAgent {
 			const result = await tool.invoke(toolCall.args);
 			const toolDuration = Date.now() - toolStartTime;
 
-			debugLog('TOOL_CALL', `Tool ${toolCall.name} completed`, {
+			this.debugLog('TOOL_CALL', `Tool ${toolCall.name} completed`, {
 				toolDurationMs: toolDuration,
 				resultLength: typeof result === 'string' ? result.length : JSON.stringify(result).length,
 				resultPreview:
@@ -681,7 +720,7 @@ export class OneShotWorkflowCodeAgent {
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			debugLog('TOOL_CALL', `Tool ${toolCall.name} failed`, { error: errorMessage });
+			this.debugLog('TOOL_CALL', `Tool ${toolCall.name} failed`, { error: errorMessage });
 
 			messages.push(
 				new ToolMessage({
@@ -713,11 +752,11 @@ export class OneShotWorkflowCodeAgent {
 	} {
 		const content = this.extractTextContent(message);
 		if (!content) {
-			debugLog('PARSE_OUTPUT', 'No text content to parse');
+			this.debugLog('PARSE_OUTPUT', 'No text content to parse');
 			return { result: null, error: 'No text content found in response' };
 		}
 
-		debugLog('PARSE_OUTPUT', 'Attempting to parse structured output', {
+		this.debugLog('PARSE_OUTPUT', 'Attempting to parse structured output', {
 			contentLength: content.length,
 			contentPreview: content.substring(0, 500),
 		});
@@ -730,7 +769,7 @@ export class OneShotWorkflowCodeAgent {
 			content.match(/(\{[\s\S]*"workflowCode"[\s\S]*\})/);
 
 		if (!jsonMatch) {
-			debugLog('PARSE_OUTPUT', 'No JSON found in content');
+			this.debugLog('PARSE_OUTPUT', 'No JSON found in content');
 			return {
 				result: null,
 				error:
@@ -744,14 +783,14 @@ export class OneShotWorkflowCodeAgent {
 
 			// Validate with Zod schema
 			const result = WorkflowCodeOutputSchema.parse(parsed);
-			debugLog('PARSE_OUTPUT', 'Successfully parsed structured output', {
+			this.debugLog('PARSE_OUTPUT', 'Successfully parsed structured output', {
 				workflowCodeLength: result.workflowCode.length,
 			});
 
 			return { result, error: null };
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
-			debugLog('PARSE_OUTPUT', 'Failed to parse JSON', {
+			this.debugLog('PARSE_OUTPUT', 'Failed to parse JSON', {
 				error: errorMessage,
 			});
 			return { result: null, error: `Failed to parse JSON: ${errorMessage}` };
@@ -763,9 +802,9 @@ export class OneShotWorkflowCodeAgent {
 	 * Builds the prompt using the configured prompt version from the registry.
 	 */
 	private buildPrompt(currentWorkflow?: WorkflowJSON) {
-		debugLog('BUILD_PROMPT', 'Getting node IDs by category with discriminators...');
+		this.debugLog('BUILD_PROMPT', 'Getting node IDs by category with discriminators...');
 		const nodeIds = this.nodeTypeParser.getNodeIdsByCategoryWithDiscriminators();
-		debugLog('BUILD_PROMPT', 'Node IDs retrieved', {
+		this.debugLog('BUILD_PROMPT', 'Node IDs retrieved', {
 			triggerCount: nodeIds.triggers.length,
 			coreCount: nodeIds.core.length,
 			aiCount: nodeIds.ai.length,
@@ -775,7 +814,7 @@ export class OneShotWorkflowCodeAgent {
 			aiPreview: nodeIds.ai.slice(0, 5).map((n) => n.id),
 		});
 
-		debugLog('BUILD_PROMPT', 'Building prompt template...', {
+		this.debugLog('BUILD_PROMPT', 'Building prompt template...', {
 			hasCurrentWorkflow: !!currentWorkflow,
 			sdkSourceCodeLength: this.sdkSourceCode.length,
 			modelId: this.modelId,
@@ -785,7 +824,7 @@ export class OneShotWorkflowCodeAgent {
 
 		const prompt = this.promptDefinition.buildPrompt(nodeIds, this.sdkSourceCode, currentWorkflow);
 
-		debugLog('BUILD_PROMPT', 'Prompt template built', {
+		this.debugLog('BUILD_PROMPT', 'Prompt template built', {
 			promptVersion: this.promptVersion,
 			promptName: this.promptDefinition.name,
 		});
@@ -797,8 +836,8 @@ export class OneShotWorkflowCodeAgent {
 	 * Returns both the workflow and any validation warnings
 	 */
 	private async parseAndValidate(code: string): Promise<ParseAndValidateResult> {
-		debugLog('PARSE_VALIDATE', '========== PARSING WORKFLOW CODE ==========');
-		debugLog('PARSE_VALIDATE', 'Input code', {
+		this.debugLog('PARSE_VALIDATE', '========== PARSING WORKFLOW CODE ==========');
+		this.debugLog('PARSE_VALIDATE', 'Input code', {
 			codeLength: code.length,
 			codePreview: code.substring(0, 500),
 			codeEnd: code.substring(Math.max(0, code.length - 500)),
@@ -807,22 +846,22 @@ export class OneShotWorkflowCodeAgent {
 		try {
 			// Parse the TypeScript code to WorkflowBuilder
 			this.logger?.debug('Parsing WorkflowCode', { codeLength: code.length });
-			debugLog('PARSE_VALIDATE', 'Calling parseWorkflowCodeToBuilder...');
+			this.debugLog('PARSE_VALIDATE', 'Calling parseWorkflowCodeToBuilder...');
 			const parseStartTime = Date.now();
 			const builder = parseWorkflowCodeToBuilder(code);
 			const parseDuration = Date.now() - parseStartTime;
 
-			debugLog('PARSE_VALIDATE', 'Code parsed to builder', {
+			this.debugLog('PARSE_VALIDATE', 'Code parsed to builder', {
 				parseDurationMs: parseDuration,
 			});
 
 			// Validate the graph structure BEFORE converting to JSON
-			debugLog('PARSE_VALIDATE', 'Validating graph structure...');
+			this.debugLog('PARSE_VALIDATE', 'Validating graph structure...');
 			const graphValidateStartTime = Date.now();
 			const graphValidation = builder.validate();
 			const graphValidateDuration = Date.now() - graphValidateStartTime;
 
-			debugLog('PARSE_VALIDATE', 'Graph validation complete', {
+			this.debugLog('PARSE_VALIDATE', 'Graph validation complete', {
 				validateDurationMs: graphValidateDuration,
 				isValid: graphValidation.valid,
 				errorCount: graphValidation.errors.length,
@@ -834,7 +873,7 @@ export class OneShotWorkflowCodeAgent {
 				const errorMessages = graphValidation.errors
 					.map((e: { message: string; code?: string }) => `[${e.code}] ${e.message}`)
 					.join('\n');
-				debugLog('PARSE_VALIDATE', 'GRAPH VALIDATION ERRORS', {
+				this.debugLog('PARSE_VALIDATE', 'GRAPH VALIDATION ERRORS', {
 					errors: graphValidation.errors.map((e: { message: string; code?: string }) => ({
 						message: e.message,
 						code: e.code,
@@ -848,7 +887,7 @@ export class OneShotWorkflowCodeAgent {
 
 			// Log warnings (but don't fail on them)
 			if (graphValidation.warnings.length > 0) {
-				debugLog('PARSE_VALIDATE', 'GRAPH VALIDATION WARNINGS', {
+				this.debugLog('PARSE_VALIDATE', 'GRAPH VALIDATION WARNINGS', {
 					warnings: graphValidation.warnings.map((w: { message: string; code?: string }) => ({
 						message: w.message,
 						code: w.code,
@@ -868,10 +907,10 @@ export class OneShotWorkflowCodeAgent {
 			}
 
 			// Convert to JSON
-			debugLog('PARSE_VALIDATE', 'Converting to JSON...');
+			this.debugLog('PARSE_VALIDATE', 'Converting to JSON...');
 			const workflow: WorkflowJSON = builder.toJSON();
 
-			debugLog('PARSE_VALIDATE', 'Workflow converted to JSON', {
+			this.debugLog('PARSE_VALIDATE', 'Workflow converted to JSON', {
 				workflowId: workflow.id,
 				workflowName: workflow.name,
 				nodeCount: workflow.nodes.length,
@@ -879,7 +918,7 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			// Log each node
-			debugLog('PARSE_VALIDATE', 'Parsed nodes', {
+			this.debugLog('PARSE_VALIDATE', 'Parsed nodes', {
 				nodes: workflow.nodes.map((n) => ({
 					id: n.id,
 					name: n.name,
@@ -890,7 +929,7 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			// Log connections
-			debugLog('PARSE_VALIDATE', 'Parsed connections', {
+			this.debugLog('PARSE_VALIDATE', 'Parsed connections', {
 				connections: workflow.connections,
 			});
 
@@ -901,12 +940,12 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			// Also run JSON-based validation for additional checks
-			debugLog('PARSE_VALIDATE', 'Running JSON validation...');
+			this.debugLog('PARSE_VALIDATE', 'Running JSON validation...');
 			const validateStartTime = Date.now();
 			const validationResult = validateWorkflow(workflow);
 			const validateDuration = Date.now() - validateStartTime;
 
-			debugLog('PARSE_VALIDATE', 'JSON validation complete', {
+			this.debugLog('PARSE_VALIDATE', 'JSON validation complete', {
 				validateDurationMs: validateDuration,
 				isValid: validationResult.valid,
 				errorCount: validationResult.errors.length,
@@ -914,7 +953,7 @@ export class OneShotWorkflowCodeAgent {
 			});
 
 			if (validationResult.errors.length > 0) {
-				debugLog('PARSE_VALIDATE', 'JSON VALIDATION ERRORS', {
+				this.debugLog('PARSE_VALIDATE', 'JSON VALIDATION ERRORS', {
 					errors: validationResult.errors.map((e: { message: string; code?: string }) => ({
 						message: e.message,
 						code: e.code,
@@ -926,7 +965,7 @@ export class OneShotWorkflowCodeAgent {
 			}
 
 			if (validationResult.warnings.length > 0) {
-				debugLog('PARSE_VALIDATE', 'JSON VALIDATION WARNINGS', {
+				this.debugLog('PARSE_VALIDATE', 'JSON VALIDATION WARNINGS', {
 					warnings: validationResult.warnings.map((w: { message: string; code?: string }) => ({
 						message: w.message,
 						code: w.code,
@@ -938,16 +977,16 @@ export class OneShotWorkflowCodeAgent {
 			}
 
 			// Log full workflow JSON
-			debugLog('PARSE_VALIDATE', 'Final workflow JSON', {
+			this.debugLog('PARSE_VALIDATE', 'Final workflow JSON', {
 				workflow: JSON.stringify(workflow, null, 2),
 			});
 
-			debugLog('PARSE_VALIDATE', '========== PARSING COMPLETE ==========');
+			this.debugLog('PARSE_VALIDATE', '========== PARSING COMPLETE ==========');
 
 			// Return both workflow and warnings for agent self-correction
 			return { workflow, warnings: allWarnings };
 		} catch (error) {
-			debugLog('PARSE_VALIDATE', '========== PARSING FAILED ==========', {
+			this.debugLog('PARSE_VALIDATE', '========== PARSING FAILED ==========', {
 				errorMessage: error instanceof Error ? error.message : String(error),
 				errorStack: error instanceof Error ? error.stack : undefined,
 				code: code,

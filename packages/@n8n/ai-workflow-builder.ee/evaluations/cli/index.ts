@@ -117,11 +117,13 @@ function createWorkflowGenerator(
  * @param timeoutMs - Optional timeout in milliseconds. When provided, the agent will be
  *                    aborted if it exceeds this duration. This ensures the generator
  *                    actually stops instead of continuing to run after timeout rejection.
+ * @param captureLog - When true, captures debug logs for artifact saving.
  */
 function createOneShotWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	timeoutMs?: number,
+	captureLog?: boolean,
 ): (prompt: string, callbacks?: Callbacks) => Promise<GenerationResult> {
 	return async (prompt: string): Promise<GenerationResult> => {
 		const runId = generateRunId();
@@ -129,6 +131,7 @@ function createOneShotWorkflowGenerator(
 		const agent = new OneShotWorkflowCodeAgent({
 			llm: llms.builder,
 			nodeTypes: parsedNodeTypes,
+			captureLog,
 		});
 
 		const payload = getChatPayload({
@@ -189,7 +192,10 @@ function createOneShotWorkflowGenerator(
 			throw new Error('One-shot agent did not produce a workflow');
 		}
 
-		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors };
+		// Get captured logs if log capture was enabled
+		const logs = captureLog ? agent.getCapturedLogs() : undefined;
+
+		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors, logs };
 	};
 }
 
@@ -266,9 +272,15 @@ export async function runV2Evaluation(): Promise<void> {
 	}
 
 	// Create workflow generator based on agent type
+	// Enable log capture for one-shot agent when outputDir is set
 	const generateWorkflow =
 		args.agent === AGENT_TYPES.ONE_SHOT
-			? createOneShotWorkflowGenerator(env.parsedNodeTypes, env.llms, args.timeoutMs)
+			? createOneShotWorkflowGenerator(
+					env.parsedNodeTypes,
+					env.llms,
+					args.timeoutMs,
+					!!args.outputDir,
+				)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
 	// Create evaluators based on mode (using judge LLM for evaluation)
