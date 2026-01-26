@@ -272,8 +272,6 @@ async function pullWorkfolder() {
 
 	const workflowsToAutoPublish = sortedWorkflows.value.filter((w) => w.willBeAutoPublished);
 
-	close();
-
 	try {
 		const pullStatus = await sourceControlStore.pullWorkfolder(true, autoPublish.value);
 
@@ -303,6 +301,7 @@ async function pullWorkfolder() {
 		toast.showError(error, 'Error');
 	} finally {
 		loadingService.stopLoading();
+		close();
 	}
 }
 
