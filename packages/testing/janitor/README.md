@@ -1,0 +1,647 @@
+# @n8n/playwright-janitor
+
+Static analysis and architecture enforcement for Playwright test suites.
+
+## Why?
+
+Playwright tests are easy to write but hard to maintain at scale. Without guardrails, test code accumulates problems:
+
+- **Selector duplication** - Same `getByTestId('button')` scattered across files
+- **Leaky abstractions** - Tests directly manipulating the DOM instead of using page objects
+- **Dead code** - Unused page object methods nobody deletes
+- **Architecture drift** - Flows importing pages, pages importing tests, layers bleeding together
+- **Orphaned test data** - Workflow files nobody references anymore
+
+The janitor catches these problems through static analysis, enforcing your architecture before bad patterns spread.
+
+## Architecture Model
+
+The janitor enforces a layered architecture for Playwright test suites:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                        Tests                            │
+│   test('user can login', async ({ app }) => { ... })    │
+└──────────────────────────┬──────────────────────────────┘
+                           │ uses
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Flows / Composables                   │
+│   await app.workflows.createAndRun('my-workflow')       │
+└──────────────────────────┬──────────────────────────────┘
+                           │ orchestrates
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                      Page Objects                       │
+│   await this.canvas.addNode('HTTP Request')             │
+└──────────────────────────┬──────────────────────────────┘
+                           │ encapsulates
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                       Components                        │
+│   await this.nodePanel.selectNode('Webhook')            │
+└──────────────────────────┬──────────────────────────────┘
+                           │ wraps
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                    Playwright API                       │
+│   page.getByTestId(), page.locator(), page.click()      │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Key principles:**
+
+1. **Dependencies flow downward** - Tests depend on flows, flows on pages, pages on components
+2. **No skipping layers** - Tests should use flows, not reach directly into page internals
+3. **Selectors belong in page objects** - Raw `getByTestId()` calls don't belong in tests or flows
+4. **One home per selector** - Each test ID should be defined in exactly one page object
+
+## Quick Start
+
+### Installation
+
+```bash
+pnpm add -D @n8n/playwright-janitor
+```
+
+### Configuration
+
+Create a `janitor.config.ts` in your Playwright test root:
+
+```typescript
+import { defineConfig } from '@n8n/playwright-janitor';
+
+export default defineConfig({
+  rootDir: __dirname,
+
+  // Where your different artifact types live
+  patterns: {
+    pages: ['pages/**/*.ts'],
+    components: ['pages/components/**/*.ts'],
+    flows: ['composables/**/*.ts'],       // or 'actions/**/*.ts', 'scenarios/**/*.ts'
+    tests: ['tests/**/*.spec.ts'],
+    services: ['services/**/*.ts'],
+    fixtures: ['fixtures/**/*.ts'],
+    helpers: ['helpers/**/*.ts'],
+    factories: ['factories/**/*.ts'],
+    testData: ['workflows/**/*'],          // Static JSON/fixtures
+  },
+
+  // The main page object facade that exposes sub-pages
+  facade: {
+    file: 'pages/AppPage.ts',
+    className: 'AppPage',
+    excludeTypes: ['Page', 'APIRequestContext'],
+  },
+
+  // What you call the fixture in your tests
+  fixtureObjectName: 'app',  // test('...', async ({ app }) => ...)
+});
+```
+
+### Run Analysis
+
+```typescript
+import { runAnalysis } from '@n8n/playwright-janitor';
+import config from './janitor.config.js';
+
+const report = runAnalysis(config);
+console.log(`Found ${report.summary.totalViolations} violations`);
+```
+
+Or create a script:
+
+```typescript
+// scripts/run-janitor.ts
+import { runAnalysis, toConsole } from '@n8n/playwright-janitor';
+import config from '../janitor.config.js';
+
+const report = runAnalysis(config);
+toConsole(report);
+process.exit(report.summary.totalViolations > 0 ? 1 : 0);
+```
+
+## Rules
+
+### Architecture Rules
+
+#### `boundary-protection`
+
+**Severity:** error
+
+Prevents pages from importing other pages directly. Each page should be independent; if you need to compose pages, that's what the facade/flows layer is for.
+
+```typescript
+// Bad - WorkflowPage importing SettingsPage
+import { SettingsPage } from './SettingsPage';
+
+export class WorkflowPage {
+  async openSettings() {
+    await this.settingsPage.open(); // Coupling between pages
+  }
+}
+
+// Good - Pages are independent, composition happens in flows
+export class WorkflowPage {
+  async getWorkflowName() {
+    return this.header.getByTestId('workflow-name').textContent();
+  }
+}
+```
+
+#### `scope-lockdown`
+
+**Severity:** error
+
+Page objects with a container must scope all locators to that container. Prevents selector conflicts when multiple instances of a component exist.
+
+```typescript
+// Bad - Unscoped locator escapes container
+export class NodePanel {
+  get container() { return this.page.locator('.node-panel'); }
+
+  async selectNode(name: string) {
+    await this.page.getByTestId('node-item').click(); // Finds ANY node-item on page
+  }
+}
+
+// Good - Scoped to container
+export class NodePanel {
+  get container() { return this.page.locator('.node-panel'); }
+
+  async selectNode(name: string) {
+    await this.container.getByTestId('node-item').click(); // Only within panel
+  }
+}
+```
+
+#### `selector-purity`
+
+**Severity:** error
+
+Raw Playwright locators (`getByTestId`, `locator`, etc.) should only appear in page objects, not in tests or flows.
+
+```typescript
+// Bad - Selector in test file
+test('creates workflow', async ({ app }) => {
+  await app.page.getByTestId('new-workflow-btn').click(); // Leaked selector
+});
+
+// Good - Selector encapsulated in page object
+test('creates workflow', async ({ app }) => {
+  await app.workflows.create(); // Implementation hidden
+});
+```
+
+#### `no-page-in-flow`
+
+**Severity:** warning
+
+Flows/composables shouldn't access `page` directly. They should work through page objects.
+
+```typescript
+// Bad - Flow reaching into page internals
+export class WorkflowComposer {
+  async createAndRun() {
+    await this.app.page.getByTestId('run-btn').click(); // Direct page access
+  }
+}
+
+// Good - Flow uses page objects
+export class WorkflowComposer {
+  async createAndRun() {
+    await this.app.canvas.runWorkflow(); // Through page object
+  }
+}
+```
+
+Certain page-level operations are allowed (configurable via `allowPatterns`):
+- `page.keyboard.*` - Keyboard shortcuts
+- `page.evaluate()` - JavaScript execution
+- `page.waitForLoadState()` - Navigation waits
+- `page.waitForURL()` - URL assertions
+- `page.reload()` - Page refresh
+
+#### `api-purity`
+
+**Severity:** warning
+
+Raw HTTP calls (`request.get()`, `fetch()`) should go through API service classes, not appear directly in tests.
+
+```typescript
+// Bad - Raw HTTP in test
+test('gets workflows', async ({ request }) => {
+  const response = await request.get('/api/workflows');
+});
+
+// Good - Through API service
+test('gets workflows', async ({ api }) => {
+  const workflows = await api.workflows.list();
+});
+```
+
+### Code Quality Rules
+
+#### `dead-code`
+
+**Severity:** warning | **Fixable:** yes
+
+Detects unused public methods and properties in page objects. If nothing references a method, it's probably dead code.
+
+```typescript
+export class WorkflowPage {
+  async usedMethod() { /* called from tests */ }
+  async unusedMethod() { /* nobody calls this */ } // Violation
+}
+```
+
+#### `deduplication`
+
+**Severity:** warning
+
+Detects the same `getByTestId()` value used in multiple page object files. Each test ID should have one authoritative home.
+
+```typescript
+// pages/WorkflowPage.ts
+this.page.getByTestId('save-button'); // Duplicate
+
+// pages/SettingsPage.ts
+this.page.getByTestId('save-button'); // Duplicate
+```
+
+**Note:** Same ID within a single file is allowed (e.g., helper methods).
+
+#### `test-data-hygiene`
+
+**Severity:** warning
+
+Detects:
+- **Orphaned test data** - Workflow/expectation files not referenced by any test
+- **Generic names** - Files named `test.json`, `data.json`, `workflow_1.json`
+- **Ticket-only names** - Files named just `CAT-123.json` without description
+
+```
+workflows/
+  webhook-with-retry.json     Good - Descriptive
+  test.json                   Bad - Generic
+  CAT-123.json                Bad - Ticket-only
+  unused-workflow.json        Bad - Orphaned (if not referenced)
+```
+
+## Configuration Reference
+
+```typescript
+interface JanitorConfig {
+  /** Root directory for the Playwright test suite (absolute path) */
+  rootDir: string;
+
+  /** Directory patterns for different artifact types */
+  patterns: {
+    pages: string[];
+    components: string[];
+    flows: string[];
+    tests: string[];
+    services: string[];
+    fixtures: string[];
+    helpers: string[];
+    factories: string[];
+    testData: string[];
+  };
+
+  /** Files to exclude from page analysis (facades, base classes) */
+  excludeFromPages: string[];
+
+  /** Facade configuration - the main aggregator that exposes page objects */
+  facade: {
+    file: string;       // Path relative to rootDir
+    className: string;  // e.g., 'AppPage'
+    excludeTypes: string[]; // Types to exclude from mapping
+  };
+
+  /** The fixture object name used in tests */
+  fixtureObjectName: string;  // e.g., 'app', 'po', 'n8n'
+
+  /** The API fixture/helper object name */
+  apiFixtureName: string;  // e.g., 'api'
+
+  /** Patterns indicating raw API calls */
+  rawApiPatterns: RegExp[];
+
+  /** What you call the middle layer */
+  flowLayerName: string;  // e.g., 'Composable', 'Action', 'Flow'
+
+  /** Rule-specific configuration */
+  rules: {
+    [ruleId: string]: {
+      enabled?: boolean;
+      severity?: 'error' | 'warning' | 'off';
+      allowPatterns?: RegExp[];
+    };
+  };
+}
+```
+
+## Disabling Rules
+
+### Globally
+
+```typescript
+// janitor.config.ts
+export default defineConfig({
+  // ...
+  rules: {
+    'dead-code': { enabled: false },
+    'deduplication': { severity: 'off' },
+  },
+});
+```
+
+### Per-Rule Allow Patterns
+
+```typescript
+rules: {
+  'no-page-in-flow': {
+    allowPatterns: [
+      /\.page\.keyboard/,     // Allow keyboard shortcuts
+      /\.page\.evaluate/,     // Allow JS execution
+    ],
+  },
+}
+```
+
+## Programmatic API
+
+```typescript
+import {
+  defineConfig,
+  runAnalysis,
+  createDefaultRunner,
+  RuleRunner,
+  BaseRule,
+  toJSON,
+  toConsole,
+} from '@n8n/playwright-janitor';
+
+// Simple usage
+const report = runAnalysis(config);
+
+// Custom runner with specific rules
+const runner = new RuleRunner();
+runner.registerRule(new BoundaryProtectionRule());
+runner.registerRule(new SelectorPurityRule());
+
+const { project, root } = createProject(config.rootDir);
+const report = runner.run(project, root);
+
+// Output
+toConsole(report);           // Human-readable
+const json = toJSON(report); // Machine-readable
+```
+
+## Writing Custom Rules
+
+Extend `BaseRule` to create custom rules:
+
+```typescript
+import { SyntaxKind } from 'ts-morph';
+import { BaseRule } from '@n8n/playwright-janitor';
+import type { Project, SourceFile, Violation } from '@n8n/playwright-janitor';
+
+export class NoHardcodedUrlsRule extends BaseRule {
+  readonly id = 'no-hardcoded-urls';
+  readonly name = 'No Hardcoded URLs';
+  readonly description = 'URLs should come from configuration';
+  readonly severity = 'warning' as const;
+
+  getTargetGlobs(): string[] {
+    return ['**/*.ts']; // Analyze all TypeScript files
+  }
+
+  analyze(project: Project, files: SourceFile[]): Violation[] {
+    const violations: Violation[] = [];
+
+    for (const file of files) {
+      // Use ts-morph to analyze the AST
+      const stringLiterals = file.getDescendantsOfKind(SyntaxKind.StringLiteral);
+
+      for (const literal of stringLiterals) {
+        const value = literal.getLiteralText();
+        if (value.startsWith('http://') || value.startsWith('https://')) {
+          violations.push(
+            this.createViolation(
+              file,
+              literal.getStartLineNumber(),
+              literal.getStart() - literal.getStartLinePos(),
+              `Hardcoded URL found: ${value}`,
+              'Move URL to configuration or environment variable',
+            ),
+          );
+        }
+      }
+    }
+
+    return violations;
+  }
+}
+
+// Register with runner
+const runner = createDefaultRunner();
+runner.registerRule(new NoHardcodedUrlsRule());
+```
+
+## Integration with CI
+
+Add to your CI pipeline:
+
+```yaml
+# .github/workflows/test.yml
+- name: Run Janitor
+  run: pnpm janitor
+```
+
+The janitor exits with code 1 if violations are found, failing the build.
+
+## Philosophy
+
+The janitor embodies these principles:
+
+1. **Catch problems early** - Static analysis finds issues without running tests
+2. **Enforce by default** - Good architecture should be the path of least resistance
+3. **Configurable, not prescriptive** - Your naming conventions, your layers, your rules
+4. **Fixable where possible** - Dead code removal shouldn't require manual work
+5. **AI-friendly guardrails** - When AI generates test code, the janitor keeps it clean
+
+## TCR (Test && Commit || Revert)
+
+The janitor includes tools for TCR-style development workflows, where changes are automatically committed if tests pass, or reverted if they fail.
+
+### Impact Analysis
+
+Determine which tests are affected by file changes:
+
+```typescript
+import { createProject, ImpactAnalyzer, formatImpactConsole } from '@n8n/playwright-janitor';
+
+const { project } = createProject('./');
+const analyzer = new ImpactAnalyzer(project);
+
+// Analyze impact of changed files
+const result = analyzer.analyze(['pages/CanvasPage.ts', 'pages/WorkflowPage.ts']);
+
+console.log(`Affected tests: ${result.affectedTests.length}`);
+result.affectedTests.forEach(t => console.log(`  - ${t}`));
+
+// Or use the formatter
+formatImpactConsole(result, true); // verbose mode
+```
+
+### Method-Level Impact
+
+Track which tests use specific page object methods:
+
+```typescript
+import { createProject, MethodUsageAnalyzer } from '@n8n/playwright-janitor';
+
+const { project } = createProject('./');
+const analyzer = new MethodUsageAnalyzer(project);
+
+// Build a complete index of method usages
+const index = analyzer.buildIndex();
+console.log(`Tracked ${Object.keys(index.methods).length} methods`);
+
+// Find tests affected by a specific method change
+const impact = analyzer.getMethodImpact('CanvasPage.addNode');
+console.log(`Tests using CanvasPage.addNode():`);
+impact.affectedTestFiles.forEach(t => console.log(`  - ${t}`));
+```
+
+### AST Diff Analysis
+
+Detect which methods changed in a file compared to git HEAD:
+
+```typescript
+import { diffFileMethods, formatDiffConsole } from '@n8n/playwright-janitor';
+
+const result = diffFileMethods('pages/CanvasPage.ts', 'HEAD');
+
+console.log(`Changed methods:`);
+for (const change of result.changedMethods) {
+  const symbol = change.changeType === 'added' ? '+'
+    : change.changeType === 'removed' ? '-' : '~';
+  console.log(`  ${symbol} ${change.className}.${change.methodName}`);
+}
+```
+
+### TCR Executor
+
+Run the full TCR workflow:
+
+```typescript
+import { TcrExecutor } from '@n8n/playwright-janitor';
+
+const tcr = new TcrExecutor();
+
+// Dry run - analyze but don't commit/revert
+const result = await tcr.run({ verbose: true });
+
+console.log(`Changed files: ${result.changedFiles.length}`);
+console.log(`Changed methods: ${result.changedMethods.length}`);
+console.log(`Affected tests: ${result.affectedTests.length}`);
+console.log(`Tests passed: ${result.testsPassed}`);
+
+// Execute TCR - commit on success, revert on failure
+const executed = await tcr.run({
+  execute: true,
+  commitMessage: 'feat: Add new workflow feature'
+});
+
+console.log(`Action taken: ${executed.action}`); // 'commit' | 'revert' | 'dry-run'
+```
+
+### Watch Mode
+
+Continuously run TCR on file changes:
+
+```typescript
+const tcr = new TcrExecutor();
+tcr.watch({ execute: true }); // Ctrl+C to stop
+```
+
+### Codebase Inventory
+
+Generate a complete inventory of your test codebase:
+
+```typescript
+import { createProject, InventoryAnalyzer, formatInventoryConsole } from '@n8n/playwright-janitor';
+
+const { project } = createProject('./');
+const analyzer = new InventoryAnalyzer(project);
+
+const inventory = analyzer.generate();
+
+console.log(`Pages: ${inventory.summary.totalPages}`);
+console.log(`Components: ${inventory.summary.totalComponents}`);
+console.log(`Flows: ${inventory.summary.totalFlows}`);
+console.log(`Test files: ${inventory.summary.totalTestFiles}`);
+console.log(`Total tests: ${inventory.summary.totalTests}`);
+console.log(`Total methods: ${inventory.summary.totalMethods}`);
+
+// Detailed output
+formatInventoryConsole(inventory, true); // verbose mode
+
+// Export as markdown
+import { formatInventoryMarkdown } from '@n8n/playwright-janitor';
+const markdown = formatInventoryMarkdown(inventory);
+```
+
+### TCR Types
+
+```typescript
+interface TcrOptions {
+  /** Git ref to compare against (default: HEAD) */
+  baseRef?: string;
+  /** Whether to actually commit/revert (false = dry run) */
+  execute?: boolean;
+  /** Custom commit message */
+  commitMessage?: string;
+  /** Watch mode - re-run on file changes */
+  watch?: boolean;
+  /** Verbose output */
+  verbose?: boolean;
+}
+
+interface TcrResult {
+  changedFiles: string[];
+  changedMethods: MethodChange[];
+  affectedTests: string[];
+  testsRun: string[];
+  testsPassed: boolean;
+  action: 'commit' | 'revert' | 'dry-run';
+  durationMs: number;
+}
+
+interface MethodChange {
+  className: string;
+  methodName: string;
+  changeType: 'added' | 'removed' | 'modified';
+}
+
+interface ImpactResult {
+  changedFiles: string[];
+  affectedFiles: string[];
+  affectedTests: string[];
+  graph: Record<string, string[]>;
+}
+```
+
+## Development
+
+```bash
+pnpm install
+pnpm build
+pnpm test
+```
+
+## License
+
+MIT
