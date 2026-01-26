@@ -36,6 +36,9 @@ export interface EvaluationArgs {
 
 	featureFlags?: BuilderFeatureFlags;
 
+	/** URL to POST evaluation results to when complete */
+	webhookUrl?: string;
+
 	// Model configuration
 	/** Default model for all stages */
 	model: ModelId;
@@ -97,6 +100,7 @@ const cliSchema = z
 
 		langsmith: z.boolean().optional(),
 		templateExamples: z.boolean().default(false),
+		webhookUrl: z.string().url().optional(),
 
 		// Model configuration
 		model: modelIdSchema.default(DEFAULT_MODEL),
@@ -218,6 +222,12 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		desc: 'Directory for artifacts',
 	},
 	'--verbose': { key: 'verbose', kind: 'boolean', group: 'output', desc: 'Verbose logging' },
+	'--webhook-url': {
+		key: 'webhookUrl',
+		kind: 'string',
+		group: 'output',
+		desc: 'URL to POST results to when complete',
+	},
 
 	// Feature flags
 	'--template-examples': {
@@ -525,6 +535,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		donts: parsed.donts,
 		numJudges: parsed.numJudges,
 		featureFlags,
+		webhookUrl: parsed.webhookUrl,
 		// Model configuration
 		model: parsed.model,
 		judgeModel: parsed.judgeModel,

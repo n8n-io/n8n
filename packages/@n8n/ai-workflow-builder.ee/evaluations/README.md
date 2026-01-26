@@ -339,6 +339,7 @@ Notes:
 --donts <text>      # Pairwise: things the workflow should not do
 --output-dir <dir>  # Local mode: write artifacts (one folder per example + summary.json)
 --template-examples # Enable template examples feature flag
+--webhook-url <url> # Send results to webhook URL on completion (HTTPS only)
 ```
 
 ### CSV Format
@@ -373,7 +374,7 @@ tsx evaluations/cli/index.ts --suite pairwise --prompt "..." --dos "Must use Sla
 
 This directory is intentionally split by responsibility:
 
-- `evaluations/cli/`: CLI entrypoint and input parsing (`cli/index.ts`, `cli/argument-parser.ts`, `cli/csv-prompt-loader.ts`)
+- `evaluations/cli/`: CLI entrypoint and input parsing (`cli/index.ts`, `cli/argument-parser.ts`, `cli/csv-prompt-loader.ts`, `cli/webhook.ts`)
 - `evaluations/harness/`: orchestration, scoring, logging, and artifact writing (`harness/runner.ts`, `harness/lifecycle.ts`, `harness/score-calculator.ts`, `harness/output.ts`)
 - `evaluations/evaluators/`: evaluator factories used by the harness (LLM-judge, pairwise, programmatic, similarity)
 - `evaluations/judge/`: the LLM-judge “engine” (schemas + category evaluators + `judge/workflow-evaluator.ts`)
@@ -490,6 +491,62 @@ All LangSmith experiments include metadata to distinguish CI runs from local dev
 ```
 
 Local runs show `"source": "local"` with no other CI fields.
+
+### Webhook Notifications
+
+The CLI supports sending evaluation results to a webhook URL when evaluations complete. This enables integrations with Slack, Discord, or custom notification systems.
+
+```bash
+pnpm eval:langsmith --dataset "my-dataset" --webhook-url "https://hooks.slack.com/services/..."
+```
+
+**Why custom webhooks?**
+
+LangSmith's `evaluate()` function does not provide native webhook support for experiment run notifications. LangSmith offers webhooks via:
+- **Trace Rules** — triggered on individual traces, not experiment completions
+- **API endpoint webhooks** — for specific API events, but not for `evaluate()` completions
+- **API polling** — requires external orchestration to detect when experiments finish
+
+Since none of these approaches support the "notify on experiment completion" use case for the `evaluate()` SDK function, we implemented a custom webhook system that fires after all evaluations complete, sending a summary payload with experiment metadata.
+
+**Payload format:**
+
+```json
+{
+  "suite": "llm-judge",
+  "summary": {
+    "totalExamples": 50,
+    "passed": 45,
+    "failed": 5,
+    "errors": 0,
+    "averageScore": 0.87
+  },
+  "evaluatorAverages": {
+    "llm-judge": 0.85,
+    "programmatic": 0.92
+  },
+  "totalDurationMs": 120000,
+  "metadata": {
+    "source": "ci",
+    "trigger": "push",
+    "runId": "12345678"
+  },
+  "langsmith": {
+    "experimentName": "AI-1234_2026_01_20",
+    "experimentId": "48660e0e-0ed5-4e32-9e04-88803d7c161f",
+    "datasetId": "b04d1ce8-8e3f-455a-818c-ee2c7e14c458",
+    "datasetName": "workflow-builder-canvas-prompts"
+  }
+}
+```
+
+The `langsmith` object (only present in LangSmith mode) contains IDs and names for constructing comparison URLs.
+
+**Security:**
+- Only HTTPS URLs are allowed
+- Localhost and private/internal IPs are blocked (SSRF prevention)
+- DNS resolution validates that hostnames don't resolve to private IPs
+- Webhook URLs are masked in logs to protect embedded tokens
 
 ### Debug Dataset
 

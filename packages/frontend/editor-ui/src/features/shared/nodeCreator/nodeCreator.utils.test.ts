@@ -13,6 +13,8 @@ import {
 	sortNodeCreateElements,
 	shouldShowCommunityNodeDetails,
 	getHumanInTheLoopActions,
+	nodeTypesToCreateElements,
+	mapToolSubcategoryIcon,
 } from './nodeCreator.utils';
 import {
 	mockActionCreateElement,
@@ -25,7 +27,13 @@ import { createTestingPinia } from '@pinia/testing';
 import { mock } from 'vitest-mock-extended';
 import type { ViewStack } from './composables/useViewStacks';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
-import { DISCORD_NODE_TYPE, MICROSOFT_TEAMS_NODE_TYPE } from '@/app/constants';
+import {
+	DISCORD_NODE_TYPE,
+	MICROSOFT_TEAMS_NODE_TYPE,
+	AI_CATEGORY_OTHER_TOOLS,
+	AI_CATEGORY_VECTOR_STORES,
+	AI_CATEGORY_HUMAN_IN_THE_LOOP,
+} from '@/app/constants';
 
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
@@ -463,6 +471,132 @@ describe('NodeCreator - utils', () => {
 				resource: 'chatMessage',
 				operation: SEND_AND_WAIT_OPERATION,
 			});
+		});
+	});
+
+	describe('nodeTypesToCreateElements', () => {
+		it('should return an empty array when nodeTypes is empty', () => {
+			const createElements = [
+				mockNodeCreateElement({ key: 'node1' }, { displayName: 'Node 1' }),
+				mockNodeCreateElement({ key: 'node2' }, { displayName: 'Node 2' }),
+			];
+			expect(nodeTypesToCreateElements([], createElements)).toEqual([]);
+		});
+
+		it('should return an empty array when createElements is empty', () => {
+			expect(nodeTypesToCreateElements(['node1', 'node2'], [])).toEqual([]);
+		});
+
+		it('should find and return elements matching the nodeTypes', () => {
+			const node1 = mockNodeCreateElement({ key: 'node1' }, { displayName: 'Node 1' });
+			const node2 = mockNodeCreateElement({ key: 'node2' }, { displayName: 'Node 2' });
+			const node3 = mockNodeCreateElement({ key: 'node3' }, { displayName: 'Node 3' });
+			const createElements = [node1, node2, node3];
+
+			const result = nodeTypesToCreateElements(['node1', 'node3'], createElements);
+
+			expect(result.length).toBe(2);
+			expect(result[0].key).toBe('node1');
+			expect(result[1].key).toBe('node3');
+		});
+
+		it('should skip nodeTypes that do not exist in createElements', () => {
+			const node1 = mockNodeCreateElement({ key: 'node1' }, { displayName: 'Node 1' });
+			const node2 = mockNodeCreateElement({ key: 'node2' }, { displayName: 'Node 2' });
+			const createElements = [node1, node2];
+
+			const result = nodeTypesToCreateElements(['node1', 'nonExistent', 'node2'], createElements);
+
+			expect(result.length).toBe(2);
+			expect(result[0].key).toBe('node1');
+			expect(result[1].key).toBe('node2');
+		});
+
+		it('should sort elements alphabetically when sortAlphabetically is true (default)', () => {
+			const node1 = mockNodeCreateElement({ key: 'node1' }, { displayName: 'Zebra Node' });
+			const node2 = mockNodeCreateElement({ key: 'node2' }, { displayName: 'Alpha Node' });
+			const node3 = mockNodeCreateElement({ key: 'node3' }, { displayName: 'Beta Node' });
+			const createElements = [node1, node2, node3];
+
+			const result = nodeTypesToCreateElements(['node1', 'node2', 'node3'], createElements);
+
+			expect(result.length).toBe(3);
+			expect(result[0].key).toBe('node2'); // Alpha Node
+			expect(result[1].key).toBe('node3'); // Beta Node
+			expect(result[2].key).toBe('node1'); // Zebra Node
+		});
+
+		it('should preserve order from nodeTypes array when sortAlphabetically is false', () => {
+			const node1 = mockNodeCreateElement({ key: 'node1' }, { displayName: 'Zebra Node' });
+			const node2 = mockNodeCreateElement({ key: 'node2' }, { displayName: 'Alpha Node' });
+			const node3 = mockNodeCreateElement({ key: 'node3' }, { displayName: 'Beta Node' });
+			const createElements = [node1, node2, node3];
+
+			const result = nodeTypesToCreateElements(['node3', 'node1', 'node2'], createElements, false);
+
+			expect(result.length).toBe(3);
+			expect(result[0].key).toBe('node3');
+			expect(result[1].key).toBe('node1');
+			expect(result[2].key).toBe('node2');
+		});
+
+		it('should handle duplicate nodeTypes in the input array', () => {
+			const node1 = mockNodeCreateElement({ key: 'node1' }, { displayName: 'Node 1' });
+			const createElements = [node1];
+
+			const result = nodeTypesToCreateElements(['node1', 'node1', 'node1'], createElements);
+
+			expect(result.length).toBe(3);
+			expect(result[0].key).toBe('node1');
+			expect(result[1].key).toBe('node1');
+			expect(result[2].key).toBe('node1');
+		});
+
+		it('should work with different element types (nodes, actions, sections)', () => {
+			const node1 = mockNodeCreateElement({ key: 'node1' }, { displayName: 'Node 1' });
+			const action1 = mockActionCreateElement('subcategory', { displayName: 'Action 1' });
+			action1.key = 'action1';
+			const section1 = mockSectionCreateElement({ key: 'section1' });
+			const createElements = [node1, action1, section1];
+
+			const result = nodeTypesToCreateElements(['node1', 'action1', 'section1'], createElements);
+
+			expect(result.length).toBe(3);
+			expect(result.some((el) => el.key === 'node1')).toBe(true);
+			expect(result.some((el) => el.key === 'action1')).toBe(true);
+			expect(result.some((el) => el.key === 'section1')).toBe(true);
+		});
+
+		it('should handle case-sensitive key matching', () => {
+			const node1 = mockNodeCreateElement({ key: 'Node1' }, { displayName: 'Node 1' });
+			const node2 = mockNodeCreateElement({ key: 'node1' }, { displayName: 'Node 1 Lowercase' });
+			const createElements = [node1, node2];
+
+			const result = nodeTypesToCreateElements(['Node1', 'node1'], createElements);
+
+			expect(result.length).toBe(2);
+			expect(result[0].key).toBe('Node1');
+			expect(result[1].key).toBe('node1');
+		});
+	});
+
+	describe('mapToolSubcategoryIcon', () => {
+		it('should return "globe" for AI_CATEGORY_OTHER_TOOLS', () => {
+			expect(mapToolSubcategoryIcon(AI_CATEGORY_OTHER_TOOLS)).toBe('globe');
+		});
+
+		it('should return "database" for AI_CATEGORY_VECTOR_STORES', () => {
+			expect(mapToolSubcategoryIcon(AI_CATEGORY_VECTOR_STORES)).toBe('database');
+		});
+
+		it('should return "badge-check" for AI_CATEGORY_HUMAN_IN_THE_LOOP', () => {
+			expect(mapToolSubcategoryIcon(AI_CATEGORY_HUMAN_IN_THE_LOOP)).toBe('badge-check');
+		});
+
+		it('should return "globe" as default for unknown section keys', () => {
+			expect(mapToolSubcategoryIcon('unknown-section')).toBe('globe');
+			expect(mapToolSubcategoryIcon('')).toBe('globe');
+			expect(mapToolSubcategoryIcon('some-other-key')).toBe('globe');
 		});
 	});
 });

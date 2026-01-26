@@ -858,9 +858,17 @@ export class CanvasPage extends BasePage {
 			| 'ai_vectorRetriever'
 			| 'ai_vectorStore',
 		parentNodeName: string,
-		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
+		{
+			closeNDV = false,
+			exactMatch = false,
+			subcategory,
+		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
+
+		if (subcategory) {
+			await this.nodeCreator.navigateToSubcategory(subcategory);
+		}
 
 		if (exactMatch) {
 			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();

@@ -193,6 +193,13 @@ export interface RunSummary {
 	averageScore: number;
 	totalDurationMs: number;
 	evaluatorAverages?: Record<string, number>;
+	/** LangSmith IDs for constructing comparison URLs (only available in langsmith mode) */
+	langsmith?: {
+		experimentName: string;
+		experimentId: string;
+		datasetId: string;
+		datasetName?: string;
+	};
 }
 
 /**

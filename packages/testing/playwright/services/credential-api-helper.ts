@@ -174,6 +174,19 @@ export class CredentialApiHelper {
 	}
 
 	/**
+	 * Share a credential with other projects/users
+	 */
+	async shareCredential(credentialId: string, shareWithIds: string[]): Promise<void> {
+		const response = await this.api.request.put(`/rest/credentials/${credentialId}/share`, {
+			data: { shareWithIds },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to share credential: ${await response.text()}`);
+		}
+	}
+
+	/**
 	 * Transfer a credential to another project
 	 */
 	async transferCredential(credentialId: string, destinationProjectId: string): Promise<void> {
