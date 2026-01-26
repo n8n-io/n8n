@@ -237,7 +237,7 @@ const {
 	align-self: center;
 	padding: 2px;
 	border-radius: var(--radius--sm);
-	margin: 7px 12px 0 5px;
+	margin: 0 var(--spacing--xs) 0 var(--spacing--3xs);
 }
 
 .iconButton {
