@@ -9,7 +9,7 @@
 
 - Unlike last run, both Opus and Sonnet runs were run here using the same simplified prompt.
 
-- Latest Sonnet results were run with only 1 judge. Rest were 3 judges.
+- Latest Sonnet pairwise results were run with only 1 judge. Rest were 3 judges.
 
 ## Executive Summary
 
