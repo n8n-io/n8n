@@ -61,7 +61,9 @@ function shouldDelete(v) {
 }
 
 for (const pkg of PACKAGES) {
-	for (const v of getVersions(pkg).filter(shouldDelete)) {
+	const toDelete = getVersions(pkg).filter(shouldDelete);
+	if (!toDelete.length) console.log(`No matching images found for ${pkg}`);
+	for (const v of toDelete) {
 		ghApi(`${pkg}/versions/${v.id}`, true);
 		console.log(`Deleted ${pkg}:${v.metadata.container.tags.join(',')}`);
 	}
