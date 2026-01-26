@@ -10,7 +10,7 @@ import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeOpus45, anthropicClaudeSonnet45, anthropicHaiku45 } from '@/llm-config';
+import { anthropicClaudeSonnet45, anthropicHaiku45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import {
@@ -170,17 +170,11 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
-			user,
-			userMessageId,
-		);
+		const { tracingClient, authHeaders } = await this.setupModels(user, userMessageId);
 
 		// Create resource locator callback scoped to this user if factory is provided
 		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
 
-		const opus = await anthropicClaudeOpus45({
-			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-		});
 		const sonnet = await anthropicClaudeSonnet45({
 			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 		});

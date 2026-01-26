@@ -19,9 +19,3 @@ export {
 	buildRecoveryModeContext,
 	INSTANCE_URL_PROMPT,
 } from './configurator.prompt';
-export {
-	buildResponderPrompt,
-	buildRecursionErrorWithWorkflowGuidance,
-	buildRecursionErrorNoWorkflowGuidance,
-	buildGeneralErrorGuidance,
-} from './responder.prompt';

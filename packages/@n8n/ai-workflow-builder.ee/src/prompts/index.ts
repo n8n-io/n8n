@@ -42,7 +42,8 @@ export {
 	buildRecursionErrorWithWorkflowGuidance,
 	buildRecursionErrorNoWorkflowGuidance,
 	buildGeneralErrorGuidance,
-} from './opus/agents/responder.prompt';
+	buildDataTableCreationGuidance,
+} from './agents/responder.prompt';
 
 // Chain prompts
 export {

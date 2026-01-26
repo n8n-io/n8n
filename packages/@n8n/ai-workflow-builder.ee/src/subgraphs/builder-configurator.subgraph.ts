@@ -13,6 +13,7 @@ import {
 	INSTANCE_URL_PROMPT,
 	buildRecoveryModeContext,
 } from '@/prompts';
+import type { ResourceLocatorCallback } from '@/types/callbacks';
 import { autoFixConnections } from '@/validation/auto-fix';
 import { validateConnections } from '@/validation/checks';
 import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
@@ -27,6 +28,7 @@ import {
 	createGetNodeConfigurationExamplesTool,
 } from '../tools/get-node-examples.tool';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
+import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locator-options.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import { createRenameNodeTool } from '../tools/rename-node.tool';
@@ -49,6 +51,12 @@ import {
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
+import {
+	detectRLCParametersForPrefetch,
+	prefetchRLCOptions,
+	formatPrefetchedOptionsForLLM,
+	type RLCPrefetchResult,
+} from '../utils/rlc-prefetch';
 import { cachedTemplatesReducer } from '../utils/state-reducers';
 import {
 	executeSubgraphTools,
@@ -112,6 +120,12 @@ export const BuilderConfiguratorSubgraphState = Annotation.Root({
 		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
+
+	// Pre-fetched RLC options - raw JSON for potential tool use
+	prefetchedRLCOptions: Annotation<RLCPrefetchResult[]>({
+		reducer: (x, y) => y ?? x,
+		default: () => [],
+	}),
 });
 
 export interface BuilderConfiguratorSubgraphConfig {
@@ -122,6 +136,8 @@ export interface BuilderConfiguratorSubgraphConfig {
 	logger?: Logger;
 	instanceUrl?: string;
 	featureFlags?: BuilderFeatureFlags;
+	/** Callback for fetching resource locator options */
+	resourceLocatorCallback?: ResourceLocatorCallback;
 }
 
 export class BuilderConfiguratorSubgraph extends BaseSubgraph<
@@ -136,11 +152,17 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
 	private instanceUrl: string = '';
+	private nodeTypes: INodeTypeDescription[] = [];
+	private resourceLocatorCallback?: ResourceLocatorCallback;
+	private logger?: Logger;
 
 	create(config: BuilderConfiguratorSubgraphConfig) {
-		// Store config for use in transformOutput
+		// Store config for use in transformOutput and RLC prefetching
 		this.config = config;
 		this.instanceUrl = config.instanceUrl ?? '';
+		this.nodeTypes = config.parsedNodeTypes;
+		this.resourceLocatorCallback = config.resourceLocatorCallback;
+		this.logger = config.logger;
 
 		// Check if template examples are enabled
 		const includeExamples = config.featureFlags?.templateExamples === true;
@@ -166,6 +188,16 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 			),
 			createGetNodeParameterTool(),
 			createValidateConfigurationTool(config.parsedNodeTypes),
+			// Conditionally add resource locator tool if callback is provided
+			...(config.resourceLocatorCallback
+				? [
+						createGetResourceLocatorOptionsTool(
+							config.parsedNodeTypes,
+							config.resourceLocatorCallback,
+							config.logger,
+						),
+					]
+				: []),
 		];
 
 		// Conditionally add example tools if feature flag is enabled
@@ -207,8 +239,59 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 		this.agent = systemPromptTemplate.pipe(config.llm.bindTools(tools.map((bt) => bt.tool)));
 
 		/**
+		 * Prefetch node - pre-fetches RLC options for required empty parameters
+		 * This runs before the agent to provide all necessary resource options upfront
+		 * Mutates messages in place to append RLC context
+		 */
+		const prefetchRLCNode = async (state: typeof BuilderConfiguratorSubgraphState.State) => {
+			// Skip if no callback is available
+			if (!this.resourceLocatorCallback) {
+				return { prefetchedRLCOptions: [] };
+			}
+
+			// Detect RLC parameters that need prefetching
+			const parametersToFetch = detectRLCParametersForPrefetch(
+				state.workflowJSON.nodes,
+				this.nodeTypes,
+			);
+
+			if (parametersToFetch.length === 0) {
+				return { prefetchedRLCOptions: [] };
+			}
+
+			this.logger?.debug('Pre-fetching RLC options', {
+				parameterCount: parametersToFetch.length,
+				parameters: parametersToFetch.map((p) => `${p.nodeName}.${p.parameterPath}`),
+			});
+
+			// Fetch all options in parallel
+			const results = await prefetchRLCOptions(
+				parametersToFetch,
+				state.workflowJSON.nodes,
+				this.resourceLocatorCallback,
+				this.logger,
+			);
+
+			this.logger?.debug('RLC prefetch completed', {
+				successCount: results.filter((r) => !r.error).length,
+				errorCount: results.filter((r) => r.error).length,
+			});
+
+			// Format and append RLC options to the first message (mutates in place)
+			const formattedOptions = formatPrefetchedOptionsForLLM(results);
+			if (formattedOptions && state.messages.length > 0) {
+				const firstMessage = state.messages[0];
+				if (typeof firstMessage.content === 'string') {
+					firstMessage.content = `${firstMessage.content}\n\n${formattedOptions}`;
+				}
+			}
+
+			return { prefetchedRLCOptions: results };
+		};
+
+		/**
 		 * Agent node - calls builder-configurator agent
-		 * Context is already in messages from transformInput
+		 * Context is already in messages from transformInput (with RLC options appended by prefetchRLCNode)
 		 */
 		const callAgent = async (state: typeof BuilderConfiguratorSubgraphState.State) => {
 			// Apply cache markers to accumulated messages (for tool loop iterations)
@@ -234,10 +317,12 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 
 		// Build the subgraph
 		const subgraph = new StateGraph(BuilderConfiguratorSubgraphState)
+			.addNode('prefetch_rlc', prefetchRLCNode)
 			.addNode('agent', callAgent)
 			.addNode('tools', async (state) => await executeSubgraphTools(state, this.toolMap))
 			.addNode('process_operations', processOperations)
-			.addEdge('__start__', 'agent')
+			.addEdge('__start__', 'prefetch_rlc')
+			.addEdge('prefetch_rlc', 'agent')
 			// Map 'tools' to tools node, END is handled automatically
 			.addConditionalEdges('agent', shouldContinue)
 			.addEdge('tools', 'process_operations')
