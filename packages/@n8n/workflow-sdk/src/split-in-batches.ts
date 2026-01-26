@@ -4,8 +4,6 @@ import type {
 	NodeConfig,
 	SplitInBatchesBuilder,
 	SplitInBatchesConfig,
-	SplitInBatchesDoneChain,
-	SplitInBatchesEachChain,
 	DeclaredConnection,
 	NodeChain,
 	InputTarget,
@@ -103,114 +101,6 @@ export interface SplitInBatchesBranches {
 }
 
 /**
- * Internal chain for .done() (output 0)
- */
-class DoneChainImpl<TOutput> implements SplitInBatchesDoneChain<TOutput> {
-	private _nodes: NodeInstance<string, string, unknown>[] = [];
-	private _parent: SplitInBatchesBuilderImpl;
-
-	constructor(parent: SplitInBatchesBuilderImpl) {
-		this._parent = parent;
-	}
-
-	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[] | FanOutTargets,
-	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown> {
-		// Handle FanOutTargets by extracting targets as an array
-		if (isFanOut(nodeOrNodes)) {
-			const fanOutNodes = nodeOrNodes.targets;
-			this._parent._doneBatches.push(fanOutNodes);
-			for (const n of fanOutNodes) {
-				this._nodes.push(n);
-				this._parent._doneNodes.push(n);
-			}
-			return this as unknown as SplitInBatchesDoneChain<
-				N extends NodeInstance<string, string, infer O> ? O : unknown
-			>;
-		}
-
-		// Store as a batch (preserves array structure for fan-out detection)
-		this._parent._doneBatches.push(nodeOrNodes);
-		// Also store flat list for backward compatibility
-		const nodes = Array.isArray(nodeOrNodes) ? nodeOrNodes : [nodeOrNodes];
-		for (const n of nodes) {
-			this._nodes.push(n);
-			this._parent._doneNodes.push(n);
-		}
-		return this as unknown as SplitInBatchesDoneChain<
-			N extends NodeInstance<string, string, infer O> ? O : unknown
-		>;
-	}
-
-	/**
-	 * Chain to .each() from .done() chain
-	 */
-	each(): SplitInBatchesEachChain<unknown> {
-		return this._parent.each();
-	}
-
-	getNodes(): NodeInstance<string, string, unknown>[] {
-		return this._nodes;
-	}
-}
-
-/**
- * Internal chain for .each() (output 1)
- */
-class EachChainImpl<TOutput> implements SplitInBatchesEachChain<TOutput> {
-	private _nodes: NodeInstance<string, string, unknown>[] = [];
-	private _parent: SplitInBatchesBuilderImpl;
-	private _hasLoop = false;
-
-	constructor(parent: SplitInBatchesBuilderImpl) {
-		this._parent = parent;
-	}
-
-	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[] | FanOutTargets,
-	): SplitInBatchesEachChain<N extends NodeInstance<string, string, infer O> ? O : unknown> {
-		// Handle FanOutTargets by extracting targets as an array
-		if (isFanOut(nodeOrNodes)) {
-			const fanOutNodes = nodeOrNodes.targets;
-			this._parent._eachBatches.push(fanOutNodes);
-			for (const n of fanOutNodes) {
-				this._nodes.push(n);
-				this._parent._eachNodes.push(n);
-			}
-			return this as unknown as SplitInBatchesEachChain<
-				N extends NodeInstance<string, string, infer O> ? O : unknown
-			>;
-		}
-
-		// Store as a batch (preserves array structure for fan-out detection)
-		this._parent._eachBatches.push(nodeOrNodes);
-		// Also store flat list for backward compatibility
-		const nodes = Array.isArray(nodeOrNodes) ? nodeOrNodes : [nodeOrNodes];
-		for (const n of nodes) {
-			this._nodes.push(n);
-			this._parent._eachNodes.push(n);
-		}
-		return this as unknown as SplitInBatchesEachChain<
-			N extends NodeInstance<string, string, infer O> ? O : unknown
-		>;
-	}
-
-	loop(): SplitInBatchesBuilder<unknown> {
-		this._hasLoop = true;
-		this._parent._hasLoop = true;
-		return this._parent;
-	}
-
-	getNodes(): NodeInstance<string, string, unknown>[] {
-		return this._nodes;
-	}
-
-	hasLoop(): boolean {
-		return this._hasLoop;
-	}
-}
-
-/**
  * Check if an object is a NodeInstance (has type, version, config, then method)
  */
 function isNodeInstance(obj: unknown): obj is NodeInstance<string, string, unknown> {
@@ -235,17 +125,59 @@ class SplitInBatchesBuilderImpl implements SplitInBatchesBuilder<unknown> {
 	_doneBatches: NodeBatch[] = [];
 	_eachBatches: NodeBatch[] = [];
 	_hasLoop = false;
+	// Fluent API targets (used by .onEachBatch()/.onDone())
+	// These are only defined when the fluent API methods are used
+	_doneTarget?: BranchTarget;
+	_eachTarget?: BranchTarget;
 
 	constructor(config: SplitInBatchesConfig = {}) {
 		this.sibNode = new SplitInBatchesNodeInstance(config);
 	}
 
-	done(): SplitInBatchesDoneChain<unknown> {
-		return new DoneChainImpl(this);
+	/**
+	 * Fluent API: Set the "each batch" branch target (output 1).
+	 * This executes for each batch and can loop back to the SIB node.
+	 */
+	onEachBatch(target: BranchTarget): this {
+		this._eachTarget = target;
+
+		// Extract nodes from the target for workflow-builder compatibility
+		if (target !== null) {
+			const nodes = extractNodesFromTarget(target);
+			this._eachNodes = nodes;
+
+			const firstNodes = getFirstNodes(target);
+			if (firstNodes.length > 1) {
+				this._eachBatches.push(firstNodes);
+			} else if (firstNodes.length === 1) {
+				this._eachBatches.push(firstNodes[0]);
+			}
+		}
+
+		return this;
 	}
 
-	each(): SplitInBatchesEachChain<unknown> {
-		return new EachChainImpl(this);
+	/**
+	 * Fluent API: Set the "done" branch target (output 0).
+	 * This executes when all batches are processed.
+	 */
+	onDone(target: BranchTarget): this {
+		this._doneTarget = target;
+
+		// Extract nodes from the target for workflow-builder compatibility
+		if (target !== null) {
+			const nodes = extractNodesFromTarget(target);
+			this._doneNodes = nodes;
+
+			const firstNodes = getFirstNodes(target);
+			if (firstNodes.length > 1) {
+				this._doneBatches.push(firstNodes);
+			} else if (firstNodes.length === 1) {
+				this._doneBatches.push(firstNodes[0]);
+			}
+		}
+
+		return this;
 	}
 
 	/**
@@ -287,17 +219,59 @@ class SplitInBatchesBuilderWithExistingNode implements SplitInBatchesBuilder<unk
 	_doneBatches: NodeBatch[] = [];
 	_eachBatches: NodeBatch[] = [];
 	_hasLoop = false;
+	// Fluent API targets (used by .onEachBatch()/.onDone())
+	// These are only defined when the fluent API methods are used
+	_doneTarget?: BranchTarget;
+	_eachTarget?: BranchTarget;
 
 	constructor(existingNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>) {
 		this.sibNode = existingNode;
 	}
 
-	done(): SplitInBatchesDoneChain<unknown> {
-		return new DoneChainForExistingNode(this);
+	/**
+	 * Fluent API: Set the "each batch" branch target (output 1).
+	 * This executes for each batch and can loop back to the SIB node.
+	 */
+	onEachBatch(target: BranchTarget): this {
+		this._eachTarget = target;
+
+		// Extract nodes from the target for workflow-builder compatibility
+		if (target !== null) {
+			const nodes = extractNodesFromTarget(target);
+			this._eachNodes = nodes;
+
+			const firstNodes = getFirstNodes(target);
+			if (firstNodes.length > 1) {
+				this._eachBatches.push(firstNodes);
+			} else if (firstNodes.length === 1) {
+				this._eachBatches.push(firstNodes[0]);
+			}
+		}
+
+		return this;
 	}
 
-	each(): SplitInBatchesEachChain<unknown> {
-		return new EachChainForExistingNode(this);
+	/**
+	 * Fluent API: Set the "done" branch target (output 0).
+	 * This executes when all batches are processed.
+	 */
+	onDone(target: BranchTarget): this {
+		this._doneTarget = target;
+
+		// Extract nodes from the target for workflow-builder compatibility
+		if (target !== null) {
+			const nodes = extractNodesFromTarget(target);
+			this._doneNodes = nodes;
+
+			const firstNodes = getFirstNodes(target);
+			if (firstNodes.length > 1) {
+				this._doneBatches.push(firstNodes);
+			} else if (firstNodes.length === 1) {
+				this._doneBatches.push(firstNodes[0]);
+			}
+		}
+
+		return this;
 	}
 
 	getAllNodes(): NodeInstance<string, string, unknown>[] {
@@ -318,135 +292,35 @@ class SplitInBatchesBuilderWithExistingNode implements SplitInBatchesBuilder<unk
 }
 
 /**
- * Done chain for existing node builder
- */
-class DoneChainForExistingNode<TOutput> implements SplitInBatchesDoneChain<TOutput> {
-	private _nodes: NodeInstance<string, string, unknown>[] = [];
-	private _parent: SplitInBatchesBuilderWithExistingNode;
-
-	constructor(parent: SplitInBatchesBuilderWithExistingNode) {
-		this._parent = parent;
-	}
-
-	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[] | FanOutTargets,
-	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown> {
-		// Handle FanOutTargets by extracting targets as an array
-		if (isFanOut(nodeOrNodes)) {
-			const fanOutNodes = nodeOrNodes.targets;
-			this._parent._doneBatches.push(fanOutNodes);
-			for (const n of fanOutNodes) {
-				this._nodes.push(n);
-				this._parent._doneNodes.push(n);
-			}
-			return this as unknown as SplitInBatchesDoneChain<
-				N extends NodeInstance<string, string, infer O> ? O : unknown
-			>;
-		}
-
-		// Store as a batch (preserves array structure for fan-out detection)
-		this._parent._doneBatches.push(nodeOrNodes);
-		// Also store flat list for backward compatibility
-		const nodes = Array.isArray(nodeOrNodes) ? nodeOrNodes : [nodeOrNodes];
-		for (const n of nodes) {
-			this._nodes.push(n);
-			this._parent._doneNodes.push(n);
-		}
-		return this as unknown as SplitInBatchesDoneChain<
-			N extends NodeInstance<string, string, infer O> ? O : unknown
-		>;
-	}
-
-	each(): SplitInBatchesEachChain<unknown> {
-		return this._parent.each();
-	}
-
-	getNodes(): NodeInstance<string, string, unknown>[] {
-		return this._nodes;
-	}
-}
-
-/**
- * Each chain for existing node builder
- */
-class EachChainForExistingNode<TOutput> implements SplitInBatchesEachChain<TOutput> {
-	private _nodes: NodeInstance<string, string, unknown>[] = [];
-	private _parent: SplitInBatchesBuilderWithExistingNode;
-	private _hasLoop = false;
-
-	constructor(parent: SplitInBatchesBuilderWithExistingNode) {
-		this._parent = parent;
-	}
-
-	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[] | FanOutTargets,
-	): SplitInBatchesEachChain<N extends NodeInstance<string, string, infer O> ? O : unknown> {
-		// Handle FanOutTargets by extracting targets as an array
-		if (isFanOut(nodeOrNodes)) {
-			const fanOutNodes = nodeOrNodes.targets;
-			this._parent._eachBatches.push(fanOutNodes);
-			for (const n of fanOutNodes) {
-				this._nodes.push(n);
-				this._parent._eachNodes.push(n);
-			}
-			return this as unknown as SplitInBatchesEachChain<
-				N extends NodeInstance<string, string, infer O> ? O : unknown
-			>;
-		}
-
-		// Store as a batch (preserves array structure for fan-out detection)
-		this._parent._eachBatches.push(nodeOrNodes);
-		// Also store flat list for backward compatibility
-		const nodes = Array.isArray(nodeOrNodes) ? nodeOrNodes : [nodeOrNodes];
-		for (const n of nodes) {
-			this._nodes.push(n);
-			this._parent._eachNodes.push(n);
-		}
-		return this as unknown as SplitInBatchesEachChain<
-			N extends NodeInstance<string, string, infer O> ? O : unknown
-		>;
-	}
-
-	loop(): SplitInBatchesBuilder<unknown> {
-		this._hasLoop = true;
-		this._parent._hasLoop = true;
-		return this._parent;
-	}
-
-	getNodes(): NodeInstance<string, string, unknown>[] {
-		return this._nodes;
-	}
-
-	hasLoop(): boolean {
-		return this._hasLoop;
-	}
-}
-
-/**
  * Create a split in batches builder for processing items in chunks
  *
  * Split in Batches processes items in configurable batch sizes, with
  * two outputs:
- * - Output 0 (.done()): Executes when all batches are processed
- * - Output 1 (.each()): Executes for each batch, can .loop() back
+ * - Output 0 (onDone): Executes when all batches are processed
+ * - Output 1 (onEachBatch): Executes for each batch, loop back by chaining to sibNode
  *
- * @param configOrNode - Node configuration including version, id, name, and batchSize parameter, OR a pre-declared SplitInBatches node instance
+ * @param configOrNode - Node configuration or a pre-declared SplitInBatches node instance
  * @param branches - Optional named object syntax for branches: { done: ..., each: ... }
  * @returns A split in batches builder for configuring the loop
  *
  * @example
  * ```typescript
- * // Fluent API (original):
+ * // Fluent API (recommended):
+ * const sibNode = node({
+ *   type: 'n8n-nodes-base.splitInBatches',
+ *   version: 3,
+ *   config: { name: 'Loop', parameters: { batchSize: 10 } }
+ * });
  * workflow('id', 'Test')
  *   .add(trigger(...))
  *   .then(generateItems)
  *   .then(
- *     splitInBatches({ parameters: { batchSize: 10 } })
- *       .done().then(finalizeNode)
- *       .each().then(processNode).loop()
+ *     splitInBatches(sibNode)
+ *       .onDone(finalizeNode)
+ *       .onEachBatch(processNode.then(sibNode))
  *   );
  *
- * // Named object syntax (new):
+ * // Named object syntax:
  * splitInBatches(sibNode, {
  *   done: finalizeNode,
  *   each: processNode.then(sibNode)  // loop back
@@ -598,17 +472,21 @@ class SplitInBatchesNamedSyntaxBuilder implements SplitInBatchesBuilder<unknown>
 		}
 	}
 
-	done(): SplitInBatchesDoneChain<unknown> {
-		// For named syntax, done() is a no-op since branches are already configured
+	/**
+	 * Fluent API: Not supported for named syntax builder (use constructor branches instead)
+	 */
+	onEachBatch(_target: BranchTarget): this {
 		throw new Error(
-			'Named object syntax does not support .done() - branches are configured in the constructor',
+			'Named object syntax does not support .onEachBatch() - branches are configured in the constructor',
 		);
 	}
 
-	each(): SplitInBatchesEachChain<unknown> {
-		// For named syntax, each() is a no-op since branches are already configured
+	/**
+	 * Fluent API: Not supported for named syntax builder (use constructor branches instead)
+	 */
+	onDone(_target: BranchTarget): this {
 		throw new Error(
-			'Named object syntax does not support .each() - branches are configured in the constructor',
+			'Named object syntax does not support .onDone() - branches are configured in the constructor',
 		);
 	}
 

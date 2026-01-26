@@ -47,8 +47,6 @@ export type {
 	StickyNoteConfig,
 	// Split in batches types
 	SplitInBatchesBuilder,
-	SplitInBatchesDoneChain,
-	SplitInBatchesEachChain,
 	// Other types
 	PlaceholderValue,
 	NewCredentialValue,

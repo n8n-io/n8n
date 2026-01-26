@@ -1495,15 +1495,16 @@ describe('multiple triggers / disconnected chains', () => {
 });
 
 describe('parseWorkflowCode with splitInBatches', () => {
-	it('should parse code that uses splitInBatches() function', () => {
-		// This is the type of code the LLM might generate using splitInBatches
-		const code = `return workflow('test-sib', 'Split In Batches Test')
+	it('should parse code that uses splitInBatches() with new fluent API syntax', () => {
+		// This is the type of code the LLM might generate using splitInBatches new API
+		const code = `const loop = node({ type: 'n8n-nodes-base.splitInBatches', version: 3, config: { parameters: { batchSize: 2 }, position: [400, 100], name: 'Loop' } });
+return workflow('test-sib', 'Split In Batches Test')
   .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: { position: [0, 0] } }))
   .then(node({ type: 'n8n-nodes-base.set', version: 3.4, config: { parameters: { assignments: { assignments: [{ name: 'items', type: 'array', value: '[1,2,3,4,5]' }] } }, position: [200, 0], name: 'Generate Items' } }))
   .then(
-    splitInBatches({ parameters: { batchSize: 2 } })
-      .done().then(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [600, 0], name: 'Done Processing' } }))
-      .each().then(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [600, 200], name: 'Process Batch' } })).loop()
+    splitInBatches(loop)
+      .onDone(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [600, 0], name: 'Done Processing' } }))
+      .onEachBatch(node({ type: 'n8n-nodes-base.noOp', version: 1, config: { position: [600, 200], name: 'Process Batch' } }).then(loop))
   )`;
 
 		// This should NOT throw "splitInBatches is not defined"
@@ -1518,10 +1519,18 @@ describe('parseWorkflowCode with splitInBatches', () => {
 		expect(sibNode).toBeDefined();
 	});
 
-	it('should parse splitInBatches code that ends with .loop().done().then() chain', () => {
-		// This code ends with .done().then() chain, which returns a DoneChainImpl
-		// instead of SplitInBatchesBuilderImpl - the workflow builder must handle both
-		const code = `return workflow('IH8D5PUFd8JhwyZP8Ng0g', 'My workflow 15')
+	it('should parse splitInBatches code with onEachBatch and onDone', () => {
+		// This tests the new fluent API syntax with onEachBatch and onDone
+		const code = `const processEachArticle = node({
+  type: 'n8n-nodes-base.splitInBatches',
+  version: 3,
+  config: {
+    name: 'Process Each Article',
+    parameters: { batchSize: 1 },
+    position: [1140, 300]
+  }
+});
+return workflow('IH8D5PUFd8JhwyZP8Ng0g', 'My workflow 15')
   .add(trigger({
     type: 'n8n-nodes-base.scheduleTrigger',
     version: 1.3,
@@ -1563,44 +1572,40 @@ describe('parseWorkflowCode with splitInBatches', () => {
       position: [840, 300]
     }
   }))
-  .then(splitInBatches({
-    parameters: { batchSize: 1 },
-    name: 'Process Each Article',
-    position: [1140, 300]
-  })
-    .each()
-    .then(node({
-      type: 'n8n-nodes-base.set',
-      version: 3.4,
-      config: {
-        name: 'Process Item',
-        parameters: { mode: 'manual' },
-        position: [1440, 200]
-      }
-    }))
-    .loop()
-    .done()
-    .then(node({
-      type: 'n8n-nodes-base.code',
-      version: 2,
-      config: {
-        name: 'Prepare Message',
-        parameters: { mode: 'runOnceForAllItems', jsCode: 'return [];' },
-        position: [2040, 300]
-      }
-    }))
-    .then(node({
-      type: 'n8n-nodes-base.set',
-      version: 3.4,
-      config: {
-        name: 'Final Output',
-        parameters: { mode: 'manual' },
-        position: [2340, 300]
-      }
-    }))
+  .then(splitInBatches(processEachArticle)
+    .onEachBatch(
+      node({
+        type: 'n8n-nodes-base.set',
+        version: 3.4,
+        config: {
+          name: 'Process Item',
+          parameters: { mode: 'manual' },
+          position: [1440, 200]
+        }
+      }).then(processEachArticle)
+    )
+    .onDone(
+      node({
+        type: 'n8n-nodes-base.code',
+        version: 2,
+        config: {
+          name: 'Prepare Message',
+          parameters: { mode: 'runOnceForAllItems', jsCode: 'return [];' },
+          position: [2040, 300]
+        }
+      }).then(node({
+        type: 'n8n-nodes-base.set',
+        version: 3.4,
+        config: {
+          name: 'Final Output',
+          parameters: { mode: 'manual' },
+          position: [2340, 300]
+        }
+      }))
+    )
   )`;
 
-		// This should NOT throw "Cannot read properties of undefined (reading 'subnodes')"
+		// This should NOT throw any errors
 		const workflow = parseWorkflowCode(code);
 
 		expect(workflow.id).toBe('IH8D5PUFd8JhwyZP8Ng0g');

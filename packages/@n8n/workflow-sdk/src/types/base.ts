@@ -23,6 +23,9 @@ export type {
 	MergeMode,
 } from './sdk-api';
 
+// Import FanOutTargets for type definitions
+import type { FanOutTargets } from '../fan-out';
+
 // Import for internal use
 import type {
 	IDataObject,
@@ -580,22 +583,42 @@ export interface SplitInBatchesConfig extends NodeConfig {
 
 export interface SplitInBatchesBuilder<TOutput = unknown> {
 	readonly sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
-	done(): SplitInBatchesDoneChain<TOutput>;
-	each(): SplitInBatchesEachChain<TOutput>;
-}
 
-export interface SplitInBatchesDoneChain<_TOutput> {
-	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[],
-	): SplitInBatchesDoneChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;
-	each(): SplitInBatchesEachChain<unknown>;
-}
+	/**
+	 * Fluent API: Set the "each batch" branch target (output 1).
+	 * This executes for each batch and can loop back to the SIB node.
+	 * Methods can be called in any order.
+	 *
+	 * @example
+	 * splitInBatches(sibNode)
+	 *   .onEachBatch(processNode.then(sibNode))
+	 *   .onDone(finalizeNode)
+	 */
+	onEachBatch(
+		target:
+			| null
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+			| FanOutTargets,
+	): SplitInBatchesBuilder<TOutput>;
 
-export interface SplitInBatchesEachChain<TOutput> {
-	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[],
-	): SplitInBatchesEachChain<N extends NodeInstance<string, string, infer O> ? O : unknown>;
-	loop(): SplitInBatchesBuilder<TOutput>;
+	/**
+	 * Fluent API: Set the "done" branch target (output 0).
+	 * This executes when all batches are processed.
+	 * Methods can be called in any order.
+	 *
+	 * @example
+	 * splitInBatches(sibNode)
+	 *   .onDone(finalizeNode)
+	 *   .onEachBatch(processNode.then(sibNode))
+	 */
+	onDone(
+		target:
+			| null
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+			| FanOutTargets,
+	): SplitInBatchesBuilder<TOutput>;
 }
 
 // =============================================================================
@@ -621,8 +644,6 @@ export interface WorkflowBuilder {
 	then(ifElse: IfElseComposite): WorkflowBuilder;
 	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
-	then<T>(splitInBatchesDone: SplitInBatchesDoneChain<T>): WorkflowBuilder;
-	then<T>(splitInBatchesEach: SplitInBatchesEachChain<T>): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 
