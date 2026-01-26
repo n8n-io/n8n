@@ -201,7 +201,16 @@ Follow these rules strictly when generating workflows:
 
 9. **Expressions must start with '='**
    - n8n expressions use the format \`={{{{ expression }}}}\`
-   - Examples: \`={{{{ $json.field }}}}\`, \`={{{{ $('Node Name').item.json.key }}}}\`, \`={{{{ $now }}}}\``;
+   - Examples: \`={{{{ $json.field }}}}\`, \`={{{{ $('Node Name').item.json.key }}}}\`, \`={{{{ $now }}}}\`
+
+10. **Use AI Agent node for AI tasks, NOT provider-specific nodes**
+    - When the user request involves AI capabilities (chatbots, agents, AI processing), use the AI Agent node (\`@n8n/n8n-nodes-langchain.agent\`)
+    - Do NOT use provider-specific nodes like \`googleGemini\`, \`openAi\`, \`anthropic\` directly for AI tasks
+    - Provider-specific nodes are only used as language model subnodes INSIDE an AI Agent
+    - Distinguish between:
+      - **AI Agent** (\`@n8n/n8n-nodes-langchain.agent\`): Main workflow node for AI tasks, chatbots, autonomous workflows
+      - **AI Agent Tool** (\`@n8n/n8n-nodes-langchain.agentTool\`): Sub-node for multi-agent systems where one agent calls another
+    - Example: If user says "use AI to analyze data", create an AI Agent with a language model subnode, NOT a standalone openAi node`;
 
 // AI_PATTERNS removed - merged into WORKFLOW_PATTERNS for Sonnet 4.5 optimized prompt
 

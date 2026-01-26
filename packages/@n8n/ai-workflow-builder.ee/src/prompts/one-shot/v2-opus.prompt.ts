@@ -143,6 +143,15 @@ const WORKFLOW_RULES = `<workflow_rules>
      }})
      \`\`\`
    - The credential type (e.g., \`slackApi\`) must match what the node expects - check the type definitions
+
+7. **Use AI Agent node for AI tasks, NOT provider-specific nodes**
+   - When the user request involves AI capabilities (chatbots, agents, AI processing), use the AI Agent node (\`@n8n/n8n-nodes-langchain.agent\`)
+   - Do NOT use provider-specific nodes like \`googleGemini\`, \`openAi\`, \`anthropic\` directly for AI tasks
+   - Provider-specific nodes are only used as language model subnodes INSIDE an AI Agent
+   - Distinguish between:
+     - **AI Agent** (\`@n8n/n8n-nodes-langchain.agent\`): Main workflow node for AI tasks, chatbots, autonomous workflows
+     - **AI Agent Tool** (\`@n8n/n8n-nodes-langchain.agentTool\`): Sub-node for multi-agent systems where one agent calls another
+   - Example: If user says "use AI to analyze data", create an AI Agent with a language model subnode, NOT a standalone openAi node
 </workflow_rules>`;
 
 /**
