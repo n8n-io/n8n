@@ -107,14 +107,14 @@ function handleFileImport() {
 			style="display: none"
 			@change="handleFileImport"
 		/>
-		<p :class="$style.subtitle">Build workflows by chatting with AI</p>
+		<p :class="$style.subtitle">{{ i18n.baseText('emptyStateBuilderPrompt.subtitle') }}</p>
 		<div :class="$style.promptInput">
 			<N8nPromptInput
 				ref="promptInputRef"
 				v-model="textInputValue"
 				:placeholder="placeholder"
 				:min-lines="4"
-				button-label="Build workflow"
+				:button-label="i18n.baseText('emptyStateBuilderPrompt.buildWorkflow')"
 				data-test-id="empty-state-builder-prompt-input"
 				autofocus
 				@submit="onSubmit"
@@ -122,15 +122,17 @@ function handleFileImport() {
 		</div>
 		<div :class="$style.footer">
 			<div :class="$style.alternativeActions">
-				<span :class="$style.startWithText">Or start with</span>
+				<span :class="$style.startWithText">{{
+					i18n.baseText('emptyStateBuilderPrompt.orStartWith')
+				}}</span>
 				<N8nButton type="secondary" size="small" icon="play" @click="onFromScratch">
-					From Scratch
+					{{ i18n.baseText('emptyStateBuilderPrompt.fromScratch') }}
 				</N8nButton>
 				<N8nButton type="secondary" size="small" icon="layout-template" @click="onTemplate">
-					Template
+					{{ i18n.baseText('emptyStateBuilderPrompt.template') }}
 				</N8nButton>
 				<N8nButton type="secondary" size="small" icon="upload" @click="onImportFromFile">
-					Import from file
+					{{ i18n.baseText('emptyStateBuilderPrompt.importFromFile') }}
 				</N8nButton>
 			</div>
 		</div>
