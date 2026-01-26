@@ -245,7 +245,22 @@ Follow these rules strictly when generating workflows:
       - Simple data transformations (use Edit Fields)
       - Filtering/routing (use Filter, If, Switch)
       - Array operations (use Split Out, Aggregate)
-      - Regex operations (use expressions in If or Edit Fields nodes)`;
+      - Regex operations (use expressions in If or Edit Fields nodes)
+
+12. **Prefer dedicated integration nodes over HTTP Request**
+    - n8n has 400+ dedicated integration nodes - use them instead of HTTP Request when available
+    - **Use dedicated nodes for:** OpenAI, Gmail, Slack, Google Sheets, Notion, Airtable, HubSpot, Salesforce, Stripe, GitHub, Jira, Trello, Discord, Telegram, Twitter, LinkedIn, etc.
+    - **Only use HTTP Request when:**
+      - No dedicated n8n node exists for the service
+      - User explicitly requests HTTP Request
+      - Accessing a custom/internal API
+      - The dedicated node doesn't support the specific operation needed
+    - **Benefits of dedicated nodes:**
+      - Built-in authentication handling
+      - Pre-configured parameters for common operations
+      - Better error handling and response parsing
+      - Easier to configure and maintain
+    - **Example:** If user says "send email via Gmail", use the Gmail node, NOT HTTP Request to Gmail API`;
 
 // AI_PATTERNS removed - merged into WORKFLOW_PATTERNS for Sonnet 4.5 optimized prompt
 
@@ -685,10 +700,10 @@ export function buildOneShotGeneratorPrompt(
 	});
 
 	debugLog('Building available nodes section...');
-	const availableNodesSection = buildAvailableNodesSection(nodeIds);
-	debugLog('Available nodes section built', {
-		sectionLength: availableNodesSection.length,
-	});
+	// const availableNodesSection = buildAvailableNodesSection(nodeIds);
+	// debugLog('Available nodes section built', {
+	// 	sectionLength: availableNodesSection.length,
+	// });
 
 	// SDK reference is commented out for Sonnet 4.5 - kept for backward compatibility
 	debugLog('Building SDK API reference section (disabled for Sonnet 4.5)...');
@@ -702,7 +717,7 @@ export function buildOneShotGeneratorPrompt(
 	const systemMessage = [
 		ROLE,
 		SDK_FUNCTIONS,
-		availableNodesSection,
+		// availableNodesSection,
 		WORKFLOW_RULES,
 		WORKFLOW_PATTERNS,
 		MANDATORY_WORKFLOW,
@@ -713,7 +728,7 @@ export function buildOneShotGeneratorPrompt(
 		totalLength: systemMessage.length,
 		roleLength: ROLE.length,
 		sdkFunctionsLength: SDK_FUNCTIONS.length,
-		availableNodesSectionLength: availableNodesSection.length,
+		// availableNodesSectionLength: availableNodesSection.length,
 		workflowRulesLength: WORKFLOW_RULES.length,
 		workflowPatternsLength: WORKFLOW_PATTERNS.length,
 		mandatoryWorkflowLength: MANDATORY_WORKFLOW.length,

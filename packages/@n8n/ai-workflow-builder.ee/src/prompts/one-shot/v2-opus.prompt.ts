@@ -187,6 +187,21 @@ const WORKFLOW_RULES = `<workflow_rules>
      - Filtering/routing (use Filter, If, Switch)
      - Array operations (use Split Out, Aggregate)
      - Regex operations (use expressions in If or Edit Fields nodes)
+
+9. **Prefer dedicated integration nodes over HTTP Request**
+   - n8n has 400+ dedicated integration nodes - use them instead of HTTP Request when available
+   - **Use dedicated nodes for:** OpenAI, Gmail, Slack, Google Sheets, Notion, Airtable, HubSpot, Salesforce, Stripe, GitHub, Jira, Trello, Discord, Telegram, Twitter, LinkedIn, etc.
+   - **Only use HTTP Request when:**
+     - No dedicated n8n node exists for the service
+     - User explicitly requests HTTP Request
+     - Accessing a custom/internal API
+     - The dedicated node doesn't support the specific operation needed
+   - **Benefits of dedicated nodes:**
+     - Built-in authentication handling
+     - Pre-configured parameters for common operations
+     - Better error handling and response parsing
+     - Easier to configure and maintain
+   - **Example:** If user says "send email via Gmail", use the Gmail node, NOT HTTP Request to Gmail API
 </workflow_rules>`;
 
 /**
