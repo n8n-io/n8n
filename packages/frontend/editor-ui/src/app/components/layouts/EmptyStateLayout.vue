@@ -41,7 +41,9 @@ const containerStyle = computed(() => ({
 }));
 
 const builderProjectId = computed(() =>
-	projectPages.isOverviewSubPage ? projectsStore.personalProject?.id : (route.params.projectId as string),
+	projectPages.isOverviewSubPage
+		? projectsStore.personalProject?.id
+		: (route.params.projectId as string),
 );
 
 const builderParentFolderId = computed(() => route.params.folderId as string | undefined);
@@ -59,11 +61,14 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 	<div
 		:class="[
 			$style.emptyStateLayout,
-			{ [$style.noTemplatesContent]: !showRecommendedTemplatesInline && !showBuilderPrompt },
+			{
+				[$style.noTemplatesContent]: !showRecommendedTemplatesInline && !showBuilderPrompt,
+				[$style.builderLayout]: showBuilderPrompt,
+			},
 		]"
 		:style="containerStyle"
 	>
-		<div :class="$style.content">
+		<div :class="[$style.content, { [$style.builderContent]: showBuilderPrompt }]">
 			<!-- State 1: AI Builder -->
 			<template v-if="showBuilderPrompt">
 				<div :class="$style.welcomeBuilder">
@@ -160,6 +165,14 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 	&.noTemplatesContent {
 		padding-top: var(--spacing--3xl);
 	}
+
+	&.builderLayout {
+		align-items: center;
+		justify-content: center;
+		width: 100%;
+		max-width: none;
+		padding: var(--spacing--lg);
+	}
 }
 
 .content {
@@ -167,6 +180,11 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 	flex-direction: column;
 	align-items: center;
 	width: 100%;
+}
+
+.builderContent {
+	max-width: 1024px;
+	text-align: center;
 }
 
 .welcomeBuilder {
