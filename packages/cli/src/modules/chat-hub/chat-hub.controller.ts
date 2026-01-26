@@ -39,6 +39,7 @@ import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+import { extractAuthenticationMetadata } from './chat-hub-extractor';
 
 @RestController('/chat')
 export class ChatHubController {
@@ -136,10 +137,15 @@ export class ChatHubController {
 	) {
 		let shouldRethrow = false;
 		try {
-			await this.chatService.sendHumanMessage(res, req.user, {
-				...payload,
-				userId: req.user.id,
-			});
+			await this.chatService.sendHumanMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					userId: req.user.id,
+				},
+				extractAuthenticationMetadata(req),
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
@@ -180,12 +186,17 @@ export class ChatHubController {
 	) {
 		let shouldRethrow = false;
 		try {
-			await this.chatService.editMessage(res, req.user, {
-				...payload,
-				sessionId,
-				editId,
-				userId: req.user.id,
-			});
+			await this.chatService.editMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					sessionId,
+					editId,
+					userId: req.user.id,
+				},
+				extractAuthenticationMetadata(req),
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
@@ -226,12 +237,17 @@ export class ChatHubController {
 	) {
 		let shouldRethrow = false;
 		try {
-			await this.chatService.regenerateAIMessage(res, req.user, {
-				...payload,
-				sessionId,
-				retryId,
-				userId: req.user.id,
-			});
+			await this.chatService.regenerateAIMessage(
+				res,
+				req.user,
+				{
+					...payload,
+					sessionId,
+					retryId,
+					userId: req.user.id,
+				},
+				extractAuthenticationMetadata(req),
+			);
 		} catch (error: unknown) {
 			assert(error instanceof Error);
 
