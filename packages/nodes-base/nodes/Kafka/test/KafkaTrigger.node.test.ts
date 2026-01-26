@@ -5,6 +5,7 @@ import {
 	logLevel,
 	type Consumer,
 	type ConsumerRunConfig,
+	type EachBatchHandler,
 	type EachMessageHandler,
 	type IHeaders,
 	type KafkaMessage,
@@ -31,12 +32,20 @@ describe('KafkaTrigger Node', () => {
 	let publishMessage: (message: Partial<KafkaMessage>) => Promise<void>;
 
 	beforeEach(() => {
-		let mockEachMessage: jest.Mocked<EachMessageHandler> = jest.fn(async () => {});
+		const mockEachMessageHolder = {
+			handler: jest.fn(async () => {}) as jest.Mocked<EachMessageHandler>,
+		};
+		const mockEachBatchHolder = {
+			handler: jest.fn(async () => {}) as jest.Mocked<EachBatchHandler>,
+		};
 		mockConsumerConnect = jest.fn();
 		mockConsumerSubscribe = jest.fn();
-		mockConsumerRun = jest.fn(({ eachMessage }: ConsumerRunConfig) => {
+		mockConsumerRun = jest.fn(({ eachMessage, eachBatch }: ConsumerRunConfig) => {
 			if (eachMessage) {
-				mockEachMessage = eachMessage;
+				mockEachMessageHolder.handler = eachMessage;
+			}
+			if (eachBatch) {
+				mockEachBatchHolder.handler = eachBatch;
 			}
 		});
 		mockConsumerDisconnect = jest.fn();
@@ -62,7 +71,7 @@ describe('KafkaTrigger Node', () => {
 		);
 
 		publishMessage = async (message: Partial<KafkaMessage>) => {
-			await mockEachMessage({
+			await mockEachMessageHolder.handler({
 				message: {
 					attributes: 1,
 					key: Buffer.from('messageKey'),
@@ -78,6 +87,40 @@ describe('KafkaTrigger Node', () => {
 				pause: jest.fn(),
 			});
 		};
+
+		const publishBatch = async (messages: Array<Partial<KafkaMessage>>) => {
+			await mockEachBatchHolder.handler({
+				batch: {
+					topic: 'test-topic',
+					partition: 0,
+					highWatermark: '100',
+					messages: messages.map((msg, index) => ({
+						attributes: 1,
+						key: Buffer.from('messageKey'),
+						offset: String(index),
+						timestamp: new Date().toISOString(),
+						value: Buffer.from('message'),
+						headers: {} as IHeaders,
+						...msg,
+					})) as RecordBatchEntry[],
+					isEmpty: () => false,
+					firstOffset: () => '0',
+					lastOffset: () => String(messages.length - 1),
+					offsetLag: () => '0',
+					offsetLagLow: () => '0',
+				},
+				resolveOffset: jest.fn(),
+				heartbeat: jest.fn(),
+				commitOffsetsIfNecessary: jest.fn(),
+				uncommittedOffsets: jest.fn(),
+				isRunning: jest.fn(() => true),
+				isStale: jest.fn(() => false),
+				pause: jest.fn(),
+			});
+		};
+
+		// Expose publishBatch for tests that need it
+		(global as any).publishBatch = publishBatch;
 
 		mockKafka = mock<Kafka>({
 			consumer: mockConsumerCreate,
@@ -360,6 +403,7 @@ describe('KafkaTrigger Node', () => {
 		const { emit } = await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
 			node: {
+				typeVersion: 1.1,
 				parameters: {
 					topic: 'test-topic',
 					groupId: 'test-group',
@@ -380,6 +424,9 @@ describe('KafkaTrigger Node', () => {
 		const publishPromise = publishMessage({
 			value: Buffer.from('test-message'),
 		});
+
+		// Wait for the async message handler to execute
+		await new Promise((resolve) => setImmediate(resolve));
 
 		expect(emit).toHaveBeenCalled();
 
@@ -585,5 +632,288 @@ describe('KafkaTrigger Node', () => {
 			heartbeatInterval: 3000,
 			rebalanceTimeout: 600000,
 		});
+	});
+
+	it('should handle batch processing when batchSize > 1', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						batchSize: 3,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const publishBatch = (global as any).publishBatch;
+		await publishBatch([
+			{ value: Buffer.from('message1') },
+			{ value: Buffer.from('message2') },
+			{ value: Buffer.from('message3') },
+		]);
+
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{ json: { message: 'message1', topic: 'test-topic' } },
+				{ json: { message: 'message2', topic: 'test-topic' } },
+				{ json: { message: 'message3', topic: 'test-topic' } },
+			],
+		]);
+	});
+
+	it('should process messages in chunks when batch has more messages than batchSize', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						batchSize: 2,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const publishBatch = (global as any).publishBatch;
+		await publishBatch([
+			{ value: Buffer.from('message1') },
+			{ value: Buffer.from('message2') },
+			{ value: Buffer.from('message3') },
+			{ value: Buffer.from('message4') },
+			{ value: Buffer.from('message5') },
+		]);
+
+		// Should be called 3 times: [msg1, msg2], [msg3, msg4], [msg5]
+		expect(emit).toHaveBeenCalledTimes(3);
+		expect(emit).toHaveBeenNthCalledWith(1, [
+			[
+				{ json: { message: 'message1', topic: 'test-topic' } },
+				{ json: { message: 'message2', topic: 'test-topic' } },
+			],
+		]);
+		expect(emit).toHaveBeenNthCalledWith(2, [
+			[
+				{ json: { message: 'message3', topic: 'test-topic' } },
+				{ json: { message: 'message4', topic: 'test-topic' } },
+			],
+		]);
+		expect(emit).toHaveBeenNthCalledWith(3, [
+			[{ json: { message: 'message5', topic: 'test-topic' } }],
+		]);
+	});
+
+	it('should use fetchMaxBytes and fetchMinBytes when provided', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						fetchMaxBytes: 2097152,
+						fetchMinBytes: 1024,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		expect(mockConsumerCreate).toHaveBeenCalledWith({
+			groupId: 'test-group',
+			maxInFlightRequests: null,
+			sessionTimeout: 30000,
+			heartbeatInterval: 3000,
+			rebalanceTimeout: 600000,
+			maxBytesPerPartition: 2097152,
+			minBytes: 1024,
+		});
+	});
+
+	it('should use partitionsConsumedConcurrently when provided', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						partitionsConsumedConcurrently: 5,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		expect(mockConsumerRun).toHaveBeenCalledWith(
+			expect.objectContaining({
+				partitionsConsumedConcurrently: 5,
+			}),
+		);
+	});
+
+	it('should handle batch processing with sequential processing', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.1,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						batchSize: 2,
+						parallelProcessing: false,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const publishBatch = (global as any).publishBatch;
+		const publishPromise = publishBatch([
+			{ value: Buffer.from('message1') },
+			{ value: Buffer.from('message2') },
+		]);
+
+		// Wait for the async batch handler to execute
+		await new Promise((resolve) => setImmediate(resolve));
+
+		expect(emit).toHaveBeenCalled();
+
+		const deferredPromise = emit.mock.calls[0][2];
+		expect(deferredPromise).toBeDefined();
+
+		deferredPromise?.resolve(mock());
+		await publishPromise;
+	});
+
+	it('should handle batch processing with JSON parsing', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						batchSize: 2,
+						jsonParseMessage: true,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const publishBatch = (global as any).publishBatch;
+		await publishBatch([
+			{ value: Buffer.from(JSON.stringify({ id: 1, name: 'test1' })) },
+			{ value: Buffer.from(JSON.stringify({ id: 2, name: 'test2' })) },
+		]);
+
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{ json: { message: { id: 1, name: 'test1' }, topic: 'test-topic' } },
+				{ json: { message: { id: 2, name: 'test2' }, topic: 'test-topic' } },
+			],
+		]);
+	});
+
+	it('should handle batch processing with headers', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						batchSize: 2,
+						returnHeaders: true,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		const publishBatch = (global as any).publishBatch;
+		await publishBatch([
+			{
+				value: Buffer.from('message1'),
+				headers: { 'content-type': Buffer.from('application/json') },
+			},
+			{
+				value: Buffer.from('message2'),
+				headers: { 'content-type': Buffer.from('text/plain') },
+			},
+		]);
+
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: 'message1',
+						topic: 'test-topic',
+						headers: { 'content-type': 'application/json' },
+					},
+				},
+				{
+					json: {
+						message: 'message2',
+						topic: 'test-topic',
+						headers: { 'content-type': 'text/plain' },
+					},
+				},
+			],
+		]);
 	});
 });

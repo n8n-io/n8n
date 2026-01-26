@@ -98,6 +98,10 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const ResourceCenterView = async () =>
+	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
+const ResourceCenterSectionView = async () =>
+	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
 
 const MigrationReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRules.vue');
@@ -228,6 +232,22 @@ export const routes: RouteRecordRaw[] = [
 			} else {
 				next();
 			}
+		},
+	},
+	{
+		path: '/resource-center',
+		name: VIEWS.RESOURCE_CENTER,
+		component: ResourceCenterView,
+		meta: {
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/resource-center/section/:sectionId',
+		name: VIEWS.RESOURCE_CENTER_SECTION,
+		component: ResourceCenterSectionView,
+		meta: {
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -364,6 +384,23 @@ export const routes: RouteRecordRaw[] = [
 		path: '/workflows/demo',
 		name: VIEWS.DEMO,
 		component: NodeView,
+		meta: {
+			layout: 'demo',
+			middleware: ['authenticated'],
+			middlewareOptions: {
+				authenticated: {
+					bypass: () => {
+						const settingsStore = useSettingsStore();
+						return settingsStore.isPreviewMode;
+					},
+				},
+			},
+		},
+	},
+	{
+		path: '/workflows/demo/diff',
+		name: VIEWS.DEMO_DIFF,
+		component: async () => await import('@/app/views/DemoDiffView.vue'),
 		meta: {
 			layout: 'demo',
 			middleware: ['authenticated'],

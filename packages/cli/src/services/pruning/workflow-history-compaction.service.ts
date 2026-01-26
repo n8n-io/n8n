@@ -1,3 +1,5 @@
+import { EventService } from '@/events/event.service';
+import { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -53,6 +55,7 @@ export class WorkflowHistoryCompactionService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbConnection: DbConnection,
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-history-compaction');
 	}
@@ -94,7 +97,7 @@ export class WorkflowHistoryCompactionService {
 			this.globalConfig.workflowHistory.pruneTime * Time.hours.toMilliseconds <
 				this.config.trimmingMinimumAgeDays * Time.days.toMilliseconds
 		) {
-			this.logger.info('Skipping workflow history trimming as pruneAge < trimmingMinimumAge');
+			this.logger.debug('Skipping workflow history trimming as pruneAge < trimmingMinimumAge');
 			return;
 		}
 
@@ -141,7 +144,7 @@ export class WorkflowHistoryCompactionService {
 
 	private async trimLongRunningHistories(): Promise<void> {
 		if (this.isTrimmingHistories) {
-			this.logger.warn('Skipping trimming as there is already a running iteration');
+			this.logger.debug('Skipping trimming as there is already a running iteration');
 			return;
 		}
 		this.isTrimmingHistories = true;
@@ -176,7 +179,7 @@ export class WorkflowHistoryCompactionService {
 
 	private async optimizeHistories(): Promise<void> {
 		if (this.isOptimizingHistories) {
-			this.logger.warn('Skipping recent optimization as there is already a running iteration');
+			this.logger.debug('Skipping recent optimization as there is already a running iteration');
 			return;
 		}
 		this.isOptimizingHistories = true;
@@ -213,7 +216,7 @@ export class WorkflowHistoryCompactionService {
 		const startIso = startDate.toISOString();
 		const endIso = endDate.toISOString();
 
-		this.logger.info('Starting workflow history compaction', {
+		this.logger.debug('Starting workflow history compaction', {
 			dateRange: { start: startIso, end: endIso },
 			config: this.config,
 		});
@@ -271,13 +274,17 @@ export class WorkflowHistoryCompactionService {
 		}
 
 		const durationMs = Date.now() - compactionStartTime;
-		this.logger.info('Workflow history compaction complete', {
+		const payload = {
 			workflowsProcessed: workflowIds.length,
 			totalVersionsSeen,
 			totalVersionsDeleted,
 			errorCount,
 			durationMs,
-			dateRange: { start: startIso, end: endIso },
-		});
+			compactionStartTime: new Date(compactionStartTime),
+			windowStartIso: startIso,
+			windowEndIso: endIso,
+		} satisfies RelayEventMap['history-compacted'];
+		this.logger.debug('Workflow history compaction complete', payload);
+		this.eventService.emit('history-compacted', payload);
 	}
 }
