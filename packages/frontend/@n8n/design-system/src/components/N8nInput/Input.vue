@@ -370,7 +370,9 @@ defineExpose({ focus, blur, select });
 	</div>
 </template>
 
-<style module>
+<style module lang="scss">
+@use '../../css/mixins' as *;
+
 .inputContainer {
 	display: inline-flex;
 	align-items: center;
@@ -387,7 +389,7 @@ defineExpose({ focus, blur, select });
 }
 
 .focused {
-	box-shadow: 0 0 0 1px var(--color--secondary) inset;
+	@include focus;
 }
 
 .disabled {
