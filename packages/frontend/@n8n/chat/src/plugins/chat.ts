@@ -187,6 +187,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 		const messages = ref<ChatMessage[]>([]);
 		const currentSessionId = ref<string | null>(null);
 		const waitingForResponse = ref(false);
+		const blockUserInput = ref(false);
 
 		const initialMessages = computed<ChatMessage[]>(() =>
 			(options.initialMessages ?? []).map((text) => ({
@@ -259,7 +260,14 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				return;
 			}
 
-			const sessionId = localStorage.getItem(localStorageSessionIdKey) ?? uuidv4();
+			const existingSessionId = localStorage.getItem(localStorageSessionIdKey);
+			const sessionId = existingSessionId ?? uuidv4();
+
+			// Save to localStorage if it was newly generated
+			if (!existingSessionId) {
+				localStorage.setItem(localStorageSessionIdKey, sessionId);
+			}
+
 			const previousMessagesResponse = await api.loadPreviousSession(sessionId, options);
 
 			messages.value = (previousMessagesResponse?.data || []).map((message, index) => ({
@@ -268,18 +276,26 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				sender: message.id.includes('HumanMessage') ? 'user' : 'bot',
 			}));
 
-			if (messages.value.length) {
-				currentSessionId.value = sessionId;
-			}
+			// Always set currentSessionId to preserve manually set sessionIds
+			currentSessionId.value = sessionId;
 
 			return sessionId;
 		}
 
 		// eslint-disable-next-line @typescript-eslint/require-await
 		async function startNewSession() {
-			currentSessionId.value = uuidv4();
+			const existingSessionId = localStorage.getItem(localStorageSessionIdKey);
 
-			localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
+			// Only preserve existing sessionId if loadPreviousSession is enabled
+			// When loadPreviousSession is false, always generate a new session
+			if (existingSessionId && options.loadPreviousSession) {
+				// Preserve existing sessionId (e.g., manually set by user)
+				currentSessionId.value = existingSessionId;
+			} else {
+				// Generate new UUID and save to localStorage
+				currentSessionId.value = uuidv4();
+				localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
+			}
 		}
 
 		const chatStore = {
@@ -287,6 +303,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			messages,
 			currentSessionId,
 			waitingForResponse,
+			blockUserInput,
 			loadPreviousSession,
 			startNewSession,
 			sendMessage,

@@ -11,19 +11,20 @@ jest.mock('openid-client', () => ({
 
 import type { OidcConfigDto } from '@n8n/api-types';
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import { type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { UserError } from 'n8n-workflow';
 import type * as mocked_oidc_client from 'openid-client';
 const real_odic_client = jest.requireActual('openid-client');
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/sso.ee/oidc/constants';
-import { OidcService } from '@/sso.ee/oidc/oidc.service.ee';
-import { createUser } from '@test-integration/db/users';
-import { UserError } from 'n8n-workflow';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { OIDC_CLIENT_SECRET_REDACTED_VALUE } from '@/modules/sso-oidc/constants';
+import { OidcService } from '@/modules/sso-oidc/oidc.service.ee';
 import { JwtService } from '@/services/jwt.service';
-import { GlobalConfig } from '@n8n/config';
+import { createUser } from '@test-integration/db/users';
 
 beforeAll(async () => {
 	await testDb.init();
@@ -56,6 +57,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'http://n8n.io/not-set',
 				loginEnabled: false,
 				prompt: 'select_account',
+				authenticationContextClassReference: [],
 			});
 		});
 
@@ -67,6 +69,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: new URL('http://n8n.io/not-set'),
 				loginEnabled: false,
 				prompt: 'select_account',
+				authenticationContextClassReference: [],
 			});
 		});
 
@@ -77,6 +80,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -99,6 +103,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -120,6 +125,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'Not an url',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await expect(oidcService.updateConfig(newConfig)).rejects.toThrowError(UserError);
@@ -132,6 +138,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await oidcService.updateConfig(newConfig);
@@ -154,6 +161,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			discoveryMock.mockRejectedValueOnce(new Error('Discovery failed'));
@@ -174,6 +182,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			const mockConfiguration = new real_odic_client.Configuration(
@@ -204,6 +213,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://newprovider.example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'select_account',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			const newMockConfiguration = new real_odic_client.Configuration(
@@ -255,6 +265,7 @@ describe('OIDC service', () => {
 			discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 			loginEnabled: true,
 			prompt: 'consent',
+			authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 		};
 
 		await oidcService.updateConfig(initialConfig);
@@ -298,6 +309,7 @@ describe('OIDC service', () => {
 				discoveryEndpoint: 'https://example.com/.well-known/openid-configuration',
 				loginEnabled: true,
 				prompt: 'consent',
+				authenticationContextClassReference: ['mfa', 'phrh', 'pwd'],
 			};
 
 			await oidcService.updateConfig(initialConfig);
@@ -334,8 +346,12 @@ describe('OIDC service', () => {
 		};
 
 		it('should not include the provisioning scope if no provisioning is enabled', async () => {
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionProjectRoles = false;
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionInstanceRole = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
 			const authUrl = await oidcService.generateLoginUrl();
 
 			validateUrl(authUrl);
@@ -343,9 +359,12 @@ describe('OIDC service', () => {
 		});
 
 		it('should include the provisioning scope if project provisioning is enabled', async () => {
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionProjectRoles = true;
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionInstanceRole = false;
-			Container.get(GlobalConfig).sso.provisioning.scopesName = 'n8n_test_scope';
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
 			const authUrl = await oidcService.generateLoginUrl();
 
 			validateUrl(authUrl);
@@ -353,9 +372,12 @@ describe('OIDC service', () => {
 		});
 
 		it('should include the provisioning scope if instance provisioning is enabled', async () => {
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionProjectRoles = false;
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionInstanceRole = true;
-			Container.get(GlobalConfig).sso.provisioning.scopesName = 'n8n_test_scope';
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = false;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
 			const authUrl = await oidcService.generateLoginUrl();
 
 			validateUrl(authUrl);
@@ -363,9 +385,12 @@ describe('OIDC service', () => {
 		});
 
 		it('should include the provisioning scope if project and instance provisioning is enabled', async () => {
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionProjectRoles = true;
-			Container.get(GlobalConfig).sso.provisioning.scopesProvisionInstanceRole = true;
-			Container.get(GlobalConfig).sso.provisioning.scopesName = 'n8n_test_scope';
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionProjectRoles = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesProvisionInstanceRole = true;
+			// @ts-expect-error - provisioningConfig is private and only accessible within the class
+			Container.get(ProvisioningService).provisioningConfig.scopesName = 'n8n_test_scope';
 			const authUrl = await oidcService.generateLoginUrl();
 
 			validateUrl(authUrl);

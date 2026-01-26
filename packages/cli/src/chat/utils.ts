@@ -1,6 +1,14 @@
 import type { IExecutionResponse } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
-import { CHAT_WAIT_USER_REPLY, RESPOND_TO_WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_WAIT_USER_REPLY,
+	CHAT_NODE_TYPE,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+	SEND_AND_WAIT_OPERATION,
+	CHAT_TOOL_NODE_TYPE,
+} from 'n8n-workflow';
+
+const AI_TOOL = 'ai_tool';
 
 /**
  * Returns the message to be sent of the last executed node
@@ -10,11 +18,12 @@ export function getMessage(execution: IExecutionResponse) {
 	if (typeof lastNodeExecuted !== 'string') return undefined;
 
 	const runIndex = execution.data.resultData.runData[lastNodeExecuted].length - 1;
-	const mainOutputs = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data?.main;
+	const data = execution.data.resultData.runData[lastNodeExecuted][runIndex]?.data;
+	const outputs = data?.main ?? data?.[AI_TOOL];
 
 	// Check all main output branches for a message
-	if (mainOutputs && Array.isArray(mainOutputs)) {
-		for (const branch of mainOutputs) {
+	if (outputs && Array.isArray(outputs)) {
+		for (const branch of outputs) {
 			if (branch && Array.isArray(branch) && branch.length > 0 && branch[0].sendMessage) {
 				return branch[0].sendMessage;
 			}
@@ -50,6 +59,12 @@ export function shouldResumeImmediately(lastNode: INode) {
 	};
 
 	if (options && options[CHAT_WAIT_USER_REPLY] === false) {
+		return true;
+	}
+
+	const operation = lastNode?.parameters?.operation;
+	const isChatNode = lastNode?.type === CHAT_NODE_TYPE || lastNode?.type === CHAT_TOOL_NODE_TYPE;
+	if (isChatNode && operation && operation !== SEND_AND_WAIT_OPERATION) {
 		return true;
 	}
 

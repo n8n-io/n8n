@@ -2,6 +2,7 @@ import type { LicenseProvider } from '@n8n/backend-common';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
+	DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT,
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
 	Time,
@@ -16,7 +17,6 @@ import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
@@ -30,11 +30,15 @@ export type FeatureReturnType = Partial<
 	} & { [K in NumericLicenseFeature]: number } & { [K in BooleanLicenseFeature]: boolean }
 >;
 
+type LicenseRefreshCallback = (cert: string) => void;
+
 @Service()
 export class License implements LicenseProvider {
 	private manager: LicenseManager | undefined;
 
 	private isShuttingDown = false;
+
+	private refreshCallbacks: LicenseRefreshCallback[] = [];
 
 	constructor(
 		private readonly logger: Logger,
@@ -141,14 +145,16 @@ export class License implements LicenseProvider {
 
 	private async onFeatureChange() {
 		void this.broadcastReloadLicenseCommand();
+		await this.notifyRefreshCallbacks();
 	}
 
 	private async onLicenseRenewed() {
 		void this.broadcastReloadLicenseCommand();
+		await this.notifyRefreshCallbacks();
 	}
 
 	private async broadcastReloadLicenseCommand() {
-		if (config.getEnv('executions.mode') === 'queue' && this.instanceSettings.isLeader) {
+		if (this.globalConfig.executions.mode === 'queue' && this.instanceSettings.isLeader) {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
@@ -167,12 +173,39 @@ export class License implements LicenseProvider {
 		);
 	}
 
-	async activate(activationKey: string): Promise<void> {
+	/**
+	 * Register a callback to be notified when license certificate is refreshed.
+	 * Returns an unsubscribe function.
+	 */
+	onCertRefresh(refreshCallback: LicenseRefreshCallback): () => void {
+		this.refreshCallbacks.push(refreshCallback);
+		return () => {
+			const index = this.refreshCallbacks.indexOf(refreshCallback);
+			if (index > -1) {
+				this.refreshCallbacks.splice(index, 1);
+			}
+		};
+	}
+
+	private async notifyRefreshCallbacks(): Promise<void> {
+		const cert = await this.loadCertStr();
+		for (const refreshCallback of this.refreshCallbacks) {
+			try {
+				refreshCallback(cert);
+			} catch (error) {
+				this.logger.error('Error in license refresh callback', { error });
+			}
+		}
+	}
+
+	async activate(activationKey: string): Promise<void>;
+	async activate(activationKey: string, eulaUri: string, userEmail: string): Promise<void>;
+	async activate(activationKey: string, eulaUri?: string, userEmail?: string): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
 
-		await this.manager.activate(activationKey);
+		await this.manager.activate(activationKey, { eulaUri, email: userEmail });
 		this.logger.debug('License activated');
 	}
 
@@ -182,6 +215,7 @@ export class License implements LicenseProvider {
 			return;
 		}
 		await this.manager.reload();
+		await this.notifyRefreshCallbacks();
 		this.logger.debug('License reloaded');
 	}
 
@@ -219,6 +253,11 @@ export class License implements LicenseProvider {
 
 	isLicensed(feature: BooleanLicenseFeature) {
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
+	}
+
+	/** @deprecated Use `LicenseState.isDynamicCredentialsLicensed` instead. */
+	isDynamicCredentialsEnabled() {
+		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
 	}
 
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
@@ -299,11 +338,6 @@ export class License implements LicenseProvider {
 	/** @deprecated Use `LicenseState.isExternalSecretsLicensed` instead. */
 	isExternalSecretsEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.EXTERNAL_SECRETS);
-	}
-
-	/** @deprecated Use `LicenseState.isWorkflowHistoryLicensed` instead. */
-	isWorkflowHistoryLicensed() {
-		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_HISTORY);
 	}
 
 	/** @deprecated Use `LicenseState.isAPIDisabled` instead. */
@@ -404,7 +438,10 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	getWorkflowHistoryPruneLimit() {
-		return this.getValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+		return (
+			this.getValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ??
+			DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT
+		);
 	}
 
 	/** @deprecated Use `LicenseState` instead. */

@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
@@ -8,7 +8,6 @@ import type { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
-import config from '@/config';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
 
@@ -30,6 +29,7 @@ describe('PrometheusMetricsService', () => {
 	let eventService: EventService;
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
+	let licenseMetricsRepository: LicenseMetricsRepository;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -49,6 +49,9 @@ describe('PrometheusMetricsService', () => {
 					includeApiStatusCodeLabel: false,
 					includeQueueMetrics: false,
 					includeWorkflowNameLabel: false,
+					includeWorkflowStatistics: false,
+					activeWorkflowCountInterval: 30,
+					workflowStatisticsInterval: 30,
 				},
 				rest: 'rest',
 				form: 'form',
@@ -58,6 +61,9 @@ describe('PrometheusMetricsService', () => {
 				webhookTest: 'webhook-test',
 				webhookWaiting: 'webhook-waiting',
 			},
+			executions: {
+				mode: 'regular',
+			},
 		});
 
 		app = mock<express.Application>();
@@ -65,6 +71,7 @@ describe('PrometheusMetricsService', () => {
 		eventService = mock<EventService>();
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
+		licenseMetricsRepository = mock<LicenseMetricsRepository>();
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -73,6 +80,7 @@ describe('PrometheusMetricsService', () => {
 			eventService,
 			instanceSettings,
 			workflowRepository,
+			licenseMetricsRepository,
 		);
 
 		promClient.Counter.prototype.inc = jest.fn();
@@ -95,6 +103,7 @@ describe('PrometheusMetricsService', () => {
 				customGlobalConfig,
 				mock(),
 				instanceSettings,
+				mock(),
 				mock(),
 			);
 
@@ -202,7 +211,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up queue metrics if enabled', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
@@ -233,7 +242,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should not set up queue metrics if enabled but not on scaling mode', async () => {
-			config.set('executions.mode', 'regular');
+			globalConfig.executions.mode = 'regular';
 			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
@@ -244,7 +253,7 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			prometheusMetricsService.enableMetric('queue');
 			// @ts-expect-error private field
 			instanceSettings.instanceType = 'worker';

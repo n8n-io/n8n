@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { SignInType } from '@/constants';
+import { SignInType } from '@/app/constants';
 
 export const createUser = (overrides?: Partial<IUser>): IUser => ({
 	id: faker.string.uuid(),

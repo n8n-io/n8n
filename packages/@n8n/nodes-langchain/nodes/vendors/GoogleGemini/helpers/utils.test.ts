@@ -3,7 +3,15 @@ import { mockDeep } from 'jest-mock-extended';
 import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { downloadFile, uploadFile, transferFile } from './utils';
+import {
+	createFileSearchStore,
+	deleteFileSearchStore,
+	downloadFile,
+	listFileSearchStores,
+	transferFile,
+	uploadFile,
+	uploadToFileSearchStore,
+} from './utils';
 import * as transport from '../transport';
 
 jest.mock('axios');
@@ -436,9 +444,13 @@ describe('GoogleGemini -> utils', () => {
 			await expect(
 				transferFile.call(mockExecuteFunctions, 0, undefined, 'application/octet-stream'),
 			).rejects.toThrow(
-				new NodeOperationError(mockExecuteFunctions.getNode(), 'Binary property name is required', {
-					description: 'Error uploading file',
-				}),
+				new NodeOperationError(
+					mockExecuteFunctions.getNode(),
+					'Binary property name or download URL is required',
+					{
+						description: 'Error uploading file',
+					},
+				),
 			);
 		});
 
@@ -530,6 +542,530 @@ describe('GoogleGemini -> utils', () => {
 					description: 'Error uploading file',
 				}),
 			);
+		});
+	});
+
+	describe('createFileSearchStore', () => {
+		it('should create a file search store', async () => {
+			const displayName = 'My File Search Store';
+			const mockResponse = {
+				name: 'fileSearchStores/abc123',
+				displayName: 'My File Search Store',
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await createFileSearchStore.call(mockExecuteFunctions, displayName);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('POST', '/v1beta/fileSearchStores', {
+				body: { displayName },
+			});
+		});
+	});
+
+	describe('uploadToFileSearchStore', () => {
+		it('should upload file from URL to file search store', async () => {
+			const fileSearchStoreName = 'fileSearchStores/abc123';
+			const displayName = 'test-file.pdf';
+			const mockStream = {
+				pipe: jest.fn(),
+				on: jest.fn(),
+			} as any;
+
+			mockedAxios.get.mockResolvedValue({
+				data: mockStream,
+				headers: {
+					'content-type': 'application/pdf; charset=utf-8',
+				},
+			});
+
+			apiRequestMock
+				.mockResolvedValueOnce({
+					headers: {
+						'x-goog-upload-url': 'https://upload.googleapis.com/upload/123',
+					},
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: false,
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: true,
+					response: {
+						name: 'fileSearchStores/abc123/files/file123',
+					},
+				});
+
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: {
+					name: 'operations/op123',
+				},
+			});
+
+			jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+				callback();
+				return {} as any;
+			});
+
+			const result = await uploadToFileSearchStore.call(
+				mockExecuteFunctions,
+				0,
+				fileSearchStoreName,
+				displayName,
+				'https://example.com/file.pdf',
+			);
+
+			expect(result).toEqual({
+				name: 'fileSearchStores/abc123/files/file123',
+			});
+
+			expect(mockedAxios.get).toHaveBeenCalledWith('https://example.com/file.pdf', {
+				params: undefined,
+				responseType: 'stream',
+			});
+
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				`/upload/v1beta/${fileSearchStoreName}:uploadToFileSearchStore`,
+				{
+					headers: {
+						'X-Goog-Upload-Protocol': 'resumable',
+						'X-Goog-Upload-Command': 'start',
+						'X-Goog-Upload-Header-Content-Type': 'application/pdf',
+						'Content-Type': 'application/json',
+					},
+					body: { displayName, mimeType: 'application/pdf' },
+					option: { returnFullResponse: true },
+				},
+			);
+
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/operations/op123');
+		});
+
+		it('should upload file from binary data (buffer) to file search store', async () => {
+			const fileSearchStoreName = 'fileSearchStores/abc123';
+			const displayName = 'test-file.pdf';
+			const mockBinaryData: IBinaryData = {
+				mimeType: 'application/pdf',
+				fileName: 'test.pdf',
+				fileSize: '1024',
+				fileExtension: 'pdf',
+				data: 'test',
+			};
+
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('data');
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(mockBinaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('test'));
+
+			apiRequestMock
+				.mockResolvedValueOnce({
+					headers: {
+						'x-goog-upload-url': 'https://upload.googleapis.com/upload/123',
+					},
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: true,
+					response: {
+						name: 'fileSearchStores/abc123/files/file123',
+					},
+				});
+
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: {
+					name: 'operations/op123',
+				},
+			});
+
+			const result = await uploadToFileSearchStore.call(
+				mockExecuteFunctions,
+				0,
+				fileSearchStoreName,
+				displayName,
+			);
+
+			expect(result).toEqual({
+				name: 'fileSearchStores/abc123/files/file123',
+			});
+
+			expect(mockExecuteFunctions.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'data');
+			expect(mockExecuteFunctions.helpers.getBinaryDataBuffer).toHaveBeenCalledWith(0, 'data');
+		});
+
+		it('should upload file from binary data (stream) to file search store', async () => {
+			const fileSearchStoreName = 'fileSearchStores/abc123';
+			const displayName = 'test-file.pdf';
+			const mockBinaryData: IBinaryData = {
+				id: 'binary-123',
+				mimeType: 'application/pdf',
+				fileName: 'test.pdf',
+				fileSize: '1024',
+				fileExtension: 'pdf',
+				data: 'test',
+			};
+
+			const mockStream = {
+				pipe: jest.fn(),
+				on: jest.fn(),
+			} as any;
+
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('data');
+			mockExecuteFunctions.helpers.assertBinaryData.mockReturnValue(mockBinaryData);
+			mockExecuteFunctions.helpers.getBinaryStream.mockResolvedValue(mockStream);
+
+			apiRequestMock
+				.mockResolvedValueOnce({
+					headers: {
+						'x-goog-upload-url': 'https://upload.googleapis.com/upload/123',
+					},
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: true,
+					response: {
+						name: 'fileSearchStores/abc123/files/file123',
+					},
+				});
+
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: {
+					name: 'operations/op123',
+				},
+			});
+
+			const result = await uploadToFileSearchStore.call(
+				mockExecuteFunctions,
+				0,
+				fileSearchStoreName,
+				displayName,
+			);
+
+			expect(result).toEqual({
+				name: 'fileSearchStores/abc123/files/file123',
+			});
+
+			expect(mockExecuteFunctions.helpers.getBinaryStream).toHaveBeenCalledWith(
+				'binary-123',
+				262144,
+			);
+		});
+
+		it('should poll operation until done', async () => {
+			const fileSearchStoreName = 'fileSearchStores/abc123';
+			const displayName = 'test-file.pdf';
+			const mockStream = {
+				pipe: jest.fn(),
+				on: jest.fn(),
+			} as any;
+
+			mockedAxios.get.mockResolvedValue({
+				data: mockStream,
+				headers: {
+					'content-type': 'application/pdf',
+				},
+			});
+
+			apiRequestMock
+				.mockResolvedValueOnce({
+					headers: {
+						'x-goog-upload-url': 'https://upload.googleapis.com/upload/123',
+					},
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: false,
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: false,
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: true,
+					response: {
+						name: 'fileSearchStores/abc123/files/file123',
+					},
+				});
+
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: {
+					name: 'operations/op123',
+				},
+			});
+
+			jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+				callback();
+				return {} as any;
+			});
+
+			const result = await uploadToFileSearchStore.call(
+				mockExecuteFunctions,
+				0,
+				fileSearchStoreName,
+				displayName,
+				'https://example.com/file.pdf',
+			);
+
+			expect(result).toEqual({
+				name: 'fileSearchStores/abc123/files/file123',
+			});
+
+			expect(apiRequestMock).toHaveBeenCalledTimes(4); // 1 upload init + 3 operation polls
+		});
+
+		it('should throw error when operation fails', async () => {
+			const fileSearchStoreName = 'fileSearchStores/abc123';
+			const displayName = 'test-file.pdf';
+			const mockStream = {
+				pipe: jest.fn(),
+				on: jest.fn(),
+			} as any;
+
+			mockedAxios.get.mockResolvedValue({
+				data: mockStream,
+				headers: {
+					'content-type': 'application/pdf',
+				},
+			});
+
+			apiRequestMock
+				.mockResolvedValueOnce({
+					headers: {
+						'x-goog-upload-url': 'https://upload.googleapis.com/upload/123',
+					},
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: false,
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: true,
+					error: { message: 'Upload failed' },
+				});
+
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: {
+					name: 'operations/op123',
+				},
+			});
+
+			jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+				callback();
+				return {} as any;
+			});
+
+			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Google Gemini' } as any);
+
+			await expect(
+				uploadToFileSearchStore.call(
+					mockExecuteFunctions,
+					0,
+					fileSearchStoreName,
+					displayName,
+					'https://example.com/file.pdf',
+				),
+			).rejects.toThrow(
+				new NodeOperationError(mockExecuteFunctions.getNode(), 'Upload failed', {
+					description: 'Error uploading file to File Search store',
+				}),
+			);
+		});
+
+		it('should throw error when binary property name is missing', async () => {
+			const fileSearchStoreName = 'fileSearchStores/abc123';
+			const displayName = 'test-file.pdf';
+
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('');
+			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Google Gemini' } as any);
+
+			await expect(
+				uploadToFileSearchStore.call(mockExecuteFunctions, 0, fileSearchStoreName, displayName),
+			).rejects.toThrow(
+				new NodeOperationError(
+					mockExecuteFunctions.getNode(),
+					'Binary property name or download URL is required',
+					{
+						description: 'Error uploading file',
+					},
+				),
+			);
+		});
+
+		it('should return undefined when response is missing', async () => {
+			const fileSearchStoreName = 'fileSearchStores/abc123';
+			const displayName = 'test-file.pdf';
+			const mockStream = {
+				pipe: jest.fn(),
+				on: jest.fn(),
+			} as any;
+
+			mockedAxios.get.mockResolvedValue({
+				data: mockStream,
+				headers: {
+					'content-type': 'application/pdf',
+				},
+			});
+
+			apiRequestMock
+				.mockResolvedValueOnce({
+					headers: {
+						'x-goog-upload-url': 'https://upload.googleapis.com/upload/123',
+					},
+				})
+				.mockResolvedValueOnce({
+					name: 'operations/op123',
+					done: true,
+				});
+
+			mockExecuteFunctions.helpers.httpRequest.mockResolvedValueOnce({
+				body: {
+					name: 'operations/op123',
+				},
+			});
+
+			const result = await uploadToFileSearchStore.call(
+				mockExecuteFunctions,
+				0,
+				fileSearchStoreName,
+				displayName,
+				'https://example.com/file.pdf',
+			);
+
+			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('listFileSearchStores', () => {
+		it('should list file search stores without pagination', async () => {
+			const mockResponse = {
+				fileSearchStores: [
+					{
+						name: 'fileSearchStores/store1',
+						displayName: 'Store 1',
+					},
+					{
+						name: 'fileSearchStores/store2',
+						displayName: 'Store 2',
+					},
+				],
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await listFileSearchStores.call(mockExecuteFunctions);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+				qs: {},
+			});
+		});
+
+		it('should list file search stores with pageSize', async () => {
+			const mockResponse = {
+				fileSearchStores: [
+					{
+						name: 'fileSearchStores/store1',
+						displayName: 'Store 1',
+					},
+				],
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await listFileSearchStores.call(mockExecuteFunctions, 20);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+				qs: { pageSize: 20 },
+			});
+		});
+
+		it('should list file search stores with pageToken', async () => {
+			const mockResponse = {
+				fileSearchStores: [
+					{
+						name: 'fileSearchStores/store3',
+						displayName: 'Store 3',
+					},
+				],
+				nextPageToken: 'token123',
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await listFileSearchStores.call(mockExecuteFunctions, undefined, 'token123');
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+				qs: { pageToken: 'token123' },
+			});
+		});
+
+		it('should list file search stores with both pageSize and pageToken', async () => {
+			const mockResponse = {
+				fileSearchStores: [
+					{
+						name: 'fileSearchStores/store1',
+						displayName: 'Store 1',
+					},
+				],
+			};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await listFileSearchStores.call(mockExecuteFunctions, 10, 'token123');
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('GET', '/v1beta/fileSearchStores', {
+				qs: { pageSize: 10, pageToken: 'token123' },
+			});
+		});
+	});
+
+	describe('deleteFileSearchStore', () => {
+		it('should delete file search store without force', async () => {
+			const name = 'fileSearchStores/abc123';
+			const mockResponse = {};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
+				qs: {},
+			});
+		});
+
+		it('should delete file search store with force', async () => {
+			const name = 'fileSearchStores/abc123';
+			const mockResponse = {};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name, true);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
+				qs: { force: true },
+			});
+		});
+
+		it('should delete file search store with force false', async () => {
+			const name = 'fileSearchStores/abc123';
+			const mockResponse = {};
+
+			apiRequestMock.mockResolvedValue(mockResponse);
+
+			const result = await deleteFileSearchStore.call(mockExecuteFunctions, name, false);
+
+			expect(result).toEqual(mockResponse);
+			expect(apiRequestMock).toHaveBeenCalledWith('DELETE', `/v1beta/${name}`, {
+				qs: { force: false },
+			});
 		});
 	});
 });

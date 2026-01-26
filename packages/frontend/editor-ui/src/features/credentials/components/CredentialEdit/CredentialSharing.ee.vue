@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import type { AllRolesMap, PermissionsRecord } from '@n8n/permissions';
-import ProjectSharing from '@/features/projects/components/ProjectSharing.vue';
+import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-import { EnterpriseEditionFeature } from '@/constants';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
-import { useProjectsStore } from '@/features/projects/projects.store';
-import { useRolesStore } from '@/stores/roles.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useUsersStore } from '@/features/users/users.store';
-import type { ProjectListItem, ProjectSharingData } from '@/features/projects/projects.types';
-import { ProjectTypes } from '@/features/projects/projects.types';
-import { splitName } from '@/features/projects/projects.utils';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useRolesStore } from '@/app/stores/roles.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import type {
+	ProjectListItem,
+	ProjectSharingData,
+} from '@/features/collaboration/projects/projects.types';
+import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
+import { getResourcePermissions } from '@n8n/permissions';
 
 import { N8nActionBox, N8nInfoTip } from '@n8n/design-system';
 type Props = {
@@ -24,12 +28,14 @@ type Props = {
 	credentialPermissions: PermissionsRecord['credential'];
 	credential?: ICredentialsResponse | ICredentialsDecryptedResponse | null;
 	modalBus: EventBus;
+	isSharedGlobally?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { credential: null });
+const props = withDefaults(defineProps<Props>(), { credential: null, isSharedGlobally: false });
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ProjectSharingData[]];
+	'update:shareWithAllUsers': [value: boolean];
 }>();
 
 const i18n = useI18n();
@@ -102,6 +108,11 @@ const sharingSelectPlaceholder = computed(() =>
 		: i18n.baseText('projects.sharing.select.placeholder.user'),
 );
 
+const canShareGlobally = computed(() => {
+	const permissions = getResourcePermissions(usersStore.currentUser?.globalScopes);
+	return permissions.credential?.shareGlobally ?? false;
+});
+
 watch(
 	sharedWithProjects,
 	(changedSharedWithProjects) => {
@@ -159,6 +170,9 @@ function goToUpgrade() {
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
 				:placeholder="sharingSelectPlaceholder"
+				:can-share-globally="canShareGlobally"
+				:is-shared-globally="isSharedGlobally"
+				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
 			/>
 		</div>
 	</div>

@@ -21,7 +21,9 @@ export type PubSubEventName =
 	| 'reload-overwrite-credentials'
 	| 'response-to-get-worker-status'
 	| 'restart-event-bus'
-	| 'relay-execution-lifecycle-event';
+	| 'relay-execution-lifecycle-event'
+	| 'reload-sso-provisioning-configuration'
+	| 'reload-source-control-config';
 
 export type PubSubEventFilter =
 	| {

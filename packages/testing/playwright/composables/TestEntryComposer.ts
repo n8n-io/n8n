@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 
+import { setupDefaultInterceptors } from '../config/intercepts';
 import type { n8nPage } from '../pages/n8nPage';
 import type { TestUser } from '../services/user-api-helper';
 
@@ -22,8 +23,7 @@ export class TestEntryComposer {
 	 * Start UI test from a blank canvas (assumes already on canvas)
 	 */
 	async fromBlankCanvas() {
-		await this.n8n.goHome();
-		await this.n8n.workflows.addResource.workflow();
+		await this.n8n.navigate.toWorkflow('new');
 		// Verify we're on canvas
 		await this.n8n.canvas.canvasPane().isVisible();
 	}
@@ -92,13 +92,16 @@ export class TestEntryComposer {
 	}
 
 	/**
-	 * Create a new isolated user context with fresh page and authentication
+	 * Create a new isolated user context with fresh page and authentication.
+	 * Use this when you need a browser context for UI interactions.
+	 * For API-only operations, use `api.createApiForUser()` instead.
 	 * @param user - User with email and password
 	 * @returns Fresh n8nPage instance with user authentication
 	 */
 	async withUser(user: Pick<TestUser, 'email' | 'password'>): Promise<n8nPage> {
 		const browser = this.n8n.page.context().browser()!;
 		const context = await browser.newContext();
+		await setupDefaultInterceptors(context);
 		const page = await context.newPage();
 		const newN8n = new (this.n8n.constructor as new (page: Page) => n8nPage)(page);
 		await newN8n.api.login({ email: user.email, password: user.password });

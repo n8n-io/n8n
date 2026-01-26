@@ -7,7 +7,7 @@ import { getInitials } from '../../utils/labelUtil';
 interface AvatarProps {
 	firstName?: string | null;
 	lastName?: string | null;
-	size?: 'xsmall' | 'small' | 'medium' | 'large';
+	size?: 'xxsmall' | 'xsmall' | 'small' | 'medium' | 'large';
 	colors?: string[];
 }
 
@@ -34,6 +34,7 @@ const getColors = (colors: string[]): string[] => {
 };
 
 const sizes: { [size: string]: number } = {
+	xxsmall: 16,
 	xsmall: 20,
 	small: 28,
 	large: 48,
@@ -86,6 +87,7 @@ const getSize = (size: string): number => sizes[size];
 	text-transform: uppercase;
 }
 
+.text-xxsmall,
 .text-xsmall {
 	font-size: 6px;
 }

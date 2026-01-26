@@ -19,7 +19,7 @@ const prettierConfig = path.resolve('.prettierrc.js');
 const biomeConfig = path.resolve('biome.jsonc');
 const ignore = path.resolve('.prettierignore');
 
-const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages', '.turbo', 'cypress'];
+const ROOT_DIRS_TO_SKIP = ['.git', 'node_modules', 'packages', '.turbo'];
 const EXTENSIONS_TO_FORMAT_WITH_PRETTIER = ['.yml'];
 const EXTENSIONS_TO_FORMAT_WITH_BIOME = ['.js', '.json', '.ts'];
 

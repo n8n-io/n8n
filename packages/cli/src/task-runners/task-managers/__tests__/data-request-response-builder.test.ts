@@ -1,11 +1,12 @@
 import type { PartialAdditionalData, TaskData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type {
-	IExecuteContextData,
-	INode,
-	INodeExecutionData,
-	IRunExecutionData,
-	Workflow,
+import {
+	createRunExecutionData,
+	type IExecuteContextData,
+	type INode,
+	type INodeExecutionData,
+	type IRunExecutionData,
+	type Workflow,
 } from 'n8n-workflow';
 
 import { DataRequestResponseBuilder } from '../data-request-response-builder';
@@ -127,16 +128,18 @@ describe('DataRequestResponseBuilder', () => {
 	it('clears nodeExecutionStack, waitingExecution and waitingExecutionSource from runExecutionData', () => {
 		const result = builder.buildFromTaskData(taskData);
 
-		expect(result.runExecutionData).toStrictEqual({
-			startData: runExecutionData.startData,
-			resultData: runExecutionData.resultData,
-			executionData: {
-				contextData,
-				metadata,
-				nodeExecutionStack: [],
-				waitingExecution: {},
-				waitingExecutionSource: null,
-			},
-		});
+		expect(result.runExecutionData).toStrictEqual(
+			createRunExecutionData({
+				startData: runExecutionData.startData,
+				resultData: runExecutionData.resultData,
+				executionData: {
+					contextData,
+					metadata,
+					nodeExecutionStack: [],
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			}),
+		);
 	});
 });

@@ -61,11 +61,19 @@ export class VariablesService {
 		return !!project;
 	}
 
-	async getAllCached(): Promise<Variables[]> {
-		const variables = await this.cacheService.get('variables', {
-			refreshFn: async () => await this.findAll(),
-		});
-		return variables ?? [];
+	async getAllCached(
+		filters: { globalOnly: boolean } = { globalOnly: false },
+	): Promise<Variables[]> {
+		const variables =
+			(await this.cacheService.get('variables', {
+				refreshFn: async () => await this.findAll(),
+			})) ?? [];
+
+		if (filters.globalOnly) {
+			return variables.filter((v) => !v.project);
+		}
+
+		return variables;
 	}
 
 	async getCached(id: string): Promise<Variables | null> {
@@ -143,10 +151,28 @@ export class VariablesService {
 		}
 
 		await this.delete(id);
+
+		this.eventService.emit('variable-deleted', {
+			user: {
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
+			},
+			variableId: id,
+			variableKey: existingVariable?.key ?? '',
+			...(existingVariable?.project?.id && { projectId: existingVariable.project.id }),
+		});
 	}
 
 	async delete(id: string): Promise<void> {
 		await this.variablesRepository.delete(id);
+		await this.updateCache();
+	}
+
+	async deleteByIds(ids: string[]): Promise<void> {
+		await this.variablesRepository.deleteByIds(ids);
 		await this.updateCache();
 	}
 
@@ -214,7 +240,16 @@ export class VariablesService {
 			{ transaction: false },
 		);
 		this.eventService.emit('variable-created', {
-			projectId: variable.projectId,
+			user: {
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
+			},
+			variableId: saveResult.id,
+			variableKey: saveResult.key,
+			...(variable.projectId && { projectId: variable.projectId }),
 		});
 		await this.updateCache();
 		return saveResult;
@@ -271,7 +306,16 @@ export class VariablesService {
 				: {}),
 		});
 		this.eventService.emit('variable-updated', {
-			projectId: newProjectId,
+			user: {
+				id: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				role: user.role,
+			},
+			variableId: id,
+			variableKey: variable.key ?? existingVariable.key,
+			...(newProjectId && { projectId: newProjectId }),
 		});
 		await this.updateCache();
 		return (await this.getCached(id))!;

@@ -100,6 +100,32 @@ export const buildInputSchemaField = (props?: {
 
 export const inputSchemaField = buildInputSchemaField();
 
+export const promptTypeOptionsDeprecated: INodeProperties = {
+	displayName: 'Source for Prompt (User Message)',
+	name: 'promptType',
+	type: 'options',
+	options: [
+		{
+			name: 'Connected Chat Trigger Node',
+			value: 'auto',
+			description:
+				"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
+		},
+		{
+			name: 'Connected Guardrails Node',
+			value: 'guardrails',
+			description:
+				"Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node",
+		},
+		{
+			name: 'Define below',
+			value: 'define',
+			description: 'Use an expression to reference data in previous nodes or enter static text',
+		},
+	],
+	default: 'auto',
+};
+
 export const promptTypeOptions: INodeProperties = {
 	displayName: 'Source for Prompt (User Message)',
 	name: 'promptType',
@@ -142,6 +168,18 @@ export const textFromPreviousNode: INodeProperties = {
 		rows: 2,
 	},
 	disabledOptions: { show: { promptType: ['auto'] } },
+};
+
+export const textFromGuardrailsNode: INodeProperties = {
+	displayName: 'Prompt (User Message)',
+	name: 'text',
+	type: 'string',
+	required: true,
+	default: '={{ $json.guardrailsInput }}',
+	typeOptions: {
+		rows: 2,
+	},
+	disabledOptions: { show: { promptType: ['guardrails'] } },
 };
 
 export const toolDescription: INodeProperties = {

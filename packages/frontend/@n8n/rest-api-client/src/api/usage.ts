@@ -9,7 +9,10 @@ export const getLicense = async (context: IRestApiContext): Promise<UsageState['
 
 export const activateLicenseKey = async (
 	context: IRestApiContext,
-	data: { activationKey: string },
+	data: {
+		activationKey: string;
+		eulaUri?: string;
+	},
 ): Promise<UsageState['data']> => {
 	return await makeRestApiRequest(context, 'POST', '/license/activate', data);
 };

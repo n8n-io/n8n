@@ -1,21 +1,37 @@
 import { tool } from '@langchain/core/tools';
+import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
+import type { NodeConfigurationEntry } from '@/types';
+import {
+	extractResourceOperations,
+	formatResourceOperationsForPrompt,
+	createResourceCacheKey,
+	type ResourceOperationInfo,
+} from '@/utils/resource-operation-extractor';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
 import { ValidationError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
+import { getWorkflowState } from './helpers/state';
 import { findNodeType, createNodeTypeNotFoundError } from './helpers/validation';
 import type { NodeDetails } from '../types/nodes';
-import type { NodeDetailsOutput } from '../types/tools';
+import type { NodeDetailsOutput, WorkflowMetadata } from '../types/tools';
+import { getNodeConfigurationsFromTemplates } from './utils/node-configuration.utils';
+import { fetchWorkflowsFromTemplates } from './web/templates';
+
+/** Maximum number of example configurations to include */
+const MAX_NODE_EXAMPLES = 5;
 
 /**
  * Schema for node details tool input
  */
 const nodeDetailsSchema = z.object({
 	nodeName: z.string().describe('The exact node type name (e.g., n8n-nodes-base.httpRequest)'),
+	nodeVersion: z.number().describe('The exact node version'),
 	withParameters: z
 		.boolean()
 		.optional()
@@ -75,6 +91,8 @@ function formatNodeDetails(
 	details: NodeDetails,
 	withParameters: boolean = false,
 	withConnections: boolean = true,
+	examples: NodeConfigurationEntry[] = [],
+	resourceOperationInfo?: ResourceOperationInfo | null,
 ): string {
 	const parts: string[] = [];
 
@@ -86,6 +104,11 @@ function formatNodeDetails(
 
 	if (details.subtitle) {
 		parts.push(`<subtitle>${details.subtitle}</subtitle>`);
+	}
+
+	// Resource/Operation info (for nodes that follow this pattern)
+	if (resourceOperationInfo) {
+		parts.push(formatResourceOperationsForPrompt(resourceOperationInfo));
 	}
 
 	// Parameters
@@ -102,6 +125,28 @@ function formatNodeDetails(
 		parts.push(formatInputs(details.inputs));
 		parts.push(formatOutputs(details.outputs));
 		parts.push('</connections>');
+	}
+
+	// Example configurations from workflow examples (with token limit, max 5)
+	if (examples.length > 0) {
+		const limitedExamples = examples.slice(0, MAX_NODE_EXAMPLES);
+		const { parts: exampleParts } = limitedExamples.reduce<{ parts: string[]; chars: number }>(
+			(acc, config) => {
+				const exampleStr = JSON.stringify(config.parameters, null, 2);
+				if (acc.chars + exampleStr.length <= MAX_NODE_EXAMPLE_CHARS) {
+					acc.parts.push(`<example>\n${exampleStr}\n</example>`);
+					acc.chars += exampleStr.length;
+				}
+				return acc;
+			},
+			{ parts: [], chars: 0 },
+		);
+
+		if (exampleParts.length > 0) {
+			parts.push('<node_examples>');
+			parts.push(...exampleParts);
+			parts.push('</node_examples>');
+		}
 	}
 
 	parts.push('</node_details>');
@@ -130,11 +175,80 @@ export const NODE_DETAILS_TOOL: BuilderToolBase = {
 };
 
 /**
+ * Get example configurations for a node type.
+ * First checks the cached templates, then fetches from templates API if none found.
+ */
+async function getNodeExamples(
+	nodeName: string,
+	nodeVersion: number,
+	logger?: Logger,
+	onProgress?: (message: string) => void,
+): Promise<{
+	examples: NodeConfigurationEntry[];
+	newTemplates?: WorkflowMetadata[];
+}> {
+	// First, try to get examples from cached templates
+	try {
+		const state = getWorkflowState();
+		const cachedTemplates = state?.cachedTemplates ?? [];
+
+		// Extract configurations directly from cached templates
+		const filteredConfigs = getNodeConfigurationsFromTemplates(
+			cachedTemplates,
+			nodeName,
+			nodeVersion,
+		);
+
+		if (filteredConfigs.length > 0) {
+			logger?.debug('Found node configurations in cached templates', {
+				nodeName,
+				nodeVersion,
+				count: filteredConfigs.length,
+			});
+			return { examples: filteredConfigs };
+		}
+	} catch {
+		// State may not be available in some environments
+	}
+
+	// No cached data, fetch from templates API
+	onProgress?.(`Fetching examples for ${nodeName}...`);
+
+	try {
+		const result = await fetchWorkflowsFromTemplates(
+			{ nodes: nodeName, rows: 10 },
+			{ maxTemplates: 5, logger },
+		);
+
+		if (result.workflows.length > 0) {
+			const nodeConfigs = getNodeConfigurationsFromTemplates(
+				result.workflows,
+				nodeName,
+				nodeVersion,
+			);
+
+			logger?.debug('Fetched node configurations from templates API', {
+				nodeName,
+				nodeVersion,
+				count: nodeConfigs.length,
+				workflowCount: result.workflows.length,
+			});
+
+			return { examples: nodeConfigs, newTemplates: result.workflows };
+		}
+	} catch (error) {
+		logger?.warn('Failed to fetch node examples from templates', { nodeName, error });
+	}
+
+	return { examples: [] };
+}
+
+/**
  * Factory function to create the node details tool
  */
-export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
+export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[], logger?: Logger) {
 	const dynamicTool = tool(
-		(input: unknown, config) => {
+		async (input: unknown, config) => {
 			const reporter = createProgressReporter(
 				config,
 				NODE_DETAILS_TOOL.toolName,
@@ -144,7 +258,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 			try {
 				// Validate input using Zod schema
 				const validatedInput = nodeDetailsSchema.parse(input);
-				const { nodeName, withParameters, withConnections } = validatedInput;
+				const { nodeName, nodeVersion, withParameters, withConnections } = validatedInput;
 
 				// Report tool start
 				reporter.start(validatedInput);
@@ -153,7 +267,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				reportProgress(reporter, `Looking up details for ${nodeName}...`);
 
 				// Find the node type
-				const nodeType = findNodeType(nodeName, nodeTypes);
+				const nodeType = findNodeType(nodeName, nodeVersion, nodeTypes);
 
 				if (!nodeType) {
 					const error = createNodeTypeNotFoundError(nodeName);
@@ -164,8 +278,25 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				// Extract node details
 				const details = extractNodeDetails(nodeType);
 
-				// Format the output message
-				const message = formatNodeDetails(details, withParameters, withConnections);
+				// Extract resource/operation info for nodes that follow this pattern
+				const resourceOperationInfo = extractResourceOperations(nodeType, nodeVersion, logger);
+
+				// Get example configurations (from cache or fetch from templates)
+				const { examples, newTemplates } = await getNodeExamples(
+					nodeName,
+					nodeVersion,
+					logger,
+					(msg) => reportProgress(reporter, msg),
+				);
+
+				// Format the output message with examples and resource/operation info
+				const message = formatNodeDetails(
+					details,
+					withParameters,
+					withConnections,
+					examples,
+					resourceOperationInfo,
+				);
 
 				// Report completion
 				const output: NodeDetailsOutput = {
@@ -175,8 +306,19 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 				};
 				reporter.complete(output);
 
-				// Return success response
-				return createSuccessResponse(config, message);
+				// Build state updates: cache resource operation info and new templates
+				const cacheKey = createResourceCacheKey(nodeName, nodeVersion);
+				const stateUpdates: Record<string, unknown> = {
+					// Cache the resource operation info (including null for nodes without resources)
+					resourceOperationCache: { [cacheKey]: resourceOperationInfo },
+				};
+
+				// Add new templates if fetched
+				if (newTemplates) {
+					stateUpdates.cachedTemplates = newTemplates;
+				}
+
+				return createSuccessResponse(config, message, stateUpdates);
 			} catch (error) {
 				// Handle validation or unexpected errors
 				if (error instanceof z.ZodError) {
@@ -201,7 +343,7 @@ export function createNodeDetailsTool(nodeTypes: INodeTypeDescription[]) {
 		{
 			name: NODE_DETAILS_TOOL.toolName,
 			description:
-				'Get detailed information about a specific n8n node type including properties and available connections. Use this before adding nodes to understand their input/output structure.',
+				'Get detailed information about a specific n8n node type including properties, available connections, and up to 5 example configurations. Use this before adding nodes to understand their input/output structure.',
 			schema: nodeDetailsSchema,
 		},
 	);

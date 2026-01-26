@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-extension-insights",
-  "version": "0.8.0",
+  "version": "0.11.0",
   "type": "module",
   "files": [
     "dist",
@@ -16,13 +16,13 @@
       "require": "./n8n.manifest.json"
     },
     "./backend": {
-      "types": "./dist/backend/index.d.ts",
-      "import": "./dist/backend/index.js",
+      "types": "./dist/backend/index.d.mts",
+      "import": "./dist/backend/index.mjs",
       "require": "./dist/backend/index.cjs"
     },
     "./frontend": {
-      "types": "./dist/frontend/index.d.ts",
-      "import": "./dist/frontend/index.js",
+      "types": "./dist/frontend/index.d.mts",
+      "import": "./dist/frontend/index.mjs",
       "require": "./dist/frontend/index.umd.cjs"
     },
     "./*": "./*"
@@ -32,12 +32,8 @@
     "dev": "tsdown --watch",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
-    "lint:styles": "run-script-os",
-    "lint:styles:default": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --custom-formatter $(pwd)/../../../packages/@n8n/stylelint-config/dist/formatter-summary.js",
-    "lint:styles:windows": "stylelint \"src/**/*.{scss,sass,vue}\" --cache --custom-formatter \"%cd%/../../../packages/@n8n/stylelint-config/dist/formatter-summary.js\"",
-    "lint:styles:fix": "run-script-os",
-    "lint:styles:fix:default": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --custom-formatter $(pwd)/../../../packages/@n8n/stylelint-config/dist/formatter-summary.js",
-    "lint:styles:fix:windows": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache --custom-formatter \"%cd%/../../../packages/@n8n/stylelint-config/dist/formatter-summary.js\"",
+    "lint:styles": "stylelint \"src/**/*.{scss,sass,vue}\" --cache",
+    "lint:styles:fix": "stylelint \"src/**/*.{scss,sass,vue}\" --fix --cache",
     "typecheck": "vue-tsc --noEmit",
     "build:backend": "tsdown",
     "build:frontend": "vite build",
@@ -52,7 +48,6 @@
     "@n8n/extension-sdk": "workspace:*"
   },
   "devDependencies": {
-    "run-script-os": "catalog:",
     "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",

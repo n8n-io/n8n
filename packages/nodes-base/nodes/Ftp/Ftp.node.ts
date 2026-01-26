@@ -8,6 +8,7 @@ import type {
 	IExecuteFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
@@ -108,6 +109,17 @@ function normalizeFtpItem(input: ftpClient.ListingElement, path: string, recursi
 	//@ts-ignore
 	item.date = undefined;
 }
+
+const timeoutOption: INodeProperties = {
+	displayName: 'Timeout',
+	name: 'timeout',
+	description: 'Connection timeout in milliseconds',
+	type: 'number',
+	typeOptions: {
+		minValue: 1,
+	},
+	default: 10000,
+};
 
 export class Ftp implements INodeType {
 	description: INodeTypeDescription = {
@@ -256,6 +268,7 @@ export class Ftp implements INodeType {
 						default: false,
 						description: 'Whether to remove all files and directories in target directory',
 					},
+					timeoutOption,
 				],
 			},
 
@@ -331,6 +344,7 @@ export class Ftp implements INodeType {
 							},
 						},
 					},
+					timeoutOption,
 				],
 			},
 			// ----------------------------------
@@ -382,6 +396,7 @@ export class Ftp implements INodeType {
 						description:
 							'Whether to recursively create destination directory when renaming an existing file or folder',
 					},
+					timeoutOption,
 				],
 			},
 
@@ -442,6 +457,19 @@ export class Ftp implements INodeType {
 				default: '',
 				description: 'The text content of the file to upload',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['upload'],
+					},
+				},
+				options: [timeoutOption],
+			},
 
 			// ----------------------------------
 			//         list
@@ -473,6 +501,19 @@ export class Ftp implements INodeType {
 				description:
 					'Whether to return object representing all directories / objects recursively found within SFTP server',
 				required: true,
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Field',
+				default: {},
+				displayOptions: {
+					show: {
+						operation: ['list'],
+					},
+				},
+				options: [timeoutOption],
 			},
 		],
 	};
@@ -553,6 +594,8 @@ export class Ftp implements INodeType {
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
 
+		const connectionTimeout = this.getNodeParameter('options.timeout', 0, 10000) as number;
+
 		if (protocol === 'sftp') {
 			credentials = await this.getCredentials<ICredentialDataDecryptedObject>('sftp');
 		} else {
@@ -573,7 +616,7 @@ export class Ftp implements INodeType {
 							password: (credentials.password as string) || undefined,
 							privateKey: formatPrivateKey(credentials.privateKey as string),
 							passphrase: credentials.passphrase as string | undefined,
-							readyTimeout: 10000,
+							readyTimeout: connectionTimeout,
 							algorithms: {
 								compress: ['zlib@openssh.com', 'zlib', 'none'],
 							},
@@ -584,7 +627,7 @@ export class Ftp implements INodeType {
 							port: credentials.port as number,
 							username: credentials.username as string,
 							password: credentials.password as string,
-							readyTimeout: 10000,
+							readyTimeout: connectionTimeout,
 							algorithms: {
 								compress: ['zlib@openssh.com', 'zlib', 'none'],
 							},
@@ -597,6 +640,7 @@ export class Ftp implements INodeType {
 						port: credentials.port as number,
 						user: credentials.username as string,
 						password: credentials.password as string,
+						connTimeout: connectionTimeout,
 					});
 				}
 			} catch (error) {

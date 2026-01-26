@@ -13,6 +13,23 @@ export type RunningJobSummary = {
 export type WorkerStatus = {
 	senderId: string;
 	runningJobsSummary: RunningJobSummary[];
+	isInContainer: boolean;
+	process: {
+		memory: {
+			available: number;
+			constraint: number;
+			rss: number;
+			heapTotal: number;
+			heapUsed: number;
+		};
+		uptime: number;
+	};
+	host: {
+		memory: {
+			total: number;
+			free: number;
+		};
+	};
 	freeMem: number;
 	totalMem: number;
 	uptime: number;

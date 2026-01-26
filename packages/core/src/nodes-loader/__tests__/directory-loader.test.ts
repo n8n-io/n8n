@@ -26,6 +26,7 @@ jest.mock('fast-glob', () => async (pattern: string) => {
 
 import { NodeTypes } from '@test/helpers';
 
+import { CUSTOM_NODES_PACKAGE_NAME } from '../constants';
 import { CustomDirectoryLoader } from '../custom-directory-loader';
 import { DirectoryLoader } from '../directory-loader';
 import { LazyPackageDirectoryLoader } from '../lazy-package-directory-loader';
@@ -84,7 +85,7 @@ describe('DirectoryLoader', () => {
 	describe('CustomDirectoryLoader', () => {
 		it('should load custom nodes and credentials', async () => {
 			const loader = new CustomDirectoryLoader(directory);
-			expect(loader.packageName).toEqual('CUSTOM');
+			expect(loader.packageName).toEqual(CUSTOM_NODES_PACKAGE_NAME);
 
 			await loader.loadAll();
 
@@ -105,6 +106,58 @@ describe('DirectoryLoader', () => {
 			expect(mockNode2.description.iconUrl).toBe('icons/CUSTOM/dist/Node2/node2.svg');
 
 			expect(mockFs.readFileSync).not.toHaveBeenCalled();
+		});
+
+		it('should load custom nodes when specified with CUSTOM prefix in includeNodes', async () => {
+			const loader = new CustomDirectoryLoader(directory, [], ['CUSTOM.node1', 'CUSTOM.node2']);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
+				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(2);
+		});
+
+		it('should load only specified custom nodes when includeNodes contains mixed packages', async () => {
+			const loader = new CustomDirectoryLoader(
+				directory,
+				[],
+				['n8n-nodes-base.aggregate', 'CUSTOM.node1'],
+			);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(1);
+			// node2 should not be loaded
+		});
+
+		it('should not load any custom nodes when only built-in nodes are in includeNodes', async () => {
+			const loader = new CustomDirectoryLoader(
+				directory,
+				[],
+				['n8n-nodes-base.aggregate', 'n8n-nodes-base.httpRequest'],
+			);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({});
+			expect(loader.types.nodes).toEqual([]);
+		});
+
+		it('should exclude custom nodes when specified with CUSTOM prefix in excludeNodes', async () => {
+			const loader = new CustomDirectoryLoader(directory, ['CUSTOM.node1'], []);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(1);
 		});
 	});
 
@@ -798,7 +851,7 @@ describe('DirectoryLoader', () => {
 
 			expect(loader.loadedNodes).toEqual([{ name: 'test', version: 2 }]);
 
-			const nodes = loader.types.nodes as INodeTypeDescription[];
+			const nodes = loader.types.nodes;
 			expect(nodes).toHaveLength(2);
 			expect(nodes[0]?.version).toBe(2);
 			expect(nodes[1]?.version).toBe(1);

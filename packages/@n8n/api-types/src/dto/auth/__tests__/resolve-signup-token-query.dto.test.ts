@@ -6,10 +6,29 @@ describe('ResolveSignupTokenQueryDto', () => {
 	describe('Valid requests', () => {
 		test.each([
 			{
-				name: 'standard UUID',
+				name: 'legacy format with both inviterId and inviteeId',
 				request: {
 					inviterId: validUuid,
 					inviteeId: validUuid,
+				},
+			},
+			{
+				name: 'JWT token format',
+				request: {
+					token:
+						'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpbnZpdGVySWQiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAiLCJpbnZpdGVlSWQiOiIxMjNlNDU2Ny1lODliLTEyZDMtYTQ1Ni00MjY2MTQxNzQwMDAifQ.test',
+				},
+			},
+			{
+				name: 'missing inviterId (could be token-based)',
+				request: {
+					inviteeId: validUuid,
+				},
+			},
+			{
+				name: 'missing inviteeId (could be token-based)',
+				request: {
+					inviterId: validUuid,
 				},
 			},
 		])('should validate $name', ({ request }) => {
@@ -33,20 +52,6 @@ describe('ResolveSignupTokenQueryDto', () => {
 				request: {
 					inviterId: validUuid,
 					inviteeId: 'not-a-valid-uuid',
-				},
-				expectedErrorPath: ['inviteeId'],
-			},
-			{
-				name: 'missing inviterId',
-				request: {
-					inviteeId: validUuid,
-				},
-				expectedErrorPath: ['inviterId'],
-			},
-			{
-				name: 'missing inviteeId',
-				request: {
-					inviterId: validUuid,
 				},
 				expectedErrorPath: ['inviteeId'],
 			},

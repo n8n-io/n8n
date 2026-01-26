@@ -16,6 +16,8 @@ import { bucketFields, bucketOperations } from './BucketDescription';
 import { fileFields, fileOperations } from './FileDescription';
 import { folderFields, folderOperations } from './FolderDescription';
 import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
+import { awsNodeAuthOptions, awsNodeCredentials } from '../../utils';
+import { getAwsCredentials } from '../../GenericFunctions';
 
 // Minimum size 5MB for multipart upload in S3
 const UPLOAD_CHUNK_SIZE = 5120 * 1024;
@@ -39,13 +41,9 @@ export class AwsS3V2 implements INodeType {
 			usableAsTool: true,
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],
-			credentials: [
-				{
-					name: 'aws',
-					required: true,
-				},
-			],
+			credentials: awsNodeCredentials,
 			properties: [
+				awsNodeAuthOptions,
 				{
 					displayName: 'Resource',
 					name: 'resource',
@@ -87,13 +85,14 @@ export class AwsS3V2 implements INodeType {
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
+		const { credentials } = await getAwsCredentials(this);
+
 		for (let i = 0; i < items.length; i++) {
 			let headers: IDataObject = {};
 			try {
 				if (resource === 'bucket') {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html
 					if (operation === 'create') {
-						const credentials = await this.getCredentials('aws');
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {

@@ -34,4 +34,36 @@ describe('Cipher', () => {
 			expect(decrypted).toEqual('');
 		});
 	});
+
+	describe('getKeyAndIv', () => {
+		it('should generate a key and iv using instance settings encryption key', () => {
+			const salt = Buffer.from('test-salt');
+			mockInstance(InstanceSettings, { encryptionKey: 'settings-encryption-key' });
+			// Clear the cached Cipher instance to get a new one with the new mock
+			Container.set(Cipher, new Cipher(Container.get(InstanceSettings)));
+			const testCipher = Container.get(Cipher);
+			const bufferFromSpy = jest.spyOn(Buffer, 'from');
+			// @ts-expect-error - getKeyAndIv is private
+			const [key, iv] = testCipher.getKeyAndIv(salt);
+			expect(key).toBeInstanceOf(Buffer);
+			expect(iv).toBeInstanceOf(Buffer);
+			expect(bufferFromSpy).toHaveBeenCalledWith('settings-encryption-key', 'binary');
+			bufferFromSpy.mockRestore();
+		});
+
+		it('should generate a key and iv using custom encryption key', () => {
+			const salt = Buffer.from('test-salt');
+			mockInstance(InstanceSettings, { encryptionKey: 'settings-encryption-key' });
+			// Clear the cached Cipher instance to get a new one with the new mock
+			Container.set(Cipher, new Cipher(Container.get(InstanceSettings)));
+			const testCipher = Container.get(Cipher);
+			const bufferFromSpy = jest.spyOn(Buffer, 'from');
+			// @ts-expect-error - getKeyAndIv is private
+			const [key, iv] = testCipher.getKeyAndIv(salt, 'custom-encryption-key');
+			expect(key).toBeInstanceOf(Buffer);
+			expect(iv).toBeInstanceOf(Buffer);
+			expect(bufferFromSpy).toHaveBeenCalledWith('custom-encryption-key', 'binary');
+			bufferFromSpy.mockRestore();
+		});
+	});
 });

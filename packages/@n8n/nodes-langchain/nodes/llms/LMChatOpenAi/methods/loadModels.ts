@@ -3,6 +3,8 @@ import OpenAI from 'openai';
 
 import { shouldIncludeModel } from '../../../vendors/OpenAi/helpers/modelFiltering';
 import { getProxyAgent } from '@utils/httpProxyAgent';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 export async function searchModels(
 	this: ILoadOptionsFunctions,
@@ -13,6 +15,7 @@ export async function searchModels(
 		(this.getNodeParameter('options.baseURL', '') as string) ||
 		(credentials.url as string) ||
 		'https://api.openai.com/v1';
+	const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 	const openai = new OpenAI({
 		baseURL,
@@ -20,11 +23,12 @@ export async function searchModels(
 		fetchOptions: {
 			dispatcher: getProxyAgent(baseURL),
 		},
+		defaultHeaders,
 	});
 	const { data: models = [] } = await openai.models.list();
 
 	const url = baseURL && new URL(baseURL);
-	const isCustomAPI = !!(url && url.hostname !== 'api.openai.com');
+	const isCustomAPI = !!(url && !['api.openai.com', 'ai-assistant.n8n.io'].includes(url.hostname));
 
 	const filteredModels = models.filter((model: { id: string }) => {
 		const includeModel = shouldIncludeModel(model.id, isCustomAPI);

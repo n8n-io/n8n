@@ -21,7 +21,12 @@ export type PubSubCommandMap = {
 	'reload-oidc-config': never;
 	'reload-saml-config': never;
 
+	// # sso provisioning
+	'reload-sso-provisioning-configuration': never;
+
 	// #endregion
+
+	'reload-source-control-config': never;
 
 	// #region Community packages
 
@@ -45,7 +50,9 @@ export type PubSubCommandMap = {
 
 	'get-worker-id': never;
 
-	'get-worker-status': never;
+	'get-worker-status': {
+		requestingUserId: string;
+	};
 
 	// #endregion
 
@@ -53,6 +60,7 @@ export type PubSubCommandMap = {
 
 	'add-webhooks-triggers-and-pollers': {
 		workflowId: string;
+		activeVersionId: string;
 	};
 
 	'remove-triggers-and-pollers': {
@@ -61,6 +69,7 @@ export type PubSubCommandMap = {
 
 	'display-workflow-activation': {
 		workflowId: string;
+		activeVersionId: string;
 	};
 
 	'display-workflow-deactivation': {
@@ -87,7 +96,9 @@ export type PubSubCommandMap = {
 };
 
 export type PubSubWorkerResponseMap = {
-	'response-to-get-worker-status': WorkerStatus;
+	'response-to-get-worker-status': WorkerStatus & {
+		requestingUserId: string;
+	};
 };
 
 export type PubSubEventMap = PubSubCommandMap & PubSubWorkerResponseMap;

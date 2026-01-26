@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 
@@ -60,9 +61,26 @@ export async function userHasScopes(
 
 		const validRoles = await roleService.rolesWithScope('credential', scopes);
 
-		return credentials.some(
+		const hasValidRoles = credentials.some(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
 		);
+
+		if (hasValidRoles) {
+			return true;
+		}
+
+		// Check for global credentials with read-only access
+		const credentialsFinderService = Container.get(CredentialsFinderService);
+		if (credentialsFinderService.hasGlobalReadOnlyAccess(scopes)) {
+			const globalCredential =
+				await credentialsFinderService.findGlobalCredentialById(credentialId);
+
+			if (globalCredential) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	if (workflowId) {

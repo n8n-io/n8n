@@ -18,7 +18,6 @@ import type {
 	INodeProperties,
 	INodeType,
 	IVersionedNodeType,
-	IRunExecutionData,
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	INodeTypeData,
@@ -27,7 +26,13 @@ import type {
 	IDataObject,
 	IExecuteData,
 } from 'n8n-workflow';
-import { VersionedNodeType, NodeHelpers, Workflow, UnexpectedError } from 'n8n-workflow';
+import {
+	VersionedNodeType,
+	NodeHelpers,
+	Workflow,
+	UnexpectedError,
+	createEmptyRunExecutionData,
+} from 'n8n-workflow';
 
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsHelper } from '../credentials-helper';
@@ -209,12 +214,14 @@ export class CredentialsTester {
 				credentialsDataSecretKeys = getAllKeyPaths(credentialsDecrypted.data, '', [], (value) =>
 					value.includes('$secrets.'),
 				);
+				const canUseExternalSecrets =
+					await this.credentialsHelper.credentialCanUseExternalSecrets(credentialsDecrypted);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
 					additionalData,
 					credentialsDecrypted.data,
-					credentialsDecrypted,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
+					canUseExternalSecrets,
 					undefined,
 					undefined,
 				);
@@ -321,11 +328,7 @@ export class CredentialsTester {
 			main: [[{ json: {} }]],
 		};
 		const connectionInputData: INodeExecutionData[] = [];
-		const runExecutionData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runExecutionData = createEmptyRunExecutionData();
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			userId,

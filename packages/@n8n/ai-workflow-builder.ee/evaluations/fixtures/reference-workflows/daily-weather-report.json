@@ -1,0 +1,157 @@
+{
+	"nodes": [
+		{
+			"id": "e4a47266-49cd-4164-b8cb-0405bee1649a",
+			"name": "Every Morning at 5 AM",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"position": [250, 450],
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "days",
+							"daysInterval": 1,
+							"triggerAtHour": 5,
+							"triggerAtMinute": 0
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "00a8b0f7-541c-43f0-b30a-c1661e354e38",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "location",
+							"value": "<__PLACEHOLDER_VALUE__Your city name or coordinates__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "emailRecipient",
+							"value": "<__PLACEHOLDER_VALUE__Your email address__>",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			}
+		},
+		{
+			"id": "ed853251-b59b-485a-9c48-dda3933df3dc",
+			"name": "Get Current Weather",
+			"type": "n8n-nodes-base.openWeatherMap",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"operation": "currentWeather",
+				"locationSelection": "cityName",
+				"cityName": "={{ $('Workflow Configuration').first().json.location }}",
+				"format": "metric"
+			}
+		},
+		{
+			"id": "beb0eb93-3500-4597-8445-7d1ed09360a2",
+			"name": "Generate Fun Weather Email",
+			"type": "@n8n/n8n-nodes-langchain.openAi",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "text",
+				"operation": "response",
+				"modelId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "gpt-4o-mini"
+				},
+				"responses": {
+					"values": [
+						{
+							"type": "text",
+							"role": "user",
+							"content": "=Weather data for today:\n\nLocation: {{ $json.name }}\nTemperature: {{ $json.main.temp }}°C (feels like {{ $json.main.feels_like }}°C)\nConditions: {{ $json.weather[0].description }}\nHumidity: {{ $json.main.humidity }}%\nWind Speed: {{ $json.wind.speed }} m/s\nVisibility: {{ $json.visibility }} meters\nSunrise: {{ new Date($json.sys.sunrise * 1000).toLocaleTimeString() }}\nSunset: {{ new Date($json.sys.sunset * 1000).toLocaleTimeString() }}"
+						}
+					]
+				},
+				"simplify": true,
+				"options": {
+					"instructions": "You are a friendly weather reporter who writes fun, personalized morning weather emails.\n\nYour task is to:\n1. Take the weather data provided and create an engaging, short email body\n2. Add personality and humor when describing the weather conditions\n3. Give practical advice about what to wear and how the day might feel\n4. Include all relevant details: temperature, feels-like temp, conditions, humidity, wind, visibility, sunrise/sunset times\n5. Keep it concise but informative (3-4 short paragraphs)\n6. Format the email in HTML with proper styling\n7. Use a warm, conversational tone\n\nReturn ONLY the HTML email body content, ready to send."
+				}
+			}
+		},
+		{
+			"id": "f53d847b-e696-4f55-8f14-0a919a34afbc",
+			"name": "Send Weather Email",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $('Workflow Configuration').first().json.emailRecipient }}",
+				"subject": "=🌤️ Your Daily Weather Report - {{ new Date().toLocaleDateString(\"en-US\", { weekday: \"long\", month: \"long\", day: \"numeric\" }) }}",
+				"emailType": "html",
+				"message": "={{ $json.message.content }}",
+				"options": {}
+			},
+			"webhookId": "b5f60775-237e-4417-b1a8-428089666ecf"
+		}
+	],
+	"connections": {
+		"Every Morning at 5 AM": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Get Current Weather",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Current Weather": {
+			"main": [
+				[
+					{
+						"node": "Generate Fun Weather Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Fun Weather Email": {
+			"main": [
+				[
+					{
+						"node": "Send Weather Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "Daily Morning Weather Report with Personalized Email"
+}

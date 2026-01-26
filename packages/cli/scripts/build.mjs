@@ -34,7 +34,7 @@ function generateUserManagementEmailTemplates() {
 		if (template.startsWith('_')) return;
 		const source = path.resolve(sourceDir, template);
 		const destination = path.resolve(destinationDir, template.replace(/\.mjml$/, '.handlebars'));
-		const command = `pnpm mjml --output ${destination} ${source}`;
+		const command = `pnpm mjml --output "${destination}" "${source}"`;
 		shell.exec(command, { silent: false });
 	});
 
@@ -68,7 +68,7 @@ function bundleOpenApiSpecs() {
 		}, [])
 		.forEach((specPath) => {
 			const distSpecPath = path.resolve(ROOT_DIR, 'dist', specPath);
-			const command = `pnpm openapi bundle src/${specPath} --output ${distSpecPath}`;
+			const command = `pnpm openapi bundle "src/${specPath}" --output "${distSpecPath}"`;
 
 			shell.exec(command, { silent: true });
 		});

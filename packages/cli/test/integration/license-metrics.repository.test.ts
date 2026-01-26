@@ -1,4 +1,4 @@
-import { createManyWorkflows, testDb } from '@n8n/backend-test-utils';
+import { createManyActiveWorkflows, createManyWorkflows, testDb } from '@n8n/backend-test-utils';
 import { StatisticsNames, LicenseMetricsRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -33,7 +33,7 @@ describe('LicenseMetricsRepository', () => {
 
 	describe('getLicenseRenewalMetrics', () => {
 		test('should return license renewal metrics', async () => {
-			const [firstWorkflow, secondWorkflow] = await createManyWorkflows(2, { active: false });
+			const [firstWorkflow, secondWorkflow] = await createManyWorkflows(2);
 
 			await Promise.all([
 				createOwner(),
@@ -42,7 +42,7 @@ describe('LicenseMetricsRepository', () => {
 				createMember(),
 				createUser({ disabled: true }),
 				createManyCredentials(2),
-				createManyWorkflows(3, { active: true }),
+				createManyActiveWorkflows(3),
 			]);
 
 			await Promise.all([
@@ -85,7 +85,8 @@ describe('LicenseMetricsRepository', () => {
 		});
 
 		test('should handle zero execution statistics correctly', async () => {
-			await Promise.all([createOwner(), createManyWorkflows(3, { active: true })]);
+			const owner = await createOwner();
+			await createManyActiveWorkflows(3, {}, owner);
 
 			const metrics = await licenseMetricsRepository.getLicenseRenewalMetrics();
 

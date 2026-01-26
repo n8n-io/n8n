@@ -1,11 +1,11 @@
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { BaseMessage } from '@langchain/core/messages';
-import type { Tool } from '@langchain/core/tools';
-import { Toolkit } from 'langchain/agents';
-import type { BaseChatMemory } from 'langchain/memory';
-import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { type DynamicStructuredTool, type StructuredTool, Tool } from '@langchain/core/tools';
+import type { JSONSchema7 } from 'json-schema';
+import { StructuredToolkit, type SupplyDataToolResponse } from 'n8n-core';
 import type {
 	AiEvent,
 	IDataObject,
@@ -13,8 +13,11 @@ import type {
 	ISupplyDataFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, jsonStringify } from 'n8n-workflow';
+import { ZodType } from 'zod';
 
 import { N8nTool } from './N8nTool';
+import { convertJsonSchemaToZod } from './schemaParsing';
 
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
 	return methodNames.every(
@@ -85,15 +88,24 @@ export function getPromptInputByType(options: {
 	let input;
 	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
+	} else if (promptType === 'guardrails') {
+		input = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
 	} else {
 		input = ctx.getNodeParameter(inputKey, i) as string;
 	}
 
 	if (input === undefined) {
-		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
-		});
+		if (promptType === 'auto' || promptType === 'guardrails') {
+			const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
+			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+				description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
+			});
+		} else {
+			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+				description:
+					'The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.',
+			});
+		}
 	}
 
 	return input;
@@ -198,22 +210,64 @@ export function escapeSingleCurlyBrackets(text?: string): string | undefined {
 	return result;
 }
 
+/* Convert tools with json schema to tools with zod schema and type Tool
+ * Most nodes expect tools to have a Zod schema and have Tool type, do this conversion to make sure all tools are compatible
+ */
+const normalizeToolSchema = (tool: Tool | DynamicStructuredTool | StructuredTool) => {
+	if (tool instanceof Tool) {
+		return tool;
+	}
+	const isZodObject = tool.schema instanceof ZodType;
+	if (tool.schema && !isZodObject) {
+		tool.schema = convertJsonSchemaToZod(tool.schema as JSONSchema7);
+	}
+
+	return tool as Tool;
+};
+
 export const getConnectedTools = async (
 	ctx: IExecuteFunctions | IWebhookFunctions | ISupplyDataFunctions,
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
-) => {
-	const connectedTools = (
-		((await ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Array<Toolkit | Tool>) ??
-		[]
-	).flatMap((toolOrToolkit) => {
-		if (toolOrToolkit instanceof Toolkit) {
-			return toolOrToolkit.getTools() as Tool[];
-		}
+): Promise<Tool[]> => {
+	const toolkitConnections = (await ctx.getInputConnectionData(
+		NodeConnectionTypes.AiTool,
+		0,
+	)) as SupplyDataToolResponse[];
 
-		return toolOrToolkit;
-	});
+	// Get parent nodes to map toolkits to their source nodes
+	const parentNodes =
+		'getParentNodes' in ctx
+			? ctx.getParentNodes(ctx.getNode().name, {
+					connectionType: NodeConnectionTypes.AiTool,
+					depth: 1,
+				})
+			: [];
+
+	const connectedTools = (toolkitConnections ?? [])
+		.flatMap((toolOrToolkit, index) => {
+			if (toolOrToolkit instanceof StructuredToolkit) {
+				const tools = toolOrToolkit.tools;
+				// Add metadata to each tool from the toolkit
+				return tools.map((tool) => {
+					const sourceNode = parentNodes[index] ?? tool.name;
+
+					tool.metadata ??= {};
+					tool.metadata.isFromToolkit = true;
+					tool.metadata.sourceNodeName = sourceNode?.name;
+					return tool;
+				});
+			} else {
+				const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
+				toolOrToolkit.metadata ??= {};
+				toolOrToolkit.metadata.isFromToolkit = false;
+				toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
+			}
+
+			return toolOrToolkit;
+		})
+		.map(normalizeToolSchema);
 
 	if (!enforceUniqueNames) return connectedTools;
 

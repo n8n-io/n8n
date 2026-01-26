@@ -23,6 +23,7 @@ describe('permissions', () => {
 			orchestration: {},
 			project: {},
 			saml: {},
+			provisioning: {},
 			securityAudit: {},
 			sourceControl: {},
 			tag: {},
@@ -39,6 +40,10 @@ describe('permissions', () => {
 			mcpApiKey: {},
 			role: {},
 			chatHub: {},
+			chatHubAgent: {},
+			breakingChanges: {},
+			apiKey: {},
+			credentialResolver: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -73,6 +78,8 @@ describe('permissions', () => {
 			'workflow:update',
 			'folder:create',
 			'insights:list',
+			'breakingChanges:list',
+			'apiKey:manage',
 		];
 
 		const permissionRecord: PermissionsRecord = {
@@ -106,6 +113,7 @@ describe('permissions', () => {
 			},
 			saml: {},
 			oidc: {},
+			provisioning: {},
 			mcp: {},
 			mcpApiKey: {},
 			securityAudit: {},
@@ -149,6 +157,14 @@ describe('permissions', () => {
 			workflowTags: {},
 			role: {},
 			chatHub: {},
+			chatHubAgent: {},
+			breakingChanges: {
+				list: true,
+			},
+			apiKey: {
+				manage: true,
+			},
+			credentialResolver: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

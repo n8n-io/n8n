@@ -1,7 +1,7 @@
 process.argv[2] = 'worker';
 
 import { mockInstance } from '@n8n/backend-test-utils';
-import { TaskRunnersConfig } from '@n8n/config';
+import { ExecutionsConfig, TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
 
@@ -19,10 +19,11 @@ import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { ScalingService } from '@/scaling/scaling.service';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
 import { JsTaskRunnerProcess } from '@/task-runners/task-runner-process-js';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
 import { Telemetry } from '@/telemetry';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
-config.set('executions.mode', 'queue');
+Container.get(ExecutionsConfig).mode = 'queue';
 config.set('binaryDataManager.availableModes', 'filesystem');
 Container.get(TaskRunnersConfig).enabled = true;
 mockInstance(LoadNodesAndCredentials);
@@ -35,6 +36,7 @@ const logStreamingEventRelay = mockInstance(LogStreamingEventRelay);
 const scalingService = mockInstance(ScalingService);
 const taskBrokerServer = mockInstance(TaskBrokerServer);
 const taskRunnerProcess = mockInstance(JsTaskRunnerProcess);
+mockInstance(PyTaskRunnerProcess);
 mockInstance(Publisher);
 mockInstance(Subscriber);
 mockInstance(Telemetry);
@@ -43,7 +45,7 @@ mockInstance(Push);
 const command = setupTestCommand(Worker);
 
 test('worker initializes all its components', async () => {
-	config.set('executions.mode', 'regular'); // should be overridden
+	Container.get(ExecutionsConfig).mode = 'regular'; // should be overridden
 
 	await command.run();
 
@@ -59,5 +61,5 @@ test('worker initializes all its components', async () => {
 	expect(taskBrokerServer.start).toHaveBeenCalledTimes(1);
 	expect(taskRunnerProcess.start).toHaveBeenCalledTimes(1);
 
-	expect(config.getEnv('executions.mode')).toBe('queue');
+	expect(Container.get(ExecutionsConfig).mode).toBe('queue');
 });

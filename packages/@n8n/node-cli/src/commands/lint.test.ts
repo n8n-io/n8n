@@ -129,7 +129,7 @@ describe('lint command', () => {
 
 		mockSpawn('pnpm', ['exec', '--', 'eslint', '.'], {
 			exitCode: 1,
-			stderr: 'Error: @n8n/eslint-plugin-community-nodes/no-restricted-globals rule failed',
+			stderr: 'Error: @n8n/community-nodes/no-restricted-globals rule failed',
 		});
 
 		await expect(CommandTester.run('lint')).rejects.toThrow('EEXIT: 1');

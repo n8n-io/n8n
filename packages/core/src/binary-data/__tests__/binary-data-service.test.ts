@@ -1,6 +1,9 @@
+import type { Logger } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 import { sign, JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { IBinaryData } from 'n8n-workflow';
+
+import type { ErrorReporter } from '@/errors';
 
 import type { BinaryDataConfig } from '../binary-data.config';
 import { BinaryDataService } from '../binary-data.service';
@@ -11,6 +14,8 @@ jest.useFakeTimers({ now });
 describe('BinaryDataService', () => {
 	const signingSecret = 'test-signing-secret';
 	const config = mock<BinaryDataConfig>({ signingSecret });
+	const logger = mock<Logger>();
+	const errorReporter = mock<ErrorReporter>();
 	const binaryData = mock<IBinaryData>({ id: 'filesystem:id_123' });
 	const validToken = sign({ id: binaryData.id }, signingSecret, { expiresIn: '1 day' });
 
@@ -19,7 +24,7 @@ describe('BinaryDataService', () => {
 		jest.resetAllMocks();
 
 		config.signingSecret = signingSecret;
-		service = new BinaryDataService(config);
+		service = new BinaryDataService(config, errorReporter, logger);
 	});
 
 	describe('createSignedToken', () => {

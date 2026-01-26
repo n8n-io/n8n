@@ -6,9 +6,13 @@ import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
-import { shouldRestartParentExecution } from './workflow-helpers';
+import {
+	shouldRestartParentExecution,
+	updateParentExecutionWithChildResults,
+} from './workflow-helpers';
 
 @Service()
 export class WaitTracker {
@@ -124,14 +128,42 @@ export class WaitTracker {
 		};
 
 		// Start the execution again
-		await this.workflowRunner.run(data, false, false, executionId);
+		try {
+			await this.workflowRunner.run(data, false, false, executionId);
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) {
+				// This execution is already being resumed by another child execution
+				// This is expected in "run once for each item" mode when multiple children complete
+				this.logger.debug(
+					`Execution ${executionId} is already being resumed, skipping duplicate resume`,
+					{ executionId },
+				);
+				return;
+			}
+			// Rethrow any other errors
+			throw error;
+		}
 
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
-				void this.startExecution(parentExecution.executionId);
-			});
+			void this.activeExecutions
+				.getPostExecutePromise(executionId)
+				.then(async (subworkflowResults) => {
+					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+					await updateParentExecutionWithChildResults(
+						this.executionRepository,
+						parentExecution.executionId,
+						subworkflowResults,
+					);
+					return subworkflowResults;
+				})
+				.then((subworkflowResults) => {
+					if (!subworkflowResults) return;
+					if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
+					void this.startExecution(parentExecution.executionId);
+				});
 		}
 	}
 

@@ -66,4 +66,12 @@ export class ResourceCards {
 		const folderCard = this.getFolder(folderName);
 		await this.clickCardAction(folderCard, 'delete');
 	}
+
+	async clickWorkflowCard(workflowName: string): Promise<void> {
+		await this.getWorkflow(workflowName).getByTestId('card-content').click();
+	}
+
+	async clickCredentialCard(credentialName: string): Promise<void> {
+		await this.getCredential(credentialName).getByTestId('card-content').click();
+	}
 }

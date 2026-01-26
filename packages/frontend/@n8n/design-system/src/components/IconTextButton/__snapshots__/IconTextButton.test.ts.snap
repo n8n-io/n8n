@@ -1,0 +1,28 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`components > IconTextButton > should render active state 1`] = `
+"<button class="button active" type="button">
+  <n8n-icon-stub icon="undo-2" size="medium" spin="false"></n8n-icon-stub>Button text
+  <!--v-if-->
+</button>"
+`;
+
+exports[`components > IconTextButton > should render correctly with default props 1`] = `
+"<button class="button" type="button">
+  <n8n-icon-stub icon="undo-2" size="medium" spin="false"></n8n-icon-stub>Button text
+  <!--v-if-->
+</button>"
+`;
+
+exports[`components > IconTextButton > should render disabled state 1`] = `
+"<button class="button disabled" type="button" disabled="">
+  <n8n-icon-stub icon="undo-2" size="medium" spin="false"></n8n-icon-stub>Button text
+  <!--v-if-->
+</button>"
+`;
+
+exports[`components > IconTextButton > should render icon on the right when iconPosition is right 1`] = `
+"<button class="button" type="button">
+  <!--v-if-->Button text<n8n-icon-stub icon="arrow-up-right" size="medium" spin="false"></n8n-icon-stub>
+</button>"
+`;

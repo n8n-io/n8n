@@ -50,6 +50,7 @@ export function executeErrorWorkflow(
 					lastNodeExecuted: fullRunData.data.resultData.lastNodeExecuted!,
 					mode,
 					retryOf,
+					executionContext: fullRunData.data.executionData?.runtimeData,
 				},
 				workflow: {
 					id: workflowId,

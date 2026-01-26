@@ -1,6 +1,6 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { createActiveWorkflow, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { generateNanoId, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -29,7 +29,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity']);
+	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
 });
 
 afterAll(async () => {
@@ -39,11 +39,8 @@ afterAll(async () => {
 test('should report webhook lacking authentication', async () => {
 	const targetNodeId = uuid();
 
-	const details = {
-		id: generateNanoId(),
+	await createActiveWorkflow({
 		name: 'My Test Workflow',
-		active: true,
-		nodeTypes: {},
 		connections: {},
 		nodes: [
 			{
@@ -59,9 +56,7 @@ test('should report webhook lacking authentication', async () => {
 				webhookId: uuid(),
 			},
 		],
-	};
-
-	await Container.get(WorkflowRepository).save(details);
+	});
 
 	const testAudit = await securityAuditService.run(['instance']);
 
@@ -82,11 +77,8 @@ test('should report webhook lacking authentication', async () => {
 
 test('should not report webhooks having basic or header auth', async () => {
 	const promises = ['basicAuth', 'headerAuth'].map(async (authType) => {
-		const details = {
-			id: generateNanoId(),
+		return await createActiveWorkflow({
 			name: 'My Test Workflow',
-			active: true,
-			nodeTypes: {},
 			connections: {},
 			nodes: [
 				{
@@ -103,9 +95,7 @@ test('should not report webhooks having basic or header auth', async () => {
 					webhookId: uuid(),
 				},
 			],
-		};
-
-		return await Container.get(WorkflowRepository).save(details);
+		});
 	});
 
 	await Promise.all(promises);
@@ -127,11 +117,8 @@ test('should not report webhooks having basic or header auth', async () => {
 
 test('should not report webhooks validated by direct children', async () => {
 	const promises = [...WEBHOOK_VALIDATOR_NODE_TYPES].map(async (nodeType) => {
-		const details = {
-			id: generateNanoId(),
+		return await createActiveWorkflow({
 			name: 'My Test Workflow',
-			active: true,
-			nodeTypes: {},
 			nodes: [
 				{
 					parameters: {
@@ -151,6 +138,7 @@ test('should not report webhooks validated by direct children', async () => {
 					type: nodeType,
 					typeVersion: 1,
 					position: [0, 0] as [number, number],
+					parameters: {},
 				},
 			],
 			connections: {
@@ -166,9 +154,7 @@ test('should not report webhooks validated by direct children', async () => {
 					],
 				},
 			},
-		};
-
-		return await Container.get(WorkflowRepository).save(details);
+		});
 	});
 
 	await Promise.all(promises);
@@ -255,7 +241,10 @@ test('should report security settings', async () => {
 			templatesEnabled: true,
 			publicApiEnabled: false,
 		},
-		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
+		nodes: {
+			nodesExclude: 'n8n-nodes-base.executeCommand, n8n-nodes-base.localFileTrigger',
+			nodesInclude: 'none',
+		},
 		telemetry: { diagnosticsEnabled: true },
 	});
 });

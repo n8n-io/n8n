@@ -67,7 +67,7 @@ export class ScalingService {
 
 		this.queue = new BullQueue(QUEUE_NAME, {
 			prefix,
-			settings: this.globalConfig.queue.bull.settings,
+			settings: { ...this.globalConfig.queue.bull.settings, maxStalledCount: 0 },
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 
@@ -324,11 +324,22 @@ export class ScalingService {
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
-					this.activeExecutions.resolveResponsePromise(msg.executionId, {});
-					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
+					if (msg.success) {
+						this.activeExecutions.resolveResponsePromise(msg.executionId, {});
+					} else {
+						this.activeExecutions.resolveResponsePromise(msg.executionId, {
+							body: {
+								message: 'Workflow execution failed',
+							},
+							statusCode: 500,
+						});
+					}
+
+					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
 						workerId: msg.workerId,
 						executionId: msg.executionId,
 						jobId,
+						success: msg.success,
 					});
 					break;
 				case 'job-failed':

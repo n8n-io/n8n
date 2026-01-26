@@ -6,7 +6,7 @@
 	width: 100%;
 	height: 16px;
 	border-radius: var(--radius--lg);
-	background: var(--color--background);
+	background: var(--color--background--light-2);
 	display: inline-block;
 }
 
@@ -59,15 +59,15 @@
 		linear,
 		left top,
 		right top,
-		color-stop(25%, var(--color--background)),
-		color-stop(37%, var(--color--background--shade-1)),
-		color-stop(63%, var(--color--background))
+		color-stop(25%, var(--color--background--light-1)),
+		color-stop(37%, var(--color--background--light-2)),
+		color-stop(63%, var(--color--background--light-1))
 	);
 	background: linear-gradient(
 		90deg,
-		var(--color--background) 25%,
-		var(--color--background--shade-1) 37%,
-		var(--color--background) 63%
+		var(--color--background--light-1) 25%,
+		var(--color--background--light-2) 37%,
+		var(--color--background--light-1) 63%
 	);
 	background-size: 400% 100%;
 	-webkit-animation: el-skeleton-loading 1.4s ease infinite;

@@ -75,7 +75,7 @@ function onMouseLeave() {
 }
 
 .num {
-	color: var(--p--color--white);
+	color: var(--color--neutral-white);
 	background: var(--assistant--color--highlight-gradient--reverse);
 	border-radius: 50%;
 	width: var(--spacing--sm);

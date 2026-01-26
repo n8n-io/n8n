@@ -20,7 +20,10 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		private workflowLoader: IWorkflowLoader,
 	) {}
 
-	async getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null> {
+	async getWorkflowNodeContext(
+		nodeType: string,
+		useActiveVersion: boolean = false,
+	): Promise<IWorkflowNodeContext | null> {
 		const { value: workflowId } = this.getCurrentNodeParameter(
 			'workflowId',
 		) as INodeParameterResourceLocator;
@@ -31,7 +34,13 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
-		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType);
+		if (useActiveVersion && !dbWorkflow.activeVersion) {
+			throw new ApplicationError(`No active version found for workflow "${workflowId}"!`);
+		}
+
+		const selectedWorkflowNode = (
+			useActiveVersion ? dbWorkflow.activeVersion!.nodes : dbWorkflow.nodes
+		).find((node) => node.type === nodeType);
 
 		if (selectedWorkflowNode) {
 			const selectedSingleNodeWorkflow = new Workflow({

@@ -3,4 +3,5 @@ import { Z } from 'zod-class';
 
 export class ImportWorkflowFromUrlDto extends Z.class({
 	url: z.string().url(),
+	projectId: z.string(),
 }) {}

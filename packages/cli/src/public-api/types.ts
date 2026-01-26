@@ -82,10 +82,16 @@ export declare namespace WorkflowRequest {
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
-	type Activate = Get;
+	type Activate = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{ versionId?: string; name?: string; description?: string },
+		{}
+	>;
 	type GetTags = Get;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
+	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 
 export declare namespace UserRequest {
@@ -136,6 +142,20 @@ export declare namespace CredentialRequest {
 		{},
 		{},
 		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{}
+	>;
+
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{
+			type?: string;
+			name?: string;
+			data?: ICredentialDataDecryptedObject;
+			isGlobal?: boolean;
+			isResolvable?: boolean;
+			isPartialData?: boolean;
+		},
 		{}
 	>;
 

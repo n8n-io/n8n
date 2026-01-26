@@ -1,0 +1,4 @@
+
+> n8n@1.121.0 build /Users/mutasem/repos/n8n-worktree/global-creds/packages/cli
+> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
+

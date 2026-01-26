@@ -11,9 +11,6 @@
     "./rules": {
       "default": "./dist/rules/index.js",
       "types": "./dist/rules/index.d.ts"
-    },
-    "./formatter-summary": {
-      "default": "./dist/formatter-summary.js"
     }
   },
   "scripts": {
@@ -23,6 +20,7 @@
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch"

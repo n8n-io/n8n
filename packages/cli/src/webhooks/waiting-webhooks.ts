@@ -14,6 +14,7 @@ import {
 	FORM_NODE_TYPE,
 	type INodes,
 	type IWorkflowBase,
+	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 	WAIT_NODE_TYPE,
 	Workflow,
@@ -29,9 +30,11 @@ import type {
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+import { applyCors } from '@/utils/cors.util';
 
 /**
  * Service for handling the execution of webhooks of Wait nodes that use the
@@ -52,6 +55,14 @@ export class WaitingWebhooks implements IWebhookManager {
 
 	// TODO: implement `getWebhookMethods` for CORS support
 
+	async findAccessControlOptions() {
+		// waiting webhooks do not support cors configuration options
+		// allow all origins because waiting webhook forms are always submitted in cors mode due to sandbox CSP
+		return {
+			allowedOrigins: '*',
+		};
+	}
+
 	protected logReceivedWebhook(method: string, executionId: string) {
 		this.logger.debug(`Received waiting-webhook "${method}" for execution "${executionId}"`);
 	}
@@ -70,13 +81,14 @@ export class WaitingWebhooks implements IWebhookManager {
 		);
 	}
 
-	private createWorkflow(workflowData: IWorkflowBase) {
+	// TODO: fix the type here - it should be execution workflowData
+	protected createWorkflow(workflowData: IWorkflowBase) {
 		return new Workflow({
 			id: workflowData.id,
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: workflowData.active,
+			active: getWorkflowActiveStatusFromWorkflowData(workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -168,6 +180,8 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 
+		applyCors(req, res);
+
 		return await this.getWebhookExecutionData({
 			execution,
 			req,
@@ -200,8 +214,35 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Remove waitTill information else the execution would stop
 		execution.data.waitTill = undefined;
 
+		// For HITL nodes, preserve inputOverride and set rewireOutputLogTo before popping run data
+		const nodeExecutionStack = execution.data.executionData?.nodeExecutionStack;
+		const executionStackEntry = nodeExecutionStack?.[0];
+		const isHitlNode = executionStackEntry?.node?.type?.endsWith('HitlTool') ?? false;
+
+		if (isHitlNode && executionStackEntry) {
+			// Set rewireOutputLogTo on the node so output is logged with ai_tool type
+			executionStackEntry.node.rewireOutputLogTo = NodeConnectionTypes.AiTool;
+		}
+
+		// Preserve inputOverride before popping (needed for tool nodes like HITL to show input in logs)
+		const runDataArray = execution.data.resultData.runData[lastNodeExecuted];
+		const entryToPop = runDataArray[runDataArray.length - 1];
+		const preservedInputOverride = entryToPop?.inputOverride;
+
 		// Remove the data of the node execution again else it will display the node as executed twice
-		execution.data.resultData.runData[lastNodeExecuted].pop();
+		runDataArray.pop();
+
+		// If we preserved inputOverride, create a placeholder entry so it can be retrieved
+		// when the node resumes and the taskData is created
+		if (preservedInputOverride) {
+			runDataArray.push({
+				startTime: 0,
+				executionTime: 0,
+				executionIndex: 0,
+				source: entryToPop?.source ?? [],
+				inputOverride: preservedInputOverride,
+			});
+		}
 
 		const { workflowData } = execution;
 		const workflow = this.createWorkflow(workflowData);

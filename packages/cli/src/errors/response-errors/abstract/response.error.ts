@@ -5,6 +5,14 @@ import { BaseError } from 'n8n-workflow';
  */
 export abstract class ResponseError extends BaseError {
 	/**
+	 * Optional metadata to be included in the error response.
+	 * This allows errors to include additional structured data beyond the standard
+	 * message, code, and hint fields. For example, LicenseEulaRequiredError uses
+	 * this to include the EULA URL that must be accepted.
+	 */
+	readonly meta?: Record<string, unknown>;
+
+	/**
 	 * Creates an instance of ResponseError.
 	 * Must be used inside a block with `ResponseHelper.send()`.
 	 */

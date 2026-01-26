@@ -20,6 +20,7 @@ export interface NodeSearchResult {
 	name: string;
 	displayName: string;
 	description: string;
+	version: number;
 	score: number;
 	inputs: INodeTypeDescription['inputs'];
 	outputs: INodeTypeDescription['outputs'];
