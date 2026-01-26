@@ -9,6 +9,7 @@ import { MAX_WORKFLOW_NAME_LENGTH, MODAL_CONFIRM, VIEWS } from '@/app/constants'
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -50,7 +51,6 @@ const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 };
 
 const props = defineProps<{
-	readOnly?: boolean;
 	id: IWorkflowDb['id'];
 	tags: IWorkflowDb['tags'];
 	name: IWorkflowDb['name'];
@@ -69,6 +69,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const collaborationStore = useCollaborationStore();
+const sourceControlStore = useSourceControlStore();
 const foldersStore = useFoldersStore();
 const i18n = useI18n();
 
@@ -104,10 +105,14 @@ const isNewWorkflow = computed(() => {
 
 const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
 
+const readOnly = computed(
+	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
+);
+
 // For workflow name and tags editing: needs update permission and not archived
 const readOnlyActions = computed(() => {
-	if (isNewWorkflow.value) return props.readOnly;
-	return props.readOnly || props.isArchived || !workflowPermissions.value.update;
+	if (isNewWorkflow.value) return readOnly.value;
+	return readOnly.value || props.isArchived || !workflowPermissions.value.update;
 });
 
 const workflowTagIds = computed(() => {
@@ -534,7 +539,6 @@ onBeforeUnmount(() => {
 				:tags="tags"
 				:name="name"
 				:meta="meta"
-				:read-only="props.readOnly"
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
