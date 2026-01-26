@@ -48,7 +48,10 @@ export interface IWorkflowResponse extends IWorkflowBase {
 }
 
 export interface IWorkflowToImport
-	extends Omit<IWorkflowBase, 'staticData' | 'pinData' | 'createdAt' | 'updatedAt'> {
+	extends Omit<
+		IWorkflowBase,
+		'staticData' | 'pinData' | 'createdAt' | 'updatedAt' | 'activeVersion'
+	> {
 	owner?:
 		| {
 				type: 'personal';
@@ -165,6 +168,7 @@ export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
 	error_node_type?: string;
 	is_manual: boolean;
 	crashed?: boolean;
+	used_dynamic_credentials?: boolean;
 }
 
 // ----------------------------------

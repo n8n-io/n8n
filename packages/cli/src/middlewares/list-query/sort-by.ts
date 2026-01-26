@@ -17,7 +17,7 @@ export const sortByQueryMiddleware: RequestHandler = (req: ListQuery.Request, re
 	let SortBy;
 
 	try {
-		if (req.baseUrl.endsWith('workflows')) {
+		if (req.baseUrl.endsWith('workflows') || req.path.endsWith('workflows')) {
 			SortBy = WorkflowSorting;
 		} else {
 			return next();

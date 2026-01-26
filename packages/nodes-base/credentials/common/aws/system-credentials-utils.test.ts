@@ -6,17 +6,24 @@ class MockSecurityConfig {
 	awsSystemCredentialsAccess = true;
 }
 
+const mockContainer = {
+	get: jest.fn(),
+};
+
+const mockReadFile = jest.fn();
+
 jest.mock('@n8n/di', () => ({
-	Container: {
-		get: jest.fn(),
-	},
+	Container: mockContainer,
 }));
 
 jest.mock('@n8n/config', () => ({
 	SecurityConfig: MockSecurityConfig,
 }));
 
-import { Container } from '@n8n/di';
+jest.mock('fs/promises', () => ({
+	readFile: mockReadFile,
+}));
+
 import * as systemCredentialsUtils from './system-credentials-utils';
 
 const mockEnvGetter = jest.fn();
@@ -32,11 +39,12 @@ describe('system-credentials-utils', () => {
 		jest.clearAllMocks();
 
 		mockSecurityConfigInstance = new MockSecurityConfig();
-		(Container.get as jest.Mock).mockReturnValue(mockSecurityConfigInstance);
+		mockContainer.get.mockReturnValue(mockSecurityConfigInstance);
 
 		mockEnvGetter.mockReturnValue(undefined);
 
 		(global.fetch as jest.Mock).mockReset();
+		mockReadFile.mockReset();
 	});
 
 	describe('envGetter', () => {
@@ -438,6 +446,266 @@ describe('system-credentials-utils', () => {
 
 			const result = await credentialsResolver.podIdentity();
 			expect(result).toBeNull();
+		});
+
+		it('should read token from file when AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE is set', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+						return 'http://169.254.170.23/v1/credentials';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE':
+						return '/var/run/secrets/pods.eks.amazonaws.com/serviceaccount/eks-pod-identity-token';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+						return undefined;
+					default:
+						return undefined;
+				}
+			});
+
+			mockReadFile.mockResolvedValue('file-based-token');
+
+			const mockCredentials = {
+				AccessKeyId: 'test-access-key',
+				SecretAccessKey: 'test-secret-key',
+				Token: 'test-token',
+			};
+
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(mockCredentials),
+			});
+
+			const result = await credentialsResolver.podIdentity();
+			expect(result).toEqual({
+				accessKeyId: 'test-access-key',
+				secretAccessKey: 'test-secret-key',
+				sessionToken: 'test-token',
+			});
+
+			expect(mockReadFile).toHaveBeenCalledWith(
+				'/var/run/secrets/pods.eks.amazonaws.com/serviceaccount/eks-pod-identity-token',
+				'utf-8',
+			);
+			expect(global.fetch).toHaveBeenCalledWith(
+				'http://169.254.170.23/v1/credentials',
+				expect.objectContaining({
+					headers: {
+						'User-Agent': 'n8n-aws-credential',
+						Authorization: 'Bearer file-based-token',
+					},
+				}),
+			);
+		});
+
+		it('should trim whitespace from file-based token', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+						return 'http://169.254.170.23/v1/credentials';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE':
+						return '/var/run/secrets/token';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+						return undefined;
+					default:
+						return undefined;
+				}
+			});
+
+			mockReadFile.mockResolvedValue('  \n  file-token-with-whitespace  \n  ');
+
+			const mockCredentials = {
+				AccessKeyId: 'test-access-key',
+				SecretAccessKey: 'test-secret-key',
+				Token: 'test-token',
+			};
+
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(mockCredentials),
+			});
+
+			await credentialsResolver.podIdentity();
+
+			expect(global.fetch).toHaveBeenCalledWith(
+				'http://169.254.170.23/v1/credentials',
+				expect.objectContaining({
+					headers: {
+						'User-Agent': 'n8n-aws-credential',
+						Authorization: 'Bearer file-token-with-whitespace',
+					},
+				}),
+			);
+		});
+
+		it('should fall back to AWS_CONTAINER_AUTHORIZATION_TOKEN when file read fails', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+						return 'http://169.254.170.23/v1/credentials';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE':
+						return '/nonexistent/token/file';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+						return 'fallback-direct-token';
+					default:
+						return undefined;
+				}
+			});
+
+			mockReadFile.mockRejectedValue(new Error('ENOENT: no such file or directory'));
+
+			const mockCredentials = {
+				AccessKeyId: 'test-access-key',
+				SecretAccessKey: 'test-secret-key',
+				Token: 'test-token',
+			};
+
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(mockCredentials),
+			});
+
+			const result = await credentialsResolver.podIdentity();
+			expect(result).toEqual({
+				accessKeyId: 'test-access-key',
+				secretAccessKey: 'test-secret-key',
+				sessionToken: 'test-token',
+			});
+
+			expect(mockReadFile).toHaveBeenCalledWith('/nonexistent/token/file', 'utf-8');
+			expect(global.fetch).toHaveBeenCalledWith(
+				'http://169.254.170.23/v1/credentials',
+				expect.objectContaining({
+					headers: {
+						'User-Agent': 'n8n-aws-credential',
+						Authorization: 'Bearer fallback-direct-token',
+					},
+				}),
+			);
+		});
+
+		it('should prioritize AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE over AWS_CONTAINER_AUTHORIZATION_TOKEN', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+						return 'http://169.254.170.23/v1/credentials';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE':
+						return '/var/run/secrets/token';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+						return 'direct-token-should-not-be-used';
+					default:
+						return undefined;
+				}
+			});
+
+			mockReadFile.mockResolvedValue('file-token-has-priority');
+
+			const mockCredentials = {
+				AccessKeyId: 'test-access-key',
+				SecretAccessKey: 'test-secret-key',
+				Token: 'test-token',
+			};
+
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(mockCredentials),
+			});
+
+			await credentialsResolver.podIdentity();
+
+			expect(mockReadFile).toHaveBeenCalledWith('/var/run/secrets/token', 'utf-8');
+			expect(global.fetch).toHaveBeenCalledWith(
+				'http://169.254.170.23/v1/credentials',
+				expect.objectContaining({
+					headers: {
+						'User-Agent': 'n8n-aws-credential',
+						Authorization: 'Bearer file-token-has-priority',
+					},
+				}),
+			);
+		});
+
+		it('should not attempt to read file when AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE is not set', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+						return 'http://169.254.170.23/v1/credentials';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE':
+						return undefined;
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+						return 'direct-token';
+					default:
+						return undefined;
+				}
+			});
+
+			const mockCredentials = {
+				AccessKeyId: 'test-access-key',
+				SecretAccessKey: 'test-secret-key',
+				Token: 'test-token',
+			};
+
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(mockCredentials),
+			});
+
+			await credentialsResolver.podIdentity();
+
+			expect(mockReadFile).not.toHaveBeenCalled();
+			expect(global.fetch).toHaveBeenCalledWith(
+				'http://169.254.170.23/v1/credentials',
+				expect.objectContaining({
+					headers: {
+						'User-Agent': 'n8n-aws-credential',
+						Authorization: 'Bearer direct-token',
+					},
+				}),
+			);
+		});
+
+		it('should work without any authorization token (neither file nor direct)', async () => {
+			mockEnvGetter.mockImplementation((key: string) => {
+				switch (key) {
+					case 'AWS_CONTAINER_CREDENTIALS_FULL_URI':
+						return 'http://169.254.170.23/v1/credentials';
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN_FILE':
+						return undefined;
+					case 'AWS_CONTAINER_AUTHORIZATION_TOKEN':
+						return undefined;
+					default:
+						return undefined;
+				}
+			});
+
+			const mockCredentials = {
+				AccessKeyId: 'test-access-key',
+				SecretAccessKey: 'test-secret-key',
+				Token: 'test-token',
+			};
+
+			(global.fetch as jest.Mock).mockResolvedValue({
+				ok: true,
+				json: jest.fn().mockResolvedValue(mockCredentials),
+			});
+
+			const result = await credentialsResolver.podIdentity();
+			expect(result).toEqual({
+				accessKeyId: 'test-access-key',
+				secretAccessKey: 'test-secret-key',
+				sessionToken: 'test-token',
+			});
+
+			expect(mockReadFile).not.toHaveBeenCalled();
+			expect(global.fetch).toHaveBeenCalledWith(
+				'http://169.254.170.23/v1/credentials',
+				expect.objectContaining({
+					headers: {
+						'User-Agent': 'n8n-aws-credential',
+					},
+				}),
+			);
+			// Ensure Authorization header is not included
+			expect((global.fetch as jest.Mock).mock.calls[0][1].headers.Authorization).toBeUndefined();
 		});
 	});
 

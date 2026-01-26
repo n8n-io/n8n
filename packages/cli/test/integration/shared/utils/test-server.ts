@@ -193,7 +193,7 @@ export const setupTestServer = ({
 					}
 
 					case 'eventBus':
-						await import('@/eventbus/event-bus.controller');
+						await import('@/modules/log-streaming.ee/log-streaming.controller');
 						break;
 
 					case 'auth':
@@ -209,24 +209,24 @@ export const setupTestServer = ({
 						break;
 
 					case 'ldap': {
-						const { LdapService } = await import('@/ldap.ee/ldap.service.ee');
-						await import('@/ldap.ee/ldap.controller.ee');
+						const { LdapService } = await import('@/modules/ldap.ee/ldap.service.ee');
+						await import('@/modules/ldap.ee/ldap.controller.ee');
 						testServer.license.enable('feat:ldap');
 						await Container.get(LdapService).init();
 						break;
 					}
 
 					case 'saml': {
-						const { SamlService } = await import('@/sso.ee/saml/saml.service.ee');
+						const { SamlService } = await import('@/modules/sso-saml/saml.service.ee');
 						await Container.get(SamlService).init();
-						await import('@/sso.ee/saml/routes/saml.controller.ee');
-						const { setSamlLoginEnabled } = await import('@/sso.ee/saml/saml-helpers');
+						await import('@/modules/sso-saml/saml.controller.ee');
+						const { setSamlLoginEnabled } = await import('@/modules/sso-saml/saml-helpers');
 						await setSamlLoginEnabled(true);
 						break;
 					}
 
 					case 'sourceControl':
-						await import('@/environments.ee/source-control/source-control.controller.ee');
+						await import('@/modules/source-control.ee/source-control.controller.ee');
 						break;
 
 					case 'community-packages':

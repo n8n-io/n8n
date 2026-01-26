@@ -1,165 +1,97 @@
-import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
+/**
+ * V2 Evaluation Harness
+ *
+ * A factory-based, testable evaluation system for AI workflow generation.
+ *
+ * Key features:
+ * - Factory pattern for evaluator creation
+ * - Parallel evaluator execution
+ * - Both local and LangSmith modes
+ * - Centralized lifecycle hooks for logging
+ * - Pre-computed feedback pattern for LangSmith compatibility
+ */
 
-import { runCliEvaluation } from './cli/runner.js';
-import {
-	runLocalPairwiseEvaluation,
-	runPairwiseLangsmithEvaluation,
-} from './langsmith/pairwise-runner.js';
-import { runLangsmithEvaluation } from './langsmith/runner.js';
-import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
+// Core runner
+export { runEvaluation } from './harness/runner';
 
-// Re-export for external use if needed
-export { runCliEvaluation } from './cli/runner.js';
-export { runLangsmithEvaluation } from './langsmith/runner.js';
+// Types
+export type {
+	Feedback,
+	EvaluationContext,
+	TestCaseContext,
+	GlobalRunContext,
+	Evaluator,
+	TestCase,
+	RunConfig,
+	ExampleResult,
+	RunSummary,
+	EvaluationLifecycle,
+	LangsmithOptions,
+} from './harness/harness-types';
+
+// Lifecycle
 export {
-	runLocalPairwiseEvaluation,
-	runPairwiseLangsmithEvaluation,
-} from './langsmith/pairwise-runner.js';
-export { runSingleTest } from './core/test-runner.js';
-export { setupTestEnvironment, createAgent } from './core/environment.js';
+	createConsoleLifecycle,
+	createQuietLifecycle,
+	mergeLifecycles,
+	type ConsoleLifecycleOptions,
+} from './harness/lifecycle';
 
-/** Parse an integer flag with default value */
-function getIntFlag(flag: string, defaultValue: number, max?: number): number {
-	const arg = getFlagValue(flag);
-	if (!arg) return defaultValue;
-	const parsed = parseInt(arg, 10);
-	if (Number.isNaN(parsed) || parsed < 1) return defaultValue;
-	return max ? Math.min(parsed, max) : parsed;
-}
+// Evaluator factories
+export {
+	createLLMJudgeEvaluator,
+	createProgrammaticEvaluator,
+	createPairwiseEvaluator,
+	createSimilarityEvaluator,
+	type PairwiseEvaluatorOptions,
+	type SimilarityEvaluatorOptions,
+} from './evaluators';
 
-/** Parse all CLI arguments */
-function parseCliArgs() {
-	return {
-		testCaseId: process.argv.includes('--test-case')
-			? process.argv[process.argv.indexOf('--test-case') + 1]
-			: undefined,
-		promptsCsvPath: getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE,
-		repetitions: getIntFlag('--repetitions', 1),
-		notionId: getFlagValue('--notion-id'),
-		numJudges: getIntFlag('--judges', 3),
-		numGenerations: getIntFlag('--generations', 1, 10),
-		concurrency: getIntFlag('--concurrency', 5),
-		maxExamples: getIntFlag('--max-examples', 0), // 0 means no limit
-		verbose: process.argv.includes('--verbose') || process.argv.includes('-v'),
-		experimentName: getFlagValue('--name'),
-		outputDir: getFlagValue('--output-dir'),
-		prompt: getFlagValue('--prompt'),
-		dos: getFlagValue('--dos'),
-		donts: getFlagValue('--donts'),
-	};
-}
+// Output
+export {
+	createArtifactSaver,
+	type ArtifactSaver,
+	type ArtifactSaverOptions,
+} from './harness/output';
 
-/**
- * Main entry point for evaluation
- * Determines which evaluation mode to run based on environment variables
- */
-async function main(): Promise<void> {
-	const useLangsmith = process.env.USE_LANGSMITH_EVAL === 'true';
-	const usePairwiseEval = process.env.USE_PAIRWISE_EVAL === 'true';
-	const args = parseCliArgs();
+// Trace filtering (re-exported from v1 for convenience)
+export {
+	createTraceFilters,
+	isMinimalTracingEnabled,
+	type TraceFilters,
+} from './langsmith/trace-filters';
 
-	if (args.promptsCsvPath && (useLangsmith || usePairwiseEval)) {
-		console.warn('CSV-driven evaluations are only supported in CLI mode. Ignoring --prompts-csv.');
-	}
+// Score calculation utilities
+export {
+	parseFeedbackKey,
+	extractCategory,
+	groupByEvaluator,
+	calculateWeightedScore,
+	aggregateScores,
+	DEFAULT_EVALUATOR_WEIGHTS,
+	DEFAULT_WEIGHTS,
+	type ScoreWeights,
+	type AggregatedScore,
+	type FeedbackKeyParts,
+} from './harness/score-calculator';
 
-	// Parse feature flags from environment variables or CLI arguments
-	const featureFlags = parseFeatureFlags();
+// Report generation
+export {
+	extractViolationSeverity,
+	calculateReportMetrics,
+	generateMarkdownReport,
+	type ViolationSeverity,
+	type ReportOptions,
+	type ReportMetrics,
+} from './support/report-generator';
 
-	if (usePairwiseEval) {
-		if (args.prompt) {
-			// Local mode - run single evaluation without LangSmith
-			await runLocalPairwiseEvaluation({
-				prompt: args.prompt,
-				criteria: { dos: args.dos ?? '', donts: args.donts ?? '' },
-				numJudges: args.numJudges,
-				numGenerations: args.numGenerations,
-				verbose: args.verbose,
-				outputDir: args.outputDir,
-				featureFlags,
-			});
-		} else {
-			// LangSmith mode
-			await runPairwiseLangsmithEvaluation({
-				repetitions: args.repetitions,
-				notionId: args.notionId,
-				numJudges: args.numJudges,
-				numGenerations: args.numGenerations,
-				verbose: args.verbose,
-				experimentName: args.experimentName,
-				outputDir: args.outputDir,
-				concurrency: args.concurrency,
-				maxExamples: args.maxExamples || undefined,
-				featureFlags,
-			});
-		}
-	} else if (useLangsmith) {
-		await runLangsmithEvaluation(args.repetitions, featureFlags);
-	} else {
-		const csvTestCases = args.promptsCsvPath
-			? loadTestCasesFromCsv(args.promptsCsvPath)
-			: undefined;
-		await runCliEvaluation({
-			testCases: csvTestCases,
-			testCaseFilter: args.testCaseId,
-			repetitions: args.repetitions,
-			featureFlags,
-		});
-	}
-}
+// Test case generation
+export {
+	createTestCaseGenerator,
+	type TestCaseGeneratorOptions,
+	type GeneratedTestCase,
+	type TestCaseGenerator,
+} from './support/test-case-generator';
 
-function getFlagValue(flag: string): string | undefined {
-	const exactMatchIndex = process.argv.findIndex((arg) => arg === flag);
-	if (exactMatchIndex !== -1) {
-		const value = process.argv[exactMatchIndex + 1];
-		if (!value || value.startsWith('--')) {
-			throw new Error(`Flag ${flag} requires a value`);
-		}
-		return value;
-	}
-
-	const withValue = process.argv.find((arg) => arg.startsWith(`${flag}=`));
-	if (withValue) {
-		const value = withValue.slice(flag.length + 1);
-		if (!value) {
-			throw new Error(`Flag ${flag} requires a value`);
-		}
-		return value;
-	}
-
-	return undefined;
-}
-
-/**
- * Parse feature flags from environment variables or CLI arguments.
- * Environment variables:
- *   - EVAL_FEATURE_TEMPLATE_EXAMPLES=true - Enable template examples feature
- *   - EVAL_FEATURE_MULTI_AGENT=true - Enable multi-agent feature
- * CLI arguments:
- *   - --template-examples - Enable template examples feature
- *   - --multi-agent - Enable multi-agent feature
- */
-function parseFeatureFlags(): BuilderFeatureFlags | undefined {
-	const templateExamplesFromEnv = process.env.EVAL_FEATURE_TEMPLATE_EXAMPLES === 'true';
-	const multiAgentFromEnv = process.env.EVAL_FEATURE_MULTI_AGENT === 'true';
-
-	const templateExamplesFromCli = process.argv.includes('--template-examples');
-	const multiAgentFromCli = process.argv.includes('--multi-agent');
-
-	const templateExamples = templateExamplesFromEnv || templateExamplesFromCli;
-	const multiAgent = multiAgentFromEnv || multiAgentFromCli;
-
-	// Only return feature flags object if at least one flag is set
-	if (templateExamples || multiAgent) {
-		return {
-			templateExamples: templateExamples || undefined,
-			multiAgent: multiAgent || undefined,
-		};
-	}
-
-	return undefined;
-}
-
-// Run if called directly
-if (require.main === module) {
-	main().catch(console.error);
-}
+// CSV loader utilities
+export { loadDefaultTestCases, getDefaultTestCaseIds } from './cli/csv-prompt-loader';

@@ -46,6 +46,12 @@ export class WorkflowFilter extends BaseFilter {
 	@Expose()
 	nodeTypes?: string[];
 
+	@IsArray()
+	@IsString({ each: true })
+	@IsOptional()
+	@Expose()
+	triggerNodeTypes?: string[];
+
 	static async fromString(rawFilter: string) {
 		return await this.toFilter(rawFilter, WorkflowFilter);
 	}

@@ -35,6 +35,9 @@ export function deepMerge<T>(target: T, source: Partial<T>): T {
 	const sourceRecord = source as Record<string, unknown>;
 
 	for (const key of Object.keys(sourceRecord)) {
+		// Prevent prototype pollution
+		if (['__proto__', 'constructor', 'prototype'].includes(key)) continue;
+
 		const sourceValue = sourceRecord[key];
 		const targetValue = result[key];
 

@@ -190,19 +190,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const workflowRepository = Container.get(WorkflowRepository);
 
-		if (separate) {
-			const files = await glob('*.json', {
-				cwd: path,
-				absolute: true,
-			});
-			return files.map((file) => {
-				const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
-				if (!workflow.id) {
-					workflow.id = generateNanoId();
-				}
-				return workflowRepository.create(workflow);
-			});
-		} else {
+		if (!separate) {
 			const workflows = jsonParse<IWorkflowToImport | IWorkflowToImport[]>(
 				fs.readFileSync(path, { encoding: 'utf8' }),
 			);
@@ -211,6 +199,31 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 			return workflowRepository.create(workflowsArray);
 		}
+
+		const files = await glob('*.json', {
+			cwd: path,
+			absolute: true,
+		});
+
+		const workflows = [];
+
+		for (const file of files) {
+			const workflow = jsonParse<IWorkflowToImport>(fs.readFileSync(file, { encoding: 'utf8' }));
+			if (!workflow.id) {
+				workflow.id = generateNanoId();
+			}
+
+			try {
+				assertHasWorkflowsToImport([workflow]);
+
+				workflows.push(workflowRepository.create(workflow));
+			} catch (error) {
+				this.logger.warn(`Skipping invalid workflow file: ${file}`);
+				continue;
+			}
+		}
+
+		return workflows;
 	}
 
 	private async getProject(userId?: string, projectId?: string) {

@@ -10,10 +10,11 @@ import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
-const { session, isRenaming, active } = defineProps<{
+const { session, isRenaming, active, compact } = defineProps<{
 	session: ChatHubSessionDto;
 	isRenaming: boolean;
 	active: boolean;
+	compact: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -37,7 +38,7 @@ const agent = computed<ChatModelDto | null>(() => {
 		return null;
 	}
 
-	return chatStore.getAgent(model, session.agentName);
+	return chatStore.getAgent(model, { name: session.agentName, icon: session.agentIcon });
 });
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
@@ -103,21 +104,31 @@ watch(
 	<ChatSidebarLink
 		:to="{ name: CHAT_CONVERSATION_VIEW, params: { id: session.id } }"
 		:active="active"
+		:compact="compact"
 		:menu-items="dropdownItems"
-		:label="session.title"
+		:label="session.agentName"
+		:title="session.title"
 		@action-select="handleActionSelect"
 	>
 		<template v-if="isRenaming" #default>
 			<N8nInput
-				size="small"
 				ref="input"
 				v-model="editedLabel"
+				size="large"
 				@blur="handleBlur"
 				@keydown="handleKeyDown"
 			/>
 		</template>
 		<template #icon>
-			<ChatAgentAvatar :agent="agent" size="sm" />
+			<ChatAgentAvatar :agent="agent" size="sm" :class="$style.avatar" />
 		</template>
 	</ChatSidebarLink>
 </template>
+
+<style lang="scss" module>
+.avatar {
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	min-width: var(--spacing--lg);
+}
+</style>

@@ -1,10 +1,11 @@
 <script lang="ts" setup>
+import { ref, onBeforeUnmount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 
-import { N8nButton, N8nCallout, N8nHeading } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 
 export type WorkflowHistoryVersionUnpublishModalEventBusEvents = {
 	unpublish: undefined;
@@ -21,6 +22,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const uiStore = useUIStore();
+const unpublishing = ref(false);
 
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
@@ -32,9 +34,14 @@ const onCancel = () => {
 };
 
 const onUnpublish = () => {
+	unpublishing.value = true;
 	props.data.eventBus.emit('unpublish');
 	// Modal will be closed by parent after API call completes
 };
+
+onBeforeUnmount(() => {
+	unpublishing.value = false;
+});
 </script>
 
 <template>
@@ -49,16 +56,23 @@ const onUnpublish = () => {
 			</N8nHeading>
 		</template>
 		<template #content>
-			<N8nCallout theme="warning" icon="triangle-alert">
-				{{ i18n.baseText('workflowHistory.action.unpublish.modal.description') }}
-			</N8nCallout>
+			<div :class="$style.content">
+				<N8nIcon :class="$style.icon" icon="triangle-alert" color="warning" size="xlarge" />
+				<N8nText size="medium">
+					{{
+						i18n.baseText('workflowHistory.action.unpublish.modal.description', {
+							interpolate: { versionName: props.data.versionName || '' },
+						})
+					}}
+				</N8nText>
+			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton size="medium" type="tertiary" @click="onCancel">
+				<N8nButton size="medium" type="tertiary" :disabled="unpublishing" @click="onCancel">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton size="medium" type="primary" @click="onUnpublish">
+				<N8nButton size="medium" type="primary" :loading="unpublishing" @click="onUnpublish">
 					{{ i18n.baseText('workflowHistory.action.unpublish.modal.button.unpublish') }}
 				</N8nButton>
 			</div>
@@ -75,5 +89,17 @@ const onUnpublish = () => {
 	button {
 		margin-left: var(--spacing--2xs);
 	}
+}
+
+.content {
+	display: flex;
+	flex-direction: row;
+	align-items: start;
+	gap: var(--spacing--xs);
+}
+
+.icon {
+	flex-shrink: 0;
+	margin-top: var(--spacing--4xs);
 }
 </style>

@@ -1,7 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import {
-	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 	textInput,
@@ -110,7 +110,7 @@ export const sqlAgentAgentProperties: INodeProperties[] = [
 		},
 	},
 	{
-		...promptTypeOptions,
+		...promptTypeOptionsDeprecated,
 		displayOptions: {
 			hide: {
 				'@version': [{ _cnd: { lte: 1.2 } }],

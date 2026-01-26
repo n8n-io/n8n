@@ -43,6 +43,7 @@ describe('permissions', () => {
 			chatHubAgent: {},
 			breakingChanges: {},
 			apiKey: {},
+			credentialResolver: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -163,6 +164,7 @@ describe('permissions', () => {
 			apiKey: {
 				manage: true,
 			},
+			credentialResolver: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

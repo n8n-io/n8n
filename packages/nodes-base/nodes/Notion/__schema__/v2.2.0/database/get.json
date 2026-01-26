@@ -92,6 +92,9 @@
         "last_edited_time": {
             "type": "string"
         },
+        "name": {
+            "type": "string"
+        },
         "object": {
             "type": "string"
         },
@@ -358,5 +361,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

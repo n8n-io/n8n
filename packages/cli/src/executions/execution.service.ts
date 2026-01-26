@@ -31,6 +31,7 @@ import {
 	Workflow,
 	WorkflowOperationError,
 	createErrorExecutionData,
+	ensureError,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -40,6 +41,7 @@ import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -109,6 +111,7 @@ export class ExecutionService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly eventService: EventService,
 	) {}
 
 	async findOne(
@@ -267,6 +270,20 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
+		this.eventService.emit('workflow-executed', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			workflowId: execution.workflowId,
+			workflowName: execution.workflowData.name,
+			executionId: retriedExecutionId,
+			source: 'user-retry',
+		});
+
 		return {
 			id: retriedExecutionId,
 			mode: executionData.mode,
@@ -306,6 +323,18 @@ export class ExecutionService {
 		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
 			deleteBefore,
 			ids,
+		});
+
+		this.eventService.emit('execution-deleted', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			executionIds: ids ?? [],
+			deleteBefore,
 		});
 	}
 
@@ -465,9 +494,12 @@ export class ExecutionService {
 		);
 
 		if (!execution) {
-			this.logger.info(`Unable to stop execution "${executionId}" as it was not found`, {
-				executionId,
-			});
+			this.logger.info(
+				`Unable to stop execution "${executionId}" as it was not found or not accessible`,
+				{
+					executionId,
+				},
+			);
 
 			throw new MissingExecutionStopError(executionId);
 		}
@@ -486,6 +518,27 @@ export class ExecutionService {
 			finished,
 			status,
 		};
+	}
+
+	async stopMany(query: ExecutionSummaries.StopExecutionFilterQuery, sharedWorkflowIds: string[]) {
+		const executions = await this.executionRepository.findByStopExecutionsFilter(query);
+		let stopped = 0;
+		for (const { id } of executions) {
+			try {
+				await this.stop(id, sharedWorkflowIds);
+				this.logger.debug(`Stopped execution ${id}`);
+				stopped++;
+			} catch (e) {
+				// the throwing code already logs the failure otherwise
+				if (!(e instanceof MissingExecutionStopError)) {
+					this.logger.warn(
+						`Unexpected error while attempting to stop execution ${id}: ${ensureError(e).message}`,
+					);
+				}
+			}
+		}
+
+		return stopped;
 	}
 
 	private assertStoppable(execution: IExecutionResponse) {

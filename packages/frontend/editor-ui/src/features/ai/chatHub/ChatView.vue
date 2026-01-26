@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
 import {
+	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS,
 	VIEWS,
@@ -30,6 +31,7 @@ import {
 	type ChatMessageId,
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
+	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
@@ -46,14 +48,20 @@ import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 import {
 	type ChatHubConversationModelWithCachedDisplayName,
 	chatHubConversationModelWithCachedDisplayNameSchema,
+	type MessagingState,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasRole } from '@/app/utils/rbac/checks';
+import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
+import ChatGreetings from './components/ChatGreetings.vue';
 
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
@@ -63,6 +71,12 @@ const i18n = useI18n();
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
 const scrollableRef = useTemplateRef('scrollable');
+
+const welcomeScreenDismissed = ref(false);
+const showCreditsClaimedCallout = ref(false);
+const hasAttemptedAutoClaim = ref(false);
+
+const { userCanClaimOpenAiCredits, aiCreditsQuota, claimCredits } = useFreeAiCredits();
 
 const scrollableSize = useElementSize(scrollableRef);
 
@@ -82,6 +96,25 @@ const canSelectTools = computed(
 		selectedModel.value?.model.provider === 'custom-agent' ||
 		!!selectedModel.value?.metadata.capabilities.functionCalling,
 );
+const hadConversationBefore = useLocalStorage(
+	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE(usersStore.currentUserId ?? 'anonymous'),
+	false,
+);
+const hasSession = computed(() => (chatStore.sessions.ids?.length ?? 0) > 0);
+
+const showWelcomeScreen = computed<boolean | undefined>(() => {
+	if (hadConversationBefore.value || welcomeScreenDismissed.value) {
+		return false; // return false early to make UI ready fast
+	}
+
+	if (!chatStore.sessionsReady) {
+		return undefined; // not known yet
+	}
+
+	return (
+		!hasSession.value && (!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']))
+	);
+});
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -135,6 +168,8 @@ const shouldSkipNextScrollTrigger = ref(false);
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
+	const provider = route.query.provider;
+	const model = route.query.model;
 
 	if (!isNewSession.value) {
 		return null;
@@ -148,6 +183,17 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 		return chatStore.getAgent({ provider: 'n8n', workflowId });
 	}
 
+	if (typeof provider === 'string' && typeof model === 'string') {
+		const parsedModel = chatHubConversationModelSchema.safeParse({
+			provider,
+			model,
+		});
+
+		if (parsedModel.success) {
+			return chatStore.getAgent(parsedModel.data);
+		}
+	}
+
 	return null;
 });
 
@@ -159,10 +205,10 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 			return null;
 		}
 
-		return chatStore.getAgent(
-			model,
-			(currentConversation.value?.agentName || currentConversation.value?.model) ?? undefined,
-		);
+		return chatStore.getAgent(model, {
+			name: currentConversation.value?.agentName || currentConversation.value?.model,
+			icon: currentConversation.value?.agentIcon,
+		});
 	}
 
 	if (modelFromQuery.value) {
@@ -170,14 +216,17 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	}
 
 	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.getAgent(chatStore.streaming.model, chatStore.streaming.agentName);
+		return chatStore.streaming.agent;
 	}
 
 	if (!defaultModel.value) {
 		return null;
 	}
 
-	return chatStore.getAgent(defaultModel.value, defaultModel.value.cachedDisplayName);
+	return chatStore.getAgent(defaultModel.value, {
+		name: defaultModel.value.cachedDisplayName,
+		icon: defaultModel.value.cachedIcon,
+	});
 });
 
 const customAgentId = computed(() =>
@@ -185,7 +234,7 @@ const customAgentId = computed(() =>
 		? selectedModel.value.model.agentId
 		: undefined,
 );
-const customAgent = useCustomAgent(customAgentId);
+const { customAgent } = useCustomAgent(customAgentId);
 
 const selectedTools = computed<INode[]>(() => {
 	if (customAgent.value) {
@@ -231,31 +280,41 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 	},
 );
 const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
-const issue = computed<null | 'missingCredentials' | 'missingAgent'>(() => {
-	if (!chatStore.agentsReady) {
-		return null;
+const messagingState = computed<MessagingState>(() => {
+	if (chatStore.streaming?.sessionId === sessionId.value) {
+		return chatStore.streaming.messageId ? 'receiving' : 'waitingFirstChunk';
 	}
 
-	if (!selectedModel.value) {
+	if (chatStore.agentsReady && !selectedModel.value) {
 		return 'missingAgent';
 	}
 
-	if (isMissingSelectedCredential.value) {
+	if (chatStore.agentsReady && isMissingSelectedCredential.value) {
 		return 'missingCredentials';
 	}
 
-	return null;
+	return 'idle';
 });
 
 const editingMessageId = ref<string>();
+const messageElementsRef = useTemplateRef('messages');
 const didSubmitInCurrentSession = ref(false);
 
-const canAcceptFiles = computed(
-	() =>
-		editingMessageId.value === undefined &&
+const canAcceptFiles = computed(() => {
+	const baseCondition =
 		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
-		!isMissingSelectedCredential.value,
-);
+		!isMissingSelectedCredential.value;
+
+	if (!baseCondition) return false;
+
+	// If editing, only allow file drops for human messages
+	if (editingMessageId.value) {
+		const editingMessage = chatMessages.value.find((msg) => msg.id === editingMessageId.value);
+		return editingMessage?.type === 'human';
+	}
+
+	return true;
+});
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 
@@ -303,12 +362,13 @@ watch(
 watch(
 	() => chatStore.agents,
 	(models) => {
-		if (!models || !!selectedModel.value || !isNewSession.value) {
+		const settings = settingsStore.moduleSettings?.['chat-hub'];
+
+		if (!models || !!selectedModel.value || !isNewSession.value || !settings) {
 			return;
 		}
 
-		const model = findOneFromModelsResponse(models) ?? null;
-
+		const model = findOneFromModelsResponse(models, settings.providers);
 		if (model) {
 			void handleSelectAgent(model);
 		}
@@ -326,7 +386,7 @@ watch(
 			try {
 				await chatStore.fetchMessages(id);
 			} catch (error) {
-				toast.showError(error, 'Error fetching a conversation');
+				toast.showError(error, i18n.baseText('chatHub.error.fetchConversationFailed'));
 				await router.push({ name: CHAT_VIEW });
 			}
 		}
@@ -371,6 +431,14 @@ watch(
 		}
 
 		if (
+			defaultModel.value &&
+			agent?.icon &&
+			(agent.icon.type !== prevAgent?.icon?.type || agent.icon.value !== prevAgent.icon.value)
+		) {
+			defaultModel.value = { ...defaultModel.value, cachedIcon: agent.icon };
+		}
+
+		if (
 			agent &&
 			!agent.metadata.capabilities.functionCalling &&
 			(defaultTools.value ?? []).length > 0
@@ -381,7 +449,45 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string, attachments: File[]) {
+// Auto-claim free AI credits if available when user lands on chat without credentials
+watch(
+	[welcomeScreenDismissed, userCanClaimOpenAiCredits, messagingState, () => chatStore.agentsReady],
+	async ([dismissed, canClaim, state, ready]) => {
+		if (!canClaim || hasAttemptedAutoClaim.value) return;
+
+		const shouldClaim = dismissed || (ready && state === 'missingCredentials');
+		if (shouldClaim) {
+			hasAttemptedAutoClaim.value = true;
+			const success = await claimCredits('chatHubAutoClaim');
+			if (success) {
+				showCreditsClaimedCallout.value = true;
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+// Hide credits callout when user sends their first message
+watch(chatMessages, (messages) => {
+	if (messages.length > 0) {
+		showCreditsClaimedCallout.value = false;
+	}
+});
+
+// Update hadConversationBefore
+watch(
+	hasSession,
+	(value) => {
+		hadConversationBefore.value = hadConversationBefore.value || value;
+	},
+	{ immediate: true },
+);
+
+function handleDismissCreditsCallout() {
+	showCreditsClaimedCallout.value = false;
+}
+
+async function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -394,17 +500,16 @@ function onSubmit(message: string, attachments: File[]) {
 	didSubmitInCurrentSession.value = true;
 	editingMessageId.value = undefined;
 
-	void chatStore.sendMessage(
+	await chatStore.sendMessage(
 		sessionId.value,
 		message,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 		canSelectTools.value ? selectedTools.value : [],
 		attachments,
-		selectedModel.value.name,
 	);
 
-	inputRef.value?.setText('');
+	inputRef.value?.reset();
 
 	if (isNewSession.value) {
 		// TODO: this should not happen when submit fails
@@ -424,29 +529,34 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-function handleEditMessage(message: ChatHubMessageDto) {
+async function handleEditMessage(
+	content: string,
+	keptAttachmentIndices: number[],
+	newFiles: File[],
+) {
 	if (
+		!editingMessageId.value ||
 		isResponding.value ||
-		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
 	) {
 		return;
 	}
 
-	const messageToEdit = message.revisionOfMessageId ?? message.id;
-
-	chatStore.editMessage(
+	await chatStore.editMessage(
 		sessionId.value,
-		messageToEdit,
-		message.content,
-		selectedModel.value.model,
+		editingMessageId.value,
+		content,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
+		keptAttachmentIndices,
+		newFiles,
 	);
+
 	editingMessageId.value = undefined;
 }
 
-function handleRegenerateMessage(message: ChatHubMessageDto) {
+async function handleRegenerateMessage(message: ChatHubMessageDto) {
 	if (
 		isResponding.value ||
 		message.type !== 'ai' ||
@@ -458,25 +568,34 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 
 	const messageToRetry = message.id;
 
-	chatStore.regenerateMessage(
+	editingMessageId.value = undefined;
+
+	await chatStore.regenerateMessage(
 		sessionId.value,
 		messageToRetry,
-		selectedModel.value.model,
+		selectedModel.value,
 		credentialsForSelectedProvider.value,
 	);
 }
 
-async function handleSelectModel(selection: ChatHubConversationModel, displayName?: string) {
-	const agentName = displayName ?? chatStore.getAgent(selection)?.name ?? '';
+async function handleSelectModel(
+	selection: ChatHubConversationModel,
+	selectedAgent?: ChatModelDto,
+) {
+	const agent = selectedAgent ?? chatStore.getAgent(selection);
 
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
+			await chatStore.updateSessionModel(sessionId.value, selection, agent.name);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected model');
+			toast.showError(error, i18n.baseText('chatHub.error.updateModelFailed'));
 		}
 	} else {
-		defaultModel.value = { ...selection, cachedDisplayName: agentName };
+		defaultModel.value = {
+			...selection,
+			cachedDisplayName: agent.name,
+			cachedIcon: agent.icon ?? undefined,
+		};
 
 		// Remove query params (if exists) and focus input
 		await router.push({ name: CHAT_VIEW, force: true }); // remove query params
@@ -484,7 +603,7 @@ async function handleSelectModel(selection: ChatHubConversationModel, displayNam
 }
 
 async function handleSelectAgent(selection: ChatModelDto) {
-	await handleSelectModel(selection.model, selection.name);
+	await handleSelectModel(selection.model, selection);
 }
 
 function handleSwitchAlternative(messageId: string) {
@@ -507,7 +626,7 @@ async function handleUpdateTools(newTools: INode[]) {
 		try {
 			await chatStore.updateToolsInSession(sessionId.value, newTools);
 		} catch (error) {
-			toast.showError(error, 'Could not update selected tools');
+			toast.showError(error, i18n.baseText('chatHub.error.updateToolsFailed'));
 		}
 	}
 }
@@ -540,12 +659,19 @@ function handleOpenWorkflow(workflowId: string) {
 }
 
 function onFilesDropped(files: File[]) {
-	inputRef.value?.addAttachments(files);
+	if (!editingMessageId.value) {
+		inputRef.value?.addAttachments(files);
+		return;
+	}
+
+	const index = chatMessages.value.findIndex((message) => message.id === editingMessageId.value);
+	messageElementsRef.value?.[index]?.addFiles(files);
 }
 </script>
 
 <template>
 	<ChatLayout
+		v-if="showWelcomeScreen !== undefined"
 		:class="{
 			[$style.chatLayout]: true,
 			[$style.isNewSession]: isNewSession,
@@ -566,11 +692,11 @@ function onFilesDropped(files: File[]) {
 		</div>
 
 		<ChatConversationHeader
+			v-if="!showWelcomeScreen"
 			ref="headerRef"
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
 			:ready-to-show-model-selector="isNewSession || !!currentConversation"
-			:is-new-session="isNewSession"
 			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
@@ -585,22 +711,21 @@ function onFilesDropped(files: File[]) {
 			as-child
 			:class="$style.scrollArea"
 		>
-			<div :class="$style.scrollable" ref="scrollable">
-				<ChatStarter
-					v-if="isNewSession"
-					:class="$style.starter"
-					:is-mobile-device="isMobileDevice"
-				/>
+			<div ref="scrollable" :class="$style.scrollable">
+				<ChatGreetings v-if="isNewSession" :selected-agent="selectedModel" />
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
 						v-for="(message, index) in chatMessages"
 						:key="message.id"
+						ref="messages"
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
-						:is-streaming="message.status === 'running'"
+						:is-edit-submitting="chatStore.streaming?.revisionOfMessageId === message.id"
+						:has-session-streaming="isResponding"
 						:cached-agent-display-name="selectedModel?.name ?? null"
+						:cached-agent-icon="selectedModel?.icon ?? null"
 						:min-height="
 							didSubmitInCurrentSession &&
 							message.type === 'ai' &&
@@ -618,7 +743,7 @@ function onFilesDropped(files: File[]) {
 					/>
 				</div>
 
-				<div :class="$style.promptContainer">
+				<div v-if="!showWelcomeScreen" :class="$style.promptContainer">
 					<N8nIconButton
 						v-if="!arrivedState.bottom && !isNewSession"
 						type="secondary"
@@ -633,21 +758,31 @@ function onFilesDropped(files: File[]) {
 						:class="$style.prompt"
 						:selected-model="selectedModel"
 						:selected-tools="selectedTools"
-						:is-responding="isResponding"
+						:messaging-state="messagingState"
 						:is-tools-selectable="canSelectTools"
-						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
-						:issue="issue"
+						:show-credits-claimed-callout="showCreditsClaimedCallout"
+						:ai-credits-quota="String(aiCreditsQuota)"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
 						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
 						@edit-agent="handleEditAgent"
+						@dismiss-credits-callout="handleDismissCreditsCallout"
 					/>
 				</div>
 			</div>
 		</N8nScrollArea>
+
+		<ChatStarter
+			v-if="isNewSession"
+			:show-welcome-screen="showWelcomeScreen"
+			@start-new-chat="
+				welcomeScreenDismissed = true;
+				inputRef?.focus();
+			"
+		/>
 	</ChatLayout>
 </template>
 
@@ -668,7 +803,7 @@ function onFilesDropped(files: File[]) {
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: start;
-	gap: var(--spacing--2xl);
+	gap: var(--spacing--xl);
 
 	.isNewSession & {
 		justify-content: center;
@@ -679,13 +814,6 @@ function onFilesDropped(files: File[]) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-}
-
-.starter {
-	.isMobileDevice & {
-		padding-top: 30px;
-		padding-bottom: 200px;
-	}
 }
 
 .messageList {

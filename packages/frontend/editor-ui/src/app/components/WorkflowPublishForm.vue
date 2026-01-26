@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import {
+	WORKFLOW_VERSION_NAME_MAX_LENGTH,
+	WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH,
+} from '@n8n/api-types';
 import { N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
@@ -47,6 +51,7 @@ defineExpose({
 				v-model="versionName"
 				:disabled="disabled"
 				size="large"
+				:maxlength="WORKFLOW_VERSION_NAME_MAX_LENGTH"
 				:data-test-id="versionNameTestId"
 				@keydown.enter="handleEnterKey"
 			/>
@@ -62,6 +67,7 @@ defineExpose({
 				:rows="4"
 				:disabled="disabled"
 				size="large"
+				:maxlength="WORKFLOW_VERSION_DESCRIPTION_MAX_LENGTH"
 				:data-test-id="descriptionTestId"
 			/>
 		</N8nInputLabel>

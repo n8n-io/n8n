@@ -162,6 +162,12 @@ export const establishExecutionContext = async (
 		return;
 	}
 
+	// Store basic trigger node info in the context for reference
+	executionData.runtimeData.triggerNode = {
+		name: startItem.node.name,
+		type: startItem.node.type,
+	};
+
 	// We were triggered from a parent execution
 	// and can inherit context from there
 	if (startItem.metadata?.parentExecution?.executionContext) {
@@ -191,7 +197,8 @@ export const establishExecutionContext = async (
 			startItem.data['main'][0] = triggerItems;
 		}
 	} catch (error) {
-		// Log the error but proceed with the established context
+		// Log the error
 		Container.get(Logger).error('Failed to augment execution context with hooks.', { error });
+		throw error;
 	}
 };

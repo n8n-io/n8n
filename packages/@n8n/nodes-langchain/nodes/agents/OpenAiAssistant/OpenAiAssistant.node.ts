@@ -14,6 +14,8 @@ import { getConnectedTools } from '@utils/helpers';
 import { getTracingConfig } from '@utils/tracing';
 
 import { formatToOpenAIAssistantTool } from './utils';
+import { Container } from '@n8n/di';
+import { AiConfig } from '@n8n/config';
 
 export class OpenAiAssistant implements INodeType {
 	description: INodeTypeDescription = {
@@ -339,11 +341,14 @@ export class OpenAiAssistant implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
 				}
 
+				const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
+
 				const client = new OpenAIClient({
 					apiKey: credentials.apiKey as string,
 					maxRetries: options.maxRetries ?? 2,
 					timeout: options.timeout ?? 10000,
 					baseURL: options.baseURL,
+					defaultHeaders,
 				});
 				let agent;
 				const nativeToolsParsed: OpenAIToolType = nativeTools.map((tool) => ({ type: tool }));

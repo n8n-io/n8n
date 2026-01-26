@@ -145,6 +145,20 @@ export declare namespace CredentialRequest {
 		{}
 	>;
 
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{
+			type?: string;
+			name?: string;
+			data?: ICredentialDataDecryptedObject;
+			isGlobal?: boolean;
+			isResolvable?: boolean;
+			isPartialData?: boolean;
+		},
+		{}
+	>;
+
 	type Delete = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;

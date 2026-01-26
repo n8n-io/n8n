@@ -91,6 +91,7 @@ describe('CredentialsController', () => {
 				projectType: projectOwningCredentialData.type,
 				publicApi: false,
 				uiContext: newCredentialsPayload.uiContext,
+				isDynamic: false,
 			});
 
 			expect(newApiKey).toEqual(createdCredentials);
@@ -105,6 +106,7 @@ describe('CredentialsController', () => {
 			type: 'apiKey',
 			isGlobal: false,
 			isManaged: false,
+			isResolvable: false,
 		});
 
 		beforeEach(() => {
@@ -121,6 +123,7 @@ describe('CredentialsController', () => {
 				id: 'cred-123',
 				createdAt: new Date(),
 				updatedAt: new Date(),
+				isResolvable: false,
 			} as any);
 			credentialsService.getCredentialScopes.mockResolvedValue([
 				'credential:read',
@@ -190,6 +193,7 @@ describe('CredentialsController', () => {
 				user: ownerReq.user,
 				credentialType: existingCredential.type,
 				credentialId: existingCredential.id,
+				isDynamic: false,
 			});
 		});
 
@@ -313,6 +317,101 @@ describe('CredentialsController', () => {
 				credentialId,
 				expect.not.objectContaining({
 					isGlobal: expect.anything(),
+				}),
+			);
+		});
+
+		it('should update isResolvable when provided', async () => {
+			// ARRANGE
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					isResolvable: true,
+				},
+			} as unknown as CredentialRequest.Update;
+
+			const existingCredentialWithResolvable = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: false,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				existingCredentialWithResolvable,
+			);
+			credentialsService.createEncryptedData.mockReturnValue({
+				name: 'Updated Credential',
+				type: 'apiKey',
+				data: 'encrypted-data',
+				id: 'cred-123',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				isResolvable: true,
+			} as any);
+			credentialsService.update.mockResolvedValue({
+				...existingCredentialWithResolvable,
+				name: 'Updated Credential',
+				isResolvable: true,
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			expect(credentialsService.update).toHaveBeenCalledWith(
+				credentialId,
+				expect.objectContaining({
+					isResolvable: true,
+				}),
+			);
+		});
+
+		it('should keep existing isResolvable value when not provided', async () => {
+			// ARRANGE
+			const existingCredentialWithResolvable = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: {
+					name: 'Updated Credential',
+					type: 'apiKey',
+					data: { apiKey: 'updated-key' },
+					// isResolvable not provided
+				},
+			} as unknown as CredentialRequest.Update;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+				existingCredentialWithResolvable,
+			);
+			credentialsService.createEncryptedData.mockReturnValue({
+				name: 'Updated Credential',
+				type: 'apiKey',
+				data: 'encrypted-data',
+				id: 'cred-123',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				isResolvable: true,
+			} as any);
+			credentialsService.update.mockResolvedValue({
+				...existingCredentialWithResolvable,
+				name: 'Updated Credential',
+			});
+
+			// ACT
+			await credentialsController.updateCredentials(ownerReq);
+
+			// ASSERT
+			expect(credentialsService.update).toHaveBeenCalledWith(
+				credentialId,
+				expect.objectContaining({
+					isResolvable: true, // Should keep the existing value
 				}),
 			);
 		});

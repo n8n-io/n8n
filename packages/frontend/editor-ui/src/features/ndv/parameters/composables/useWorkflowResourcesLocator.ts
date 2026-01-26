@@ -14,7 +14,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	const { renameNode } = useCanvasOperations();
 
 	const workflowsResources = ref<
-		Array<{ name: string; value: string; url: string; isArchived: boolean }>
+		Array<{ name: string; value: string; url: string; isArchived: boolean; active: boolean }>
 	>([]);
 	const isLoadingResources = ref(true);
 	const searchFilter = ref('');
@@ -60,6 +60,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 			value: workflow.id,
 			url: getWorkflowUrl(workflow.id),
 			isArchived: 'isArchived' in workflow ? workflow.isArchived : false,
+			active: 'active' in workflow ? workflow.active : false,
 		};
 	}
 
@@ -74,7 +75,10 @@ export function useWorkflowResourcesLocator(router: Router) {
 			currentPage.value,
 			PAGE_SIZE,
 			'updatedAt:desc',
-			searchFilter.value ? { query: searchFilter.value } : undefined,
+			{
+				...(searchFilter.value ? { query: searchFilter.value } : {}),
+				triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'],
+			},
 		);
 		totalCount.value = workflowsStore.totalWorkflowCount;
 
@@ -101,9 +105,10 @@ export function useWorkflowResourcesLocator(router: Router) {
 
 		const nodeName = ndvStore.activeNodeName;
 		if (
-			nodeName === 'Execute Workflow' ||
-			nodeName === 'Call n8n Workflow Tool' ||
-			(nodeName?.startsWith("Call '") && nodeName?.endsWith("'"))
+			nodeName &&
+			(/^Execute Workflow\d*$/.test(nodeName) ||
+				/^Call n8n Workflow Tool\d*$/.test(nodeName) ||
+				(nodeName.startsWith("Call '") && nodeName.endsWith("'")))
 		) {
 			const baseName = getWorkflowBaseName(workflowId);
 			if (baseName !== null) {

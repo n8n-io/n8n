@@ -53,6 +53,10 @@ export class CredentialsFinderService {
 		});
 	}
 
+	async findCredentialById(credentialId: string): Promise<CredentialsEntity | null> {
+		return await this.credentialsRepository.findOne({ where: { id: credentialId } });
+	}
+
 	/**
 	 * Merges global credentials with the provided credentials list,
 	 * deduplicating based on credential ID.

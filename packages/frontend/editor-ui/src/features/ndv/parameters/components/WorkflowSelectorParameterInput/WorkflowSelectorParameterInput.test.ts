@@ -5,6 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createTestingPinia } from '@pinia/testing';
+import userEvent from '@testing-library/user-event';
 import WorkflowSelectorParameterInput, { type Props } from './WorkflowSelectorParameterInput.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -246,12 +247,15 @@ describe('WorkflowSelectorParameterInput', () => {
 			const { getByTestId } = renderComponent({ props });
 			await flushPromises();
 
+			// Click on the input to open the dropdown
+			await userEvent.click(getByTestId('rlc-input'));
+
 			// Get the ResourceLocatorDropdown component to trigger the add resource click
 			const addResourceButton = getByTestId('rlc-item-add-resource');
 			expect(addResourceButton).toBeInTheDocument();
 
 			// Click the add resource button
-			addResourceButton.click();
+			await userEvent.click(addResourceButton);
 			await flushPromises();
 
 			// Verify the toast error was shown

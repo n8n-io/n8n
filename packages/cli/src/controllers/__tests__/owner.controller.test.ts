@@ -49,11 +49,11 @@ describe('OwnerController', () => {
 		});
 
 		it('should call dismissBanner with the correct banner name', async () => {
-			const payload = mock<DismissBannerRequestDto>({ banner: 'TRIAL' });
+			const payload = mock<DismissBannerRequestDto>({ banner: 'TRIAL_OVER' });
 
 			await controller.dismissBanner(mock(), mock(), payload);
 
-			expect(bannerService.dismissBanner).toHaveBeenCalledWith('TRIAL');
+			expect(bannerService.dismissBanner).toHaveBeenCalledWith('TRIAL_OVER');
 		});
 	});
 });

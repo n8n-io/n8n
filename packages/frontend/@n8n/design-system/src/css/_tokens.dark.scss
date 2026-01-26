@@ -60,6 +60,13 @@
 		var(--assistant--color--highlight-1) 100%
 	);
 
+	// AI Chat text and icon colors
+	--assistant--color--text--subtle: var(--color--neutral-250);
+	--assistant--icon-color--subtle: var(--color--neutral-250);
+	--assistant--color--text: var(--color--neutral-white);
+	--assistant--color--text--user-bubble: #f0f3f9;
+	--assistant--color--background--user-bubble: var(--color--neutral-800);
+
 	// LangChain
 	--lm-chat--messages--color--background: var(--color--neutral-950);
 	--lm-chat--bot--color--background: var(--color--neutral-850);
@@ -214,6 +221,19 @@
 	--button--outline-color--highlight--focus: var(--color--neutral-700);
 	--button--color--text--highlight--disabled: var(--color--neutral-600);
 	--button--border-color--highlight--disabled: transparent;
+
+	// Button highlight-fill
+	--button--color--text--highlight-fill: var(--color--text--shade-1);
+	--button--border-color--highlight-fill: transparent;
+	--button--color--background--highlight-fill: var(--color--background);
+	--button--color--text--highlight-fill--hover-active-focus: var(--color--primary);
+	--button--border-color--highlight-fill--hover-active-focus: transparent;
+	--button--color--background--highlight-fill--hover: var(--color--background);
+	--button--color--background--highlight-fill--active-focus: var(--color--background);
+	--button--outline-color--highlight-fill--focus: var(--color--neutral-700);
+	--button--color--text--highlight-fill--disabled: var(--color--neutral-600);
+	--button--border-color--highlight-fill--disabled: transparent;
+	--button--color--background--highlight-fill--disabled: var(--color--background);
 
 	// Button success, warning, danger
 	--button--color--text--danger: var(--color--neutral-white);

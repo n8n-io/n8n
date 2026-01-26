@@ -1,6 +1,6 @@
 import { AIMessage } from '@langchain/core/messages';
 import { nodeNameToToolName } from 'n8n-workflow';
-import type { EngineResponse, IDataObject } from 'n8n-workflow';
+import type { EngineResponse, EngineResult, IDataObject } from 'n8n-workflow';
 
 import type {
 	RequestResponseMetadata,
@@ -134,7 +134,6 @@ function buildMessageContent(
 	toolInput: IDataObject,
 	toolId: string,
 	toolName: string,
-	nodeName: string,
 ): string | Array<ThinkingContentBlock | RedactedThinkingContentBlock | ToolUseContentBlock> {
 	const { thinkingContent, thinkingType, thinkingSignature } = providerMetadata;
 
@@ -151,7 +150,11 @@ function buildMessageContent(
 	}
 
 	// Default: simple string content
-	return `Calling ${nodeName} with input: ${JSON.stringify(toolInput)}`;
+	return `Calling ${toolName} with input: ${JSON.stringify(toolInput)}`;
+}
+
+function resolveToolName(tool: EngineResult<RequestResponseMetadata>): string {
+	return tool.action.metadata?.hitl?.toolName ?? nodeNameToToolName(tool.action.nodeName);
 }
 
 /**
@@ -199,51 +202,79 @@ export function buildSteps(
 
 			// Build tool ID and name for reuse
 			const toolId = typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call';
-			const toolName = nodeNameToToolName(tool.action.nodeName);
+			const toolName = resolveToolName(tool);
 
-			// Build the tool call object with thought_signature if present (for Gemini)
+			// Build the tool call object
 			const toolCall = {
 				id: toolId,
 				name: toolName,
 				args: toolInput,
 				type: 'tool_call' as const,
-				additional_kwargs: {
-					...(providerMetadata.thoughtSignature && {
-						thought_signature: providerMetadata.thoughtSignature,
-					}),
-				},
 			};
 
 			// Build message content using provider-specific logic
-			const messageContent = buildMessageContent(
-				providerMetadata,
-				toolInput,
-				toolId,
-				toolName,
-				tool.action.nodeName,
-			);
+			const messageContent = buildMessageContent(providerMetadata, toolInput, toolId, toolName);
 
-			const syntheticAIMessage = new AIMessage({
+			// Build AIMessage options, handling provider-specific requirements
+			// Note: tool_calls is only used when content is a string
+			// When content is an array (thinking mode), tool_use blocks are in the content array
+			const aiMessageOptions: {
+				content: typeof messageContent;
+				tool_calls?: Array<typeof toolCall>;
+				additional_kwargs?: Record<string, unknown>;
+			} = {
 				content: messageContent,
-				// Note: tool_calls is only used when content is a string
-				// When content is an array (thinking mode), tool_use blocks are in the content array
-				...(typeof messageContent === 'string' && { tool_calls: [toolCall] }),
-			});
+			};
 
-			const toolInputForResult = toolInput.input;
+			if (typeof messageContent === 'string') {
+				aiMessageOptions.tool_calls = [toolCall];
+			}
+
+			// Include additional_kwargs with Gemini thought signatures for LangChain to pass back
+			if (providerMetadata.thoughtSignature) {
+				aiMessageOptions.additional_kwargs = {
+					__gemini_function_call_thought_signatures__: {
+						[toolId]: providerMetadata.thoughtSignature,
+					},
+					tool_calls: [{ id: toolId, name: toolName, args: toolInput }],
+					signatures: ['', providerMetadata.thoughtSignature],
+				};
+			}
+
+			const syntheticAIMessage = new AIMessage(aiMessageOptions);
+
+			// Extract tool input arguments for the result
+			// Exclude metadata fields: id, log, type - always keep as object for type consistency
+			const { id, log, type, ...toolInputForResult } = toolInput;
+
+			// Build observation from tool result data or error information
+			// When tool execution fails, ai_tool may be missing but error info should be preserved
+			const aiToolData = tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json);
+			let observation: string;
+			if (aiToolData && aiToolData.length > 0) {
+				observation = JSON.stringify(aiToolData);
+			} else if (tool.data?.error) {
+				// Include error information in observation so the agent can see what went wrong
+				// tool.data is ITaskData which has error?: ExecutionError
+				const errorInfo = {
+					error: tool.data.error.message ?? 'Unknown error',
+					...(tool.data.error.name && { errorType: tool.data.error.name }),
+				};
+				observation = JSON.stringify(errorInfo);
+			} else {
+				observation = JSON.stringify('');
+			}
+
 			const toolResult = {
 				action: {
-					tool: nodeNameToToolName(tool.action.nodeName),
-					toolInput:
-						toolInputForResult && typeof toolInputForResult === 'object'
-							? (toolInputForResult as IDataObject)
-							: {},
+					tool: resolveToolName(tool),
+					toolInput: toolInputForResult,
 					log: toolInput.log || syntheticAIMessage.content,
 					messageLog: [syntheticAIMessage],
 					toolCallId: toolInput?.id,
 					type: toolInput.type || 'tool_call',
 				},
-				observation: JSON.stringify(tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json) ?? ''),
+				observation,
 			};
 
 			steps.push(toolResult);

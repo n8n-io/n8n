@@ -34,6 +34,10 @@ export async function getWorkflow(context: IRestApiContext, id: string) {
 	return await makeRestApiRequest<IWorkflowDb>(context, 'GET', `/workflows/${id}`);
 }
 
+export async function workflowExists(context: IRestApiContext, id: string) {
+	return await makeRestApiRequest<{ exists: boolean }>(context, 'GET', `/workflows/${id}/exists`);
+}
+
 export async function getWorkflows(
 	context: IRestApiContext,
 	filter?: object,
@@ -113,6 +117,14 @@ export async function getLastSuccessfulExecution(
 		context,
 		'GET',
 		`/workflows/${workflowId}/executions/last-successful`,
+	);
+}
+
+export async function getWorkflowWriteLock(context: IRestApiContext, workflowId: string) {
+	return await makeRestApiRequest<{ userId: string | null }>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/collaboration/write-lock`,
 	);
 }
 

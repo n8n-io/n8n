@@ -35,7 +35,7 @@ describe('state-modifier', () => {
 				{
 					id: '1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					position: [0, 0] as [number, number],
 					typeVersion: 1,
 					parameters: {},

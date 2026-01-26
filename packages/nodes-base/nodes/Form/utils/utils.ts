@@ -1,6 +1,8 @@
 import type { Response } from 'express';
+import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -16,13 +18,15 @@ import {
 	WAIT_NODE_TYPE,
 	WorkflowConfigurationError,
 	jsonParse,
+	tryToParseUrl,
+	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
-import { validateWebhookAuthentication } from '../../Webhook/utils';
+import { generateFormPostBasicAuthToken, validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
 
@@ -127,9 +131,25 @@ export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	return sanitize(css, {
 		allowedTags: [], // No HTML tags allowed
 		allowedAttributes: {}, // No attributes allowed
-		// This ensures we're only keeping the text content
-		// which should be the CSS, while removing any HTML/script tags
+		// Decode HTML entities that sanitize-html encodes, as they break CSS selectors like ">"
+		textFilter: (text) => text.replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&'),
 	});
+}
+
+/**
+ * Validates that a URL uses a safe scheme.
+ * Returns the normalized URL if valid, or null if invalid.
+ */
+export function validateSafeRedirectUrl(url: string | undefined): string | null {
+	if (!url) return null;
+	const trimmed = url.trim();
+	if (!trimmed) return null;
+
+	try {
+		return tryToParseUrl(trimmed);
+	} catch {
+		return null;
+	}
 }
 
 export function createDescriptionMetadata(description: string) {
@@ -166,6 +186,7 @@ export function prepareFormData({
 	buttonLabel,
 	customCss,
 	nodeVersion,
+	authToken,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -181,6 +202,7 @@ export function prepareFormData({
 	formSubmittedHeader?: string;
 	customCss?: string;
 	nodeVersion?: number;
+	authToken?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -202,13 +224,14 @@ export function prepareFormData({
 		appendAttribution,
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
+		authToken,
 	};
 
 	if (redirectUrl) {
-		if (!redirectUrl.includes('://')) {
-			redirectUrl = `http://${redirectUrl}`;
+		const safeUrl = validateSafeRedirectUrl(redirectUrl);
+		if (safeUrl) {
+			formData.redirectUrl = safeUrl;
 		}
-		formData.redirectUrl = redirectUrl;
 	}
 
 	for (const [index, field] of formFields.entries()) {
@@ -375,6 +398,7 @@ export async function prepareFormReturnItem(
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
+	const { binaryMode } = context.getWorkflowSettings();
 
 	const returnItem: INodeExecutionData = {
 		json: {},
@@ -389,19 +413,25 @@ export async function prepareFormReturnItem(
 		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
 
 		if (Array.isArray(filesInput)) {
-			bodyData[key] = filesInput.map((file) => ({
-				filename: file.originalFilename,
-				mimetype: file.mimetype,
-				size: file.size,
-			}));
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? []
+					: filesInput.map((file) => ({
+							filename: file.originalFilename,
+							mimetype: file.mimetype,
+							size: file.size,
+						}));
 			processFiles.push(...filesInput);
 			multiFile = true;
 		} else {
-			bodyData[key] = {
-				filename: filesInput.originalFilename,
-				mimetype: filesInput.mimetype,
-				size: filesInput.size,
-			};
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? {}
+					: {
+							filename: filesInput.originalFilename,
+							mimetype: filesInput.mimetype,
+							size: filesInput.size,
+						};
 			processFiles.push(filesInput);
 		}
 
@@ -411,17 +441,30 @@ export async function prepareFormReturnItem(
 
 		let fileCount = 0;
 		for (const file of processFiles) {
-			let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
-
-			if (multiFile) {
-				binaryPropertyName += `_${fileCount++}`;
-			}
-
-			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+			const binaryData = await context.nodeHelpers.copyBinaryFile(
 				file.filepath,
 				file.originalFilename ?? file.newFilename,
 				file.mimetype,
 			);
+
+			if (binaryMode === BINARY_MODE_COMBINED) {
+				if (Array.isArray(bodyData[key])) {
+					(bodyData[key] as IDataObject[]).push(binaryData);
+				} else {
+					bodyData[key] = binaryData;
+				}
+			} else {
+				let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
+
+				if (multiFile) {
+					binaryPropertyName += `_${fileCount++}`;
+				}
+
+				returnItem.binary![binaryPropertyName] = binaryData;
+			}
+
+			// Delete original file to prevent tmp directory from growing too large
+			await rm(file.filepath, { force: true });
 		}
 	}
 
@@ -455,6 +498,7 @@ export function renderForm({
 	appendAttribution,
 	buttonLabel,
 	customCss,
+	authToken,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -468,6 +512,7 @@ export function renderForm({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	customCss?: string;
+	authToken?: string;
 }) {
 	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
@@ -510,8 +555,10 @@ export function renderForm({
 		buttonLabel,
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
+		authToken,
 	});
 
+	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 	res.render('form-trigger', data);
 }
 
@@ -610,6 +657,11 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		let authToken: string | undefined;
+		if (node.typeVersion > 1) {
+			authToken = await generateFormPostBasicAuthToken(context, authProperty);
+		}
+
 		renderForm({
 			context,
 			res,
@@ -623,6 +675,7 @@ export async function formWebhook(
 			appendAttribution,
 			buttonLabel,
 			customCss: options.customCss,
+			authToken,
 		});
 
 		return {

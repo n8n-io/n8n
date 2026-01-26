@@ -443,14 +443,10 @@ export function shouldSkipParamValidation(
 	);
 }
 
-export function createCommonNodeSettings(
-	isExecutable: boolean,
-	isTriggerNode: boolean,
-	t: (key: BaseTextKey) => string,
-) {
+export function createCommonNodeSettings(isToolNode: boolean, t: (key: BaseTextKey) => string) {
 	const ret: INodeProperties[] = [];
 
-	if (isExecutable && !isTriggerNode) {
+	if (!isToolNode) {
 		ret.push(
 			{
 				displayName: t('nodeSettings.alwaysOutputData.displayName'),

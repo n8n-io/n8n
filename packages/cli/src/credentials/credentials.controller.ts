@@ -114,7 +114,7 @@ export class CredentialsController {
 		@Query query: CredentialsGetOneRequestQuery,
 	) {
 		const { shared, ...credential } = this.licenseState.isSharingLicensed()
-			? await this.enterpriseCredentialsService.getOne(
+			? await this.enterpriseCredentialsService.getOneForUser(
 					req.user,
 					credentialId,
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
@@ -194,6 +194,7 @@ export class CredentialsController {
 			projectId: project?.id,
 			projectType: project?.type,
 			uiContext: payload.uiContext,
+			isDynamic: newCredential.isResolvable ?? false,
 		});
 
 		return newCredential;
@@ -258,6 +259,7 @@ export class CredentialsController {
 			newCredentialData.isGlobal = isGlobal;
 		}
 
+		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {
@@ -273,6 +275,7 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			isDynamic: newCredentialData.isResolvable ?? false,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);

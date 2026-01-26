@@ -1,5 +1,6 @@
 import { renderComponent } from '@/__tests__/render';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import { mockedStore } from '@/__tests__/utils';
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
@@ -30,6 +31,7 @@ import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import type * as useNodeHelpersModule from '@/app/composables/useNodeHelpers';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -63,6 +65,18 @@ vi.mock('@/stores/pushConnection.store', () => ({
 		isConnected: true,
 	}),
 }));
+
+// Use a mutable reference so the mock always returns the current workflowState
+const workflowStateRef: { current: WorkflowState | undefined } = { current: undefined };
+
+vi.mock('@/app/composables/useNodeHelpers', async (importOriginal) => {
+	const actual = await importOriginal<typeof useNodeHelpersModule>();
+	return {
+		...actual,
+		useNodeHelpers: (opts = {}) =>
+			actual.useNodeHelpers({ ...opts, workflowState: workflowStateRef.current }),
+	};
+});
 
 describe('LogsPanel', () => {
 	const VIEWPORT_HEIGHT = 800;
@@ -109,6 +123,7 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
+		workflowStateRef.current = workflowState;
 		workflowState.setWorkflowExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);
@@ -137,8 +152,9 @@ describe('LogsPanel', () => {
 		aiChatExecutionResponse = deepCopy(aiChatExecutionResponseTemplate);
 	});
 
-	afterEach(() => {
-		vi.clearAllMocks();
+	afterEach(async () => {
+		await flushPromises();
+		await vi.runOnlyPendingTimersAsync();
 	});
 
 	it('should render collapsed panel by default', async () => {

@@ -65,7 +65,7 @@ export class DynamicCredentialResolverRegistry {
 	 * Retrieves a registered resolver by its metadata name.
 	 * @returns The resolver instance, or undefined if not found
 	 */
-	getResolverByName(name: string): ICredentialResolver | undefined {
+	getResolverByTypename(name: string): ICredentialResolver | undefined {
 		return this.resolverMap.get(name);
 	}
 

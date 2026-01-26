@@ -32,7 +32,7 @@ const collaboratorsSorted = computed(() => {
 const currentUserEmail = computed(() => usersStore.currentUser?.email);
 
 onMounted(() => {
-	collaborationStore.initialize();
+	void collaborationStore.initialize();
 });
 
 onBeforeUnmount(() => {
@@ -42,14 +42,11 @@ onBeforeUnmount(() => {
 
 <template>
 	<div
+		v-if="showUserStack"
 		:class="`collaboration-pane-container ${$style.container}`"
 		data-test-id="collaboration-pane"
 	>
-		<N8nUserStack
-			v-if="showUserStack"
-			:users="collaboratorsSorted"
-			:current-user-email="currentUserEmail"
-		/>
+		<N8nUserStack :users="collaboratorsSorted" :current-user-email="currentUserEmail" />
 	</div>
 </template>
 

@@ -1,4 +1,8 @@
-import type { CredentialResolverConfiguration, ICredentialResolver } from '@n8n/decorators';
+import type {
+	CredentialResolverConfiguration,
+	CredentialResolverHandle,
+	ICredentialResolver,
+} from '@n8n/decorators';
 import {
 	CredentialResolverDataNotFoundError,
 	CredentialResolverValidationError,
@@ -45,6 +49,13 @@ export const testHelpers = {
 		apiKey: 'test-key-123',
 		apiSecret: 'test-secret-456',
 		...data,
+	}),
+
+	/** Creates a credential resolver handle with the given configuration */
+	createHandle: (configuration: CredentialResolverConfiguration): CredentialResolverHandle => ({
+		configuration,
+		resolverName: 'test-resolver',
+		resolverId: 'test-resolver-id',
 	}),
 
 	/** Generates a random credential ID for isolation */
@@ -120,8 +131,9 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const credentialId = testHelpers.randomCredentialId();
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
-				await expect(resolver.getSecret(credentialId, context, options)).rejects.toThrow(
+				await expect(resolver.getSecret(credentialId, context, handle)).rejects.toThrow(
 					CredentialResolverDataNotFoundError,
 				);
 			});
@@ -131,9 +143,10 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const data = testHelpers.createCredentialData();
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
-				await resolver.setSecret(credentialId, context, data, options);
-				const retrieved = await resolver.getSecret(credentialId, context, options);
+				await resolver.setSecret(credentialId, context, data, handle);
+				const retrieved = await resolver.getSecret(credentialId, context, handle);
 
 				expect(retrieved).toEqual(data);
 			});
@@ -147,11 +160,12 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const data = testHelpers.createCredentialData();
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
-				await resolver.setSecret(credentialId, context, data, options);
-				await resolver.deleteSecret(credentialId, context, options);
+				await resolver.setSecret(credentialId, context, data, handle);
+				await resolver.deleteSecret(credentialId, context, handle);
 
-				await expect(resolver.getSecret(credentialId, context, options)).rejects.toThrow(
+				await expect(resolver.getSecret(credentialId, context, handle)).rejects.toThrow(
 					CredentialResolverDataNotFoundError,
 				);
 			});
@@ -163,9 +177,10 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const data = testHelpers.createCredentialData();
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
-				await resolver.setSecret(credentialId, context, data, options);
-				const retrieved = await resolver.getSecret(credentialId, context, options);
+				await resolver.setSecret(credentialId, context, data, handle);
+				const retrieved = await resolver.getSecret(credentialId, context, handle);
 
 				expect(retrieved).toEqual(data);
 			});
@@ -174,14 +189,15 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const credentialId = testHelpers.randomCredentialId();
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
 				const data1 = testHelpers.createCredentialData({ apiKey: 'key-1' });
 				const data2 = testHelpers.createCredentialData({ apiKey: 'key-2' });
 
-				await resolver.setSecret(credentialId, context, data1, options);
-				await resolver.setSecret(credentialId, context, data2, options);
+				await resolver.setSecret(credentialId, context, data1, handle);
+				await resolver.setSecret(credentialId, context, data2, handle);
 
-				const retrieved = await resolver.getSecret(credentialId, context, options);
+				const retrieved = await resolver.getSecret(credentialId, context, handle);
 				expect(retrieved).toEqual(data2);
 			});
 		});
@@ -196,11 +212,12 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const data = testHelpers.createCredentialData();
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
-				await resolver.setSecret(credentialId, context, data, options);
-				await resolver.deleteSecret(credentialId, context, options);
+				await resolver.setSecret(credentialId, context, data, handle);
+				await resolver.deleteSecret(credentialId, context, handle);
 
-				await expect(resolver.getSecret(credentialId, context, options)).rejects.toThrow(
+				await expect(resolver.getSecret(credentialId, context, handle)).rejects.toThrow(
 					CredentialResolverDataNotFoundError,
 				);
 			});
@@ -214,10 +231,11 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const data = testHelpers.createCredentialData();
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
-				await resolver.setSecret(credentialId, context, data, options);
-				await resolver.deleteSecret(credentialId, context, options);
-				await expect(resolver.deleteSecret(credentialId, context, options)).resolves.not.toThrow();
+				await resolver.setSecret(credentialId, context, data, handle);
+				await resolver.deleteSecret(credentialId, context, handle);
+				await expect(resolver.deleteSecret(credentialId, context, handle)).resolves.not.toThrow();
 			});
 
 			it('should not error when deleting non-existent data', async () => {
@@ -228,8 +246,9 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const credentialId = testHelpers.randomCredentialId();
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
-				await expect(resolver.deleteSecret(credentialId, context, options)).resolves.not.toThrow();
+				await expect(resolver.deleteSecret(credentialId, context, handle)).resolves.not.toThrow();
 			});
 		});
 
@@ -239,15 +258,16 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const credentialId2 = testHelpers.randomCredentialId();
 				const context = testHelpers.createContext(testHelpers.randomIdentity());
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
 				const data1 = testHelpers.createCredentialData({ apiKey: 'key-1' });
 				const data2 = testHelpers.createCredentialData({ apiKey: 'key-2' });
 
-				await resolver.setSecret(credentialId1, context, data1, options);
-				await resolver.setSecret(credentialId2, context, data2, options);
+				await resolver.setSecret(credentialId1, context, data1, handle);
+				await resolver.setSecret(credentialId2, context, data2, handle);
 
-				const retrieved1 = await resolver.getSecret(credentialId1, context, options);
-				const retrieved2 = await resolver.getSecret(credentialId2, context, options);
+				const retrieved1 = await resolver.getSecret(credentialId1, context, handle);
+				const retrieved2 = await resolver.getSecret(credentialId2, context, handle);
 
 				expect(retrieved1).toEqual(data1);
 				expect(retrieved2).toEqual(data2);
@@ -258,6 +278,7 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const identity1 = testHelpers.randomIdentity();
 				const identity2 = testHelpers.randomIdentity();
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
 				const context1 = testHelpers.createContext(identity1);
 				const context2 = testHelpers.createContext(identity2);
@@ -265,11 +286,11 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const data1 = testHelpers.createCredentialData({ apiKey: 'key-1' });
 				const data2 = testHelpers.createCredentialData({ apiKey: 'key-2' });
 
-				await resolver.setSecret(credentialId, context1, data1, options);
-				await resolver.setSecret(credentialId, context2, data2, options);
+				await resolver.setSecret(credentialId, context1, data1, handle);
+				await resolver.setSecret(credentialId, context2, data2, handle);
 
-				const retrieved1 = await resolver.getSecret(credentialId, context1, options);
-				const retrieved2 = await resolver.getSecret(credentialId, context2, options);
+				const retrieved1 = await resolver.getSecret(credentialId, context1, handle);
+				const retrieved2 = await resolver.getSecret(credentialId, context2, handle);
 
 				expect(retrieved1).toEqual(data1);
 				expect(retrieved2).toEqual(data2);
@@ -280,14 +301,15 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const identity = testHelpers.randomIdentity();
 				const context = testHelpers.createContext(identity);
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
 				const data = testHelpers.createCredentialData();
 
-				await resolver.setSecret(credentialId, context, data, options);
+				await resolver.setSecret(credentialId, context, data, handle);
 
 				// Create a new context with same identity
 				const sameContext = testHelpers.createContext(identity);
-				const retrieved = await resolver.getSecret(credentialId, sameContext, options);
+				const retrieved = await resolver.getSecret(credentialId, sameContext, handle);
 
 				expect(retrieved).toEqual(data);
 			});
@@ -301,6 +323,7 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const identity1 = testHelpers.randomIdentity();
 				const identity2 = testHelpers.randomIdentity();
 				const options = validationTests.validOptions[0][1];
+				const handle = testHelpers.createHandle(options);
 
 				const context1 = testHelpers.createContext(identity1);
 				const context2 = testHelpers.createContext(identity2);
@@ -308,18 +331,18 @@ export function testCredentialResolverContract(config: ResolverContractTestConfi
 				const data1 = testHelpers.createCredentialData({ apiKey: 'key-1' });
 				const data2 = testHelpers.createCredentialData({ apiKey: 'key-2' });
 
-				await resolver.setSecret(credentialId, context1, data1, options);
-				await resolver.setSecret(credentialId, context2, data2, options);
+				await resolver.setSecret(credentialId, context1, data1, handle);
+				await resolver.setSecret(credentialId, context2, data2, handle);
 
-				await resolver.deleteSecret(credentialId, context1, options);
+				await resolver.deleteSecret(credentialId, context1, handle);
 
 				// Identity1 should be deleted
-				await expect(resolver.getSecret(credentialId, context1, options)).rejects.toThrow(
+				await expect(resolver.getSecret(credentialId, context1, handle)).rejects.toThrow(
 					CredentialResolverDataNotFoundError,
 				);
 
 				// Identity2 should still exist
-				const retrieved2 = await resolver.getSecret(credentialId, context2, options);
+				const retrieved2 = await resolver.getSecret(credentialId, context2, handle);
 				expect(retrieved2).toEqual(data2);
 			});
 		});

@@ -512,9 +512,10 @@ export class TestWebhooks implements IWebhookManager {
 			if (staticData) workflow.staticData = staticData;
 
 			await this.webhookService.deleteWebhook(workflow, webhook, 'internal', 'update');
-		}
 
-		await this.registrations.deregisterAll();
+			// Deregister only this webhook, not all webhooks from other running workflows
+			await this.registrations.deregister(webhook);
+		}
 	}
 
 	/**

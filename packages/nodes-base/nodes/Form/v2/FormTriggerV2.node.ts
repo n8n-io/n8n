@@ -13,6 +13,7 @@ import {
 	appendAttributionToForm,
 	formDescription,
 	formFields,
+	formFieldsDynamic,
 	formRespondMode,
 	formTitle,
 	formTriggerPanel,
@@ -38,7 +39,7 @@ const descriptionV2: INodeTypeDescription = {
 	group: ['trigger'],
 	// since trigger and node are sharing descriptions and logic we need to sync the versions
 	// and keep them aligned in both nodes
-	version: [2, 2.1, 2.2, 2.3, 2.4],
+	version: [2, 2.1, 2.2, 2.3, 2.4, 2.5],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',
@@ -102,7 +103,8 @@ const descriptionV2: INodeTypeDescription = {
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
 		formDescription,
-		formFields,
+		{ ...formFields, displayOptions: { show: { '@version': [{ _cnd: { lt: 2.5 } }] } } },
+		{ ...formFieldsDynamic, displayOptions: { show: { '@version': [{ _cnd: { gte: 2.5 } }] } } },
 		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		{
 			...formRespondMode,

@@ -5,12 +5,13 @@ import {
 	type ChatHubSessionDto,
 	type ChatHubConversationDto,
 	type ChatSessionId,
-	type ChatHubConversationModel,
-	type EnrichedStructuredChunk,
+	type MessageChunk,
 	type ChatHubProvider,
 	chatHubConversationModelSchema,
+	type ChatModelDto,
+	agentIconOrEmojiSchema,
 } from '@n8n/api-types';
-import type { INode } from 'n8n-workflow';
+import type { IBinaryData, INode } from 'n8n-workflow';
 import { z } from 'zod';
 import { isLlmProviderModel } from './chat.utils';
 
@@ -39,6 +40,13 @@ export interface ErrorMessage {
 }
 
 export type StreamChunk = AssistantMessage | ErrorMessage;
+
+export type MessagingState =
+	| 'idle'
+	| 'waitingFirstChunk'
+	| 'receiving'
+	| 'missingCredentials'
+	| 'missingAgent';
 
 export interface ChatMessage extends ChatHubMessageDto {
 	responses: ChatMessageId[];
@@ -72,17 +80,19 @@ export interface GroupedConversations {
 
 export interface ChatAgentFilter {
 	sortBy: 'updatedAt' | 'createdAt';
-	provider: 'custom-agent' | 'n8n' | '';
 	search: string;
 }
 
-export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['metadata']> {
+export interface ChatStreamingState extends Partial<MessageChunk['metadata']> {
+	promptPreviousMessageId: ChatMessageId | null;
+	promptText: string;
 	promptId: ChatMessageId;
 	sessionId: ChatSessionId;
-	model: ChatHubConversationModel;
 	retryOfMessageId: ChatMessageId | null;
+	revisionOfMessageId: ChatMessageId | null;
 	tools: INode[];
-	agentName: string;
+	attachments: IBinaryData[];
+	agent: ChatModelDto;
 }
 
 export interface FlattenedModel {
@@ -93,7 +103,12 @@ export interface FlattenedModel {
 }
 
 export const chatHubConversationModelWithCachedDisplayNameSchema = chatHubConversationModelSchema
-	.and(z.object({ cachedDisplayName: z.string().optional() }))
+	.and(
+		z.object({
+			cachedDisplayName: z.string().optional(),
+			cachedIcon: agentIconOrEmojiSchema.optional(),
+		}),
+	)
 	.transform((value) => ({
 		...value,
 		cachedDisplayName: value.cachedDisplayName || (isLlmProviderModel(value) ? value.model : ''),
@@ -102,3 +117,7 @@ export const chatHubConversationModelWithCachedDisplayNameSchema = chatHubConver
 export type ChatHubConversationModelWithCachedDisplayName = z.infer<
 	typeof chatHubConversationModelWithCachedDisplayNameSchema
 >;
+
+export interface FetchOptions {
+	minLoadingTime?: number;
+}

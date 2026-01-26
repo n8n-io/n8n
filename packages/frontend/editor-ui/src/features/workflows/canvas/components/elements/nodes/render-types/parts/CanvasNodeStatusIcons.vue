@@ -49,6 +49,20 @@ const commonClasses = computed(() => [
 	spinnerScrim ? $style.spinnerScrim : '',
 	spinnerLayout === 'absolute' ? $style.absoluteSpinner : '',
 ]);
+
+const groupedExecutionErrors = computed(() => {
+	const errorCounts = executionErrors.value.reduce(
+		(acc, error) => {
+			acc[error] = (acc[error] || 0) + 1;
+			return acc;
+		},
+		{} as Record<string, number>,
+	);
+
+	return Object.entries(errorCounts).map(([error, count]) =>
+		count > 1 ? `${error} (x${count})` : error,
+	);
+});
 </script>
 
 <template>
@@ -72,7 +86,7 @@ const commonClasses = computed(() => [
 	>
 		<N8nTooltip :show-after="500" placement="bottom">
 			<template #content>
-				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="executionErrors" />
+				<TitledList :title="`${i18n.baseText('node.issues')}:`" :items="groupedExecutionErrors" />
 			</template>
 			<N8nIcon icon="node-execution-error" :size="size" />
 		</N8nTooltip>

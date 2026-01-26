@@ -7,6 +7,7 @@ import type {
 	IExecuteFunctions,
 	IPairedItemData,
 	INodeExecutionData,
+	INodeType,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
 
@@ -633,6 +634,104 @@ describe('processRunExecutionData', () => {
 			const runData = result.data.resultData.runData;
 			expect(runData[firstNode.name]).toHaveLength(1);
 			expect(runData[secondNode.name]).toHaveLength(1);
+		});
+
+		test('preserves inputOverride and sets error output when AI tool node fails', async () => {
+			// ARRANGE
+			// Create an error-throwing tool node
+			const errorMessage = 'Tool execution failed with validation error';
+			const errorThrowingNode: INodeType = {
+				...passThroughNode,
+				async execute(): Promise<INodeExecutionData[][]> {
+					throw new Error(errorMessage);
+				},
+			};
+
+			const toolNode = createNodeData({ name: 'errorTool', type: 'errorThrowingNode' });
+			const toolInput = { query: 'test input that will fail' };
+
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: toolInput,
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: { requestId: 'test_request' },
+				})
+				.done();
+			const agentNode = createNodeData({ name: 'agentNode', type: 'agentNodeType' });
+
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agentNodeType: { type: agentNodeType, sourcePath: '' },
+				errorThrowingNode: { type: errorThrowingNode, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(agentNode, toolNode)
+				.addConnections({ from: toolNode, to: agentNode, type: 'ai_tool' })
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const taskDataConnection = { main: [[{ json: { prompt: 'test prompt' } }]] };
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: agentNode.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: taskDataConnection,
+							node: agentNode,
+							source: { main: [{ previousNode: 'Start' }] },
+						},
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			const runData = result.data.resultData.runData;
+
+			// Tool node should have exactly one entry (not two separate entries)
+			expect(runData[toolNode.name]).toHaveLength(1);
+
+			const toolRunData = runData[toolNode.name][0];
+
+			// inputOverride should be preserved (set by requests-response.ts before execution)
+			expect(toolRunData.inputOverride).toBeDefined();
+			expect(toolRunData.inputOverride?.ai_tool).toBeDefined();
+			expect(toolRunData.inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				prompt: 'test prompt',
+				query: 'test input that will fail',
+				toolCallId: 'action_1',
+			});
+
+			// Error output should be set under the correct connection type (ai_tool)
+			expect(toolRunData.data).toBeDefined();
+			expect(toolRunData.data?.ai_tool).toBeDefined();
+			expect(toolRunData.data?.ai_tool?.[0]?.[0]?.json).toMatchObject({
+				error: errorMessage,
+			});
+
+			// Execution status should be error
+			expect(toolRunData.executionStatus).toBe('error');
+
+			// Error should be captured
+			expect(toolRunData.error).toBeDefined();
+			expect(toolRunData.error?.message).toContain(errorMessage);
 		});
 	});
 

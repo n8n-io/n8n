@@ -149,6 +149,7 @@ class SecurityValidator(ast.NodeVisitor):
         )
 
         if not is_allowed:
+            assert error_msg is not None
             self._add_violation(lineno, error_msg)
 
     def _add_violation(self, lineno: int, message: str) -> None:
@@ -175,9 +176,8 @@ class TaskAnalyzer:
 
         cache_key = self._to_cache_key(code)
         cached_violations = self._cache.get(cache_key)
-        cache_hit = cached_violations is not None
 
-        if cache_hit:
+        if cached_violations is not None:
             self._cache.move_to_end(cache_key)
 
             if len(cached_violations) == 0:

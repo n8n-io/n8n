@@ -195,4 +195,104 @@ describe('CommunityNodeTypesService', () => {
 			});
 		});
 	});
+
+	describe('findVetted', () => {
+		beforeEach(() => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-air.air',
+					packageName: 'n8n-nodes-air',
+					checksum: 'checksum-air',
+					npmVersion: '1.0.0',
+				},
+				{
+					name: 'n8n-nodes-airparser.airparser',
+					packageName: 'n8n-nodes-airparser',
+					checksum: 'checksum-airparser',
+					npmVersion: '2.0.0',
+				},
+				{
+					name: 'n8n-nodes-example.example',
+					packageName: 'n8n-nodes-example',
+					checksum: 'checksum-example',
+					npmVersion: '3.0.0',
+				},
+			];
+
+			(service as any).updateCommunityNodeTypes(mockNodeTypes);
+		});
+
+		it('should return the correct package when exact packageName match is found', () => {
+			const result = service.findVetted('n8n-nodes-air');
+
+			expect(result).toBeDefined();
+			expect(result?.packageName).toBe('n8n-nodes-air');
+			expect(result?.checksum).toBe('checksum-air');
+			expect(result?.npmVersion).toBe('1.0.0');
+		});
+
+		it('should return undefined when package is not found', () => {
+			const result = service.findVetted('n8n-nodes-nonexistent');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should not match similar package names with substring matching', () => {
+			const result = service.findVetted('n8n-nodes-air');
+
+			expect(result).toBeDefined();
+			expect(result?.packageName).toBe('n8n-nodes-air');
+			// Should NOT match 'n8n-nodes-airparser' even though it contains 'n8n-nodes-air'
+			expect(result?.packageName).not.toBe('n8n-nodes-airparser');
+		});
+
+		it('should return the correct package from multiple similar names', () => {
+			const airResult = service.findVetted('n8n-nodes-air');
+			const airparserResult = service.findVetted('n8n-nodes-airparser');
+
+			expect(airResult?.packageName).toBe('n8n-nodes-air');
+			expect(airResult?.checksum).toBe('checksum-air');
+
+			expect(airparserResult?.packageName).toBe('n8n-nodes-airparser');
+			expect(airparserResult?.checksum).toBe('checksum-airparser');
+		});
+
+		it('should return undefined when communityNodeTypes is empty', () => {
+			(service as any).resetCommunityNodeTypes();
+
+			const result = service.findVetted('n8n-nodes-air');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should handle packages with similar prefixes correctly', () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					checksum: 'checksum-test',
+				},
+				{
+					name: 'n8n-nodes-testing.testing',
+					packageName: 'n8n-nodes-testing',
+					checksum: 'checksum-testing',
+				},
+				{
+					name: 'n8n-nodes-tester.tester',
+					packageName: 'n8n-nodes-tester',
+					checksum: 'checksum-tester',
+				},
+			];
+
+			(service as any).updateCommunityNodeTypes(mockNodeTypes);
+
+			const testResult = service.findVetted('n8n-nodes-test');
+			const testingResult = service.findVetted('n8n-nodes-testing');
+			const testerResult = service.findVetted('n8n-nodes-tester');
+
+			expect(testResult?.packageName).toBe('n8n-nodes-test');
+			expect(testingResult?.packageName).toBe('n8n-nodes-testing');
+			expect(testerResult?.packageName).toBe('n8n-nodes-tester');
+		});
+	});
 });

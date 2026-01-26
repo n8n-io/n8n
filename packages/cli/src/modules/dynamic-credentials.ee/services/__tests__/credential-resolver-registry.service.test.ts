@@ -78,13 +78,13 @@ describe('DynamicCredentialResolverRegistry', () => {
 				await registry.init();
 
 				expect(mockLogger.debug).toHaveBeenCalledWith('Registering 1 credential resolvers.');
-				expect(registry.getResolverByName('test.resolver')).toBe(mockResolver);
+				expect(registry.getResolverByTypename('test.resolver')).toBe(mockResolver);
 				expect(registry.getAllResolvers()).toEqual([mockResolver]);
 			});
 
 			it('should register multiple resolvers', async () => {
 				const resolver1 = createMockResolver('oauth.resolver');
-				const resolver2 = createMockResolver('stub.resolver');
+				const resolver2 = createMockResolver('test.resolver');
 				const resolver3 = createMockResolver('api.resolver');
 
 				const MockClass1 = jest.fn(() => resolver1) as unknown as CredentialResolverClass;
@@ -92,7 +92,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 				const MockClass3 = jest.fn(() => resolver3) as unknown as CredentialResolverClass;
 
 				Object.defineProperty(MockClass1, 'name', { value: 'OAuthResolver' });
-				Object.defineProperty(MockClass2, 'name', { value: 'StubResolver' });
+				Object.defineProperty(MockClass2, 'name', { value: 'TestResolver' });
 				Object.defineProperty(MockClass3, 'name', { value: 'ApiResolver' });
 
 				mockMetadata.getClasses.mockReturnValue([MockClass1, MockClass2, MockClass3]);
@@ -106,9 +106,9 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 				expect(mockLogger.debug).toHaveBeenCalledWith('Registering 3 credential resolvers.');
 				expect(registry.getAllResolvers()).toHaveLength(3);
-				expect(registry.getResolverByName('oauth.resolver')).toBe(resolver1);
-				expect(registry.getResolverByName('stub.resolver')).toBe(resolver2);
-				expect(registry.getResolverByName('api.resolver')).toBe(resolver3);
+				expect(registry.getResolverByTypename('oauth.resolver')).toBe(resolver1);
+				expect(registry.getResolverByTypename('test.resolver')).toBe(resolver2);
+				expect(registry.getResolverByTypename('api.resolver')).toBe(resolver3);
 			});
 
 			it('should handle empty resolver list', async () => {
@@ -133,7 +133,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 				await registry.init();
 
 				expect(initSpy).toHaveBeenCalled();
-				expect(registry.getResolverByName('test.resolver')).toBe(mockResolver);
+				expect(registry.getResolverByTypename('test.resolver')).toBe(mockResolver);
 			});
 
 			it('should clear previous registrations on re-init', async () => {
@@ -159,7 +159,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 				await registry.init();
 
 				expect(registry.getAllResolvers()).toEqual([resolver2]);
-				expect(registry.getResolverByName('resolver1')).toBeUndefined();
+				expect(registry.getResolverByTypename('resolver1')).toBeUndefined();
 			});
 		});
 
@@ -196,7 +196,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 					'Failed to initialize credential resolver "test.resolver": Init failed',
 					{ error: expect.any(Error) },
 				);
-				expect(registry.getResolverByName('test.resolver')).toBeUndefined();
+				expect(registry.getResolverByTypename('test.resolver')).toBeUndefined();
 				expect(registry.getAllResolvers()).toEqual([]);
 			});
 
@@ -226,7 +226,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 					'Credential resolver with name "duplicate.name" is already registered. Conflicting classes are "FirstResolver" and "SecondResolver". Skipping the latter.',
 				);
 				expect(registry.getAllResolvers()).toHaveLength(1);
-				expect(registry.getResolverByName('duplicate.name')).toBe(resolver1);
+				expect(registry.getResolverByTypename('duplicate.name')).toBe(resolver1);
 			});
 
 			it('should continue registering other resolvers when one fails', async () => {
@@ -253,8 +253,8 @@ describe('DynamicCredentialResolverRegistry', () => {
 				await registry.init();
 
 				expect(registry.getAllResolvers()).toHaveLength(2);
-				expect(registry.getResolverByName('success.resolver')).toBe(resolver1);
-				expect(registry.getResolverByName('another.success')).toBe(resolver3);
+				expect(registry.getResolverByTypename('success.resolver')).toBe(resolver1);
+				expect(registry.getResolverByTypename('another.success')).toBe(resolver3);
 			});
 		});
 	});
@@ -270,7 +270,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 
 			await registry.init();
 
-			const result = registry.getResolverByName('test.resolver');
+			const result = registry.getResolverByTypename('test.resolver');
 
 			expect(result).toBe(mockResolver);
 		});
@@ -279,7 +279,7 @@ describe('DynamicCredentialResolverRegistry', () => {
 			mockMetadata.getClasses.mockReturnValue([]);
 			await registry.init();
 
-			const result = registry.getResolverByName('non.existent');
+			const result = registry.getResolverByTypename('non.existent');
 
 			expect(result).toBeUndefined();
 		});

@@ -59,7 +59,7 @@ describe('CollaborationPane', () => {
 	});
 
 	it('should not render the user-stack if there is only one user', async () => {
-		const { getByTestId } = renderComponent({
+		const { queryByTestId } = renderComponent({
 			pinia: createTestingPinia({
 				initialState: {
 					...initialState,
@@ -71,8 +71,7 @@ describe('CollaborationPane', () => {
 		});
 		await waitAllPromises();
 
-		const collaborationPane = getByTestId('collaboration-pane');
-		expect(collaborationPane).toBeInTheDocument();
-		expect(collaborationPane.querySelector('[data-test-id=user-stack-avatars]')).toBeNull();
+		const collaborationPane = queryByTestId('collaboration-pane');
+		expect(collaborationPane).not.toBeInTheDocument();
 	});
 });

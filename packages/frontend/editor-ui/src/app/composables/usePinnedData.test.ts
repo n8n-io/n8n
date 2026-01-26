@@ -10,8 +10,11 @@ import { NodeConnectionTypes, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type { NodeConnectionType, INodeTypeDescription } from 'n8n-workflow';
 
 vi.mock('@/app/composables/useToast', () => ({ useToast: vi.fn(() => ({ showError: vi.fn() })) }));
-vi.mock('@n8n/i18n', () => ({
-	useI18n: vi.fn(() => ({ baseText: vi.fn((key) => key) })),
+vi.mock('@n8n/i18n', async (importActual) => ({
+	...(await importActual()),
+	useI18n: () => ({
+		baseText: (key: string) => key,
+	}),
 }));
 vi.mock('@/app/composables/useExternalHooks', () => ({
 	useExternalHooks: vi.fn(() => ({

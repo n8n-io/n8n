@@ -7,6 +7,8 @@ describe('createEnvProviderState', () => {
 	});
 
 	it('should return the state with process available and env access allowed', () => {
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
 		expect(createEnvProviderState()).toEqual({
 			isProcessAvailable: true,
 			isEnvAccessBlocked: false,
@@ -17,6 +19,14 @@ describe('createEnvProviderState', () => {
 	it('should block env access when N8N_BLOCK_ENV_ACCESS_IN_NODE is set to "true"', () => {
 		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'true';
 
+		expect(createEnvProviderState()).toEqual({
+			isProcessAvailable: true,
+			isEnvAccessBlocked: true,
+			env: {},
+		});
+	});
+
+	it('should block env access when N8N_BLOCK_ENV_ACCESS_IN_NODE is not set', () => {
 		expect(createEnvProviderState()).toEqual({
 			isProcessAvailable: true,
 			isEnvAccessBlocked: true,
@@ -42,12 +52,18 @@ describe('createEnvProviderState', () => {
 });
 
 describe('createEnvProvider', () => {
+	afterEach(() => {
+		delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
+	});
+
 	it('should return true when checking for a property using "has"', () => {
 		const proxy = createEnvProvider(0, 0, createEnvProviderState());
 		expect('someProperty' in proxy).toBe(true);
 	});
 
 	it('should return the value from process.env if access is allowed', () => {
+		process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = 'false';
+
 		process.env.TEST_ENV_VAR = 'test_value';
 		const proxy = createEnvProvider(0, 0, createEnvProviderState());
 		expect(proxy.TEST_ENV_VAR).toBe('test_value');

@@ -3,21 +3,25 @@ import { useChatMessaging } from '@/features/execution/logs/composables/useChatM
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { ChatOptionsSymbol } from '@n8n/chat/constants';
+import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
+import { ChatOptionsSymbol, MessageComponentKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
-import { v4 as uuid } from 'uuid';
-import type { ComputedRef, InjectionKey, Ref } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
 import type { INode, NodeParameterValue } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { constructChatWebsocketUrl } from '@n8n/chat/utils';
+import {
+	constructChatWebsocketUrl,
+	parseBotChatMessageContent,
+	shouldBlockUserInput,
+} from '@n8n/chat/utils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -333,6 +337,7 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 			initialMessages: ref([]),
 			currentSessionId: params.currentSessionId,
 			waitingForResponse: params.isLoading,
+			blockUserInput: ref(false),
 		};
 
 		const chatOptions: ChatOptions = {
@@ -352,6 +357,9 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 			disabled: params.isDisabled,
 			allowFileUploads: params.allowFileUploads,
 			allowedFilesMimeTypes,
+			messageComponents: {
+				[MessageComponentKey.WITH_BUTTONS]: MessageWithButtons,
+			},
 		};
 
 		return { chatConfig, chatOptions };
@@ -434,11 +442,10 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 					}
 					setLoadingState(false);
 					const newMessage: ChatMessage & { sessionId: string } = {
-						text: event.data,
-						sender: 'bot',
+						...parseBotChatMessageContent(event.data as string),
 						sessionId: currentSessionId.value,
-						id: uuid(),
 					};
+					chatConfig.blockUserInput.value = shouldBlockUserInput(newMessage);
 					logsStore.addChatMessage(newMessage);
 
 					if (logsStore.isOpen) {
@@ -448,6 +455,7 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 				ws.value.onclose = () => {
 					setLoadingState(false);
 					ws.value = null;
+					chatConfig.blockUserInput.value = false;
 				};
 			}
 
@@ -482,7 +490,7 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 	watch(
 		() => workflowsStore.workflowId,
 		(_newWorkflowId, prevWorkflowId) => {
-			if (prevWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			if (!prevWorkflowId) {
 				return;
 			}
 
