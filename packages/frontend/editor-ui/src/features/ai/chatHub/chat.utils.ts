@@ -341,14 +341,25 @@ export function isLlmProviderModel(
 	return isLlmProvider(model?.provider);
 }
 
+export function isAllowedModel(
+	{ enabled = true, allowedModels }: ChatProviderSettingsDto,
+	model: ChatHubConversationModel,
+): boolean {
+	return (
+		enabled &&
+		(allowedModels.length === 0 ||
+			allowedModels.some((agent) => 'model' in model && agent.model === model.model))
+	);
+}
+
 export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
 	providerSettings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>,
 ): ChatModelDto | undefined {
-	let bestModel: ChatModelDto | undefined;
-	let bestPriority = -Infinity;
-
 	for (const provider of chatHubProviderSchema.options) {
+		let bestModel: ChatModelDto | undefined;
+		let bestPriority = -Infinity;
+
 		const settings = isLlmProvider(provider) ? providerSettings[provider] : undefined;
 		const availableModels = response[provider].models.filter(
 			(agent) => !settings || isAllowedModel(settings, agent.model),
@@ -361,20 +372,13 @@ export function findOneFromModelsResponse(
 				bestModel = model;
 			}
 		}
+
+		if (bestModel) {
+			return bestModel;
+		}
 	}
 
-	return bestModel;
-}
-
-export function isAllowedModel(
-	{ enabled = true, allowedModels }: ChatProviderSettingsDto,
-	model: ChatHubConversationModel,
-): boolean {
-	return (
-		enabled &&
-		(allowedModels.length === 0 ||
-			allowedModels.some((agent) => 'model' in model && agent.model === model.model))
-	);
+	return undefined;
 }
 
 export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {
