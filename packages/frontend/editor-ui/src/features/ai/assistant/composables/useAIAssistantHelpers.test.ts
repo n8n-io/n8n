@@ -785,7 +785,7 @@ describe('processNodeForAssistant - trimParameterValues', () => {
 		aiAssistantHelpers = useAIAssistantHelpers();
 	});
 
-	it('Should strip values from set node assignments while preserving schema', () => {
+	it('Should strip values from set node assignments while preserving schema', async () => {
 		const node: INode = {
 			id: 'set-node',
 			name: 'Set Node',
@@ -816,7 +816,7 @@ describe('processNodeForAssistant - trimParameterValues', () => {
 			},
 		};
 
-		const processed = aiAssistantHelpers.processNodeForAssistant(node, [], {
+		const processed = await aiAssistantHelpers.processNodeForAssistant(node, [], {
 			trimParameterValues: true,
 		});
 
@@ -842,7 +842,7 @@ describe('processNodeForAssistant - trimParameterValues', () => {
 		});
 	});
 
-	it('Should sanitize primitive and structured parameter values', () => {
+	it('Should sanitize primitive and structured parameter values', async () => {
 		const resourceMapperValue = {
 			mappingMode: 'auto',
 			value: { firstName: 'John' },
@@ -913,7 +913,7 @@ describe('processNodeForAssistant - trimParameterValues', () => {
 			},
 		};
 
-		const processed = aiAssistantHelpers.processNodeForAssistant(node, [], {
+		const processed = await aiAssistantHelpers.processNodeForAssistant(node, [], {
 			trimParameterValues: true,
 		});
 

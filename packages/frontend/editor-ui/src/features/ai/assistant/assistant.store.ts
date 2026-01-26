@@ -323,9 +323,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
 		const activeNodeForLLM = activeNode
-			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'], {
-					trimParameterValues: !allowSendingParameterValues.value,
-				})
+			? await assistantHelpers.processNodeForAssistant(
+					activeNode,
+					['position', 'parameters.notice'],
+					{
+						trimParameterValues: !allowSendingParameterValues.value,
+					},
+				)
 			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
@@ -371,7 +375,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
-				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
+				? await assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
 						trimParameterValues: !allowSendingParameterValues.value,
 					})
 				: undefined,
@@ -394,7 +398,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
 			chatSessionTask.value === 'support'
-				? getVisualContext(nodeInfo)
+				? await getVisualContext(nodeInfo)
 				: {
 						aiUsageSettings: {
 							allowSendingParameterValues: allowSendingParameterValues.value,
@@ -475,7 +479,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			error: context.error,
-			node: assistantHelpers.processNodeForAssistant(
+			node: await assistantHelpers.processNodeForAssistant(
 				context.node,
 				['position', 'parameters.notice'],
 				{
@@ -592,7 +596,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
 				trimParameterValues: !allowSendingParameterValues.value,
 			});
-			const userContext = getVisualContext(nodeInfo);
+			const userContext = await getVisualContext(nodeInfo);
 
 			chatWithAssistant(
 				rootStore.restApiContext,

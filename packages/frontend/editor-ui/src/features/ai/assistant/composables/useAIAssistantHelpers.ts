@@ -199,11 +199,11 @@ export const useAIAssistantHelpers = () => {
 	 * @param propsToRemove properties to remove from the node object
 	 * @returns processed node
 	 */
-	function processNodeForAssistant(
+	async function processNodeForAssistant(
 		node: INode,
 		propsToRemove: string[],
 		options?: AssistantProcessOptions,
-	): INode {
+	): Promise<INode> {
 		// Make a copy of the node object so we don't modify the original
 		const nodeForLLM = deepCopy(node);
 		propsToRemove.forEach((key) => {
@@ -212,7 +212,7 @@ export const useAIAssistantHelpers = () => {
 		if (options?.trimParameterValues) {
 			nodeForLLM.parameters = removeParameterValues(nodeForLLM.parameters);
 		} else {
-			nodeForLLM.parameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+			nodeForLLM.parameters = await workflowHelpers.getNodeParametersWithResolvedExpressions(
 				nodeForLLM.parameters,
 			);
 		}
@@ -397,14 +397,16 @@ export const useAIAssistantHelpers = () => {
 		return simplifiedResultData;
 	}
 
-	const simplifyWorkflowForAssistant = (
+	const simplifyWorkflowForAssistant = async (
 		workflow: IWorkflowDb,
 		options?: AssistantProcessOptions,
-	): Partial<IWorkflowDb> => {
-		let nodes = workflow.nodes;
+	): Promise<Partial<IWorkflowDb>> => {
+		let nodes: INode[] = workflow.nodes;
 		if (options?.trimParameterValues) {
-			nodes = workflow.nodes.map((node) =>
-				processNodeForAssistant(node, [], { trimParameterValues: true }),
+			nodes = await Promise.all(
+				workflow.nodes.map((node) =>
+					processNodeForAssistant(node, [], { trimParameterValues: true }),
+				),
 			);
 		}
 		return {
