@@ -8,7 +8,7 @@
 
 import type * as Comlink from 'comlink';
 import type { CRDTDoc, CRDTProvider, Unsubscribe } from '@n8n/crdt';
-import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
+import type { INodeTypeDescription, WorkflowRoom } from 'n8n-workflow';
 
 import type { DataWorkerApi } from '../data/worker';
 
@@ -38,18 +38,16 @@ export interface CRDTSubscription {
 export interface CRDTDocumentState {
 	/** CRDT document (source of truth in worker mode) */
 	doc: CRDTDoc;
-	/** Workflow instance for handle computation */
-	workflow: Workflow | null;
 	/** Node types cache for handle computation */
 	nodeTypes: Map<string, INodeTypeDescription>;
-	/** Unsubscribe function for workflow sync observer */
-	syncUnsub: Unsubscribe | null;
 	/** Unsubscribe function for handle recomputation observer */
 	handleObserverUnsub: Unsubscribe | null;
 	/** Whether the document has been seeded with initial data */
 	seeded: boolean;
 	/** Base URL for REST API calls */
 	baseUrl: string;
+	/** Workflow room managing persistence (null until seeded) */
+	room: WorkflowRoom | null;
 }
 
 /**

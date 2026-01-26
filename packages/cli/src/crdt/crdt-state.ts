@@ -8,9 +8,9 @@ import {
 } from '@n8n/crdt';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import debounce from 'lodash/debounce';
 import {
 	iConnectionsToEdges,
+	WorkflowRoom,
 	type ComputedHandle,
 	type Workflow,
 	type WorkflowSeedData,
@@ -20,91 +20,12 @@ import { calculateNodeSize } from './node-size-calculator';
 
 // Re-export types from n8n-workflow for backward compatibility
 export type { ComputedHandle, CRDTEdge, NodeSeedData, WorkflowSeedData } from 'n8n-workflow';
+// Re-export WorkflowRoom for backward compatibility
+export { WorkflowRoom } from 'n8n-workflow';
 
 interface Subscriber {
 	userId: User['id'];
 	pushRef: string;
-}
-
-const DEBOUNCE_DELAY_MS = 1500; // 1.5 seconds
-const MAX_WAIT_MS = 5000; // 5 seconds max wait
-
-/**
- * A workflow room manages a single CRDT document and its associated workflow.
- * Handles debounced autosaving and change detection.
- *
- * Note: We use a simple "dirty" flag for change detection instead of state vector
- * comparison because Yjs deletions are tombstones that don't increment the deleting
- * client's clock - they just reference existing items. This means state vectors
- * don't change for deletion-only updates.
- */
-export class WorkflowRoom {
-	private readonly debouncedSave: ReturnType<typeof debounce>;
-	private isDirty = false;
-
-	constructor(
-		readonly doc: CRDTDoc,
-		readonly workflow: Workflow,
-		private readonly unsubscribe: Unsubscribe,
-		readonly originalVersionId: string,
-		private readonly saveCallback: (room: WorkflowRoom) => Promise<void>,
-		private readonly logger: Logger,
-	) {
-		this.debouncedSave = debounce(
-			() => {
-				this.logger.debug('[CRDT] Executing debounced save', { docId: doc.id });
-				void this.saveCallback(this);
-			},
-			DEBOUNCE_DELAY_MS,
-			{ maxWait: MAX_WAIT_MS },
-		);
-	}
-
-	/**
-	 * Schedule a debounced save. Call this after each document update.
-	 * Marks the room as dirty (has unsaved changes).
-	 */
-	scheduleSave(): void {
-		this.isDirty = true;
-		this.debouncedSave();
-	}
-
-	/**
-	 * Check if there are unsaved changes.
-	 */
-	hasUnsavedChanges(): boolean {
-		this.logger.debug('[CRDT] Checking unsaved changes', {
-			docId: this.doc.id,
-			isDirty: this.isDirty,
-		});
-		return this.isDirty;
-	}
-
-	/**
-	 * Mark the room as clean (no unsaved changes) after a successful save.
-	 */
-	markClean(): void {
-		this.isDirty = false;
-		this.logger.debug('[CRDT] Marked room as clean', { docId: this.doc.id });
-	}
-
-	/**
-	 * Cancel any pending debounced save and trigger an immediate final save.
-	 * Returns a promise that resolves when the save completes.
-	 */
-	async finalSave(): Promise<void> {
-		this.debouncedSave.cancel();
-		this.logger.debug('[CRDT] Triggering final save', { docId: this.doc.id });
-		await this.saveCallback(this);
-	}
-
-	/**
-	 * Clean up resources.
-	 */
-	destroy(): void {
-		this.debouncedSave.cancel();
-		this.unsubscribe();
-	}
 }
 
 /**

@@ -61,6 +61,8 @@ export interface CRDTArrayLike<T = unknown> {
  * Compatible with @n8n/crdt CRDTDoc but doesn't require the dependency.
  */
 export interface CRDTDocLike {
+	/** Document identifier */
+	id: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	createMap<T = unknown>(): any;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

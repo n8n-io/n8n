@@ -89,6 +89,7 @@ export * from './workflow-diff';
 export * from './crdt-workflow-helpers';
 export * from './node-size-calculator';
 export * from './sync-workflow-with-doc';
+export * from './workflow-room';
 
 export type {
 	DocMetadata,

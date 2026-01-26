@@ -23,6 +23,7 @@ import {
 } from '@n8n/crdt';
 import {
 	Workflow,
+	WorkflowRoom,
 	computeAllNodeHandles,
 	calculateNodeSize,
 	syncWorkflowWithDoc,
@@ -166,12 +167,11 @@ async function handleSubscribe(
 		const doc = state.crdtProvider!.createDoc(docId);
 		docState = {
 			doc,
-			workflow: null,
 			nodeTypes: new Map(),
-			syncUnsub: null,
 			handleObserverUnsub: null,
 			seeded: false,
 			baseUrl,
+			room: null,
 		};
 		state.crdtDocuments.set(docId, docState);
 	}
@@ -223,7 +223,15 @@ function unsubscribeFromDocument(state: CoordinatorState, tabId: string, docId: 
 
 	// Clean up document if no subscribers
 	if (!hasSubscribers) {
-		cleanupDocument(state, docId);
+		const docState = state.crdtDocuments.get(docId);
+		if (docState?.room) {
+			// Trigger final save via room, then cleanup
+			void docState.room.finalSave().finally(() => {
+				cleanupDocument(state, docId);
+			});
+		} else {
+			cleanupDocument(state, docId);
+		}
 	}
 }
 
@@ -234,9 +242,9 @@ function cleanupDocument(state: CoordinatorState, docId: string): void {
 	const docState = state.crdtDocuments.get(docId);
 	if (!docState) return;
 
-	// Unsubscribe from workflow sync
-	if (docState.syncUnsub) {
-		docState.syncUnsub();
+	// Destroy the room (handles cleanup of sync subscriptions and debounce)
+	if (docState.room) {
+		docState.room.destroy();
 	}
 
 	// Unsubscribe from handle recomputation
@@ -247,6 +255,8 @@ function cleanupDocument(state: CoordinatorState, docId: string): void {
 	// Destroy the document
 	docState.doc.destroy();
 	state.crdtDocuments.delete(docId);
+
+	console.log('[CRDT Coordinator] Document cleaned up', docId);
 }
 
 // =============================================================================
@@ -270,6 +280,9 @@ function handleSyncMessage(
 
 	// Broadcast to other tabs
 	broadcastToSubscribedTabs(state, docId, MESSAGE_SYNC, payload, tabId);
+
+	// Schedule a debounced save to persist changes to the server
+	docState.room?.scheduleSave();
 }
 
 /**
@@ -465,15 +478,30 @@ async function seedDocument(
 		// Set up sync between CRDT document and Workflow instance
 		// This keeps the Workflow updated when nodes/edges change, so handle recomputation
 		// can access the latest workflow state
-		docState.syncUnsub = syncWorkflowWithDoc(doc, workflow);
+		const syncUnsub = syncWorkflowWithDoc(doc, workflow);
 
 		// Set up handle recomputation (uses the synced workflow)
 		docState.handleObserverUnsub = setupHandleRecomputation(doc, workflow, workerNodeTypes);
 
 		// Set up update broadcasting
-		doc.onUpdate((update) => {
+		const updateUnsub = doc.onUpdate((update) => {
 			broadcastToSubscribedTabs(state, docId, MESSAGE_SYNC, update);
 		});
+
+		// Combined unsubscribe for the room
+		const unsubscribe = () => {
+			syncUnsub();
+			updateUnsub();
+		};
+
+		// Create the workflow room with a save callback
+		docState.room = new WorkflowRoom(
+			doc,
+			workflow,
+			unsubscribe,
+			workflowData.versionId ?? '',
+			async (room) => await saveWorkflowViaRest(docState.baseUrl, room),
+		);
 
 		docState.seeded = true;
 	} catch (error) {
@@ -491,6 +519,7 @@ interface WorkflowData {
 	nodes: INode[];
 	connections: IConnections;
 	settings?: Record<string, unknown>;
+	versionId?: string;
 }
 
 /**
@@ -655,4 +684,68 @@ function createWorkerNodeTypes(nodeTypes: Map<string, INodeTypeDescription>): IN
 			return undefined;
 		},
 	} as INodeTypes;
+}
+
+// =============================================================================
+// Server Persistence
+// =============================================================================
+
+/**
+ * Save the workflow to the server via REST API.
+ * This is the save callback used by WorkflowRoom.
+ */
+async function saveWorkflowViaRest(baseUrl: string, room: WorkflowRoom): Promise<void> {
+	const { workflow } = room;
+	const docId = room.doc.id;
+
+	// Skip if no changes
+	if (!room.hasUnsavedChanges()) {
+		console.log('[CRDT Coordinator] No changes to save, skipping', docId);
+		return;
+	}
+
+	try {
+		// Convert nodes from object to array format
+		const nodes = Object.values(workflow.nodes);
+		const connections = workflow.connectionsBySourceNode;
+
+		// Build the update payload
+		// autosaved: true indicates this is an automatic save (not manual user save)
+		// This affects how workflow history is created
+		const payload = {
+			name: workflow.name,
+			nodes,
+			connections,
+			settings: workflow.settings,
+			autosaved: true,
+		};
+
+		console.log('[CRDT Coordinator] Saving workflow', {
+			docId,
+			nodeCount: nodes.length,
+			connectionCount: Object.keys(connections).length,
+		});
+
+		// Save via REST API
+		const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+		const response = await fetch(`${normalizedBaseUrl}/rest/workflows/${docId}`, {
+			method: 'PATCH',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			credentials: 'include',
+			body: JSON.stringify(payload),
+		});
+
+		if (!response.ok) {
+			throw new Error(`Failed to save workflow: ${response.status} ${response.statusText}`);
+		}
+
+		// Mark room as clean after successful save
+		room.markClean();
+
+		console.log('[CRDT Coordinator] Saved workflow successfully', { docId });
+	} catch (error) {
+		console.error('[CRDT Coordinator] Failed to save workflow', docId, error);
+	}
 }
