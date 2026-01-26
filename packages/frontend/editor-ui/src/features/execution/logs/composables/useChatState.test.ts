@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextTick } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useChatState } from './useChatState';
@@ -175,13 +176,14 @@ describe('useChatState', () => {
 	});
 
 	describe('streaming configuration', () => {
-		it('should detect streaming enabled when responseMode is "streaming"', () => {
+		it('should detect streaming enabled when responseMode is "streaming"', async () => {
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(true);
 		});
 
-		it('should detect streaming disabled when responseMode is "lastNode"', () => {
+		it('should detect streaming disabled when responseMode is "lastNode"', async () => {
 			mockChatTriggerNode.parameters = {
 				options: {
 					responseMode: 'lastNode',
@@ -189,21 +191,23 @@ describe('useChatState', () => {
 			};
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
 		});
 
-		it('should use default value for responseMode when not set', () => {
+		it('should use default value for responseMode when not set', async () => {
 			mockChatTriggerNode.parameters = { options: {} };
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
 		});
 	});
 
 	describe('file upload configuration', () => {
-		it('should detect file uploads allowed from options', () => {
+		it('should detect file uploads allowed from options', async () => {
 			// Ensure the node in the store has the correct parameters
 			workflowsStore.$patch((state) => {
 				state.workflow.nodes = [
@@ -219,11 +223,12 @@ describe('useChatState', () => {
 			});
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.isFileUploadsAllowed.value).toBe(true);
 		});
 
-		it('should detect file uploads disabled', () => {
+		it('should detect file uploads disabled', async () => {
 			workflowsStore.$patch((state) => {
 				state.workflow.nodes = [
 					{
@@ -238,11 +243,12 @@ describe('useChatState', () => {
 			});
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.isFileUploadsAllowed.value).toBe(false);
 		});
 
-		it('should get allowed MIME types from options', () => {
+		it('should get allowed MIME types from options', async () => {
 			workflowsStore.$patch((state) => {
 				state.workflow.nodes = [
 					{
@@ -257,14 +263,16 @@ describe('useChatState', () => {
 			});
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.allowedFilesMimeTypes.value).toBe('image/*,application/pdf');
 		});
 
-		it('should use default MIME types when not set', () => {
+		it('should use default MIME types when not set', async () => {
 			mockChatTriggerNode.parameters = { options: {} };
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.allowedFilesMimeTypes.value).toBe('*');
 		});
@@ -398,7 +406,7 @@ describe('useChatState', () => {
 	});
 
 	describe('chatOptions', () => {
-		it('should generate correct chatOptions with all configurations', () => {
+		it('should generate correct chatOptions with all configurations', async () => {
 			workflowsStore.$patch((state) => {
 				state.workflow.nodes = [
 					{
@@ -415,6 +423,7 @@ describe('useChatState', () => {
 			});
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			const options = chatState.chatOptions.value;
 
@@ -489,17 +498,18 @@ describe('useChatState', () => {
 	});
 
 	describe('parameter defaults', () => {
-		it('should fall back to node type defaults when parameter not set', () => {
+		it('should fall back to node type defaults when parameter not set', async () => {
 			mockChatTriggerNode.parameters = {};
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false); // default is 'lastNode'
 			expect(chatState.isFileUploadsAllowed.value).toBe(false); // default is false
 			expect(chatState.allowedFilesMimeTypes.value).toBe('*'); // default is '*'
 		});
 
-		it('should handle missing node type gracefully', () => {
+		it('should handle missing node type gracefully', async () => {
 			Object.defineProperty(nodeTypesStore, 'getNodeType', {
 				value: vi.fn().mockReturnValue(null),
 				writable: true,
@@ -507,6 +517,7 @@ describe('useChatState', () => {
 			});
 
 			const chatState = useChatState(false);
+			await nextTick();
 
 			expect(chatState.isStreamingEnabled.value).toBe(false);
 			expect(chatState.isFileUploadsAllowed.value).toBe(false);

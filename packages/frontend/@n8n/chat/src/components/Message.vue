@@ -6,6 +6,7 @@ import type { ChatMessage, ChatMessageText } from '@n8n/chat/types';
 
 import ChatFile from './ChatFile.vue';
 import MarkdownRenderer from './MarkdownRenderer.vue';
+import MessageActions from './MessageActions.vue';
 
 const props = defineProps<{
 	message: ChatMessage;

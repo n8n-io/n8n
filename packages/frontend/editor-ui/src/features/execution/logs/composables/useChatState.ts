@@ -10,7 +10,8 @@ import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
 import { ChatOptionsSymbol, MessageComponentKey } from '@n8n/chat/constants';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import type { Chat, ChatMessage, ChatOptions } from '@n8n/chat/types';
-import type { InjectionKey, Ref } from 'vue';
+import { v4 as uuid } from 'uuid';
+import type { ComputedRef, InjectionKey, Ref } from 'vue';
 import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -99,22 +100,24 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 	};
 
 	// Helper to resolve the options parameter from the chat trigger node
-	const resolvedOptions = computed(() => {
-		if (!chatTriggerNode.value) return null;
+	// resolveParameter is async, so we use a ref updated via watch instead of computed
+	const resolvedOptions = ref<Record<string, unknown> | null>(null);
 
-		// Access the options directly - n8n parameters can contain complex types
-		// that resolveParameter handles, but typing them precisely is complex
-		const options = chatTriggerNode.value.parameters?.options;
-		if (!options) return null;
+	watch(
+		() => chatTriggerNode.value?.parameters?.options,
+		async (options) => {
+			if (!chatTriggerNode.value || !options) {
+				resolvedOptions.value = null;
+				return;
+			}
 
-		// resolveParameter handles expressions and returns resolved values
-		// We pass the whole options object to resolve any expressions it may contain
-		const resolved = resolveParameter<Record<string, unknown>>(options as NodeParameterValue, {
-			contextNodeName: chatTriggerNode.value.name,
-		});
-
-		return resolved;
-	});
+			resolvedOptions.value = await resolveParameter<Record<string, unknown>>(
+				options as NodeParameterValue,
+				{ contextNodeName: chatTriggerNode.value.name },
+			);
+		},
+		{ immediate: true },
+	);
 
 	const allowFileUploads = computed<boolean>(
 		() =>
