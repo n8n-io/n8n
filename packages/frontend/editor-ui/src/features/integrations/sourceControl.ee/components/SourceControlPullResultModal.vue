@@ -78,11 +78,6 @@ function close() {
 			<N8nHeading tag="h1" size="xlarge">
 				{{ i18n.baseText('settings.sourceControl.modals.pullResult.title') }}
 			</N8nHeading>
-			<div :class="[$style.filtersRow]" class="mt-l">
-				<N8nText tag="div" class="mb-xs">
-					{{ i18n.baseText('settings.sourceControl.modals.pullResult.description') }}
-				</N8nText>
-			</div>
 		</template>
 
 		<template #content>
@@ -139,7 +134,7 @@ function close() {
 											<N8nText
 												v-if="workflow.publishingError"
 												tag="p"
-												class="mt-2xs"
+												class="mt-4xs"
 												color="danger"
 												size="small"
 											>
@@ -174,13 +169,6 @@ function close() {
 	:global(.el-dialog__header) {
 		padding-bottom: var(--spacing--xs);
 	}
-}
-
-.filtersRow {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	justify-content: space-between;
 }
 
 .headerTitle {
