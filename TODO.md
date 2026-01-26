@@ -34,6 +34,7 @@
 - [ ] Evaluate with thinking enabled for each model
 
 ## ready to release
+- [ ] review security implications of Function. Use task runner?
 - [ ] pull in master
 - [ ] remove FE changes
 - [ ] make less verbose?
