@@ -292,6 +292,7 @@ export type WorkflowResource = BaseResource & {
 	readOnly: boolean;
 	parentFolder?: ResourceParentFolder;
 	settings?: Partial<IWorkflowSettings>;
+	hasResolvableCredentials?: boolean;
 };
 
 export type VariableResource = BaseResource & {
@@ -312,6 +313,7 @@ export type CredentialsResource = BaseResource & {
 	readOnly: boolean;
 	needsSetup: boolean;
 	isGlobal?: boolean;
+	isResolvable?: boolean;
 };
 
 // Base resource types that are always available
@@ -346,6 +348,7 @@ export type WorkflowListItem = Omit<
 > & {
 	resource: 'workflow';
 	description?: string;
+	hasResolvableCredentials?: boolean;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
@@ -867,7 +870,8 @@ export type CloudUpdateLinkSourceType =
 	| 'ai-builder-sidebar'
 	| 'ai-builder-canvas'
 	| 'custom-roles'
-	| 'main-sidebar';
+	| 'main-sidebar'
+	| 'chat-hub';
 
 export type UTMCampaign =
 	| 'upgrade-custom-data-filter'
