@@ -8,7 +8,7 @@ on:
 jobs:
   cleanup:
     name: 'Delete all PR images'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       packages: write
       contents: read

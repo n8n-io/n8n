@@ -123,7 +123,7 @@ jobs:
     name: 'Cleanup Docker Image'
     needs: [multi-main-e2e, multi-main-isolated]
     if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       packages: write
       contents: read
