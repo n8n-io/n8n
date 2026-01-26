@@ -129,11 +129,17 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'claude-sonnet-4-20250514': {
 			inputModalities: ['text', 'image'],
 		},
-		'claude-sonnet-4-5-20250929': {
-			inputModalities: ['text', 'image'],
-		},
 		'claude-haiku-4-5-20251001': {
 			inputModalities: ['text', 'image'],
+			priority: 80,
+		},
+		'claude-sonnet-4-5-20250929': {
+			inputModalities: ['text', 'image'],
+			priority: 90,
+		},
+		'claude-opus-4-5-20251101': {
+			inputModalities: ['text', 'image'],
+			priority: 100,
 		},
 		'claude-opus-4-20250514': {
 			inputModalities: ['text', 'image'],
@@ -229,30 +235,6 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'o1-pro-2025-03-19': {
 			inputModalities: ['text'],
 		},
-		'o3-mini': {
-			inputModalities: ['text'],
-		},
-		'o4-mini': {
-			inputModalities: ['text'],
-		},
-		'o4-mini-2025-04-16': {
-			inputModalities: ['text'],
-		},
-		'o4-mini-high': {
-			inputModalities: ['text'],
-		},
-		o3: {
-			inputModalities: ['text'],
-		},
-		'o3-2025-04-16': {
-			inputModalities: ['text'],
-		},
-		'o3-pro': {
-			inputModalities: ['text'],
-		},
-		'o3-pro-2025-06-10': {
-			inputModalities: ['text'],
-		},
 		'gpt-audio': {
 			available: false,
 		},
@@ -267,6 +249,65 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'gpt-3.5-turbo-16k': {
 			available: false,
+		},
+		'gpt-5.2': {
+			priority: 100,
+		},
+		'gpt-5.2-pro': {
+			priority: 99,
+		},
+		'gpt-5.1': {
+			priority: 90,
+		},
+		'gpt-5-pro': {
+			priority: 85,
+		},
+		'gpt-5': {
+			priority: 84,
+		},
+		'gpt-5-mini': {
+			priority: 83,
+		},
+		'gpt-5-nano': {
+			priority: 82,
+		},
+		'gpt-4.1': {
+			priority: 80,
+		},
+		'gpt-4.1-mini': {
+			priority: 79,
+		},
+		'gpt-4.1-nano': {
+			priority: 78,
+		},
+		'o4-mini': {
+			inputModalities: ['text'],
+			priority: 70,
+		},
+		'o4-mini-2025-04-16': {
+			inputModalities: ['text'],
+		},
+		'o4-mini-high': {
+			inputModalities: ['text'],
+			priority: 69,
+		},
+		o3: {
+			inputModalities: ['text'],
+			priority: 60,
+		},
+		'o3-pro': {
+			inputModalities: ['text'],
+			priority: 59,
+		},
+		'o3-pro-2025-06-10': {
+			inputModalities: ['text'],
+		},
+		'o3-mini': {
+			inputModalities: ['text'],
+			priority: 58,
+		},
+		'o3-2025-04-16': {
+			inputModalities: ['text'],
 		},
 	},
 	mistralCloud: {
@@ -358,6 +399,10 @@ const MODEL_METADATA_REGISTRY: Partial<
 			capabilities: { functionCalling: false },
 		},
 		// Gemini 2.5 Pro series
+		'models/gemini-2.5-pro': {
+			inputModalities: ['text', 'image', 'video', 'audio'],
+			priority: 100,
+		},
 		'models/gemini-2.5-pro-preview-tts': {
 			inputModalities: ['text'],
 			capabilities: { functionCalling: false },
@@ -365,6 +410,7 @@ const MODEL_METADATA_REGISTRY: Partial<
 		// Gemini 2.5 Flash series
 		'models/gemini-2.5-flash': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+			priority: 90,
 		},
 		'models/gemini-2.5-flash-preview-04-17': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -396,6 +442,7 @@ const MODEL_METADATA_REGISTRY: Partial<
 		// Gemini 2.0 Flash series
 		'models/gemini-2.0-flash': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+			priority: 80,
 		},
 		'models/gemini-2.0-flash-001': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -418,6 +465,7 @@ const MODEL_METADATA_REGISTRY: Partial<
 		// Gemini 2.0 Flash-Lite series
 		'models/gemini-2.0-flash-lite': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+			priority: 60,
 		},
 		'models/gemini-2.0-flash-lite-001': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
@@ -427,6 +475,9 @@ const MODEL_METADATA_REGISTRY: Partial<
 		},
 		'models/gemini-2.0-flash-lite-preview-02-05': {
 			inputModalities: ['text', 'image', 'video', 'audio'],
+		},
+		'models/aqa': {
+			priority: -1,
 		},
 	},
 	groq: {
@@ -556,6 +607,32 @@ const MODEL_METADATA_REGISTRY: Partial<
 			available: false, // Not supporting multi-turn conversations
 		},
 	},
+	xAiGrok: {
+		'grok-4-1-fast-non-reasoning': {
+			priority: 100,
+		},
+		'grok-4-1-fast-reasoning': {
+			priority: 99,
+		},
+		'grok-4-fast-non-reasoning': {
+			priority: 90,
+		},
+		'grok-4-fast-reasoning': {
+			priority: 89,
+		},
+		'grok-4-0709': {
+			priority: 88,
+		},
+		'grok-3': {
+			priority: 80,
+		},
+		'grok-3-mini': {
+			priority: 79,
+		},
+		'grok-2-1212': {
+			priority: 70,
+		},
+	},
 };
 
 export function getModelMetadata(
@@ -572,6 +649,7 @@ export function getModelMetadata(
 	// Merge override with default metadata
 	return {
 		inputModalities: modelOverride.inputModalities ?? DEFAULT_MODEL_METADATA.inputModalities,
+		priority: modelOverride.priority,
 		capabilities: {
 			functionCalling:
 				modelOverride.capabilities?.functionCalling ??

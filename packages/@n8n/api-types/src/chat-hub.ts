@@ -228,6 +228,7 @@ export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file'
 
 export interface ChatModelMetadataDto {
 	inputModalities: ChatHubInputModality[];
+	priority?: number; // Order on the model picker list, higher means first, default 0
 	capabilities: {
 		functionCalling: boolean;
 	};
