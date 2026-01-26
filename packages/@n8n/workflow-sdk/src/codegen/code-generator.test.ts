@@ -183,11 +183,8 @@ describe('code-generator', () => {
 				expect(code).toContain('const iF = node({');
 				expect(code).toContain('const trueHandler = node({');
 				expect(code).toContain('const falseHandler = node({');
-				// The ifElse should use builder syntax with IF node reference
-				expect(code).toContain('const iF_builder = ifElse(iF);');
-				expect(code).toContain('iF_builder.onTrue(trueHandler);');
-				expect(code).toContain('iF_builder.onFalse(falseHandler);');
-				expect(code).toContain('.then(iF_builder)');
+				// The ifElse should use named syntax with IF node reference
+				expect(code).toContain('ifElse(iF, { true: trueHandler, false: falseHandler })');
 			});
 
 			it('handles IF with null branch', () => {
@@ -220,11 +217,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should use builder syntax with IF node
-				expect(code).toContain('const iF_builder = ifElse(iF);');
-				expect(code).toContain('iF_builder.onTrue(trueHandler);');
-				// False branch should not be configured when null
-				expect(code).not.toContain('iF_builder.onFalse');
+				// Should use named syntax with IF node
+				expect(code).toContain('ifElse(iF, {');
+				expect(code).toContain('true: trueHandler');
+				expect(code).toContain('false: null');
 			});
 		});
 
@@ -279,10 +275,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should use new builder syntax with merge().input(n)
+				// Should use named syntax with merge node and input mapping
 				expect(code).toContain('merge(');
-				expect(code).toContain('.input(0)');
-				expect(code).toContain('.input(1)');
+				expect(code).toContain('{ input0:');
+				expect(code).toContain('input1:');
 			});
 		});
 

@@ -1,59 +1,39 @@
-import type { NodeInstance, NodeChain } from './types/base';
+import type {
+	SwitchCaseComposite,
+	NodeInstance,
+	NodeConfig,
+	NodeChain,
+	IDataObject,
+} from './types/base';
 import { isNodeChain } from './types/base';
-import type { MergeInputTarget } from './merge';
-import { isMergeInputTarget, isMergeBuilder } from './merge';
-import { isIfElseBuilder } from './if-else';
-import { isSplitInBatchesBuilder } from './split-in-batches';
+import { isFanOut } from './fan-out';
+import type { FanOutTargets } from './fan-out';
 
 /**
- * Case target for switchCase - supports arrays for fan-out
+ * A case target - can be a node, node chain, null, or fanOut
  */
-export type CaseTarget =
+export type SwitchCaseTarget =
 	| null
 	| NodeInstance<string, string, unknown>
 	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	| MergeInputTarget
-	| CaseTarget[];
+	| FanOutTargets;
 
 /**
- * CaseChain - returned by onCase, IS chainable
+ * Named input syntax for switch case
+ * Keys are caseN format where N is the output index
  */
-export interface CaseChain {
-	/** Chain to another node */
-	then<T extends NodeInstance<string, string, unknown>>(target: T): CaseChain;
-	/** Chain to merge input (terminal) */
-	then(target: MergeInputTarget): void;
-	/** The case output index */
-	readonly caseOutput: number;
-	/** Reference to the parent SwitchCaseBuilder */
-	readonly switchCaseBuilder: SwitchCaseBuilder;
-	/** All nodes in this case chain */
-	readonly nodes: NodeInstance<string, string, unknown>[];
-	/** Terminal target if chain ends at merge input */
-	readonly _terminalTarget: MergeInputTarget | null;
-	/** Fan-out targets if case was created with an array */
-	readonly _fanOutTargets: NodeInstance<string, string, unknown>[] | null;
-	/** Original NodeChain if case target was a chain (for proper connection handling) */
-	readonly _originalChain: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	> | null;
-	/** Marker to identify this as a CaseChain */
-	readonly _isCaseChain: true;
+export interface SwitchCaseNamedInputs {
+	[key: `case${number}`]: SwitchCaseTarget;
 }
 
 /**
- * SwitchCaseBuilder - builder syntax for switchCase
+ * Extended config for Switch case that includes version and id
  */
-export interface SwitchCaseBuilder {
-	/** Configure a case branch (output N) - returns chainable CaseChain */
-	onCase(index: number, target: CaseTarget): CaseChain;
-	/** The Switch node */
-	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	/** All case chains by output index */
-	readonly _cases: Map<number, CaseChain>;
-	/** Marker to identify this as a SwitchCaseBuilder */
-	readonly _isSwitchCaseBuilder: true;
+export interface SwitchCaseConfig extends NodeConfig<IDataObject> {
+	/** Node version (defaults to 3.4) */
+	version?: number | string;
+	/** Node ID (auto-generated if omitted) */
+	id?: string;
 }
 
 /**
@@ -72,198 +52,225 @@ function isNodeInstance(obj: unknown): obj is NodeInstance<string, string, unkno
 }
 
 /**
- * Type guard to check if object is a SwitchCaseBuilder
+ * Check if an object is a SwitchCaseNamedInputs (has caseN keys)
  */
-export function isSwitchCaseBuilder(obj: unknown): obj is SwitchCaseBuilder {
-	return (
-		obj !== null &&
-		typeof obj === 'object' &&
-		'_isSwitchCaseBuilder' in obj &&
-		obj._isSwitchCaseBuilder === true
-	);
+function isSwitchCaseNamedInputs(obj: unknown): obj is SwitchCaseNamedInputs {
+	if (obj === null || typeof obj !== 'object') return false;
+	// Check it's not a NodeInstance or array
+	if (Array.isArray(obj)) return false;
+	if (isNodeInstance(obj)) return false;
+	// Check keys are caseN format
+	const keys = Object.keys(obj);
+	if (keys.length === 0) return false;
+	// All keys must be caseN format
+	return keys.every((key) => /^case\d+$/.test(key));
 }
 
 /**
- * Type guard to check if object is a CaseChain
+ * Check if object is an IfElseComposite (has ifNode property)
  */
-export function isCaseChain(obj: unknown): obj is CaseChain {
-	return (
-		obj !== null && typeof obj === 'object' && '_isCaseChain' in obj && obj._isCaseChain === true
-	);
+function isIfElseComposite(
+	obj: unknown,
+): obj is {
+	ifNode: NodeInstance<string, string, unknown>;
+	_allBranchNodes?: NodeInstance<string, string, unknown>[];
+} {
+	return obj !== null && typeof obj === 'object' && 'ifNode' in obj;
 }
 
 /**
- * Implementation of CaseChain
+ * Check if object is a SwitchCaseComposite (has switchNode property)
  */
-class CaseChainImpl implements CaseChain {
-	readonly caseOutput: number;
-	readonly switchCaseBuilder: SwitchCaseBuilderImpl;
-	readonly nodes: NodeInstance<string, string, unknown>[];
-	_terminalTarget: MergeInputTarget | null = null;
-	_fanOutTargets: NodeInstance<string, string, unknown>[] | null = null;
-	_originalChain: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	> | null = null;
-	readonly _isCaseChain = true as const;
+function isSwitchCaseComposite(
+	obj: unknown,
+): obj is {
+	switchNode: NodeInstance<string, string, unknown>;
+	_allCaseNodes?: NodeInstance<string, string, unknown>[];
+} {
+	return obj !== null && typeof obj === 'object' && 'switchNode' in obj;
+}
+
+/**
+ * Check if object is a MergeComposite (has mergeNode property)
+ */
+function isMergeComposite(
+	obj: unknown,
+): obj is { mergeNode: NodeInstance<string, string, unknown> } {
+	return obj !== null && typeof obj === 'object' && 'mergeNode' in obj;
+}
+
+/**
+ * Extract all nodes from a target (which could be a node, chain, composite, or fanOut)
+ */
+function extractNodesFromTarget(target: unknown): NodeInstance<string, string, unknown>[] {
+	if (target === null) return [];
+
+	// Handle FanOut with recursive extraction
+	if (isFanOut(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [];
+		for (const t of target.targets) {
+			nodes.push(...extractNodesFromTarget(t));
+		}
+		return nodes;
+	}
+
+	// Handle composites - extract their main node and any branch/case nodes
+	if (isIfElseComposite(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [target.ifNode];
+		if (target._allBranchNodes) {
+			nodes.push(...target._allBranchNodes);
+		}
+		return nodes;
+	}
+
+	if (isSwitchCaseComposite(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [target.switchNode];
+		if (target._allCaseNodes) {
+			nodes.push(...target._allCaseNodes);
+		}
+		return nodes;
+	}
+
+	if (isMergeComposite(target)) {
+		return [target.mergeNode];
+	}
+
+	// Handle NodeChain - recursively extract from each item in the chain
+	if (isNodeChain(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [];
+		for (const chainNode of target.allNodes) {
+			// Recursively extract to handle composites inside chains
+			nodes.push(...extractNodesFromTarget(chainNode));
+		}
+		return nodes;
+	}
+
+	// Single NodeInstance
+	if (isNodeInstance(target)) {
+		return [target];
+	}
+
+	return [];
+}
+
+/**
+ * Extract all nodes from a SwitchCaseTarget
+ */
+function extractNodesFromCaseTarget(
+	target: SwitchCaseTarget,
+): NodeInstance<string, string, unknown>[] {
+	return extractNodesFromTarget(target);
+}
+
+/**
+ * Switch case composite using named syntax.
+ * This allows explicit mapping of cases to output indices.
+ */
+class SwitchCaseCompositeNamedSyntax implements SwitchCaseComposite {
+	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+	readonly cases: NodeInstance<string, string, unknown>[];
+	/** Map from output index to case targets */
+	readonly caseMapping: Map<number, SwitchCaseTarget>;
+	/** All nodes from all cases (for workflow-builder) */
+	readonly _allCaseNodes: NodeInstance<string, string, unknown>[];
+	/** Marker to identify this as named syntax */
+	readonly _isNamedSyntax = true;
 
 	constructor(
-		caseOutput: number,
-		switchCaseBuilder: SwitchCaseBuilderImpl,
-		initialNodes: NodeInstance<string, string, unknown>[],
-		fanOutTargets: NodeInstance<string, string, unknown>[] | null = null,
-		originalChain: NodeChain<
-			NodeInstance<string, string, unknown>,
-			NodeInstance<string, string, unknown>
-		> | null = null,
+		switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>,
+		inputs: SwitchCaseNamedInputs,
 	) {
-		this.caseOutput = caseOutput;
-		this.switchCaseBuilder = switchCaseBuilder;
-		this.nodes = initialNodes;
-		this._fanOutTargets = fanOutTargets;
-		this._originalChain = originalChain;
-	}
-
-	then<T extends NodeInstance<string, string, unknown>>(target: T): CaseChain;
-	then(target: MergeInputTarget): void;
-	then(target: NodeInstance<string, string, unknown> | MergeInputTarget): CaseChain | void {
-		if (isMergeInputTarget(target)) {
-			// Terminal - set the merge input target and return void
-			this._terminalTarget = target;
-			return undefined;
-		}
-		// Chain to another node
-		this.nodes.push(target);
-		return this as CaseChain;
-	}
-}
-
-/**
- * Implementation of SwitchCaseBuilder
- */
-class SwitchCaseBuilderImpl implements SwitchCaseBuilder {
-	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	readonly _cases: Map<number, CaseChainImpl> = new Map();
-	readonly _isSwitchCaseBuilder = true as const;
-
-	constructor(switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>) {
 		this.switchNode = switchNode;
-	}
 
-	onCase(index: number, target: CaseTarget): CaseChain {
-		const nodes = this.extractNodesFromCaseTarget(target);
-		// Check if this is a fan-out pattern (array of targets at top level)
-		const fanOutTargets = Array.isArray(target) ? this.extractFanOutTargets(target) : null;
-		// Capture original chain if target is a NodeChain (for proper connection handling)
-		const originalChain = isNodeChain(target) ? target : null;
-		const chain = new CaseChainImpl(index, this, nodes, fanOutTargets, originalChain);
-		// If target is a MergeInputTarget, set it as terminal
-		if (isMergeInputTarget(target)) {
-			chain._terminalTarget = target;
-		}
-		this._cases.set(index, chain);
-		return chain;
-	}
+		// Parse case indices and build mapping
+		this.caseMapping = new Map();
+		const allNodes: NodeInstance<string, string, unknown>[] = [];
 
-	private extractNodesFromCaseTarget(target: CaseTarget): NodeInstance<string, string, unknown>[] {
-		if (target === null) return [];
-		if (isMergeInputTarget(target)) return [];
-		if (Array.isArray(target)) {
-			const nodes: NodeInstance<string, string, unknown>[] = [];
-			for (const t of target) {
-				nodes.push(...this.extractNodesFromCaseTarget(t));
-			}
-			return nodes;
-		}
-		if (isNodeChain(target)) {
-			// Process each node in the chain individually
-			// This handles chains that contain IfElseBuilder or SwitchCaseBuilder
-			const nodes: NodeInstance<string, string, unknown>[] = [];
-			for (const node of target.allNodes) {
-				nodes.push(...this.extractNodesFromCaseTarget(node as CaseTarget));
-			}
-			return nodes;
-		}
-		// Handle IfElseBuilder - include as-is so workflow-builder can detect and handle it
-		if (isIfElseBuilder(target)) {
-			return [target as unknown as NodeInstance<string, string, unknown>];
-		}
-		// Handle SwitchCaseBuilder - include as-is so workflow-builder can detect and handle it
-		if (this.isSwitchCaseBuilder(target)) {
-			return [target as unknown as NodeInstance<string, string, unknown>];
-		}
-		// Handle SplitInBatchesBuilder - include as-is so workflow-builder can detect and handle it
-		if (isSplitInBatchesBuilder(target)) {
-			return [target as unknown as NodeInstance<string, string, unknown>];
-		}
-		// Handle MergeBuilder - extract the mergeNode so it can be used in connections
-		if (isMergeBuilder(target)) {
-			return [target.mergeNode];
-		}
-		if (isNodeInstance(target)) {
-			return [target];
-		}
-		return [];
-	}
+		for (const [key, target] of Object.entries(inputs)) {
+			const caseIndex = parseInt(key.replace('case', ''), 10);
+			this.caseMapping.set(caseIndex, target);
 
-	/**
-	 * Check if a value is a SwitchCaseBuilder
-	 */
-	private isSwitchCaseBuilder(value: unknown): boolean {
-		return (
-			typeof value === 'object' &&
-			value !== null &&
-			'_isSwitchCaseBuilder' in value &&
-			(value as { _isSwitchCaseBuilder: boolean })._isSwitchCaseBuilder === true
-		);
-	}
-
-	/**
-	 * Extract the first-level nodes from an array for fan-out pattern
-	 */
-	private extractFanOutTargets(targets: CaseTarget[]): NodeInstance<string, string, unknown>[] {
-		const fanOutNodes: NodeInstance<string, string, unknown>[] = [];
-		for (const t of targets) {
-			if (t === null) continue;
-			if (isMergeInputTarget(t)) continue;
-			if (isNodeChain(t)) {
-				fanOutNodes.push(t.head);
-			} else if (isMergeBuilder(t)) {
-				fanOutNodes.push(t.mergeNode);
-			} else if (isNodeInstance(t)) {
-				fanOutNodes.push(t);
+			// Collect all nodes for _allCaseNodes
+			const caseNodes = extractNodesFromCaseTarget(target);
+			for (const node of caseNodes) {
+				if (!allNodes.some((n) => n.name === node.name)) {
+					allNodes.push(node);
+				}
 			}
 		}
-		return fanOutNodes;
+
+		this._allCaseNodes = allNodes;
+		// cases is used by workflow-builder - provide empty array, use caseMapping instead
+		this.cases = [];
 	}
 }
 
 /**
- * Create a Switch case builder for multi-way branching.
+ * Type guard to check if a SwitchCaseComposite uses named syntax
+ */
+export function isSwitchCaseNamedSyntax(
+	composite: SwitchCaseComposite,
+): composite is SwitchCaseCompositeNamedSyntax {
+	return '_isNamedSyntax' in composite && composite._isNamedSyntax === true;
+}
+
+/**
+ * Create a Switch case composite for multi-way branching.
+ *
+ * Requires named syntax: switchCase(switchNode, { case0: target, case1: target, ... })
+ *
+ * @param switchNode - A pre-declared Switch node (n8n-nodes-base.switch)
+ * @param inputs - Named inputs { case0: target, case1: target, ... }
  *
  * @example
  * ```typescript
- * const mySwitch = switchCase(switchNode);
- * mySwitch.onCase(0, nodeA).then(nodeB);  // case0 -> nodeA -> nodeB
- * mySwitch.onCase(1, nodeC);               // case1 -> nodeC
+ * // First declare the Switch node:
+ * const routeByType = node({
+ *   type: 'n8n-nodes-base.switch',
+ *   version: 3.2,
+ *   config: {
+ *     name: 'Route by Type',
+ *     parameters: {
+ *       mode: 'rules',
+ *       rules: { ... }
+ *     }
+ *   }
+ * });
  *
- * // Fan-out (one case to multiple nodes)
- * mySwitch.onCase(0, [nodeA, nodeB]);      // case0 -> nodeA AND nodeB
+ * // Then use it with named inputs:
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(switchCase(routeByType, {
+ *     case0: handleTypeA,
+ *     case1: handleTypeB,
+ *     case2: handleFallback
+ *   }))
+ *   .toJSON();
  *
- * // Chain ending at merge input
- * mySwitch.onCase(0, nodeA).then(myMerge.input(0));
+ * // Fan-out: one case connects to multiple parallel nodes:
+ * switchCase(switchNode, {
+ *   case0: fanOut(nodeA, nodeB),
+ *   case1: nodeC
+ * })
  * ```
- *
- * @param switchNode - A pre-declared Switch node (n8n-nodes-base.switch)
- * @returns SwitchCaseBuilder for configuring cases
  */
 export function switchCase(
 	switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>,
-): SwitchCaseBuilder {
+	inputs: SwitchCaseNamedInputs,
+): SwitchCaseComposite {
 	// Validate that first argument is a Switch node
 	if (!isNodeInstance(switchNode) || switchNode.type !== 'n8n-nodes-base.switch') {
-		throw new Error('switchCase() requires a Switch node as first argument');
+		throw new Error(
+			'switchCase() requires a Switch node as first argument. Use: switchCase(switchNode, { case0: ..., case1: ... })',
+		);
 	}
 
-	return new SwitchCaseBuilderImpl(switchNode);
+	// Validate that second argument is named inputs
+	if (!isSwitchCaseNamedInputs(inputs)) {
+		throw new Error(
+			'switchCase() requires named inputs as second argument. Use: switchCase(switchNode, { case0: ..., case1: ... })',
+		);
+	}
+
+	return new SwitchCaseCompositeNamedSyntax(switchNode, inputs);
 }

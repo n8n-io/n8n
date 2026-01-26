@@ -15,11 +15,7 @@ import {
 	type SwitchCaseComposite,
 	type IfElseComposite,
 	type SplitInBatchesBuilder,
-	type MergeInputTarget,
 } from './types/base';
-import { isMergeInputTarget, isMergeBuilder } from './merge';
-import { isIfElseBuilder } from './if-else';
-import { isSwitchCaseBuilder } from './switch-case';
 
 /**
  * Check if value is a MergeComposite
@@ -193,30 +189,16 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		);
 	}
 
-	then(target: MergeInputTarget): NodeInstance<TType, TVersion, TOutput>;
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T | T[],
-		outputIndex?: number,
-	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
-	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[] | MergeInputTarget,
 		outputIndex: number = 0,
-	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> | NodeInstance<TType, TVersion, TOutput> {
-		// Handle MergeInputTarget - register connection and return this for chaining
-		if (isMergeInputTarget(target)) {
-			this._connections.push({ target, outputIndex });
-			// Return this so the node can be used in fan-out arrays like [nodeA.then(merge.input(0)), nodeB.then(merge.input(1))]
-			return this;
-		}
-
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
 		const targets = Array.isArray(target) ? target : [target];
 		for (const t of targets) {
-			// If target is a MergeBuilder, use its mergeNode for the connection
-			const connectionTarget = isMergeBuilder(t) ? t.mergeNode : t;
-			this._connections.push({ target: connectionTarget, outputIndex });
+			this._connections.push({ target: t, outputIndex });
 		}
 
-		// Helper to extract all nodes from a target (handles NodeChain, SplitInBatchesBuilder, IfElseBuilder, SwitchCaseBuilder)
+		// Helper to extract all nodes from a target (handles NodeChain and SplitInBatchesBuilder targets)
 		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
 			if (isNodeChain(t)) {
 				return t.allNodes;
@@ -226,20 +208,6 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 			if (isSplitInBatchesBuilderOrChain(t)) {
 				return [t as unknown as NodeInstance<string, string, unknown>];
 			}
-			// For IfElseBuilder, return it as-is so it can be detected and handled
-			// by workflow-builder's handleIfElseBuilder
-			if (isIfElseBuilder(t)) {
-				return [t as unknown as NodeInstance<string, string, unknown>];
-			}
-			// For SwitchCaseBuilder, return it as-is so it can be detected and handled
-			// by workflow-builder's handleSwitchCaseBuilder
-			if (isSwitchCaseBuilder(t)) {
-				return [t as unknown as NodeInstance<string, string, unknown>];
-			}
-			// For MergeBuilder, return the mergeNode so the chain gets proper node properties
-			if (isMergeBuilder(t)) {
-				return [t.mergeNode];
-			}
 			return [t as NodeInstance<string, string, unknown>];
 		};
 
@@ -247,11 +215,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		const allTargetNodes = targets.flatMap(flattenTarget);
 
 		// Return chain with last target as tail (for type compatibility)
-		// If last target is a MergeBuilder, use its mergeNode
-		let lastTarget = targets[targets.length - 1];
-		if (isMergeBuilder(lastTarget)) {
-			lastTarget = lastTarget.mergeNode as unknown as T;
-		}
+		const lastTarget = targets[targets.length - 1];
 		return new NodeChainImpl(this, lastTarget, [this, ...allTargetNodes]);
 	}
 
@@ -353,24 +317,13 @@ class NodeChainImpl<
 		return this.tail.update(config);
 	}
 
-	then(target: MergeInputTarget): NodeChain<THead, TTail>;
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T | T[],
-		outputIndex?: number,
-	): NodeChain<THead, T>;
-	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[] | MergeInputTarget,
 		outputIndex: number = 0,
-	): NodeChain<THead, T> | NodeChain<THead, TTail> {
-		// Handle MergeInputTarget - register connection on tail and return this chain
-		if (isMergeInputTarget(target)) {
-			this.tail.then(target);
-			return this;
-		}
-
+	): NodeChain<THead, T> {
 		const targets = Array.isArray(target) ? target : [target];
 
-		// Helper to extract all nodes from a target (handles NodeChain, SplitInBatchesBuilder, IfElseBuilder, SwitchCaseBuilder)
+		// Helper to extract all nodes from a target (handles NodeChain and SplitInBatchesBuilder targets)
 		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
 			if (isNodeChain(t)) {
 				return t.allNodes;
@@ -380,20 +333,6 @@ class NodeChainImpl<
 			if (isSplitInBatchesBuilderOrChain(t)) {
 				return [t as unknown as NodeInstance<string, string, unknown>];
 			}
-			// For IfElseBuilder, return it as-is so it can be detected and handled
-			// by workflow-builder's handleIfElseBuilder
-			if (isIfElseBuilder(t)) {
-				return [t as unknown as NodeInstance<string, string, unknown>];
-			}
-			// For SwitchCaseBuilder, return it as-is so it can be detected and handled
-			// by workflow-builder's handleSwitchCaseBuilder
-			if (isSwitchCaseBuilder(t)) {
-				return [t as unknown as NodeInstance<string, string, unknown>];
-			}
-			// For MergeBuilder, return the mergeNode so the chain gets proper node properties
-			if (isMergeBuilder(t)) {
-				return [t.mergeNode];
-			}
 			return [t as NodeInstance<string, string, unknown>];
 		};
 
@@ -402,29 +341,20 @@ class NodeChainImpl<
 
 		// Check if the tail is a composite - if so, get its output node
 		const outputNode = getCompositeOutputNode(this.tail);
-
-		// Helper to extract actual node from potential MergeBuilder
-		const extractLastTarget = (target: T): T => {
-			if (isMergeBuilder(target)) {
-				return target.mergeNode as unknown as T;
-			}
-			return target;
-		};
-
 		if (outputNode) {
 			// For composites, connect the output node (mergeNode, switchNode, ifNode) to the targets.
 			// The output node supports .then() to declare the connection.
 			if (typeof outputNode.then === 'function') {
 				outputNode.then(targets, outputIndex);
 			}
-			const lastTarget = extractLastTarget(targets[targets.length - 1]);
+			const lastTarget = targets[targets.length - 1];
 			return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...allTargetNodes]);
 		}
 
 		// Connect tail to all targets (use the tail's then method which handles connections)
 		this.tail.then(targets, outputIndex);
 		// Return chain with last target as tail
-		const lastTarget = extractLastTarget(targets[targets.length - 1]);
+		const lastTarget = targets[targets.length - 1];
 		return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...allTargetNodes]);
 	}
 

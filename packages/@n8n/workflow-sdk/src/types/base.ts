@@ -156,11 +156,10 @@ export interface GraphNode {
 }
 
 /**
- * Declared connection from a node to a target.
- * Target can be a NodeInstance or MergeInputTarget (terminal).
+ * Declared connection from a node to a target
  */
 export interface DeclaredConnection {
-	target: NodeInstance<string, string, unknown> | MergeInputTarget;
+	target: NodeInstance<string, string, unknown>;
 	outputIndex: number;
 }
 
@@ -310,10 +309,6 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 
 	update(config: Partial<NodeConfig>): NodeInstance<TType, TVersion, TOutput>;
 
-	/** Chain to merge input (terminal - returns void) */
-	then(target: MergeInputTarget): void;
-
-	/** Chain to another node */
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T | T[],
 		outputIndex?: number,
@@ -539,110 +534,6 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	each(): SplitInBatchesEachChain<TOutput>;
 }
 
-/**
- * BranchChain - returned by onTrue/onFalse, IS chainable
- */
-export interface BranchChain {
-	/** Chain to another node */
-	then<T extends NodeInstance<string, string, unknown>>(target: T): BranchChain;
-	/** Chain to merge input (terminal) */
-	then(target: MergeInputTarget): void;
-	/** The branch output index (0 for true, 1 for false) */
-	readonly branchOutput: number;
-	/** Reference to the parent IfElseBuilder */
-	readonly ifElseBuilder: IfElseBuilder;
-	/** All nodes in this branch chain */
-	readonly nodes: NodeInstance<string, string, unknown>[];
-	/** Terminal target if chain ends at merge input */
-	readonly _terminalTarget: MergeInputTarget | null;
-	/** Fan-out targets if branch was created with an array */
-	readonly _fanOutTargets: NodeInstance<string, string, unknown>[] | null;
-	/** Original NodeChain if branch target was a chain (for proper connection handling) */
-	readonly _originalChain: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	> | null;
-	/** Marker to identify this as a BranchChain */
-	readonly _isBranchChain: true;
-}
-
-/**
- * IfElseBuilder - new builder syntax for ifElse
- */
-export interface IfElseBuilder {
-	/** Configure the true branch (output 0) - returns chainable BranchChain */
-	onTrue(target: unknown): BranchChain;
-	/** Configure the false branch (output 1) - returns chainable BranchChain */
-	onFalse(target: unknown): BranchChain;
-	/** The IF node */
-	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
-	/** True branch chain */
-	readonly _trueBranch: BranchChain | null;
-	/** False branch chain */
-	readonly _falseBranch: BranchChain | null;
-	/** Marker to identify this as an IfElseBuilder */
-	readonly _isIfElseBuilder: true;
-}
-
-/**
- * MergeBuilder - new builder syntax for merge
- */
-export interface MergeBuilder {
-	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
-	readonly _inputTargets: Map<number, MergeInputTarget>;
-	readonly _isMergeBuilder: true;
-	input(index: number): MergeInputTarget;
-	then<T extends NodeInstance<string, string, unknown>>(
-		target: T,
-	): NodeChain<NodeInstance<'n8n-nodes-base.merge', string, unknown>, T>;
-}
-
-/**
- * MergeInputTarget - terminal target for merge input
- */
-export interface MergeInputTarget {
-	readonly _isMergeInput: true;
-	readonly mergeBuilder: MergeBuilder;
-	readonly inputIndex: number;
-}
-
-/**
- * CaseChain - returned by SwitchCaseBuilder.onCase(), IS chainable
- */
-export interface CaseChain {
-	/** Chain to another node */
-	then<T extends NodeInstance<string, string, unknown>>(target: T): CaseChain;
-	/** Chain to merge input (terminal) */
-	then(target: MergeInputTarget): void;
-	/** The case output index */
-	readonly caseOutput: number;
-	/** Reference to the parent SwitchCaseBuilder */
-	readonly switchCaseBuilder: SwitchCaseBuilder;
-	/** All nodes in this case chain */
-	readonly nodes: NodeInstance<string, string, unknown>[];
-	/** Terminal target if chain ends at merge input */
-	readonly _terminalTarget: MergeInputTarget | null;
-	/** Fan-out targets if case was created with an array */
-	readonly _fanOutTargets: NodeInstance<string, string, unknown>[] | null;
-	/** Original NodeChain if case target was a chain (for proper connection handling) */
-	readonly _originalChain: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	> | null;
-	/** Marker to identify this as a CaseChain */
-	readonly _isCaseChain: true;
-}
-
-/**
- * SwitchCaseBuilder - new builder syntax for switchCase
- */
-export interface SwitchCaseBuilder {
-	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-	readonly _cases: Map<number, CaseChain>;
-	readonly _isSwitchCaseBuilder: true;
-	onCase(index: number, target: unknown): CaseChain;
-}
-
 export interface SplitInBatchesDoneChain<_TOutput> {
 	then<N extends NodeInstance<string, string, unknown>>(
 		nodeOrNodes: N | N[],
@@ -672,18 +563,13 @@ export interface WorkflowBuilder {
 		N extends
 			| NodeInstance<string, string, unknown>
 			| TriggerInstance<string, string, unknown>
-			| NodeChain
-			| MergeBuilder
-			| IfElseBuilder
-			| SwitchCaseBuilder,
+			| NodeChain,
 	>(node: N): WorkflowBuilder;
 
 	then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
 	then<M extends MergeComposite>(merge: M): WorkflowBuilder;
 	then(ifElse: IfElseComposite): WorkflowBuilder;
-	then(ifElseBuilder: IfElseBuilder): WorkflowBuilder;
-	then(mergeBuilder: MergeBuilder): WorkflowBuilder;
-	then(switchCaseBuilder: SwitchCaseBuilder): WorkflowBuilder;
+	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
 	then<T>(splitInBatchesDone: SplitInBatchesDoneChain<T>): WorkflowBuilder;
 	then<T>(splitInBatchesEach: SplitInBatchesEachChain<T>): WorkflowBuilder;

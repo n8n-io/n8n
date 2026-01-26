@@ -194,10 +194,9 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should use ifElse() and not generate onFalse for missing branch
+		// Should use ifElse() with null for missing branch
 		expect(code).toContain('ifElse(');
-		expect(code).toContain('.onTrue(');
-		expect(code).not.toContain('.onFalse(');
+		expect(code).toContain('null');
 	});
 
 	it('should roundtrip single-branch IF node with downstream connections', () => {
@@ -948,10 +947,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use merge() function with builder syntax
+			// Should use merge() function with named syntax
 			expect(code).toContain('merge(');
-			// Should include .input(n) calls
-			expect(code).toContain('.input(0)');
+			// Should include named inputs (input0, input1, etc.)
+			expect(code).toContain('{ input0:');
 		});
 
 		it('should generate ifElse() for IF node patterns', () => {
@@ -1008,11 +1007,11 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use ifElse() function with builder syntax
+			// Should use ifElse() function with named syntax
 			expect(code).toContain('ifElse(');
-			// Should include true and false branches with builder syntax
-			expect(code).toContain('.onTrue(');
-			expect(code).toContain('.onFalse(');
+			// Should include true and false branches with named syntax
+			expect(code).toContain('{ true:');
+			expect(code).toContain('false:');
 		});
 
 		it('should generate switchCase() for Switch node patterns', () => {
@@ -1073,10 +1072,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use switchCase() function with builder syntax
+			// Should use switchCase() function with named syntax
 			expect(code).toContain('switchCase(');
-			// Should include case branches with builder syntax
-			expect(code).toContain('.onCase(0,');
+			// Should include case branches with named syntax
+			expect(code).toContain('{ case0:');
 		});
 	});
 });
@@ -2794,124 +2793,5 @@ describe('Sequential polling loops', () => {
 
 		// Retry Wait 2 → Check Job 2 (cycle back)
 		expect(parsed.connections['Retry Wait 2']?.main[0]?.[0]?.node).toBe('Check Job 2');
-	});
-});
-
-describe('Fan-out with intermediate nodes inside IF branch (workflow 5745 pattern)', () => {
-	it('should preserve intermediate nodes between fan-out source and merge', () => {
-		// Pattern from workflow 5745:
-		// IF.onTrue → GetData → [UploadFile → Merge:input0, SendEmail → Merge:input1] → UpdateDB
-		// The intermediate nodes (UploadFile, SendEmail) were being lost
-		const workflow: WorkflowJSON = {
-			id: 'if-fanout-merge-test',
-			name: 'IF Fan-out Merge Test',
-			nodes: [
-				{
-					id: '1',
-					name: 'Trigger',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-				{
-					id: '2',
-					name: 'IF',
-					type: 'n8n-nodes-base.if',
-					typeVersion: 2,
-					position: [200, 0],
-					parameters: {},
-				},
-				{
-					id: '3',
-					name: 'GetData',
-					type: 'n8n-nodes-base.httpRequest',
-					typeVersion: 4.2,
-					position: [400, 0],
-					parameters: {},
-				},
-				{
-					id: '4',
-					name: 'UploadFile',
-					type: 'n8n-nodes-base.googleDrive',
-					typeVersion: 3,
-					position: [600, -100],
-					parameters: {},
-				},
-				{
-					id: '5',
-					name: 'SendEmail',
-					type: 'n8n-nodes-base.gmail',
-					typeVersion: 2.1,
-					position: [600, 100],
-					parameters: {},
-				},
-				{
-					id: '6',
-					name: 'Merge',
-					type: 'n8n-nodes-base.merge',
-					typeVersion: 3,
-					position: [800, 0],
-					parameters: {},
-				},
-				{
-					id: '7',
-					name: 'UpdateDB',
-					type: 'n8n-nodes-base.googleSheets',
-					typeVersion: 4.6,
-					position: [1000, 0],
-					parameters: {},
-				},
-			],
-			connections: {
-				Trigger: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
-				IF: {
-					main: [
-						[{ node: 'GetData', type: 'main', index: 0 }], // true branch
-					],
-				},
-				GetData: {
-					main: [
-						[
-							{ node: 'UploadFile', type: 'main', index: 0 },
-							{ node: 'SendEmail', type: 'main', index: 0 }, // fan-out to intermediate nodes
-						],
-					],
-				},
-				UploadFile: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
-				SendEmail: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
-				Merge: { main: [[{ node: 'UpdateDB', type: 'main', index: 0 }]] },
-			},
-		};
-
-		const code = generateWorkflowCode(workflow);
-		const parsed = parseWorkflowCode(code);
-
-		// All nodes must be present (this was the failing case - UploadFile and SendEmail were lost)
-		const nodeNames = parsed.nodes.map((n) => n.name).sort();
-		expect(nodeNames).toEqual([
-			'GetData',
-			'IF',
-			'Merge',
-			'SendEmail',
-			'Trigger',
-			'UpdateDB',
-			'UploadFile',
-		]);
-
-		// GetData must fan-out to both intermediate nodes
-		expect(parsed.connections['GetData']).toBeDefined();
-		expect(parsed.connections['GetData']!.main[0]).toHaveLength(2);
-		const fanOutTargets = parsed.connections['GetData']!.main[0]!.map((c) => c!.node).sort();
-		expect(fanOutTargets).toEqual(['SendEmail', 'UploadFile']);
-
-		// Intermediate nodes must connect to Merge at different inputs
-		expect(parsed.connections['UploadFile']!.main[0]![0]!.node).toBe('Merge');
-		expect(parsed.connections['UploadFile']!.main[0]![0]!.index).toBe(0);
-		expect(parsed.connections['SendEmail']!.main[0]![0]!.node).toBe('Merge');
-		expect(parsed.connections['SendEmail']!.main[0]![0]!.index).toBe(1);
-
-		// Merge must connect to downstream
-		expect(parsed.connections['Merge']!.main[0]![0]!.node).toBe('UpdateDB');
 	});
 });

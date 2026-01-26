@@ -777,7 +777,7 @@ return workflow('test-id', 'AI Agent')
 		it('should parse workflow with switchCase and pinData without errors', () => {
 			// This code reproduces a bug where switchCase with pinData fails with
 			// "Cannot read properties of undefined (reading 'subnodes')"
-			// Uses the onCase() syntax: switchCase(switchNode).onCase(0, handler)
+			// Updated to use named object syntax: switchCase(switchNode, { case0: ..., case1: ... })
 			const code = `
 // Declare the switch node first
 const triageSwitch = node({
@@ -866,11 +866,6 @@ const tagAsFeature = node({
   }
 });
 
-// Build the switch with onCase() syntax
-const triageBuilder = switchCase(triageSwitch);
-triageBuilder.onCase(0, tagAsBug);
-triageBuilder.onCase(1, tagAsFeature);
-
 return workflow('AlNAxHXOpfimqHPOGVuNg', 'My workflow 23')
   .add(
     trigger({
@@ -933,7 +928,7 @@ return workflow('AlNAxHXOpfimqHPOGVuNg', 'My workflow 23')
         })
       )
     )
-    .then(triageBuilder)
+    .then(switchCase(triageSwitch, { case0: tagAsBug, case1: tagAsFeature }))
   );`;
 
 			// This should not throw an error

@@ -1,63 +1,40 @@
-import type { NodeInstance, NodeChain } from './types/base';
+import type {
+	IfElseComposite,
+	NodeInstance,
+	NodeConfig,
+	NodeChain,
+	IDataObject,
+} from './types/base';
 import { isNodeChain } from './types/base';
-import type { MergeInputTarget } from './merge';
-import { isMergeInputTarget, isMergeBuilder } from './merge';
-import { isSwitchCaseBuilder } from './switch-case';
-import { isSplitInBatchesBuilder } from './split-in-batches';
+import { isFanOut } from './fan-out';
+import type { FanOutTargets } from './fan-out';
 
 /**
- * Branch target for ifElse - supports arrays for fan-out
+ * A branch target - can be a node, node chain, null, or fanOut
  */
-export type BranchTarget =
+export type IfElseTarget =
 	| null
 	| NodeInstance<string, string, unknown>
 	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	| MergeInputTarget
-	| BranchTarget[];
+	| FanOutTargets;
 
 /**
- * BranchChain - returned by onTrue/onFalse, IS chainable
+ * Named input syntax for IF else
+ * Keys are 'true' and 'false' for the respective branches
  */
-export interface BranchChain {
-	/** Chain to another node */
-	then<T extends NodeInstance<string, string, unknown>>(target: T): BranchChain;
-	/** Chain to merge input (terminal) */
-	then(target: MergeInputTarget): void;
-	/** The branch output index (0 for true, 1 for false) */
-	readonly branchOutput: number;
-	/** Reference to the parent IfElseBuilder */
-	readonly ifElseBuilder: IfElseBuilder;
-	/** All nodes in this branch chain */
-	readonly nodes: NodeInstance<string, string, unknown>[];
-	/** Terminal target if chain ends at merge input */
-	readonly _terminalTarget: MergeInputTarget | null;
-	/** Fan-out targets if branch was created with an array */
-	readonly _fanOutTargets: NodeInstance<string, string, unknown>[] | null;
-	/** Original NodeChain if branch target was a chain (for proper connection handling) */
-	readonly _originalChain: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	> | null;
-	/** Marker to identify this as a BranchChain */
-	readonly _isBranchChain: true;
+export interface IfElseNamedInputs {
+	true: IfElseTarget;
+	false: IfElseTarget;
 }
 
 /**
- * IfElseBuilder - builder syntax for ifElse
+ * Extended config for IF else that includes version and id
  */
-export interface IfElseBuilder {
-	/** Configure the true branch (output 0) - returns chainable BranchChain */
-	onTrue(target: BranchTarget): BranchChain;
-	/** Configure the false branch (output 1) - returns chainable BranchChain */
-	onFalse(target: BranchTarget): BranchChain;
-	/** The IF node */
-	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
-	/** True branch chain */
-	readonly _trueBranch: BranchChain | null;
-	/** False branch chain */
-	readonly _falseBranch: BranchChain | null;
-	/** Marker to identify this as an IfElseBuilder */
-	readonly _isIfElseBuilder: true;
+export interface IfElseConfig extends NodeConfig<IDataObject> {
+	/** Node version (defaults to 2.3) */
+	version?: number | string;
+	/** Node ID (auto-generated if omitted) */
+	id?: string;
 }
 
 /**
@@ -76,203 +53,234 @@ function isNodeInstance(obj: unknown): obj is NodeInstance<string, string, unkno
 }
 
 /**
- * Type guard to check if object is an IfElseBuilder
+ * Check if an object is an IfElseNamedInputs (has 'true' and 'false' keys)
  */
-export function isIfElseBuilder(obj: unknown): obj is IfElseBuilder {
-	return (
-		obj !== null &&
-		typeof obj === 'object' &&
-		'_isIfElseBuilder' in obj &&
-		obj._isIfElseBuilder === true
-	);
+function isIfElseNamedInputs(obj: unknown): obj is IfElseNamedInputs {
+	if (obj === null || typeof obj !== 'object') return false;
+	// Check it's not a NodeInstance or array
+	if (Array.isArray(obj)) return false;
+	if (isNodeInstance(obj)) return false;
+	// Check it has 'true' or 'false' keys
+	return 'true' in obj || 'false' in obj;
 }
 
 /**
- * Implementation of BranchChain
+ * Check if object is an IfElseComposite (has ifNode property)
  */
-class BranchChainImpl implements BranchChain {
-	readonly branchOutput: number;
-	readonly ifElseBuilder: IfElseBuilderImpl;
-	readonly nodes: NodeInstance<string, string, unknown>[];
-	_terminalTarget: MergeInputTarget | null = null;
-	_fanOutTargets: NodeInstance<string, string, unknown>[] | null = null;
-	_originalChain: NodeChain<
-		NodeInstance<string, string, unknown>,
-		NodeInstance<string, string, unknown>
-	> | null = null;
-	readonly _isBranchChain = true as const;
+function isIfElseComposite(
+	obj: unknown,
+): obj is {
+	ifNode: NodeInstance<string, string, unknown>;
+	_allBranchNodes?: NodeInstance<string, string, unknown>[];
+} {
+	return obj !== null && typeof obj === 'object' && 'ifNode' in obj;
+}
+
+/**
+ * Check if object is a SwitchCaseComposite (has switchNode property)
+ */
+function isSwitchCaseComposite(
+	obj: unknown,
+): obj is {
+	switchNode: NodeInstance<string, string, unknown>;
+	_allCaseNodes?: NodeInstance<string, string, unknown>[];
+} {
+	return obj !== null && typeof obj === 'object' && 'switchNode' in obj;
+}
+
+/**
+ * Check if object is a MergeComposite (has mergeNode property)
+ */
+function isMergeComposite(
+	obj: unknown,
+): obj is { mergeNode: NodeInstance<string, string, unknown> } {
+	return obj !== null && typeof obj === 'object' && 'mergeNode' in obj;
+}
+
+/**
+ * Extract all nodes from a target (which could be a node, chain, composite, or fanOut)
+ */
+function extractNodesFromTarget(target: unknown): NodeInstance<string, string, unknown>[] {
+	if (target === null) return [];
+
+	// Handle FanOut with recursive extraction
+	if (isFanOut(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [];
+		for (const t of target.targets) {
+			nodes.push(...extractNodesFromTarget(t));
+		}
+		return nodes;
+	}
+
+	// Handle composites - extract their main node and any branch/case nodes
+	if (isIfElseComposite(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [target.ifNode];
+		if (target._allBranchNodes) {
+			nodes.push(...target._allBranchNodes);
+		}
+		return nodes;
+	}
+
+	if (isSwitchCaseComposite(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [target.switchNode];
+		if (target._allCaseNodes) {
+			nodes.push(...target._allCaseNodes);
+		}
+		return nodes;
+	}
+
+	if (isMergeComposite(target)) {
+		return [target.mergeNode];
+	}
+
+	// Handle NodeChain - recursively extract from each item in the chain
+	if (isNodeChain(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [];
+		for (const chainNode of target.allNodes) {
+			// Recursively extract to handle composites inside chains
+			nodes.push(...extractNodesFromTarget(chainNode));
+		}
+		return nodes;
+	}
+
+	// Single NodeInstance
+	if (isNodeInstance(target)) {
+		return [target];
+	}
+
+	return [];
+}
+
+/**
+ * Extract all nodes from an IfElseTarget
+ */
+function extractNodesFromBranchTarget(
+	target: IfElseTarget,
+): NodeInstance<string, string, unknown>[] {
+	return extractNodesFromTarget(target);
+}
+
+/**
+ * IF else composite using named syntax.
+ * This allows explicit mapping of true/false branches.
+ */
+class IfElseCompositeNamedSyntax implements IfElseComposite {
+	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
+	readonly trueBranch:
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[];
+	readonly falseBranch:
+		| NodeInstance<string, string, unknown>
+		| NodeInstance<string, string, unknown>[];
+	/** Original targets before conversion (for workflow-builder) */
+	readonly _trueBranchTarget: IfElseTarget;
+	readonly _falseBranchTarget: IfElseTarget;
+	/** All nodes from both branches (for workflow-builder) */
+	readonly _allBranchNodes: NodeInstance<string, string, unknown>[];
+	/** Marker to identify this as named syntax */
+	readonly _isNamedSyntax = true;
 
 	constructor(
-		branchOutput: number,
-		ifElseBuilder: IfElseBuilderImpl,
-		initialNodes: NodeInstance<string, string, unknown>[],
-		fanOutTargets: NodeInstance<string, string, unknown>[] | null = null,
-		originalChain: NodeChain<
-			NodeInstance<string, string, unknown>,
-			NodeInstance<string, string, unknown>
-		> | null = null,
+		ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>,
+		inputs: IfElseNamedInputs,
 	) {
-		this.branchOutput = branchOutput;
-		this.ifElseBuilder = ifElseBuilder;
-		this.nodes = initialNodes;
-		this._fanOutTargets = fanOutTargets;
-		this._originalChain = originalChain;
-	}
-
-	then<T extends NodeInstance<string, string, unknown>>(target: T): BranchChain;
-	then(target: MergeInputTarget): void;
-	then(target: NodeInstance<string, string, unknown> | MergeInputTarget): BranchChain | void {
-		if (isMergeInputTarget(target)) {
-			// Terminal - set the merge input target and return void
-			this._terminalTarget = target;
-			return undefined;
-		}
-		// Chain to another node
-		this.nodes.push(target);
-		return this as BranchChain;
-	}
-}
-
-/**
- * Implementation of IfElseBuilder
- */
-class IfElseBuilderImpl implements IfElseBuilder {
-	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
-	_trueBranch: BranchChainImpl | null = null;
-	_falseBranch: BranchChainImpl | null = null;
-	readonly _isIfElseBuilder = true as const;
-
-	constructor(ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>) {
 		this.ifNode = ifNode;
-	}
 
-	onTrue(target: BranchTarget): BranchChain {
-		const nodes = this.extractNodesFromBranchTarget(target);
-		// Check if this is a fan-out pattern (array of targets at top level)
-		const fanOutTargets = Array.isArray(target) ? this.extractFanOutTargets(target) : null;
-		// Capture original chain if target is a NodeChain (for proper connection handling)
-		const originalChain = isNodeChain(target) ? target : null;
-		this._trueBranch = new BranchChainImpl(0, this, nodes, fanOutTargets, originalChain);
-		// If target is a MergeInputTarget, set it as terminal
-		if (isMergeInputTarget(target)) {
-			this._trueBranch._terminalTarget = target;
-		}
-		return this._trueBranch;
-	}
+		// Store original targets
+		this._trueBranchTarget = inputs.true;
+		this._falseBranchTarget = inputs.false;
 
-	onFalse(target: BranchTarget): BranchChain {
-		const nodes = this.extractNodesFromBranchTarget(target);
-		// Check if this is a fan-out pattern (array of targets at top level)
-		const fanOutTargets = Array.isArray(target) ? this.extractFanOutTargets(target) : null;
-		// Capture original chain if target is a NodeChain (for proper connection handling)
-		const originalChain = isNodeChain(target) ? target : null;
-		this._falseBranch = new BranchChainImpl(1, this, nodes, fanOutTargets, originalChain);
-		// If target is a MergeInputTarget, set it as terminal
-		if (isMergeInputTarget(target)) {
-			this._falseBranch._terminalTarget = target;
-		}
-		return this._falseBranch;
-	}
-
-	private extractNodesFromBranchTarget(
-		target: BranchTarget,
-	): NodeInstance<string, string, unknown>[] {
-		if (target === null) return [];
-		if (isMergeInputTarget(target)) return [];
-		if (Array.isArray(target)) {
-			const nodes: NodeInstance<string, string, unknown>[] = [];
-			for (const t of target) {
-				nodes.push(...this.extractNodesFromBranchTarget(t));
-			}
-			return nodes;
-		}
-		if (isNodeChain(target)) {
-			// Process each node in the chain individually
-			// This handles chains that contain IfElseBuilder or SwitchCaseBuilder
-			const nodes: NodeInstance<string, string, unknown>[] = [];
-			for (const node of target.allNodes) {
-				nodes.push(...this.extractNodesFromBranchTarget(node as BranchTarget));
-			}
-			return nodes;
-		}
-		// Handle IfElseBuilder - include as-is so workflow-builder can detect and handle it
-		if (this.isIfElseBuilder(target)) {
-			return [target as unknown as NodeInstance<string, string, unknown>];
-		}
-		// Handle SwitchCaseBuilder - include as-is so workflow-builder can detect and handle it
-		if (isSwitchCaseBuilder(target)) {
-			return [target as unknown as NodeInstance<string, string, unknown>];
-		}
-		// Handle SplitInBatchesBuilder - include as-is so workflow-builder can detect and handle it
-		if (isSplitInBatchesBuilder(target)) {
-			return [target as unknown as NodeInstance<string, string, unknown>];
-		}
-		// Handle MergeBuilder - extract the mergeNode so it can be used in connections
-		if (isMergeBuilder(target)) {
-			return [target.mergeNode];
-		}
-		if (isNodeInstance(target)) {
-			return [target];
-		}
-		return [];
-	}
-
-	/**
-	 * Check if a value is an IfElseBuilder
-	 */
-	private isIfElseBuilder(value: unknown): boolean {
-		return (
-			typeof value === 'object' &&
-			value !== null &&
-			'_isIfElseBuilder' in value &&
-			(value as { _isIfElseBuilder: boolean })._isIfElseBuilder === true
-		);
-	}
-
-	/**
-	 * Extract the first-level nodes from an array for fan-out pattern
-	 */
-	private extractFanOutTargets(targets: BranchTarget[]): NodeInstance<string, string, unknown>[] {
-		const fanOutNodes: NodeInstance<string, string, unknown>[] = [];
-		for (const t of targets) {
-			if (t === null) continue;
-			if (isMergeInputTarget(t)) continue;
-			if (isNodeChain(t)) {
-				fanOutNodes.push(t.head);
-			} else if (isMergeBuilder(t)) {
-				fanOutNodes.push(t.mergeNode);
-			} else if (isNodeInstance(t)) {
-				fanOutNodes.push(t);
+		// Collect all nodes for workflow-builder
+		const allNodes: NodeInstance<string, string, unknown>[] = [];
+		for (const node of extractNodesFromBranchTarget(inputs.true)) {
+			if (!allNodes.some((n) => n.name === node.name)) {
+				allNodes.push(node);
 			}
 		}
-		return fanOutNodes;
+		for (const node of extractNodesFromBranchTarget(inputs.false)) {
+			if (!allNodes.some((n) => n.name === node.name)) {
+				allNodes.push(node);
+			}
+		}
+		this._allBranchNodes = allNodes;
+
+		// Convert to legacy format for compatibility
+		// trueBranch and falseBranch are unused for named syntax (use _trueBranchTarget/_falseBranchTarget)
+		this.trueBranch = null as unknown as NodeInstance<string, string, unknown>;
+		this.falseBranch = null as unknown as NodeInstance<string, string, unknown>;
 	}
 }
 
 /**
- * Create an IF/else branching for conditional execution.
+ * Type guard to check if an IfElseComposite uses named syntax
+ */
+export function isIfElseNamedSyntax(
+	composite: IfElseComposite,
+): composite is IfElseCompositeNamedSyntax {
+	return '_isNamedSyntax' in composite && composite._isNamedSyntax === true;
+}
+
+/**
+ * Create an IF/else branching composite for conditional execution.
+ *
+ * Requires named syntax: ifElse(ifNode, { true: trueBranch, false: falseBranch })
+ *
+ * @param ifNode - A pre-declared IF node (n8n-nodes-base.if)
+ * @param inputs - Named inputs { true: target, false: target }
  *
  * @example
  * ```typescript
- * const myIf = ifElse(ifNode);
- * myIf.onTrue(nodeA).then(nodeB);  // if(0) -> nodeA -> nodeB
- * myIf.onFalse(nodeC);              // if(1) -> nodeC
+ * // First declare the IF node:
+ * const checkCondition = node({
+ *   type: 'n8n-nodes-base.if',
+ *   version: 2.2,
+ *   config: {
+ *     name: 'Check Value',
+ *     parameters: {
+ *       conditions: { conditions: [...] }
+ *     }
+ *   }
+ * });
  *
- * // Fan-out (one branch to multiple nodes)
- * myIf.onTrue([nodeA, nodeB]);      // if(0) -> nodeA AND nodeB
+ * // Then use it with named inputs:
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(ifElse(checkCondition, {
+ *     true: trueBranch,
+ *     false: falseBranch
+ *   }))
+ *   .toJSON();
  *
- * // Chain ending at merge input
- * myIf.onTrue(nodeA).then(myMerge.input(0));
+ * // Single branch (only true branch connected):
+ * ifElse(ifNode, {
+ *   true: trueBranch,
+ *   false: null
+ * })
+ *
+ * // Fan-out: true branch connects to multiple parallel nodes:
+ * ifElse(ifNode, {
+ *   true: fanOut(node1, node2, node3),
+ *   false: null
+ * })
  * ```
- *
- * @param ifNode - A pre-declared IF node (n8n-nodes-base.if)
- * @returns IfElseBuilder for configuring branches
  */
-export function ifElse(ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>): IfElseBuilder {
+export function ifElse(
+	ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>,
+	inputs: IfElseNamedInputs,
+): IfElseComposite {
 	// Validate that first argument is an IF node
 	if (!isNodeInstance(ifNode) || ifNode.type !== 'n8n-nodes-base.if') {
-		throw new Error('ifElse() requires an IF node as first argument');
+		throw new Error(
+			'ifElse() requires an IF node as first argument. Use: ifElse(ifNode, { true: ..., false: ... })',
+		);
 	}
 
-	return new IfElseBuilderImpl(ifNode);
+	// Validate that second argument is named inputs
+	if (!isIfElseNamedInputs(inputs)) {
+		throw new Error(
+			'ifElse() requires named inputs as second argument. Use: ifElse(ifNode, { true: ..., false: ... })',
+		);
+	}
+
+	return new IfElseCompositeNamedSyntax(ifNode, inputs);
 }

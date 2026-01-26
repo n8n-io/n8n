@@ -22,23 +22,12 @@ import type {
 import { getCompositeType } from './semantic-registry';
 
 /**
- * Merge downstream info - tracks merge nodes that have downstream chains
- * These need to be generated as separate workflow chains
- */
-interface MergeDownstream {
-	mergeName: string;
-	downstreamTargets: string[];
-}
-
-/**
  * Context for building composites
  */
 interface BuildContext {
 	graph: SemanticGraph;
 	visited: Set<string>;
 	variables: Map<string, SemanticNode>;
-	/** Merge downstream chains that need to be added as separate roots */
-	mergeDownstreams: MergeDownstream[];
 }
 
 /**
@@ -589,16 +578,22 @@ function buildBranchTargets(
 		}
 
 		// Build branches array for the merge composite
-		// Always register branch nodes as variables for proper roundtrip parsing
+		// Include variable references to already-built nodes
 		const mergeBranches: CompositeNode[] = [];
 		for (const branchName of allBranchNames) {
 			const branchNode = ctx.graph.nodes.get(branchName);
 			if (branchNode) {
-				// Always register as variable for proper roundtrip
-				if (!ctx.variables.has(branchName)) {
+				if (ctx.variables.has(branchName)) {
+					// Use varRef for declared variables
+					mergeBranches.push(createVarRef(branchName));
+				} else if (ctx.visited.has(branchName)) {
+					// Already built - add as varRef and register as variable
 					ctx.variables.set(branchName, branchNode);
+					mergeBranches.push(createVarRef(branchName));
+				} else {
+					// Not yet built - inline as leaf
+					mergeBranches.push(createLeaf(branchNode));
 				}
-				mergeBranches.push(createVarRef(branchName));
 			}
 		}
 
@@ -608,15 +603,72 @@ function buildBranchTargets(
 			branches: mergeBranches,
 		};
 
-		// Track merge downstream for later processing as separate chain
+		// Check if merge has downstream continuation
 		const mergeOutputs = getAllFirstOutputTargets(mergeNode);
-		if (mergeOutputs.length > 0) {
-			ctx.mergeDownstreams.push({
-				mergeName: mergeNode.name,
-				downstreamTargets: mergeOutputs,
-			});
+		const unvisitedOutputs = mergeOutputs.filter((target) => !ctx.visited.has(target));
+
+		if (unvisitedOutputs.length === 0) {
+			// Check if there are visited outputs (loops) that need connections
+			const visitedOutputs = mergeOutputs.filter((target) => ctx.visited.has(target));
+			if (visitedOutputs.length > 0) {
+				// Create varRefs for loop-back connections
+				const loopTargets: CompositeNode[] = [];
+				for (const target of visitedOutputs) {
+					const targetNode = ctx.graph.nodes.get(target);
+					if (targetNode) {
+						ctx.variables.set(target, targetNode);
+						loopTargets.push(createVarRef(target));
+					}
+				}
+				if (loopTargets.length === 1) {
+					return {
+						kind: 'chain',
+						nodes: [mergeComposite, loopTargets[0]],
+					};
+				}
+				if (loopTargets.length > 1) {
+					return {
+						kind: 'chain',
+						nodes: [mergeComposite, ...loopTargets],
+					};
+				}
+			}
+			return mergeComposite;
 		}
-		return mergeComposite;
+
+		if (unvisitedOutputs.length === 1) {
+			// Single downstream target - chain to it
+			const nextComposite = buildFromNode(unvisitedOutputs[0], ctx);
+			return {
+				kind: 'chain',
+				nodes: [mergeComposite, nextComposite],
+			};
+		}
+
+		// Multiple downstream targets - build as fan-out
+		const fanOutBranches: CompositeNode[] = [];
+		for (const target of unvisitedOutputs) {
+			if (!ctx.visited.has(target)) {
+				fanOutBranches.push(buildFromNode(target, ctx));
+			}
+		}
+
+		if (fanOutBranches.length === 0) {
+			return mergeComposite;
+		}
+
+		if (fanOutBranches.length === 1) {
+			return {
+				kind: 'chain',
+				nodes: [mergeComposite, fanOutBranches[0]],
+			};
+		}
+
+		// Return chain with fan-out array
+		return {
+			kind: 'chain',
+			nodes: [mergeComposite, ...fanOutBranches],
+		};
 	}
 
 	// Multiple targets - build all branches
@@ -697,16 +749,27 @@ function buildMerge(node: SemanticNode, ctx: BuildContext): MergeCompositeNode {
 	}
 
 	// Build each branch
-	// Always register branch nodes as variables to ensure proper roundtrip parsing.
-	// If branches are inlined, the parser won't capture them as separate nodes.
+	// Note: For merge, we inline branches as leaves even if visited,
+	// unless they're explicitly declared as variables (cycle/convergence targets)
+	// OR unless they have outputs going to destinations OTHER than this merge
 	for (const branchName of branchNames) {
 		const branchNode = ctx.graph.nodes.get(branchName);
 		if (branchNode) {
-			// Always register as variable for proper roundtrip
-			if (!ctx.variables.has(branchName)) {
+			// Check if node has outputs going elsewhere (not just to this merge)
+			const hasOtherOutputs = hasOutputsOutsideMerge(branchNode, node);
+
+			if (ctx.variables.has(branchName)) {
+				// Already a declared variable - use varRef
+				branches.push(createVarRef(branchName));
+			} else if (hasOtherOutputs) {
+				// Node has outputs to other destinations - must be a variable
+				// so those outputs can be processed separately
 				ctx.variables.set(branchName, branchNode);
+				branches.push(createVarRef(branchName));
+			} else {
+				// Safe to inline as leaf
+				branches.push(createLeaf(branchNode));
 			}
-			branches.push(createVarRef(branchName));
 		}
 	}
 
@@ -818,20 +881,68 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 	}
 
 	// Handle downstream continuation for merge nodes
-	// NOTE: We intentionally do NOT chain merge downstream here.
-	// When a merge is encountered as part of an IF/Switch branch, its downstream
-	// should NOT be included in the branch chain. The downstream is a separate path
-	// that continues after the merge receives all its inputs.
-	// Instead, we track the downstream separately and add it as a new root.
 	if (compositeType === 'merge') {
 		const mergeOutputs = getAllFirstOutputTargets(node);
-		if (mergeOutputs.length > 0) {
-			// Track this merge's downstream for later processing
-			ctx.mergeDownstreams.push({
-				mergeName: node.name,
-				downstreamTargets: mergeOutputs,
-			});
+		const unvisitedOutputs = mergeOutputs.filter((target) => !ctx.visited.has(target));
+
+		if (unvisitedOutputs.length === 1) {
+			// Single downstream target - chain to it
+			const nextComposite = buildFromNode(unvisitedOutputs[0], ctx);
+			return {
+				kind: 'chain',
+				nodes: [compositeNode, nextComposite],
+			};
 		}
+
+		if (unvisitedOutputs.length > 1) {
+			// Multiple downstream targets - build as fan-out
+			const fanOutBranches: CompositeNode[] = [];
+			for (const target of unvisitedOutputs) {
+				fanOutBranches.push(buildFromNode(target, ctx));
+			}
+
+			if (fanOutBranches.length === 1) {
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, fanOutBranches[0]],
+				};
+			}
+
+			// Create fan-out composite for parallel targets
+			const fanOut: FanOutCompositeNode = {
+				kind: 'fanOut',
+				sourceNode: compositeNode,
+				targets: fanOutBranches,
+			};
+			return fanOut;
+		}
+
+		// No unvisited outputs - check if there are visited outputs (loops) that need connections
+		const visitedOutputs = mergeOutputs.filter((target) => ctx.visited.has(target));
+		if (visitedOutputs.length > 0) {
+			// Create varRefs for loop-back connections
+			const loopTargets: CompositeNode[] = [];
+			for (const target of visitedOutputs) {
+				const targetNode = ctx.graph.nodes.get(target);
+				if (targetNode) {
+					ctx.variables.set(target, targetNode);
+					loopTargets.push(createVarRef(target));
+				}
+			}
+			if (loopTargets.length === 1) {
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, loopTargets[0]],
+				};
+			}
+			if (loopTargets.length > 1) {
+				return {
+					kind: 'chain',
+					nodes: [compositeNode, ...loopTargets],
+				};
+			}
+		}
+
 		return compositeNode;
 	}
 
@@ -848,14 +959,11 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 			const mergePattern = detectMergePattern(nextTargets, ctx);
 			if (mergePattern) {
 				// Generate merge composite with all branches
-				// Always register branch nodes as variables for proper roundtrip
 				const branches: CompositeNode[] = mergePattern.branches.map((branchName) => {
 					const branchNode = ctx.graph.nodes.get(branchName);
 					if (branchNode) {
 						ctx.visited.add(branchName);
-						// Register as variable for proper roundtrip parsing
-						ctx.variables.set(branchName, branchNode);
-						return createVarRef(branchName);
+						return createLeaf(branchNode);
 					}
 					return createVarRef(branchName);
 				});
@@ -867,15 +975,14 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 					branches,
 				};
 
-				// Track merge downstream for later processing as separate chain
-				// Don't include it in the current chain - this is crucial when the merge
-				// is inside an IF branch. The downstream should be a separate root.
+				// Check if merge has downstream continuation
 				const mergeOutputs = getAllFirstOutputTargets(mergePattern.mergeNode);
 				if (mergeOutputs.length > 0) {
-					ctx.mergeDownstreams.push({
-						mergeName: mergePattern.mergeNode.name,
-						downstreamTargets: mergeOutputs,
-					});
+					const nextComposite = buildFromNode(mergeOutputs[0], ctx);
+					return {
+						kind: 'chain',
+						nodes: [compositeNode, mergeComposite, nextComposite],
+					};
 				}
 
 				return {
@@ -965,7 +1072,6 @@ export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
 		graph,
 		visited: new Set(),
 		variables: new Map(),
-		mergeDownstreams: [],
 	};
 
 	const roots: CompositeNode[] = [];
@@ -974,44 +1080,6 @@ export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
 	for (const rootName of graph.roots) {
 		const composite = buildFromNode(rootName, ctx);
 		roots.push(composite);
-	}
-
-	// Process merge downstream chains and add them as additional roots
-	// This ensures merge outputs are properly connected in the workflow
-	for (const downstream of ctx.mergeDownstreams) {
-		const mergeNode = graph.nodes.get(downstream.mergeName);
-		if (!mergeNode) continue;
-
-		// Register merge as variable if not already
-		if (!ctx.variables.has(downstream.mergeName)) {
-			ctx.variables.set(downstream.mergeName, mergeNode);
-		}
-
-		// Build the downstream chain
-		const downstreamNodes: CompositeNode[] = [];
-		for (const targetName of downstream.downstreamTargets) {
-			if (!ctx.visited.has(targetName)) {
-				const targetComposite = buildFromNode(targetName, ctx);
-				downstreamNodes.push(targetComposite);
-			} else {
-				// Already visited - add as variable reference
-				const targetNode = graph.nodes.get(targetName);
-				if (targetNode) {
-					ctx.variables.set(targetName, targetNode);
-					downstreamNodes.push(createVarRef(targetName));
-				}
-			}
-		}
-
-		// If there are downstream nodes, create a chain starting with merge varRef
-		if (downstreamNodes.length > 0) {
-			const mergeVarRef = createVarRef(downstream.mergeName);
-			const downstreamChain: CompositeNode = {
-				kind: 'chain',
-				nodes: [mergeVarRef, ...downstreamNodes],
-			};
-			roots.push(downstreamChain);
-		}
 	}
 
 	return {

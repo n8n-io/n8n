@@ -6,7 +6,6 @@
 
 import type { WorkflowJSON } from '../types/base';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
-import { getCompositeType } from './semantic-registry';
 import type {
 	CompositeTree,
 	CompositeNode,
@@ -32,8 +31,6 @@ interface GenerationContext {
 	nodeNameToVarName: Map<string, string>; // Maps node names to unique variable names
 	usedVarNames: Set<string>; // Tracks all used variable names to avoid collisions
 	subnodeVariables: Map<string, { node: SemanticNode; builderName: string }>; // Subnodes to declare as variables
-	builderSetupStatements: string[]; // Builder setup statements (ifElse, switchCase, merge)
-	mergeBuilders: Map<string, string>; // Maps merge node names to their builder variable names
 }
 
 /**
@@ -658,12 +655,6 @@ function generateNodeCall(node: SemanticNode, ctx: GenerationContext): string {
  */
 function generateLeafCode(leaf: LeafNode, ctx: GenerationContext): string {
 	const nodeName = leaf.node.json.name;
-
-	// Check if this is a merge node with a builder - use the builder instead
-	if (nodeName && ctx.mergeBuilders.has(nodeName)) {
-		return ctx.mergeBuilders.get(nodeName)!;
-	}
-
 	if (nodeName && ctx.variableNodes.has(nodeName)) {
 		// Use variable reference for nodes that are declared as variables
 		return getVarName(nodeName, ctx);
@@ -688,120 +679,12 @@ function generateLeaf(leaf: LeafNode, ctx: GenerationContext): string {
 
 /**
  * Generate code for a chain
- *
- * Special handling for merge nodes with branches:
- * When a chain contains [A, Merge with branches [B, C], D], the actual topology is:
- *   A → [B → Merge.input(0), C → Merge.input(1)] → D
- * So we generate: A.then([B.then(merge.input(0)), C.then(merge.input(1))])
- * And the downstream (D) is handled separately via mergeDownstreams.
  */
-/**
- * Get the name of a node from a composite node
- */
-function getCompositeNodeName(node: CompositeNode): string | null {
-	if (node.kind === 'leaf') {
-		return node.node.json.name;
-	}
-	if (node.kind === 'varRef') {
-		return node.nodeName;
-	}
-	if (node.kind === 'chain' && node.nodes.length > 0) {
-		// For chains, return the last node's name (the one that connects to merge)
-		return getCompositeNodeName(node.nodes[node.nodes.length - 1]);
-	}
-	return null;
-}
-
-/**
- * Find which merge input index a node connects to
- */
-function findMergeInputIndex(nodeName: string, mergeNode: SemanticNode): number | null {
-	for (const [inputSlotKey, sources] of mergeNode.inputSources) {
-		for (const source of sources) {
-			if (source.from === nodeName) {
-				return extractInputIndex(inputSlotKey);
-			}
-		}
-	}
-	return null;
-}
-
 function generateChain(chain: ChainNode, ctx: GenerationContext): string {
 	const parts: string[] = [];
 
 	for (let i = 0; i < chain.nodes.length; i++) {
 		const node = chain.nodes[i];
-
-		// Special handling for merge nodes with branches
-		if (i > 0 && node.kind === 'merge') {
-			const mergeComposite = node as MergeCompositeNode;
-			const builderVarName = generateMerge(mergeComposite, ctx, true);
-
-			// Get the previous node's name in the chain
-			const prevNode = chain.nodes[i - 1];
-			const prevNodeName = getCompositeNodeName(prevNode);
-
-			// Check if the previous node is a DIRECT merge input
-			// (i.e., the chain contains [... → prevNode → merge] where prevNode feeds into merge)
-			if (prevNodeName) {
-				const inputIndex = findMergeInputIndex(prevNodeName, mergeComposite.mergeNode);
-				if (inputIndex !== null) {
-					// Previous node IS a direct merge input - just connect to that input
-					// The chain already includes nodes leading to the merge, so just connect
-					parts.push(`.then(${builderVarName}.input(${inputIndex}))`);
-					// Skip rest of chain - merge downstream handled separately
-					break;
-				}
-			}
-
-			// Previous node is NOT a direct merge input - this means there are
-			// intermediate nodes between the chain's previous node and the merge
-			// (workflow 5745 pattern). Generate fan-out to those intermediate branches.
-			if (mergeComposite.branches.length > 0) {
-				const branchCodes: string[] = [];
-				for (let j = 0; j < mergeComposite.branches.length; j++) {
-					const branch = mergeComposite.branches[j];
-					const branchCode = generateComposite(branch, ctx);
-					branchCodes.push(`${branchCode}.then(${builderVarName}.input(${j}))`);
-				}
-
-				if (branchCodes.length === 1) {
-					parts.push(`.then(${branchCodes[0]})`);
-				} else {
-					parts.push(`.then([${branchCodes.join(', ')}])`);
-				}
-
-				// Skip rest of chain - merge downstream handled separately
-				break;
-			}
-		}
-
-		// Special handling for varRef to merge nodes
-		// This happens when a parallel branch has already built the merge composite,
-		// and this branch just has a reference to it
-		if (i > 0 && node.kind === 'varRef') {
-			const varRef = node as VariableReference;
-			// Check if this varRef points to a merge node
-			const referencedNode = ctx.graph.nodes.get(varRef.nodeName);
-			if (referencedNode && getCompositeType(referencedNode.type) === 'merge') {
-				// This is a reference to a merge node
-				// Get the previous node's name to find which input it connects to
-				const prevNode = chain.nodes[i - 1];
-				const prevNodeName = getCompositeNodeName(prevNode);
-
-				if (prevNodeName) {
-					const inputIndex = findMergeInputIndex(prevNodeName, referencedNode);
-					if (inputIndex !== null) {
-						// Get the builder variable name for this merge
-						const builderVarName = ctx.mergeBuilders.get(varRef.nodeName) ?? varRef.varName;
-						parts.push(`.then(${builderVarName}.input(${inputIndex}))`);
-						// Skip rest of chain
-						break;
-					}
-				}
-			}
-		}
-
 		const nodeCode = generateComposite(node, ctx);
 
 		if (i === 0) {
@@ -822,94 +705,6 @@ function generateVarRef(varRef: VariableReference, _ctx: GenerationContext): str
 }
 
 /**
- * Check if a node is an IF or Switch type (has non-default outputs like falseBranch)
- */
-function isIfOrSwitchNode(node: SemanticNode): boolean {
-	const compositeType = getCompositeType(node.type);
-	return compositeType === 'ifElse' || compositeType === 'switchCase';
-}
-
-/**
- * Extract numeric index from semantic input slot name (e.g., 'branch0' -> 0, 'input1' -> 1)
- */
-function extractInputIndex(inputSlotKey: string): number | null {
-	// Try to extract the numeric suffix from slot names like 'branch0', 'input1', etc.
-	const match = inputSlotKey.match(/(\d+)$/);
-	if (match) {
-		return parseInt(match[1], 10);
-	}
-	// Fallback: try parsing as a number directly
-	const parsed = parseInt(inputSlotKey, 10);
-	return isNaN(parsed) ? null : parsed;
-}
-
-/**
- * Check if a merge input branch should be skipped because it's an IF/Switch node
- * whose connection is handled by its builder (onTrue/onFalse/onCase)
- *
- * The merge should only generate .then() for branches that connect from the default output.
- * IF/Switch nodes connecting from non-default outputs (falseBranch, case1, etc.) should be
- * handled by their respective builders.
- *
- * @param branchNodeName - The name of the branch node connecting to merge
- * @param mergeInputIndex - The merge input index this branch connects to
- * @param mergeNode - The merge node
- * @param ctx - Generation context
- * @returns true if this branch should be skipped in merge generation
- */
-function shouldSkipMergeBranch(
-	branchNodeName: string,
-	mergeInputIndex: number,
-	mergeNode: SemanticNode,
-	ctx: GenerationContext,
-): boolean {
-	const branchNode = ctx.graph.nodes.get(branchNodeName);
-	if (!branchNode || !isIfOrSwitchNode(branchNode)) {
-		return false;
-	}
-
-	// Search through all merge inputs to find where this branch connects
-	// Input slot keys are semantic names like 'branch0', 'branch1', etc.
-	for (const [inputSlotKey, sources] of mergeNode.inputSources) {
-		const slotIndex = extractInputIndex(inputSlotKey);
-		if (slotIndex !== mergeInputIndex) continue;
-
-		for (const source of sources) {
-			if (source.from === branchNodeName) {
-				// If the connection comes from a non-default output (falseBranch, case1, etc.),
-				// the IF/Switch builder will handle it via onFalse/onCase
-				// Default outputs are 'trueBranch' (for IF) and 'case0' (for Switch)
-				if (source.outputSlot !== 'trueBranch' && source.outputSlot !== 'case0') {
-					return true;
-				}
-			}
-		}
-	}
-
-	return false;
-}
-
-/**
- * Get the merge input index that a specific node connects to from a specific output slot
- * Used by IF/Switch builders to generate correct merge_builder.input(n) calls
- */
-function getMergeInputForOutput(
-	sourceNodeName: string,
-	outputSlot: string,
-	mergeNode: SemanticNode,
-): number | null {
-	// Search through all merge inputs to find where this source/output connects
-	for (const [inputSlotKey, sources] of mergeNode.inputSources) {
-		for (const source of sources) {
-			if (source.from === sourceNodeName && source.outputSlot === outputSlot) {
-				return extractInputIndex(inputSlotKey);
-			}
-		}
-	}
-	return null;
-}
-
-/**
  * Generate code for a branch that may be single, array (fan-out), or null
  */
 function generateBranchCode(
@@ -919,183 +714,36 @@ function generateBranchCode(
 	if (branch === null) return 'null';
 
 	if (Array.isArray(branch)) {
-		// Fan-out within branch - generate as array [branch1, branch2, ...]
+		// Fan-out within branch - generate as fanOut(branch1, branch2, ...)
 		const branchesCode = branch.map((b) => generateComposite(b, ctx)).join(', ');
-		return `[${branchesCode}]`;
+		return `fanOut(${branchesCode})`;
 	}
 
 	return generateComposite(branch, ctx);
 }
 
 /**
- * Generate code for a merge branch that ends with .then(mergeBuilder.input(n))
- * Handles fan-out branches where each element needs to end at the merge input
- */
-function generateBranchWithMergeInput(
-	branch: CompositeNode,
-	mergeBuilderVarName: string,
-	inputIndex: number,
-	ctx: GenerationContext,
-): string {
-	// Check if this is a fan-out branch
-	if (branch.kind === 'fanOut') {
-		const fanOut = branch as FanOutCompositeNode;
-		const sourceCode = generateComposite(fanOut.sourceNode, ctx);
-
-		// Each target in the fan-out should end at the merge input
-		const targetCodes = fanOut.targets.map((target) => {
-			const targetCode = generateComposite(target, ctx);
-			return `${targetCode}.then(${mergeBuilderVarName}.input(${inputIndex}))`;
-		});
-
-		// Return the source fanning out to targets that end at merge inputs
-		return `${sourceCode}.then([${targetCodes.join(', ')}]);`;
-	}
-
-	// Single branch - just append .then(mergeBuilder.input(n))
-	const branchCode = generateComposite(branch, ctx);
-	return `${branchCode}.then(${mergeBuilderVarName}.input(${inputIndex}));`;
-}
-
-/**
- * Generate branch code that correctly handles merge input connections.
- * When a branch ends at a merge node, generates merge_builder.input(n) instead of merge_builder.
- *
- * @param branch - The branch composite node
- * @param sourceNodeName - The source node name (e.g., IF node)
- * @param outputSlot - The output slot name (e.g., 'falseBranch')
- * @param ctx - Generation context
- * @returns Generated code for the branch
- */
-function generateBranchCodeWithMergeInput(
-	branch: CompositeNode | CompositeNode[] | null,
-	sourceNodeName: string,
-	outputSlot: string,
-	ctx: GenerationContext,
-): string {
-	if (branch === null) return 'null';
-
-	if (Array.isArray(branch)) {
-		// Fan-out within branch - handle each branch
-		const branchesCode = branch.map((b) =>
-			generateBranchCodeWithMergeInput(b, sourceNodeName, outputSlot, ctx),
-		);
-		return `[${branchesCode.join(', ')}]`;
-	}
-
-	// Check if this branch is a merge node
-	if (branch.kind === 'merge') {
-		const mergeNode = (branch as MergeCompositeNode).mergeNode;
-		const mergeName = mergeNode.json.name;
-
-		// First, ensure the merge builder is generated and registered
-		// This is necessary because the merge might not have been processed yet
-		const generatedMergeCode = generateComposite(branch, ctx);
-
-		// Now look up the registered builder name
-		const mergeBuilderVarName = mergeName ? ctx.mergeBuilders.get(mergeName) : undefined;
-
-		if (mergeBuilderVarName) {
-			// Find which merge input this source/output connects to
-			const inputIndex = getMergeInputForOutput(sourceNodeName, outputSlot, mergeNode);
-			if (inputIndex !== null) {
-				return `${mergeBuilderVarName}.input(${inputIndex})`;
-			}
-		}
-
-		// Fallback to the generated code if we couldn't determine the input
-		return generatedMergeCode;
-	}
-
-	// Check if branch is a chain ending at a merge
-	if (branch.kind === 'chain') {
-		const chainNode = branch as ChainNode;
-		const lastNode = chainNode.nodes[chainNode.nodes.length - 1];
-		if (lastNode?.kind === 'merge') {
-			const mergeNode = (lastNode as MergeCompositeNode).mergeNode;
-			const mergeName = mergeNode.json.name;
-
-			// Generate the chain first to ensure merge builder is registered
-			// We need all nodes to be processed
-			const chainCode = generateComposite(branch, ctx);
-
-			// Now look up the registered builder name
-			const mergeBuilderVarName = mergeName ? ctx.mergeBuilders.get(mergeName) : undefined;
-
-			if (mergeBuilderVarName) {
-				// Find which merge input this source/output connects to
-				const inputIndex = getMergeInputForOutput(sourceNodeName, outputSlot, mergeNode);
-				if (inputIndex !== null) {
-					// Generate all nodes except the last (merge), then chain to merge input
-					const nodesBeforeMerge = chainNode.nodes.slice(0, -1);
-					if (nodesBeforeMerge.length > 0) {
-						const nodesCode = nodesBeforeMerge.map((n) => generateComposite(n, ctx)).join('.then(');
-						const closingParens = ')'.repeat(nodesBeforeMerge.length - 1);
-						return `${nodesCode}${closingParens}.then(${mergeBuilderVarName}.input(${inputIndex}))`;
-					}
-					return `${mergeBuilderVarName}.input(${inputIndex})`;
-				}
-			}
-
-			// Fallback to the generated chain code
-			return chainCode;
-		}
-	}
-
-	// Default: use regular branch code generation
-	return generateComposite(branch, ctx);
-}
-
-/**
- * Generate code for an IF branch using builder syntax
+ * Generate code for an IF branch (named syntax only)
  */
 function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	// Get the IF node reference
+	const trueBranchCode = generateBranchCode(ifElse.trueBranch, innerCtx);
+	const falseBranchCode = generateBranchCode(ifElse.falseBranch, innerCtx);
+
+	// For named syntax, we need a variable reference to the IF node
 	const ifNodeRef = getVarRefOrInlineNode(ifElse.ifNode, ctx);
-	const ifNodeName = ifElse.ifNode.json.name ?? '';
 
-	// Generate a unique builder variable name
-	const builderVarName = getUniqueVarName(`${ifElse.ifNode.json.name ?? 'if'}_builder`, ctx);
-
-	// Generate builder declaration
-	ctx.builderSetupStatements.push(`const ${builderVarName} = ifElse(${ifNodeRef});`);
-
-	// Generate branch configuration statements
-	// Only generate branches that are not null
-	// Use generateBranchCodeWithMergeInput to handle merge connections correctly
-	if (ifElse.trueBranch !== null) {
-		const trueBranchCode = generateBranchCodeWithMergeInput(
-			ifElse.trueBranch,
-			ifNodeName,
-			'trueBranch',
-			innerCtx,
-		);
-		ctx.builderSetupStatements.push(`${builderVarName}.onTrue(${trueBranchCode});`);
-	}
-
-	if (ifElse.falseBranch !== null) {
-		const falseBranchCode = generateBranchCodeWithMergeInput(
-			ifElse.falseBranch,
-			ifNodeName,
-			'falseBranch',
-			innerCtx,
-		);
-		ctx.builderSetupStatements.push(`${builderVarName}.onFalse(${falseBranchCode});`);
-	}
-
-	// Return the builder variable name for use in the workflow chain
-	return builderVarName;
+	return `ifElse(${ifNodeRef}, { true: ${trueBranchCode}, false: ${falseBranchCode} })`;
 }
 
 /**
- * Generate code for a switch case using builder syntax
+ * Generate code for a switch case (named syntax only)
  */
 function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	// Get the Switch node reference
+	// For named syntax, we need a variable reference to the Switch node
 	const switchNodeRef = getVarRefOrInlineNode(switchCase.switchNode, ctx);
 
 	// If no cases, just return the switch node reference (don't wrap in switchCase())
@@ -1103,147 +751,29 @@ function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: Generation
 		return switchNodeRef;
 	}
 
-	// Generate a unique builder variable name
-	const builderVarName = getUniqueVarName(
-		`${switchCase.switchNode.json.name ?? 'switch'}_builder`,
-		ctx,
-	);
+	// Generate named case entries: { case0: ..., case1: ..., ... }
+	const caseEntries = switchCase.cases
+		.map((c, i) => `case${i}: ${generateBranchCode(c, innerCtx)}`)
+		.join(', ');
 
-	// Generate builder declaration
-	ctx.builderSetupStatements.push(`const ${builderVarName} = switchCase(${switchNodeRef});`);
-
-	// Generate case configuration statements
-	switchCase.cases.forEach((c, i) => {
-		if (c !== null) {
-			const caseCode = generateBranchCode(c, innerCtx);
-			ctx.builderSetupStatements.push(`${builderVarName}.onCase(${i}, ${caseCode});`);
-		}
-	});
-
-	// Return the builder variable name for use in the workflow chain
-	return builderVarName;
+	return `switchCase(${switchNodeRef}, { ${caseEntries} })`;
 }
 
 /**
- * Generate code for a merge using the builder pattern
- * Generates: const myMerge = merge({ name: ..., parameters: ... });
- * And optionally branches that end with .then(myMerge.input(n))
- *
- * @param skipBranchStatements - If true, skip generating branch setup statements
- *   (used when branches are handled inline in the workflow chain)
+ * Generate code for a merge (named syntax only)
  */
-function generateMerge(
-	mergeNode: MergeCompositeNode,
-	ctx: GenerationContext,
-	skipBranchStatements = false,
-): string {
+function generateMerge(merge: MergeCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
-	const mergeName = mergeNode.mergeNode.json.name;
 
-	// Check if this merge was already declared as a variable (in generateVariableDeclarations)
-	// If so, use the existing variable name instead of creating a duplicate
-	const existingBuilder = mergeName ? ctx.mergeBuilders.get(mergeName) : undefined;
-	if (existingBuilder) {
-		// Merge was already declared - just return the existing variable name
-		// Still need to generate branch statements though
-		if (!skipBranchStatements && mergeNode.branches.length > 0) {
-			generateMergeBranchStatements(mergeNode, existingBuilder, innerCtx, ctx);
-		}
-		return existingBuilder;
-	}
+	// Generate named input entries: { input0: ..., input1: ..., ... }
+	const inputEntries = merge.branches
+		.map((b, i) => `input${i}: ${generateComposite(b, innerCtx)}`)
+		.join(', ');
 
-	// Generate a unique builder variable name
-	const builderVarName = getUniqueVarName(`${mergeName ?? 'merge'}_builder`, ctx);
+	// For named syntax, we need a variable reference to the Merge node
+	const mergeNodeRef = getVarRefOrInlineNode(merge.mergeNode, ctx);
 
-	// Generate merge config
-	const configParts: string[] = [];
-	if (mergeName) {
-		configParts.push(`name: '${escapeString(mergeName)}'`);
-	}
-	// Always include version to preserve decimal versions like 3.2
-	if (mergeNode.mergeNode.json.typeVersion != null) {
-		configParts.push(`version: ${mergeNode.mergeNode.json.typeVersion}`);
-	}
-	if (
-		mergeNode.mergeNode.json.parameters &&
-		Object.keys(mergeNode.mergeNode.json.parameters).length > 0
-	) {
-		configParts.push(`parameters: ${formatValue(mergeNode.mergeNode.json.parameters)}`);
-	}
-	const pos = mergeNode.mergeNode.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
-		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
-	}
-
-	const configStr = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
-
-	// Generate builder declaration
-	ctx.builderSetupStatements.push(`const ${builderVarName} = merge(${configStr});`);
-
-	// Register this merge builder so LeafNodes can use it instead of the raw node variable
-	if (mergeName) {
-		ctx.mergeBuilders.set(mergeName, builderVarName);
-	}
-
-	// Generate branches as separate setup statements, each ending with .then(builderVarName.input(n))
-	// Skip if branches are handled inline (e.g., in workflow chain fan-out)
-	// Also skip IF/Switch branches that connect from non-default outputs (handled by their builders)
-	if (!skipBranchStatements && mergeNode.branches.length > 0) {
-		generateMergeBranchStatements(mergeNode, builderVarName, innerCtx, ctx);
-	}
-
-	// Return the builder variable name for use in the workflow chain
-	return builderVarName;
-}
-
-/**
- * Generate branch statements for a merge node
- * Extracted to allow reuse when merge was already declared as a variable
- */
-function generateMergeBranchStatements(
-	mergeNode: MergeCompositeNode,
-	builderVarName: string,
-	innerCtx: GenerationContext,
-	ctx: GenerationContext,
-): void {
-	// Iterate through actual merge inputs to get correct input indices
-	// Input slot keys are semantic names like 'branch0', 'branch1', etc.
-	for (const [inputSlotKey, sources] of mergeNode.mergeNode.inputSources) {
-		const inputIndex = extractInputIndex(inputSlotKey);
-		if (inputIndex === null) continue;
-
-		for (const source of sources) {
-			// Find the branch for this source
-			// Note: varRef.varName is the camelCase variable name, source.from is the original node name
-			const sourceVarName = toVarName(source.from);
-			const branchForSource = mergeNode.branches.find((b) => {
-				if (b.kind === 'varRef') {
-					return (b as VariableReference).varName === sourceVarName;
-				}
-				if (b.kind === 'leaf') {
-					return (b as LeafNode).node.json.name === source.from;
-				}
-				return false;
-			});
-
-			if (!branchForSource) continue;
-
-			// Check if this is an IF/Switch branch connecting from a non-default output
-			// If so, skip it - the IF/Switch builder will handle the connection via onTrue/onFalse/onCase
-			if (shouldSkipMergeBranch(source.from, inputIndex, mergeNode.mergeNode, ctx)) {
-				continue;
-			}
-
-			// Generate the branch connection
-			const branchCode = generateBranchWithMergeInput(
-				branchForSource,
-				builderVarName,
-				inputIndex,
-				innerCtx,
-			);
-			ctx.builderSetupStatements.push(branchCode);
-		}
-	}
+	return `merge(${mergeNodeRef}, { ${inputEntries} })`;
 }
 
 /**
@@ -1425,33 +955,7 @@ function getUniqueVarName(nodeName: string, ctx: GenerationContext): string {
 }
 
 /**
- * Generate merge() builder call for a merge node variable declaration
- */
-function generateMergeBuilderCall(node: SemanticNode): string {
-	const configParts: string[] = [];
-
-	if (node.json.name) {
-		configParts.push(`name: '${escapeString(node.json.name)}'`);
-	}
-	if (node.json.typeVersion != null) {
-		configParts.push(`version: ${node.json.typeVersion}`);
-	}
-	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
-		configParts.push(`parameters: ${formatValue(node.json.parameters)}`);
-	}
-	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
-		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
-	}
-
-	const configStr = configParts.length > 0 ? `{ ${configParts.join(', ')} }` : '{}';
-	return `merge(${configStr})`;
-}
-
-/**
  * Generate variable declarations
- * Merge nodes are declared as merge() builders instead of node() calls
- * to avoid duplicate node creation when they're also used in merge composites.
  */
 function generateVariableDeclarations(
 	variables: Map<string, SemanticNode>,
@@ -1461,20 +965,8 @@ function generateVariableDeclarations(
 
 	for (const [nodeName, node] of variables) {
 		const varName = getUniqueVarName(nodeName, ctx);
-
-		// Merge nodes are declared as merge() builders instead of node() calls
-		// This ensures consistency - the same merge() call is used whether the node
-		// is a standalone variable or part of a merge composite
-		const compositeType = getCompositeType(node.type);
-		if (compositeType === 'merge') {
-			const mergeCall = generateMergeBuilderCall(node);
-			declarations.push(`const ${varName} = ${mergeCall};`);
-			// Register this merge builder so it's used consistently
-			ctx.mergeBuilders.set(nodeName, varName);
-		} else {
-			const nodeCall = generateNodeCall(node, ctx);
-			declarations.push(`const ${varName} = ${nodeCall};`);
-		}
+		const nodeCall = generateNodeCall(node, ctx);
+		declarations.push(`const ${varName} = ${nodeCall};`);
 		ctx.generatedVars.add(nodeName);
 	}
 
@@ -1515,58 +1007,13 @@ function flattenToWorkflowCalls(
 		for (let i = 0; i < root.nodes.length; i++) {
 			const node = root.nodes[i];
 			const method = i === 0 ? 'add' : 'then';
-
-			// Special handling for merge in .then() position:
-			// Generate fan-out to branches, then add merge separately
-			if (method === 'then' && node.kind === 'merge') {
-				const mergeNode = node as MergeCompositeNode;
-				const mergeCalls = generateMergeChainCalls(mergeNode, ctx);
-				calls.push(...mergeCalls);
-			} else {
-				const code = generateComposite(node, ctx);
-				calls.push([method, code]);
-			}
+			const code = generateComposite(node, ctx);
+			calls.push([method, code]);
 		}
 	} else {
 		// Single node: just .add()
 		calls.push(['add', generateComposite(root, ctx)]);
 	}
-
-	return calls;
-}
-
-/**
- * Generate workflow calls for a merge composite in a chain.
- * Returns: [['then', '[branch1.then(merge.input(0)), ...]'], ['add', 'merge_builder']]
- */
-function generateMergeChainCalls(
-	mergeNode: MergeCompositeNode,
-	ctx: GenerationContext,
-): Array<[string, string]> {
-	const calls: Array<[string, string]> = [];
-
-	// Generate the merge builder, skipping branch statements since we handle them inline
-	const builderVarName = generateMerge(mergeNode, ctx, true);
-
-	// If there are branches, generate fan-out to branches with merge input connections
-	if (mergeNode.branches.length > 0) {
-		const branchCodes: string[] = [];
-		for (let i = 0; i < mergeNode.branches.length; i++) {
-			const branch = mergeNode.branches[i];
-			const branchCode = generateComposite(branch, ctx);
-			branchCodes.push(`${branchCode}.then(${builderVarName}.input(${i}))`);
-		}
-
-		// Generate fan-out: .then([branch1.then(merge.input(0)), branch2.then(merge.input(1))])
-		if (branchCodes.length === 1) {
-			calls.push(['then', branchCodes[0]]);
-		} else {
-			calls.push(['then', `[${branchCodes.join(', ')}]`]);
-		}
-	}
-
-	// Add the merge builder to ensure it's in the workflow
-	calls.push(['add', builderVarName]);
 
 	return calls;
 }
@@ -1591,8 +1038,6 @@ export function generateCode(
 		nodeNameToVarName: new Map(),
 		usedVarNames: new Set(),
 		subnodeVariables: new Map(),
-		builderSetupStatements: [],
-		mergeBuilders: new Map(),
 	};
 
 	// Collect all subnodes from all nodes in the graph (not just variable nodes)
@@ -1615,25 +1060,6 @@ export function generateCode(
 		lines.push('');
 	}
 
-	// Generate each root, flattening chains to workflow-level calls
-	// This must happen BEFORE adding builder statements to lines,
-	// as it populates ctx.builderSetupStatements
-	ctx.indent = 1;
-	const workflowCalls: string[] = [];
-	for (const root of tree.roots) {
-		const calls = flattenToWorkflowCalls(root, ctx);
-		for (const [method, code] of calls) {
-			workflowCalls.push(`  .${method}(${code})`);
-		}
-	}
-
-	// Add builder setup statements (ifElse, switchCase, merge builders)
-	// These come after node declarations but before the workflow chain
-	if (ctx.builderSetupStatements.length > 0) {
-		lines.push(...ctx.builderSetupStatements);
-		lines.push('');
-	}
-
 	// Generate workflow call
 	const workflowId = escapeString(json.id ?? '');
 	const workflowName = escapeString(json.name ?? '');
@@ -1644,6 +1070,16 @@ export function generateCode(
 
 	// Start with workflow variable declaration
 	lines.push(`const wf = workflow('${workflowId}', '${workflowName}'${settingsStr});`);
+
+	// Generate each root, flattening chains to workflow-level calls
+	ctx.indent = 1;
+	const workflowCalls: string[] = [];
+	for (const root of tree.roots) {
+		const calls = flattenToWorkflowCalls(root, ctx);
+		for (const [method, code] of calls) {
+			workflowCalls.push(`  .${method}(${code})`);
+		}
+	}
 
 	// Add workflow calls and return statement
 	if (workflowCalls.length > 0) {
