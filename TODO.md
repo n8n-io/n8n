@@ -1,12 +1,13 @@
 # TODO (MVP)
 
 ## workflow-sdk
-- [ ] Add more error branch workflows
+- [WIP] Support branching for weird nodes out there with multiple inputs or outputs, that we don't support now. (Text classifier node for example)
+- [WIP] better interface? onTrue() onFalse() for ifElse. onCase for switchCase. also splitInBatches. Merge
+- [ ] Add more error branch workflows tests
 - [ ] Better clarify how output data maps to expressions in types and referenced
-- [ ] better interface? onTrue() onFalse() for ifElse. onCase for switchCase. what to do with merge?
-	- [ ] split out merge into separate functions? so its easier to understand
+- [ ] split out merge into separate functions? so its easier to understand
 - [ ] create custom node parameter discriminators by output type (simplify in gmail node)
-- [ ] Add examples with switch case fallback connection
+- [ ] Support switch case fallback connection (.onFallback)
 
 ## agent
 - [ ] transpile current workflow to code
@@ -50,11 +51,9 @@
 
 ## Nice to haves / tech debt
 - [ ] Test more of the template library
-- [ ] refactor code gen to use plugin arch for composites
 - [ ] Make it more clear that SDK api file is for LLM consumption. To avoid other engineers adding unnecessary types to it, confusing the agent.
 - [ ] rename one shot agent across code base
 - [ ] update workflow() to support object init { id, settings }
-- [ ] clean up old codegen impl
 - [ ] move generated test files for committed workflows to same folder.
 - [ ] allow adding node defaults when generating workflows
 - [ ] Add builderHint (for example promptType: 'auto'/'define')
@@ -62,7 +61,6 @@
 ## Future improvement
 - [ ] use random generator for pin data
 - [ ] RLC Support
-- [ ] Support branching for weird nodes out there with multiple inputs or outputs, that we don't support now.
 - [ ] generate pin data using a random generator, rather than ai.
 - [ ] Support templates as examples
 - [ ] Add support for expr() functions that narrow down types for context. Basically llm should generate code rather than strings.
@@ -84,6 +82,7 @@
 - [X] rerun evaluations, get to parity with current agent
 - [X] Rename ifBranch to ifElse, update branches with clearer naming.
 - [X] run evaluations against Opus
+- [X] clean up old codegen impl
 
 
 # Prompts to test
