@@ -141,6 +141,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-invite-email-click': (event) => this.userInviteEmailClick(event),
 			'user-password-reset-email-click': (event) => this.userPasswordResetEmailClick(event),
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
+			'history-compacted': (event) => this.historyCompacted(event),
 		});
 	}
 
@@ -976,6 +977,13 @@ export class TelemetryEventRelay extends EventRelay {
 				executions_data_prune: this.globalConfig.executions.pruneData,
 				executions_data_max_age: this.globalConfig.executions.pruneDataMaxAge,
 			},
+			workflow_history: {
+				compaction_optimizing_time_window_hours:
+					this.globalConfig.workflowHistoryCompaction.optimizingTimeWindowHours,
+				compaction_trim_on_start_up: this.globalConfig.workflowHistoryCompaction.trimOnStartUp,
+				compaction_trimming_time_window_days:
+					this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
+			},
 			n8n_deployment_type: this.globalConfig.deployment.type,
 			n8n_binary_data_mode: this.binaryDataConfig.mode,
 			smtp_set_up: this.globalConfig.userManagement.emails.mode === 'smtp',
@@ -1343,5 +1351,34 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	// #endregion
+	// #region workflow history compaction
+	private historyCompacted({
+		workflowsProcessed,
+		totalVersionsSeen,
+		totalVersionsDeleted,
+		compactionStartTime,
+		windowEndIso,
+		windowStartIso,
+		durationMs,
+		errorCount,
+	}: RelayEventMap['history-compacted']) {
+		this.telemetry.track('Instance compacted workflow history', {
+			workflows_processed: workflowsProcessed,
+			total_versions_seen: totalVersionsSeen,
+			total_versions_deleted: totalVersionsDeleted,
+			window_start_iso: new Date(windowStartIso),
+			window_end_iso: new Date(windowEndIso),
+			error_count: errorCount,
+			compaction_start_time_iso: compactionStartTime,
+			compaction_duration_ms: durationMs,
+			compaction_batch_delay_ms: this.globalConfig.workflowHistoryCompaction.batchDelayMs,
+			compaction_batch_size: this.globalConfig.workflowHistoryCompaction.batchSize,
+			compaction_trimming_optimizing_time_window_hours:
+				this.globalConfig.workflowHistoryCompaction.optimizingTimeWindowHours,
+			compaction_trimming_time_window_days:
+				this.globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
+		});
+	}
 	// #endregion
 }
