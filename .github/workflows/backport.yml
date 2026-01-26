@@ -2,9 +2,7 @@ name: Backport PRs
 
 on:
   pull_request:
-    types: [closed]
-  issue_comment:
-    types: [created]
+    types: [closed, labeled]
 
 jobs:
   backport:
@@ -15,10 +13,6 @@ jobs:
       (
         github.event_name == 'pull_request' &&
         github.event.pull_request.merged
-      ) || (
-        github.event_name == 'issue_comment' &&
-        github.event.issue.pull_request &&
-        startsWith(github.event.comment.body, '/backport')
       )
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +30,8 @@ jobs:
           pull_title: ${pull_title} (backport ${target_branch})
           add_author_as_assignee: true
           copy_assignees: true
+          copy_requested_reviewers: true
+          copy_labels_pattern: '*'
           experimental: >
             {
               "conflict_resolution": "draft_commit_conflicts"
