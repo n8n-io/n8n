@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue';
-import type { SecretProviderConnection, SecretProviderType } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -17,7 +17,7 @@ export function useSecretsProviders(options?: { useMockApi?: boolean }) {
 	const rootStore = useRootStore();
 	const rbacStore = useRBACStore();
 
-	const providerTypes = ref<SecretProviderType[]>([]);
+	const providerTypes = ref<SecretProviderTypeResponse[]>([]);
 	const secrets = ref<Record<string, string[]>>({});
 	const activeConnections = ref<SecretProviderConnection[]>([]);
 	const isLoadingProviderTypes = ref(false);
@@ -70,7 +70,7 @@ export function useSecretsProviders(options?: { useMockApi?: boolean }) {
 
 	const activeProviders = computed(() => {
 		return ([...activeConnections.value] as SecretProviderConnection[])
-			.filter((provider) => provider.enabled && provider.state === 'connected')
+			.filter((provider) => provider.isEnabled && provider.state === 'connected')
 			.sort((a, b) => b.name.localeCompare(a.name));
 	});
 

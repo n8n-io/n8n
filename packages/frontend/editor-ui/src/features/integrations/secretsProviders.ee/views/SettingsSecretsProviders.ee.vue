@@ -25,6 +25,10 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 
 const hasActiveProviders = computed(() => secretsProviders.activeProviders.value.length > 0);
 
+function getProviderTypeInfo(providerType: string) {
+	return secretsProviders.providerTypes.value.find((type) => type.type === providerType);
+}
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.secretsProviderConnections.title'));
 	if (!secretsProviders.isEnterpriseExternalSecretsEnabled.value) return;
@@ -78,13 +82,17 @@ function goToUpgrade() {
 					<N8nLoading variant="p" :rows="1" />
 				</div>
 			</div>
-			<SecretsProvidersEmptyState v-else-if="!hasActiveProviders" />
+			<SecretsProvidersEmptyState
+				v-else-if="!hasActiveProviders"
+				:provider-types="secretsProviders.providerTypes.value"
+			/>
 			<div v-else>
 				<SecretsProviderConnectionCard
 					v-for="provider in secretsProviders.activeProviders.value"
 					:key="provider.name"
 					class="mb-2xs"
 					:provider="provider"
+					:provider-type-info="getProviderTypeInfo(provider.type)"
 				/>
 			</div>
 		</div>

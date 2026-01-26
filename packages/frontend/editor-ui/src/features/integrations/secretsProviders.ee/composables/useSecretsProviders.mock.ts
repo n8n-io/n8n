@@ -1,25 +1,25 @@
-import type { SecretProviderConnection, SecretProviderType } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 
 /**
  * Mock data for secret provider types
  */
-export const MOCK_PROVIDER_TYPES: SecretProviderType[] = [
+export const MOCK_PROVIDER_TYPES: SecretProviderTypeResponse[] = [
 	{
 		type: 'awsSecretsManager',
 		displayName: 'AWS Secrets Manager',
-		icon: 'awsSecretsManager',
+		icon: 'aws-secrets-manager',
 		properties: [],
 	},
 	{
 		type: 'gcpSecretsManager',
 		displayName: 'GCP Secrets Manager',
-		icon: 'gcpSecretsManager',
+		icon: 'gcp-secrets-manager',
 		properties: [],
 	},
 	{
 		type: 'azureKeyVault',
 		displayName: 'Azure Key Vault',
-		icon: 'azureKeyVault',
+		icon: 'azure-key-vault',
 		properties: [],
 	},
 	{
@@ -33,7 +33,7 @@ export const MOCK_PROVIDER_TYPES: SecretProviderType[] = [
 /**
  * Mock function to simulate fetching secret provider types
  */
-export async function mockGetSecretProviderTypes(): Promise<SecretProviderType[]> {
+export async function mockGetSecretProviderTypes(): Promise<SecretProviderTypeResponse[]> {
 	// Simulate network delay
 	await new Promise((resolve) => setTimeout(resolve, 300));
 	return MOCK_PROVIDER_TYPES;
@@ -48,23 +48,16 @@ export const MOCK_ACTIVE_CONNECTIONS: SecretProviderConnection[] = [
 		id: 'OFUbXqIigpUhTiOy',
 		name: 'aws-production',
 		type: 'awsSecretsManager',
-		displayName: 'AWS Secrets Manager',
-		isGlobal: false,
 		state: 'connected',
-		enabled: true,
+		isEnabled: true,
+		projects: [
+			{
+				id: 'GanI3bYpb8iNzQuW',
+				name: 'Production',
+			},
+		],
 		settings: {
 			region: 'us-east-1',
-		},
-		homeProject: {
-			id: 'GanI3bYpb8iNzQuW',
-			type: 'team',
-			name: 'Production',
-			icon: {
-				type: 'icon',
-				value: 'layers',
-			},
-			createdAt: new Date('2024-01-20T14:45:00Z').toISOString(),
-			updatedAt: new Date('2024-01-20T14:45:00Z').toISOString(),
 		},
 		secretsCount: 2,
 		secrets: [
@@ -78,28 +71,22 @@ export const MOCK_ACTIVE_CONNECTIONS: SecretProviderConnection[] = [
 			},
 		],
 		createdAt: new Date('2024-01-20T14:45:00Z').toISOString(),
+		updatedAt: new Date('2024-01-20T14:45:00Z').toISOString(),
 	},
 	{
 		id: 'aBcDeFgHiJkLmNoP',
 		name: 'gcp-staging',
 		type: 'gcpSecretsManager',
-		displayName: 'Google Cloud Secret Manager',
-		isGlobal: false,
 		state: 'connected',
-		enabled: true,
+		isEnabled: true,
+		projects: [
+			{
+				id: 'XyZ123AbC456DeF7',
+				name: 'Staging Environment',
+			},
+		],
 		settings: {
 			projectId: 'my-gcp-project-staging',
-		},
-		homeProject: {
-			id: 'XyZ123AbC456DeF7',
-			type: 'team',
-			name: 'Staging Environment',
-			icon: {
-				type: 'icon',
-				value: 'test-tube',
-			},
-			createdAt: new Date('2024-01-20T14:45:00Z').toISOString(),
-			updatedAt: new Date('2024-01-20T14:45:00Z').toISOString(),
 		},
 		secretsCount: 5,
 		secrets: [
@@ -117,6 +104,7 @@ export const MOCK_ACTIVE_CONNECTIONS: SecretProviderConnection[] = [
 			},
 		],
 		createdAt: new Date('2024-01-22T09:15:00Z').toISOString(),
+		updatedAt: new Date('2024-01-22T09:15:00Z').toISOString(),
 	},
 ];
 

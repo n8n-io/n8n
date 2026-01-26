@@ -1,13 +1,18 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, toRef } from 'vue';
 import { N8nActionBox, N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
-import { useSecretsProviders } from '../composables/useSecretsProviders';
+import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import SecretsProviderImage from './SecretsProviderImage.ee.vue';
 
 const i18n = useI18n();
-const secretsProviders = useSecretsProviders();
-const supportedProviders = computed(() => secretsProviders.providerTypes.value);
+
+const props = defineProps<{
+	providerTypes?: SecretProviderTypeResponse[];
+}>();
+
+const providerTypes = toRef(props, 'providerTypes');
+const supportedProviders = computed(() => providerTypes.value ?? []);
 
 const emit = defineEmits<{
 	addSecretsStore: [];
@@ -37,10 +42,6 @@ function animateRight() {
 }
 
 onMounted(() => {
-	if (secretsProviders.isEnterpriseExternalSecretsEnabled.value) {
-		void secretsProviders.fetchProviderTypes();
-	}
-
 	// Start staggered animation for side icons
 	// Left animates, then right animates 1.5s later, cycle repeats every 3s
 	animationInterval = setInterval(() => {

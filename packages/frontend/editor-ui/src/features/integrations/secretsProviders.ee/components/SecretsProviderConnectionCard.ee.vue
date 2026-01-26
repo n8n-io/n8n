@@ -2,7 +2,7 @@
 import { computed, toRef } from 'vue';
 import SecretsProviderImage from './SecretsProviderImage.ee.vue';
 import { N8nActionToggle, N8nCard, N8nHeading, N8nText } from '@n8n/design-system';
-import type { SecretProviderConnection } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import { DateTime } from 'luxon';
 import { isDateObject } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
@@ -10,9 +10,11 @@ import { useI18n } from '@n8n/i18n';
 const i18n = useI18n();
 const props = defineProps<{
 	provider: SecretProviderConnection;
+	providerTypeInfo?: SecretProviderTypeResponse;
 }>();
 
 const provider = toRef(props, 'provider');
+const providerTypeInfo = toRef(props, 'providerTypeInfo');
 
 const formattedDate = computed(() => {
 	return DateTime.fromISO(
@@ -27,10 +29,10 @@ const actionDropdownOptions = computed(() => []);
 
 <template>
 	<N8nCard hoverable>
-		<template #prepend>
+		<template v-if="providerTypeInfo" #prepend>
 			<SecretsProviderImage
 				:class="$style.providerImage"
-				:provider="provider"
+				:provider="providerTypeInfo"
 				data-test-id="secrets-provider-image"
 			/>
 		</template>
@@ -38,9 +40,9 @@ const actionDropdownOptions = computed(() => []);
 			<N8nHeading tag="h2" bold>{{ provider.name }}</N8nHeading>
 		</template>
 		<template #default>
-			<N8nText v-if="provider.enabled" color="text-light" size="small">
+			<N8nText color="text-light" size="small">
 				<span>
-					{{ provider.displayName }}
+					{{ providerTypeInfo?.displayName ?? provider.type }}
 				</span>
 				|
 				<span>

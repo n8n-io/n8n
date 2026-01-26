@@ -1,11 +1,11 @@
-import type { SecretProviderConnection, SecretProviderType } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
 import { makeRestApiRequest } from '../utils';
 
 export const getSecretProviderTypes = async (
 	context: IRestApiContext,
-): Promise<SecretProviderType[]> => {
+): Promise<SecretProviderTypeResponse[]> => {
 	return await makeRestApiRequest(
 		context,
 		'GET',

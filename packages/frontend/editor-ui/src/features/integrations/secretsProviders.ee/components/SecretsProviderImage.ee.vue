@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { SecretProviderConnection, SecretProviderType } from '@n8n/api-types';
+import type { SecretProviderTypeResponse } from '@n8n/api-types';
 import { computed } from 'vue';
 
 import infisical from '../../externalSecrets.ee/assets/images/infisical.webp';
@@ -10,7 +10,7 @@ import AzureKeyVault from '../../externalSecrets.ee/assets/images/azure-key-vaul
 import GcpSecretsManager from '../../externalSecrets.ee/assets/images/gcp-secrets-manager.svg';
 
 const { provider } = defineProps<{
-	provider: SecretProviderType | SecretProviderConnection;
+	provider: SecretProviderTypeResponse;
 }>();
 
 const image = computed(() => {

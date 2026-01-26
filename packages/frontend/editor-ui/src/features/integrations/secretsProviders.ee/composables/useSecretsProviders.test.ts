@@ -4,7 +4,7 @@ import { useSecretsProviders } from './useSecretsProviders';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { EnterpriseEditionFeature } from '@/app/constants';
-import type { SecretProviderConnection, SecretProviderType } from '@n8n/api-types';
+import type { SecretProviderConnection, SecretProviderTypeResponse } from '@n8n/api-types';
 import * as secretsProviderApi from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
@@ -66,16 +66,18 @@ describe('useSecretsProviders', () => {
 
 	describe('fetchProviderTypes', () => {
 		it('should fetch provider types successfully', async () => {
-			const mockProviderTypes: SecretProviderType[] = [
+			const mockProviderTypes: SecretProviderTypeResponse[] = [
 				{
 					type: 'awsSecretsManager',
 					displayName: 'AWS Secrets Manager',
-					icon: 'awsSecretsManager',
+					icon: 'aws-secrets-manager',
 					properties: [],
 				},
 			];
 
-			vi.mocked(secretsProviderApi.getSecretProviderTypes).mockResolvedValue(mockProviderTypes);
+			vi.mocked(secretsProviderApi.getSecretProviderTypes).mockResolvedValue(
+				mockProviderTypes as SecretProviderTypeResponse[],
+			);
 
 			const { fetchProviderTypes, providerTypes, isLoading } = useSecretsProviders({
 				useMockApi: false,
@@ -116,25 +118,27 @@ describe('useSecretsProviders', () => {
 				id: '1',
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
-				displayName: 'AWS Secrets Manager',
-				isGlobal: false,
 				state: 'connected',
-				enabled: true,
+				isEnabled: true,
+				projects: [],
+				settings: {},
 				secretsCount: 5,
 				secrets: [],
 				createdAt: '2024-01-20T10:00:00Z',
+				updatedAt: '2024-01-20T10:00:00Z',
 			},
 			{
 				id: '2',
 				name: 'gcp-staging',
 				type: 'gcpSecretsManager',
-				displayName: 'GCP Secret Manager',
-				isGlobal: false,
 				state: 'connected',
-				enabled: true,
+				isEnabled: true,
+				projects: [],
+				settings: {},
 				secretsCount: 3,
 				secrets: [],
 				createdAt: '2024-01-22T10:00:00Z',
+				updatedAt: '2024-01-22T10:00:00Z',
 			},
 		];
 
@@ -202,37 +206,40 @@ describe('useSecretsProviders', () => {
 					id: '1',
 					name: 'aws-prod',
 					type: 'awsSecretsManager',
-					displayName: 'AWS Secrets Manager',
-					isGlobal: false,
 					state: 'connected',
-					enabled: true,
+					isEnabled: true,
+					projects: [],
+					settings: {},
 					secretsCount: 5,
 					secrets: [],
 					createdAt: '2024-01-20T10:00:00Z',
+					updatedAt: '2024-01-20T10:00:00Z',
 				},
 				{
 					id: '2',
 					name: 'gcp-disabled',
 					type: 'gcpSecretsManager',
-					displayName: 'GCP Secret Manager',
-					isGlobal: false,
 					state: 'connected',
-					enabled: false, // disabled
+					isEnabled: false, // disabled
+					projects: [],
+					settings: {},
 					secretsCount: 3,
 					secrets: [],
 					createdAt: '2024-01-21T10:00:00Z',
+					updatedAt: '2024-01-21T10:00:00Z',
 				},
 				{
 					id: '3',
 					name: 'azure-initializing',
 					type: 'azureKeyVault',
-					displayName: 'Azure Key Vault',
-					isGlobal: false,
 					state: 'initializing', // not connected
-					enabled: true,
+					isEnabled: true,
+					projects: [],
+					settings: {},
 					secretsCount: 2,
 					secrets: [],
 					createdAt: '2024-01-22T10:00:00Z',
+					updatedAt: '2024-01-22T10:00:00Z',
 				},
 			];
 
@@ -255,37 +262,40 @@ describe('useSecretsProviders', () => {
 					id: '1',
 					name: 'alpha',
 					type: 'awsSecretsManager',
-					displayName: 'Alpha Provider',
-					isGlobal: false,
 					state: 'connected',
-					enabled: true,
+					isEnabled: true,
+					projects: [],
+					settings: {},
 					secretsCount: 5,
 					secrets: [],
 					createdAt: '2024-01-20T10:00:00Z',
+					updatedAt: '2024-01-20T10:00:00Z',
 				},
 				{
 					id: '2',
 					name: 'zulu',
 					type: 'gcpSecretsManager',
-					displayName: 'Zulu Provider',
-					isGlobal: false,
 					state: 'connected',
-					enabled: true,
+					isEnabled: true,
+					projects: [],
+					settings: {},
 					secretsCount: 3,
 					secrets: [],
 					createdAt: '2024-01-21T10:00:00Z',
+					updatedAt: '2024-01-21T10:00:00Z',
 				},
 				{
 					id: '3',
 					name: 'bravo',
 					type: 'azureKeyVault',
-					displayName: 'Bravo Provider',
-					isGlobal: false,
 					state: 'connected',
-					enabled: true,
+					isEnabled: true,
+					projects: [],
+					settings: {},
 					secretsCount: 2,
 					secrets: [],
 					createdAt: '2024-01-22T10:00:00Z',
+					updatedAt: '2024-01-22T10:00:00Z',
 				},
 			];
 
@@ -309,13 +319,14 @@ describe('useSecretsProviders', () => {
 					id: '1',
 					name: 'aws-disabled',
 					type: 'awsSecretsManager',
-					displayName: 'AWS',
-					isGlobal: false,
 					state: 'connected',
-					enabled: false,
+					isEnabled: false,
+					projects: [],
+					settings: {},
 					secretsCount: 5,
 					secrets: [],
 					createdAt: '2024-01-20T10:00:00Z',
+					updatedAt: '2024-01-20T10:00:00Z',
 				},
 			];
 
