@@ -1,4 +1,4 @@
-import type { NodeParameterValueType, INodeProperties, ProjectSharingData } from 'n8n-workflow';
+import type { NodeParameterValueType, INodeProperties } from 'n8n-workflow';
 
 export interface ExternalSecretsProviderSecret {
 	key: string;
@@ -19,34 +19,4 @@ export interface ExternalSecretsProvider {
 	state: ExternalSecretsProviderState;
 	data?: ExternalSecretsProviderData;
 	properties?: ExternalSecretsProviderProperty[];
-}
-
-export interface SecretProviderConnectionSecret {
-	name: string;
-	credentialsCount: number;
-}
-
-export type SecretProviderConnectionSettings = Record<string, NodeParameterValueType>;
-
-export interface SecretProviderConnection {
-	id: string;
-	name: string;
-	type: string;
-	displayName: string;
-	isGlobal: boolean;
-	state: ExternalSecretsProviderState;
-	enabled: boolean;
-	settings?: SecretProviderConnectionSettings;
-	homeProject?: ProjectSharingData;
-	secretsCount: number;
-	secrets: SecretProviderConnectionSecret[];
-	createdAt: string;
-	properties?: ExternalSecretsProviderProperty[];
-}
-
-export interface SecretProviderType {
-	type: string;
-	displayName: string;
-	icon: string;
-	properties: ExternalSecretsProviderProperty[];
 }

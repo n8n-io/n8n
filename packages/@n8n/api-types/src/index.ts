@@ -135,10 +135,6 @@ export type {
 	ExternalSecretsProviderData,
 	ExternalSecretsProviderProperty,
 	ExternalSecretsProviderState,
-	SecretProviderConnection,
-	SecretProviderConnectionSecret,
-	SecretProviderConnectionSettings,
-	SecretProviderType,
 } from './schemas/external-secrets.schema';
 
 export {
