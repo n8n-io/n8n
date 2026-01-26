@@ -536,58 +536,6 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 }
 
 /**
- * Generate flat config object for composite functions (ifElse, merge, switchCase, splitInBatches).
- * These expect { name?, version?, parameters?, credentials?, position? } directly,
- * not the { type, version, config: { ... } } format used by node().
- */
-function generateFlatNodeConfig(node: SemanticNode): string {
-	const parts: string[] = [];
-
-	// These functions have name, version, parameters, credentials, position at the TOP level
-	// (not nested in a config object like node())
-
-	if (node.json.typeVersion != null) {
-		parts.push(`version: ${node.json.typeVersion}`);
-	}
-
-	// ALWAYS include name for composite nodes (ifElse, merge, switchCase, splitInBatches)
-	// because the parser's hardcoded defaults ("IF", "Merge", "Switch", "Split In Batches")
-	// don't match what generateDefaultNodeName() computes from the node type.
-	// Without this, roundtrip fails with name mismatches.
-	if (node.json.name) {
-		parts.push(`name: '${escapeString(node.json.name)}'`);
-	}
-
-	if (node.json.parameters && Object.keys(node.json.parameters).length > 0) {
-		parts.push(`parameters: ${formatValue(node.json.parameters)}`);
-	}
-
-	if (node.json.credentials) {
-		parts.push(`credentials: ${formatValue(node.json.credentials)}`);
-	}
-
-	// Include position if non-zero
-	const pos = node.json.position;
-	if (pos && (pos[0] !== 0 || pos[1] !== 0)) {
-		parts.push(`position: [${pos[0]}, ${pos[1]}]`);
-	}
-
-	return `{ ${parts.join(', ')} }`;
-}
-
-/**
- * Generate flat node config or variable reference for composite functions.
- * Used by splitInBatches.
- */
-function generateFlatNodeOrVarRef(node: SemanticNode, ctx: GenerationContext): string {
-	const nodeName = node.json.name;
-	if (nodeName && ctx.variableNodes.has(nodeName)) {
-		return getVarName(nodeName, ctx);
-	}
-	return generateFlatNodeConfig(node);
-}
-
-/**
  * Get variable reference or generate inline node() call for named syntax composites.
  * Used by ifElse, merge, switchCase (which require pre-declared nodes in named syntax).
  */
@@ -811,32 +759,101 @@ function branchEndsWithVarRef(branch: CompositeNode | CompositeNode[] | null): b
 }
 
 /**
- * Generate code for split in batches
+ * Strip the trailing varRef from a branch code string.
+ * For example: "process.then(sibVar)" -> "process"
+ * Or just "sibVar" -> null (entire branch is just the varRef)
  */
-function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: GenerationContext): string {
-	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
-	// Use variable reference if SIB node is already declared as a variable
-	// splitInBatches expects flat config { name?, version?, parameters?, ... }, not { type, config: {...} }
-	const config = generateFlatNodeOrVarRef(sib.sibNode, ctx);
-
-	let code = `splitInBatches(${config})`;
-
-	if (sib.doneChain) {
-		const doneCode = generateBranchCode(sib.doneChain, innerCtx);
-		code += `\n${getIndent(ctx)}.done().then(${doneCode})`;
+function stripTrailingVarRefFromCode(code: string, varName: string): string | null {
+	// Pattern: ".then(varName)" at end - strip it
+	const thenPattern = new RegExp(`\\.then\\(${escapeRegexChars(varName)}\\)$`);
+	if (thenPattern.test(code)) {
+		return code.replace(thenPattern, '');
 	}
 
-	if (sib.loopChain) {
-		const loopCode = generateBranchCode(sib.loopChain, innerCtx);
-		code += `\n${getIndent(ctx)}.each().then(${loopCode})`;
-
-		// Check if loop chain ends with cycle back
-		if (branchEndsWithVarRef(sib.loopChain)) {
-			code += `.loop()`;
-		}
+	// Pattern: entire code is just the varName (self-loop with no processing)
+	if (code.trim() === varName) {
+		return null;
 	}
 
 	return code;
+}
+
+/**
+ * Escape special regex characters in a string
+ */
+function escapeRegexChars(str: string): string {
+	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Generate code for split in batches using object syntax:
+ * splitInBatches(sibVar, { done: doneCode, each: eachCode.then(nextBatch(sibVar)) })
+ */
+function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: GenerationContext): string {
+	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
+
+	// Get the SIB node variable name (it should always be a variable for cycle reference)
+	const sibVarName = getVarName(sib.sibNode.name, ctx);
+
+	// Build the branches object
+	const branchParts: string[] = [];
+
+	// Done branch (output 0)
+	if (sib.doneChain) {
+		const doneCode = generateBranchCode(sib.doneChain, innerCtx);
+		branchParts.push(`done: ${doneCode}`);
+	} else {
+		branchParts.push('done: null');
+	}
+
+	// Each/loop branch (output 1)
+	if (sib.loopChain) {
+		let eachCode: string;
+
+		// Handle array (fan-out) case specially - need to process nextBatch for each branch
+		if (Array.isArray(sib.loopChain)) {
+			const transformedBranches = sib.loopChain.map((branch) => {
+				let branchCode = generateComposite(branch, innerCtx);
+
+				// Check if this branch ends with cycle back to SIB
+				if (branchEndsWithVarRef(branch)) {
+					const strippedCode = stripTrailingVarRefFromCode(branchCode, sibVarName);
+					if (strippedCode === null) {
+						// Branch is just the self-loop
+						branchCode = `nextBatch(${sibVarName})`;
+					} else {
+						// Has processing nodes before the loop back
+						branchCode = `${strippedCode}.then(nextBatch(${sibVarName}))`;
+					}
+				}
+
+				return branchCode;
+			});
+			eachCode = `fanOut(${transformedBranches.join(', ')})`;
+		} else {
+			// Single composite case
+			eachCode = generateBranchCode(sib.loopChain, innerCtx);
+
+			// Check if loop chain ends with cycle back to SIB
+			if (branchEndsWithVarRef(sib.loopChain)) {
+				// Strip trailing varRef and replace with nextBatch()
+				const strippedCode = stripTrailingVarRefFromCode(eachCode, sibVarName);
+				if (strippedCode === null) {
+					// Entire each branch is just the self-loop (no processing nodes)
+					eachCode = `nextBatch(${sibVarName})`;
+				} else {
+					// Has processing nodes before the loop back
+					eachCode = `${strippedCode}.then(nextBatch(${sibVarName}))`;
+				}
+			}
+		}
+
+		branchParts.push(`each: ${eachCode}`);
+	} else {
+		branchParts.push('each: null');
+	}
+
+	return `splitInBatches(${sibVarName}, { ${branchParts.join(', ')} })`;
 }
 
 /**

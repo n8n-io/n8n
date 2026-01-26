@@ -277,6 +277,7 @@ import { merge as mergeFn } from './merge';
 import { ifElse as ifElseFn } from './if-else';
 import { switchCase as switchCaseFn } from './switch-case';
 import { splitInBatches as splitInBatchesFn } from './split-in-batches';
+import { nextBatch as nextBatchFn } from './next-batch';
 import { fanOut as fanOutFn } from './fan-out';
 import type { WorkflowJSON } from './types/base';
 
@@ -321,6 +322,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 			'ifElse',
 			'switchCase',
 			'splitInBatches',
+			'nextBatch',
 			'fanOut',
 			executableCode,
 		);
@@ -356,6 +358,7 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		ifElseFn,
 		switchCaseFn,
 		splitInBatchesFn,
+		nextBatchFn,
 		fanOutFn,
 	);
 
@@ -407,6 +410,7 @@ export function parseWorkflowCodeToBuilder(code: string) {
 			'ifElse',
 			'switchCase',
 			'splitInBatches',
+			'nextBatch',
 			'fanOut',
 			executableCode,
 		);
@@ -442,6 +446,7 @@ export function parseWorkflowCodeToBuilder(code: string) {
 		ifElseFn,
 		switchCaseFn,
 		splitInBatchesFn,
+		nextBatchFn,
 		fanOutFn,
 	);
 }

@@ -283,7 +283,7 @@ describe('code-generator', () => {
 		});
 
 		describe('SplitInBatches', () => {
-			it('generates splitInBatches composite', () => {
+			it('generates splitInBatches with object syntax', () => {
 				const json: WorkflowJSON = {
 					name: 'SplitInBatches Test',
 					nodes: [
@@ -329,9 +329,57 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
+				// Should use object syntax: splitInBatches(sibVar, { done: ..., each: ... })
 				expect(code).toContain('splitInBatches(');
-				expect(code).toContain('.done()');
-				expect(code).toContain('.each()');
+				expect(code).toMatch(/splitInBatches\(\w+,\s*\{/); // object syntax
+				expect(code).toContain('done:');
+				expect(code).toContain('each:');
+				// Should NOT use old fluent API
+				expect(code).not.toContain('.done()');
+				expect(code).not.toContain('.each()');
+			});
+
+			it('generates nextBatch() for loop back connections', () => {
+				const json: WorkflowJSON = {
+					name: 'SplitInBatches Loop Test',
+					nodes: [
+						{
+							id: '1',
+							name: 'Trigger',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+						},
+						{
+							id: '2',
+							name: 'SplitInBatches',
+							type: 'n8n-nodes-base.splitInBatches',
+							typeVersion: 3,
+							position: [100, 0],
+						},
+						{
+							id: '3',
+							name: 'Process',
+							type: 'n8n-nodes-base.noOp',
+							typeVersion: 1,
+							position: [200, 0],
+						},
+					],
+					connections: {
+						Trigger: { main: [[{ node: 'SplitInBatches', type: 'main', index: 0 }]] },
+						SplitInBatches: {
+							main: [[], [{ node: 'Process', type: 'main', index: 0 }]],
+						},
+						Process: { main: [[{ node: 'SplitInBatches', type: 'main', index: 0 }]] },
+					},
+				};
+
+				const code = generateFromWorkflow(json);
+
+				// Should use nextBatch() for loop back
+				expect(code).toContain('nextBatch(');
+				// Should NOT use .loop()
+				expect(code).not.toContain('.loop()');
 			});
 		});
 

@@ -1189,6 +1189,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
 		>;
 		_hasLoop: boolean;
+		// Named syntax properties (optional - only present for splitInBatches(node, { done, each }))
+		_doneTarget?: unknown;
+		_eachTarget?: unknown;
 	} {
 		// Direct builder
 		if ('sibNode' in (value as object)) {
@@ -1203,6 +1206,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
 				>;
 				_hasLoop: boolean;
+				_doneTarget?: unknown;
+				_eachTarget?: unknown;
 			};
 		}
 
@@ -1219,6 +1224,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[]
 			>;
 			_hasLoop: boolean;
+			_doneTarget?: unknown;
+			_eachTarget?: unknown;
 		};
 	}
 
@@ -1817,6 +1824,52 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const sibGraphNode = nodes.get(builder.sibNode.name)!;
 		const sibMainConns = sibGraphNode.connections.get('main') || new Map();
 
+		// Check if this is named syntax (has _doneTarget/_eachTarget)
+		// Named syntax uses full branch targets instead of batches
+		const hasNamedSyntax = '_doneTarget' in builder || '_eachTarget' in builder;
+
+		if (hasNamedSyntax) {
+			// Named syntax: splitInBatches(sibNode, { done: ..., each: ... })
+			// Process done target (output 0)
+			if (builder._doneTarget !== null && builder._doneTarget !== undefined) {
+				const doneTarget = builder._doneTarget as NodeInstance<string, string, unknown>;
+				// Handle FanOut targets
+				if (isFanOut(doneTarget)) {
+					for (const target of doneTarget.targets) {
+						const firstNodeName = this.addBranchToGraph(nodes, target);
+						const output0 = sibMainConns.get(0) || [];
+						sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
+					}
+				} else {
+					const firstNodeName = this.addBranchToGraph(nodes, doneTarget);
+					const output0 = sibMainConns.get(0) || [];
+					sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
+				}
+			}
+
+			// Process each target (output 1)
+			if (builder._eachTarget !== null && builder._eachTarget !== undefined) {
+				const eachTarget = builder._eachTarget as NodeInstance<string, string, unknown>;
+				// Handle FanOut targets
+				if (isFanOut(eachTarget)) {
+					for (const target of eachTarget.targets) {
+						const firstNodeName = this.addBranchToGraph(nodes, target);
+						const output1 = sibMainConns.get(1) || [];
+						sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
+					}
+				} else {
+					const firstNodeName = this.addBranchToGraph(nodes, eachTarget);
+					const output1 = sibMainConns.get(1) || [];
+					sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
+				}
+			}
+
+			sibGraphNode.connections.set('main', sibMainConns);
+			// Note: Named syntax doesn't use _hasLoop - loops are expressed in the target chain itself
+			return;
+		}
+
+		// Fluent API: splitInBatches().done().then().each().then().loop()
 		// Process done chain batches (output 0)
 		let prevDoneNode: string | null = null;
 		for (const batch of builder._doneBatches) {
@@ -2876,6 +2929,63 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const sibGraphNode = newNodes.get(builder.sibNode.name)!;
 		const sibMainConns = sibGraphNode.connections.get('main') || new Map();
 
+		// Check if this is named syntax (has _doneTarget/_eachTarget)
+		// Named syntax stores the full chain in _doneTarget/_eachTarget, while _doneBatches/_eachBatches
+		// only contain the first node for backwards compatibility
+		const hasNamedSyntax = '_doneTarget' in builder || '_eachTarget' in builder;
+
+		if (hasNamedSyntax) {
+			// Named syntax: splitInBatches(sibNode, { done: ..., each: ... })
+			// Process done target (output 0)
+			if (builder._doneTarget !== null && builder._doneTarget !== undefined) {
+				const doneTarget = builder._doneTarget;
+				// Handle FanOut targets
+				if (isFanOut(doneTarget)) {
+					for (const target of doneTarget.targets) {
+						const firstNodeName = this.addBranchToGraph(newNodes, target);
+						const output0 = sibMainConns.get(0) || [];
+						sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
+					}
+				} else {
+					const firstNodeName = this.addBranchToGraph(
+						newNodes,
+						doneTarget as NodeInstance<string, string, unknown>,
+					);
+					const output0 = sibMainConns.get(0) || [];
+					sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
+				}
+			}
+
+			// Process each target (output 1)
+			if (builder._eachTarget !== null && builder._eachTarget !== undefined) {
+				const eachTarget = builder._eachTarget;
+				// Handle FanOut targets
+				if (isFanOut(eachTarget)) {
+					for (const target of eachTarget.targets) {
+						const firstNodeName = this.addBranchToGraph(newNodes, target);
+						const output1 = sibMainConns.get(1) || [];
+						sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
+					}
+				} else {
+					const firstNodeName = this.addBranchToGraph(
+						newNodes,
+						eachTarget as NodeInstance<string, string, unknown>,
+					);
+					const output1 = sibMainConns.get(1) || [];
+					sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
+				}
+			}
+
+			sibGraphNode.connections.set('main', sibMainConns);
+
+			return this.clone({
+				nodes: newNodes,
+				currentNode: builder.sibNode.name,
+				currentOutput: 0,
+			});
+		}
+
+		// Fluent API: splitInBatches().done().then().each().then().loop()
 		// Process done chain batches (output 0)
 		// Batches preserve array structure for fan-out detection
 		let prevDoneNode: string | null = null;
