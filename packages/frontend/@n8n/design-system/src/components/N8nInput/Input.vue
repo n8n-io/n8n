@@ -444,7 +444,7 @@ defineExpose({ focus, blur, select });
 }
 
 .input:focus {
-	@include focus-ring;
+	box-shadow: 0 0 0 1px var(--color--secondary) inset;
 }
 
 .input:disabled {
@@ -484,7 +484,7 @@ defineExpose({ focus, blur, select });
 }
 
 .textarea:focus {
-	@include focus-ring;
+	box-shadow: 0 0 0 1px var(--color--secondary) inset;
 }
 
 .textarea:disabled {
