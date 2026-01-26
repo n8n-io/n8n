@@ -159,8 +159,20 @@ export interface GraphNode {
  * Declared connection from a node to a target
  */
 export interface DeclaredConnection {
-	target: NodeInstance<string, string, unknown>;
+	target: NodeInstance<string, string, unknown> | InputTarget;
 	outputIndex: number;
+	targetInputIndex?: number;
+}
+
+/**
+ * Terminal input target marker for connecting to a specific input index.
+ * Created by calling .input(n) on a NodeInstance.
+ * Cannot be chained further (no .then() method).
+ */
+export interface InputTarget {
+	readonly _isInputTarget: true;
+	readonly node: NodeInstance<string, string, unknown>;
+	readonly inputIndex: number;
 }
 
 // =============================================================================
@@ -310,9 +322,19 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	update(config: Partial<NodeConfig>): NodeInstance<TType, TVersion, TOutput>;
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[],
+		target: T | T[] | InputTarget,
 		outputIndex?: number,
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
+
+	/**
+	 * Create a terminal input target for connecting to a specific input index.
+	 * Use this to connect a node to a specific input of a multi-input node like Merge.
+	 *
+	 * @example
+	 * // Connect to input 1 of a merge node
+	 * nodeA.then(mergeNode.input(1))
+	 */
+	input(index: number): InputTarget;
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this;
 
@@ -340,7 +362,7 @@ export interface NodeChain<
 	readonly allNodes: NodeInstance<string, string, unknown>[];
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[],
+		target: T | T[] | InputTarget,
 		outputIndex?: number,
 	): NodeChain<THead, T>;
 

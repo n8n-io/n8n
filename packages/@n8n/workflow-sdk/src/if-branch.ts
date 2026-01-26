@@ -6,7 +6,9 @@ import type {
 	DeclaredConnection,
 	NodeChain,
 	IDataObject,
+	InputTarget,
 } from './types/base';
+import { isInputTarget } from './node-builder';
 
 /**
  * Extended config for IF branch that includes version and id
@@ -43,10 +45,34 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 		return new IfNodeInstance({ ...this.config, ...config } as IfBranchConfig);
 	}
 
+	input(index: number): InputTarget {
+		return {
+			_isInputTarget: true,
+			node: this,
+			inputIndex: index,
+		};
+	}
+
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[],
+		target: T | T[] | InputTarget,
 		outputIndex: number = 0,
 	): NodeChain<NodeInstance<'n8n-nodes-base.if', string, unknown>, T> {
+		// Handle InputTarget (terminal)
+		if (isInputTarget(target)) {
+			this._connections.push({
+				target: target.node,
+				outputIndex,
+				targetInputIndex: target.inputIndex,
+			});
+			return {
+				_isChain: true,
+				head: this,
+				tail: target.node as T,
+				allNodes: [this, target.node],
+				getConnections: () => [...this._connections],
+			} as unknown as NodeChain<NodeInstance<'n8n-nodes-base.if', string, unknown>, T>;
+		}
+
 		const targets = Array.isArray(target) ? target : [target];
 		for (const t of targets) {
 			this._connections.push({ target: t, outputIndex });

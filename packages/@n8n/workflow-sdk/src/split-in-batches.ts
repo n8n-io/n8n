@@ -8,6 +8,7 @@ import type {
 	SplitInBatchesEachChain,
 	DeclaredConnection,
 	NodeChain,
+	InputTarget,
 } from './types/base';
 import { isFanOut } from './fan-out';
 import type { FanOutTargets } from './fan-out';
@@ -44,8 +45,12 @@ class SplitInBatchesNodeInstance
 		} as SplitInBatchesConfig);
 	}
 
+	input(_index: number): InputTarget {
+		throw new Error('SplitInBatches node input connections are managed by SplitInBatchesBuilder');
+	}
+
 	then<T extends NodeInstance<string, string, unknown>>(
-		_target: T | T[],
+		_target: T | T[] | InputTarget,
 		_outputIndex?: number,
 	): NodeChain<NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>, T> {
 		throw new Error('SplitInBatches node connections are managed by SplitInBatchesBuilder');

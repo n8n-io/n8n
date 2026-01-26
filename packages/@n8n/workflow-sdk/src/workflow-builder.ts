@@ -23,6 +23,7 @@ import { isMergeNamedInputSyntax } from './merge';
 import { isSwitchCaseNamedSyntax, type SwitchCaseTarget } from './switch-case';
 import { isIfElseNamedSyntax, type IfElseTarget } from './if-else';
 import { isFanOut } from './fan-out';
+import { isInputTarget } from './node-builder';
 
 /**
  * Default horizontal spacing between nodes
@@ -483,7 +484,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Only process if the node instance has getConnections() (nodes from builder, not fromJSON)
 			if (typeof graphNode.instance.getConnections === 'function') {
 				const nodeConns = graphNode.instance.getConnections();
-				for (const { target, outputIndex } of nodeConns) {
+				for (const { target, outputIndex, targetInputIndex } of nodeConns) {
 					// Resolve target node name - handles both NodeInstance and composites
 					const targetName = this.resolveTargetNodeName(target);
 					if (!targetName) continue;
@@ -493,7 +494,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					// Avoid duplicates
 					const alreadyExists = outputConns.some((c: ConnectionTarget) => c.node === targetName);
 					if (!alreadyExists) {
-						outputConns.push({ node: targetName, type: 'main', index: 0 });
+						outputConns.push({ node: targetName, type: 'main', index: targetInputIndex ?? 0 });
 						mainConns.set(outputIndex, outputConns);
 						graphNode.connections.set('main', mainConns);
 					}
@@ -913,7 +914,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			if (typeof otherNode.instance.getConnections === 'function') {
 				const conns = otherNode.instance.getConnections();
 				for (const conn of conns) {
-					if (conn.target === instance || conn.target.name === instance.name) {
+					// Handle both NodeInstance and InputTarget
+					const targetNode = isInputTarget(conn.target) ? conn.target.node : conn.target;
+					if (targetNode === instance || targetNode.name === instance.name) {
 						inputCount++;
 					}
 				}
@@ -2357,7 +2360,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 			// Process connections declared on the chain (from .then() calls)
 			const connections = branch.getConnections();
-			for (const { target, outputIndex } of connections) {
+			for (const { target, outputIndex, targetInputIndex } of connections) {
 				// Find the source node in the chain that declared this connection
 				// by looking for the node whose .then() was called
 				for (const chainNode of branch.allNodes) {
@@ -2450,7 +2453,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 									const mainConns = sourceGraphNode.connections.get('main') || new Map();
 									const outputConns = mainConns.get(outputIndex) || [];
 									if (!outputConns.some((c: ConnectionTarget) => c.node === targetName)) {
-										outputConns.push({ node: targetName, type: 'main', index: 0 });
+										outputConns.push({
+											node: targetName,
+											type: 'main',
+											index: targetInputIndex ?? 0,
+										});
 										mainConns.set(outputIndex, outputConns);
 										sourceGraphNode.connections.set('main', mainConns);
 									}
@@ -3059,6 +3066,11 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 			then: function () {
 				throw new Error(
 					'Nodes from fromJSON() do not support then() - use workflow builder methods',
+				);
+			},
+			input: function () {
+				throw new Error(
+					'Nodes from fromJSON() do not support input() - use workflow builder methods',
 				);
 			},
 			onError: function () {

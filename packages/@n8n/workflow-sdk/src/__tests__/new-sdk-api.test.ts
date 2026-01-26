@@ -147,13 +147,8 @@ describe('New SDK API', () => {
 			const mergeNode = createMergeNode('Merge');
 			const t = createTrigger('Start');
 
-			// Future API: nodeA.then(mergeNode.input(1)) - connect to input 1 of merge
-			// For now, we use workflow.connect() as a workaround
-			const wf = workflow('test', 'Test')
-				.add(t)
-				.then(nodeA)
-				.add(mergeNode)
-				.connect(nodeA, 0, mergeNode, 1); // source output 0 -> target input 1
+			// Use .input(n) to specify target input index
+			const wf = workflow('test', 'Test').add(t.then(nodeA.then(mergeNode.input(1)))); // Connect to input 1 of merge
 
 			const json = wf.toJSON();
 
@@ -162,6 +157,19 @@ describe('New SDK API', () => {
 			expect(connA).toBeDefined();
 			expect(connA.main[0]![0]!.node).toBe('Merge');
 			expect(connA.main[0]![0]!.index).toBe(1); // Input index 1
+		});
+
+		it('returns terminal InputTarget that cannot be chained', () => {
+			const mergeNode = createMergeNode('Merge');
+
+			// .input(n) returns InputTarget which should NOT have .then()
+			const inputTarget = mergeNode.input(0);
+
+			expect(inputTarget).toHaveProperty('_isInputTarget', true);
+			expect(inputTarget).toHaveProperty('node', mergeNode);
+			expect(inputTarget).toHaveProperty('inputIndex', 0);
+			// InputTarget should not be chainable (no .then method)
+			expect(typeof (inputTarget as unknown as { then?: unknown }).then).toBe('undefined');
 		});
 	});
 

@@ -15,8 +15,21 @@ import {
 	type SwitchCaseComposite,
 	type IfElseComposite,
 	type SplitInBatchesBuilder,
+	type InputTarget,
 } from './types/base';
 import { isFanOut, type FanOutTargets } from './fan-out';
+
+/**
+ * Type guard to check if a value is an InputTarget
+ */
+export function isInputTarget(value: unknown): value is InputTarget {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'_isInputTarget' in value &&
+		(value as InputTarget)._isInputTarget === true
+	);
+}
 
 /**
  * Check if value is a MergeComposite
@@ -191,9 +204,20 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[] | FanOutTargets,
+		target: T | T[] | FanOutTargets | InputTarget,
 		outputIndex: number = 0,
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
+		// Handle InputTarget - terminal target with specific input index
+		if (isInputTarget(target)) {
+			this._connections.push({
+				target: target.node,
+				outputIndex,
+				targetInputIndex: target.inputIndex,
+			});
+			// Return a chain ending at the input target's node
+			return new NodeChainImpl(this, target.node as T, [this, target.node]);
+		}
+
 		// Handle FanOutTargets - extract targets array
 		let targets: (T | NodeInstance<string, string, unknown>)[];
 		if (isFanOut(target)) {
@@ -225,6 +249,18 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		// Return chain with last target as tail (for type compatibility)
 		const lastTarget = targets[targets.length - 1];
 		return new NodeChainImpl(this, lastTarget as T, [this, ...allTargetNodes]);
+	}
+
+	/**
+	 * Create a terminal input target for connecting to a specific input index.
+	 * Use this to connect a node to a specific input of a multi-input node like Merge.
+	 */
+	input(index: number): InputTarget {
+		return {
+			_isInputTarget: true,
+			node: this,
+			inputIndex: index,
+		};
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
@@ -326,9 +362,16 @@ class NodeChainImpl<
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[] | FanOutTargets,
+		target: T | T[] | FanOutTargets | InputTarget,
 		outputIndex: number = 0,
 	): NodeChain<THead, T> {
+		// Handle InputTarget - terminal target with specific input index
+		if (isInputTarget(target)) {
+			// Delegate to tail's then method which handles InputTarget
+			this.tail.then(target, outputIndex);
+			return new NodeChainImpl(this.head, target.node as T, [...this.allNodes, target.node]);
+		}
+
 		// Handle FanOutTargets - extract targets array
 		let targets: (T | NodeInstance<string, string, unknown>)[];
 		if (isFanOut(target)) {
@@ -370,6 +413,14 @@ class NodeChainImpl<
 		// Return chain with last target as tail
 		const lastTarget = targets[targets.length - 1];
 		return new NodeChainImpl(this.head, lastTarget as T, [...this.allNodes, ...allTargetNodes]);
+	}
+
+	/**
+	 * Create a terminal input target for connecting to a specific input index.
+	 * Delegates to the tail node's input method.
+	 */
+	input(index: number): InputTarget {
+		return this.tail.input(index);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
@@ -543,8 +594,12 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 		return new StickyNoteInstance(newContent as string, newConfig);
 	}
 
+	input(_index: number): InputTarget {
+		throw new Error('Sticky notes do not support input connections');
+	}
+
 	then<T extends NodeInstance<string, string, unknown>>(
-		_target: T | T[],
+		_target: T | T[] | InputTarget,
 		_outputIndex?: number,
 	): NodeChain<NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>, T> {
 		throw new Error('Sticky notes do not support connections');
