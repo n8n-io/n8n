@@ -1,5 +1,11 @@
 import { Logger } from '@n8n/backend-common';
-import { MESSAGE_SYNC, MESSAGE_AWARENESS, encodeMessage, decodeMessage } from '@n8n/crdt';
+import {
+	MESSAGE_SYNC,
+	MESSAGE_AWARENESS,
+	encodeMessage,
+	decodeMessage,
+	setNestedValue,
+} from '@n8n/crdt';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -7,7 +13,12 @@ import type { Application } from 'express';
 import type { IncomingMessage, Server } from 'http';
 import { ServerResponse } from 'http';
 import type { IWorkflowBase } from 'n8n-workflow';
-import { Workflow, computeAllNodeHandles, setupHandleRecomputation } from 'n8n-workflow';
+import {
+	Workflow,
+	computeAllNodeHandles,
+	setupHandleRecomputation,
+	setupExpressionRenaming,
+} from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { v4 as uuid } from 'uuid';
 import type { WebSocket } from 'ws';
@@ -203,6 +214,9 @@ export class CRDTWebSocketService {
 		// Set up handle recomputation when parameters change
 		const handleUnsub = setupHandleRecomputation(doc, workflow, this.nodeTypes);
 
+		// Set up expression renaming when node names change
+		const expressionUnsub = setupExpressionRenaming(doc, setNestedValue);
+
 		// Subscribe to document updates to broadcast server-side changes (like handle recomputation)
 		// to all connected clients
 		const updateUnsub = doc.onUpdate((update) => {
@@ -213,6 +227,7 @@ export class CRDTWebSocketService {
 		const unsubscribe = () => {
 			syncUnsub();
 			handleUnsub();
+			expressionUnsub();
 			updateUnsub();
 		};
 

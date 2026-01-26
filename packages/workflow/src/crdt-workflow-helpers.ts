@@ -25,6 +25,7 @@ import type {
 import * as NodeHelpers from './node-helpers';
 import type { Workflow } from './workflow';
 import { calculateNodeSize } from './node-size-calculator';
+import { applyAccessPatterns } from './node-reference-parser-utils';
 
 // =============================================================================
 // Minimal CRDT Interfaces (no @n8n/crdt dependency)
@@ -568,6 +569,17 @@ export function setupHandleRecomputation(
 export type SeedValueDeepFn = (doc: CRDTDocLike, value: unknown) => any;
 
 /**
+ * Function type for setting nested values in CRDT structures.
+ * This is provided by @n8n/crdt's setNestedValue function.
+ */
+export type SetNestedValueFn = (
+	doc: CRDTDocLike,
+	root: CRDTMapLike<unknown>,
+	path: string[],
+	value: unknown,
+) => void;
+
+/**
  * Seed a CRDT document with workflow data.
  *
  * This is a shared function used by both:
@@ -660,5 +672,243 @@ export function seedWorkflowDoc(
 			edgeMap.set('targetHandle', edge.targetHandle);
 			edgesMap.set(edge.id, edgeMap);
 		}
+	});
+}
+
+// =============================================================================
+// Expression Renaming
+// =============================================================================
+
+/**
+ * Check if a string is an expression (starts with '=').
+ */
+function isExpression(value: unknown): value is string {
+	return typeof value === 'string' && value.startsWith('=');
+}
+
+/**
+ * Recursively find and update expressions that reference oldName.
+ * Only updates the specific paths that changed (fine-grained updates).
+ *
+ * @param doc - The CRDT document
+ * @param nodeMap - The CRDT map for the node
+ * @param value - The current value being traversed
+ * @param path - Path to the current value (e.g., ['parameters', 'operation'])
+ * @param oldName - The old node name to replace
+ * @param newName - The new node name
+ * @param setNestedValue - Function to set values at specific paths
+ */
+function updateExpressionsInValue(
+	doc: CRDTDocLike,
+	nodeMap: CRDTMapLike<unknown>,
+	value: unknown,
+	path: string[],
+	oldName: string,
+	newName: string,
+	setNestedValue: SetNestedValueFn,
+): void {
+	if (isExpression(value)) {
+		// Check if expression contains the old name
+		if (value.includes(oldName)) {
+			const updated = applyAccessPatterns(value, oldName, newName);
+			console.log('[updateExpressionsInValue] Found expression with oldName:', {
+				path,
+				value,
+				updated,
+			});
+			if (updated !== value) {
+				// Use fine-grained update - only set this specific path
+				console.log('[updateExpressionsInValue] Updating expression at path:', path);
+				setNestedValue(doc, nodeMap, path, updated);
+			}
+		}
+	} else if (Array.isArray(value)) {
+		for (let i = 0; i < value.length; i++) {
+			updateExpressionsInValue(
+				doc,
+				nodeMap,
+				value[i],
+				[...path, String(i)],
+				oldName,
+				newName,
+				setNestedValue,
+			);
+		}
+	} else if (value !== null && typeof value === 'object') {
+		const obj = value as Record<string, unknown>;
+		for (const key of Object.keys(obj)) {
+			updateExpressionsInValue(
+				doc,
+				nodeMap,
+				obj[key],
+				[...path, key],
+				oldName,
+				newName,
+				setNestedValue,
+			);
+		}
+	}
+}
+
+/**
+ * Set up expression renaming when a node's name changes.
+ * Watches for name property changes and updates expressions in ALL nodes
+ * that reference the old name.
+ *
+ * This is a shared function used by both:
+ * - Server (packages/cli/src/crdt/crdt-websocket.service.ts)
+ * - Worker Mode (packages/frontend/editor-ui/src/app/workers/coordinator)
+ *
+ * @param doc - CRDT document
+ * @param setNestedValue - Function to set nested values in CRDT (from @n8n/crdt)
+ * @returns Unsubscribe function
+ */
+export function setupExpressionRenaming(
+	doc: CRDTDocLike,
+	setNestedValue: SetNestedValueFn,
+): Unsubscribe {
+	const nodesMap = doc.getMap<unknown>('nodes') as CRDTMapLike<unknown>;
+
+	// Check if nodesMap supports onDeepChange
+	if (!nodesMap.onDeepChange) {
+		console.warn('[setupExpressionRenaming] nodesMap.onDeepChange not available');
+		return () => {};
+	}
+
+	// Track previous names to detect changes
+	const previousNames = new Map<string, string>();
+
+	// Initialize previous names from current state
+	for (const nodeId of nodesMap.keys()) {
+		const nodeMap = nodesMap.get(nodeId) as CRDTMapLike<unknown> | undefined;
+		if (nodeMap) {
+			const name = nodeMap.get('name') as string | undefined;
+			if (name) {
+				previousNames.set(nodeId, name);
+			}
+		}
+	}
+
+	console.log(
+		'[setupExpressionRenaming] Initialized with names:',
+		Array.from(previousNames.entries()),
+	);
+
+	return nodesMap.onDeepChange((changes) => {
+		console.log('[setupExpressionRenaming] onDeepChange triggered, changes:', changes);
+
+		// Track name changes that need expression updates
+		const nameChanges: Array<{ nodeId: string; oldName: string; newName: string }> = [];
+
+		for (const change of changes) {
+			// Only process map changes (not array changes)
+			if (!isMapChange(change)) continue;
+
+			const [nodeId, prop] = change.path;
+			if (typeof nodeId !== 'string') continue;
+
+			// Detect name property changes (could be 'update' or 'add' depending on CRDT implementation)
+			if (prop === 'name' && (change.action === 'update' || change.action === 'add')) {
+				const oldName = previousNames.get(nodeId);
+				const nodeMap = nodesMap.get(nodeId) as CRDTMapLike<unknown> | undefined;
+				const newName = nodeMap?.get('name') as string | undefined;
+
+				console.log('[setupExpressionRenaming] Name change detected:', {
+					nodeId,
+					prop,
+					action: change.action,
+					oldName,
+					newName,
+					path: change.path,
+				});
+
+				if (oldName && newName && oldName !== newName) {
+					nameChanges.push({ nodeId, oldName, newName });
+					previousNames.set(nodeId, newName);
+				}
+			}
+
+			// Handle new node additions - track their name
+			if (isNodeAddition(change)) {
+				const nodeMap = nodesMap.get(nodeId) as CRDTMapLike<unknown> | undefined;
+				const name = nodeMap?.get('name') as string | undefined;
+				if (name) {
+					previousNames.set(nodeId, name);
+					console.log('[setupExpressionRenaming] New node added:', { nodeId, name });
+				}
+			}
+		}
+
+		// Process all name changes
+		if (nameChanges.length === 0) {
+			console.log('[setupExpressionRenaming] No name changes to process');
+			return;
+		}
+
+		console.log('[setupExpressionRenaming] Processing name changes:', nameChanges);
+
+		// Optimization: First pass - collect nodes that might have relevant expressions
+		// This avoids expensive toJSON() calls on nodes that don't reference the old name
+		const nodesToUpdate: Array<{ nodeId: string; nodeMap: CRDTMapLike<unknown> }> = [];
+
+		for (const targetNodeId of nodesMap.keys()) {
+			const nodeMap = nodesMap.get(targetNodeId) as CRDTMapLike<unknown> | undefined;
+			if (!nodeMap) continue;
+
+			const params = nodeMap.get('parameters');
+			if (!params) continue;
+
+			// Quick check: stringify params and see if it contains any of the old names
+			// This is cheaper than traversing the whole object for most nodes
+			const paramsStr =
+				params && typeof params === 'object' && 'toJSON' in params
+					? JSON.stringify((params as { toJSON(): unknown }).toJSON())
+					: JSON.stringify(params);
+
+			// Check if this node might reference any of the renamed nodes
+			const mightHaveReferences = nameChanges.some(({ oldName }) => paramsStr.includes(oldName));
+
+			if (mightHaveReferences) {
+				nodesToUpdate.push({ nodeId: targetNodeId, nodeMap });
+			}
+		}
+
+		if (nodesToUpdate.length === 0) {
+			console.log('[setupExpressionRenaming] No nodes reference the renamed node(s)');
+			return;
+		}
+
+		console.log(
+			'[setupExpressionRenaming] Found nodes that may reference renamed node:',
+			nodesToUpdate.map((n) => n.nodeId),
+		);
+
+		// Second pass - update only the nodes that have references
+		doc.transact(() => {
+			for (const { oldName, newName } of nameChanges) {
+				for (const { nodeMap } of nodesToUpdate) {
+					const params = nodeMap.get('parameters');
+					if (!params) continue;
+
+					// Convert to plain object for traversal
+					const paramsJson =
+						params && typeof params === 'object' && 'toJSON' in params
+							? (params as { toJSON(): Record<string, unknown> }).toJSON()
+							: (params as Record<string, unknown>);
+
+					if (paramsJson && typeof paramsJson === 'object') {
+						updateExpressionsInValue(
+							doc,
+							nodeMap,
+							paramsJson,
+							['parameters'],
+							oldName,
+							newName,
+							setNestedValue,
+						);
+					}
+				}
+			}
+		});
 	});
 }

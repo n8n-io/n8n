@@ -20,6 +20,7 @@ import {
 	decodeWithDocId,
 	decodeString,
 	seedValueDeep,
+	setNestedValue,
 } from '@n8n/crdt';
 import {
 	Workflow,
@@ -27,11 +28,14 @@ import {
 	computeAllNodeHandles,
 	syncWorkflowWithDoc,
 	setupHandleRecomputation,
+	setupExpressionRenaming,
 	seedWorkflowDoc,
 	type IConnections,
 	type INode,
 	type INodeTypeDescription,
 	type INodeTypes,
+	type SeedValueDeepFn,
+	type SetNestedValueFn,
 } from 'n8n-workflow';
 
 import type { CoordinatorState, CRDTDocumentState } from '../types';
@@ -401,6 +405,7 @@ async function seedDocument(
 		);
 
 		// Use shared seeding function, passing seedValueDeep from @n8n/crdt
+		// Cast to SeedValueDeepFn since @n8n/crdt CRDTDoc is compatible with CRDTDocLike
 		seedWorkflowDoc(
 			docState.doc,
 			{
@@ -410,7 +415,7 @@ async function seedDocument(
 				connections: workflowData.connections,
 				settings: workflowData.settings,
 			},
-			seedValueDeep,
+			seedValueDeep as SeedValueDeepFn,
 		);
 
 		// Set up sync between CRDT document and Workflow instance
@@ -419,11 +424,17 @@ async function seedDocument(
 		const syncUnsub = syncWorkflowWithDoc(docState.doc, workflow);
 
 		// Set up handle recomputation (uses the synced workflow)
-		docState.handleObserverUnsub = setupHandleRecomputation(
+		const handleUnsub = setupHandleRecomputation(docState.doc, workflow, workerNodeTypes);
+
+		// Set up expression renaming when node names change
+		// Cast to SetNestedValueFn since @n8n/crdt CRDTDoc is compatible with CRDTDocLike
+		const expressionUnsub = setupExpressionRenaming(
 			docState.doc,
-			workflow,
-			workerNodeTypes,
+			setNestedValue as SetNestedValueFn,
 		);
+
+		// Store handle observer unsub for cleanup
+		docState.handleObserverUnsub = handleUnsub;
 
 		// Set up update broadcasting
 		const updateUnsub = docState.doc.onUpdate((update) => {
@@ -433,6 +444,7 @@ async function seedDocument(
 		// Combined unsubscribe for the room
 		const unsubscribe = () => {
 			syncUnsub();
+			expressionUnsub();
 			updateUnsub();
 		};
 

@@ -20,6 +20,7 @@ import type {
 	NodeSizeChange,
 	NodeSubtitleChange,
 	NodeDisabledChange,
+	NodeNameChange,
 	ComputedHandle,
 } from '../types/workflowDocument.types';
 import type { WorkflowAwarenessState } from '../types/awareness.types';
@@ -80,6 +81,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	const nodeSizeHook = createEventHook<NodeSizeChange>();
 	const nodeSubtitleHook = createEventHook<NodeSubtitleChange>();
 	const nodeDisabledHook = createEventHook<NodeDisabledChange>();
+	const nodeNameHook = createEventHook<NodeNameChange>();
 	const edgeAddedHook = createEventHook<WorkflowEdge>();
 	const edgeRemovedHook = createEventHook<string>();
 	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes (any origin)
@@ -234,6 +236,13 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 					if (crdtNode) {
 						const disabled = (crdtNode.get('disabled') as boolean) ?? false;
 						void nodeDisabledHook.trigger({ nodeId, disabled });
+					}
+				} else if (prop === 'name') {
+					// Name changed - trigger for all origins (local changes need UI update too for canvas label)
+					const crdtNode = nodesMap.get(nodeId) as CRDTMap<unknown> | undefined;
+					if (crdtNode) {
+						const name = crdtNode.get('name') as string;
+						void nodeNameHook.trigger({ nodeId, name });
 					}
 				} else if (needsUIUpdate(origin)) {
 					// Other property changes: only update UI for remote/undoRedo
@@ -677,6 +686,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		onNodeSizeChange: nodeSizeHook.on,
 		onNodeSubtitleChange: nodeSubtitleHook.on,
 		onNodeDisabledChange: nodeDisabledHook.on,
+		onNodeNameChange: nodeNameHook.on,
 		onEdgeAdded: edgeAddedHook.on,
 		onEdgeRemoved: edgeRemovedHook.on,
 		onEdgesChanged: edgesChangedHook.on,

@@ -107,6 +107,17 @@ provide(WorkflowStateKey, workflowState);
 function handleClose() {
 	selectedNodeId.value = null;
 }
+
+/**
+ * Handle node name change from CrdtNodeSettings.
+ * Updates the name in CRDT - the server/coordinator will handle expression renaming.
+ */
+function handleValueChanged(event: { name: string; value: unknown; oldValue?: unknown }) {
+	if (event.name === 'name' && selectedNodeId.value) {
+		// Update the name field in CRDT - server/coordinator will update expressions
+		doc.setNodeSetting?.(selectedNodeId.value, 'name', event.value);
+	}
+}
 </script>
 
 <template>
@@ -121,6 +132,7 @@ function handleClose() {
 			:executable="false"
 			:foreign-credentials="[]"
 			@close="handleClose"
+			@value-changed="handleValueChanged"
 		/>
 	</div>
 </template>

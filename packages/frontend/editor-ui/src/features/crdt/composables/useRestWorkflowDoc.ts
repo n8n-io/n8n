@@ -14,6 +14,7 @@ import type {
 	NodeSizeChange,
 	NodeSubtitleChange,
 	NodeDisabledChange,
+	NodeNameChange,
 } from '../types/workflowDocument.types';
 
 export interface UseRestWorkflowDocOptions {
@@ -260,6 +261,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 	const nodeSizeHook = createEventHook<NodeSizeChange>();
 	const nodeSubtitleHook = createEventHook<NodeSubtitleChange>();
 	const nodeDisabledHook = createEventHook<NodeDisabledChange>();
+	const nodeNameHook = createEventHook<NodeNameChange>();
 	const edgeAddedHook = createEventHook<WorkflowEdge>();
 	const edgeRemovedHook = createEventHook<string>();
 	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes
@@ -305,6 +307,7 @@ export function useRestWorkflowDoc(options: UseRestWorkflowDocOptions): Workflow
 		onNodeSizeChange: nodeSizeHook.on,
 		onNodeSubtitleChange: nodeSubtitleHook.on,
 		onNodeDisabledChange: nodeDisabledHook.on,
+		onNodeNameChange: nodeNameHook.on,
 		onEdgeAdded: edgeAddedHook.on,
 		onEdgeRemoved: edgeRemovedHook.on,
 		onEdgesChanged: edgesChangedHook.on,

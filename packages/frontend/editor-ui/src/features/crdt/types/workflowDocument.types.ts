@@ -131,6 +131,12 @@ export interface NodeDisabledChange {
 	disabled: boolean;
 }
 
+/** Node name change event payload */
+export interface NodeNameChange {
+	nodeId: string;
+	name: string;
+}
+
 /**
  * Common interface for workflow document access.
  * Implemented by both CRDT and REST sources.
@@ -258,6 +264,9 @@ export interface WorkflowDocument {
 
 	/** Subscribe to node disabled state changes */
 	onNodeDisabledChange: EventHookOn<NodeDisabledChange>;
+
+	/** Subscribe to node name changes (for Vue Flow label sync) */
+	onNodeNameChange: EventHookOn<NodeNameChange>;
 
 	/** Subscribe to edge additions (remote/undo only - for Vue Flow sync) */
 	onEdgeAdded: EventHookOn<WorkflowEdge>;

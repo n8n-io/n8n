@@ -368,6 +368,10 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 		});
 	});
 
+	const { off: offNodeName } = doc.onNodeNameChange(({ nodeId, name }) => {
+		instance.updateNodeData(nodeId, { label: name });
+	});
+
 	// --- All Origins → Vue Flow: Edge events ---
 	// These fire for ALL origins (local, remote, undoRedo) after node events within the same transaction.
 	// Use nextTick to ensure Vue has rendered the nodes before adding edges.
@@ -392,6 +396,7 @@ export function useCanvasSync(options: UseCanvasSyncOptions): UseCanvasSyncResul
 		offNodePosition();
 		offNodeHandles();
 		offNodeSize();
+		offNodeName();
 		offEdgeAdded();
 		offEdgeRemoved();
 	});
