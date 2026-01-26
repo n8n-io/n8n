@@ -138,6 +138,7 @@ import { AddFilesAndEmbeddingFieldsToChatHubAgentTable1768998116560 } from '../c
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
+import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -280,5 +281,6 @@ export const postgresMigrations: Migration[] = [
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
 	AddFilesAndEmbeddingFieldsToChatHubAgentTable1768998116560,
+	AddPublishedVersionIdToWorkflowDependency1769000000000,
 	AddVectorStoreDataTable1768906222000,
 ];
