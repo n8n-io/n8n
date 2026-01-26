@@ -14,9 +14,7 @@ describe('N8NIdentifier', () => {
 	const mockUser = mock<User>({ id: 'user-123' });
 
 	beforeEach(() => {
-		mockAuthService = {
-			authenticateUserBasedOnToken: jest.fn(),
-		} as unknown as jest.Mocked<AuthService>;
+		mockAuthService = mock<AuthService>();
 
 		identifier = new N8NIdentifier(mockAuthService);
 	});
@@ -27,8 +25,8 @@ describe('N8NIdentifier', () => {
 
 	describe('validateOptions', () => {
 		it('should always succeed as no validation is required', async () => {
-			await expect(identifier.validateOptions({})).resolves.not.toThrow();
-			await expect(identifier.validateOptions({ foo: 'bar' })).resolves.not.toThrow();
+			await identifier.validateOptions({});
+			await identifier.validateOptions({ foo: 'bar' });
 		});
 	});
 
@@ -40,7 +38,11 @@ describe('N8NIdentifier', () => {
 				const context = {
 					identity: 'valid-jwt-token',
 					version: 1 as const,
-					metadata: { browserId: 'browser-abc' },
+					metadata: {
+						method: 'GET',
+						endpoint: '/api/users',
+						browserId: 'browser-abc',
+					},
 				};
 
 				const result = await identifier.resolve(context, {});
@@ -48,6 +50,8 @@ describe('N8NIdentifier', () => {
 				expect(result).toBe('user-123');
 				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
 					'valid-jwt-token',
+					'GET',
+					'/api/users',
 					'browser-abc',
 				);
 			});
@@ -58,7 +62,11 @@ describe('N8NIdentifier', () => {
 				const context = {
 					identity: 'valid-jwt-token',
 					version: 1 as const,
-					metadata: { browserId: undefined },
+					metadata: {
+						method: 'POST',
+						endpoint: '/api/workflows',
+						browserId: undefined,
+					},
 				};
 
 				const result = await identifier.resolve(context, {});
@@ -66,17 +74,22 @@ describe('N8NIdentifier', () => {
 				expect(result).toBe('user-123');
 				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
 					'valid-jwt-token',
+					'POST',
+					'/api/workflows',
 					undefined,
 				);
 			});
 
-			it('should resolve user ID with browserId false (skip check)', async () => {
+			it('should resolve user ID without browserId in metadata', async () => {
 				mockAuthService.authenticateUserBasedOnToken.mockResolvedValue(mockUser);
 
 				const context = {
 					identity: 'valid-jwt-token',
 					version: 1 as const,
-					metadata: { browserId: false },
+					metadata: {
+						method: 'DELETE',
+						endpoint: '/api/credentials',
+					},
 				};
 
 				const result = await identifier.resolve(context, {});
@@ -84,7 +97,9 @@ describe('N8NIdentifier', () => {
 				expect(result).toBe('user-123');
 				expect(mockAuthService.authenticateUserBasedOnToken).toHaveBeenCalledWith(
 					'valid-jwt-token',
-					false,
+					'DELETE',
+					'/api/credentials',
+					undefined,
 				);
 			});
 		});
@@ -107,11 +122,18 @@ describe('N8NIdentifier', () => {
 				const context = {
 					identity: 'valid-jwt-token',
 					version: 1 as const,
-					metadata: { browserId: 123 }, // Number instead of string/undefined/false
+					metadata: {
+						method: 'GET',
+						endpoint: '/api/users',
+						browserId: 123, // Number instead of string
+					},
 				};
 
-				await expect(identifier.resolve(context, {})).rejects.toThrow(CredentialResolverError);
-				await expect(identifier.resolve(context, {})).rejects.toThrow(/Invalid context metadata/);
+				await expect(identifier.resolve(context, {})).rejects.toThrow(
+					expect.objectContaining({
+						message: expect.stringMatching(/Invalid context metadata/),
+					}),
+				);
 
 				expect(mockAuthService.authenticateUserBasedOnToken).not.toHaveBeenCalled();
 			});
@@ -125,7 +147,11 @@ describe('N8NIdentifier', () => {
 				const context = {
 					identity: 'invalid-token',
 					version: 1 as const,
-					metadata: { browserId: 'browser-abc' },
+					metadata: {
+						method: 'GET',
+						endpoint: '/api/users',
+						browserId: 'browser-abc',
+					},
 				};
 
 				await expect(identifier.resolve(context, {})).rejects.toThrow('Unauthorized');
@@ -138,7 +164,10 @@ describe('N8NIdentifier', () => {
 				const context = {
 					identity: 'valid-token',
 					version: 1 as const,
-					metadata: { browserId: false },
+					metadata: {
+						method: 'POST',
+						endpoint: '/api/workflows',
+					},
 				};
 
 				await expect(identifier.resolve(context, {})).rejects.toThrow('Database connection failed');

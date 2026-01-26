@@ -5,8 +5,10 @@ import { AuthService } from '@/auth/auth.service';
 import { z } from 'zod';
 import { CredentialResolverError } from '@n8n/decorators';
 
-const BrowserIDMetadataSchema = z.object({
-	browserId: z.union([z.string(), z.undefined(), z.literal(false)]),
+const ChatHubExtractorMetadataSchema = z.object({
+	method: z.string(),
+	endpoint: z.string(),
+	browserId: z.string().optional(),
 });
 
 /**
@@ -24,16 +26,18 @@ export class N8NIdentifier implements ITokenIdentifier {
 	}
 
 	async resolve(context: ICredentialContext, _: Record<string, unknown>): Promise<string> {
-		const browserIdResult = BrowserIDMetadataSchema.safeParse(context.metadata);
-		if (!browserIdResult.success) {
+		const metadataResult = ChatHubExtractorMetadataSchema.safeParse(context.metadata);
+		if (!metadataResult.success) {
 			throw new CredentialResolverError(
-				`Invalid context metadata: ${browserIdResult.error.message}`,
+				`Invalid context metadata: ${metadataResult.error.message}`,
 			);
 		}
 
 		const user = await this.authService.authenticateUserBasedOnToken(
 			context.identity,
-			browserIdResult.data.browserId,
+			metadataResult.data.method,
+			metadataResult.data.endpoint,
+			metadataResult.data.browserId,
 		);
 		return user.id;
 	}
