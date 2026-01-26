@@ -17,6 +17,7 @@ import {
 	formRespondMode,
 	formTitle,
 	formTriggerPanel,
+	ipAllowlist,
 	respondWithOptions,
 	webhookPath,
 } from '../common.descriptions';
@@ -113,6 +114,7 @@ const descriptionV2: INodeTypeDescription = {
 			),
 			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
 		},
+		ipAllowlist,
 		{
 			displayName:
 				"In the 'Respond to Webhook' node, select 'Respond With JSON' and set the <strong>formSubmittedText</strong> key to display a custom response in the form, or the <strong>redirectURL</strong> key to redirect users to a URL",
@@ -164,15 +166,6 @@ const descriptionV2: INodeTypeDescription = {
 					type: 'boolean',
 					default: false,
 					description: 'Whether to ignore requests from bots like link previewers and web crawlers',
-				},
-				{
-					displayName: 'IP(s) Allowlist',
-					name: 'ipWhitelist',
-					type: 'string',
-					placeholder: 'e.g. 127.0.0.1, 192.168.1.0/24',
-					default: '',
-					description:
-						'Comma-separated list of allowed IP addresses or CIDR ranges. Leave empty to allow all IPs.',
 				},
 				{
 					...useWorkflowTimezone,

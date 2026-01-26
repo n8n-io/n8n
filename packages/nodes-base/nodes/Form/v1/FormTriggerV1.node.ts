@@ -14,6 +14,7 @@ import {
 	formTitle,
 	formTriggerPanel,
 	webhookPath,
+	ipAllowlist,
 } from '../common.descriptions';
 import { formWebhook } from '../utils/utils';
 
@@ -58,6 +59,7 @@ const descriptionV1: INodeTypeDescription = {
 		formDescription,
 		formFields,
 		formRespondMode,
+		ipAllowlist,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -76,15 +78,6 @@ const descriptionV1: INodeTypeDescription = {
 					description: 'The text displayed to users after they filled the form',
 					type: 'string',
 					default: 'Your response has been recorded',
-				},
-				{
-					displayName: 'IP(s) Allowlist',
-					name: 'ipWhitelist',
-					type: 'string',
-					placeholder: 'e.g. 127.0.0.1, 192.168.1.0/24',
-					default: '',
-					description:
-						'Comma-separated list of allowed IP addresses or CIDR ranges. Leave empty to allow all IPs.',
 				},
 			],
 		},
