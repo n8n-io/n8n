@@ -252,7 +252,7 @@ onMounted(async () => {
 		<template #content>
 			<N8nText color="text-dark" :bold="true">{{ getModalContent.message }}</N8nText>
 			<N8nNotice
-				v-if="!isLatestPackageVerified && !!getModalContent.warning"
+				v-if="!isLatestPackageVerified && getModalContent.warning"
 				data-test-id="communityPackageManageConfirmModal-warning"
 				:content="getModalContent.warning"
 			/>
