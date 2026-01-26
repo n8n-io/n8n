@@ -210,6 +210,40 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	>(node: N): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 
+		// Handle FanOutTargets marker from fanOut() function
+		// This adds all targets without creating a primary connection
+		if (isFanOut(node)) {
+			for (const target of node.targets) {
+				if (isInputTarget(target)) {
+					// InputTarget - add the target node
+					const inputTargetNode = target.node as NodeInstance<string, string, unknown>;
+					if (!newNodes.has(inputTargetNode.name)) {
+						this.addNodeWithSubnodes(newNodes, inputTargetNode);
+					}
+				} else if (isNodeChain(target)) {
+					// Chain - add all nodes from the chain
+					for (const chainNode of target.allNodes) {
+						if (!newNodes.has(chainNode.name)) {
+							this.addNodeWithSubnodes(newNodes, chainNode);
+						}
+					}
+					this.addConnectionTargetNodes(newNodes, target);
+				} else {
+					// Regular node
+					const targetNode = target as NodeInstance<string, string, unknown>;
+					if (!newNodes.has(targetNode.name)) {
+						this.addNodeWithSubnodes(newNodes, targetNode);
+					}
+				}
+			}
+			return this.clone({
+				nodes: newNodes,
+				currentNode: this._currentNode,
+				currentOutput: this._currentOutput,
+				pinData: this._pinData,
+			});
+		}
+
 		// Check if this is a composite (can be passed directly to add())
 		if (this.isSwitchCaseComposite(node)) {
 			this.addSwitchCaseNodes(newNodes, node as unknown as SwitchCaseComposite);
@@ -315,6 +349,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Handle array of nodes (fan-out pattern)
 		if (Array.isArray(nodeOrComposite)) {
 			return this.handleFanOut(nodeOrComposite);
+		}
+
+		// Handle FanOutTargets marker from fanOut() function
+		if (isFanOut(nodeOrComposite)) {
+			return this.handleFanOut(nodeOrComposite.targets);
 		}
 
 		// Handle NodeChain (e.g., node().then().then())
@@ -1253,6 +1292,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return getNodeName(builder.sibNode);
 		}
 
+		// Check for InputTarget - return the referenced node's name
+		if (isInputTarget(target)) {
+			return getNodeName(target.node as NodeInstance<string, string, unknown>);
+		}
+
 		// Regular NodeInstance
 		return getNodeName(target as NodeInstance<string, string, unknown>);
 	}
@@ -1344,6 +1388,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				continue;
 			}
 
+			// Handle InputTarget - add the referenced node
+			if (isInputTarget(target)) {
+				const inputTargetNode = target.node as NodeInstance<string, string, unknown>;
+				if (!nodes.has(inputTargetNode.name)) {
+					this.addNodeWithSubnodes(nodes, inputTargetNode);
+				}
+				continue;
+			}
+
 			// Add the target node if not already in the map
 			const targetNode = target as NodeInstance<string, string, unknown>;
 			if (!nodes.has(targetNode.name)) {
@@ -1374,6 +1427,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
 			if (isNodeChain(target)) {
 				this.addBranchToGraph(nodes, target as NodeChain);
+				continue;
+			}
+
+			// Handle InputTarget - add the referenced node
+			if (isInputTarget(target)) {
+				const inputTargetNode = target.node as NodeInstance<string, string, unknown>;
+				if (!nodes.has(inputTargetNode.name)) {
+					this.addNodeWithSubnodes(nodes, inputTargetNode);
+				}
 				continue;
 			}
 

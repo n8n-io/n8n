@@ -890,7 +890,7 @@ describe('generateWorkflowCode with AI subnodes', () => {
 			]);
 		});
 
-		it('should generate merge() for fan-in patterns', () => {
+		it('should generate merge() syntax for fan-in merge patterns', () => {
 			const json: WorkflowJSON = {
 				id: 'merge-test',
 				name: 'Merge Workflow',
@@ -947,10 +947,12 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use merge() function with named syntax
+			// Should use merge() syntax with named inputs
+			// Note: We use merge() syntax instead of .input(n) because the .input(n)
+			// syntax doesn't work correctly for merges inside IF/Switch branches
 			expect(code).toContain('merge(');
-			// Should include named inputs (input0, input1, etc.)
 			expect(code).toContain('{ input0:');
+			expect(code).toContain('input1:');
 		});
 
 		it('should generate ifElse() for IF node patterns', () => {
@@ -2349,6 +2351,162 @@ describe('IF branches feeding into Merge', () => {
 		expect(parsed.connections['IF']).toBeDefined();
 		expect(parsed.connections['IF'].main[1]).toBeDefined();
 		expect(parsed.connections['IF'].main[1]![0]!.node).toBe('Merge');
+	});
+});
+
+describe('Phase 2b: .input(n) syntax for merge patterns', () => {
+	it('should generate .input(n) syntax for IF branches feeding into Merge', () => {
+		// Pattern: IF true and false branches both connect to Merge at different inputs
+		// OLD behavior: merge(mergeNode, { input0: trueNode, input1: falseNode })
+		// NEW expected: trueNode.then(merge.input(0)), falseNode.then(merge.input(1))
+		const workflow: WorkflowJSON = {
+			id: 'if-merge-input-test',
+			name: 'IF Merge Input Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'TrueProcess',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'FalseProcess',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
+				IF: {
+					main: [
+						[{ node: 'TrueProcess', type: 'main', index: 0 }], // output 0 (true)
+						[{ node: 'FalseProcess', type: 'main', index: 0 }], // output 1 (false)
+					],
+				},
+				TrueProcess: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				FalseProcess: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+
+		// Should NOT use merge() function inside ifElse
+		expect(code).not.toMatch(/ifElse\([^)]+,\s*\{[^}]*merge\(/);
+		// Should use .input(n) syntax for merge connections
+		expect(code).toContain('.input(0)');
+		expect(code).toContain('.input(1)');
+		// Should still have ifElse for the branching
+		expect(code).toContain('ifElse(');
+
+		// Roundtrip must preserve the connections
+		const parsed = parseWorkflowCode(code);
+
+		// Both IF branches must exist
+		expect(parsed.connections['IF']).toBeDefined();
+		expect(parsed.connections['IF'].main[0]![0]!.node).toBe('TrueProcess');
+		expect(parsed.connections['IF'].main[1]![0]!.node).toBe('FalseProcess');
+		// Both branches must connect to Merge at correct inputs
+		expect(parsed.connections['TrueProcess'].main[0]![0]!.node).toBe('Merge');
+		expect(parsed.connections['TrueProcess'].main[0]![0]!.index).toBe(0);
+		expect(parsed.connections['FalseProcess'].main[0]![0]!.node).toBe('Merge');
+		expect(parsed.connections['FalseProcess'].main[0]![0]!.index).toBe(1);
+	});
+
+	it('should generate .input(n) syntax for any multi-input node (not just Merge)', () => {
+		// This tests the generality: any node with multiple inputs should work
+		// Pattern: IF → branches → Compare (multi-input node)
+		const workflow: WorkflowJSON = {
+			id: 'if-compare-input-test',
+			name: 'IF Compare Input Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2,
+					position: [200, 0],
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'PathA',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: {},
+				},
+				{
+					id: '4',
+					name: 'PathB',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: {},
+				},
+				{
+					id: '5',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					position: [600, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
+				IF: {
+					main: [
+						[{ node: 'PathA', type: 'main', index: 0 }],
+						[{ node: 'PathB', type: 'main', index: 0 }],
+					],
+				},
+				PathA: { main: [[{ node: 'Merge', type: 'main', index: 0 }]] },
+				PathB: { main: [[{ node: 'Merge', type: 'main', index: 1 }]] },
+			},
+		};
+
+		const code = generateWorkflowCode(workflow);
+
+		// Should use .input(n) syntax
+		expect(code).toContain('.input(0)');
+		expect(code).toContain('.input(1)');
 	});
 });
 

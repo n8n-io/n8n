@@ -118,7 +118,7 @@ describe('codegen index', () => {
 
 			const code = generateWorkflowCode(json);
 
-			expect(code).toContain('merge(node({');
+			expect(code).toContain('merge(');
 			expect(code).toContain('{ input0:');
 		});
 

@@ -76,6 +76,8 @@ export interface MergeCompositeNode extends CompositeNodeBase {
 	kind: 'merge';
 	mergeNode: SemanticNode;
 	branches: CompositeNode[];
+	/** Input indices for each branch (e.g., [0, 1] for branches connecting to input 0 and 1) */
+	inputIndices: number[];
 }
 
 /**
@@ -160,6 +162,34 @@ export type CompositeNode =
 	| MultiOutputNode;
 
 /**
+ * Deferred input connection - represents a connection that should be expressed
+ * at the root level with .input(n) syntax rather than nested inside a branch context.
+ * This is needed because connections to specific inputs of multi-input nodes (like Merge)
+ * from inside IF/Switch branches need to be expressed separately from the branch structure.
+ */
+export interface DeferredInputConnection {
+	/** The target node receiving the connection (any node with multiple inputs) */
+	targetNode: SemanticNode;
+	/** Which input slot of the target (0, 1, 2, ...) */
+	targetInputIndex: number;
+	/** Name of the source node sending the connection */
+	sourceNodeName: string;
+	/** Which output slot of source (default 0) */
+	sourceOutputIndex: number;
+}
+
+/**
+ * Deferred merge downstream - represents a merge node's output chain that needs
+ * to be generated separately because the merge receives deferred input connections.
+ */
+export interface DeferredMergeDownstream {
+	/** The merge node */
+	mergeNode: SemanticNode;
+	/** The downstream chain starting from the merge's output */
+	downstreamChain: CompositeNode | null;
+}
+
+/**
  * The complete composite tree for a workflow
  */
 export interface CompositeTree {
@@ -167,4 +197,8 @@ export interface CompositeTree {
 	roots: CompositeNode[];
 	/** Variable declarations needed (for cycles and convergence) */
 	variables: Map<string, SemanticNode>;
+	/** Connections to express at root level with .input(n) syntax */
+	deferredConnections: DeferredInputConnection[];
+	/** Merge nodes with downstream chains that need separate generation */
+	deferredMergeDownstreams: DeferredMergeDownstream[];
 }

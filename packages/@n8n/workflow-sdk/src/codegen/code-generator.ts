@@ -770,13 +770,19 @@ function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: Generation
 
 /**
  * Generate code for a merge (named syntax only)
+ * Note: We keep using the old merge() syntax for merges inside branch handlers
+ * because the .input(n) syntax would create incorrect connections when the merge
+ * is nested inside IF/Switch branches.
  */
 function generateMerge(merge: MergeCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
 	// Generate named input entries: { input0: ..., input1: ..., ... }
 	const inputEntries = merge.branches
-		.map((b, i) => `input${i}: ${generateComposite(b, innerCtx)}`)
+		.map((b, i) => {
+			const inputIndex = merge.inputIndices[i] ?? i;
+			return `input${inputIndex}: ${generateComposite(b, innerCtx)}`;
+		})
 		.join(', ');
 
 	// For named syntax, we need a variable reference to the Merge node
@@ -1254,6 +1260,35 @@ export function generateCode(
 		const calls = flattenToWorkflowCalls(root, ctx);
 		for (const [method, code] of calls) {
 			workflowCalls.push(`  .${method}(${code})`);
+		}
+	}
+
+	// Generate deferred input connections with .input(n) syntax
+	// These are connections from IF/Switch branches to multi-input nodes (like Merge)
+	// that need to be expressed at root level rather than nested inside branches
+	for (const conn of tree.deferredConnections) {
+		const sourceVarName = getVarName(conn.sourceNodeName, ctx);
+		const targetVarName = getVarName(conn.targetNode.name, ctx);
+
+		// Handle output index if not default (0)
+		const sourceRef =
+			conn.sourceOutputIndex > 0
+				? `${sourceVarName}.output(${conn.sourceOutputIndex})`
+				: sourceVarName;
+
+		// Generate: .add(source.then(target.input(n)))
+		workflowCalls.push(
+			`  .add(${sourceRef}.then(${targetVarName}.input(${conn.targetInputIndex})))`,
+		);
+	}
+
+	// Generate deferred merge downstream chains
+	// These are the output chains from merge nodes that received deferred connections
+	for (const downstream of tree.deferredMergeDownstreams) {
+		const mergeVarName = getVarName(downstream.mergeNode.name, ctx);
+		if (downstream.downstreamChain) {
+			const chainCode = generateComposite(downstream.downstreamChain, ctx);
+			workflowCalls.push(`  .add(${mergeVarName}.then(${chainCode}))`);
 		}
 	}
 
