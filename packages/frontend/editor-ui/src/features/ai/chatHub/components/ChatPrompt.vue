@@ -3,7 +3,14 @@ import { useToast } from '@/app/composables/useToast';
 import { providerDisplayNames, TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nIcon,
+	N8nInput,
+	N8nText,
+	N8nTooltip,
+	N8nCallout,
+} from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
@@ -14,12 +21,14 @@ import { I18nT } from 'vue-i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
 
-const { selectedModel, selectedTools, messagingState } = defineProps<{
+const { selectedModel, selectedTools, messagingState, showCreditsClaimedCallout } = defineProps<{
 	messagingState: MessagingState;
 	isNewSession: boolean;
 	isToolsSelectable: boolean;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
+	showCreditsClaimedCallout: boolean;
+	aiCreditsQuota: string;
 }>();
 
 const emit = defineEmits<{
@@ -29,6 +38,7 @@ const emit = defineEmits<{
 	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
 	editAgent: [agentId: string];
+	dismissCreditsCallout: [];
 }>();
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
@@ -65,6 +75,18 @@ const acceptedMimeTypes = computed(() =>
 );
 
 const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
+
+const showMisisngAgentCallout = computed(() => messagingState === 'missingAgent');
+const showMissingCredentialsCallout = computed(
+	() => messagingState === 'missingCredentials' && !!llmProvider.value,
+);
+const calloutVisible = computed(() => {
+	return (
+		showMisisngAgentCallout.value ||
+		showMissingCredentialsCallout.value ||
+		showCreditsClaimedCallout
+	);
+});
 
 function onMic() {
 	committedSpokenMessage.value = message.value;
@@ -200,7 +222,12 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
-			<N8nText v-if="messagingState === 'missingAgent'" :class="$style.callout">
+			<N8nCallout
+				v-if="showMisisngAgentCallout"
+				icon="info"
+				theme="secondary"
+				:class="$style.callout"
+			>
 				<I18nT
 					:keypath="
 						isNewSession
@@ -220,9 +247,12 @@ defineExpose({
 						}}</a>
 					</template>
 				</I18nT>
-			</N8nText>
-			<N8nText
-				v-else-if="messagingState === 'missingCredentials' && llmProvider"
+			</N8nCallout>
+
+			<N8nCallout
+				v-else-if="showMissingCredentialsCallout"
+				icon="info"
+				theme="secondary"
 				:class="$style.callout"
 			>
 				<I18nT
@@ -235,7 +265,7 @@ defineExpose({
 					scope="global"
 				>
 					<template #link>
-						<a href="" @click.prevent="emit('setCredentials', llmProvider)">{{
+						<a href="" @click.prevent="emit('setCredentials', llmProvider!)">{{
 							i18n.baseText(
 								isNewSession
 									? 'chatHub.chat.prompt.callout.setCredentials.new.link'
@@ -244,10 +274,36 @@ defineExpose({
 						}}</a>
 					</template>
 					<template #provider>
-						{{ providerDisplayNames[llmProvider] }}
+						{{ providerDisplayNames[llmProvider!] }}
 					</template>
 				</I18nT>
-			</N8nText>
+			</N8nCallout>
+
+			<N8nCallout
+				v-else-if="showCreditsClaimedCallout"
+				icon="info"
+				theme="secondary"
+				:class="$style.callout"
+			>
+				<N8nText>{{ i18n.baseText('freeAi.credits.callout.success.chatHub.beginning') }}</N8nText>
+				<N8nText bold>{{
+					i18n.baseText('freeAi.credits.callout.success.chatHub.credits', {
+						interpolate: { amount: aiCreditsQuota },
+					})
+				}}</N8nText>
+				<N8nText>{{ i18n.baseText('freeAi.credits.callout.success.chatHub.end') }}</N8nText>
+
+				<template #trailingContent>
+					<N8nIcon
+						icon="x"
+						title="Dismiss"
+						size="medium"
+						type="secondary"
+						@click="emit('dismissCreditsCallout')"
+					/>
+				</template>
+			</N8nCallout>
+
 			<input
 				ref="fileInputRef"
 				type="file"
@@ -257,7 +313,10 @@ defineExpose({
 				@change="handleFileSelect"
 			/>
 
-			<div :class="$style.inputWrapper" @click="handleClickInputWrapper">
+			<div
+				:class="[{ [$style.calloutVisible]: calloutVisible }, $style.inputWrapper]"
+				@click="handleClickInputWrapper"
+			>
 				<div v-if="attachments.length > 0" :class="$style.attachments">
 					<ChatFile
 						v-for="(file, index) in attachments"
@@ -371,21 +430,14 @@ defineExpose({
 }
 
 .callout {
-	color: var(--color--secondary);
-	background-color: hsla(247, 49%, 53%, 0.1);
-	padding: 12px 16px 24px;
-	border-top-left-radius: 16px;
-	border-top-right-radius: 16px;
 	width: 100%;
-	border: var(--border);
-	border-color: var(--color--secondary);
-	text-align: center;
-	margin-bottom: -16px;
+	padding: var(--spacing--sm);
+	border-radius: 16px 16px 0 0;
+	box-shadow: 0 10px 24px 0 #00000010;
+}
 
-	& a {
-		text-decoration: underline;
-		color: inherit;
-	}
+.closeButton {
+	margin-left: var(--spacing--sm);
 }
 
 .fileInput {
@@ -394,7 +446,7 @@ defineExpose({
 
 .inputWrapper {
 	width: 100%;
-	border-radius: 16px !important;
+	border-radius: 16px;
 	padding: 16px;
 	box-shadow: 0 10px 24px 0 #00000010;
 	background-color: var(--color--background--light-3);
@@ -416,6 +468,11 @@ defineExpose({
 		background-color: transparent !important;
 		border: none !important;
 		padding: 0 !important;
+	}
+
+	&.calloutVisible {
+		border-radius: 0 0 16px 16px;
+		border-top: 0;
 	}
 }
 

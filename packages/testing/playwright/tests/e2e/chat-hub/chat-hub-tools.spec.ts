@@ -12,6 +12,7 @@ test.describe('Tools usage @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i);
 
 		await page.getToolsButton().click();
