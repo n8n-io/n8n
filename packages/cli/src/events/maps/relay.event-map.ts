@@ -661,4 +661,17 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region workflow history compaction
+	'history-compacted': {
+		workflowsProcessed: number;
+		totalVersionsSeen: number;
+		totalVersionsDeleted: number;
+		errorCount: number;
+		durationMs: number;
+		windowStartIso: string;
+		windowEndIso: string;
+		compactionStartTime: Date;
+	};
+	// #endregion
 } & AiEventMap;

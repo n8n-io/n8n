@@ -61,6 +61,12 @@ describe('TelemetryEventRelay', () => {
 			level: 'info',
 			outputs: ['console'],
 		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 123,
+			batchSize: 234,
+			optimizingTimeWindowHours: 400,
+			trimmingTimeWindowDays: 600,
+		},
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
 		mode: 'default',
@@ -2026,6 +2032,39 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
+		});
+	});
+	describe('workflow history compaction events', () => {
+		it('should call telemetry.track when compacting history finishes', async () => {
+			const payload = {
+				compactionStartTime: new Date('2026-01-23T09:44:49.792Z'),
+				durationMs: 3500,
+				windowStartIso: '2026-01-22T09:44:49.792Z',
+				windowEndIso: '2026-01-22T10:44:49.792Z',
+				errorCount: 3,
+				totalVersionsSeen: 25,
+				totalVersionsDeleted: 23,
+				workflowsProcessed: 3,
+			} satisfies RelayEventMap['history-compacted'];
+
+			eventService.emit('history-compacted', payload);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance compacted workflow history', {
+				workflows_processed: payload['workflowsProcessed'],
+				total_versions_seen: payload['totalVersionsSeen'],
+				total_versions_deleted: payload['totalVersionsDeleted'],
+				window_start_iso: new Date(payload['windowStartIso']),
+				window_end_iso: new Date(payload['windowEndIso']),
+				error_count: payload['errorCount'],
+				compaction_start_time_iso: payload['compactionStartTime'],
+				compaction_duration_ms: payload['durationMs'],
+				compaction_batch_delay_ms: globalConfig.workflowHistoryCompaction.batchDelayMs,
+				compaction_batch_size: globalConfig.workflowHistoryCompaction.batchSize,
+				compaction_trimming_optimizing_time_window_hours:
+					globalConfig.workflowHistoryCompaction.optimizingTimeWindowHours,
+				compaction_trimming_time_window_days:
+					globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
+			});
 		});
 	});
 });
