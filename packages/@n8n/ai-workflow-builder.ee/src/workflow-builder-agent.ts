@@ -39,16 +39,28 @@ export type TypedStateSnapshot = Omit<StateSnapshot, 'values'> & {
 };
 
 /**
+ * LLM configuration for the configurator stage.
+ * Requires both main LLM and parameter updater LLM.
+ */
+export interface ConfiguratorLLMs {
+	/** Main LLM for configurator operations */
+	main: BaseChatModel;
+	/** LLM for parameter updates */
+	parameterUpdater: BaseChatModel;
+}
+
+/**
  * Per-stage LLM configuration for the workflow builder.
  * All stages must be configured with an LLM instance.
+ * Configurator uses nested structure for sub-agent configuration.
  */
 export interface StageLLMs {
+	/** LLM for supervisor routing (can use fast model like Haiku) */
 	supervisor: BaseChatModel;
 	responder: BaseChatModel;
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
-	configurator: BaseChatModel;
-	parameterUpdater: BaseChatModel;
+	configurator: ConfiguratorLLMs;
 }
 
 export interface WorkflowBuilderAgentConfig {

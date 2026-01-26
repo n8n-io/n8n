@@ -10,7 +10,7 @@ import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45 } from '@/llm-config';
+import { anthropicClaudeSonnet45, anthropicHaiku45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import {
@@ -63,6 +63,26 @@ export class AiWorkflowBuilderService {
 		});
 	}
 
+	private static async getAnthropicHaikuModel({
+		baseUrl,
+		authHeaders = {},
+		apiKey = '-',
+	}: {
+		baseUrl?: string;
+		authHeaders?: Record<string, string>;
+		apiKey?: string;
+	} = {}): Promise<ChatAnthropic> {
+		return await anthropicHaiku45({
+			baseUrl,
+			apiKey,
+			headers: {
+				...authHeaders,
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				'anthropic-beta': 'prompt-caching-2024-07-31',
+			},
+		});
+	}
+
 	private async getApiProxyAuthHeaders(user: IUser, userMessageId: string) {
 		assert(this.client);
 
@@ -80,6 +100,7 @@ export class AiWorkflowBuilderService {
 		userMessageId: string,
 	): Promise<{
 		anthropicClaude: ChatAnthropic;
+		anthropicHaiku: ChatAnthropic;
 		tracingClient?: TracingClient;
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		authHeaders?: { Authorization: string };
@@ -92,10 +113,16 @@ export class AiWorkflowBuilderService {
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
 
-				const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
-					baseUrl: baseUrl + '/anthropic',
-					authHeaders,
-				});
+				const [anthropicClaude, anthropicHaiku] = await Promise.all([
+					AiWorkflowBuilderService.getAnthropicClaudeModel({
+						baseUrl: baseUrl + '/anthropic',
+						authHeaders,
+					}),
+					AiWorkflowBuilderService.getAnthropicHaikuModel({
+						baseUrl: baseUrl + '/anthropic',
+						authHeaders,
+					}),
+				]);
 
 				const tracingClient = new TracingClient({
 					apiKey: '-',
@@ -109,15 +136,17 @@ export class AiWorkflowBuilderService {
 					},
 				});
 
-				return { tracingClient, anthropicClaude, authHeaders };
+				return { tracingClient, anthropicClaude, anthropicHaiku, authHeaders };
 			}
 
 			// If base URL is not set, use environment variables
-			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
-				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-			});
+			const apiKey = process.env.N8N_AI_ANTHROPIC_KEY ?? '';
+			const [anthropicClaude, anthropicHaiku] = await Promise.all([
+				AiWorkflowBuilderService.getAnthropicClaudeModel({ apiKey }),
+				AiWorkflowBuilderService.getAnthropicHaikuModel({ apiKey }),
+			]);
 
-			return { anthropicClaude };
+			return { anthropicClaude, anthropicHaiku };
 		} catch (error) {
 			const errorMessage = error instanceof Error ? `: ${error.message}` : '';
 			const llmError = new LLMServiceError(`Failed to connect to LLM Provider${errorMessage}`, {
@@ -164,7 +193,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
+		const { anthropicClaude, anthropicHaiku, tracingClient, authHeaders } = await this.setupModels(
 			user,
 			userMessageId,
 		);
@@ -174,14 +203,14 @@ export class AiWorkflowBuilderService {
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
-			// Use the same model for all stages in production
+			// Use Haiku for supervisor routing (fast classification)
+			// Use Sonnet for all other stages
 			stageLLMs: {
-				supervisor: anthropicClaude,
+				supervisor: anthropicHaiku,
 				responder: anthropicClaude,
 				discovery: anthropicClaude,
 				builder: anthropicClaude,
-				configurator: anthropicClaude,
-				parameterUpdater: anthropicClaude,
+				configurator: { main: anthropicClaude, parameterUpdater: anthropicClaude },
 			},
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),

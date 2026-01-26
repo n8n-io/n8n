@@ -30,7 +30,7 @@ const MAX_INGEST_MEMORY_BYTES = 3 * 1024 * 1024 * 1024;
 export interface StageModels {
 	/** Default model for all stages */
 	default: ModelId;
-	/** Model for supervisor stage (routing decisions) */
+	/** Model for supervisor routing (can use fast model like Haiku) */
 	supervisor?: ModelId;
 	/** Model for responder stage (final user responses) */
 	responder?: ModelId;
@@ -47,8 +47,17 @@ export interface StageModels {
 }
 
 /**
+ * Resolved configurator LLMs with parameter updater.
+ */
+export interface ResolvedConfiguratorLLMs {
+	main: BaseChatModel;
+	parameterUpdater: BaseChatModel;
+}
+
+/**
  * Resolved LLM instances for each stage.
  * All fields are populated (using default model as fallback).
+ * Configurator uses nested structure matching StageLLMs.
  */
 export interface ResolvedStageLLMs {
 	default: BaseChatModel;
@@ -56,8 +65,7 @@ export interface ResolvedStageLLMs {
 	responder: BaseChatModel;
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
-	configurator: BaseChatModel;
-	parameterUpdater: BaseChatModel;
+	configurator: ResolvedConfiguratorLLMs;
 	judge: BaseChatModel;
 }
 
@@ -96,11 +104,14 @@ export async function setupLLM(modelId: ModelId = DEFAULT_MODEL): Promise<BaseCh
 export async function resolveStageModels(stageModels: StageModels): Promise<ResolvedStageLLMs> {
 	const defaultLLM = await setupLLM(stageModels.default);
 
-	// For stages without specific model, use default
+	// For configurator stages, fall back appropriately
 	// For parameter updater, fall back to configurator if not specified
-	const configuratorLLM = stageModels.configurator
+	const configuratorMainLLM = stageModels.configurator
 		? await setupLLM(stageModels.configurator)
 		: defaultLLM;
+	const parameterUpdaterLLM = stageModels.parameterUpdater
+		? await setupLLM(stageModels.parameterUpdater)
+		: configuratorMainLLM;
 
 	return {
 		default: defaultLLM,
@@ -108,10 +119,10 @@ export async function resolveStageModels(stageModels: StageModels): Promise<Reso
 		responder: stageModels.responder ? await setupLLM(stageModels.responder) : defaultLLM,
 		discovery: stageModels.discovery ? await setupLLM(stageModels.discovery) : defaultLLM,
 		builder: stageModels.builder ? await setupLLM(stageModels.builder) : defaultLLM,
-		configurator: configuratorLLM,
-		parameterUpdater: stageModels.parameterUpdater
-			? await setupLLM(stageModels.parameterUpdater)
-			: configuratorLLM,
+		configurator: {
+			main: configuratorMainLLM,
+			parameterUpdater: parameterUpdaterLLM,
+		},
 		judge: stageModels.judge ? await setupLLM(stageModels.judge) : defaultLLM,
 	};
 }
@@ -227,7 +238,6 @@ export function createAgent(options: CreateAgentOptions): WorkflowBuilderAgent {
 			discovery: llms.discovery,
 			builder: llms.builder,
 			configurator: llms.configurator,
-			parameterUpdater: llms.parameterUpdater,
 		},
 		checkpointer: new MemorySaver(),
 		tracer,

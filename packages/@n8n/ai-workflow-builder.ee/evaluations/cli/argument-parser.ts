@@ -46,7 +46,7 @@ export interface EvaluationArgs {
 	model: ModelId;
 	/** Model for LLM judge evaluation */
 	judgeModel?: ModelId;
-	/** Model for supervisor stage */
+	/** Model for supervisor routing (can use fast model like Haiku) */
 	supervisorModel?: ModelId;
 	/** Model for responder stage */
 	responderModel?: ModelId;
@@ -263,7 +263,7 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		key: 'supervisorModel',
 		kind: 'string',
 		group: 'model',
-		desc: 'Model for supervisor stage',
+		desc: 'Model for supervisor routing (can use fast model like Haiku)',
 	},
 	'--responder-model': {
 		key: 'responderModel',

@@ -164,8 +164,8 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	});
 	const compiledConfigurator = configuratorSubgraph.create({
 		parsedNodeTypes,
-		llm: stageLLMs.configurator,
-		llmParameterUpdater: stageLLMs.parameterUpdater,
+		llm: stageLLMs.configurator.main,
+		llmParameterUpdater: stageLLMs.configurator.parameterUpdater,
 		logger,
 		instanceUrl,
 		featureFlags,
