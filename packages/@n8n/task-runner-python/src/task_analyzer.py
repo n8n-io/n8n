@@ -1,5 +1,6 @@
 import ast
 import hashlib
+import re
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
@@ -12,6 +13,7 @@ from src.constants import (
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_NAME_MANGLED_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
+    ERROR_DANGEROUS_FORMAT_STRING,
     BLOCKED_ATTRIBUTES,
     BLOCKED_NAMES,
 )
@@ -71,7 +73,7 @@ class SecurityValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
-        """Detect calls to __import__() that could bypass security restrictions."""
+        """Detect calls to __import__() and .format() that could bypass security restrictions."""
 
         is_import_call = (
             # __import__()
@@ -96,6 +98,15 @@ class SecurityValidator(ast.NodeVisitor):
                 self._validate_import(module_name, node.lineno)
             else:
                 self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORT)
+
+        # "string".format()
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr == "format"
+            and isinstance(node.func.value, ast.Constant)
+            and isinstance(node.func.value.value, str)
+        ):
+            self._check_format_string(node.func.value.value, node.lineno)
 
         self.generic_visit(node)
 
@@ -127,6 +138,30 @@ class SecurityValidator(ast.NodeVisitor):
                 )
 
         self.generic_visit(node)
+
+    def _check_format_string(self, s: str, lineno: int) -> None:
+        """Check if a string contains format patterns that access blocked attributes."""
+
+        format_field_pattern = re.compile(r"\{([^}]*)\}")
+
+        for match in format_field_pattern.finditer(s):
+            field = match.group(1)
+
+            # attribute access
+            for attr_match in re.finditer(r"\.(\w+)", field):
+                attr = attr_match.group(1)
+                if attr in BLOCKED_ATTRIBUTES or attr in BLOCKED_NAMES:
+                    self._add_violation(
+                        lineno, ERROR_DANGEROUS_FORMAT_STRING.format(attr=attr)
+                    )
+
+            # subscript access
+            for subscript_match in re.finditer(r"\[(['\"]?)(\w+)\1\]", field):
+                key = subscript_match.group(2)
+                if key in BLOCKED_ATTRIBUTES or key in BLOCKED_NAMES:
+                    self._add_violation(
+                        lineno, ERROR_DANGEROUS_FORMAT_STRING.format(attr=key)
+                    )
 
     # ========== Validation ==========
 

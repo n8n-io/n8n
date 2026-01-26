@@ -187,6 +187,79 @@ class TestDynamicImportDetection(TestTaskAnalyzer):
             analyzer.validate(code)
 
 
+class TestFormatStringAttacks(TestTaskAnalyzer):
+    def test_format_string_builtins_access_blocked(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
+        exploit_attempts = [
+            '"{.__builtins__}".format(print)',
+            '"{0.__builtins__}".format(print)',
+            '"{x.__builtins__}".format(x=print)',
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "__builtins__" in exc_info.value.description
+
+    def test_format_string_import_access_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            '"{.__builtins__[__import__]}".format(print)',
+            '"{[__import__]}".format(__builtins__)',
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "disallowed" in exc_info.value.description.lower()
+
+    def test_format_string_class_access_blocked(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            '"{.__class__}".format(obj)',
+            '"{.__class__.__mro__}".format(obj)',
+            '"{.__globals__}".format(fn)',
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "disallowed" in exc_info.value.description.lower()
+
+    def test_safe_format_strings_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe_format_strings = [
+            '"Hello {}".format(name)',
+            '"{0} {1}".format(a, b)',
+            '"{name}".format(name="world")',
+            '"{.value}".format(obj)',
+            '"{[key]}".format(data)',
+            '"{:.2f}".format(3.14159)',
+        ]
+
+        for code in safe_format_strings:
+            analyzer.validate(code)
+
+    def test_unformatted_strings_with_patterns_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe_code = [
+            'docs = "{.__class__}"',
+            'msg = "{.__builtins__}"',
+            'print("{.__globals__}")',
+        ]
+
+        for code in safe_code:
+            analyzer.validate(code)
+
+    def test_fstring_blocked_attributes_detected(self, analyzer: TaskAnalyzer) -> None:
+        exploit_attempts = [
+            'f"{obj.__class__}"',
+            'f"{fn.__globals__}"',
+        ]
+
+        for code in exploit_attempts:
+            with pytest.raises(SecurityViolationError) as exc_info:
+                analyzer.validate(code)
+            assert "disallowed" in exc_info.value.description.lower()
+
+
 class TestAllowAll(TestTaskAnalyzer):
     def test_allow_all_bypasses_validation(self) -> None:
         security_config = SecurityConfig(
