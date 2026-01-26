@@ -16,6 +16,7 @@ export const MAX_FLATTENED_SEARCH_RESULTS_PER_PROVIDER = 10;
 export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	openai: 'OpenAI',
 	anthropic: 'Anthropic',
+	atlasCloud: 'Atlas Cloud',
 	google: 'Google',
 	azureOpenAi: 'Azure (API Key)',
 	azureEntraId: 'Azure (Entra ID)',
