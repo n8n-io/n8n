@@ -17,15 +17,7 @@ import { createProject } from './core/project-loader.js';
 import { RuleRunner } from './core/rule-runner.js';
 import { toJSON, toConsole, printFixResults } from './core/reporter.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
-import {
-	InventoryAnalyzer,
-	formatInventoryConsole,
-	formatInventoryJSON,
-	formatInventoryMarkdown,
-	formatListConsole,
-	formatDescribeConsole,
-	formatTestDataConsole,
-} from './core/inventory-analyzer.js';
+import { InventoryAnalyzer, formatInventoryJSON } from './core/inventory-analyzer.js';
 import {
 	ImpactAnalyzer,
 	formatImpactConsole,
@@ -58,7 +50,6 @@ interface CliOptions {
 	rule?: string;
 	files?: string[];
 	json: boolean;
-	markdown: boolean;
 	verbose: boolean;
 	fix: boolean;
 	write: boolean;
@@ -70,25 +61,16 @@ interface CliOptions {
 	baseRef?: string;
 	skipRules: boolean;
 	skipTypecheck: boolean;
+	targetBranch?: string;
+	maxDiffLines?: number;
+	testCommand?: string;
 	// Impact-specific options
 	testList: boolean;
 	// Method-impact specific options
 	method?: string;
 	methodIndex: boolean;
-	// Inventory-specific options
-	listPages: boolean;
-	listComponents: boolean;
-	listFlows: boolean;
-	listServices: boolean;
-	listComposables: boolean;
-	describe?: string;
-	showTestData: boolean;
 	// Rule-specific options
 	allowInExpect: boolean;
-	// Extended TCR options
-	targetBranch?: string;
-	maxDiffLines?: number;
-	testCommand?: string;
 }
 
 function parseArgs(): CliOptions {
@@ -120,7 +102,6 @@ function parseArgs(): CliOptions {
 		rule: undefined,
 		files: [],
 		json: false,
-		markdown: false,
 		verbose: false,
 		fix: false,
 		write: false,
@@ -131,85 +112,41 @@ function parseArgs(): CliOptions {
 		baseRef: undefined,
 		skipRules: false,
 		skipTypecheck: false,
-		testList: false,
-		method: undefined,
-		methodIndex: false,
-		listPages: false,
-		listComponents: false,
-		listFlows: false,
-		listServices: false,
-		listComposables: false,
-		describe: undefined,
-		showTestData: false,
-		allowInExpect: false,
 		targetBranch: undefined,
 		maxDiffLines: undefined,
 		testCommand: undefined,
+		testList: false,
+		method: undefined,
+		methodIndex: false,
+		allowInExpect: false,
 	};
 
 	for (let i = startIdx; i < args.length; i++) {
 		const arg = args[i];
-		if (arg === '--help' || arg === '-h') {
-			options.help = true;
-		} else if (arg === '--json') {
-			options.json = true;
-		} else if (arg === '--markdown' || arg === '--md') {
-			options.markdown = true;
-		} else if (arg === '--verbose' || arg === '-v') {
-			options.verbose = true;
-		} else if (arg === '--fix') {
-			options.fix = true;
-		} else if (arg === '--write') {
-			options.write = true;
-		} else if (arg === '--list' || arg === '-l') {
-			options.list = true;
-		} else if (arg === '--execute' || arg === '-x') {
-			options.execute = true;
-		} else if (arg === '--skip-rules') {
-			options.skipRules = true;
-		} else if (arg === '--skip-typecheck') {
-			options.skipTypecheck = true;
-		} else if (arg === '--test-list') {
-			options.testList = true;
-		} else if (arg.startsWith('--config=')) {
-			options.config = arg.slice(9);
-		} else if (arg.startsWith('--rule=')) {
-			options.rule = arg.slice(7);
-		} else if (arg.startsWith('--file=')) {
-			options.files?.push(arg.slice(7));
-		} else if (arg.startsWith('--files=')) {
-			options.files?.push(...arg.slice(8).split(','));
-		} else if (arg.startsWith('--message=') || arg.startsWith('-m=')) {
-			options.message = arg.includes('=') ? arg.split('=').slice(1).join('=') : undefined;
-		} else if (arg.startsWith('--base=')) {
-			options.baseRef = arg.slice(7);
-		} else if (arg.startsWith('--method=')) {
-			options.method = arg.slice(9);
-		} else if (arg === '--index') {
-			options.methodIndex = true;
-		} else if (arg === '--list-pages') {
-			options.listPages = true;
-		} else if (arg === '--list-components') {
-			options.listComponents = true;
-		} else if (arg === '--list-flows') {
-			options.listFlows = true;
-		} else if (arg.startsWith('--describe=')) {
-			options.describe = arg.slice(11);
-		} else if (arg === '--test-data') {
-			options.showTestData = true;
-		} else if (arg === '--allow-in-expect') {
-			options.allowInExpect = true;
-		} else if (arg === '--list-services') {
-			options.listServices = true;
-		} else if (arg === '--list-composables') {
-			options.listComposables = true;
-		} else if (arg.startsWith('--target-branch=')) {
-			options.targetBranch = arg.slice(16);
-		} else if (arg.startsWith('--max-diff-lines=')) {
+		if (arg === '--help' || arg === '-h') options.help = true;
+		else if (arg === '--json') options.json = true;
+		else if (arg === '--verbose' || arg === '-v') options.verbose = true;
+		else if (arg === '--fix') options.fix = true;
+		else if (arg === '--write') options.write = true;
+		else if (arg === '--list' || arg === '-l') options.list = true;
+		else if (arg === '--execute' || arg === '-x') options.execute = true;
+		else if (arg === '--skip-rules') options.skipRules = true;
+		else if (arg === '--skip-typecheck') options.skipTypecheck = true;
+		else if (arg === '--test-list') options.testList = true;
+		else if (arg === '--index') options.methodIndex = true;
+		else if (arg === '--allow-in-expect') options.allowInExpect = true;
+		else if (arg.startsWith('--config=')) options.config = arg.slice(9);
+		else if (arg.startsWith('--rule=')) options.rule = arg.slice(7);
+		else if (arg.startsWith('--file=')) options.files?.push(arg.slice(7));
+		else if (arg.startsWith('--files=')) options.files?.push(...arg.slice(8).split(','));
+		else if (arg.startsWith('--message=') || arg.startsWith('-m='))
+			options.message = arg.split('=').slice(1).join('=');
+		else if (arg.startsWith('--base=')) options.baseRef = arg.slice(7);
+		else if (arg.startsWith('--method=')) options.method = arg.slice(9);
+		else if (arg.startsWith('--target-branch=')) options.targetBranch = arg.slice(16);
+		else if (arg.startsWith('--max-diff-lines='))
 			options.maxDiffLines = parseInt(arg.slice(17), 10);
-		} else if (arg.startsWith('--test-command=')) {
-			options.testCommand = arg.slice(15);
-		}
+		else if (arg.startsWith('--test-command=')) options.testCommand = arg.slice(15);
 	}
 
 	return options;
@@ -259,137 +196,50 @@ For command-specific help:
 
 function showInventoryHelp(): void {
 	console.log(`
-Inventory - Show codebase structure
+Inventory - Generate JSON inventory of codebase structure
 
-Usage:
-  playwright-janitor inventory [options]
+Usage: playwright-janitor inventory
 
-Shows a complete inventory of:
-  - Page objects and their methods
-  - Components and their methods
-  - Flows/Composables and their methods
-  - Test files and test cases
-  - Test data files
+Outputs JSON containing: pages, components, composables, services,
+fixtures, helpers, factories, and test data files.
 
-Options:
-  --json               Output as JSON
-  --markdown, --md     Output as Markdown
-  --verbose, -v        Include method signatures
-  --list-pages         List only page objects
-  --list-components    List only components
-  --list-flows         List only flows/composables
-  --list-services      List only services
-  --list-composables   List only composables (alias for --list-flows)
-  --describe=<Class>   Show detailed info about a class
-  --test-data          Show test data files
-  --help, -h           Show this help
-
-Examples:
-  playwright-janitor inventory                        # Console summary
-  playwright-janitor inventory --json                 # JSON for AI parsing
-  playwright-janitor inventory --md                   # Markdown documentation
-  playwright-janitor inventory --list-pages           # List all pages
-  playwright-janitor inventory --list-services        # List all services
-  playwright-janitor inventory --describe=CanvasPage  # Detailed class info
-  playwright-janitor inventory --test-data            # Show test data files
+Example: playwright-janitor inventory > inventory.json
 `);
 }
 
 function showImpactHelp(): void {
 	console.log(`
-Impact - Analyze which tests are affected by file changes
+Impact - Find affected tests for changed files
 
-Usage:
-  playwright-janitor impact [options]
-
-Given changed files, determines which tests need to run.
-If no files specified, uses git status to find changed files.
-
-Options:
-  --file=<path>      Specify a changed file
-  --files=<p1,p2>    Specify multiple changed files
-  --json             Output as JSON
-  --test-list        Output just test file paths (for piping to playwright)
-  --verbose, -v      Show dependency graph
-  --help, -h         Show this help
-
-Examples:
-  playwright-janitor impact                           # Impact of git changes
-  playwright-janitor impact --file=pages/CanvasPage.ts
-  playwright-janitor impact --test-list | xargs npx playwright test
+Options: --file=<path>, --files=<p1,p2>, --json, --test-list, --verbose
+Example: playwright-janitor impact --test-list | xargs npx playwright test
 `);
 }
 
 function showMethodImpactHelp(): void {
 	console.log(`
-Method Impact - Find tests that use a specific method
+Method Impact - Find tests using a specific method
 
-Usage:
-  playwright-janitor method-impact [options]
-
-Finds all tests that call a specific page object method.
-Uses the fixture pattern (n8n.canvas.addNode) to map property
-access to actual page object classes.
-
-Options:
-  --method=<Class.method>  Method to analyze (e.g., CanvasPage.addNode)
-  --index                  Build complete method usage index
-  --json                   Output as JSON
-  --test-list              Output just test file paths (for piping to playwright)
-  --verbose, -v            Show line-by-line usages
-  --help, -h               Show this help
-
-Examples:
-  playwright-janitor method-impact --method=CanvasPage.addNode
-  playwright-janitor method-impact --method=WorkflowsPage.create --test-list
-  playwright-janitor method-impact --method=CanvasPage.addNode --verbose
-  playwright-janitor method-impact --index                    # Full usage index
-  playwright-janitor method-impact --index --json             # JSON for CI
+Options: --method=<Class.method>, --index, --json, --test-list, --verbose
+Example: playwright-janitor method-impact --method=CanvasPage.addNode
 `);
 }
 
 function showTcrHelp(): void {
 	console.log(`
-TCR (Test && Commit || Revert) - AI-friendly atomic change workflow
-
-Usage:
-  playwright-janitor tcr [options]
-
-How it works:
-  1. Detect changed files (git status)
-  2. Run janitor rules on changed files
-  3. Run typecheck
-  4. Analyze which methods changed (AST diff)
-  5. Find tests affected by those changes
-  6. Run ONLY the affected tests
-  7. If all pass → commit; if any fail → revert
+TCR - Test && Commit || Revert workflow
 
 Options:
   --execute, -x           Actually commit/revert (default: dry run)
-  --message=<msg>         Custom commit message
-  --base=<ref>            Git ref to compare against (default: HEAD)
-  --target-branch=<name>  Branch to diff against (default: working dir)
-  --max-diff-lines=<n>    Skip if total diff exceeds N lines
-  --test-command=<cmd>    Command to run tests (test files appended)
-  --skip-rules            Skip janitor rules check
+  --message=<msg>         Commit message
+  --target-branch=<name>  Branch to diff against
+  --max-diff-lines=<n>    Skip if diff exceeds N lines
+  --test-command=<cmd>    Test command (files appended)
+  --skip-rules            Skip janitor rules
   --skip-typecheck        Skip typecheck
-  --json                  Output as JSON
-  --verbose, -v           Detailed output
-  --help, -h              Show this help
+  --json, --verbose
 
-Examples:
-  playwright-janitor tcr                              # Dry run
-  playwright-janitor tcr --execute                    # Run and commit/revert
-  playwright-janitor tcr -x -m="Fix login"            # Execute with message
-  playwright-janitor tcr --target-branch=main         # Diff against main branch
-  playwright-janitor tcr --test-command="pnpm test"   # Custom test command
-
-AI-Assisted Loop:
-  1. Run 'playwright-janitor --json' to get violations
-  2. Fix ONE violation
-  3. Run 'playwright-janitor tcr --execute'
-  4. If committed, repeat from step 1
-  5. If reverted, try a different approach
+Example: playwright-janitor tcr --execute -m="Fix bug"
 `);
 }
 
@@ -452,105 +302,12 @@ async function runInventory(options: CliOptions): Promise<void> {
 		return;
 	}
 
-	// Load configuration
 	const config = await loadConfig(options.config);
 	setConfig(config);
-
-	// Create project
 	const { project } = createProject(config.rootDir);
-
-	// Generate inventory
 	const analyzer = new InventoryAnalyzer(project);
-
-	// Handle --describe option
-	if (options.describe) {
-		const classInfo = analyzer.describe(options.describe);
-		if (classInfo) {
-			if (options.json) {
-				console.log(JSON.stringify(classInfo, null, 2));
-			} else {
-				formatDescribeConsole(classInfo);
-			}
-		} else {
-			console.error(`Class not found: ${options.describe}`);
-			process.exit(1);
-		}
-		return;
-	}
-
-	// Handle --list-* options
-	if (options.listPages) {
-		const items = analyzer.listCategory('pages');
-		if (options.json) {
-			console.log(JSON.stringify(items, null, 2));
-		} else {
-			formatListConsole(items, 'Pages');
-		}
-		return;
-	}
-
-	if (options.listComponents) {
-		const items = analyzer.listCategory('components');
-		if (options.json) {
-			console.log(JSON.stringify(items, null, 2));
-		} else {
-			formatListConsole(items, 'Components');
-		}
-		return;
-	}
-
-	if (options.listFlows) {
-		const items = analyzer.listCategory('composables');
-		if (options.json) {
-			console.log(JSON.stringify(items, null, 2));
-		} else {
-			formatListConsole(items, 'Flows');
-		}
-		return;
-	}
-
-	if (options.listServices) {
-		const items = analyzer.listCategory('services');
-		if (options.json) {
-			console.log(JSON.stringify(items, null, 2));
-		} else {
-			formatListConsole(items, 'Services');
-		}
-		return;
-	}
-
-	if (options.listComposables) {
-		const items = analyzer.listCategory('composables');
-		if (options.json) {
-			console.log(JSON.stringify(items, null, 2));
-		} else {
-			formatListConsole(items, 'Composables');
-		}
-		return;
-	}
-
-	// Handle --test-data option
-	if (options.showTestData) {
-		const report = analyzer.generate();
-		if (options.json) {
-			console.log(JSON.stringify(report.testData, null, 2));
-		} else {
-			formatTestDataConsole(report.testData);
-		}
-		return;
-	}
-
-	// Full inventory
 	const report = analyzer.generate();
-
-	// Output
-	if (options.json) {
-		console.log(formatInventoryJSON(report));
-	} else if (options.markdown) {
-		console.log(formatInventoryMarkdown(report));
-	} else {
-		formatInventoryConsole(report, options.verbose);
-	}
+	console.log(formatInventoryJSON(report));
 }
 
 async function runImpact(options: CliOptions): Promise<void> {

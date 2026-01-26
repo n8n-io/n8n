@@ -8,8 +8,8 @@
 import { type Project, type SourceFile } from 'ts-morph';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getConfig } from '../config.js';
 import { getRootDir, findFilesRecursive } from '../utils/paths.js';
+import { FacadeResolver } from './facade-resolver.js';
 
 export interface ImpactResult {
 	changedFiles: string[];
@@ -22,64 +22,12 @@ export interface ImpactResult {
  * Analyze the impact of file changes - what tests need to run?
  */
 export class ImpactAnalyzer {
-	private facades: Set<string>;
 	private root: string;
-	/** Map from class type name to property name(s) in facade */
-	private facadePropertyMap: Map<string, string[]>;
+	private facade: FacadeResolver;
 
 	constructor(private project: Project) {
-		const config = getConfig();
 		this.root = getRootDir();
-
-		// Normalize facade path to absolute
-		const facadePath = path.join(this.root, config.facade.file);
-		this.facades = new Set([facadePath]);
-
-		// Build mapping of class types to their property names in the facade
-		this.facadePropertyMap = this.buildFacadePropertyMap(facadePath);
-	}
-
-	/**
-	 * Build a map from class type name to property name(s) in the facade
-	 * e.g., "CanvasPage" → ["canvas"]
-	 */
-	private buildFacadePropertyMap(facadePath: string): Map<string, string[]> {
-		const map = new Map<string, string[]>();
-		const facadeFile = this.project.getSourceFile(facadePath);
-
-		if (!facadeFile) {
-			return map;
-		}
-
-		const config = getConfig();
-		const facadeClass = facadeFile.getClass(config.facade.className);
-
-		if (!facadeClass) {
-			return map;
-		}
-
-		// Read each property and map its type to its name
-		for (const prop of facadeClass.getProperties()) {
-			const propName = prop.getName();
-			const propType = prop.getType();
-			const typeName = this.extractTypeName(propType.getText());
-
-			if (typeName && !config.facade.excludeTypes.includes(typeName)) {
-				const existing = map.get(typeName) || [];
-				existing.push(propName);
-				map.set(typeName, existing);
-			}
-		}
-
-		return map;
-	}
-
-	/**
-	 * Extract simple type name from potentially complex type string
-	 */
-	private extractTypeName(typeText: string): string {
-		// Remove import() paths: import("./CanvasPage").CanvasPage → CanvasPage
-		return typeText.replace(/import\([^)]+\)\./g, '');
+		this.facade = new FacadeResolver(project);
 	}
 
 	/**
@@ -145,8 +93,8 @@ export class ImpactAnalyzer {
 				const className = classDecl.getName();
 				if (className) {
 					// Look up actual property name(s) from facade
-					const facadeProps = this.facadePropertyMap.get(className);
-					if (facadeProps) {
+					const facadeProps = this.facade.getPropertiesForClass(className);
+					if (facadeProps.length > 0) {
 						names.push(...facadeProps);
 					} else {
 						// Fallback to camelCase conversion if not in facade
@@ -184,7 +132,7 @@ export class ImpactAnalyzer {
 			const depPath = dep.getFilePath();
 
 			// If we hit a facade, stop import tracing and switch to property search
-			if (this.facades.has(depPath)) {
+			if (this.facade.isFacade(depPath)) {
 				// Find tests that actually USE the property, not just import the facade
 				const testsUsingProperty = this.findTestsUsingProperties(propertyNames);
 				dependents.push(...testsUsingProperty);

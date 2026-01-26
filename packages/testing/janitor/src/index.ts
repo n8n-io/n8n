@@ -20,10 +20,6 @@
  * ```
  */
 
-// ============================================================================
-// Configuration
-// ============================================================================
-
 export {
 	defineConfig,
 	getConfig,
@@ -35,49 +31,31 @@ export {
 	type DefineConfigInput,
 } from './config.js';
 
-// ============================================================================
-// Types - Core
-// ============================================================================
-
 export type {
-	// Severity & identification
 	Severity,
 	BuiltInRuleId,
 	RuleId,
-	// Rule configuration
 	RuleSettings,
 	RuleSettingsMap,
 	RuleConfig,
-	// Run options
 	RunOptions,
-	// Violations
 	Violation,
-	// Fix data (discriminated union)
 	FixData,
 	MethodFixData,
 	PropertyFixData,
 	ClassFixData,
 	EditFixData,
-	// Fix results
 	FixAction,
 	FixResult,
-	// Report
 	RuleResult,
 	ReportSummary,
 	JanitorReport,
-	// Rule interface
 	Rule,
-	// Pattern types
 	FilePatterns,
 	FacadeConfig,
 } from './types.js';
 
-// Type guards for FixData
 export { isMethodFix, isPropertyFix, isClassFix, isEditFix } from './types.js';
-
-// ============================================================================
-// Types - ts-morph re-exports (for custom rule authors)
-// ============================================================================
 
 export type {
 	Project,
@@ -91,11 +69,8 @@ export type {
 
 export { SyntaxKind } from './types.js';
 
-// ============================================================================
-// Core
-// ============================================================================
-
 export { RuleRunner } from './core/rule-runner.js';
+export { FacadeResolver, extractTypeName, type FacadeMapping } from './core/facade-resolver.js';
 export {
 	createProject,
 	createInMemoryProject,
@@ -104,10 +79,6 @@ export {
 	type ProjectContext,
 } from './core/project-loader.js';
 export { toJSON, toConsole, printFixResults } from './core/reporter.js';
-
-// ============================================================================
-// Rules
-// ============================================================================
 
 export {
 	BaseRule,
@@ -120,10 +91,6 @@ export {
 	DeduplicationRule,
 	TestDataHygieneRule,
 } from './rules/index.js';
-
-// ============================================================================
-// Utils - AST Helpers
-// ============================================================================
 
 export {
 	LOCATOR_METHODS,
@@ -140,10 +107,6 @@ export {
 	truncateText,
 } from './utils/ast-helpers.js';
 
-// ============================================================================
-// Utils - Path Helpers
-// ============================================================================
-
 export {
 	getRootDir,
 	resolvePath,
@@ -156,10 +119,6 @@ export {
 	isFlowFile,
 	isTestFile,
 } from './utils/paths.js';
-
-// ============================================================================
-// TCR (Test && Commit || Revert)
-// ============================================================================
 
 export {
 	TcrExecutor,
@@ -199,12 +158,7 @@ export {
 
 export {
 	InventoryAnalyzer,
-	formatInventoryConsole,
 	formatInventoryJSON,
-	formatInventoryMarkdown,
-	formatListConsole,
-	formatDescribeConsole,
-	formatTestDataConsole,
 	type MethodInfo,
 	type ParameterInfo,
 	type PropertyInfo,
@@ -220,10 +174,6 @@ export {
 	type InventoryReport,
 } from './core/inventory-analyzer.js';
 
-// ============================================================================
-// High-level API
-// ============================================================================
-
 import { setConfig, type JanitorConfig } from './config.js';
 import { createProject } from './core/project-loader.js';
 import { RuleRunner } from './core/rule-runner.js';
@@ -237,59 +187,22 @@ import { DeduplicationRule } from './rules/deduplication.rule.js';
 import { TestDataHygieneRule } from './rules/test-data-hygiene.rule.js';
 import type { JanitorReport, RunOptions } from './types.js';
 
-/**
- * Create a rule runner with all default rules registered.
- *
- * @example
- * ```typescript
- * const runner = createDefaultRunner();
- * runner.disableRule('dead-code');
- * const report = runner.run(project, rootDir);
- * ```
- */
 export function createDefaultRunner(): RuleRunner {
 	const runner = new RuleRunner();
-
-	// Architecture rules
 	runner.registerRule(new BoundaryProtectionRule());
 	runner.registerRule(new ScopeLockdownRule());
 	runner.registerRule(new SelectorPurityRule());
 	runner.registerRule(new NoPageInFlowRule());
 	runner.registerRule(new ApiPurityRule());
-
-	// Code quality rules
 	runner.registerRule(new DeadCodeRule());
 	runner.registerRule(new DeduplicationRule());
 	runner.registerRule(new TestDataHygieneRule());
-
 	return runner;
 }
 
-/**
- * Run analysis with the given configuration.
- * This is the simplest way to run the janitor.
- *
- * @example
- * ```typescript
- * import { runAnalysis, toConsole } from '@n8n/playwright-janitor';
- * import config from './janitor.config.js';
- *
- * const report = runAnalysis(config);
- * toConsole(report);
- *
- * if (report.summary.totalViolations > 0) {
- *   process.exit(1);
- * }
- * ```
- */
 export function runAnalysis(config: JanitorConfig, options?: RunOptions): JanitorReport {
-	// Set the global config
 	setConfig(config);
-
-	// Create project and runner
 	const { project, root } = createProject(config.rootDir);
 	const runner = createDefaultRunner();
-
-	// Run analysis
 	return runner.run(project, root, options);
 }
