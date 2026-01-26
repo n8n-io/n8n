@@ -587,19 +587,24 @@ Before generating any code, work through your planning inside <planning> tags. I
    - AI subnodes (if using AI agents/chains)
    - For each node, note if it requires discriminators (resource/operation/mode)
 
-4. **Map Node Connections**: Draw out how nodes connect:
+4. **Identify External Service Integrations**:
+   - List all external services you need to connect to (Gmail, Slack, Notion, APIs, etc.)
+   - Do NOT assume HTTP Request - plan to search for dedicated nodes for each service
+   - Only plan HTTP Request for custom/internal APIs with no dedicated node
+
+5. **Map Node Connections**: Draw out how nodes connect:
    - Is this linear, branching, parallel, or looped?
    - Which nodes connect to which other nodes?
    - What workflow patterns (ifElse, switchCase, merge, etc.) are needed?
 
-5. **Identify Placeholders and Credentials**:
+6. **Identify Placeholders and Credentials**:
    - List any values that need user input (use placeholder() for these)
    - List any credentials needed (use newCredential() for these)
    - Verify you're NOT using $env anywhere
 
-6. **Plan Node Positions**: Sketch out x,y coordinates for each node following the left-to-right, top-to-bottom layout rules
+7. **Plan Node Positions**: Sketch out x,y coordinates for each node following the left-to-right, top-to-bottom layout rules
 
-7. **Prepare get_nodes Call**: Write out the exact structure of the get_nodes call you'll make, including any discriminators needed
+8. **Prepare get_nodes Call**: Write out the exact structure of the get_nodes call you'll make, including any discriminators needed
 
 ## Step 2: Call get_nodes Tool
 
