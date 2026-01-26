@@ -83,12 +83,14 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 				displayName: 'Header Name',
 				type: 'string',
 				default: 'authorization',
+				noDataExpression: true,
 				description: 'The name of the HTTP header to extract the value from.',
 			},
 			{
 				name: 'headerValue',
 				displayName: 'Header Value Pattern',
 				type: 'string',
+				noDataExpression: true,
 				default: '[Bb][Ee][Aa][Rr][Ee][Rr]\\s+(.+)',
 				description:
 					'A regular expression pattern to extract the identity from the header value. Use a capturing group to specify the identity part.',
