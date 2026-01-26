@@ -1,8 +1,4 @@
 import { test, expect, chatHubTestConfig } from './fixtures';
-import {
-	INSTANCE_MEMBER_CREDENTIALS,
-	INSTANCE_OWNER_CREDENTIALS,
-} from '../../../config/test-users';
 import { ChatHubChatPage } from '../../../pages/ChatHubChatPage';
 import { CredentialModal } from '../../../pages/components/CredentialModal';
 
@@ -13,10 +9,9 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 
-		await expect(page.getGreetingMessage()).toHaveText(
-			`Hello, ${INSTANCE_OWNER_CREDENTIALS.firstName}!`,
-		);
+		await expect(page.getGreetingMessage()).toContainText('Start a chat with');
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // pre-selected
 
 		await page.getChatInput().fill('Hello');
@@ -35,10 +30,9 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const credModal = new CredentialModal(n8n.page.getByTestId('editCredential-modal'));
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 
-		await expect(page.getGreetingMessage()).toHaveText(
-			`Hello, ${INSTANCE_MEMBER_CREDENTIALS[0].firstName}!`,
-		);
+		await expect(page.getGreetingMessage()).toContainText('Select a model to start chatting');
 
 		await page.getModelSelectorButton().click();
 		await n8n.page.waitForTimeout(500); // to reliably hover intended menu item
@@ -62,6 +56,7 @@ test.describe('Basic conversation @capability:proxy', () => {
 		const page = new ChatHubChatPage(n8n.page);
 
 		await n8n.navigate.toChatHub();
+		await page.dismissWelcomeScreen();
 		await expect(page.getModelSelectorButton()).toContainText(/claude/i); // auto-select a model
 
 		// STEP: send first prompt

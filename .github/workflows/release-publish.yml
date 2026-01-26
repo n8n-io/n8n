@@ -179,19 +179,57 @@ jobs:
       - name: Trigger a release note
         run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{ needs.publish-to-npm.outputs.release }}"}'
 
-  # merge-back-into-master:
-  #   name: Merge back into master
-  #   needs: [publish-to-npm, create-github-release]
-  #   if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'release:patch') }}
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-  # v4.1.1
-  #         fetch-depth: 0
-  #     - run: |
-  #         git checkout --track origin/master
-  #         git config user.name "github-actions[bot]"
-  #         git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-  #         git merge --ff n8n@${{ needs.publish-to-npm.outputs.release }}
-  #         git push origin master
-  #         git push origin :${{github.event.pull_request.base.ref}}
+  merge-release-tag-to-master:
+    name: Merge release tag to master
+    needs: [publish-to-npm, create-github-release]
+    if: |
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'release:minor') &&
+      !contains(needs.publish-to-npm.outputs.release, '-rc.')
+    runs-on: ubuntu-latest
+    environment: minor-release-tag-merge
+    env:
+      VERSION: ${{ needs.publish-to-npm.outputs.release }}
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.RELEASE_TAG_MERGE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_TAG_MERGE_PRIVATE_KEY }}
+          skip-token-revoke: false
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: master
+          fetch-depth: 1
+          token: ${{ steps.generate_token.outputs.token }}
+
+      - name: Verify release tag exists
+        run: |
+          if ! git ls-remote --tags origin "refs/tags/n8n@${VERSION}" | grep -q .; then
+            echo "::error::Tag n8n@${VERSION} not found on remote"
+            exit 1
+          fi
+
+      - name: Fetch release tag
+        run: git fetch origin "refs/tags/n8n@${VERSION}:refs/tags/n8n@${VERSION}"
+
+      - name: Merge release tag to master
+        run: |
+          git config user.name "n8n-release-tag-merge[bot]"
+          git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
+          git merge --ff-only "n8n@${VERSION}"
+
+      - name: Push to master
+        run: git push origin HEAD:master
+
+      - name: Notify Slack on failure
+        if: failure()
+        uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: ${{ job.status }}
+          channel: '#updates-and-product-releases'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: |
+            <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| Release tag merge to master failed for n8n@${{ needs.publish-to-npm.outputs.release }} >
