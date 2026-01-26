@@ -394,6 +394,9 @@ onBeforeMount(() => {
 	> *:last-child > *:last-child {
 		margin-bottom: 0;
 	}
+	> *:first-child > *:first-child {
+		margin-top: 0;
+	}
 }
 
 .codeBlockActions > * {
@@ -460,6 +463,11 @@ onBeforeMount(() => {
 	background-color: var(--color--danger--tint-4);
 	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
 	color: var(--color--danger);
+
+	p,
+	a {
+		color: var(--color--danger);
+	}
 }
 
 .actions {

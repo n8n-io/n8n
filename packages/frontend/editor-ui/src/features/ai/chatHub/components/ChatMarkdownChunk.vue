@@ -83,9 +83,6 @@ defineExpose({
 	h1 {
 		font-size: var(--font-size--xl);
 		margin-top: calc(var(--markdown--spacing) * 3);
-		&:first-child {
-			margin-top: 0;
-		}
 	}
 
 	h2 {
