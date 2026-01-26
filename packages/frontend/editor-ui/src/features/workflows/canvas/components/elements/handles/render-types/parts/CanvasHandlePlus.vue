@@ -32,9 +32,9 @@ const emit = defineEmits<{
 const style = useCssModule();
 
 const classes = computed(() => [
+	'canvas-handle-plus',
 	style.container,
 	style[props.position],
-	style[props.type],
 	props.handleClasses,
 ]);
 
@@ -105,11 +105,12 @@ function onClick(event: MouseEvent) {
 </script>
 
 <template>
-	<div :class="classes" data-test-id="canvas-handle-plus-wrapper">
+	<div :class="classes">
 		<svg
-			:class="$style.wrapper"
+			:class="[$style.wrapper, $style[position], $style[type]]"
 			:style="svgStyles"
 			:viewBox="`0 0 ${viewBox.width} ${viewBox.height}`"
+			data-test-id="canvas-handle-plus-wrapper"
 		>
 			<line
 				:class="[handleClasses, $style.line]"
@@ -153,13 +154,13 @@ function onClick(event: MouseEvent) {
 .container {
 	position: relative;
 
-	&::before {
+	&.bottom::before {
 		content: '';
 		position: absolute;
 		top: 50%;
 		left: 50%;
 		width: 200%;
-		height: 150%;
+		height: 120%;
 		pointer-events: auto;
 		/* stylelint-disable-next-line @n8n/css-var-naming */
 		transform: translate(-50%, -50%) scale(var(--canvas-zoom-compensation-factor, 1));

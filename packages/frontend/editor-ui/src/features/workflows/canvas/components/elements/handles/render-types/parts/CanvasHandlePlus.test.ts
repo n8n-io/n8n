@@ -58,14 +58,11 @@ describe('CanvasHandlePlus', () => {
 	it('should render SVG elements correctly', () => {
 		const { container } = renderComponent();
 
-		const wrapper = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"]');
-		expect(wrapper).toBeTruthy();
-		expect(wrapper?.tagName).toBe('DIV');
+		const svg = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"]');
 
-		const svg = container.querySelector('svg');
 		expect(svg).toBeTruthy();
 		expect(svg?.getAttribute('viewBox')).toBe('0 0 70 24');
-		expect(svg?.parentElement).toBe(wrapper);
+		expect(svg?.parentElement?.tagName).toBe('DIV');
 
 		const lineSvg = container.querySelector('line');
 		expect(lineSvg).toBeTruthy();
