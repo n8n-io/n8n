@@ -222,11 +222,58 @@ export class AuthService {
 		});
 	}
 
-	async resolveJwt(
+	async authenticateUserBasedOnToken(
 		token: string,
-		req: AuthenticatedRequest,
-		res: Response,
-	): Promise<[User, { usedMfa: boolean }]> {
+		method: string,
+		endpoint: string,
+		browserId: string | undefined,
+	): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(token);
+
+		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
+
+		const usedMfa = jwtPayload.usedMfa ?? false;
+
+		// MFA was used, we are good either way.
+		if (usedMfa) {
+			return user;
+		}
+		const mfaEnforced = await this.mfaService.isMFAEnforced();
+
+		if (!mfaEnforced && !user.mfaEnabled) {
+			// MFA is not enforced and the user has MFA not enabled
+			// we are good
+			return user;
+		}
+
+		// either MFA is enforced or user has MFA enabled
+		throw new AuthError('Unauthorized');
+	}
+
+	private validateBrowserId(
+		jwtPayload: IssuedJWT,
+		browserId: string | undefined,
+		endpoint: string,
+		method: string,
+	) {
+		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		} else if (
+			jwtPayload.browserId &&
+			(!browserId || jwtPayload.browserId !== this.hash(browserId))
+		) {
+			this.logger.warn(`browserId check failed on ${endpoint}`);
+			throw new AuthError('Unauthorized');
+		}
+	}
+
+	private async validateToken(token: string): Promise<{
+		user: User;
+		jwtPayload: IssuedJWT;
+	}> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
@@ -248,17 +295,23 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
+		return {
+			user,
+			jwtPayload,
+		};
+	}
+
+	async resolveJwt(
+		token: string,
+		req: AuthenticatedRequest,
+		res: Response,
+	): Promise<[User, { usedMfa: boolean }]> {
+		const { user, jwtPayload } = await this.validateToken(token);
+
 		const browserId = this.getBrowserId(req);
 		const endpoint = this.getEndpoint(req);
-		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
-			this.logger.debug(`Skipped browserId check on ${endpoint}`);
-		} else if (
-			jwtPayload.browserId &&
-			(!browserId || jwtPayload.browserId !== this.hash(browserId))
-		) {
-			this.logger.warn(`browserId check failed on ${endpoint}`);
-			throw new AuthError('Unauthorized');
-		}
+		const method = this.getMethod(req);
+		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
