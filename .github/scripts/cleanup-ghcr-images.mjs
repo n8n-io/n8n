@@ -11,7 +11,16 @@ import { execSync } from 'node:child_process';
 
 const ORG = 'n8n-io';
 const PACKAGES = ['n8n', 'runners'];
-const [mode, value] = process.argv.slice(2);
+const [mode, rawValue] = process.argv.slice(2);
+if (!['--tag', '--pr', '--stale'].includes(mode) || !rawValue) {
+	console.error('Usage: cleanup-ghcr-images.mjs --tag|--pr|--stale <value>');
+	process.exit(1);
+}
+const value = mode === '--stale' ? parseInt(rawValue, 10) : rawValue;
+if (mode === '--stale' && (!Number.isFinite(value) || value <= 0)) {
+	console.error('Error: --stale requires a positive number');
+	process.exit(1);
+}
 
 let hasErrors = false;
 
