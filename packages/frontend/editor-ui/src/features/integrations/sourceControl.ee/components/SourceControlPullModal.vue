@@ -3,7 +3,10 @@ import { useLoadingService } from '@/app/composables/useLoadingService';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
-import { SOURCE_CONTROL_PULL_MODAL_KEY } from '../sourceControl.constants';
+import {
+	SOURCE_CONTROL_PULL_MODAL_KEY,
+	SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
+} from '../sourceControl.constants';
 import { sourceControlEventBus } from '../sourceControl.eventBus';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -15,6 +18,7 @@ import {
 	getStatusTheme,
 	notifyUserAboutPullWorkFolderOutcome,
 } from '../sourceControl.utils';
+import { useUIStore } from '@/app/stores/ui.store';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_TYPE } from '@n8n/api-types';
 import { shouldAutoPublishWorkflow, type AutoPublishMode } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
@@ -57,6 +61,7 @@ const projectsStore = useProjectsStore();
 const route = useRoute();
 const router = useRouter();
 const settingsStore = useSettingsStore();
+const uiStore = useUIStore();
 
 const isWorkflowDiffsEnabled = computed(() => settingsStore.settings.enterprise.workflowDiffs);
 
@@ -264,7 +269,8 @@ function close() {
 
 async function pullWorkfolder() {
 	loadingService.startLoading(i18n.baseText('settings.sourceControl.loading.checkingForChanges'));
-	close();
+
+	const workflowsToAutoPublish = sortedWorkflows.value.filter((w) => w.willBeAutoPublished);
 
 	try {
 		const pullStatus = await sourceControlStore.pullWorkfolder(true, autoPublish.value);
@@ -272,10 +278,30 @@ async function pullWorkfolder() {
 		await notifyUserAboutPullWorkFolderOutcome(pullStatus, toast, router);
 
 		sourceControlEventBus.emit('pull');
+
+		// Show result modal if any workflows were auto-published
+		if (workflowsToAutoPublish.length > 0) {
+			// Filter to only show workflows that were intended to be auto-published
+			const workflowResults = pullStatus.filter(
+				(file) =>
+					file.type === SOURCE_CONTROL_FILE_TYPE.workflow &&
+					workflowsToAutoPublish.some((w) => w.id === file.id),
+			);
+
+			if (workflowResults.length > 0) {
+				uiStore.openModalWithData({
+					name: SOURCE_CONTROL_PULL_RESULT_MODAL_KEY,
+					data: {
+						workflows: workflowResults,
+					},
+				});
+			}
+		}
 	} catch (error) {
 		toast.showError(error, 'Error');
 	} finally {
 		loadingService.stopLoading();
+		close();
 	}
 }
 

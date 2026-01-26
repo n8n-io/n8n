@@ -960,7 +960,9 @@ describe('SourceControlImportService', () => {
 					'Failed to publish workflow workflow1',
 					expect.any(Object),
 				);
-				expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
+				expect(result).toEqual([
+					{ id: 'workflow1', name: mockWorkflowFile, publishingError: 'Activation failed' },
+				]);
 			});
 
 			it('should preserve published state when unpublish fails', async () => {
@@ -989,7 +991,7 @@ describe('SourceControlImportService', () => {
 					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
 				];
 
-				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+				const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
 
 				// Should log the unpublish error
 				expect(mockLogger.error).toHaveBeenCalledWith(
@@ -1008,6 +1010,15 @@ describe('SourceControlImportService', () => {
 
 				// Should NOT attempt to republish since unpublish failed
 				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+
+				// Should return activation error
+				expect(result).toEqual([
+					{
+						id: 'workflow1',
+						name: mockWorkflowFile,
+						publishingError: 'Failed to unpublish workflow before import',
+					},
+				]);
 			});
 
 			it('should preserve published state when user not found during unpublish', async () => {
@@ -1036,7 +1047,7 @@ describe('SourceControlImportService', () => {
 					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
 				];
 
-				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+				const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
 
 				// Should log the user not found error
 				expect(mockLogger.error).toHaveBeenCalledWith(
@@ -1054,6 +1065,15 @@ describe('SourceControlImportService', () => {
 
 				// Should NOT attempt to republish since unpublish failed
 				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+
+				// Should return activation error
+				expect(result).toEqual([
+					{
+						id: 'workflow1',
+						name: mockWorkflowFile,
+						publishingError: 'Failed to unpublish workflow before import',
+					},
+				]);
 			});
 		});
 	});

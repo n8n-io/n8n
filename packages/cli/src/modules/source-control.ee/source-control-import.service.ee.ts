@@ -699,12 +699,14 @@ export class SourceControlImportService {
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
 
-		const { shouldPublishAfterImport } = await this.preparePublishStateForImport(
+		const { shouldPublishAfterImport, publishingError } = await this.preparePublishStateForImport(
 			existingWorkflow,
 			importedWorkflow,
 			autoPublish,
 			userId,
 		);
+
+		let finalPublishingError = publishingError;
 
 		const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
@@ -747,12 +749,16 @@ export class SourceControlImportService {
 
 		// Now publish the workflow if needed (after history is saved)
 		if (shouldPublishAfterImport) {
-			await this.publishWorkflow(id, versionId, userId);
+			const publishResult = await this.publishWorkflow(id, versionId, userId);
+			if (!publishResult.success) {
+				finalPublishingError = publishResult.error;
+			}
 		}
 
 		return {
 			id,
 			name: candidate.file,
+			publishingError: finalPublishingError,
 		};
 	}
 
@@ -816,11 +822,16 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async publishWorkflow(workflowId: string, versionId: string, userId: string) {
+	private async publishWorkflow(
+		workflowId: string,
+		versionId: string,
+		userId: string,
+	): Promise<{ success: boolean; error?: string }> {
 		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
 		if (!user) {
-			this.logger.error(`User ${userId} not found, cannot publish workflow ${workflowId}`);
-			return;
+			const errorMessage = `User ${userId} not found, cannot publish workflow ${workflowId}`;
+			this.logger.error(errorMessage);
+			return { success: false, error: errorMessage };
 		}
 
 		try {
@@ -828,9 +839,11 @@ export class SourceControlImportService {
 			await this.workflowService.activateWorkflow(user, workflowId, {
 				versionId,
 			});
+			return { success: true };
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(`Failed to publish workflow ${workflowId}`, { error });
+			return { success: false, error: error.message };
 		}
 	}
 
@@ -1418,14 +1431,14 @@ export class SourceControlImportService {
 	 * @param importedWorkflow - The workflow being imported (mutated by this method)
 	 * @param autoPublish - The auto-publish mode
 	 * @param userId - The ID of the user performing the import
-	 * @returns Object indicating whether to publish after import
+	 * @returns Object indicating whether to publish after import and any activation error
 	 */
 	private async preparePublishStateForImport(
 		existingWorkflow: WorkflowEntity | undefined,
 		importedWorkflow: IWorkflowToImport,
 		autoPublish: AutoPublishMode,
 		userId: string,
-	): Promise<{ shouldPublishAfterImport: boolean }> {
+	): Promise<{ shouldPublishAfterImport: boolean; publishingError?: string }> {
 		const shouldAutoPublishRemote = this.shouldAutoPublishWorkflow(
 			existingWorkflow,
 			importedWorkflow,
@@ -1442,8 +1455,12 @@ export class SourceControlImportService {
 		);
 
 		let unpublishedLocal = false;
+		let publishingError: string | undefined;
 		if (mustUnpublishLocal && existingWorkflow) {
 			unpublishedLocal = await this.unpublishWorkflow(existingWorkflow.id, userId);
+			if (!unpublishedLocal) {
+				publishingError = 'Failed to unpublish workflow before import';
+			}
 		}
 
 		const shouldPublishAfterImport =
@@ -1456,7 +1473,7 @@ export class SourceControlImportService {
 			unpublishedLocal,
 		);
 
-		return { shouldPublishAfterImport };
+		return { shouldPublishAfterImport, publishingError };
 	}
 
 	/**
