@@ -64,9 +64,10 @@ import { getMaxContextWindowTokens } from './context-limits';
 import { inE2ETests } from '../../constants';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ActiveExecutions } from '@/active-executions';
-import { InstanceSettings } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
+import { CHATHUB_EXTRACTOR_NAME, ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 
 @Service()
 export class ChatHubWorkflowService {
@@ -78,6 +79,7 @@ export class ChatHubWorkflowService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly cipher: Cipher,
 	) {}
 
 	async createChatWorkflow(
@@ -91,6 +93,7 @@ export class ChatHubWorkflowService {
 		systemMessage: string,
 		tools: INode[],
 		vectorStoreSearch: VectorStoreSearchOptions | null,
+		executionMetadata: ChatHubAuthenticationMetadata,
 		trx?: EntityManager,
 	): Promise<{
 		workflowData: IWorkflowBase;
@@ -112,6 +115,7 @@ export class ChatHubWorkflowService {
 				systemMessage,
 				tools,
 				vectorStoreSearch,
+				executionMetadata,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -212,15 +216,32 @@ export class ChatHubWorkflowService {
 		triggerNode: INode,
 		sessionId: string,
 		{ message, attachments }: ChatInput,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	): IExecuteData[] {
+		const encryptedMetadata = this.cipher.encrypt(executionMetadata);
 		// Attachments are already processed (id field populated) by the caller
 		return [
 			{
-				node: triggerNode,
+				node: {
+					...triggerNode,
+					parameters: {
+						...triggerNode.parameters,
+						executionsHooksVersion: 1,
+						contextEstablishmentHooks: {
+							hooks: [
+								{
+									hookName: CHATHUB_EXTRACTOR_NAME,
+									isAllowedToFail: true,
+								},
+							],
+						},
+					},
+				},
 				data: {
 					main: [
 						[
 							{
+								encryptedMetadata,
 								json: {
 									sessionId,
 									action: 'sendMessage',
@@ -294,6 +315,7 @@ export class ChatHubWorkflowService {
 		systemMessage,
 		tools,
 		vectorStoreSearch,
+		executionMetadata,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -304,6 +326,7 @@ export class ChatHubWorkflowService {
 		systemMessage: string;
 		tools: INode[];
 		vectorStoreSearch: VectorStoreSearchOptions | null;
+		executionMetadata: ChatHubAuthenticationMetadata;
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -453,7 +476,12 @@ export class ChatHubWorkflowService {
 				: {}),
 		};
 
-		const nodeExecutionStack = this.prepareExecutionData(chatTriggerNode, sessionId, input);
+		const nodeExecutionStack = this.prepareExecutionData(
+			chatTriggerNode,
+			sessionId,
+			input,
+			executionMetadata,
+		);
 
 		const executionData = createRunExecutionData({
 			executionData: {

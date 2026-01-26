@@ -89,6 +89,7 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
+import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 
 @Service()
 export class ChatHubService {
@@ -155,7 +156,12 @@ export class ChatHubService {
 		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
 	}
 
-	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
+	async sendHumanMessage(
+		res: Response,
+		user: User,
+		payload: HumanMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
 		const {
 			sessionId,
 			messageId,
@@ -217,6 +223,7 @@ export class ChatHubService {
 					tools,
 					tz,
 					trx,
+					executionMetadata,
 				);
 			});
 		} catch (error) {
@@ -301,7 +308,12 @@ export class ChatHubService {
 		}
 	}
 
-	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
+	async editMessage(
+		res: Response,
+		user: User,
+		payload: EditMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
@@ -379,6 +391,7 @@ export class ChatHubService {
 						session.tools,
 						tz,
 						trx,
+						executionMetadata,
 					);
 				}
 
@@ -416,7 +429,12 @@ export class ChatHubService {
 		);
 	}
 
-	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
+	async regenerateAIMessage(
+		res: Response,
+		user: User,
+		payload: RegenerateMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
 		const { sessionId, retryId, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
@@ -464,6 +482,7 @@ export class ChatHubService {
 					session.tools,
 					tz,
 					trx,
+					executionMetadata,
 				);
 
 				return {
@@ -496,9 +515,17 @@ export class ChatHubService {
 		tools: INode[],
 		timeZone: string,
 		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		if (model.provider === 'n8n') {
-			return await this.prepareWorkflowAgentWorkflow(user, sessionId, model.workflowId, input, trx);
+			return await this.prepareWorkflowAgentWorkflow(
+				user,
+				sessionId,
+				model.workflowId,
+				input,
+				trx,
+				executionMetadata,
+			);
 		}
 
 		if (model.provider === 'custom-agent') {
@@ -510,6 +537,7 @@ export class ChatHubService {
 				input,
 				timeZone,
 				trx,
+				executionMetadata,
 			);
 		}
 
@@ -524,6 +552,7 @@ export class ChatHubService {
 			tools,
 			null,
 			trx,
+			executionMetadata,
 		);
 	}
 
@@ -538,6 +567,7 @@ export class ChatHubService {
 		tools: INode[],
 		vectorStoreSearch: VectorStoreSearchOptions | null,
 		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
@@ -554,6 +584,7 @@ export class ChatHubService {
 			systemMessage,
 			tools,
 			vectorStoreSearch,
+			executionMetadata,
 			trx,
 		);
 	}
@@ -566,6 +597,7 @@ export class ChatHubService {
 		input: ChatInput,
 		timeZone: string,
 		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
 
@@ -636,6 +668,7 @@ export class ChatHubService {
 					}
 				: null,
 			trx,
+			executionMetadata,
 		);
 	}
 
@@ -645,6 +678,7 @@ export class ChatHubService {
 		workflowId: string,
 		input: ChatInput,
 		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -714,6 +748,7 @@ export class ChatHubService {
 			chatTrigger,
 			sessionId,
 			input,
+			executionMetadata,
 		);
 
 		const executionData = createRunExecutionData({
