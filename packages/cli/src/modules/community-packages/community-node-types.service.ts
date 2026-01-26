@@ -68,8 +68,16 @@ export class CommunityNodeTypesService {
 		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
 			(nodeType) => nodeType.nodeDescription.usableAsTool,
 		);
+		const forbiddenCategories = ['Recommended Tools'];
 		for (const nodeType of usableAsTools) {
 			const clonedNodeType = cloneDeep(nodeType);
+			const toolSubcategories = clonedNodeType.nodeDescription.codex?.subcategories?.Tools ?? [
+				'Other Tools',
+			];
+			// don't allow community nodes to appear in Recommended Tools category
+			const filteredToolSubcategories = toolSubcategories.filter(
+				(subcategory) => !forbiddenCategories.includes(subcategory),
+			);
 			// this parameter is valid npm package name
 			clonedNodeType.name += 'Tool';
 			// this parameter has -preview suffix
@@ -81,7 +89,7 @@ export class CommunityNodeTypesService {
 				categories: ['AI'],
 				subcategories: {
 					AI: ['Tools'],
-					Tools: clonedNodeType.nodeDescription.codex?.subcategories?.Tools ?? ['Other Tools'],
+					Tools: filteredToolSubcategories,
 				},
 				resources: clonedNodeType.nodeDescription.codex?.resources ?? {},
 			};

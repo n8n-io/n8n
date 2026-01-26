@@ -438,6 +438,40 @@ describe('CommunityNodeTypesService', () => {
 			expect(toolNode?.nodeDescription.codex?.resources).toEqual(mockResources);
 		});
 
+		it('should not include Recommended Tools subcategory in tool version', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-test.test',
+					packageName: 'n8n-nodes-test',
+					nodeDescription: {
+						name: 'test-node-preview',
+						displayName: 'Test Node',
+						inputs: ['main'],
+						outputs: ['main'],
+						usableAsTool: true,
+						codex: {
+							resources: {
+								primaryDocumentation: [{ url: 'https://example.com/docs' }],
+							},
+							subcategories: {
+								AI: ['Tools'],
+								Tools: ['Recommended Tools', 'Other Tools'],
+							},
+						},
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+			const toolNode = result.find((n) => n.name === 'n8n-nodes-test.testTool');
+
+			expect(toolNode?.nodeDescription.codex?.subcategories?.Tools).not.toContain(
+				'Recommended Tools',
+			);
+		});
+
 		it('should handle multiple nodes with usableAsTool flag', async () => {
 			const mockNodeTypes = [
 				{
