@@ -5,9 +5,9 @@
  * Uses natural language instructions to configure each node's settings.
  */
 
-import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
-
 import { prompt } from '../builder';
+
+import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
 
 const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
 

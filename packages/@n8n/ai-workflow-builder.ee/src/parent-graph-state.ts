@@ -74,23 +74,4 @@ export const ParentGraphState = Annotation.Root({
 		reducer: cachedTemplatesReducer,
 		default: () => [],
 	}),
-
-	// Parallel configuration tracking
-	// Node IDs that need configuration (set after Builder completes)
-	nodesToConfigure: Annotation<string[]>({
-		reducer: (x, y) => y ?? x,
-		default: () => [],
-	}),
-
-	// Node IDs that have completed configuration (from parallel workers)
-	configuredNodeIds: Annotation<string[]>({
-		reducer: appendArrayReducer,
-		default: () => [],
-	}),
-
-	// Instance URL for webhook nodes (needed by configure workers)
-	instanceUrl: Annotation<string>({
-		reducer: (x, y) => y ?? x,
-		default: () => '',
-	}),
 });
