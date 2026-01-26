@@ -134,16 +134,24 @@ The following functions are pre-loaded in the execution environment. Do NOT writ
 - \`node(input)\` - Create a regular node
 - \`trigger(input)\` - Create a trigger node
 - \`sticky(content, config?)\` - Create a sticky note for documentation
+- \`splitInBatches(config)\` - Batch processing with loops
 
 **Helper Functions:**
 - \`placeholder(description)\` - Create a placeholder for user input (use this instead of $env)
 - \`newCredential(name)\` - Create a credential placeholder
 
-**Composite Patterns:**
-- \`ifElse(ifNode, {{ true: trueTargetChain, false: falseTargetChain }})\` - Two-way conditional branching (requires pre-declared IF node)
-- \`switchCase(switchNode, {{ case0: targetChain, case1: targetChain, ... }})\` - Multi-way routing (requires pre-declared Switch node)
-- \`merge(mergeNode, {{ input0: source, input1: source, ... }})\` - Parallel execution with merge (requires pre-declared Merge node)
-- \`splitInBatches(config)\` - Batch processing with loops
+**Connection Methods (on NodeInstance):**
+- \`.then(target)\` - Connect output 0 to another node
+- \`.output(n).then(target)\` - Connect from specific output index
+- \`.input(n)\` - Target for specific input (use with Merge)
+
+**Branching (on IF/Switch nodes):**
+- \`.onTrue(target).onFalse(target)\` - IF node branching
+- \`.onCase(n, target)\` - Switch node case routing
+
+**Batch Processing (on splitInBatches node):**
+- \`.onDone(target)\` - Connect to node when all batches complete
+- \`.onEachBatch(target)\` - Connect to node for each batch (chain back to sibNode for loop)
 
 **AI/LangChain Subnode Builders:**
 - \`languageModel(input)\` - Create a language model subnode
@@ -197,7 +205,9 @@ Follow these rules strictly when generating workflows:
 
 8. **Node connections use .then() for regular nodes**
    - Chain nodes: \`trigger(...).then(node1).then(node2)\`
-   - Branching: Use \`ifElse()\`, \`switchCase()\`, or \`merge()\` helpers
+   - IF branching: Use \`.onTrue(target).onFalse(target)\` on IF nodes
+   - Switch routing: Use \`.onCase(n, target)\` on Switch nodes
+   - Merge inputs: Use \`.then(mergeNode.input(n))\` to connect to specific merge inputs
 
 9. **Expressions must start with '='**
    - n8n expressions use the format \`={{{{ expression }}}}\`
@@ -305,36 +315,34 @@ return workflow('id', 'name')
 // Assume nodes declared: checkValid (IF), formatData, enrichData, saveToDb, logError
 return workflow('id', 'name')
   .add(startTrigger)
-  .then(ifElse(checkValid, {{
-    true: formatData.then(enrichData).then(saveToDb),  // Chain 3 nodes on true branch
-    false: logError
-  }}));
+  .then(checkValid
+    .onTrue(formatData.then(enrichData).then(saveToDb))  // Chain 3 nodes on true branch
+    .onFalse(logError));
 \`\`\`
 
-WRONG - nodes after ifElse run for BOTH branches:
+WRONG - nodes after IF run for BOTH branches:
 \`\`\`typescript
-.then(ifElse(checkValid, {{ true: formatData, false: logError }}))
+.then(checkValid.onTrue(formatData).onFalse(logError))
 .then(enrichData)  // WRONG: runs after both branches!
 \`\`\`
 
 RIGHT - chain inside the branch:
 \`\`\`typescript
-.then(ifElse(checkValid, {{ true: formatData.then(enrichData), false: logError }}))
+.then(checkValid.onTrue(formatData.then(enrichData)).onFalse(logError))
 \`\`\`
 
 ## Multi-Way Routing (Switch)
 
-**CRITICAL:** Same as ifElse - chain nodes inside each case.
+**CRITICAL:** Same as IF - chain nodes inside each case.
 
 \`\`\`typescript
 // Assume nodes declared: routeByPriority (Switch), processUrgent, notifyTeam, escalate, processNormal, archive
 return workflow('id', 'name')
   .add(startTrigger)
-  .then(switchCase(routeByPriority, {{
-    case0: processUrgent.then(notifyTeam).then(escalate),  // Chain of 3 nodes
-    case1: processNormal,
-    case2: archive
-  }}));
+  .then(routeByPriority
+    .onCase(0, processUrgent.then(notifyTeam).then(escalate))  // Chain of 3 nodes
+    .onCase(1, processNormal)
+    .onCase(2, archive));
 \`\`\`
 
 ## Parallel Execution (Merge)
@@ -353,14 +361,18 @@ const combineResults = node({{
 // Declare branch nodes
 const branch1 = node({{ type: 'n8n-nodes-base.httpRequest', ... }});
 const branch2 = node({{ type: 'n8n-nodes-base.httpRequest', ... }});
+const processResults = node({{ type: 'n8n-nodes-base.set', ... }});
 
+// Connect branches to specific merge inputs using .input(n)
 return workflow('id', 'name')
-  .add(trigger({{ ... }}))
-  .then(merge(combineResults, {{
-    input0: branch1,  // First input
-    input1: branch2   // Second input
-  }}))
-  .then(node({{ ... }}));  // Process merged results
+  .add(trigger({{ ... }})
+    .then(branch1)
+    .then(combineResults.input(0)))  // Connect to input 0
+  .add(trigger({{ ... }})
+    .then(branch2)
+    .then(combineResults.input(1)))  // Connect to input 1
+  .add(combineResults
+    .then(processResults));  // Process merged results
 \`\`\`
 
 ## Batch Processing (Loops)
@@ -390,15 +402,16 @@ const processRecord = node({{
   config: {{ name: 'Process Record', parameters: {{ method: 'POST', url: '...' }}, position: [1140, 400] }}
 }});
 
-// 2. Compose workflow
+// 2. Create splitInBatches node
+const sibNode = splitInBatches({{ name: 'Batch Process', parameters: {{ batchSize: 10 }}, position: [840, 300] }});
+
+// 3. Compose workflow - chain processRecord back to sibNode for loop
 return workflow('id', 'name')
   .add(startTrigger)
   .then(fetchRecords)
-  .then(
-    splitInBatches({{ name: 'Batch Process', parameters: {{ batchSize: 10 }}, position: [840, 300] }})
-      .done().then(finalizeResults)
-      .each().then(processRecord)
-      .loop()
+  .then(sibNode
+    .onDone(finalizeResults)
+    .onEachBatch(processRecord.then(sibNode))  // Loop back to sibNode
   );
 \`\`\`
 

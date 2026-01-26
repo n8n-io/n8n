@@ -126,6 +126,7 @@ describe('WorkflowBuilderAgent', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'workflow-123' },
 				},
+				featureFlags: { oneShotAgent: false },
 			};
 		});
 
@@ -152,6 +153,7 @@ describe('WorkflowBuilderAgent', () => {
 			const payload: ChatPayload = {
 				id: '12345',
 				message: validMessage,
+				featureFlags: { oneShotAgent: false },
 			};
 
 			// Mock the stream processing to return a proper StreamOutput
