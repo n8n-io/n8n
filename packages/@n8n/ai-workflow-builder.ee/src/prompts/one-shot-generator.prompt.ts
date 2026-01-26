@@ -8,6 +8,8 @@
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { inspect } from 'node:util';
 
 import type { NodeWithDiscriminators } from '../utils/node-type-parser';
@@ -616,7 +618,7 @@ export function buildOneShotGeneratorPrompt(
 		other: NodeWithDiscriminators[];
 	},
 	sdkSourceCode: string,
-	currentWorkflow?: string,
+	currentWorkflow?: WorkflowJSON,
 ): ChatPromptTemplate {
 	debugLog('========== BUILDING PROMPT ==========');
 	debugLog('Input node counts', {
@@ -631,7 +633,7 @@ export function buildOneShotGeneratorPrompt(
 	});
 	debugLog('Current workflow', {
 		hasCurrentWorkflow: !!currentWorkflow,
-		currentWorkflowLength: currentWorkflow?.length ?? 0,
+		currentWorkflowNodeCount: currentWorkflow?.nodes?.length ?? 0,
 	});
 
 	debugLog('Building available nodes section...');
@@ -674,9 +676,10 @@ export function buildOneShotGeneratorPrompt(
 	const userMessageParts = [];
 
 	if (currentWorkflow) {
-		// Escape curly brackets in current workflow for LangChain
-		const escapedCurrentWorkflow = escapeCurlyBrackets(currentWorkflow);
-		userMessageParts.push(`<current_workflow>\n${escapedCurrentWorkflow}\n</current_workflow>`);
+		// Convert WorkflowJSON to SDK code and escape curly brackets for LangChain
+		const workflowCode = generateWorkflowCode(currentWorkflow);
+		const escapedWorkflowCode = escapeCurlyBrackets(workflowCode);
+		userMessageParts.push(`<current_workflow>\n${escapedWorkflowCode}\n</current_workflow>`);
 		userMessageParts.push('\nUser request:');
 		debugLog('Added current workflow to user message');
 	}

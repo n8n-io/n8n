@@ -17,7 +17,8 @@ export type ValidationErrorCode =
 	| 'SET_CREDENTIAL_FIELD'
 	| 'MERGE_SINGLE_INPUT'
 	| 'TOOL_NO_PARAMETERS'
-	| 'FROM_AI_IN_NON_TOOL';
+	| 'FROM_AI_IN_NON_TOOL'
+	| 'MISSING_EXPRESSION_PREFIX';
 
 /**
  * Validation error class

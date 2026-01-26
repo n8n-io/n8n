@@ -1,29 +1,25 @@
 # TODO (MVP)
 
 ## workflow-sdk
-- [ ] Add more error branch workflows
+- [WIP] Support branching for weird nodes out there with multiple inputs or outputs, that we don't support now. (Text classifier node for example)
+- [WIP] better interface? onTrue() onFalse() for ifElse. onCase for switchCase. also splitInBatches. Merge
+- [ ] Add more error branch workflows tests
 - [ ] Better clarify how output data maps to expressions in types and referenced
-- [ ] better interface? onTrue() onFalse() for ifElse. onCase for switchCase. what to do with merge?
-	- [ ] split out merge into separate functions? so its easier to understand
+- [ ] split out merge into separate functions? so its easier to understand
 - [ ] create custom node parameter discriminators by output type (simplify in gmail node)
-- [ ] Add examples with switch case fallback connection
+- [ ] Support switch case fallback connection (.onFallback)
+- [ ] `When working with a chat trigger node` should be `When following a chat trigger node`. Could we express this in types?
 
 ## agent
-- [ ] transpile current workflow to code
-- [ ] fix evaluation runs to include error logs
-- [ ] test out prompt with/without sdk reference
-- [ ] build out new evaluation suites for this type of agent
-- [ ] Test opus again with simplified prompt
+- [ ] fix new code llm judge, review how it works. fix code-typecheck also. both should reference the api directly instead of hardcoding.
 - [ ] Add relevant best practice pieces, esp to better handling (let evals guide this)
 	- [ ] a lot of pairwise seem to be about preferring certain nodes, how can we add that as part of the node definition
 	- [ ] add section for pref of other nodes over code node
 - [ ] Make sure conversation history is included in request
-- [ ] Evaluate with thinking enabled for each model
 - [ ] in programmatic checks validation step, only skip warnings if repeated for the same node
 - [ ] investigate failed syntax in prompt in this example packages/@n8n/ai-workflow-builder.ee/eval-results/sonnet-one-shot-all/example-005-05fd23ad. also packages/@n8n/ai-workflow-builder.ee/eval-results/sonnet-one-shot-all/example-007-ca13700c
 	- [ ] Also why are programmatic evals showing it has no expression, even though it does
 - [ ] strip away previous contexts from previous messages
-- [ ] fix new code llm judge, review how it works
 - [ ] Add more programmatic validations:
 		- [ ] chat memory issue
 		- [ ] invalid expression syntax
@@ -32,7 +28,16 @@
 		- [ ] invalid .item or .all keys in code nodes based on mode
 		- [ ] optional warning for code node?
 
+## evaluate
+- [ ] test out prompt with/without sdk reference
+- [ ] Test opus again with simplified prompt
+- [ ] Evaluate with thinking enabled for each model
+
 ## ready to release
+- [ ] review security implications of Function. Use task runner?
+- [ ] pull in master
+- [ ] remove FE changes
+- [ ] make less verbose?
 - [ ] deploy agent to test instance
 - [ ] How to do we store the template workflows? Do we commit to repo? Or keep fetching from API? Template creators might not be happy. If we keep fetching from API they might change or get deleted. Maybe a zip folder in repo that's expanded before running tests?
 - [ ] Review PR (lots of AI generated code that I did not look at)
@@ -50,19 +55,21 @@
 
 ## Nice to haves / tech debt
 - [ ] Test more of the template library
-- [ ] refactor code gen to use plugin arch for composites
 - [ ] Make it more clear that SDK api file is for LLM consumption. To avoid other engineers adding unnecessary types to it, confusing the agent.
 - [ ] rename one shot agent across code base
 - [ ] update workflow() to support object init { id, settings }
-- [ ] clean up old codegen impl
 - [ ] move generated test files for committed workflows to same folder.
 - [ ] allow adding node defaults when generating workflows
-- [ ] Add builderHint (for example promptType: 'auto'/'define')
+- [ ] Add builderHint
+		- [ ] for example promptType: 'auto'/'define'
+		- [ ] use expressions for agent
+		- [ ] simplify output changes?
+		- [ ] memory key in chat node
 
 ## Future improvement
+- [ ] named branches support (switch /text classifier / if). onCase('case') instead of onCase(0)
 - [ ] use random generator for pin data
 - [ ] RLC Support
-- [ ] Support branching for weird nodes out there with multiple inputs or outputs, that we don't support now.
 - [ ] generate pin data using a random generator, rather than ai.
 - [ ] Support templates as examples
 - [ ] Add support for expr() functions that narrow down types for context. Basically llm should generate code rather than strings.
@@ -72,6 +79,8 @@
 - [ ] Add text editing tools support, to improve iteration
 
 ## Done
+- [X] build out new evaluation suites for this type of agent
+- [X] transpile current workflow to code
 - [X] Add programmatic validation similar to current agent
 - [X] prompt optimization per model
 - [X] get workflow-sdk to support roundtrip test of a lot of our template library
@@ -84,6 +93,8 @@
 - [X] rerun evaluations, get to parity with current agent
 - [X] Rename ifBranch to ifElse, update branches with clearer naming.
 - [X] run evaluations against Opus
+- [X] clean up old codegen impl
+- [X] fix evaluation runs to include error logs
 
 
 # Prompts to test

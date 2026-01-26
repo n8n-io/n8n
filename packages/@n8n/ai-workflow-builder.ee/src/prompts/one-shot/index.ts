@@ -6,6 +6,7 @@
  */
 
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { ModelId } from '../../llm-config';
 import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
@@ -24,7 +25,7 @@ export interface PromptBuilderConfig {
 		other: NodeWithDiscriminators[];
 	};
 	sdkSourceCode: string;
-	currentWorkflow?: string;
+	currentWorkflow?: WorkflowJSON;
 }
 
 export interface PromptVersionDefinition {
@@ -35,7 +36,7 @@ export interface PromptVersionDefinition {
 	buildPrompt: (
 		nodeIds: PromptBuilderConfig['nodeIds'],
 		sdkSourceCode: string,
-		currentWorkflow?: string,
+		currentWorkflow?: WorkflowJSON,
 	) => ChatPromptTemplate;
 	buildRawPrompt?: (nodeIds: PromptBuilderConfig['nodeIds'], sdkSourceCode: string) => string;
 }

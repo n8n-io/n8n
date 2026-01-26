@@ -773,6 +773,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				this.checkAgentNode(graphNode.instance, warnings);
 			}
 
+			// ChainLlm node checks - only for versions >= 1.4 (when promptType was introduced)
+			if (nodeType === '@n8n/n8n-nodes-langchain.chainLlm') {
+				const version = parseVersion(graphNode.instance.version);
+				if (version >= 1.4) {
+					this.checkChainLlmNode(graphNode.instance, warnings);
+				}
+			}
+
 			// HTTP Request node checks
 			if (nodeType === 'n8n-nodes-base.httpRequest') {
 				this.checkHttpRequestNode(graphNode.instance, warnings);
@@ -797,6 +805,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			if (!this.isToolNode(nodeType)) {
 				this.checkFromAiInNonToolNode(graphNode.instance, warnings);
 			}
+
+			// Check for {{ $... }} without = prefix (applies to all nodes)
+			this.checkMissingExpressionPrefix(graphNode.instance, warnings);
 		}
 
 		return {
@@ -830,7 +841,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
-					`Agent node "${instance.name}" has no expression in its prompt. When working with a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } if any other trigger`,
+					`Agent node "${instance.name}" has no expression in its prompt. When following a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } if any other trigger`,
 					instance.name,
 				),
 			);
@@ -844,6 +855,37 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				new ValidationWarning(
 					'AGENT_NO_SYSTEM_MESSAGE',
 					`Agent node "${instance.name}" has no system message. System-level instructions should be in the system message field.`,
+					instance.name,
+				),
+			);
+		}
+	}
+
+	/**
+	 * Check ChainLlm node for static prompts (v1.4+ only)
+	 */
+	private checkChainLlmNode(
+		instance: NodeInstance<string, string, unknown>,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+		const params = instance.config?.parameters as Record<string, unknown> | undefined;
+		if (!params) return;
+
+		const promptType = params.promptType as string | undefined;
+
+		// Only check when promptType is 'define' (explicit prompt definition)
+		if (promptType !== 'define') {
+			return;
+		}
+
+		// Check: Static prompt (no expression)
+		const text = params.text as string | undefined;
+		if (!text || !this.containsExpression(text)) {
+			warnings.push(
+				new ValidationWarning(
+					'AGENT_STATIC_PROMPT',
+					`ChainLlm node "${instance.name}" has no expression in its prompt. Parameter values must start with '=' to evaluate correctly as expressions. For example '={{ $json.input }}'.`,
 					instance.name,
 				),
 			);
@@ -1087,6 +1129,66 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				new ValidationWarning(
 					'FROM_AI_IN_NON_TOOL',
 					`Node "${instance.name}" uses $fromAI() which is only valid in tool nodes connected to an AI agent.`,
+					instance.name,
+				),
+			);
+		}
+	}
+
+	/**
+	 * Pattern to detect {{ }} containing n8n variables without = prefix.
+	 * Matches: {{ $json }}, {{ $env.X }}, {{ $('Node') }}, etc.
+	 * Does NOT match: ={{ $json }} (has prefix) or {{ someVar }} (no $ variable)
+	 */
+	private static readonly MISSING_EXPR_PREFIX_PATTERN =
+		/(?<!=)\{\{[^}]*\$(?:json|input|binary|env|vars|secrets|now|today|execution|workflow|node|prevNode|item|itemIndex|runIndex|position|\()[^}]*\}\}/;
+
+	/**
+	 * Recursively find all string values that have {{ $... }} without = prefix
+	 */
+	private findMissingExpressionPrefixes(
+		value: unknown,
+		path: string = '',
+	): Array<{ path: string; value: string }> {
+		const issues: Array<{ path: string; value: string }> = [];
+
+		if (typeof value === 'string') {
+			if (WorkflowBuilderImpl.MISSING_EXPR_PREFIX_PATTERN.test(value)) {
+				issues.push({ path, value });
+			}
+		} else if (Array.isArray(value)) {
+			value.forEach((item, index) => {
+				issues.push(...this.findMissingExpressionPrefixes(item, `${path}[${index}]`));
+			});
+		} else if (value && typeof value === 'object') {
+			for (const [key, val] of Object.entries(value)) {
+				const newPath = path ? `${path}.${key}` : key;
+				issues.push(...this.findMissingExpressionPrefixes(val, newPath));
+			}
+		}
+
+		return issues;
+	}
+
+	/**
+	 * Check for {{ $... }} patterns without the required = prefix
+	 */
+	private checkMissingExpressionPrefix(
+		instance: NodeInstance<string, string, unknown>,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+		const params = instance.config?.parameters;
+		if (!params) return;
+
+		const issues = this.findMissingExpressionPrefixes(params);
+
+		for (const { path } of issues) {
+			warnings.push(
+				new ValidationWarning(
+					'MISSING_EXPRESSION_PREFIX',
+					`Node "${instance.name}" has parameter "${path}" containing {{ $... }} without '=' prefix. ` +
+						`n8n expressions must start with '=' like '={{ $json.field }}'.`,
 					instance.name,
 				),
 			);

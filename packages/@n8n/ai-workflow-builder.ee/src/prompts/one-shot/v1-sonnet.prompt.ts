@@ -8,6 +8,8 @@
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { inspect } from 'node:util';
 
 import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
@@ -195,7 +197,70 @@ Follow these rules strictly when generating workflows:
 
 8. **Node connections use .then() for regular nodes**
    - Chain nodes: \`trigger(...).then(node1).then(node2)\`
-   - Branching: Use \`ifElse()\`, \`switchCase()\`, or \`merge()\` helpers`;
+   - Branching: Use \`ifElse()\`, \`switchCase()\`, or \`merge()\` helpers
+
+9. **Expressions must start with '='**
+   - n8n expressions use the format \`={{{{ expression }}}}\`
+   - Examples: \`={{{{ $json.field }}}}\`, \`={{{{ $('Node Name').item.json.key }}}}\`, \`={{{{ $now }}}}\`
+
+10. **Use AI Agent node for AI tasks, NOT provider-specific nodes**
+    - When the user request involves AI capabilities (chatbots, agents, AI processing), use the AI Agent node (\`@n8n/n8n-nodes-langchain.agent\`)
+    - Do NOT use provider-specific nodes like \`googleGemini\`, \`openAi\`, \`anthropic\` directly for AI tasks
+    - Provider-specific nodes are only used as language model subnodes INSIDE an AI Agent
+    - Distinguish between:
+      - **AI Agent** (\`@n8n/n8n-nodes-langchain.agent\`): Main workflow node for AI tasks, chatbots, autonomous workflows
+      - **AI Agent Tool** (\`@n8n/n8n-nodes-langchain.agentTool\`): Sub-node for multi-agent systems where one agent calls another
+    - Example: If user says "use AI to analyze data", create an AI Agent with a language model subnode, NOT a standalone openAi node
+
+11. **Prefer native n8n nodes over Code node**
+    - Code nodes are slower (sandboxed environment) - use them as a LAST RESORT
+    - **Edit Fields (Set) node** is your go-to for data manipulation:
+      - Adding, renaming, or removing fields
+      - Mapping data from one structure to another
+      - Setting variables, constants, hardcoded values
+      - Creating objects or arrays
+    - **Use these native nodes INSTEAD of Code node:**
+      | Task | Use This |
+      |------|----------|
+      | Add/modify/rename fields | Edit Fields (Set) |
+      | Set hardcoded values/config | Edit Fields (Set) |
+      | Filter items by condition | Filter |
+      | Route by condition | If or Switch |
+      | Split array into items | Split Out |
+      | Combine multiple items | Aggregate |
+      | Merge data from branches | Merge |
+      | Summarize/pivot data | Summarize |
+      | Sort items | Sort |
+      | Remove duplicates | Remove Duplicates |
+      | Limit items | Limit |
+      | Format as HTML | HTML |
+      | Parse AI output | Structured Output Parser |
+      | Date/time operations | Date & Time |
+      | Compare datasets | Compare Datasets |
+      | Regex operations | If or Edit Fields with expressions |
+    - **Code node is ONLY appropriate for:**
+      - Complex multi-step algorithms that cannot be expressed in single expressions
+      - Operations requiring external libraries or complex data structures
+    - **NEVER use Code node for:**
+      - Simple data transformations (use Edit Fields)
+      - Filtering/routing (use Filter, If, Switch)
+      - Array operations (use Split Out, Aggregate)
+      - Regex operations (use expressions in If or Edit Fields nodes)
+
+12. **Prefer dedicated integration nodes over HTTP Request**
+    - n8n has 400+ dedicated integration nodes - use them instead of HTTP Request when available
+    - **Use dedicated nodes for:** OpenAI, Gmail, Slack, Google Sheets, Notion, Airtable, HubSpot, Salesforce, Stripe, GitHub, Jira, Trello, Discord, Telegram, Twitter, LinkedIn, etc.
+    - **Only use HTTP Request when:**
+      - No dedicated n8n node exists for the service
+      - User explicitly requests HTTP Request
+      - Accessing a custom/internal API
+      - The dedicated node doesn't support the specific operation needed
+    - **Benefits of dedicated nodes:**
+      - Built-in authentication handling
+      - Pre-configured parameters for common operations
+      - Better error handling and response parsing
+      - Easier to configure and maintain
+    - **Example:** If user says "send email via Gmail", use the Gmail node, NOT HTTP Request to Gmail API`;
 
 // AI_PATTERNS removed - merged into WORKFLOW_PATTERNS for Sonnet 4.5 optimized prompt
 
@@ -522,19 +587,24 @@ Before generating any code, work through your planning inside <planning> tags. I
    - AI subnodes (if using AI agents/chains)
    - For each node, note if it requires discriminators (resource/operation/mode)
 
-4. **Map Node Connections**: Draw out how nodes connect:
+4. **Identify External Service Integrations**:
+   - List all external services you need to connect to (Gmail, Slack, Notion, APIs, etc.)
+   - Do NOT assume HTTP Request - plan to search for dedicated nodes for each service
+   - Only plan HTTP Request for custom/internal APIs with no dedicated node
+
+5. **Map Node Connections**: Draw out how nodes connect:
    - Is this linear, branching, parallel, or looped?
    - Which nodes connect to which other nodes?
    - What workflow patterns (ifElse, switchCase, merge, etc.) are needed?
 
-5. **Identify Placeholders and Credentials**:
+6. **Identify Placeholders and Credentials**:
    - List any values that need user input (use placeholder() for these)
    - List any credentials needed (use newCredential() for these)
    - Verify you're NOT using $env anywhere
 
-6. **Plan Node Positions**: Sketch out x,y coordinates for each node following the left-to-right, top-to-bottom layout rules
+7. **Plan Node Positions**: Sketch out x,y coordinates for each node following the left-to-right, top-to-bottom layout rules
 
-7. **Prepare get_nodes Call**: Write out the exact structure of the get_nodes call you'll make, including any discriminators needed
+8. **Prepare get_nodes Call**: Write out the exact structure of the get_nodes call you'll make, including any discriminators needed
 
 ## Step 2: Call get_nodes Tool
 
@@ -616,7 +686,7 @@ export function buildOneShotGeneratorPrompt(
 		other: NodeWithDiscriminators[];
 	},
 	sdkSourceCode: string,
-	currentWorkflow?: string,
+	currentWorkflow?: WorkflowJSON,
 ): ChatPromptTemplate {
 	debugLog('========== BUILDING PROMPT ==========');
 	debugLog('Input node counts', {
@@ -631,14 +701,14 @@ export function buildOneShotGeneratorPrompt(
 	});
 	debugLog('Current workflow', {
 		hasCurrentWorkflow: !!currentWorkflow,
-		currentWorkflowLength: currentWorkflow?.length ?? 0,
+		currentWorkflowNodeCount: currentWorkflow?.nodes?.length ?? 0,
 	});
 
 	debugLog('Building available nodes section...');
-	const availableNodesSection = buildAvailableNodesSection(nodeIds);
-	debugLog('Available nodes section built', {
-		sectionLength: availableNodesSection.length,
-	});
+	// const availableNodesSection = buildAvailableNodesSection(nodeIds);
+	// debugLog('Available nodes section built', {
+	// 	sectionLength: availableNodesSection.length,
+	// });
 
 	// SDK reference is commented out for Sonnet 4.5 - kept for backward compatibility
 	debugLog('Building SDK API reference section (disabled for Sonnet 4.5)...');
@@ -652,7 +722,7 @@ export function buildOneShotGeneratorPrompt(
 	const systemMessage = [
 		ROLE,
 		SDK_FUNCTIONS,
-		availableNodesSection,
+		// availableNodesSection,
 		WORKFLOW_RULES,
 		WORKFLOW_PATTERNS,
 		MANDATORY_WORKFLOW,
@@ -663,7 +733,7 @@ export function buildOneShotGeneratorPrompt(
 		totalLength: systemMessage.length,
 		roleLength: ROLE.length,
 		sdkFunctionsLength: SDK_FUNCTIONS.length,
-		availableNodesSectionLength: availableNodesSection.length,
+		// availableNodesSectionLength: availableNodesSection.length,
 		workflowRulesLength: WORKFLOW_RULES.length,
 		workflowPatternsLength: WORKFLOW_PATTERNS.length,
 		mandatoryWorkflowLength: MANDATORY_WORKFLOW.length,
@@ -674,9 +744,10 @@ export function buildOneShotGeneratorPrompt(
 	const userMessageParts = [];
 
 	if (currentWorkflow) {
-		// Escape curly brackets in current workflow for LangChain
-		const escapedCurrentWorkflow = escapeCurlyBrackets(currentWorkflow);
-		userMessageParts.push(`<current_workflow>\n${escapedCurrentWorkflow}\n</current_workflow>`);
+		// Convert WorkflowJSON to SDK code and escape curly brackets for LangChain
+		const workflowCode = generateWorkflowCode(currentWorkflow);
+		const escapedWorkflowCode = escapeCurlyBrackets(workflowCode);
+		userMessageParts.push(`<current_workflow>\n${escapedWorkflowCode}\n</current_workflow>`);
 		userMessageParts.push('\nUser request:');
 		debugLog('Added current workflow to user message');
 	}

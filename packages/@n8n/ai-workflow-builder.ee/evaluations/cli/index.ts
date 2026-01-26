@@ -117,11 +117,13 @@ function createWorkflowGenerator(
  * @param timeoutMs - Optional timeout in milliseconds. When provided, the agent will be
  *                    aborted if it exceeds this duration. This ensures the generator
  *                    actually stops instead of continuing to run after timeout rejection.
+ * @param captureLog - When true, captures debug logs for artifact saving.
  */
 function createOneShotWorkflowGenerator(
 	parsedNodeTypes: INodeTypeDescription[],
 	llms: ResolvedStageLLMs,
 	timeoutMs?: number,
+	captureLog?: boolean,
 ): (prompt: string, callbacks?: Callbacks) => Promise<GenerationResult> {
 	return async (prompt: string): Promise<GenerationResult> => {
 		const runId = generateRunId();
@@ -129,6 +131,7 @@ function createOneShotWorkflowGenerator(
 		const agent = new OneShotWorkflowCodeAgent({
 			llm: llms.builder,
 			nodeTypes: parsedNodeTypes,
+			captureLog,
 		});
 
 		const payload = getChatPayload({
@@ -189,7 +192,10 @@ function createOneShotWorkflowGenerator(
 			throw new Error('One-shot agent did not produce a workflow');
 		}
 
-		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors };
+		// Get captured logs if log capture was enabled
+		const logs = captureLog ? agent.getCapturedLogs() : undefined;
+
+		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors, logs };
 	};
 }
 
@@ -266,51 +272,53 @@ export async function runV2Evaluation(): Promise<void> {
 	}
 
 	// Create workflow generator based on agent type
+	// Enable log capture for one-shot agent when outputDir is set
 	const generateWorkflow =
 		args.agent === AGENT_TYPES.ONE_SHOT
-			? createOneShotWorkflowGenerator(env.parsedNodeTypes, env.llms, args.timeoutMs)
+			? createOneShotWorkflowGenerator(
+					env.parsedNodeTypes,
+					env.llms,
+					args.timeoutMs,
+					!!args.outputDir,
+				)
 			: createWorkflowGenerator(env.parsedNodeTypes, env.llms, args.featureFlags);
 
-	// Create evaluators based on mode (using judge LLM for evaluation)
-	// For one-shot agent, run all 4 evaluators regardless of suite
+	// Create evaluators based on suite (using judge LLM for evaluation)
+	// The --suite flag is always respected, regardless of agent type
 	const evaluators: Array<Evaluator<EvaluationContext>> = [];
 
-	if (args.agent === AGENT_TYPES.ONE_SHOT) {
-		// One-shot agent: run all evaluators for comprehensive code analysis
-		evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
-		evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-		evaluators.push(createCodeTypecheckEvaluator());
-		evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
-	} else {
-		// Multi-agent: use suite-specific evaluators
-		switch (args.suite) {
-			case 'llm-judge':
-				evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
-				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-				break;
-			case 'pairwise':
-				evaluators.push(
-					createPairwiseEvaluator(env.llms.judge, {
-						numJudges: args.numJudges,
-					}),
-				);
-				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-				break;
-			case 'programmatic':
-				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-				break;
-			case 'similarity':
-				evaluators.push(createSimilarityEvaluator());
-				break;
-			case 'code-typecheck':
+	switch (args.suite) {
+		case 'llm-judge':
+			evaluators.push(createLLMJudgeEvaluator(env.llms.judge, env.parsedNodeTypes));
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			// For one-shot agent, also run code-specific evaluators
+			if (args.agent === AGENT_TYPES.ONE_SHOT) {
 				evaluators.push(createCodeTypecheckEvaluator());
-				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-				break;
-			case 'code-llm-judge':
 				evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
-				evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
-				break;
-		}
+			}
+			break;
+		case 'pairwise':
+			evaluators.push(
+				createPairwiseEvaluator(env.llms.judge, {
+					numJudges: args.numJudges,
+				}),
+			);
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			break;
+		case 'programmatic':
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			break;
+		case 'similarity':
+			evaluators.push(createSimilarityEvaluator());
+			break;
+		case 'code-typecheck':
+			evaluators.push(createCodeTypecheckEvaluator());
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			break;
+		case 'code-llm-judge':
+			evaluators.push(createCodeLLMJudgeEvaluator(env.llms.judge));
+			evaluators.push(createProgrammaticEvaluator(env.parsedNodeTypes));
+			break;
 	}
 
 	const llmCallLimiter = pLimit(args.concurrency);

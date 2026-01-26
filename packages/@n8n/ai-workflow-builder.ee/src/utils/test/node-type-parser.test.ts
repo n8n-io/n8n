@@ -126,6 +126,52 @@ const mockAgentNode: INodeTypeDescription = {
 	properties: [],
 };
 
+// Mock node with array version (like OpenAI V2) and resource/operation pattern
+const mockOpenAiNode: INodeTypeDescription = {
+	name: '@n8n/n8n-nodes-langchain.openAi',
+	displayName: 'OpenAI',
+	description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
+	group: ['transform'],
+	version: [2, 2.1], // Array version - this is the key part of the test
+	defaults: { name: 'OpenAI' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [
+		{
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{ name: 'Text', value: 'text' },
+				{ name: 'Image', value: 'image' },
+			],
+			default: 'text',
+		},
+		{
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options',
+			noDataExpression: true,
+			displayOptions: { show: { resource: ['text'] } },
+			options: [
+				{ name: 'Message a Model', value: 'response' },
+				{ name: 'Classify Text', value: 'classify' },
+			],
+			default: 'response',
+		},
+		{
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options',
+			noDataExpression: true,
+			displayOptions: { show: { resource: ['image'] } },
+			options: [{ name: 'Generate', value: 'generate' }],
+			default: 'generate',
+		},
+	],
+};
+
 describe('NodeTypeParser', () => {
 	describe('getNodeIdsByCategoryWithDiscriminators', () => {
 		it('should return nodes grouped by category with discriminator info', () => {
@@ -220,6 +266,58 @@ describe('NodeTypeParser', () => {
 			const trigger = result.triggers.find((n) => n.id === 'n8n-nodes-base.manualTrigger');
 			expect(trigger).toBeDefined();
 			expect(trigger?.discriminators).toBeUndefined();
+		});
+	});
+
+	describe('getNodeType with array versions', () => {
+		it('should find node when version is in the array', () => {
+			const parser = new NodeTypeParser([mockOpenAiNode]);
+
+			// Node has version: [2, 2.1], should find it when searching for 2.1
+			const result = parser.getNodeType('@n8n/n8n-nodes-langchain.openAi', 2.1);
+
+			expect(result).not.toBeNull();
+			expect(result?.name).toBe('@n8n/n8n-nodes-langchain.openAi');
+			expect(result?.displayName).toBe('OpenAI');
+		});
+
+		it('should find node when searching for any version in the array', () => {
+			const parser = new NodeTypeParser([mockOpenAiNode]);
+
+			// Should find for version 2 (first in array)
+			const result2 = parser.getNodeType('@n8n/n8n-nodes-langchain.openAi', 2);
+			expect(result2).not.toBeNull();
+
+			// Should find for version 2.1 (second in array)
+			const result21 = parser.getNodeType('@n8n/n8n-nodes-langchain.openAi', 2.1);
+			expect(result21).not.toBeNull();
+		});
+
+		it('should return null for version not in array', () => {
+			const parser = new NodeTypeParser([mockOpenAiNode]);
+
+			// Node has version: [2, 2.1], should NOT find version 1
+			const result = parser.getNodeType('@n8n/n8n-nodes-langchain.openAi', 1);
+
+			expect(result).toBeNull();
+		});
+
+		it('should extract discriminators for nodes with array versions', () => {
+			const parser = new NodeTypeParser([mockOpenAiNode]);
+
+			const result = parser.getNodeIdsByCategoryWithDiscriminators();
+
+			// Find OpenAI in AI category
+			const openAi = result.ai.find((n) => n.id === '@n8n/n8n-nodes-langchain.openAi');
+			expect(openAi).toBeDefined();
+			expect(openAi?.discriminators).toBeDefined();
+			expect(openAi?.discriminators?.type).toBe('resource_operation');
+			expect(openAi?.discriminators?.resources).toBeDefined();
+
+			// Check resources contain text and image
+			const resourceValues = openAi?.discriminators?.resources?.map((r) => r.value);
+			expect(resourceValues).toContain('text');
+			expect(resourceValues).toContain('image');
 		});
 	});
 });

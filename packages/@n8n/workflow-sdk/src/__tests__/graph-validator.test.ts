@@ -751,6 +751,242 @@ describe('graph validation', () => {
 		});
 	});
 
+	describe('checkChainLlm', () => {
+		test('returns warning when chainLlm v1.4+ has static text prompt', () => {
+			const wf = workflow('test-id', 'ChainLlm Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1.9,
+						config: {
+							name: 'LLM Chain',
+							parameters: {
+								promptType: 'define',
+								text: 'Static text without expression',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			expect(result.warnings).toContainEqual(
+				expect.objectContaining({ code: 'AGENT_STATIC_PROMPT' }),
+			);
+		});
+
+		test('returns no warning when chainLlm v1.4+ has expression in text', () => {
+			const wf = workflow('test-id', 'ChainLlm Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1.9,
+						config: {
+							name: 'LLM Chain',
+							parameters: {
+								promptType: 'define',
+								text: '={{ $json.input }}',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const warning = result.warnings.find((w) => w.code === 'AGENT_STATIC_PROMPT');
+			expect(warning).toBeUndefined();
+		});
+
+		test('returns no warning for chainLlm v1.3 (before promptType existed)', () => {
+			const wf = workflow('test-id', 'ChainLlm Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1.3,
+						config: {
+							name: 'LLM Chain',
+							parameters: {
+								prompt: 'Old style prompt',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const warning = result.warnings.find((w) => w.code === 'AGENT_STATIC_PROMPT');
+			expect(warning).toBeUndefined();
+		});
+	});
+
+	describe('checkMissingExpressionPrefix', () => {
+		test('returns warning when parameter has {{ $json }} without = prefix', () => {
+			const wf = workflow('test-id', 'Test Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+						config: {
+							name: 'Set',
+							parameters: {
+								assignments: {
+									assignments: [
+										{
+											name: 'data',
+											value: 'Input: {{ $json.input }}',
+											type: 'string',
+										},
+									],
+								},
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			expect(result.warnings).toContainEqual(
+				expect.objectContaining({ code: 'MISSING_EXPRESSION_PREFIX' }),
+			);
+		});
+
+		test('returns no warning when parameter has ={{ $json }}', () => {
+			const wf = workflow('test-id', 'Test Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+						config: {
+							name: 'Set',
+							parameters: {
+								assignments: {
+									assignments: [
+										{
+											name: 'data',
+											value: '={{ $json.input }}',
+											type: 'string',
+										},
+									],
+								},
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const warning = result.warnings.find((w) => w.code === 'MISSING_EXPRESSION_PREFIX');
+			expect(warning).toBeUndefined();
+		});
+
+		test('returns no warning for {{ someVar }} without n8n variable', () => {
+			const wf = workflow('test-id', 'Test Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: 'n8n-nodes-base.set',
+						version: 3.4,
+						config: {
+							name: 'Set',
+							parameters: {
+								assignments: {
+									assignments: [
+										{
+											name: 'template',
+											value: 'Hello {{ name }}',
+											type: 'string',
+										},
+									],
+								},
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const warning = result.warnings.find((w) => w.code === 'MISSING_EXPRESSION_PREFIX');
+			expect(warning).toBeUndefined();
+		});
+
+		test('detects issue in nested parameters', () => {
+			const wf = workflow('test-id', 'Test Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.agent',
+						version: 3.1,
+						config: {
+							name: 'AI Agent',
+							parameters: {
+								promptType: 'define',
+								text: '={{ $json.chatInput }}',
+								options: {
+									systemMessage: 'Context: {{ $json.context }}',
+								},
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			expect(result.warnings).toContainEqual(
+				expect.objectContaining({
+					code: 'MISSING_EXPRESSION_PREFIX',
+					message: expect.stringContaining('options.systemMessage'),
+				}),
+			);
+		});
+	});
+
 	describe('checkToolNode', () => {
 		test('returns warning when tool node has no parameters', () => {
 			const wf = workflow('test-id', 'Tool Workflow')

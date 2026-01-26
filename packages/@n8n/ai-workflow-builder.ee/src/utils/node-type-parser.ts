@@ -287,9 +287,12 @@ export class NodeTypeParser {
 			return null;
 		}
 
-		// If version specified, find exact match
+		// If version specified, find match (handle both scalar and array versions)
 		if (version !== undefined) {
-			const match = versions.find((v) => v.version === version);
+			const match = versions.find((v) => {
+				const nodeVersions = Array.isArray(v.version) ? v.version : [v.version];
+				return nodeVersions.includes(version);
+			});
 			return match || null;
 		}
 

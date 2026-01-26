@@ -9,6 +9,8 @@
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
 
@@ -141,6 +143,65 @@ const WORKFLOW_RULES = `<workflow_rules>
      }})
      \`\`\`
    - The credential type (e.g., \`slackApi\`) must match what the node expects - check the type definitions
+
+7. **Use AI Agent node for AI tasks, NOT provider-specific nodes**
+   - When the user request involves AI capabilities (chatbots, agents, AI processing), use the AI Agent node (\`@n8n/n8n-nodes-langchain.agent\`)
+   - Do NOT use provider-specific nodes like \`googleGemini\`, \`openAi\`, \`anthropic\` directly for AI tasks
+   - Provider-specific nodes are only used as language model subnodes INSIDE an AI Agent
+   - Distinguish between:
+     - **AI Agent** (\`@n8n/n8n-nodes-langchain.agent\`): Main workflow node for AI tasks, chatbots, autonomous workflows
+     - **AI Agent Tool** (\`@n8n/n8n-nodes-langchain.agentTool\`): Sub-node for multi-agent systems where one agent calls another
+   - Example: If user says "use AI to analyze data", create an AI Agent with a language model subnode, NOT a standalone openAi node
+
+8. **Prefer native n8n nodes over Code node**
+   - Code nodes are slower (sandboxed environment) - use them as a LAST RESORT
+   - **Edit Fields (Set) node** is your go-to for data manipulation:
+     - Adding, renaming, or removing fields
+     - Mapping data from one structure to another
+     - Setting variables, constants, hardcoded values
+     - Creating objects or arrays
+   - **Use these native nodes INSTEAD of Code node:**
+     | Task | Use This |
+     |------|----------|
+     | Add/modify/rename fields | Edit Fields (Set) |
+     | Set hardcoded values/config | Edit Fields (Set) |
+     | Filter items by condition | Filter |
+     | Route by condition | If or Switch |
+     | Split array into items | Split Out |
+     | Combine multiple items | Aggregate |
+     | Merge data from branches | Merge |
+     | Summarize/pivot data | Summarize |
+     | Sort items | Sort |
+     | Remove duplicates | Remove Duplicates |
+     | Limit items | Limit |
+     | Format as HTML | HTML |
+     | Parse AI output | Structured Output Parser |
+     | Date/time operations | Date & Time |
+     | Compare datasets | Compare Datasets |
+     | Regex operations | If or Edit Fields with expressions |
+   - **Code node is ONLY appropriate for:**
+     - Complex multi-step algorithms that cannot be expressed in single expressions
+     - Operations requiring external libraries or complex data structures
+   - **NEVER use Code node for:**
+     - Simple data transformations (use Edit Fields)
+     - Filtering/routing (use Filter, If, Switch)
+     - Array operations (use Split Out, Aggregate)
+     - Regex operations (use expressions in If or Edit Fields nodes)
+
+9. **Prefer dedicated integration nodes over HTTP Request**
+   - n8n has 400+ dedicated integration nodes - use them instead of HTTP Request when available
+   - **Use dedicated nodes for:** OpenAI, Gmail, Slack, Google Sheets, Notion, Airtable, HubSpot, Salesforce, Stripe, GitHub, Jira, Trello, Discord, Telegram, Twitter, LinkedIn, etc.
+   - **Only use HTTP Request when:**
+     - No dedicated n8n node exists for the service
+     - User explicitly requests HTTP Request
+     - Accessing a custom/internal API
+     - The dedicated node doesn't support the specific operation needed
+   - **Benefits of dedicated nodes:**
+     - Built-in authentication handling
+     - Pre-configured parameters for common operations
+     - Better error handling and response parsing
+     - Easier to configure and maintain
+   - **Example:** If user says "send email via Gmail", use the Gmail node, NOT HTTP Request to Gmail API
 </workflow_rules>`;
 
 /**
@@ -836,7 +897,7 @@ export function buildOpusOneShotGeneratorPrompt(
 		other: NodeWithDiscriminators[];
 	},
 	sdkSourceCode: string,
-	currentWorkflow?: string,
+	currentWorkflow?: WorkflowJSON,
 ): ChatPromptTemplate {
 	const availableNodesSection = buildOpusAvailableNodesSection(nodeIds);
 	const sdkApiReference = buildSdkApiReference(sdkSourceCode);
@@ -856,8 +917,10 @@ export function buildOpusOneShotGeneratorPrompt(
 	const userMessageParts = [];
 
 	if (currentWorkflow) {
-		const escapedCurrentWorkflow = escapeCurlyBrackets(currentWorkflow);
-		userMessageParts.push(`<current_workflow>\n${escapedCurrentWorkflow}\n</current_workflow>`);
+		// Convert WorkflowJSON to SDK code and escape curly brackets for LangChain
+		const workflowCode = generateWorkflowCode(currentWorkflow);
+		const escapedWorkflowCode = escapeCurlyBrackets(workflowCode);
+		userMessageParts.push(`<current_workflow>\n${escapedWorkflowCode}\n</current_workflow>`);
 		userMessageParts.push('\nUser request:');
 	}
 

@@ -225,5 +225,52 @@ describe('OneShotNodeGetTool', () => {
 			expect(result).toContain('AggregateV1Config');
 			expect(result).toContain('CodeV2RunOnceForEachItemConfig');
 		});
+
+		it('should prefer split structure over flat file when discriminators are provided', async () => {
+			// This test creates a node that has BOTH a flat file (v21.ts) AND a split directory (v21/)
+			// When discriminators are provided, it should use the split structure, not the flat file
+			const openaiDir = path.join(tempDir, 'nodes/n8n-nodes-base/openai');
+			fs.mkdirSync(openaiDir, { recursive: true });
+
+			// Create flat file (v21.ts) - large file like the real OpenAI node
+			fs.writeFileSync(
+				path.join(openaiDir, 'v21.ts'),
+				'export type OpenAIV21FlatConfig = { type: "n8n-nodes-base.openai"; /* This is the FLAT file with 928 lines */ flatFileMarker: true };',
+			);
+
+			// Create split directory (v21/) with resource/operation structure
+			const v21Dir = path.join(openaiDir, 'v21');
+			fs.mkdirSync(v21Dir, { recursive: true });
+			fs.writeFileSync(
+				path.join(v21Dir, '_shared.ts'),
+				'export interface OpenAIV21Base { type: string; }',
+			);
+
+			const videoDir = path.join(v21Dir, 'resource_video');
+			fs.mkdirSync(videoDir, { recursive: true });
+			fs.writeFileSync(
+				path.join(videoDir, 'operation_generate.ts'),
+				'export type OpenAIV21VideoGenerateConfig = { resource: "video"; operation: "generate"; splitFileMarker: true };',
+			);
+
+			fs.writeFileSync(path.join(openaiDir, 'index.ts'), "export * from './v21';");
+
+			const tool = createOneShotNodeGetTool({ generatedTypesDir: tempDir });
+
+			const result = await tool.invoke({
+				nodeIds: [
+					{
+						nodeId: 'n8n-nodes-base.openai',
+						resource: 'video',
+						operation: 'generate',
+					},
+				],
+			});
+
+			// Should use the split file (69 lines with splitFileMarker), NOT the flat file (928 lines with flatFileMarker)
+			expect(result).toContain('splitFileMarker');
+			expect(result).not.toContain('flatFileMarker');
+			expect(result).toContain('OpenAIV21VideoGenerateConfig');
+		});
 	});
 });

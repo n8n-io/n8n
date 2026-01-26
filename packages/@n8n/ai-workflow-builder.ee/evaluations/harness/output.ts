@@ -81,6 +81,11 @@ export function createArtifactSaver(options: ArtifactSaverOptions): ArtifactSave
 				fs.writeFileSync(path.join(exampleDir, 'code.ts'), result.generatedCode, 'utf-8');
 			}
 
+			// Save logs if available (debug logs from the generation process)
+			if (result.logs) {
+				fs.writeFileSync(path.join(exampleDir, 'log.txt'), result.logs, 'utf-8');
+			}
+
 			// Save feedback
 			const feedbackOutput = formatFeedbackForExport(result);
 			fs.writeFileSync(

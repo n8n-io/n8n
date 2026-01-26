@@ -28,7 +28,7 @@ import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { jsonParse } from 'n8n-workflow';
 import shuffle from 'lodash/shuffle';
 
-import { N8nAskAssistantChat, N8nText, N8nSelect } from '@n8n/design-system';
+import { N8nAskAssistantChat, N8nText, N8nSelect, N8nOption } from '@n8n/design-system';
 import type { ChatRequest } from '../../assistant.types';
 
 const emit = defineEmits<{
@@ -433,16 +433,28 @@ defineExpose({
 				<div :class="$style.builderSettings">
 					<N8nSelect
 						:model-value="builderStore.selectedPromptVersion"
-						:options="promptVersionOptions"
 						size="small"
 						@update:model-value="onPromptVersionChange"
-					/>
+					>
+						<N8nOption
+							v-for="option in promptVersionOptions"
+							:key="option.value"
+							:label="option.label"
+							:value="option.value"
+						/>
+					</N8nSelect>
 					<N8nSelect
 						:model-value="builderStore.selectedModelId"
-						:options="modelOptions"
 						size="small"
 						@update:model-value="onModelChange"
-					/>
+					>
+						<N8nOption
+							v-for="option in modelOptions"
+							:key="option.value"
+							:label="option.label"
+							:value="option.value"
+						/>
+					</N8nSelect>
 				</div>
 			</template>
 			<template #inputHeader>
