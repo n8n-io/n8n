@@ -734,7 +734,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
-					`Agent node "${instance.name}" has no expression in its prompt. When working with a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } if any other trigger`,
+					`Agent node "${instance.name}" has no expression in its prompt. When following a chat trigger node, use { promptType: 'auto', text: '={{ $json.chatInput }}' }. Or use { promptType: 'define', text: '={{ ... }}' } if any other trigger`,
 					instance.name,
 				),
 			);
@@ -778,7 +778,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
-					`ChainLlm node "${instance.name}" has no expression in its prompt. Use an expression like '={{ $json.input }}' to pass dynamic data.`,
+					`ChainLlm node "${instance.name}" has no expression in its prompt. Parameter values must start with '=' to evaluate correctly as expressions. For example '={{ $json.input }}'.`,
 					instance.name,
 				),
 			);
