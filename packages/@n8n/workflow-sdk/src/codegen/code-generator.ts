@@ -134,8 +134,6 @@ const RESERVED_KEYWORDS = new Set([
 	'trigger',
 	'node',
 	'merge',
-	'ifElse',
-	'switchCase',
 	'splitInBatches',
 	'sticky',
 	'languageModel',
@@ -677,43 +675,57 @@ function generateBranchCode(
 }
 
 /**
- * Generate code for an IF branch (named syntax only)
+ * Generate code for an IF branch using fluent API syntax
+ * Generates: ifNode.onTrue(trueHandler).onFalse(falseHandler)
  */
 function generateIfElse(ifElse: IfElseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	const trueBranchCode = generateBranchCode(ifElse.trueBranch, innerCtx);
-	const falseBranchCode = generateBranchCode(ifElse.falseBranch, innerCtx);
-
-	// For named syntax, we need a variable reference to the IF node
+	// For fluent syntax, we need a variable reference to the IF node
 	const ifNodeRef = getVarRefOrInlineNode(ifElse.ifNode, ctx);
 
-	return `ifElse(${ifNodeRef}, { true: ${trueBranchCode}, false: ${falseBranchCode} })`;
+	// Build the fluent chain
+	let code = ifNodeRef;
+
+	// Add onTrue if true branch exists
+	if (ifElse.trueBranch !== null) {
+		const trueBranchCode = generateBranchCode(ifElse.trueBranch, innerCtx);
+		code += `.onTrue(${trueBranchCode})`;
+	}
+
+	// Add onFalse if false branch exists
+	if (ifElse.falseBranch !== null) {
+		const falseBranchCode = generateBranchCode(ifElse.falseBranch, innerCtx);
+		code += `.onFalse(${falseBranchCode})`;
+	}
+
+	return code;
 }
 
 /**
- * Generate code for a switch case (named syntax only)
+ * Generate code for a switch case using fluent API syntax
+ * Generates: switchNode.onCase(0, caseA).onCase(1, caseB)
  */
 function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
 
-	// For named syntax, we need a variable reference to the Switch node
+	// For fluent syntax, we need a variable reference to the Switch node
 	const switchNodeRef = getVarRefOrInlineNode(switchCase.switchNode, ctx);
 
-	// If no cases, just return the switch node reference (don't wrap in switchCase())
+	// If no cases, just return the switch node reference
 	if (switchCase.cases.length === 0) {
 		return switchNodeRef;
 	}
 
-	// Generate named case entries with original indices: { case0: ..., case3: ..., ... }
-	const caseEntries = switchCase.cases
-		.map((c, i) => {
-			const caseIndex = switchCase.caseIndices[i] ?? i;
-			return `case${caseIndex}: ${generateBranchCode(c, innerCtx)}`;
-		})
-		.join(', ');
+	// Build the fluent chain with onCase calls
+	let code = switchNodeRef;
+	switchCase.cases.forEach((c, i) => {
+		const caseIndex = switchCase.caseIndices[i] ?? i;
+		const caseCode = generateBranchCode(c, innerCtx);
+		code += `.onCase(${caseIndex}, ${caseCode})`;
+	});
 
-	return `switchCase(${switchNodeRef}, { ${caseEntries} })`;
+	return code;
 }
 
 /**

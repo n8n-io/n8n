@@ -367,6 +367,33 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
+	/**
+	 * Start building an IF branch with the true branch target.
+	 * Only available on IF nodes (n8n-nodes-base.if).
+	 *
+	 * @example
+	 * ifNode.onTrue(trueHandler).onFalse(falseHandler)
+	 */
+	onTrue?(target: IfElseTarget): IfElseBuilder<TOutput>;
+
+	/**
+	 * Start building an IF branch with the false branch target.
+	 * Only available on IF nodes (n8n-nodes-base.if).
+	 *
+	 * @example
+	 * ifNode.onFalse(falseHandler).onTrue(trueHandler)
+	 */
+	onFalse?(target: IfElseTarget): IfElseBuilder<TOutput>;
+
+	/**
+	 * Start building a Switch case with a case target.
+	 * Only available on Switch nodes (n8n-nodes-base.switch).
+	 *
+	 * @example
+	 * switchNode.onCase(0, caseA).onCase(1, caseB)
+	 */
+	onCase?(index: number, target: SwitchCaseTarget): SwitchCaseBuilder<TOutput>;
+
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this;
 
 	getConnections(): DeclaredConnection[];
@@ -570,6 +597,113 @@ export interface SwitchCaseComposite {
 }
 
 // =============================================================================
+// Fluent API builders for IF and Switch nodes
+// =============================================================================
+
+/**
+ * Target type for IF else branches - can be a node, chain, null, or fanOut
+ */
+export type IfElseTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| FanOutTargets;
+
+/**
+ * Target type for Switch case branches - can be a node, chain, null, or fanOut
+ */
+export type SwitchCaseTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| FanOutTargets;
+
+/**
+ * Fluent builder for IF nodes with onTrue/onFalse methods.
+ * Created by calling .onTrue() or .onFalse() on an IF node instance.
+ *
+ * @example
+ * ```typescript
+ * const ifNode = node({ type: 'n8n-nodes-base.if', version: 2.2, config: {...} });
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(ifNode.onTrue(trueHandler).onFalse(falseHandler))
+ * ```
+ */
+export interface IfElseBuilder<TOutput = unknown> {
+	/** Marker for workflow-builder detection */
+	readonly _isIfElseBuilder: true;
+	/** The IF node this builder wraps */
+	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>;
+	/** The true branch target (set via .onTrue()) */
+	readonly trueBranch: IfElseTarget;
+	/** The false branch target (set via .onFalse()) */
+	readonly falseBranch: IfElseTarget;
+
+	/**
+	 * Set the target for the true branch (output 0).
+	 * Can be called in any order with onFalse().
+	 *
+	 * @param target - The node, chain, or fanOut to execute when condition is true
+	 */
+	onTrue(target: IfElseTarget): IfElseBuilder<TOutput>;
+
+	/**
+	 * Set the target for the false branch (output 1).
+	 * Can be called in any order with onTrue().
+	 *
+	 * @param target - The node, chain, or fanOut to execute when condition is false
+	 */
+	onFalse(target: IfElseTarget): IfElseBuilder<TOutput>;
+
+	/**
+	 * Chain a target node after the IF branches.
+	 */
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[],
+		outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.if', string, TOutput>, T>;
+}
+
+/**
+ * Fluent builder for Switch nodes with onCase method.
+ * Created by calling .onCase() on a Switch node instance.
+ *
+ * @example
+ * ```typescript
+ * const switchNode = node({ type: 'n8n-nodes-base.switch', version: 3.4, config: {...} });
+ * workflow('id', 'Test')
+ *   .add(trigger)
+ *   .then(switchNode.onCase(0, caseA).onCase(1, caseB).onCase(2, caseC))
+ * ```
+ */
+export interface SwitchCaseBuilder<TOutput = unknown> {
+	/** Marker for workflow-builder detection */
+	readonly _isSwitchCaseBuilder: true;
+	/** The Switch node this builder wraps */
+	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, TOutput>;
+	/** Map from output index to case target */
+	readonly caseMapping: Map<number, SwitchCaseTarget>;
+
+	/**
+	 * Set the target for a specific case (output index).
+	 * Can be called multiple times for different cases.
+	 *
+	 * @param index - The output index (0-based)
+	 * @param target - The node, chain, or fanOut to execute for this case
+	 */
+	onCase(index: number, target: SwitchCaseTarget): SwitchCaseBuilder<TOutput>;
+
+	/**
+	 * Chain a target node after the Switch branches.
+	 */
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[],
+		outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.switch', string, TOutput>, T>;
+}
+
+// =============================================================================
 // Split in batches
 // =============================================================================
 
@@ -644,6 +778,8 @@ export interface WorkflowBuilder {
 	then(ifElse: IfElseComposite): WorkflowBuilder;
 	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	then<T>(splitInBatches: SplitInBatchesBuilder<T>): WorkflowBuilder;
+	then<T>(ifElseBuilder: IfElseBuilder<T>): WorkflowBuilder;
+	then<T>(switchCaseBuilder: SwitchCaseBuilder<T>): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 

@@ -77,7 +77,7 @@ describe('codegen index', () => {
 
 			const code = generateWorkflowCode(json);
 
-			expect(code).toContain('ifElse(iF, { true:');
+			expect(code).toContain('iF.onTrue(true_node).onFalse(false_node)');
 		});
 
 		it('generates code with merge', () => {

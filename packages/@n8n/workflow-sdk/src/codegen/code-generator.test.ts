@@ -183,8 +183,8 @@ describe('code-generator', () => {
 				expect(code).toContain('const iF = node({');
 				expect(code).toContain('const trueHandler = node({');
 				expect(code).toContain('const falseHandler = node({');
-				// The ifElse should use named syntax with IF node reference
-				expect(code).toContain('ifElse(iF, { true: trueHandler, false: falseHandler })');
+				// The ifElse should use fluent API syntax
+				expect(code).toContain('iF.onTrue(trueHandler).onFalse(falseHandler)');
 			});
 
 			it('handles IF with null branch', () => {
@@ -217,10 +217,10 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should use named syntax with IF node
-				expect(code).toContain('ifElse(iF, {');
-				expect(code).toContain('true: trueHandler');
-				expect(code).toContain('false: null');
+				// Should use fluent API syntax with only onTrue (no onFalse since false branch is null)
+				expect(code).toContain('iF.onTrue(trueHandler)');
+				// Should not have onFalse since false branch is null
+				expect(code).not.toContain('onFalse');
 			});
 		});
 

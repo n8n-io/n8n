@@ -17,6 +17,10 @@ import {
 	type SplitInBatchesBuilder,
 	type InputTarget,
 	type OutputSelector,
+	type IfElseBuilder,
+	type SwitchCaseBuilder,
+	type IfElseTarget,
+	type SwitchCaseTarget,
 } from './types/base';
 import { isFanOut, type FanOutTargets } from './fan-out';
 
@@ -243,7 +247,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 			this._connections.push({ target: t, outputIndex });
 		}
 
-		// Helper to extract all nodes from a target (handles NodeChain and SplitInBatchesBuilder targets)
+		// Helper to extract all nodes from a target (handles NodeChain, builders, etc.)
 		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
 			if (isNodeChain(t)) {
 				return t.allNodes;
@@ -251,6 +255,16 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 			// For SplitInBatchesBuilder, return it as-is so it can be detected and handled
 			// by workflow-builder's addSplitInBatchesChainNodes
 			if (isSplitInBatchesBuilderOrChain(t)) {
+				return [t as unknown as NodeInstance<string, string, unknown>];
+			}
+			// For IfElseBuilder, return it as-is so it can be detected and handled
+			// by workflow-builder's addIfElseBuilderNodes
+			if (isIfElseBuilder(t)) {
+				return [t as unknown as NodeInstance<string, string, unknown>];
+			}
+			// For SwitchCaseBuilder, return it as-is so it can be detected and handled
+			// by workflow-builder's addSwitchCaseBuilderNodes
+			if (isSwitchCaseBuilder(t)) {
 				return [t as unknown as NodeInstance<string, string, unknown>];
 			}
 			return [t as NodeInstance<string, string, unknown>];
@@ -282,6 +296,57 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput> {
 		return new OutputSelectorImpl(this, index);
+	}
+
+	/**
+	 * Start building an IF branch with the true branch target.
+	 * Only available on IF nodes (n8n-nodes-base.if).
+	 *
+	 * @example
+	 * ifNode.onTrue(trueHandler).onFalse(falseHandler)
+	 */
+	onTrue(target: IfElseTarget): IfElseBuilder<TOutput> {
+		if (this.type !== 'n8n-nodes-base.if') {
+			throw new Error('.onTrue() is only available on IF nodes (n8n-nodes-base.if)');
+		}
+		const builder = new IfElseBuilderImpl<TOutput>(
+			this as unknown as NodeInstance<'n8n-nodes-base.if', string, TOutput>,
+		);
+		return builder.onTrue(target);
+	}
+
+	/**
+	 * Start building an IF branch with the false branch target.
+	 * Only available on IF nodes (n8n-nodes-base.if).
+	 *
+	 * @example
+	 * ifNode.onFalse(falseHandler).onTrue(trueHandler)
+	 */
+	onFalse(target: IfElseTarget): IfElseBuilder<TOutput> {
+		if (this.type !== 'n8n-nodes-base.if') {
+			throw new Error('.onFalse() is only available on IF nodes (n8n-nodes-base.if)');
+		}
+		const builder = new IfElseBuilderImpl<TOutput>(
+			this as unknown as NodeInstance<'n8n-nodes-base.if', string, TOutput>,
+		);
+		return builder.onFalse(target);
+	}
+
+	/**
+	 * Start building a Switch case with a case target.
+	 * Only available on Switch nodes (n8n-nodes-base.switch).
+	 *
+	 * @example
+	 * switchNode.onCase(0, caseA).onCase(1, caseB)
+	 */
+	onCase(index: number, target: SwitchCaseTarget): SwitchCaseBuilder<TOutput> {
+		if (this.type !== 'n8n-nodes-base.switch') {
+			throw new Error('.onCase() is only available on Switch nodes (n8n-nodes-base.switch)');
+		}
+		const builder = new SwitchCaseBuilderImpl<TOutput>(
+			this as unknown as NodeInstance<'n8n-nodes-base.switch', string, TOutput>,
+		);
+		return builder.onCase(index, target);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
@@ -401,7 +466,7 @@ class NodeChainImpl<
 			targets = Array.isArray(target) ? target : [target];
 		}
 
-		// Helper to extract all nodes from a target (handles NodeChain and SplitInBatchesBuilder targets)
+		// Helper to extract all nodes from a target (handles NodeChain, builders, etc.)
 		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
 			if (isNodeChain(t)) {
 				return t.allNodes;
@@ -409,6 +474,16 @@ class NodeChainImpl<
 			// For SplitInBatchesBuilder, return it as-is so it can be detected and handled
 			// by workflow-builder's addSplitInBatchesChainNodes
 			if (isSplitInBatchesBuilderOrChain(t)) {
+				return [t as unknown as NodeInstance<string, string, unknown>];
+			}
+			// For IfElseBuilder, return it as-is so it can be detected and handled
+			// by workflow-builder's addIfElseBuilderNodes
+			if (isIfElseBuilder(t)) {
+				return [t as unknown as NodeInstance<string, string, unknown>];
+			}
+			// For SwitchCaseBuilder, return it as-is so it can be detected and handled
+			// by workflow-builder's addSwitchCaseBuilderNodes
+			if (isSwitchCaseBuilder(t)) {
 				return [t as unknown as NodeInstance<string, string, unknown>];
 			}
 			return [t as NodeInstance<string, string, unknown>];
@@ -450,6 +525,39 @@ class NodeChainImpl<
 	 */
 	output(index: number): OutputSelector<TTail['type'], TTail['version'], TTail['_outputType']> {
 		return this.tail.output(index);
+	}
+
+	/**
+	 * Start building an IF branch with the true branch target.
+	 * Delegates to the tail node's onTrue method.
+	 */
+	onTrue(target: IfElseTarget): IfElseBuilder<TTail['_outputType']> {
+		if (!this.tail.onTrue) {
+			throw new Error('.onTrue() is only available on IF nodes (n8n-nodes-base.if)');
+		}
+		return this.tail.onTrue(target);
+	}
+
+	/**
+	 * Start building an IF branch with the false branch target.
+	 * Delegates to the tail node's onFalse method.
+	 */
+	onFalse(target: IfElseTarget): IfElseBuilder<TTail['_outputType']> {
+		if (!this.tail.onFalse) {
+			throw new Error('.onFalse() is only available on IF nodes (n8n-nodes-base.if)');
+		}
+		return this.tail.onFalse(target);
+	}
+
+	/**
+	 * Start building a Switch case with a case target.
+	 * Delegates to the tail node's onCase method.
+	 */
+	onCase(index: number, target: SwitchCaseTarget): SwitchCaseBuilder<TTail['_outputType']> {
+		if (!this.tail.onCase) {
+			throw new Error('.onCase() is only available on Switch nodes (n8n-nodes-base.switch)');
+		}
+		return this.tail.onCase(index, target);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
@@ -497,6 +605,217 @@ class OutputSelectorImpl<TType extends string, TVersion extends string, TOutput 
 		// Delegate to the node's then method with the specific outputIndex
 		return this.node.then(target, this.outputIndex);
 	}
+}
+
+// =============================================================================
+// Fluent API builders for IF and Switch nodes
+// =============================================================================
+
+/**
+ * Extract all nodes from a target (node, chain, composite, or fanOut)
+ */
+function extractNodesFromTarget(target: unknown): NodeInstance<string, string, unknown>[] {
+	if (target === null) return [];
+
+	// Handle FanOut
+	if (isFanOut(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [];
+		for (const t of target.targets) {
+			nodes.push(...extractNodesFromTarget(t));
+		}
+		return nodes;
+	}
+
+	// Handle NodeChain
+	if (isNodeChain(target)) {
+		const nodes: NodeInstance<string, string, unknown>[] = [];
+		for (const chainNode of target.allNodes) {
+			nodes.push(...extractNodesFromTarget(chainNode));
+		}
+		return nodes;
+	}
+
+	// Handle IfElseBuilder (fluent API)
+	if (
+		target !== null &&
+		typeof target === 'object' &&
+		'_isIfElseBuilder' in target &&
+		(target as { _isIfElseBuilder: boolean })._isIfElseBuilder === true
+	) {
+		const builder = target as IfElseBuilder<unknown>;
+		const nodes: NodeInstance<string, string, unknown>[] = [builder.ifNode];
+		nodes.push(...extractNodesFromTarget(builder.trueBranch));
+		nodes.push(...extractNodesFromTarget(builder.falseBranch));
+		return nodes;
+	}
+
+	// Handle SwitchCaseBuilder (fluent API)
+	if (
+		target !== null &&
+		typeof target === 'object' &&
+		'_isSwitchCaseBuilder' in target &&
+		(target as { _isSwitchCaseBuilder: boolean })._isSwitchCaseBuilder === true
+	) {
+		const builder = target as SwitchCaseBuilder<unknown>;
+		const nodes: NodeInstance<string, string, unknown>[] = [builder.switchNode];
+		for (const caseTarget of builder.caseMapping.values()) {
+			nodes.push(...extractNodesFromTarget(caseTarget));
+		}
+		return nodes;
+	}
+
+	// Check if it's a node-like object with type, version, config
+	if (
+		target !== null &&
+		typeof target === 'object' &&
+		'type' in target &&
+		'version' in target &&
+		'config' in target
+	) {
+		return [target as NodeInstance<string, string, unknown>];
+	}
+
+	return [];
+}
+
+/**
+ * Type guard to check if a value is an IfElseBuilder
+ */
+export function isIfElseBuilder(value: unknown): value is IfElseBuilder<unknown> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		'_isIfElseBuilder' in value &&
+		(value as IfElseBuilder<unknown>)._isIfElseBuilder === true
+	);
+}
+
+/**
+ * Type guard to check if a value is a SwitchCaseBuilder
+ */
+export function isSwitchCaseBuilder(value: unknown): value is SwitchCaseBuilder<unknown> {
+	return (
+		value !== null &&
+		typeof value === 'object' &&
+		'_isSwitchCaseBuilder' in value &&
+		(value as SwitchCaseBuilder<unknown>)._isSwitchCaseBuilder === true
+	);
+}
+
+/**
+ * Internal IF else builder implementation
+ *
+ * Provides fluent .onTrue()/.onFalse() methods for IF node branching.
+ */
+class IfElseBuilderImpl<TOutput = unknown> implements IfElseBuilder<TOutput> {
+	readonly _isIfElseBuilder: true = true;
+	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>;
+	trueBranch: IfElseTarget = null;
+	falseBranch: IfElseTarget = null;
+	/** All nodes from both branches (for workflow-builder) */
+	_allBranchNodes: NodeInstance<string, string, unknown>[] = [];
+
+	constructor(ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>) {
+		this.ifNode = ifNode;
+	}
+
+	onTrue(target: IfElseTarget): IfElseBuilder<TOutput> {
+		this.trueBranch = target;
+		this._updateAllBranchNodes();
+		return this;
+	}
+
+	onFalse(target: IfElseTarget): IfElseBuilder<TOutput> {
+		this.falseBranch = target;
+		this._updateAllBranchNodes();
+		return this;
+	}
+
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[],
+		outputIndex: number = 0,
+	): NodeChain<NodeInstance<'n8n-nodes-base.if', string, TOutput>, T> {
+		// Delegate to the IF node's then method
+		return this.ifNode.then(target, outputIndex);
+	}
+
+	private _updateAllBranchNodes(): void {
+		const allNodes: NodeInstance<string, string, unknown>[] = [];
+		for (const node of extractNodesFromTarget(this.trueBranch)) {
+			if (!allNodes.some((n) => n.name === node.name)) {
+				allNodes.push(node);
+			}
+		}
+		for (const node of extractNodesFromTarget(this.falseBranch)) {
+			if (!allNodes.some((n) => n.name === node.name)) {
+				allNodes.push(node);
+			}
+		}
+		this._allBranchNodes = allNodes;
+	}
+}
+
+/**
+ * Internal Switch case builder implementation
+ *
+ * Provides fluent .onCase() method for Switch node branching.
+ */
+class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOutput> {
+	readonly _isSwitchCaseBuilder: true = true;
+	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, TOutput>;
+	readonly caseMapping: Map<number, SwitchCaseTarget> = new Map();
+	/** All nodes from all cases (for workflow-builder) */
+	_allCaseNodes: NodeInstance<string, string, unknown>[] = [];
+
+	constructor(switchNode: NodeInstance<'n8n-nodes-base.switch', string, TOutput>) {
+		this.switchNode = switchNode;
+	}
+
+	onCase(index: number, target: SwitchCaseTarget): SwitchCaseBuilder<TOutput> {
+		this.caseMapping.set(index, target);
+		this._updateAllCaseNodes();
+		return this;
+	}
+
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[],
+		outputIndex: number = 0,
+	): NodeChain<NodeInstance<'n8n-nodes-base.switch', string, TOutput>, T> {
+		// Delegate to the Switch node's then method
+		return this.switchNode.then(target, outputIndex);
+	}
+
+	private _updateAllCaseNodes(): void {
+		const allNodes: NodeInstance<string, string, unknown>[] = [];
+		for (const target of this.caseMapping.values()) {
+			for (const node of extractNodesFromTarget(target)) {
+				if (!allNodes.some((n) => n.name === node.name)) {
+					allNodes.push(node);
+				}
+			}
+		}
+		this._allCaseNodes = allNodes;
+	}
+}
+
+/**
+ * Create an IfElseBuilder for an IF node.
+ * This is called internally when .onTrue() or .onFalse() is called on an IF node.
+ */
+export function createIfElseBuilder<TOutput>(
+	ifNode: NodeInstance<'n8n-nodes-base.if', string, TOutput>,
+): IfElseBuilder<TOutput> {
+	return new IfElseBuilderImpl(ifNode);
+}
+
+/**
+ * Create a SwitchCaseBuilder for a Switch node.
+ * This is called internally when .onCase() is called on a Switch node.
+ */
+export function createSwitchCaseBuilder<TOutput>(
+	switchNode: NodeInstance<'n8n-nodes-base.switch', string, TOutput>,
+): SwitchCaseBuilder<TOutput> {
+	return new SwitchCaseBuilderImpl(switchNode);
 }
 
 /**

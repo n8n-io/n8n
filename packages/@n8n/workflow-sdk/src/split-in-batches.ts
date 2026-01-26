@@ -8,8 +8,11 @@ import type {
 	NodeChain,
 	InputTarget,
 	OutputSelector,
+	IfElseBuilder,
+	SwitchCaseBuilder,
 } from './types/base';
 import { isFanOut } from './fan-out';
+import { isIfElseBuilder, isSwitchCaseBuilder } from './node-builder';
 import type { FanOutTargets } from './fan-out';
 
 /**
@@ -397,10 +400,27 @@ function extractNodesFromTarget(target: BranchTarget): NodeInstance<string, stri
 		return [];
 	}
 	if (isFanOut(target)) {
-		return target.targets;
+		return target.targets.flatMap((t) => extractNodesFromTarget(t as BranchTarget));
 	}
 	if (isNodeChain(target)) {
 		return target.allNodes;
+	}
+	// Handle IfElseBuilder (fluent API)
+	if (isIfElseBuilder(target)) {
+		const builder = target as IfElseBuilder<unknown>;
+		const nodes: NodeInstance<string, string, unknown>[] = [builder.ifNode];
+		nodes.push(...extractNodesFromTarget(builder.trueBranch as BranchTarget));
+		nodes.push(...extractNodesFromTarget(builder.falseBranch as BranchTarget));
+		return nodes;
+	}
+	// Handle SwitchCaseBuilder (fluent API)
+	if (isSwitchCaseBuilder(target)) {
+		const builder = target as SwitchCaseBuilder<unknown>;
+		const nodes: NodeInstance<string, string, unknown>[] = [builder.switchNode];
+		for (const caseTarget of builder.caseMapping.values()) {
+			nodes.push(...extractNodesFromTarget(caseTarget as BranchTarget));
+		}
+		return nodes;
 	}
 	// It's a single NodeInstance
 	return [target];
@@ -414,10 +434,18 @@ function getFirstNodes(target: BranchTarget): NodeInstance<string, string, unkno
 		return [];
 	}
 	if (isFanOut(target)) {
-		return target.targets;
+		return target.targets.flatMap((t) => getFirstNodes(t as BranchTarget));
 	}
 	if (isNodeChain(target)) {
 		return [target.head];
+	}
+	// Handle IfElseBuilder (fluent API) - the first node is the IF/Switch node
+	if (isIfElseBuilder(target)) {
+		return [target.ifNode];
+	}
+	// Handle SwitchCaseBuilder (fluent API)
+	if (isSwitchCaseBuilder(target)) {
+		return [target.switchNode];
 	}
 	// It's a single NodeInstance
 	return [target];
