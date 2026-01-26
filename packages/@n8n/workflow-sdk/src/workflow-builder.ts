@@ -1977,7 +1977,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return;
 		}
 
-		// Fluent API: splitInBatches().done().then().each().then().loop()
+		// Fluent API: splitInBatches(sibNode).onDone(...).onEachBatch(...)
 		// Process done chain batches (output 0)
 		let prevDoneNode: string | null = null;
 		for (const batch of builder._doneBatches) {
@@ -3148,7 +3148,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			});
 		}
 
-		// Fluent API: splitInBatches().done().then().each().then().loop()
+		// Fluent API: splitInBatches(sibNode).onDone(...).onEachBatch(...)
 		// Process done chain batches (output 0)
 		// Batches preserve array structure for fan-out detection
 		let prevDoneNode: string | null = null;
@@ -3176,8 +3176,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					}
 				}
 				// For arrays, don't update prevDoneNode - subsequent single nodes will chain from SIB or prev
-				// This matches the semantics of .done().then([a, b]).then(c) where c chains from nothing (invalid usage)
-				// But for valid cases like .done().then([a.then(c), b.then(c)]), the tails are merged elsewhere
+				// This matches the semantics of .onDone([a, b]) with subsequent single nodes - invalid usage
+				// For valid cases like .onDone(fanOut(a.then(c), b.then(c))), the tails are merged elsewhere
 			} else {
 				// Single node: chain to previous or connect to output 0
 				const doneNode = batch;

@@ -21,16 +21,14 @@ export interface FanOutTargets {
  * @example
  * ```typescript
  * // Split in batches with done output going to multiple nodes
- * splitInBatches(sibNode, {
- *   done: fanOut(nodeA, nodeB),  // done output -> both nodeA and nodeB
- *   each: processNode
- * })
+ * splitInBatches(sibNode)
+ *   .onDone(fanOut(nodeA, nodeB))  // done output -> both nodeA and nodeB
+ *   .onEachBatch(processNode.then(sibNode))
  *
  * // IF branch with true output going to multiple nodes
- * ifElse(ifNode, {
- *   true: fanOut(nodeA, nodeB, nodeC),  // true -> all three nodes
- *   false: singleNode
- * })
+ * ifNode
+ *   .onTrue(fanOut(nodeA, nodeB, nodeC))  // true -> all three nodes
+ *   .onFalse(singleNode)
  * ```
  */
 export function fanOut(...targets: NodeInstance<string, string, unknown>[]): FanOutTargets {

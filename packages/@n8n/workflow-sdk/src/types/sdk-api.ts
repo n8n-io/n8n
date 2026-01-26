@@ -357,7 +357,7 @@ export interface MergeConfig {
 
 /**
  * Merge composite - parallel branches merging into one.
- * Created by merge(mergeNode, { input0: branch1, input1: branch2, ... }).
+ * Created internally. Use .input(n) syntax: node1.then(merge.input(0)), node2.then(merge.input(1))
  */
 export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
@@ -375,7 +375,7 @@ export interface IfElseConfig extends NodeConfig {
 
 /**
  * IF branch composite - conditional true/false branching.
- * Created by ifElse(ifNode, { true: trueNode, false: falseNode }).
+ * Created by fluent API: ifNode.onTrue(trueNode).onFalse(falseNode)
  */
 export interface IfElseComposite {
 	readonly ifNode: NodeInstance<'n8n-nodes-base.if', string, unknown>;
@@ -393,7 +393,7 @@ export interface SwitchCaseConfig extends NodeConfig {
 
 /**
  * Switch case composite - multi-way routing.
- * Created by switchCase(switchNode, { case0: node1, case1: node2, ... }).
+ * Created by fluent API: switchNode.onCase(0, node1).onCase(1, node2)
  */
 export interface SwitchCaseComposite {
 	readonly switchNode: NodeInstance<'n8n-nodes-base.switch', string, unknown>;
@@ -421,33 +421,17 @@ export interface SplitInBatchesConfig extends NodeConfig {
  * Split in batches builder for loop patterns.
  *
  * @example
- * splitInBatches({ parameters: { batchSize: 10 } })
- *   .done().then(finalizeNode)  // When all batches done
- *   .each().then(processNode)   // For each batch
- *   .loop();                    // Loop back for next batch
+ * splitInBatches(sibNode)
+ *   .onDone(finalizeNode)                    // When all batches done
+ *   .onEachBatch(processNode.then(sibNode))  // For each batch (loops back)
  */
 export interface SplitInBatchesBuilder {
 	/** The split in batches node instance */
 	readonly sibNode: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>;
-	/** Chain from output 0 (all items processed) */
-	done(): SplitInBatchesDoneChain;
-	/** Chain from output 1 (current batch) */
-	each(): SplitInBatchesEachChain;
-}
-
-export interface SplitInBatchesDoneChain {
-	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[],
-	): SplitInBatchesDoneChain;
-	each(): SplitInBatchesEachChain;
-}
-
-export interface SplitInBatchesEachChain {
-	then<N extends NodeInstance<string, string, unknown>>(
-		nodeOrNodes: N | N[],
-	): SplitInBatchesEachChain;
-	/** Connect back to split in batches and return the builder */
-	loop(): SplitInBatchesBuilder;
+	/** Set the done branch target (output 0) - when all batches processed */
+	onDone(target: NodeInstance | null): SplitInBatchesBuilder;
+	/** Set the each batch branch target (output 1) - for each batch */
+	onEachBatch(target: NodeInstance | null): SplitInBatchesBuilder;
 }
 
 // =============================================================================
@@ -630,24 +614,22 @@ export type PlaceholderFn = (hint: string) => PlaceholderValue;
 export type NewCredentialFn = (name: string) => NewCredentialValue;
 
 /**
- * merge(mergeNode, { input0: branch1, input1: branch2, ... }) - Creates parallel branches that merge
+ * merge(branches, config?) - Creates a merge node with parallel input branches
+ *
+ * Use .input(n) syntax to connect branches to specific merge inputs:
  *
  * @example
- * // 1. Define merge node and branches first
- * const combineResults = node({
- *   type: 'n8n-nodes-base.merge',
- *   version: 3,
- *   config: { name: 'Combine Results', parameters: { mode: 'combine' }, position: [840, 300] }
- * });
+ * const mergeNode = merge([fetchUsers, fetchOrders], { mode: 'combine' });
  *
- * const fetchUsers = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { name: 'Fetch Users', position: [540, 200] } });
- * const fetchOrders = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { name: 'Fetch Orders', position: [540, 400] } });
- *
- * // 2. Compose workflow
+ * // Connect branches to merge inputs using .input(n)
  * workflow('id', 'Parallel APIs')
- *   .add(trigger({ ... }))
- *   .then(merge(combineResults, { input0: fetchUsers, input1: fetchOrders }))
- *   .then(processResults);
+ *   .add(trigger({ ... })
+ *     .then(fetchUsers)
+ *     .then(mergeNode.input(0)))
+ *   .add(trigger({ ... })
+ *     .then(fetchOrders)
+ *     .then(mergeNode.input(1)))
+ *   .add(mergeNode.then(processResults));
  */
 export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
 	branches: TBranches,
@@ -655,35 +637,29 @@ export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
 ) => MergeComposite<TBranches>;
 
 /**
- * ifElse(ifNode, { true: trueNode, false: falseNode }) - Creates conditional branching
+ * ifElse(branches, config?) - Creates an IF node with true/false branching
+ *
+ * Use .onTrue()/.onFalse() fluent syntax for conditional branching:
  *
  * @example
- * // 1. Define IF node and branch nodes first
- * const checkValue = node({
- *   type: 'n8n-nodes-base.if',
- *   version: 2.2,
- *   config: {
- *     name: 'Check Value',
- *     parameters: {
- *       conditions: {
- *         conditions: [{
- *           leftValue: '={{ $json.status }}',
- *           rightValue: 'success',
- *           operator: { type: 'string', operation: 'equals' }
- *         }]
- *       }
- *     },
- *     position: [540, 300]
+ * const checkValue = ifElse([handleSuccess, handleFailure], {
+ *   parameters: {
+ *     conditions: {
+ *       conditions: [{
+ *         leftValue: '={{ $json.status }}',
+ *         rightValue: 'success',
+ *         operator: { type: 'string', operation: 'equals' }
+ *       }]
+ *     }
  *   }
  * });
  *
- * const handleSuccess = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Success', position: [840, 200] } });
- * const handleFailure = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Failure', position: [840, 400] } });
- *
- * // 2. Compose workflow
+ * // Fluent API: connect branches with .onTrue() and .onFalse()
  * workflow('id', 'Conditional')
  *   .add(trigger({ ... }))
- *   .then(ifElse(checkValue, { true: handleSuccess, false: handleFailure }));
+ *   .then(checkValue.ifNode
+ *     .onTrue(handleSuccess)
+ *     .onFalse(handleFailure));
  */
 export type IfElseFn = (
 	branches: [NodeInstance<string, string> | null, NodeInstance<string, string> | null],
@@ -691,28 +667,22 @@ export type IfElseFn = (
 ) => IfElseComposite;
 
 /**
- * switchCase(switchNode, { case0: node1, case1: node2, ... }) - Creates multi-way routing
+ * switchCase(cases, config?) - Creates a Switch node with multi-way routing
+ *
+ * Use .onCase() fluent syntax for multi-way branching:
  *
  * @example
- * // 1. Define switch node and case nodes first
- * const routeByType = node({
- *   type: 'n8n-nodes-base.switch',
- *   version: 3.2,
- *   config: {
- *     name: 'Route by Type',
- *     parameters: { mode: 'rules', rules: { ... } },
- *     position: [540, 300]
- *   }
+ * const routeByType = switchCase([handleTypeA, handleTypeB, handleFallback], {
+ *   parameters: { mode: 'rules', rules: { ... } }
  * });
  *
- * const handleTypeA = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Type A', position: [840, 100] } });
- * const handleTypeB = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Type B', position: [840, 300] } });
- * const handleFallback = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Handle Fallback', position: [840, 500] } });
- *
- * // 2. Compose workflow
+ * // Fluent API: connect cases with .onCase(index, node)
  * workflow('id', 'Router')
  *   .add(trigger({ ... }))
- *   .then(switchCase(routeByType, { case0: handleTypeA, case1: handleTypeB, case2: handleFallback }));
+ *   .then(routeByType.switchNode
+ *     .onCase(0, handleTypeA)
+ *     .onCase(1, handleTypeB)
+ *     .onCase(2, handleFallback));
  */
 export type SwitchCaseFn = (
 	cases: NodeInstance<string, string>[],
@@ -720,24 +690,25 @@ export type SwitchCaseFn = (
 ) => SwitchCaseComposite;
 
 /**
- * splitInBatches(config?) - Creates batch processing with loop
+ * splitInBatches(sibNode, branches?) - Creates batch processing with loop
+ *
+ * Use .onDone()/.onEachBatch() fluent syntax for batch processing loops:
  *
  * @example
- * // 1. Define all nodes first
- * const startTrigger = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: { name: 'Start', position: [240, 300] } });
- * const fetchRecords = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { name: 'Fetch Records', position: [540, 300] } });
- * const finalizeNode = node({ type: 'n8n-nodes-base.set', version: 3.4, config: { name: 'Finalize', position: [1140, 200] } });
- * const processNode = node({ type: 'n8n-nodes-base.httpRequest', version: 4.3, config: { name: 'Process', position: [1140, 400] } });
+ * const sibNode = node({
+ *   type: 'n8n-nodes-base.splitInBatches',
+ *   version: 3,
+ *   config: { name: 'Loop', parameters: { batchSize: 10 } }
+ * });
  *
- * // 2. Compose workflow
+ * // Fluent API: connect branches with .onDone() and .onEachBatch()
  * workflow('id', 'Batch Process')
  *   .add(startTrigger)
  *   .then(fetchRecords)
  *   .then(
- *     splitInBatches({ name: 'Batch Process', parameters: { batchSize: 10 }, position: [840, 300] })
- *       .done().then(finalizeNode)  // When all done
- *       .each().then(processNode)   // Each batch
- *       .loop()                     // Loop back
+ *     splitInBatches(sibNode)
+ *       .onDone(finalizeNode)                    // When all batches done
+ *       .onEachBatch(processNode.then(sibNode))  // For each batch (loops back)
  *   );
  */
 export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder;

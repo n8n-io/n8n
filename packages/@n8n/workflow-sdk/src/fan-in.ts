@@ -20,18 +20,13 @@ export interface FanInSources {
  *
  * @example
  * ```typescript
- * // Merge with multiple sources going to the same input
- * merge(mergeNode, {
- *   input0: fanIn(sourceA, sourceB),  // both sources -> input 0
- *   input1: sourceC
- * })
+ * // Merge with multiple sources going to the same input using .input(n) syntax
+ * sourceA.then(mergeNode.input(0))
+ * sourceB.then(mergeNode.input(0))  // fanIn: both sources -> input 0
+ * sourceC.then(mergeNode.input(1))
  *
- * // SIB outputs both going to same merge input
- * const sib = splitInBatches(sibNode, { done: null, each: null });
- * merge(mergeNode, {
- *   input0: fanIn(sib.done(), sib.each()),  // both SIB outputs -> input 0
- *   input1: otherSource
- * })
+ * // Or with fanIn() helper for explicit grouping
+ * fanIn(sourceA, sourceB).forEach(src => src.then(mergeNode.input(0)))
  * ```
  */
 export function fanIn(...sources: NodeInstance<string, string, unknown>[]): FanInSources {

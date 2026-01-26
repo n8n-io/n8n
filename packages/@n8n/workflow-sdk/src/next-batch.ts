@@ -20,21 +20,29 @@ export interface NextBatchMarker
  *
  * @example
  * ```typescript
- * const s = splitInBatches({ batchSize: 10 });
+ * const sibNode = node({
+ *   type: 'n8n-nodes-base.splitInBatches',
+ *   version: 3,
+ *   config: { parameters: { batchSize: 10 } }
+ * });
  *
  * // Using nextBatch() for explicit loop-back (recommended for clarity)
  * workflow
- *   .add(trigger.then(s
- *     .each().then(processNode.then(nextBatch(s)))
- *     .done().then(summaryNode)
- *   ));
+ *   .add(trigger)
+ *   .then(
+ *     splitInBatches(sibNode)
+ *       .onEachBatch(processNode.then(nextBatch(sibNode)))
+ *       .onDone(summaryNode)
+ *   );
  *
  * // Alternative: direct connection (equivalent but less clear)
  * workflow
- *   .add(trigger.then(s
- *     .each().then(processNode.then(s.sibNode))
- *     .done().then(summaryNode)
- *   ));
+ *   .add(trigger)
+ *   .then(
+ *     splitInBatches(sibNode)
+ *       .onEachBatch(processNode.then(sibNode))
+ *       .onDone(summaryNode)
+ *   );
  * ```
  */
 export function nextBatch(
