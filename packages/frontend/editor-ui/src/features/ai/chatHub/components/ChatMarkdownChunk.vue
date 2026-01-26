@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import VueMarkdown from 'vue-markdown-render';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
-import { computed, ref, useCssModule } from 'vue';
+import { ref, useCssModule } from 'vue';
 
 const { source } = defineProps<{
 	source: string;
@@ -12,10 +11,10 @@ const styles = useCssModule();
 const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 
-const hoveredCodeBlockContent = computed(() => {
+function getHoveredCodeBlockContent() {
 	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
 	return idx ? markdown.codeBlockContents.value?.get(idx) : undefined;
-});
+}
 
 function handleMouseMove(e: MouseEvent | FocusEvent) {
 	const container =
@@ -29,31 +28,29 @@ function handleMouseMove(e: MouseEvent | FocusEvent) {
 function handleMouseLeave() {
 	hoveredCodeBlockActions.value = null;
 }
+
+defineExpose({
+	hoveredCodeBlockActions,
+	getHoveredCodeBlockContent,
+});
 </script>
 
 <template>
-	<div
+	<VueMarkdown
+		:key="markdown.forceReRenderKey.value"
+		:source="source"
 		:class="$style.chatMessageMarkdown"
+		:options="markdown.options"
+		:plugins="markdown.plugins.value"
 		@mousemove="handleMouseMove"
 		@mouseleave="handleMouseLeave"
-	>
-		<VueMarkdown
-			:key="markdown.forceReRenderKey.value"
-			:source="source"
-			:options="markdown.options"
-			:plugins="markdown.plugins.value"
-		/>
-		<Teleport
-			v-if="hoveredCodeBlockActions && hoveredCodeBlockContent"
-			:to="hoveredCodeBlockActions"
-		>
-			<CopyButton :content="hoveredCodeBlockContent" />
-		</Teleport>
-	</div>
+	/>
 </template>
 
 <style lang="scss" module>
 .chatMessageMarkdown {
+	--markdown--spacing: var(--spacing--2xs);
+
 	display: block;
 	color: var(--color--text--shade-1);
 
@@ -62,7 +59,7 @@ function handleMouseLeave() {
 	li {
 		font-size: var(--font-size--md);
 		line-height: var(--line-height--xl);
-		margin: var(--spacing--sm) 0;
+		margin: calc(var(--markdown--spacing) * 2) 0;
 	}
 
 	li {
@@ -80,46 +77,40 @@ function handleMouseLeave() {
 		color: var(--color--text--shade-1);
 		line-height: var(--line-height--md);
 		font-weight: var(--font-weight--bold);
-		scroll-margin-top: var(--spacing--xl);
+		scroll-margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
 	h1 {
 		font-size: var(--font-size--xl);
-		margin-top: var(--spacing--lg);
+		margin-top: calc(var(--markdown--spacing) * 3);
+		&:first-child {
+			margin-top: 0;
+		}
 	}
 
 	h2 {
 		font-size: var(--font-size--lg);
-		margin-top: var(--spacing--lg);
+		margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
 	h3 {
 		font-size: var(--font-size--md);
-		margin-top: var(--spacing--md);
+		margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
 	h4 {
 		font-size: var(--font-size--sm);
-		margin-top: var(--spacing--md);
+		margin-top: calc(var(--markdown--spacing) * 4);
 	}
 
 	h5,
 	h6 {
 		font-size: var(--font-size--sm);
-		margin-top: var(--spacing--sm);
+		margin-top: calc(var(--markdown--spacing) * 3);
 	}
 
 	h2 + h3 {
-		margin-top: var(--spacing--sm);
-	}
-
-	> h1:first-child,
-	> h2:first-child,
-	> h3:first-child,
-	> h4:first-child,
-	> h5:first-child,
-	> h6:first-child {
-		margin-top: 0;
+		margin-top: calc(var(--markdown--spacing) * 3);
 	}
 
 	// Strong/bold text
@@ -152,7 +143,7 @@ function handleMouseLeave() {
 		font-family: var(--font-family--monospace);
 		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--sm);
-		padding: var(--spacing--5xs) var(--spacing--4xs);
+		padding: calc(var(--markdown--spacing) * 0.25) calc(var(--markdown--spacing) * 0.5);
 		line-height: var(--line-height--lg);
 		background-color: var(--chat--message--pre--background);
 		border-radius: var(--radius--sm);
@@ -170,10 +161,10 @@ function handleMouseLeave() {
 		font-family: var(--font-family--monospace);
 		font-size: var(--font-size--sm);
 		line-height: var(--line-height--xl);
-		margin: var(--spacing--2xs) 0 var(--spacing--md);
+		margin: var(--markdown--spacing) 0 calc(var(--markdown--spacing) * 2.5);
 		white-space: pre-wrap;
 		box-sizing: border-box;
-		padding: var(--spacing--sm);
+		padding: calc(var(--markdown--spacing) * 2);
 		background: var(--chat--message--pre--background);
 		border-radius: var(--radius--lg);
 		position: relative;
@@ -199,8 +190,8 @@ function handleMouseLeave() {
 
 		& .codeBlockActions {
 			position: absolute;
-			top: var(--spacing--2xs);
-			right: var(--spacing--2xs);
+			top: var(--markdown--spacing);
+			right: var(--markdown--spacing);
 			display: flex;
 			justify-content: flex-end;
 			pointer-events: none;
@@ -211,16 +202,16 @@ function handleMouseLeave() {
 		}
 
 		& ~ pre {
-			margin-bottom: var(--spacing--md);
+			margin-bottom: calc(var(--markdown--spacing) * 2.5);
 		}
 	}
 
 	// Blockquotes
 	blockquote {
 		font-style: italic;
-		border-left: var(--spacing--4xs) solid var(--color--foreground--shade-1);
-		padding-left: var(--spacing--sm);
-		margin: var(--spacing--sm) 0;
+		border-left: calc(var(--markdown--spacing) * 0.5) solid var(--color--foreground--shade-1);
+		padding-left: calc(var(--markdown--spacing) * 2);
+		margin: calc(var(--markdown--spacing) * 2) 0;
 		color: var(--color--text--tint-1);
 
 		p:first-of-type::before {
@@ -236,22 +227,22 @@ function handleMouseLeave() {
 	hr {
 		border: none;
 		border-top: var(--border-width) var(--border-style) var(--color--foreground);
-		margin: var(--spacing--lg) 0;
+		margin: calc(var(--markdown--spacing) * 3) 0;
 
 		& + h2 {
-			margin-top: var(--spacing--lg);
+			margin-top: calc(var(--markdown--spacing) * 3);
 		}
 	}
 
 	// Ordered lists
 	ol {
-		padding-left: var(--spacing--sm);
+		padding-left: calc(var(--markdown--spacing) * 2);
 		list-style-type: decimal;
 		list-style-position: inside;
-		margin: var(--spacing--sm) 0;
+		margin: calc(var(--markdown--spacing) * 2) 0;
 
 		li + li {
-			margin-top: var(--spacing--xs);
+			margin-top: calc(var(--markdown--spacing) * 1.5);
 		}
 
 		li::marker {
@@ -262,13 +253,13 @@ function handleMouseLeave() {
 
 	// Unordered lists
 	ul {
-		padding-left: var(--spacing--sm);
+		padding-left: calc(var(--markdown--spacing) * 2);
 		list-style-type: disc;
 		list-style-position: inside;
-		margin: var(--spacing--sm) 0;
+		margin: calc(var(--markdown--spacing) * 2) 0;
 
 		li + li {
-			margin-top: var(--spacing--2xs);
+			margin-top: var(--markdown--spacing);
 		}
 
 		li::marker {
@@ -281,9 +272,9 @@ function handleMouseLeave() {
 	ol ol,
 	ul ol,
 	ol ul {
-		margin-top: var(--spacing--2xs);
+		margin-top: var(--markdown--spacing);
 		margin-bottom: 0;
-		padding-left: var(--spacing--lg);
+		padding-left: calc(var(--markdown--spacing) * 3);
 	}
 
 	// Tables
@@ -295,7 +286,7 @@ function handleMouseLeave() {
 	table {
 		width: 100%;
 		table-layout: auto;
-		margin: var(--spacing--sm) 0;
+		margin: calc(var(--markdown--spacing) * 2) 0;
 		font-size: var(--font-size--sm);
 		line-height: var(--line-height--lg);
 	}
@@ -383,11 +374,11 @@ function handleMouseLeave() {
 
 	// Figures and captions
 	figure {
-		margin: var(--spacing--sm) 0;
+		margin: calc(var(--markdown--spacing) * 2) 0;
 	}
 
 	figcaption {
-		margin-top: var(--spacing--xs);
+		margin-top: calc(var(--markdown--spacing) * 1.5);
 		text-align: center;
 		font-size: var(--font-size--sm);
 		font-style: italic;

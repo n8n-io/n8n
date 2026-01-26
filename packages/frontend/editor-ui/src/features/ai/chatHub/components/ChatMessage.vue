@@ -4,7 +4,14 @@ import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndi
 import type { AgentIconOrEmoji, ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeMount,
+	ref,
+	useTemplateRef,
+	watch,
+	type ComponentPublicInstance,
+} from 'vue';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel, splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
@@ -15,6 +22,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
 interface MergedAttachment {
 	isNew: boolean;
@@ -65,6 +73,24 @@ const removedExistingIndices = ref<Set<number>>(new Set());
 const fileInputRef = useTemplateRef('fileInputRef');
 const textareaRef = useTemplateRef('textarea');
 const messageContent = computed(() => message.content);
+const markdownChunkRefs = ref<
+	Array<ComponentPublicInstance<{
+		hoveredCodeBlockActions: HTMLElement | null;
+		getHoveredCodeBlockContent: () => string | undefined;
+	}> | null>
+>([]);
+
+const activeCodeBlockTeleport = computed(() => {
+	for (const chunkRef of markdownChunkRefs.value) {
+		if (chunkRef?.hoveredCodeBlockActions) {
+			const content = chunkRef.getHoveredCodeBlockContent();
+			if (content) {
+				return { target: chunkRef.hoveredCodeBlockActions, content };
+			}
+		}
+	}
+	return null;
+});
 
 const messageChunks = computed(() => {
 	// Handle error case with no content
@@ -331,8 +357,14 @@ onBeforeMount(() => {
 						<ChatMarkdownChunk
 							v-for="(chunk, index) in messageChunks"
 							:key="index"
+							:ref="
+								(el) => (markdownChunkRefs[index] = el as (typeof markdownChunkRefs.value)[number])
+							"
 							:source="chunk"
 						/>
+						<Teleport v-if="activeCodeBlockTeleport" :to="activeCodeBlockTeleport.target">
+							<CopyButton :content="activeCodeBlockTeleport.content" />
+						</Teleport>
 					</div>
 				</div>
 				<ChatTypingIndicator v-if="message.status === 'running'" :class="$style.typingIndicator" />
@@ -359,20 +391,8 @@ onBeforeMount(() => {
 }
 
 .markdownContent {
-	> * + * > *:first-child {
-		margin-top: var(--spacing--sm);
-	}
-
-	> *:first-child > *:first-child {
-		margin-top: 0;
-	}
-
 	> *:last-child > *:last-child {
 		margin-bottom: 0;
-	}
-
-	h1:first-child {
-		margin-top: 0;
 	}
 }
 
