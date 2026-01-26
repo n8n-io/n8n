@@ -389,49 +389,72 @@ defineExpose({ focus, blur, select });
 	border-bottom-right-radius: 0;
 }
 
-/* Size variants */
-.xlarge {
+/* Size variants - set min-height on input elements */
+.xlarge .input {
 	min-height: 48px;
 	padding: 0 var(--spacing--xs);
 	font-size: var(--font-size--md);
 }
 
-.large {
+.xlarge .textarea {
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	font-size: var(--font-size--md);
+}
+
+.large .input {
 	min-height: 40px;
 	padding: 0 var(--spacing--xs);
 	font-size: var(--font-size--sm);
 }
 
-.medium {
+.large .textarea {
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	font-size: var(--font-size--sm);
+}
+
+.medium .input {
 	min-height: 36px;
 	padding: 0 var(--spacing--2xs);
 	font-size: var(--font-size--sm);
 }
 
-.small {
+.medium .textarea {
+	padding: var(--spacing--2xs);
+	font-size: var(--font-size--sm);
+}
+
+.small .input {
 	min-height: 28px;
 	padding: 0 var(--spacing--2xs);
 	font-size: var(--font-size--2xs);
 }
 
-.mini {
+.small .textarea {
+	padding: var(--spacing--2xs);
+	font-size: var(--font-size--2xs);
+}
+
+.mini .input {
 	min-height: 22px;
 	padding: 0 var(--spacing--3xs);
+	font-size: var(--font-size--3xs);
+}
+
+.mini .textarea {
+	padding: var(--spacing--3xs);
 	font-size: var(--font-size--3xs);
 }
 
 .input {
 	flex: 1;
 	min-width: 0;
-	width: 100%;
 	border-radius: var(--radius);
 	border: var(--input--border-width, var(--border-width))
 		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
 	background-color: var(--input--color--background, var(--color--background--light-2));
+	outline: none;
 	font-family: inherit;
-	font-size: inherit;
 	color: var(--color--text--shade-1);
-	padding: 0 var(--spacing--xs);
 
 	@include focus-visible-ring;
 }
@@ -458,17 +481,15 @@ defineExpose({ focus, blur, select });
 .textarea {
 	flex: 1;
 	min-width: 0;
-	width: 100%;
 	resize: vertical;
 	line-height: var(--line-height--md);
 	border-radius: var(--radius);
 	border: var(--input--border-width, var(--border-width))
 		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
 	background-color: var(--input--color--background, var(--color--background--light-2));
+	outline: none;
 	font-family: inherit;
-	font-size: inherit;
 	color: var(--color--text--shade-1);
-	padding: var(--spacing--2xs) var(--spacing--xs);
 
 	@include focus-visible-ring;
 }
