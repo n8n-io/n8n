@@ -1,42 +1,37 @@
 # Evaluation Report: New Code-Based Agent vs Old Multi-Agent Architecture
 
 **Generated:** 2026-01-26
-**Models Tested:** Sonnet 4.5, Opus 4.5 (new code-based agent)
+**Model Tested:** Sonnet 4.5 (new code-based agent)
 **Test Suites:** Pairwise (71 examples), One-Shot with LLM Judge + Programmatic (10 examples)
 
-**Notes on Judges/Repetitions:**
-- Old Multi-Agent results were run with 2 repetitions per example. New Code-Based agent results were run with only 1 repetition per example.
-
-- Unlike last run, both Opus and Sonnet runs were run here using the same simplified prompt.
-
-- Latest Sonnet pairwise results were run with only 1 judge. Rest were 3 judges.
+> **Note on Repetitions:** Old Multi-Agent results were run with 2 repetitions per example. New Code-Based agent results were run with only 1 repetition per example.
 
 ## Executive Summary
 
 ### One-Shot Evaluation (LLM Judge + Programmatic, 10 examples)
 
-| Metric | Code-Based (Opus 4.5) | Code-Based (Sonnet 4.5) | Old Multi-Agent | Best |
-|--------|----------------------|------------------------|-----------------|------|
-| **Pass Rate** | 100% | 100% | 100% | Tie |
-| **Average Score** | 91.03% | 87.68% | 88.7% | Opus |
-| **LLM Judge Avg** | 90.73% | 85.47% | 82.3% | Opus |
-| **Programmatic Avg** | 100% | 99.64% | 97.5% | Opus |
+| Metric | Code-Based (Sonnet 4.5) | Old Multi-Agent | Best |
+|--------|------------------------|-----------------|------|
+| **Pass Rate** | 100% | 100% | Tie |
+| **Average Score** | 87.68% | 88.7% | Old |
+| **LLM Judge Avg** | 85.47% | 82.3% | Code-Based |
+| **Programmatic Avg** | 99.64% | 97.5% | Code-Based |
 
 ### Pairwise Evaluation (71 examples)
 
-| Metric | Code-Based (Opus 4.5) | Code-Based (Sonnet 4.5) | Old Multi-Agent | Best |
-|--------|----------------------|------------------------|-----------------|------|
-| **Pass Rate** | 94.4% (67/71) | 85.9% (61/71) | 50.0% (71/142) | Opus |
-| **Fail Rate** | 4.2% (3/71) | 12.7% (9/71) | 50.0% (71/142) | Opus |
-| **Error Rate** | 1.4% (1/71) | 1.4% (1/71) | 0% | Old |
-| **Average Score** | 88.02% | 82.13% | 74.1% | Opus |
-| **LLM Judge Avg** | 88.22% | 80.47% | 50.0% | Opus |
-| **Programmatic Avg** | 96.18% | 95.02% | 98.2% | Old |
+| Metric | Code-Based (Sonnet 4.5) | Old Multi-Agent | Best |
+|--------|------------------------|-----------------|------|
+| **Pass Rate** | 39.4% (28/71) | 50.0% (71/142) | Old |
+| **Fail Rate** | 59.2% (42/71) | 50.0% (71/142) | Old |
+| **Error Rate** | 1.4% (1/71) | 0% | Old |
+| **Average Score** | 67.4% | 74.1% | Old |
+| **Pairwise Evaluator Avg** | 40.0% | 50.0% | Old |
+| **Programmatic Avg** | 96.64% | 98.2% | Old |
 
 **Key Findings:**
-- New code-based agent with Opus 4.5 achieves highest scores across both evaluations
-- Both code-based agents significantly outperform old multi-agent architecture
-- Pairwise pass rate: Opus 94.4% vs Sonnet 85.9% vs Old Multi-Agent 50.0%
+- Code-Based Sonnet 4.5 underperforms Old Multi-Agent on pairwise evaluation
+- One-shot evaluation shows comparable performance
+- Pairwise pass rate: Code-Based 39.4% vs Old Multi-Agent 50.0%
 
 ---
 
@@ -44,97 +39,81 @@
 
 ### One-Shot Evaluation (10 examples)
 
-| Metric | Code-Based (Opus 4.5) | Code-Based (Sonnet 4.5) | Old Multi-Agent |
-|--------|----------------------|------------------------|-----------------|
-| **P50** | 63.2s | 66.5s | 171.9s |
-| **P99** | 93.8s | 101.4s | 345.3s |
-| **Mean** | 64.5s | 70.2s | 176.6s |
+| Metric | Code-Based (Sonnet 4.5) | Old Multi-Agent |
+|--------|------------------------|-----------------|
+| **P50** | 66.5s | 171.9s |
+| **P99** | 101.4s | 345.3s |
+| **Mean** | 70.2s | 176.6s |
 
 ### Pairwise Evaluation (71 examples)
 
-| Metric | Code-Based (Opus 4.5) | Code-Based (Sonnet 4.5) | Old Multi-Agent |
-|--------|----------------------|------------------------|-----------------|
-| **P50** | ~85s | 90.3s | 171.9s |
-| **P99** | ~220s | 406.9s | 345.3s |
-| **Mean** | 97.9s | 107.2s | 176.6s |
+| Metric | Code-Based (Sonnet 4.5) | Old Multi-Agent |
+|--------|------------------------|-----------------|
+| **Mean** | 81.6s | 176.6s |
 
-**Note:** New code-based agents are ~2x faster than old multi-agent architecture. Opus is slightly faster than Sonnet.
+**Note:** New code-based agent is ~2x faster than old multi-agent architecture.
 
 ---
 
 ## Cost Analysis
 
-*Pricing: Opus ($15/1M input, $75/1M output), Sonnet ($3/1M input, $15/1M output)*
+*Pricing: Sonnet ($3/1M input, $15/1M output)*
 
 ### Pairwise Evaluation (71 examples)
 
-| Metric | Code-Based (Opus) | Code-Based (Sonnet) | Old Multi-Agent |
-|--------|-------------------|---------------------|-----------------|
-| **P50** | ~$2.00 | $0.27 | $0.39 |
-| **P99** | ~$4.50 | $1.84 | $1.01 |
-| **Mean** | $2.40 | $0.40 | $0.44 |
-| **Total** | $170.40 | $28.40 | $30.98 |
+| Metric | Code-Based (Sonnet) | Old Multi-Agent |
+|--------|---------------------|-----------------|
+| **Mean** | $0.38 | $0.44 |
+| **Total** | $27.18 | $30.98 |
 
 ### One-Shot Evaluation (10 examples)
 
-| Metric | Code-Based (Opus) | Code-Based (Sonnet) |
-|--------|-------------------|---------------------|
-| **Mean** | $1.40 | $0.22 |
-| **Total** | $14.00 | $2.22 |
+| Metric | Code-Based (Sonnet) |
+|--------|---------------------|
+| **Mean** | $0.22 |
+| **Total** | $2.22 |
 
 ### Token Usage Summary (New Code-Based Agent)
 
 | Evaluation | Model | Input Tokens | Output Tokens | Total Cost |
 |------------|-------|--------------|---------------|------------|
-| One-Shot | Opus 4.5 | 767,236 | 33,186 | $14.00 |
 | One-Shot | Sonnet 4.5 | ~740,000 | ~30,000 | $2.22 |
-| Pairwise | Opus 4.5 | 9,409,487 | 390,154 | $170.40 |
-| Pairwise | Sonnet 4.5 | ~9,000,000 | ~350,000 | $28.40 |
+| Pairwise | Sonnet 4.5 | 7,356,848 | 340,548 | $27.18 |
 
-**Note:** Code-Based Sonnet 4.5 has similar cost to Old Multi-Agent (~$0.40/run) but with significantly higher quality (82% vs 74% avg score, 86% vs 50% pass rate).
+**Note:** Code-Based Sonnet 4.5 has similar cost to Old Multi-Agent (~$0.38/run vs $0.44/run).
 
 ---
 
 ## Key Findings & Analysis
 
-### Performance Comparison (New Code-Based Agent)
+### Performance Comparison
 
-| Aspect | Code-Based (Opus) | Code-Based (Sonnet) | Winner |
-|--------|-------------------|---------------------|--------|
-| **Quality (Pairwise)** | 88.02% | 82.13% | Opus (+5.9pp) |
-| **Pass Rate (Pairwise)** | 94.4% | 85.9% | Opus (+8.5pp) |
-| **Speed** | 97.9s mean | 107.2s mean | Opus (9% faster) |
-| **Cost** | $2.40/run | $0.40/run | Sonnet (6x cheaper) |
-
-### Code-Based Opus 4.5 Advantages
-1. **Highest Quality**: 88% average score on pairwise (vs 82% Sonnet)
-2. **Fewer Failures**: Only 3 failures vs 9 for Sonnet
-3. **Better LLM Judge Scores**: 88.22% vs 80.47%
-4. **Slightly Faster**: ~10% faster execution
+| Aspect | Code-Based (Sonnet) | Old Multi-Agent | Winner |
+|--------|---------------------|-----------------|--------|
+| **Quality (Pairwise)** | 67.4% | 74.1% | Old (+6.7pp) |
+| **Pass Rate (Pairwise)** | 39.4% | 50.0% | Old (+10.6pp) |
+| **Speed** | 81.6s mean | 176.6s mean | Code-Based (2x faster) |
+| **Cost** | $0.38/run | $0.44/run | Code-Based (14% cheaper) |
 
 ### Code-Based Sonnet 4.5 Advantages
-1. **6x Lower Cost**: $0.40 vs $2.40 per workflow
-2. **Strong Quality**: Still significantly beats old multi-agent architecture
-3. **Good Value**: 82% quality at 17% of Opus cost
+1. **2x Faster**: 81.6s vs 176.6s mean latency
+2. **Slightly Cheaper**: $0.38 vs $0.44 per workflow
+3. **Strong One-Shot Performance**: 100% pass rate, comparable to multi-agent
 
-### Failed Examples
+### Code-Based Sonnet 4.5 Disadvantages
+1. **Lower Pairwise Pass Rate**: 39.4% vs 50.0%
+2. **Lower Average Score**: 67.4% vs 74.1%
+3. **More Failures**: 42 failures vs multi-agent's balanced performance
 
-**Code-Based Opus 4.5 (3 failures):**
-| Example | Score | Issue |
-|---------|-------|-------|
-| example-015 | 59.4% | Asana ticket analysis |
-| example-027 | 64.8% | Discord community bot |
-| example-055 | 66.3% | Discord community bot |
+### Failed Examples (42 failures + 1 error)
 
-**Code-Based Sonnet 4.5 (9 failures):**
-| Example | Score | Issue |
-|---------|-------|-------|
-| example-002 | 62.1% | RSS Feed nodes disconnected |
-| example-007 | 66.4% | Workflow duplication |
-| example-010 | 61.0% | Disconnected nodes |
-| example-020 | 62.0% | Race condition in batching |
-| example-021 | 64.2% | Vector store not populated |
-| + 4 more | | |
+Notable failures include:
+- Wound image processing workflows
+- Tableau to Google Sheets transfers
+- Investor research workflows
+- Discord community bots
+- Regulatory compliance RAG workflows
+- Various lead generation and automation tasks
 
 ---
 
@@ -203,36 +182,33 @@ Full violations lists grouped by example are available in separate files:
 
 ## Recommendations
 
-### Model Selection Guidance (New Code-Based Agent)
-
-| Use Case | Recommended Model | Rationale |
-|----------|-------------------|-----------|
-| **Production (quality-critical)** | Code-Based Opus 4.5 | Highest quality, fewest failures |
-| **Development/Testing** | Code-Based Sonnet 4.5 | Good quality at 6x lower cost |
-| **High-volume batch** | Code-Based Sonnet 4.5 | Cost efficiency for bulk operations |
-| **Complex workflows** | Code-Based Opus 4.5 | Better handling of edge cases |
-
-### Technical Improvements
+### Technical Improvements Needed
 
 1. **Fix Node Connection Logic** - Ensure all nodes requiring input connections are properly connected
 2. **Validate AI Agent Setup** - Check that all AI Agents have required LLM and tool connections
 3. **Improve Data Flow Validation** - Add checks for data structure compatibility between nodes
 
+### Next Steps
+
+1. Investigate why pairwise performance dropped compared to multi-agent
+2. Analyze common failure patterns in the 42 failed examples
+3. Consider prompt improvements to address critical violations
+
 ---
 
 ## Conclusion
 
-The January 26 evaluation shows excellent results for the new code-based agent:
+The January 26 evaluation shows mixed results for the new code-based agent with Sonnet 4.5:
 
-| Metric | Code-Based (Opus) | Code-Based (Sonnet) | Old Multi-Agent |
-|--------|-------------------|---------------------|-----------------|
-| **Pairwise Pass Rate** | 94.4% | 85.9% | 50.0% |
-| **Average Score** | 88.0% | 82.1% | 74.1% |
-| **Cost per Run** | $2.40 | $0.40 | $0.44 |
-| **Latency** | 98s | 107s | 177s |
+| Metric | Code-Based (Sonnet) | Old Multi-Agent |
+|--------|---------------------|-----------------|
+| **Pairwise Pass Rate** | 39.4% | 50.0% |
+| **Average Score** | 67.4% | 74.1% |
+| **Cost per Run** | $0.38 | $0.44 |
+| **Latency** | 82s | 177s |
 
 **Key Takeaways:**
-- New code-based agent with Opus 4.5 delivers the best quality but at 6x the cost of Sonnet
-- Sonnet 4.5 offers excellent value: 82% quality at $0.40/workflow
-- Both significantly outperform the old multi-agent architecture (50% pass rate)
-- New code-based approach is ~2x faster than old multi-agent
+- Code-Based Sonnet 4.5 is **2x faster** and **14% cheaper** than Old Multi-Agent
+- However, it has **lower quality** on pairwise evaluation (39.4% vs 50.0% pass rate)
+- One-shot performance remains strong at 100% pass rate
+- Further investigation needed to improve pairwise performance
