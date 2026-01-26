@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
 
@@ -15,6 +15,7 @@ export class WorkflowDependencies {
 	constructor(
 		readonly workflowId: string,
 		readonly workflowVersionId: number | undefined,
+		readonly publishedVersionId: string | null = null,
 	) {}
 
 	add(dependency: {
@@ -27,6 +28,7 @@ export class WorkflowDependencies {
 		Object.assign(dep, {
 			workflowId: this.workflowId,
 			workflowVersionId: this.workflowVersionId,
+			publishedVersionId: this.publishedVersionId,
 			indexVersionId: INDEX_VERSION_ID,
 		});
 		this.dependencies.push(dep);
@@ -62,9 +64,14 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		dependencies: WorkflowDependencies,
 		tx: EntityManager,
 	): Promise<boolean> {
+		// Scope delete by publishedVersionId: use IsNull() for drafts, exact value for published versions
+		const publishedVersionCondition =
+			dependencies.publishedVersionId === null ? IsNull() : dependencies.publishedVersionId;
+
 		const deleteResult = await tx.delete(WorkflowDependency, {
 			workflowId,
 			workflowVersionId: LessThan(dependencies.workflowVersionId),
+			publishedVersionId: publishedVersionCondition,
 		});
 
 		// If we deleted something, the incoming version is newer - proceed with insert
@@ -78,7 +85,11 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		// Nothing was deleted - either no existing data, or existing data is newer/same version
 		// Check if any dependencies exist for this workflow. We lock for update to avoid a race
 		// when two processes try to insert dependencies for the same workflow at the same time.
-		const hasData = await this.acquireLockAndCheckForExistingData(workflowId, tx);
+		const hasData = await this.acquireLockAndCheckForExistingData(
+			workflowId,
+			dependencies.publishedVersionId,
+			tx,
+		);
 
 		if (!hasData) {
 			// There's no existing data, so we can safely insert the new dependencies.
@@ -94,7 +105,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	}
 
 	/**
-	 * Remove all dependencies for a given workflow.
+	 * Remove dependencies for a given workflow.
 	 *
 	 * NOTE: there's a possible race in case of an update and delete happening concurrently.
 	 * The delete could be reflected in the database, but the update could be reflected in the index.
@@ -103,11 +114,49 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * The chance of this happening in practice is also very low.
 	 *
 	 * @param workflowId The ID of the workflow
+	 * @param publishedVersionId Filter for publishedVersionId:
+	 *   - undefined = remove all dependencies for this workflow
+	 *   - null = remove only draft dependencies (publishedVersionId IS NULL)
+	 *   - string = remove only dependencies with that specific publishedVersionId
 	 * @returns Whether any dependencies were removed
 	 */
-	async removeDependenciesForWorkflow(workflowId: string): Promise<boolean> {
+	async removeDependenciesForWorkflow(
+		workflowId: string,
+		publishedVersionId?: string | null,
+	): Promise<boolean> {
 		return await this.manager.transaction(async (tx) => {
-			const deleteResult = await tx.delete(WorkflowDependency, { workflowId });
+			// Build where conditions
+			const whereConditions: Record<string, unknown> = { workflowId };
+
+			// Only add publishedVersionId filter if it's not undefined
+			if (publishedVersionId !== undefined) {
+				whereConditions.publishedVersionId =
+					publishedVersionId === null ? IsNull() : publishedVersionId;
+			}
+
+			const deleteResult = await tx.delete(WorkflowDependency, whereConditions);
+
+			return (
+				deleteResult.affected !== undefined &&
+				deleteResult.affected !== null &&
+				deleteResult.affected > 0
+			);
+		});
+	}
+
+	/**
+	 * Remove all published version dependencies for a given workflow.
+	 * This is useful when re-publishing a workflow with a new version.
+	 *
+	 * @param workflowId The ID of the workflow
+	 * @returns Whether any dependencies were removed
+	 */
+	async removePublishedDependenciesForWorkflow(workflowId: string): Promise<boolean> {
+		return await this.manager.transaction(async (tx) => {
+			const deleteResult = await tx.delete(WorkflowDependency, {
+				workflowId,
+				publishedVersionId: Not(IsNull()),
+			});
 
 			return (
 				deleteResult.affected !== undefined &&
@@ -119,12 +168,19 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 
 	private async acquireLockAndCheckForExistingData(
 		workflowId: string,
+		publishedVersionId: string | null,
 		tx: EntityManager,
 	): Promise<boolean> {
+		// Build where conditions with publishedVersionId filter
+		const whereConditions: Record<string, unknown> = {
+			workflowId,
+			publishedVersionId: publishedVersionId === null ? IsNull() : publishedVersionId,
+		};
+
 		if (this.databaseConfig.type === 'sqlite') {
 			// We skip the explicit locking here. SQLite locks the entire database for writes,
 			// so the prepareTransactionForSqlite step ensures no concurrent writes happen.
-			return await tx.existsBy(WorkflowDependency, { workflowId });
+			return await tx.existsBy(WorkflowDependency, whereConditions);
 		}
 		// For Postgres and MySQL we lock on the workflow row, and only then check the dependency table.
 		// This prevents a race between two concurrent updates.
@@ -133,7 +189,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		await tx.query(`SELECT id FROM ${tableName} WHERE id = ${placeholder} FOR UPDATE`, [
 			workflowId,
 		]);
-		return await tx.existsBy(WorkflowDependency, { workflowId });
+		return await tx.existsBy(WorkflowDependency, whereConditions);
 	}
 
 	private getTableName(name: string): string {
