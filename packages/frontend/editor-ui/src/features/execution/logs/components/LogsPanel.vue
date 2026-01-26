@@ -29,7 +29,7 @@ const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowName = computed(
-	() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.name,
+	() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.name ?? '',
 );
 
 const {
