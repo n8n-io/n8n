@@ -428,23 +428,20 @@ defineExpose({ focus, blur, select });
 	border: var(--input--border-width, var(--border-width))
 		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
 	background-color: var(--input--color--background, var(--color--background--light-2));
-	outline: none;
 	font-family: inherit;
 	font-size: inherit;
 	color: var(--color--text--shade-1);
 	padding: 0 var(--spacing--xs);
+
+	@include focus-visible-ring;
 }
 
 .input::placeholder {
 	color: var(--color--text--tint-1);
 }
 
-.input:hover:not(:disabled):not(:focus) {
+.input:hover:not(:disabled):not(:focus-visible) {
 	border-color: var(--color--foreground--shade-1);
-}
-
-.input:focus {
-	box-shadow: 0 0 0 1px var(--color--secondary) inset;
 }
 
 .input:disabled {
@@ -468,23 +465,20 @@ defineExpose({ focus, blur, select });
 	border: var(--input--border-width, var(--border-width))
 		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
 	background-color: var(--input--color--background, var(--color--background--light-2));
-	outline: none;
 	font-family: inherit;
 	font-size: inherit;
 	color: var(--color--text--shade-1);
 	padding: var(--spacing--2xs) var(--spacing--xs);
+
+	@include focus-visible-ring;
 }
 
 .textarea::placeholder {
 	color: var(--color--text--tint-1);
 }
 
-.textarea:hover:not(:disabled):not(:focus) {
+.textarea:hover:not(:disabled):not(:focus-visible) {
 	border-color: var(--color--foreground--shade-1);
-}
-
-.textarea:focus {
-	box-shadow: 0 0 0 1px var(--color--secondary) inset;
 }
 
 .textarea:disabled {
