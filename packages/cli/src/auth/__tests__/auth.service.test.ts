@@ -6,7 +6,7 @@ import type {
 	InvalidAuthTokenRepository,
 	UserRepository,
 } from '@n8n/db';
-import { GLOBAL_OWNER_ROLE } from '@n8n/db';
+import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
@@ -525,18 +525,16 @@ describe('AuthService', () => {
 
 		describe('when user limit is reached', () => {
 			it('should block issuance if the user is not the global owner', async () => {
-				const nonOwnerUser = mock<User>({
-					...userData,
-					role: { id: 'member', slug: 'member', name: 'Member' },
-				});
+				user.role = GLOBAL_MEMBER_ROLE;
 				license.isWithinUsersLimit.mockReturnValue(false);
 				expect(() => {
-					authService.issueCookie(res, nonOwnerUser, false, browserId);
+					authService.issueCookie(res, user, false, browserId);
 				}).toThrowError('Maximum number of users reached');
 			});
 
 			it('should allow issuance if the user is the global owner', async () => {
 				license.isWithinUsersLimit.mockReturnValue(false);
+				user.role = GLOBAL_OWNER_ROLE;
 				expect(() => {
 					authService.issueCookie(res, user, false, browserId);
 				}).not.toThrowError('Maximum number of users reached');
