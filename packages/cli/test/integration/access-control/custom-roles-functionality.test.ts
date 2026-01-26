@@ -67,6 +67,8 @@ describe('Custom Role Functionality Tests', () => {
 			passwordReset: jest.fn(),
 		});
 
+		await utils.initCredentialsTypes();
+
 		// Create standard users
 		owner = await createOwner();
 		member1 = await createMember();
@@ -166,7 +168,7 @@ describe('Custom Role Functionality Tests', () => {
 	});
 
 	afterAll(async () => {
-		await testDb.truncate(['User']);
+		await testDb.truncate(['User', 'ProjectRelation']);
 		await cleanupRolesAndScopes();
 	});
 
@@ -193,7 +195,7 @@ describe('Custom Role Functionality Tests', () => {
 						id: 'uuid-1234',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},
@@ -267,7 +269,7 @@ describe('Custom Role Functionality Tests', () => {
 						id: 'uuid-1234',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},
@@ -343,7 +345,7 @@ describe('Custom Role Functionality Tests', () => {
 						id: 'uuid-1234',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},
@@ -422,7 +424,7 @@ describe('Custom Role Functionality Tests', () => {
 						id: 'uuid-1234',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},
@@ -520,7 +522,7 @@ describe('Custom Role Functionality Tests', () => {
 						id: 'uuid-1234',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},
@@ -568,7 +570,7 @@ describe('Custom Role Functionality Tests', () => {
 						id: 'node-start',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},
@@ -652,7 +654,7 @@ describe('Custom Role Functionality Tests', () => {
 							id: 'uuid-1234',
 							parameters: {},
 							name: 'Start',
-							type: 'n8n-nodes-base.start',
+							type: 'n8n-nodes-base.manualTrigger',
 							typeVersion: 1,
 							position: [240, 300],
 						},
@@ -716,7 +718,7 @@ describe('Custom Role Functionality Tests', () => {
 						id: 'uuid-1234',
 						parameters: {},
 						name: 'Start',
-						type: 'n8n-nodes-base.start',
+						type: 'n8n-nodes-base.manualTrigger',
 						typeVersion: 1,
 						position: [240, 300],
 					},

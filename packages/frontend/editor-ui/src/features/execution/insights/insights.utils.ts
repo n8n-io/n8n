@@ -1,11 +1,17 @@
-import { useI18n } from '@n8n/i18n';
-import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
-import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import {
+	INSIGHTS_DEVIATION_UNIT_MAPPING,
 	INSIGHTS_SUMMARY_ORDER,
 	INSIGHTS_UNIT_MAPPING,
-	INSIGHTS_DEVIATION_UNIT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
+import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
+import type { DateValue } from '@internationalized/date';
+import { getLocalTimeZone, isToday } from '@internationalized/date';
+import type { InsightsDateRange, InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
+import dateformat from 'dateformat';
+
+const DATE_FORMAT_DAY_MONTH_YEAR = 'd mmm, yyyy';
+const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 export const transformInsightsTimeSaved = (minutes: number): number =>
 	Math.round(minutes / (Math.abs(minutes) < 60 ? 1 : 60)); // we want to show saved time in minutes or hours
@@ -59,7 +65,7 @@ export const transformInsightsSummary = (data: InsightsSummary | null): Insights
 			}))
 		: [];
 
-export const timeRangeMappings = {
+export const timeRangeMappings: Record<InsightsDateRange['key'], number> = {
 	day: 1,
 	week: 7,
 	'2weeks': 14,
@@ -67,7 +73,7 @@ export const timeRangeMappings = {
 	quarter: 90,
 	'6months': 180,
 	year: 365,
-};
+} as const;
 
 export const getTimeRangeLabels = () => {
 	const i18n = useI18n();
@@ -81,4 +87,43 @@ export const getTimeRangeLabels = () => {
 		'6months': i18n.baseText('insights.months', { interpolate: { count: 6 } }),
 		year: i18n.baseText('insights.oneYear'),
 	};
+};
+
+/**
+ * @returns A human readable string representing the date range e.g '01 Jan - 05 Jan 2025'
+ */
+export const formatDateRange = (range: { start?: DateValue; end?: DateValue }): string => {
+	const { start, end } = range;
+	if (!start) return '';
+
+	const startDate = start.toDate(getLocalTimeZone());
+	const endDate = end?.toDate(getLocalTimeZone());
+
+	if (!end || start.compare(end) === 0) {
+		return dateformat(startDate, DATE_FORMAT_DAY_MONTH_YEAR);
+	}
+
+	if (start.year === end.year) {
+		return `${dateformat(startDate, DATE_FORMAT_DAY_MONTH)} - ${dateformat(endDate, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+	}
+
+	return `${dateformat(startDate, DATE_FORMAT_DAY_MONTH_YEAR)} - ${dateformat(endDate, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+};
+
+/**
+ * @returns The matching preset key if the range matches a preset, null for custom ranges
+ */
+export const getMatchingPreset = (range: { start?: DateValue; end?: DateValue }):
+	| InsightsDateRange['key']
+	| null => {
+	const { start, end } = range;
+	if (!start || !end || !isToday(end, getLocalTimeZone())) return null;
+
+	const daysDiff = end.compare(start);
+
+	for (const [key, days] of Object.entries(timeRangeMappings)) {
+		if (daysDiff === days) return key as InsightsDateRange['key'];
+	}
+
+	return null;
 };

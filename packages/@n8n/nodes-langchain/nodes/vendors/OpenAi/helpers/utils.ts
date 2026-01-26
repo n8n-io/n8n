@@ -1,7 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
 import type { OpenAIClient } from '@langchain/openai';
-import type { BufferWindowMemory } from 'langchain/memory';
+import type { BufferWindowMemory } from '@langchain/classic/memory';
 import { isObjectEmpty } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 

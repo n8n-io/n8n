@@ -69,6 +69,7 @@ describe('evaluateAgentPrompt', () => {
 		expect(result.violations).toHaveLength(1);
 		expect(result.violations[0]).toEqual({
 			type: 'major',
+			name: expect.any(String),
 			description:
 				'Agent node "AI Agent" has no expression in its prompt field. This likely means it failed to use chatInput or dynamic context',
 			pointsDeducted: 20,

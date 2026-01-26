@@ -1,0 +1,290 @@
+[
+	{
+		"prompt": "An AI agent that will upload and process a set of files via Drive in a folder, then it will respond based on the documents table of the implemented Supabase vector database, and a webhook that will link my Cursor project and my n8n agent.",
+		"expectedTechniques": ["document_processing", "knowledge_base"]
+	},
+	{
+		"prompt": "Automate LinkedIn posting in n8n: fetch 20 trending topics (Google Trends, Reddit, Twitter, NewsAPI), score with AI for virality (≥7 keep), if <5 fill from evergreen list (Airtable/Sheet), generate founder-style post (hook, body, punchline, CTA) with AI, create creative via Nano Banana API, post 5/day (9am–9pm IST) via LinkedIn node, and archive all (topic, score, text, creative URL, timestamp, engagement)",
+		"expectedTechniques": ["scraping_and_research", "content_generation", "triage"]
+	},
+	{
+		"prompt": "create an ai chat bot",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "Get top 10 volatile stocks at the beginning of the open, we will analyze them and validate which ones are bullish based on technicals. Determine the target sell price or drop out (sell if down) price. Send a text message to me with the ticker and targets",
+		"expectedTechniques": ["scraping_and_research", "data_analysis", "notification"]
+	},
+	{
+		"prompt": "whatsapp message sent automation",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "I need a workflow that takes a google doc and identifies the bolded Headings and copies those into a google sheet",
+		"expectedTechniques": ["document_processing", "data_extraction"]
+	},
+	{
+		"prompt": "i want build a workflow that search all our competitor ads and keywords in ads manager and list it all in a google sheet...our competitors name are Peesafe, Sairona, Eveeve..these details are get once in a month so set schedule trigger like that..search using searchapi",
+		"expectedTechniques": ["scraping_and_research", "scheduling"]
+	},
+	{
+		"prompt": "Create a n8n that automatically posts new content to social media. The trigger should be either a new post published in WordPress or a new row added in Google Sheets. For each new item, take the post title, link, and featured image, then use AI to generate a short and engaging caption under 200 characters. Post the content automatically across multiple platforms with platform-specific formatting: on Twitter (X), keep it short with relevant hashtags; on LinkedIn, use a professional tone with 2–3 industry-related hashtags; and on Facebook, write a friendly caption with the link preview. Make sure the Zap prevents duplicate posts and includes links and images where supported.",
+		"expectedTechniques": ["content_generation"]
+	},
+	{
+		"prompt": "Create me a proper pipeline for marketing which researches topics, writes a script using Gemini API, creates a video through heyGen and Eleven Labs, and then uses Instagram Graph API to post, and uses Notion as a database",
+		"expectedTechniques": ["scraping_and_research", "content_generation"]
+	},
+	{
+		"prompt": "Workflow: We want to reduce the cost of information gathering for the team by collecting and analyzing news closely related to the pharmacy support service 'enpas' and posting it on Slack.\nTrigger: Every day at 8 AM\nAction 1: Retrieve information from Google Drive (enpas information, search keywords, competitors, etc.)\nAction 2: Using the retrieved information, AI collects related news. The collection period should be within one week for freshness. Obtain 10 pieces of data in order of high relevance to enpas. Always obtain the title, article content, and URL. Summarize the article content concisely based on the impact on enpas.\nAction 3: Notify the obtained data on Slack.\nNote: Action 2 may be composed of multiple nodes",
+		"expectedTechniques": [
+			"scraping_and_research",
+			"scheduling",
+			"document_processing",
+			"notification"
+		]
+	},
+	{
+		"prompt": "ok i need a graph rag system that goes from local files to code node that decides what type of file it is. then goes to a switch. each output is a different document type. it then grabs that document and extracts text from it. for pdf it also has to pull text from images since most my books are in image format inside pdf. then uses gemeni vision to extract text. then place the information into a neo4j graph database",
+		"expectedTechniques": ["knowledge_base", "document_processing", "data_extraction"]
+	},
+	{
+		"prompt": "To generate images in Midjourney using the CometAPI node, 1 chat input, 2 understanding and interpreting the prompt to make it effective for Midjourney, then saving it to sheets",
+		"expectedTechniques": ["chatbot", "content_generation"]
+	},
+	{
+		"prompt": "create me an ai receptionist that can answer multiple phone calls and text messages at once using twilio. Books them for appointments, reschedules, or cancels. Checks google calendar for availability. Send confirmation sms reminder after appointment is booked and a day before their appointment. Be able to answer questions such as hours, location, pricing, service info., or policy questions through documents given to you.",
+		"expectedTechniques": ["chatbot", "knowledge_base"]
+	},
+	{
+		"prompt": "This time, it’s all about lead generation automations that small businesses can actually use. Imagine creating a system that automatically finds new customers every week: A plumber in Austin getting fresh leads from Google Maps. A local gym targeting people posting about fitness in their city. An agency scraping LinkedIn for B2B prospects and enriching them with Clearbit",
+		"expectedTechniques": ["scraping_and_research", "enrichment", "triage"]
+	},
+	{
+		"prompt": "Create a comprehensive automation agent for small businesses that fully manages customer interaction through WhatsApp. The system must receive initial messages, respond naturally like a human, request necessary information for quotations, process reservations, and capture all data in a Google Sheets database organized into clients who made reservations and those who did not. It must integrate automatic scheduling in Google Calendar, notifications to the administrator about new reservations, and support online payment processing as well as OXXO payments, all orchestrated through n8n flows that connect these platforms cohesively.",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "want an email agent that create email on my behalf by integrating claude",
+		"expectedTechniques": ["notification"]
+	},
+	{
+		"prompt": "I want to integrate Claude in my workflow so that it can write emails on my behalf.",
+		"expectedTechniques": ["notification"]
+	},
+	{
+		"prompt": "I am an automation expert using n8n, and I want to create a workflow to manage customer purchase orders (POs). The workflow should use Airtable as the central database and do the following:\n\nTrigger: When a purchase order email is received in my Titan email account.\n\nExtract Data: Automatically extract the content from the attached PDF PO document.\n\nDatabase Integration: Add a new record in Airtable with all relevant data from the PO.\n\nOrder Tracking: Include a status field in Airtable for each order. When the status is updated to Completed, trigger the next step.\n\nDocument Signing: Automatically send an email to the customer with the PDF attached for signature, serving as proof of receipt.\n\nConfirmation: Once the customer signs the document, automatically send a confirmation email with the signed document attached.",
+		"expectedTechniques": [
+			"document_processing",
+			"data_extraction",
+			"notification",
+			"human_in_the_loop"
+		]
+	},
+	{
+		"prompt": "Hello, build the flow corresponding to this code:\n\n/**\n * SAH — WhatsApp Bot (WABA Cloud API)\n * Automated conversation demo aligned to \"This is our culture (paid)\".\n *\n * What it includes:\n * - Webhook (verify + receive)\n * - Main menu (Balance and pay / Make an agreement / Clarification / Report leak)\n * - Flow by option with interactive messages (list/buttons) and CTA\n * - SLAs visible in responses\n * - Example of using templates (HSM) for greeting\n * - Conversation state in memory (for demo)\n *\n * Requirements:\n * - Node 18+, npm i express axios\n * - Environment variables: WABA_TOKEN, WABA_PHONE_ID, VERIFY_TOKEN\n *\n * Note: Adjust real URLs, validations, and persist state in DB for production.\n */\n\nimport express from 'express';\nimport axios from 'axios';\n\nconst app = express();\napp.use(express.json());\n\n// === Config ===\nconst WABA_TOKEN = process.env.WABA_TOKEN; // Long-Lived Token from the Meta app\nconst WABA_PHONE_ID = process.env.WABA_PHONE_ID; // ID",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "I have a google sheet with rows having basic prompts for short video creation. I want to create an automation where each of these prompts are fed into google Gemini Veo3 which generate the video using the prompt. Once the video is generated it get saved in Drop box which then can be uploaded on Instagram",
+		"expectedTechniques": ["content_generation"]
+	},
+	{
+		"prompt": "Build an AI receptionist using Twilio and Google Calendar and OpenAI to do guest communication like WiFi passwords and booking and scheduling",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "I need a vectorized English to other languages translator",
+		"expectedTechniques": ["data_transformation"]
+	},
+	{
+		"prompt": "Workflow Goal: To create a multi-agent, automated workflow that takes a user-defined topic and moves it through a series of iterative stages—ideation, outlining, writing, editing, and layout—to produce a complete, publication-ready JLI (Jewish Learning Institute) lesson.",
+		"expectedTechniques": ["content_generation"]
+	},
+	{
+		"prompt": "Access the sources: ERP, internal web, and PDF contract repository. Normalize the content of each contract (use OCR if necessary). Classify each contract by type: labor, commercial, lease, service, supply, financial, joint venture, etc. Generate a unique list with: contract ID, type, signing date, and contracting party/contractor. Identify generic clauses: confidentiality, jurisdiction, termination, conflict resolution. Identify specific clauses according to the contract type (e.g., SLA in services, warranties in supply, KPIs in outsourcing). Evaluate the existence of mandatory policies: compliance, civil liability, work stability, etc. For each contract extract: Object, Economic value (COP$), Validity (start–end).",
+		"expectedTechniques": [
+			"document_processing",
+			"data_extraction",
+			"data_transformation",
+			"triage"
+		]
+	},
+	{
+		"prompt": "A series of agents to develop a lesson from concept through outline, drafting, editorial, and making publish-ready.",
+		"expectedTechniques": ["content_generation"]
+	},
+	{
+		"prompt": "I want you to add timesheet PDFs to invoices generated in Xero",
+		"expectedTechniques": ["document_processing", "enrichment"]
+	},
+	{
+		"prompt": "Instructions to the AI engine:\n\n1. Information Extraction\n   - Access sources: ERP, internal web, and contract repository in PDF.\n   - Normalize the content of each contract (use OCR if necessary).\n\n2. Contract Inventory\n   - Classify each contract by type: labor, commercial, lease, service, supply, financial, joint venture, etc.\n   - Generate a unique list with: contract ID, type, signing date, and contracting party/contractor.\n\n3. Clause Analysis\n   - Identify generic clauses: confidentiality, jurisdiction, termination, conflict resolution.\n   - Identify specific clauses according to the type of contract (e.g.: SLA in services, warranties in supply, KPIs in outsourcing).\n   - Evaluate the existence of mandatory policies: compliance, civil liability, work stability, etc.\n\n4. Executive Summary of Contracts\n   - For each contract extract: Object, Economic value (COP$), Duration (start–end),",
+		"expectedTechniques": [
+			"scraping_and_research",
+			"document_processing",
+			"data_extraction",
+			"triage",
+			"data_analysis",
+			"data_transformation"
+		]
+	},
+	{
+		"prompt": "You are an automatic generator of affiliate product catalogs. Your task is to transform raw data from multiple sources (Amazon, Mercado Livre, and Shopee) into an organized list to import into a showcase website. \n\n### General Instructions:\n1. Receive the input data in JSON, API, or RSS format containing:\n   - Product name\n   - Price\n   - Product link\n   - Image\n   - Category (when available)\n   - Rating or number of sales (when available)\n\n2. For each platform:\n   - Amazon → use the affiliate link with parameter `?tag=MY_TAG`.\n   - Mercado Livre → use the affiliate program link from Mercado Ads (with the tracking ID).\n   - Shopee → use the affiliate program link from Shopee (with your referral code).\n\n3. Filter only products that have:\n   - Available price\n   - Rating ≥ 4 stars or high relevance (Mercado Livre and Shopee use \"reputation/sales\").\n   - Valid affiliate links.\n\n4. Standardize prices to **R$",
+		"expectedTechniques": ["data_transformation", "content_generation"]
+	},
+	{
+		"prompt": "You are an assistant specialized in project management. You have access to a database containing various projects stored in an Excel spreadsheet. Your role is: 1. Understand the user's question, even if it is asked differently (e.g., \"Which projects are IT?\", \"Show me something about logistics\", \"Suggest a project to reduce costs\"). 2. Search for the most relevant projects in the database (always use the context of the spreadsheet that will be provided). 3. Explain your answer clearly and concisely, providing the project name, responsible area, and main objective. 4. If the user wants to include a new project, organize the data in a structured format (columns: Name, Area, Objective, Status, Deadline, Responsible) and return it in JSON format so I can save it in the spreadsheet. 5. If there is no matching project, suggest a new one based on the existing information. Always respond in Portuguese, clearly and professionally.",
+		"expectedTechniques": ["knowledge_base", "chatbot", "data_extraction"]
+	},
+	{
+		"prompt": "I want to create a flow where I have a chatbot on WhatsApp that can check projects from a spreadsheet as a database and has artificial intelligence to locate keywords of the projects and find what I need.",
+		"expectedTechniques": ["chatbot", "knowledge_base"]
+	},
+	{
+		"prompt": "You are a smart real estate advisor specialized in searching and recommending properties. Your task is to find and recommend properties according to the parameters provided by the user. You must analyze and compare information from multiple sources available online (example: Airbnb, Booking, real estate portals, local pages) and return the best options according to the needs.\n\nInput parameters (which you will always receive):\n- Type of operation: [sale | rental]\n- Minimum area in m²: [example: 80]\n- Area: [neighborhood, city, country]\n- Attractive features: [example: beachfront, near downtown, tourist areas, good security, transportation]\n\nInstructions for the results:\n1. Filter and select properties that match the parameters.\n2. Prioritize properties that meet more attractive features.\n3. Return the information structured in the following format:\n\nI want you to create a flow consulting the already mentioned portals.",
+		"expectedTechniques": ["scraping_and_research", "data_analysis", "data_extraction"]
+	},
+	{
+		"prompt": "I need a flow that is triggered when a form is submitted. The form needs to have multiple unique links so if Person A sends the form to Person B, Person A is notified. A copy of the form should be sent via email (Outlook) to Person A, and it should be automatically uploaded into the person's Agency Management system via API (Applied Epic) into the correct account in the system. If no account is found, Person A should receive a notice that no account has been found and that Person A should create an account to begin attaching files.",
+		"expectedTechniques": ["form_input", "notification", "document_processing"]
+	},
+	{
+		"prompt": "Create an n8n workflow that automatically analyzes competitor Facebook ads, extracts marketing insights using AI, and saves results to Google Sheets. The workflow processes multiple competitors in batches and runs on a manual trigger. On trigger, split the comma-separated competitor names into individual items; for each name, call SearchAPI.io’s Meta Ad Library endpoint to fetch up to 50 ads; extract key ad fields; send each ad’s text and CTA to GPT-4o-mini to return JSON with primary, secondary, action, emotional, and brand keywords plus tone, audience, offer, urgency, and strategy insights; merge the AI output with the ad data; and append or update each record in a Google Sheet.",
+		"expectedTechniques": ["data_analysis", "data_extraction", "scraping_and_research"]
+	},
+	{
+		"prompt": "I want to create a chatbot with data that I will import from Excel, so I can validate the projects and that has AI to improve things and give suggestions",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "I need a workflow that allows me to paste a website or a LinkedIn link or even a screenshot of a company in a specific Slack channel. I need the bot to then scan through it, look for relevant information, do a web search about the company and summarize the information, then categorize it by defined measures. Then it creates a Notion page and pushes the Notion page back into the Slack channel as a response.",
+		"expectedTechniques": [
+			"chatbot",
+			"scraping_and_research",
+			"data_extraction",
+			"data_analysis",
+			"content_generation"
+		]
+	},
+	{
+		"prompt": "i want to automate a mechanism that receives different news from telegram channels and checks if the news are about lebanon, if yes translate the news to arabic and send them to a telegram channel of my own",
+		"expectedTechniques": ["data_transformation", "notification", "monitoring", "triage"]
+	},
+	{
+		"prompt": "Motivation Reels Factory — 1080p + Autopost with scheduled cron job at 10:00, environment variables for safe mode, drive folder ID, watermark handle, and query list including crazy experiment, fails, prank gone wrong, falling objects, satisfying, reveal, before after, shock reaction, countdown, with maximum items set to 8 and hook seconds set to 4.",
+		"expectedTechniques": ["scheduling", "document_processing", "content_generation"]
+	},
+	{
+		"prompt": "Migrate JSON data from one schema to another. The schemas are JSON-Schema documents.",
+		"expectedTechniques": ["data_transformation"]
+	},
+	{
+		"prompt": "i want to automate my social media content post process",
+		"expectedTechniques": ["content_generation"]
+	},
+	{
+		"prompt": "I need to create an artificial intelligence that compiles quotes in Excel for me by learning from previous ones. It must autonomously understand, thanks to the previous quotes I upload, where to find the description, recognize the product, and fill in, where the products are, the unit material cost column and the installation time column in minutes. It must return the same file but filled in.",
+		"expectedTechniques": ["content_generation", "data_analysis", "data_extraction"]
+	},
+	{
+		"prompt": "when chat massage",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "Takes input from a google chat, searchs google patents based on the input, and returns the results to the google chat",
+		"expectedTechniques": ["scraping_and_research", "chatbot"]
+	},
+	{
+		"prompt": "I would like to automate the execution of a group of queries in snowflake, paste those queries to google sheets and then reload the linked graphs in google slides. The process should run every day, at 5:00 AM Brazil time.",
+		"expectedTechniques": ["scheduling", "data_transformation"]
+	},
+	{
+		"prompt": "2. Designing the main workflow\n\nYour system should have several main nodes:\n\nTrigger (automatic start)\n\nFor example, Cron → every day at 9 AM.\n\nOr Webhook → manual trigger by yourself.\n\nIdea and script (ChatGPT Node)\n\nConnect to ChatGPT API.\n\nGive a prompt: \"Write a 5-minute script for a YouTube channel about [current trending topic].\"\n\nText-to-speech (ElevenLabs Node or HTTP Request)\n\nGive the text to ElevenLabs API → it returns an audio file.\n\nVideo creation (Runway or Pictory Node)\n\nGive the text + audio → it builds a video.\n\nIf you want it simpler → combine audio + stock footage (Pexels API) + ffmpeg.\n\nThumbnail creation (DALL·E or Stable Diffusion Node)\n\nGive a prompt → it returns a thumbnail image.\n\nThen, with ImageMagick Node, you can add text on the image.\n\nUpload to YouTube (YouTube Node or HTTP API)\n\nUploads video + thumbnail + descriptions and tags.\n\nYou can schedule publication time.\n\nAnalysis (YouTube Analytics Node)\n\nAfter a few days, it retrieves data.\n\nChatGPT analyzes and improves the next prompts.\n\n3. File management\n\nTemporary files (audio, video,",
+		"expectedTechniques": ["content_generation", "document_processing", "data_analysis"]
+	},
+	{
+		"prompt": "I NEED AN APPLICATION IN WHICH I CAN RECORD MY GYM EXERCISES BY THE DAYS OF THE WEEK, BEING ABLE TO NOTE THE WEIGHTS AND REPETITIONS I HAVE DONE, WHILE ALSO BEING ABLE TO ADD IMAGES OR SHORT VIDEOS EXPLAINING HOW TO DO THE EXERCISE",
+		"expectedTechniques": ["document_processing"]
+	},
+	{
+		"prompt": "A basic chat bot which does an API call to retell AI to create a chat and return the response",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "I want to create a workflow that will scrape the regions",
+		"expectedTechniques": ["scraping_and_research"]
+	},
+	{
+		"prompt": "cold email outreach using google sheets",
+		"expectedTechniques": ["notification"]
+	},
+	{
+		"prompt": "You are an expert SEO content generator. I will give you a keyword or topic, and you will create an optimized SEO package with the following: 1. A catchy SEO title (max 60 characters). 2. A meta description (max 160 characters). 3. Suggested H1 and H2 headings. 4. A short blog post (300-500 words) optimized for the keyword. 5. 5 SEO-friendly tags/keywords related to the topic. 6. Return the result in clean JSON format with fields: { \"title\": \"\", \"meta_description\": \"\", \"h1\": \"\", \"h2\": \"\", \"content\": \"\", \"tags\": [] } Make sure the text is human-like, engaging, and optimized for search engines.",
+		"expectedTechniques": ["content_generation"]
+	},
+	{
+		"prompt": "reading my google docs and then use free ai Prompt: You are given a transcript of a meeting conversation. Your tasks are: Analyze the text carefully to identify unclear, incomplete, or missing words/phrases. Use contextual clues from the surrounding conversation to suggest the most accurate or logical wording that could fill those gaps. Rewrite the conversation in a clearer, more accurate, and detailed form, making it coherent and professional while preserving the intended meaning. At the end, provide a concise summary (one paragraph) highlighting the main points, decisions, and action items from the meeting. Output structure: Section 1: List of unclear/missing parts + your suggested clarifications. Section 2: Rewritten, clarified conversation. Section 3: Final summary paragraph.",
+		"expectedTechniques": [
+			"document_processing",
+			"data_analysis",
+			"data_extraction",
+			"enrichment",
+			"data_transformation"
+		]
+	},
+	{
+		"prompt": "I want to build a workflow that:\n\nReads volunteer phone numbers from Google Sheets.\n\nChecks which volunteers are active on Telegram and filters only those users.\n\nSends a poll through a Telegram bot with 10 listed content topics. Along with the poll, the volunteer should also be able to type their own reason (open text) explaining why we should create that content.\n\nCaptures each volunteer’s response (poll option + reason) when they reply.\n\nSaves the collected responses into a separate Google Sheet, including volunteer name/number, selected poll option, and written reason.",
+		"expectedTechniques": ["document_processing", "notification", "human_in_the_loop"]
+	},
+	{
+		"prompt": "I would like to create an automation that when I post a website to a Slack channel, a bot then looks at the website (if it's a LinkedIn page, they look for the website). Then the bot does research and classifies the company and writes a small summary, then pushes this to a Notion page, sending it back to Slack with a link to the Notion page.",
+		"expectedTechniques": [
+			"chatbot",
+			"scraping_and_research",
+			"triage",
+			"data_analysis",
+			"data_transformation"
+		]
+	},
+	{
+		"prompt": "make a flow for automated scraping news from economics website and then summarize and send to messenger daily",
+		"expectedTechniques": ["scraping_and_research", "data_transformation", "notification"]
+	},
+	{
+		"prompt": "collecting data from YouTube backstage, and analyze the outcome of each video, and make an simple report",
+		"expectedTechniques": ["scraping_and_research", "data_analysis", "data_transformation"]
+	},
+	{
+		"prompt": "Create a chatbot on Telegram for a clothing business named Netapa CS using Gemini for the NTA agent and using Google Sheets for the database, and send it again to Telegram.",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "create a chatbot in slack where it will answer questions based on a knowledge base, the chatbot should get the email address of the person asking and it will get the team and reporting region (location) from which the person is asking so that it will know how to answer with more context",
+		"expectedTechniques": ["chatbot", "knowledge_base"]
+	},
+	{
+		"prompt": "Search emails from Bob in the past 7 days using Nylas",
+		"expectedTechniques": ["data_extraction"]
+	},
+	{
+		"prompt": "Make my number answer anybody. Like when some homies talk in chat, I put a reaction like 👍🏻 and after 3 seconds answer with 'وعليكم السلام ورحمة الله سيتم الرد قريباً' on Telegram.",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "Create a workflow that triggers when a new contact is created in HubSpot. Then, send the contact's data to an OpenAI node for analysis. Finally, take the result from OpenAI and use the HubSpot node again to update the original contact's properties.",
+		"expectedTechniques": ["monitoring", "data_analysis"]
+	},
+	{
+		"prompt": "1. Webhook Trigger → receives the request (WhatsApp/Facebook/Web)\n2. Router → detects that it is a reservation\n3. Function → extracts date, time, number of people\n4. Google Calendar → checks availability\n5. Google Sheets → records the reservation\n6. Sends confirmation → WhatsApp/Facebook/email to the client\n7. Notification → to the restaurateur + reminder before the reservation",
+		"expectedTechniques": ["form_input", "scheduling", "data_extraction"]
+	},
+	{
+		"prompt": "answering frequently asked question",
+		"expectedTechniques": ["chatbot"]
+	},
+	{
+		"prompt": "Build a 'Reply Triage' workflow that triggers on inbound emails and routes them using AI:\n\n1. Use the **Gmail Webhook** node as the trigger.\n2. Use the **HubSpot** node to find the contact record associated with the sender's email.\n3. Add an **OpenAI** node to read the email body and classify its intent as one of the following: INTERESTED, NOT_INTERESTED, or QUESTION.\n4. Use a **Switch** node to route the workflow based on the intent from the OpenAI node.\n5. Connect the outputs of the Switch node to perform the final actions:\n   * If **INTERESTED**, use the HubSpot node to create a task for a sales rep.\n   * If **NOT_INTERESTED**, use the HubSpot node to update the contact's status.\n   * If **QUESTION**, use the Slack node to send the email content to a specific channel for human review.",
+		"expectedTechniques": ["triage"]
+	}
+]

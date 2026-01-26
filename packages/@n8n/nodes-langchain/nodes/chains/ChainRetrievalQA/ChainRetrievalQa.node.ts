@@ -8,6 +8,7 @@ import {
 
 import {
 	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 } from '@utils/descriptions';
@@ -23,7 +24,7 @@ export class ChainRetrievalQa implements INodeType {
 		icon: 'fa:link',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7],
 		description: 'Answer questions about retrieved documents',
 		defaults: {
 			name: 'Question and Answer Chain',
@@ -100,10 +101,18 @@ export class ChainRetrievalQa implements INodeType {
 				},
 			},
 			{
-				...promptTypeOptions,
+				...promptTypeOptionsDeprecated,
 				displayOptions: {
 					hide: {
-						'@version': [{ _cnd: { lte: 1.2 } }],
+						'@version': [{ _cnd: { lte: 1.2 } }, { _cnd: { gte: 1.7 } }],
+					},
+				},
+			},
+			{
+				...promptTypeOptions,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.7 } }],
 					},
 				},
 			},

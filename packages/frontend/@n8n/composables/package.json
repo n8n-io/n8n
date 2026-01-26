@@ -1,14 +1,14 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.12.0",
+  "version": "1.13.0",
   "files": [
     "dist"
   ],
   "exports": {
     "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js",
+      "types": "./dist/*.d.mts",
+      "import": "./dist/*.mjs",
       "require": "./dist/*.cjs"
     }
   },

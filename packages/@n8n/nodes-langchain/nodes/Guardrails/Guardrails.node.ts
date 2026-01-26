@@ -1,50 +1,43 @@
-import type { IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workflow';
+import {
+	VersionedNodeType,
+	type INodeTypeBaseDescription,
+	type IVersionedNodeType,
+} from 'n8n-workflow';
 
-import { process } from './actions/process';
-import { versionDescription } from './description';
-import { getChatModel } from './helpers/model';
+import { GuardrailsV1 } from './v1/GuardrailsV1.node';
+import { GuardrailsV2 } from './v2/GuardrailsV2.node';
 
-export class Guardrails implements INodeType {
-	description = versionDescription;
+export class Guardrails extends VersionedNodeType {
+	constructor() {
+		const baseDescription: INodeTypeBaseDescription = {
+			displayName: 'Guardrails',
+			name: 'guardrails',
+			icon: 'file:guardrails.svg',
+			group: ['transform'],
+			defaultVersion: 2,
+			description:
+				'Safeguard AI models from malicious input or prevent them from generating undesirable responses',
+			codex: {
+				alias: ['LangChain', 'Guardrails', 'PII', 'Secret', 'Injection', 'Sanitize'],
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Agents', 'Miscellaneous', 'Root Nodes'],
+				},
+				resources: {
+					primaryDocumentation: [
+						{
+							url: 'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.guardrails/',
+						},
+					],
+				},
+			},
+		};
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		const operation = this.getNodeParameter('operation', 0) as 'classify' | 'sanitize';
-		const model = operation === 'classify' ? await getChatModel.call(this) : null;
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
+			1: new GuardrailsV1(baseDescription),
+			2: new GuardrailsV2(baseDescription),
+		};
 
-		const failedItems: INodeExecutionData[] = [];
-		const passedItems: INodeExecutionData[] = [];
-		for (let i = 0; i < items.length; i++) {
-			try {
-				const responseData = await process.call(this, i, model);
-				if (responseData.passed) {
-					passedItems.push({
-						json: { guardrailsInput: responseData.guardrailsInput, ...responseData.passed },
-						pairedItem: { item: i },
-					});
-				}
-				if (responseData.failed) {
-					failedItems.push({
-						json: { guardrailsInput: responseData.guardrailsInput, ...responseData.failed },
-						pairedItem: { item: i },
-					});
-				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					failedItems.push({
-						json: { error: error.message, guardrailsInput: '' },
-						pairedItem: { item: i },
-					});
-				} else {
-					throw error;
-				}
-			}
-		}
-
-		if (operation === 'classify') {
-			return [passedItems, failedItems];
-		}
-
-		return [passedItems];
+		super(nodeVersions, baseDescription);
 	}
 }

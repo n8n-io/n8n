@@ -1,9 +1,7 @@
-import { UserError } from 'n8n-workflow';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-export class DataTableNotFoundError extends UserError {
+export class DataTableNotFoundError extends NotFoundError {
 	constructor(dataTableId: string) {
-		super(`Could not find the data table: '${dataTableId}'`, {
-			level: 'warning',
-		});
+		super(`Could not find the data table: '${dataTableId}'`);
 	}
 }

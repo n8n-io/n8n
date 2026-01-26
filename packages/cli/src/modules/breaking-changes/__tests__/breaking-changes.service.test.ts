@@ -1,6 +1,6 @@
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
@@ -13,11 +13,13 @@ import { createNode, createWorkflow } from './test-helpers';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
 import { ProcessEnvAccessRule } from '../rules/v2/process-env-access.rule';
 import { RemovedNodesRule } from '../rules/v2/removed-nodes.rule';
+import { WaitNodeSubworkflowRule } from '../rules/v2/wait-node-subworkflow.rule';
 
 describe('BreakingChangeService', () => {
 	const logger = mockLogger();
 
 	let workflowRepository: jest.Mocked<WorkflowRepository>;
+	let workflowStatisticsRepository: jest.Mocked<WorkflowStatisticsRepository>;
 	let ruleRegistry: RuleRegistry;
 	let cacheService: jest.Mocked<CacheService>;
 	let service: BreakingChangeService;
@@ -26,6 +28,7 @@ describe('BreakingChangeService', () => {
 		jest.clearAllMocks();
 
 		workflowRepository = mock<WorkflowRepository>();
+		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
 		ruleRegistry = new RuleRegistry(logger);
 		cacheService = mock<CacheService>();
 
@@ -37,12 +40,16 @@ describe('BreakingChangeService', () => {
 			return undefined;
 		});
 
+		// Mock statistics repository to return empty array (tests focus on breaking change detection, not statistics)
+		workflowStatisticsRepository.find.mockResolvedValue([]);
+
 		// Spy on registerRules to prevent automatic registration in constructor
 		jest.spyOn(BreakingChangeService.prototype, 'registerRules').mockImplementation(() => {});
 
 		service = new BreakingChangeService(
 			ruleRegistry,
 			workflowRepository,
+			workflowStatisticsRepository,
 			cacheService,
 			logger,
 			mock<ErrorReporter>(),
@@ -119,6 +126,38 @@ describe('BreakingChangeService', () => {
 			expect(report.report).toHaveProperty('currentVersion', N8N_VERSION);
 			expect(report.report).toHaveProperty('workflowResults');
 			expect(Array.isArray(report.report.workflowResults)).toBe(true);
+		});
+
+		it('should aggregate results from batch rules', async () => {
+			// Register the batch rule
+			const waitNodeRule = new WaitNodeSubworkflowRule();
+			ruleRegistry.registerAll([waitNodeRule]);
+
+			// Create a sub-workflow with ExecuteWorkflowTrigger and Wait node
+			const { workflow: subWorkflow } = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('Execute Workflow Trigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			// Create a parent workflow that calls the sub-workflow
+			const { workflow: parentWorkflow } = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('Execute Workflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: 'sub-wf-1',
+				}),
+			]);
+
+			workflowRepository.find.mockResolvedValue([subWorkflow, parentWorkflow] as never);
+			workflowRepository.count.mockResolvedValue(2);
+
+			const report = await service.detect('v2');
+
+			const waitNodeResult = report.report.workflowResults.find(
+				(r) => r.ruleId === 'wait-node-subworkflow-v2',
+			);
+			expect(waitNodeResult).toBeDefined();
+			expect(waitNodeResult?.affectedWorkflows).toHaveLength(1);
+			expect(waitNodeResult?.affectedWorkflows[0].id).toBe('parent-wf-1');
 		});
 	});
 

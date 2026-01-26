@@ -1,8 +1,32 @@
-import { removeWorkflowExecutionData } from './workflowUtils';
+import { removeWorkflowExecutionData, convertWorkflowTagsToIds } from './workflowUtils';
 import type { IWorkflowDb } from '@/Interface';
 import type { INodeIssues } from 'n8n-workflow';
 
 describe('workflowUtils', () => {
+	describe('convertWorkflowTagsToIds', () => {
+		it('should return empty array for undefined tags', () => {
+			expect(convertWorkflowTagsToIds(undefined)).toEqual([]);
+		});
+
+		it('should return empty array for empty array', () => {
+			expect(convertWorkflowTagsToIds([])).toEqual([]);
+		});
+
+		it('should return the same array if tags are already string IDs', () => {
+			const stringTags = ['tag1', 'tag2', 'tag3'];
+			expect(convertWorkflowTagsToIds(stringTags)).toEqual(stringTags);
+		});
+
+		it('should convert ITag objects to string IDs', () => {
+			const objectTags = [
+				{ id: 'tag1', name: 'Tag 1' },
+				{ id: 'tag2', name: 'Tag 2' },
+				{ id: 'tag3', name: 'Tag 3' },
+			];
+			expect(convertWorkflowTagsToIds(objectTags)).toEqual(['tag1', 'tag2', 'tag3']);
+		});
+	});
+
 	describe('removeWorkflowExecutionData', () => {
 		it('should return undefined if workflow is undefined', () => {
 			expect(removeWorkflowExecutionData(undefined)).toBeUndefined();
@@ -13,6 +37,7 @@ describe('workflowUtils', () => {
 				id: 'test-workflow',
 				name: 'Test Workflow',
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: '2023-01-01T00:00:00Z',
 				updatedAt: '2023-01-01T00:00:00Z',
@@ -83,6 +108,7 @@ describe('workflowUtils', () => {
 				id: 'test-workflow',
 				name: 'Test Workflow',
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: '2023-01-01T00:00:00Z',
 				updatedAt: '2023-01-01T00:00:00Z',

@@ -1,10 +1,13 @@
 import { z } from 'zod';
 
 // Enums
-export const breakingChangeRuleSeveritySchema = z.enum(['low', 'medium', 'high', 'critical']);
+export const breakingChangeRuleSeveritySchema = z.enum(['low', 'medium', 'critical']);
 export type BreakingChangeRuleSeverity = z.infer<typeof breakingChangeRuleSeveritySchema>;
 
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
+
+const breakingChangeVersionSchema = z.enum(['v2']);
+export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
 
 // Common schemas
 const recommendationSchema = z.object({
@@ -32,7 +35,7 @@ const affectedWorkflowSchema = z.object({
 	active: z.boolean(),
 	numberOfExecutions: z.number(),
 	lastUpdatedAt: z.date(),
-	lastExecutedAt: z.date().nullable(),
+	lastExecutedAt: z.date().optional(),
 	issues: z.array(workflowIssueSchema),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
@@ -82,12 +85,14 @@ const breakingChangeLightReportSchema = z.object(breakingChangeLightReportDataSc
 
 const breakingChangeReportResultDataSchema = z.object({
 	report: breakingChangeReportSchema,
+	totalWorkflows: z.number(),
 	shouldCache: z.boolean(),
 });
 export type BreakingChangeReportResult = z.infer<typeof breakingChangeReportResultDataSchema>;
 
 const breakingChangeLightReportResultDataSchema = z.object({
 	report: breakingChangeLightReportSchema,
+	totalWorkflows: z.number(),
 	shouldCache: z.boolean(),
 });
 export type BreakingChangeLightReportResult = z.infer<

@@ -6,6 +6,7 @@ import type {
 	InvalidAuthTokenRepository,
 	UserRepository,
 } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
@@ -15,6 +16,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
+import type { License } from '@/license';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -35,10 +37,11 @@ describe('AuthService', () => {
 	const userRepository = mock<UserRepository>();
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const mfaService = mock<MfaService>();
+	const license = mock<License>();
 	const authService = new AuthService(
 		globalConfig,
 		mock(),
-		mock(),
+		license,
 		jwtService,
 		urlService,
 		userRepository,
@@ -61,6 +64,7 @@ describe('AuthService', () => {
 		globalConfig.userManagement.jwtSessionDurationHours = 168;
 		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
+		license.isWithinUsersLimit.mockReturnValue(true);
 	});
 
 	describe('createJWTHash', () => {
@@ -164,9 +168,7 @@ describe('AuthService', () => {
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			userRepository.findOne.mockResolvedValue(user);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			mfaService.isMFAEnforced.mockImplementation(() => {
-				return true;
-			});
+			mfaService.isMFAEnforced.mockResolvedValue(true);
 
 			const middleware = authService.createAuthMiddleware({ allowSkipMFA: false });
 
@@ -437,7 +439,7 @@ describe('AuthService', () => {
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 				userRepository.findOne.mockResolvedValue(userWithMfa);
-				mfaService.isMFAEnforced.mockReturnValue(true);
+				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				const middleware = authService.createAuthMiddleware({
 					allowSkipMFA: false,
@@ -459,7 +461,7 @@ describe('AuthService', () => {
 
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 				userRepository.findOne.mockResolvedValue(user); // user has mfaEnabled: false
-				mfaService.isMFAEnforced.mockReturnValue(true);
+				mfaService.isMFAEnforced.mockResolvedValue(true);
 
 				const middleware = authService.createAuthMiddleware({
 					allowSkipMFA: false,
@@ -517,6 +519,29 @@ describe('AuthService', () => {
 				maxAge: 604800000,
 				sameSite: 'lax',
 				secure: true,
+			});
+		});
+
+		describe('when user limit is reached', () => {
+			it('should block issuance if the user is not the global owner', async () => {
+				license.isWithinUsersLimit.mockReturnValue(false);
+				expect(() => {
+					authService.issueCookie(res, user, false, browserId);
+				}).toThrowError('Maximum number of users reached');
+			});
+
+			it('should allow issuance if the user is the global owner', async () => {
+				license.isWithinUsersLimit.mockReturnValue(false);
+				user.role = GLOBAL_OWNER_ROLE;
+				expect(() => {
+					authService.issueCookie(res, user, false, browserId);
+				}).not.toThrowError('Maximum number of users reached');
+				expect(res.cookie).toHaveBeenCalledWith('n8n-auth', validToken, {
+					httpOnly: true,
+					maxAge: 604800000,
+					sameSite: 'lax',
+					secure: true,
+				});
 			});
 		});
 
@@ -585,6 +610,17 @@ describe('AuthService', () => {
 			browserId,
 		});
 		const res = mock<Response>();
+		let originalSkipBrowserIdCheckEndpoints: string[];
+
+		beforeEach(() => {
+			// Save the original skipBrowserIdCheckEndpoints value
+			originalSkipBrowserIdCheckEndpoints = (authService as any).skipBrowserIdCheckEndpoints;
+		});
+
+		afterEach(() => {
+			// Restore the original skipBrowserIdCheckEndpoints value
+			(authService as any).skipBrowserIdCheckEndpoints = originalSkipBrowserIdCheckEndpoints;
+		});
 
 		it('should throw on invalid tokens', async () => {
 			await expect(authService.resolveJwt('random-string', req, res)).rejects.toThrow(
@@ -611,7 +647,47 @@ describe('AuthService', () => {
 
 		it('should throw on hijacked tokens', async () => {
 			userRepository.findOne.mockResolvedValue(user);
-			const req = mock<AuthenticatedRequest>({ browserId: 'another-browser' });
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'POST',
+				baseUrl: '/api',
+				route: { path: '/some-endpoint' },
+			});
+			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should skip browserId check for GET requests on skip endpoints', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'GET',
+				baseUrl: '/api',
+				route: { path: '/chat/sessions' },
+			});
+
+			// Mock skipBrowserIdCheckEndpoints to include this endpoint
+			(authService as any).skipBrowserIdCheckEndpoints = ['/api/chat/sessions'];
+
+			// Should not throw even though browserId is different
+			const result = await authService.resolveJwt(validToken, req, res);
+			expect(result).toEqual([user, { usedMfa: false }]);
+			expect(res.cookie).not.toHaveBeenCalled();
+		});
+
+		it('should not skip browserId check for POST requests on skip endpoints', async () => {
+			userRepository.findOne.mockResolvedValue(user);
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'another-browser',
+				method: 'POST',
+				baseUrl: '/api',
+				route: { path: '/chat/sessions' },
+			});
+
+			// Mock skipBrowserIdCheckEndpoints to include this endpoint
+			(authService as any).skipBrowserIdCheckEndpoints = ['/api/chat/sessions'];
+
+			// Should still throw for POST even on skip endpoint
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('Unauthorized');
 			expect(res.cookie).not.toHaveBeenCalled();
 		});
@@ -786,6 +862,78 @@ describe('AuthService', () => {
 				token: validToken,
 				expiresAt: new Date('2024-02-08T01:23:45.000Z'),
 			});
+		});
+	});
+
+	describe('getCookieToken', () => {
+		it('should return token from cookies', () => {
+			const req = mock<AuthenticatedRequest>({
+				cookies: { [AUTH_COOKIE_NAME]: 'test-token-123' },
+			});
+
+			const token = authService.getCookieToken(req);
+
+			expect(token).toBe('test-token-123');
+		});
+
+		it('should return undefined when cookie not present', () => {
+			const req = {
+				cookies: {},
+			} as AuthenticatedRequest;
+
+			const token = authService.getCookieToken(req);
+
+			console.log(token);
+
+			expect(token).toBeUndefined();
+		});
+	});
+
+	describe('getBrowserId', () => {
+		it('should return browserId from request', () => {
+			const req = mock<AuthenticatedRequest>({
+				browserId: 'browser-123',
+			});
+
+			const browserId = authService.getBrowserId(req);
+
+			expect(browserId).toBe('browser-123');
+		});
+	});
+
+	describe('getMethod', () => {
+		it('should return HTTP method from request', () => {
+			const req = mock<AuthenticatedRequest>({
+				method: 'POST',
+			});
+
+			const method = authService.getMethod(req);
+
+			expect(method).toBe('POST');
+		});
+	});
+
+	describe('getEndpoint', () => {
+		it('should return full endpoint path when route is present', () => {
+			const req = mock<AuthenticatedRequest>({
+				baseUrl: '/api',
+				route: { path: '/chat/message' },
+			});
+
+			const endpoint = authService.getEndpoint(req);
+
+			expect(endpoint).toBe('/api/chat/message');
+		});
+
+		it('should return baseUrl when route is not present', () => {
+			const req = mock<AuthenticatedRequest>({
+				baseUrl: '/api',
+				route: undefined,
+			});
+
+			const endpoint = authService.getEndpoint(req);
+
+			expect(endpoint).toBe('/api');
 		});
 	});
 });

@@ -7,8 +7,6 @@ import type {
 	INodeExecutionData,
 	IBinaryKeyData,
 	IDataObject,
-	IBinaryData,
-	BinaryFileType,
 	IRunExecutionData,
 } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
@@ -18,12 +16,12 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import type { INodeUi } from '@/Interface';
 import type { IExecutionPushResponse } from '@/features/execution/executions/executions.types';
-
 import {
 	extractBotResponse,
 	getInputKey,
 	processFiles,
 } from '@/features/execution/logs/logs.utils';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 
 export type RunWorkflowChatPayload = {
 	triggerNode: string;
@@ -33,7 +31,7 @@ export type RunWorkflowChatPayload = {
 };
 export interface ChatMessagingDependencies {
 	chatTrigger: Ref<INodeUi | null>;
-	sessionId: string;
+	sessionId: Ref<string> | ComputedRef<string>;
 	executionResultData: ComputedRef<IRunExecutionData['resultData'] | undefined>;
 	onRunChatWorkflow: (
 		payload: RunWorkflowChatPayload,
@@ -58,28 +56,6 @@ export function useChatMessaging({
 	const setLoadingState = (loading: boolean) => {
 		isLoading.value = loading;
 	};
-
-	/** Converts a file to binary data */
-	async function convertFileToBinaryData(file: File): Promise<IBinaryData> {
-		const reader = new FileReader();
-		return await new Promise((resolve, reject) => {
-			reader.onload = () => {
-				const binaryData: IBinaryData = {
-					data: (reader.result as string).split('base64,')?.[1] ?? '',
-					mimeType: file.type,
-					fileName: file.name,
-					fileSize: `${file.size} bytes`,
-					fileExtension: file.name.split('.').pop() ?? '',
-					fileType: file.type.split('/')[0] as BinaryFileType,
-				};
-				resolve(binaryData);
-			};
-			reader.onerror = () => {
-				reject(new Error('Failed to convert file to binary data'));
-			};
-			reader.readAsDataURL(file);
-		});
-	}
 
 	/** Gets keyed files for the workflow input */
 	async function getKeyedFiles(files: File[]): Promise<IBinaryKeyData> {
@@ -121,7 +97,7 @@ export function useChatMessaging({
 
 		const inputPayload: INodeExecutionData = {
 			json: {
-				sessionId,
+				sessionId: sessionId.value,
 				action: 'sendMessage',
 				[inputKey]: message,
 			},
@@ -205,7 +181,7 @@ export function useChatMessaging({
 		const newMessage: ChatMessage & { sessionId: string } = {
 			text: message,
 			sender: 'user',
-			sessionId,
+			sessionId: sessionId.value,
 			id: uuid(),
 			files,
 		};
@@ -214,7 +190,7 @@ export function useChatMessaging({
 		if (ws.value?.readyState === WebSocket.OPEN && !isLoading.value) {
 			ws.value.send(
 				JSON.stringify({
-					sessionId,
+					sessionId: sessionId.value,
 					action: 'sendMessage',
 					chatInput: message,
 					files: await processFiles(files),

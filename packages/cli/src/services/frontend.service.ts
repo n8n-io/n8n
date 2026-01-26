@@ -1,9 +1,4 @@
-import type {
-	FrontendSettings,
-	IEnterpriseSettings,
-	ITelemetrySettings,
-	N8nEnvFeatFlags,
-} from '@n8n/api-types';
+import type { FrontendSettings, ITelemetrySettings, N8nEnvFeatFlags } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -12,16 +7,13 @@ import { createWriteStream } from 'fs';
 import { mkdir } from 'fs/promises';
 import uniq from 'lodash/uniq';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeBaseDescription, INodeTypeDescription } from 'n8n-workflow';
 import path from 'path';
-
-import { UrlService } from './url.service';
 
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
-import { getLdapLoginLabel } from '@/ldap.ee/helpers.ee';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { MfaService } from '@/mfa/mfa.service';
@@ -29,42 +21,86 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import type { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { isApiEnabled } from '@/public-api';
 import { PushConfig } from '@/push/push.config';
-import { getSamlLoginLabel } from '@/sso.ee/saml/saml-helpers';
-import { getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
+import { OwnershipService } from '@/services/ownership.service';
+import { getSamlLoginLabel, getCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
 
-export type PublicEnterpriseSettings = Pick<
-	IEnterpriseSettings,
-	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
->;
+import { UrlService } from './url.service';
 
-export type PublicFrontendSettings = Pick<
-	FrontendSettings,
-	| 'settingsMode'
-	| 'instanceId'
-	| 'defaultLocale'
-	| 'versionCli'
-	| 'releaseChannel'
-	| 'versionNotifications'
-	| 'userManagement'
-	| 'sso'
-	| 'mfa'
-	| 'authCookie'
-	| 'oauthCallbackUrls'
-	| 'banners'
-	| 'previewMode'
-	| 'telemetry'
-> & {
-	enterprise: PublicEnterpriseSettings;
+/**
+ * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
+ */
+export type PublicFrontendSettings = {
+	/** Controls initialization flow in settings store */
+	settingsMode: FrontendSettings['settingsMode'];
+
+	/** Used to localize login page UI */
+	defaultLocale: FrontendSettings['defaultLocale'];
+
+	/** Used to bypass authentication on the workflows/demo page */
+	previewMode: FrontendSettings['previewMode'];
+
+	authCookie: {
+		/** Blocks insecure access incompatible with the authentication cookie. */
+		secure: FrontendSettings['authCookie']['secure'];
+	};
+
+	userManagement: {
+		/** Used to control login page UI behaviour and conditional SSO Login display */
+		authenticationMethod: FrontendSettings['userManagement']['authenticationMethod'];
+
+		/** Enables initial owner setup */
+		showSetupOnFirstLoad: FrontendSettings['userManagement']['showSetupOnFirstLoad'];
+
+		/** Determines forgot password page UX */
+		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+	};
+
+	enterprise: {
+		/** License check for SAML for SSO button visibility */
+		saml: FrontendSettings['enterprise']['saml'];
+
+		/** License check for OIDC for SSO button visibility */
+		oidc: FrontendSettings['enterprise']['oidc'];
+
+		/** License check for LDAP authentication */
+		ldap: FrontendSettings['enterprise']['ldap'];
+	};
+
+	sso: {
+		saml: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['saml']['loginEnabled'];
+		};
+		ldap: {
+			/** Config flag for LDAP authentication */
+			loginEnabled: FrontendSettings['sso']['ldap']['loginEnabled'];
+
+			/** Customizes login form label (defaults to "Email") */
+			loginLabel: FrontendSettings['sso']['ldap']['loginLabel'];
+		};
+		oidc: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['oidc']['loginEnabled'];
+
+			/** Required for OIDC authentication redirect URL */
+			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
+		};
+	};
+
+	mfa?: {
+		enabled: boolean;
+		enforced: boolean;
+	};
 };
 
 @Service()
 export class FrontendService {
-	settings: FrontendSettings;
+	private settings: FrontendSettings;
 
 	private communityPackagesService?: CommunityPackagesService;
 
@@ -84,12 +120,10 @@ export class FrontendService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
+		private readonly ownershipService: OwnershipService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
-
-		this.initSettings();
-
 		// @TODO: Move to community-packages module
 		if (Container.get(CommunityPackagesConfig).enabled) {
 			void import('@/modules/community-packages/community-packages.service').then(
@@ -112,7 +146,7 @@ export class FrontendService {
 		return envFeatureFlags;
 	}
 
-	private initSettings() {
+	private async initSettings() {
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
@@ -163,9 +197,6 @@ export class FrontendService {
 			nodeEnv: process.env.NODE_ENV,
 			versionCli: N8N_VERSION,
 			concurrency: this.globalConfig.executions.concurrency.productionLimit,
-			isNativePythonRunnerEnabled:
-				this.globalConfig.taskRunners.enabled &&
-				this.globalConfig.taskRunners.isNativePythonRunnerEnabled,
 			authCookie: {
 				secure: this.globalConfig.auth.cookie.secure,
 			},
@@ -201,7 +232,7 @@ export class FrontendService {
 			defaultLocale: this.globalConfig.defaultLocale,
 			userManagement: {
 				quota: this.license.getUsersLimit(),
-				showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+				showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 				smtpSetup: this.mailer.isEmailSetUp,
 				authenticationMethod: getCurrentAuthenticationMethod(),
 			},
@@ -309,6 +340,7 @@ export class FrontendService {
 			aiCredits: {
 				enabled: false,
 				credits: 0,
+				setup: false,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -342,13 +374,17 @@ export class FrontendService {
 		await mkdir(path.join(staticCacheDir, 'types'), { recursive: true });
 		const { credentials, nodes } = this.loadNodesAndCredentials.types;
 		this.writeStaticJSON('nodes', nodes);
+		const nodeVersionIdentifiers = this.getNodeVersionIdentifiers(nodes);
+		this.writeStaticJSON('node-versions', nodeVersionIdentifiers);
 		this.writeStaticJSON('credentials', credentials);
 	}
 
-	getSettings(): FrontendSettings {
+	async getSettings(): Promise<FrontendSettings> {
+		if (!this.settings) {
+			await this.initSettings();
+		}
 		const restEndpoint = this.globalConfig.endpoints.rest;
 
-		// Update all urls, in case `WEBHOOK_URL` was updated by `--tunnel`
 		const instanceBaseUrl = this.urlService.getInstanceBaseUrl();
 		this.settings.urlBaseWebhook = this.urlService.getWebhookBaseUrl();
 		this.settings.urlBaseEditor = instanceBaseUrl;
@@ -361,7 +397,7 @@ export class FrontendService {
 		Object.assign(this.settings.userManagement, {
 			quota: this.license.getUsersLimit(),
 			authenticationMethod: getCurrentAuthenticationMethod(),
-			showSetupOnFirstLoad: !config.getEnv('userManagement.isInstanceOwnerSetUp'),
+			showSetupOnFirstLoad: !(await this.ownershipService.hasInstanceOwner()),
 		});
 
 		let dismissedBanners: string[] = [];
@@ -415,7 +451,7 @@ export class FrontendService {
 
 		if (this.license.isLdapEnabled()) {
 			Object.assign(this.settings.sso.ldap, {
-				loginLabel: getLdapLoginLabel(),
+				loginLabel: this.globalConfig.sso.ldap.loginLabel,
 				loginEnabled: this.globalConfig.sso.ldap.loginEnabled,
 			});
 		}
@@ -454,6 +490,7 @@ export class FrontendService {
 		if (isAiCreditsEnabled) {
 			this.settings.aiCredits.enabled = isAiCreditsEnabled;
 			this.settings.aiCredits.credits = this.license.getAiCredits();
+			this.settings.aiCredits.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
 		if (isAiBuilderEnabled) {
@@ -465,7 +502,7 @@ export class FrontendService {
 		this.settings.mfa.enabled = this.globalConfig.mfa.enabled;
 
 		// TODO: read from settings
-		this.settings.mfa.enforced = this.mfaService.isMFAEnforced();
+		this.settings.mfa.enforced = await this.mfaService.isMFAEnforced();
 
 		this.settings.executionMode = this.globalConfig.executions.mode;
 
@@ -488,49 +525,66 @@ export class FrontendService {
 	 * Only add settings that are absolutely necessary for non-authenticated pages
 	 * @returns Public settings for unauthenticated users
 	 */
-	getPublicSettings(): PublicFrontendSettings {
+	async getPublicSettings(includeMfaSettings: boolean): Promise<PublicFrontendSettings> {
 		// Get full settings to ensure all required properties are initialized
 		const {
-			instanceId,
 			defaultLocale,
-			versionCli,
-			releaseChannel,
-			versionNotifications,
-			userManagement,
-			sso,
-			mfa,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
-			oauthCallbackUrls,
-			banners,
 			previewMode,
-			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
-		} = this.getSettings();
+			enterprise: { saml, ldap, oidc },
+			mfa,
+		} = await this.getSettings();
 
-		return {
+		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
-			instanceId,
 			defaultLocale,
-			versionCli,
-			releaseChannel,
-			versionNotifications,
-			userManagement,
-			sso,
-			mfa,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: {
+				saml: {
+					loginEnabled: ssoSaml.loginEnabled,
+				},
+				ldap: ssoLdap,
+				oidc: {
+					loginEnabled: ssoOidc.loginEnabled,
+					loginUrl: ssoOidc.loginUrl,
+				},
+			},
 			authCookie,
-			oauthCallbackUrls,
-			banners,
 			previewMode,
-			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
+			enterprise: { saml, ldap, oidc },
 		};
+		if (includeMfaSettings) {
+			publicSettings.mfa = mfa;
+		}
+		return publicSettings;
 	}
 
 	getModuleSettings() {
 		return Object.fromEntries(this.moduleRegistry.settings);
 	}
 
-	private writeStaticJSON(name: string, data: INodeTypeBaseDescription[] | ICredentialType[]) {
+	getNodeVersionIdentifiers(nodes: INodeTypeDescription[]): string[] {
+		const identifiers = new Set<string>();
+
+		for (const node of nodes) {
+			if (!node?.name || node.version === undefined) continue;
+
+			const versions = Array.isArray(node.version) ? node.version : [node.version];
+			for (const version of versions) {
+				if (version === undefined) continue;
+				identifiers.add(`${node.name}@${String(version)}`);
+			}
+		}
+
+		return Array.from(identifiers);
+	}
+
+	private writeStaticJSON(
+		name: string,
+		data: Array<INodeTypeBaseDescription | ICredentialType | string>,
+	) {
 		const { staticCacheDir } = this.instanceSettings;
 		const filePath = path.join(staticCacheDir, `types/${name}.json`);
 		const stream = createWriteStream(filePath, 'utf-8');

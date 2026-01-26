@@ -31,7 +31,7 @@ const onActionSelect = (role: Role['slug']) => {
 		v-if="isEditable"
 		placement="bottom-start"
 		:items="props.actions"
-		:max-height="280"
+		:max-height="380"
 		data-test-id="project-member-role-dropdown"
 		@select="onActionSelect"
 		@badge-click="emit('badge-click', $event)"

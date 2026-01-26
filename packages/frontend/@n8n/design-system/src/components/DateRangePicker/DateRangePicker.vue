@@ -17,7 +17,6 @@ import {
 	DateRangePickerTrigger,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { useSlots } from 'vue';
 
 import Button from '../N8nButton/Button.vue';
 import IconButton from '../N8nIconButton';
@@ -32,8 +31,13 @@ const props = withDefaults(defineProps<N8nDateRangePickerProps>(), {
 });
 
 const emit = defineEmits<N8nDateRangePickerRootEmits>();
+
+defineSlots<{
+	presets?: {};
+	trigger?: {};
+}>();
+
 const forwarded = useForwardPropsEmits(props, emit);
-const slots = useSlots();
 </script>
 
 <template>
@@ -46,7 +50,7 @@ const slots = useSlots();
 
 		<DateRangePickerContent align="start" :side-offset="5" :class="$style.PopoverContent">
 			<DateRangePickerCalendar v-slot="{ weekDays, grid }" :class="$style.Calendar">
-				<template v-if="!!slots.presets">
+				<template v-if="!!$slots.presets">
 					<div :class="$style.Presets">
 						<slot name="presets" />
 					</div>

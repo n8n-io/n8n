@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import Modal from '@/app/components/Modal.vue';
 import { VARIABLE_MODAL_KEY } from '../environments.constants';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, onMounted, nextTick } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useToast } from '@/app/composables/useToast';
@@ -41,6 +41,7 @@ const projectsStore = useProjectsStore();
 const modalBus = createEventBus();
 const loading = ref(false);
 const validateOnBlur = ref(false);
+const keyInputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const keyValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'REQUIRED' },
@@ -216,6 +217,16 @@ async function handleSubmit() {
 		loading.value = false;
 	}
 }
+
+onMounted(async () => {
+	await nextTick();
+	const input = keyInputRef.value?.inputRef;
+	if (input) {
+		requestAnimationFrame(() => {
+			input.focus();
+		});
+	}
+});
 </script>
 
 <template>
@@ -232,6 +243,7 @@ async function handleSubmit() {
 		<template #content>
 			<div :class="$style.form" @keyup.enter="handleSubmit">
 				<N8nFormInput
+					ref="keyInputRef"
 					v-model="form.key"
 					:label="i18n.baseText('variables.modal.key.label')"
 					name="key"

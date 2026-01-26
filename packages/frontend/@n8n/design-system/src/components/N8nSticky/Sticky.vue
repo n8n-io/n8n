@@ -130,15 +130,6 @@ const onInputScroll = (event: WheelEvent) => {
 
 	background-color: var(--sticky--color--background);
 	border: 1px solid var(--sticky--border-color);
-
-	.wrapper::after {
-		opacity: 0.15;
-		background: linear-gradient(
-			180deg,
-			var(--sticky--color--background) 0.01%,
-			var(--sticky--border-color)
-		);
-	}
 }
 
 .clickable {
@@ -151,16 +142,6 @@ const onInputScroll = (event: WheelEvent) => {
 	position: absolute;
 	padding: var(--spacing--2xs) var(--spacing--xs) 0;
 	overflow: hidden;
-
-	&::after {
-		content: '';
-		width: 100%;
-		height: 24px;
-		left: 0;
-		bottom: 0;
-		position: absolute;
-		border-radius: var(--radius);
-	}
 }
 
 .footer {

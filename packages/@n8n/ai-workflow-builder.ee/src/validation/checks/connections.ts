@@ -1,8 +1,19 @@
-import type { INodeConnections, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
-import { mapConnectionsByDestination } from 'n8n-workflow';
+import type {
+	IConnections,
+	INodeConnections,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
+import { getParentNodes, mapConnectionsByDestination, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import {
+	DATA_TABLE_NODE_TYPE,
+	isDataTableRowColumnOperation,
+	SET_NODE_TYPE,
+} from '@/utils/data-table-helpers';
 import { isSubNode } from '@/utils/node-helpers';
+import { createNodeTypeMaps, getNodeTypeForNode } from '@/validation/utils/node-type-map';
 import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
 
 import type {
@@ -45,9 +56,15 @@ function checkMissingRequiredInputs(
 
 		if (input.required && providedCount === 0) {
 			issues.push({
+				name: 'node-missing-required-input',
 				type: 'critical',
 				description: `Node ${nodeInfo.node.name} (${nodeInfo.node.type}) is missing required input of type ${input.type}`,
 				pointsDeducted: 50,
+				metadata: {
+					nodeName: nodeInfo.node.name,
+					nodeType: nodeInfo.node.type,
+					missingType: input.type,
+				},
 			});
 		}
 	}
@@ -67,6 +84,7 @@ function checkUnsupportedConnections(
 	for (const [type] of providedInputTypes) {
 		if (!supportedTypes.has(type)) {
 			issues.push({
+				name: 'node-unsupported-connection-input',
 				type: 'critical',
 				description: `Node ${nodeInfo.node.name} (${nodeInfo.node.type}) received unsupported connection type ${type}`,
 				pointsDeducted: 50,
@@ -84,30 +102,28 @@ function checkMergeNodeConnections(
 	const issues: SingleEvaluatorResult['violations'] = [];
 
 	if (/\.merge$/.test(nodeInfo.node.type)) {
-		const providedInputTypes = getProvidedInputTypes(nodeConnections);
+		// Merge node's number of inputs is controlled by the numberInputs parameter (default 2)
+		// The node type definition has static inputs, so we must read from parameters directly
+		const numberInputsParam = nodeInfo.node.parameters?.numberInputs;
+		const expectedInputs = typeof numberInputsParam === 'number' ? numberInputsParam : 2;
 
-		const totalInputConnections = providedInputTypes.get('main') ?? 0;
+		const mainConnections = nodeConnections?.main ?? [];
 
-		if (totalInputConnections < 2) {
+		// Count actual input slots that have connections (not total connections)
+		const connectedSlots = mainConnections.filter(
+			(slot) => Array.isArray(slot) && slot.length > 0,
+		).length;
+
+		if (connectedSlots < 2) {
 			issues.push({
+				name: 'node-merge-single-input',
 				type: 'major',
-				description: `Merge node ${nodeInfo.node.name} has only ${totalInputConnections} input connection(s). Merge nodes require at least 2 inputs to function properly.`,
+				description: `Merge node ${nodeInfo.node.name} has only ${connectedSlots} input connection(s). Merge nodes require at least 2 inputs to function properly.`,
 				pointsDeducted: 20,
 			});
 		}
 
-		const expectedInputs =
-			nodeInfo.resolvedInputs?.filter((input) => input.type === 'main').length ?? 1;
-
-		if (totalInputConnections !== expectedInputs) {
-			issues.push({
-				type: 'minor',
-				description: `Merge node ${nodeInfo.node.name} has ${totalInputConnections} input connections but is configured to accept ${expectedInputs}.`,
-				pointsDeducted: 10,
-			});
-		}
-
-		const mainConnections = nodeConnections?.main ?? [];
+		// Check if all expected input slots have connections
 		const missingIndexes: number[] = [];
 
 		for (let inputIndex = 0; inputIndex < expectedInputs; inputIndex++) {
@@ -121,6 +137,7 @@ function checkMergeNodeConnections(
 
 		if (missingIndexes.length > 0) {
 			issues.push({
+				name: 'node-merge-missing-input',
 				type: 'major',
 				description: `Merge node ${nodeInfo.node.name} is missing connections for input(s) ${missingIndexes.join(', ')}.`,
 				pointsDeducted: 20,
@@ -129,6 +146,48 @@ function checkMergeNodeConnections(
 	}
 
 	return issues;
+}
+
+function checkDataTableHasSetNodePredecessor(
+	connectionsByDestination: IConnections,
+	node: SimpleWorkflow['nodes'][number],
+	nodesByName: Map<string, SimpleWorkflow['nodes'][number]>,
+): ProgrammaticViolation[] {
+	if (node.type !== DATA_TABLE_NODE_TYPE) {
+		return [];
+	}
+
+	// Only check for Set node on row column operations (insert, update, upsert)
+	// Read operations (get, getAll) and delete don't need a Set node
+	const operationParam = node.parameters?.operation;
+	const operation = typeof operationParam === 'string' ? operationParam : 'insert';
+	if (!isDataTableRowColumnOperation(operation)) {
+		return [];
+	}
+
+	// Check if any direct predecessor is a Set node
+	const predecessors = getParentNodes(
+		connectionsByDestination,
+		node.name,
+		NodeConnectionTypes.Main,
+		1,
+	);
+	const hasSetNodePredecessor = predecessors.some(
+		(name) => nodesByName.get(name)?.type === SET_NODE_TYPE,
+	);
+
+	if (hasSetNodePredecessor) {
+		return [];
+	}
+
+	return [
+		{
+			name: 'data-table-missing-set-node',
+			type: 'major',
+			description: `Data Table node "${node.name}" uses "${operation}" operation and should have a Set node (Edit Fields) immediately before it to define the columns. Add a Set node and connect it to the Data Table.`,
+			pointsDeducted: 20,
+		},
+	];
 }
 
 function checkSubNodeRootConnections(
@@ -165,9 +224,15 @@ function checkSubNodeRootConnections(
 
 		if (!hasRootConnection) {
 			issues.push({
+				name: 'sub-node-not-connected',
 				type: 'critical',
 				description: `Sub-node ${node.name} (${node.type}) provides ${outputType} but is not connected to a root node.`,
 				pointsDeducted: 50,
+				metadata: {
+					nodeName: node.name,
+					nodeType: node.type,
+					outputType,
+				},
 			});
 		}
 	}
@@ -187,12 +252,13 @@ export function validateConnections(
 
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
 	const nodesByName = new Map(workflow.nodes.map((node) => [node.name, node]));
-	const nodeTypeMap = new Map(nodeTypes.map((type) => [type.name, type]));
+	const { nodeTypeMap, nodeTypesByName } = createNodeTypeMaps(nodeTypes);
 
 	for (const node of workflow.nodes) {
-		const nodeType = nodeTypeMap.get(node.type);
+		const nodeType = getNodeTypeForNode(node, nodeTypeMap, nodeTypesByName);
 		if (!nodeType) {
 			violations.push({
+				name: 'node-type-not-found',
 				type: 'critical',
 				description: `Node type ${node.type} not found for node ${node.name}`,
 				pointsDeducted: 50,
@@ -207,6 +273,7 @@ export function validateConnections(
 			nodeInfo.resolvedOutputs = resolveNodeOutputs(nodeInfo);
 		} catch (error) {
 			violations.push({
+				name: 'failed-to-resolve-connections',
 				type: 'critical',
 				description: `Failed to resolve connections for node ${node.name} (${node.type}): ${
 					error instanceof Error ? error.message : String(error)
@@ -227,6 +294,10 @@ export function validateConnections(
 		violations.push(...checkMergeNodeConnections(nodeInfo, nodeConnections));
 
 		violations.push(...checkSubNodeRootConnections(workflow, nodeInfo, nodesByName));
+
+		violations.push(
+			...checkDataTableHasSetNodePredecessor(connectionsByDestination, node, nodesByName),
+		);
 	}
 
 	return violations;

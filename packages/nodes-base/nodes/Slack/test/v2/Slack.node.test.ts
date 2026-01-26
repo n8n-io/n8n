@@ -194,6 +194,43 @@ describe('SlackV2', () => {
 			]);
 		});
 
+		it('should return channel history sorted by timestamp descending for node version >= 2.4', async () => {
+			mockExecuteFunctions.getNode.mockReturnValue({
+				...mockNode,
+				typeVersion: 2.4,
+			});
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'history',
+					channelId: 'C123456789',
+					returnAll: true,
+					filters: {},
+				};
+				return params[paramName];
+			});
+
+			// Mock unsorted messages
+			const mockResponse = [
+				{ type: 'message', text: 'Message 2', ts: '1234567892.123456' },
+				{ type: 'message', text: 'Message 4', ts: '1234567894.123456' },
+				{ type: 'message', text: 'Message 1', ts: '1234567891.123456' },
+				{ type: 'message', text: 'Message 3', ts: '1234567893.123456' },
+			];
+			slackApiRequestAllItemsSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			// Verify messages are sorted by timestamp descending (newest first)
+			expect(result[0][0].json).toEqual([
+				{ type: 'message', text: 'Message 4', ts: '1234567894.123456' },
+				{ type: 'message', text: 'Message 3', ts: '1234567893.123456' },
+				{ type: 'message', text: 'Message 2', ts: '1234567892.123456' },
+				{ type: 'message', text: 'Message 1', ts: '1234567891.123456' },
+			]);
+		});
+
 		it('should get all channel history', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {
@@ -1542,6 +1579,434 @@ describe('SlackV2', () => {
 			await expect(node.execute.call(mockExecuteFunctions)).rejects.toThrow(
 				'You cannot send ephemeral messages using User type "By username". Please use "From List" or "By ID".',
 			);
+		});
+	});
+
+	describe('User Group Operations', () => {
+		describe('Add Users to User Group', () => {
+			it('should add users to user group successfully', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'updateUsers',
+						userGroupId: 'S123456789',
+						users: ['U111111111', 'U222222222'],
+						options: {
+							include_count: true,
+						},
+					};
+					return params[paramName];
+				});
+
+				// Mock the current user group data
+				const mockCurrentGroup = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							name: 'test-group',
+							users: ['U000000000'], // Existing user
+						},
+					],
+				};
+
+				// Mock the update response
+				const mockUpdateResponse = {
+					ok: true,
+					usergroup: {
+						id: 'S123456789',
+						name: 'test-group',
+						users: ['U000000000', 'U111111111', 'U222222222'],
+						user_count: 3,
+					},
+				};
+
+				slackApiRequestSpy
+					.mockResolvedValueOnce(mockCurrentGroup) // Get current users
+					.mockResolvedValueOnce(mockUpdateResponse); // Update users
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				// Verify GET request to fetch current users
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					1,
+					'GET',
+					'/usergroups.list',
+					{},
+					{
+						include_users: true,
+						usergroup: 'S123456789',
+					},
+				);
+
+				// Verify POST request to update users (should merge existing and new)
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					2,
+					'POST',
+					'/usergroups.users.update',
+					{
+						usergroup: 'S123456789',
+						users: 'U000000000,U111111111,U222222222',
+						include_count: true,
+					},
+					{},
+				);
+
+				expect(result).toEqual([
+					[
+						{
+							json: mockUpdateResponse.usergroup,
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+
+			it('should handle adding duplicate users (deduplication)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'updateUsers',
+						userGroupId: 'S123456789',
+						users: ['U111111111', 'U222222222'], // U111111111 already exists
+						options: {},
+					};
+					return params[paramName];
+				});
+
+				const mockCurrentGroup = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							users: ['U111111111'], // User already in group
+						},
+					],
+				};
+
+				const mockUpdateResponse = {
+					ok: true,
+					usergroup: {
+						id: 'S123456789',
+						users: ['U111111111', 'U222222222'],
+					},
+				};
+
+				slackApiRequestSpy
+					.mockResolvedValueOnce(mockCurrentGroup)
+					.mockResolvedValueOnce(mockUpdateResponse);
+
+				await node.execute.call(mockExecuteFunctions);
+
+				// Verify duplicates are removed
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					2,
+					'POST',
+					'/usergroups.users.update',
+					expect.objectContaining({
+						users: 'U111111111,U222222222', // No duplicates
+					}),
+					{},
+				);
+			});
+
+			it('should handle empty user group (no existing users)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'updateUsers',
+						userGroupId: 'S123456789',
+						users: ['U111111111'],
+						options: {},
+					};
+					return params[paramName];
+				});
+
+				const mockCurrentGroup = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							users: [], // Empty group
+						},
+					],
+				};
+
+				const mockUpdateResponse = {
+					ok: true,
+					usergroup: {
+						id: 'S123456789',
+						users: ['U111111111'],
+					},
+				};
+
+				slackApiRequestSpy
+					.mockResolvedValueOnce(mockCurrentGroup)
+					.mockResolvedValueOnce(mockUpdateResponse);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					2,
+					'POST',
+					'/usergroups.users.update',
+					expect.objectContaining({
+						users: 'U111111111',
+					}),
+					{},
+				);
+
+				expect(result).toEqual([
+					[
+						{
+							json: mockUpdateResponse.usergroup,
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+		});
+
+		describe('Get Users from User Group', () => {
+			it('should get users from user group with resolve data', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S123456789',
+						options: {
+							resolveData: true,
+						},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							name: 'test-group',
+							users: ['U111111111', 'U222222222'],
+						},
+					],
+				};
+
+				// Mock user info responses
+				const mockUser1 = {
+					ok: true,
+					user: {
+						id: 'U111111111',
+						name: 'john.doe',
+						real_name: 'John Doe',
+						profile: {
+							email: 'john@example.com',
+						},
+					},
+				};
+
+				const mockUser2 = {
+					ok: true,
+					user: {
+						id: 'U222222222',
+						name: 'jane.smith',
+						real_name: 'Jane Smith',
+						profile: {
+							email: 'jane@example.com',
+						},
+					},
+				};
+
+				slackApiRequestSpy
+					.mockResolvedValueOnce(mockGroupData) // Get user group
+					.mockResolvedValueOnce(mockUser1) // Get user 1 info
+					.mockResolvedValueOnce(mockUser2); // Get user 2 info
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				// Verify user group list call
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					1,
+					'GET',
+					'/usergroups.list',
+					{},
+					{
+						include_users: true,
+						usergroup: 'S123456789',
+					},
+				);
+
+				// Verify user info calls
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					2,
+					'GET',
+					'/users.info',
+					{},
+					{ user: 'U111111111' },
+				);
+
+				expect(slackApiRequestSpy).toHaveBeenNthCalledWith(
+					3,
+					'GET',
+					'/users.info',
+					{},
+					{ user: 'U222222222' },
+				);
+
+				expect(result).toEqual([
+					[
+						{
+							json: [mockUser1.user, mockUser2.user],
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+
+			it('should get users from user group without resolve data (IDs only)', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S123456789',
+						options: {
+							resolveData: false,
+						},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							users: ['U111111111', 'U222222222'],
+						},
+					],
+				};
+
+				slackApiRequestSpy.mockResolvedValueOnce(mockGroupData);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				// Should only call usergroups.list, not users.info
+				expect(slackApiRequestSpy).toHaveBeenCalledTimes(1);
+
+				expect(result).toEqual([
+					[
+						{
+							json: [{ id: 'U111111111' }, { id: 'U222222222' }],
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+
+			it('should handle empty user group', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S123456789',
+						options: {
+							resolveData: true,
+						},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							users: [], // Empty group
+						},
+					],
+				};
+
+				slackApiRequestSpy.mockResolvedValueOnce(mockGroupData);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				// Should only call usergroups.list
+				expect(slackApiRequestSpy).toHaveBeenCalledTimes(1);
+
+				expect(result).toEqual([
+					[
+						{
+							json: [],
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
+
+			it('should throw error when user group not found', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S999999999',
+						options: {},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789', // Different ID
+							users: ['U111111111'],
+						},
+					],
+				};
+
+				slackApiRequestSpy.mockResolvedValue(mockGroupData);
+
+				const executePromise = node.execute.call(mockExecuteFunctions);
+				await expect(executePromise).rejects.toThrow(NodeOperationError);
+				await expect(executePromise).rejects.toThrow('User group with ID "S999999999" not found');
+			});
+
+			it('should handle missing users field in group', async () => {
+				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					const params: Record<string, any> = {
+						resource: 'userGroup',
+						operation: 'getUsers',
+						userGroupId: 'S123456789',
+						options: {
+							resolveData: false,
+						},
+					};
+					return params[paramName];
+				});
+
+				const mockGroupData = {
+					ok: true,
+					usergroups: [
+						{
+							id: 'S123456789',
+							// users field missing
+						},
+					],
+				};
+
+				slackApiRequestSpy.mockResolvedValueOnce(mockGroupData);
+
+				const result = await node.execute.call(mockExecuteFunctions);
+
+				expect(result).toEqual([
+					[
+						{
+							json: [],
+							pairedItem: { item: 0 },
+						},
+					],
+				]);
+			});
 		});
 	});
 });

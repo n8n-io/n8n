@@ -100,7 +100,15 @@ watch(
 	(isSelected) => {
 		void nextTick(() => {
 			if (isSelected) {
-				container.value?.focus();
+				// Don't steal focus if the chat input is currently focused
+				const activeElement = document.activeElement;
+				const isChatInputFocused =
+					activeElement?.getAttribute('data-test-id') === 'chat-input' ||
+					activeElement?.closest('[data-test-id="canvas-chat"]') !== null;
+
+				if (!isChatInputFocused) {
+					container.value?.focus();
+				}
 			}
 		});
 	},

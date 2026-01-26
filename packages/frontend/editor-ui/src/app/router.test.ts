@@ -1,11 +1,11 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import router from '@/app/router';
-import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT, VIEWS } from '@/app/constants';
+import router, { routes } from '@/app/router';
+import { VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
 import * as init from '@/app/init';
@@ -32,7 +32,10 @@ describe('router', () => {
 
 	beforeEach(() => {
 		settingsStore = useSettingsStore();
-		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => await Promise.resolve());
+		const usersStore = useUsersStore();
+		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
+			await usersStore.initialize();
+		});
 	});
 
 	afterAll(() => {
@@ -43,8 +46,9 @@ describe('router', () => {
 	test.each([
 		['/', VIEWS.WORKFLOWS],
 		['/workflows', VIEWS.WORKFLOWS],
-		['/workflow', VIEWS.NEW_WORKFLOW],
-		['/workflow/new', VIEWS.NEW_WORKFLOW],
+		// /workflow and /workflow/new now redirect to VIEWS.WORKFLOW with a generated ID
+		['/workflow', VIEWS.WORKFLOW],
+		['/workflow/new', VIEWS.WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw', VIEWS.WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw/myNodeId', VIEWS.WORKFLOW],
 		['/workflow/R9JFXwkUCL1jZBuw/398-1ewq213', VIEWS.WORKFLOW],
@@ -136,39 +140,6 @@ describe('router', () => {
 		10000,
 	);
 
-	// TODO: move these tests cases to the test.each above once experiment is over.
-	test.each<[string, RouteRecordName, Scope[]]>([
-		['/settings/provisioning', VIEWS.WORKFLOWS, []],
-		['/settings/provisioning', VIEWS.PROVISIONING_SETTINGS, ['provisioning:manage']],
-	])(
-		'should resolve %s to %s with %s user permissions',
-		async (path, name, scopes) => {
-			const rbacStore = useRBACStore();
-			const posthogStore = usePostHog();
-			rbacStore.setGlobalScopes(scopes);
-			posthogStore.overrides[SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name] = true;
-
-			await router.push(path);
-
-			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
-			expect(router.currentRoute.value.name).toBe(name);
-		},
-		10000,
-	);
-
-	// TODO: remove this test once experiment is over
-	test('should not resolve /settings/provisioning while experiment is not active', async () => {
-		await router.push('/');
-		const rbacStore = useRBACStore();
-		const posthogStore = usePostHog();
-		rbacStore.setGlobalScopes(['provisioning:manage']);
-		vi.spyOn(posthogStore, 'isFeatureEnabled').mockReturnValueOnce(false);
-
-		await router.push('/settings/provisioning');
-
-		expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
-	});
-
 	test.each([
 		[VIEWS.PERSONAL_SETTINGS, true],
 		[VIEWS.USAGE, false],
@@ -176,5 +147,17 @@ describe('router', () => {
 		settingsStore.settings.hideUsagePage = hideUsagePage;
 		await router.push('/settings');
 		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {
+		const settingsRoute = routes.find((route) => route.path === '/settings');
+		const projectRolesRoute = settingsRoute?.children?.find(
+			(child) => child.path === 'project-roles',
+		);
+		const editRoleRoute = projectRolesRoute?.children?.find(
+			(child) => child.name === VIEWS.PROJECT_ROLE_SETTINGS,
+		);
+		expect(editRoleRoute?.props).toBe(true);
+		expect(editRoleRoute?.path).toBe('edit/:roleSlug');
 	});
 });

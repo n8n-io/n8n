@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
+import { computedAsync, useDebounceFn } from '@vueuse/core';
 
 import get from 'lodash/get';
 
@@ -22,10 +23,13 @@ import type {
 } from 'n8n-workflow';
 import {
 	CREDENTIAL_EMPTY_VALUE,
+	IconOrEmojiSchema,
 	isResourceLocatorValue,
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
+
+import type { IconOrEmoji as DesignSystemIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 import type { CodeNodeLanguageOption } from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
 import CodeNodeEditor from '@/features/shared/editors/components/CodeNodeEditor/CodeNodeEditor.vue';
@@ -57,7 +61,9 @@ import {
 	APP_MODALS_ELEMENT_ID,
 	CORE_NODES_CATEGORY,
 	CUSTOM_API_CALL_KEY,
+	DEBOUNCE_TIME,
 	ExpressionLocalResolveContextSymbol,
+	getDebounceTime,
 	HTML_NODE_TYPE,
 	NODES_USING_CODE_NODE_EDITOR,
 } from '@/app/constants';
@@ -95,10 +101,20 @@ import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimen
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
+import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
-import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nIconPicker,
+	N8nInput,
+	N8nInputNumber,
+	N8nOption,
+	N8nSelect,
+} from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
+
 type Picker = { $emit: (arg0: string, arg1: Date) => void };
 
 type Props = {
@@ -165,6 +181,7 @@ const uiStore = useUIStore();
 const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
+const builderStore = useBuilderStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -213,6 +230,8 @@ const dateTimePickerOptions = ref({
 	],
 });
 const isFocused = ref(false);
+// Track when we're switching modes to prevent spurious focus events
+const isSwitchingMode = ref(false);
 
 const contextNode = expressionLocalResolveCtx?.value?.workflow.getNode(
 	expressionLocalResolveCtx.value.nodeName,
@@ -250,15 +269,6 @@ const parameterOptions = computed(() => {
 	const options = hasRemoteMethod.value ? remoteParameterOptions.value : props.parameter.options;
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
-	// temporary until native Python runner is GA
-	if (props.parameter.name === 'language') {
-		if (settingsStore.isNativePythonRunnerEnabled) {
-			return safeOptions.filter((o) => o.value !== 'python');
-		} else {
-			return safeOptions.filter((o) => o.value !== 'pythonNative');
-		}
-	}
-
 	return getParameterDisplayableOptions(safeOptions, ndvStore.activeNode);
 });
 
@@ -276,6 +286,22 @@ const modelValueExpressionEdit = computed<NodeParameterValueType>(() => {
 			? (props.modelValue as INodeParameterResourceLocator).value
 			: ''
 		: props.modelValue;
+});
+
+const iconPickerValue = computed<DesignSystemIconOrEmoji | undefined>({
+	get() {
+		const result = IconOrEmojiSchema.safeParse(props.modelValue);
+		if (result.success) {
+			return {
+				type: result.data.type,
+				value: result.data.value,
+			} as DesignSystemIconOrEmoji;
+		}
+		return undefined;
+	},
+	set(_value: DesignSystemIconOrEmoji | undefined) {
+		// Handled by valueChanged
+	},
 });
 
 const editorRows = computed(() => getTypeOption('rows'));
@@ -391,7 +417,12 @@ const expressionDisplayValue = computed(() => {
 	return `${displayValue.value ?? ''}`;
 });
 
-const dependentParametersValues = computed<string | null>(() => {
+const dependentParametersValues = computedAsync(async () => {
+	// Reference dependencies to ensure reactivity tracking
+	void ndvStore.activeNode?.parameters;
+	void props.parameter;
+	void props.path;
+
 	const loadOptionsDependsOn = getTypeOption('loadOptionsDependsOn');
 
 	if (loadOptionsDependsOn === undefined) {
@@ -401,7 +432,7 @@ const dependentParametersValues = computed<string | null>(() => {
 	// Get the resolved parameter values of the current node
 	const currentNodeParameters = ndvStore.activeNode?.parameters;
 	try {
-		const resolvedNodeParameters = workflowHelpers.resolveParameter(currentNodeParameters);
+		const resolvedNodeParameters = await workflowHelpers.resolveParameter(currentNodeParameters);
 
 		const returnValues: string[] = [];
 		for (let parameterPath of loadOptionsDependsOn) {
@@ -414,7 +445,7 @@ const dependentParametersValues = computed<string | null>(() => {
 	} catch {
 		return null;
 	}
-});
+}, null);
 
 const getStringInputType = computed(() => {
 	if (getTypeOption('password') === true) {
@@ -698,10 +729,10 @@ async function loadRemoteParameterOptions() {
 
 	try {
 		const currentNodeParameters = (ndvStore.activeNode as INodeUi).parameters;
-		const resolvedNodeParameters = workflowHelpers.resolveRequiredParameters(
+		const resolvedNodeParameters = (await workflowHelpers.resolveRequiredParameters(
 			props.parameter,
 			currentNodeParameters,
-		) as INodeParameters;
+		)) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
 
@@ -801,7 +832,17 @@ function selectInput() {
 	}
 }
 
-async function setFocus() {
+const trackBuilderPlaceholders = useDebounceFn(() => {
+	if (node.value && isPlaceholderValue(props.modelValue) && builderStore.isAIBuilderEnabled) {
+		builderStore.trackWorkflowBuilderJourney('field_focus_placeholder_in_ndv', {
+			node_type: node.value.type,
+		});
+	}
+}, getDebounceTime(DEBOUNCE_TIME.INPUT.VALIDATION));
+
+async function setFocus(fromModeSwitch: boolean | FocusEvent = false) {
+	// When called from template @focus="setFocus", the first arg is a FocusEvent, not a boolean
+	const isFromModeSwitch = fromModeSwitch === true;
 	if (['json'].includes(props.parameter.type) && getTypeOption('alwaysOpenEditWindow')) {
 		displayEditDialog();
 		return;
@@ -817,6 +858,19 @@ async function setFocus() {
 		nodeName.value = node.value.name;
 	}
 
+	// Skip if we're in the middle of a mode switch and this is not the mode switch call itself
+	// This prevents spurious focus events from the unmounting expression editor
+	if (isSwitchingMode.value && !isFromModeSwitch) {
+		return;
+	}
+
+	// Skip if already focused to avoid re-triggering focus events
+	// This prevents the options menu from staying visible after mode switches
+	// But allow mode switch calls through, as they need to refocus the new input element
+	if (isFocused.value && !isFromModeSwitch) {
+		return;
+	}
+
 	await nextTick();
 
 	if (inputField.value) {
@@ -830,6 +884,7 @@ async function setFocus() {
 	}
 
 	emit('focus');
+	void trackBuilderPlaceholders();
 }
 
 function rgbaToHex(value: string): string | null {
@@ -902,11 +957,7 @@ function valueChanged(untypedValue: unknown) {
 
 	const isSpecializedEditor = props.parameter.typeOptions?.editor !== undefined;
 
-	if (
-		!oldValue &&
-		oldValue !== undefined &&
-		shouldConvertToExpression(value, isSpecializedEditor)
-	) {
+	if (!oldValue && shouldConvertToExpression(value, isSpecializedEditor)) {
 		// if empty old value and updated value has an expression, add '=' prefix to switch to expression mode
 		value = '=' + value;
 	}
@@ -1030,7 +1081,10 @@ async function optionSelected(command: string) {
 			break;
 
 		case 'removeExpression':
-			isFocused.value = false;
+			// Set flag to prevent spurious focus events from the unmounting expression editor
+			// Keep the flag active for a short time after setFocus completes because
+			// the spurious events can arrive asynchronously
+			isSwitchingMode.value = true;
 			valueChanged(
 				parseFromExpression(
 					props.modelValue,
@@ -1040,6 +1094,14 @@ async function optionSelected(command: string) {
 					parameterOptions.value,
 				),
 			);
+			// Don't focus boolean switches - they don't integrate properly with our focus tracking
+			// and focusing them causes the options to stay visible
+			if (props.parameter.type !== 'boolean') {
+				await setFocus(true);
+			}
+			setTimeout(() => {
+				isSwitchingMode.value = false;
+			}, 100);
 			break;
 
 		case 'refreshOptions':
@@ -1190,7 +1252,7 @@ watch(remoteParameterOptionsLoading, () => {
 watch(isModelValueExpression, async (isExpression, wasExpression) => {
 	if (!props.isReadOnly && isFocused.value && isExpression !== wasExpression) {
 		await nextTick();
-		await setFocus();
+		await setFocus(true);
 	}
 });
 
@@ -1311,6 +1373,19 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
+			/>
+			<N8nIconPicker
+				v-else-if="parameter.type === 'icon' && !isModelValueExpression && !forceShowExpression"
+				ref="inputField"
+				v-model="iconPickerValue"
+				:button-tooltip="
+					parameter.placeholder || i18n.baseText('parameterInput.iconPicker.tooltip')
+				"
+				button-size="large"
+				:is-read-only="isReadOnly"
+				@update:model-value="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
 			/>
 			<ExpressionParameterInput
 				v-else-if="isModelValueExpression || forceShowExpression"
@@ -1644,8 +1719,8 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'dateTime'"
 				ref="inputField"
 				v-model="tempValue"
-				type="datetime"
-				value-format="YYYY-MM-DDTHH:mm:ss"
+				:type="getTypeOption('dateOnly') ? 'date' : 'datetime'"
+				:value-format="getTypeOption('dateOnly') ? 'YYYY-MM-DD' : 'YYYY-MM-DDTHH:mm:ss'"
 				:size="
 					inputSize === 'mini'
 						? 'small'
@@ -1658,7 +1733,9 @@ onUpdated(async () => {
 				:placeholder="
 					parameter.placeholder
 						? getPlaceholder()
-						: i18n.baseText('parameterInput.selectDateAndTime')
+						: getTypeOption('dateOnly')
+							? i18n.baseText('parameterInput.selectDate')
+							: i18n.baseText('parameterInput.selectDateAndTime')
 				"
 				:picker-options="dateTimePickerOptions"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
@@ -1865,14 +1942,16 @@ onUpdated(async () => {
 }
 
 .droppable {
-	--input--border-color: var(--ndv--droppable-parameter--color);
-	--input--border-right-color: var(--ndv--droppable-parameter--color);
-	--input--border-style: dashed;
+	--input--border-color: transparent;
+	--input--border-right-color: transparent;
 
 	textarea,
 	input,
 	.cm-editor {
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
+		transition: none;
 	}
 }
 
@@ -1883,9 +1962,13 @@ onUpdated(async () => {
 	--input--border-style: solid;
 
 	textarea,
-	input {
+	input,
+	.cm-editor {
 		cursor: grabbing !important;
+		border-color: var(--color--success);
 		border-width: 1px;
+		outline: none;
+		transition: none;
 	}
 }
 

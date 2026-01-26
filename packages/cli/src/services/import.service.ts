@@ -7,9 +7,11 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
+	WorkflowHistory,
+	WorkflowPublishHistory,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager } from '@n8n/typeorm';
+import { DataSource, EntityManager, In } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -22,7 +24,6 @@ import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { DatabaseConfig } from '@n8n/config';
 
 @Service()
 export class ImportService {
@@ -55,7 +56,6 @@ export class ImportService {
 		private readonly cipher: Cipher,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
-		private readonly databaseConfig: DatabaseConfig,
 	) {}
 
 	async initRecords() {
@@ -65,6 +65,27 @@ export class ImportService {
 
 	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
 		await this.initRecords();
+
+		const { manager: dbManager } = this.credentialsRepository;
+
+		// Check existence and active status of all workflows
+		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
+		const existingWorkflowIds = new Set<string>();
+		const activeVersionIdByWorkflow = new Map<string, string>();
+
+		if (workflowIds.length > 0) {
+			const existingWorkflows = await dbManager.find(WorkflowEntity, {
+				where: { id: In(workflowIds) },
+				select: ['id', 'activeVersionId'],
+			});
+
+			for (const { id, activeVersionId } of existingWorkflows) {
+				existingWorkflowIds.add(id);
+				if (activeVersionId !== null) {
+					activeVersionIdByWorkflow.set(id, activeVersionId);
+				}
+			}
+		}
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -78,31 +99,43 @@ export class ImportService {
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
-			if (workflow.id) {
+			// Only remove if the workflow already exists in the database and is active
+			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
 		}
 
 		const insertedWorkflows: IWorkflowBase[] = [];
-		const { manager: dbManager } = this.credentialsRepository;
 		await dbManager.transaction(async (tx) => {
-			for (const workflow of workflows) {
-				if (workflow.active) {
-					workflow.active = false;
+			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
+			// Upsert all workflows
+			for (const workflow of workflows) {
+				// Always generate a new versionId on import to ensure proper history ordering
+				workflow.versionId = uuid();
+
+				// Always deactivate workflows on import - they need to be manually activated later
+				// Store the old activeVersionId to record the deactivation of the old version
+				const oldActiveVersionId = workflow.id ? activeVersionIdByWorkflow.get(workflow.id) : null;
+				if (oldActiveVersionId || workflow.activeVersionId || workflow.active) {
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
-
-				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
+				workflow.active = false;
+				workflow.activeVersionId = null;
 
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 
+				// Only add publish history if workflow was previously active
+				if (oldActiveVersionId) {
+					workflowsNeedingPublishHistory.push({ workflowId, versionId: oldActiveVersionId });
+				}
+
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
-				if (!exists) {
+				if (!existingWorkflowIds.has(workflow.id)) {
 					await tx.upsert(
 						SharedWorkflow,
 						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
@@ -121,15 +154,34 @@ export class ImportService {
 					]);
 				}
 			}
+
+			// Always create workflow history for the current version
+			// This is needed to be able to activate the workflow later
+			for (const workflow of insertedWorkflows) {
+				await tx.insert(WorkflowHistory, {
+					versionId: workflow.versionId,
+					workflowId: workflow.id,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					authors: 'import',
+				});
+			}
+
+			// Add publish history records for workflows that were deactivated
+			for (const { workflowId, versionId } of workflowsNeedingPublishHistory) {
+				await tx.insert(WorkflowPublishHistory, {
+					workflowId,
+					versionId,
+					event: 'deactivated',
+					userId: null,
+				});
+			}
 		});
 
 		// Directly update the index for the important workflows, since they don't generate
 		// workflow-update events during import.
-		// Workflow indexing isn't supported on legacy SQLite.
-		if (!this.databaseConfig.isLegacySqlite) {
-			for (const workflow of insertedWorkflows) {
-				await this.workflowIndexService.updateIndexFor(workflow);
-			}
+		for (const workflow of insertedWorkflows) {
+			await this.workflowIndexService.updateIndexFor(workflow);
 		}
 	}
 
@@ -262,15 +314,19 @@ export class ImportService {
 	/**
 	 * Read and parse JSONL file content
 	 * @param filePath - Path to the JSONL file
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Array of parsed entity objects
 	 */
-	async readEntityFile(filePath: string): Promise<Array<Record<string, unknown>>> {
+	async readEntityFile(
+		filePath: string,
+		customEncryptionKey?: string,
+	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
 		const entities: Record<string, unknown>[] = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {
-			const lines = this.cipher.decrypt(block).split(/\r?\n/);
+			const lines = this.cipher.decrypt(block, customEncryptionKey).split(/\r?\n/);
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trim();
@@ -307,11 +363,34 @@ export class ImportService {
 		this.logger.info('✅ Successfully decompressed entities.zip');
 	}
 
-	async importEntities(inputDir: string, truncateTables: boolean) {
+	async importEntities(
+		inputDir: string,
+		truncateTables: boolean,
+		keyFilePath?: string,
+		skipMigrationChecks = false,
+	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
+		// Read custom encryption key from file if provided
+		let customEncryptionKey: string | undefined;
+		if (keyFilePath) {
+			try {
+				const keyFileContent = await readFile(keyFilePath, 'utf8');
+				customEncryptionKey = keyFileContent.trim();
+				this.logger.info(`🔑 Using custom encryption key from: ${keyFilePath}`);
+			} catch (error) {
+				throw new Error(
+					`Failed to read encryption key file at ${keyFilePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				);
+			}
+		}
+
 		await this.decompressEntitiesZip(inputDir);
-		await this.validateMigrations(inputDir);
+		if (!skipMigrationChecks) {
+			await this.validateMigrations(inputDir, customEncryptionKey);
+		} else {
+			this.logger.info('⏭️  Skipping migration validation checks');
+		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
@@ -343,7 +422,13 @@ export class ImportService {
 			}
 
 			// Import entities from the specified directory
-			await this.importEntitiesFromFiles(inputDir, transactionManager, entityNames, entityFiles);
+			await this.importEntitiesFromFiles(
+				inputDir,
+				transactionManager,
+				entityNames,
+				entityFiles,
+				customEncryptionKey,
+			);
 
 			await this.enableForeignKeyConstraints(transactionManager);
 		});
@@ -366,6 +451,7 @@ export class ImportService {
 	 * @param transactionManager - TypeORM transaction manager
 	 * @param entityNames - Array of entity names to import
 	 * @param entityFiles - Record of entity names to their file paths
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Promise that resolves when all entities are imported
 	 */
 	async importEntitiesFromFiles(
@@ -373,6 +459,7 @@ export class ImportService {
 		transactionManager: EntityManager,
 		entityNames: string[],
 		entityFiles: Record<string, string[]>,
+		customEncryptionKey?: string,
 	): Promise<void> {
 		this.logger.info(`\n🚀 Starting entity import from directory: ${inputDir}`);
 
@@ -408,7 +495,10 @@ export class ImportService {
 					files.map(async (filePath) => {
 						this.logger.info(`   📁 Reading file: ${filePath}`);
 
-						const entities: Array<Record<string, unknown>> = await this.readEntityFile(filePath);
+						const entities: Array<Record<string, unknown>> = await this.readEntityFile(
+							filePath,
+							customEncryptionKey,
+						);
 						this.logger.info(`      Found ${entities.length} entities`);
 
 						await Promise.all(
@@ -493,9 +583,10 @@ export class ImportService {
 	/**
 	 * Validates that the migrations in the import data match the target database
 	 * @param inputDir - Directory containing exported entity files
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Promise that resolves if migrations match, throws error if they don't
 	 */
-	async validateMigrations(inputDir: string): Promise<void> {
+	async validateMigrations(inputDir: string, customEncryptionKey?: string): Promise<void> {
 		const migrationsFilePath = safeJoinPath(inputDir, 'migrations.jsonl');
 
 		try {
@@ -510,7 +601,7 @@ export class ImportService {
 		// Read and parse migrations from file
 		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
 		const importMigrations = this.cipher
-			.decrypt(migrationsFileContent)
+			.decrypt(migrationsFileContent, customEncryptionKey)
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())

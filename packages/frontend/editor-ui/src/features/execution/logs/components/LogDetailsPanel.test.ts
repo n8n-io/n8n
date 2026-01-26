@@ -16,7 +16,7 @@ import {
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
 import type { LogEntry } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 import { HTML_NODE_TYPE } from '@/app/constants';
 
 describe('LogDetailsPanel', () => {
@@ -42,14 +42,14 @@ describe('LogDetailsPanel', () => {
 	function createLogEntry(data: Partial<LogEntry> = {}) {
 		return createTestLogEntry({
 			workflow: createTestWorkflowObject(workflowData),
-			execution: {
+			execution: createRunExecutionData({
 				resultData: {
 					runData: {
 						'Chat Trigger': [chatNodeRunData],
 						'AI Agent': [aiNodeRunData],
 					},
 				},
-			},
+			}),
 			...data,
 		});
 	}
@@ -177,7 +177,9 @@ describe('LogDetailsPanel', () => {
 				runIndex: 0,
 				runData: runDataB,
 				workflow,
-				execution: { resultData: { runData: { A: [runDataA], B: [runDataB] } } },
+				execution: createRunExecutionData({
+					resultData: { runData: { A: [runDataA], B: [runDataB] } },
+				}),
 			}),
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 			collapsingInputTableColumnName: null,
@@ -210,7 +212,9 @@ describe('LogDetailsPanel', () => {
 				[HTML_NODE_TYPE]: mockLoadedNodeType(HTML_NODE_TYPE),
 			}),
 		});
-		const execution = { resultData: { runData: { A: [runDataA], B: [runDataB] } } };
+		const execution = createRunExecutionData({
+			resultData: { runData: { A: [runDataA], B: [runDataB] } },
+		});
 		const logA = createLogEntry({ node: nodeA, runData: runDataA, workflow, execution });
 		const logB = createLogEntry({ node: nodeB, runData: runDataB, workflow, execution });
 

@@ -3,6 +3,7 @@ export * from './browser';
 export * from './community-nodes';
 export * from './instance';
 export * from './execution';
+export * from './logstreaming';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
@@ -37,6 +38,7 @@ export const LICENSE_FEATURES = {
 	WORKFLOW_DIFFS: 'feat:workflowDiffs',
 	CUSTOM_ROLES: 'feat:customRoles',
 	AI_BUILDER: 'feat:aiBuilder',
+	DYNAMIC_CREDENTIALS: 'feat:dynamicCredentials',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -82,6 +84,12 @@ export interface LdapConfig {
 	synchronizationInterval: number; // minutes
 	searchPageSize: number;
 	searchTimeout: number;
+	/**
+	 * Enforce email uniqueness in LDAP directory.
+	 * When enabled, blocks login if multiple LDAP accounts share the same email.
+	 * Prevents privilege escalation via email-based account linking.
+	 */
+	enforceEmailUniqueness: boolean;
 }
 
 export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
@@ -104,6 +112,7 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	synchronizationInterval: 60,
 	searchPageSize: 0,
 	searchTimeout: 60,
+	enforceEmailUniqueness: true,
 };
 
 export { Time } from './time';

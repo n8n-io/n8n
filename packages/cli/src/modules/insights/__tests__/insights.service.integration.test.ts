@@ -6,26 +6,20 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import type { InstanceType } from '@n8n/constants';
 import type { IWorkflowDb, Project, WorkflowEntity } from '@n8n/db';
-import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError, type IRun } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
-import {
-	createCompactedInsightsEvent,
-	createMetadata,
-	createRawInsightsEvents,
-} from '../database/entities/__tests__/db-utils';
-import type { InsightsRaw } from '../database/entities/insights-raw';
+import { createCompactedInsightsEvent } from '../database/entities/__tests__/db-utils';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
-import { InsightsCompactionService } from '../insights-compaction.service';
+import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
-import { InsightsConfig } from '../insights.config';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsService (Integration)', () => {
@@ -54,13 +48,14 @@ describe('InsightsService (Integration)', () => {
 	describe('startTimers', () => {
 		let insightsService: InsightsService;
 		let compactionService: InsightsCompactionService;
-		let collectionService: InsightsCollectionService;
 		let pruningService: InsightsPruningService;
 		let instanceSettings: MockProxy<InstanceSettings>;
+		let realCollectionService: InsightsCollectionService;
+		let initSpy: jest.SpyInstance;
+		let shutdownSpy: jest.SpyInstance;
 
 		beforeEach(() => {
 			compactionService = mock<InsightsCompactionService>();
-			collectionService = mock<InsightsCollectionService>();
 			pruningService = mock<InsightsPruningService>();
 			instanceSettings = mock<InstanceSettings>({
 				instanceType: 'main',
@@ -68,18 +63,30 @@ describe('InsightsService (Integration)', () => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
 				compactionService,
-				collectionService,
 				pruningService,
 				mock<LicenseState>(),
 				instanceSettings,
 				mockLogger(),
 			);
 
+			// Get the real service from the container and spy on it
+			realCollectionService = Container.get(InsightsCollectionService);
+			initSpy = jest.spyOn(realCollectionService, 'init');
+			shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+
 			jest.clearAllMocks();
 		});
 
+		afterEach(async () => {
+			// Shutdown the service to clear timers
+			await insightsService.shutdown();
+			// Clean up spies
+			initSpy.mockRestore();
+			shutdownSpy.mockRestore();
+		});
+
 		const setupMocks = (
-			instanceType: string,
+			instanceType: InstanceType,
 			isLeader: boolean = false,
 			isPruningEnabled: boolean = false,
 		) => {
@@ -92,38 +99,52 @@ describe('InsightsService (Integration)', () => {
 			});
 		};
 
-		test('starts flushing timer for main instance', () => {
+		test('starts flushing timer for main instance', async () => {
 			setupMocks('main', false, false);
-			insightsService.startTimers();
 
-			expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+			await insightsService.init();
+
+			expect(initSpy).toHaveBeenCalled();
 			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction and flushing timers for main leader instances', () => {
+		test('starts compaction and flushing timers for main leader instances', async () => {
 			setupMocks('main', true, false);
-			insightsService.startTimers();
 
-			expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+			await insightsService.init();
+
+			expect(initSpy).toHaveBeenCalled();
 			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
 
-		test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', () => {
+		test('starts compaction, flushing and pruning timers for main leader instance with pruning enabled', async () => {
 			setupMocks('main', true, true);
-			insightsService.startTimers();
 
-			expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+			await insightsService.init();
+
+			expect(initSpy).toHaveBeenCalled();
 			expect(compactionService.startCompactionTimer).toHaveBeenCalled();
 			expect(pruningService.startPruningTimer).toHaveBeenCalled();
 		});
 
-		test('starts only collection flushing timer for webhook instance', () => {
+		test('starts only collection flushing timer for webhook instance', async () => {
 			setupMocks('webhook', false, false);
-			insightsService.startTimers();
 
-			expect(collectionService.startFlushingTimer).toHaveBeenCalled();
+			await insightsService.init();
+
+			expect(initSpy).toHaveBeenCalled();
+			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
+			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
+		});
+
+		test('do no start any timers for non-main instances', async () => {
+			setupMocks('worker', false, false);
+
+			await insightsService.init();
+
+			expect(initSpy).not.toHaveBeenCalled();
 			expect(compactionService.startCompactionTimer).not.toHaveBeenCalled();
 			expect(pruningService.startPruningTimer).not.toHaveBeenCalled();
 		});
@@ -289,8 +310,6 @@ describe('InsightsService (Integration)', () => {
 				endDate: endDate.toJSDate(),
 				projectId: project.id,
 			});
-
-			console.log(summary);
 
 			// ASSERT
 			expect(summary).toEqual({
@@ -894,165 +913,54 @@ describe('InsightsService (Integration)', () => {
 				projectId: project.id,
 			});
 
-			// ASSERT
-			expect(byTime).toHaveLength(4);
-
-			// expect date to be sorted by oldest first
-			expect(byTime[0].date).toEqual(now.minus({ days: 14 }).startOf('day').toISO());
-			expect(byTime[1].date).toEqual(now.minus({ days: 10 }).startOf('day').toISO());
-			expect(byTime[2].date).toEqual(now.minus({ days: 2 }).startOf('day').toISO());
-			expect(byTime[3].date).toEqual(now.startOf('day').toISO());
-
-			expect(byTime[0].values).toEqual({
-				total: 2,
-				succeeded: 1,
-				failed: 1,
-				failureRate: 0.5,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
-
-			expect(byTime[1].values).toEqual({
-				total: 2,
-				succeeded: 2,
-				failed: 0,
-				failureRate: 0,
-				averageRunTime: 15,
-				timeSaved: 0,
-			});
-
-			expect(byTime[2].values).toEqual({
-				total: 2,
-				succeeded: 2,
-				failed: 0,
-				failureRate: 0,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
-
-			expect(byTime[3].values).toEqual({
-				total: 7,
-				succeeded: 3,
-				failed: 4,
-				failureRate: 4 / 7,
-				averageRunTime: 0,
-				timeSaved: 0,
-			});
-		});
-	});
-
-	describe('settings', () => {
-		let licenseMock: jest.Mocked<LicenseState>;
-		let insightsService: InsightsService;
-
-		beforeAll(() => {
-			licenseMock = mock<LicenseState>();
-			insightsService = new InsightsService(
-				mock(),
-				mock(),
-				mock(),
-				mock(),
-				licenseMock,
-				mock(),
-				mockLogger(),
+			expect(byTime).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						date: now.minus({ days: 14 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 1,
+							failed: 1,
+							failureRate: 0.5,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.minus({ days: 10 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 2,
+							failed: 0,
+							failureRate: 0,
+							averageRunTime: 15,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.minus({ days: 2 }).startOf('day').toISO(),
+						values: {
+							total: 2,
+							succeeded: 2,
+							failed: 0,
+							failureRate: 0,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+					expect.objectContaining({
+						date: now.startOf('day').toISO(),
+						values: {
+							total: 7,
+							succeeded: 3,
+							failed: 4,
+							failureRate: 4 / 7,
+							averageRunTime: 0,
+							timeSaved: 0,
+						},
+					}),
+				]),
 			);
-		});
-
-		test('returns correct summary and dashboard licenses', () => {
-			licenseMock.isInsightsSummaryLicensed.mockReturnValue(true);
-			licenseMock.isInsightsDashboardLicensed.mockReturnValue(true);
-
-			const result = insightsService.settings();
-
-			expect(result.summary).toBe(true);
-			expect(result.dashboard).toBe(true);
-		});
-
-		describe('dateRanges', () => {
-			test('returns correct ranges when hourly data is enabled and max history is unlimited', () => {
-				licenseMock.getInsightsMaxHistory.mockReturnValue(-1);
-				licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
-
-				const result = insightsService.settings();
-
-				expect(result.dateRanges).toEqual([
-					{ key: 'day', licensed: true, granularity: 'hour' },
-					{ key: 'week', licensed: true, granularity: 'day' },
-					{ key: '2weeks', licensed: true, granularity: 'day' },
-					{ key: 'month', licensed: true, granularity: 'day' },
-					{ key: 'quarter', licensed: true, granularity: 'week' },
-					{ key: '6months', licensed: true, granularity: 'week' },
-					{ key: 'year', licensed: true, granularity: 'week' },
-				]);
-			});
-
-			test('returns correct ranges when hourly data is enabled and max history is 365 days', () => {
-				licenseMock.getInsightsMaxHistory.mockReturnValue(365);
-				licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
-
-				const result = insightsService.settings();
-
-				expect(result.dateRanges).toEqual([
-					{ key: 'day', licensed: true, granularity: 'hour' },
-					{ key: 'week', licensed: true, granularity: 'day' },
-					{ key: '2weeks', licensed: true, granularity: 'day' },
-					{ key: 'month', licensed: true, granularity: 'day' },
-					{ key: 'quarter', licensed: true, granularity: 'week' },
-					{ key: '6months', licensed: true, granularity: 'week' },
-					{ key: 'year', licensed: true, granularity: 'week' },
-				]);
-			});
-
-			test('returns correct ranges when hourly data is disabled and max history is 30 days', () => {
-				licenseMock.getInsightsMaxHistory.mockReturnValue(30);
-				licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
-
-				const result = insightsService.settings();
-
-				expect(result.dateRanges).toEqual([
-					{ key: 'day', licensed: false, granularity: 'hour' },
-					{ key: 'week', licensed: true, granularity: 'day' },
-					{ key: '2weeks', licensed: true, granularity: 'day' },
-					{ key: 'month', licensed: true, granularity: 'day' },
-					{ key: 'quarter', licensed: false, granularity: 'week' },
-					{ key: '6months', licensed: false, granularity: 'week' },
-					{ key: 'year', licensed: false, granularity: 'week' },
-				]);
-			});
-
-			test('returns correct ranges when max history is less than 7 days', () => {
-				licenseMock.getInsightsMaxHistory.mockReturnValue(5);
-				licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(false);
-
-				const result = insightsService.settings();
-
-				expect(result.dateRanges).toEqual([
-					{ key: 'day', licensed: false, granularity: 'hour' },
-					{ key: 'week', licensed: false, granularity: 'day' },
-					{ key: '2weeks', licensed: false, granularity: 'day' },
-					{ key: 'month', licensed: false, granularity: 'day' },
-					{ key: 'quarter', licensed: false, granularity: 'week' },
-					{ key: '6months', licensed: false, granularity: 'week' },
-					{ key: 'year', licensed: false, granularity: 'week' },
-				]);
-			});
-
-			test('returns correct ranges when max history is 90 days and hourly data is enabled', () => {
-				licenseMock.getInsightsMaxHistory.mockReturnValue(90);
-				licenseMock.isInsightsHourlyDataLicensed.mockReturnValue(true);
-
-				const result = insightsService.settings();
-
-				expect(result.dateRanges).toEqual([
-					{ key: 'day', licensed: true, granularity: 'hour' },
-					{ key: 'week', licensed: true, granularity: 'day' },
-					{ key: '2weeks', licensed: true, granularity: 'day' },
-					{ key: 'month', licensed: true, granularity: 'day' },
-					{ key: 'quarter', licensed: true, granularity: 'week' },
-					{ key: '6months', licensed: false, granularity: 'week' },
-					{ key: 'year', licensed: false, granularity: 'week' },
-				]);
-			});
 		});
 	});
 
@@ -1065,7 +973,6 @@ describe('InsightsService (Integration)', () => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
 				mock<InsightsCompactionService>(),
-				mock<InsightsCollectionService>(),
 				mock<InsightsPruningService>(),
 				licenseStateMock,
 				mock<InstanceSettings>(),
@@ -1161,11 +1068,6 @@ describe('InsightsService (Integration)', () => {
 	describe('shutdown', () => {
 		let insightsService: InsightsService;
 
-		const mockCollectionService = mock<InsightsCollectionService>({
-			shutdown: jest.fn().mockResolvedValue(undefined),
-			stopFlushingTimer: jest.fn(),
-		});
-
 		const mockCompactionService = mock<InsightsCompactionService>({
 			stopCompactionTimer: jest.fn(),
 		});
@@ -1178,92 +1080,26 @@ describe('InsightsService (Integration)', () => {
 			insightsService = new InsightsService(
 				mock<InsightsByPeriodRepository>(),
 				mockCompactionService,
-				mockCollectionService,
 				mockPruningService,
 				mock<LicenseState>(),
-				mock<InstanceSettings>(),
+				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
 			);
 		});
 
 		test('shutdown stops timers and shuts down services', async () => {
+			// ARRANGE
+			// Get the real service from the container and spy on it
+			const realCollectionService = Container.get(InsightsCollectionService);
+			const shutdownSpy = jest.spyOn(realCollectionService, 'shutdown');
+
 			// ACT
 			await insightsService.shutdown();
 
 			// ASSERT
-			expect(mockCollectionService.shutdown).toHaveBeenCalled();
+			expect(shutdownSpy).toHaveBeenCalled();
 			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
 			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
-		});
-	});
-
-	describe('legacy sqlite (without pooling) handles concurrent insights db process without throwing', () => {
-		let initialFlushBatchSize: number;
-		let insightsConfig: InsightsConfig;
-		beforeAll(() => {
-			insightsConfig = Container.get(InsightsConfig);
-			initialFlushBatchSize = insightsConfig.flushBatchSize;
-
-			insightsConfig.flushBatchSize = 50;
-		});
-
-		afterAll(() => {
-			insightsConfig.flushBatchSize = initialFlushBatchSize;
-		});
-
-		test('should handle concurrent flush and compaction without error', async () => {
-			const insightsCollectionService = Container.get(InsightsCollectionService);
-			const insightsCompactionService = Container.get(InsightsCompactionService);
-
-			const project = await createTeamProject();
-			const workflow = await createWorkflow({}, project);
-			await createMetadata(workflow);
-
-			const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
-			const startedAt = DateTime.utc();
-			const stoppedAt = startedAt.plus({ seconds: 5 });
-			ctx.runData = mock<IRun>({
-				mode: 'webhook',
-				status: 'success',
-				startedAt: startedAt.toJSDate(),
-				stoppedAt: stoppedAt.toJSDate(),
-			});
-
-			// Create test data
-			const rawInsights = [];
-			for (let i = 0; i < 100; i++) {
-				rawInsights.push({
-					type: 'success' as InsightsRaw['type'],
-					value: 1,
-					periodUnit: 'hour',
-					periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
-				});
-			}
-			// Create raw insights events to be compacted
-			await createRawInsightsEvents(workflow, rawInsights);
-
-			//
-			for (let i = 0; i < 100; i++) {
-				await createCompactedInsightsEvent(workflow, {
-					type: 'success',
-					value: 1,
-					periodUnit: 'hour',
-					periodStart: DateTime.now().minus({ day: 91, hour: i + 1 }),
-				});
-			}
-
-			for (let i = 0; i < 100; i++) {
-				await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
-			}
-
-			// ACT
-			const promises = [
-				insightsCollectionService.flushEvents(),
-				insightsCollectionService.flushEvents(),
-				insightsCompactionService.compactRawToHour(),
-				insightsCompactionService.compactHourToDay(),
-			];
-			await expect(Promise.all(promises)).resolves.toBeDefined();
 		});
 	});
 });

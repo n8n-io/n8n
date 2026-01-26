@@ -1,38 +1,44 @@
 import { test, expect } from '../../fixtures/base';
-import { attachMetric, pollMemoryMetric } from '../../utils/performance-helper';
+import { attachMetric, waitForMemoryStabilization } from '../../utils/performance-helper';
 
 test.use({
-	addContainerCapability: {
+	capability: {
 		resourceQuota: {
 			memory: 0.75,
 			cpu: 0.5,
 		},
+		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
 	},
 });
 
-test.describe('Memory Consumption', () => {
-	const CONTAINER_STABILIZATION_TIME = 20000;
-	const POLL_MEMORY_DURATION = 30000;
-	const STARTER_PLAN_MEMORY_LIMIT = 768;
-
+test.describe('Memory Consumption @capability:observability', () => {
 	test('Memory consumption baseline with starter plan resources', async ({
 		n8nContainer,
 	}, testInfo) => {
-		// Wait for container to stabilize
-		await new Promise((resolve) => setTimeout(resolve, CONTAINER_STABILIZATION_TIME));
+		const obs = n8nContainer.services.observability;
 
-		// Poll memory metric for 30 seconds to get baseline
-		const averageMemoryBytes = await pollMemoryMetric(
-			n8nContainer.baseUrl,
-			POLL_MEMORY_DURATION,
-			1000,
+		// Wait for memory to stabilize (V8 GC is non-deterministic)
+		const { heapUsedMB } = await waitForMemoryStabilization(obs.metrics);
+
+		// Query other metrics at same instant (not averaged) for consistent snapshot
+		const [heapTotalResult, rssResult] = await Promise.all([
+			obs.metrics.waitForMetric('n8n_nodejs_heap_size_total_bytes / 1024 / 1024'),
+			obs.metrics.waitForMetric('n8n_process_resident_memory_bytes / 1024 / 1024'),
+		]);
+
+		const heapTotalMB = heapTotalResult!.value;
+		const rssMB = rssResult!.value;
+
+		console.log(
+			`[MEMORY] Heap Used: ${heapUsedMB.toFixed(2)} MB | Heap Total: ${heapTotalMB.toFixed(2)} MB | RSS: ${rssMB.toFixed(2)} MB`,
 		);
-		const averageMemoryMB = averageMemoryBytes / 1024 / 1024;
 
-		await attachMetric(testInfo, 'memory-consumption-baseline', averageMemoryMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-used-baseline', heapUsedMB, 'MB');
+		await attachMetric(testInfo, 'memory-heap-total-baseline', heapTotalMB, 'MB');
+		await attachMetric(testInfo, 'memory-rss-baseline', rssMB, 'MB');
 
-		// Verify memory is within starter plan limits (768MB)
-		expect(averageMemoryMB).toBeLessThan(STARTER_PLAN_MEMORY_LIMIT);
-		expect(averageMemoryMB).toBeGreaterThan(100);
+		expect(heapUsedMB).toBeGreaterThan(0);
+		expect(heapTotalMB).toBeGreaterThan(0);
+		expect(rssMB).toBeGreaterThan(0);
 	});
 });

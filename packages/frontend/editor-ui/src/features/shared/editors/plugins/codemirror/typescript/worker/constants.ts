@@ -13,6 +13,7 @@ export const COMPILER_OPTIONS: ts.CompilerOptions = {
 	importHelpers: false,
 	skipDefaultLibCheck: true,
 	noEmit: true,
+	noImplicitAny: false,
 };
 export const TYPESCRIPT_AUTOCOMPLETE_THRESHOLD = '15';
 export const TYPESCRIPT_FILES = {

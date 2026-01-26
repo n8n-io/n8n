@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 
 import {
-	promptTypeOptions,
+	promptTypeOptionsDeprecated,
 	textFromGuardrailsNode,
 	textFromPreviousNode,
 	textInput,
@@ -44,21 +44,7 @@ export class AgentV2 implements INodeType {
 					type: 'callout',
 					default: '',
 				},
-				{
-					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					displayName: 'Get started faster with our',
-					name: 'preBuiltAgentsCallout',
-					type: 'callout',
-					typeOptions: {
-						calloutAction: {
-							label: 'pre-built agents',
-							icon: 'bot',
-							type: 'openPreBuiltAgentsCollection',
-						},
-					},
-					default: '',
-				},
-				promptTypeOptions,
+				promptTypeOptionsDeprecated,
 				{
 					...textFromGuardrailsNode,
 					displayOptions: {

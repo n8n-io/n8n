@@ -159,8 +159,7 @@ exports[`WhatsNewModal > should not render update button when no version updates
 
       <p>
         <iframe
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowfullscreen=""
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           frameborder="0"
           height="315"
           referrerpolicy="strict-origin-when-cross-origin"

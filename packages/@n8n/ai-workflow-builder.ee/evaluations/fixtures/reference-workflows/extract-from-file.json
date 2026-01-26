@@ -1,0 +1,344 @@
+{
+	"nodes": [
+		{
+			"id": "8399db01-a5b9-4ae0-bd89-72d21d79a1f8",
+			"name": "File Upload Form",
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.3,
+			"position": [250, 450],
+			"parameters": {
+				"formTitle": "File Upload and Data Extraction",
+				"formDescription": "Upload PDF, CSV, or Excel files for automatic data extraction",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Upload File",
+							"fieldType": "file",
+							"multipleFiles": false,
+							"acceptFileTypes": ".pdf, .csv, .xls, .xlsx",
+							"requiredField": true
+						},
+						{
+							"fieldLabel": "Output Destination",
+							"fieldType": "dropdown",
+							"requiredField": true,
+							"fieldOptions": {
+								"values": [
+									{
+										"option": "database"
+									},
+									{
+										"option": "email"
+									}
+								]
+							}
+						}
+					]
+				},
+				"responseMode": "onReceived",
+				"options": {
+					"appendAttribution": false
+				}
+			},
+			"webhookId": "8207eb63-d864-41fd-80e8-3ecc51c836b8"
+		},
+		{
+			"id": "3648bf58-ab80-4b99-ac51-b2710ddc51b5",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "emailRecipient",
+							"value": "<__PLACEHOLDER_VALUE__Email address to send summaries to__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "databaseTableName",
+							"value": "extracted_file_data",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "5cd4277b-8eb3-408e-bff7-46d836f2c41a",
+			"name": "Extract File Content",
+			"type": "n8n-nodes-base.extractFromFile",
+			"typeVersion": 1.1,
+			"position": [250, 300],
+			"parameters": {
+				"operation": "csv",
+				"binaryPropertyName": "uploadedFile",
+				"options": {
+					"keepSource": "both"
+				}
+			}
+		},
+		{
+			"id": "dc6643f3-5bab-4215-bab0-b6209c95610a",
+			"name": "Transform to Structured Format",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "manual",
+				"includeOtherFields": true,
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "extractedData",
+							"value": "={{ $json.data }}",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "fileName",
+							"value": "={{ $binary.uploadedFile.fileName }}",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "fileType",
+							"value": "={{ $binary.uploadedFile.mimeType }}",
+							"type": "string"
+						},
+						{
+							"id": "id-4",
+							"name": "extractedAt",
+							"value": "={{ $now.toISO() }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "8df75042-7613-41f0-9fce-b6ab6a5d7ade",
+			"name": "Route to Database or Email",
+			"type": "n8n-nodes-base.switch",
+			"typeVersion": 3.3,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "rules",
+				"rules": {
+					"values": [
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"leftValue": "={{ $json.outputDestination }}",
+										"rightValue": "database",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"renameOutput": true,
+							"outputKey": "Database"
+						},
+						{
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "strict"
+								},
+								"conditions": [
+									{
+										"leftValue": "={{ $json.outputDestination }}",
+										"rightValue": "email",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										}
+									}
+								],
+								"combinator": "and"
+							},
+							"renameOutput": true,
+							"outputKey": "Email"
+						}
+					]
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "d029cb1b-2e7c-4f04-a234-f013cbee950d",
+			"name": "Save to Database",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $('Workflow Configuration').first().json.databaseTableName }}"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": null
+				},
+				"options": {}
+			}
+		},
+		{
+			"id": "518023be-f58e-43d5-8c27-0a5cadde2d6b",
+			"name": "Send Email Summary",
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "message",
+				"operation": "send",
+				"sendTo": "={{ $('Workflow Configuration').first().json.emailRecipient }}",
+				"subject": "=File Data Extraction Summary - {{ $json.fileName }}",
+				"emailType": "html",
+				"message": "={{ $json.emailBody }}"
+			},
+			"webhookId": "2f6fc0d8-163b-4e0c-878e-6e1cd5cb8c69"
+		},
+		{
+			"id": "063e0bd1-7060-4a4c-9f8a-af4a0edcdf5e",
+			"name": "Generate Email Summary",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [250, 300],
+			"parameters": {
+				"mode": "runOnceForAllItems",
+				"language": "javaScript",
+				"jsCode": "// Generate HTML email summary with extracted data\nconst items = $input.all();\n\nlet htmlContent = `\n<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 800px; margin: 0 auto; padding: 20px; }\n    .header { background-color: #4CAF50; color: white; padding: 20px; border-radius: 5px; }\n    .section { margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-radius: 5px; }\n    .label { font-weight: bold; color: #555; }\n    .value { margin-left: 10px; }\n    table { width: 100%; border-collapse: collapse; margin-top: 10px; }\n    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }\n    th { background-color: #4CAF50; color: white; }\n    tr:hover { background-color: #f5f5f5; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>📄 File Extraction Summary</h1>\n    </div>\n`;\n\nfor (const item of items) {\n  const fileName = item.json.fileName || 'Unknown';\n  const fileType = item.json.fileType || 'Unknown';\n  const timestamp = item.json.extractionTimestamp || new Date().toISOString();\n  const extractedData = item.json.extractedData || item.json;\n\n  htmlContent += `\n    <div class=\"section\">\n      <h2>File Information</h2>\n      <p><span class=\"label\">File Name:</span><span class=\"value\">${fileName}</span></p>\n      <p><span class=\"label\">File Type:</span><span class=\"value\">${fileType}</span></p>\n      <p><span class=\"label\">Extraction Timestamp:</span><span class=\"value\">${new Date(timestamp).toLocaleString()}</span></p>\n    </div>\n    \n    <div class=\"section\">\n      <h2>Extracted Data</h2>\n      <table>\n        <thead>\n          <tr>\n            <th>Field</th>\n            <th>Value</th>\n          </tr>\n        </thead>\n        <tbody>\n  `;\n\n  // Format extracted data as table rows\n  if (typeof extractedData === 'object' && extractedData !== null) {\n    for (const [key, value] of Object.entries(extractedData)) {\n      const formattedValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;\n      htmlContent += `\n          <tr>\n            <td>${key}</td>\n            <td>${formattedValue}</td>\n          </tr>\n      `;\n    }\n  } else {\n    htmlContent += `\n          <tr>\n            <td colspan=\"2\">${extractedData}</td>\n          </tr>\n    `;\n  }\n\n  htmlContent += `\n        </tbody>\n      </table>\n    </div>\n  `;\n}\n\nhtmlContent += `\n  </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    emailBody: htmlContent,\n    subject: `File Extraction Summary - ${new Date().toLocaleDateString()}`,\n    extractedCount: items.length\n  }\n}];"
+			}
+		},
+		{
+			"id": "604f22ce-205c-409e-9994-e6dd7281aab9",
+			"name": "Store Raw Form Data",
+			"type": "n8n-nodes-base.dataTable",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"parameters": {
+				"resource": "row",
+				"operation": "insert",
+				"dataTableId": {
+					"__rl": true,
+					"mode": "list",
+					"value": "form_submissions"
+				},
+				"columns": {
+					"mappingMode": "autoMapInputData",
+					"value": null
+				},
+				"options": {}
+			}
+		}
+	],
+	"connections": {
+		"File Upload Form": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Store Raw Form Data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Store Raw Form Data": {
+			"main": [
+				[
+					{
+						"node": "Extract File Content",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Extract File Content": {
+			"main": [
+				[
+					{
+						"node": "Transform to Structured Format",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Transform to Structured Format": {
+			"main": [
+				[
+					{
+						"node": "Route to Database or Email",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Route to Database or Email": {
+			"main": [
+				[
+					{
+						"node": "Save to Database",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Generate Email Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Email Summary": {
+			"main": [
+				[
+					{
+						"node": "Send Email Summary",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"name": "File Upload Data Extraction and Distribution System"
+}

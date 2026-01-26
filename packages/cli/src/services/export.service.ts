@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import { mkdir, rm, readdir, appendFile } from 'fs/promises';
+import { mkdir, rm, readdir, appendFile, readFile } from 'fs/promises';
 
 import { Service } from '@n8n/di';
 
@@ -34,7 +34,10 @@ export class ExportService {
 		}
 	}
 
-	private async exportMigrationsTable(outputDir: string): Promise<number> {
+	private async exportMigrationsTable(
+		outputDir: string,
+		customEncryptionKey?: string,
+	): Promise<number> {
 		this.logger.info('\n🔧 Exporting migrations table:');
 		this.logger.info('==============================');
 
@@ -66,7 +69,11 @@ export class ExportService {
 			const migrationsJsonl: string = allMigrations
 				.map((migration: unknown) => JSON.stringify(migration))
 				.join('\n');
-			await appendFile(filePath, this.cipher.encrypt(migrationsJsonl ?? '' + '\n'), 'utf8');
+			await appendFile(
+				filePath,
+				this.cipher.encrypt(migrationsJsonl ?? '' + '\n', customEncryptionKey),
+				'utf8',
+			);
 
 			this.logger.info(
 				`   ✅ Completed export for ${migrationsTableName}: ${allMigrations.length} entities in 1 file`,
@@ -83,13 +90,31 @@ export class ExportService {
 		return systemTablesExported;
 	}
 
-	async exportEntities(outputDir: string, excludedTables: Set<string> = new Set()) {
+	async exportEntities(
+		outputDir: string,
+		excludedTables: Set<string> = new Set(),
+		keyFilePath?: string,
+	) {
 		this.logger.info('\n⚠️⚠️ This feature is currently under development. ⚠️⚠️');
 
 		validateDbTypeForExportEntities(this.dataSource.options.type);
 
 		this.logger.info('\n🚀 Starting entity export...');
 		this.logger.info(`📁 Output directory: ${outputDir}`);
+
+		// Read custom encryption key from file if provided
+		let customEncryptionKey: string | undefined;
+		if (keyFilePath) {
+			try {
+				const keyFileContent = await readFile(keyFilePath, 'utf8');
+				customEncryptionKey = keyFileContent.trim();
+				this.logger.info(`🔑 Using custom encryption key from: ${keyFilePath}`);
+			} catch (error) {
+				throw new Error(
+					`Failed to read encryption key file at ${keyFilePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				);
+			}
+		}
 
 		await rm(outputDir, { recursive: true }).catch(() => {});
 		// Ensure output directory exists
@@ -106,7 +131,7 @@ export class ExportService {
 		const pageSize = 500;
 		const entitiesPerFile = 500;
 
-		await this.exportMigrationsTable(outputDir);
+		await this.exportMigrationsTable(outputDir, customEncryptionKey);
 
 		for (const metadata of entityMetadatas) {
 			// Get table name and entity name
@@ -171,7 +196,11 @@ export class ExportService {
 				const entitiesJsonl: string = pageEntities
 					.map((entity: unknown) => JSON.stringify(entity))
 					.join('\n');
-				await appendFile(filePath, this.cipher.encrypt(entitiesJsonl) + '\n', 'utf8');
+				await appendFile(
+					filePath,
+					this.cipher.encrypt(entitiesJsonl, customEncryptionKey) + '\n',
+					'utf8',
+				);
 
 				totalEntityCount += pageEntities.length;
 				currentFileEntityCount += pageEntities.length;

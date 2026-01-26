@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import type { IUpdateInformation } from '@/Interface';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 
-import CredentialIcon from '../CredentialIcon.vue';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -14,7 +13,8 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
@@ -25,11 +25,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
-import {
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/app/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -58,13 +54,18 @@ import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
 import {
+	N8nIcon,
 	N8nIconButton,
 	N8nInlineTextEdit,
 	N8nMenuItem,
+	N8nTag,
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { setParameterValue } from '@/app/utils/parameterUtils';
+import get from 'lodash/get';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 type Props = {
 	modalName: string;
@@ -91,6 +92,7 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
+const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -113,6 +115,8 @@ const hasUserSpecifiedName = ref(false);
 const isSharedWithChanged = ref(false);
 const requiredCredentials = ref(false); // Are credentials required or optional for the node
 const contentRef = ref<HTMLDivElement>();
+const isSharedGlobally = ref(false);
+const isResolvable = ref(false);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -348,6 +352,12 @@ const homeProject = computed(() => {
 	return currentProject ?? personalProject;
 });
 
+const isDynamicCredentialsEnabled = computed<boolean>(() => {
+	return checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS');
+});
+
+const isNewCredential = computed(() => props.mode === 'new' && !credentialId.value);
+
 onMounted(async () => {
 	requiredCredentials.value =
 		isCredentialModalState(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]) &&
@@ -539,6 +549,14 @@ async function loadCurrentCredential() {
 		}
 
 		credentialName.value = currentCredentials.name;
+		isSharedGlobally.value =
+			'isGlobal' in currentCredentials && typeof currentCredentials.isGlobal === 'boolean'
+				? currentCredentials.isGlobal
+				: false;
+		isResolvable.value =
+			'isResolvable' in currentCredentials && typeof currentCredentials.isResolvable === 'boolean'
+				? currentCredentials.isResolvable
+				: false;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -574,18 +592,28 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 	hasUnsavedChanges.value = true;
 }
 
+function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
+	isSharedGlobally.value = shareWithAllUsers;
+	hasUnsavedChanges.value = true;
+}
+
+function onResolvableChange(value: boolean) {
+	isResolvable.value = value;
+	hasUnsavedChanges.value = true;
+}
+
 function onDataChange({ name, value }: IUpdateInformation) {
-	// skip update if new value matches the current
-	if (credentialData.value[name] === value) return;
+	const currentValue = get(credentialData.value, name);
+	if (currentValue === value) {
+		return;
+	}
 
 	hasUnsavedChanges.value = true;
 
 	const { oauthTokenData, ...credData } = credentialData.value;
+	credentialData.value = deepCopy(credData);
 
-	credentialData.value = {
-		...credData,
-		[name]: value as CredentialInformation,
-	};
+	setParameterValue(credentialData.value, name, value);
 }
 
 function closeDialog() {
@@ -678,6 +706,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
 		scrollToTop();
+		return null;
 	} else {
 		showValidationWarning.value = false;
 	}
@@ -701,6 +730,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		name: credentialName.value,
 		type: credentialTypeName.value,
 		data: data as unknown as ICredentialDataDecryptedObject,
+		isGlobal: isSharedGlobally.value,
+		isResolvable: isResolvable.value,
 	};
 
 	if (
@@ -888,10 +919,7 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id:
-			workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-				? null
-				: workflowsStore.workflowId,
+		workflow_id: workflowsStore.workflowId,
 	});
 
 	return credential;
@@ -1006,7 +1034,10 @@ async function oAuthCredentialAuthorize() {
 	const types = parentTypes.value;
 
 	try {
-		const credData = { id: credential.id, ...credentialData.value };
+		// We exclude sharedWithProjects because it's not needed for the authorization and it causes the request to be too large
+		const { sharedWithProjects, ...sanitizedCredData } = credentialData.value;
+		const credData = { id: credential.id, ...sanitizedCredData };
+
 		if (credentialTypeName.value === 'oAuth2Api' || types.includes('oAuth2Api')) {
 			if (isValidCredentialResponse(credData)) {
 				url = await credentialsStore.oAuth2Authorize(credData);
@@ -1041,10 +1072,7 @@ async function oAuthCredentialAuthorize() {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id:
-				workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-					? null
-					: workflowsStore.workflowId,
+			workflow_id: workflowsStore.workflowId || null,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,
@@ -1144,16 +1172,37 @@ const { width } = useElementSize(credNameRef);
 						<CredentialIcon :credential-type-name="defaultCredentialTypeName" />
 					</div>
 					<div ref="credNameRef" :class="$style.credName">
-						<N8nInlineTextEdit
-							v-if="credentialName"
-							data-test-id="credential-name"
-							:model-value="credentialName"
-							:max-width="width - 10"
-							:readonly="
-								!credentialPermissions.update || !credentialType || isEditingManagedCredential
-							"
-							@update:model-value="onNameEdit"
-						/>
+						<div :class="$style.credNameRow">
+							<N8nInlineTextEdit
+								v-if="credentialName"
+								data-test-id="credential-name"
+								:model-value="credentialName"
+								:max-width="width - 10"
+								:readonly="
+									!(
+										(credentialPermissions.create && props.mode === 'new') ||
+										credentialPermissions.update
+									) ||
+									!credentialType ||
+									isEditingManagedCredential
+								"
+								@update:model-value="onNameEdit"
+							/>
+							<N8nTag
+								v-if="isResolvable"
+								:text="i18n.baseText('credentialEdit.credentialEdit.dynamic')"
+								:clickable="false"
+								:class="$style.dynamicTag"
+								data-test-id="credential-dynamic-tag"
+							>
+								<template #tag>
+									<span :class="$style.dynamicTagContent">
+										<N8nIcon icon="key-round" size="xsmall" />
+										{{ i18n.baseText('credentialEdit.credentialEdit.dynamic') }}
+									</span>
+								</template>
+							</N8nTag>
+						</div>
 						<N8nText v-if="credentialType" size="small" tag="p" color="text-light">{{
 							credentialType.displayName
 						}}</N8nText>
@@ -1190,8 +1239,8 @@ const { width } = useElementSize(credNameRef);
 				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
 					<N8nMenuItem
 						v-for="item in sidebarItems"
-						:item="item"
 						:key="item.id"
+						:item="item"
 						:active="activeTab === item.id"
 						@click="() => onTabSelect(item.id)"
 					/>
@@ -1220,11 +1269,15 @@ const { width } = useElementSize(credNameRef);
 						:mode="mode"
 						:selected-credential="selectedCredential"
 						:show-auth-type-selector="requiredCredentials"
+						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
+						:is-resolvable="isResolvable"
+						:is-new-credential="isNewCredential"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
+						@update:is-resolvable="onResolvableChange"
 					/>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
@@ -1233,8 +1286,10 @@ const { width } = useElementSize(credNameRef);
 						:credential-data="credentialData"
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
+						:is-shared-globally="isSharedGlobally"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
+						@update:share-with-all-users="onShareWithAllUsersUpdate"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
@@ -1273,6 +1328,19 @@ const { width } = useElementSize(credNameRef);
 	width: 100%;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.credNameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-height: var(--spacing--md);
+}
+
+.dynamicTagContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
 }
 
 .sidebar {

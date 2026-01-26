@@ -72,18 +72,24 @@ const canUserRegisterCommunityPlus = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).community.register,
 );
 
-const showActivationSuccess = () => {
+const showActivationSuccess = (eulaAccepted = false) => {
+	const message = eulaAccepted
+		? locale.baseText('settings.usageAndPlan.license.activation.success.message.eula', {
+				interpolate: { name: usageStore.planName },
+			})
+		: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
+				interpolate: {
+					name: usageStore.planName,
+					type: usageStore.planId
+						? locale.baseText('settings.usageAndPlan.plan')
+						: locale.baseText('settings.usageAndPlan.edition'),
+				},
+			});
+
 	toast.showMessage({
 		type: 'success',
 		title: locale.baseText('settings.usageAndPlan.license.activation.success.title'),
-		message: locale.baseText('settings.usageAndPlan.license.activation.success.message', {
-			interpolate: {
-				name: usageStore.planName,
-				type: usageStore.planId
-					? locale.baseText('settings.usageAndPlan.plan')
-					: locale.baseText('settings.usageAndPlan.edition'),
-			},
-		}),
+		message,
 	});
 };
 
@@ -107,13 +113,13 @@ const onLicenseActivation = async (eulaUri?: string) => {
 		activationKeyModal.value = false;
 		eulaModal.value = false;
 		activationKey.value = '';
-		showActivationSuccess();
+		showActivationSuccess(!!eulaUri);
 	} catch (error: unknown) {
 		// Check if error requires EULA acceptance using type guard
 		if (isEulaError(error)) {
-			activationKeyModal.value = false;
 			eulaUrl.value = error.meta.eulaUrl;
 			eulaModal.value = true;
+			activationKeyModal.value = false;
 			return;
 		}
 
@@ -136,6 +142,18 @@ const onEulaCancel = () => {
 	eulaModal.value = false;
 	eulaUrl.value = '';
 	activationKey.value = '';
+};
+
+const onActivationCancel = () => {
+	activationKeyModal.value = false;
+	activationKey.value = '';
+};
+
+const onActivationModalClose = () => {
+	// Only clear key if not transitioning to EULA flow
+	if (!eulaModal.value) {
+		onActivationCancel();
+	}
 };
 
 onMounted(async () => {
@@ -185,10 +203,6 @@ const onViewPlans = () => {
 
 const onManagePlan = () => {
 	sendUsageTelemetry('manage_plan');
-};
-
-const onDialogClosed = () => {
-	activationKey.value = '';
 };
 
 const onDialogOpened = () => {
@@ -307,7 +321,7 @@ const openCommunityRegisterModal = () => {
 				top="0"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 				:modal-class="$style.center"
-				@closed="onDialogClosed"
+				@closed="onActivationModalClose"
 				@opened="onDialogOpened"
 			>
 				<template #default>
@@ -318,7 +332,7 @@ const openCommunityRegisterModal = () => {
 					/>
 				</template>
 				<template #footer>
-					<N8nButton type="secondary" @click="activationKeyModal = false">
+					<N8nButton type="secondary" @click="onActivationCancel">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</N8nButton>
 					<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">

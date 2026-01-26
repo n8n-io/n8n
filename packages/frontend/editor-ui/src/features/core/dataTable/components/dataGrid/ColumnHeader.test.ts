@@ -80,4 +80,200 @@ describe('ColumnHeader', () => {
 		await userEvent.click(getByTestId('action-delete'));
 		expect(onDeleteMock).toHaveBeenCalledWith('col-1');
 	});
+
+	describe('onNameSubmit', () => {
+		it('should call onRename when valid new name is provided', async () => {
+			const onRenameMock = vi.fn();
+			const { container } = renderComponent({
+				props: {
+					params: {
+						displayName: 'Original Name',
+						column: {
+							getColId: () => 'col-1',
+							getColDef: () => ({ cellDataType: 'string' }),
+							getSort: () => null,
+						},
+						onRename: onRenameMock,
+						onDelete: onDeleteMock,
+						allowMenuActions: true,
+						api: {
+							getFilterModel: vi.fn().mockReturnValue({}),
+							addEventListener: vi.fn(),
+							removeEventListener: vi.fn(),
+						},
+					} as unknown as HeaderParamsWithDelete,
+				},
+			});
+
+			// Find the actual input element within N8nInlineTextEdit
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeTruthy();
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'New Name{Enter}');
+
+			expect(onRenameMock).toHaveBeenCalledWith('col-1', 'New Name');
+		});
+
+		it('should trim whitespace before calling onRename', async () => {
+			const onRenameMock = vi.fn();
+			const { container } = renderComponent({
+				props: {
+					params: {
+						displayName: 'Original Name',
+						column: {
+							getColId: () => 'col-1',
+							getColDef: () => ({ cellDataType: 'string' }),
+							getSort: () => null,
+						},
+						onRename: onRenameMock,
+						onDelete: onDeleteMock,
+						allowMenuActions: true,
+						api: {
+							getFilterModel: vi.fn().mockReturnValue({}),
+							addEventListener: vi.fn(),
+							removeEventListener: vi.fn(),
+						},
+					} as unknown as HeaderParamsWithDelete,
+				},
+			});
+
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeTruthy();
+
+			await userEvent.clear(input);
+			await userEvent.type(input, '  Trimmed Name  {Enter}');
+
+			expect(onRenameMock).toHaveBeenCalledWith('col-1', 'Trimmed Name');
+		});
+
+		it('should not call onRename when name is empty', async () => {
+			const onRenameMock = vi.fn();
+			const { container } = renderComponent({
+				props: {
+					params: {
+						displayName: 'Original Name',
+						column: {
+							getColId: () => 'col-1',
+							getColDef: () => ({ cellDataType: 'string' }),
+							getSort: () => null,
+						},
+						onRename: onRenameMock,
+						onDelete: onDeleteMock,
+						allowMenuActions: true,
+						api: {
+							getFilterModel: vi.fn().mockReturnValue({}),
+							addEventListener: vi.fn(),
+							removeEventListener: vi.fn(),
+						},
+					} as unknown as HeaderParamsWithDelete,
+				},
+			});
+
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeTruthy();
+
+			await userEvent.clear(input);
+			await fireEvent.blur(input);
+
+			expect(onRenameMock).not.toHaveBeenCalled();
+		});
+
+		it('should not call onRename when name is only whitespace', async () => {
+			const onRenameMock = vi.fn();
+			const { container } = renderComponent({
+				props: {
+					params: {
+						displayName: 'Original Name',
+						column: {
+							getColId: () => 'col-1',
+							getColDef: () => ({ cellDataType: 'string' }),
+							getSort: () => null,
+						},
+						onRename: onRenameMock,
+						onDelete: onDeleteMock,
+						allowMenuActions: true,
+						api: {
+							getFilterModel: vi.fn().mockReturnValue({}),
+							addEventListener: vi.fn(),
+							removeEventListener: vi.fn(),
+						},
+					} as unknown as HeaderParamsWithDelete,
+				},
+			});
+
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeTruthy();
+
+			await userEvent.clear(input);
+			await userEvent.type(input, '   ');
+			await fireEvent.blur(input);
+
+			expect(onRenameMock).not.toHaveBeenCalled();
+		});
+
+		it('should not call onRename when name is unchanged', async () => {
+			const onRenameMock = vi.fn();
+			const { container } = renderComponent({
+				props: {
+					params: {
+						displayName: 'Original Name',
+						column: {
+							getColId: () => 'col-1',
+							getColDef: () => ({ cellDataType: 'string' }),
+							getSort: () => null,
+						},
+						onRename: onRenameMock,
+						onDelete: onDeleteMock,
+						allowMenuActions: true,
+						api: {
+							getFilterModel: vi.fn().mockReturnValue({}),
+							addEventListener: vi.fn(),
+							removeEventListener: vi.fn(),
+						},
+					} as unknown as HeaderParamsWithDelete,
+				},
+			});
+
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeTruthy();
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'Original Name');
+			await fireEvent.blur(input);
+
+			expect(onRenameMock).not.toHaveBeenCalled();
+		});
+
+		it('should not call onRename when onRename callback is not provided', async () => {
+			const { container } = renderComponent({
+				props: {
+					params: {
+						displayName: 'Original Name',
+						column: {
+							getColId: () => 'col-1',
+							getColDef: () => ({ cellDataType: 'string' }),
+							getSort: () => null,
+						},
+						onDelete: onDeleteMock,
+						allowMenuActions: true,
+						api: {
+							getFilterModel: vi.fn().mockReturnValue({}),
+							addEventListener: vi.fn(),
+							removeEventListener: vi.fn(),
+						},
+					} as unknown as HeaderParamsWithDelete,
+				},
+			});
+
+			const input = container.querySelector('input') as HTMLInputElement;
+			expect(input).toBeTruthy();
+
+			await userEvent.clear(input);
+			await userEvent.type(input, 'New Name');
+
+			// Should not throw an error
+			await expect(fireEvent.blur(input)).resolves.not.toThrow();
+		});
+	});
 });

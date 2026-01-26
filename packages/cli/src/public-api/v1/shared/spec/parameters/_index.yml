@@ -16,3 +16,5 @@ IncludeRole:
   $ref: '../../../handlers/users/spec/schemas/parameters/includeRole.yml'
 VariableId:
   $ref: '../../../handlers/variables/spec/schemas/parameters/variableId.yml'
+dataTableId:
+  $ref: '../../../handlers/data-tables/spec/schemas/parameters/dataTableId.yml'

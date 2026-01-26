@@ -1,14 +1,18 @@
 import { Logger } from '@n8n/backend-common';
-import type { User, WorkflowHistory } from '@n8n/db';
-import { WorkflowHistoryRepository } from '@n8n/db';
+import type { User, WorkflowHistoryUpdate } from '@n8n/db';
+import { WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { EntityManager } from '@n8n/typeorm';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
+import { WorkflowFinderService } from '../workflow-finder.service';
+
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
-
-import { WorkflowFinderService } from '../workflow-finder.service';
 
 @Service()
 export class WorkflowHistoryService {
@@ -38,12 +42,26 @@ export class WorkflowHistoryService {
 			},
 			take,
 			skip,
-			select: ['workflowId', 'versionId', 'authors', 'createdAt', 'updatedAt'],
+			select: [
+				'workflowId',
+				'versionId',
+				'authors',
+				'createdAt',
+				'updatedAt',
+				'name',
+				'description',
+			],
+			relations: ['workflowPublishHistory'],
 			order: { createdAt: 'DESC' },
 		});
 	}
 
-	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {
+	async getVersion(
+		user: User,
+		workflowId: string,
+		versionId: string,
+		settings?: { includePublishHistory?: boolean },
+	): Promise<WorkflowHistory> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
@@ -52,11 +70,15 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
+		const includePublishHistory = settings?.includePublishHistory ?? true;
+		const relations = includePublishHistory ? ['workflowPublishHistory'] : [];
+
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
 				workflowId: workflow.id,
 				versionId,
 			},
+			relations,
 		});
 		if (!hist) {
 			throw new WorkflowHistoryVersionNotFoundError('');
@@ -64,20 +86,45 @@ export class WorkflowHistoryService {
 		return hist;
 	}
 
-	async saveVersion(user: User, workflow: IWorkflowBase, workflowId: string) {
+	/**
+	 * Find a workflow history version without permission checks.
+	 */
+	async findVersion(workflowId: string, versionId: string): Promise<WorkflowHistory | null> {
+		return await this.workflowHistoryRepository.findOne({
+			where: {
+				workflowId,
+				versionId,
+			},
+		});
+	}
+
+	async saveVersion(
+		user: User | string,
+		workflow: IWorkflowBase,
+		workflowId: string,
+		autosaved = false,
+		transactionManager?: EntityManager,
+	) {
 		if (!workflow.nodes || !workflow.connections) {
 			throw new UnexpectedError(
 				`Cannot save workflow history: nodes and connections are required for workflow ${workflowId}`,
 			);
 		}
 
+		const authors = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+
+		const repository = transactionManager
+			? transactionManager.getRepository(WorkflowHistory)
+			: this.workflowHistoryRepository;
+
 		try {
-			await this.workflowHistoryRepository.insert({
-				authors: user.firstName + ' ' + user.lastName,
+			await repository.insert({
+				authors,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
 				versionId: workflow.versionId,
 				workflowId,
+				autosaved,
 			});
 		} catch (e) {
 			const error = ensureError(e);
@@ -85,5 +132,41 @@ export class WorkflowHistoryService {
 				error,
 			});
 		}
+	}
+
+	async updateVersion(versionId: string, workflowId: string, updateData: WorkflowHistoryUpdate) {
+		await this.workflowHistoryRepository.update({ versionId, workflowId }, { ...updateData });
+	}
+
+	/**
+	 * Get multiple versions by their IDs
+	 * Returns only versions that exist, skipping non-existent ones
+	 */
+	async getVersionsByIds(
+		user: User,
+		workflowId: string,
+		versionIds: string[],
+	): Promise<Array<{ versionId: string; createdAt: Date }>> {
+		if (versionIds.length === 0) {
+			return [];
+		}
+
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+
+		if (!workflow) {
+			throw new SharedWorkflowNotFoundError('');
+		}
+
+		const versions = await this.workflowHistoryRepository.find({
+			where: {
+				workflowId: workflow.id,
+				versionId: In(versionIds),
+			},
+			select: ['versionId', 'createdAt'],
+		});
+
+		return versions.map((v) => ({ versionId: v.versionId, createdAt: v.createdAt }));
 	}
 }

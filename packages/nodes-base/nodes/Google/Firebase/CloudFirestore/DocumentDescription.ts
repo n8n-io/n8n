@@ -558,7 +558,7 @@ export const documentFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Must correspond to a document ID',
+		description: 'Name of the field in an input item that contains the document ID',
 		required: true,
 		placeholder: 'documentId',
 	},
