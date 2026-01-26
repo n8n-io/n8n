@@ -32,6 +32,7 @@ export function useTypewriterPlaceholder(
 
 	function typeNextChar() {
 		if (!isInputEmpty.value) return;
+		if (suggestions.value.length === 0) return;
 
 		const target = currentSuggestion.value;
 		if (displayedSuffix.value.length < target.length) {
@@ -48,6 +49,7 @@ export function useTypewriterPlaceholder(
 
 	function backspaceChar() {
 		if (!isInputEmpty.value) return;
+		if (suggestions.value.length === 0) return;
 
 		if (displayedSuffix.value.length > 0) {
 			displayedSuffix.value = displayedSuffix.value.slice(0, -1);

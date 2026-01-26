@@ -65,10 +65,16 @@ function handleFileImport() {
 
 	const reader = new FileReader();
 	reader.onload = async () => {
+		const result = reader.result;
+		if (typeof result !== 'string') {
+			input.value = '';
+			return;
+		}
+
 		let workflowData: unknown;
 
 		try {
-			workflowData = JSON.parse(reader.result as string);
+			workflowData = JSON.parse(result);
 		} catch {
 			toast.showMessage({
 				title: i18n.baseText('mainSidebar.showMessage.handleFileImport.title'),
