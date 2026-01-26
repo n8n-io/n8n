@@ -34,6 +34,7 @@
 		- [ ] optional warning for code node?
 
 ## ready to release
+- [ ] pull in master
 - [ ] deploy agent to test instance
 - [ ] How to do we store the template workflows? Do we commit to repo? Or keep fetching from API? Template creators might not be happy. If we keep fetching from API they might change or get deleted. Maybe a zip folder in repo that's expanded before running tests?
 - [ ] Review PR (lots of AI generated code that I did not look at)
@@ -59,6 +60,7 @@
 - [ ] Add builderHint (for example promptType: 'auto'/'define')
 
 ## Future improvement
+- [ ] named branches support (switch /text classifier / if). onCase('case') instead of onCase(0)
 - [ ] use random generator for pin data
 - [ ] RLC Support
 - [ ] generate pin data using a random generator, rather than ai.
