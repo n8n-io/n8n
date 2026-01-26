@@ -1,10 +1,10 @@
 import { ref, onUnmounted, watch, type Ref, computed } from 'vue';
 import type { WorkflowSuggestion } from '../constants';
 
-const TYPING_SPEED_MS = 60;
-const BACKSPACE_SPEED_MS = 40;
-const PAUSE_AT_FULL_TEXT_MS = 2500;
-const PAUSE_AFTER_BACKSPACE_MS = 500;
+const TYPING_SPEED_MS = 40;
+const BACKSPACE_SPEED_MS = 25;
+const PAUSE_AT_FULL_TEXT_MS = 1500;
+const PAUSE_AFTER_BACKSPACE_MS = 300;
 const PREFIX = 'Build ';
 
 export function useTypewriterPlaceholder(
