@@ -213,7 +213,7 @@ jobs:
           fi
 
       - name: Fetch release tag
-        run: git fetch --depth=1 origin "refs/tags/n8n@${VERSION}:refs/tags/n8n@${VERSION}"
+        run: git fetch origin "refs/tags/n8n@${VERSION}:refs/tags/n8n@${VERSION}"
 
       - name: Merge release tag to master
         run: |
