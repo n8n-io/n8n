@@ -126,7 +126,7 @@ describe('SourceControlController', () => {
 				user: { firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
 			});
 			const res = mock<Response>();
-			const payload = { force: true } as PullWorkFolderRequestDto;
+			const payload = { force: true, autoPublish: 'all' } as PullWorkFolderRequestDto;
 
 			await controller.pullWorkfolder(req, res, payload);
 			expect(sourceControlService.pullWorkfolder).toHaveBeenCalledWith(req.user, payload);
