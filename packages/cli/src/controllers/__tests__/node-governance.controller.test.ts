@@ -28,7 +28,10 @@ describe('NodeGovernanceController', () => {
 		it('should return governance status for requested nodes', async () => {
 			const req = mock<AuthenticatedRequest>({ user: mockUser });
 			const res = mock<Response>();
-			const query = { projectId: 'project-1', nodeTypes: 'n8n-nodes-base.httpRequest,n8n-nodes-base.code' };
+			const query = {
+				projectId: 'project-1',
+				nodeTypes: 'n8n-nodes-base.httpRequest,n8n-nodes-base.code',
+			};
 
 			const mockGovernanceMap = new Map([
 				['n8n-nodes-base.httpRequest', { status: 'blocked' }],
@@ -38,9 +41,10 @@ describe('NodeGovernanceController', () => {
 			nodeGovernanceService.getGovernanceForNodes.mockResolvedValue(mockGovernanceMap as never);
 
 			const result = await controller.getNodeGovernanceStatus(req, res as never, query as never);
+			const governance = result.governance as Record<string, { status: string }>;
 
-			expect(result.governance['n8n-nodes-base.httpRequest'].status).toBe('blocked');
-			expect(result.governance['n8n-nodes-base.code'].status).toBe('allowed');
+			expect(governance['n8n-nodes-base.httpRequest'].status).toBe('blocked');
+			expect(governance['n8n-nodes-base.code'].status).toBe('allowed');
 		});
 
 		it('should return empty governance if no node types provided', async () => {
@@ -124,27 +128,27 @@ describe('NodeGovernanceController', () => {
 		it('should update a policy', async () => {
 			const req = mock<AuthenticatedRequest>({ user: mockUser });
 			const res = mock<Response>();
-			const payload = { name: 'Updated Policy Name' };
+			const payload = { targetValue: 'n8n-nodes-base.ssh' };
 
 			const mockPolicy = {
 				id: 'policy-1',
-				name: 'Updated Policy Name',
-				nodeType: 'n8n-nodes-base.httpRequest',
-				action: 'block',
-				isGlobal: true,
+				policyType: 'block',
+				scope: 'global',
+				targetType: 'node',
+				targetValue: 'n8n-nodes-base.ssh',
 			};
 
 			nodeGovernanceService.updatePolicy.mockResolvedValue(mockPolicy as never);
 
 			const result = await controller.updatePolicy(req, res as never, 'policy-1', payload as never);
 
-			expect(result.policy.name).toBe('Updated Policy Name');
+			expect(result.policy.targetValue).toBe('n8n-nodes-base.ssh');
 		});
 
 		it('should throw NotFoundError if policy does not exist', async () => {
 			const req = mock<AuthenticatedRequest>({ user: mockUser });
 			const res = mock<Response>();
-			const payload = { name: 'Updated Policy Name' };
+			const payload = { targetValue: 'n8n-nodes-base.ssh' };
 
 			nodeGovernanceService.updatePolicy.mockResolvedValue(null as never);
 
@@ -198,15 +202,16 @@ describe('NodeGovernanceController', () => {
 
 			const mockCategory = {
 				id: 'cat-new',
-				name: payload.displayName,
-				...payload,
+				slug: payload.slug,
+				displayName: payload.displayName,
+				description: payload.description,
 			};
 
 			nodeGovernanceService.createCategory.mockResolvedValue(mockCategory as never);
 
 			const result = await controller.createCategory(req, res as never, payload as never);
 
-			expect(result.category.name).toBe('Database Nodes');
+			expect(result.category.displayName).toBe('Database Nodes');
 		});
 	});
 
@@ -299,7 +304,12 @@ describe('NodeGovernanceController', () => {
 
 			nodeGovernanceService.approveRequest.mockResolvedValue(mockRequest as never);
 
-			const result = await controller.reviewAccessRequest(req, res as never, 'req-1', payload as never);
+			const result = await controller.reviewAccessRequest(
+				req,
+				res as never,
+				'req-1',
+				payload as never,
+			);
 
 			expect(result.request.status).toBe('approved');
 		});
@@ -320,7 +330,12 @@ describe('NodeGovernanceController', () => {
 
 			nodeGovernanceService.rejectRequest.mockResolvedValue(mockRequest as never);
 
-			const result = await controller.reviewAccessRequest(req, res as never, 'req-1', payload as never);
+			const result = await controller.reviewAccessRequest(
+				req,
+				res as never,
+				'req-1',
+				payload as never,
+			);
 
 			expect(result.request.status).toBe('rejected');
 		});

@@ -23,22 +23,20 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 	const nodeGovernanceStatus = ref<Record<string, GovernanceStatus>>({});
 	const governanceStatusLoaded = ref(false);
 
+	// State for local governance resolution
+	const currentProjectId = ref<string | null>(null);
+	const cachedGlobalPolicies = ref<NodeGovernancePolicy[]>([]);
+	const cachedProjectPolicies = ref<NodeGovernancePolicy[]>([]);
+	const governanceDataLoaded = ref(false);
+
 	// Getters
-	const globalPolicies = computed(() =>
-		policies.value.filter((p) => p.scope === 'global'),
-	);
+	const globalPolicies = computed(() => policies.value.filter((p) => p.scope === 'global'));
 
-	const projectPolicies = computed(() =>
-		policies.value.filter((p) => p.scope === 'projects'),
-	);
+	const projectPolicies = computed(() => policies.value.filter((p) => p.scope === 'projects'));
 
-	const blockPolicies = computed(() =>
-		policies.value.filter((p) => p.policyType === 'block'),
-	);
+	const blockPolicies = computed(() => policies.value.filter((p) => p.policyType === 'block'));
 
-	const allowPolicies = computed(() =>
-		policies.value.filter((p) => p.policyType === 'allow'),
-	);
+	const allowPolicies = computed(() => policies.value.filter((p) => p.policyType === 'allow'));
 
 	const pendingRequestCount = computed(() => pendingRequests.value.length);
 
@@ -207,6 +205,176 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 		governanceStatusLoaded.value = false;
 	}
 
+	/**
+	 * Fetch all governance data needed for local resolution.
+	 * This fetches global policies, project policies, categories, and user's pending requests.
+	 */
+	async function fetchGovernanceData(projectId: string) {
+		if (!projectId) {
+			return;
+		}
+
+		try {
+			// Fetch all data in parallel
+			const [
+				globalPoliciesResponse,
+				projectPoliciesResponse,
+				categoriesResponse,
+				myRequestsResponse,
+			] = await Promise.all([
+				nodeGovernanceApi.getGlobalPolicies(rootStore.restApiContext),
+				nodeGovernanceApi.getProjectPolicies(rootStore.restApiContext, projectId),
+				nodeGovernanceApi.getCategories(rootStore.restApiContext),
+				nodeGovernanceApi.getMyRequests(rootStore.restApiContext),
+			]);
+
+			cachedGlobalPolicies.value = globalPoliciesResponse.policies;
+			cachedProjectPolicies.value = projectPoliciesResponse.policies;
+			categories.value = categoriesResponse.categories;
+			myRequests.value = myRequestsResponse.requests;
+			currentProjectId.value = projectId;
+			governanceDataLoaded.value = true;
+
+			// Clear the old status cache and rebuild it using local resolution
+			nodeGovernanceStatus.value = {};
+			governanceStatusLoaded.value = true;
+		} catch (e) {
+			// Silently fail - governance is optional
+			console.warn('Failed to fetch governance data:', e);
+		}
+	}
+
+	/**
+	 * Get categories (slugs) for a node type from the cached categories.
+	 */
+	function getCategoriesForNode(nodeType: string): string[] {
+		const result: string[] = [];
+		for (const category of categories.value) {
+			if (category.nodeAssignments?.some((a) => a.nodeType === nodeType)) {
+				result.push(category.slug);
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Check if a policy matches a node type (by node type directly or by category).
+	 */
+	function policyMatchesNode(
+		policy: NodeGovernancePolicy,
+		nodeType: string,
+		nodeCategories: string[],
+	): boolean {
+		if (policy.targetType === 'node') {
+			return policy.targetValue === nodeType;
+		}
+		if (policy.targetType === 'category') {
+			return nodeCategories.includes(policy.targetValue);
+		}
+		return false;
+	}
+
+	/**
+	 * Resolve governance status for a single node type locally.
+	 * Uses the same priority logic as the backend:
+	 * Priority: Project ALLOW (1) > Global BLOCK (2) > Global ALLOW (3) > Project BLOCK (4) > Default (allowed)
+	 */
+	function resolveGovernanceForNode(nodeType: string, projectId?: string): GovernanceStatus {
+		// Check cache first
+		const cached = nodeGovernanceStatus.value[nodeType];
+		if (cached !== undefined) {
+			return cached;
+		}
+
+		// If governance data not loaded, return allowed (fail open)
+		if (!governanceDataLoaded.value) {
+			return { status: 'allowed' };
+		}
+
+		const effectiveProjectId = projectId ?? currentProjectId.value;
+		const nodeCategories = getCategoriesForNode(nodeType);
+
+		interface PolicyMatch {
+			policy: NodeGovernancePolicy;
+			priority: number;
+		}
+
+		const matchingPolicies: PolicyMatch[] = [];
+
+		// Check global policies
+		for (const policy of cachedGlobalPolicies.value) {
+			if (policyMatchesNode(policy, nodeType, nodeCategories)) {
+				matchingPolicies.push({
+					policy,
+					priority: policy.policyType === 'block' ? 2 : 3,
+				});
+			}
+		}
+
+		// Check project policies
+		for (const policy of cachedProjectPolicies.value) {
+			// Check if this policy is assigned to the current project
+			const isForThisProject =
+				effectiveProjectId &&
+				policy.projectAssignments?.some((a) => a.projectId === effectiveProjectId);
+			if (isForThisProject && policyMatchesNode(policy, nodeType, nodeCategories)) {
+				matchingPolicies.push({
+					policy,
+					priority: policy.policyType === 'block' ? 4 : 1,
+				});
+			}
+		}
+
+		// Sort by priority (lowest = highest priority)
+		matchingPolicies.sort((a, b) => a.priority - b.priority);
+
+		let governanceStatus: GovernanceStatus;
+
+		// Apply highest priority policy
+		if (matchingPolicies.length > 0) {
+			const highestPriorityPolicy = matchingPolicies[0].policy;
+			governanceStatus = {
+				status: highestPriorityPolicy.policyType === 'block' ? 'blocked' : 'allowed',
+				category: nodeCategories[0],
+			};
+		} else {
+			// Default: allowed
+			governanceStatus = { status: 'allowed', category: nodeCategories[0] };
+		}
+
+		// Check for pending request if blocked
+		if (governanceStatus.status === 'blocked' && effectiveProjectId) {
+			const pendingRequest = myRequests.value.find(
+				(r) =>
+					r.nodeType === nodeType && r.projectId === effectiveProjectId && r.status === 'pending',
+			);
+			if (pendingRequest) {
+				governanceStatus = {
+					status: 'pending_request',
+					category: nodeCategories[0],
+					requestId: pendingRequest.id,
+				};
+			}
+		}
+
+		// Cache the result
+		nodeGovernanceStatus.value[nodeType] = governanceStatus;
+
+		return governanceStatus;
+	}
+
+	/**
+	 * Clear all governance data and reset state.
+	 */
+	function clearGovernanceData() {
+		cachedGlobalPolicies.value = [];
+		cachedProjectPolicies.value = [];
+		currentProjectId.value = null;
+		governanceDataLoaded.value = false;
+		nodeGovernanceStatus.value = {};
+		governanceStatusLoaded.value = false;
+	}
+
 	return {
 		// State
 		policies,
@@ -217,6 +385,8 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 		error,
 		nodeGovernanceStatus,
 		governanceStatusLoaded,
+		governanceDataLoaded,
+		currentProjectId,
 		// Getters
 		globalPolicies,
 		projectPolicies,
@@ -241,5 +411,9 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 		fetchNodeGovernanceStatus,
 		getGovernanceForNode,
 		clearGovernanceStatus,
+		// New local resolution methods
+		fetchGovernanceData,
+		resolveGovernanceForNode,
+		clearGovernanceData,
 	};
 });

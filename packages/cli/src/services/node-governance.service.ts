@@ -1,18 +1,20 @@
-import type { User } from '@n8n/db';
 import {
 	NodeAccessRequestRepository,
 	NodeCategoryAssignmentRepository,
 	NodeCategoryRepository,
 	NodeGovernancePolicyRepository,
 	PolicyProjectAssignmentRepository,
+	type EntityManager,
 	type NodeGovernancePolicy,
 	type PolicyScope,
 	type PolicyType,
 	type TargetType,
-	type RequestStatus,
+	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { EntityManager } from '@n8n/typeorm';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export interface GovernanceStatus {
 	status: 'allowed' | 'blocked' | 'pending_request';
@@ -27,7 +29,7 @@ export interface NodeGovernanceResult {
 
 interface PolicyMatch {
 	policy: NodeGovernancePolicy;
-	priority: number; // Lower = higher priority: Global BLOCK=1, Global ALLOW=2, Project BLOCK=3, Project ALLOW=4
+	priority: number; // Lower = higher priority: Project ALLOW=1, Global BLOCK=2, Global ALLOW=3, Project BLOCK=4
 }
 
 @Service()
@@ -42,7 +44,7 @@ export class NodeGovernanceService {
 
 	/**
 	 * Get governance status for a list of node types for a specific project
-	 * Policy priority: Global BLOCK > Global ALLOW > Project BLOCK > Project ALLOW > Default (allowed)
+	 * Policy priority: Project ALLOW > Global BLOCK > Global ALLOW > Project BLOCK > Default (allowed)
 	 */
 	async getGovernanceForNodes(
 		nodeTypes: string[],
@@ -57,8 +59,10 @@ export class NodeGovernanceService {
 		]);
 
 		// Get category assignments for all node types
-		const categoryAssignments =
-			await this.categoryAssignmentRepository.findByNodeTypes(nodeTypes, entityManager);
+		const categoryAssignments = await this.categoryAssignmentRepository.findByNodeTypes(
+			nodeTypes,
+			entityManager,
+		);
 
 		// Build node type to category slugs map
 		const nodeToCategories = new Map<string, string[]>();
@@ -69,8 +73,10 @@ export class NodeGovernanceService {
 		}
 
 		// Get pending requests for this user in this project
-		const pendingRequests =
-			await this.accessRequestRepository.findByProjectId(projectId, entityManager);
+		const pendingRequests = await this.accessRequestRepository.findByProjectId(
+			projectId,
+			entityManager,
+		);
 		const pendingRequestMap = new Map<string, string>();
 		for (const request of pendingRequests) {
 			if (request.status === 'pending' && request.requestedById === userId) {
@@ -111,7 +117,7 @@ export class NodeGovernanceService {
 
 	/**
 	 * Resolve governance for a single node type
-	 * Priority: Global BLOCK (1) > Global ALLOW (2) > Project BLOCK (3) > Project ALLOW (4) > Default
+	 * Priority: Project ALLOW (1) > Global BLOCK (2) > Global ALLOW (3) > Project BLOCK (4) > Default
 	 */
 	private resolveNodeGovernance(
 		nodeType: string,
@@ -127,20 +133,18 @@ export class NodeGovernanceService {
 			if (this.policyMatchesNode(policy, nodeType, categories)) {
 				matchingPolicies.push({
 					policy,
-					priority: policy.policyType === 'block' ? 1 : 2,
+					priority: policy.policyType === 'block' ? 2 : 3,
 				});
 			}
 		}
 
 		// Check project policies
 		for (const policy of projectPolicies) {
-			const isForThisProject = policy.projectAssignments?.some(
-				(a) => a.projectId === projectId,
-			);
+			const isForThisProject = policy.projectAssignments?.some((a) => a.projectId === projectId);
 			if (isForThisProject && this.policyMatchesNode(policy, nodeType, categories)) {
 				matchingPolicies.push({
 					policy,
-					priority: policy.policyType === 'block' ? 3 : 4,
+					priority: policy.policyType === 'block' ? 4 : 1,
 				});
 			}
 		}
@@ -236,11 +240,7 @@ export class NodeGovernanceService {
 		}
 
 		if (data.projectIds !== undefined) {
-			await this.policyProjectAssignmentRepository.replaceAssignments(
-				id,
-				data.projectIds,
-				em,
-			);
+			await this.policyProjectAssignmentRepository.replaceAssignments(id, data.projectIds, em);
 		}
 
 		return await this.policyRepository.findOne({
@@ -256,6 +256,14 @@ export class NodeGovernanceService {
 
 	async getAllPolicies(entityManager?: EntityManager) {
 		return await this.policyRepository.findAllWithRelations(entityManager);
+	}
+
+	async getGlobalPolicies(entityManager?: EntityManager) {
+		return await this.policyRepository.findGlobalPolicies(entityManager);
+	}
+
+	async getProjectPolicies(projectId: string, entityManager?: EntityManager) {
+		return await this.policyRepository.findByProjectIds([projectId], entityManager);
 	}
 
 	// === Category Management ===
@@ -358,7 +366,7 @@ export class NodeGovernanceService {
 		id: string,
 		reviewer: User,
 		reviewComment?: string,
-		createAllowPolicy = true,
+		policyId?: string,
 		entityManager?: EntityManager,
 	) {
 		const request = await this.accessRequestRepository.updateStatus(
@@ -369,8 +377,132 @@ export class NodeGovernanceService {
 			entityManager,
 		);
 
-		// Optionally create an allow policy for this node in the project
-		if (createAllowPolicy && request) {
+		if (!request) {
+			return request;
+		}
+
+		const em = entityManager ?? this.policyRepository.manager;
+
+		// Get categories for the node type to find category-based policies
+		const categoryAssignments = await this.categoryAssignmentRepository.findByNodeTypes(
+			[request.nodeType],
+			entityManager,
+		);
+		const categorySlugs = categoryAssignments.map((a) => a.category.slug);
+
+		// Find all project-scoped BLOCK policies that match this node
+		const projectPolicies = await this.policyRepository.findByProjectIds(
+			[request.projectId],
+			entityManager,
+		);
+
+		const conflictingBlockPolicies: NodeGovernancePolicy[] = [];
+		for (const policy of projectPolicies) {
+			if (policy.policyType !== 'block' || policy.scope !== 'projects') {
+				continue;
+			}
+
+			// Check if policy matches the node (by node type or category)
+			const matchesNode = policy.targetType === 'node' && policy.targetValue === request.nodeType;
+			const matchesCategory =
+				policy.targetType === 'category' && categorySlugs.includes(policy.targetValue);
+
+			if (matchesNode || matchesCategory) {
+				// Check if this policy is assigned to the request's project
+				const isAssignedToProject = policy.projectAssignments?.some(
+					(a) => a.projectId === request.projectId,
+				);
+				if (isAssignedToProject) {
+					conflictingBlockPolicies.push(policy);
+				}
+			}
+		}
+
+		// Delete or update conflicting project-level BLOCK policies
+		for (const policy of conflictingBlockPolicies) {
+			const assignments = await this.policyProjectAssignmentRepository.findByPolicyId(
+				policy.id,
+				entityManager,
+			);
+
+			// If policy is only assigned to this project, delete the entire policy
+			if (assignments.length === 1 && assignments[0].projectId === request.projectId) {
+				await em.delete('NodeGovernancePolicy', { id: policy.id });
+			} else {
+				// If policy is assigned to multiple projects, just remove this project's assignment
+				await em.delete('PolicyProjectAssignment', {
+					policyId: policy.id,
+					projectId: request.projectId,
+				});
+			}
+		}
+
+		// If a policy ID is provided, attach the request's project to that policy
+		if (policyId) {
+			const policy = await this.policyRepository.findOne({
+				where: { id: policyId },
+				relations: ['projectAssignments'],
+			});
+
+			if (!policy) {
+				throw new NotFoundError(`Policy with ID ${policyId} not found`);
+			}
+
+			// Verify it's an allow policy
+			if (policy.policyType !== 'allow') {
+				throw new BadRequestError('Only allow policies can be attached to approved requests');
+			}
+
+			// If policy is project-scoped, add the request's project to its assignments
+			if (policy.scope === 'projects') {
+				const existingAssignments = await this.policyProjectAssignmentRepository.findByPolicyId(
+					policyId,
+					entityManager,
+				);
+				const existingProjectIds = existingAssignments.map((a) => a.projectId);
+
+				// Only add if not already assigned
+				if (!existingProjectIds.includes(request.projectId)) {
+					await this.policyProjectAssignmentRepository.createAssignments(
+						policyId,
+						[request.projectId],
+						entityManager,
+					);
+				}
+			}
+			// If policy is global, it already applies to all projects, no changes needed
+
+			// If the policy targets a category, assign the node to that category
+			if (policy.targetType === 'category') {
+				// Find the category by slug (targetValue)
+				const category = await this.categoryRepository.findOne({
+					where: { slug: policy.targetValue },
+				});
+
+				if (category) {
+					// Check if node is already assigned to this category
+					const existingCategoryAssignment = await this.categoryAssignmentRepository.findByNodeType(
+						request.nodeType,
+						entityManager,
+					);
+					const alreadyAssigned = existingCategoryAssignment.some(
+						(a) => a.categoryId === category.id,
+					);
+
+					if (!alreadyAssigned) {
+						await this.categoryAssignmentRepository.createAssignment(
+							{
+								categoryId: category.id,
+								nodeType: request.nodeType,
+								assignedById: reviewer.id,
+							},
+							entityManager,
+						);
+					}
+				}
+			}
+		} else {
+			// No policy ID provided, create a new allow policy for this node in the project
 			await this.createPolicy(
 				{
 					policyType: 'allow',
@@ -412,5 +544,55 @@ export class NodeGovernanceService {
 
 	async getRequestsByProject(projectId: string, entityManager?: EntityManager) {
 		return await this.accessRequestRepository.findByProjectId(projectId, entityManager);
+	}
+
+	// === Workflow Validation ===
+
+	/**
+	 * Validates workflow nodes against governance policies
+	 * Returns information about blocked nodes in the workflow
+	 */
+	async validateWorkflowNodes(
+		nodes: Array<{ type: string; name?: string }>,
+		projectId: string,
+		userId: string,
+		entityManager?: EntityManager,
+	): Promise<{
+		blockedNodes: Array<{ nodeType: string; nodeName?: string; governance: GovernanceStatus }>;
+		hasBlockedNodes: boolean;
+	}> {
+		if (nodes.length === 0) {
+			return { blockedNodes: [], hasBlockedNodes: false };
+		}
+
+		const nodeTypes = nodes.map((node) => node.type);
+		const governanceMap = await this.getGovernanceForNodes(
+			nodeTypes,
+			projectId,
+			userId,
+			entityManager,
+		);
+
+		const blockedNodes: Array<{
+			nodeType: string;
+			nodeName?: string;
+			governance: GovernanceStatus;
+		}> = [];
+
+		for (const node of nodes) {
+			const governance = governanceMap.get(node.type);
+			if (governance?.status === 'blocked') {
+				blockedNodes.push({
+					nodeType: node.type,
+					nodeName: node.name,
+					governance,
+				});
+			}
+		}
+
+		return {
+			blockedNodes,
+			hasBlockedNodes: blockedNodes.length > 0,
+		};
 	}
 }

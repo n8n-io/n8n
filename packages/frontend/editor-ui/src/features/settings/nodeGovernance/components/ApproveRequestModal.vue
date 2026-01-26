@@ -5,10 +5,10 @@ import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
-import { N8nButton, N8nInput, N8nText, N8nSelect, N8nOption } from '@n8n/design-system';
+import { N8nButton, N8nText, N8nSelect, N8nOption } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeGovernanceStore } from '../nodeGovernance.store';
-import { REVIEW_REQUEST_MODAL_KEY } from '../nodeGovernance.constants';
+import { APPROVE_REQUEST_MODAL_KEY } from '../nodeGovernance.constants';
 
 const { showError, showMessage } = useToast();
 const i18n = useI18n();
@@ -18,13 +18,12 @@ const nodeGovernanceStore = useNodeGovernanceStore();
 const { allowPolicies } = storeToRefs(nodeGovernanceStore);
 
 const loading = ref(false);
-const comment = ref('');
 const selectedPolicyId = ref<string | null>(null);
 const createNewPolicy = ref(true);
 
-const modalData = computed(() => uiStore.modalsById[REVIEW_REQUEST_MODAL_KEY]?.data ?? {});
+const modalData = computed(() => uiStore.modalsById[APPROVE_REQUEST_MODAL_KEY]?.data ?? {});
 const request = computed(() => modalData.value.request);
-const modalTitle = computed(() => i18n.baseText('nodeGovernance.requests.review.title'));
+const modalTitle = computed(() => i18n.baseText('nodeGovernance.requests.approve.title'));
 
 // Filter policies to only show category-type policies
 const categoryPolicies = computed(() =>
@@ -33,10 +32,9 @@ const categoryPolicies = computed(() =>
 
 // Fetch policies if not already loaded
 watch(
-	() => uiStore.modalsById[REVIEW_REQUEST_MODAL_KEY]?.open,
+	() => uiStore.modalsById[APPROVE_REQUEST_MODAL_KEY]?.open,
 	async (isOpen) => {
 		if (isOpen) {
-			comment.value = '';
 			selectedPolicyId.value = null;
 			createNewPolicy.value = true;
 			// Ensure policies are loaded
@@ -53,24 +51,13 @@ function getPolicyDisplayName(policy: (typeof allowPolicies.value)[0]): string {
 	return `${scope} - Category: ${policy.targetValue}`;
 }
 
-function onPolicySelectionChange(value: string | null) {
-	if (value === '__create_new__') {
-		createNewPolicy.value = true;
-		selectedPolicyId.value = null;
-	} else {
-		createNewPolicy.value = false;
-		selectedPolicyId.value = value;
-	}
-}
-
 async function onApprove() {
 	if (!request.value) return;
 
 	loading.value = true;
 	try {
-		const payload: { action: 'approve'; comment?: string; policyId?: string } = {
+		const payload: { action: 'approve'; policyId?: string } = {
 			action: 'approve',
-			comment: comment.value || undefined,
 		};
 
 		if (!createNewPolicy.value && selectedPolicyId.value) {
@@ -92,29 +79,8 @@ async function onApprove() {
 	}
 }
 
-async function onReject() {
-	if (!request.value) return;
-
-	loading.value = true;
-	try {
-		await nodeGovernanceStore.reviewRequest(request.value.id, {
-			action: 'reject',
-			comment: comment.value || undefined,
-		});
-		showMessage({
-			title: i18n.baseText('nodeGovernance.requests.reject.success'),
-			type: 'success',
-		});
-		closeModal();
-	} catch (e) {
-		showError(e, i18n.baseText('nodeGovernance.requests.reject.error'));
-	} finally {
-		loading.value = false;
-	}
-}
-
 function closeModal() {
-	uiStore.closeModal(REVIEW_REQUEST_MODAL_KEY);
+	uiStore.closeModal(APPROVE_REQUEST_MODAL_KEY);
 }
 
 function formatDate(dateString: string): string {
@@ -126,11 +92,21 @@ function formatDate(dateString: string): string {
 		minute: '2-digit',
 	});
 }
+
+function onPolicySelectionChange(value: string | null) {
+	if (value === '__create_new__') {
+		createNewPolicy.value = true;
+		selectedPolicyId.value = null;
+	} else {
+		createNewPolicy.value = false;
+		selectedPolicyId.value = value;
+	}
+}
 </script>
 
 <template>
 	<Modal
-		:name="REVIEW_REQUEST_MODAL_KEY"
+		:name="APPROVE_REQUEST_MODAL_KEY"
 		:title="modalTitle"
 		:show-close="true"
 		:center="true"
@@ -189,19 +165,6 @@ function formatDate(dateString: string): string {
 					</div>
 				</div>
 
-				<!-- Response Section -->
-				<div :class="$style.section">
-					<N8nText tag="h4" :bold="true" size="small" color="text-dark">
-						{{ i18n.baseText('nodeGovernance.requests.review.yourResponse') }}
-					</N8nText>
-					<N8nInput
-						v-model="comment"
-						type="textarea"
-						:rows="3"
-						:placeholder="i18n.baseText('nodeGovernance.requests.review.commentPlaceholder')"
-					/>
-				</div>
-
 				<!-- Policy Selection Section -->
 				<div :class="$style.section">
 					<N8nText tag="h4" :bold="true" size="small" color="text-dark">
@@ -234,9 +197,6 @@ function formatDate(dateString: string): string {
 			<div :class="$style.footer">
 				<N8nButton type="secondary" :disabled="loading" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton type="danger" :loading="loading" @click="onReject">
-					{{ i18n.baseText('nodeGovernance.requests.reject') }}
 				</N8nButton>
 				<N8nButton type="success" :loading="loading" @click="onApprove">
 					{{ i18n.baseText('nodeGovernance.requests.approve') }}

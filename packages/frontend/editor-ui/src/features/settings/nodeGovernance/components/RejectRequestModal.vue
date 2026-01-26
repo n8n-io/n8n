@@ -3,94 +3,32 @@ import { ref, computed, watch } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
-import { storeToRefs } from 'pinia';
 
-import { N8nButton, N8nInput, N8nText, N8nSelect, N8nOption } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeGovernanceStore } from '../nodeGovernance.store';
-import { REVIEW_REQUEST_MODAL_KEY } from '../nodeGovernance.constants';
+import { REJECT_REQUEST_MODAL_KEY } from '../nodeGovernance.constants';
 
 const { showError, showMessage } = useToast();
 const i18n = useI18n();
 const uiStore = useUIStore();
 const nodeGovernanceStore = useNodeGovernanceStore();
 
-const { allowPolicies } = storeToRefs(nodeGovernanceStore);
-
 const loading = ref(false);
 const comment = ref('');
-const selectedPolicyId = ref<string | null>(null);
-const createNewPolicy = ref(true);
 
-const modalData = computed(() => uiStore.modalsById[REVIEW_REQUEST_MODAL_KEY]?.data ?? {});
+const modalData = computed(() => uiStore.modalsById[REJECT_REQUEST_MODAL_KEY]?.data ?? {});
 const request = computed(() => modalData.value.request);
-const modalTitle = computed(() => i18n.baseText('nodeGovernance.requests.review.title'));
+const modalTitle = computed(() => i18n.baseText('nodeGovernance.requests.reject.title'));
 
-// Filter policies to only show category-type policies
-const categoryPolicies = computed(() =>
-	allowPolicies.value.filter((policy) => policy.targetType === 'category'),
-);
-
-// Fetch policies if not already loaded
 watch(
-	() => uiStore.modalsById[REVIEW_REQUEST_MODAL_KEY]?.open,
-	async (isOpen) => {
+	() => uiStore.modalsById[REJECT_REQUEST_MODAL_KEY]?.open,
+	(isOpen) => {
 		if (isOpen) {
 			comment.value = '';
-			selectedPolicyId.value = null;
-			createNewPolicy.value = true;
-			// Ensure policies are loaded
-			if (allowPolicies.value.length === 0) {
-				await nodeGovernanceStore.fetchPolicies();
-			}
 		}
 	},
 );
-
-// Format policy display name
-function getPolicyDisplayName(policy: (typeof allowPolicies.value)[0]): string {
-	const scope = policy.scope === 'global' ? 'Global' : 'Projects';
-	return `${scope} - Category: ${policy.targetValue}`;
-}
-
-function onPolicySelectionChange(value: string | null) {
-	if (value === '__create_new__') {
-		createNewPolicy.value = true;
-		selectedPolicyId.value = null;
-	} else {
-		createNewPolicy.value = false;
-		selectedPolicyId.value = value;
-	}
-}
-
-async function onApprove() {
-	if (!request.value) return;
-
-	loading.value = true;
-	try {
-		const payload: { action: 'approve'; comment?: string; policyId?: string } = {
-			action: 'approve',
-			comment: comment.value || undefined,
-		};
-
-		if (!createNewPolicy.value && selectedPolicyId.value) {
-			payload.policyId = selectedPolicyId.value;
-		}
-
-		await nodeGovernanceStore.reviewRequest(request.value.id, payload);
-		// Refresh policies and categories to reflect the changes
-		await Promise.all([nodeGovernanceStore.fetchPolicies(), nodeGovernanceStore.fetchCategories()]);
-		showMessage({
-			title: i18n.baseText('nodeGovernance.requests.approve.success'),
-			type: 'success',
-		});
-		closeModal();
-	} catch (e) {
-		showError(e, i18n.baseText('nodeGovernance.requests.approve.error'));
-	} finally {
-		loading.value = false;
-	}
-}
 
 async function onReject() {
 	if (!request.value) return;
@@ -114,7 +52,7 @@ async function onReject() {
 }
 
 function closeModal() {
-	uiStore.closeModal(REVIEW_REQUEST_MODAL_KEY);
+	uiStore.closeModal(REJECT_REQUEST_MODAL_KEY);
 }
 
 function formatDate(dateString: string): string {
@@ -130,7 +68,7 @@ function formatDate(dateString: string): string {
 
 <template>
 	<Modal
-		:name="REVIEW_REQUEST_MODAL_KEY"
+		:name="REJECT_REQUEST_MODAL_KEY"
 		:title="modalTitle"
 		:show-close="true"
 		:center="true"
@@ -189,43 +127,20 @@ function formatDate(dateString: string): string {
 					</div>
 				</div>
 
-				<!-- Response Section -->
+				<!-- Optional Response Section -->
 				<div :class="$style.section">
 					<N8nText tag="h4" :bold="true" size="small" color="text-dark">
-						{{ i18n.baseText('nodeGovernance.requests.review.yourResponse') }}
+						{{ i18n.baseText('nodeGovernance.requests.reject.response') }}
+						<span :class="$style.optionalLabel">
+							{{ i18n.baseText('nodeGovernance.requests.reject.optional') }}
+						</span>
 					</N8nText>
 					<N8nInput
 						v-model="comment"
 						type="textarea"
 						:rows="3"
-						:placeholder="i18n.baseText('nodeGovernance.requests.review.commentPlaceholder')"
+						:placeholder="i18n.baseText('nodeGovernance.requests.reject.commentPlaceholder')"
 					/>
-				</div>
-
-				<!-- Policy Selection Section -->
-				<div :class="$style.section">
-					<N8nText tag="h4" :bold="true" size="small" color="text-dark">
-						{{ i18n.baseText('nodeGovernance.requests.approve.selectPolicy') }}
-					</N8nText>
-					<N8nSelect
-						:model-value="createNewPolicy ? '__create_new__' : selectedPolicyId"
-						:class="$style.select"
-						@update:model-value="onPolicySelectionChange"
-					>
-						<N8nOption
-							value="__create_new__"
-							:label="i18n.baseText('nodeGovernance.requests.approve.createNewPolicy')"
-						/>
-						<N8nOption
-							v-for="policy in categoryPolicies"
-							:key="policy.id"
-							:value="policy.id"
-							:label="getPolicyDisplayName(policy)"
-						/>
-					</N8nSelect>
-					<N8nText size="small" color="text-light">
-						{{ i18n.baseText('nodeGovernance.requests.approve.policyHint') }}
-					</N8nText>
 				</div>
 			</div>
 		</template>
@@ -237,9 +152,6 @@ function formatDate(dateString: string): string {
 				</N8nButton>
 				<N8nButton type="danger" :loading="loading" @click="onReject">
 					{{ i18n.baseText('nodeGovernance.requests.reject') }}
-				</N8nButton>
-				<N8nButton type="success" :loading="loading" @click="onApprove">
-					{{ i18n.baseText('nodeGovernance.requests.approve') }}
 				</N8nButton>
 			</div>
 		</template>
@@ -299,8 +211,11 @@ function formatDate(dateString: string): string {
 	margin: 0;
 }
 
-.select {
-	width: 100%;
+.optionalLabel {
+	color: var(--color--text--tint-1);
+	font-weight: normal;
+	font-size: 12px;
+	margin-left: 4px;
 }
 
 .footer {

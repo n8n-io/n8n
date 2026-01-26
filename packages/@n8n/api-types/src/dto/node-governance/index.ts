@@ -5,4 +5,4 @@ export { UpdateCategoryDto } from './update-category.dto';
 export { CategoryAssignmentDto, BulkCategoryAssignmentDto } from './category-assignment.dto';
 export { CreateAccessRequestDto } from './create-access-request.dto';
 export { ReviewAccessRequestDto } from './review-access-request.dto';
-export { GetNodeGovernanceQueryDto } from './get-node-governance.dto';
+export { GetNodeGovernanceQueryDto, GetNodeGovernanceBodyDto } from './get-node-governance.dto';

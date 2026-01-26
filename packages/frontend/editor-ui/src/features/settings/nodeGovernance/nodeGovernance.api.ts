@@ -96,6 +96,19 @@ export async function deletePolicy(
 	return await makeRestApiRequest(context, 'DELETE', `/node-governance/policies/${id}`);
 }
 
+export async function getGlobalPolicies(
+	context: IRestApiContext,
+): Promise<{ policies: NodeGovernancePolicy[] }> {
+	return await makeRestApiRequest(context, 'GET', '/node-governance/policies/global');
+}
+
+export async function getProjectPolicies(
+	context: IRestApiContext,
+	projectId: string,
+): Promise<{ policies: NodeGovernancePolicy[] }> {
+	return await makeRestApiRequest(context, 'GET', `/node-governance/policies/project/${projectId}`);
+}
+
 // Categories
 export async function getCategories(
 	context: IRestApiContext,
@@ -140,9 +153,14 @@ export async function assignNodeToCategory(
 	categoryId: string,
 	nodeType: string,
 ): Promise<{ assignment: unknown }> {
-	return await makeRestApiRequest(context, 'POST', `/node-governance/categories/${categoryId}/nodes`, {
-		nodeType,
-	});
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/node-governance/categories/${categoryId}/nodes`,
+		{
+			nodeType,
+		},
+	);
 }
 
 export async function removeNodeFromCategory(
@@ -188,22 +206,25 @@ export async function reviewAccessRequest(
 	data: {
 		action: 'approve' | 'reject';
 		comment?: string;
-		createPolicy?: boolean;
+		policyId?: string;
 	},
 ): Promise<{ request: NodeAccessRequest }> {
 	return await makeRestApiRequest(context, 'POST', `/node-governance/requests/${id}/review`, data);
 }
 
 // Node Governance Status
+/**
+ * @deprecated Use getGlobalPolicies(), getProjectPolicies(), getCategories(), and resolve locally instead.
+ * This sends a large POST payload with all node types which is inefficient.
+ */
 export async function getNodeGovernanceStatus(
 	context: IRestApiContext,
 	projectId: string,
 	nodeTypes: string[],
 ): Promise<{ governance: Record<string, GovernanceStatus> }> {
-	const nodeTypesParam = nodeTypes.join(',');
-	return await makeRestApiRequest(
-		context,
-		'GET',
-		`/node-governance/status?projectId=${encodeURIComponent(projectId)}&nodeTypes=${encodeURIComponent(nodeTypesParam)}`,
-	);
+	// Use POST to avoid URL length limits with many node types
+	return await makeRestApiRequest(context, 'POST', '/node-governance/status', {
+		projectId,
+		nodeTypes,
+	});
 }

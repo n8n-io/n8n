@@ -119,10 +119,18 @@ function onDrop(event: DragEvent) {
 
 watch(
 	() => props.active,
-	(isActive) => {
+	async (isActive) => {
 		if (!isActive) {
 			setShowScrim(false);
 			resetViewStacks();
+		} else {
+			// Fetch governance data when node creator opens
+			const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? null;
+			if (projectId) {
+				// Clear previous status and fetch fresh governance data
+				nodeGovernanceStore.clearGovernanceData();
+				await nodeGovernanceStore.fetchGovernanceData(projectId);
+			}
 		}
 	},
 );
@@ -144,17 +152,15 @@ registerKeyHook('NodeCreatorCloseTab', {
 	handler: () => emit('closeNodeCreator'),
 });
 
-// Helper to augment nodes with governance status
+// Helper to augment nodes with governance status using local resolution
 function augmentNodesWithGovernance(nodes: SimplifiedNodeType[]): SimplifiedNodeType[] {
 	return nodes.map((node) => {
-		const governanceStatus = nodeGovernanceStore.getGovernanceForNode(node.name);
-		if (governanceStatus) {
-			return {
-				...node,
-				governance: governanceStatus,
-			};
-		}
-		return node;
+		// Use local resolution which handles caching internally
+		const governanceStatus = nodeGovernanceStore.resolveGovernanceForNode(node.name);
+		return {
+			...node,
+			governance: governanceStatus,
+		};
 	});
 }
 
@@ -162,19 +168,19 @@ watch(
 	() => ({
 		httpOnlyCredentials: useCredentialsStore().httpOnlyCredentialTypes,
 		nodeTypes: useNodeTypesStore().visibleNodeTypes,
-		governanceStatus: nodeGovernanceStore.nodeGovernanceStatus,
+		governanceDataLoaded: nodeGovernanceStore.governanceDataLoaded,
 	}),
 	async ({ nodeTypes, httpOnlyCredentials }) => {
 		const { actions, mergedNodes } = generateMergedNodesAndActions(nodeTypes, httpOnlyCredentials);
 
-		// Fetch governance status for all node types if needed
-		const currentProjectId = projectsStore.currentProjectId;
-		if (currentProjectId && !nodeGovernanceStore.governanceStatusLoaded) {
-			const nodeTypeNames = mergedNodes.map((n) => n.name);
-			await nodeGovernanceStore.fetchNodeGovernanceStatus(currentProjectId, nodeTypeNames);
+		// Fetch governance data if not already loaded
+		// Use currentProjectId or fallback to personal project
+		const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? null;
+		if (projectId && !nodeGovernanceStore.governanceDataLoaded) {
+			await nodeGovernanceStore.fetchGovernanceData(projectId);
 		}
 
-		// Augment nodes with governance status
+		// Augment nodes with governance status using local resolution
 		const nodesWithGovernance = augmentNodesWithGovernance(mergedNodes);
 
 		setActions(actions);

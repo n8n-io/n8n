@@ -51,6 +51,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { NodeGovernanceService } from '@/services/node-governance.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -79,6 +80,7 @@ export class WorkflowService {
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly nodeGovernanceService: NodeGovernanceService,
 	) {}
 
 	async getMany(
@@ -301,6 +303,32 @@ export class WorkflowService {
 		await WorkflowHelpers.replaceInvalidCredentials(workflowUpdateData);
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
+
+		// Validate node governance - check for blocked nodes
+		if (workflowUpdateData.nodes && workflowUpdateData.nodes.length > 0) {
+			// Get projectId from sharedWorkflow relation
+			const sharedWorkflow = await this.sharedWorkflowRepository.findOne({
+				where: { workflowId },
+				select: ['projectId'],
+			});
+			const projectId = sharedWorkflow?.projectId;
+			if (projectId) {
+				const validation = await this.nodeGovernanceService.validateWorkflowNodes(
+					workflowUpdateData.nodes,
+					projectId,
+					user.id,
+				);
+
+				if (validation.hasBlockedNodes) {
+					const blockedNodeNames = validation.blockedNodes
+						.map((n) => n.nodeName || n.nodeType)
+						.join(', ');
+					throw new BadRequestError(
+						`Cannot save workflow: The following nodes are blocked by governance policies: ${blockedNodeNames}. Please remove these nodes or request access.`,
+					);
+				}
+			}
+		}
 
 		// Merge settings to support partial updates
 		if (workflowUpdateData.settings && workflow.settings) {

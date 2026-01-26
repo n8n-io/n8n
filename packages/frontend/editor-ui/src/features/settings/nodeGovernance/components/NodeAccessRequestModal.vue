@@ -1,32 +1,15 @@
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-
-import {
-	N8nButton,
-	N8nInput,
-	N8nSelect,
-	N8nOption,
-	N8nText,
-	N8nBadge,
-} from '@n8n/design-system';
-import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+
+import { N8nButton, N8nInput, N8nSelect, N8nOption, N8nText, N8nBadge } from '@n8n/design-system';
+import Modal from '@/app/components/Modal.vue';
 import { useNodeGovernanceStore } from '../nodeGovernance.store';
 import { NODE_ACCESS_REQUEST_MODAL_KEY } from '../nodeGovernance.constants';
-
-interface ModalData {
-	nodeType?: string;
-	displayName?: string;
-}
-
-const props = defineProps<{
-	modalName: string;
-	data: ModalData;
-}>();
 
 const { showError, showMessage } = useToast();
 const i18n = useI18n();
@@ -40,18 +23,23 @@ const projectId = ref('');
 const justification = ref('');
 const workflowName = ref('');
 
-const nodeType = computed(() => props.data?.nodeType ?? '');
-const displayName = computed(() => props.data?.displayName ?? nodeType.value);
+const modalData = computed(() => uiStore.modalsById[NODE_ACCESS_REQUEST_MODAL_KEY]?.data ?? {});
+const nodeType = computed(() => modalData.value.nodeType ?? '');
+const displayName = computed(() => modalData.value.displayName ?? nodeType.value);
 
 const projects = computed(() => projectsStore.myProjects ?? []);
 const currentWorkflowName = computed(() => workflowsStore.workflowName);
 
-onMounted(() => {
-	// Pre-fill with current workflow name if available
-	if (currentWorkflowName.value) {
-		workflowName.value = currentWorkflowName.value;
-	}
-});
+watch(
+	() => uiStore.modalsById[NODE_ACCESS_REQUEST_MODAL_KEY]?.open,
+	(isOpen) => {
+		if (isOpen) {
+			projectId.value = '';
+			justification.value = '';
+			workflowName.value = currentWorkflowName.value ?? '';
+		}
+	},
+);
 
 async function onSubmit() {
 	if (!projectId.value || !justification.value.trim()) {
@@ -94,7 +82,7 @@ async function onSubmit() {
 			});
 		}
 
-		onClose();
+		closeModal();
 	} catch (e) {
 		showError(e, i18n.baseText('nodeGovernance.accessRequest.error'));
 	} finally {
@@ -102,17 +90,14 @@ async function onSubmit() {
 	}
 }
 
-function onClose() {
-	projectId.value = '';
-	justification.value = '';
-	workflowName.value = currentWorkflowName.value ?? '';
-	uiStore.closeModal(props.modalName);
+function closeModal() {
+	uiStore.closeModal(NODE_ACCESS_REQUEST_MODAL_KEY);
 }
 </script>
 
 <template>
 	<Modal
-		:name="props.modalName"
+		:name="NODE_ACCESS_REQUEST_MODAL_KEY"
 		:title="i18n.baseText('nodeGovernance.accessRequest.title')"
 		:show-close="true"
 		:center="true"
@@ -127,9 +112,7 @@ function onClose() {
 					<N8nText tag="p" size="large" :bold="true">
 						{{ displayName }}
 					</N8nText>
-					<N8nBadge type="danger">
-						{{ i18n.baseText('nodeCreator.nodeItem.blocked') }}
-					</N8nBadge>
+					<N8nBadge type="danger">BLOCKED</N8nBadge>
 				</div>
 
 				<div :class="$style.form">
@@ -183,7 +166,7 @@ function onClose() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" :disabled="loading" @click="onClose">
+				<N8nButton type="secondary" :disabled="loading" @click="closeModal">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton :loading="loading" @click="onSubmit">
@@ -198,35 +181,37 @@ function onClose() {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-l);
+	gap: 20px;
 }
 
 .nodeInfo {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--spacing-xs);
-	padding: var(--spacing-m);
-	background: var(--color-background-light);
-	border-radius: var(--border-radius-base);
+	gap: 8px;
+	padding: 20px;
+	background: var(--color--background--light-3);
+	border: 1px solid var(--color--foreground);
+	border-radius: 8px;
 	text-align: center;
 }
 
 .form {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: 16px;
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: 6px;
 }
 
 .label {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
+	font-weight: 500;
+	font-size: 13px;
+	color: var(--color--text--shade-1);
 }
 
 .input {
@@ -236,6 +221,6 @@ function onClose() {
 .footer {
 	display: flex;
 	justify-content: flex-end;
-	gap: var(--spacing-xs);
+	gap: 10px;
 }
 </style>

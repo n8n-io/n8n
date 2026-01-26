@@ -140,4 +140,5 @@ export {
 	CreateAccessRequestDto,
 	ReviewAccessRequestDto,
 	GetNodeGovernanceQueryDto,
+	GetNodeGovernanceBodyDto,
 } from './node-governance';

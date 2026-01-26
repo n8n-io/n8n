@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
-import { DataSource, In, Repository } from '@n8n/typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 
 import { PolicyProjectAssignment } from '../entities';
 
@@ -26,11 +26,7 @@ export class PolicyProjectAssignmentRepository extends Repository<PolicyProjectA
 		});
 	}
 
-	async createAssignments(
-		policyId: string,
-		projectIds: string[],
-		entityManager?: EntityManager,
-	) {
+	async createAssignments(policyId: string, projectIds: string[], entityManager?: EntityManager) {
 		const em = entityManager ?? this.manager;
 		const assignments = projectIds.map((projectId) =>
 			em.create(PolicyProjectAssignment, { policyId, projectId }),
@@ -43,11 +39,7 @@ export class PolicyProjectAssignmentRepository extends Repository<PolicyProjectA
 		return await em.delete(PolicyProjectAssignment, { policyId });
 	}
 
-	async replaceAssignments(
-		policyId: string,
-		projectIds: string[],
-		entityManager?: EntityManager,
-	) {
+	async replaceAssignments(policyId: string, projectIds: string[], entityManager?: EntityManager) {
 		const em = entityManager ?? this.manager;
 
 		// Delete existing assignments

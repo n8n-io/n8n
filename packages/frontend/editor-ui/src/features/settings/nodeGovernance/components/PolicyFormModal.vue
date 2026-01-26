@@ -2,30 +2,22 @@
 import { ref, computed, watch } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { storeToRefs } from 'pinia';
 
-import {
-	N8nButton,
-	N8nInput,
-	N8nSelect,
-	N8nOption,
-	N8nFormInputs,
-} from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nSelect, N8nOption, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeGovernanceStore } from '../nodeGovernance.store';
-import type { NodeGovernancePolicy } from '../nodeGovernance.api';
-
-const props = defineProps<{
-	show: boolean;
-	policy: NodeGovernancePolicy | null;
-}>();
-
-const emit = defineEmits<{
-	close: [];
-}>();
+import { POLICY_FORM_MODAL_KEY } from '../nodeGovernance.constants';
 
 const { showError, showMessage } = useToast();
 const i18n = useI18n();
+const uiStore = useUIStore();
+const projectsStore = useProjectsStore();
 const nodeGovernanceStore = useNodeGovernanceStore();
+
+const { categories } = storeToRefs(nodeGovernanceStore);
 
 const loading = ref(false);
 
@@ -35,27 +27,40 @@ const targetType = ref<'node' | 'category'>('node');
 const targetValue = ref('');
 const projectIds = ref<string[]>([]);
 
-const isEdit = computed(() => props.policy !== null);
+const modalState = computed(() => uiStore.modalsById[POLICY_FORM_MODAL_KEY]);
+const isOpen = computed(() => modalState.value?.open ?? false);
+const modalData = computed(() => modalState.value?.data ?? {});
+const isEdit = computed(() => modalData.value.policy !== undefined);
 const modalTitle = computed(() =>
 	isEdit.value
 		? i18n.baseText('nodeGovernance.policies.edit.title')
 		: i18n.baseText('nodeGovernance.policies.create.title'),
 );
 
+const projects = computed(() => projectsStore.myProjects ?? []);
+
+// Watch when modal opens and populate form data
+// Use immediate: true because the component is only mounted when the modal is already open
+// (due to v-if in ModalRoot), so we need to run on mount, not just on changes
 watch(
-	() => props.show,
-	(newValue) => {
-		if (newValue && props.policy) {
-			policyType.value = props.policy.policyType;
-			scope.value = props.policy.scope;
-			targetType.value = props.policy.targetType;
-			targetValue.value = props.policy.targetValue;
-			projectIds.value =
-				props.policy.projectAssignments?.map((a) => a.projectId) ?? [];
-		} else if (newValue) {
-			resetForm();
+	isOpen,
+	(nowOpen, wasOpen) => {
+		if (nowOpen && !wasOpen) {
+			// Modal just opened - populate form from data
+			const policy = modalData.value.policy;
+			if (policy) {
+				policyType.value = policy.policyType ?? 'block';
+				scope.value = policy.scope ?? 'global';
+				targetType.value = policy.targetType ?? 'node';
+				targetValue.value = policy.targetValue ?? '';
+				projectIds.value =
+					policy.projectAssignments?.map((a: { projectId: string }) => a.projectId) ?? [];
+			} else {
+				resetForm();
+			}
 		}
 	},
+	{ immediate: true },
 );
 
 function resetForm() {
@@ -75,11 +80,19 @@ async function onSubmit() {
 		return;
 	}
 
+	if (scope.value === 'projects' && projectIds.value.length === 0) {
+		showError(
+			new Error('Please select at least one project'),
+			i18n.baseText('nodeGovernance.policies.validation.error'),
+		);
+		return;
+	}
+
 	loading.value = true;
 
 	try {
-		if (isEdit.value && props.policy) {
-			await nodeGovernanceStore.updatePolicy(props.policy.id, {
+		if (isEdit.value && modalData.value.policy) {
+			await nodeGovernanceStore.updatePolicy(modalData.value.policy.id, {
 				policyType: policyType.value,
 				scope: scope.value,
 				targetType: targetType.value,
@@ -103,7 +116,7 @@ async function onSubmit() {
 				type: 'success',
 			});
 		}
-		emit('close');
+		closeModal();
 	} catch (e) {
 		showError(
 			e,
@@ -116,65 +129,88 @@ async function onSubmit() {
 	}
 }
 
-function onClose() {
-	emit('close');
+function closeModal() {
+	uiStore.closeModal(POLICY_FORM_MODAL_KEY);
 }
 </script>
 
 <template>
 	<Modal
-		:name="'policy-form-modal'"
+		:name="POLICY_FORM_MODAL_KEY"
 		:title="modalTitle"
 		:show-close="true"
 		:center="true"
-		:model-value="show"
 		width="500px"
-		@update:model-value="onClose"
 	>
 		<template #content>
 			<div :class="$style.form">
 				<div :class="$style.field">
-					<label :class="$style.label">
-						{{ i18n.baseText('nodeGovernance.policies.form.policyType') }}
-					</label>
-					<N8nSelect v-model="policyType" :class="$style.input">
-						<N8nOption value="block" :label="i18n.baseText('nodeGovernance.policies.type.block')" />
-						<N8nOption value="allow" :label="i18n.baseText('nodeGovernance.policies.type.allow')" />
+					<label :class="$style.label">Policy Type</label>
+					<N8nSelect v-model="policyType" :class="$style.select">
+						<N8nOption value="block" label="Block" />
+						<N8nOption value="allow" label="Allow" />
 					</N8nSelect>
 				</div>
 
 				<div :class="$style.field">
-					<label :class="$style.label">
-						{{ i18n.baseText('nodeGovernance.policies.form.scope') }}
-					</label>
-					<N8nSelect v-model="scope" :class="$style.input">
-						<N8nOption value="global" :label="i18n.baseText('nodeGovernance.policies.scope.global')" />
-						<N8nOption value="projects" :label="i18n.baseText('nodeGovernance.policies.scope.projects')" />
+					<label :class="$style.label">Scope</label>
+					<N8nSelect v-model="scope" :class="$style.select">
+						<N8nOption value="global" label="Global" />
+						<N8nOption value="projects" label="Specific Projects" />
+					</N8nSelect>
+				</div>
+
+				<!-- Project selector - only show when scope is 'projects' -->
+				<div v-if="scope === 'projects'" :class="$style.field">
+					<label :class="$style.label">Projects</label>
+					<N8nSelect
+						v-model="projectIds"
+						:class="$style.select"
+						multiple
+						placeholder="Select projects..."
+					>
+						<N8nOption
+							v-for="project in projects"
+							:key="project.id"
+							:value="project.id"
+							:label="project.name"
+						/>
+					</N8nSelect>
+					<N8nText v-if="projectIds.length === 0" size="small" color="text-light">
+						Select one or more projects for this policy.
+					</N8nText>
+				</div>
+
+				<div :class="$style.field">
+					<label :class="$style.label">Target Type</label>
+					<N8nSelect v-model="targetType" :class="$style.select">
+						<N8nOption value="node" label="Node" />
+						<N8nOption value="category" label="Category" />
 					</N8nSelect>
 				</div>
 
 				<div :class="$style.field">
-					<label :class="$style.label">
-						{{ i18n.baseText('nodeGovernance.policies.form.targetType') }}
-					</label>
-					<N8nSelect v-model="targetType" :class="$style.input">
-						<N8nOption value="node" :label="i18n.baseText('nodeGovernance.policies.target.node')" />
-						<N8nOption value="category" :label="i18n.baseText('nodeGovernance.policies.target.category')" />
+					<label :class="$style.label">Target Value</label>
+					<!-- Category selector when targetType is 'category' -->
+					<N8nSelect
+						v-if="targetType === 'category'"
+						v-model="targetValue"
+						:class="$style.select"
+						placeholder="Select a category..."
+					>
+						<N8nOption
+							v-for="cat in categories"
+							:key="cat.id"
+							:value="cat.slug"
+							:label="cat.displayName"
+						/>
 					</N8nSelect>
-				</div>
-
-				<div :class="$style.field">
-					<label :class="$style.label">
-						{{ i18n.baseText('nodeGovernance.policies.form.targetValue') }}
-					</label>
+					<!-- Node type input when targetType is 'node' -->
 					<N8nInput
+						v-else
 						v-model="targetValue"
 						:class="$style.input"
-						:placeholder="
-							targetType === 'node'
-								? 'e.g., n8n-nodes-base.httpRequest'
-								: 'e.g., external-api'
-						"
+						placeholder="e.g., n8n-nodes-base.httpRequest"
 					/>
 				</div>
 			</div>
@@ -182,11 +218,9 @@ function onClose() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" :disabled="loading" @click="onClose">
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
+				<N8nButton type="secondary" :disabled="loading" @click="closeModal"> Cancel </N8nButton>
 				<N8nButton :loading="loading" @click="onSubmit">
-					{{ isEdit ? i18n.baseText('generic.save') : i18n.baseText('generic.create') }}
+					{{ isEdit ? 'Save' : 'Create' }}
 				</N8nButton>
 			</div>
 		</template>
@@ -197,20 +231,22 @@ function onClose() {
 .form {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-m);
+	gap: 16px;
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-2xs);
+	gap: 6px;
 }
 
 .label {
-	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
+	font-weight: 500;
+	font-size: 13px;
+	color: var(--color--text--shade-1);
 }
 
+.select,
 .input {
 	width: 100%;
 }
@@ -218,6 +254,6 @@ function onClose() {
 .footer {
 	display: flex;
 	justify-content: flex-end;
-	gap: var(--spacing-xs);
+	gap: 10px;
 }
 </style>

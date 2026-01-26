@@ -1,5 +1,4 @@
 import { Container } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 import {
 	NodeGovernancePolicyRepository,
 	NodeCategoryRepository,
@@ -178,6 +177,3 @@ export async function seedNodeGovernance(): Promise<void> {
 	console.log('  - HTTP Request, Slack, Gmail: ALLOWED explicitly');
 	console.log('  - Other nodes: ALLOWED by default');
 }
-
-// Export for use in tests or CLI
-export default seedNodeGovernance;

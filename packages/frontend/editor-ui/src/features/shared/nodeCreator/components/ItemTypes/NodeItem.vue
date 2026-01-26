@@ -27,6 +27,7 @@ import {
 	shouldShowCommunityNodeDetails,
 } from '../../nodeCreator.utils';
 import { NODE_ACCESS_REQUEST_MODAL_KEY } from '@/features/settings/nodeGovernance/nodeGovernance.constants';
+import { useNodeGovernanceStore } from '@/features/settings/nodeGovernance/nodeGovernance.store';
 
 import { N8nIcon, N8nNodeCreatorNode, N8nTooltip } from '@n8n/design-system';
 export interface Props {
@@ -51,6 +52,7 @@ const { isSubNodeType } = useNodeType({
 });
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
+const nodeGovernanceStore = useNodeGovernanceStore();
 
 const emit = defineEmits<{
 	requestAccess: [nodeType: string];
@@ -58,10 +60,34 @@ const emit = defineEmits<{
 
 const dragging = ref(false);
 
-// Node Governance
-const isBlocked = computed(() => props.nodeType.governance?.status === 'blocked');
-const isPendingRequest = computed(() => props.nodeType.governance?.status === 'pending_request');
-const governanceStatus = computed(() => props.nodeType.governance?.status ?? 'allowed');
+// Node Governance - check props first, then fallback to store lookup
+const isBlocked = computed(() => {
+	const governanceStatus = props.nodeType.governance?.status;
+	if (governanceStatus !== undefined) {
+		return governanceStatus === 'blocked';
+	}
+	// Fallback to store lookup for category views where governance might not be augmented
+	const storeStatus = nodeGovernanceStore.getGovernanceForNode(props.nodeType.name);
+	return storeStatus?.status === 'blocked';
+});
+const isPendingRequest = computed(() => {
+	const governanceStatus = props.nodeType.governance?.status;
+	if (governanceStatus !== undefined) {
+		return governanceStatus === 'pending_request';
+	}
+	// Fallback to store lookup for category views where governance might not be augmented
+	const storeStatus = nodeGovernanceStore.getGovernanceForNode(props.nodeType.name);
+	return storeStatus?.status === 'pending_request';
+});
+const governanceStatus = computed(() => {
+	const governanceStatus = props.nodeType.governance?.status;
+	if (governanceStatus !== undefined) {
+		return governanceStatus;
+	}
+	// Fallback to store lookup for category views where governance might not be augmented
+	const storeStatus = nodeGovernanceStore.getGovernanceForNode(props.nodeType.name);
+	return storeStatus?.status ?? 'allowed';
+});
 const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
@@ -215,12 +241,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 					:node-type="nodeType"
 					color-default="var(--color--foreground--shade-2)"
 				/>
-				<N8nIcon
-					v-if="isBlocked"
-					icon="lock"
-					size="small"
-					:class="$style.lockIcon"
-				/>
+				<N8nIcon v-if="isBlocked" icon="lock" size="small" :class="$style.lockIcon" />
 			</div>
 		</template>
 
@@ -356,24 +377,24 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	position: absolute;
 	bottom: -2px;
 	right: -2px;
-	background: var(--color-background-light);
+	background: var(--color--background--light-2);
 	border-radius: 50%;
 	padding: 2px;
-	color: var(--color-danger);
+	color: var(--color--danger);
 }
 
 .requestAccessLink {
 	background: none;
 	border: none;
-	color: var(--color-primary);
+	color: var(--color--primary);
 	cursor: pointer;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	padding: 0;
-	margin-left: var(--spacing-2xs);
+	margin-left: var(--spacing--2xs);
 	text-decoration: underline;
 
 	&:hover {
-		color: var(--color-primary-shade-1);
+		color: var(--color--primary--shade-1);
 	}
 }
 </style>

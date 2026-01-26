@@ -7,6 +7,7 @@ import {
 	CreateAccessRequestDto,
 	ReviewAccessRequestDto,
 	GetNodeGovernanceQueryDto,
+	GetNodeGovernanceBodyDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -31,6 +32,34 @@ export class NodeGovernanceController {
 
 	// === Node Governance Status ===
 
+	// POST endpoint (preferred - no URL length limits)
+	@Post('/status')
+	async getNodeGovernanceStatusPost(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: GetNodeGovernanceBodyDto,
+	) {
+		const { projectId, nodeTypes } = body;
+
+		if (!nodeTypes || nodeTypes.length === 0) {
+			return { governance: {} };
+		}
+
+		const governanceMap = await this.nodeGovernanceService.getGovernanceForNodes(
+			nodeTypes,
+			projectId,
+			req.user.id,
+		);
+
+		const governance: Record<string, unknown> = {};
+		for (const [nodeType, status] of governanceMap) {
+			governance[nodeType] = status;
+		}
+
+		return { governance };
+	}
+
+	// GET endpoint (legacy - may hit URL length limits with many nodes)
 	@Get('/status')
 	async getNodeGovernanceStatus(
 		req: AuthenticatedRequest,
@@ -64,6 +93,22 @@ export class NodeGovernanceController {
 	@GlobalScope('nodeGovernance:manage')
 	async getAllPolicies() {
 		const policies = await this.nodeGovernanceService.getAllPolicies();
+		return { policies };
+	}
+
+	@Get('/policies/global')
+	async getGlobalPolicies() {
+		const policies = await this.nodeGovernanceService.getGlobalPolicies();
+		return { policies };
+	}
+
+	@Get('/policies/project/:projectId')
+	async getProjectPolicies(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('projectId') projectId: string,
+	) {
+		const policies = await this.nodeGovernanceService.getProjectPolicies(projectId);
 		return { policies };
 	}
 
@@ -166,7 +211,10 @@ export class NodeGovernanceController {
 		@Param('id') categoryId: string,
 		@Param('nodeType') nodeType: string,
 	) {
-		await this.nodeGovernanceService.removeNodeFromCategory(categoryId, decodeURIComponent(nodeType));
+		await this.nodeGovernanceService.removeNodeFromCategory(
+			categoryId,
+			decodeURIComponent(nodeType),
+		);
 		return { success: true };
 	}
 
@@ -215,11 +263,15 @@ export class NodeGovernanceController {
 		let request;
 
 		if (payload.action === 'approve') {
+			// Use policyId if provided, otherwise undefined (which will create a new policy)
+			// For backward compatibility: if createPolicy is explicitly false, don't create policy (policyId stays undefined)
+			// Otherwise, create a new policy (policyId is undefined, which triggers policy creation)
+			const policyId = payload.policyId;
 			request = await this.nodeGovernanceService.approveRequest(
 				id,
 				req.user,
 				payload.comment,
-				payload.createPolicy,
+				policyId,
 			);
 		} else {
 			request = await this.nodeGovernanceService.rejectRequest(id, req.user, payload.comment);
