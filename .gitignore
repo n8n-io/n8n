@@ -47,5 +47,4 @@ packages/cli/THIRD_PARTY_LICENSES.md
 packages/cli/src/commands/export/outputs
 *.bak
 .data
-.data/
 .claude/settings.local.json
