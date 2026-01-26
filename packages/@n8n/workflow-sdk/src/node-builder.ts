@@ -16,6 +16,7 @@ import {
 	type IfElseComposite,
 	type SplitInBatchesBuilder,
 } from './types/base';
+import { isFanOut, type FanOutTargets } from './fan-out';
 
 /**
  * Check if value is a MergeComposite
@@ -190,10 +191,17 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[],
+		target: T | T[] | FanOutTargets,
 		outputIndex: number = 0,
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
-		const targets = Array.isArray(target) ? target : [target];
+		// Handle FanOutTargets - extract targets array
+		let targets: (T | NodeInstance<string, string, unknown>)[];
+		if (isFanOut(target)) {
+			targets = target.targets;
+		} else {
+			targets = Array.isArray(target) ? target : [target];
+		}
+
 		for (const t of targets) {
 			this._connections.push({ target: t, outputIndex });
 		}
@@ -216,7 +224,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 
 		// Return chain with last target as tail (for type compatibility)
 		const lastTarget = targets[targets.length - 1];
-		return new NodeChainImpl(this, lastTarget, [this, ...allTargetNodes]);
+		return new NodeChainImpl(this, lastTarget as T, [this, ...allTargetNodes]);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
@@ -318,10 +326,16 @@ class NodeChainImpl<
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[],
+		target: T | T[] | FanOutTargets,
 		outputIndex: number = 0,
 	): NodeChain<THead, T> {
-		const targets = Array.isArray(target) ? target : [target];
+		// Handle FanOutTargets - extract targets array
+		let targets: (T | NodeInstance<string, string, unknown>)[];
+		if (isFanOut(target)) {
+			targets = target.targets;
+		} else {
+			targets = Array.isArray(target) ? target : [target];
+		}
 
 		// Helper to extract all nodes from a target (handles NodeChain and SplitInBatchesBuilder targets)
 		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
@@ -348,14 +362,14 @@ class NodeChainImpl<
 				outputNode.then(targets, outputIndex);
 			}
 			const lastTarget = targets[targets.length - 1];
-			return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...allTargetNodes]);
+			return new NodeChainImpl(this.head, lastTarget as T, [...this.allNodes, ...allTargetNodes]);
 		}
 
 		// Connect tail to all targets (use the tail's then method which handles connections)
 		this.tail.then(targets, outputIndex);
 		// Return chain with last target as tail
 		const lastTarget = targets[targets.length - 1];
-		return new NodeChainImpl(this.head, lastTarget, [...this.allNodes, ...allTargetNodes]);
+		return new NodeChainImpl(this.head, lastTarget as T, [...this.allNodes, ...allTargetNodes]);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {

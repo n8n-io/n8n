@@ -293,6 +293,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Regular node or trigger
 		this.addNodeWithSubnodes(newNodes, node);
 
+		// Also add connection target nodes (e.g., onError handlers)
+		// This is important when re-adding a node that already exists but has new connections
+		this.addSingleNodeConnectionTargets(newNodes, node);
+
 		// Collect pinData from the node if present
 		const newPinData = this.collectPinData(node);
 
@@ -503,10 +507,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			const config = instance.config ?? {};
 			const position = config.position ?? nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
 
-			// Use the actual node name from the instance, not the map key
+			// Determine node name:
+			// - If mapKey was auto-renamed (e.g., "Process 1" from "Process"), use mapKey
+			// - Otherwise use instance.name (preserves original name for fromJSON imports)
+			// Auto-renamed nodes have pattern: mapKey = instance.name + " " + number
+			const isAutoRenamed =
+				mapKey !== instance.name &&
+				mapKey.startsWith(instance.name + ' ') &&
+				/^\d+$/.test(mapKey.slice(instance.name.length + 1));
+			const nodeName = isAutoRenamed ? mapKey : instance.name;
 			const n8nNode: NodeJSON = {
 				id: instance.id,
-				name: instance.name,
+				name: nodeName,
 				type: instance.type,
 				typeVersion: parseVersion(instance.version),
 				position,
@@ -1177,40 +1189,69 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Find the map key for a node instance by its ID.
+	 * This handles renamed duplicate nodes where the map key differs from instance.name.
+	 */
+	private findMapKeyForNodeId(nodeId: string): string | undefined {
+		for (const [key, graphNode] of this._nodes) {
+			if (graphNode.instance.id === nodeId) {
+				return key;
+			}
+		}
+		return undefined;
+	}
+
+	/**
 	 * Resolve the target node name from a connection target.
 	 * Handles NodeInstance, NodeChain, and composites (SwitchCaseComposite, IfElseComposite, MergeComposite).
+	 * Returns the map key (which may differ from instance.name for renamed duplicates).
 	 */
 	private resolveTargetNodeName(target: unknown): string | undefined {
 		if (target === null || typeof target !== 'object') return undefined;
 
+		// Helper to get the actual node name, accounting for auto-renamed nodes
+		const getNodeName = (nodeInstance: NodeInstance<string, string, unknown>): string => {
+			const mapKey = this.findMapKeyForNodeId(nodeInstance.id);
+			if (!mapKey) return nodeInstance.name;
+
+			// Check if this is an auto-renamed node (e.g., "Process 1" from "Process")
+			// Auto-renamed nodes have pattern: mapKey = instance.name + " " + number
+			const isAutoRenamed =
+				mapKey !== nodeInstance.name &&
+				mapKey.startsWith(nodeInstance.name + ' ') &&
+				/^\d+$/.test(mapKey.slice(nodeInstance.name.length + 1));
+
+			return isAutoRenamed ? mapKey : nodeInstance.name;
+		};
+
 		// Check for NodeChain - return the head's name (where connections enter the chain)
 		if (isNodeChain(target)) {
-			return target.head.name;
+			return getNodeName(target.head);
 		}
 
 		// Check for SwitchCaseComposite
 		if (this.isSwitchCaseComposite(target)) {
-			return (target as SwitchCaseComposite).switchNode.name;
+			return getNodeName((target as SwitchCaseComposite).switchNode);
 		}
 
 		// Check for IfElseComposite
 		if (this.isIfElseComposite(target)) {
-			return (target as IfElseComposite).ifNode.name;
+			return getNodeName((target as IfElseComposite).ifNode);
 		}
 
 		// Check for MergeComposite
 		if (this.isMergeComposite(target)) {
-			return (target as MergeComposite).mergeNode.name;
+			return getNodeName((target as MergeComposite).mergeNode);
 		}
 
 		// Check for SplitInBatchesBuilder or its chains (EachChainImpl/DoneChainImpl)
 		if (this.isSplitInBatchesBuilder(target)) {
 			const builder = this.extractSplitInBatchesBuilder(target);
-			return builder.sibNode.name;
+			return getNodeName(builder.sibNode);
 		}
 
 		// Regular NodeInstance
-		return (target as NodeInstance<string, string, unknown>).name;
+		return getNodeName(target as NodeInstance<string, string, unknown>);
 	}
 
 	/**
@@ -1823,15 +1864,46 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Generate a unique node name if the name already exists
+	 */
+	private generateUniqueName(nodes: Map<string, GraphNode>, baseName: string): string {
+		if (!nodes.has(baseName)) {
+			return baseName;
+		}
+
+		// Find the next available number suffix
+		let counter = 1;
+		let newName = `${baseName} ${counter}`;
+		while (nodes.has(newName)) {
+			counter++;
+			newName = `${baseName} ${counter}`;
+		}
+		return newName;
+	}
+
+	/**
 	 * Add a node and its subnodes to the nodes map, creating AI connections
 	 */
 	private addNodeWithSubnodes(
 		nodes: Map<string, GraphNode>,
 		nodeInstance: NodeInstance<string, string, unknown>,
 	): void {
-		// Skip if node already exists - don't overwrite existing connections
-		// This is important for cycle targets that are processed multiple times
-		if (nodes.has(nodeInstance.name)) {
+		// Check if a node with the same name already exists
+		const existingNode = nodes.get(nodeInstance.name);
+		if (existingNode) {
+			// If it's the same node instance (by reference), skip - it's a duplicate reference
+			if (existingNode.instance === nodeInstance) {
+				return;
+			}
+			// Different node instance with same name - generate unique name and add it
+			// This handles the case where user creates multiple nodes with the same name
+			const uniqueName = this.generateUniqueName(nodes, nodeInstance.name);
+			const connectionsMap = new Map<string, Map<number, ConnectionTarget[]>>();
+			connectionsMap.set('main', new Map());
+			nodes.set(uniqueName, {
+				instance: nodeInstance,
+				connections: connectionsMap,
+			});
 			return;
 		}
 

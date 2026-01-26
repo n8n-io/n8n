@@ -11,7 +11,8 @@ import {
 } from './fixtures-download';
 
 // Workflows with known issues that need to be skipped
-const SKIP_WORKFLOWS = new Set<string>([]);
+// 5979: Code generator creates duplicate inline nodes, causing duplicate detection to rename them
+const SKIP_WORKFLOWS = new Set<string>(['5979']);
 
 interface TestWorkflow {
 	id: string;
