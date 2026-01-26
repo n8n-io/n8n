@@ -52,17 +52,17 @@ function copyToInput() {
 <style lang="scss" scoped>
 .message-actions {
 	display: inline-flex;
-	gap: var(--chat--message-actions--gap, 4rem);
-	margin: 0 var(--chat--message-actions--gap, 4rem);
+	gap: var(--chat--message--actions--gap);
+	margin: 0 var(--chat--message--actions--gap);
 	align-items: center;
 }
 
 .icon {
-	color: var(--chat--color-light);
+	color: var(--chat--message--actions--color);
 	cursor: pointer;
 
 	&:hover {
-		color: var(--chat--color--primary);
+		color: var(--chat--message--actions--hover);
 	}
 }
 </style>

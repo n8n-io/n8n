@@ -298,7 +298,7 @@ onUnmounted(() => {
 		--chat--color--primary: var(--color--secondary);
 		--chat--color--secondary: var(--color--secondary);
 		--chat--color-light-shade-100: var(--color--foreground);
-		--chat--color-disabled: var(--color--text--tint-1);
+		--chat--color-disabled: var(--color--text--tint-2);
 
 		/* Body and Footer */
 		--chat--body--background: var(--color--background--light-2);
@@ -337,7 +337,6 @@ onUnmounted(() => {
 		--chat--input--background: transparent;
 		--chat--input--container--background: var(--color--background--light-3);
 		--chat--input--container--border: 1px solid var(--color--foreground--tint-1);
-		--chat--input--container--border-radius: 24px;
 		--chat--input--container--padding: 4px 8px;
 
 		/* Input Textarea */
@@ -353,8 +352,8 @@ onUnmounted(() => {
 		--chat--textarea--max-height: 200px;
 
 		/* Send Button - integrated into container */
-		--chat--input--send--button--color: var(--color--primary);
-		--chat--input--send--button--color-hover: var(--color--primary--shade-1);
+		--chat--input--send--button--color: var(--color--secondary);
+		--chat--input--send--button--color-hover: var(--color--primary);
 		--chat--input--send--button--background: transparent;
 		--chat--input--send--button--background-hover: var(--color--primary--shade-2);
 		--chat--input--send--button--border-radius: var(--radius--lg);
@@ -362,14 +361,15 @@ onUnmounted(() => {
 		--chat--input--send--button--margin: var(--spacing--sm);
 
 		/* File Button */
-		--chat--input--file--button--color: var(--color--text--tint-1);
-		--chat--input--file--button--color-hover: var(--color--text);
+		--chat--input--send--button--color: var(--color--secondary);
+		--chat--input--file--button--color-hover: var(--color--primary);
 		--chat--input--file--button--background: transparent;
-		--chat--input--file--button--background-hover: transparent;
+		--chat--input--file--button--background-hover: var(--color--primary--shade-2);
 
 		/* Message Action Buttons */
-		--chat--message-actions--gap: var(--spacing--sm);
-		--chat--message-actions--icon-size: 32px;
+		--chat--message--actions--color: var(--color--text--primary);
+		--chat--message--actions--gap: var(--spacing--sm);
+		--chat--message--actions--icon-size: 32px;
 	}
 
 	/* Hide the default chat header since we use our own */
@@ -409,6 +409,8 @@ onUnmounted(() => {
 			--chat--input--border: 1px solid var(--color--foreground);
 			--chat--input--border-active: 1px solid var(--color--primary);
 			--chat--color--primary-shade-50: var(--color--primary--shade-50);
+
+			--chat--message--actions--color: var(--chat--color-light-shade-100);
 		}
 	}
 }
