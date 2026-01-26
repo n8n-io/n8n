@@ -455,8 +455,10 @@ defineExpose({ focus, blur, select });
 	outline: none;
 	font-family: inherit;
 	color: var(--color--text--shade-1);
+}
 
-	@include focus-visible-ring;
+.input:focus {
+	box-shadow: 0 0 0 1px var(--color--secondary) inset;
 }
 
 .input::placeholder {
@@ -490,8 +492,10 @@ defineExpose({ focus, blur, select });
 	outline: none;
 	font-family: inherit;
 	color: var(--color--text--shade-1);
+}
 
-	@include focus-visible-ring;
+.textarea:focus {
+	box-shadow: 0 0 0 1px var(--color--secondary) inset;
 }
 
 .textarea::placeholder {
