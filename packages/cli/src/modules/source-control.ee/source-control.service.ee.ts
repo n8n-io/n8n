@@ -372,7 +372,7 @@ export class SourceControlService {
 					}
 				});
 
-			this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
+			await this.sourceControlExportService.rmFilesFromExportFolder(filesToBeDeleted);
 
 			const workflowsToBeExported = getNonDeletedResources(filesToPush, 'workflow');
 			await this.sourceControlExportService.exportWorkflowsToWorkFolder(workflowsToBeExported);

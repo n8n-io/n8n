@@ -504,3 +504,111 @@ export const isEditable = (message: ChatMessage): boolean => {
 export const isRegenerable = (message: ChatMessage): boolean => {
 	return message.type === 'ai';
 };
+
+type ChunkState =
+	| { type: 'normal' }
+	| { type: 'backtick-fence'; count: number }
+	| { type: 'tilde-fence'; count: number }
+	| { type: 'indented' };
+
+/**
+ * Splits markdown content into chunks to allow text selection while streaming.
+ * Splits on: paragraphs (double newlines), code blocks, and headers.
+ */
+export function splitMarkdownIntoChunks(content: string): string[] {
+	if (!content) {
+		return [];
+	}
+
+	const chunks: string[] = [];
+	let currentChunk = '';
+	let state: ChunkState = { type: 'normal' };
+	const lines = content.split('\n');
+
+	const endChunk = () => {
+		if (currentChunk.trim()) {
+			chunks.push(currentChunk.trimEnd());
+			currentChunk = '';
+		}
+	};
+
+	for (let i = 0; i < lines.length; i++) {
+		const line = lines[i];
+		const nextLine = i < lines.length - 1 ? lines[i + 1] : '';
+		const trimmedLine = line.trim();
+		const isIndented = /^( {4}|\t)/.test(line);
+		const hasValidFenceIndent = /^( {0,3})(`{3,}|~{3,})/.test(line);
+
+		// Handle state transitions based on current state
+		if (state.type === 'backtick-fence') {
+			// Check if this line closes the backtick fence
+			if (hasValidFenceIndent && trimmedLine.startsWith('```')) {
+				const fenceMatch = trimmedLine.match(/^(`+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+
+				if (fenceCount >= state.count) {
+					// Closing fence
+					currentChunk += line + '\n';
+					state = { type: 'normal' };
+					endChunk();
+					continue;
+				}
+			}
+		} else if (state.type === 'tilde-fence') {
+			// Check if this line closes the tilde fence
+			if (hasValidFenceIndent && trimmedLine.startsWith('~~~')) {
+				const fenceMatch = trimmedLine.match(/^(~+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+
+				if (fenceCount >= state.count) {
+					// Closing fence
+					currentChunk += line + '\n';
+					state = { type: 'normal' };
+					endChunk();
+					continue;
+				}
+			}
+		} else if (state.type === 'indented') {
+			// Exit indented code block if line is not indented and not empty
+			if (!isIndented && trimmedLine !== '') {
+				state = { type: 'normal' };
+				endChunk();
+			}
+		} else {
+			// state.type === 'normal'
+			// Check for fence openings
+			if (hasValidFenceIndent && trimmedLine.startsWith('```')) {
+				const fenceMatch = trimmedLine.match(/^(`+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+				state = { type: 'backtick-fence', count: fenceCount };
+			} else if (hasValidFenceIndent && trimmedLine.startsWith('~~~')) {
+				const fenceMatch = trimmedLine.match(/^(~+)/);
+				const fenceCount = fenceMatch ? fenceMatch[1].length : 0;
+				state = { type: 'tilde-fence', count: fenceCount };
+			} else if (isIndented && trimmedLine !== '') {
+				// Start indented code block
+				endChunk();
+				state = { type: 'indented' };
+			}
+		}
+
+		// Add line to current chunk
+		currentChunk += line + '\n';
+
+		// Split on double newlines or headers (only in normal state)
+		if (state.type === 'normal') {
+			const isEmptyLine = trimmedLine === '';
+			const nextLineIsEmpty = nextLine.trim() === '';
+			const nextLineIsHeader = nextLine.trim().startsWith('#');
+
+			if ((isEmptyLine && nextLineIsEmpty) || (isEmptyLine && nextLineIsHeader)) {
+				endChunk();
+			}
+		}
+	}
+
+	// Add remaining content as the last chunk
+	endChunk();
+
+	return chunks;
+}

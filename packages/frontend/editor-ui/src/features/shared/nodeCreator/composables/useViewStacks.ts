@@ -3,7 +3,9 @@ import type {
 	INodeCreateElement,
 	NodeCreateElement,
 	NodeFilterType,
+	SectionCreateElement,
 	SimplifiedNodeType,
+	SubcategoryCreateElement,
 } from '@/Interface';
 import {
 	AI_CATEGORY_MCP_NODES,
@@ -13,8 +15,11 @@ import {
 	AI_CODE_NODE_TYPE,
 	AI_NODE_CREATOR_VIEW,
 	AI_OTHERS_NODE_CREATOR_VIEW,
+	AI_SECTION_RECOMMENDED_TOOLS,
 	AI_SUBCATEGORY,
 	DEFAULT_SUBCATEGORY,
+	HUMAN_IN_THE_LOOP_CATEGORY,
+	NEW_TOOL_CATEGORIES,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
 import { defineStore } from 'pinia';
@@ -29,6 +34,8 @@ import {
 	flattenCreateElements,
 	groupItemsInSections,
 	isAINode,
+	nodeTypesToCreateElements,
+	mapToolSubcategoryIcon,
 	searchNodes,
 	sortNodeCreateElements,
 	subcategorizeItems,
@@ -41,8 +48,8 @@ import { useI18n } from '@n8n/i18n';
 import { useKeyboardNavigation } from './useKeyboardNavigation';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { AI_TRANSFORM_NODE_TYPE } from 'n8n-workflow';
-import type { NodeConnectionType, INodeInputFilter } from 'n8n-workflow';
+import { AI_TRANSFORM_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import type { NodeConnectionType, INodeFilter } from 'n8n-workflow';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 
@@ -63,6 +70,9 @@ import { getThemedValue } from '@/app/utils/nodeTypesUtils';
 
 import nodePopularity from 'virtual:node-popularity-data';
 
+export type NodeCreatorFilter = INodeFilter & {
+	conditions?: Array<(item: INodeCreateElement) => boolean>;
+};
 export interface ViewStack {
 	uuid?: string;
 	title?: string;
@@ -107,7 +117,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 	const activeStackItems = computed<INodeCreateElement[]>(() => {
 		const stack = getLastActiveStack();
-
 		if (!stack?.baselineItems) {
 			return stack.items ? finalizeItems(stack.items) : [];
 		}
@@ -115,7 +124,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		if (stack.search && searchBaseItems.value) {
 			let searchBase: INodeCreateElement[] = searchBaseItems.value;
 			const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
-
 			if (searchBaseItems.value.length === 0) {
 				searchBase = flattenCreateElements(stack.baselineItems ?? []);
 			}
@@ -136,14 +144,14 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 				}),
 			);
 
-			const groupedNodes = groupIfAiNodes(searchResults, stack.title, false) ?? searchResults;
+			const groupedNodes = groupIfAiNodes(searchResults, stack, false) ?? searchResults;
 			// Set the active index to the second item if there's a section
 			// as the first item is collapsable
 			stack.activeIndex = groupedNodes.some((node) => node.type === 'section') ? 1 : 0;
 
 			return groupedNodes;
 		}
-		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack.title, true));
+		return finalizeItems(groupIfAiNodes(stack.baselineItems, stack, true));
 	});
 
 	const activeViewStack = computed<ViewStack>(() => {
@@ -155,7 +163,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return {
 			...stack,
 			items: activeStackItems.value,
-			hasSearch: flatBaselineItems.length > 8 || stack?.hasSearch,
+			hasSearch: stack?.hasSearch ?? flatBaselineItems.length > 8,
 		};
 	});
 
@@ -174,6 +182,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		return stack.rootView === AI_OTHERS_NODE_CREATOR_VIEW;
 	}
 
+	function isHitlSubcategoryView(stack: ViewStack) {
+		return stack.rootView === HUMAN_IN_THE_LOOP_CATEGORY;
+	}
+
 	function getLastActiveStack() {
 		return viewStacks.value[viewStacks.value.length - 1];
 	}
@@ -187,7 +199,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	// Generate a delta between the global search results(all nodes) and the stack search results
 	const globalSearchItemsDiff = computed<INodeCreateElement[]>(() => {
 		const stack = getLastActiveStack();
-		if (!stack?.search || isAiSubcategoryView(stack)) return [];
+		if (!stack?.search || isAiSubcategoryView(stack) || isHitlSubcategoryView(stack)) return [];
 
 		const allNodes = getAllNodeCreateElements();
 		// Apply filtering for AI nodes if the current view is not the AI root view
@@ -200,7 +212,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		);
 
 		if (isAiRootView(stack)) {
-			globalSearchResult = groupIfAiNodes(globalSearchResult, stack.title, false);
+			globalSearchResult = groupIfAiNodes(globalSearchResult, stack, false);
 		}
 
 		const filteredItems = globalSearchResult.filter((item) => {
@@ -250,15 +262,27 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		});
 	}
 
+	const createActionFilter = computed(() => (connectionType: NodeConnectionType) => {
+		return (items: ActionTypeDescription[]) => {
+			// Filter out actions that are not compatible with the connection type
+			if (items.some((item) => item.outputConnectionType)) {
+				return items.filter((item) => item.outputConnectionType === connectionType);
+			}
+			return items;
+		};
+	});
+
+	// This function accepts a list of nodes and if they're in the AI category,
+	// it groups them into collapsible sections
 	function groupIfAiNodes(
 		items: INodeCreateElement[],
-		stackCategory: string | undefined,
+		stack: ViewStack | undefined,
 		sortAlphabetically: boolean,
 	) {
 		const aiNodes = items.filter((node): node is NodeCreateElement => isAINode(node));
 		const canvasHasAINodes = useCanvasStore().aiNodes.length > 0;
-		const isVectorStoresCategory = stackCategory === AI_CATEGORY_VECTOR_STORES;
-
+		const isVectorStoresCategory = stack?.title === AI_CATEGORY_VECTOR_STORES;
+		const isToolsCategory = stack?.title === AI_CATEGORY_TOOLS;
 		if (
 			aiNodes.length > 0 &&
 			(canvasHasAINodes || isAiRootView(getLastActiveStack()) || isVectorStoresCategory)
@@ -270,11 +294,10 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			aiSubNodes.forEach((node) => {
 				const subcategories = node.properties.codex?.subcategories ?? {};
 				const section = subcategories[AI_SUBCATEGORY]?.[0];
-
 				if (section) {
 					// Don't show sub sections for Vector Stores if we're currently viewing a 'Tools' stack
 					const subSection =
-						section === AI_CATEGORY_VECTOR_STORES && stackCategory === AI_CATEGORY_TOOLS
+						section === AI_CATEGORY_VECTOR_STORES && stack?.title === AI_CATEGORY_TOOLS
 							? undefined
 							: subcategories[section]?.[0];
 
@@ -304,6 +327,51 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 			const nonAiNodes = difference(items, aiNodes);
 			// Convert sectionsMap to array of sections
 			const sections = Array.from(sectionsMap.values());
+			// For tools view we group them into subcategories instead of sections
+			// don't group if we're searching, show all the nodes at the top level
+			if (isToolsCategory && !stack?.search) {
+				const actionsFilter = createActionFilter.value(NodeConnectionTypes.AiTool);
+				const subcategories = sections
+					.map((section): SubcategoryCreateElement | SectionCreateElement => {
+						// recommended tools need to stay as section
+						if (section.key === AI_SECTION_RECOMMENDED_TOOLS) {
+							return {
+								type: 'section',
+								key: section.key,
+								title: section.title,
+								children: nodeTypesToCreateElements(section.items, aiSubNodes),
+								showSeparator: true,
+							};
+						}
+						// other sections are converted to subcategories
+						return {
+							type: 'subcategory',
+							key: section.key,
+							properties: {
+								title: section.title,
+								icon: mapToolSubcategoryIcon(section.key),
+								items: nodeTypesToCreateElements(section.items, aiSubNodes),
+								new: NEW_TOOL_CATEGORIES.includes(section.key),
+								// define filter to remove actions that don't have ai_tool connection type
+								actionsFilter,
+								// vector stores and other node types might have actions, but we don't show them in the tools view
+								hideActions: true,
+							},
+						};
+					})
+					// make sure sections(recommended tools) are at the top
+					.sort((a, b) => {
+						if (a.type === 'section') {
+							return -1;
+						}
+						if (b.type === 'section') {
+							return 1;
+						}
+						return 0;
+					});
+
+				return subcategories;
+			}
 
 			return [
 				...nonAiNodes,
@@ -335,7 +403,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 	async function gotoCompatibleConnectionView(
 		connectionType: NodeConnectionType,
 		isOutput?: boolean,
-		filter?: INodeInputFilter,
+		filter?: NodeCreatorFilter,
 	) {
 		let nodesByConnectionType: { [key: string]: string[] };
 		let relatedAIView: { properties: NodeViewItem['properties'] } | undefined;
@@ -390,11 +458,15 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 					//       input connections. However, it does not work for output connections.
 					//       For that reason does it currently display nodes that are maybe not compatible
 					//       but then errors once it got selected by the user.
-					if (displayNode && filter?.nodes?.length) {
-						return filter.nodes.includes(i.key);
-					}
-					if (displayNode && filter?.excludedNodes?.length) {
-						return !filter.excludedNodes.includes(i.key);
+					if (displayNode) {
+						const isIncluded = filter?.nodes?.length ? filter?.nodes?.includes(i.key) : true;
+						const isExcluded = filter?.excludedNodes?.length
+							? filter?.excludedNodes?.includes(i.key)
+							: false;
+						const isConditionMet = filter?.conditions?.length
+							? filter?.conditions?.every((condition) => condition(i))
+							: true;
+						return isIncluded && !isExcluded && isConditionMet;
 					}
 
 					return displayNode;
@@ -405,13 +477,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 						subcategory: connectionType,
 					};
 				},
-				actionsFilter: (items: ActionTypeDescription[]) => {
-					// Filter out actions that are not compatible with the connection type
-					if (items.some((item) => item.outputConnectionType)) {
-						return items.filter((item) => item.outputConnectionType === connectionType);
-					}
-					return items;
-				},
+				actionsFilter: createActionFilter.value(connectionType),
 				hideActions: true,
 				preventBack: true,
 			},
@@ -427,13 +493,13 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 
 		if (!stack?.items) {
 			const subcategory = stack?.subcategory ?? DEFAULT_SUBCATEGORY;
-			let itemsInSubcategory = itemsBySubcategory.value[subcategory];
+			let itemsInSubcategory: INodeCreateElement[] | undefined =
+				itemsBySubcategory.value[subcategory];
 
 			const isAskAiEnabled = settingsStore.isAskAiEnabled;
 			if (!isAskAiEnabled) {
-				itemsInSubcategory = itemsInSubcategory.filter(
-					(item) => item.key !== AI_TRANSFORM_NODE_TYPE,
-				);
+				itemsInSubcategory =
+					itemsInSubcategory?.filter((item) => item.key !== AI_TRANSFORM_NODE_TYPE) ?? [];
 			}
 			const sections = stack.sections;
 
@@ -530,5 +596,6 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 		pushViewStack,
 		popViewStack,
 		getAllNodeCreateElements,
+		isHitlSubcategoryView,
 	};
 });
