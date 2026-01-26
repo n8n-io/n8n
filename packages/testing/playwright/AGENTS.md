@@ -31,9 +31,36 @@ All tests should start with `n8n.start.*` methods. See `composables/TestEntryCom
 | `withUser(user)` | Isolated browser context per user |
 | `withProjectFeatures()` | Enable sharing/folders/permissions |
 
-## Multi-User Testing
+## Test Isolation
 
-For tests requiring multiple users with isolated browser sessions:
+Tests run in parallel. Design tests to be fully isolated so they don't interfere with each other.
+
+### Unique Identifiers
+
+Use `nanoid` for unique test data:
+
+```typescript
+const credentialName = `Test Credential ${nanoid()}`;
+const workflow = await api.workflows.createWorkflow({
+  name: `Test Workflow ${nanoid()}`,
+});
+```
+
+### Dynamic User Creation
+
+Create users dynamically via the public API:
+
+```typescript
+const member = await api.publicApi.createUser({
+  email: `member-${nanoid()}@test.com`,
+  firstName: 'Test',
+  lastName: 'Member',
+});
+```
+
+### Isolated Browser Contexts
+
+For UI tests requiring multiple users, create isolated browser contexts:
 
 ```typescript
 // 1. Create users via public API
@@ -50,24 +77,6 @@ await member2Page.navigate.toCredentials();
 ```
 
 **Reference:** `tests/e2e/building-blocks/user-service.spec.ts`
-
-## Worker Isolation (Fresh Database)
-
-Use `test.use()` at file top-level with unique capability config:
-
-```typescript
-// my-isolated-tests.spec.ts
-import { test, expect } from '../fixtures/base';
-
-// Must be top-level, not inside describe block
-test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
-
-test('test with clean state', async ({ n8n }) => {
-  // Fresh container with reset database
-});
-```
-
-## Anti-Patterns
 
 | Pattern | Why | Use Instead |
 |---------|-----|-------------|
@@ -115,3 +124,115 @@ See [README.md#debugging](./README.md#debugging) for detailed instructions on:
 | Composable example | `composables/WorkflowComposer.ts` |
 | API helpers | `services/api-helper.ts` |
 | Capabilities | `fixtures/capabilities.ts` |
+
+```typescript
+const member = await api.publicApi.createUser({...});
+const memberN8n = await n8n.start.withUser(member);
+
+await memberN8n.navigate.toWorkflows();
+await expect(memberN8n.workflows.cards.getWorkflow(workflowName)).toBeVisible();
+```
+### Isolated API Contexts
+
+For API-only operations as another user, create isolated API contexts (no browser needed):
+
+```typescript
+const member = await api.publicApi.createUser({...});
+const memberApi = await api.createApiForUser(member);
+
+const memberProject = await memberApi.projects.getMyPersonalProject();
+await memberApi.credentials.createCredential({...});
+```
+
+### Identity-Based Assertions
+
+Assert by identity (name) rather than count for parallel-safe tests:
+
+```typescript
+await expect(credentialDropdown.getByText(testCredName)).toBeVisible();
+await expect(credentialDropdown.getByText(devCredName)).toBeHidden();
+```
+
+## Worker Isolation (Fresh Database)
+
+Use `test.use()` at file top-level with unique capability config:
+
+```typescript
+// my-isolated-tests.spec.ts
+import { test, expect } from '../fixtures/base';
+
+// Must be top-level, not inside describe block
+test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+
+test('test with clean state', async ({ n8n }) => {
+  // Fresh container with reset database
+});
+```
+
+## Data Setup
+
+Use API helpers for fast, reliable test data setup. Reserve UI interactions for testing UI behavior:
+
+```typescript
+// API for data setup
+const credential = await api.credentials.createCredential({
+  name: `Test Credential ${nanoid()}`,
+  type: 'notionApi',
+  data: { apiKey: 'test' },
+});
+
+const workflow = await api.workflows.createWorkflow({
+  name: `Test Workflow ${nanoid()}`,
+  nodes: [...],
+});
+
+// UI for verification
+await n8n.navigate.toCredentials();
+await expect(n8n.credentials.cards.getCredential(credential.name)).toBeVisible();
+```
+
+## Feature Enablement
+
+The `n8n` fixture automatically enables project features. For API-only tests (no `n8n` fixture), enable features explicitly:
+
+```typescript
+test('API-only test', async ({ api }) => {
+  await api.enableProjectFeatures();
+  // ...
+});
+```
+
+## Code Style
+
+- Use specialized locators: `page.getByRole('button')` over `page.locator('[role=button]')`
+- Use `nanoid()` for unique identifiers (parallel-safe)
+- API setup over UI setup when possible (faster, more reliable)
+
+## Architecture
+
+```
+Tests (*.spec.ts)
+    ↓ uses
+Composables (*Composer.ts) - Multi-step business workflows
+    ↓ orchestrates
+Page Objects (*Page.ts) - UI interactions
+    ↓ extends
+BasePage - Common utilities
+```
+
+See `CONTRIBUTING.md` for detailed patterns and conventions.
+
+## Reference Files
+
+| Purpose | File |
+|---------|------|
+| Multi-user testing | `tests/e2e/building-blocks/user-service.spec.ts` |
+| Entry points | `composables/TestEntryComposer.ts` |
+| Page object example | `pages/CanvasPage.ts` |
+| Composable example | `composables/WorkflowComposer.ts` |
+| API helpers | `services/api-helper.ts` |
+| Capabilities | `fixtures/capabilities.ts` |
+
+## Shard Rebalancing
+
+When refactoring, adding, or moving significant numbers of tests, consider rebalancing test shards to maintain even CI distribution. See `docs/ORCHESTRATION.md` for details.

@@ -1,5 +1,6 @@
 import type { AIMessage } from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
+import type { ZodType } from 'zod';
 
 /**
  * Represents a tool call request from an LLM.
@@ -94,30 +95,79 @@ export type ContentBlock =
 	| GeminiThoughtSignatureBlock;
 
 /**
+ * Google/Gemini-specific thinking metadata.
+ */
+export type GoogleThinkingMetadata = {
+	/** Thought signature for Gemini extended thinking */
+	thoughtSignature?: string;
+};
+
+/**
+ * Anthropic-specific thinking metadata.
+ */
+export type AnthropicThinkingMetadata = {
+	/** Thinking content from extended thinking mode */
+	thinkingContent?: string;
+	/** Type of thinking block (thinking or redacted_thinking) */
+	thinkingType?: 'thinking' | 'redacted_thinking';
+	/** Cryptographic signature for thinking blocks */
+	thinkingSignature?: string;
+};
+
+/**
+ * HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action.
+ */
+export type HitlMetadata = {
+	/** The gated tool node name that will be executed after approval */
+	gatedToolNodeName: string;
+	/** The tool name as seen by the LLM */
+	toolName: string;
+	/** Original input for the gated tool */
+	originalInput: IDataObject;
+};
+
+/**
+ * Thinking metadata extracted from LLM responses (Anthropic/Google extended thinking).
+ */
+export type ThinkingMetadata = {
+	google?: GoogleThinkingMetadata;
+	anthropic?: AnthropicThinkingMetadata;
+};
+
+/**
  * Metadata for engine requests and responses.
  */
 export type RequestResponseMetadata = {
 	/** Item index being processed */
 	itemIndex?: number;
+	/** Custom parent node name for log tree structure (overrides default parent) */
+	parentNodeName?: string;
 	/** Previous tool call requests (for multi-turn conversations) */
 	previousRequests?: ToolCallData[];
 	/** Current iteration count (for max iterations enforcement) */
 	iterationCount?: number;
 	/** Google/Gemini-specific metadata */
-	google?: {
-		/** Thought signature for Gemini extended thinking */
-		thoughtSignature?: string;
-	};
+	google?: GoogleThinkingMetadata;
 	/** Anthropic-specific metadata */
-	anthropic?: {
-		/** Thinking content from extended thinking mode */
-		thinkingContent?: string;
-		/** Type of thinking block (thinking or redacted_thinking) */
-		thinkingType?: 'thinking' | 'redacted_thinking';
-		/** Cryptographic signature for thinking blocks */
-		thinkingSignature?: string;
-	};
+	anthropic?: AnthropicThinkingMetadata;
+	/** HITL (Human-in-the-Loop) metadata - presence indicates this is an HITL tool action */
+	hitl?: HitlMetadata;
 };
+
+/**
+ * Metadata attached to LangChain tools for tracking source nodes and HITL gating.
+ * Extends Record<string, unknown> for compatibility with LangChain's Tool.metadata type.
+ */
+export interface ToolMetadata extends Record<string, unknown> {
+	/** The n8n node name that provides this tool */
+	sourceNodeName?: string;
+	/** For HITL tools, the gated tool node that will be executed after approval */
+	gatedToolNodeName?: string;
+	/** The original schema of the tool */
+	originalSchema?: ZodType;
+	/** Whether this tool came from a toolkit (vs. a standalone tool node) */
+	isFromToolkit?: boolean;
+}
 
 /**
  * Type guard to check if a block is a thinking content block

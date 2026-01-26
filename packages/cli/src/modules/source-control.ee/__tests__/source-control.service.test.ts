@@ -194,6 +194,7 @@ describe('SourceControlService', () => {
 			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
 			);
+			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValueOnce(new Set());
 
 			(isContainedWithin as jest.Mock).mockReturnValue(true);
 
