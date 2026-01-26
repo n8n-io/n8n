@@ -55,6 +55,13 @@ export class RuleRunner {
 	}
 
 	/**
+	 * Check if a rule is fixable
+	 */
+	isRuleFixable(ruleId: string): boolean {
+		return this.rules.get(ruleId)?.fixable ?? false;
+	}
+
+	/**
 	 * Get enabled rule IDs
 	 */
 	getEnabledRules(): string[] {
