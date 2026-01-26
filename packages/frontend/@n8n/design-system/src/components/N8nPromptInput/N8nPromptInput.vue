@@ -439,7 +439,7 @@ defineExpose({
 					<span v-n8n-html="creditsInfo" :class="{ [$style.noCredits]: hasNoCredits }"></span>
 					<N8nTooltip
 						:content="creditsTooltipContent"
-						:popper-class="$style.infoPopper"
+						:content-class="$style.infoContent"
 						:show-after="300"
 						placement="top"
 					>
@@ -604,7 +604,7 @@ defineExpose({
 	}
 }
 
-.infoPopper {
+.infoContent {
 	min-width: 200px;
 	line-height: 18px;
 

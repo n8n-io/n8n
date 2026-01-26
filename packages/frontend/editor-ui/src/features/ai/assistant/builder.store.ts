@@ -59,6 +59,8 @@ export type WorkflowBuilderJourneyEventType =
 interface WorkflowBuilderJourneyEventProperties {
 	node_type?: string;
 	type?: string;
+	count?: number;
+	source?: string;
 	revert_user_message_id?: string;
 	revert_version_id?: string;
 	no_versions_reverted?: number;
@@ -597,7 +599,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		prepareForStreaming(text, userMessageId, revertVersion);
 
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
-		const payload = createBuilderPayload(text, userMessageId, {
+		const payload = await createBuilderPayload(text, userMessageId, {
 			quickReplyType,
 			workflow: workflowsStore.workflow,
 			executionData: executionResult,

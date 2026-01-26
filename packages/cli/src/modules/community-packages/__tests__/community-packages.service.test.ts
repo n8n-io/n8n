@@ -810,4 +810,26 @@ describe('CommunityPackagesService', () => {
 			);
 		});
 	});
+
+	describe('handleInstallEvent', () => {
+		test('should call unloadPackage before loadPackage to handle already-loaded packages', async () => {
+			const callOrder: string[] = [];
+			loadNodesAndCredentials.unloadPackage.mockImplementation(async () => {
+				callOrder.push('unloadPackage');
+			});
+			loadNodesAndCredentials.loadPackage.mockImplementation(async () => {
+				callOrder.push('loadPackage');
+				return mock<PackageDirectoryLoader>();
+			});
+
+			jest.spyOn(communityPackagesService as any, 'downloadPackage').mockResolvedValue(undefined);
+
+			await communityPackagesService.handleInstallEvent({
+				packageName: 'n8n-nodes-test',
+				packageVersion: '1.0.0',
+			});
+
+			expect(callOrder).toEqual(['unloadPackage', 'loadPackage']);
+		});
+	});
 });

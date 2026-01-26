@@ -11,6 +11,13 @@ export type {
 	Controller,
 	CorsOptions,
 	Method,
-	RateLimit,
 	StaticRouterMetadata,
 } from './types';
+export {
+	type RateLimiterLimits,
+	type BodyKeyedRateLimiterConfig,
+	type UserKeyedRateLimiterConfig,
+	type KeyedRateLimiterConfig,
+	createBodyKeyedRateLimiter,
+	createUserKeyedRateLimiter,
+} from './rate-limit';

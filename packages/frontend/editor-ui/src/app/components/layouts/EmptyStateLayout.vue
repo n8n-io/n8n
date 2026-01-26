@@ -1,105 +1,47 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nCard, N8nHeading, N8nText, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
-import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
-import TemplatesDataQualityInlineSection from '@/experiments/templatesDataQuality/components/TemplatesDataQualityInlineSection.vue';
+import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
+import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 import EmptyStateBuilderPrompt from '@/experiments/emptyStateBuilderPrompt/components/EmptyStateBuilderPrompt.vue';
-import type { IUser } from 'n8n-workflow';
 
 const emit = defineEmits<{
 	'click:add': [];
 }>();
 
-const route = useRoute();
 const i18n = useI18n();
-const usersStore = useUsersStore();
+const route = useRoute();
+const bannersStore = useBannersStore();
 const projectsStore = useProjectsStore();
-const sourceControlStore = useSourceControlStore();
 const projectPages = useProjectPages();
-const readyToRunStore = useReadyToRunStore();
-const templatesDataQualityStore = useTemplatesDataQualityStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 
-const isLoadingReadyToRun = ref(false);
-
-const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
-const personalProject = computed(() => projectsStore.personalProject);
-const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
-
-const projectPermissions = computed(() => {
-	return getResourcePermissions(
-		projectsStore.currentProject?.scopes ?? personalProject.value?.scopes,
-	);
-});
-
-const showBuilderPrompt = computed(() => {
-	return (
-		emptyStateBuilderPromptStore.isFeatureEnabled &&
-		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create
-	);
-});
-
-const emptyListDescription = computed(() => {
-	if (readOnlyEnv.value) {
-		return i18n.baseText('workflows.empty.description.readOnlyEnv');
-	} else if (!projectPermissions.value.workflow.create) {
-		return i18n.baseText('workflows.empty.description.noPermission');
-	} else {
-		return i18n.baseText('workflows.empty.description');
-	}
-});
-
-const showReadyToRunCard = computed(() => {
-	return (
-		isLoadingReadyToRun.value ||
-		readyToRunStore.getCardVisibility(projectPermissions.value.workflow.create, readOnlyEnv.value)
-	);
-});
-
-const showTemplatesDataQualityInline = computed(() => {
-	return (
-		templatesDataQualityStore.isFeatureEnabled() &&
-		!readOnlyEnv.value &&
-		projectPermissions.value.workflow.create
-	);
-});
-
-const handleReadyToRunClick = async () => {
-	if (isLoadingReadyToRun.value) return;
-
-	isLoadingReadyToRun.value = true;
-	const projectId = projectPages.isOverviewSubPage
-		? personalProject.value?.id
-		: (route.params.projectId as string);
-
-	try {
-		await readyToRunStore.claimCreditsAndOpenWorkflow(
-			'card',
-			route.params.folderId as string,
-			projectId,
-		);
-	} catch {
-		isLoadingReadyToRun.value = false;
-		// Error already shown by store functions
-	}
-};
+const {
+	showBuilderPrompt,
+	showRecommendedTemplatesInline,
+	builderHeading,
+	emptyStateHeading,
+	emptyStateDescription,
+	canCreateWorkflow,
+} = useWorkflowsEmptyState();
 
 const addWorkflow = () => {
 	emit('click:add');
 };
 
+const containerStyle = computed(() => ({
+	minHeight: `calc(100vh - ${bannersStore.bannersHeight}px)`,
+}));
+
 const builderProjectId = computed(() =>
-	projectPages.isOverviewSubPage ? personalProject.value?.id : (route.params.projectId as string),
+	projectPages.isOverviewSubPage ? projectsStore.personalProject?.id : (route.params.projectId as string),
 );
 
 const builderParentFolderId = computed(() => route.params.folderId as string | undefined);
@@ -114,35 +56,21 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 </script>
 
 <template>
-	<div :class="$style.emptyStateLayout">
+	<div
+		:class="[
+			$style.emptyStateLayout,
+			{ [$style.noTemplatesContent]: !showRecommendedTemplatesInline && !showBuilderPrompt },
+		]"
+		:style="containerStyle"
+	>
 		<div :class="$style.content">
-			<div v-if="showBuilderPrompt" :class="$style.welcomeBuilder">
-				<N8nHeading tag="h1" size="xlarge">
-					{{
-						currentUser.firstName
-							? i18n.baseText('workflows.empty.heading.builder', {
-									interpolate: { name: currentUser.firstName },
-								})
-							: i18n.baseText('workflows.empty.heading.builder.userNotSetup')
-					}}
-				</N8nHeading>
-			</div>
-			<div v-else :class="$style.welcome">
-				<N8nHeading tag="h1" size="2xlarge" :class="$style.welcomeTitle">
-					{{
-						currentUser.firstName
-							? i18n.baseText('workflows.empty.heading', {
-									interpolate: { name: currentUser.firstName },
-								})
-							: i18n.baseText('workflows.empty.heading.userNotSetup')
-					}}
-				</N8nHeading>
-				<N8nText size="large" color="text-base" :class="$style.welcomeDescription">
-					{{ emptyListDescription }}
-				</N8nText>
-			</div>
-
+			<!-- State 1: AI Builder -->
 			<template v-if="showBuilderPrompt">
+				<div :class="$style.welcomeBuilder">
+					<N8nHeading tag="h1" size="xlarge">
+						{{ builderHeading }}
+					</N8nHeading>
+				</div>
 				<EmptyStateBuilderPrompt
 					data-test-id="empty-state-builder-prompt"
 					:project-id="builderProjectId"
@@ -151,33 +79,48 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 					@start-from-scratch="addWorkflow"
 				/>
 			</template>
-			<template v-else>
-				<div
-					v-if="!readOnlyEnv && projectPermissions.workflow.create"
-					:class="$style.actionsContainer"
-				>
-					<N8nCard
-						v-if="showReadyToRunCard"
-						:class="[$style.actionCard, { [$style.loading]: isLoadingReadyToRun }]"
-						:hoverable="!isLoadingReadyToRun"
-						data-test-id="ready-to-run-card"
-						@click="handleReadyToRunClick"
-					>
-						<div :class="$style.cardContent">
-							<N8nIcon
-								:class="$style.cardIcon"
-								:icon="isLoadingReadyToRun ? 'spinner' : 'sparkles'"
-								color="foreground-dark"
-								:stroke-width="1.5"
-								:spin="isLoadingReadyToRun"
-							/>
-							<N8nText size="large" class="mt-xs">
-								{{ i18n.baseText('workflows.empty.readyToRun') }}
-							</N8nText>
-						</div>
-					</N8nCard>
 
+			<!-- State 2: Recommended Templates -->
+			<template v-else-if="showRecommendedTemplatesInline">
+				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
+					{{ emptyStateHeading }}
+				</N8nHeading>
+
+				<div :class="$style.templatesSection">
+					<RecommendedTemplatesSection />
+
+					<div :class="$style.orDivider">
+						<N8nText size="large">
+							{{ i18n.baseText('generic.or') }}
+						</N8nText>
+					</div>
+
+					<div :class="$style.actionButtons">
+						<ReadyToRunButton type="secondary" size="large" />
+						<N8nButton
+							type="secondary"
+							icon="file"
+							size="large"
+							data-test-id="start-from-scratch-button"
+							@click="addWorkflow"
+						>
+							{{ i18n.baseText('workflows.empty.startFromScratch') }}
+						</N8nButton>
+					</div>
+				</div>
+			</template>
+
+			<!-- State 3: Fallback -->
+			<template v-else>
+				<N8nHeading tag="h1" size="2xlarge" bold :class="$style.welcomeTitle">
+					{{ emptyStateHeading }}
+				</N8nHeading>
+				<div :class="$style.fallbackContent">
+					<N8nText tag="p" size="large" color="text-base">
+						{{ emptyStateDescription }}
+					</N8nText>
 					<N8nCard
+						v-if="canCreateWorkflow"
 						:class="$style.actionCard"
 						hoverable
 						data-test-id="new-workflow-card"
@@ -196,23 +139,27 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 						</div>
 					</N8nCard>
 				</div>
-				<div v-if="showTemplatesDataQualityInline" :class="$style.templatesSection">
-					<TemplatesDataQualityInlineSection />
-				</div>
 			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
+
 .emptyStateLayout {
 	display: flex;
 	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	min-height: 100vh;
-	width: 100%;
-	padding: var(--spacing--lg);
+	padding: var(--spacing--4xl) var(--spacing--2xl) 0;
+	max-width: var(--content-container--width);
+
+	@media (max-width: vars.$breakpoint-lg) {
+		padding: var(--spacing--xl) var(--spacing--xs) 0;
+	}
+
+	&.noTemplatesContent {
+		padding-top: var(--spacing--3xl);
+	}
 }
 
 .content {
@@ -220,12 +167,6 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 	flex-direction: column;
 	align-items: center;
 	width: 100%;
-	max-width: 1024px;
-	text-align: center;
-}
-
-.welcome {
-	margin-bottom: var(--spacing--2xl);
 }
 
 .welcomeBuilder {
@@ -233,18 +174,18 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 }
 
 .welcomeTitle {
-	margin-bottom: var(--spacing--md);
+	margin-bottom: var(--spacing--2xl);
 }
 
-.welcomeDescription {
-	max-width: 480px;
+.templatesSection {
+	width: 100%;
 }
 
-.actionsContainer {
+.fallbackContent {
 	display: flex;
-	gap: var(--spacing--sm);
-	justify-content: center;
-	flex-wrap: wrap;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
 }
 
 .actionCard {
@@ -254,6 +195,7 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	margin-top: var(--spacing--2xl);
 	transition:
 		transform 0.2s ease,
 		box-shadow 0.2s ease;
@@ -265,11 +207,6 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 		.cardIcon svg {
 			color: var(--color--primary);
 		}
-	}
-
-	&.loading {
-		pointer-events: none;
-		opacity: 0.7;
 	}
 }
 
@@ -290,7 +227,15 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 	}
 }
 
-.templatesSection {
-	padding-inline: var(--spacing--md);
+.orDivider {
+	margin-top: var(--spacing--lg);
+	text-align: center;
+}
+
+.actionButtons {
+	display: flex;
+	justify-content: center;
+	gap: var(--spacing--xs);
+	margin: var(--spacing--lg) 0;
 }
 </style>
