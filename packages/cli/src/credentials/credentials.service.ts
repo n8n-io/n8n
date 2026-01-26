@@ -383,6 +383,7 @@ export class CredentialsService {
 				scopes: c.scopes,
 				isManaged: c.isManaged,
 				isGlobal: c.isGlobal,
+				isResolvable: c.isResolvable,
 			}));
 	}
 
