@@ -221,8 +221,8 @@ function onFocusNode() {
 	}
 }
 
-.forceVisible {
-	opacity: 1 !important;
+.canvasNodeToolbar.forceVisible .canvasNodeToolbarItems {
+	opacity: 1;
 }
 
 .statusIcons {
