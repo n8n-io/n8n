@@ -345,18 +345,25 @@ export function findOneFromModelsResponse(
 	response: ChatModelsResponse,
 	providerSettings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>,
 ): ChatModelDto | undefined {
+	let bestModel: ChatModelDto | undefined;
+	let bestPriority = -Infinity;
+
 	for (const provider of chatHubProviderSchema.options) {
 		const settings = isLlmProvider(provider) ? providerSettings[provider] : undefined;
 		const availableModels = response[provider].models.filter(
 			(agent) => !settings || isAllowedModel(settings, agent.model),
 		);
 
-		if (availableModels.length > 0) {
-			return availableModels[0];
+		for (const model of availableModels) {
+			const priority = model.metadata.priority ?? 0;
+			if (priority > bestPriority) {
+				bestPriority = priority;
+				bestModel = model;
+			}
 		}
 	}
 
-	return undefined;
+	return bestModel;
 }
 
 export function isAllowedModel(
