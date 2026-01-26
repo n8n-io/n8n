@@ -3,9 +3,15 @@ import { Logger, inProduction } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ensureError } from 'n8n-workflow';
 
-import { getCommunityNodeTypes, StrapiCommunityNodeType } from './community-node-types-utils';
+import {
+	getCommunityNodeTypes,
+	getCommunityNodesMetadata,
+	StrapiCommunityNodeType,
+	type CommunityNodesMetadata,
+} from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
+import { buildStrapiUpdateQuery } from './strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 const RETRY_INTERVAL = 5 * 60 * 1000;
@@ -22,13 +28,77 @@ export class CommunityNodeTypesService {
 		private communityPackagesService: CommunityPackagesService,
 	) {}
 
+	private async detectUpdates(
+		environment: 'staging' | 'production',
+	): Promise<{ typesToUpdate?: number[]; scheduleRetry?: boolean }> {
+		let communityNodesMetadata: CommunityNodesMetadata[] = [];
+		try {
+			communityNodesMetadata = await getCommunityNodesMetadata(environment);
+		} catch (error) {
+			this.logger.error('Failed to fetch community nodes metadata', {
+				error: ensureError(error),
+			});
+			return { scheduleRetry: true };
+		}
+
+		const typesToUpdate: number[] = [];
+		const metadataNames = new Set(communityNodesMetadata.map((entry) => entry.name));
+
+		// Detect updates and new entries
+		for (const entry of communityNodesMetadata) {
+			const nodeType = this.communityNodeTypes.get(entry.name);
+
+			if (
+				!nodeType ||
+				nodeType.npmVersion !== entry.npmVersion ||
+				nodeType.updatedAt !== entry.updatedAt
+			) {
+				this.logger.debug(
+					`Detected update for community node type: name - ${entry.name}; npmVersion - ${entry.npmVersion}; updatedAt - ${entry.updatedAt};`,
+				);
+				typesToUpdate.push(entry.id);
+			}
+		}
+
+		// Detect and remove deleted entries
+		for (const [name, nodeType] of this.communityNodeTypes.entries()) {
+			if (!metadataNames.has(name)) {
+				this.logger.debug(
+					`Detected removal of community node type: name - ${name}; id - ${nodeType.id};`,
+				);
+				this.communityNodeTypes.delete(name);
+			}
+		}
+
+		return { typesToUpdate };
+	}
+
 	private async fetchNodeTypes() {
 		try {
+			// Cloud sets ENVIRONMENT to 'production' or 'staging' depending on the environment
+			const environment = this.detectEnvironment();
+
 			let data: StrapiCommunityNodeType[] = [];
 			if (this.config.enabled && this.config.verifiedEnabled) {
-				// Cloud sets ENVIRONMENT to 'production' or 'staging' depending on the environment
-				const environment = this.detectEnvironment();
-				data = await getCommunityNodeTypes(environment);
+				if (this.communityNodeTypes.size === 0) {
+					data = await getCommunityNodeTypes(environment);
+					this.updateCommunityNodeTypes(data);
+					return;
+				}
+				const { typesToUpdate, scheduleRetry } = await this.detectUpdates(environment);
+
+				if (scheduleRetry) {
+					this.setTimestampForRetry();
+					return;
+				}
+
+				if (!typesToUpdate?.length) {
+					this.lastUpdateTimestamp = Date.now();
+					return;
+				}
+
+				const qs = buildStrapiUpdateQuery(typesToUpdate);
+				data = await getCommunityNodeTypes(environment, qs);
 			}
 
 			this.updateCommunityNodeTypes(data);
@@ -54,15 +124,15 @@ export class CommunityNodeTypesService {
 			return;
 		}
 
-		this.resetCommunityNodeTypes();
-
-		this.communityNodeTypes = new Map(nodeTypes.map((nodeType) => [nodeType.name, nodeType]));
+		this.setCommunityNodeTypes(nodeTypes);
 
 		this.lastUpdateTimestamp = Date.now();
 	}
 
-	private resetCommunityNodeTypes() {
-		this.communityNodeTypes = new Map();
+	private setCommunityNodeTypes(nodeTypes: StrapiCommunityNodeType[]) {
+		for (const nodeType of nodeTypes) {
+			this.communityNodeTypes.set(nodeType.name, nodeType);
+		}
 	}
 
 	private updateRequired() {
