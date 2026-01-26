@@ -27,11 +27,14 @@
     "prepare-test-image": "node scripts/build-test-image.mjs",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "janitor": "tsx scripts/run-janitor.ts",
+    "janitor:fix": "tsx scripts/run-janitor.ts --fix --write"
   },
   "devDependencies": {
     "@currents/playwright": "catalog:e2e",
     "@n8n/api-types": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/db": "workspace:*",
