@@ -1,7 +1,14 @@
 import type { ComputedRef, Ref } from 'vue';
 import type { EventHookOn } from '@vueuse/core';
 import type { CRDTAwareness, CRDTMap } from '@n8n/crdt';
+import type { INodeExecutionData } from 'n8n-workflow';
 import type { WorkflowAwarenessState } from './awareness.types';
+
+/** Pinned data change event payload */
+export interface PinnedDataChange {
+	nodeId: string;
+	data: INodeExecutionData[] | undefined;
+}
 
 /**
  * Document sync state machine.
@@ -311,4 +318,31 @@ export interface WorkflowDocument {
 	 * Use for node properties that are NOT in node.parameters.
 	 */
 	setNodeSetting?(nodeId: string, key: string, value: unknown): void;
+
+	// --- Pinned Data (CRDT only) ---
+
+	/**
+	 * Get pinned data for a node by ID.
+	 * Returns undefined if node has no pinned data or if using REST document.
+	 */
+	getPinnedData?(nodeId: string): INodeExecutionData[] | undefined;
+
+	/**
+	 * Set pinned data for a node by ID.
+	 * @param nodeId - The node ID
+	 * @param data - The pinned data array
+	 */
+	setPinnedData?(nodeId: string, data: INodeExecutionData[]): void;
+
+	/**
+	 * Remove pinned data for a node by ID.
+	 * @param nodeId - The node ID
+	 */
+	removePinnedData?(nodeId: string): void;
+
+	/**
+	 * Subscribe to pinned data changes (CRDT only).
+	 * Fires when pinned data is added, updated, or removed for any node.
+	 */
+	onPinnedDataChange?: EventHookOn<PinnedDataChange>;
 }

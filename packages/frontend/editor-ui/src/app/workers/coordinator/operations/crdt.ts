@@ -34,6 +34,7 @@ import {
 	type INode,
 	type INodeTypeDescription,
 	type INodeTypes,
+	type IPinData,
 	type SeedValueDeepFn,
 	type SetNestedValueFn,
 } from 'n8n-workflow';
@@ -414,6 +415,7 @@ async function seedDocument(
 				nodes: nodesWithHandles,
 				connections: workflowData.connections,
 				settings: workflowData.settings,
+				pinData: workflowData.pinData,
 			},
 			seedValueDeep as SeedValueDeepFn,
 		);
@@ -473,6 +475,7 @@ interface WorkflowData {
 	nodes: INode[];
 	connections: IConnections;
 	settings?: Record<string, unknown>;
+	pinData?: IPinData;
 	versionId?: string;
 }
 
@@ -671,6 +674,7 @@ async function saveWorkflowViaRest(baseUrl: string, room: WorkflowRoom): Promise
 			nodes,
 			connections,
 			settings: workflow.settings,
+			pinData: workflow.pinData,
 			autosaved: true,
 		};
 

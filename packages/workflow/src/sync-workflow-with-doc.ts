@@ -6,7 +6,13 @@
  * - Worker Mode (packages/frontend/editor-ui/src/app/workers/coordinator)
  */
 
-import type { IConnections, INode, NodeConnectionType } from './interfaces';
+import type {
+	IConnections,
+	INode,
+	INodeExecutionData,
+	IPinData,
+	NodeConnectionType,
+} from './interfaces';
 import type { Workflow } from './workflow';
 import type { CRDTEdge } from './crdt-workflow-helpers';
 
@@ -60,10 +66,12 @@ export function syncWorkflowWithDoc(doc: CRDTDocLike, workflow: Workflow): Unsub
 	const meta = doc.getMap<unknown>('meta');
 	const nodesMap = doc.getMap<unknown>('nodes');
 	const edgesMap = doc.getMap<unknown>('edges');
+	const pinnedDataMap = doc.getMap<unknown>('pinnedData');
 
 	/**
 	 * Build a lookup map from node ID to node name.
 	 * Used for converting edges (use node IDs) to IConnections (use node names).
+	 * Also used for converting pinned data from ID-keyed to name-keyed.
 	 */
 	function getNodeNameById(): Map<string, string> {
 		const map = new Map<string, string>();
@@ -92,6 +100,32 @@ export function syncWorkflowWithDoc(doc: CRDTDocLike, workflow: Workflow): Unsub
 		workflow.setConnections(connections);
 	}
 
+	/**
+	 * Sync pinned data from CRDT to Workflow.setPinData().
+	 * Converts from ID-keyed (CRDT) to name-keyed (Workflow) format.
+	 */
+	function syncPinData(): void {
+		const nodeNameById = getNodeNameById();
+		const pinData: IPinData = {};
+
+		for (const [nodeId, value] of pinnedDataMap.entries()) {
+			const nodeName = nodeNameById.get(nodeId);
+			if (!nodeName) continue;
+
+			// Handle both plain array and CRDT array (with toJSON)
+			const data: INodeExecutionData[] =
+				value && typeof value === 'object' && 'toJSON' in value
+					? (value as { toJSON(): INodeExecutionData[] }).toJSON()
+					: (value as INodeExecutionData[]);
+
+			if (data && data.length > 0) {
+				pinData[nodeName] = data;
+			}
+		}
+
+		workflow.setPinData(Object.keys(pinData).length > 0 ? pinData : undefined);
+	}
+
 	// Sync meta changes (name, settings)
 	const metaUnsub = meta.onDeepChange(() => {
 		const name = meta.get('name') as string | undefined;
@@ -110,6 +144,8 @@ export function syncWorkflowWithDoc(doc: CRDTDocLike, workflow: Workflow): Unsub
 		workflow.setNodes(nodes);
 		// Also resync edges since node names might have changed
 		syncEdges();
+		// Also resync pinned data since node names might have changed
+		syncPinData();
 	});
 
 	// Sync edge changes
@@ -117,11 +153,17 @@ export function syncWorkflowWithDoc(doc: CRDTDocLike, workflow: Workflow): Unsub
 		syncEdges();
 	});
 
+	// Sync pinned data changes
+	const pinnedDataUnsub = pinnedDataMap.onDeepChange(() => {
+		syncPinData();
+	});
+
 	// Return combined unsubscribe function
 	return () => {
 		metaUnsub();
 		nodesUnsub();
 		edgesUnsub();
+		pinnedDataUnsub();
 	};
 }
 

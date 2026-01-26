@@ -4,6 +4,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import CanvasHandleDiamond from '@/features/workflows/canvas/components/elements/handles/render-types/parts/CanvasHandleDiamond.vue';
 import CanvasHandleDot from '@/features/workflows/canvas/components/elements/handles/render-types/parts/CanvasHandleDot.vue';
+import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { NodeProps } from '@vue-flow/core';
 import { Handle, Position, useNode } from '@vue-flow/core';
@@ -99,10 +100,32 @@ const { off: offDisabled } = doc.onNodeDisabledChange(({ nodeId, disabled: newDi
 	}
 });
 
+// Track pinned data state
+const hasPinnedData = shallowRef<boolean>(false);
+
+// Initialize pinned data state
+if (doc.getPinnedData) {
+	const pinnedData = doc.getPinnedData(props.id);
+	hasPinnedData.value = pinnedData !== undefined && pinnedData.length > 0;
+}
+
+// Subscribe to pinned data changes
+let offPinnedData: (() => void) | undefined;
+if (doc.onPinnedDataChange) {
+	const { off } = doc.onPinnedDataChange(({ nodeId }) => {
+		if (nodeId === props.id) {
+			const pinnedData = doc.getPinnedData?.(props.id);
+			hasPinnedData.value = pinnedData !== undefined && pinnedData.length > 0;
+		}
+	});
+	offPinnedData = off;
+}
+
 onScopeDispose(() => {
 	offHandles();
 	offSubtitle();
 	offDisabled();
+	offPinnedData?.();
 });
 
 const nodeType = computed(() => {
@@ -534,6 +557,11 @@ const selectedByCollaborator = computed(() => {
 			</template>
 		</Handle>
 
+		<!-- Pinned data indicator -->
+		<div v-if="hasPinnedData" class="pinned-indicator" data-test-id="canvas-node-status-pinned">
+			<N8nIcon icon="node-pin" size="medium" />
+		</div>
+
 		<!-- Collaborator selection indicator -->
 		<div v-if="selectedByCollaborator" class="collaborator-indicator">
 			<span class="collaborator-name">{{ selectedByCollaborator.name }}</span>
@@ -721,6 +749,18 @@ const selectedByCollaborator = computed(() => {
 	max-width: 100px;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+/* Pinned data indicator (icon only, positioned bottom-right inside node) */
+.pinned-indicator {
+	position: absolute;
+	bottom: var(--spacing--3xs);
+	right: var(--spacing--3xs);
+	color: var(--color--secondary);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	pointer-events: none;
 }
 
 /* Handle labels */

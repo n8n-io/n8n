@@ -10,6 +10,7 @@ import type {
 } from '@n8n/crdt';
 import { isMapChange, ChangeOrigin as CO, seedValueDeep, toJSON, setNestedValue } from '@n8n/crdt';
 import { useCRDTSync, type CRDTTransportType } from './useCRDTSync';
+import type { INodeExecutionData } from 'n8n-workflow';
 import type {
 	WorkflowDocument,
 	WorkflowNode,
@@ -22,6 +23,7 @@ import type {
 	NodeDisabledChange,
 	NodeNameChange,
 	ComputedHandle,
+	PinnedDataChange,
 } from '../types/workflowDocument.types';
 import type { WorkflowAwarenessState } from '../types/awareness.types';
 
@@ -85,9 +87,12 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	const edgeAddedHook = createEventHook<WorkflowEdge>();
 	const edgeRemovedHook = createEventHook<string>();
 	const edgesChangedHook = createEventHook<undefined>(); // Fires for ALL edge changes (any origin)
+	const pinnedDataHook = createEventHook<PinnedDataChange>();
 
 	// Cleanup function for transaction batch subscription
 	let unsubscribeTransactionBatch: (() => void) | null = null;
+	// Cleanup function for pinned data subscription
+	let unsubscribePinnedData: (() => void) | null = null;
 
 	// --- Helpers ---
 
@@ -323,6 +328,32 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 				}
 			},
 		);
+
+		// Subscribe to pinned data changes
+		const pinnedDataMap = doc.getMap('pinnedData');
+		unsubscribePinnedData = pinnedDataMap.onDeepChange((changes, origin) => {
+			// Only fire events for remote/undoRedo changes (local already applied)
+			if (!needsUIUpdate(origin)) return;
+
+			for (const change of changes) {
+				if (!isMapChange(change)) continue;
+
+				const [nodeId] = change.path;
+				if (typeof nodeId !== 'string') continue;
+
+				// Only handle top-level changes (add/update/delete pinned data for a node)
+				if (change.path.length === 1) {
+					if (change.action === 'delete') {
+						void pinnedDataHook.trigger({ nodeId, data: undefined });
+					} else {
+						// Add or update
+						const value = pinnedDataMap.get(nodeId);
+						const data = value ? (toJSON(value) as INodeExecutionData[]) : undefined;
+						void pinnedDataHook.trigger({ nodeId, data });
+					}
+				}
+			}
+		});
 	});
 
 	// --- Data Access ---
@@ -452,6 +483,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	/**
 	 * Remove multiple nodes and edges in a single atomic transaction.
 	 * Also adds any reconnection edges (for node deletion with auto-reconnect).
+	 * Removes pinned data for deleted nodes (matches production behavior).
 	 */
 	function removeNodesAndEdges(
 		nodeIds: string[],
@@ -483,11 +515,14 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 				}
 			}
 
-			// Remove nodes
+			// Remove nodes and their pinned data
 			if (nodeIds.length > 0) {
 				const nodesMap = doc!.getMap('nodes');
+				const pinnedDataMap = doc!.getMap('pinnedData');
 				for (const nodeId of nodeIds) {
 					nodesMap.delete(nodeId);
+					// Also remove pinned data for this node (matches production behavior)
+					pinnedDataMap.delete(nodeId);
 				}
 			}
 		});
@@ -627,6 +662,50 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		// No hook trigger - Vue Flow already removed the edge before calling this
 	}
 
+	// --- Pinned Data ---
+
+	/**
+	 * Get pinned data for a node by ID.
+	 * Returns undefined if node has no pinned data.
+	 */
+	function getPinnedData(nodeId: string): INodeExecutionData[] | undefined {
+		if (!doc) return undefined;
+		const pinnedDataMap = doc.getMap('pinnedData');
+		const value = pinnedDataMap.get(nodeId);
+		if (!value) return undefined;
+		return toJSON(value) as INodeExecutionData[];
+	}
+
+	/**
+	 * Set pinned data for a node by ID.
+	 * Stored as plain array (not deep seeded) - pinned data is replaced wholesale, not merged.
+	 */
+	function setPinnedData(nodeId: string, data: INodeExecutionData[]): void {
+		if (!doc) return;
+
+		doc.transact(() => {
+			const pinnedDataMap = doc!.getMap('pinnedData');
+			pinnedDataMap.set(nodeId, data);
+		});
+
+		// Trigger hook for local changes (onDeepChange only fires for remote)
+		void pinnedDataHook.trigger({ nodeId, data });
+	}
+
+	/**
+	 * Remove pinned data for a node by ID.
+	 */
+	function removePinnedData(nodeId: string): void {
+		if (!doc) return;
+
+		doc.transact(() => {
+			doc!.getMap('pinnedData').delete(nodeId);
+		});
+
+		// Trigger hook for local changes (onDeepChange only fires for remote)
+		void pinnedDataHook.trigger({ nodeId, data: undefined });
+	}
+
 	// --- Lifecycle ---
 
 	async function connect(): Promise<void> {
@@ -636,6 +715,8 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 	function disconnect(): void {
 		unsubscribeTransactionBatch?.();
 		unsubscribeTransactionBatch = null;
+		unsubscribePinnedData?.();
+		unsubscribePinnedData = null;
 		crdt.disconnect();
 		doc = null;
 	}
@@ -678,6 +759,10 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		getNodeCrdtMap,
 		addEdge,
 		removeEdge,
+		// Pinned data methods
+		getPinnedData,
+		setPinnedData,
+		removePinnedData,
 		onNodeAdded: nodeAddedHook.on,
 		onNodeRemoved: nodeRemovedHook.on,
 		onNodePositionChange: nodePositionHook.on,
@@ -690,6 +775,7 @@ export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): Workflow
 		onEdgeAdded: edgeAddedHook.on,
 		onEdgeRemoved: edgeRemovedHook.on,
 		onEdgesChanged: edgesChangedHook.on,
+		onPinnedDataChange: pinnedDataHook.on,
 		findNode,
 		get awareness(): CRDTAwareness<WorkflowAwarenessState> | null {
 			return crdt.awareness as CRDTAwareness<WorkflowAwarenessState> | null;

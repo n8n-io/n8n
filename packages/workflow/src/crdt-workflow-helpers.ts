@@ -20,6 +20,7 @@ import type {
 	INodePropertyOptions,
 	INodeTypeDescription,
 	INodeTypes,
+	IPinData,
 	NodeConnectionType,
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
@@ -137,6 +138,8 @@ export interface WorkflowSeedData {
 	nodes: NodeSeedData[];
 	connections: IConnections;
 	settings?: Record<string, unknown>;
+	/** Pinned data keyed by node name (will be converted to node ID in CRDT) */
+	pinData?: IPinData;
 }
 
 // =============================================================================
@@ -671,6 +674,19 @@ export function seedWorkflowDoc(
 			edgeMap.set('sourceHandle', edge.sourceHandle);
 			edgeMap.set('targetHandle', edge.targetHandle);
 			edgesMap.set(edge.id, edgeMap);
+		}
+
+		// Seed pinned data (keyed by node ID, not name)
+		// Convert from name-keyed IPinData to ID-keyed CRDT storage
+		// Store as plain array (not deep seeded) - pinned data is replaced wholesale, not merged
+		if (workflow.pinData) {
+			const pinnedDataMap = doc.getMap<unknown>('pinnedData') as CRDTMapLike<unknown>;
+			for (const [nodeName, data] of Object.entries(workflow.pinData)) {
+				const nodeId = nodeIdByName.get(nodeName);
+				if (nodeId && data && data.length > 0) {
+					pinnedDataMap.set(nodeId, data);
+				}
+			}
 		}
 	});
 }

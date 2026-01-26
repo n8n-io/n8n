@@ -205,6 +205,7 @@ export class CRDTWebSocketService {
 			nodes: nodesWithHandles,
 			connections: workflowEntity.connections,
 			settings: workflowEntity.settings as Record<string, unknown> | undefined,
+			pinData: workflowEntity.pinData ?? undefined,
 		});
 
 		// Set up sync between CRDT document and Workflow instance
@@ -394,6 +395,7 @@ export class CRDTWebSocketService {
 					nodes,
 					connections,
 					settings: workflow.settings,
+					pinData: workflow.pinData,
 					versionId,
 					updatedAt: new Date(),
 				},

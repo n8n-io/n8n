@@ -24,3 +24,6 @@ export type { UseWorkflowAwarenessOptions } from './useWorkflowAwareness';
 
 // CRDT-backed WorkflowState for parameter editing
 export { useCrdtWorkflowState } from './useCrdtWorkflowState';
+
+// CRDT-backed pinned data
+export { useCrdtPinnedData } from './useCrdtPinnedData';

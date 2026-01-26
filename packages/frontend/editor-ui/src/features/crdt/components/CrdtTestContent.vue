@@ -24,6 +24,7 @@ import { useWorkflowDoc } from '../composables/useWorkflowSync';
 import { WorkflowAwarenessKey } from '../types/awareness.types';
 import type { WorkflowEdge, WorkflowNode } from '../types/workflowDocument.types';
 import CrdtNodeDetailsPanel from './CrdtNodeDetailsPanel.vue';
+import CrdtPinnedDataTestPanel from './CrdtPinnedDataTestPanel.vue';
 import WorkflowCanvas from './WorkflowCanvas.vue';
 
 const doc = useWorkflowDoc();
@@ -563,6 +564,7 @@ instance.onNodeDoubleClick(({ node }) => {
 			@close="onNodeCreatorClose"
 		/>
 		<CrdtNodeDetailsPanel v-if="doc.isReady.value" v-model="selectedNode" />
+		<CrdtPinnedDataTestPanel v-if="doc.isReady.value" v-model="selectedNode" />
 	</div>
 </template>
 
