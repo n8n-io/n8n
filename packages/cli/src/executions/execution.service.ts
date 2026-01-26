@@ -49,6 +49,7 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { ExecutionPersistence } from './execution-persistence';
 import type { ExecutionRequest, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
@@ -104,6 +105,7 @@ export class ExecutionService {
 		private readonly executionAnnotationRepository: ExecutionAnnotationRepository,
 		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly waitTracker: WaitTracker,
@@ -297,6 +299,7 @@ export class ExecutionService {
 			workflowData: execution.workflowData,
 			customData: execution.customData,
 			annotation: execution.annotation,
+			storedAt: execution.storedAt,
 		};
 	}
 
@@ -320,7 +323,7 @@ export class ExecutionService {
 			delete requestFilters.metadata;
 		}
 
-		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
+		await this.executionPersistence.deleteBy(requestFilters, sharedWorkflowIds, {
 			deleteBefore,
 			ids,
 		});

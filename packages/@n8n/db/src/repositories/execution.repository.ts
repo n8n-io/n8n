@@ -45,6 +45,7 @@ import {
 	AnnotationTagMapping,
 	ExecutionAnnotation,
 	ExecutionData,
+	ExecutionDataStorageLocation,
 	ExecutionEntity,
 	ExecutionMetadata,
 	SharedWorkflow,
@@ -148,26 +149,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
-	}
-
-	// Find all executions that are in the 'new' state but do not have associated execution data.
-	// These executions are considered invalid and will be marked as 'crashed'.
-	// Since there is no join in this query the returned ids are unique.
-	async findQueuedExecutionsWithoutData(): Promise<ExecutionEntity[]> {
-		return await this.createQueryBuilder('execution')
-			.where('execution.status = :status', { status: 'new' })
-			.andWhere(
-				'NOT EXISTS (' +
-					this.manager
-						.createQueryBuilder()
-						.select('1')
-						.from(ExecutionData, 'execution_data')
-						.where('execution_data.executionId = execution.id')
-						.getQuery() +
-					')',
-			)
-			.select('execution.id')
-			.getMany();
 	}
 
 	async findMultipleExecutions(
@@ -394,16 +375,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 	}
 
-	/**
-	 * Permanently remove a single execution and its binary data.
-	 */
-	async hardDelete(ids: { workflowId: string; executionId: string }) {
-		return await Promise.all([
-			this.delete(ids.executionId),
-			this.binaryDataService.deleteMany([{ type: 'execution', ...ids }]),
-		]);
-	}
-
 	async setRunning(executionId: string) {
 		const startedAt = new Date();
 
@@ -491,7 +462,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			deleteBefore?: Date;
 			ids?: string[];
 		},
-	) {
+	): Promise<
+		Array<{ executionId: string; workflowId: string; storedAt: ExecutionDataStorageLocation }>
+	> {
 		if (!deleteConditions?.deleteBefore && !deleteConditions?.ids) {
 			throw new UnexpectedError(
 				'Either "deleteBefore" or "ids" must be present in the request body',
@@ -499,7 +472,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const query = this.createQueryBuilder('execution')
-			.select(['execution.id', 'execution.workflowId'])
+			.select(['execution.id', 'execution.workflowId', 'execution.storedAt'])
 			.andWhere('execution.workflowId IN (:...accessibleWorkflowIds)', { accessibleWorkflowIds });
 
 		if (deleteConditions.deleteBefore) {
@@ -522,23 +495,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					executionIds: deleteConditions.ids,
 				});
 			}
-			return;
+			return [];
 		}
 
-		const ids = executions.map(({ id, workflowId }) => ({
-			type: 'execution' as const,
+		const refs = executions.map(({ id, workflowId, storedAt }) => ({
 			executionId: id,
 			workflowId,
+			storedAt,
 		}));
 
+		const toDelete = [...refs];
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = ids.splice(0, this.hardDeletionBatchSize);
+			const batch = toDelete.splice(0, this.hardDeletionBatchSize);
 			await Promise.all([
 				this.delete(batch.map(({ executionId }) => executionId)),
-				this.binaryDataService.deleteMany(batch),
+				this.binaryDataService.deleteMany(batch.map((b) => ({ type: 'execution' as const, ...b }))),
 			]);
-		} while (ids.length > 0);
+		} while (toDelete.length > 0);
+
+		return refs;
 	}
 
 	async getIdsSince(date: Date) {
@@ -609,27 +585,25 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const date = new Date();
 		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
 
-		const workflowIdsAndExecutionIds = (
-			await this.find({
-				select: ['workflowId', 'id'],
-				where: {
-					deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
-				},
-				take: this.hardDeletionBatchSize,
+		const results = await this.find({
+			select: ['workflowId', 'id', 'storedAt'],
+			where: {
+				deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+			},
+			take: this.hardDeletionBatchSize,
 
-				/**
-				 * @important This ensures soft-deleted executions are included,
-				 * else `@DeleteDateColumn()` at `deletedAt` will exclude them.
-				 */
-				withDeleted: true,
-			})
-		).map(({ id: executionId, workflowId }) => ({
-			type: 'execution' as const,
+			/**
+			 * @important This ensures soft-deleted executions are included,
+			 * else `@DeleteDateColumn()` at `deletedAt` will exclude them.
+			 */
+			withDeleted: true,
+		});
+
+		return results.map(({ id: executionId, workflowId, storedAt }) => ({
 			workflowId,
 			executionId,
+			storedAt,
 		}));
-
-		return workflowIdsAndExecutionIds;
 	}
 
 	async deleteByIds(executionIds: string[]) {
