@@ -1079,7 +1079,12 @@ export class WorkflowDataProxy {
 		const handleTool = (throwOnError = true) => {
 			const fallbackValue = that.additionalKeys?.['$tool'];
 			try {
-				return handleFromAi('tool', '', 'string', fallbackValue);
+				const toolName = handleFromAi('tool', '');
+				const toolParameters = handleFromAi('toolParameters', '');
+				return {
+					name: toolName ?? fallbackValue?.name,
+					parameters: toolParameters ?? fallbackValue?.parameters,
+				};
 			} catch (error) {
 				const isNoExecutionDataError =
 					error instanceof ExpressionError && error.context.type === 'no_execution_data';
@@ -1506,7 +1511,7 @@ export class WorkflowDataProxy {
 
 				return that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 			},
-			$tool: '', // Placeholder
+			$tool: {}, // Placeholder
 			$json: {}, // Placeholder
 			$node: this.nodeGetter(),
 			$self: this.selfGetter(),

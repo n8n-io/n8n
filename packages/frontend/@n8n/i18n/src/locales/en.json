@@ -556,7 +556,7 @@
 	"codeNodeEditor.completer.$prevNode.runIndex": "The run of the previous node that generated the current input. \n\nAlways uses the current node's first input connector if there is more than one (e.g. in the 'Merge' node). ",
 	"codeNodeEditor.completer.$runIndex": "The index of the current run of the current node execution. Starts at 0.",
 	"codeNodeEditor.completer.$nodeVersion": "The version of the current node (as displayed at the bottom of the nodes's settings pane)",
-	"codeNodeEditor.completer.$tool": "The name of the tool that is currently being executed. Only available in HITL nodes",
+	"codeNodeEditor.completer.$tool": "The name and parameters of the tool that is currently being executed. Only available in HITL nodes",
 	"codeNodeEditor.completer.$today": "A DateTime representing midnight at the start of the current day. \n\nUses the instance's time zone (unless overridden in the workflow's settings).",
 	"codeNodeEditor.completer.$vars": "The <a target=\"_blank\"  href=\"https://docs.n8n.io/code/variables/\">variables</a> available to the workflow",
 	"codeNodeEditor.completer.$vars.varName.global": "Global variable defined for this n8n instance. All variables evaluate to strings.",
