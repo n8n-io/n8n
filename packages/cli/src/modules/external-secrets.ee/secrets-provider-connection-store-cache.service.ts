@@ -9,6 +9,8 @@ import { Service } from '@n8n/di';
 export class SecretsProviderConnectionStoreCache {
 	private cache = new Map<string, SecretsProviderConnection>();
 
+	private cacheInitialized = false;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly connectionRepository: SecretsProviderConnectionRepository,
@@ -16,54 +18,105 @@ export class SecretsProviderConnectionStoreCache {
 		this.logger = this.logger.scoped('external-secrets');
 	}
 
-	async loadAll(): Promise<SecretsProviderConnection[]> {
-		if (this.cache.size > 0) {
-			return Array.from(this.cache.values());
+	private async ensureCacheInitialized(): Promise<void> {
+		if (!this.cacheInitialized) {
+			await this.reloadAll();
 		}
-
-		return await this.reloadAll();
 	}
 
 	async reloadAll(): Promise<SecretsProviderConnection[]> {
+		this.cacheInitialized = false;
 		const connections = await this.connectionRepository.findAll();
 		this.cache.clear();
 		for (const connection of connections) {
 			this.cache.set(connection.providerKey, connection);
 		}
+		this.cacheInitialized = true;
+		this.logger.debug(`Loaded ${connections.length} connections into cache`);
 		return connections;
 	}
 
-	getCachedConnections(): SecretsProviderConnection[] {
+	async getCachedConnections(): Promise<SecretsProviderConnection[]> {
+		await this.ensureCacheInitialized();
 		return Array.from(this.cache.values());
 	}
 
-	async reloadConnection(providerKey: string): Promise<SecretsProviderConnection | null> {
-		const connection = await this.connectionRepository.findOne({ where: { providerKey } });
-		if (connection) {
-			this.cache.set(providerKey, connection);
-		}
-
-		return connection ?? null;
+	async getCachedConnectionByProviderKey(
+		providerKey: string,
+	): Promise<SecretsProviderConnection | undefined> {
+		await this.ensureCacheInitialized();
+		return this.cache.get(providerKey);
 	}
 
-	async create(connection: SecretsProviderConnection): Promise<SecretsProviderConnection> {
-		// TODO: use repository to create connection in the database
-		this.cache.set(connection.providerKey, connection);
+	async reloadConnection(providerKey: string): Promise<SecretsProviderConnection | null> {
+		const connection = await this.connectionRepository.findOneByProviderKey(providerKey);
+
+		if (connection) {
+			this.cache.set(providerKey, connection);
+			this.logger.debug(`Reloaded connection into cache: ${providerKey}`);
+		} else {
+			// This prevents keeping a reference to a deleted connection
+			this.cache.delete(providerKey);
+			this.logger.debug(`Connection not found during reload, removed from cache: ${providerKey}`);
+		}
+
 		return connection;
 	}
 
+	async create(connection: SecretsProviderConnection): Promise<SecretsProviderConnection> {
+		const connectionEntity = this.connectionRepository.create(connection);
+
+		const savedConnection = await this.connectionRepository.save(connectionEntity);
+
+		if (savedConnection) {
+			this.cache.set(savedConnection.providerKey, savedConnection);
+			this.logger.debug(`Created connection in cache: ${savedConnection.providerKey}`);
+		}
+
+		return savedConnection;
+	}
+
 	async update(connection: SecretsProviderConnection): Promise<SecretsProviderConnection> {
-		// TODO: use repository to update connection in the database
-		this.cache.set(connection.providerKey, connection);
+		const result = await this.connectionRepository.updateByProviderKey(
+			connection.providerKey,
+			connection,
+		);
+
+		if (result.affected) {
+			// Reload from DB to get actual persisted state
+			const updatedConnection = await this.connectionRepository.findOneByProviderKey(
+				connection.providerKey,
+			);
+			if (updatedConnection) {
+				this.cache.set(connection.providerKey, updatedConnection);
+				this.logger.debug(`Updated connection in cache: ${connection.providerKey}`);
+				return updatedConnection;
+			}
+		}
+
+		// No rows affected - check if connection exists in DB
+		const existingConnection = await this.connectionRepository.findOneByProviderKey(
+			connection.providerKey,
+		);
+		if (existingConnection) {
+			// Connection exists but wasn't updated (no-op or same values)
+			this.cache.set(connection.providerKey, existingConnection);
+			return existingConnection;
+		} else {
+			// Connection doesn't exist - remove from cache
+			this.cache.delete(connection.providerKey);
+			this.logger.debug(`Connection not found, removed from cache: ${connection.providerKey}`);
+		}
+
 		return connection;
 	}
 
 	async delete(providerKey: string): Promise<void> {
-		// TODO: use repository to delete connection in the database
-		this.cache.delete(providerKey);
-	}
+		const result = await this.connectionRepository.deleteByProviderKey(providerKey);
 
-	async get(providerKey: string): Promise<SecretsProviderConnection | undefined> {
-		return this.cache.get(providerKey);
+		if (result.affected) {
+			this.cache.delete(providerKey);
+			this.logger.debug(`Deleted connection from cache: ${providerKey}`);
+		}
 	}
 }
