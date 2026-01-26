@@ -175,6 +175,8 @@ describe('Real Workflow Round-Trip', () => {
 					const wf = workflow.fromJSON(json);
 
 					for (const node of json.nodes) {
+						// Skip nodes without names (e.g., some sticky notes)
+						if (!node.name) continue;
 						const retrieved = wf.getNode(node.name);
 						expect(retrieved).toBeDefined();
 						if (retrieved) {

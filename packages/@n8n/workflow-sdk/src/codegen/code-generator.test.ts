@@ -1821,9 +1821,7 @@ describe('code-generator', () => {
 				const parsedJson = parseWorkflowCode(code);
 
 				// Find the Animation Completed? node in parsed output
-				const parsedNode = parsedJson.nodes.find(
-					(n: { name: string }) => n.name === 'Animation Completed?',
-				);
+				const parsedNode = parsedJson.nodes.find((n) => n.name === 'Animation Completed?');
 
 				// Verify parameters are preserved
 				expect(parsedNode).toBeDefined();

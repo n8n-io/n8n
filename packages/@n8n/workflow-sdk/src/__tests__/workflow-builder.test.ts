@@ -1,8 +1,6 @@
 import { workflow } from '../workflow-builder';
 import { node, trigger, sticky } from '../node-builder';
 import { languageModel, memory, tool } from '../subnode-builders';
-import { ifElse } from '../if-else';
-import { switchCase } from '../switch-case';
 import type { NodeInstance, WorkflowJSON } from '../types/base';
 
 describe('Workflow Builder', () => {
@@ -124,7 +122,7 @@ describe('Workflow Builder', () => {
 			expect(contents).toContain('## Editing Agent Note');
 		});
 
-		it('should add SwitchCaseComposite directly', () => {
+		it('should add SwitchCaseBuilder directly', () => {
 			const case0 = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -144,9 +142,9 @@ describe('Workflow Builder', () => {
 				},
 			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 
-			// Pass switchCase directly to add() instead of through then()
+			// Pass fluent builder directly to add() - runtime supports this but types don't
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const wf = workflow('test', 'Test').add(switchCase(switchNode, { case0, case1 }) as any);
+			const wf = workflow('test', 'Test').add(switchNode.onCase!(0, case0).onCase(1, case1) as any);
 
 			const json = wf.toJSON();
 
@@ -158,7 +156,7 @@ describe('Workflow Builder', () => {
 			expect(json.connections['Direct Switch']?.main[1]?.[0]?.node).toBe('Case 1');
 		});
 
-		it('should add IfElseComposite directly', () => {
+		it('should add IfElseBuilder directly', () => {
 			const trueNode = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -188,11 +186,9 @@ describe('Workflow Builder', () => {
 				},
 			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
 
-			// Pass ifElse directly to add() instead of through then()
+			// Pass fluent builder directly to add() - runtime supports this but types don't
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const wf = workflow('test', 'Test').add(
-				ifElse(ifNode, { true: trueNode, false: falseNode }) as any,
-			);
+			const wf = workflow('test', 'Test').add(ifNode.onTrue!(trueNode).onFalse(falseNode) as any);
 
 			const json = wf.toJSON();
 
@@ -895,7 +891,7 @@ describe('Workflow Builder', () => {
 		});
 	});
 
-	describe('ifElse()', () => {
+	describe('IF fluent API', () => {
 		it('should create IF node with true and false branches', () => {
 			const triggerNode = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -933,7 +929,7 @@ describe('Workflow Builder', () => {
 
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
-				.then(ifElse(ifNode, { true: trueNode, false: falseNode }));
+				.then(ifNode.onTrue!(trueNode).onFalse(falseNode));
 
 			const json = wf.toJSON();
 
@@ -968,9 +964,7 @@ describe('Workflow Builder', () => {
 				config: { name: 'False' },
 			});
 
-			const wf = workflow('test', 'Test').then(
-				ifElse(ifNode, { true: trueNode, false: falseNode }),
-			);
+			const wf = workflow('test', 'Test').then(ifNode.onTrue!(trueNode).onFalse(falseNode));
 
 			const json = wf.toJSON();
 
@@ -1002,7 +996,7 @@ describe('Workflow Builder', () => {
 			});
 
 			const wf = workflow('test', 'Test')
-				.then(ifElse(ifNode, { true: trueNode, false: falseNode }))
+				.then(ifNode.onTrue!(trueNode).onFalse(falseNode))
 				.then(afterNode);
 
 			const json = wf.toJSON();
@@ -1015,7 +1009,7 @@ describe('Workflow Builder', () => {
 			expect(json.nodes.find((n) => n.name === 'After')).toBeDefined();
 		});
 
-		it('should handle null true branch (only false branch connected)', () => {
+		it('should handle only false branch connected (no true branch)', () => {
 			const triggerNode = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
 				version: 1,
@@ -1044,10 +1038,8 @@ describe('Workflow Builder', () => {
 				config: { name: 'False Path' },
 			});
 
-			// Pass null for true branch - only false branch is connected
-			const wf = workflow('test', 'Test')
-				.add(triggerNode)
-				.then(ifElse(ifNode, { true: null, false: falseNode }));
+			// Only false branch is connected using onFalse()
+			const wf = workflow('test', 'Test').add(triggerNode).then(ifNode.onFalse!(falseNode));
 
 			const json = wf.toJSON();
 
@@ -1062,7 +1054,7 @@ describe('Workflow Builder', () => {
 			expect(json.connections['IF Check']?.main[1]?.[0]?.node).toBe('False Path');
 		});
 
-		it('should handle null false branch (only true branch connected)', () => {
+		it('should handle only true branch connected (no false branch)', () => {
 			const triggerNode = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
 				version: 1,
@@ -1091,10 +1083,8 @@ describe('Workflow Builder', () => {
 				config: { name: 'True Path' },
 			});
 
-			// Pass null for false branch - only true branch is connected
-			const wf = workflow('test', 'Test')
-				.add(triggerNode)
-				.then(ifElse(ifNode, { true: trueNode, false: null }));
+			// Only true branch is connected using onTrue()
+			const wf = workflow('test', 'Test').add(triggerNode).then(ifNode.onTrue!(trueNode));
 
 			const json = wf.toJSON();
 
@@ -1198,9 +1188,9 @@ describe('Workflow Builder', () => {
 		});
 	});
 
-	describe('switchCase()', () => {
+	describe('Switch fluent API', () => {
 		it('should connect all switch outputs including fallback (output 2)', () => {
-			// BUG: When using workflow.add(chain).then(switchCase({case0, case1, case2})),
+			// BUG: When using workflow.add(chain).then(switchNode.onCase(...)),
 			// output 2 (fallback) was not being connected
 			const t = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -1244,10 +1234,10 @@ describe('Workflow Builder', () => {
 				config: { name: 'Update as Other' },
 			});
 
-			// Exact pattern from user's code (updated for named syntax):
+			// Using fluent syntax
 			const wf = workflow('test', 'Test')
 				.add(t.then(linearNode.onError(errorHandler)))
-				.then(switchCase(switchNode, { case0, case1, case2 }));
+				.then(switchNode.onCase!(0, case0).onCase(1, case1).onCase(2, case2));
 
 			const json = wf.toJSON();
 
@@ -1269,7 +1259,7 @@ describe('Workflow Builder', () => {
 		});
 
 		it('should connect previous node to switch when using chain with add()', () => {
-			// BUG FIX TEST: When using .add() with a chain containing switchCase(),
+			// BUG FIX TEST: When using .add() with a chain containing switchNode.onCase(),
 			// the connection from the previous node to the switch was not being created
 			const t = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -1300,10 +1290,9 @@ describe('Workflow Builder', () => {
 				config: { name: 'Feature Handler' },
 			});
 
-			// This pattern is what causes the bug: chain with switchCase inside add()
-			// Type cast needed because NodeChain.then() types don't include composites
+			// This pattern is what causes the bug: chain with fluent builder inside add()
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const chain = t.then(linearNode).then(switchCase(switchNode, { case0, case1 }) as any);
+			const chain = t.then(linearNode).then(switchNode.onCase!(0, case0).onCase(1, case1) as any);
 
 			const wf = workflow('test', 'Test').add(chain);
 			const json = wf.toJSON();
@@ -1356,7 +1345,7 @@ describe('Workflow Builder', () => {
 
 			const wf = workflow('test', 'Test')
 				.add(triggerNode)
-				.then(switchCase(switchNode, { case0, case1, case2 }));
+				.then(switchNode.onCase!(0, case0).onCase(1, case1).onCase(2, case2));
 
 			const json = wf.toJSON();
 
@@ -1369,7 +1358,7 @@ describe('Workflow Builder', () => {
 			expect(json.nodes).toHaveLength(5);
 		});
 
-		it('should include fallback as last case in array', () => {
+		it('should include fallback as last case', () => {
 			const switchNode = node({
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
@@ -1389,7 +1378,7 @@ describe('Workflow Builder', () => {
 				config: { name: 'Fallback' },
 			});
 
-			const wf = workflow('test', 'Test').then(switchCase(switchNode, { case0, case1: fallback }));
+			const wf = workflow('test', 'Test').then(switchNode.onCase!(0, case0).onCase(1, fallback));
 
 			const json = wf.toJSON();
 
@@ -1416,7 +1405,7 @@ describe('Workflow Builder', () => {
 				config: { name: 'Case 0' },
 			});
 
-			const wf = workflow('test', 'Test').then(switchCase(switchNode, { case0 }));
+			const wf = workflow('test', 'Test').then(switchNode.onCase!(0, case0));
 
 			const json = wf.toJSON();
 
@@ -1441,7 +1430,7 @@ describe('Workflow Builder', () => {
 				config: { name: 'Case 0' },
 			});
 
-			const wf = workflow('test', 'Test').add(triggerNode).then(switchCase(switchNode, { case0 }));
+			const wf = workflow('test', 'Test').add(triggerNode).then(switchNode.onCase!(0, case0));
 
 			const json = wf.toJSON();
 

@@ -106,7 +106,7 @@ export interface IConnections {
  */
 export interface NodeJSON {
 	id: string;
-	name: string;
+	name?: string; // Optional - some nodes like sticky notes may not have a name
 	type: string;
 	typeVersion: number;
 	position: [number, number];

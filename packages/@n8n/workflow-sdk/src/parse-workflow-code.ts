@@ -274,8 +274,6 @@ import {
 	reranker as rerankerFn,
 } from './subnode-builders';
 import { merge as mergeFn } from './merge';
-import { ifElse as ifElseFn } from './if-else';
-import { switchCase as switchCaseFn } from './switch-case';
 import { splitInBatches as splitInBatchesFn } from './split-in-batches';
 import { nextBatch as nextBatchFn } from './next-batch';
 import { fanOut as fanOutFn } from './fan-out';
@@ -319,8 +317,6 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 			'textSplitter',
 			'reranker',
 			'merge',
-			'ifElse',
-			'switchCase',
 			'splitInBatches',
 			'nextBatch',
 			'fanOut',
@@ -355,8 +351,6 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
 		textSplitterFn,
 		rerankerFn,
 		mergeFn,
-		ifElseFn,
-		switchCaseFn,
 		splitInBatchesFn,
 		nextBatchFn,
 		fanOutFn,
@@ -407,8 +401,6 @@ export function parseWorkflowCodeToBuilder(code: string) {
 			'textSplitter',
 			'reranker',
 			'merge',
-			'ifElse',
-			'switchCase',
 			'splitInBatches',
 			'nextBatch',
 			'fanOut',
@@ -443,8 +435,6 @@ export function parseWorkflowCodeToBuilder(code: string) {
 		textSplitterFn,
 		rerankerFn,
 		mergeFn,
-		ifElseFn,
-		switchCaseFn,
 		splitInBatchesFn,
 		nextBatchFn,
 		fanOutFn,

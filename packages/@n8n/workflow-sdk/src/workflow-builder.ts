@@ -243,7 +243,30 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			});
 		}
 
-		// Check if this is a composite (can be passed directly to add())
+		// Check for fluent API builders FIRST (before composites)
+		// IfElseBuilder and SwitchCaseBuilder have similar properties to their composite counterparts
+		// so we must check for builders first to avoid incorrect dispatch
+		if (isIfElseBuilder(node)) {
+			this.addIfElseBuilderNodes(newNodes, node as unknown as IfElseBuilder<unknown>);
+			return this.clone({
+				nodes: newNodes,
+				currentNode: (node as unknown as IfElseBuilder<unknown>).ifNode.name,
+				currentOutput: 0,
+				pinData: this._pinData,
+			});
+		}
+
+		if (isSwitchCaseBuilder(node)) {
+			this.addSwitchCaseBuilderNodes(newNodes, node as unknown as SwitchCaseBuilder<unknown>);
+			return this.clone({
+				nodes: newNodes,
+				currentNode: (node as unknown as SwitchCaseBuilder<unknown>).switchNode.name,
+				currentOutput: 0,
+				pinData: this._pinData,
+			});
+		}
+
+		// Check for composites (old API - can be passed directly to add())
 		if (this.isSwitchCaseComposite(node)) {
 			this.addSwitchCaseNodes(newNodes, node as unknown as SwitchCaseComposite);
 			return this.clone({
@@ -259,28 +282,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return this.clone({
 				nodes: newNodes,
 				currentNode: (node as unknown as IfElseComposite).ifNode.name,
-				currentOutput: 0,
-				pinData: this._pinData,
-			});
-		}
-
-		// Check if this is an IfElseBuilder (fluent API)
-		if (isIfElseBuilder(node)) {
-			this.addIfElseBuilderNodes(newNodes, node as unknown as IfElseBuilder<unknown>);
-			return this.clone({
-				nodes: newNodes,
-				currentNode: (node as unknown as IfElseBuilder<unknown>).ifNode.name,
-				currentOutput: 0,
-				pinData: this._pinData,
-			});
-		}
-
-		// Check if this is a SwitchCaseBuilder (fluent API)
-		if (isSwitchCaseBuilder(node)) {
-			this.addSwitchCaseBuilderNodes(newNodes, node as unknown as SwitchCaseBuilder<unknown>);
-			return this.clone({
-				nodes: newNodes,
-				currentNode: (node as unknown as SwitchCaseBuilder<unknown>).switchNode.name,
 				currentOutput: 0,
 				pinData: this._pinData,
 			});
@@ -316,18 +317,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (isNodeChain(node)) {
 			// Add all nodes from the chain, handling composites that may have been chained
 			for (const chainNode of node.allNodes) {
-				// Check if chainNode is a SwitchCaseComposite (can happen via chain.then(switchCase(...)))
-				if (this.isSwitchCaseComposite(chainNode)) {
-					this.addSwitchCaseNodes(newNodes, chainNode as unknown as SwitchCaseComposite);
-				} else if (this.isIfElseComposite(chainNode)) {
-					this.addIfElseNodes(newNodes, chainNode as unknown as IfElseComposite);
-				} else if (isIfElseBuilder(chainNode)) {
+				// Check for builders FIRST (before composites) - builders have similar properties
+				if (isIfElseBuilder(chainNode)) {
 					this.addIfElseBuilderNodes(newNodes, chainNode as unknown as IfElseBuilder<unknown>);
 				} else if (isSwitchCaseBuilder(chainNode)) {
 					this.addSwitchCaseBuilderNodes(
 						newNodes,
 						chainNode as unknown as SwitchCaseBuilder<unknown>,
 					);
+				} else if (this.isSwitchCaseComposite(chainNode)) {
+					this.addSwitchCaseNodes(newNodes, chainNode as unknown as SwitchCaseComposite);
+				} else if (this.isIfElseComposite(chainNode)) {
+					this.addIfElseNodes(newNodes, chainNode as unknown as IfElseComposite);
 				} else if (this.isMergeComposite(chainNode)) {
 					this.addMergeNodes(
 						newNodes,
@@ -592,14 +593,21 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			const position = config.position ?? nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
 
 			// Determine node name:
+			// - If config has _originalName, use that (preserves undefined for sticky notes from fromJSON)
 			// - If mapKey was auto-renamed (e.g., "Process 1" from "Process"), use mapKey
 			// - Otherwise use instance.name (preserves original name for fromJSON imports)
-			// Auto-renamed nodes have pattern: mapKey = instance.name + " " + number
-			const isAutoRenamed =
-				mapKey !== instance.name &&
-				mapKey.startsWith(instance.name + ' ') &&
-				/^\d+$/.test(mapKey.slice(instance.name.length + 1));
-			const nodeName = isAutoRenamed ? mapKey : instance.name;
+			let nodeName: string | undefined;
+			if ('_originalName' in config) {
+				// Node was loaded via fromJSON - preserve original name (may be undefined)
+				nodeName = config._originalName as string | undefined;
+			} else {
+				// Node was created via builder - use auto-renamed key if applicable
+				const isAutoRenamed =
+					mapKey !== instance.name &&
+					mapKey.startsWith(instance.name + ' ') &&
+					/^\d+$/.test(mapKey.slice(instance.name.length + 1));
+				nodeName = isAutoRenamed ? mapKey : instance.name;
+			}
 			const n8nNode: NodeJSON = {
 				id: instance.id,
 				name: nodeName,
@@ -1580,6 +1588,27 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return;
 		}
 
+		// Handle fluent API builders FIRST (before composites)
+		// IfElseBuilder and SwitchCaseBuilder have similar properties to their composite counterparts
+		// so we must check for builders first to avoid incorrect dispatch
+		if (isIfElseBuilder(target)) {
+			const builder = target as IfElseBuilder<unknown>;
+			// Only process if not already in the nodes map (prevent duplicate processing)
+			if (!nodes.has(builder.ifNode.name)) {
+				this.addIfElseBuilderNodes(nodes, builder);
+			}
+			return;
+		}
+
+		if (isSwitchCaseBuilder(target)) {
+			const builder = target as SwitchCaseBuilder<unknown>;
+			// Only process if not already in the nodes map (prevent duplicate processing)
+			if (!nodes.has(builder.switchNode.name)) {
+				this.addSwitchCaseBuilderNodes(nodes, builder);
+			}
+			return;
+		}
+
 		// Handle nested IfElse composite - recursively add its nodes AND connections
 		if (this.isIfElseComposite(target)) {
 			const ifComposite = target as IfElseComposite;
@@ -1596,26 +1625,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Only process if not already in the nodes map (prevent duplicate processing)
 			if (!nodes.has(switchComposite.switchNode.name)) {
 				this.addSwitchCaseNodes(nodes, switchComposite);
-			}
-			return;
-		}
-
-		// Handle nested IfElseBuilder (fluent API) - recursively add its nodes AND connections
-		if (isIfElseBuilder(target)) {
-			const builder = target as IfElseBuilder<unknown>;
-			// Only process if not already in the nodes map (prevent duplicate processing)
-			if (!nodes.has(builder.ifNode.name)) {
-				this.addIfElseBuilderNodes(nodes, builder);
-			}
-			return;
-		}
-
-		// Handle nested SwitchCaseBuilder (fluent API) - recursively add its nodes AND connections
-		if (isSwitchCaseBuilder(target)) {
-			const builder = target as SwitchCaseBuilder<unknown>;
-			// Only process if not already in the nodes map (prevent duplicate processing)
-			if (!nodes.has(builder.switchNode.name)) {
-				this.addSwitchCaseBuilderNodes(nodes, builder);
 			}
 			return;
 		}
@@ -2595,17 +2604,17 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					continue;
 				}
 
-				// Check if chainNode is a composite or builder (can happen via chain.then(ifElse(...)))
-				if (this.isSwitchCaseComposite(chainNode)) {
-					this.addSwitchCaseNodes(nodes, chainNode as unknown as SwitchCaseComposite);
-				} else if (this.isIfElseComposite(chainNode)) {
-					this.addIfElseNodes(nodes, chainNode as unknown as IfElseComposite);
-				} else if (isIfElseBuilder(chainNode)) {
+				// Check for builders FIRST (before composites) - builders have similar properties
+				if (isIfElseBuilder(chainNode)) {
 					// Handle IfElseBuilder (fluent API) chained via chain.then(ifNode.onTrue(...).onFalse(...))
 					this.addIfElseBuilderNodes(nodes, chainNode as unknown as IfElseBuilder<unknown>);
 				} else if (isSwitchCaseBuilder(chainNode)) {
 					// Handle SwitchCaseBuilder (fluent API) chained via chain.then(switchNode.onCase(...))
 					this.addSwitchCaseBuilderNodes(nodes, chainNode as unknown as SwitchCaseBuilder<unknown>);
+				} else if (this.isSwitchCaseComposite(chainNode)) {
+					this.addSwitchCaseNodes(nodes, chainNode as unknown as SwitchCaseComposite);
+				} else if (this.isIfElseComposite(chainNode)) {
+					this.addIfElseNodes(nodes, chainNode as unknown as IfElseComposite);
 				} else if (this.isMergeComposite(chainNode)) {
 					this.addMergeNodes(
 						nodes,
@@ -2663,8 +2672,18 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 								for (const chainNode of chainTarget.allNodes) {
 									if (chainNode === null) continue;
 
-									// For composites, only add if main node not already in map (prevents infinite recursion)
-									if (this.isSwitchCaseComposite(chainNode)) {
+									// Check for builders FIRST (before composites) - builders have similar properties
+									if (isIfElseBuilder(chainNode)) {
+										const builder = chainNode as unknown as IfElseBuilder<unknown>;
+										if (!nodes.has(builder.ifNode.name)) {
+											this.addIfElseBuilderNodes(nodes, builder);
+										}
+									} else if (isSwitchCaseBuilder(chainNode)) {
+										const builder = chainNode as unknown as SwitchCaseBuilder<unknown>;
+										if (!nodes.has(builder.switchNode.name)) {
+											this.addSwitchCaseBuilderNodes(nodes, builder);
+										}
+									} else if (this.isSwitchCaseComposite(chainNode)) {
 										const comp = chainNode as unknown as SwitchCaseComposite;
 										if (!nodes.has(comp.switchNode.name)) {
 											this.addSwitchCaseNodes(nodes, comp);
@@ -3355,15 +3374,21 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 			: undefined;
 
 		// Create a minimal node instance
+		// For nodes without a name (like sticky notes), use the id as the internal name
+		// but preserve the original name (or lack thereof) for export
+		const nodeName = n8nNode.name ?? n8nNode.id;
 		const instance: NodeInstance<string, string, unknown> = {
 			type: n8nNode.type,
 			version,
 			id: n8nNode.id,
-			name: n8nNode.name,
+			name: nodeName,
 			config: {
-				name: n8nNode.name, // Include name in config for consistency
+				name: nodeName, // Include name in config for consistency
 				parameters: n8nNode.parameters as IDataObject,
 				credentials,
+				// Store original name to preserve it in toJSON (undefined for sticky notes without name)
+				// Using spread to add internal property without polluting the type
+				...({ _originalName: n8nNode.name } as Record<string, unknown>),
 				position: n8nNode.position,
 				disabled: n8nNode.disabled,
 				notes: n8nNode.notes,
@@ -3410,9 +3435,8 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 		// Use a unique key for the map (ID if available, otherwise generate one)
 		// Connections reference nodes by name, so we also build a name->key mapping
 		const mapKey = n8nNode.id || `__unnamed_${unnamedCounter++}`;
-		if (n8nNode.name !== undefined) {
-			nameToKey.set(n8nNode.name, mapKey);
-		}
+		// Always add to nameToKey since we now have a valid nodeName
+		nameToKey.set(nodeName, mapKey);
 
 		nodes.set(mapKey, {
 			instance,

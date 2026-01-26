@@ -1,58 +1,32 @@
-import { switchCase, isSwitchCaseNamedSyntax } from '../switch-case';
 import { workflow } from '../workflow-builder';
-import { node, trigger } from '../node-builder';
+import { node, trigger, isSwitchCaseBuilder } from '../node-builder';
 import { fanOut } from '../fan-out';
 import type { NodeInstance } from '../types/base';
 
 // Helper type for Switch node
 type SwitchNode = NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 
-describe('Switch Case', () => {
-	describe('switchCase() requires named syntax only', () => {
-		it('should require a switch node as first argument', () => {
-			const case0 = node({
+describe('Switch Case fluent API', () => {
+	describe('switchNode.onCase() syntax', () => {
+		it('should require a switch node for onCase()', () => {
+			const regularNode = node({
 				type: 'n8n-nodes-base.set',
 				version: 3.4,
-				config: { name: 'Case 0' },
+				config: { name: 'Set Node' },
 			});
-			const case1 = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Case 1' },
+			const target = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Target' },
 			});
 
-			// Array syntax should throw an error - named syntax is required
+			// onCase() should throw on non-Switch nodes
 			expect(() => {
-				// @ts-expect-error - Testing runtime rejection of array syntax
-				switchCase([case0, case1]);
-			}).toThrow('switchCase() requires a Switch node as first argument');
+				(regularNode as unknown as SwitchNode).onCase!(0, target);
+			}).toThrow('.onCase() is only available on Switch nodes');
 		});
 
-		it('should require named inputs { case0, case1, ... } as second argument', () => {
-			const switchNode = node({
-				type: 'n8n-nodes-base.switch',
-				version: 3.4,
-				config: { name: 'My Switch' },
-			});
-			const case0 = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Case 0' },
-			});
-			const case1 = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'Case 1' },
-			});
-
-			// Passing array as first argument should throw
-			expect(() => {
-				// @ts-expect-error - Testing runtime rejection of array syntax
-				switchCase([case0, case1], switchNode);
-			}).toThrow('switchCase() requires a Switch node as first argument');
-		});
-
-		it('should work with named syntax: switchCase(switchNode, { case0, case1 })', () => {
+		it('should work with fluent syntax: switchNode.onCase!(0, case0).onCase(1, case1)', () => {
 			const switchNode = node({
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
@@ -69,13 +43,13 @@ describe('Switch Case', () => {
 				config: { name: 'Case 1' },
 			});
 
-			// Named syntax should work
-			const composite = switchCase(switchNode, { case0, case1 });
-			expect(composite.switchNode).toBe(switchNode);
-			expect(isSwitchCaseNamedSyntax(composite)).toBe(true);
+			// Fluent syntax should work
+			const builder = switchNode.onCase!(0, case0).onCase(1, case1);
+			expect(isSwitchCaseBuilder(builder)).toBe(true);
+			expect(builder.switchNode).toBe(switchNode);
 		});
 
-		it('should always return named syntax composites', () => {
+		it('should return a SwitchCaseBuilder', () => {
 			const switchNode = node({
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
@@ -87,14 +61,13 @@ describe('Switch Case', () => {
 				config: { name: 'Case 0' },
 			});
 
-			const composite = switchCase(switchNode, { case0 });
-			// All composites should now be named syntax
-			expect(isSwitchCaseNamedSyntax(composite)).toBe(true);
+			const builder = switchNode.onCase!(0, case0);
+			expect(isSwitchCaseBuilder(builder)).toBe(true);
 		});
 	});
 
-	describe('switchCase() named object syntax', () => {
-		it('should support switchCase(node, { case0, case1, ... }) syntax', () => {
+	describe('fluent API in workflow', () => {
+		it('should support switchNode.onCase!(0, case0).onCase(1, case1) in workflow', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const switchNode = node({
 				type: 'n8n-nodes-base.switch',
@@ -122,16 +95,10 @@ describe('Switch Case', () => {
 				config: { name: 'Downstream' },
 			});
 
-			// Named syntax: switchCase(switchNode, { case0, case1, case2 })
+			// Fluent syntax in workflow
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.then(
-					switchCase(switchNode, {
-						case0,
-						case1,
-						case2,
-					}),
-				)
+				.then(switchNode.onCase!(0, case0).onCase(1, case1).onCase(2, case2))
 				.then(downstream);
 
 			const json = wf.toJSON();
@@ -151,7 +118,7 @@ describe('Switch Case', () => {
 			expect(switchConns.main[2]![0]!.node).toBe('Case 2');
 		});
 
-		it('should support null for empty cases', () => {
+		it('should support sparse cases (skipping indices)', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const switchNode = node({
 				type: 'n8n-nodes-base.switch',
@@ -169,20 +136,14 @@ describe('Switch Case', () => {
 				config: { name: 'Case 2' },
 			});
 
-			// Named syntax with null for case1
+			// Fluent syntax with sparse cases (skip case1)
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.then(
-					switchCase(switchNode, {
-						case0,
-						case1: null, // no output 1 connection
-						case2,
-					}),
-				);
+				.then(switchNode.onCase!(0, case0).onCase(2, case2));
 
 			const json = wf.toJSON();
 
-			// Should have: trigger, switch, case0, case2 (case1 is null)
+			// Should have: trigger, switch, case0, case2 (case1 is skipped)
 			expect(json.nodes).toHaveLength(4);
 
 			// Switch should connect to case0 and case2 only
@@ -191,7 +152,7 @@ describe('Switch Case', () => {
 
 			// case0 at output 0
 			expect(switchConns.main[0]![0]!.node).toBe('Case 0');
-			// case1 at output 1 - should be empty or undefined (null case = no connection)
+			// case1 at output 1 - should be empty or undefined (skipped)
 			expect(switchConns.main[1] === undefined || switchConns.main[1]!.length === 0).toBe(true);
 			// case2 at output 2
 			expect(switchConns.main[2]![0]!.node).toBe('Case 2');
@@ -220,15 +181,10 @@ describe('Switch Case', () => {
 				config: { name: 'Target C' },
 			});
 
-			// Named syntax with fanOut
+			// Fluent syntax with fanOut
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.then(
-					switchCase(switchNode, {
-						case0: fanOut(targetA, targetB), // output 0 -> both A and B
-						case1: targetC, // output 1 -> C
-					}),
-				);
+				.then(switchNode.onCase!(0, fanOut(targetA, targetB)).onCase(1, targetC));
 
 			const json = wf.toJSON();
 
@@ -248,7 +204,7 @@ describe('Switch Case', () => {
 			expect(switchConns.main[1]![0]!.node).toBe('Target C');
 		});
 
-		it('should identify named syntax with isSwitchCaseNamedSyntax', () => {
+		it('should identify builder with isSwitchCaseBuilder', () => {
 			const switchNode = node({
 				type: 'n8n-nodes-base.switch',
 				version: 3.4,
@@ -260,9 +216,9 @@ describe('Switch Case', () => {
 				config: { name: 'Case 0' },
 			});
 
-			// Named syntax - all switchCase composites are now named syntax
-			const composite = switchCase(switchNode, { case0 });
-			expect(isSwitchCaseNamedSyntax(composite)).toBe(true);
+			// Fluent syntax
+			const builder = switchNode.onCase!(0, case0);
+			expect(isSwitchCaseBuilder(builder)).toBe(true);
 		});
 	});
 });

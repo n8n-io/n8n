@@ -1,58 +1,50 @@
-import { ifElse, isIfElseNamedSyntax } from '../if-else';
 import { workflow } from '../workflow-builder';
-import { node, trigger } from '../node-builder';
+import { node, trigger, isIfElseBuilder } from '../node-builder';
 import { fanOut } from '../fan-out';
 import type { NodeInstance } from '../types/base';
 
 // Helper type for IF node
 type IfNode = NodeInstance<'n8n-nodes-base.if', string, unknown>;
 
-describe('IF Else', () => {
-	describe('ifElse() requires named syntax only', () => {
-		it('should require an IF node as first argument', () => {
-			const trueNode = node({
+describe('IF Else fluent API', () => {
+	describe('ifNode.onTrue().onFalse() syntax', () => {
+		it('should require an IF node for onTrue()', () => {
+			const regularNode = node({
 				type: 'n8n-nodes-base.set',
 				version: 3.4,
-				config: { name: 'True Branch' },
+				config: { name: 'Set Node' },
 			});
-			const falseNode = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'False Branch' },
+			const target = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Target' },
 			});
 
-			// Array syntax should throw an error - named syntax is required
+			// onTrue() should throw on non-IF nodes
 			expect(() => {
-				// @ts-expect-error - Testing runtime rejection of array syntax
-				ifElse([trueNode, falseNode]);
-			}).toThrow('ifElse() requires an IF node as first argument');
+				(regularNode as unknown as IfNode).onTrue!(target);
+			}).toThrow('.onTrue() is only available on IF nodes');
 		});
 
-		it('should require named inputs { true, false } as second argument', () => {
-			const ifNode = node({
-				type: 'n8n-nodes-base.if',
-				version: 2.2,
-				config: { name: 'My IF' },
-			});
-			const trueNode = node({
+		it('should require an IF node for onFalse()', () => {
+			const regularNode = node({
 				type: 'n8n-nodes-base.set',
 				version: 3.4,
-				config: { name: 'True Branch' },
+				config: { name: 'Set Node' },
 			});
-			const falseNode = node({
-				type: 'n8n-nodes-base.set',
-				version: 3.4,
-				config: { name: 'False Branch' },
+			const target = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Target' },
 			});
 
-			// Passing array as second argument should throw
+			// onFalse() should throw on non-IF nodes
 			expect(() => {
-				// @ts-expect-error - Testing runtime rejection of array syntax
-				ifElse([trueNode, falseNode], ifNode);
-			}).toThrow('ifElse() requires an IF node as first argument');
+				(regularNode as unknown as IfNode).onFalse!(target);
+			}).toThrow('.onFalse() is only available on IF nodes');
 		});
 
-		it('should work with named syntax: ifElse(ifNode, { true, false })', () => {
+		it('should work with fluent syntax: ifNode.onTrue!(trueBranch).onFalse(falseBranch)', () => {
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
@@ -69,13 +61,13 @@ describe('IF Else', () => {
 				config: { name: 'False Branch' },
 			});
 
-			// Named syntax should work
-			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
-			expect(composite.ifNode).toBe(ifNode);
-			expect(isIfElseNamedSyntax(composite)).toBe(true);
+			// Fluent syntax should work
+			const builder = ifNode.onTrue!(trueBranch).onFalse(falseBranch);
+			expect(isIfElseBuilder(builder)).toBe(true);
+			expect(builder.ifNode).toBe(ifNode);
 		});
 
-		it('should always return named syntax composites', () => {
+		it('should return an IfElseBuilder', () => {
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
@@ -92,14 +84,13 @@ describe('IF Else', () => {
 				config: { name: 'False Branch' },
 			});
 
-			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
-			// All composites should now be named syntax
-			expect(isIfElseNamedSyntax(composite)).toBe(true);
+			const builder = ifNode.onTrue!(trueBranch).onFalse(falseBranch);
+			expect(isIfElseBuilder(builder)).toBe(true);
 		});
 	});
 
-	describe('ifElse() named object syntax', () => {
-		it('should support ifElse(node, { true, false }) syntax', () => {
+	describe('fluent API in workflow', () => {
+		it('should support ifNode.onTrue!(trueBranch).onFalse(falseBranch) in workflow', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
@@ -122,15 +113,10 @@ describe('IF Else', () => {
 				config: { name: 'Downstream' },
 			});
 
-			// Named syntax: ifElse(ifNode, { true: trueBranch, false: falseBranch })
+			// Fluent syntax in workflow
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: trueBranch,
-						false: falseBranch,
-					}),
-				)
+				.then(ifNode.onTrue!(trueBranch).onFalse(falseBranch))
 				.then(downstream);
 
 			const json = wf.toJSON();
@@ -161,15 +147,8 @@ describe('IF Else', () => {
 				config: { name: 'True Branch' },
 			});
 
-			// Named syntax with null false branch
-			const wf = workflow('test-id', 'Test')
-				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: trueBranch,
-						false: null, // no false branch
-					}),
-				);
+			// Fluent syntax with only true branch (no false)
+			const wf = workflow('test-id', 'Test').add(t).then(ifNode.onTrue!(trueBranch));
 
 			const json = wf.toJSON();
 
@@ -209,15 +188,10 @@ describe('IF Else', () => {
 				config: { name: 'Target C' },
 			});
 
-			// Named syntax with fanOut
+			// Fluent syntax with fanOut
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: fanOut(targetA, targetB), // true -> both A and B
-						false: targetC, // false -> C
-					}),
-				);
+				.then(ifNode.onTrue!(fanOut(targetA, targetB)).onFalse(targetC));
 
 			const json = wf.toJSON();
 
@@ -237,7 +211,7 @@ describe('IF Else', () => {
 			expect(ifConns.main[1]![0]!.node).toBe('Target C');
 		});
 
-		it('should identify named syntax with isIfElseNamedSyntax', () => {
+		it('should identify builder with isIfElseBuilder', () => {
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
 				version: 2.2,
@@ -254,9 +228,9 @@ describe('IF Else', () => {
 				config: { name: 'False Branch' },
 			});
 
-			// Named syntax - all ifElse composites are now named syntax
-			const composite = ifElse(ifNode, { true: trueBranch, false: falseBranch });
-			expect(isIfElseNamedSyntax(composite)).toBe(true);
+			// Fluent syntax
+			const builder = ifNode.onTrue!(trueBranch).onFalse(falseBranch);
+			expect(isIfElseBuilder(builder)).toBe(true);
 		});
 	});
 });

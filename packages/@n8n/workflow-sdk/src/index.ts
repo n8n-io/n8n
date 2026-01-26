@@ -111,21 +111,11 @@ export {
 // The merge() function is internal only (used by code generator)
 // Export only the type guard needed by workflow-builder
 
-// IF else composite - use .onTrue()/.onFalse() fluent syntax instead
-// ifElse() function is internal only (used by code generator for backward compatibility)
-export {
-	isIfElseNamedSyntax,
-	type IfElseTarget,
-	type IfElseNamedInputs,
-} from './if-else';
+// IF else types - use .onTrue()/.onFalse() fluent syntax
+export type { IfElseTarget } from './if-else';
 
-// Switch case composite - use .onCase() fluent syntax instead
-// switchCase() function is internal only (used by code generator for backward compatibility)
-export {
-	isSwitchCaseNamedSyntax,
-	type SwitchCaseTarget,
-	type SwitchCaseNamedInputs,
-} from './switch-case';
+// Switch case types - use .onCase() fluent syntax
+export type { SwitchCaseTarget } from './switch-case';
 
 // Split in batches
 export { splitInBatches } from './split-in-batches';

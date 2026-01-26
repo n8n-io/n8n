@@ -39,7 +39,7 @@ function isTriggerType(type: string): boolean {
  */
 function createSemanticNode(nodeJson: NodeJSON): SemanticNode {
 	return {
-		name: nodeJson.name,
+		name: nodeJson.name ?? nodeJson.id, // Use id as fallback for nodes without names
 		type: nodeJson.type,
 		json: nodeJson,
 		outputs: new Map(),

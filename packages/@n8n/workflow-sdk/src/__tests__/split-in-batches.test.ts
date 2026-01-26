@@ -69,10 +69,11 @@ describe('Split In Batches', () => {
 			// Find split in batches node
 			const foundSibNode = json.nodes.find((n) => n.type === 'n8n-nodes-base.splitInBatches');
 			expect(foundSibNode).toBeDefined();
+			expect(foundSibNode!.name).toBeDefined();
 			expect(foundSibNode!.parameters?.batchSize).toBe(10);
 
 			// Check split in batches has two outputs
-			const sibConnections = json.connections[foundSibNode!.name];
+			const sibConnections = json.connections[foundSibNode!.name!];
 			expect(sibConnections).toBeDefined();
 			expect(sibConnections.main).toHaveLength(2);
 

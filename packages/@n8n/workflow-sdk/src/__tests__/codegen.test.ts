@@ -115,7 +115,7 @@ describe('generateWorkflowCode', () => {
 		expect(code).toContain('color: 4');
 	});
 
-	it('should handle IF branching with ifElse() composite', () => {
+	it('should handle IF branching with fluent API', () => {
 		const json: WorkflowJSON = {
 			id: 'branch-test',
 			name: 'Branch Test',
@@ -157,8 +157,9 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should use ifElse() composite instead of .output()
-		expect(code).toContain('ifElse(');
+		// Should use fluent API instead of .output()
+		expect(code).toContain('.onTrue(');
+		expect(code).toContain('.onFalse(');
 		expect(code).not.toContain('.output(0)');
 		expect(code).not.toContain('.output(1)');
 	});
@@ -194,9 +195,9 @@ describe('generateWorkflowCode', () => {
 
 		const code = generateWorkflowCode(json);
 
-		// Should use ifElse() with null for missing branch
-		expect(code).toContain('ifElse(');
-		expect(code).toContain('null');
+		// Should use fluent API with only onTrue (no onFalse since false branch is missing)
+		expect(code).toContain('.onTrue(');
+		expect(code).not.toContain('.onFalse(');
 	});
 
 	it('should roundtrip single-branch IF node with downstream connections', () => {
@@ -955,7 +956,7 @@ describe('generateWorkflowCode with AI subnodes', () => {
 			expect(code).toContain('input1:');
 		});
 
-		it('should generate ifElse() for IF node patterns', () => {
+		it('should generate fluent API for IF node patterns', () => {
 			const json: WorkflowJSON = {
 				id: 'if-test',
 				name: 'IF Workflow',
@@ -1009,14 +1010,12 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use ifElse() function with named syntax
-			expect(code).toContain('ifElse(');
-			// Should include true and false branches with named syntax
-			expect(code).toContain('{ true:');
-			expect(code).toContain('false:');
+			// Should use fluent API syntax
+			expect(code).toContain('.onTrue(');
+			expect(code).toContain('.onFalse(');
 		});
 
-		it('should generate switchCase() for Switch node patterns', () => {
+		it('should generate fluent API for Switch node patterns', () => {
 			const json: WorkflowJSON = {
 				id: 'switch-test',
 				name: 'Switch Workflow',
@@ -1074,10 +1073,10 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use switchCase() function with named syntax
-			expect(code).toContain('switchCase(');
-			// Should include case branches with named syntax
-			expect(code).toContain('{ case0:');
+			// Should use fluent API syntax
+			expect(code).toContain('.onCase(0,');
+			expect(code).toContain('.onCase(1,');
+			expect(code).toContain('.onCase(2,');
 		});
 	});
 });
@@ -2424,13 +2423,15 @@ describe('Phase 2b: .input(n) syntax for merge patterns', () => {
 
 		const code = generateWorkflowCode(workflow);
 
-		// Should NOT use merge() function inside ifElse
-		expect(code).not.toMatch(/ifElse\([^)]+,\s*\{[^}]*merge\(/);
+		// Should NOT use merge() function inside onTrue/onFalse
+		expect(code).not.toMatch(/\.onTrue\([^)]*merge\(/);
+		expect(code).not.toMatch(/\.onFalse\([^)]*merge\(/);
 		// Should use .input(n) syntax for merge connections
 		expect(code).toContain('.input(0)');
 		expect(code).toContain('.input(1)');
-		// Should still have ifElse for the branching
-		expect(code).toContain('ifElse(');
+		// Should still have fluent API for the branching
+		expect(code).toContain('.onTrue(');
+		expect(code).toContain('.onFalse(');
 
 		// Roundtrip must preserve the connections
 		const parsed = parseWorkflowCode(code);

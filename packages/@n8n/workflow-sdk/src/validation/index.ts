@@ -154,6 +154,9 @@ function findDisconnectedNodes(json: WorkflowJSON): string[] {
 	// Find nodes without incoming connections (excluding triggers, sticky notes, and connected subnodes)
 	const disconnected: string[] = [];
 	for (const node of json.nodes) {
+		// Skip nodes without names (e.g., some sticky notes)
+		if (!node.name) continue;
+
 		// Skip if node has incoming connection
 		if (hasIncoming.has(node.name)) continue;
 

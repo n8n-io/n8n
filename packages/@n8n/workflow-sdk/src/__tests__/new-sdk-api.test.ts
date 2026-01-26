@@ -12,8 +12,6 @@
 
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
-import { ifElse } from '../if-else';
-import { switchCase } from '../switch-case';
 import { splitInBatches } from '../split-in-batches';
 import { fanOut } from '../fan-out';
 import { nextBatch } from '../next-batch';
@@ -184,10 +182,7 @@ describe('New SDK API', () => {
 			const wf = workflow('test', 'Test')
 				.add(t)
 				.then(
-					ifElse(ifNode, {
-						true: fanOut(nodeA, nodeB), // IF output 0 (true) -> both A and B
-						false: null,
-					}),
+					ifNode.onTrue!(fanOut(nodeA, nodeB)), // IF output 0 (true) -> both A and B
 				);
 
 			const json = wf.toJSON();
@@ -211,12 +206,7 @@ describe('New SDK API', () => {
 
 			const wf = workflow('test', 'Test')
 				.add(t)
-				.then(
-					switchCase(switchNode, {
-						case0: fanOut(nodeA, nodeB), // case 0 -> both A and B
-						case1: nodeC,
-					}),
-				);
+				.then(switchNode.onCase!(0, fanOut(nodeA, nodeB)).onCase(1, nodeC));
 
 			const json = wf.toJSON();
 
@@ -234,7 +224,7 @@ describe('New SDK API', () => {
 
 	describe('Edge Case 3: Builders Are Terminal', () => {
 		it('allows nesting builders inside .then() chains', () => {
-			// Builders (ifElse, switchCase, splitInBatches) can be passed to .then()
+			// Fluent builders (ifNode.onTrue().onFalse(), switchNode.onCase()) can be passed to .then()
 			// and internally handle their branch nodes
 
 			const nodeA = createNode('A');
@@ -243,14 +233,7 @@ describe('New SDK API', () => {
 			const t = createTrigger('Start');
 
 			// trigger -> IF -> (true: A, false: B)
-			const wf = workflow('test', 'Test')
-				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: nodeA,
-						false: nodeB,
-					}),
-				);
+			const wf = workflow('test', 'Test').add(t).then(ifNode.onTrue!(nodeA).onFalse(nodeB));
 
 			const json = wf.toJSON();
 
@@ -278,10 +261,7 @@ describe('New SDK API', () => {
 			const wf = workflow('test', 'Test')
 				.add(t)
 				.then(
-					ifElse(ifNode, {
-						true: nodeA.then(convergence),
-						false: nodeB.then(convergence), // Same instance
-					}),
+					ifNode.onTrue!(nodeA.then(convergence)).onFalse(nodeB.then(convergence)), // Same instance
 				);
 
 			const json = wf.toJSON();
@@ -316,14 +296,11 @@ describe('New SDK API', () => {
 			const t = createTrigger('Start');
 
 			// Start -> Check -> Done? -> (true: Result, false: Wait -> Check)
-			// Use workflow.then() with ifElse since node.then() doesn't accept composites
+			// Use workflow.then() with fluent builder
 			const wf = workflow('test', 'Test')
 				.add(t.then(checkStatus))
 				.then(
-					ifElse(jobComplete, {
-						true: getResult,
-						false: wait.then(checkStatus), // Loop back
-					}),
+					jobComplete.onTrue!(getResult).onFalse(wait.then(checkStatus)), // Loop back
 				);
 
 			const json = wf.toJSON();
@@ -342,14 +319,9 @@ describe('New SDK API', () => {
 			const t = createTrigger('Start');
 
 			// Only case0 and case3, skip 1 and 2
-			const wf = workflow('test', 'Test')
-				.add(t)
-				.then(
-					switchCase(switchNode, {
-						case0: nodeA,
-						case3: nodeB, // Skip 1, 2
-					}),
-				);
+			const wf = workflow('test', 'Test').add(t).then(
+				switchNode.onCase!(0, nodeA).onCase(3, nodeB), // Skip 1, 2
+			);
 
 			const json = wf.toJSON();
 
@@ -375,14 +347,7 @@ describe('New SDK API', () => {
 			const ifNode = createIfNode('IF');
 			const t = createTrigger('Start');
 
-			const wf = workflow('test', 'Test')
-				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: nodeA,
-						false: null, // Omitted
-					}),
-				);
+			const wf = workflow('test', 'Test').add(t).then(ifNode.onTrue!(nodeA));
 
 			const json = wf.toJSON();
 
@@ -397,14 +362,7 @@ describe('New SDK API', () => {
 			const ifNode = createIfNode('IF');
 			const t = createTrigger('Start');
 
-			const wf = workflow('test', 'Test')
-				.add(t)
-				.then(
-					ifElse(ifNode, {
-						true: null, // Omitted
-						false: nodeB,
-					}),
-				);
+			const wf = workflow('test', 'Test').add(t).then(ifNode.onFalse!(nodeB));
 
 			const json = wf.toJSON();
 
@@ -652,7 +610,7 @@ describe('New SDK API', () => {
 			// Should have renamed one to "Process 1" or similar
 			expect(names).toContain('Process');
 			// Second one should have been renamed
-			const processVariants = names.filter((n) => n.startsWith('Process'));
+			const processVariants = names.filter((n) => n?.startsWith('Process'));
 			expect(processVariants.length).toBe(2);
 			expect(processVariants.some((n) => n !== 'Process')).toBe(true);
 		});
@@ -737,10 +695,7 @@ describe('New SDK API', () => {
 			const wf = workflow('test', 'Branching Workflow')
 				.add(t)
 				.then(
-					ifElse(ifNode, {
-						true: trueHandler.then(finalNode),
-						false: falseHandler.then(finalNode), // Converge
-					}),
+					ifNode.onTrue!(trueHandler.then(finalNode)).onFalse(falseHandler.then(finalNode)), // Converge
 				);
 
 			const json = wf.toJSON();
