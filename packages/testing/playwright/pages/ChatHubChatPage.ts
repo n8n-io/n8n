@@ -36,7 +36,9 @@ export class ChatHubChatPage extends BasePage {
 		// Only dismiss welcome screen if there are no existing conversations
 		const conversationCount = await conversationList.count();
 		if (conversationCount === 0) {
-			await this.getWelcomeStartNewChatButton().click();
+			const welcomeButton = this.getWelcomeStartNewChatButton();
+			await welcomeButton.click();
+			await welcomeButton.waitFor({ state: 'hidden' });
 		}
 	}
 
