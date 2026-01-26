@@ -1,15 +1,28 @@
 <script lang="ts" setup>
 import { provide } from 'vue';
 import { useCrdtWorkflowDoc } from '../composables/useCrdtWorkflowDoc';
+import type { CRDTTransportType } from '../composables/useCRDTSync';
 import { WorkflowDocumentKey } from '../types/workflowSync.types';
 
-const props = defineProps<{
-	/** CRDT document ID (workflow ID) */
-	docId: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		/** CRDT document ID (workflow ID) */
+		docId: string;
+		/**
+		 * Transport type for syncing. Default: 'worker'
+		 * - 'worker': SharedWorker + server connection
+		 * - 'websocket': Direct WebSocket to server
+		 * - 'coordinator': Database Coordinator (Worker Mode - local only)
+		 */
+		transport?: CRDTTransportType;
+	}>(),
+	{
+		transport: 'worker',
+	},
+);
 
-// Create document internally
-const doc = useCrdtWorkflowDoc({ docId: props.docId });
+// Create document internally with transport option
+const doc = useCrdtWorkflowDoc({ docId: props.docId, transport: props.transport });
 
 // Provide to descendants
 provide(WorkflowDocumentKey, doc);

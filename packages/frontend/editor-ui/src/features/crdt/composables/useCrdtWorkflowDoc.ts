@@ -9,7 +9,7 @@ import type {
 	TransactionBatch,
 } from '@n8n/crdt';
 import { isMapChange, ChangeOrigin as CO, seedValueDeep, toJSON, setNestedValue } from '@n8n/crdt';
-import { useCRDTSync } from './useCRDTSync';
+import { useCRDTSync, type CRDTTransportType } from './useCRDTSync';
 import type {
 	WorkflowDocument,
 	WorkflowNode,
@@ -29,6 +29,13 @@ export interface UseCrdtWorkflowDocOptions {
 	docId: string;
 	/** Auto-connect on creation. Default: true */
 	immediate?: boolean;
+	/**
+	 * Transport type for syncing. Default: 'worker'
+	 * - 'worker': Uses SharedWorker for cross-tab sync + server connection
+	 * - 'websocket': Direct WebSocket connection to server (no cross-tab sync)
+	 * - 'coordinator': Uses Database Coordinator SharedWorker (Worker Mode - local only)
+	 */
+	transport?: CRDTTransportType;
 }
 
 /**
@@ -52,10 +59,10 @@ export interface UseCrdtWorkflowDocOptions {
  * ```
  */
 export function useCrdtWorkflowDoc(options: UseCrdtWorkflowDocOptions): WorkflowDocument {
-	const { docId, immediate = true } = options;
+	const { docId, immediate = true, transport = 'worker' } = options;
 
 	// Use existing CRDT sync composable
-	const crdt = useCRDTSync({ docId, immediate });
+	const crdt = useCRDTSync({ docId, immediate, transport });
 
 	// Map CRDT state to WorkflowDocumentState (disconnected → idle)
 	const state = computed(() => (crdt.state.value === 'disconnected' ? 'idle' : crdt.state.value));

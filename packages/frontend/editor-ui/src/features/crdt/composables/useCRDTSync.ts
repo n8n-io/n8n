@@ -20,15 +20,17 @@ import {
 	type UndoStackChangeEvent,
 } from '@n8n/crdt';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import * as workers from '@/app/workers';
 
 export type CRDTSyncState = 'idle' | 'connecting' | 'ready' | 'disconnected' | 'error';
 
 /**
  * Transport type for CRDT sync.
- * - 'worker': Uses SharedWorker for cross-tab sync + server connection (default)
+ * - 'worker': Uses CRDT SharedWorker for cross-tab sync + server connection (default)
  * - 'websocket': Direct WebSocket connection to server (no cross-tab sync)
+ * - 'coordinator': Uses Database Coordinator SharedWorker for Worker Mode (local-only, no server)
  */
-export type CRDTTransportType = 'worker' | 'websocket';
+export type CRDTTransportType = 'worker' | 'websocket' | 'coordinator';
 
 export interface UseCRDTSyncOptions {
 	docId: string;
@@ -301,14 +303,45 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 	}
 
 	/**
+	 * Create the transport based on the transport type.
+	 * This is a separate async function to handle coordinator port retrieval.
+	 */
+	async function createTransport(): Promise<SyncTransport> {
+		const serverUrl = serverSync ? getServerUrl() : '';
+
+		if (transportType === 'websocket') {
+			// Direct WebSocket connection (no cross-tab sync)
+			return new WebSocketTransport({
+				url: serverUrl,
+				reconnect: true,
+			});
+		} else if (transportType === 'coordinator') {
+			// Coordinator transport (Worker Mode - local-only, uses Database Coordinator)
+			// Get a MessagePort from the Coordinator SharedWorker
+			const coordinatorPort = await workers.getCrdtPort();
+			return new WorkerTransport({
+				port: coordinatorPort,
+				docId,
+				serverUrl: rootStore.baseUrl, // Used by coordinator for REST API calls
+			});
+		} else {
+			// Worker transport (cross-tab sync via CRDT SharedWorker)
+			return new WorkerTransport({
+				port: getWorkerPort(),
+				docId,
+				serverUrl,
+			});
+		}
+	}
+
+	/**
 	 * Connect and start syncing.
 	 * @returns Promise that resolves with the doc when initial sync is complete
 	 */
-	// eslint-disable-next-line @typescript-eslint/promise-function-async -- Intentionally uses deferred promise pattern
-	function connect(): Promise<CRDTDoc> {
+	async function connect(): Promise<CRDTDoc> {
 		// If already connected/connecting, return existing promise or resolve immediately
 		if (state.value === 'ready' && currentDoc) {
-			return Promise.resolve(currentDoc);
+			return currentDoc;
 		}
 
 		if (state.value === 'connecting') {
@@ -334,57 +367,44 @@ export function useCRDTSync(options: UseCRDTSyncOptions): UseCRDTSyncReturn {
 			connectPromiseResolve = resolve;
 			connectPromiseReject = reject;
 
-			try {
-				// Create local document
-				currentDoc = provider.createDoc(docId);
+			void (async () => {
+				try {
+					// Create local document
+					currentDoc = provider.createDoc(docId);
 
-				// Get awareness instance
-				currentAwareness = currentDoc.getAwareness();
+					// Get awareness instance
+					currentAwareness = currentDoc.getAwareness();
 
-				// Note: Undo manager is created in handleDocSyncChange AFTER initial sync
-				// because Yjs UndoManager scopes to types that exist at creation time
+					// Note: Undo manager is created in handleDocSyncChange AFTER initial sync
+					// because Yjs UndoManager scopes to types that exist at creation time
 
-				// Subscribe to local document changes
-				unsubscribeDoc = currentDoc.onUpdate(handleDocUpdate);
+					// Subscribe to local document changes
+					unsubscribeDoc = currentDoc.onUpdate(handleDocUpdate);
 
-				// Subscribe to local awareness changes
-				unsubscribeAwareness = currentAwareness.onUpdate(handleAwarenessUpdate);
+					// Subscribe to local awareness changes
+					unsubscribeAwareness = currentAwareness.onUpdate(handleAwarenessUpdate);
 
-				// Subscribe to doc sync state changes
-				unsubscribeDocSync = currentDoc.onSync(handleDocSyncChange);
+					// Subscribe to doc sync state changes
+					unsubscribeDocSync = currentDoc.onSync(handleDocSyncChange);
 
-				// Create transport based on type
-				const serverUrl = serverSync ? getServerUrl() : '';
+					// Create transport (may be async for coordinator type)
+					transport = await createTransport();
 
-				if (transportType === 'websocket') {
-					// Direct WebSocket connection (no cross-tab sync)
-					transport = new WebSocketTransport({
-						url: serverUrl,
-						reconnect: true,
-					});
-				} else {
-					// Worker transport (cross-tab sync via SharedWorker)
-					transport = new WorkerTransport({
-						port: getWorkerPort(),
-						docId,
-						serverUrl,
-					});
+					// Wire up transport to receive messages
+					unsubscribeTransportReceive = transport.onReceive(handleTransportMessage);
+
+					// Connect transport
+					void transport.connect();
+				} catch (caughtError) {
+					state.value = 'error';
+					const err = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
+					error.value = err.message;
+					void errorHook.trigger(err);
+					reject(err);
+					connectPromiseResolve = null;
+					connectPromiseReject = null;
 				}
-
-				// Wire up transport to receive messages
-				unsubscribeTransportReceive = transport.onReceive(handleTransportMessage);
-
-				// Connect transport
-				void transport.connect();
-			} catch (caughtError) {
-				state.value = 'error';
-				const err = caughtError instanceof Error ? caughtError : new Error(String(caughtError));
-				error.value = err.message;
-				void errorHook.trigger(err);
-				reject(err);
-				connectPromiseResolve = null;
-				connectPromiseReject = null;
-			}
+			})();
 		});
 	}
 

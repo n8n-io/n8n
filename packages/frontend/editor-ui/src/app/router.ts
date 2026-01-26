@@ -423,7 +423,24 @@ export const routes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 		props: true,
-		beforeEnter: (to, _from, next) => {
+		beforeEnter: (_to, _from, next) => {
+			const { check } = useEnvFeatureFlag();
+			if (check.value('CRDT')) {
+				next();
+			} else {
+				next({ name: VIEWS.NOT_FOUND });
+			}
+		},
+	},
+	{
+		path: '/workflow-worker/:name/:nodeId?',
+		name: VIEWS.WORKFLOW_WORKER_MODE,
+		component: async () => await import('@/features/crdt/views/WorkerModeTestView.vue'),
+		meta: {
+			middleware: ['authenticated'],
+		},
+		props: true,
+		beforeEnter: (_to, _from, next) => {
 			const { check } = useEnvFeatureFlag();
 			if (check.value('CRDT')) {
 				next();

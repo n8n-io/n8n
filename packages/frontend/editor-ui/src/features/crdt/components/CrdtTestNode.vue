@@ -573,7 +573,7 @@ const selectedByCollaborator = computed(() => {
 /* Selected by collaborator - colored outline (works alongside local selection box-shadow) */
 .crdt-node--selected-by-collaborator {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	outline: calc(2px * var(--canvas-zoom-compensation-factor, 1)) solid var(--collaborator--color);
+	outline: calc(1px * var(--canvas-zoom-compensation-factor, 1)) solid var(--collaborator--color);
 }
 
 /* Trigger nodes - asymmetric rounded corners (rounded left side) */

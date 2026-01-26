@@ -9,107 +9,21 @@ import {
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import debounce from 'lodash/debounce';
-import type { IConnections, Workflow } from 'n8n-workflow';
+import {
+	iConnectionsToEdges,
+	type ComputedHandle,
+	type Workflow,
+	type WorkflowSeedData,
+} from 'n8n-workflow';
 
 import { calculateNodeSize } from './node-size-calculator';
+
+// Re-export types from n8n-workflow for backward compatibility
+export type { ComputedHandle, CRDTEdge, NodeSeedData, WorkflowSeedData } from 'n8n-workflow';
 
 interface Subscriber {
 	userId: User['id'];
 	pushRef: string;
-}
-
-/**
- * Flat edge format stored in CRDT (Vue Flow native).
- */
-export interface CRDTEdge {
-	id: string;
-	source: string;
-	target: string;
-	sourceHandle: string;
-	targetHandle: string;
-}
-
-/**
- * Computed handle for a node (Vue Flow compatible).
- * Pre-computed on the server to avoid expression evaluation on the main thread.
- */
-export interface ComputedHandle {
-	handleId: string; // e.g., "inputs/main/0" or "outputs/ai_tool/1"
-	type: string; // NodeConnectionType (e.g., "main", "ai_tool")
-	mode: 'inputs' | 'outputs';
-	index: number;
-	displayName?: string;
-	required?: boolean;
-	maxConnections?: number;
-}
-
-/**
- * Node data for seeding, including pre-computed handles and subtitle.
- */
-export interface NodeSeedData {
-	id: string;
-	name: string;
-	inputs?: ComputedHandle[];
-	outputs?: ComputedHandle[];
-	/** Pre-computed subtitle from expression evaluation */
-	subtitle?: string;
-	[key: string]: unknown;
-}
-
-/**
- * Data structure for seeding a workflow into a CRDT document.
- */
-export interface WorkflowSeedData {
-	id: string;
-	name: string;
-	nodes: NodeSeedData[];
-	connections: IConnections;
-	settings?: Record<string, unknown>;
-}
-
-/**
- * Convert IConnections (nested format) to flat edges (Vue Flow format).
- *
- * @param connections - IConnections from workflow
- * @param nodeIdByName - Map from node name to node ID
- * @returns Flat edges array
- */
-function iConnectionsToEdges(
-	connections: IConnections,
-	nodeIdByName: Map<string, string>,
-): CRDTEdge[] {
-	const edges: CRDTEdge[] = [];
-
-	for (const [sourceName, sourceConns] of Object.entries(connections)) {
-		const sourceId = nodeIdByName.get(sourceName);
-		if (!sourceId) continue;
-
-		for (const [type, outputs] of Object.entries(sourceConns)) {
-			if (!outputs) continue;
-
-			outputs.forEach((targets, outputIndex) => {
-				if (!targets) return;
-
-				targets.forEach((target) => {
-					const targetId = nodeIdByName.get(target.node);
-					if (!targetId) return;
-
-					const sourceHandle = `outputs/${type}/${outputIndex}`;
-					const targetHandle = `inputs/${target.type}/${target.index}`;
-
-					edges.push({
-						id: `[${sourceId}/${sourceHandle}][${targetId}/${targetHandle}]`,
-						source: sourceId,
-						target: targetId,
-						sourceHandle,
-						targetHandle,
-					});
-				});
-			});
-		}
-	}
-
-	return edges;
 }
 
 const DEBOUNCE_DELAY_MS = 1500; // 1.5 seconds

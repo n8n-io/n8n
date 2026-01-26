@@ -12,6 +12,7 @@ export const enum VIEWS {
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	WORKFLOW_CRDT = 'NodeViewExistingCRDT',
+	WORKFLOW_WORKER_MODE = 'NodeViewWorkerMode',
 	DEMO = 'WorkflowDemo',
 	DEMO_DIFF = 'WorkflowDemoDiff',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',

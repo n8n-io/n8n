@@ -36,6 +36,7 @@ import {
 	storeVersion as storeVersionOp,
 	getStoredVersion as getStoredVersionOp,
 } from './operations/storeVersion';
+import { createCrdtPort as createCrdtPortOp, cleanupCrdtSubscription } from './operations/crdt';
 import { initialize as initializeOp } from './initialize';
 
 const state: CoordinatorState = {
@@ -43,6 +44,10 @@ const state: CoordinatorState = {
 	activeTabId: null,
 	initialized: false,
 	version: null,
+	// CRDT state
+	crdtSubscriptions: new Map(),
+	crdtDocuments: new Map(),
+	crdtProvider: null,
 };
 
 // ============================================================================
@@ -135,6 +140,19 @@ const coordinatorApi = {
 	async getStoredVersion(): Promise<string | null> {
 		return await getStoredVersionOp(state);
 	},
+
+	/**
+	 * Get a MessagePort for CRDT binary messages (Worker Mode).
+	 * The returned port uses the same protocol as the CRDT SharedWorker.
+	 *
+	 * @param tabId - The tab ID requesting the port
+	 * @returns A MessagePort for CRDT binary messages (transferred via Comlink)
+	 */
+	getCrdtPort(tabId: string): MessagePort {
+		const port = createCrdtPortOp(state, tabId);
+		// Use Comlink.transfer to properly transfer the MessagePort
+		return Comlink.transfer(port, [port]);
+	},
 };
 
 export type CoordinatorApi = typeof coordinatorApi;
@@ -165,6 +183,8 @@ self.onconnect = (e: MessageEvent) => {
 	port.onmessageerror = () => {
 		ports.delete(port);
 		if (connectedTabId) {
+			// Clean up CRDT subscriptions first
+			cleanupCrdtSubscription(state, connectedTabId);
 			handleTabDisconnect(state, connectedTabId);
 		}
 	};

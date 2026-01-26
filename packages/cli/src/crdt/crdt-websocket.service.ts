@@ -1,30 +1,13 @@
 import { Logger } from '@n8n/backend-common';
-import {
-	MESSAGE_SYNC,
-	MESSAGE_AWARENESS,
-	encodeMessage,
-	decodeMessage,
-	isMapChange,
-	type CRDTDoc,
-	type CRDTMap,
-	type Unsubscribe,
-} from '@n8n/crdt';
+import { MESSAGE_SYNC, MESSAGE_AWARENESS, encodeMessage, decodeMessage } from '@n8n/crdt';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Application } from 'express';
 import type { IncomingMessage, Server } from 'http';
 import { ServerResponse } from 'http';
-import type {
-	INode,
-	INodeInputConfiguration,
-	INodeOutputConfiguration,
-	INodePropertyOptions,
-	INodeTypeDescription,
-	IWorkflowBase,
-	NodeConnectionType,
-} from 'n8n-workflow';
-import { NodeHelpers, Workflow } from 'n8n-workflow';
+import type { IWorkflowBase } from 'n8n-workflow';
+import { Workflow, computeAllNodeHandles, setupHandleRecomputation } from 'n8n-workflow';
 import { parse as parseUrl } from 'url';
 import { v4 as uuid } from 'uuid';
 import type { WebSocket } from 'ws';
@@ -34,8 +17,7 @@ import { AuthService } from '@/auth/auth.service';
 import { NodeTypes } from '@/node-types';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { CRDTState, WorkflowRoom, type ComputedHandle, type NodeSeedData } from './crdt-state';
-import { calculateNodeSize } from './node-size-calculator';
+import { CRDTState, WorkflowRoom } from './crdt-state';
 import { syncWorkflowWithDoc } from './sync-workflow-with-doc';
 
 interface CRDTConnection {
@@ -202,8 +184,8 @@ export class CRDTWebSocketService {
 			settings: workflowEntity.settings,
 		});
 
-		// Compute handles for each node and prepare seed data
-		const nodesWithHandles = this.computeNodeHandles(workflow, workflowEntity.nodes);
+		// Compute handles for each node and prepare seed data using shared function
+		const nodesWithHandles = computeAllNodeHandles(workflow, workflowEntity.nodes, this.nodeTypes);
 
 		// Seed the CRDT document with workflow data including pre-computed handles
 		this.state.seedWorkflow(docId, {
@@ -219,7 +201,7 @@ export class CRDTWebSocketService {
 		const syncUnsub = syncWorkflowWithDoc(doc, workflow);
 
 		// Set up handle recomputation when parameters change
-		const handleUnsub = this.setupHandleRecomputation(doc, workflow);
+		const handleUnsub = setupHandleRecomputation(doc, workflow, this.nodeTypes);
 
 		// Subscribe to document updates to broadcast server-side changes (like handle recomputation)
 		// to all connected clients
@@ -249,278 +231,6 @@ export class CRDTWebSocketService {
 			nodeCount: workflowEntity.nodes.length,
 			versionId: workflowEntity.versionId,
 		});
-	}
-
-	/**
-	 * Compute input and output handles and subtitle for all nodes in a workflow.
-	 * Uses NodeHelpers.getNodeInputs/getNodeOutputs which can evaluate expressions.
-	 */
-	private computeNodeHandles(workflow: Workflow, nodes: INode[]): NodeSeedData[] {
-		return nodes.map((node) => {
-			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			const nodeTypeDescription = nodeType?.description;
-
-			let inputs: ComputedHandle[] = [];
-			let outputs: ComputedHandle[] = [];
-			let subtitle: string | undefined;
-
-			if (nodeTypeDescription) {
-				// Compute inputs
-				const rawInputs = NodeHelpers.getNodeInputs(workflow, node, nodeTypeDescription);
-				inputs = this.normalizeHandles(rawInputs, 'inputs');
-
-				// Compute outputs - pass outputNames for main output labels (e.g., "true"/"false" for If node)
-				const rawOutputs = NodeHelpers.getNodeOutputs(workflow, node, nodeTypeDescription);
-				outputs = this.normalizeHandles(rawOutputs, 'outputs', nodeTypeDescription.outputNames);
-
-				// Compute subtitle
-				subtitle = this.computeNodeSubtitle(workflow, node, nodeTypeDescription);
-			}
-
-			return {
-				...node,
-				inputs,
-				outputs,
-				subtitle,
-			} as NodeSeedData;
-		});
-	}
-
-	/**
-	 * Normalize raw inputs/outputs into ComputedHandle format.
-	 * Handles both simple string types and full configuration objects.
-	 *
-	 * @param rawHandles - Raw input/output configurations
-	 * @param mode - 'inputs' or 'outputs'
-	 * @param endpointNames - Optional names for main endpoints (e.g., outputNames like "true"/"false" for If node)
-	 */
-	private normalizeHandles(
-		rawHandles: Array<NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration>,
-		mode: 'inputs' | 'outputs',
-		endpointNames: string[] = [],
-	): ComputedHandle[] {
-		const handles: ComputedHandle[] = [];
-
-		// Group by type to compute correct indices
-		const byType = new Map<string, number>();
-
-		for (let endpointIndex = 0; endpointIndex < rawHandles.length; endpointIndex++) {
-			const raw = rawHandles[endpointIndex];
-			// Normalize to object form
-			const config = typeof raw === 'string' ? { type: raw } : (raw as INodeInputConfiguration);
-
-			const type = config.type;
-			const currentIndex = byType.get(type) ?? 0;
-			byType.set(type, currentIndex + 1);
-
-			// Use displayName from config, or fall back to endpointNames for main type handles
-			const displayName =
-				config.displayName ?? (typeof raw === 'string' ? endpointNames[endpointIndex] : undefined);
-
-			handles.push({
-				handleId: `${mode}/${type}/${currentIndex}`,
-				type,
-				mode,
-				index: currentIndex,
-				displayName,
-				required: config.required,
-				maxConnections: config.maxConnections,
-			});
-		}
-
-		return handles;
-	}
-
-	/**
-	 * Compute subtitle for a node using the same logic as frontend useNodeHelpers.
-	 * Priority: notesInFlow > nodeType.subtitle expression > operation display name
-	 */
-	private computeNodeSubtitle(
-		workflow: Workflow,
-		node: INode,
-		nodeType: INodeTypeDescription,
-	): string | undefined {
-		// 1. Notes in flow
-		if (node.notesInFlow && node.notes) {
-			return node.notes;
-		}
-
-		// 2. Node type subtitle expression
-		if (nodeType.subtitle !== undefined) {
-			try {
-				return workflow.expression.getSimpleParameterValue(
-					node,
-					nodeType.subtitle,
-					'internal',
-					{},
-					undefined,
-					undefined,
-				) as string | undefined;
-			} catch {
-				// Expression evaluation failed, fall through
-			}
-		}
-
-		// 3. Operation parameter display name
-		if (node.parameters?.operation !== undefined) {
-			const operation = node.parameters.operation as string;
-			const operationProp = nodeType.properties?.find((p) => p.name === 'operation');
-			if (operationProp?.options) {
-				const option = operationProp.options.find(
-					(o) => (o as INodePropertyOptions).value === operation,
-				);
-				if (option) {
-					return (option as INodePropertyOptions).name;
-				}
-			}
-			return operation;
-		}
-
-		return undefined;
-	}
-
-	/**
-	 * Set up handle recomputation when nodes are added or parameters change.
-	 * This is necessary because:
-	 * - Newly added nodes need their handles computed server-side
-	 * - Handles can be dynamic based on parameter values (e.g., Merge node's numberInputs)
-	 */
-	private setupHandleRecomputation(doc: CRDTDoc, workflow: Workflow): Unsubscribe {
-		const nodesMap = doc.getMap<unknown>('nodes');
-
-		const nodesUnsub = nodesMap.onDeepChange((changes) => {
-			// Track nodes that need handle computation
-			const affectedNodeIds = new Set<string>();
-
-			for (const change of changes) {
-				// Only process map changes (not array changes)
-				if (!isMapChange(change)) continue;
-
-				const nodeId = change.path[0] as string;
-				if (!nodeId) continue;
-
-				// Case 1: New node added (path length 1, action 'add')
-				// When a node is added, path is [nodeId] and action is 'add'
-				if (change.path.length === 1 && change.action === 'add') {
-					affectedNodeIds.add(nodeId);
-				}
-				// Case 2: Parameter changed (path format: [nodeId, 'parameters', ...paramPath])
-				else if (change.path.length >= 2 && change.path[1] === 'parameters') {
-					affectedNodeIds.add(nodeId);
-				}
-			}
-
-			if (affectedNodeIds.size === 0) return;
-
-			// Recompute handles for affected nodes
-			doc.transact(() => {
-				for (const nodeId of affectedNodeIds) {
-					const nodeMap = nodesMap.get(nodeId) as CRDTMap<unknown> | undefined;
-					if (!nodeMap) continue;
-
-					// Read node data directly from CRDT (not from Workflow instance)
-					// This ensures we have the latest parameters, since multiple onDeepChange
-					// handlers may fire in undefined order
-					const node = this.crdtNodeMapToINode(nodeMap, nodeId);
-					if (!node) continue;
-
-					const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-					if (!nodeType?.description) continue;
-
-					// Recompute handles using the fresh node data from CRDT
-					const rawInputs = NodeHelpers.getNodeInputs(workflow, node, nodeType.description);
-					const newInputs = this.normalizeHandles(rawInputs, 'inputs');
-
-					const rawOutputs = NodeHelpers.getNodeOutputs(workflow, node, nodeType.description);
-					const newOutputs = this.normalizeHandles(
-						rawOutputs,
-						'outputs',
-						nodeType.description.outputNames,
-					);
-
-					// Update handles in CRDT
-					this.updateHandlesInCRDT(doc, nodeMap, 'inputs', newInputs);
-					this.updateHandlesInCRDT(doc, nodeMap, 'outputs', newOutputs);
-
-					// Compute and store node size based on updated handles
-					const size = calculateNodeSize({ inputs: newInputs, outputs: newOutputs });
-					nodeMap.set('size', [size.width, size.height]);
-
-					// Recompute subtitle
-					const newSubtitle = this.computeNodeSubtitle(workflow, node, nodeType.description);
-					if (newSubtitle !== undefined) {
-						nodeMap.set('subtitle', newSubtitle);
-					} else {
-						nodeMap.delete('subtitle');
-					}
-				}
-			});
-		});
-
-		return nodesUnsub;
-	}
-
-	/**
-	 * Convert a CRDT node map to an INode object.
-	 * Reads directly from CRDT to get the latest data.
-	 *
-	 * @param nodeMap The CRDT map containing node data
-	 * @param nodeIdFallback Optional node ID to use if 'id' is not stored in the map
-	 */
-	private crdtNodeMapToINode(nodeMap: CRDTMap<unknown>, nodeIdFallback?: string): INode | null {
-		const id = (nodeMap.get('id') as string | undefined) ?? nodeIdFallback;
-		const name = nodeMap.get('name') as string | undefined;
-		const type = nodeMap.get('type') as string | undefined;
-		const typeVersion = nodeMap.get('typeVersion') as number | undefined;
-		const position = nodeMap.get('position') as [number, number] | undefined;
-
-		if (!id || !name || !type) return null;
-
-		// Get parameters - handle both CRDTMap and plain object
-		const rawParams = nodeMap.get('parameters');
-		let parameters: Record<string, unknown> = {};
-		if (rawParams && typeof rawParams === 'object') {
-			if ('toJSON' in rawParams) {
-				parameters = (rawParams as { toJSON(): Record<string, unknown> }).toJSON();
-			} else {
-				parameters = rawParams as Record<string, unknown>;
-			}
-		}
-
-		return {
-			id,
-			name,
-			type,
-			typeVersion: typeVersion ?? 1,
-			position: position ?? [0, 0],
-			parameters,
-		} as INode;
-	}
-
-	/**
-	 * Update handles array in CRDT for a node.
-	 */
-	private updateHandlesInCRDT(
-		doc: CRDTDoc,
-		nodeMap: CRDTMap<unknown>,
-		key: 'inputs' | 'outputs',
-		handles: ComputedHandle[],
-	): void {
-		// Create new handles array
-		const handlesArray = doc.createArray<unknown>();
-		for (const handle of handles) {
-			const handleMap = doc.createMap<unknown>();
-			handleMap.set('handleId', handle.handleId);
-			handleMap.set('type', handle.type);
-			handleMap.set('mode', handle.mode);
-			handleMap.set('index', handle.index);
-			if (handle.displayName) handleMap.set('displayName', handle.displayName);
-			if (handle.required !== undefined) handleMap.set('required', handle.required);
-			if (handle.maxConnections !== undefined)
-				handleMap.set('maxConnections', handle.maxConnections);
-			handlesArray.push(handleMap);
-		}
-		nodeMap.set(key, handlesArray);
 	}
 
 	private handleMessage(connection: CRDTConnection, data: ArrayBuffer | Buffer) {
