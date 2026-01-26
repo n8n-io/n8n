@@ -298,7 +298,7 @@ const currentProject = computed(() => {
 });
 
 const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
-	project: currentProject.value,
+	project: null,
 });
 const filtersApplied = computed(
 	() => Boolean(search.value) || Boolean(Object.values(filters.value).filter(Boolean).length),
