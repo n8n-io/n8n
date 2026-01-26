@@ -140,6 +140,9 @@ export { splitInBatches } from './split-in-batches';
 export { fanOut, isFanOut, type FanOutTargets } from './fan-out';
 export { fanIn, isFanIn, type FanInSources } from './fan-in';
 
+// Loop-back helper for split in batches
+export { nextBatch, isNextBatch, type NextBatchMarker } from './next-batch';
+
 // Expression utilities
 export {
 	serializeExpression,

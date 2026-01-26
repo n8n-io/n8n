@@ -16,6 +16,7 @@ import { ifElse } from '../if-else';
 import { switchCase } from '../switch-case';
 import { splitInBatches } from '../split-in-batches';
 import { fanOut } from '../fan-out';
+import { nextBatch } from '../next-batch';
 import { languageModel, tool } from '../subnode-builders';
 import type { NodeInstance } from '../types/base';
 
@@ -670,6 +671,58 @@ describe('New SDK API', () => {
 
 			const json = wf.toJSON();
 			expect(json.nodes).toHaveLength(3);
+		});
+	});
+
+	describe('nextBatch() Helper', () => {
+		it('returns the sibNode from a SplitInBatches builder', () => {
+			const sibNode = createSplitInBatchesNode('Batch');
+			const processNode = createNode('Process');
+
+			// Using splitInBatches returns a builder with sibNode property
+			const builder = splitInBatches(sibNode, {
+				done: createNode('Done'),
+				each: processNode,
+			});
+
+			// nextBatch() should extract the sibNode from the builder
+			const result = nextBatch(builder);
+
+			// Result should be the original sibNode
+			expect(result).toBe(sibNode);
+		});
+
+		it('returns the node directly when passed a NodeInstance', () => {
+			const sibNode = createSplitInBatchesNode('Batch');
+
+			// When passing NodeInstance directly, nextBatch() should return it
+			const result = nextBatch(sibNode);
+
+			expect(result).toBe(sibNode);
+		});
+
+		it('enables loop-back connections in split in batches workflows', () => {
+			const t = createTrigger('Start');
+			const sibNode = createSplitInBatchesNode('Process Batches');
+			const processItem = createNode('Process Item');
+			const summarize = createNode('Summarize');
+
+			// Using nextBatch(sibNode) directly for loop-back
+			// (passing the node instead of builder avoids circular reference)
+			const sibBuilder = splitInBatches(sibNode, {
+				done: summarize,
+				each: processItem.then(nextBatch(sibNode)), // Use nextBatch for explicit loop-back
+			});
+
+			const wf = workflow('test', 'Batch Processing').add(t).then(sibBuilder);
+
+			const json = wf.toJSON();
+
+			// Verify batch loop structure
+			expect(json.connections['Process Batches'].main[0]![0]!.node).toBe('Summarize');
+			expect(json.connections['Process Batches'].main[1]![0]!.node).toBe('Process Item');
+			// Process Item loops back to Split In Batches via nextBatch()
+			expect(json.connections['Process Item'].main[0]![0]!.node).toBe('Process Batches');
 		});
 	});
 
