@@ -362,7 +362,7 @@ defineExpose({ focus, blur, select });
 </template>
 
 <style module lang="scss">
-@use '../../css/mixins' as *;
+@use '../../css/mixins/focus';
 
 .inputContainer {
 	display: inline-flex;
@@ -455,10 +455,14 @@ defineExpose({ focus, blur, select });
 	outline: none;
 	font-family: inherit;
 	color: var(--color--text--shade-1);
-}
 
-.input:focus {
-	box-shadow: 0 0 0 1px var(--color--secondary) inset;
+	&:focus {
+		outline: none;
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 .input::placeholder {
@@ -492,10 +496,14 @@ defineExpose({ focus, blur, select });
 	outline: none;
 	font-family: inherit;
 	color: var(--color--text--shade-1);
-}
 
-.textarea:focus {
-	box-shadow: 0 0 0 1px var(--color--secondary) inset;
+	&:focus {
+		outline: none;
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring;
+	}
 }
 
 .textarea::placeholder {
