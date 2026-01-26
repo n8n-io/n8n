@@ -50,15 +50,15 @@ describe('CanvasHandlePlus', () => {
 			props: { type: 'success' },
 		});
 
-		const wrapper = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"]');
+		const svg = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"] svg');
 
-		expect(wrapper).toHaveClass('success');
+		expect(svg).toHaveClass('success');
 	});
 
 	it('should render SVG elements correctly', () => {
 		const { container } = renderComponent();
 
-		const svg = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"]');
+		const svg = container.querySelector('[data-test-id="canvas-handle-plus-wrapper"] svg');
 
 		expect(svg).toBeTruthy();
 		expect(svg?.getAttribute('viewBox')).toBe('0 0 70 24');

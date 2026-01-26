@@ -105,12 +105,11 @@ function onClick(event: MouseEvent) {
 </script>
 
 <template>
-	<div :class="classes">
+	<div :class="classes" data-test-id="canvas-handle-plus-wrapper">
 		<svg
 			:class="[$style.wrapper, $style[position], $style[type]]"
 			:style="svgStyles"
 			:viewBox="`0 0 ${viewBox.width} ${viewBox.height}`"
-			data-test-id="canvas-handle-plus-wrapper"
 		>
 			<line
 				:class="[handleClasses, $style.line]"
