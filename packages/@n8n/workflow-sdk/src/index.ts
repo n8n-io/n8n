@@ -107,13 +107,9 @@ export {
 	textSplitter,
 } from './subnode-builders';
 
-// Merge composite
-export {
-	merge,
-	isMergeNamedInputSyntax,
-	type MergeInputSource,
-	type MergeNamedInputs,
-} from './merge';
+// Merge composite - use .input(n) syntax instead of merge() function
+// The merge() function is internal only (used by code generator)
+// Export only the type guard needed by workflow-builder
 
 // IF else composite
 export {
@@ -134,9 +130,9 @@ export {
 // Split in batches
 export { splitInBatches } from './split-in-batches';
 
-// Fan-out / Fan-in helpers for explicit parallel connections
+// Fan-out helper for explicit parallel connections
 export { fanOut, isFanOut, type FanOutTargets } from './fan-out';
-export { fanIn, isFanIn, type FanInSources } from './fan-in';
+// Note: fanIn() removed - use multiple .then(node.input(n)) calls instead
 
 // Loop-back helper for split in batches
 export { nextBatch, isNextBatch, type NextBatchMarker } from './next-batch';

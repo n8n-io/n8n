@@ -786,8 +786,8 @@ function escapeRegexChars(str: string): string {
 }
 
 /**
- * Generate code for split in batches using object syntax:
- * splitInBatches(sibVar, { done: doneCode, each: eachCode.then(nextBatch(sibVar)) })
+ * Generate code for split in batches using fluent API syntax:
+ * splitInBatches(sibVar).onEachBatch(eachCode.then(nextBatch(sibVar))).onDone(doneCode)
  */
 function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: GenerationContext): string {
 	const innerCtx = { ...ctx, indent: ctx.indent + 1 };
@@ -795,18 +795,10 @@ function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: Generatio
 	// Get the SIB node variable name (it should always be a variable for cycle reference)
 	const sibVarName = getVarName(sib.sibNode.name, ctx);
 
-	// Build the branches object
-	const branchParts: string[] = [];
+	// Start with splitInBatches(sibVar)
+	let code = `splitInBatches(${sibVarName})`;
 
-	// Done branch (output 0)
-	if (sib.doneChain) {
-		const doneCode = generateBranchCode(sib.doneChain, innerCtx);
-		branchParts.push(`done: ${doneCode}`);
-	} else {
-		branchParts.push('done: null');
-	}
-
-	// Each/loop branch (output 1)
+	// Add .onEachBatch() if there's a loop chain (output 1)
 	if (sib.loopChain) {
 		let eachCode: string;
 
@@ -848,12 +840,16 @@ function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: Generatio
 			}
 		}
 
-		branchParts.push(`each: ${eachCode}`);
-	} else {
-		branchParts.push('each: null');
+		code += `\n${getIndent(ctx)}.onEachBatch(${eachCode})`;
 	}
 
-	return `splitInBatches(${sibVarName}, { ${branchParts.join(', ')} })`;
+	// Add .onDone() if there's a done chain (output 0)
+	if (sib.doneChain) {
+		const doneCode = generateBranchCode(sib.doneChain, innerCtx);
+		code += `\n${getIndent(ctx)}.onDone(${doneCode})`;
+	}
+
+	return code;
 }
 
 /**

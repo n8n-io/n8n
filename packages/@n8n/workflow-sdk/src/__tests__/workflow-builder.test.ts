@@ -1,7 +1,6 @@
 import { workflow } from '../workflow-builder';
 import { node, trigger, sticky } from '../node-builder';
 import { languageModel, memory, tool } from '../subnode-builders';
-import { merge } from '../merge';
 import { ifElse } from '../if-else';
 import { switchCase } from '../switch-case';
 import type { NodeInstance, WorkflowJSON } from '../types/base';
@@ -205,7 +204,7 @@ describe('Workflow Builder', () => {
 			expect(json.connections['Direct IF']?.main[1]?.[0]?.node).toBe('False Path');
 		});
 
-		it('should add MergeComposite directly', () => {
+		it('should add merge pattern using .input(n) syntax', () => {
 			const source1 = node({
 				type: 'n8n-nodes-base.noOp',
 				version: 1,
@@ -225,11 +224,10 @@ describe('Workflow Builder', () => {
 				},
 			}) as NodeInstance<'n8n-nodes-base.merge', string, unknown>;
 
-			// Pass merge directly to add() instead of through then()
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const wf = workflow('test', 'Test').add(
-				merge(mergeNode, { input0: source1, input1: source2 }) as any,
-			);
+			// Use .input(n) syntax to connect sources to merge inputs
+			const wf = workflow('test', 'Test')
+				.add(source1.then(mergeNode.input(0)))
+				.add(source2.then(mergeNode.input(1)));
 
 			const json = wf.toJSON();
 
@@ -688,7 +686,7 @@ describe('Workflow Builder', () => {
 		});
 	});
 
-	describe('merge() with correct input indices', () => {
+	describe('merge with .input(n) syntax', () => {
 		it('should connect branches to different merge inputs', () => {
 			const triggerNode = trigger({
 				type: 'n8n-nodes-base.manualTrigger',
@@ -719,9 +717,12 @@ describe('Workflow Builder', () => {
 				config: { name: 'Source 3' },
 			});
 
+			// Use .input(n) syntax instead of merge composite
 			const wf = workflow('test', 'Test')
-				.add(triggerNode)
-				.then(merge(mergeNode, { input0: source1, input1: source2, input2: source3 }));
+				.add(triggerNode.then([source1, source2, source3]))
+				.add(source1.then(mergeNode.input(0)))
+				.add(source2.then(mergeNode.input(1)))
+				.add(source3.then(mergeNode.input(2)));
 
 			const json = wf.toJSON();
 
@@ -771,9 +772,11 @@ describe('Workflow Builder', () => {
 				config: { name: 'Branch B' },
 			});
 
+			// Use .input(n) syntax instead of merge composite
 			const wf = workflow('test', 'Test')
-				.add(triggerNode)
-				.then(merge(mergeNode, { input0: source1, input1: source2 }));
+				.add(triggerNode.then([source1, source2]))
+				.add(source1.then(mergeNode.input(0)))
+				.add(source2.then(mergeNode.input(1)));
 
 			const json = wf.toJSON();
 

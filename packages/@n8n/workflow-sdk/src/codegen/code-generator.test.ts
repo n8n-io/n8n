@@ -283,7 +283,7 @@ describe('code-generator', () => {
 		});
 
 		describe('SplitInBatches', () => {
-			it('generates splitInBatches with object syntax', () => {
+			it('generates splitInBatches with fluent API syntax (.onEachBatch/.onDone)', () => {
 				const json: WorkflowJSON = {
 					name: 'SplitInBatches Test',
 					nodes: [
@@ -329,12 +329,15 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should use object syntax: splitInBatches(sibVar, { done: ..., each: ... })
+				// Should use fluent API syntax: splitInBatches(sibVar).onEachBatch(...).onDone(...)
 				expect(code).toContain('splitInBatches(');
-				expect(code).toMatch(/splitInBatches\(\w+,\s*\{/); // object syntax
-				expect(code).toContain('done:');
-				expect(code).toContain('each:');
-				// Should NOT use old fluent API
+				expect(code).toContain('.onEachBatch(');
+				expect(code).toContain('.onDone(');
+				// Should NOT use old object syntax
+				expect(code).not.toMatch(/splitInBatches\(\w+,\s*\{/);
+				expect(code).not.toContain('done:');
+				expect(code).not.toContain('each:');
+				// Should NOT use old chain API
 				expect(code).not.toContain('.done()');
 				expect(code).not.toContain('.each()');
 			});
