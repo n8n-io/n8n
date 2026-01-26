@@ -1,7 +1,7 @@
 import type { INodeType } from 'n8n-workflow';
 
 import { shouldAssignExecuteMethod, getAllKeyPaths, isWorkflowIdValid } from '../utils';
-import { generateNanoId } from '@n8n/db';
+import { generateNanoId } from '@n8n/utils';
 
 describe('shouldAssignExecuteMethod', () => {
 	it('should return true when node has no execute, poll, trigger, webhook (unless declarative), or methods', () => {
@@ -154,13 +154,13 @@ describe('getAllKeyPaths', () => {
 
 describe('isWorkflowIdValid', () => {
 	describe('valid IDs', () => {
-		it('should accept n8n-generated nanoid (16 characters)', () => {
+		it('should accept n8n-generated workflow ID (16 characters)', () => {
 			const id = generateNanoId();
 			expect(id).toHaveLength(16);
 			expect(isWorkflowIdValid(id)).toBe(true);
 		});
 
-		it('should accept multiple generated nanoids', () => {
+		it('should accept multiple generated workflow IDs', () => {
 			// Test 10 randomly generated IDs to ensure consistency
 			for (let i = 0; i < 10; i++) {
 				const id = generateNanoId();
@@ -173,22 +173,17 @@ describe('isWorkflowIdValid', () => {
 			expect(isWorkflowIdValid(id)).toBe(true);
 		});
 
-		it('should accept UUID format (36 characters)', () => {
-			const uuid = '550e8400-e29b-41d4-a716-446655440000';
-			expect(isWorkflowIdValid(uuid)).toBe(true);
-		});
-
 		it('should accept minimum length (1 character)', () => {
 			expect(isWorkflowIdValid('a')).toBe(true);
 		});
 
-		it('should accept maximum database length (36 characters)', () => {
-			const id = 'a'.repeat(36);
+		it('should accept maximum allowed length (21 characters)', () => {
+			const id = 'a'.repeat(21);
 			expect(isWorkflowIdValid(id)).toBe(true);
 		});
 
-		it('should accept various lengths between 1 and 36', () => {
-			[1, 8, 16, 21, 32, 36].forEach((length) => {
+		it('should accept various lengths between 1 and 21', () => {
+			[1, 8, 16, 20, 21].forEach((length) => {
 				const id = 'a'.repeat(length);
 				expect(isWorkflowIdValid(id)).toBe(true);
 			});
@@ -208,8 +203,8 @@ describe('isWorkflowIdValid', () => {
 			expect(isWorkflowIdValid('')).toBe(false);
 		});
 
-		it('should reject IDs longer than database limit (37+ characters)', () => {
-			const tooLong = 'a'.repeat(37);
+		it('should reject IDs longer than maximum allowed length (22+ characters)', () => {
+			const tooLong = 'a'.repeat(22);
 			expect(isWorkflowIdValid(tooLong)).toBe(false);
 		});
 
