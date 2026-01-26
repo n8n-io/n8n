@@ -271,6 +271,64 @@ export class EnterpriseWorkflowService {
 		});
 	}
 
+	/**
+	 * Get workflow IDs that use at least one resolvable credential.
+	 * Used to populate `hasResolvableCredentials` in workflow list responses.
+	 */
+	async getWorkflowIdsWithResolvableCredentials(workflowIds: string[]): Promise<Set<string>> {
+		if (workflowIds.length === 0) {
+			return new Set();
+		}
+
+		// Fetch workflows with just the nodes field
+		const workflows = await this.workflowRepository.findByIds(workflowIds, {
+			fields: ['id', 'nodes'],
+		});
+
+		// Extract all credential IDs from all workflows
+		const credentialIdToWorkflowIds = new Map<string, string[]>();
+		for (const workflow of workflows) {
+			if (!workflow.nodes) continue;
+			for (const node of workflow.nodes) {
+				if (!node.credentials) continue;
+				for (const credentialType of Object.keys(node.credentials)) {
+					const credentialId = node.credentials[credentialType]?.id;
+					if (credentialId) {
+						const workflowIdsList = credentialIdToWorkflowIds.get(credentialId) ?? [];
+						workflowIdsList.push(workflow.id);
+						credentialIdToWorkflowIds.set(credentialId, workflowIdsList);
+					}
+				}
+			}
+		}
+
+		if (credentialIdToWorkflowIds.size === 0) {
+			return new Set();
+		}
+
+		// Query credentials that are resolvable
+		const resolvableCredentials = await this.credentialsRepository.find({
+			where: {
+				id: In(Array.from(credentialIdToWorkflowIds.keys())),
+				isResolvable: true,
+			},
+			select: ['id'],
+		});
+
+		// Build set of workflow IDs that have resolvable credentials
+		const workflowIdsWithResolvableCredentials = new Set<string>();
+		for (const credential of resolvableCredentials) {
+			const workflowIdsList = credentialIdToWorkflowIds.get(credential.id);
+			if (workflowIdsList) {
+				for (const workflowId of workflowIdsList) {
+					workflowIdsWithResolvableCredentials.add(workflowId);
+				}
+			}
+		}
+
+		return workflowIdsWithResolvableCredentials;
+	}
+
 	async transferWorkflow(
 		user: User,
 		workflowId: string,

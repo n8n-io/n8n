@@ -38,6 +38,8 @@ export interface EvaluationArgs {
 
 	/** URL to POST evaluation results to when complete */
 	webhookUrl?: string;
+	/** Secret for HMAC-SHA256 signature of webhook payload */
+	webhookSecret?: string;
 
 	// Model configuration
 	/** Default model for all stages */
@@ -101,6 +103,7 @@ const cliSchema = z
 		langsmith: z.boolean().optional(),
 		templateExamples: z.boolean().default(false),
 		webhookUrl: z.string().url().optional(),
+		webhookSecret: z.string().min(16).optional(),
 
 		// Model configuration
 		model: modelIdSchema.default(DEFAULT_MODEL),
@@ -227,6 +230,12 @@ const FLAG_DEFS: Record<string, FlagDef> = {
 		kind: 'string',
 		group: 'output',
 		desc: 'URL to POST results to when complete',
+	},
+	'--webhook-secret': {
+		key: 'webhookSecret',
+		kind: 'string',
+		group: 'output',
+		desc: 'Secret for HMAC-SHA256 signature (min 16 chars)',
 	},
 
 	// Feature flags
@@ -536,6 +545,7 @@ export function parseEvaluationArgs(argv: string[] = process.argv.slice(2)): Eva
 		numJudges: parsed.numJudges,
 		featureFlags,
 		webhookUrl: parsed.webhookUrl,
+		webhookSecret: parsed.webhookSecret,
 		// Model configuration
 		model: parsed.model,
 		judgeModel: parsed.judgeModel,
