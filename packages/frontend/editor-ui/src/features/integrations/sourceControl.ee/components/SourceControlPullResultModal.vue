@@ -98,7 +98,12 @@ function close() {
 							>
 								<div>{{ tab.label }}</div>
 								<N8nText tag="div" color="text-light">
-									{{ tab.total }} {{ tab.total === 1 ? 'item' : 'items' }}
+									{{
+										i18n.baseText('settings.sourceControl.modals.pullResult.itemCount', {
+											adjustToNumber: tab.total,
+											interpolate: { count: `${tab.total}` },
+										})
+									}}
 								</N8nText>
 							</button>
 						</template>
@@ -107,7 +112,9 @@ function close() {
 						<div :class="[$style.table]">
 							<div :class="[$style.tableHeader]">
 								<div :class="$style.headerTitle">
-									<N8nText>Title</N8nText>
+									<N8nText>{{
+										i18n.baseText('settings.sourceControl.modals.pullResult.tableHeader.title')
+									}}</N8nText>
 								</div>
 							</div>
 							<div :class="$style.tableContent">
