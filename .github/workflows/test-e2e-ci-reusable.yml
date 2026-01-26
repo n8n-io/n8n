@@ -137,4 +137,4 @@ jobs:
       - name: Delete images from GHCR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/cleanup-ghcr-images.mjs --tag pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+        run: node .github/scripts/cleanup-ghcr-images.mjs --pr ${{ github.event.pull_request.number }}

@@ -3,69 +3,117 @@
  * Cleanup GHCR images for n8n CI
  *
  * Usage:
- *   node cleanup-ghcr-images.mjs --tag <tag>     # Delete specific tag
- *   node cleanup-ghcr-images.mjs --pr <number>   # Delete all pr-{number}-* tags
- *   node cleanup-ghcr-images.mjs --stale <days>  # Delete pr-* images older than N days
+ *   node cleanup-ghcr-images.mjs --pr <number>   # Delete all pr-{number}-* tags (early termination)
+ *   node cleanup-ghcr-images.mjs --all           # Delete all pr-* images (parallel pagination)
  */
-import { execSync } from 'node:child_process';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 
+const execAsync = promisify(exec);
 const ORG = 'n8n-io';
 const PACKAGES = ['n8n', 'runners'];
-const [mode, rawValue] = process.argv.slice(2);
-if (!['--tag', '--pr', '--stale'].includes(mode) || !rawValue) {
-	console.error('Usage: cleanup-ghcr-images.mjs --tag|--pr|--stale <value>');
-	process.exit(1);
-}
-const value = mode === '--stale' ? parseInt(rawValue, 10) : rawValue;
-if (mode === '--stale' && (!Number.isFinite(value) || value <= 0)) {
-	console.error('Error: --stale requires a positive number');
+const [mode, value] = process.argv.slice(2);
+
+if (!['--pr', '--all'].includes(mode) || (mode === '--pr' && !value)) {
+	console.error('Usage: cleanup-ghcr-images.mjs --pr <number> | --all');
 	process.exit(1);
 }
 
-let hasErrors = false;
+async function ghApi(path) {
+	const { stdout } = await execAsync(
+		`gh api "/orgs/${ORG}/packages/container/${path}"`,
+	);
+	return JSON.parse(stdout);
+}
 
-function ghApi(path, del = false) {
-	const method = del ? '--method DELETE ' : '';
+async function ghDelete(path) {
+	await execAsync(`gh api --method DELETE "/orgs/${ORG}/packages/container/${path}"`);
+}
+
+async function fetchPage(pkg, page) {
 	try {
-		const out = execSync(
-			`gh api ${method}"/orgs/${ORG}/packages/container/${path}" -H "Accept: application/vnd.github+json"`,
-			{ encoding: 'utf8', stdio: 'pipe' },
-		);
-		return del ? null : JSON.parse(out);
-	} catch {
-		if (del) hasErrors = true;
-		return null;
+		return await ghApi(`${pkg}/versions?per_page=100&page=${page}`);
+	} catch (err) {
+		if (err.code === 1 && err.stderr?.includes('404')) return [];
+		throw new Error(`Failed to fetch ${pkg} page ${page}: ${err.message}`);
 	}
 }
 
-function getVersions(pkg) {
+const isPrImage = (v, prNum) => {
+	const tags = v.metadata?.container?.tags || [];
+	return prNum ? tags.some((t) => t.startsWith(`pr-${prNum}-`)) : tags.some((t) => t.startsWith('pr-'));
+};
+
+async function getVersionsForPr(pkg, prNumber) {
 	const versions = [];
+	let emptyPages = 0;
+
 	for (let page = 1; ; page++) {
-		const batch = ghApi(`${pkg}/versions?per_page=100&page=${page}`);
-		if (!batch?.length) break;
-		versions.push(...batch);
+		const batch = await fetchPage(pkg, page);
+		if (!batch.length) break;
+
+		const matches = batch.filter((v) => isPrImage(v, prNumber));
+		if (matches.length) {
+			versions.push(...matches);
+			emptyPages = 0;
+		} else if (++emptyPages >= 3) {
+			console.log(`  Early termination after ${page} pages`);
+			break;
+		}
 		if (batch.length < 100) break;
 	}
 	return versions;
 }
 
-function shouldDelete(v) {
-	const tags = v.metadata?.container?.tags || [];
-	if (mode === '--tag') return tags.includes(value);
-	if (mode === '--pr') return tags.some((t) => t.startsWith(`pr-${value}-`));
-	if (mode === '--stale') {
-		const cutoff = Date.now() - value * 86400000;
-		return tags.some((t) => t.startsWith('pr-')) && new Date(v.created_at) < cutoff;
+async function getVersionsForAll(pkg) {
+	const versions = [];
+	const firstPage = await fetchPage(pkg, 1);
+	if (!firstPage.length) return [];
+
+	versions.push(...firstPage.filter((v) => isPrImage(v)));
+	if (firstPage.length < 100) return versions;
+
+	for (let page = 2; ; page += 10) {
+		const batches = await Promise.all(
+			Array.from({ length: 10 }, (_, i) => fetchPage(pkg, page + i)),
+		);
+		let done = false;
+		for (const batch of batches) {
+			if (!batch.length || batch.length < 100) done = true;
+			versions.push(...batch.filter((v) => isPrImage(v)));
+			if (!batch.length) break;
+		}
+		if (done) break;
 	}
-	return false;
+	return versions;
 }
 
+let hasErrors = false;
+
 for (const pkg of PACKAGES) {
-	const toDelete = getVersions(pkg).filter(shouldDelete);
-	if (!toDelete.length) console.log(`No matching images found for ${pkg}`);
+	console.log(`Processing ${pkg}...`);
+	let consecutiveErrors = 0;
+
+	const toDelete =
+		mode === '--pr' ? await getVersionsForPr(pkg, value) : await getVersionsForAll(pkg);
+
+	if (!toDelete.length) {
+		console.log(`  No matching images found`);
+		continue;
+	}
+
 	for (const v of toDelete) {
-		ghApi(`${pkg}/versions/${v.id}`, true);
-		console.log(`Deleted ${pkg}:${v.metadata.container.tags.join(',')}`);
+		try {
+			await ghDelete(`${pkg}/versions/${v.id}`);
+			console.log(`  Deleted ${v.metadata.container.tags.join(',')}`);
+			consecutiveErrors = 0;
+		} catch (err) {
+			console.error(`  Failed to delete ${v.id}: ${err.message}`);
+			hasErrors = true;
+			if (++consecutiveErrors >= 3) {
+				throw new Error('Too many consecutive delete failures, aborting');
+			}
+		}
 	}
 }
 
