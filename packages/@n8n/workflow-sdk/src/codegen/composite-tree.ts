@@ -65,6 +65,8 @@ export interface SwitchCaseCompositeNode extends CompositeNodeBase {
 	kind: 'switchCase';
 	switchNode: SemanticNode;
 	cases: (CompositeNode | CompositeNode[] | null)[];
+	/** Original case indices (preserves sparse indices like [0, 3]) */
+	caseIndices: number[];
 }
 
 /**

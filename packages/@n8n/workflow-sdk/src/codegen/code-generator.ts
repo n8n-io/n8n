@@ -509,6 +509,11 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 		configParts.push(`position: [${pos[0]}, ${pos[1]}]`);
 	}
 
+	// Include onError if set
+	if (node.json.onError) {
+		configParts.push(`onError: '${node.json.onError}'`);
+	}
+
 	// Include subnodes config if this node has AI subnodes
 	// Use variable references if subnodes are declared as variables
 	const subnodesConfig =
@@ -751,9 +756,12 @@ function generateSwitchCase(switchCase: SwitchCaseCompositeNode, ctx: Generation
 		return switchNodeRef;
 	}
 
-	// Generate named case entries: { case0: ..., case1: ..., ... }
+	// Generate named case entries with original indices: { case0: ..., case3: ..., ... }
 	const caseEntries = switchCase.cases
-		.map((c, i) => `case${i}: ${generateBranchCode(c, innerCtx)}`)
+		.map((c, i) => {
+			const caseIndex = switchCase.caseIndices[i] ?? i;
+			return `case${caseIndex}: ${generateBranchCode(c, innerCtx)}`;
+		})
 		.join(', ');
 
 	return `switchCase(${switchNodeRef}, { ${caseEntries} })`;

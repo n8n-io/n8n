@@ -717,9 +717,34 @@ function buildIfElse(node: SemanticNode, ctx: BuildContext): IfElseCompositeNode
  */
 function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompositeNode {
 	const cases: (CompositeNode | CompositeNode[] | null)[] = [];
+	const caseIndices: number[] = [];
 
-	// Iterate through all outputs in order
-	for (const [, connections] of node.outputs) {
+	// Iterate through all outputs in order, extracting the case index from the output name
+	// Output names are like "case0", "case1", ..., "fallback"
+	for (const [outputName, connections] of node.outputs) {
+		// Extract case index from output name
+		const caseMatch = outputName.match(/^case(\d+)$/);
+		if (caseMatch) {
+			const caseIndex = parseInt(caseMatch[1], 10);
+			caseIndices.push(caseIndex);
+		} else if (outputName === 'fallback') {
+			// Fallback is at the end - we need to determine its index
+			// It's after all the case outputs, so we use the current count as the index
+			// But we need the actual index from the switch node definition
+			// For now, we'll infer it from the position in the Map
+			// Since Maps preserve insertion order and outputs are added in index order,
+			// the fallback index is the count of outputs we've seen so far
+			caseIndices.push(caseIndices.length > 0 ? Math.max(...caseIndices) + 1 : 0);
+		} else {
+			// For any other output pattern (like "outputN"), try to extract the number
+			const outputMatch = outputName.match(/(\d+)$/);
+			if (outputMatch) {
+				caseIndices.push(parseInt(outputMatch[1], 10));
+			} else {
+				// Default to sequential index
+				caseIndices.push(cases.length);
+			}
+		}
 		// Use buildBranchTargets to handle fan-out within each case
 		cases.push(buildBranchTargets(connections, ctx));
 	}
@@ -728,6 +753,7 @@ function buildSwitchCase(node: SemanticNode, ctx: BuildContext): SwitchCaseCompo
 		kind: 'switchCase',
 		switchNode: node,
 		cases,
+		caseIndices,
 	};
 }
 
