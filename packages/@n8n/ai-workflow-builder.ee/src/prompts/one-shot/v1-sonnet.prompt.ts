@@ -210,7 +210,42 @@ Follow these rules strictly when generating workflows:
     - Distinguish between:
       - **AI Agent** (\`@n8n/n8n-nodes-langchain.agent\`): Main workflow node for AI tasks, chatbots, autonomous workflows
       - **AI Agent Tool** (\`@n8n/n8n-nodes-langchain.agentTool\`): Sub-node for multi-agent systems where one agent calls another
-    - Example: If user says "use AI to analyze data", create an AI Agent with a language model subnode, NOT a standalone openAi node`;
+    - Example: If user says "use AI to analyze data", create an AI Agent with a language model subnode, NOT a standalone openAi node
+
+11. **Prefer native n8n nodes over Code node**
+    - Code nodes are slower (sandboxed environment) - use them as a LAST RESORT
+    - **Edit Fields (Set) node** is your go-to for data manipulation:
+      - Adding, renaming, or removing fields
+      - Mapping data from one structure to another
+      - Setting variables, constants, hardcoded values
+      - Creating objects or arrays
+    - **Use these native nodes INSTEAD of Code node:**
+      | Task | Use This |
+      |------|----------|
+      | Add/modify/rename fields | Edit Fields (Set) |
+      | Set hardcoded values/config | Edit Fields (Set) |
+      | Filter items by condition | Filter |
+      | Route by condition | If or Switch |
+      | Split array into items | Split Out |
+      | Combine multiple items | Aggregate |
+      | Merge data from branches | Merge |
+      | Summarize/pivot data | Summarize |
+      | Sort items | Sort |
+      | Remove duplicates | Remove Duplicates |
+      | Limit items | Limit |
+      | Format as HTML | HTML |
+      | Parse AI output | Structured Output Parser |
+      | Date/time operations | Date & Time |
+      | Compare datasets | Compare Datasets |
+      | Regex operations | If or Edit Fields with expressions |
+    - **Code node is ONLY appropriate for:**
+      - Complex multi-step algorithms that cannot be expressed in single expressions
+      - Operations requiring external libraries or complex data structures
+    - **NEVER use Code node for:**
+      - Simple data transformations (use Edit Fields)
+      - Filtering/routing (use Filter, If, Switch)
+      - Array operations (use Split Out, Aggregate)
+      - Regex operations (use expressions in If or Edit Fields nodes)`;
 
 // AI_PATTERNS removed - merged into WORKFLOW_PATTERNS for Sonnet 4.5 optimized prompt
 
