@@ -1,8 +1,5 @@
 /**
- * Method Usage Analyzer
- *
- * Builds an index of how page object methods are used in test files.
- * Used by TCR to find which tests are affected by changes to specific methods.
+ * Method Usage Analyzer - Builds index of page object method usages in tests
  */
 
 import { type Project } from 'ts-morph';
@@ -10,26 +7,19 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getConfig } from '../config.js';
 import { getRootDir, findFilesRecursive } from '../utils/paths.js';
-
-// ============================================================================
-// Types
-// ============================================================================
+import { FacadeResolver } from './facade-resolver.js';
 
 export interface MethodUsage {
 	testFile: string;
 	line: number;
 	column: number;
-	fullCall: string; // e.g., "app.canvas.addNode('Manual Trigger')"
+	fullCall: string;
 }
 
 export interface MethodUsageIndex {
-	/** Map from "ClassName.methodName" to usage locations */
 	methods: Record<string, MethodUsage[]>;
-	/** Map from fixture property to class name (e.g., "canvas" → "CanvasPage") */
 	fixtureMapping: Record<string, string>;
-	/** Timestamp when index was built */
 	timestamp: string;
-	/** Number of test files analyzed */
 	testFilesAnalyzed: number;
 }
 
@@ -40,26 +30,17 @@ export interface MethodImpactResult {
 	affectedTestFiles: string[];
 }
 
-// ============================================================================
-// Method Usage Analyzer
-// ============================================================================
-
 export class MethodUsageAnalyzer {
+	private facade: FacadeResolver;
 	private fixtureMapping: Record<string, string> = {};
 
-	constructor(private project: Project) {}
+	constructor(project: Project) {
+		this.facade = new FacadeResolver(project);
+	}
 
-	/**
-	 * Build a complete index of method usages across all test files
-	 */
 	buildIndex(): MethodUsageIndex {
-		// Step 1: Extract fixture property → class mapping from facade
-		this.fixtureMapping = this.extractFixtureMapping();
-
-		// Step 2: Find all test files
+		this.fixtureMapping = this.facade.getPropertyToClassMap();
 		const testFiles = this.findTestFiles();
-
-		// Step 3: Extract method calls from each test
 		const methods: Record<string, MethodUsage[]> = {};
 
 		for (const testFile of testFiles) {
@@ -67,9 +48,7 @@ export class MethodUsageAnalyzer {
 
 			for (const usage of usages) {
 				const key = usage.key;
-				if (!methods[key]) {
-					methods[key] = [];
-				}
+				if (!methods[key]) methods[key] = [];
 				methods[key].push({
 					testFile: usage.testFile,
 					line: usage.line,
@@ -87,29 +66,16 @@ export class MethodUsageAnalyzer {
 		};
 	}
 
-	/**
-	 * Find tests affected by a change to a specific method
-	 */
 	getMethodImpact(classAndMethod: string): MethodImpactResult {
 		const [className, methodName] = this.parseClassMethod(classAndMethod);
-
 		const index = this.buildIndex();
 		const key = `${className}.${methodName}`;
 		const usages = index.methods[key] || [];
-
 		const affectedTestFiles = [...new Set(usages.map((u) => u.testFile))].sort();
 
-		return {
-			className,
-			methodName,
-			usages,
-			affectedTestFiles,
-		};
+		return { className, methodName, usages, affectedTestFiles };
 	}
 
-	/**
-	 * List all methods that have usages in tests
-	 */
 	listUsedMethods(): Array<{ method: string; usageCount: number; testFileCount: number }> {
 		const index = this.buildIndex();
 
@@ -122,80 +88,12 @@ export class MethodUsageAnalyzer {
 			.sort((a, b) => b.usageCount - a.usageCount);
 	}
 
-	// ==========================================================================
-	// Fixture Mapping Extraction
-	// ==========================================================================
-
-	/**
-	 * Parse facade file to extract property name → class name mapping
-	 * e.g., "canvas" → "CanvasPage", "workflows" → "WorkflowsPage"
-	 */
-	private extractFixtureMapping(): Record<string, string> {
-		const mapping: Record<string, string> = {};
-		const config = getConfig();
-		const root = getRootDir();
-
-		// Find the facade file
-		const facadePath = path.join(root, config.facade.file);
-		const sourceFile = this.project.getSourceFile(facadePath);
-
-		if (!sourceFile) {
-			console.warn(`Warning: Could not find facade file at ${facadePath}`);
-			return mapping;
-		}
-
-		// Find the facade class
-		const facadeClass = sourceFile.getClass(config.facade.className);
-		if (!facadeClass) {
-			console.warn(`Warning: Could not find ${config.facade.className} class`);
-			return mapping;
-		}
-
-		// Extract readonly properties with their types
-		for (const prop of facadeClass.getProperties()) {
-			const propName = prop.getName();
-			const propType = prop.getType();
-			const typeName = this.extractTypeName(propType.getText());
-
-			// Skip excluded types (Page, APIRequestContext, etc.)
-			if (typeName && !config.facade.excludeTypes.includes(typeName)) {
-				mapping[propName] = typeName;
-			}
-		}
-
-		return mapping;
-	}
-
-	/**
-	 * Extract simple type name from potentially complex type string
-	 */
-	private extractTypeName(typeText: string): string {
-		// Remove import() paths: import("./CanvasPage").CanvasPage → CanvasPage
-		const cleaned = typeText.replace(/import\([^)]+\)\./g, '');
-		return cleaned;
-	}
-
-	// ==========================================================================
-	// Test File Discovery
-	// ==========================================================================
-
-	/**
-	 * Find all test files
-	 */
 	private findTestFiles(): string[] {
 		const root = getRootDir();
 		const testsDir = path.join(root, 'tests');
 		return findFilesRecursive(testsDir, '.spec.ts');
 	}
 
-	// ==========================================================================
-	// Method Usage Extraction
-	// ==========================================================================
-
-	/**
-	 * Extract all fixture method calls from a test file
-	 * Looks for patterns like: app.canvas.addNode(), app.workflows.create()
-	 */
 	private extractMethodUsages(
 		testFilePath: string,
 	): Array<{ key: string; testFile: string; line: number; column: number; fullCall: string }> {
@@ -212,30 +110,20 @@ export class MethodUsageAnalyzer {
 		try {
 			const content = fs.readFileSync(testFilePath, 'utf-8');
 			const lines = content.split('\n');
-
-			// Regex to match <fixture>.<property>.<method>( patterns
 			const fixtureObjectName = config.fixtureObjectName;
 			const pattern = new RegExp(`${fixtureObjectName}\\.(\\w+)\\.(\\w+)\\s*\\(`, 'g');
 
 			for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
 				const line = lines[lineIndex];
 				let match: RegExpExecArray | null;
-
-				// Reset regex for each line
 				pattern.lastIndex = 0;
 
 				while ((match = pattern.exec(line)) !== null) {
 					const propertyName = match[1];
 					const methodName = match[2];
-
-					// Look up the class name for this property
 					const className = this.fixtureMapping[propertyName];
-					if (!className) {
-						// Not a known page object property, skip
-						continue;
-					}
+					if (!className) continue;
 
-					// Extract the full call (rough extraction for context)
 					const callStart = match.index;
 					const fullCall = this.extractFullCall(line, callStart);
 
@@ -249,25 +137,20 @@ export class MethodUsageAnalyzer {
 				}
 			}
 		} catch {
-			// File read error, skip
+			// Skip files that can't be read
 		}
 
 		return usages;
 	}
 
-	/**
-	 * Extract the full method call from a line for context
-	 */
 	private extractFullCall(line: string, startIndex: number): string {
-		// Find a reasonable end point (closing paren or end of line)
 		let depth = 0;
 		let endIndex = startIndex;
 
 		for (let i = startIndex; i < line.length; i++) {
 			const char = line[i];
-			if (char === '(') {
-				depth++;
-			} else if (char === ')') {
+			if (char === '(') depth++;
+			else if (char === ')') {
 				depth--;
 				if (depth === 0) {
 					endIndex = i + 1;
@@ -276,30 +159,16 @@ export class MethodUsageAnalyzer {
 			}
 		}
 
-		if (endIndex === startIndex) {
-			endIndex = Math.min(startIndex + 60, line.length);
-		}
+		if (endIndex === startIndex) endIndex = Math.min(startIndex + 60, line.length);
 
 		const call = line.slice(startIndex, endIndex).trim();
-
-		// Truncate if too long
-		if (call.length > 80) {
-			return call.slice(0, 77) + '...';
-		}
-
-		return call;
+		return call.length > 80 ? call.slice(0, 77) + '...' : call;
 	}
 
-	/**
-	 * Parse "ClassName.methodName" or "methodName" input
-	 */
 	private parseClassMethod(input: string): [string, string] {
 		const parts = input.split('.');
-		if (parts.length === 2) {
-			return [parts[0], parts[1]];
-		}
+		if (parts.length === 2) return [parts[0], parts[1]];
 
-		// If only method name provided, we can't determine the class
 		throw new Error(
 			`Invalid format: "${input}". Expected "ClassName.methodName" (e.g., "CanvasPage.addNode")`,
 		);
@@ -309,10 +178,6 @@ export class MethodUsageAnalyzer {
 		return path.relative(getRootDir(), absolutePath);
 	}
 }
-
-// ============================================================================
-// Output Formatters
-// ============================================================================
 
 export function formatMethodImpactConsole(result: MethodImpactResult, verbose = false): void {
 	console.log('\n====================================');
