@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Janitor - Static Analysis, Inventory & Dead Code Tool for Playwright Test Architecture
+ * Janitor - Static Analysis, Inventory, TCR & Dead Code Tool for Playwright Test Architecture
  *
  * Static Analysis:
  *   npx tsx scripts/janitor/index.ts              # Run all rules, console output
@@ -16,6 +16,29 @@
  *   npx tsx scripts/janitor/index.ts --rule=dead-code           # Find unused code
  *   npx tsx scripts/janitor/index.ts --rule=dead-code --fix     # Preview removals
  *   npx tsx scripts/janitor/index.ts --rule=dead-code --fix --write  # Apply removals
+ *
+ * TCR (Test && Commit || Revert) - AI-driven micro-refactor workflow:
+ *   npx tsx scripts/janitor/index.ts --tcr=file.ts --message="commit msg"  # Full TCR workflow
+ *   npx tsx scripts/janitor/index.ts --tcr=file.ts --message="msg" --dry-run  # Preview only
+ *
+ *   TCR Options:
+ *     --n8n-url=<url>           n8n instance URL (default: http://localhost:5680)
+ *     --target-branch=<branch>  Branch to compare diff (default: master)
+ *     --max-diff-lines=<n>      Max total diff lines (default: 300)
+ *     --warn-diff-lines=<n>     Warning threshold (default: 250)
+ *
+ *   Environment variables:
+ *     N8N_BASE_URL              n8n instance URL
+ *     TCR_TARGET_BRANCH         Branch to compare diff against
+ *     TCR_MAX_DIFF_LINES        Max total diff lines
+ *     TCR_WARN_DIFF_LINES       Warning threshold
+ *
+ *   TCR enforces:
+ *     - No janitor violations in ANY changed file
+ *     - No type errors
+ *     - All affected tests must pass
+ *     - Total branch diff must stay under limit
+ *     - Atomic, working commits
  *
  * File-Level Impact Analysis (facade-aware):
  *   npx tsx scripts/janitor/index.ts --impact=file1.ts,file2.ts  # Find affected tests
@@ -72,6 +95,8 @@ import {
 	formatMethodUsageIndexConsole,
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer';
+import { diffFileMethods, formatDiffConsole } from './core/ast-diff-analyzer';
+import { executeTcr, type TcrOptions } from './core/tcr-executor';
 import type { RunOptions } from './core/types';
 
 import { BoundaryProtectionRule } from './rules/boundary-protection.rule';
@@ -81,6 +106,7 @@ import { DeduplicationRule } from './rules/deduplication.rule';
 import { NoPageInComposableRule } from './rules/no-page-in-composable.rule';
 import { DeadCodeRule } from './rules/dead-code.rule';
 import { ApiPurityRule } from './rules/api-purity.rule';
+import { TestDataHygieneRule } from './rules/test-data-hygiene.rule';
 
 interface CliOptions {
 	json: boolean;
@@ -104,6 +130,16 @@ interface CliOptions {
 	describe?: string;
 	methodImpact?: string;
 	methodIndex: boolean;
+	affected?: string[];
+	baseRef: string;
+	// TCR options
+	tcr?: string;
+	tcrMessage?: string;
+	dryRun: boolean;
+	n8nUrl: string;
+	targetBranch: string;
+	maxDiffLines: number;
+	warnDiffLines: number;
 }
 
 function parseArgs(): CliOptions {
@@ -131,6 +167,16 @@ function parseArgs(): CliOptions {
 		describe: undefined,
 		methodImpact: undefined,
 		methodIndex: false,
+		affected: undefined,
+		baseRef: 'HEAD',
+		// TCR defaults
+		tcr: undefined,
+		tcrMessage: undefined,
+		dryRun: false,
+		n8nUrl: process.env.N8N_BASE_URL ?? 'http://localhost:5680',
+		targetBranch: process.env.TCR_TARGET_BRANCH ?? 'master',
+		maxDiffLines: parseInt(process.env.TCR_MAX_DIFF_LINES ?? '300', 10),
+		warnDiffLines: parseInt(process.env.TCR_WARN_DIFF_LINES ?? '250', 10),
 	};
 
 	for (const arg of args) {
@@ -182,6 +228,25 @@ function parseArgs(): CliOptions {
 			options.methodImpact = arg.slice(16);
 		} else if (arg === '--method-index') {
 			options.methodIndex = true;
+		} else if (arg.startsWith('--affected=')) {
+			const affectedFiles = arg.slice(11).split(',');
+			options.affected = affectedFiles;
+		} else if (arg.startsWith('--base-ref=')) {
+			options.baseRef = arg.slice(11);
+		} else if (arg.startsWith('--tcr=')) {
+			options.tcr = arg.slice(6);
+		} else if (arg.startsWith('--message=') || arg.startsWith('-m=')) {
+			options.tcrMessage = arg.includes('--message=') ? arg.slice(10) : arg.slice(3);
+		} else if (arg === '--dry-run') {
+			options.dryRun = true;
+		} else if (arg.startsWith('--n8n-url=')) {
+			options.n8nUrl = arg.slice(10);
+		} else if (arg.startsWith('--target-branch=')) {
+			options.targetBranch = arg.slice(16);
+		} else if (arg.startsWith('--max-diff-lines=')) {
+			options.maxDiffLines = parseInt(arg.slice(17), 10);
+		} else if (arg.startsWith('--warn-diff-lines=')) {
+			options.warnDiffLines = parseInt(arg.slice(18), 10);
 		}
 	}
 
@@ -198,6 +263,7 @@ function createRunner(): RuleRunner {
 	runner.registerRule(new NoPageInComposableRule());
 	runner.registerRule(new DeadCodeRule());
 	runner.registerRule(new ApiPurityRule());
+	runner.registerRule(new TestDataHygieneRule());
 
 	return runner;
 }
@@ -207,7 +273,7 @@ function listRules(runner: RuleRunner): void {
 
 	const rules = runner.getRegisteredRules();
 	for (const ruleId of rules) {
-		const fixable = ruleId === 'dead-code' ? ' [fixable]' : '';
+		const fixable = runner.isRuleFixable(ruleId) ? ' [fixable]' : '';
 		console.log(`  - ${ruleId}${fixable}`);
 	}
 
@@ -242,6 +308,19 @@ function listRules(runner: RuleRunner): void {
 	console.log('  --method-index                 Build complete method usage index');
 	console.log('  --tests                        Output only test file paths (for piping)');
 
+	console.log('\nSmart Affected Tests (AST diff + method impact):');
+	console.log('  --affected=<files>             Find tests affected by changed methods in files');
+	console.log('  --base-ref=<ref>               Git ref to compare against (default: HEAD)');
+	console.log('  --tests                        Output only test file paths (for piping)');
+
+	console.log('\nTCR (Test && Commit || Revert):');
+	console.log('  --tcr=<file> --message="msg"   Run TCR workflow on file');
+	console.log('  --dry-run                      Preview without committing/stashing');
+	console.log('  --n8n-url=<url>                n8n instance URL (default: http://localhost:5680)');
+	console.log('  --target-branch=<branch>       Branch to compare diff (default: master)');
+	console.log('  --max-diff-lines=<n>           Max total diff lines (default: 300)');
+	console.log('  --warn-diff-lines=<n>          Warning threshold (default: 250)');
+
 	console.log('\nExamples:');
 	console.log('  # Static analysis');
 	console.log('  npx tsx scripts/janitor/index.ts --file=pages/NewPage.ts');
@@ -262,10 +341,28 @@ function listRules(runner: RuleRunner): void {
 	console.log('  npx tsx scripts/janitor/index.ts --method-impact=WorkflowsPage.addFolder --tests');
 	console.log('  npx tsx scripts/janitor/index.ts --method-index --json');
 	console.log('');
+	console.log('  # Smart affected tests (AST diff)');
+	console.log('  npx tsx scripts/janitor/index.ts --affected=pages/WorkflowsPage.ts');
+	console.log('  npx tsx scripts/janitor/index.ts --affected=pages/CanvasPage.ts --base-ref=main');
+	console.log(
+		'  git diff --name-only HEAD~1 | xargs -I{} npx tsx scripts/janitor/index.ts --affected={}',
+	);
+	console.log('');
 	console.log('  # Inventory for AI');
 	console.log('  npx tsx scripts/janitor/index.ts --inventory --json > .playwright-inventory.json');
 	console.log('  npx tsx scripts/janitor/index.ts --describe=CanvasPage');
 	console.log('  npx tsx scripts/janitor/index.ts --list-pages --json');
+	console.log('');
+	console.log('  # TCR workflow');
+	console.log(
+		'  npx tsx scripts/janitor/index.ts --tcr=pages/WorkflowsPage.ts --message="refactor: simplify addFolder"',
+	);
+	console.log(
+		'  npx tsx scripts/janitor/index.ts --tcr=pages/CanvasPage.ts --message="fix: edge case" --dry-run',
+	);
+	console.log(
+		'  TCR_MAX_DIFF_LINES=500 npx tsx scripts/janitor/index.ts --tcr=pages/X.ts --message="large change"',
+	);
 	console.log('');
 }
 
@@ -274,6 +371,37 @@ async function main() {
 
 	// Initialize ts-morph project
 	const { project, root } = createProject();
+
+	// Handle TCR mode
+	if (options.tcr) {
+		if (!options.tcrMessage) {
+			console.error('Error: --tcr requires --message="commit message"');
+			console.error(
+				'Example: --tcr=pages/WorkflowsPage.ts --message="refactor: simplify addFolder"',
+			);
+			process.exit(1);
+		}
+
+		const runner = createRunner();
+		const tcrOptions: TcrOptions = {
+			file: options.tcr,
+			message: options.tcrMessage,
+			dryRun: options.dryRun,
+			verbose: options.verbose,
+			n8nUrl: options.n8nUrl,
+			targetBranch: options.targetBranch,
+			maxDiffLines: options.maxDiffLines,
+			warnDiffLines: options.warnDiffLines,
+		};
+
+		const result = await executeTcr(project, runner, tcrOptions);
+
+		if (!result.success) {
+			process.exit(1);
+		}
+
+		return;
+	}
 
 	// Handle impact analysis mode
 	if (options.impact && options.impact.length > 0) {
@@ -319,6 +447,75 @@ async function main() {
 				console.log(formatMethodUsageIndexJSON(index));
 			} else {
 				formatMethodUsageIndexConsole(index);
+			}
+		}
+
+		return;
+	}
+
+	// Handle smart affected tests (AST diff + method impact)
+	if (options.affected && options.affected.length > 0) {
+		const startTime = performance.now();
+		const methodAnalyzer = new MethodUsageAnalyzer(project);
+		const allAffectedTests = new Set<string>();
+		const allChangedMethods: Array<{ file: string; method: string; changeType: string }> = [];
+
+		for (const filePath of options.affected) {
+			const diffResult = diffFileMethods(filePath, options.baseRef);
+
+			if (!options.testsOnly && !options.json) {
+				formatDiffConsole(diffResult);
+			}
+
+			// For each changed method, find affected tests
+			for (const change of diffResult.changedMethods) {
+				const methodKey = `${change.className}.${change.methodName}`;
+				allChangedMethods.push({
+					file: filePath,
+					method: methodKey,
+					changeType: change.changeType,
+				});
+
+				try {
+					const impact = methodAnalyzer.getMethodImpact(methodKey);
+					for (const testFile of impact.affectedTestFiles) {
+						allAffectedTests.add(testFile);
+					}
+				} catch (err) {
+					if (options.verbose) {
+						console.log(`  (no usages found for ${methodKey})`);
+					}
+				}
+			}
+		}
+
+		const totalTime = performance.now() - startTime;
+
+		if (options.testsOnly) {
+			console.log([...allAffectedTests].join('\n'));
+		} else if (options.json) {
+			console.log(
+				JSON.stringify(
+					{
+						changedMethods: allChangedMethods,
+						affectedTests: [...allAffectedTests],
+						analysisTimeMs: totalTime,
+					},
+					null,
+					2,
+				),
+			);
+		} else {
+			console.log(`\n${'='.repeat(40)}`);
+			console.log(`Total changed methods: ${allChangedMethods.length}`);
+			console.log(`Total affected tests: ${allAffectedTests.size}`);
+			console.log(`Analysis time: ${totalTime.toFixed(1)}ms`);
+
+			if (allAffectedTests.size > 0) {
+				console.log('\nAffected test files:');
+				for (const testFile of allAffectedTests) {
+					console.log(`  ${testFile}`);
+				}
 			}
 		}
 
