@@ -503,10 +503,7 @@ describe('Edge Case Roundtrip Tests', () => {
 	});
 
 	describe('Edge Case 9: Multi-Output Nodes', () => {
-		// TODO: Multi-output non-composite nodes (like text classifiers) currently generate
-		// fan-out syntax instead of separate .then(target, outputIndex) for each output.
-		// This requires preserving output indices in the composite tree structure.
-		it.skip('should roundtrip node with multiple output connections', () => {
+		it('should roundtrip node with multiple output connections', () => {
 			const originalJson: WorkflowJSON = {
 				id: 'multi-output-test',
 				name: 'Multi Output Test',

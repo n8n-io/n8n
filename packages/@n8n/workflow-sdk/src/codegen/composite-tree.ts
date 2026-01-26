@@ -132,6 +132,19 @@ export interface ExplicitConnectionsNode extends CompositeNodeBase {
 }
 
 /**
+ * Multi-output node composite - a node that connects to multiple targets
+ * from different output slots (like text classifiers).
+ * Each output index maps to a target chain.
+ */
+export interface MultiOutputNode extends CompositeNodeBase {
+	kind: 'multiOutput';
+	/** The source node with multiple outputs */
+	sourceNode: SemanticNode;
+	/** Map from output index to target chain */
+	outputTargets: Map<number, CompositeNode>;
+}
+
+/**
  * Union of all composite node types
  */
 export type CompositeNode =
@@ -143,7 +156,8 @@ export type CompositeNode =
 	| MergeCompositeNode
 	| SplitInBatchesCompositeNode
 	| FanOutCompositeNode
-	| ExplicitConnectionsNode;
+	| ExplicitConnectionsNode
+	| MultiOutputNode;
 
 /**
  * The complete composite tree for a workflow

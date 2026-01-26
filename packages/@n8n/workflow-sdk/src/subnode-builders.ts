@@ -51,6 +51,7 @@ import type {
 	ToolConfigInput,
 	FromAIArgumentType,
 	InputTarget,
+	OutputSelector,
 } from './types/base';
 import { createFromAIExpression } from './expression';
 
@@ -128,6 +129,10 @@ class SubnodeInstanceImpl<
 
 	input(_index: number): InputTarget {
 		throw new Error('Subnode input connections are managed by parent node SubnodeConfig');
+	}
+
+	output(_index: number): OutputSelector<TType, TVersion, TOutput> {
+		throw new Error('Subnode output connections are managed by parent node SubnodeConfig');
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(

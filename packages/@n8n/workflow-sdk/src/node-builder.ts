@@ -16,6 +16,7 @@ import {
 	type IfElseComposite,
 	type SplitInBatchesBuilder,
 	type InputTarget,
+	type OutputSelector,
 } from './types/base';
 import { isFanOut, type FanOutTargets } from './fan-out';
 
@@ -28,6 +29,18 @@ export function isInputTarget(value: unknown): value is InputTarget {
 		value !== null &&
 		'_isInputTarget' in value &&
 		(value as InputTarget)._isInputTarget === true
+	);
+}
+
+/**
+ * Type guard to check if a value is an OutputSelector
+ */
+export function isOutputSelector(value: unknown): value is OutputSelector<string, string, unknown> {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'_isOutputSelector' in value &&
+		(value as OutputSelector<string, string, unknown>)._isOutputSelector === true
 	);
 }
 
@@ -263,6 +276,14 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		};
 	}
 
+	/**
+	 * Create an output selector for connecting from a specific output index.
+	 * Use this for multi-output nodes (like text classifiers) to connect from specific outputs.
+	 */
+	output(index: number): OutputSelector<TType, TVersion, TOutput> {
+		return new OutputSelectorImpl(this, index);
+	}
+
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
 		const errorOutputIndex = this.calculateErrorOutputIndex();
 		this._connections.push({ target: handler, outputIndex: errorOutputIndex });
@@ -423,6 +444,14 @@ class NodeChainImpl<
 		return this.tail.input(index);
 	}
 
+	/**
+	 * Create an output selector for connecting from a specific output index.
+	 * Delegates to the tail node's output method.
+	 */
+	output(index: number): OutputSelector<TTail['type'], TTail['version'], TTail['_outputType']> {
+		return this.tail.output(index);
+	}
+
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
 		this.tail.onError(handler);
 		return this;
@@ -442,6 +471,31 @@ class NodeChainImpl<
 			}
 		}
 		return allConnections;
+	}
+}
+
+/**
+ * Internal output selector implementation
+ *
+ * Allows connecting from a specific output index of a node.
+ */
+class OutputSelectorImpl<TType extends string, TVersion extends string, TOutput = unknown>
+	implements OutputSelector<TType, TVersion, TOutput>
+{
+	readonly _isOutputSelector: true = true;
+	readonly node: NodeInstance<TType, TVersion, TOutput>;
+	readonly outputIndex: number;
+
+	constructor(node: NodeInstance<TType, TVersion, TOutput>, outputIndex: number) {
+		this.node = node;
+		this.outputIndex = outputIndex;
+	}
+
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
+		// Delegate to the node's then method with the specific outputIndex
+		return this.node.then(target, this.outputIndex);
 	}
 }
 
@@ -596,6 +650,10 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 
 	input(_index: number): InputTarget {
 		throw new Error('Sticky notes do not support input connections');
+	}
+
+	output(_index: number): OutputSelector<'n8n-nodes-base.stickyNote', 'v1', void> {
+		throw new Error('Sticky notes do not support output connections');
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(

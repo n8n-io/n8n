@@ -3073,6 +3073,11 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 					'Nodes from fromJSON() do not support input() - use workflow builder methods',
 				);
 			},
+			output: function () {
+				throw new Error(
+					'Nodes from fromJSON() do not support output() - use workflow builder methods',
+				);
+			},
 			onError: function () {
 				throw new Error(
 					'Nodes from fromJSON() do not support onError() - use workflow builder methods',

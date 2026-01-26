@@ -18,6 +18,7 @@ import type {
 	FanOutCompositeNode,
 	ExplicitConnectionsNode,
 	ExplicitConnection,
+	MultiOutputNode,
 } from './composite-tree';
 import { getCompositeType } from './semantic-registry';
 
@@ -206,6 +207,70 @@ function hasMultipleOutputSlots(node: SemanticNode): boolean {
 		}
 	}
 	return nonEmptySlots > 1;
+}
+
+/**
+ * Check if a node's non-empty output slots have consecutive indices.
+ * This helps distinguish true multi-output nodes (like classifiers where each output
+ * is a category) from nodes with semantic outputs (like compareDatasets where outputs
+ * 0 and 2 mean "same" and "different" but output 1 is unused).
+ *
+ * Returns true only if outputs are consecutive starting from 0 (e.g., 0,1,2 not 0,2).
+ */
+function hasConsecutiveOutputSlots(node: SemanticNode): boolean {
+	const occupiedIndices: number[] = [];
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue;
+		if (connections.length > 0) {
+			const index = getOutputIndex(outputName);
+			occupiedIndices.push(index);
+		}
+	}
+
+	if (occupiedIndices.length <= 1) return true; // Single or no outputs are trivially consecutive
+
+	// Sort indices and check if they're consecutive starting from 0
+	occupiedIndices.sort((a, b) => a - b);
+
+	// Must start from 0
+	if (occupiedIndices[0] !== 0) return false;
+
+	// Check consecutive
+	for (let i = 1; i < occupiedIndices.length; i++) {
+		if (occupiedIndices[i] !== occupiedIndices[i - 1] + 1) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Extract output index from semantic output name (e.g., 'output0' → 0, 'output1' → 1)
+ */
+function getOutputIndex(outputName: string): number {
+	const match = outputName.match(/^output(\d+)$/);
+	if (match) {
+		return parseInt(match[1], 10);
+	}
+	return 0;
+}
+
+/**
+ * Get output targets grouped by output index for multi-output nodes.
+ * Returns a Map from output index to array of target names.
+ * Excludes error outputs (handled separately via .onError())
+ */
+function getOutputTargetsByIndex(node: SemanticNode): Map<number, string[]> {
+	const result = new Map<number, string[]>();
+	for (const [outputName, connections] of node.outputs) {
+		if (outputName === 'error') continue; // Skip error output
+		if (connections.length === 0) continue;
+
+		const outputIndex = getOutputIndex(outputName);
+		const targets = connections.map((c) => c.target);
+		result.set(outputIndex, targets);
+	}
+	return result;
 }
 
 /**
@@ -974,8 +1039,71 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 
 	// Check if there's a chain continuation (single output to non-composite target)
 	if (compositeType === undefined) {
-		// For nodes with multiple output slots (like classifiers), get all targets from all slots
-		// For regular fan-out on a single slot, just get first slot targets
+		// Check for multi-output nodes (like text classifiers)
+		// These need special handling to preserve output indices.
+		// Only use this for nodes with CONSECUTIVE output slots (0,1,2 not 0,2).
+		// Non-consecutive outputs (like compareDatasets with 0,2) suggest semantic
+		// meaning where we should use regular fan-out handling instead.
+		if (hasMultipleOutputSlots(node) && hasConsecutiveOutputSlots(node)) {
+			const targetsByIndex = getOutputTargetsByIndex(node);
+
+			// Build targets for each output index
+			const outputTargets = new Map<number, CompositeNode>();
+			for (const [outputIndex, targets] of targetsByIndex) {
+				if (targets.length === 1) {
+					// Single target for this output - build chain
+					const targetName = targets[0];
+					const targetNode = ctx.graph.nodes.get(targetName);
+					if (targetNode) {
+						if (ctx.visited.has(targetName)) {
+							ctx.variables.set(targetName, targetNode);
+							outputTargets.set(outputIndex, createVarRef(targetName));
+						} else {
+							outputTargets.set(outputIndex, buildFromNode(targetName, ctx));
+						}
+					}
+				} else if (targets.length > 1) {
+					// Multiple targets for this output - build fan-out
+					const fanOutBranches: CompositeNode[] = [];
+					for (const targetName of targets) {
+						const targetNode = ctx.graph.nodes.get(targetName);
+						if (targetNode) {
+							if (ctx.visited.has(targetName)) {
+								ctx.variables.set(targetName, targetNode);
+								fanOutBranches.push(createVarRef(targetName));
+							} else {
+								fanOutBranches.push(buildFromNode(targetName, ctx));
+							}
+						}
+					}
+					if (fanOutBranches.length > 0) {
+						const fanOut: FanOutCompositeNode = {
+							kind: 'fanOut',
+							sourceNode: createLeaf(node),
+							targets: fanOutBranches,
+						};
+						outputTargets.set(outputIndex, fanOut);
+					}
+				}
+			}
+
+			if (outputTargets.size > 0) {
+				// Register the source node as a variable since it will be referenced in .output(n).then() calls
+				ctx.variables.set(node.name, node);
+				const multiOutput: MultiOutputNode = {
+					kind: 'multiOutput',
+					sourceNode: node,
+					outputTargets,
+				};
+				return multiOutput;
+			}
+		}
+
+		// Regular node handling
+		// For nodes with multiple non-consecutive output slots (like compareDatasets with outputs 0 and 2),
+		// we need to get targets from ALL output slots, not just the first one.
+		// This preserves all connections without using the MultiOutputNode pattern which
+		// is meant for classifier-style nodes with consecutive outputs.
 		const nextTargets = hasMultipleOutputSlots(node)
 			? getAllOutputTargets(node)
 			: getAllFirstOutputTargets(node);

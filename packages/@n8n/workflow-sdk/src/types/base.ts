@@ -175,6 +175,24 @@ export interface InputTarget {
 	readonly inputIndex: number;
 }
 
+/**
+ * Output selector for connecting from a specific output index.
+ * Created by calling .output(n) on a NodeInstance.
+ * Can chain .then() to connect to targets from this specific output.
+ */
+export interface OutputSelector<TType extends string, TVersion extends string, TOutput = unknown> {
+	readonly _isOutputSelector: true;
+	readonly node: NodeInstance<TType, TVersion, TOutput>;
+	readonly outputIndex: number;
+
+	/**
+	 * Connect from this output to a target node.
+	 */
+	then<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
+}
+
 // =============================================================================
 // Internal: Expression context types (full versions)
 // =============================================================================
@@ -335,6 +353,16 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * nodeA.then(mergeNode.input(1))
 	 */
 	input(index: number): InputTarget;
+
+	/**
+	 * Create an output selector for connecting from a specific output index.
+	 * Use this for multi-output nodes (like text classifiers) to connect from specific outputs.
+	 *
+	 * @example
+	 * // Connect from output 1 of a classifier
+	 * classifier.output(1).then(categoryB)
+	 */
+	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this;
 

@@ -18,6 +18,7 @@ import type {
 	SplitInBatchesCompositeNode,
 	FanOutCompositeNode,
 	ExplicitConnectionsNode,
+	MultiOutputNode,
 } from './composite-tree';
 
 /**
@@ -869,6 +870,16 @@ function generateExplicitConnections(
 }
 
 /**
+ * Generate code for multi-output node (generates variable reference, actual connections at root level)
+ */
+function generateMultiOutput(multiOutput: MultiOutputNode, ctx: GenerationContext): string {
+	// The multi-output node becomes a variable reference
+	// The actual .output(n).then() calls are generated at the root level via flattenToWorkflowCalls
+	const varName = getVarName(multiOutput.sourceNode.name, ctx);
+	return varName;
+}
+
+/**
  * Generate code for any composite node
  */
 function generateComposite(node: CompositeNode, ctx: GenerationContext): string {
@@ -891,6 +902,8 @@ function generateComposite(node: CompositeNode, ctx: GenerationContext): string 
 			return generateFanOut(node, ctx);
 		case 'explicitConnections':
 			return generateExplicitConnections(node, ctx);
+		case 'multiOutput':
+			return generateMultiOutput(node, ctx);
 	}
 }
 
@@ -982,6 +995,102 @@ function generateVariableDeclarations(
 }
 
 /**
+ * Recursively collect all nested multiOutput nodes from a composite tree.
+ * These need to be extracted and their output connections generated as separate .add() calls.
+ */
+function collectNestedMultiOutputs(node: CompositeNode, collected: MultiOutputNode[]): void {
+	if (!node) return;
+
+	if (node.kind === 'multiOutput') {
+		collected.push(node);
+		// Also check the output targets for nested multiOutput nodes
+		for (const [, target] of node.outputTargets) {
+			collectNestedMultiOutputs(target, collected);
+		}
+	} else if (node.kind === 'chain') {
+		for (const n of node.nodes) {
+			collectNestedMultiOutputs(n, collected);
+		}
+	} else if (node.kind === 'splitInBatches') {
+		const sib = node as SplitInBatchesCompositeNode;
+		if (sib.doneChain) {
+			if (Array.isArray(sib.doneChain)) {
+				for (const b of sib.doneChain) collectNestedMultiOutputs(b, collected);
+			} else {
+				collectNestedMultiOutputs(sib.doneChain, collected);
+			}
+		}
+		if (sib.loopChain) {
+			if (Array.isArray(sib.loopChain)) {
+				for (const b of sib.loopChain) collectNestedMultiOutputs(b, collected);
+			} else {
+				collectNestedMultiOutputs(sib.loopChain, collected);
+			}
+		}
+	} else if (node.kind === 'ifElse') {
+		const ifElse = node as IfElseCompositeNode;
+		if (ifElse.trueBranch) {
+			if (Array.isArray(ifElse.trueBranch)) {
+				for (const b of ifElse.trueBranch) collectNestedMultiOutputs(b, collected);
+			} else {
+				collectNestedMultiOutputs(ifElse.trueBranch, collected);
+			}
+		}
+		if (ifElse.falseBranch) {
+			if (Array.isArray(ifElse.falseBranch)) {
+				for (const b of ifElse.falseBranch) collectNestedMultiOutputs(b, collected);
+			} else {
+				collectNestedMultiOutputs(ifElse.falseBranch, collected);
+			}
+		}
+	} else if (node.kind === 'switchCase') {
+		const switchCase = node as SwitchCaseCompositeNode;
+		for (const c of switchCase.cases) {
+			if (c) {
+				if (Array.isArray(c)) {
+					for (const b of c) collectNestedMultiOutputs(b, collected);
+				} else {
+					collectNestedMultiOutputs(c, collected);
+				}
+			}
+		}
+	} else if (node.kind === 'fanOut') {
+		const fanOut = node as FanOutCompositeNode;
+		collectNestedMultiOutputs(fanOut.sourceNode, collected);
+		for (const t of fanOut.targets) {
+			collectNestedMultiOutputs(t, collected);
+		}
+	} else if (node.kind === 'merge') {
+		const merge = node as MergeCompositeNode;
+		for (const b of merge.branches) {
+			collectNestedMultiOutputs(b, collected);
+		}
+	}
+	// leaf, varRef, explicitConnections don't need recursive checking
+}
+
+/**
+ * Generate the output connections for a multiOutput node as separate .add() calls.
+ */
+function generateMultiOutputConnections(
+	multiOutput: MultiOutputNode,
+	ctx: GenerationContext,
+): Array<[string, string]> {
+	const calls: Array<[string, string]> = [];
+	const sourceVarName = getVarName(multiOutput.sourceNode.name, ctx);
+
+	// Sort by output index for consistent ordering
+	const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
+
+	for (const [outputIndex, targetComposite] of sortedOutputs) {
+		const targetCode = generateComposite(targetComposite, ctx);
+		calls.push(['add', `${sourceVarName}.output(${outputIndex}).then(${targetCode})`]);
+	}
+
+	return calls;
+}
+
+/**
  * Flatten a composite tree into workflow-level calls.
  * Returns array of [method, code] tuples where method is 'add', 'then', or 'connect'.
  */
@@ -991,7 +1100,23 @@ function flattenToWorkflowCalls(
 ): Array<[string, string]> {
 	const calls: Array<[string, string]> = [];
 
-	if (root.kind === 'explicitConnections') {
+	if (root.kind === 'multiOutput') {
+		// Multi-output node: generate .add(sourceNode) then .add(sourceNode.output(n).then(target)) for each output
+		const multiOutput = root as MultiOutputNode;
+		const sourceVarName = getVarName(multiOutput.sourceNode.name, ctx);
+
+		// First, add the source node itself
+		calls.push(['add', sourceVarName]);
+
+		// Then, for each output with targets, generate sourceNode.output(n).then(target)
+		// Sort by output index for consistent ordering
+		const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
+
+		for (const [outputIndex, targetComposite] of sortedOutputs) {
+			const targetCode = generateComposite(targetComposite, ctx);
+			calls.push(['add', `${sourceVarName}.output(${outputIndex}).then(${targetCode})`]);
+		}
+	} else if (root.kind === 'explicitConnections') {
 		// Explicit connections pattern: generate .add() for each node, then .connect() for each connection
 		const explicitConns = root as ExplicitConnectionsNode;
 
@@ -1012,15 +1137,58 @@ function flattenToWorkflowCalls(
 		}
 	} else if (root.kind === 'chain') {
 		// Chain: first node is .add(), rest are .then()
+		// Special handling when chain contains a multiOutput node
+		const nestedMultiOutputsInChain: MultiOutputNode[] = [];
+
 		for (let i = 0; i < root.nodes.length; i++) {
 			const node = root.nodes[i];
-			const method = i === 0 ? 'add' : 'then';
-			const code = generateComposite(node, ctx);
-			calls.push([method, code]);
+
+			if (node.kind === 'multiOutput') {
+				// When encountering a multiOutput node in a chain:
+				// 1. Generate .then(sourceNode) to connect the previous node to the multi-output source
+				// 2. Then generate separate .add() calls for each output
+				const multiOutput = node as MultiOutputNode;
+				const sourceVarName = getVarName(multiOutput.sourceNode.name, ctx);
+
+				// Connect to the multi-output source node
+				const method = i === 0 ? 'add' : 'then';
+				calls.push([method, sourceVarName]);
+
+				// Generate .add(sourceNode.output(n).then(target)) for each output
+				const sortedOutputs = [...multiOutput.outputTargets.entries()].sort((a, b) => a[0] - b[0]);
+
+				for (const [outputIndex, targetComposite] of sortedOutputs) {
+					const targetCode = generateComposite(targetComposite, ctx);
+					calls.push(['add', `${sourceVarName}.output(${outputIndex}).then(${targetCode})`]);
+				}
+			} else {
+				const method = i === 0 ? 'add' : 'then';
+				const code = generateComposite(node, ctx);
+				calls.push([method, code]);
+
+				// Check for nested multiOutput nodes inside this composite (e.g., inside splitInBatches)
+				collectNestedMultiOutputs(node, nestedMultiOutputsInChain);
+			}
+		}
+
+		// Generate output connections for any nested multiOutput nodes found in the chain
+		for (const multiOutput of nestedMultiOutputsInChain) {
+			const multiOutputCalls = generateMultiOutputConnections(multiOutput, ctx);
+			calls.push(...multiOutputCalls);
 		}
 	} else {
 		// Single node: just .add()
 		calls.push(['add', generateComposite(root, ctx)]);
+
+		// Check for nested multiOutput nodes inside composites like splitInBatches
+		// These need their output connections generated as separate .add() calls
+		const nestedMultiOutputs: MultiOutputNode[] = [];
+		collectNestedMultiOutputs(root, nestedMultiOutputs);
+
+		for (const multiOutput of nestedMultiOutputs) {
+			const multiOutputCalls = generateMultiOutputConnections(multiOutput, ctx);
+			calls.push(...multiOutputCalls);
+		}
 	}
 
 	return calls;

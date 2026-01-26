@@ -7,6 +7,7 @@ import type {
 	NodeChain,
 	IDataObject,
 	InputTarget,
+	OutputSelector,
 } from './types/base';
 import { isInputTarget } from './node-builder';
 
@@ -50,6 +51,18 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 			_isInputTarget: true,
 			node: this,
 			inputIndex: index,
+		};
+	}
+
+	output(index: number): OutputSelector<'n8n-nodes-base.if', string, unknown> {
+		const self = this;
+		return {
+			_isOutputSelector: true,
+			node: this,
+			outputIndex: index,
+			then<T extends NodeInstance<string, string, unknown>>(target: T | T[] | InputTarget) {
+				return self.then(target, index);
+			},
 		};
 	}
 
