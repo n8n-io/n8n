@@ -59,7 +59,6 @@ const descriptionV1: INodeTypeDescription = {
 		formDescription,
 		formFields,
 		formRespondMode,
-		ipAllowlist,
 		{
 			displayName: 'Options',
 			name: 'options',
@@ -72,6 +71,7 @@ const descriptionV1: INodeTypeDescription = {
 				},
 			},
 			options: [
+				ipAllowlist,
 				{
 					displayName: 'Form Submitted Text',
 					name: 'formSubmittedText',

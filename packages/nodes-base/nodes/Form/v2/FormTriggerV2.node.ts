@@ -114,7 +114,6 @@ const descriptionV2: INodeTypeDescription = {
 			),
 			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
 		},
-		ipAllowlist,
 		{
 			displayName:
 				"In the 'Respond to Webhook' node, select 'Respond With JSON' and set the <strong>formSubmittedText</strong> key to display a custom response in the form, or the <strong>redirectURL</strong> key to redirect users to a URL",
@@ -140,6 +139,7 @@ const descriptionV2: INodeTypeDescription = {
 			default: {},
 			options: [
 				appendAttributionToForm,
+				ipAllowlist,
 				{
 					displayName: 'Button Label',
 					description: 'The label of the submit button in the form',
