@@ -404,8 +404,8 @@ export const useAIAssistantHelpers = () => {
 		let nodes: INode[] = workflow.nodes;
 		if (options?.trimParameterValues) {
 			nodes = await Promise.all(
-				workflow.nodes.map((node) =>
-					processNodeForAssistant(node, [], { trimParameterValues: true }),
+				workflow.nodes.map(
+					async (node) => await processNodeForAssistant(node, [], { trimParameterValues: true }),
 				),
 			);
 		}
