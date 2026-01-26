@@ -260,7 +260,7 @@ defineExpose({
 			</N8nText>
 
 			<N8nCallout
-				v-if="showCreditsClaimedCallout"
+				v-else-if="showCreditsClaimedCallout"
 				icon="info"
 				theme="secondary"
 				:class="$style.creditsCallout"
