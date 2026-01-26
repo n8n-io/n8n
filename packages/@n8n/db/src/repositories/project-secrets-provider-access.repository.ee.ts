@@ -8,10 +8,6 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 	constructor(dataSource: DataSource) {
 		super(ProjectSecretsProviderAccess, dataSource.manager);
 	}
-
-	/**
-	 * Find all project access entries for a given provider key
-	 */
 	async findByProviderKey(providerKey: string): Promise<ProjectSecretsProviderAccess[]> {
 		return await this.find({
 			where: { providerKey },
@@ -19,9 +15,6 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 		});
 	}
 
-	/**
-	 * Find all project access entries for a given project ID
-	 */
 	async findByProjectId(projectId: string): Promise<ProjectSecretsProviderAccess[]> {
 		return await this.find({
 			where: { projectId },
@@ -29,30 +22,25 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 		});
 	}
 
-	/**
-	 * Delete all project access entries for a given provider key
-	 */
 	async deleteByProviderKey(providerKey: string): Promise<void> {
 		await this.delete({ providerKey });
 	}
 
-	/**
-	 * Set project access for a provider (replaces existing entries)
-	 */
 	async setProjectAccess(providerKey: string, projectIds: string[]): Promise<void> {
-		// Delete existing entries
-		await this.deleteByProviderKey(providerKey);
+		// Given we're deleting / re-adding we should probably do it in a single operation
+		await this.manager.transaction(async (tx) => {
+			await tx.delete(ProjectSecretsProviderAccess, { providerKey });
 
-		// Create new entries if projectIds provided
-		if (projectIds.length > 0) {
-			const entries = projectIds.map((projectId) =>
-				this.create({
-					providerKey,
-					projectId,
-				}),
-			);
+			if (projectIds.length > 0) {
+				const entries = projectIds.map((projectId) =>
+					this.create({
+						providerKey,
+						projectId,
+					}),
+				);
 
-			await this.save(entries);
-		}
+				await tx.insert(ProjectSecretsProviderAccess, entries);
+			}
+		});
 	}
 }
