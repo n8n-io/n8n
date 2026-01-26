@@ -197,7 +197,11 @@ Follow these rules strictly when generating workflows:
 
 8. **Node connections use .then() for regular nodes**
    - Chain nodes: \`trigger(...).then(node1).then(node2)\`
-   - Branching: Use \`ifElse()\`, \`switchCase()\`, or \`merge()\` helpers`;
+   - Branching: Use \`ifElse()\`, \`switchCase()\`, or \`merge()\` helpers
+
+9. **Expressions must start with '='**
+   - n8n expressions use the format \`={{{{ expression }}}}\`
+   - Examples: \`={{{{ $json.field }}}}\`, \`={{{{ $('Node Name').item.json.key }}}}\`, \`={{{{ $now }}}}\``;
 
 // AI_PATTERNS removed - merged into WORKFLOW_PATTERNS for Sonnet 4.5 optimized prompt
 
