@@ -19,3 +19,18 @@ jobs:
         uses: n8n-io/validate-n8n-pull-request-title@c3b6fd06bda12eebd57a592c0cf3b747d5b73569 # v2.4.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  block-security-keywords:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Block security keywords in PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          BLOCKED_WORDS="security|vulnerability|CVE|exploit|injection|XSS|SSRF|RCE|bypass|escalation"
+
+          if echo "$PR_TITLE" | grep -iE "$BLOCKED_WORDS"; then
+            echo "PR title contains security-related keywords. Reword it and resubmit."
+            exit 1
+          fi
