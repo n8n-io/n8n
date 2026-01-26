@@ -962,6 +962,99 @@ describe('SourceControlImportService', () => {
 				);
 				expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
 			});
+
+			it('should preserve published state when unpublish fails', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Published Workflow',
+					nodes: [],
+					connections: {},
+					versionId: 'v2',
+					parentFolderId: null,
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					active: true,
+					activeVersionId: 'v1',
+					versionId: 'v1',
+				});
+
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+				// Simulate unpublish failure
+				workflowService.deactivateWorkflow.mockRejectedValue(new Error('Deactivation failed'));
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+
+				// Should log the unpublish error
+				expect(mockLogger.error).toHaveBeenCalledWith(
+					'Failed to unpublish workflow workflow1',
+					expect.any(Object),
+				);
+
+				// Should preserve existing active state because unpublish failed
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						active: true,
+						activeVersionId: 'v1',
+					}),
+					['id'],
+				);
+
+				// Should NOT attempt to republish since unpublish failed
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			});
+
+			it('should preserve published state when user not found during unpublish', async () => {
+				const mockWorkflowFile = '/mock/workflow1.json';
+				const mockWorkflowData = {
+					id: 'workflow1',
+					name: 'Published Workflow',
+					nodes: [],
+					connections: {},
+					versionId: 'v2',
+					parentFolderId: null,
+				};
+				const existingWorkflow = Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					active: true,
+					activeVersionId: 'v1',
+					versionId: 'v1',
+				});
+
+				workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+				fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+				// Simulate user not found during unpublish
+				userRepository.findOne.mockResolvedValue(null);
+
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' }),
+				];
+
+				await service.importWorkflowFromWorkFolder(candidates, mockUserId, 'all');
+
+				// Should log the user not found error
+				expect(mockLogger.error).toHaveBeenCalledWith(
+					'User user-id-123 not found, cannot unpublish workflow workflow1',
+				);
+
+				// Should preserve existing active state because unpublish failed
+				expect(workflowRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						active: true,
+						activeVersionId: 'v1',
+					}),
+					['id'],
+				);
+
+				// Should NOT attempt to republish since unpublish failed
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			});
 		});
 	});
 

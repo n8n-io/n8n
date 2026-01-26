@@ -699,44 +699,12 @@ export class SourceControlImportService {
 		}
 		const existingWorkflow = existingWorkflows.find((e) => e.id === id);
 
-		// Workflow's active status is not saved in the remote workflow files, and the field is missing despite
-		// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
-		// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
-		// In that case, we deactivate the existing workflow on pull and turn it archived.
-		// The autoPublish parameter can override this behavior to auto-activate workflows.
-
-		let shouldAutoPublish = this.shouldAutoPublishWorkflow(
+		const { shouldPublishAfterImport } = await this.preparePublishStateForImport(
 			existingWorkflow,
 			importedWorkflow,
 			autoPublish,
+			userId,
 		);
-
-		const shouldUnpublishLocal =
-			existingWorkflow &&
-			this.shouldUnpublishLocalWorkflow(existingWorkflow, importedWorkflow, shouldAutoPublish);
-		if (shouldUnpublishLocal && existingWorkflow) {
-			const deactivated = await this.unpublishWorkflow(existingWorkflow.id, userId);
-			// If deactivation failed, don't try to activate
-			if (!deactivated) {
-				shouldAutoPublish = false;
-			}
-		}
-
-		// Set active state for upsert
-		if (shouldUnpublishLocal) {
-			// We will activate the workflow later if needed
-			importedWorkflow.active = false;
-			importedWorkflow.activeVersionId = null;
-		} else if (existingWorkflow) {
-			// Preserve existing active state
-			importedWorkflow.active = !!existingWorkflow.activeVersionId;
-			importedWorkflow.activeVersionId = existingWorkflow.activeVersionId;
-		} else {
-			// New workflow - start inactive
-			// It will be activated later if needed
-			importedWorkflow.active = false;
-			importedWorkflow.activeVersionId = null;
-		}
 
 		const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
@@ -778,7 +746,7 @@ export class SourceControlImportService {
 		});
 
 		// Now publish the workflow if needed (after history is saved)
-		if (shouldAutoPublish) {
+		if (shouldPublishAfterImport) {
 			await this.publishWorkflow(id, versionId, userId);
 		}
 
@@ -814,21 +782,20 @@ export class SourceControlImportService {
 		});
 	}
 
-	private shouldUnpublishLocalWorkflow(
-		existingWorkflow: WorkflowEntity,
-		importedWorkflow: IWorkflowToImport,
-		shouldAutoPublish: boolean,
+	private mustUnpublishLocalWorkflow(
+		isLocalPublished: boolean,
+		isRemoteArchived: boolean,
+		shouldAutoPublishRemote: boolean,
 	): boolean {
-		const wasPublished = !!existingWorkflow.activeVersionId;
-		if (!wasPublished) {
+		if (!isLocalPublished) {
 			return false;
 		}
 
-		if (importedWorkflow.isArchived) {
+		if (isRemoteArchived) {
 			return true;
 		}
 
-		return shouldAutoPublish;
+		return shouldAutoPublishRemote;
 	}
 
 	private async unpublishWorkflow(workflowId: string, userId: string): Promise<boolean> {
@@ -1439,6 +1406,84 @@ export class SourceControlImportService {
 		} else {
 			// Create new version history record
 			await this.workflowHistoryService.saveVersion(authors, { versionId, nodes, connections }, id);
+		}
+	}
+
+	/**
+	 * Prepares the publish state for importing a workflow.
+	 * Determines if auto-publish should occur, handles unpublishing if needed,
+	 * and resolves the final publish status for the workflow upsert.
+	 *
+	 * @param existingWorkflow - The existing workflow entity, if it exists
+	 * @param importedWorkflow - The workflow being imported (mutated by this method)
+	 * @param autoPublish - The auto-publish mode
+	 * @param userId - The ID of the user performing the import
+	 * @returns Object indicating whether to publish after import
+	 */
+	private async preparePublishStateForImport(
+		existingWorkflow: WorkflowEntity | undefined,
+		importedWorkflow: IWorkflowToImport,
+		autoPublish: AutoPublishMode,
+		userId: string,
+	): Promise<{ shouldPublishAfterImport: boolean }> {
+		const shouldAutoPublishRemote = this.shouldAutoPublishWorkflow(
+			existingWorkflow,
+			importedWorkflow,
+			autoPublish,
+		);
+
+		const isLocalPublished = !!existingWorkflow?.activeVersionId;
+		const isRemoteArchived = !!importedWorkflow.isArchived;
+
+		const mustUnpublishLocal = this.mustUnpublishLocalWorkflow(
+			isLocalPublished,
+			isRemoteArchived,
+			shouldAutoPublishRemote,
+		);
+
+		let unpublishedLocal = false;
+		if (mustUnpublishLocal && existingWorkflow) {
+			unpublishedLocal = await this.unpublishWorkflow(existingWorkflow.id, userId);
+		}
+
+		const shouldPublishAfterImport =
+			shouldAutoPublishRemote && (!mustUnpublishLocal || unpublishedLocal);
+
+		this.resolvePublishedStatus(
+			importedWorkflow,
+			existingWorkflow?.activeVersionId,
+			mustUnpublishLocal,
+			unpublishedLocal,
+		);
+
+		return { shouldPublishAfterImport };
+	}
+
+	/**
+	 * Resolves the publish status for the upsert of the imported workflow.
+	 * We set active to false here and handle publishing after upsert.
+	 * @param importedWorkflow The imported workflow.
+	 * @param existingWorkflowActiveVersionId The existing workflow active version id, if it exists.
+	 * @param mustUnpublishLocal Whether the local workflow must be unpublished.
+	 * @param unpublishedLocal Whether the local workflow was unpublished.
+	 */
+	private resolvePublishedStatus(
+		// Note: Workflow's active status is not saved in the remote workflow files,
+		// and the field is missing despite IWorkflowToImport having it typed as boolean.
+		importedWorkflow: IWorkflowToImport,
+		existingWorkflowActiveVersionId: string | null | undefined,
+		mustUnpublishLocal: boolean,
+		unpublishedLocal: boolean,
+	) {
+		const shouldPreserve =
+			!!existingWorkflowActiveVersionId && (!mustUnpublishLocal || !unpublishedLocal);
+
+		if (shouldPreserve) {
+			importedWorkflow.active = !!existingWorkflowActiveVersionId;
+			importedWorkflow.activeVersionId = existingWorkflowActiveVersionId;
+		} else {
+			importedWorkflow.active = false;
+			importedWorkflow.activeVersionId = null;
 		}
 	}
 }
