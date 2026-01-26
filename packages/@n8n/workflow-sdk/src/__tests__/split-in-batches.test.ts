@@ -2,6 +2,7 @@ import { splitInBatches } from '../split-in-batches';
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { fanOut } from '../fan-out';
+import { parseWorkflowCode } from '../parse-workflow-code';
 import type { NodeInstance } from '../types/base';
 
 // Helper type for SplitInBatches node
@@ -581,6 +582,277 @@ describe('Split In Batches', () => {
 			expect(sibConnections.main[0]).toHaveLength(2);
 			const doneTargets = sibConnections.main[0]!.map((c: { node: string }) => c.node).sort();
 			expect(doneTargets).toEqual(['Branch 1', 'Branch 2']);
+		});
+	});
+
+	describe('circular reference handling', () => {
+		it('should handle splitInBatches with long chain looping back without stack overflow', () => {
+			// This test reproduces a bug where parsing code with splitInBatches
+			// that has a long chain in onEachBatch looping back to the SIB node
+			// causes "Maximum call stack size exceeded" error
+			const code = `
+const sibNode = node({
+	type: 'n8n-nodes-base.splitInBatches',
+	version: 3,
+	config: { name: 'Process Each Video', parameters: { batchSize: 1 } },
+});
+
+const processNode = node({
+	type: 'n8n-nodes-base.httpRequest',
+	version: 4.2,
+	config: { name: 'Process Batch' },
+});
+
+const uploadNode = node({
+	type: 'n8n-nodes-base.httpRequest',
+	version: 4.2,
+	config: { name: 'Upload' },
+});
+
+const finalizeNode = node({
+	type: 'n8n-nodes-base.set',
+	version: 3,
+	config: { name: 'Finalize' },
+});
+
+return workflow('test-id', 'Test')
+	.add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+	.then(splitInBatches(sibNode)
+		.onDone(finalizeNode)
+		.onEachBatch(processNode.then(uploadNode).then(sibNode))
+	);
+`;
+
+			// This should NOT throw "Maximum call stack size exceeded"
+			const json = parseWorkflowCode(code);
+
+			// Verify the workflow was parsed correctly
+			expect(json.nodes).toHaveLength(5); // trigger, sib, process, upload, finalize
+
+			// Verify connections
+			const sibConnections = json.connections['Process Each Video'];
+			expect(sibConnections).toBeDefined();
+
+			// Output 0 (done) connects to Finalize
+			expect(sibConnections.main[0]).toHaveLength(1);
+			expect(sibConnections.main[0]![0]!.node).toBe('Finalize');
+
+			// Output 1 (each) connects to Process Batch
+			expect(sibConnections.main[1]).toHaveLength(1);
+			expect(sibConnections.main[1]![0]!.node).toBe('Process Batch');
+
+			// Upload should loop back to SIB
+			const uploadConnections = json.connections['Upload'];
+			expect(uploadConnections).toBeDefined();
+			expect(uploadConnections.main[0]![0]!.node).toBe('Process Each Video');
+		});
+
+		it('should handle real-world YouTube Shorts workflow with AI agent and subnodes', () => {
+			// This is the exact code from user's bug report that causes stack overflow
+			const code = `// Define subnodes first
+const openAiModel = languageModel({
+  type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+  version: 1.3,
+  config: {
+    name: 'OpenAI GPT-4',
+    parameters: {
+      model: { mode: 'list', value: 'gpt-4o' },
+      options: {
+        temperature: 0.8
+      }
+    },
+    credentials: {
+      openAiApi: newCredential('OpenAI')
+    },
+    position: [1440, 600]
+  }
+});
+
+// Define main nodes
+const scheduleTrigger = trigger({
+  type: 'n8n-nodes-base.scheduleTrigger',
+  version: 1.3,
+  config: {
+    name: 'Run 3 Times Daily',
+    parameters: {
+      rule: {
+        interval: [
+          {
+            field: 'hours',
+            hoursInterval: 6,
+            triggerAtMinute: 0
+          }
+        ]
+      }
+    },
+    position: [240, 300]
+  }
+});
+
+const createBatchItems = node({
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {
+    name: 'Create 3 Video Items',
+    parameters: {
+      mode: 'manual',
+      fields: {
+        values: [
+          {
+            name: 'videoCount',
+            type: 'arrayValue',
+            arrayValue: '=[1, 2, 3]'
+          }
+        ]
+      },
+      include: 'none'
+    },
+    position: [540, 300]
+  }
+});
+
+const generateStory = node({
+  type: '@n8n/n8n-nodes-langchain.agent',
+  version: 3.1,
+  config: {
+    name: 'Generate Short Story Script',
+    parameters: {
+      promptType: 'define',
+      text: 'Generate a unique, engaging short story script for a YouTube Short video (60 seconds or less). The story should be captivating, have a clear beginning, middle, and end, and be suitable for video format. Include visual descriptions and narration text. Make each story completely different and creative.',
+      options: {
+        systemMessage: 'You are a creative storyteller specializing in short-form video content. Generate compelling, original stories perfect for YouTube Shorts.',
+        maxIterations: 5
+      }
+    },
+    subnodes: {
+      model: openAiModel
+    },
+    position: [1140, 400]
+  }
+});
+
+const generateVideo = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.3,
+  config: {
+    name: 'Generate Video with Sora',
+    parameters: {
+      method: 'POST',
+      url: placeholder('Sora API endpoint URL'),
+      authentication: 'predefinedCredentialType',
+      nodeCredentialType: 'httpHeaderAuth',
+      sendHeaders: true,
+      specifyHeaders: 'keypair',
+      headerParameters: {
+        parameters: [
+          {
+            name: 'Content-Type',
+            value: 'application/json'
+          }
+        ]
+      },
+      sendBody: true,
+      contentType: 'json',
+      specifyBody: 'json',
+      jsonBody: '={{ { "prompt": $json.output, "duration": 60, "aspect_ratio": "9:16" } }}',
+      options: {
+        response: {
+          response: {
+            responseFormat: 'json'
+          }
+        },
+        timeout: 300000
+      }
+    },
+    credentials: {
+      httpHeaderAuth: newCredential('Sora API Key')
+    },
+    position: [1440, 400]
+  }
+});
+
+const uploadToYouTube = node({
+  type: 'n8n-nodes-base.youTube',
+  version: 1,
+  config: {
+    name: 'Upload to YouTube',
+    parameters: {
+      resource: 'video',
+      operation: 'upload',
+      title: '={{ "Short Story " + $now.toFormat("yyyy-MM-dd HH:mm") }}',
+      binaryProperty: 'data',
+      options: {
+        description: 'An engaging short story created with AI',
+        privacyStatus: 'public',
+        tags: 'shorts,short story,ai generated,storytelling',
+        selfDeclaredMadeForKids: false,
+        notifySubscribers: true
+      }
+    },
+    credentials: {
+      youTubeOAuth2Api: newCredential('YouTube OAuth2')
+    },
+    position: [1740, 400]
+  }
+});
+
+const allVideosComplete = node({
+  type: 'n8n-nodes-base.noOp',
+  version: 1,
+  config: {
+    name: 'All Videos Uploaded',
+    parameters: {},
+    position: [1140, 200]
+  }
+});
+
+const splitVideos = splitInBatches({
+  name: 'Process Each Video',
+  parameters: {
+    batchSize: 1,
+    options: {}
+  },
+  position: [840, 300]
+});
+
+// Compose workflow with loop
+return workflow('eval-1769451317134-scv1mk1th', 'YouTube Shorts Auto-Publisher')
+  .add(scheduleTrigger)
+  .then(createBatchItems)
+  .then(splitVideos
+    .onDone(allVideosComplete)
+    .onEachBatch(generateStory.then(generateVideo).then(uploadToYouTube).then(splitVideos))
+  );`;
+
+			// This should NOT throw "Maximum call stack size exceeded"
+			const json = parseWorkflowCode(code);
+
+			// Verify the workflow was parsed correctly
+			const nodeNames = json.nodes.map((n) => n.name).sort();
+			expect(nodeNames).toContain('Run 3 Times Daily');
+			expect(nodeNames).toContain('Create 3 Video Items');
+			expect(nodeNames).toContain('Process Each Video');
+			expect(nodeNames).toContain('Generate Short Story Script');
+			expect(nodeNames).toContain('Generate Video with Sora');
+			expect(nodeNames).toContain('Upload to YouTube');
+			expect(nodeNames).toContain('All Videos Uploaded');
+
+			// Verify the loop structure
+			const sibConnections = json.connections['Process Each Video'];
+			expect(sibConnections).toBeDefined();
+
+			// Output 0 (done) connects to All Videos Uploaded
+			expect(sibConnections.main[0]).toHaveLength(1);
+			expect(sibConnections.main[0]![0]!.node).toBe('All Videos Uploaded');
+
+			// Output 1 (each) connects to Generate Short Story Script
+			expect(sibConnections.main[1]).toHaveLength(1);
+			expect(sibConnections.main[1]![0]!.node).toBe('Generate Short Story Script');
+
+			// Upload to YouTube should loop back to Process Each Video
+			const uploadConnections = json.connections['Upload to YouTube'];
+			expect(uploadConnections).toBeDefined();
+			expect(uploadConnections.main[0]![0]!.node).toBe('Process Each Video');
 		});
 	});
 });
