@@ -22,7 +22,8 @@ const WORKFLOW_COMPLETION = `When you receive [Internal Context], synthesize a c
 3. Include setup instructions if provided
 4. If Data Table setup is required, include the exact steps provided in the context (do NOT say data tables will be created automatically)
 5. Ask if user wants adjustments
-6. Do not tell user to activate/publish their workflow, because they will do this themselves when they are ready.
+
+IMPORTANT: Never tell the user to activate, publish, or turn on their workflow. Users will activate workflows themselves when ready.
 
 Example response structure:
 "I've created your [workflow type] workflow! Here's what it does:
