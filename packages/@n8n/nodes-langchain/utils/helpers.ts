@@ -95,10 +95,17 @@ export function getPromptInputByType(options: {
 	}
 
 	if (input === undefined) {
-		const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
-		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
-		});
+		if (promptType === 'auto' || promptType === 'guardrails') {
+			const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
+			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+				description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
+			});
+		} else {
+			throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
+				description:
+					'The prompt field is empty or the expression used could not be resolved. Please check the configured prompt value.',
+			});
+		}
 	}
 
 	return input;
