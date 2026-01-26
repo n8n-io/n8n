@@ -18,7 +18,7 @@ jobs:
   build-docker:
     name: 'Build Docker Image'
     if: ${{ !github.event.pull_request.head.repo.fork }}
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     permissions:
       packages: write
       contents: read
@@ -126,25 +126,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
+      contents: read
     steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: .github/scripts
+          sparse-checkout-cone-mode: false
+
       - name: Delete images from GHCR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
-        run: |
-          for PACKAGE in n8n runners; do
-            echo "Deleting $PACKAGE:$TAG..."
-            VERSION_ID=$(gh api \
-              -H "Accept: application/vnd.github+json" \
-              "/orgs/n8n-io/packages/container/$PACKAGE/versions" \
-              --jq ".[] | select(.metadata.container.tags[] == \"$TAG\") | .id")
-
-            if [ -n "$VERSION_ID" ]; then
-              gh api --method DELETE \
-                -H "Accept: application/vnd.github+json" \
-                "/orgs/n8n-io/packages/container/$PACKAGE/versions/$VERSION_ID"
-              echo "  Deleted $PACKAGE version $VERSION_ID"
-            else
-              echo "  Not found, may have already been deleted"
-            fi
-          done
+        run: node .github/scripts/cleanup-ghcr-images.mjs --tag pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
