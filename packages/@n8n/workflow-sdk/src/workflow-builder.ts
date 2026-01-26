@@ -20,8 +20,6 @@ import type {
 } from './types/base';
 import { isNodeChain } from './types/base';
 import { isMergeNamedInputSyntax } from './merge';
-import { isSwitchCaseNamedSyntax, type SwitchCaseTarget } from './switch-case';
-import { isIfElseNamedSyntax, type IfElseTarget } from './if-else';
 import { isFanOut } from './fan-out';
 import { isInputTarget, isIfElseBuilder, isSwitchCaseBuilder } from './node-builder';
 import type { IfElseBuilder, SwitchCaseBuilder } from './types/base';
@@ -584,6 +582,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Convert nodes
 		for (const [mapKey, graphNode] of this._nodes) {
 			const instance = graphNode.instance;
+
+			// Skip invalid nodes (shouldn't happen, but defensive)
+			if (!instance || !instance.name || !instance.type) {
+				continue;
+			}
+
 			const config = instance.config ?? {};
 			const position = config.position ?? nodePositions.get(mapKey) ?? [START_X, DEFAULT_Y];
 
@@ -1333,6 +1337,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			return getNodeName((target as MergeComposite).mergeNode);
 		}
 
+		// Check for IfElseBuilder (fluent API)
+		if (isIfElseBuilder(target)) {
+			return getNodeName((target as IfElseBuilder<unknown>).ifNode);
+		}
+
+		// Check for SwitchCaseBuilder (fluent API)
+		if (isSwitchCaseBuilder(target)) {
+			return getNodeName((target as SwitchCaseBuilder<unknown>).switchNode);
+		}
+
 		// Check for SplitInBatchesBuilder or its chains (EachChainImpl/DoneChainImpl)
 		if (this.isSplitInBatchesBuilder(target)) {
 			const builder = this.extractSplitInBatchesBuilder(target);
@@ -1515,70 +1529,32 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Build the switch node connections to its cases
 		const switchMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Handle named syntax: switchCase(switchNode, { case0, case1, ... })
-		if (isSwitchCaseNamedSyntax(composite)) {
-			const namedComposite = composite as SwitchCaseComposite & {
-				caseMapping: Map<number, SwitchCaseTarget>;
-				_allCaseNodes: NodeInstance<string, string, unknown>[];
-			};
-
-			// Add case nodes and process nested composites
-			// We need to process the targets directly to set up their internal connections
-			for (const [, target] of namedComposite.caseMapping) {
-				this.addBranchTargetNodes(nodes, target);
+		// Add all case nodes and build connections from switch to each case
+		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
+		// Skip null cases (unconnected outputs)
+		// Handle arrays for fan-out (one output to multiple parallel nodes)
+		composite.cases.forEach((caseNode, index) => {
+			if (caseNode === null) {
+				return; // Skip null cases - no connection for this output
 			}
 
-			// Connect switch to each case at the correct output index
-			for (const [caseIndex, target] of namedComposite.caseMapping) {
-				if (target === null) continue; // Skip null cases
-
-				if (isFanOut(target)) {
-					// Fan-out: multiple targets from one case
-					const targets: ConnectionTarget[] = [];
-					for (const t of target.targets) {
-						const targetName = this.getTargetNodeName(t);
-						if (targetName) {
-							targets.push({ node: targetName, type: 'main', index: 0 });
-						}
-					}
-					switchMainConns.set(caseIndex, targets);
-				} else {
-					// Single target
-					const targetName = this.getTargetNodeName(target);
-					if (targetName) {
-						switchMainConns.set(caseIndex, [{ node: targetName, type: 'main', index: 0 }]);
-					}
+			// Check if caseNode is an array (fan-out pattern)
+			if (Array.isArray(caseNode)) {
+				// Fan-out: multiple parallel targets from this case
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of caseNode) {
+					if (branchNode === null) continue;
+					const branchHead = this.addBranchToGraph(nodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
 				}
+				if (targets.length > 0) {
+					switchMainConns.set(index, targets);
+				}
+			} else {
+				const caseHeadName = this.addBranchToGraph(nodes, caseNode);
+				switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
 			}
-		} else {
-			// Original behavior: switchCase([case0, case1, ...], config)
-			// Add all case nodes and build connections from switch to each case
-			// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
-			// Skip null cases (unconnected outputs)
-			// Handle arrays for fan-out (one output to multiple parallel nodes)
-			composite.cases.forEach((caseNode, index) => {
-				if (caseNode === null) {
-					return; // Skip null cases - no connection for this output
-				}
-
-				// Check if caseNode is an array (fan-out pattern)
-				if (Array.isArray(caseNode)) {
-					// Fan-out: multiple parallel targets from this case
-					const targets: ConnectionTarget[] = [];
-					for (const branchNode of caseNode) {
-						if (branchNode === null) continue;
-						const branchHead = this.addBranchToGraph(nodes, branchNode);
-						targets.push({ node: branchHead, type: 'main', index: 0 });
-					}
-					if (targets.length > 0) {
-						switchMainConns.set(index, targets);
-					}
-				} else {
-					const caseHeadName = this.addBranchToGraph(nodes, caseNode);
-					switchMainConns.set(index, [{ node: caseHeadName, type: 'main', index: 0 }]);
-				}
-			});
-		}
+		});
 
 		// Add the switch node with connections to cases
 		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
@@ -1681,94 +1657,33 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Build the IF node connections to its branches
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Handle named syntax: ifElse(ifNode, { true: ..., false: ... })
-		if (isIfElseNamedSyntax(composite)) {
-			const namedComposite = composite as IfElseComposite & {
-				_trueBranchTarget: IfElseTarget;
-				_falseBranchTarget: IfElseTarget;
-				_allBranchNodes: NodeInstance<string, string, unknown>[];
-			};
-
-			// Add branch nodes and process nested composites
-			// We need to process the targets directly to set up their internal connections
-			this.addBranchTargetNodes(nodes, namedComposite._trueBranchTarget);
-			this.addBranchTargetNodes(nodes, namedComposite._falseBranchTarget);
-
-			// Connect IF to true branch (output 0)
-			if (
-				namedComposite._trueBranchTarget !== null &&
-				namedComposite._trueBranchTarget !== undefined
-			) {
-				const target = namedComposite._trueBranchTarget;
-				if (isFanOut(target)) {
-					const targets: ConnectionTarget[] = [];
-					for (const t of target.targets) {
-						const targetName = this.getTargetNodeName(t);
-						if (targetName) {
-							targets.push({ node: targetName, type: 'main', index: 0 });
-						}
-					}
-					ifMainConns.set(0, targets);
-				} else {
-					const targetName = this.getTargetNodeName(target);
-					if (targetName) {
-						ifMainConns.set(0, [{ node: targetName, type: 'main', index: 0 }]);
-					}
+		// Add branch nodes (may be NodeChain, single node, or array of nodes for fan-out)
+		if (composite.trueBranch) {
+			if (Array.isArray(composite.trueBranch)) {
+				// Fan-out: multiple parallel targets from trueBranch
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of composite.trueBranch) {
+					const branchHead = this.addBranchToGraph(nodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
 				}
+				ifMainConns.set(0, targets);
+			} else {
+				const trueBranchHead = this.addBranchToGraph(nodes, composite.trueBranch);
+				ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
 			}
-
-			// Connect IF to false branch (output 1)
-			if (
-				namedComposite._falseBranchTarget !== null &&
-				namedComposite._falseBranchTarget !== undefined
-			) {
-				const target = namedComposite._falseBranchTarget;
-				if (isFanOut(target)) {
-					const targets: ConnectionTarget[] = [];
-					for (const t of target.targets) {
-						const targetName = this.getTargetNodeName(t);
-						if (targetName) {
-							targets.push({ node: targetName, type: 'main', index: 0 });
-						}
-					}
-					ifMainConns.set(1, targets);
-				} else {
-					const targetName = this.getTargetNodeName(target);
-					if (targetName) {
-						ifMainConns.set(1, [{ node: targetName, type: 'main', index: 0 }]);
-					}
+		}
+		if (composite.falseBranch) {
+			if (Array.isArray(composite.falseBranch)) {
+				// Fan-out: multiple parallel targets from falseBranch
+				const targets: ConnectionTarget[] = [];
+				for (const branchNode of composite.falseBranch) {
+					const branchHead = this.addBranchToGraph(nodes, branchNode);
+					targets.push({ node: branchHead, type: 'main', index: 0 });
 				}
-			}
-		} else {
-			// Original behavior for array syntax (should not reach here after removal)
-			// Add branch nodes (may be NodeChain, single node, or array of nodes for fan-out)
-			if (composite.trueBranch) {
-				if (Array.isArray(composite.trueBranch)) {
-					// Fan-out: multiple parallel targets from trueBranch
-					const targets: ConnectionTarget[] = [];
-					for (const branchNode of composite.trueBranch) {
-						const branchHead = this.addBranchToGraph(nodes, branchNode);
-						targets.push({ node: branchHead, type: 'main', index: 0 });
-					}
-					ifMainConns.set(0, targets);
-				} else {
-					const trueBranchHead = this.addBranchToGraph(nodes, composite.trueBranch);
-					ifMainConns.set(0, [{ node: trueBranchHead, type: 'main', index: 0 }]);
-				}
-			}
-			if (composite.falseBranch) {
-				if (Array.isArray(composite.falseBranch)) {
-					// Fan-out: multiple parallel targets from falseBranch
-					const targets: ConnectionTarget[] = [];
-					for (const branchNode of composite.falseBranch) {
-						const branchHead = this.addBranchToGraph(nodes, branchNode);
-						targets.push({ node: branchHead, type: 'main', index: 0 });
-					}
-					ifMainConns.set(1, targets);
-				} else {
-					const falseBranchHead = this.addBranchToGraph(nodes, composite.falseBranch);
-					ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
-				}
+				ifMainConns.set(1, targets);
+			} else {
+				const falseBranchHead = this.addBranchToGraph(nodes, composite.falseBranch);
+				ifMainConns.set(1, [{ node: falseBranchHead, type: 'main', index: 0 }]);
 			}
 		}
 
@@ -2190,6 +2105,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		nodes: Map<string, GraphNode>,
 		nodeInstance: NodeInstance<string, string, unknown>,
 	): void {
+		// Guard against invalid node instances (e.g., empty objects from chain.allNodes)
+		if (!nodeInstance || typeof nodeInstance !== 'object') {
+			return;
+		}
+		if (!nodeInstance.type || !nodeInstance.name) {
+			// Not a valid node instance - skip silently
+			return;
+		}
+
 		// Check if a node with the same name already exists
 		const existingNode = nodes.get(nodeInstance.name);
 		if (existingNode) {
@@ -2657,6 +2581,20 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					continue;
 				}
 
+				// Skip invalid objects that aren't valid nodes or composites
+				if (
+					typeof chainNode !== 'object' ||
+					(!('name' in chainNode) &&
+						!this.isSwitchCaseComposite(chainNode) &&
+						!this.isIfElseComposite(chainNode) &&
+						!this.isMergeComposite(chainNode) &&
+						!this.isSplitInBatchesBuilder(chainNode) &&
+						!isIfElseBuilder(chainNode) &&
+						!isSwitchCaseBuilder(chainNode))
+				) {
+					continue;
+				}
+
 				// Check if chainNode is a composite or builder (can happen via chain.then(ifElse(...)))
 				if (this.isSwitchCaseComposite(chainNode)) {
 					this.addSwitchCaseNodes(nodes, chainNode as unknown as SwitchCaseComposite);
@@ -2834,91 +2772,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Handle named syntax: ifElse(ifNode, { true, false })
-		if (isIfElseNamedSyntax(composite)) {
-			const namedComposite = composite as IfElseComposite & {
-				_trueBranchTarget: IfElseTarget;
-				_falseBranchTarget: IfElseTarget;
-				_allBranchNodes: NodeInstance<string, string, unknown>[];
-			};
-
-			// Add branch nodes and process nested composites
-			// We need to process the targets directly to set up their internal connections
-			this.addBranchTargetNodes(newNodes, namedComposite._trueBranchTarget);
-			this.addBranchTargetNodes(newNodes, namedComposite._falseBranchTarget);
-
-			// Connect IF to true branch at output 0
-			const trueBranch = namedComposite._trueBranchTarget;
-			if (trueBranch !== null) {
-				if (isFanOut(trueBranch)) {
-					// Fan-out: multiple targets from true branch
-					const targets: ConnectionTarget[] = [];
-					for (const t of trueBranch.targets) {
-						const targetName = this.getTargetNodeName(t);
-						if (targetName) {
-							targets.push({ node: targetName, type: 'main', index: 0 });
-						}
-					}
-					ifMainConns.set(0, targets);
-				} else {
-					// Single target
-					const targetName = this.getTargetNodeName(trueBranch);
-					if (targetName) {
-						ifMainConns.set(0, [{ node: targetName, type: 'main', index: 0 }]);
-					}
-				}
-			}
-
-			// Connect IF to false branch at output 1
-			const falseBranch = namedComposite._falseBranchTarget;
-			if (falseBranch !== null) {
-				if (isFanOut(falseBranch)) {
-					// Fan-out: multiple targets from false branch
-					const targets: ConnectionTarget[] = [];
-					for (const t of falseBranch.targets) {
-						const targetName = this.getTargetNodeName(t);
-						if (targetName) {
-							targets.push({ node: targetName, type: 'main', index: 0 });
-						}
-					}
-					ifMainConns.set(1, targets);
-				} else {
-					// Single target
-					const targetName = this.getTargetNodeName(falseBranch);
-					if (targetName) {
-						ifMainConns.set(1, [{ node: targetName, type: 'main', index: 0 }]);
-					}
-				}
-			}
-
-			// Add IF node with connections to present branches
-			const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
-			ifConns.set('main', ifMainConns);
-			newNodes.set(composite.ifNode.name, {
-				instance: composite.ifNode,
-				connections: ifConns,
-			});
-
-			// Connect current node to IF node
-			if (this._currentNode) {
-				const currentGraphNode = newNodes.get(this._currentNode);
-				if (currentGraphNode) {
-					const mainConns = currentGraphNode.connections.get('main') || new Map();
-					const outputConns = mainConns.get(this._currentOutput) || [];
-					outputConns.push({ node: composite.ifNode.name, type: 'main', index: 0 });
-					mainConns.set(this._currentOutput, outputConns);
-					currentGraphNode.connections.set('main', mainConns);
-				}
-			}
-
-			return this.clone({
-				nodes: newNodes,
-				currentNode: composite.ifNode.name,
-				currentOutput: 0,
-			});
-		}
-
-		// Original behavior: ifElse([true, false], config)
 		// Add true branch (may be NodeChain with downstream nodes, or array for fan-out)
 		if (composite.trueBranch) {
 			if (Array.isArray(composite.trueBranch)) {
@@ -3133,69 +2986,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
 		const mainConns = new Map<number, ConnectionTarget[]>();
 
-		// Handle named syntax: switchCase(switchNode, { case0, case1, ... })
-		if (isSwitchCaseNamedSyntax(composite)) {
-			const namedComposite = composite as SwitchCaseComposite & {
-				caseMapping: Map<number, SwitchCaseTarget>;
-				_allCaseNodes: NodeInstance<string, string, unknown>[];
-			};
-
-			// Add all case nodes using addBranchTargetNodes to properly handle nested composites
-			// This ensures that nested ifElse/switchCase/merge composites get their connections set up
-			for (const [, target] of namedComposite.caseMapping) {
-				this.addBranchTargetNodes(newNodes, target);
-			}
-
-			// Connect switch to each case at the correct output index
-			for (const [caseIndex, target] of namedComposite.caseMapping) {
-				if (target === null) continue; // Skip null cases
-
-				if (isFanOut(target)) {
-					// Fan-out: multiple targets from one case
-					const targets: ConnectionTarget[] = [];
-					for (const t of target.targets) {
-						const targetName = this.getTargetNodeName(t);
-						if (targetName) {
-							targets.push({ node: targetName, type: 'main', index: 0 });
-						}
-					}
-					mainConns.set(caseIndex, targets);
-				} else {
-					// Single target
-					const targetName = this.getTargetNodeName(target);
-					if (targetName) {
-						mainConns.set(caseIndex, [{ node: targetName, type: 'main', index: 0 }]);
-					}
-				}
-			}
-
-			// Add Switch node with all case connections
-			switchConns.set('main', mainConns);
-			newNodes.set(composite.switchNode.name, {
-				instance: composite.switchNode,
-				connections: switchConns,
-			});
-
-			// Connect current node to Switch node
-			if (this._currentNode) {
-				const currentGraphNode = newNodes.get(this._currentNode);
-				if (currentGraphNode) {
-					const currMainConns = currentGraphNode.connections.get('main') || new Map();
-					const outputConns = currMainConns.get(this._currentOutput) || [];
-					outputConns.push({ node: composite.switchNode.name, type: 'main', index: 0 });
-					currMainConns.set(this._currentOutput, outputConns);
-					currentGraphNode.connections.set('main', currMainConns);
-				}
-			}
-
-			return this.clone({
-				nodes: newNodes,
-				currentNode: composite.switchNode.name,
-				currentOutput: 0,
-			});
-		}
-
-		// Original behavior: switchCase([case0, case1, ...], config)
 		// Add each case node (with subnodes) and connect from switch at correct output index
 		// Use addBranchToGraph to handle NodeChain cases (nodes with .then() chains)
 		// Skip null cases (unconnected outputs)
