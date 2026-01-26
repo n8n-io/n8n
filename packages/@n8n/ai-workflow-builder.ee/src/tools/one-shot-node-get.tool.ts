@@ -7,7 +7,7 @@
  * POC with extensive debug logging for development.
  */
 
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { inspect } from 'node:util';
@@ -68,16 +68,13 @@ function toSnakeCase(str: string): string {
 
 /**
  * Check if a node uses split version structure (v{N}/ directory vs v{N}.ts file)
+ * Returns true if the version directory exists, regardless of whether a flat file also exists.
+ * This ensures we prefer split structure (smaller, specific files) over flat files when both exist.
  */
 function isSplitVersionStructure(nodeDir: string, versionStr: string): boolean {
 	const versionDir = join(nodeDir, versionStr);
-	const versionFile = join(nodeDir, `${versionStr}.ts`);
-
-	// If directory exists and file doesn't, it's split
-	if (existsSync(versionDir) && !existsSync(versionFile)) {
-		return true;
-	}
-	return false;
+	// Return true if directory exists (prefer split structure over flat file)
+	return existsSync(versionDir) && statSync(versionDir).isDirectory();
 }
 
 /**
