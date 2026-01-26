@@ -24,6 +24,7 @@ beforeAll(async () => {
 		database: meta.database,
 		user: meta.username,
 		password: meta.password,
+		connectTimeout: 10000,
 		ssl: false,
 		sshTunnel: false,
 	};
@@ -68,6 +69,7 @@ const badCreds: MysqlNodeCredentials = {
 	database: 'x',
 	user: 'x',
 	password: 'x',
+	connectTimeout: 1000,
 	ssl: false,
 	sshTunnel: false,
 };
