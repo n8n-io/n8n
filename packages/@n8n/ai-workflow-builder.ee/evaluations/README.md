@@ -340,6 +340,7 @@ Notes:
 --output-dir <dir>  # Local mode: write artifacts (one folder per example + summary.json)
 --template-examples # Enable template examples feature flag
 --webhook-url <url> # Send results to webhook URL on completion (HTTPS only)
+--webhook-secret <s> # HMAC-SHA256 secret for webhook authentication (min 16 chars)
 ```
 
 ### CSV Format
@@ -547,6 +548,83 @@ The `langsmith` object (only present in LangSmith mode) contains IDs and names f
 - Localhost and private/internal IPs are blocked (SSRF prevention)
 - DNS resolution validates that hostnames don't resolve to private IPs
 - Webhook URLs are masked in logs to protect embedded tokens
+- HMAC-SHA256 signature for request authentication (optional but recommended)
+
+#### Webhook Authentication (HMAC Signature)
+
+For production use, authenticate webhook requests using HMAC-SHA256 signatures:
+
+```bash
+# Generate a secret (run once, store securely)
+openssl rand -hex 32
+
+# Use with the CLI
+pnpm eval:langsmith --dataset "my-dataset" \
+  --webhook-url "https://your.endpoint/webhook" \
+  --webhook-secret "your-64-char-hex-secret"
+```
+
+When a secret is provided, requests include:
+- `X-Signature-256`: HMAC-SHA256 signature (`sha256=<hex>`)
+- `X-Timestamp`: Unix timestamp in milliseconds
+
+**How it works:**
+
+```
+Sender:
+1. payload = JSON.stringify(body)
+2. signatureInput = `${timestamp}.${payload}`
+3. signature = HMAC-SHA256(signatureInput, secret)
+4. Send with headers: X-Signature-256, X-Timestamp
+
+Receiver:
+1. Extract X-Signature-256 and X-Timestamp headers
+2. Check timestamp is recent (< 5 minutes old)
+3. Recreate: signatureInput = `${timestamp}.${rawBody}`
+4. Compute expected = HMAC-SHA256(signatureInput, secret)
+5. Compare signatures (timing-safe)
+```
+
+**Verifying in an n8n workflow:**
+
+Use a Code node after the Webhook trigger:
+
+```javascript
+const crypto = require('crypto');
+
+// Get from webhook input (adjust based on your webhook node config)
+const signature = $input.first().json.headers['x-signature-256'];
+const timestamp = $input.first().json.headers['x-timestamp'];
+const rawBody = $input.first().json.rawBody ?? $input.first().json.body;
+const body = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+
+// Your secret (use n8n credentials or environment variable)
+const secret = $env.WEBHOOK_SECRET;
+
+// Verify timestamp (reject requests older than 5 minutes)
+const MAX_AGE_MS = 5 * 60 * 1000;
+const age = Date.now() - parseInt(timestamp, 10);
+if (!signature || !timestamp) throw new Error('Missing signature headers');
+if (age > MAX_AGE_MS) throw new Error('Request too old');
+
+// Compute and compare signature
+const payload = `${timestamp}.${body}`;
+const expected = 'sha256=' + crypto.createHmac('sha256', secret)
+  .update(payload, 'utf8').digest('hex');
+
+if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  throw new Error('Invalid signature');
+}
+
+// Valid! Return parsed payload
+return [{ json: JSON.parse(body) }];
+```
+
+**CI Configuration:**
+
+Add secrets to GitHub:
+- `EVALS_WEBHOOK_URL`: Your webhook endpoint
+- `EVALS_WEBHOOK_SECRET`: The HMAC secret (64-char hex string)
 
 ### Debug Dataset
 

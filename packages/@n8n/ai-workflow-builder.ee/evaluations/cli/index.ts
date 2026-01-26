@@ -241,6 +241,7 @@ export async function runV2Evaluation(): Promise<void> {
 
 		await sendWebhookNotification({
 			webhookUrl: args.webhookUrl,
+			webhookSecret: args.webhookSecret,
 			summary,
 			dataset,
 			suite: args.suite,
