@@ -41,19 +41,34 @@ describe('Script Sandbox', () => {
 		getNodesByType: jest.fn(() => []),
 	};
 
-	const createMockTools = (): ScriptTools => ({
-		addNode: jest.fn().mockResolvedValue({ success: true, nodeId: 'new-node-1' }),
-		connectNodes: jest.fn().mockResolvedValue({ success: true }),
-		removeNode: jest.fn().mockResolvedValue({ success: true }),
-		removeConnection: jest.fn().mockResolvedValue({ success: true }),
-		renameNode: jest.fn().mockResolvedValue({ success: true }),
-		validateStructure: jest.fn().mockResolvedValue({ success: true, isValid: true }),
-		updateNodeParameters: jest
-			.fn()
-			.mockResolvedValue({ success: true, updatedParameters: {}, appliedChanges: [] }),
-		getNodeParameter: jest.fn().mockResolvedValue({ success: true, value: undefined }),
-		validateConfiguration: jest.fn().mockResolvedValue({ success: true, isValid: true }),
-	});
+	const createMockTools = (): ScriptTools => {
+		const addNodesFn = jest.fn().mockResolvedValue({ success: true, results: [] });
+		const connectMultipleFn = jest.fn().mockResolvedValue({ success: true, results: [] });
+		const setParametersFn = jest.fn().mockResolvedValue({ success: true, parameters: {} });
+		const setAllFn = jest.fn().mockResolvedValue({ success: true, results: [] });
+		const updateAllFn = jest.fn().mockResolvedValue({ success: true, results: [] });
+		return {
+			addNode: jest.fn().mockResolvedValue({ success: true, nodeId: 'new-node-1' }),
+			addNodes: addNodesFn,
+			add: addNodesFn, // Alias
+			connectNodes: jest.fn().mockResolvedValue({ success: true }),
+			connectMultiple: connectMultipleFn,
+			conn: connectMultipleFn, // Alias
+			removeNode: jest.fn().mockResolvedValue({ success: true }),
+			removeConnection: jest.fn().mockResolvedValue({ success: true }),
+			renameNode: jest.fn().mockResolvedValue({ success: true }),
+			validateStructure: jest.fn().mockResolvedValue({ success: true, isValid: true }),
+			updateNodeParameters: jest
+				.fn()
+				.mockResolvedValue({ success: true, updatedParameters: {}, appliedChanges: [] }),
+			updateAll: updateAllFn, // Batch LLM updates
+			setParameters: setParametersFn, // Direct parameter setting
+			set: setParametersFn, // Alias
+			setAll: setAllFn, // Batch direct parameter setting
+			getNodeParameter: jest.fn().mockResolvedValue({ success: true, value: undefined }),
+			validateConfiguration: jest.fn().mockResolvedValue({ success: true, isValid: true }),
+		};
+	};
 
 	describe('executeScript', () => {
 		it('should execute a simple script successfully', async () => {

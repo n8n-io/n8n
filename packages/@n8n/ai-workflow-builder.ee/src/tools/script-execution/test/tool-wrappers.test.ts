@@ -41,7 +41,8 @@ describe('Tool Wrappers', () => {
 		displayName: 'AI Agent',
 		name: '@n8n/n8n-nodes-langchain.agent',
 		group: ['output'],
-		inputs: `={{[{ type: 'main' }, { type: 'ai_languageModel' }, { type: 'ai_outputParser' }, { type: 'ai_memory' }, { type: 'ai_tool' }]}}`,
+		inputs:
+			"={{[{ type: 'main' }, { type: 'ai_languageModel' }, { type: 'ai_outputParser' }, { type: 'ai_memory' }, { type: 'ai_tool' }]}}",
 		outputs: ['main'],
 	});
 
@@ -685,6 +686,638 @@ describe('Tool Wrappers', () => {
 					changes: ['Set URL to https://api.example.com'],
 				}),
 			).rejects.toThrow('LLM configuration');
+		});
+	});
+
+	describe('addNodes (batch)', () => {
+		it('should add multiple nodes in a single operation', async () => {
+			const result = await tools.addNodes({
+				nodes: [
+					{
+						nodeType: 'n8n-nodes-base.manualTrigger',
+						nodeVersion: 1,
+						name: 'Trigger',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeVersion: 1,
+						name: 'HTTP',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+				],
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(2);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[0].nodeName).toBe('Trigger');
+			expect(result.results[1].success).toBe(true);
+			expect(result.results[1].nodeName).toBe('HTTP');
+
+			// Should be a single addNodes operation, not two
+			const operations = operationsCollector.getOperations();
+			expect(operations).toHaveLength(1);
+			expect(operations[0].type).toBe('addNodes');
+			if (operations[0].type === 'addNodes') {
+				expect(operations[0].nodes).toHaveLength(2);
+			}
+		});
+
+		it('should generate unique names when batch has duplicates', async () => {
+			const result = await tools.addNodes({
+				nodes: [
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeVersion: 1,
+						name: 'HTTP Request',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeVersion: 1,
+						name: 'HTTP Request',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+				],
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.results[0].nodeName).toBe('HTTP Request');
+			expect(result.results[1].nodeName).not.toBe(result.results[0].nodeName);
+		});
+
+		it('should handle partial failures gracefully', async () => {
+			const result = await tools.addNodes({
+				nodes: [
+					{
+						nodeType: 'n8n-nodes-base.manualTrigger',
+						nodeVersion: 1,
+						name: 'Trigger',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+					{
+						nodeType: 'unknown.node',
+						nodeVersion: 1,
+						name: 'Unknown',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+				],
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(2);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[1].success).toBe(false);
+			expect(result.results[1].error).toContain('not found');
+
+			// Should still add the successful node
+			const operations = operationsCollector.getOperations();
+			expect(operations).toHaveLength(1);
+			if (operations[0].type === 'addNodes') {
+				expect(operations[0].nodes).toHaveLength(1);
+			}
+		});
+
+		it('should return empty results for empty input', async () => {
+			const result = await tools.addNodes({ nodes: [] });
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(0);
+		});
+	});
+
+	describe('add() alias', () => {
+		it('should work as alias for addNodes', async () => {
+			const result = await tools.add({
+				nodes: [
+					{
+						nodeType: 'n8n-nodes-base.manualTrigger',
+						nodeVersion: 1,
+						name: 'Trigger',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+				],
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(1);
+			expect(result.results[0].nodeName).toBe('Trigger');
+		});
+	});
+
+	describe('connectMultiple (batch)', () => {
+		it('should connect multiple node pairs in a single operation', async () => {
+			// First add nodes
+			const nodesResult = await tools.addNodes({
+				nodes: [
+					{
+						nodeType: 'n8n-nodes-base.manualTrigger',
+						nodeVersion: 1,
+						name: 'Trigger',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeVersion: 1,
+						name: 'HTTP1',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeVersion: 1,
+						name: 'HTTP2',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+				],
+			});
+
+			const [trigger, http1, http2] = nodesResult.results;
+
+			// Connect Trigger -> HTTP1 and Trigger -> HTTP2
+			const connectResult = await tools.connectMultiple({
+				connections: [
+					{ sourceNodeId: trigger, targetNodeId: http1 },
+					{ sourceNodeId: trigger, targetNodeId: http2 },
+				],
+			});
+
+			expect(connectResult.success).toBe(true);
+			expect(connectResult.results).toHaveLength(2);
+			expect(connectResult.results[0].success).toBe(true);
+			expect(connectResult.results[1].success).toBe(true);
+
+			// Should be addNodes + one mergeConnections operation
+			const operations = operationsCollector.getOperations();
+			expect(operations).toHaveLength(2);
+			expect(operations[1].type).toBe('mergeConnections');
+		});
+
+		it('should handle partial connection failures', async () => {
+			const trigger = await tools.addNode({
+				nodeType: 'n8n-nodes-base.manualTrigger',
+				nodeVersion: 1,
+				name: 'Trigger',
+				initialParametersReasoning: 'Test',
+				initialParameters: {},
+			});
+
+			const connectResult = await tools.connectMultiple({
+				connections: [
+					{ sourceNodeId: trigger, targetNodeId: 'non-existent' },
+					{ sourceNodeId: trigger, targetNodeId: { nodeId: undefined } },
+				],
+			});
+
+			expect(connectResult.success).toBe(true);
+			expect(connectResult.results).toHaveLength(2);
+			expect(connectResult.results[0].success).toBe(false);
+			expect(connectResult.results[0].error).toContain('not found');
+			expect(connectResult.results[1].success).toBe(false);
+			expect(connectResult.results[1].error).toContain('Invalid target node reference');
+		});
+
+		it('should return empty results for empty input', async () => {
+			const result = await tools.connectMultiple({ connections: [] });
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(0);
+		});
+
+		it('should work with AI connections in batch', async () => {
+			// Add AI Agent with hasOutputParser enabled
+			const agent = await tools.addNode({
+				nodeType: '@n8n/n8n-nodes-langchain.agent',
+				nodeVersion: 1,
+				name: 'AI Agent',
+				initialParametersReasoning: 'Test',
+				initialParameters: { hasOutputParser: true },
+			});
+
+			const chatModel = await tools.addNode({
+				nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				nodeVersion: 1,
+				name: 'Chat Model',
+				initialParametersReasoning: 'Test',
+				initialParameters: {},
+			});
+
+			const outputParser = await tools.addNode({
+				nodeType: '@n8n/n8n-nodes-langchain.outputParserStructured',
+				nodeVersion: 1,
+				name: 'Output Parser',
+				initialParametersReasoning: 'Test',
+				initialParameters: {},
+			});
+
+			// Connect both AI sub-nodes to agent in one batch
+			const connectResult = await tools.connectMultiple({
+				connections: [
+					{ sourceNodeId: chatModel, targetNodeId: agent },
+					{ sourceNodeId: outputParser, targetNodeId: agent },
+				],
+			});
+
+			expect(connectResult.success).toBe(true);
+			expect(connectResult.results).toHaveLength(2);
+			expect(connectResult.results[0].success).toBe(true);
+			expect(connectResult.results[0].connectionType).toBe('ai_languageModel');
+			expect(connectResult.results[1].success).toBe(true);
+			expect(connectResult.results[1].connectionType).toBe('ai_outputParser');
+		});
+	});
+
+	describe('conn() alias', () => {
+		it('should work as alias for connectMultiple', async () => {
+			const nodesResult = await tools.add({
+				nodes: [
+					{
+						nodeType: 'n8n-nodes-base.manualTrigger',
+						nodeVersion: 1,
+						name: 'Trigger',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+					{
+						nodeType: 'n8n-nodes-base.httpRequest',
+						nodeVersion: 1,
+						name: 'HTTP',
+						initialParametersReasoning: 'Test',
+						initialParameters: {},
+					},
+				],
+			});
+
+			const [trigger, http] = nodesResult.results;
+
+			const connectResult = await tools.conn({
+				connections: [{ sourceNodeId: trigger, targetNodeId: http }],
+			});
+
+			expect(connectResult.success).toBe(true);
+			expect(connectResult.results).toHaveLength(1);
+			expect(connectResult.results[0].success).toBe(true);
+		});
+	});
+
+	describe('Short-form input support', () => {
+		describe('addNode with short-form', () => {
+			it('should accept short-form input (t, n, p)', async () => {
+				const result = await tools.addNode({
+					t: 'n8n-nodes-base.manualTrigger',
+					n: 'MyTrigger',
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.nodeName).toBe('MyTrigger');
+				expect(result.nodeType).toBe('n8n-nodes-base.manualTrigger');
+			});
+
+			it('should default version to latest when not specified', async () => {
+				const result = await tools.addNode({
+					t: 'n8n-nodes-base.httpRequest',
+					n: 'HTTP',
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.nodeType).toBe('n8n-nodes-base.httpRequest');
+			});
+
+			it('should default initialParameters to empty object', async () => {
+				const result = await tools.addNode({
+					t: 'n8n-nodes-base.manualTrigger',
+				});
+
+				expect(result.success).toBe(true);
+			});
+
+			it('should accept parameters with p shorthand', async () => {
+				const result = await tools.addNode({
+					t: '@n8n/n8n-nodes-langchain.agent',
+					n: 'Agent',
+					p: { hasOutputParser: true },
+				});
+
+				expect(result.success).toBe(true);
+			});
+		});
+
+		describe('addNodes (batch) with short-form', () => {
+			it('should accept short-form inputs in batch', async () => {
+				const result = await tools.add({
+					nodes: [
+						{ t: 'n8n-nodes-base.manualTrigger', n: 'Trigger' },
+						{ t: 'n8n-nodes-base.httpRequest', n: 'HTTP' },
+					],
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.results).toHaveLength(2);
+				expect(result.results[0].nodeName).toBe('Trigger');
+				expect(result.results[1].nodeName).toBe('HTTP');
+			});
+		});
+
+		describe('connectNodes with short-form', () => {
+			it('should accept short-form input (s, d)', async () => {
+				const nodesResult = await tools.add({
+					nodes: [
+						{ t: 'n8n-nodes-base.manualTrigger', n: 'Trigger' },
+						{ t: 'n8n-nodes-base.httpRequest', n: 'HTTP' },
+					],
+				});
+
+				const [trigger, http] = nodesResult.results;
+
+				const result = await tools.connectNodes({
+					s: trigger,
+					d: http,
+				});
+
+				expect(result.success).toBe(true);
+			});
+		});
+
+		describe('connectMultiple (batch) with short-form', () => {
+			it('should accept short-form inputs in batch', async () => {
+				const nodesResult = await tools.add({
+					nodes: [
+						{ t: 'n8n-nodes-base.manualTrigger', n: 'Trigger' },
+						{ t: 'n8n-nodes-base.httpRequest', n: 'HTTP1' },
+						{ t: 'n8n-nodes-base.httpRequest', n: 'HTTP2' },
+					],
+				});
+
+				const [trigger, http1, http2] = nodesResult.results;
+
+				const result = await tools.conn({
+					connections: [
+						{ s: trigger, d: http1 },
+						{ s: trigger, d: http2 },
+					],
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.results).toHaveLength(2);
+				expect(result.results[0].success).toBe(true);
+				expect(result.results[1].success).toBe(true);
+			});
+		});
+	});
+
+	describe('setParameters (direct parameter setting)', () => {
+		it('should set parameters directly without LLM', async () => {
+			const node = await tools.addNode({
+				t: 'n8n-nodes-base.httpRequest',
+				n: 'HTTP',
+			});
+
+			const result = await tools.setParameters({
+				nodeId: node,
+				params: { url: 'https://example.com', method: 'POST' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.parameters).toEqual({ url: 'https://example.com', method: 'POST' });
+		});
+
+		it('should merge with existing parameters by default', async () => {
+			const node = await tools.addNode({
+				t: 'n8n-nodes-base.httpRequest',
+				n: 'HTTP',
+				p: { url: 'https://old.com' },
+			});
+
+			const result = await tools.setParameters({
+				nodeId: node,
+				params: { method: 'POST' },
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.parameters).toEqual({ url: 'https://old.com', method: 'POST' });
+		});
+
+		it('should replace all parameters when replace=true', async () => {
+			const node = await tools.addNode({
+				t: 'n8n-nodes-base.httpRequest',
+				n: 'HTTP',
+				p: { url: 'https://old.com', method: 'GET' },
+			});
+
+			const result = await tools.setParameters({
+				nodeId: node,
+				params: { url: 'https://new.com' },
+				replace: true,
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.parameters).toEqual({ url: 'https://new.com' });
+		});
+
+		it('should return error for non-existent node', async () => {
+			const result = await tools.setParameters({
+				nodeId: 'non-existent',
+				params: { url: 'https://example.com' },
+			});
+
+			expect(result.success).toBe(false);
+			expect(result.error).toContain('not found');
+		});
+
+		describe('parameter sanitization', () => {
+			it('should strip the string "undefined" from parameters', async () => {
+				const node = await tools.addNode({
+					t: 'n8n-nodes-base.httpRequest',
+					n: 'HTTP',
+				});
+
+				const result = await tools.setParameters({
+					nodeId: node,
+					params: {
+						url: 'https://example.com',
+						// Simulate LLM returning "undefined" as a string
+						method: 'undefined',
+					},
+				});
+
+				expect(result.success).toBe(true);
+				// The string "undefined" should be stripped
+				expect(result.parameters).toEqual({ url: 'https://example.com' });
+				expect(result.parameters).not.toHaveProperty('method');
+			});
+
+			it('should strip "undefined" strings from nested objects', async () => {
+				const node = await tools.addNode({
+					t: 'n8n-nodes-base.httpRequest',
+					n: 'HTTP',
+				});
+
+				const result = await tools.setParameters({
+					nodeId: node,
+					params: {
+						url: 'https://example.com',
+						options: {
+							timeout: 5000,
+							proxy: 'undefined', // Should be stripped
+						},
+					},
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.parameters).toEqual({
+					url: 'https://example.com',
+					options: { timeout: 5000 },
+				});
+			});
+
+			it('should strip "undefined" strings from arrays', async () => {
+				const node = await tools.addNode({
+					t: 'n8n-nodes-base.httpRequest',
+					n: 'HTTP',
+				});
+
+				const result = await tools.setParameters({
+					nodeId: node,
+					params: {
+						url: 'https://example.com',
+						headers: [
+							{ name: 'Content-Type', value: 'application/json' },
+							{ name: 'Auth', value: 'undefined' }, // Value should be stripped
+						],
+					},
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.parameters?.headers).toEqual([
+					{ name: 'Content-Type', value: 'application/json' },
+					{ name: 'Auth' }, // value was stripped
+				]);
+			});
+
+			it('should preserve valid values while stripping "undefined"', async () => {
+				const node = await tools.addNode({
+					t: 'n8n-nodes-base.httpRequest',
+					n: 'HTTP',
+				});
+
+				const result = await tools.setParameters({
+					nodeId: node,
+					params: {
+						url: 'https://example.com',
+						method: 'POST',
+						body: 'undefined', // Should be stripped
+						headers: { 'Content-Type': 'application/json' },
+					},
+				});
+
+				expect(result.success).toBe(true);
+				expect(result.parameters).toEqual({
+					url: 'https://example.com',
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+				});
+			});
+		});
+
+		describe('set() alias', () => {
+			it('should work as alias for setParameters', async () => {
+				const node = await tools.addNode({
+					t: 'n8n-nodes-base.httpRequest',
+					n: 'HTTP',
+				});
+
+				const result = await tools.set({
+					nodeId: node,
+					params: { url: 'https://example.com' },
+				});
+
+				expect(result.success).toBe(true);
+			});
+		});
+	});
+
+	describe('setAll (batch direct parameter setting)', () => {
+		it('should set parameters on multiple nodes', async () => {
+			const nodesResult = await tools.add({
+				nodes: [
+					{ t: 'n8n-nodes-base.httpRequest', n: 'HTTP1' },
+					{ t: 'n8n-nodes-base.httpRequest', n: 'HTTP2' },
+				],
+			});
+
+			const [http1, http2] = nodesResult.results;
+
+			const result = await tools.setAll({
+				updates: [
+					{ nodeId: http1, params: { url: 'https://example1.com' } },
+					{ nodeId: http2, params: { url: 'https://example2.com' } },
+				],
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(2);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[0].parameters).toEqual({ url: 'https://example1.com' });
+			expect(result.results[1].success).toBe(true);
+			expect(result.results[1].parameters).toEqual({ url: 'https://example2.com' });
+		});
+
+		it('should handle partial failures', async () => {
+			const node = await tools.addNode({
+				t: 'n8n-nodes-base.httpRequest',
+				n: 'HTTP',
+			});
+
+			const result = await tools.setAll({
+				updates: [
+					{ nodeId: node, params: { url: 'https://example.com' } },
+					{ nodeId: 'non-existent', params: { url: 'https://fail.com' } },
+				],
+			});
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(2);
+			expect(result.results[0].success).toBe(true);
+			expect(result.results[1].success).toBe(false);
+		});
+
+		it('should return empty results for empty input', async () => {
+			const result = await tools.setAll({ updates: [] });
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(0);
+		});
+	});
+
+	describe('updateAll (batch LLM parameter updates)', () => {
+		it('should return empty results for empty input', async () => {
+			const result = await tools.updateAll({ updates: [] });
+
+			expect(result.success).toBe(true);
+			expect(result.results).toHaveLength(0);
+		});
+
+		it('should throw error when LLM not configured', async () => {
+			const node = await tools.addNode({
+				t: 'n8n-nodes-base.httpRequest',
+				n: 'HTTP',
+			});
+
+			await expect(
+				tools.updateAll({
+					updates: [{ nodeId: node.nodeId!, changes: ['Set URL'] }],
+				}),
+			).rejects.toThrow();
 		});
 	});
 });

@@ -11,7 +11,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { Logger } from '@n8n/backend-common';
 import get from 'lodash/get';
-import type { INode, INodeParameters, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	INode,
+	INodeParameters,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 
 import { createParameterUpdaterChain } from '@/chains/parameter-updater';
 import { findNodeType } from '@/tools/helpers/validation';
@@ -32,10 +37,16 @@ import { ScriptToolError } from './errors';
 import type { OperationsCollector } from './state-provider';
 import {
 	resolveNodeId,
+	normalizeAddNodeInput,
+	normalizeConnectNodesInput,
 	type AddNodeInput,
 	type AddNodeResult,
+	type AddNodesInput,
+	type AddNodesResult,
 	type ConnectNodesInput,
 	type ConnectNodesResult,
+	type ConnectMultipleInput,
+	type ConnectMultipleResult,
 	type RemoveNodeInput,
 	type RemoveNodeResult,
 	type RemoveConnectionInput,
@@ -48,6 +59,12 @@ import {
 	type GetNodeParameterInput,
 	type GetNodeParameterResult,
 	type ValidateConfigurationResult,
+	type SetParametersInput,
+	type SetParametersResult,
+	type BatchSetParametersInput,
+	type BatchSetParametersResult,
+	type BatchUpdateParametersInput,
+	type BatchUpdateParametersResult,
 	type ScriptTools,
 } from './tool-interfaces';
 
@@ -286,14 +303,10 @@ function lookupNodesForConnection(
 ): NodeLookupResult {
 	// Try to find by ID first, then fall back to name lookup
 	let sourceNode = currentNodes.find((n) => n.id === sourceNodeId);
-	if (!sourceNode) {
-		sourceNode = currentNodes.find((n) => n.name === sourceNodeId);
-	}
+	sourceNode ??= currentNodes.find((n) => n.name === sourceNodeId);
 
 	let targetNode = currentNodes.find((n) => n.id === targetNodeId);
-	if (!targetNode) {
-		targetNode = currentNodes.find((n) => n.name === targetNodeId);
-	}
+	targetNode ??= currentNodes.find((n) => n.name === targetNodeId);
 
 	if (!sourceNode || !targetNode) {
 		const missing = !sourceNode ? sourceNodeId : targetNodeId;
@@ -312,6 +325,177 @@ function lookupNodesForConnection(
 }
 
 /**
+ * Result from validating and resolving a connection
+ */
+interface ResolvedConnection {
+	success: true;
+	sourceNode: INode;
+	targetNode: INode;
+	connectionType: string;
+	swapped: boolean;
+}
+
+interface ResolvedConnectionError {
+	success: false;
+	error: string;
+}
+
+type ResolveConnectionResult = ResolvedConnection | ResolvedConnectionError;
+
+/**
+ * Validates and resolves a single connection, handling node lookup, inference, and validation.
+ * Extracted to reduce complexity in connectNodes and connectMultiple.
+ */
+function resolveAndValidateConnection(
+	sourceNodeId: string,
+	targetNodeId: string,
+	currentNodes: INode[],
+	nodeTypes: INodeTypeDescription[],
+	logger?: Logger,
+): ResolveConnectionResult {
+	// Lookup nodes
+	const lookup = lookupNodesForConnection(sourceNodeId, targetNodeId, currentNodes, nodeTypes);
+
+	if (lookup.error) {
+		return { success: false, error: lookup.error };
+	}
+
+	let { sourceNode, targetNode } = lookup;
+	const { sourceNodeType, targetNodeType } = lookup;
+
+	// Debug logging for connection inference
+	logger?.debug('Script: resolveConnection - inferring connection type', {
+		sourceNodeName: sourceNode!.name,
+		sourceNodeType: sourceNode!.type,
+		targetNodeName: targetNode!.name,
+		targetNodeType: targetNode!.type,
+		targetNodeParameters: targetNode!.parameters,
+		targetHasOutputParser: targetNode!.parameters?.hasOutputParser,
+	});
+
+	// Infer connection type
+	const inferResult = inferConnectionType(
+		sourceNode!,
+		targetNode!,
+		sourceNodeType!,
+		targetNodeType!,
+	);
+
+	if (inferResult.error || !inferResult.connectionType) {
+		logger?.debug('Script: resolveConnection - inference failed', {
+			error: inferResult.error,
+			possibleTypes: inferResult.possibleTypes,
+		});
+		return { success: false, error: inferResult.error ?? 'Could not infer connection type' };
+	}
+
+	const connectionType = inferResult.connectionType;
+
+	// Handle node swap if required by inference
+	if (inferResult.requiresSwap) {
+		[sourceNode, targetNode] = [targetNode, sourceNode];
+	}
+
+	// Validate connection
+	const validation = validateConnection(sourceNode!, targetNode!, connectionType, nodeTypes);
+
+	if (!validation.valid) {
+		return { success: false, error: validation.error ?? 'Invalid connection' };
+	}
+
+	// Use potentially swapped nodes from validation
+	const actualSource = validation.swappedSource ?? sourceNode!;
+	const actualTarget = validation.swappedTarget ?? targetNode!;
+	const swapped = inferResult.requiresSwap === true || validation.shouldSwap === true;
+
+	return {
+		success: true,
+		sourceNode: actualSource,
+		targetNode: actualTarget,
+		connectionType,
+		swapped,
+	};
+}
+
+/**
+ * Build connection structure for a single connection
+ */
+function buildConnectionStructure(
+	sourceName: string,
+	targetName: string,
+	connectionType: string,
+	sourceOutputIndex: number,
+	targetInputIndex: number,
+): SimpleWorkflow['connections'] {
+	return {
+		[sourceName]: {
+			[connectionType]: Array(sourceOutputIndex + 1)
+				.fill(null)
+				.map((_, i) =>
+					i === sourceOutputIndex
+						? [
+								{
+									node: targetName,
+									type: connectionType as NodeConnectionType,
+									index: targetInputIndex,
+								},
+							]
+						: [],
+				),
+		},
+	};
+}
+
+/**
+ * Recursively removes undefined values from a parameters object.
+ * This prevents the LLM from accidentally setting parameters to the string "undefined".
+ */
+function sanitizeParameters(params: INodeParameters): INodeParameters {
+	const result: INodeParameters = {};
+
+	for (const [key, value] of Object.entries(params)) {
+		// Skip undefined values entirely - let the default be used
+		if (value === undefined) {
+			continue;
+		}
+
+		// Skip the string "undefined" - this is likely an LLM mistake
+		if (value === 'undefined') {
+			continue;
+		}
+
+		// Recursively sanitize nested objects (but not arrays)
+		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			const sanitized = sanitizeParameters(value as INodeParameters);
+			// Only include if there are remaining properties
+			if (Object.keys(sanitized).length > 0) {
+				result[key] = sanitized;
+			}
+		} else if (Array.isArray(value)) {
+			// For arrays, sanitize each element if it's an object and filter out undefined strings
+			const sanitizedArray: unknown[] = [];
+			for (const item of value) {
+				// Skip the string "undefined"
+				if (item === 'undefined') {
+					continue;
+				}
+				// Recursively sanitize nested objects
+				if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
+					sanitizedArray.push(sanitizeParameters(item as INodeParameters));
+				} else {
+					sanitizedArray.push(item);
+				}
+			}
+			result[key] = sanitizedArray as INodeParameters[keyof INodeParameters];
+		} else {
+			result[key] = value;
+		}
+	}
+
+	return result;
+}
+
+/**
  * Create tool wrappers for use in script execution
  */
 export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
@@ -326,11 +510,48 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	} = config;
 
 	/**
+	 * Find the latest version of a node type
+	 */
+	function findLatestNodeVersion(nodeType: string): number | undefined {
+		const matchingTypes = nodeTypes.filter((nt) => nt.name === nodeType);
+		if (matchingTypes.length === 0) return undefined;
+
+		// Find max version
+		let maxVersion = 1;
+		for (const nt of matchingTypes) {
+			const version = nt.version;
+			if (typeof version === 'number' && version > maxVersion) {
+				maxVersion = version;
+			} else if (Array.isArray(version)) {
+				const arrMax = Math.max(...version);
+				if (arrMax > maxVersion) maxVersion = arrMax;
+			}
+		}
+		return maxVersion;
+	}
+
+	/**
 	 * Add a node to the workflow
 	 */
 	async function addNode(input: AddNodeInput): Promise<AddNodeResult> {
 		try {
-			const { nodeType, nodeVersion, name, initialParameters } = input;
+			// Normalize short-form input to full form
+			const normalized = normalizeAddNodeInput(input);
+			const { nodeType, name } = normalized;
+			// Sanitize parameters to remove undefined values
+			const initialParameters = sanitizeParameters(normalized.initialParameters ?? {});
+
+			// Default version to latest if not specified
+			let nodeVersion = normalized.nodeVersion;
+			if (nodeVersion === undefined) {
+				nodeVersion = findLatestNodeVersion(nodeType);
+				if (nodeVersion === undefined) {
+					return {
+						success: false,
+						error: `Node type "${nodeType}" not found`,
+					};
+				}
+			}
 
 			// Find the node type
 			const nodeTypeDesc = findNodeType(nodeType, nodeVersion, nodeTypes);
@@ -385,115 +606,63 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	 */
 	async function connectNodes(input: ConnectNodesInput): Promise<ConnectNodesResult> {
 		try {
-			const { sourceOutputIndex = 0, targetInputIndex = 0 } = input;
+			// Normalize short-form input
+			const normalized = normalizeConnectNodesInput(input);
+			const { sourceOutputIndex = 0, targetInputIndex = 0 } = normalized;
 
 			// Resolve node references to IDs (supports both string and AddNodeResult objects)
-			const sourceNodeId = resolveNodeId(input.sourceNodeId);
-			const targetNodeId = resolveNodeId(input.targetNodeId);
-
-			logger?.debug('connectNodes input:', {
-				sourceInput: input.sourceNodeId,
-				targetInput: input.targetNodeId,
-				sourceNodeId,
-				targetNodeId,
-			});
+			const sourceNodeId = resolveNodeId(normalized.sourceNodeId);
+			const targetNodeId = resolveNodeId(normalized.targetNodeId);
 
 			if (!sourceNodeId) {
 				return {
 					success: false,
-					error: `Invalid source node reference - nodeId not found. Received: ${JSON.stringify(input.sourceNodeId)}`,
+					error: `Invalid source node reference - nodeId not found. Received: ${JSON.stringify(normalized.sourceNodeId)}`,
 				};
 			}
 			if (!targetNodeId) {
 				return {
 					success: false,
-					error: `Invalid target node reference - nodeId not found. Received: ${JSON.stringify(input.targetNodeId)}`,
+					error: `Invalid target node reference - nodeId not found. Received: ${JSON.stringify(normalized.targetNodeId)}`,
 				};
 			}
 
-			// Get current nodes and lookup nodes for connection
+			// Get current nodes and resolve connection
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
-			const lookup = lookupNodesForConnection(sourceNodeId, targetNodeId, currentNodes, nodeTypes);
-
-			if (lookup.error) {
-				return { success: false, error: lookup.error };
-			}
-
-			let { sourceNode, targetNode } = lookup;
-			const { sourceNodeType, targetNodeType } = lookup;
-
-			// Debug logging for connection inference
-			logger?.debug('Script: connectNodes - inferring connection type', {
-				sourceNodeName: sourceNode!.name,
-				sourceNodeType: sourceNode!.type,
-				targetNodeName: targetNode!.name,
-				targetNodeType: targetNode!.type,
-				targetNodeParameters: targetNode!.parameters,
-				targetHasOutputParser: targetNode!.parameters?.hasOutputParser,
-			});
-
-			// Infer connection type
-			const inferResult = inferConnectionType(
-				sourceNode!,
-				targetNode!,
-				sourceNodeType!,
-				targetNodeType!,
+			const resolved = resolveAndValidateConnection(
+				sourceNodeId,
+				targetNodeId,
+				currentNodes,
+				nodeTypes,
+				logger,
 			);
 
-			if (inferResult.error || !inferResult.connectionType) {
-				logger?.debug('Script: connectNodes - inference failed', {
-					error: inferResult.error,
-					possibleTypes: inferResult.possibleTypes,
-				});
-				return { success: false, error: inferResult.error ?? 'Could not infer connection type' };
+			if (!resolved.success) {
+				return { success: false, error: resolved.error };
 			}
 
-			const connectionType = inferResult.connectionType;
+			// Build and add the connection
+			const newConnection = buildConnectionStructure(
+				resolved.sourceNode.name,
+				resolved.targetNode.name,
+				resolved.connectionType,
+				sourceOutputIndex,
+				targetInputIndex,
+			);
 
-			// Handle node swap if required
-			if (inferResult.requiresSwap) {
-				[sourceNode, targetNode] = [targetNode, sourceNode];
-			}
-
-			// Validate connection
-			const validation = validateConnection(sourceNode!, targetNode!, connectionType, nodeTypes);
-
-			if (!validation.valid) {
-				return { success: false, error: validation.error ?? 'Invalid connection' };
-			}
-
-			// Use potentially swapped nodes
-			const actualSource = validation.swappedSource ?? sourceNode!;
-			const actualTarget = validation.swappedTarget ?? targetNode!;
-			const swapped = inferResult.requiresSwap === true || validation.shouldSwap === true;
-
-			// Create the connection
-			const newConnection: SimpleWorkflow['connections'] = {
-				[actualSource.name]: {
-					[connectionType]: Array(sourceOutputIndex + 1)
-						.fill(null)
-						.map((_, i) =>
-							i === sourceOutputIndex
-								? [{ node: actualTarget.name, type: connectionType, index: targetInputIndex }]
-								: [],
-						),
-				},
-			};
-
-			// Add operation to collector
 			const operation: WorkflowOperation = { type: 'mergeConnections', connections: newConnection };
 			operationsCollector.addOperation(operation);
 
 			logger?.debug(
-				`Script: Connected "${actualSource.name}" -> "${actualTarget.name}" (${connectionType})`,
+				`Script: Connected "${resolved.sourceNode.name}" -> "${resolved.targetNode.name}" (${resolved.connectionType})`,
 			);
 
 			return {
 				success: true,
-				sourceNode: actualSource.name,
-				targetNode: actualTarget.name,
-				connectionType,
-				swapped,
+				sourceNode: resolved.sourceNode.name,
+				targetNode: resolved.targetNode.name,
+				connectionType: resolved.connectionType,
+				swapped: resolved.swapped,
 			};
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Unknown error connecting nodes';
@@ -791,13 +960,16 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 				instanceUrl: instanceUrl ?? '',
 			});
 
-			const updatedParameters = result.parameters as INodeParameters;
+			// Sanitize the LLM result to remove undefined values and "undefined" strings
+			const rawParameters = result.parameters as INodeParameters;
+			const updatedParameters = sanitizeParameters(rawParameters);
 
 			logger?.debug('Script: Parameter update result', {
 				nodeName: nodeToUpdate.name,
 				nodeId,
 				requestedChanges: changes,
 				previousParameters: nodeToUpdate.parameters,
+				rawParameters,
 				updatedParameters,
 			});
 
@@ -910,14 +1082,403 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 		}
 	}
 
+	/**
+	 * Add multiple nodes to the workflow in a single operation.
+	 * More efficient than calling addNode multiple times as it only computes
+	 * workflow state once instead of O(N) times.
+	 */
+	async function addNodes(input: AddNodesInput): Promise<AddNodesResult> {
+		try {
+			const { nodes: inputNodes } = input;
+
+			if (!inputNodes || inputNodes.length === 0) {
+				return { success: true, results: [] };
+			}
+
+			// Get current nodes ONCE at the start
+			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
+			const results: AddNodeResult[] = [];
+			const newNodes: INode[] = [];
+
+			for (const nodeInput of inputNodes) {
+				// Normalize short-form input
+				const normalized = normalizeAddNodeInput(nodeInput);
+				const { nodeType, name } = normalized;
+				// Sanitize parameters to remove undefined values
+				const initialParameters = sanitizeParameters(normalized.initialParameters ?? {});
+
+				// Default version to latest if not specified
+				let nodeVersion = normalized.nodeVersion;
+				if (nodeVersion === undefined) {
+					nodeVersion = findLatestNodeVersion(nodeType);
+					if (nodeVersion === undefined) {
+						results.push({
+							success: false,
+							error: `Node type "${nodeType}" not found`,
+						});
+						continue;
+					}
+				}
+
+				// Find the node type
+				const nodeTypeDesc = findNodeType(nodeType, nodeVersion, nodeTypes);
+				if (!nodeTypeDesc) {
+					results.push({
+						success: false,
+						error: `Node type "${nodeType}" version ${nodeVersion} not found`,
+					});
+					continue;
+				}
+
+				// Generate unique name using both existing and newly added nodes
+				const baseName = name ?? nodeTypeDesc.defaults?.name ?? nodeTypeDesc.displayName;
+				const uniqueName = generateUniqueName(baseName, [...currentNodes, ...newNodes]);
+
+				// Calculate position
+				const position = calculateNodePosition(
+					[...currentNodes, ...newNodes],
+					isSubNode(nodeTypeDesc),
+					nodeTypes,
+				);
+
+				// Create the node instance
+				const newNode = createNodeInstance(
+					nodeTypeDesc,
+					nodeVersion,
+					uniqueName,
+					position,
+					initialParameters,
+				);
+
+				newNodes.push(newNode);
+
+				results.push({
+					success: true,
+					nodeId: newNode.id,
+					nodeName: newNode.name,
+					nodeType: newNode.type,
+					displayName: nodeTypeDesc.displayName,
+					position: newNode.position,
+				});
+			}
+
+			// Add ALL nodes in a single operation
+			if (newNodes.length > 0) {
+				const operation: WorkflowOperation = { type: 'addNodes', nodes: newNodes };
+				operationsCollector.addOperation(operation);
+				logger?.debug(`Script: Added ${newNodes.length} nodes in batch`);
+			}
+
+			return { success: true, results };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unknown error adding nodes';
+			throw new ScriptToolError('addNodes', message, { toolInput: input });
+		}
+	}
+
+	/**
+	 * Connect multiple node pairs in a single operation.
+	 * More efficient than calling connectNodes multiple times as it only
+	 * computes workflow state once.
+	 */
+	async function connectMultiple(input: ConnectMultipleInput): Promise<ConnectMultipleResult> {
+		try {
+			const { connections: inputConnections } = input;
+
+			if (!inputConnections || inputConnections.length === 0) {
+				return { success: true, results: [] };
+			}
+
+			// Get current nodes ONCE at the start
+			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
+			const results: ConnectNodesResult[] = [];
+			const allNewConnections: SimpleWorkflow['connections'] = {};
+
+			for (const connInput of inputConnections) {
+				const result = processConnectionInput(connInput, currentNodes, allNewConnections);
+				results.push(result);
+			}
+
+			// Add ALL connections in a single operation
+			if (Object.keys(allNewConnections).length > 0) {
+				const operation: WorkflowOperation = {
+					type: 'mergeConnections',
+					connections: allNewConnections,
+				};
+				operationsCollector.addOperation(operation);
+				logger?.debug(
+					`Script: Connected ${results.filter((r) => r.success).length} node pairs in batch`,
+				);
+			}
+
+			return { success: true, results };
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unknown error connecting nodes';
+			throw new ScriptToolError('connectMultiple', message, { toolInput: input });
+		}
+	}
+
+	/**
+	 * Process a single connection input for batch operations.
+	 * Extracted to reduce complexity in connectMultiple.
+	 */
+	function processConnectionInput(
+		connInput: ConnectNodesInput,
+		currentNodes: INode[],
+		allNewConnections: SimpleWorkflow['connections'],
+	): ConnectNodesResult {
+		// Normalize short-form input
+		const normalized = normalizeConnectNodesInput(connInput);
+		const { sourceOutputIndex = 0, targetInputIndex = 0 } = normalized;
+
+		// Resolve node references
+		const sourceNodeId = resolveNodeId(normalized.sourceNodeId);
+		const targetNodeId = resolveNodeId(normalized.targetNodeId);
+
+		if (!sourceNodeId) {
+			return {
+				success: false,
+				error: `Invalid source node reference - nodeId not found. Received: ${JSON.stringify(normalized.sourceNodeId)}`,
+			};
+		}
+		if (!targetNodeId) {
+			return {
+				success: false,
+				error: `Invalid target node reference - nodeId not found. Received: ${JSON.stringify(normalized.targetNodeId)}`,
+			};
+		}
+
+		// Resolve and validate the connection
+		const resolved = resolveAndValidateConnection(
+			sourceNodeId,
+			targetNodeId,
+			currentNodes,
+			nodeTypes,
+			logger,
+		);
+
+		if (!resolved.success) {
+			return { success: false, error: resolved.error };
+		}
+
+		// Add to the connections map
+		addToConnectionsMap(
+			allNewConnections,
+			resolved.sourceNode.name,
+			resolved.targetNode.name,
+			resolved.connectionType,
+			sourceOutputIndex,
+			targetInputIndex,
+		);
+
+		return {
+			success: true,
+			sourceNode: resolved.sourceNode.name,
+			targetNode: resolved.targetNode.name,
+			connectionType: resolved.connectionType,
+			swapped: resolved.swapped,
+		};
+	}
+
+	/**
+	 * Add a connection to the connections map (mutates the map).
+	 * Extracted to reduce complexity.
+	 */
+	function addToConnectionsMap(
+		connectionsMap: SimpleWorkflow['connections'],
+		sourceName: string,
+		targetName: string,
+		connectionType: string,
+		sourceOutputIndex: number,
+		targetInputIndex: number,
+	): void {
+		connectionsMap[sourceName] ??= {};
+		connectionsMap[sourceName][connectionType] ??= [];
+
+		// Ensure the output array is large enough
+		const connArray = connectionsMap[sourceName][connectionType];
+		while (connArray.length <= sourceOutputIndex) {
+			connArray.push([]);
+		}
+
+		connArray[sourceOutputIndex]!.push({
+			node: targetName,
+			type: connectionType as NodeConnectionType,
+			index: targetInputIndex,
+		});
+	}
+
+	/**
+	 * Directly set node parameters without LLM translation (fastest method)
+	 */
+	async function setParameters(input: SetParametersInput): Promise<SetParametersResult> {
+		try {
+			// Resolve node reference
+			const nodeId = resolveNodeId(input.nodeId);
+			if (!nodeId) {
+				return {
+					success: false,
+					error: `Invalid node reference - nodeId not found. Received: ${JSON.stringify(input.nodeId)}`,
+				};
+			}
+
+			// Get current nodes
+			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
+			const nodeToUpdate = currentNodes.find((n) => n.id === nodeId);
+
+			if (!nodeToUpdate) {
+				return {
+					success: false,
+					error: `Node with ID "${nodeId}" not found`,
+				};
+			}
+
+			// Sanitize input parameters to remove undefined values
+			const sanitizedInput = sanitizeParameters(input.params);
+
+			// Merge or replace parameters
+			const currentParams = nodeToUpdate.parameters ?? {};
+			const newParams = input.replace ? sanitizedInput : { ...currentParams, ...sanitizedInput };
+
+			// Add operation to collector
+			const operation: WorkflowOperation = {
+				type: 'updateNode',
+				nodeId,
+				updates: { parameters: newParams },
+			};
+			operationsCollector.addOperation(operation);
+
+			logger?.debug(`Script: Set parameters for node "${nodeToUpdate.name}" directly`);
+
+			return {
+				success: true,
+				parameters: newParams,
+			};
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unknown error setting parameters';
+			throw new ScriptToolError('setParameters', message, { toolInput: input });
+		}
+	}
+
+	/**
+	 * Batch set parameters on multiple nodes without LLM (fastest for bulk)
+	 */
+	async function setAll(input: BatchSetParametersInput): Promise<BatchSetParametersResult> {
+		try {
+			const { updates } = input;
+
+			if (!updates || updates.length === 0) {
+				return { success: true, results: [] };
+			}
+
+			const results: SetParametersResult[] = [];
+
+			// Get current nodes ONCE
+			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
+
+			for (const updateInput of updates) {
+				// Resolve node reference
+				const nodeId = resolveNodeId(updateInput.nodeId);
+				if (!nodeId) {
+					results.push({
+						success: false,
+						error: `Invalid node reference - nodeId not found. Received: ${JSON.stringify(updateInput.nodeId)}`,
+					});
+					continue;
+				}
+
+				const nodeToUpdate = currentNodes.find((n) => n.id === nodeId);
+				if (!nodeToUpdate) {
+					results.push({
+						success: false,
+						error: `Node with ID "${nodeId}" not found`,
+					});
+					continue;
+				}
+
+				// Sanitize input parameters to remove undefined values
+				const sanitizedInput = sanitizeParameters(updateInput.params);
+
+				// Merge or replace parameters
+				const currentParams = nodeToUpdate.parameters ?? {};
+				const newParams = updateInput.replace
+					? sanitizedInput
+					: { ...currentParams, ...sanitizedInput };
+
+				// Add operation to collector
+				const operation: WorkflowOperation = {
+					type: 'updateNode',
+					nodeId,
+					updates: { parameters: newParams },
+				};
+				operationsCollector.addOperation(operation);
+
+				// Update our local copy so subsequent iterations see the changes
+				nodeToUpdate.parameters = newParams;
+
+				results.push({
+					success: true,
+					parameters: newParams,
+				});
+			}
+
+			logger?.debug(
+				`Script: Set parameters for ${results.filter((r) => r.success).length} nodes directly`,
+			);
+
+			return { success: true, results };
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Unknown error batch setting parameters';
+			throw new ScriptToolError('setAll', message, { toolInput: input });
+		}
+	}
+
+	/**
+	 * Batch update multiple nodes' parameters with LLM (single conceptual batch)
+	 * Note: Still makes individual LLM calls but processes them in parallel
+	 */
+	async function updateAll(
+		input: BatchUpdateParametersInput,
+	): Promise<BatchUpdateParametersResult> {
+		try {
+			const { updates } = input;
+
+			if (!updates || updates.length === 0) {
+				return { success: true, results: [] };
+			}
+
+			// Execute all updates in parallel
+			const results = await Promise.all(updates.map(updateNodeParameters));
+
+			logger?.debug(
+				`Script: Updated parameters for ${results.filter((r) => r.success).length} nodes via LLM`,
+			);
+
+			return { success: true, results };
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Unknown error batch updating parameters';
+			throw new ScriptToolError('updateAll', message, { toolInput: input });
+		}
+	}
+
 	return {
 		addNode,
+		addNodes,
+		add: addNodes, // Alias for reduced token usage
 		connectNodes,
+		connectMultiple,
+		conn: connectMultiple, // Alias for reduced token usage
 		removeNode,
 		removeConnection,
 		renameNode,
 		validateStructure,
 		updateNodeParameters,
+		updateAll, // Batch LLM updates
+		setParameters,
+		set: setParameters, // Alias for reduced token usage
+		setAll, // Batch direct parameter setting
 		getNodeParameter,
 		validateConfiguration,
 	};

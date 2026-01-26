@@ -36,19 +36,57 @@ export function resolveNodeId(ref: NodeReference): string | undefined {
 // ============================================================================
 
 /**
- * Input for adding a node to the workflow
+ * Input for adding a node to the workflow (full form)
  */
-export interface AddNodeInput {
+export interface AddNodeInputFull {
 	/** The type of node to add (e.g., n8n-nodes-base.httpRequest) */
 	nodeType: string;
-	/** The exact node version */
-	nodeVersion: number;
+	/** The exact node version (optional - defaults to latest) */
+	nodeVersion?: number;
 	/** A descriptive name for the node that clearly indicates its purpose */
-	name: string;
-	/** Explanation of reasoning about initial parameters */
-	initialParametersReasoning: string;
-	/** Initial parameters to set on the node */
-	initialParameters: INodeParameters;
+	name?: string;
+	/** Explanation of reasoning about initial parameters (optional) */
+	initialParametersReasoning?: string;
+	/** Initial parameters to set on the node (optional - defaults to {}) */
+	initialParameters?: INodeParameters;
+}
+
+/**
+ * Short-form input for adding a node (reduces tokens)
+ * t=nodeType, v=nodeVersion, n=name, r=reasoning, p=parameters
+ */
+export interface AddNodeInputShort {
+	/** Short for nodeType */
+	t: string;
+	/** Short for nodeVersion (optional - defaults to latest) */
+	v?: number;
+	/** Short for name (optional) */
+	n?: string;
+	/** Short for initialParametersReasoning (optional) */
+	r?: string;
+	/** Short for initialParameters (optional - defaults to {}) */
+	p?: INodeParameters;
+}
+
+/**
+ * Input for adding a node - accepts both full and short forms
+ */
+export type AddNodeInput = AddNodeInputFull | AddNodeInputShort;
+
+/**
+ * Normalize AddNodeInput to full form
+ */
+export function normalizeAddNodeInput(input: AddNodeInput): AddNodeInputFull {
+	if ('t' in input) {
+		return {
+			nodeType: input.t,
+			nodeVersion: input.v,
+			name: input.n,
+			initialParametersReasoning: input.r,
+			initialParameters: input.p,
+		};
+	}
+	return input;
 }
 
 /**
@@ -71,13 +109,36 @@ export interface AddNodeResult {
 }
 
 // ============================================================================
+// Add Multiple Nodes Tool (Batch)
+// ============================================================================
+
+/**
+ * Input for adding multiple nodes at once (batch operation)
+ */
+export interface AddNodesInput {
+	/** Array of nodes to add */
+	nodes: AddNodeInput[];
+}
+
+/**
+ * Output from adding multiple nodes
+ */
+export interface AddNodesResult {
+	success: boolean;
+	/** Results for each node addition, in order */
+	results: AddNodeResult[];
+	/** Error message if the entire batch failed */
+	error?: string;
+}
+
+// ============================================================================
 // Connect Nodes Tool
 // ============================================================================
 
 /**
- * Input for connecting two nodes
+ * Input for connecting two nodes (full form)
  */
-export interface ConnectNodesInput {
+export interface ConnectNodesInputFull {
 	/** The source node - can be a UUID string or an AddNodeResult object */
 	sourceNodeId: NodeReference;
 	/** The target node - can be a UUID string or an AddNodeResult object */
@@ -86,6 +147,41 @@ export interface ConnectNodesInput {
 	sourceOutputIndex?: number;
 	/** The index of the input to connect to (default: 0) */
 	targetInputIndex?: number;
+}
+
+/**
+ * Short-form input for connecting two nodes (reduces tokens)
+ * s=source, d=destination/target
+ */
+export interface ConnectNodesInputShort {
+	/** Short for sourceNodeId */
+	s: NodeReference;
+	/** Short for targetNodeId (d = destination) */
+	d: NodeReference;
+	/** Short for sourceOutputIndex (optional) */
+	so?: number;
+	/** Short for targetInputIndex (optional) */
+	di?: number;
+}
+
+/**
+ * Input for connecting two nodes - accepts both full and short forms
+ */
+export type ConnectNodesInput = ConnectNodesInputFull | ConnectNodesInputShort;
+
+/**
+ * Normalize ConnectNodesInput to full form
+ */
+export function normalizeConnectNodesInput(input: ConnectNodesInput): ConnectNodesInputFull {
+	if ('s' in input) {
+		return {
+			sourceNodeId: input.s,
+			targetNodeId: input.d,
+			sourceOutputIndex: input.so,
+			targetInputIndex: input.di,
+		};
+	}
+	return input;
 }
 
 /**
@@ -102,6 +198,29 @@ export interface ConnectNodesResult {
 	/** Whether nodes were swapped from the original input */
 	swapped?: boolean;
 	/** Error message if failed */
+	error?: string;
+}
+
+// ============================================================================
+// Connect Multiple Nodes Tool (Batch)
+// ============================================================================
+
+/**
+ * Input for connecting multiple node pairs at once (batch operation)
+ */
+export interface ConnectMultipleInput {
+	/** Array of connections to create */
+	connections: ConnectNodesInput[];
+}
+
+/**
+ * Output from connecting multiple node pairs
+ */
+export interface ConnectMultipleResult {
+	success: boolean;
+	/** Results for each connection, in order */
+	results: ConnectNodesResult[];
+	/** Error message if the entire batch failed */
 	error?: string;
 }
 
@@ -240,6 +359,79 @@ export interface UpdateNodeParametersResult {
 }
 
 // ============================================================================
+// Set Node Parameters Tool (Direct - No LLM)
+// ============================================================================
+
+/**
+ * Input for directly setting node parameters (bypasses LLM)
+ */
+export interface SetParametersInput {
+	/** The ID of the node to update - can be UUID or AddNodeResult */
+	nodeId: NodeReference;
+	/** Parameters to set/merge on the node (direct object, no LLM translation) */
+	params: INodeParameters;
+	/** If true, replaces all parameters. If false (default), merges with existing */
+	replace?: boolean;
+}
+
+/**
+ * Output from directly setting node parameters
+ */
+export interface SetParametersResult {
+	success: boolean;
+	/** The final parameters after update */
+	parameters?: INodeParameters;
+	/** Error message if failed */
+	error?: string;
+}
+
+// ============================================================================
+// Batch Set Parameters Tool (Direct - No LLM)
+// ============================================================================
+
+/**
+ * Input for batch setting parameters on multiple nodes (bypasses LLM)
+ */
+export interface BatchSetParametersInput {
+	/** Array of parameter updates */
+	updates: SetParametersInput[];
+}
+
+/**
+ * Output from batch setting parameters
+ */
+export interface BatchSetParametersResult {
+	success: boolean;
+	/** Results for each update in order */
+	results: SetParametersResult[];
+	/** Error message if the entire batch failed */
+	error?: string;
+}
+
+// ============================================================================
+// Batch Update Parameters Tool (LLM-based)
+// ============================================================================
+
+/**
+ * Input for batch updating parameters with LLM (single LLM call for multiple nodes)
+ */
+export interface BatchUpdateParametersInput {
+	/** Array of node updates with natural language changes */
+	updates: UpdateNodeParametersInput[];
+}
+
+/**
+ * Output from batch updating parameters
+ */
+export interface BatchUpdateParametersResult {
+	success: boolean;
+	/** Results for each update in order */
+	results: UpdateNodeParametersResult[];
+	/** Error message if the entire batch failed */
+	error?: string;
+}
+
+// ============================================================================
 // Get Node Parameter Tool
 // ============================================================================
 
@@ -345,17 +537,39 @@ export interface WorkflowSnapshot {
 export interface ScriptTools {
 	/**
 	 * Add a node to the workflow
-	 * @param input Node creation parameters
+	 * @param input Node creation parameters (full or short form)
 	 * @returns Result with nodeId on success
 	 */
 	addNode(input: AddNodeInput): Promise<AddNodeResult>;
 
 	/**
+	 * Add multiple nodes to the workflow in a single operation.
+	 * More efficient than calling addNode multiple times.
+	 * @param input Array of node creation parameters
+	 * @returns Results for each node in order
+	 */
+	addNodes(input: AddNodesInput): Promise<AddNodesResult>;
+
+	/** Alias for addNodes - shorter name for reduced token usage */
+	add(input: AddNodesInput): Promise<AddNodesResult>;
+
+	/**
 	 * Connect two nodes in the workflow
-	 * @param input Connection parameters
+	 * @param input Connection parameters (full or short form)
 	 * @returns Result with connection info on success
 	 */
 	connectNodes(input: ConnectNodesInput): Promise<ConnectNodesResult>;
+
+	/**
+	 * Connect multiple node pairs in a single operation.
+	 * More efficient than calling connectNodes multiple times.
+	 * @param input Array of connection parameters
+	 * @returns Results for each connection in order
+	 */
+	connectMultiple(input: ConnectMultipleInput): Promise<ConnectMultipleResult>;
+
+	/** Alias for connectMultiple - shorter name for reduced token usage */
+	conn(input: ConnectMultipleInput): Promise<ConnectMultipleResult>;
 
 	/**
 	 * Remove a node from the workflow
@@ -385,11 +599,35 @@ export interface ScriptTools {
 	validateStructure(): Promise<ValidateStructureResult>;
 
 	/**
-	 * Update node parameters using natural language instructions
+	 * Update node parameters using natural language instructions (uses LLM)
 	 * @param input Node ID and natural language changes
 	 * @returns Result with updated parameters on success
 	 */
 	updateNodeParameters(input: UpdateNodeParametersInput): Promise<UpdateNodeParametersResult>;
+
+	/**
+	 * Batch update multiple nodes' parameters with LLM (fewer LLM calls)
+	 * @param input Array of node updates with natural language changes
+	 * @returns Results for each update in order
+	 */
+	updateAll(input: BatchUpdateParametersInput): Promise<BatchUpdateParametersResult>;
+
+	/**
+	 * Directly set node parameters without LLM translation (fastest)
+	 * @param input Node ID and parameters object to set
+	 * @returns Result with final parameters on success
+	 */
+	setParameters(input: SetParametersInput): Promise<SetParametersResult>;
+
+	/** Alias for setParameters - shorter name for reduced token usage */
+	set(input: SetParametersInput): Promise<SetParametersResult>;
+
+	/**
+	 * Batch set parameters on multiple nodes without LLM (fastest for bulk)
+	 * @param input Array of parameter updates
+	 * @returns Results for each update in order
+	 */
+	setAll(input: BatchSetParametersInput): Promise<BatchSetParametersResult>;
 
 	/**
 	 * Get a specific parameter value from a node
@@ -427,88 +665,64 @@ export interface ScriptExecutionContext {
  * NOTE: Curly braces are doubled ({{ }}) to escape them for LangChain template parsing.
  */
 export const TOOL_INTERFACE_DEFINITIONS = `
-// Input/Output interfaces for script tools
+// PREFERRED: Short-form interfaces (fewer tokens, faster)
 
-interface AddNodeInput {{
-  nodeType: string;        // e.g., "n8n-nodes-base.httpRequest"
-  nodeVersion: number;     // The exact version number
-  name: string;            // Descriptive name for the node
-  initialParametersReasoning: string;  // Explain your parameter choices
-  initialParameters: object;  // Initial parameters (use {{}} if none needed)
+// Short form for adding nodes: t=type, v=version, n=name, p=params
+// All fields except 't' are optional!
+interface AddNodeInputShort {{
+  t: string;    // nodeType, e.g., "n8n-nodes-base.httpRequest"
+  v?: number;   // nodeVersion (optional, defaults to latest)
+  n?: string;   // name (optional)
+  p?: object;   // initialParameters (optional, defaults to {{}})
 }}
 
+// Short form for connections: s=source, d=destination
+interface ConnectNodesInputShort {{
+  s: NodeRef;   // sourceNodeId
+  d: NodeRef;   // targetNodeId (d = destination)
+}}
+
+// NodeRef can be string UUID OR AddNodeResult object directly
+type NodeRef = string | AddNodeResult;
+
+// Result from adding a node
 interface AddNodeResult {{
   success: boolean;
-  nodeId?: string;         // UUID of created node - USE THIS FOR CONNECTIONS
-  nodeName?: string;       // Assigned name (may differ if name was taken)
-  nodeType?: string;
-  displayName?: string;
-  position?: [number, number];
+  nodeId?: string;    // UUID - USE THIS FOR CONNECTIONS
+  nodeName?: string;
   error?: string;
 }}
 
-interface ConnectNodesInput {{
-  sourceNodeId: string | AddNodeResult;  // UUID string OR result from addNode directly
-  targetNodeId: string | AddNodeResult;  // UUID string OR result from addNode directly
-  sourceOutputIndex?: number;  // Default: 0
-  targetInputIndex?: number;   // Default: 0
+// Batch operations - ALWAYS use these with short aliases
+// tools.add() for adding nodes, tools.conn() for connections
+interface AddNodesInput {{ nodes: AddNodeInputShort[]; }}
+interface AddNodesResult {{ success: boolean; results: AddNodeResult[]; }}
+
+interface ConnectMultipleInput {{ connections: ConnectNodesInputShort[]; }}
+interface ConnectMultipleResult {{ success: boolean; results: ConnectNodesResult[]; }}
+
+// FAST: Direct parameter setting (NO LLM call - use when you know exact params)
+interface SetParametersInput {{
+  nodeId: NodeRef;     // UUID or AddNodeResult
+  params: object;      // Direct parameter object to set
+  replace?: boolean;   // true=replace all, false=merge (default)
 }}
 
-interface ConnectNodesResult {{
-  success: boolean;
-  sourceNode?: string;     // Actual source (may be swapped for AI connections)
-  targetNode?: string;     // Actual target (may be swapped for AI connections)
-  connectionType?: string; // main, ai_languageModel, ai_tool, etc.
-  swapped?: boolean;
-  error?: string;
-}}
+// tools.set() - Set params on one node (no LLM)
+// tools.setAll() - Set params on multiple nodes (no LLM)
+interface BatchSetParametersInput {{ updates: SetParametersInput[]; }}
 
-interface RemoveNodeInput {{
-  nodeId: string;
-}}
-
-interface RemoveConnectionInput {{
-  sourceNodeId: string | AddNodeResult;  // UUID, node name, or result from addNode
-  targetNodeId: string | AddNodeResult;  // UUID, node name, or result from addNode
-  connectionType?: string;  // Default: 'main'
-  sourceOutputIndex?: number;  // Default: 0
-  targetInputIndex?: number;   // Default: 0
-}}
-
-interface RenameNodeInput {{
-  nodeId: string;
-  newName: string;
-}}
-
-// Configuration tool interfaces
-
+// SLOW: LLM-based parameter updates (use only when needed)
 interface UpdateNodeParametersInput {{
-  nodeId: string;          // UUID of the node to update
-  changes: string[];       // Natural language changes, e.g. ["Enable hasOutputParser", "Set URL to https://api.example.com"]
+  nodeId: string;
+  changes: string[];   // Natural language, e.g. ["Set URL to https://..."]
 }}
 
-interface UpdateNodeParametersResult {{
-  success: boolean;
-  updatedParameters?: object;  // The complete updated parameters
-  appliedChanges?: string[];   // List of changes that were applied
-  error?: string;
-}}
+// tools.updateAll() - Single LLM call for multiple nodes (faster than multiple updateNodeParameters)
+interface BatchUpdateParametersInput {{ updates: UpdateNodeParametersInput[]; }}
 
-interface GetNodeParameterInput {{
-  nodeId: string;          // UUID of the node
-  path: string;            // Parameter path, e.g. "options.baseUrl" or "hasOutputParser"
-}}
-
-interface GetNodeParameterResult {{
-  success: boolean;
-  value?: unknown;         // The parameter value (any type)
-  error?: string;
-}}
-
-interface ValidateConfigurationResult {{
-  success: boolean;
-  isValid: boolean;
-  issues?: string[];       // Configuration issues (agent prompts, tools, $fromAI usage)
-  error?: string;
-}}
+// Other tools
+interface RemoveNodeInput {{ nodeId: string; }}
+interface RenameNodeInput {{ nodeId: string; newName: string; }}
+interface GetNodeParameterInput {{ nodeId: string; path: string; }}
 `.trim();

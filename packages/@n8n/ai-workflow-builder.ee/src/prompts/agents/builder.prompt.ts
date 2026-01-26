@@ -565,11 +565,22 @@ const RESPONSE_FORMAT = `Provide ONE brief text message summarizing:
 
 Example: "Created 4 nodes: Trigger → Weather → Image Generation → Email"`;
 
-export function buildBuilderPrompt(): string {
-	return prompt()
+export interface BuilderPromptOptions {
+	/** When true, excludes sections that reference individual tools (add_nodes, connect_nodes, etc.) */
+	scriptExecutionMode?: boolean;
+	/** When true, includes get_node_connection_examples guidance */
+	includeExamplesGuidance?: boolean;
+}
+
+export function buildBuilderPrompt(options: BuilderPromptOptions = {}): string {
+	const { scriptExecutionMode = false, includeExamplesGuidance = true } = options;
+
+	const builder = prompt()
 		.section('role', BUILDER_ROLE)
-		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
-		.section('node_creation', NODE_CREATION)
+		// Skip EXECUTION_SEQUENCE when using script execution - it references add_nodes, connect_nodes, validate_structure
+		.sectionIf(!scriptExecutionMode, 'mandatory_execution_sequence', EXECUTION_SEQUENCE)
+		// Skip NODE_CREATION when using script execution - it references add_nodes
+		.sectionIf(!scriptExecutionMode, 'node_creation', NODE_CREATION)
 		.section('workflow_configuration_node', WORKFLOW_CONFIG_NODE)
 		.section('data_parsing_strategy', DATA_PARSING)
 		.section('proactive_design', PROACTIVE_DESIGN)
@@ -585,15 +596,18 @@ export function buildBuilderPrompt(): string {
 		.section('multi_trigger_workflows', MULTI_TRIGGER_WORKFLOWS)
 		.section('shared_memory_pattern', SHARED_MEMORY_PATTERN)
 		.section('rag_workflow_pattern', RAG_PATTERN)
-		.section('data_table_pattern', DATA_TABLE_PATTERN)
+		// Skip DATA_TABLE_PATTERN when using script execution - it references add_nodes, connect_nodes
+		.sectionIf(!scriptExecutionMode, 'data_table_pattern', DATA_TABLE_PATTERN)
 		.section('switch_node_pattern', SWITCH_NODE_PATTERN)
-		.section('node_connection_examples', NODE_CONNECTION_EXAMPLES)
+		// Skip NODE_CONNECTION_EXAMPLES when get_node_connection_examples tool is not available
+		.sectionIf(includeExamplesGuidance, 'node_connection_examples', NODE_CONNECTION_EXAMPLES)
 		.section('connection_type_examples', CONNECTION_TYPES)
 		.section('parameter_configuration_guidance', PARAMETER_CONFIGURATION)
 		.section('data_referencing_patterns', DATA_REFERENCING)
 		.section('tool_node_expressions', TOOL_NODE_EXPRESSIONS)
 		.section('critical_node_parameters', CRITICAL_NODE_PARAMETERS)
 		.section('do_not', RESTRICTIONS)
-		.section('response_format', RESPONSE_FORMAT)
-		.build();
+		.section('response_format', RESPONSE_FORMAT);
+
+	return builder.build();
 }

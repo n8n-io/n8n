@@ -152,8 +152,9 @@ describe('ExecuteScriptTool', () => {
 
 		it('should have descriptive description', () => {
 			expect(executeScriptTool.description).toContain('Execute a TypeScript script');
-			expect(executeScriptTool.description).toContain('tools.addNode');
-			expect(executeScriptTool.description).toContain('tools.connectNodes');
+			expect(executeScriptTool.description).toContain('tools.add');
+			expect(executeScriptTool.description).toContain('tools.conn');
+			expect(executeScriptTool.description).toContain('tools.set');
 		});
 	});
 });

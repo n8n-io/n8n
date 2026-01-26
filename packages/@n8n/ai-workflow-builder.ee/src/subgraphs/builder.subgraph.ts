@@ -149,7 +149,11 @@ export class BuilderSubgraph extends BaseSubgraph<
 		const toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 
 		// Build system prompt, optionally including script execution guidance
-		const basePrompt = buildBuilderPrompt();
+		// When scriptExecutionMode=true, sections referencing individual tools (add_nodes, connect_nodes, etc.) are excluded
+		const basePrompt = buildBuilderPrompt({
+			scriptExecutionMode: includeScriptExecution,
+			includeExamplesGuidance: includeExamples,
+		});
 		const fullPrompt = includeScriptExecution
 			? `${basePrompt}\n\n${SCRIPT_EXECUTION_CONDENSED}\n\n${CONFIGURATOR_SCRIPT_TOOLS}\n\n${SCRIPT_TYPE_DEFINITIONS}`
 			: basePrompt;

@@ -294,71 +294,32 @@ export function createExecuteScriptTool(
 			name: builderToolBase.toolName,
 			description: `Execute a TypeScript script to perform multiple workflow operations at once.
 
-Use this tool when you need to:
-- Create multiple nodes and connections in a single operation
-- Perform complex workflow modifications with conditional logic
-- Reduce the number of individual tool calls for efficiency
+SHORT-FORM SYNTAX (REQUIRED - reduces tokens significantly):
+- Node: {t:'nodeType',n:'Name',p:{params}} - only t is required
+- Connection: {s:source,d:dest} - s=source, d=destination
 
 AVAILABLE IN SCRIPT:
-- \`tools.addNode(input)\` - Add a node (returns object with success, nodeId, nodeName)
-- \`tools.connectNodes(input)\` - Connect nodes (pass AddNodeResult objects directly as sourceNodeId/targetNodeId)
-- \`tools.removeNode(input)\` - Remove a node (returns object with success)
-- \`tools.removeConnection(input)\` - Remove a connection (returns object with success)
-- \`tools.renameNode(input)\` - Rename a node (returns object with success, oldName, newName)
-- \`workflow\` - Read-only workflow state with nodes, connections, and helper methods
-- \`console.log/warn/error\` - Logging (output included in response)
+- tools.add({nodes:[...]}) - Add nodes (short: t,v,n,p)
+- tools.conn({connections:[...]}) - Connect (short: s,d)
+- tools.set({nodeId,params}) - FAST direct params (no LLM)
+- tools.setAll({updates:[...]}) - Batch direct params
+- tools.updateNodeParameters({nodeId,changes}) - SLOW LLM-based
+- tools.removeNode/removeConnection/renameNode
 
-AUTOMATIC VALIDATION:
-- Workflow structure is automatically validated after script execution (unless validateStructure=false)
-- No need to call validateStructure() in your script
+Property shortcuts:
+- t=nodeType, v=nodeVersion (optional), n=name (optional), p=initialParameters (optional)
+- s=sourceNodeId, d=targetNodeId
 
-SCRIPT EXECUTION:
-- Scripts run in an isolated sandbox with no filesystem or network access
-- All tool calls are async - use await (NEVER use .then() chains)
-- Errors include line numbers and partial results
-- 30 second timeout
-- CRITICAL: Do NOT wrap code in (async () => {})() or any IIFE - write code directly
-
-EXAMPLE - Create a simple AI workflow:
+EXAMPLE - ALWAYS use short form:
 \`\`\`javascript
-// Add nodes
-const trigger = await tools.addNode({
-  nodeType: 'n8n-nodes-base.manualTrigger',
-  nodeVersion: 1,
-  name: 'Manual Trigger',
-  initialParametersReasoning: 'Manual trigger has no parameters',
-  initialParameters: {}
-});
-
-const agent = await tools.addNode({
-  nodeType: '@n8n/n8n-nodes-langchain.agent',
-  nodeVersion: 1.7,
-  name: 'AI Agent',
-  initialParametersReasoning: 'Agent without output parser',
-  initialParameters: { hasOutputParser: false }
-});
-
-const chatModel = await tools.addNode({
-  nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-  nodeVersion: 1,
-  name: 'OpenAI Chat Model',
-  initialParametersReasoning: 'Chat model has no special initial params',
-  initialParameters: {}
-});
-
-// Connect nodes - pass result objects directly!
-await tools.connectNodes({
-  sourceNodeId: trigger,
-  targetNodeId: agent
-});
-
-await tools.connectNodes({
-  sourceNodeId: chatModel,
-  targetNodeId: agent
-});
-
-// Validation happens automatically after script completes
-console.log('Workflow created successfully');
+const r = await tools.add({nodes:[
+  {t:'n8n-nodes-base.manualTrigger',n:'Trigger'},
+  {t:'@n8n/n8n-nodes-langchain.agent',n:'Agent',p:{hasOutputParser:false}},
+  {t:'@n8n/n8n-nodes-langchain.lmChatOpenAi',n:'Model'}
+]});
+const [t,a,m] = r.results;
+await tools.conn({connections:[{s:t,d:a},{s:m,d:a}]});
+await tools.set({nodeId:a,params:{systemMessage:'You are helpful'}});
 \`\`\``,
 			schema: executeScriptSchema,
 		},
