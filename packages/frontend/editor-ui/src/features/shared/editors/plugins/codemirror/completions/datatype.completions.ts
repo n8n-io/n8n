@@ -68,7 +68,9 @@ import type { TargetNodeParameterContext } from '@/Interface';
 /**
  * Resolution-based completions offered according to datatype.
  */
-export function datatypeCompletions(context: CompletionContext): CompletionResult | null {
+export async function datatypeCompletions(
+	context: CompletionContext,
+): Promise<CompletionResult | null> {
 	const targetNodeParameterContext = context.state.facet(TARGET_NODE_PARAMETER_FACET);
 	const word = context.matchBefore(DATATYPE_REGEX);
 
@@ -94,30 +96,35 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	} else if (base === '$secrets' && isCredential) {
 		options = secretProvidersOptions();
 	} else {
-		const resolved = attempt(
-			(): Resolved =>
-				resolveAutocompleteExpression(`={{ ${base} }}`, targetNodeParameterContext?.nodeName),
-			(error) => {
-				if (!isPairedItemIntermediateNodesError(error)) {
-					return null;
-				}
+		let resolved: Resolved | null = null;
+		try {
+			resolved = await resolveAutocompleteExpression(
+				`={{ ${base} }}`,
+				targetNodeParameterContext?.nodeName,
+			);
+		} catch (error) {
+			if (!isPairedItemIntermediateNodesError(error)) {
+				return null;
+			}
 
-				// Fallback on first item to provide autocomplete when intermediate nodes have not run
-				return attempt(() =>
-					resolveAutocompleteExpression(
-						`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
-						targetNodeParameterContext?.nodeName,
-					),
+			// Fallback on first item to provide autocomplete when intermediate nodes have not run
+			try {
+				resolved = await resolveAutocompleteExpression(
+					`={{ ${expressionWithFirstItem(syntaxTree, base)} }}`,
+					targetNodeParameterContext?.nodeName,
 				);
-			},
-		);
+			} catch {
+				return null;
+			}
+		}
 
 		if (resolved === null) return null;
 
-		options = attempt(
-			() => datatypeOptions({ resolved, base, tail }).map(stripExcessParens(context)),
-			() => [],
-		);
+		try {
+			options = (await datatypeOptions({ resolved, base, tail })).map(stripExcessParens(context));
+		} catch {
+			options = [];
+		}
 	}
 
 	if (tail !== '') {
@@ -129,7 +136,7 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 	// When autocomplete is explicitely opened (by Ctrl+Space or programatically), add completions for the current word with '.' prefix
 	// example: {{ $json.str| }} -> ['length', 'includes()'...] (would usually need a '.' suffix)
 	if (context.explicit && !word.text.endsWith('.') && options.length === 0) {
-		options = explicitDataTypeOptions(word.text, targetNodeParameterContext);
+		options = await explicitDataTypeOptions(word.text, targetNodeParameterContext);
 		from = word.to;
 	}
 
@@ -191,28 +198,27 @@ function filterOptions(options: AliasCompletion[], tail: string): AliasCompletio
 	return matches;
 }
 
-function explicitDataTypeOptions(
+async function explicitDataTypeOptions(
 	expression: string,
 	targetNodeParameterContext?: TargetNodeParameterContext,
-): AliasCompletion[] {
-	return attempt(
-		() => {
-			const resolved = resolveAutocompleteExpression(
-				`={{ ${expression} }}`,
-				targetNodeParameterContext?.nodeName,
-			);
-			return datatypeOptions({
-				resolved,
-				base: expression,
-				tail: '',
-				transformLabel: (label) => '.' + label,
-			});
-		},
-		() => [],
-	);
+): Promise<AliasCompletion[]> {
+	try {
+		const resolved = await resolveAutocompleteExpression(
+			`={{ ${expression} }}`,
+			targetNodeParameterContext?.nodeName,
+		);
+		return await datatypeOptions({
+			resolved,
+			base: expression,
+			tail: '',
+			transformLabel: (label) => '.' + label,
+		});
+	} catch {
+		return [];
+	}
 }
 
-function datatypeOptions(input: AutocompleteInput): AliasCompletion[] {
+async function datatypeOptions(input: AutocompleteInput): Promise<AliasCompletion[]> {
 	const { resolved } = input;
 
 	if (resolved === null) return [];
@@ -248,7 +254,7 @@ function datatypeOptions(input: AutocompleteInput): AliasCompletion[] {
 	}
 
 	if (typeof resolved === 'object') {
-		return objectOptions(input as AutocompleteInput<IDataObject>);
+		return await objectOptions(input as AutocompleteInput<IDataObject>);
 	}
 
 	return [];
@@ -391,7 +397,9 @@ const createCompletionOption = ({
 	return option;
 };
 
-const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+const customObjectOptions = async (
+	input: AutocompleteInput<IDataObject>,
+): Promise<Completion[]> => {
 	const { base, resolved } = input;
 
 	if (!resolved) return [];
@@ -403,11 +411,11 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 	} else if (base === '$workflow') {
 		return workflowOptions();
 	} else if (base === '$input') {
-		return inputOptions(base);
+		return await inputOptions(base);
 	} else if (base === '$prevNode') {
 		return prevNodeOptions();
 	} else if (/^\$\(['"][\S\s]+['"]\)$/.test(base)) {
-		return nodeRefOptions(base);
+		return await nodeRefOptions(base);
 	} else if (base === '$response') {
 		return responseOptions();
 	} else if (isItem(input)) {
@@ -419,7 +427,7 @@ const customObjectOptions = (input: AutocompleteInput<IDataObject>): Completion[
 	return [];
 };
 
-const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
+const objectOptions = async (input: AutocompleteInput<IDataObject>): Promise<Completion[]> => {
 	const { base, resolved, transformLabel = (label) => label } = input;
 	const SKIP = new Set(['__ob__', 'pairedItem']);
 
@@ -432,7 +440,7 @@ const objectOptions = (input: AutocompleteInput<IDataObject>): Completion[] => {
 		rawKeys = Object.keys(descriptors).sort((a, b) => a.localeCompare(b));
 	}
 
-	const customOptions = customObjectOptions(input);
+	const customOptions = await customObjectOptions(input);
 	if (customOptions.length > 0) {
 		// Only return completions that are present in the resolved data
 		return customOptions.filter((option) => option.label in resolved);
@@ -948,7 +956,7 @@ export const customDataOptions = () => {
 	].map((doc) => createCompletionOption({ name: doc.name, doc, isFunction: true }));
 };
 
-export const nodeRefOptions = (base: string) => {
+export const nodeRefOptions = async (base: string) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1037,16 +1045,17 @@ export const nodeRefOptions = (base: string) => {
 		},
 	];
 
+	const noParams = await hasNoParams(base);
 	return applySections({
 		options: options
-			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.filter((option) => !(option.doc.name === 'params' && noParams))
 			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
 		sections: {},
 		recommended: ['item'],
 	});
 };
 
-export const inputOptions = (base: string) => {
+export const inputOptions = async (base: string) => {
 	const itemArgs = [
 		{
 			name: 'branchIndex',
@@ -1109,9 +1118,10 @@ export const inputOptions = (base: string) => {
 		},
 	];
 
+	const noParams = await hasNoParams(base);
 	return applySections({
 		options: options
-			.filter((option) => !(option.doc.name === 'params' && hasNoParams(base)))
+			.filter((option) => !(option.doc.name === 'params' && noParams))
 			.map(({ doc, isFunction }) => createCompletionOption({ name: doc.name, doc, isFunction })),
 		recommended: ['item'],
 		sections: {},

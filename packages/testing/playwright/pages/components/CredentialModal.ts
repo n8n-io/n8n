@@ -139,6 +139,13 @@ export class CredentialModal extends BaseModal {
 	}
 
 	/**
+	 * Get a specific credential field input
+	 */
+	getFieldInput(key: string): Locator {
+		return this.root.getByTestId(`parameter-input-${key}`).locator('input, textarea');
+	}
+
+	/**
 	 * Get the users select dropdown in the Sharing tab
 	 */
 	getUsersSelect(): Locator {

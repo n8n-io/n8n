@@ -87,7 +87,7 @@ export const formDescription: INodeProperties = {
 	default: '',
 	placeholder: "e.g. We'll get back to you soon",
 	description:
-		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML.',
+		'Shown underneath the Form Title. Can be used to prompt the user on how to complete the form. Accepts HTML. Does not accept <code>&lt;script&gt;</code>, <code>&lt;style&gt;</code> or <code>&lt;input&gt;</code> tags.',
 	typeOptions: {
 		rows: 2,
 	},

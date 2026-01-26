@@ -70,6 +70,9 @@ const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishAction
 			WorkflowHistoryButton: {
 				template: '<div data-test-id="workflow-history-button-stub"></div>',
 			},
+			N8nTooltip: {
+				template: '<div><slot name="content" /><slot /></div>',
+			},
 		},
 	},
 });

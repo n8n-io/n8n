@@ -55,6 +55,7 @@ catalog:
   js-base64: 3.7.2
   jsonrepair: 3.13.1
   jsonwebtoken: 9.0.3
+  kafkajs: 2.2.4
   lodash: 4.17.21
   luxon: 3.4.4
   mime-types: 3.0.2

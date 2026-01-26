@@ -8,7 +8,7 @@ import { v4 as uuid } from 'uuid';
 import type { ErrorReporter } from '@/errors';
 
 import type { BinaryData } from './types';
-import { assertDir, doesNotExist, FileLocation } from './utils';
+import { assertDir, exists, FileLocation } from './utils';
 import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
@@ -50,7 +50,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	async getAsStream(fileId: string, chunkSize?: number) {
 		const filePath = this.resolvePath(fileId);
 
-		if (await doesNotExist(filePath)) {
+		if (!(await exists(filePath))) {
 			throw new FileNotFoundError(filePath);
 		}
 
@@ -60,7 +60,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	async getAsBuffer(fileId: string) {
 		const filePath = this.resolvePath(fileId);
 
-		if (await doesNotExist(filePath)) {
+		if (!(await exists(filePath))) {
 			throw new FileNotFoundError(filePath);
 		}
 

@@ -107,8 +107,8 @@ describe('FocusPanel', () => {
 
 			expect(await rendered.findByTestId('node-parameters')).toBeInTheDocument();
 			expect(rendered.getAllByText('N0')).not.toHaveLength(0); // title in header
-			expect(rendered.getByText('P0')).toBeInTheDocument(); // parameter 0
-			expect(rendered.getByText('P1')).toBeInTheDocument(); // parameter 1
+			expect(await rendered.findByText('P0')).toBeInTheDocument(); // parameter 0
+			expect(await rendered.findByText('P1')).toBeInTheDocument(); // parameter 1
 		});
 
 		it('should render the parameters when a node is selected on canvas and a parameter is selected', async () => {

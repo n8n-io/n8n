@@ -4,6 +4,7 @@ import type { CredentialsEntity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import nock from 'nock';
 
 import * as utils from '../shared/utils';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
@@ -44,8 +45,13 @@ const setupWorkflow = async () => {
 
 	const resolver = await resolverService.create({
 		name: 'Test Resolver',
-		type: 'credential-resolver.stub-1.0',
-		config: { prefix: 'test-' },
+		type: 'credential-resolver.oauth2-1.0',
+		config: {
+			metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
+			clientId: 'test-client-id',
+			clientSecret: 'test-client-secret',
+			validation: 'oauth2-introspection',
+		},
 		user: owner,
 	});
 
@@ -77,40 +83,69 @@ describe('Dynamic Credentials API', () => {
 	let resolver: DynamicCredentialResolver;
 
 	beforeAll(async () => {
+		// Mock OAuth metadata endpoint for resolver validation
+		nock.cleanAll();
+		nock('https://auth.example.com')
+			.persist()
+			.get('/.well-known/openid-configuration')
+			.reply(200, {
+				issuer: 'https://auth.example.com',
+				introspection_endpoint: 'https://auth.example.com/oauth/introspect',
+				introspection_endpoint_auth_methods_supported: [
+					'client_secret_basic',
+					'client_secret_post',
+				],
+			});
+
+		// Mock OAuth introspection endpoint for identity validation
+		nock('https://auth.example.com')
+			.persist()
+			.post('/oauth/introspect')
+			.reply(200, {
+				active: true,
+				sub: 'user-123',
+				exp: Math.floor(Date.now() / 1000) + 3600,
+			});
+
 		await testDb.truncate(['User', 'CredentialsEntity', 'DynamicCredentialResolver']);
 
 		({ savedCredential, resolver } = await setupWorkflow());
 	});
 
 	afterAll(async () => {
+		nock.cleanAll();
 		await testDb.terminate();
 		testServer.httpServer.close();
 	});
 
 	describe('POST /credentials/:id/authorize', () => {
 		describe('when no static auth token is provided', () => {
-			it('should return the authorization URL for a credential', async () => {
+			it('should return a 500 Internal Server Error', async () => {
 				const response = await testServer.authlessAgent
 					.post(`/credentials/${savedCredential.id}/authorize`)
 					.query({ resolverId: resolver.id })
 					.set('Authorization', 'Bearer test-token')
-					.expect(200);
+					.expect(500);
 
-				expect(response.body.data).toBeDefined();
-				expect(typeof response.body.data).toBe('string');
-				expect(response.body.data).toContain('https://test.domain/oauth2/auth');
+				expect(response.body.message).toBe(
+					'Dynamic credentials configuration is invalid. Check server logs for details.',
+				);
 			});
 		});
 	});
 
 	describe('DELETE /credentials/:id/revoke', () => {
 		describe('when no static auth token is provided', () => {
-			it('should revoke a credential', async () => {
-				await testServer.authlessAgent
+			it('should return a 500 Internal Server Error', async () => {
+				const response = await testServer.authlessAgent
 					.delete(`/credentials/${savedCredential.id}/revoke`)
 					.set('Authorization', 'Bearer test-token')
 					.query({ resolverId: resolver.id })
-					.expect(204);
+					.expect(500);
+
+				expect(response.body.message).toBe(
+					'Dynamic credentials configuration is invalid. Check server logs for details.',
+				);
 			});
 		});
 	});
