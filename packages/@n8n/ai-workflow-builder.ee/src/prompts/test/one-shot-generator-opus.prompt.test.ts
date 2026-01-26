@@ -1,3 +1,5 @@
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
+
 import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
 import {
 	buildOpusOneShotGeneratorPrompt,
@@ -74,7 +76,21 @@ describe('one-shot-generator-opus.prompt', () => {
 		});
 
 		it('should include current workflow context when provided', async () => {
-			const currentWorkflow = "return workflow('test', 'Test Workflow').add(trigger({...}));";
+			const currentWorkflow: WorkflowJSON = {
+				id: 'test',
+				name: 'Test Workflow',
+				nodes: [
+					{
+						id: 'trigger-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1.1,
+						position: [240, 300],
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
 			const result = buildOpusOneShotGeneratorPrompt(
 				mockNodeIds,
 				mockSdkSourceCode,

@@ -9,6 +9,8 @@
  */
 
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import type { NodeWithDiscriminators } from '../utils/node-type-parser';
 
@@ -836,7 +838,7 @@ export function buildOpusOneShotGeneratorPrompt(
 		other: NodeWithDiscriminators[];
 	},
 	sdkSourceCode: string,
-	currentWorkflow?: string,
+	currentWorkflow?: WorkflowJSON,
 ): ChatPromptTemplate {
 	const availableNodesSection = buildOpusAvailableNodesSection(nodeIds);
 	const sdkApiReference = buildSdkApiReference(sdkSourceCode);
@@ -856,8 +858,10 @@ export function buildOpusOneShotGeneratorPrompt(
 	const userMessageParts = [];
 
 	if (currentWorkflow) {
-		const escapedCurrentWorkflow = escapeCurlyBrackets(currentWorkflow);
-		userMessageParts.push(`<current_workflow>\n${escapedCurrentWorkflow}\n</current_workflow>`);
+		// Convert WorkflowJSON to SDK code and escape curly brackets for LangChain
+		const workflowCode = generateWorkflowCode(currentWorkflow);
+		const escapedWorkflowCode = escapeCurlyBrackets(workflowCode);
+		userMessageParts.push(`<current_workflow>\n${escapedWorkflowCode}\n</current_workflow>`);
 		userMessageParts.push('\nUser request:');
 	}
 

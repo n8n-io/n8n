@@ -243,18 +243,17 @@ export class OneShotWorkflowCodeAgent {
 
 			// Build prompt with current workflow context if available
 			debugLog('CHAT', 'Building prompt...');
-			const currentWorkflowCode = payload.workflowContext?.currentWorkflow
-				? this.workflowToCode(payload.workflowContext.currentWorkflow)
-				: undefined;
+			const currentWorkflow = payload.workflowContext?.currentWorkflow as WorkflowJSON | undefined;
 
-			if (currentWorkflowCode) {
+			if (currentWorkflow) {
 				debugLog('CHAT', 'Current workflow context provided', {
-					currentWorkflowCodeLength: currentWorkflowCode.length,
-					currentWorkflowCodePreview: currentWorkflowCode.substring(0, 500),
+					workflowId: currentWorkflow.id,
+					workflowName: currentWorkflow.name,
+					nodeCount: currentWorkflow.nodes?.length ?? 0,
 				});
 			}
 
-			const prompt = this.buildPrompt(currentWorkflowCode);
+			const prompt = this.buildPrompt(currentWorkflow);
 			debugLog('CHAT', 'Prompt built successfully');
 
 			// Bind tools to LLM
@@ -763,7 +762,7 @@ export class OneShotWorkflowCodeAgent {
 	 * Build the system prompt with node IDs and SDK reference.
 	 * Builds the prompt using the configured prompt version from the registry.
 	 */
-	private buildPrompt(currentWorkflow?: string) {
+	private buildPrompt(currentWorkflow?: WorkflowJSON) {
 		debugLog('BUILD_PROMPT', 'Getting node IDs by category with discriminators...');
 		const nodeIds = this.nodeTypeParser.getNodeIdsByCategoryWithDiscriminators();
 		debugLog('BUILD_PROMPT', 'Node IDs retrieved', {
@@ -964,22 +963,5 @@ export class OneShotWorkflowCodeAgent {
 				`Failed to parse generated workflow code: ${error instanceof Error ? error.message : 'Unknown error'}`,
 			);
 		}
-	}
-
-	/**
-	 * Convert partial workflow JSON to TypeScript code (for context)
-	 */
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	private workflowToCode(workflow: Partial<Record<string, unknown>>): string {
-		debugLog('WORKFLOW_TO_CODE', 'Converting workflow to code', {
-			workflowKeys: Object.keys(workflow),
-		});
-		// For now, just stringify the workflow
-		// In the future, could use generateWorkflowCode from workflow-sdk
-		const code = JSON.stringify(workflow, null, 2);
-		debugLog('WORKFLOW_TO_CODE', 'Workflow converted', {
-			codeLength: code.length,
-		});
-		return code;
 	}
 }
