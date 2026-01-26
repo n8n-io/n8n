@@ -24,12 +24,30 @@ export class ChatHubChatPage extends BasePage {
 		return this.page.getByRole('heading', { level: 2 });
 	}
 
+	getWelcomeStartNewChatButton(): Locator {
+		return this.page.getByTestId('welcome-start-new-chat');
+	}
+
+	async dismissWelcomeScreen(): Promise<void> {
+		// Wait for conversation list to load (indicates sessions are ready)
+		const conversationList = this.sidebar.getConversations();
+		await this.page.getByTestId('chat-conversation-list').waitFor({ state: 'visible' });
+
+		// Only dismiss welcome screen if there are no existing conversations
+		const conversationCount = await conversationList.count();
+		if (conversationCount === 0) {
+			const welcomeButton = this.getWelcomeStartNewChatButton();
+			await welcomeButton.click();
+			await welcomeButton.waitFor({ state: 'hidden' });
+		}
+	}
+
 	getModelSelectorButton(): Locator {
 		return this.page.getByTestId('chat-model-selector');
 	}
 
 	getSelectedCredentialName(): Locator {
-		return this.getModelSelectorButton().locator('span');
+		return this.getModelSelectorButton().locator('span.n8n-text').first();
 	}
 
 	getChatInput(): Locator {
@@ -81,7 +99,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getToolsButton(): Locator {
-		return this.page.locator('[class*="toolsButton"]');
+		return this.page.getByTestId('chat-tools-button');
 	}
 
 	getOpenWorkflowButton(): Locator {

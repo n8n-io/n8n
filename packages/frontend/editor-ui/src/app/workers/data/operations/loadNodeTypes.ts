@@ -16,7 +16,8 @@ import {
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 import type { DataWorkerState } from '../types';
-import { execWithParams, query, withTrx } from './query';
+import { exec, execWithParams, query, queryWithParams, withTrx } from './query';
+import { getStoredVersion, storeVersion } from './storeVersion';
 
 /**
  * Generate a unique ID for a node type version
@@ -70,8 +71,8 @@ async function upsertNodeType(
 ): Promise<void> {
 	await execWithParams(
 		state,
-		'INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime(?))',
-		[id, JSON.stringify(nodeType), 'now'],
+		"INSERT OR REPLACE INTO nodeTypes (id, data, updated_at) VALUES (?, ?, datetime('now'))",
+		[id, JSON.stringify(nodeType)],
 	);
 }
 
@@ -96,6 +97,25 @@ export async function loadNodeTypes(state: DataWorkerState, baseUrl: string): Pr
 
 	if (!state.initialized) {
 		throw new Error('[DataWorker] Database not initialized');
+	}
+
+	// Check stored version and handle version changes
+	const storedVersion = await getStoredVersion(state);
+	const currentVersion = state.version;
+	console.log('[DataWorker] Stored version:', storedVersion);
+	console.log('[DataWorker] Current version:', currentVersion);
+
+	if (storedVersion !== null && currentVersion !== null && storedVersion !== currentVersion) {
+		console.log(
+			`[DataWorker] Version changed: ${storedVersion} -> ${currentVersion}, clearing node types`,
+		);
+		await exec(state, 'DELETE FROM nodeTypes');
+		console.log('[DataWorker] Node types cleared');
+	}
+
+	// Update stored version if different
+	if (currentVersion !== null && storedVersion !== currentVersion) {
+		await storeVersion(state, currentVersion);
 	}
 
 	console.log('[DataWorker] Starting node types sync...');
@@ -200,7 +220,7 @@ export async function getNodeType(
 	version: number,
 ): Promise<INodeTypeDescription | null> {
 	const id = getNodeTypeId(name, version);
-	const result = await query(state, `SELECT data FROM nodeTypes WHERE id = '${id}'`);
+	const result = await queryWithParams(state, 'SELECT data FROM nodeTypes WHERE id = ?', [id]);
 
 	if (result.rows.length === 0) {
 		return null;

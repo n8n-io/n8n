@@ -310,9 +310,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	/**
 	 * Gets information about the current view and active node to provide context to the assistant
 	 */
-	function getVisualContext(
+	async function getVisualContext(
 		nodeInfo?: ChatRequest.NodeInfo,
-	): ChatRequest.AssistantContext | undefined {
+	): Promise<ChatRequest.AssistantContext | undefined> {
 		if (chatSessionTask.value === 'error') {
 			return {
 				aiUsageSettings: {

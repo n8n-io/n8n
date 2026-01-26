@@ -22,6 +22,7 @@ const config: StorybookConfig = {
 		getAbsolutePath('@storybook/addon-vitest'),
 		getAbsolutePath('@storybook/addon-a11y'),
 		getAbsolutePath('@storybook/addon-docs'),
+		getAbsolutePath('@storybook/addon-themes'),
 	],
 	framework: getAbsolutePath('@storybook/vue3-vite'),
 	staticDirs: ['../../design-system/assets'],

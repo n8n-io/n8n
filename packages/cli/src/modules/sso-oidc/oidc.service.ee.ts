@@ -15,7 +15,7 @@ import { Container, Service } from '@n8n/di';
 import { randomUUID } from 'crypto';
 import { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, UserError } from 'n8n-workflow';
-import * as client from 'openid-client';
+import type * as openidClientTypes from 'openid-client';
 import { EnvHttpProxyAgent } from 'undici';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -59,6 +59,9 @@ const DEFAULT_OIDC_RUNTIME_CONFIG: OidcRuntimeConfig = {
 export class OidcService {
 	private oidcConfig: OidcRuntimeConfig = DEFAULT_OIDC_RUNTIME_CONFIG;
 
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	private openidClient: typeof import('openid-client');
+
 	constructor(
 		private readonly settingsRepository: SettingsRepository,
 		private readonly authIdentityRepository: AuthIdentityRepository,
@@ -76,6 +79,15 @@ export class OidcService {
 		this.oidcConfig = await this.loadConfig(true);
 		this.logger.debug(`OIDC login is ${this.oidcConfig.loginEnabled ? 'enabled' : 'disabled'}.`);
 		await this.setOidcLoginEnabled(this.oidcConfig.loginEnabled);
+		if (this.oidcConfig.loginEnabled) {
+			await this.loadOpenIdClient();
+		}
+	}
+
+	private async loadOpenIdClient() {
+		if (!this.openidClient) {
+			this.openidClient = await import('openid-client');
+		}
 	}
 
 	getCallbackUrl(): string {
@@ -173,6 +185,7 @@ export class OidcService {
 	}
 
 	async generateLoginUrl(): Promise<{ url: URL; state: string; nonce: string }> {
+		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
 		const state = this.generateState();
@@ -191,7 +204,7 @@ export class OidcService {
 			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
 
-		const authorizationURL = client.buildAuthorizationUrl(configuration, {
+		const authorizationURL = this.openidClient.buildAuthorizationUrl(configuration, {
 			redirect_uri: this.getCallbackUrl(),
 			response_type: 'code',
 			scope,
@@ -207,6 +220,7 @@ export class OidcService {
 	}
 
 	async loginUser(callbackUrl: URL, storedState: string, storedNonce: string): Promise<User> {
+		await this.loadOpenIdClient();
 		const configuration = await this.getOidcConfiguration();
 
 		const expectedState = this.verifyState(storedState);
@@ -214,7 +228,7 @@ export class OidcService {
 
 		let tokens;
 		try {
-			tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
+			tokens = await this.openidClient.authorizationCodeGrant(configuration, callbackUrl, {
 				expectedState,
 				expectedNonce,
 			});
@@ -237,7 +251,11 @@ export class OidcService {
 
 		let userInfo;
 		try {
-			userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
+			userInfo = await this.openidClient.fetchUserInfo(
+				configuration,
+				tokens.access_token,
+				claims.sub,
+			);
 		} catch (error) {
 			this.logger.error('Failed to fetch user info', { error });
 			throw new BadRequestError('Invalid token');
@@ -493,7 +511,7 @@ export class OidcService {
 
 	private cachedOidcConfiguration:
 		| ({
-				configuration: Promise<client.Configuration>;
+				configuration: Promise<openidClientTypes.Configuration>;
 				validTill: Date;
 		  } & OidcRuntimeConfig)
 		| undefined;
@@ -506,8 +524,9 @@ export class OidcService {
 		discoveryUrl: URL,
 		clientId: string,
 		clientSecret: string,
-	): Promise<client.Configuration> {
-		const configuration = await client.discovery(discoveryUrl, clientId, clientSecret);
+	): Promise<openidClientTypes.Configuration> {
+		await this.loadOpenIdClient();
+		const configuration = await this.openidClient.discovery(discoveryUrl, clientId, clientSecret);
 
 		// Check if proxy environment variables are set
 		const hasProxyConfig =
@@ -525,7 +544,7 @@ export class OidcService {
 			const proxyAgent = new EnvHttpProxyAgent();
 
 			// Configure customFetch to use the proxy agent
-			configuration[client.customFetch] = async (...args) => {
+			configuration[this.openidClient.customFetch] = async (...args) => {
 				const [url, options] = args;
 				return await fetch(url, {
 					...options,
@@ -538,7 +557,7 @@ export class OidcService {
 		return configuration;
 	}
 
-	private async getOidcConfiguration(): Promise<client.Configuration> {
+	private async getOidcConfiguration(): Promise<openidClientTypes.Configuration> {
 		const now = Date.now();
 		if (
 			this.cachedOidcConfiguration === undefined ||

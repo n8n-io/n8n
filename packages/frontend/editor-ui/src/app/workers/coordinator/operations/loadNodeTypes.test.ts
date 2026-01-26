@@ -44,6 +44,7 @@ describe('Coordinator loadNodeTypes Operation', () => {
 			tabs: new Map(),
 			activeTabId: null,
 			initialized: false,
+			version: null,
 			...overrides,
 		};
 	}
@@ -64,7 +65,7 @@ describe('Coordinator loadNodeTypes Operation', () => {
 
 	describe('loadNodeTypes', () => {
 		it('should throw error when no active data worker is available', async () => {
-			const state = createMockState();
+			const state = createMockState({ version: '1.0.0' }); // Version required for ensureInitialized
 
 			await expect(loadNodeTypes(state, 'http://localhost:5678')).rejects.toThrow(
 				'[Coordinator] No active data worker available',
@@ -85,11 +86,12 @@ describe('Coordinator loadNodeTypes Operation', () => {
 		it('should ensure initialization before loading node types', async () => {
 			const state = createStateWithActiveTab();
 			state.initialized = false;
+			state.version = '1.0.0'; // Required for ensureInitialized
 			const worker = state.tabs.get('active-tab')?.dataWorker;
 
 			await loadNodeTypes(state, 'http://localhost:5678');
 
-			expect(worker?.initialize).toHaveBeenCalled();
+			expect(worker?.initialize).toHaveBeenCalledWith({ version: '1.0.0' });
 			expect(worker?.loadNodeTypes).toHaveBeenCalled();
 		});
 
@@ -149,6 +151,7 @@ describe('Coordinator loadNodeTypes Operation', () => {
 				initialize: vi.fn().mockRejectedValue(new Error('Initialization failed')),
 			});
 			state.initialized = false;
+			state.version = '1.0.0'; // Required for ensureInitialized
 
 			await expect(loadNodeTypes(state, 'http://localhost:5678')).rejects.toThrow(
 				'Initialization failed',
@@ -162,6 +165,7 @@ describe('Coordinator loadNodeTypes Operation', () => {
 				loadNodeTypes: loadNodeTypesFn,
 			});
 			state.initialized = false;
+			state.version = '1.0.0'; // Required for ensureInitialized
 
 			await expect(loadNodeTypes(state, 'http://localhost:5678')).rejects.toThrow();
 
