@@ -5,8 +5,10 @@ import * as OTPAuth from 'otpauth';
 describe('Execute TOTP node', () => {
 	const testHarness = new NodeTestHarness();
 
-	// Mock Date.now() to return a fixed timestamp for consistent TOTP generation
+	// Test constants
 	const FIXED_TIMESTAMP = 1640000000000; // 2021-12-20T11:33:20.000Z
+	const TEST_SECRET = 'BVDRSBXQB2ZEL5HE';
+	const TEST_LABEL = 'GitHub:john-doe';
 
 	beforeAll(() => {
 		jest.spyOn(Date, 'now').mockReturnValue(FIXED_TIMESTAMP);
@@ -20,7 +22,7 @@ describe('Execute TOTP node', () => {
 	// Note: The token value is the same whether label/issuer is present or not,
 	// since those fields are metadata and don't affect the TOTP algorithm
 	const expectedToken = new OTPAuth.TOTP({
-		secret: 'BVDRSBXQB2ZEL5HE',
+		secret: TEST_SECRET,
 		algorithm: 'SHA1',
 		digits: 6,
 		period: 30,
@@ -39,8 +41,8 @@ describe('Execute TOTP node', () => {
 			},
 			credentials: {
 				totpApi: {
-					label: 'GitHub:john-doe',
-					secret: 'BVDRSBXQB2ZEL5HE',
+					label: TEST_LABEL,
+					secret: TEST_SECRET,
 				},
 			},
 		},
@@ -57,7 +59,7 @@ describe('Execute TOTP node', () => {
 			},
 			credentials: {
 				totpApi: {
-					secret: 'BVDRSBXQB2ZEL5HE',
+					secret: TEST_SECRET,
 				},
 			},
 		},
