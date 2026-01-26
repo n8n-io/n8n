@@ -610,6 +610,17 @@ describe('AuthService', () => {
 			browserId,
 		});
 		const res = mock<Response>();
+		let originalSkipBrowserIdCheckEndpoints: string[];
+
+		beforeEach(() => {
+			// Save the original skipBrowserIdCheckEndpoints value
+			originalSkipBrowserIdCheckEndpoints = (authService as any).skipBrowserIdCheckEndpoints;
+		});
+
+		afterEach(() => {
+			// Restore the original skipBrowserIdCheckEndpoints value
+			(authService as any).skipBrowserIdCheckEndpoints = originalSkipBrowserIdCheckEndpoints;
+		});
 
 		it('should throw on invalid tokens', async () => {
 			await expect(authService.resolveJwt('random-string', req, res)).rejects.toThrow(

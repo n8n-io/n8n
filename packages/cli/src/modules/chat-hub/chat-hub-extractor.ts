@@ -67,7 +67,7 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 	async execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
 		if (!options.triggerItems || options.triggerItems.length === 0) {
 			this.logger.debug('No trigger items found, skipping ChatHubExtractor hook.');
-			return {};
+			throw new Error('No trigger items found, skipping ChatHubExtractor hook.');
 		}
 		const [triggerItem] = options.triggerItems;
 
@@ -107,7 +107,9 @@ export class ChatHubExtractor implements IContextEstablishmentHook {
 					error: ensureError(error),
 				});
 			}
+		} else {
+			this.logger.warn('No encryptedMetadata found in trigger item for ChatHubExtractor.');
 		}
-		return {};
+		throw new Error('No valid Chat Hub authentication metadata could be extracted.');
 	}
 }

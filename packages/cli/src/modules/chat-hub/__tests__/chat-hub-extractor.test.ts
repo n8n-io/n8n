@@ -25,34 +25,39 @@ describe('ChatHubExtractor', () => {
 	});
 
 	describe('execute', () => {
-		it('should return empty object when no trigger items', async () => {
+		it('should throw error when no trigger items', async () => {
 			const options = {
 				triggerItems: [],
 			} as unknown as ContextEstablishmentOptions;
 
-			const result = await extractor.execute(options);
-
-			expect(result).toEqual({});
+			await expect(extractor.execute(options)).rejects.toThrow(
+				'No trigger items found, skipping ChatHubExtractor hook.',
+			);
 			expect(mockLogger.debug).toHaveBeenCalledWith(
 				'No trigger items found, skipping ChatHubExtractor hook.',
 			);
 		});
 
-		it('should return empty object when triggerItems is null', async () => {
+		it('should throw error when triggerItems is null', async () => {
 			const options = {
 				triggerItems: null,
 			} as unknown as ContextEstablishmentOptions;
 
-			const result = await extractor.execute(options);
-
-			expect(result).toEqual({});
+			await expect(extractor.execute(options)).rejects.toThrow(
+				'No trigger items found, skipping ChatHubExtractor hook.',
+			);
 			expect(mockLogger.debug).toHaveBeenCalledWith(
 				'No trigger items found, skipping ChatHubExtractor hook.',
 			);
 		});
 
 		it('should decrypt and extract authToken and browserId successfully', async () => {
-			const metadata = { authToken: 'test-auth-token-123', browserId: 'browser-id-456' };
+			const metadata = {
+				authToken: 'test-auth-token-123',
+				browserId: 'browser-id-456',
+				method: 'POST',
+				endpoint: '/api/test',
+			};
 			const encryptedData = 'encrypted-string';
 
 			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
@@ -77,6 +82,8 @@ describe('ChatHubExtractor', () => {
 						metadata: {
 							source: 'chat-hub-injected',
 							browserId: 'browser-id-456',
+							method: 'POST',
+							endpoint: '/api/test',
 						},
 					},
 				},
@@ -84,7 +91,11 @@ describe('ChatHubExtractor', () => {
 		});
 
 		it('should extract authToken without browserId', async () => {
-			const metadata = { authToken: 'test-auth-token-123' };
+			const metadata = {
+				authToken: 'test-auth-token-123',
+				method: 'POST',
+				endpoint: '/api/test',
+			};
 			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
 
 			const triggerItem = createTriggerItem({
@@ -105,7 +116,9 @@ describe('ChatHubExtractor', () => {
 						identity: 'test-auth-token-123',
 						metadata: {
 							source: 'chat-hub-injected',
-							browserId: null,
+							browserId: undefined,
+							method: 'POST',
+							endpoint: '/api/test',
 						},
 					},
 				},
@@ -113,7 +126,12 @@ describe('ChatHubExtractor', () => {
 		});
 
 		it('should delete encryptedMetadata from trigger item', async () => {
-			const metadata = { authToken: 'test-auth-token-123', browserId: 'browser-id-456' };
+			const metadata = {
+				authToken: 'test-auth-token-123',
+				browserId: 'browser-id-456',
+				method: 'POST',
+				endpoint: '/api/test',
+			};
 			mockCipher.decrypt.mockReturnValue(JSON.stringify(metadata));
 
 			const triggerItem = createTriggerItem({
@@ -131,7 +149,7 @@ describe('ChatHubExtractor', () => {
 			expect(triggerItem.json).toHaveProperty('otherField', 'value');
 		});
 
-		it('should return empty object when decryption fails', async () => {
+		it('should throw error when decryption fails', async () => {
 			mockCipher.decrypt.mockImplementation(() => {
 				throw new Error('Decryption failed');
 			});
@@ -143,9 +161,9 @@ describe('ChatHubExtractor', () => {
 				triggerItems: [triggerItem],
 			} as ContextEstablishmentOptions;
 
-			const result = await extractor.execute(options);
-
-			expect(result).toEqual({});
+			await expect(extractor.execute(options)).rejects.toThrow(
+				'No valid Chat Hub authentication metadata could be extracted.',
+			);
 			expect(mockLogger.error).toHaveBeenCalledWith(
 				'Failed to decrypt/parse encrypted chat metadata',
 				expect.objectContaining({
@@ -154,7 +172,7 @@ describe('ChatHubExtractor', () => {
 			);
 		});
 
-		it('should return empty object when JSON parsing fails', async () => {
+		it('should throw error when JSON parsing fails', async () => {
 			mockCipher.decrypt.mockReturnValue('invalid-json{]');
 
 			const triggerItem = createTriggerItem({
@@ -164,13 +182,13 @@ describe('ChatHubExtractor', () => {
 				triggerItems: [triggerItem],
 			} as ContextEstablishmentOptions;
 
-			const result = await extractor.execute(options);
-
-			expect(result).toEqual({});
+			await expect(extractor.execute(options)).rejects.toThrow(
+				'No valid Chat Hub authentication metadata could be extracted.',
+			);
 			expect(mockLogger.error).toHaveBeenCalled();
 		});
 
-		it('should return empty object when authToken is missing in decrypted data', async () => {
+		it('should throw error when authToken is missing in decrypted data', async () => {
 			mockCipher.decrypt.mockReturnValue(JSON.stringify({ browserId: 'browser-id-456' }));
 
 			const triggerItem = createTriggerItem({
@@ -180,11 +198,14 @@ describe('ChatHubExtractor', () => {
 				triggerItems: [triggerItem],
 			} as ContextEstablishmentOptions;
 
-			const result = await extractor.execute(options);
-
-			expect(result).toEqual({});
+			await expect(extractor.execute(options)).rejects.toThrow(
+				'No valid Chat Hub authentication metadata could be extracted.',
+			);
 			expect(mockLogger.warn).toHaveBeenCalledWith(
 				'Invalid format for encryptedMetadata in chathub extractor',
+				expect.objectContaining({
+					errors: expect.any(Array),
+				}),
 			);
 		});
 
@@ -200,12 +221,14 @@ describe('ChatHubExtractor', () => {
 				triggerItems: [triggerItem],
 			} as ContextEstablishmentOptions;
 
-			await extractor.execute(options);
+			await expect(extractor.execute(options)).rejects.toThrow(
+				'No valid Chat Hub authentication metadata could be extracted.',
+			);
 
 			expect(triggerItem).not.toHaveProperty('encryptedMetadata');
 		});
 
-		it('should return empty object when no encryptedMetadata field', async () => {
+		it('should throw error when no encryptedMetadata field', async () => {
 			const triggerItem = createTriggerItem({
 				json: { someField: 'value' },
 			});
@@ -213,9 +236,9 @@ describe('ChatHubExtractor', () => {
 				triggerItems: [triggerItem],
 			} as ContextEstablishmentOptions;
 
-			const result = await extractor.execute(options);
-
-			expect(result).toEqual({});
+			await expect(extractor.execute(options)).rejects.toThrow(
+				'No valid Chat Hub authentication metadata could be extracted.',
+			);
 			expect(mockCipher.decrypt).not.toHaveBeenCalled();
 		});
 	});
