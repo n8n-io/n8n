@@ -66,12 +66,13 @@ export class CommunityNodeTypesService {
 
 	private createAiTools() {
 		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
-			// TODO: remove "|| true"
-			(nodeType) => nodeType.nodeDescription.usableAsTool || true,
+			(nodeType) => nodeType.nodeDescription.usableAsTool,
 		);
 		for (const nodeType of usableAsTools) {
 			const clonedNodeType = cloneDeep(nodeType);
+			// this parameter is valid npm package name
 			clonedNodeType.name += 'Tool';
+			// this parameter has -preview suffix
 			clonedNodeType.nodeDescription.name += 'Tool';
 			clonedNodeType.nodeDescription.inputs = [];
 			clonedNodeType.nodeDescription.outputs = [NodeConnectionTypes.AiTool];
@@ -85,7 +86,7 @@ export class CommunityNodeTypesService {
 				resources: clonedNodeType.nodeDescription.codex?.resources ?? {},
 			};
 
-			this.communityNodeTypes.set(clonedNodeType.nodeDescription.name, clonedNodeType);
+			this.communityNodeTypes.set(clonedNodeType.name, clonedNodeType);
 		}
 	}
 

@@ -345,8 +345,9 @@ const isLogsPanelOpen = computed(() => logsStore.isOpen);
  */
 
 async function initializeData() {
+	const isPreviewPage = settingsStore.isPreviewMode && isDemoRoute.value;
 	const loadPromises = (() => {
-		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
+		if (isPreviewPage) return [];
 
 		const promises: Array<Promise<unknown>> = [
 			workflowsStore.fetchActiveWorkflows(),
@@ -370,9 +371,14 @@ async function initializeData() {
 	}
 
 	try {
+		// important to load community nodes to render them correctly
+		if (isPreviewPage) {
+			loadPromises.push(nodeTypesStore.fetchCommunityNodePreviews());
+		} else {
+			//We don't need to await this as community node previews are not critical and needed only in nodes search panel
+			void nodeTypesStore.fetchCommunityNodePreviews();
+		}
 		await Promise.all(loadPromises);
-		//We don't need to await this as community node previews are not critical and needed only in nodes search panel
-		void nodeTypesStore.fetchCommunityNodePreviews();
 	} catch (error) {
 		toast.showError(
 			error,
