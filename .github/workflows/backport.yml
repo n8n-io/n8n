@@ -31,6 +31,7 @@ jobs:
           add_author_as_assignee: true
           copy_assignees: true
           copy_requested_reviewers: true
+          copy_labels_pattern: '*'
           experimental: >
             {
               "conflict_resolution": "draft_commit_conflicts"
