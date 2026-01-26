@@ -732,6 +732,44 @@ export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
 ) => MergeComposite<TBranches>;
 
 /**
+ * FanOutTargets marker - wraps multiple target nodes for parallel connection.
+ * Created by fanOut() function.
+ */
+export interface FanOutTargets {
+	readonly _isFanOut: true;
+	readonly targets: NodeInstance<string, string, unknown>[];
+}
+
+/**
+ * fanOut(...targets) - Connect one output to multiple parallel targets
+ *
+ * Use when a single output should fan out to multiple nodes that run in parallel.
+ * This is the opposite of Merge (which combines multiple inputs).
+ *
+ * @example Fan-out to multiple APIs
+ * const fetchData = node({ type: 'n8n-nodes-base.httpRequest', ... });
+ * const sendToSlack = node({ type: 'n8n-nodes-base.slack', ... });
+ * const sendToEmail = node({ type: 'n8n-nodes-base.gmail', ... });
+ * const saveToDb = node({ type: 'n8n-nodes-base.postgres', ... });
+ *
+ * workflow('id', 'name')
+ *   .add(trigger({ ... }))
+ *   .then(fetchData)
+ *   .then(fanOut(sendToSlack, sendToEmail, saveToDb));  // All 3 run in parallel
+ *
+ * @example Fan-out with IF branches
+ * ifNode
+ *   .onTrue(fanOut(notifyAdmin, logToDb))  // Both run when true
+ *   .onFalse(handleError);
+ *
+ * @example Fan-out with splitInBatches
+ * splitInBatches(sibNode)
+ *   .onDone(fanOut(summarize, notify))  // Both run when done
+ *   .onEachBatch(process.then(nextBatch(sibNode)));
+ */
+export type FanOutFn = (...targets: NodeInstance<string, string, unknown>[]) => FanOutTargets;
+
+/**
  * ifElse(branches, config?) - Creates an IF node with true/false branching
  *
  * Use .onTrue()/.onFalse() fluent syntax for conditional branching:

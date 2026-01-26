@@ -136,6 +136,7 @@ The following functions are pre-loaded in the execution environment. Do NOT writ
 - \`sticky(content, config?)\` - Create a sticky note for documentation
 - \`splitInBatches(config)\` - Batch processing with loops
 - \`nextBatch(sibNode)\` - Semantic helper for explicit loop-back connections
+- \`fanOut(...targets)\` - Connect one output to multiple parallel targets
 
 **Helper Functions:**
 - \`placeholder(description)\` - Create a placeholder for user input (use this instead of $env)
@@ -375,6 +376,33 @@ return workflow('id', 'name')
   .add(combineResults
     .then(processResults));  // Process merged results
 \`\`\`
+
+## Fan-Out (One Source to Multiple Targets)
+
+Use \`fanOut()\` when ONE output should connect to MULTIPLE parallel targets. This is different from Merge (multiple inputs to one output).
+
+\`\`\`typescript
+// Assume nodes declared: startTrigger, fetchData, processA, processB, processC
+
+// Use fanOut() to connect fetchData to all three targets in parallel
+return workflow('id', 'name')
+  .add(startTrigger)
+  .then(fetchData)
+  .then(fanOut(processA, processB, processC));  // One source → 3 parallel targets
+
+// Fan-out also works with IF/Switch branches
+// Assume nodes declared: checkValid (IF), notifyAdmin, logToDb, sendAlert, handleError
+return workflow('id', 'name')
+  .add(startTrigger)
+  .then(checkValid
+    .onTrue(fanOut(notifyAdmin, logToDb, sendAlert))  // All 3 run when true
+    .onFalse(handleError));
+\`\`\`
+
+**When to use fanOut():**
+- Sending the same data to multiple destinations (APIs, databases, services)
+- Running parallel processing branches from a single source
+- IF/Switch branches that fan out to multiple nodes
 
 ## Batch Processing (Loops)
 \`\`\`typescript
