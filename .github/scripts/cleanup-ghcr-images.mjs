@@ -39,14 +39,15 @@ function ghApi(path, del = false) {
 }
 
 function getVersions(pkg) {
-	const versions = [];
-	for (let page = 1; ; page++) {
-		const batch = ghApi(`${pkg}/versions?per_page=100&page=${page}`);
-		if (!batch?.length) break;
-		versions.push(...batch);
-		if (batch.length < 100) break;
+	try {
+		const out = execSync(
+			`gh api --paginate "/orgs/${ORG}/packages/container/${pkg}/versions?per_page=100" -H "Accept: application/vnd.github+json"`,
+			{ encoding: 'utf8', stdio: 'pipe', maxBuffer: 50 * 1024 * 1024 },
+		);
+		return JSON.parse(out);
+	} catch {
+		return [];
 	}
-	return versions;
 }
 
 function shouldDelete(v) {
