@@ -1,5 +1,5 @@
-import { customAlphabet } from 'nanoid';
 import { ALPHABET } from 'n8n-workflow';
+import { customAlphabet } from 'nanoid';
 
 /**
  * Generates a unique 16-character nanoid.
