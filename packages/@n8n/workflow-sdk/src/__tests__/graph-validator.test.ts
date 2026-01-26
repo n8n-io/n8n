@@ -751,6 +751,95 @@ describe('graph validation', () => {
 		});
 	});
 
+	describe('checkChainLlm', () => {
+		test('returns warning when chainLlm v1.4+ has static text prompt', () => {
+			const wf = workflow('test-id', 'ChainLlm Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1.9,
+						config: {
+							name: 'LLM Chain',
+							parameters: {
+								promptType: 'define',
+								text: 'Static text without expression',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			expect(result.warnings).toContainEqual(
+				expect.objectContaining({ code: 'AGENT_STATIC_PROMPT' }),
+			);
+		});
+
+		test('returns no warning when chainLlm v1.4+ has expression in text', () => {
+			const wf = workflow('test-id', 'ChainLlm Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1.9,
+						config: {
+							name: 'LLM Chain',
+							parameters: {
+								promptType: 'define',
+								text: '={{ $json.input }}',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const warning = result.warnings.find((w) => w.code === 'AGENT_STATIC_PROMPT');
+			expect(warning).toBeUndefined();
+		});
+
+		test('returns no warning for chainLlm v1.3 (before promptType existed)', () => {
+			const wf = workflow('test-id', 'ChainLlm Workflow')
+				.add(
+					trigger({
+						type: 'n8n-nodes-base.manualTrigger',
+						version: 1.1,
+						config: { name: 'Start' },
+					}),
+				)
+				.then(
+					node({
+						type: '@n8n/n8n-nodes-langchain.chainLlm',
+						version: 1.3,
+						config: {
+							name: 'LLM Chain',
+							parameters: {
+								prompt: 'Old style prompt',
+							},
+						},
+					}),
+				);
+
+			const result = wf.validate();
+
+			const warning = result.warnings.find((w) => w.code === 'AGENT_STATIC_PROMPT');
+			expect(warning).toBeUndefined();
+		});
+	});
+
 	describe('checkToolNode', () => {
 		test('returns warning when tool node has no parameters', () => {
 			const wf = workflow('test-id', 'Tool Workflow')

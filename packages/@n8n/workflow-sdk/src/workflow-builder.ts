@@ -669,6 +669,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				this.checkAgentNode(graphNode.instance, warnings);
 			}
 
+			// ChainLlm node checks - only for versions >= 1.4 (when promptType was introduced)
+			if (nodeType === '@n8n/n8n-nodes-langchain.chainLlm') {
+				const version = parseVersion(graphNode.instance.version);
+				if (version >= 1.4) {
+					this.checkChainLlmNode(graphNode.instance, warnings);
+				}
+			}
+
 			// HTTP Request node checks
 			if (nodeType === 'n8n-nodes-base.httpRequest') {
 				this.checkHttpRequestNode(graphNode.instance, warnings);
@@ -740,6 +748,37 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				new ValidationWarning(
 					'AGENT_NO_SYSTEM_MESSAGE',
 					`Agent node "${instance.name}" has no system message. System-level instructions should be in the system message field.`,
+					instance.name,
+				),
+			);
+		}
+	}
+
+	/**
+	 * Check ChainLlm node for static prompts (v1.4+ only)
+	 */
+	private checkChainLlmNode(
+		instance: NodeInstance<string, string, unknown>,
+		warnings: import('./validation/index').ValidationWarning[],
+	): void {
+		const { ValidationWarning } = require('./validation/index');
+		const params = instance.config?.parameters as Record<string, unknown> | undefined;
+		if (!params) return;
+
+		const promptType = params.promptType as string | undefined;
+
+		// Only check when promptType is 'define' (explicit prompt definition)
+		if (promptType !== 'define') {
+			return;
+		}
+
+		// Check: Static prompt (no expression)
+		const text = params.text as string | undefined;
+		if (!text || !this.containsExpression(text)) {
+			warnings.push(
+				new ValidationWarning(
+					'AGENT_STATIC_PROMPT',
+					`ChainLlm node "${instance.name}" has no expression in its prompt. Use an expression like '={{ $json.input }}' to pass dynamic data.`,
 					instance.name,
 				),
 			);
