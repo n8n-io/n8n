@@ -94,14 +94,13 @@ const containerClasses = computed(() => [
 	{
 		[$style.disabled]: props.disabled,
 		[$style.readonly]: props.readonly,
-		[$style.focused]: isFocused.value,
 		[$style.hasPrepend]: !!slots.prepend,
 		[$style.hasAppend]: !!slots.append,
 		'ph-no-capture': props.type === 'password',
 	},
 ]);
 
-// Track focus state
+// Track focus state for blur/focus events
 const isFocused = ref(false);
 
 // Handle input event
@@ -377,29 +376,15 @@ defineExpose({ focus, blur, select });
 	display: inline-flex;
 	align-items: center;
 	width: 100%;
-	border-radius: var(--radius);
-	border: var(--input--border-width, var(--border-width))
-		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
-	background-color: var(--input--color--background, var(--color--background--light-2));
 	gap: var(--spacing--3xs);
 }
 
-.inputContainer:hover:not(.disabled, .focused) {
-	border-color: var(--color--foreground--shade-1);
-}
-
-.focused {
-	@include focus;
-}
-
 .disabled {
-	background-color: var(--color--background--light-3);
 	cursor: not-allowed;
-	opacity: 0.6;
 }
 
 .readonly {
-	background-color: var(--color--background--light-3);
+	cursor: default;
 }
 
 .hasPrepend {
@@ -446,28 +431,79 @@ defineExpose({ focus, blur, select });
 .input {
 	flex: 1;
 	min-width: 0;
-	border: none;
-	background: transparent;
+	width: 100%;
+	border-radius: var(--radius);
+	border: var(--input--border-width, var(--border-width))
+		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
+	background-color: var(--input--color--background, var(--color--background--light-2));
 	outline: none;
 	font-family: inherit;
 	font-size: inherit;
 	color: var(--color--text--shade-1);
-	padding: 0;
+	padding: 0 var(--spacing--xs);
 }
 
 .input::placeholder {
 	color: var(--color--text--tint-1);
 }
 
+.input:hover:not(:disabled):not(:focus) {
+	border-color: var(--color--foreground--shade-1);
+}
+
+.input:focus {
+	@include focus-ring;
+}
+
 .input:disabled {
+	background-color: var(--color--background--light-3);
 	cursor: not-allowed;
 	color: var(--color--text--tint-1);
+	opacity: 0.6;
+}
+
+.input:read-only {
+	background-color: var(--color--background--light-3);
 }
 
 .textarea {
+	flex: 1;
+	min-width: 0;
+	width: 100%;
 	resize: vertical;
 	line-height: var(--line-height--md);
-	padding: var(--spacing--2xs) 0;
+	border-radius: var(--radius);
+	border: var(--input--border-width, var(--border-width))
+		var(--input--border-style, var(--border-style)) var(--input--border-color, var(--border-color));
+	background-color: var(--input--color--background, var(--color--background--light-2));
+	outline: none;
+	font-family: inherit;
+	font-size: inherit;
+	color: var(--color--text--shade-1);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+}
+
+.textarea::placeholder {
+	color: var(--color--text--tint-1);
+}
+
+.textarea:hover:not(:disabled):not(:focus) {
+	border-color: var(--color--foreground--shade-1);
+}
+
+.textarea:focus {
+	@include focus-ring;
+}
+
+.textarea:disabled {
+	background-color: var(--color--background--light-3);
+	cursor: not-allowed;
+	color: var(--color--text--tint-1);
+	opacity: 0.6;
+}
+
+.textarea:read-only {
+	background-color: var(--color--background--light-3);
 }
 
 .prefix,

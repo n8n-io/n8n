@@ -18,8 +18,3 @@
 		@include focus-ring;
 	}
 }
-
-// Input focus mixin matching Element Plus pattern
-@mixin focus {
-	box-shadow: 0 0 0 1px var(--color--secondary) inset;
-}
