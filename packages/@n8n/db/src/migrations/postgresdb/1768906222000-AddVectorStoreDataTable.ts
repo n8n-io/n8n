@@ -6,17 +6,24 @@ const TABLE_NAME = 'vector_store_data';
  * Adds a vector_store_data table for persisting vector embeddings and associated data.
  * Stores vectors as bytea (binary data) to avoid pgvector extension dependency.
  * Similarity calculations are performed in JavaScript.
+ *
+ * NOTE: If pgvector extension becomes available after this migration, the
+ * `VectorStoreDataRepository.init()` method (called during app startup)
+ * will automatically add a `vectorPgv` column and index for improved performance.
+ * When pgvector is available, only vectorPgv is populated (vector remains NULL) to avoid
+ * storing vectors twice.
  */
 export class AddVectorStoreDataTable1768906222000 implements ReversibleMigration {
 	async up({ queryRunner, tablePrefix, escape, runQuery, logger }: MigrationContext) {
 		const tableName = escape.tableName(TABLE_NAME);
 
 		// Create table with bytea column for vector storage
+		// Note: vector is nullable because when pgvector is available, only vectorPgv is populated
 		await runQuery(
 			`CREATE TABLE ${tableName} (
 				"id" VARCHAR PRIMARY KEY,
 				"memoryKey" VARCHAR(255) NOT NULL,
-				"vector" BYTEA NOT NULL,
+				"vector" BYTEA,
 				"content" TEXT NOT NULL,
 				"metadata" JSONB,
 				"projectId" VARCHAR NOT NULL,

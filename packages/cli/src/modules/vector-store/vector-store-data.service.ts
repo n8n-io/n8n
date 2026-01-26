@@ -128,4 +128,19 @@ export class VectorStoreDataService implements IVectorStoreDataService {
 		const projectId = await this.resolveProjectId(workflowId);
 		return await this.repository.listStores(projectId, filter);
 	}
+
+	/**
+	 * Initialize the repository (e.g., upgrade to pgvector if extension is available).
+	 * Called during module initialization.
+	 */
+	async init(): Promise<void> {
+		await this.repository.init?.();
+	}
+
+	/**
+	 * Cleanup resources on shutdown.
+	 */
+	async shutdown(): Promise<void> {
+		await this.repository.shutdown?.();
+	}
 }
