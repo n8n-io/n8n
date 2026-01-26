@@ -133,7 +133,8 @@
       "diff": "8.0.3",
       "undici@6": "^6.23.0",
       "undici@7": "^7.18.2",
-      "tar": "^7.5.3"
+      "tar": "^7.5.4",
+      "lodash-es": "4.17.23"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
