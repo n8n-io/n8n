@@ -187,16 +187,8 @@ function calcTextareaHeight(
 		(name) => `${name}:${style.getPropertyValue(name)}`,
 	).join(';');
 
-	const hiddenStyle = `
-		height:0 !important;
-		visibility:hidden !important;
-		overflow:hidden !important;
-		position:absolute !important;
-		z-index:-1000 !important;
-		top:0 !important;
-		right:0 !important;
-	`;
-	hiddenTextarea.setAttribute('style', `${contextStyle};${hiddenStyle}`);
+	hiddenTextarea.className = $style.hiddenTextarea;
+	hiddenTextarea.setAttribute('style', contextStyle);
 	hiddenTextarea.value = targetElement.value || targetElement.placeholder || '';
 
 	let height = hiddenTextarea.scrollHeight;
@@ -554,5 +546,15 @@ defineExpose({ focus, blur, select });
 .append {
 	border-left: var(--border);
 	margin-right: calc(-1 * var(--spacing--xs));
+}
+
+.hiddenTextarea {
+	height: 0 !important;
+	visibility: hidden !important;
+	overflow: hidden !important;
+	position: absolute !important;
+	z-index: -1000 !important;
+	top: 0 !important;
+	right: 0 !important;
 }
 </style>
