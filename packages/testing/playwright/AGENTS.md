@@ -17,6 +17,96 @@ pnpm --filter=n8n-playwright typecheck
 
 Always trim output: `--reporter=list 2>&1 | tail -50`
 
+## Test Maintenance (Janitor)
+
+Static analysis for Playwright test architecture. Catches problems before they spread.
+
+### When to Use
+
+| User Says | Intent | Approach |
+|-----------|--------|----------|
+| "Clean up the test codebase" | Incremental cleanup | Use `--max-diff-lines=500` to keep PRs reviewable. Fix easiest files first. |
+| "Add a test for X" | New test following patterns | After writing, run janitor to verify architecture compliance. |
+| "Fix architecture drift" | Enforce layered architecture | Run `selector-purity` and `no-page-in-flow` rules. |
+| "Find dead code" | Remove unused methods | Run `dead-code` rule with `--fix --write` for auto-removal. |
+| "This file is messy" | Targeted cleanup | Analyze specific file, fix issues, TCR to safely commit. |
+| "Refactor this page object" | Safe refactoring | Use TCR - changes commit if tests pass, revert if they fail. |
+| "What tests would break?" | Impact analysis | Run `impact` command before changing shared code. |
+| "Prepare for PR" | Pre-commit check | Run janitor on changed files to catch violations early. |
+
+### Architecture Rules
+
+The janitor enforces a layered architecture:
+
+```
+Tests → Flows/Composables → Page Objects → Components → Playwright API
+```
+
+| Rule | What It Catches |
+|------|-----------------|
+| `selector-purity` | Raw `getByTestId` in tests/flows (should be in page objects) |
+| `no-page-in-flow` | Flows accessing `page` directly (should use page objects) |
+| `boundary-protection` | Pages importing other pages (creates coupling) |
+| `scope-lockdown` | Unscoped locators that escape their container |
+| `dead-code` | Unused public methods in page objects |
+| `deduplication` | Same selector defined in multiple files |
+
+### Commands
+
+```bash
+# Analyze entire codebase
+pnpm --filter=@n8n/playwright-janitor janitor --json
+
+# Analyze specific file
+pnpm --filter=@n8n/playwright-janitor janitor --file=pages/CanvasPage.ts --verbose
+
+# Run specific rule
+pnpm --filter=@n8n/playwright-janitor janitor --rule=dead-code
+
+# Auto-fix (dead-code only)
+pnpm --filter=@n8n/playwright-janitor janitor --rule=dead-code --fix --write
+
+# List all rules
+pnpm --filter=@n8n/playwright-janitor janitor --list
+```
+
+### Incremental Cleanup Strategy
+
+For large cleanups, keep diffs small and reviewable:
+
+```bash
+# Find easiest files to fix (lowest violation count)
+pnpm --filter=@n8n/playwright-janitor janitor --json 2>/dev/null | jq '.fileReports | sort_by(.violationCount) | .[:5]'
+
+# TCR with max diff size (skip if changes are too large)
+pnpm --filter=@n8n/playwright-janitor janitor tcr --max-diff-lines=500 --execute -m="chore: cleanup"
+```
+
+### TCR Workflow (Test && Commit || Revert)
+
+Safe refactoring loop: make changes, run affected tests, auto-commit or auto-revert.
+
+```bash
+# Dry run - see what would happen
+pnpm --filter=@n8n/playwright-janitor janitor tcr --verbose
+
+# Execute - actually commit/revert
+pnpm --filter=@n8n/playwright-janitor janitor tcr --execute -m="chore: remove dead code"
+
+# With guardrails - skip if diff too large
+pnpm --filter=@n8n/playwright-janitor janitor tcr --execute --max-diff-lines=500 -m="chore: cleanup"
+```
+
+### After Writing New Tests
+
+Always run janitor after adding or modifying tests to catch architecture violations early:
+
+```bash
+pnpm --filter=@n8n/playwright-janitor janitor --file=tests/my-new-test.spec.ts --verbose
+```
+
+See `packages/testing/janitor/README.md` for full documentation.
+
 ## Entry Points
 
 All tests should start with `n8n.start.*` methods. See `composables/TestEntryComposer.ts`.
