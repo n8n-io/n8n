@@ -53,6 +53,8 @@ export function createValidateStructureTool(parsedNodeTypes: INodeTypeDescriptio
 
 				const stateUpdates: Record<string, unknown> = {
 					structureValidation: { connections: connectionViolations, trigger: triggerViolations },
+					// Pass violations to state for reflection routing (CRITIC pattern)
+					lastValidationViolations: allViolations,
 				};
 
 				return createSuccessResponse(config, message, stateUpdates);

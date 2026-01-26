@@ -6,6 +6,7 @@ import { isCommand, END } from '@langchain/langgraph';
 import { isBaseMessage } from '../types/langchain';
 import type { WorkflowMetadata } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
+import type { ProgrammaticViolation } from '../validation/types';
 
 interface CommandUpdate {
 	messages?: BaseMessage[];
@@ -13,6 +14,21 @@ interface CommandUpdate {
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
 	bestPractices?: string;
+	lastValidationViolations?: ProgrammaticViolation[];
+}
+
+/**
+ * Check if an optional field is a valid array (undefined or array)
+ */
+function isOptionalArray(obj: Record<string, unknown>, key: string): boolean {
+	return !(key in obj) || obj[key] === undefined || Array.isArray(obj[key]);
+}
+
+/**
+ * Check if an optional field is a valid string (undefined or string)
+ */
+function isOptionalString(obj: Record<string, unknown>, key: string): boolean {
+	return !(key in obj) || obj[key] === undefined || typeof obj[key] === 'string';
 }
 
 /**
@@ -23,39 +39,21 @@ function isCommandUpdate(value: unknown): value is CommandUpdate {
 		return false;
 	}
 	const obj = value as Record<string, unknown>;
-	// messages is optional, but if present must be an array
-	if ('messages' in obj && obj.messages !== undefined && !Array.isArray(obj.messages)) {
-		return false;
+
+	// Check all optional array fields
+	const arrayFields = [
+		'messages',
+		'workflowOperations',
+		'templateIds',
+		'cachedTemplates',
+		'lastValidationViolations',
+	];
+	for (const field of arrayFields) {
+		if (!isOptionalArray(obj, field)) return false;
 	}
-	// workflowOperations is optional, but if present must be an array
-	if (
-		'workflowOperations' in obj &&
-		obj.workflowOperations !== undefined &&
-		!Array.isArray(obj.workflowOperations)
-	) {
-		return false;
-	}
-	// templateIds is optional, but if present must be an array
-	if ('templateIds' in obj && obj.templateIds !== undefined && !Array.isArray(obj.templateIds)) {
-		return false;
-	}
-	// cachedTemplates is optional, but if present must be an array
-	if (
-		'cachedTemplates' in obj &&
-		obj.cachedTemplates !== undefined &&
-		!Array.isArray(obj.cachedTemplates)
-	) {
-		return false;
-	}
-	// bestPractices is optional, but if present must be a string
-	if (
-		'bestPractices' in obj &&
-		obj.bestPractices !== undefined &&
-		typeof obj.bestPractices !== 'string'
-	) {
-		return false;
-	}
-	return true;
+
+	// Check optional string field
+	return isOptionalString(obj, 'bestPractices');
 }
 
 /**
@@ -77,6 +75,7 @@ export async function executeSubgraphTools(
 	templateIds?: number[];
 	cachedTemplates?: WorkflowMetadata[];
 	bestPractices?: string;
+	lastValidationViolations?: ProgrammaticViolation[];
 }> {
 	const lastMessage = state.messages[state.messages.length - 1];
 
@@ -115,66 +114,79 @@ export async function executeSubgraphTools(
 		}),
 	);
 
-	// Unwrap Command objects and collect messages/operations/templateIds/cachedTemplates/bestPractices
-	const messages: BaseMessage[] = [];
-	const operations: WorkflowOperation[] = [];
-	const templateIds: number[] = [];
-	const cachedTemplates: WorkflowMetadata[] = [];
-	let bestPractices: string | undefined;
+	// Unwrap Command objects and collect all state updates
+	const collected = collectToolResults(toolResults);
+	return buildStateUpdate(collected);
+}
+
+/**
+ * Collected results from tool execution
+ */
+interface CollectedResults {
+	messages: BaseMessage[];
+	operations: WorkflowOperation[];
+	templateIds: number[];
+	cachedTemplates: WorkflowMetadata[];
+	bestPractices?: string;
+	lastValidationViolations?: ProgrammaticViolation[];
+}
+
+/**
+ * Collect and merge results from tool executions
+ */
+function collectToolResults(toolResults: unknown[]): CollectedResults {
+	const collected: CollectedResults = {
+		messages: [],
+		operations: [],
+		templateIds: [],
+		cachedTemplates: [],
+	};
 
 	for (const result of toolResults) {
-		if (isCommand(result)) {
-			// Tool returned Command - extract update using type guard
-			if (isCommandUpdate(result.update)) {
-				if (result.update.messages) {
-					messages.push(...result.update.messages);
-				}
-				if (result.update.workflowOperations) {
-					operations.push(...result.update.workflowOperations);
-				}
-				if (result.update.templateIds) {
-					templateIds.push(...result.update.templateIds);
-				}
-				if (result.update.cachedTemplates) {
-					cachedTemplates.push(...result.update.cachedTemplates);
-				}
-				if (result.update.bestPractices) {
-					bestPractices = result.update.bestPractices;
-				}
-			}
+		if (isCommand(result) && isCommandUpdate(result.update)) {
+			const update = result.update;
+			if (update.messages) collected.messages.push(...update.messages);
+			if (update.workflowOperations) collected.operations.push(...update.workflowOperations);
+			if (update.templateIds) collected.templateIds.push(...update.templateIds);
+			if (update.cachedTemplates) collected.cachedTemplates.push(...update.cachedTemplates);
+			if (update.bestPractices) collected.bestPractices = update.bestPractices;
+			if (update.lastValidationViolations)
+				collected.lastValidationViolations = update.lastValidationViolations;
 		} else if (isBaseMessage(result)) {
-			// Direct message (ToolMessage, AIMessage, etc.)
-			messages.push(result);
+			collected.messages.push(result);
 		}
 	}
 
+	return collected;
+}
+
+/**
+ * Build state update from collected results
+ */
+function buildStateUpdate(collected: CollectedResults): {
+	messages?: BaseMessage[];
+	workflowOperations?: WorkflowOperation[] | null;
+	templateIds?: number[];
+	cachedTemplates?: WorkflowMetadata[];
+	bestPractices?: string;
+	lastValidationViolations?: ProgrammaticViolation[];
+} {
 	const stateUpdate: {
 		messages?: BaseMessage[];
 		workflowOperations?: WorkflowOperation[] | null;
 		templateIds?: number[];
 		cachedTemplates?: WorkflowMetadata[];
 		bestPractices?: string;
+		lastValidationViolations?: ProgrammaticViolation[];
 	} = {};
 
-	if (messages.length > 0) {
-		stateUpdate.messages = messages;
-	}
-
-	if (operations.length > 0) {
-		stateUpdate.workflowOperations = operations;
-	}
-
-	if (templateIds.length > 0) {
-		stateUpdate.templateIds = templateIds;
-	}
-
-	if (cachedTemplates.length > 0) {
-		stateUpdate.cachedTemplates = cachedTemplates;
-	}
-
-	if (bestPractices) {
-		stateUpdate.bestPractices = bestPractices;
-	}
+	if (collected.messages.length > 0) stateUpdate.messages = collected.messages;
+	if (collected.operations.length > 0) stateUpdate.workflowOperations = collected.operations;
+	if (collected.templateIds.length > 0) stateUpdate.templateIds = collected.templateIds;
+	if (collected.cachedTemplates.length > 0) stateUpdate.cachedTemplates = collected.cachedTemplates;
+	if (collected.bestPractices) stateUpdate.bestPractices = collected.bestPractices;
+	if (collected.lastValidationViolations)
+		stateUpdate.lastValidationViolations = collected.lastValidationViolations;
 
 	return stateUpdate;
 }

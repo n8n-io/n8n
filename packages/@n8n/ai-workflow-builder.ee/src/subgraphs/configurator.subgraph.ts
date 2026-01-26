@@ -1,12 +1,14 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 import type { StructuredTool } from '@langchain/core/tools';
-import { Annotation, StateGraph } from '@langchain/langgraph';
+import { Annotation, StateGraph, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { ConfiguratorReflectionAgent } from '@/agents/configurator-reflection.agent';
 import { LLMServiceError } from '@/errors';
 import {
 	buildConfiguratorPrompt,
@@ -14,6 +16,7 @@ import {
 	INSTANCE_URL_PROMPT,
 } from '@/prompts/agents/configurator.prompt';
 import type { ResourceLocatorCallback } from '@/types/callbacks';
+import type { ProgrammaticViolation } from '@/validation/types';
 import type { BuilderFeatureFlags, ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -24,9 +27,10 @@ import { createGetResourceLocatorOptionsTool } from '../tools/get-resource-locat
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
-import { createConfiguratorMetadata } from '../types/coordination';
+import { createConfiguratorMetadata, createReflectionMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import { isBaseMessage } from '../types/langchain';
+import type { ReflectionResult } from '../types/reflection';
 import type { WorkflowMetadata } from '../types/tools';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
@@ -44,11 +48,7 @@ import {
 	type RLCPrefetchResult,
 } from '../utils/rlc-prefetch';
 import { cachedTemplatesReducer } from '../utils/state-reducers';
-import {
-	executeSubgraphTools,
-	extractUserRequest,
-	createStandardShouldContinue,
-} from '../utils/subgraph-helpers';
+import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
  * Configurator Subgraph State
@@ -107,6 +107,31 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 
 	// Pre-fetched RLC options - raw JSON for potential tool use
 	prefetchedRLCOptions: Annotation<RLCPrefetchResult[]>({
+		reducer: (x, y) => y ?? x,
+		default: () => [],
+	}),
+
+	// CRITIC Pattern: Reflection state fields
+	// Track reflection attempts (limit to prevent infinite loops)
+	reflectionCount: Annotation<number>({
+		reducer: (x, y) => y ?? x,
+		default: () => 0,
+	}),
+
+	// Current reflection result (passed to next agent call)
+	reflectionContext: Annotation<ReflectionResult | null>({
+		reducer: (x, y) => y ?? x,
+		default: () => null,
+	}),
+
+	// Previous reflections in this session (reflection bank)
+	previousReflections: Annotation<ReflectionResult[]>({
+		reducer: (x, y) => x.concat(y),
+		default: () => [],
+	}),
+
+	// Last validation violations (for reflection routing)
+	lastValidationViolations: Annotation<ProgrammaticViolation[]>({
 		reducer: (x, y) => y ?? x,
 		default: () => [],
 	}),
@@ -255,6 +280,27 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			return { prefetchedRLCOptions: results };
 		};
 
+		// CRITIC Pattern: Create reflection agent for analyzing configuration failures
+		const reflectionAgent = new ConfiguratorReflectionAgent({ llm: config.llm });
+		const MAX_REFLECTION_ATTEMPTS = 2;
+
+		/**
+		 * Build reflection guidance block from reflection result
+		 */
+		const buildReflectionGuidanceBlock = (reflection: ReflectionResult): string => {
+			const parts = [
+				'=== REFLECTION GUIDANCE (from previous validation failure) ===',
+				`Previous attempt failed: ${reflection.summary}`,
+				`Root cause: ${reflection.rootCause}`,
+				'Suggested fixes:',
+				...reflection.suggestedFixes.map((f) => `- [${f.action}] ${f.guidance}`),
+			];
+			if (reflection.avoidStrategies.length > 0) {
+				parts.push(`AVOID: ${reflection.avoidStrategies.join(', ')}`);
+			}
+			return parts.join('\n');
+		};
+
 		/**
 		 * Agent node - calls configurator agent
 		 * Context is already in messages from transformInput (with RLC options appended by prefetchRLCNode)
@@ -263,8 +309,16 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			// Apply cache markers to accumulated messages (for tool loop iterations)
 			applySubgraphCacheMarkers(state.messages);
 
+			// Add reflection guidance if available (CRITIC pattern)
+			const messagesWithReflection = state.reflectionContext
+				? [
+						...state.messages,
+						new HumanMessage({ content: buildReflectionGuidanceBlock(state.reflectionContext) }),
+					]
+				: state.messages;
+
 			const response: unknown = await this.agent.invoke({
-				messages: state.messages,
+				messages: messagesWithReflection,
 				instanceUrl: state.instanceUrl ?? '',
 			});
 
@@ -272,21 +326,85 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				throw new LLMServiceError('Configurator agent did not return a valid message');
 			}
 
-			return { messages: [response] };
+			// Check if agent is making tool calls
+			const hasToolCalls =
+				'tool_calls' in response &&
+				Array.isArray(response.tool_calls) &&
+				response.tool_calls.length > 0;
+
+			return {
+				messages: [response],
+				// Clear reflection context after use (it's been incorporated)
+				reflectionContext: null,
+				// Only clear violations if agent has tool calls (will be set again by validation tool)
+				// Keep violations if agent is done so shouldContinue can route to reflection
+				...(hasToolCalls ? { lastValidationViolations: [] } : {}),
+			};
 		};
 
-		// Build the subgraph
+		/**
+		 * Reflection node - analyzes configuration validation failures (CRITIC pattern)
+		 */
+		const reflect = async (state: typeof ConfiguratorSubgraphState.State) => {
+			const reflectionResult = await reflectionAgent.invoke({
+				violations: state.lastValidationViolations,
+				workflowJSON: state.workflowJSON,
+				discoveryContext: state.discoveryContext,
+				previousReflections: state.previousReflections,
+				userRequest: state.userRequest,
+			});
+
+			return {
+				reflectionContext: reflectionResult,
+				previousReflections: [reflectionResult],
+				reflectionCount: state.reflectionCount + 1,
+			};
+		};
+
+		/**
+		 * Should continue with tools, reflect on failures, or finish?
+		 * CRITIC pattern: Route to reflection when validation fails
+		 */
+		const shouldContinue = (state: typeof ConfiguratorSubgraphState.State) => {
+			const lastMessage = state.messages[state.messages.length - 1];
+			const hasToolCalls =
+				lastMessage &&
+				'tool_calls' in lastMessage &&
+				Array.isArray(lastMessage.tool_calls) &&
+				lastMessage.tool_calls.length > 0;
+
+			if (hasToolCalls) {
+				return 'tools';
+			}
+
+			// CRITIC pattern: Route to reflection if validation failed and under limit
+			if (
+				state.lastValidationViolations.length > 0 &&
+				state.reflectionCount < MAX_REFLECTION_ATTEMPTS
+			) {
+				return 'reflect';
+			}
+
+			return END;
+		};
+
+		// Build the subgraph with reflection node (CRITIC pattern)
 		const subgraph = new StateGraph(ConfiguratorSubgraphState)
 			.addNode('prefetch_rlc', prefetchRLCNode)
 			.addNode('agent', callAgent)
 			.addNode('tools', async (state) => await executeSubgraphTools(state, this.toolMap))
 			.addNode('process_operations', processOperations)
+			.addNode('reflect', reflect)
 			.addEdge('__start__', 'prefetch_rlc')
 			.addEdge('prefetch_rlc', 'agent')
-			// Map 'tools' to tools node, END is handled automatically
-			.addConditionalEdges('agent', createStandardShouldContinue())
+			.addConditionalEdges('agent', shouldContinue, {
+				tools: 'tools',
+				reflect: 'reflect',
+				[END]: END,
+			})
 			.addEdge('tools', 'process_operations')
-			.addEdge('process_operations', 'agent'); // Loop back
+			.addEdge('process_operations', 'agent')
+			.addEdge('reflect', 'agent'); // After reflection, retry with guidance
 
 		return subgraph.compile();
 	}
@@ -367,8 +485,30 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			setupInstructions.includes('setup') ||
 			setupInstructions.length > 50;
 
-		// Create coordination log entry (not a message)
-		const logEntry: CoordinationLogEntry = {
+		// Build coordination log entries
+		const logEntries: CoordinationLogEntry[] = [];
+
+		// CRITIC Pattern: Add reflection entries if any occurred
+		if (subgraphOutput.previousReflections.length > 0) {
+			for (let i = 0; i < subgraphOutput.previousReflections.length; i++) {
+				const reflection = subgraphOutput.previousReflections[i];
+				logEntries.push({
+					phase: 'reflection',
+					status: 'completed',
+					timestamp: Date.now(),
+					summary: reflection.summary,
+					output: reflection.rootCause,
+					metadata: createReflectionMetadata({
+						violationsAnalyzed: subgraphOutput.lastValidationViolations.length,
+						rootCauses: [reflection.category],
+						attemptNumber: i + 1,
+					}),
+				});
+			}
+		}
+
+		// Create configurator coordination log entry
+		logEntries.push({
 			phase: 'configurator',
 			status: 'completed',
 			timestamp: Date.now(),
@@ -378,12 +518,12 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				nodesConfigured,
 				hasSetupInstructions,
 			}),
-		};
+		});
 
 		return {
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
-			coordinationLog: [logEntry],
+			coordinationLog: logEntries,
 			// Propagate cached templates back to parent
 			cachedTemplates: subgraphOutput.cachedTemplates,
 			// NO messages - clean separation from user-facing conversation

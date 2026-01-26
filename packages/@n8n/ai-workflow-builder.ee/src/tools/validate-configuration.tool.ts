@@ -60,6 +60,8 @@ export function createValidateConfigurationTool(
 						tools: toolViolations,
 						fromAi: fromAiViolations,
 					},
+					// Pass violations to state for reflection routing (CRITIC pattern)
+					lastValidationViolations: allViolations,
 				});
 			} catch (error) {
 				if (error instanceof z.ZodError) {

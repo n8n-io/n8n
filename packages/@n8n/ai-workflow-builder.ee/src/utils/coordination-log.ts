@@ -14,6 +14,7 @@ import type {
 	BuilderMetadata,
 	ConfiguratorMetadata,
 	StateManagementMetadata,
+	ReflectionMetadata,
 } from '../types/coordination';
 
 export type RoutingDecision = 'discovery' | 'builder' | 'configurator' | 'responder';
@@ -87,8 +88,18 @@ export function getPhaseMetadata(
 ): StateManagementMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
+	phase: 'reflection',
+): ReflectionMetadata | null;
+export function getPhaseMetadata(
+	log: CoordinationLogEntry[],
 	phase: SubgraphPhase,
-): DiscoveryMetadata | BuilderMetadata | ConfiguratorMetadata | StateManagementMetadata | null {
+):
+	| DiscoveryMetadata
+	| BuilderMetadata
+	| ConfiguratorMetadata
+	| StateManagementMetadata
+	| ReflectionMetadata
+	| null {
 	const entry = getPhaseEntry(log, phase);
 	if (!entry) return null;
 

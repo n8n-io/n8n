@@ -5,7 +5,12 @@
  * and enable deterministic routing without polluting the messages array.
  */
 
-export type SubgraphPhase = 'discovery' | 'builder' | 'configurator' | 'state_management';
+export type SubgraphPhase =
+	| 'discovery'
+	| 'builder'
+	| 'configurator'
+	| 'state_management'
+	| 'reflection';
 
 /**
  * Entry in the coordination log tracking subgraph completion.
@@ -35,7 +40,18 @@ export type CoordinationMetadata =
 	| BuilderMetadata
 	| ConfiguratorMetadata
 	| StateManagementMetadata
+	| ReflectionMetadata
 	| ErrorMetadata;
+
+export interface ReflectionMetadata {
+	phase: 'reflection';
+	/** Number of violations analyzed */
+	violationsAnalyzed: number;
+	/** Root cause categories identified */
+	rootCauses: string[];
+	/** Attempt number (1-based) */
+	attemptNumber: number;
+}
 
 export interface DiscoveryMetadata {
 	phase: 'discovery';
@@ -113,4 +129,10 @@ export function createStateManagementMetadata(
 	data: Omit<StateManagementMetadata, 'phase'>,
 ): StateManagementMetadata {
 	return { phase: 'state_management', ...data };
+}
+
+export function createReflectionMetadata(
+	data: Omit<ReflectionMetadata, 'phase'>,
+): ReflectionMetadata {
+	return { phase: 'reflection', ...data };
 }
