@@ -93,26 +93,31 @@ describe('Execution Lifecycle Hooks', () => {
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 	});
 	const successfulRun = mock<IRun>({
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 	});
 	const failedRun = mock<IRun>({
 		status: 'error',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 	});
 	const waitingRun = mock<IRun>({
 		finished: true,
 		status: 'waiting',
 		waitTill: new Date(),
+		storedAt: 'db',
 	});
 	const successfulRunWithMetadata = mock<IRun>({
 		status: 'success',
 		finished: true,
 		waitTill: undefined,
+		storedAt: 'db',
 		data: {
 			resultData: {
 				metadata: {
@@ -760,6 +765,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(executionPersistence.delete).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
+					storedAt: 'db',
 				});
 			});
 
@@ -783,6 +789,7 @@ describe('Execution Lifecycle Hooks', () => {
 				expect(executionPersistence.delete).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
+					storedAt: 'db',
 				});
 			});
 
@@ -820,6 +827,7 @@ describe('Execution Lifecycle Hooks', () => {
 					expect(executionPersistence.delete).toHaveBeenCalledWith({
 						workflowId,
 						executionId,
+						storedAt: 'db',
 					});
 				});
 
