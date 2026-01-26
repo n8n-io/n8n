@@ -45,7 +45,7 @@ export type CreateDataTableOptions = Pick<DataTable, 'name'> & {
 
 export type UpdateDataTableOptions = { name: string };
 
-export type ListDataTableOptionsSortByKey = 'name' | 'createdAt' | 'updatedAt' | 'sizeBytes';
+export type ListDataTableOptionsSortByKey = 'name' | 'createdAt' | 'updatedAt';
 
 export type ListDataTableOptions = {
 	filter?: Record<string, string | string[]>;
