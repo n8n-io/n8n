@@ -837,7 +837,6 @@
 	"credentialEdit.credentialConfig.externalSecrets.moreInfo": "More info",
 	"credentialEdit.credentialConfig.dynamicCredentials.title": "Set up for dynamic credentials",
 	"credentialEdit.credentialConfig.dynamicCredentials.infoTip": "When enabled, each execution uses the triggering user's credentials instead of a single fixed credential. Requires a webhook trigger with user identity extraction enabled. The credentials you connect are only used for manual testing or when the workflow uses a non-webhook trigger.",
-	"credentialEdit.credentialConfig.dynamicCredentials.alertMessage": "Credentials below are used only for manual testing or when the workflow uses a non-webhook trigger",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText": "Close",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText": "Keep Editing",
 	"credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline": "Close without saving?",
