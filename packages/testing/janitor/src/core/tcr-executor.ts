@@ -7,7 +7,6 @@ import * as path from 'path';
 import { Project } from 'ts-morph';
 import { diffFileMethods, type MethodChange } from './ast-diff-analyzer.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
-import { ImpactAnalyzer } from './impact-analyzer.js';
 import { getRootDir } from '../utils/paths.js';
 import { RuleRunner } from './rule-runner.js';
 import { createProject } from './project-loader.js';
@@ -397,12 +396,23 @@ export class TcrExecutor {
 		const affectedTests = new Set<string>();
 		const root = getRootDir();
 
+		// Separate changed test files from other files
+		const changedTestFiles = changedFiles
+			.filter((f) => f.endsWith('.spec.ts'))
+			.map((f) => path.relative(root, f));
+
+		// Build method usage index for modified/removed method lookup
 		if (!this.methodUsageIndex) {
 			const analyzer = new MethodUsageAnalyzer(this.project);
 			this.methodUsageIndex = analyzer.buildIndex();
 		}
 
-		for (const change of changedMethods) {
+		// Separate methods by change type
+		const addedMethods = changedMethods.filter((m) => m.changeType === 'added');
+		const modifiedOrRemovedMethods = changedMethods.filter((m) => m.changeType !== 'added');
+
+		// For MODIFIED/REMOVED methods: use method usage index (existing behavior)
+		for (const change of modifiedOrRemovedMethods) {
 			const key = `${change.className}.${change.methodName}`;
 			const usages = this.methodUsageIndex.methods[key] || [];
 			for (const usage of usages) {
@@ -410,11 +420,28 @@ export class TcrExecutor {
 			}
 		}
 
-		const impactAnalyzer = new ImpactAnalyzer(this.project);
-		const relativePaths = changedFiles.map((f) => path.relative(root, f));
-		const impact = impactAnalyzer.analyze(relativePaths);
+		// For ADDED methods: check if changed test files use the new method
+		// (since a new method can only be used by files that were also changed)
+		if (addedMethods.length > 0 && changedTestFiles.length > 0) {
+			for (const testFile of changedTestFiles) {
+				const fullPath = path.join(root, testFile);
+				const sourceFile = this.project.getSourceFile(fullPath);
+				if (!sourceFile) continue;
 
-		for (const testFile of impact.affectedTests) {
+				const content = sourceFile.getFullText();
+				for (const method of addedMethods) {
+					// Check if test file references the new method
+					const methodPattern = new RegExp(`\\.${method.methodName}\\s*\\(`);
+					if (methodPattern.test(content)) {
+						affectedTests.add(testFile);
+						break;
+					}
+				}
+			}
+		}
+
+		// Also include any directly changed test files
+		for (const testFile of changedTestFiles) {
 			affectedTests.add(testFile);
 		}
 
@@ -431,10 +458,16 @@ export class TcrExecutor {
 		if (verbose) console.log(`\nRunning ${testFiles.length} test file(s)...`);
 
 		try {
-			const testPattern = testFiles.join(' ');
+			// Build grep pattern from test file paths
+			// Convert paths like "tests/e2e/workflows/editor/tags.spec.ts" to grep pattern
+			const grepPattern = testFiles
+				.map((f) => f.replace(/\//g, '\\/').replace(/\./g, '\\.'))
+				.join('|');
+
+			// Use pnpm test:local with grep for targeted test execution and 1 worker for stability
 			const cmd = testCommand
-				? `${testCommand} ${testPattern}`
-				: `npx playwright test ${testPattern}`;
+				? `${testCommand} --grep="${grepPattern}"`
+				: `pnpm test:local --grep="${grepPattern}" --workers=1`;
 
 			if (verbose) console.log(`Command: ${cmd}`);
 
