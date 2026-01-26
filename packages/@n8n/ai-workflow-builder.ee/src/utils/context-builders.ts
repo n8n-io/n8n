@@ -23,7 +23,7 @@ export function buildWorkflowSummary(workflow: SimpleWorkflow): string {
 }
 
 /**
- * Build workflow JSON block for Builder/Configurator
+ * Build workflow JSON block for Builder
  */
 export function buildWorkflowJsonBlock(workflow: SimpleWorkflow): string {
 	const trimmed = trimWorkflowJSON(workflow);
@@ -40,7 +40,7 @@ export function buildWorkflowJsonBlock(workflow: SimpleWorkflow): string {
 // ============================================================================
 
 /**
- * Build discovery context block for Builder/Configurator
+ * Build discovery context block for Builder
  * Includes nodes found, connection parameters, and optionally best practices
  */
 export function buildDiscoveryContextBlock(
@@ -97,7 +97,7 @@ export function buildDiscoveryContextBlock(
 // ============================================================================
 
 /**
- * Build execution context block (data + schema) for Configurator
+ * Build execution context block (data + schema) for Builder
  * Includes both execution data and schema
  */
 export function buildExecutionContextBlock(

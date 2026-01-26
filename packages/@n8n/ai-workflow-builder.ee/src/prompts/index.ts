@@ -21,13 +21,11 @@ export {
 } from './builder';
 
 // Agent prompts - Using Opus-optimized versions
-// Reduced from ~3,538 lines to ~415 lines (~88% reduction)
-export { buildBuilderPrompt } from './opus/agents/builder.prompt';
 export {
-	buildBuilderConfiguratorPrompt,
+	buildBuilderPrompt,
 	INSTANCE_URL_PROMPT,
 	buildRecoveryModeContext,
-} from './opus/agents/builder-configurator.prompt';
+} from './opus/agents/builder.prompt';
 export {
 	buildDiscoveryPrompt,
 	exampleCategorizations,
@@ -35,8 +33,7 @@ export {
 	formatExampleCategorizations,
 	type DiscoveryPromptOptions,
 } from './opus/agents/discovery.prompt';
-export { buildConfiguratorPrompt } from './opus/agents/configurator.prompt';
-export { buildSupervisorPrompt } from './agents/supervisor.prompt';
+export { buildSupervisorPrompt } from './opus/agents/supervisor.prompt';
 export {
 	buildResponderPrompt,
 	buildRecursionErrorWithWorkflowGuidance,

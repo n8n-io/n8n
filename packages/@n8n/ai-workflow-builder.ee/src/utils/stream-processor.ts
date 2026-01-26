@@ -57,20 +57,15 @@ const SKIPPED_NODES = [
 	'cleanup_dangling_tool_calls',
 	'create_workflow_name',
 	'auto_compact_messages',
-	'configurator_subgraph',
-	'discovery_subgraph',
 	'builder_subgraph',
+	'discovery_subgraph',
 ];
 
 /**
  * Subgraph namespace prefixes that should not emit message events
  * Note: Actual namespaces have UUIDs appended like "builder_subgraph:612f4bc3-..."
  */
-const SKIPPED_SUBGRAPH_PREFIXES = [
-	'discovery_subgraph',
-	'builder_subgraph',
-	'configurator_subgraph',
-];
+const SKIPPED_SUBGRAPH_PREFIXES = ['discovery_subgraph', 'builder_subgraph'];
 
 // ============================================================================
 // FILTERING LOGIC

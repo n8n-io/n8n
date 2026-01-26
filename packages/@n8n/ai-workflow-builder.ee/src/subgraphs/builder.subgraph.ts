@@ -8,11 +8,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import {
-	buildBuilderConfiguratorPrompt,
-	INSTANCE_URL_PROMPT,
-	buildRecoveryModeContext,
-} from '@/prompts';
+import { buildBuilderPrompt, INSTANCE_URL_PROMPT, buildRecoveryModeContext } from '@/prompts';
 import type { ResourceLocatorCallback } from '@/types/callbacks';
 import { autoFixConnections } from '@/validation/auto-fix';
 import { validateConnections } from '@/validation/checks';
@@ -65,11 +61,11 @@ import {
 } from '../utils/subgraph-helpers';
 
 /**
- * BuilderConfigurator Subgraph State
+ * Builder Subgraph State
  *
- * Combined state from Builder and Configurator subgraphs.
+ * State for the Builder subgraph which handles node creation, connections, and configuration.
  */
-export const BuilderConfiguratorSubgraphState = Annotation.Root({
+export const BuilderSubgraphState = Annotation.Root({
 	// Input: Current workflow to modify
 	workflowJSON: Annotation<SimpleWorkflow>({
 		reducer: (x, y) => y ?? x,
@@ -93,7 +89,7 @@ export const BuilderConfiguratorSubgraphState = Annotation.Root({
 		default: () => null,
 	}),
 
-	// Input: Instance URL for webhook nodes (from Configurator)
+	// Input: Instance URL for webhook nodes
 	instanceUrl: Annotation<string>({
 		reducer: (x, y) => y ?? x,
 		default: () => '',
@@ -128,7 +124,7 @@ export const BuilderConfiguratorSubgraphState = Annotation.Root({
 	}),
 });
 
-export interface BuilderConfiguratorSubgraphConfig {
+export interface BuilderSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
 	/** Separate LLM for parameter updater chain (defaults to llm if not provided) */
@@ -140,15 +136,15 @@ export interface BuilderConfiguratorSubgraphConfig {
 	resourceLocatorCallback?: ResourceLocatorCallback;
 }
 
-export class BuilderConfiguratorSubgraph extends BaseSubgraph<
-	BuilderConfiguratorSubgraphConfig,
-	typeof BuilderConfiguratorSubgraphState.State,
+export class BuilderSubgraph extends BaseSubgraph<
+	BuilderSubgraphConfig,
+	typeof BuilderSubgraphState.State,
 	typeof ParentGraphState.State
 > {
-	name = 'builder_configurator_subgraph';
+	name = 'builder_subgraph';
 	description = 'Constructs workflow structure and configures node parameters';
 
-	private config?: BuilderConfiguratorSubgraphConfig;
+	private config?: BuilderSubgraphConfig;
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
 	private instanceUrl: string = '';
@@ -156,7 +152,7 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 	private resourceLocatorCallback?: ResourceLocatorCallback;
 	private logger?: Logger;
 
-	create(config: BuilderConfiguratorSubgraphConfig) {
+	create(config: BuilderSubgraphConfig) {
 		// Store config for use in transformOutput and RLC prefetching
 		this.config = config;
 		this.instanceUrl = config.instanceUrl ?? '';
@@ -170,16 +166,16 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 		// Use separate LLM for parameter updater if provided
 		const parameterUpdaterLLM = config.llmParameterUpdater ?? config.llm;
 
-		// Create all tools (Builder + Configurator)
+		// Create all tools (structure + configuration)
 		const baseTools = [
-			// Builder tools
+			// Structure tools
 			createAddNodeTool(config.parsedNodeTypes),
 			createConnectNodesTool(config.parsedNodeTypes, config.logger),
 			createRemoveNodeTool(config.logger),
 			createRemoveConnectionTool(config.logger),
 			createRenameNodeTool(config.logger),
 			createValidateStructureTool(config.parsedNodeTypes),
-			// Configurator tools
+			// Configuration tools
 			createUpdateNodeParametersTool(
 				config.parsedNodeTypes,
 				parameterUpdaterLLM,
@@ -218,7 +214,7 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 				[
 					{
 						type: 'text',
-						text: buildBuilderConfiguratorPrompt(),
+						text: buildBuilderPrompt(),
 					},
 					{
 						type: 'text',
@@ -243,7 +239,7 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 		 * This runs before the agent to provide all necessary resource options upfront
 		 * Mutates messages in place to append RLC context
 		 */
-		const prefetchRLCNode = async (state: typeof BuilderConfiguratorSubgraphState.State) => {
+		const prefetchRLCNode = async (state: typeof BuilderSubgraphState.State) => {
 			// Skip if no callback is available
 			if (!this.resourceLocatorCallback) {
 				return { prefetchedRLCOptions: [] };
@@ -290,10 +286,10 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 		};
 
 		/**
-		 * Agent node - calls builder-configurator agent
+		 * Agent node - calls builder agent
 		 * Context is already in messages from transformInput (with RLC options appended by prefetchRLCNode)
 		 */
-		const callAgent = async (state: typeof BuilderConfiguratorSubgraphState.State) => {
+		const callAgent = async (state: typeof BuilderSubgraphState.State) => {
 			// Apply cache markers to accumulated messages (for tool loop iterations)
 			applySubgraphCacheMarkers(state.messages);
 
@@ -304,7 +300,7 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 			});
 
 			if (!isBaseMessage(response)) {
-				throw new LLMServiceError('BuilderConfigurator agent did not return a valid message');
+				throw new LLMServiceError('Builder agent did not return a valid message');
 			}
 
 			return { messages: [response] };
@@ -316,7 +312,7 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 		const shouldContinue = createStandardShouldContinue();
 
 		// Build the subgraph
-		const subgraph = new StateGraph(BuilderConfiguratorSubgraphState)
+		const subgraph = new StateGraph(BuilderSubgraphState)
 			.addNode('prefetch_rlc', prefetchRLCNode)
 			.addNode('agent', callAgent)
 			.addNode('tools', async (state) => await executeSubgraphTools(state, this.toolMap))
@@ -334,7 +330,7 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 	transformInput(parentState: typeof ParentGraphState.State) {
 		const userRequest = extractUserRequest(parentState.messages);
 
-		// Build context parts (merged from Builder + Configurator)
+		// Build context parts
 		const contextParts: string[] = [];
 
 		// 1. User request (primary)
@@ -383,7 +379,7 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(schemaBlock);
 		}
 
-		// 6. Full execution context (data + schema for parameter values) - from Configurator
+		// 6. Full execution context (data + schema for parameter values)
 		contextParts.push('=== EXECUTION CONTEXT ===');
 		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
@@ -402,7 +398,7 @@ export class BuilderConfiguratorSubgraph extends BaseSubgraph<
 	}
 
 	transformOutput(
-		subgraphOutput: typeof BuilderConfiguratorSubgraphState.State,
+		subgraphOutput: typeof BuilderSubgraphState.State,
 		_parentState: typeof ParentGraphState.State,
 	) {
 		let workflowJSON = subgraphOutput.workflowJSON;

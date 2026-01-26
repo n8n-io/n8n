@@ -47,7 +47,6 @@ export interface StageLLMs {
 	responder: BaseChatModel;
 	discovery: BaseChatModel;
 	builder: BaseChatModel;
-	configurator: BaseChatModel;
 	parameterUpdater: BaseChatModel;
 }
 
@@ -77,8 +76,6 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
-	/** Enable parallel configuration workers instead of sequential Configurator subgraph */
-	parallelConfiguration?: boolean;
 }
 
 export interface ChatPayload {

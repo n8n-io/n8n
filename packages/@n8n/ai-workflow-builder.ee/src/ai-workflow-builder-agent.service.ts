@@ -10,7 +10,7 @@ import { Client as TracingClient } from 'langsmith';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { anthropicClaudeSonnet45, anthropicHaiku45 } from '@/llm-config';
+import { anthropicClaudeSonnet45 } from '@/llm-config';
 import { SessionManagerService } from '@/session-manager.service';
 import { ResourceLocatorCallbackFactory } from '@/types/callbacks';
 import {
@@ -113,15 +113,9 @@ export class AiWorkflowBuilderService {
 			}
 
 			// If base URL is not set, use environment variables
-			// const anthropicClaude = await anthropicClaudeSonnet45({
-			// 	apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-			// });
-			const anthropicClaude = await anthropicHaiku45({
+			const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
 				apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
 			});
-			// const anthropicClaude = await AiWorkflowBuilderService.getAnthropicClaudeModel({
-			// 	apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-			// });
 
 			return { anthropicClaude };
 		} catch (error) {
@@ -170,24 +164,23 @@ export class AiWorkflowBuilderService {
 	}
 
 	private async getAgent(user: IUser, userMessageId: string, featureFlags?: BuilderFeatureFlags) {
-		const { tracingClient, authHeaders } = await this.setupModels(user, userMessageId);
+		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
+			user,
+			userMessageId,
+		);
 
 		// Create resource locator callback scoped to this user if factory is provided
 		const resourceLocatorCallback = this.resourceLocatorCallbackFactory?.(user.id);
 
-		const sonnet = await anthropicClaudeSonnet45({
-			apiKey: process.env.N8N_AI_ANTHROPIC_KEY ?? '',
-		});
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
 			// Use the same model for all stages in production
 			stageLLMs: {
-				supervisor: sonnet,
-				responder: sonnet,
-				discovery: sonnet,
-				builder: sonnet,
-				configurator: sonnet,
-				parameterUpdater: sonnet,
+				supervisor: anthropicClaude,
+				responder: anthropicClaude,
+				discovery: anthropicClaude,
+				builder: anthropicClaude,
+				parameterUpdater: anthropicClaude,
 			},
 			logger: this.logger,
 			checkpointer: this.sessionManager.getCheckpointer(),

@@ -12,12 +12,10 @@ import type {
 	SubgraphPhase,
 	DiscoveryMetadata,
 	BuilderMetadata,
-	ConfiguratorMetadata,
 	StateManagementMetadata,
 } from '../types/coordination';
 
-// Note: 'configurator' kept for backwards compatibility with existing coordination logs
-export type RoutingDecision = 'discovery' | 'builder' | 'configurator' | 'responder';
+export type RoutingDecision = 'discovery' | 'builder' | 'responder';
 
 /**
  * Get the last completed phase from the coordination log
@@ -52,14 +50,6 @@ export function hasPhaseCompleted(log: CoordinationLogEntry[], phase: SubgraphPh
 }
 
 /**
- * Get configurator output (setup instructions) from the log
- */
-export function getConfiguratorOutput(log: CoordinationLogEntry[]): string | null {
-	const entry = getPhaseEntry(log, 'configurator');
-	return entry?.output ?? null;
-}
-
-/**
  * Get builder output (workflow summary) from the log
  */
 export function getBuilderOutput(log: CoordinationLogEntry[]): string | null {
@@ -80,16 +70,12 @@ export function getPhaseMetadata(
 ): BuilderMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
-	phase: 'configurator',
-): ConfiguratorMetadata | null;
-export function getPhaseMetadata(
-	log: CoordinationLogEntry[],
 	phase: 'state_management',
 ): StateManagementMetadata | null;
 export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
 	phase: SubgraphPhase,
-): DiscoveryMetadata | BuilderMetadata | ConfiguratorMetadata | StateManagementMetadata | null {
+): DiscoveryMetadata | BuilderMetadata | StateManagementMetadata | null {
 	const entry = getPhaseEntry(log, phase);
 	if (!entry) return null;
 
@@ -161,18 +147,13 @@ export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecisio
 	}
 
 	const lastPhase = getLastCompletedPhase(log);
-	// After discovery → builder_configurator (merged)
+	// After discovery → builder (handles adding, connecting, and configuring nodes)
 	if (lastPhase === 'discovery') {
 		return 'builder';
 	}
 
-	// After builder (now includes configuration) → responder
+	// After builder → responder (terminal)
 	if (lastPhase === 'builder') {
-		return 'responder';
-	}
-
-	// Legacy: After configurator → responder (kept for backwards compatibility)
-	if (lastPhase === 'configurator') {
 		return 'responder';
 	}
 

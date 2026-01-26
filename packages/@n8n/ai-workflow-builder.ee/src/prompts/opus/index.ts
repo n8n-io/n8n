@@ -7,8 +7,7 @@
  * Key reductions:
  * - Supervisor: 55 → 25 lines (~55% reduction)
  * - Discovery: 440 → 80 lines (~82% reduction)
- * - Builder: 513 → 85 lines (~83% reduction)
- * - Configurator: 235 → 65 lines (~72% reduction)
+ * - Builder: 748 → 150 lines (~80% reduction) - now includes configuration
  * - Responder: 89 → 45 lines (~49% reduction)
  * - Parameter Updater: 1,571 → 115 lines (~93% reduction)
  *

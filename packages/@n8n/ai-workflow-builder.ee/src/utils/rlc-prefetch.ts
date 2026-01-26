@@ -1,6 +1,6 @@
 /**
  * Utility functions for pre-fetching ResourceLocator options before configuration.
- * This allows the Configurator agent to have all necessary resource options upfront.
+ * This allows the Builder agent to have all necessary resource options upfront.
  */
 
 import type { Logger } from '@n8n/backend-common';
