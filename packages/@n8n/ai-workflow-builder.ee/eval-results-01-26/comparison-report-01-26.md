@@ -66,19 +66,21 @@
 
 *Pricing: Opus ($15/1M input, $75/1M output), Sonnet ($3/1M input, $15/1M output)*
 
-### One-Shot Evaluation (10 examples)
-
-| Metric | Code-Based (Opus) | Code-Based (Sonnet) | Ratio |
-|--------|-------------------|---------------------|-------|
-| **Mean** | $1.40 | $0.22 | 6.4x |
-| **Total** | $14.00 | $2.22 | 6.3x |
-
 ### Pairwise Evaluation (71 examples)
 
-| Metric | Code-Based (Opus) | Code-Based (Sonnet) | Ratio |
-|--------|-------------------|---------------------|-------|
-| **Mean** | $2.40 | $0.40 | 6.0x |
-| **Total** | $170.40 | $28.40 | 6.0x |
+| Metric | Code-Based (Opus) | Code-Based (Sonnet) | Old Multi-Agent |
+|--------|-------------------|---------------------|-----------------|
+| **P50** | ~$2.00 | $0.27 | $0.39 |
+| **P99** | ~$4.50 | $1.84 | $1.01 |
+| **Mean** | $2.40 | $0.40 | $0.44 |
+| **Total** | $170.40 | $28.40 | $30.98 |
+
+### One-Shot Evaluation (10 examples)
+
+| Metric | Code-Based (Opus) | Code-Based (Sonnet) |
+|--------|-------------------|---------------------|
+| **Mean** | $1.40 | $0.22 |
+| **Total** | $14.00 | $2.22 |
 
 ### Token Usage Summary (New Code-Based Agent)
 
@@ -88,6 +90,8 @@
 | One-Shot | Sonnet 4.5 | ~740,000 | ~30,000 | $2.22 |
 | Pairwise | Opus 4.5 | 9,409,487 | 390,154 | $170.40 |
 | Pairwise | Sonnet 4.5 | ~9,000,000 | ~350,000 | $28.40 |
+
+**Note:** Code-Based Sonnet 4.5 has similar cost to Old Multi-Agent (~$0.40/run) but with significantly higher quality (82% vs 74% avg score, 86% vs 50% pass rate).
 
 ---
 
@@ -220,12 +224,12 @@ Full violations lists grouped by example are available in separate files:
 
 The January 26 evaluation shows excellent results for the new code-based agent:
 
-| Metric | Code-Based (Opus) | Code-Based (Sonnet) | vs Old Multi-Agent |
-|--------|-------------------|---------------------|-------------------|
-| **Pairwise Pass Rate** | 94.4% | 85.9% | +44pp / +36pp |
-| **Average Score** | 88.0% | 82.1% | +14pp / +8pp |
-| **Cost per Run** | $2.40 | $0.40 | Similar/Lower |
-| **Latency** | 98s | 107s | ~2x faster |
+| Metric | Code-Based (Opus) | Code-Based (Sonnet) | Old Multi-Agent |
+|--------|-------------------|---------------------|-----------------|
+| **Pairwise Pass Rate** | 94.4% | 85.9% | 50.0% |
+| **Average Score** | 88.0% | 82.1% | 74.1% |
+| **Cost per Run** | $2.40 | $0.40 | $0.44 |
+| **Latency** | 98s | 107s | 177s |
 
 **Key Takeaways:**
 - New code-based agent with Opus 4.5 delivers the best quality but at 6x the cost of Sonnet
