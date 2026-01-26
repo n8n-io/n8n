@@ -8,7 +8,7 @@
 
 import type * as Comlink from 'comlink';
 import type { CRDTDoc, CRDTProvider, Unsubscribe } from '@n8n/crdt';
-import type { INodeTypeDescription, WorkflowRoom } from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow, WorkflowRoom } from 'n8n-workflow';
 
 import type { DataWorkerApi } from '../data/worker';
 
@@ -48,6 +48,8 @@ export interface CRDTDocumentState {
 	baseUrl: string;
 	/** Workflow room managing persistence (null until seeded) */
 	room: WorkflowRoom | null;
+	/** Workflow instance for handle computation (null until seeded) */
+	workflow?: Workflow;
 }
 
 /**

@@ -555,3 +555,110 @@ export function setupHandleRecomputation(
 		});
 	});
 }
+
+// =============================================================================
+// Document Seeding
+// =============================================================================
+
+/**
+ * Function type for deep seeding values into CRDT structures.
+ * This is provided by @n8n/crdt's seedValueDeep function.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type SeedValueDeepFn = (doc: CRDTDocLike, value: unknown) => any;
+
+/**
+ * Seed a CRDT document with workflow data.
+ *
+ * This is a shared function used by both:
+ * - Server (packages/cli/src/crdt/crdt-state.ts)
+ * - Worker Mode (packages/frontend/editor-ui/src/app/workers/coordinator)
+ *
+ * The seedValueDeep function is passed as a parameter to avoid
+ * depending on @n8n/crdt in the n8n-workflow package.
+ *
+ * @param doc - CRDT document to seed
+ * @param workflow - Workflow data with pre-computed handles
+ * @param seedValueDeep - Function to deep seed nested values
+ */
+export function seedWorkflowDoc(
+	doc: CRDTDocLike,
+	workflow: WorkflowSeedData,
+	seedValueDeep: SeedValueDeepFn,
+): void {
+	// Build node name -> id lookup for edge conversion
+	const nodeIdByName = new Map<string, string>();
+	for (const node of workflow.nodes) {
+		if (node.id && node.name) {
+			nodeIdByName.set(node.name, node.id);
+		}
+	}
+
+	// Convert IConnections to flat edges
+	const edges = iConnectionsToEdges(workflow.connections, nodeIdByName);
+
+	doc.transact(() => {
+		// Seed workflow metadata
+		const meta = doc.getMap<unknown>('meta');
+		meta.set('id', workflow.id);
+		meta.set('name', workflow.name);
+		if (workflow.settings) {
+			meta.set('settings', workflow.settings);
+		}
+
+		// Seed nodes - each node is a nested CRDTMap for fine-grained updates
+		const nodesMap = doc.getMap<unknown>('nodes');
+		for (const node of workflow.nodes) {
+			if (node.id) {
+				// Create a nested CRDTMap for this node
+				const nodeMap = doc.createMap<unknown>();
+				for (const [key, value] of Object.entries(node)) {
+					if (key === 'parameters' && value !== undefined) {
+						// Deep seed parameters for fine-grained conflict resolution
+						// This allows concurrent edits to different parameter fields
+						nodeMap.set(key, seedValueDeep(doc, value));
+					} else if ((key === 'inputs' || key === 'outputs') && Array.isArray(value)) {
+						// Store pre-computed handles as CRDT arrays
+						const handlesArray = doc.createArray<unknown>();
+						for (const handle of value as ComputedHandle[]) {
+							const handleMap = doc.createMap<unknown>();
+							handleMap.set('handleId', handle.handleId);
+							handleMap.set('type', handle.type);
+							handleMap.set('mode', handle.mode);
+							handleMap.set('index', handle.index);
+							if (handle.displayName) handleMap.set('displayName', handle.displayName);
+							if (handle.required !== undefined) handleMap.set('required', handle.required);
+							if (handle.maxConnections !== undefined)
+								handleMap.set('maxConnections', handle.maxConnections);
+							handlesArray.push(handleMap);
+						}
+						nodeMap.set(key, handlesArray);
+					} else {
+						// Other node properties (id, type, name, position, etc.) stored flat
+						nodeMap.set(key, value);
+					}
+				}
+
+				// Compute and store node size based on handles
+				const size = calculateNodeSize({
+					inputs: node.inputs ?? [],
+					outputs: node.outputs ?? [],
+				});
+				nodeMap.set('size', [size.width, size.height]);
+
+				nodesMap.set(node.id, nodeMap);
+			}
+		}
+
+		// Seed edges (flat format, Vue Flow compatible)
+		const edgesMap = doc.getMap<unknown>('edges');
+		for (const edge of edges) {
+			const edgeMap = doc.createMap<unknown>();
+			edgeMap.set('source', edge.source);
+			edgeMap.set('target', edge.target);
+			edgeMap.set('sourceHandle', edge.sourceHandle);
+			edgeMap.set('targetHandle', edge.targetHandle);
+			edgesMap.set(edge.id, edgeMap);
+		}
+	});
+}

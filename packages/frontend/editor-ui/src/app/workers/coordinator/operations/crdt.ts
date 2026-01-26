@@ -25,11 +25,9 @@ import {
 	Workflow,
 	WorkflowRoom,
 	computeAllNodeHandles,
-	calculateNodeSize,
 	syncWorkflowWithDoc,
 	setupHandleRecomputation,
-	iConnectionsToEdges,
-	type ComputedHandle,
+	seedWorkflowDoc,
 	type IConnections,
 	type INode,
 	type INodeTypeDescription,
@@ -402,89 +400,33 @@ async function seedDocument(
 			})),
 		);
 
-		// Build node name -> id lookup for edge conversion
-		const nodeIdByName = new Map<string, string>();
-		for (const node of workflowData.nodes) {
-			if (node.id && node.name) {
-				nodeIdByName.set(node.name, node.id);
-			}
-		}
-
-		// Convert connections to flat edges
-		const edges = iConnectionsToEdges(workflowData.connections, nodeIdByName);
-
-		// Seed the CRDT document
-		const doc = docState.doc;
-		doc.transact(() => {
-			// Seed workflow metadata
-			const meta = doc.getMap<unknown>('meta');
-			meta.set('id', workflowData.id);
-			meta.set('name', workflowData.name);
-			if (workflowData.settings) {
-				meta.set('settings', workflowData.settings);
-			}
-
-			// Seed nodes
-			const nodesMap = doc.getMap<unknown>('nodes');
-			for (const node of nodesWithHandles) {
-				if (node.id) {
-					const nodeMap = doc.createMap<unknown>();
-					for (const [key, value] of Object.entries(node)) {
-						if (key === 'parameters' && value !== undefined) {
-							nodeMap.set(key, seedValueDeep(doc, value));
-						} else if ((key === 'inputs' || key === 'outputs') && Array.isArray(value)) {
-							const handlesArray = doc.createArray<unknown>();
-							for (const handle of value as ComputedHandle[]) {
-								const handleMap = doc.createMap<unknown>();
-								handleMap.set('handleId', handle.handleId);
-								handleMap.set('type', handle.type);
-								handleMap.set('mode', handle.mode);
-								handleMap.set('index', handle.index);
-								if (handle.displayName) handleMap.set('displayName', handle.displayName);
-								if (handle.required !== undefined) handleMap.set('required', handle.required);
-								if (handle.maxConnections !== undefined)
-									handleMap.set('maxConnections', handle.maxConnections);
-								handlesArray.push(handleMap);
-							}
-							nodeMap.set(key, handlesArray);
-						} else {
-							nodeMap.set(key, value);
-						}
-					}
-
-					// Compute and store node size based on handles
-					const size = calculateNodeSize({
-						inputs: node.inputs ?? [],
-						outputs: node.outputs ?? [],
-					});
-					nodeMap.set('size', [size.width, size.height]);
-
-					nodesMap.set(node.id, nodeMap);
-				}
-			}
-
-			// Seed edges
-			const edgesMap = doc.getMap<unknown>('edges');
-			for (const edge of edges) {
-				const edgeMap = doc.createMap<unknown>();
-				edgeMap.set('source', edge.source);
-				edgeMap.set('target', edge.target);
-				edgeMap.set('sourceHandle', edge.sourceHandle);
-				edgeMap.set('targetHandle', edge.targetHandle);
-				edgesMap.set(edge.id, edgeMap);
-			}
-		});
+		// Use shared seeding function, passing seedValueDeep from @n8n/crdt
+		seedWorkflowDoc(
+			docState.doc,
+			{
+				id: workflowData.id,
+				name: workflowData.name,
+				nodes: nodesWithHandles,
+				connections: workflowData.connections,
+				settings: workflowData.settings,
+			},
+			seedValueDeep,
+		);
 
 		// Set up sync between CRDT document and Workflow instance
 		// This keeps the Workflow updated when nodes/edges change, so handle recomputation
 		// can access the latest workflow state
-		const syncUnsub = syncWorkflowWithDoc(doc, workflow);
+		const syncUnsub = syncWorkflowWithDoc(docState.doc, workflow);
 
 		// Set up handle recomputation (uses the synced workflow)
-		docState.handleObserverUnsub = setupHandleRecomputation(doc, workflow, workerNodeTypes);
+		docState.handleObserverUnsub = setupHandleRecomputation(
+			docState.doc,
+			workflow,
+			workerNodeTypes,
+		);
 
 		// Set up update broadcasting
-		const updateUnsub = doc.onUpdate((update) => {
+		const updateUnsub = docState.doc.onUpdate((update) => {
 			broadcastToSubscribedTabs(state, docId, MESSAGE_SYNC, update);
 		});
 
@@ -496,7 +438,7 @@ async function seedDocument(
 
 		// Create the workflow room with a save callback
 		docState.room = new WorkflowRoom(
-			doc,
+			docState.doc,
 			workflow,
 			unsubscribe,
 			workflowData.versionId ?? '',
