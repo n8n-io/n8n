@@ -270,9 +270,7 @@ export class AuthService {
 		}
 	}
 
-	private async validateToken(
-		token: string
-	): Promise<{
+	private async validateToken(token: string): Promise<{
 		user: User;
 		jwtPayload: IssuedJWT;
 	}> {
