@@ -7,6 +7,8 @@ import {
 	THREE_DAYS_IN_MILLIS,
 	NPS_SURVEY_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
+	TIME,
+	LOCAL_STORAGE_PROMPTS_DATA_CACHE,
 } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IUserSettings, NpsSurveyState } from 'n8n-workflow';
@@ -132,19 +134,75 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 		currentSurveyState.value = updatedState;
 	}
 
+	function getPromptsDataCacheKey(): string {
+		return LOCAL_STORAGE_PROMPTS_DATA_CACHE(currentUserId.value!);
+	}
+
+	function isValidPromptsDataCache(
+		value: unknown,
+	): value is { data: N8nPrompts; timestamp: number } {
+		return (
+			typeof value === 'object' &&
+			value !== null &&
+			'data' in value &&
+			'timestamp' in value &&
+			typeof value.timestamp === 'number'
+		);
+	}
+
+	function getCachedPromptsData(): N8nPrompts | null {
+		try {
+			const cached = localStorage.getItem(getPromptsDataCacheKey());
+			if (!cached) {
+				return null;
+			}
+
+			const parsed: unknown = JSON.parse(cached);
+			if (!isValidPromptsDataCache(parsed)) {
+				return null;
+			}
+
+			if (Date.now() - parsed.timestamp < TIME.DAY) {
+				return parsed.data;
+			}
+		} catch {
+			// Invalid cache, will be refreshed
+		}
+		return null;
+	}
+
+	function setCachedPromptsData(data: N8nPrompts): void {
+		try {
+			localStorage.setItem(
+				getPromptsDataCacheKey(),
+				JSON.stringify({ data, timestamp: Date.now() }),
+			);
+		} catch {
+			// localStorage may be full or unavailable
+		}
+	}
+
 	async function fetchPromptsData(): Promise<void> {
 		assert(currentUserId.value);
 		if (!settingsStore.isTelemetryEnabled) {
 			return;
 		}
 
-		try {
-			promptsData.value = await getPromptsData(
-				settingsStore.settings.instanceId,
-				currentUserId.value,
-			);
-		} catch (e) {
-			console.error('Failed to fetch prompts data');
+		const cachedData = getCachedPromptsData();
+		if (cachedData) {
+			promptsData.value = cachedData;
+		} else {
+			try {
+				promptsData.value = await getPromptsData(
+					settingsStore.settings.instanceId,
+					currentUserId.value,
+				);
+				if (promptsData.value) {
+					setCachedPromptsData(promptsData.value);
+				}
+			} catch (e) {
+				console.error('Failed to fetch prompts data');
+			}
 		}
 
 		if (promptsData.value?.showContactPrompt) {
