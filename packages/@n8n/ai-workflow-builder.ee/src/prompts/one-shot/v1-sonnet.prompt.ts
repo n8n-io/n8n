@@ -247,7 +247,7 @@ return workflow('id', 'name')
 
 \`\`\`typescript
 // Assume other nodes are declared
-const checkValid = ifElse({ type: 'n8n-nodes-base.if', ... });
+const checkValid = ifElse({{ type: 'n8n-nodes-base.if', ... }});
 
 return workflow('id', 'name')
   .add(startTrigger.to(checkValid
@@ -259,7 +259,7 @@ return workflow('id', 'name')
 
 \`\`\`typescript
 // Assume other nodes are declared
-const routeByPriority = switchCase({ type: 'n8n-nodes-base.switch', ... });
+const routeByPriority = switchCase({{ type: 'n8n-nodes-base.switch', ... }});
 
 return workflow('id', 'name')
   .add(startTrigger.to(routeByPriority
