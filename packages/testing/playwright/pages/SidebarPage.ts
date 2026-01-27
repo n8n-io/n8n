@@ -110,10 +110,6 @@ export class SidebarPage {
 		return this.page.getByTestId('banners-TRIAL');
 	}
 
-	getMainSidebarTrialUpgrade(): Locator {
-		return this.page.getByTestId('main-sidebar-trial-upgrade');
-	}
-
 	getTemplatesLink(): Locator {
 		return this.page.getByTestId('main-sidebar-templates').locator('a');
 	}

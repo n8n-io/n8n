@@ -3,8 +3,8 @@
 @font-face {
 	font-family: 'element-icons';
 	src:
-		url('#{var.$font-path}/element-icons.woff') format('woff'),
-		/* chrome, firefox */ url('#{var.$font-path}/element-icons.ttf') format('truetype'); /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
+		url('../../assets/fonts/element-icons.woff') format('woff'),
+		/* chrome, firefox */ url('../../assets/fonts/element-icons.ttf') format('truetype'); /* chrome, firefox, opera, Safari, Android, iOS 4.2+*/
 	font-weight: var(--font-weight--regular);
 	font-display: var.$font-display;
 	font-style: normal;

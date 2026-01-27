@@ -125,7 +125,6 @@ function handleShowVersion(versionId: string) {
 	display: flex;
 	align-items: center;
 	width: 100%;
-	padding: 0 var(--spacing--md);
 }
 
 .restoreLine {

@@ -9,9 +9,11 @@
 export { createN8NStack } from './stack';
 export type { N8NConfig, N8NStack } from './stack';
 
+export type { StackTelemetryRecord } from './telemetry';
+
 // Performance plans (CLI-only)
 export * from './performance-plans';
 
 // Types used externally by tests
-export { type LogEntry } from './services/observability';
+export { type LogEntry, type MetricsHelper } from './services/observability';
 export { type GiteaHelper } from './services/gitea';

@@ -15,6 +15,7 @@ import {
 	setSafeObjectProperty,
 	sleepWithAbort,
 	isCommunityPackageName,
+	sanitizeFilename,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -910,5 +911,55 @@ describe('isCommunityPackageName', () => {
 		expect(isCommunityPackageName('@user/n8n-nodes-example')).toBe(true);
 		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
 		expect(isCommunityPackageName('@test-scope/n8n-nodes-test')).toBe(true);
+	});
+});
+
+describe('sanitizeFilename', () => {
+	it('should return normal filenames unchanged', () => {
+		expect(sanitizeFilename('normalfile')).toBe('normalfile');
+		expect(sanitizeFilename('my-file_v2')).toBe('my-file_v2');
+		expect(sanitizeFilename('test.txt')).toBe('test.txt');
+	});
+
+	it('should handle empty and invalid inputs', () => {
+		expect(sanitizeFilename('')).toBe('untitled');
+	});
+
+	it('should handle edge cases', () => {
+		expect(sanitizeFilename('.')).toBe('untitled');
+		expect(sanitizeFilename('..')).toBe('untitled');
+	});
+
+	it('should prevent path traversal attacks', () => {
+		// Basic path traversal attempts - extracts just the filename
+		expect(sanitizeFilename('../../../etc/passwd')).toBe('passwd');
+		expect(sanitizeFilename('..\\..\\..\\windows\\system32')).toBe('system32');
+
+		// Path traversal with file extension
+		expect(sanitizeFilename('../file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('../../secret.json')).toBe('secret.json');
+
+		// Nested path separators - extracts just the final component
+		expect(sanitizeFilename('path/to/file')).toBe('file');
+		expect(sanitizeFilename('path\\to\\file')).toBe('file');
+
+		// Hidden files and nested directories
+		expect(sanitizeFilename('../../../.ssh/authorized_keys')).toBe('authorized_keys');
+		expect(sanitizeFilename('../../../etc/cron.d/backdoor')).toBe('backdoor');
+	});
+
+	it('should extract filename from full file paths', () => {
+		// Unix paths
+		expect(sanitizeFilename('/tmp/n8n-upload-xyz/original.pdf')).toBe('original.pdf');
+		expect(sanitizeFilename('/home/user/documents/report.docx')).toBe('report.docx');
+
+		// Windows paths
+		expect(sanitizeFilename('C:\\Users\\Admin\\file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('D:\\temp\\upload\\image.png')).toBe('image.png');
+	});
+
+	it('should remove null bytes', () => {
+		expect(sanitizeFilename('file\0name.txt')).toBe('filename.txt');
+		expect(sanitizeFilename('\0\0\0')).toBe('untitled');
 	});
 });

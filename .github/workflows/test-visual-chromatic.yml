@@ -16,13 +16,15 @@ jobs:
     runs-on: blacksmith-2vcpu-ubuntu-2204
     steps:
       - name: Determine changed files
-        uses: tomi/paths-filter-action@v3.0.2
+        uses: tomi/paths-filter-action@32c62f5ca100c1110406e3477d5b3ecef4666fec # v3.0.2
         id: changed
         if: github.event_name == 'pull_request_review'
         with:
           filters: |
             design_system:
               - 'packages/frontend/@n8n/design-system/**'
+              - 'packages/frontend/@n8n/chat/**'
+              - 'packages/frontend/@n8n/storybook/**'
               - '.github/workflows/test-visual-storybook.yml'
     outputs:
       has_changes: ${{ steps.changed.outputs.design_system || 'false' }}
@@ -39,7 +41,7 @@ jobs:
         !startsWith(github.event.pull_request.head.ref, 'release/') &&
         !startsWith(github.event.pull_request.head.ref, 'release-pr/')
       )
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
@@ -48,14 +50,14 @@ jobs:
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
-          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/design-system
+          build-command: pnpm run build --filter=@n8n/utils --filter=@n8n/vitest-config --filter=@n8n/chat --filter=@n8n/design-system
 
       - name: Publish to Chromatic
         uses: chromaui/action@1cfa065cbdab28f6ca3afaeb3d761383076a35aa # v11
         id: chromatic_tests
         continue-on-error: true
         with:
-          workingDir: packages/frontend/@n8n/design-system
+          workingDir: packages/frontend/@n8n/storybook
           autoAcceptChanges: 'master'
           skip: 'release/**'
           onlyChanged: true

@@ -1,16 +1,31 @@
 import { type ASTAfterHook, type ASTBeforeHook, astBuilders as b, astVisit } from '@n8n/tournament';
 
-import { ExpressionDestructuringError, ExpressionError } from './errors';
+import {
+	ExpressionClassExtensionError,
+	ExpressionComputedDestructuringError,
+	ExpressionDestructuringError,
+	ExpressionError,
+	ExpressionReservedVariableError,
+	ExpressionWithStatementError,
+} from './errors';
 import { isSafeObjectProperty } from './utils';
 
 export const sanitizerName = '__sanitize';
 const sanitizerIdentifier = b.identifier(sanitizerName);
+
+const DATA_NODE_NAME = '___n8n_data';
+
+const RESERVED_VARIABLE_NAMES = new Set([DATA_NODE_NAME, sanitizerName]);
 
 export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a function';
 
 const EMPTY_CONTEXT = b.objectExpression([
 	b.property('init', b.identifier('process'), b.objectExpression([])),
 ]);
+
+const SAFE_GLOBAL = b.objectExpression([]);
+
+const SAFE_THIS = b.sequenceExpression([b.literal(0), EMPTY_CONTEXT]);
 
 /**
  * Helper to check if an expression is a valid property access with $ as the property.
@@ -53,10 +68,12 @@ const isValidDollarPropertyAccess = (expr: unknown): boolean => {
 	return isPropertyDollar && !isObjectDollar && isObjectValid;
 };
 
+const GLOBAL_IDENTIFIERS = new Set(['globalThis']);
+
 /**
  * Prevents regular functions from binding their `this` to the Node.js global.
  */
-export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
+export const ThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 	astVisit(ast, {
 		visitCallExpression(path) {
 			const { node } = path;
@@ -112,6 +129,44 @@ export const FunctionThisSanitizer: ASTBeforeHook = (ast, dataNode) => {
 			]);
 			path.replace(boundFunction);
 			return false;
+		},
+
+		visitIdentifier(path) {
+			this.traverse(path);
+			const { node } = path;
+
+			if (GLOBAL_IDENTIFIERS.has(node.name)) {
+				const parent: unknown = path.parent;
+				const isPropertyName =
+					typeof parent === 'object' &&
+					parent !== null &&
+					'name' in parent &&
+					parent.name === 'property';
+
+				if (!isPropertyName) path.replace(SAFE_GLOBAL);
+			}
+		},
+
+		visitThisExpression(path) {
+			this.traverse(path);
+
+			/**
+			 * Replace `this` with a safe context object.
+			 * This prevents arrow functions from accessing the real global context:
+			 *
+			 * ```js
+			 * (() => this?.process)()  // becomes (() => (0, { process: {} })?.process)()
+			 * ```
+			 *
+			 * Arrow functions don't have their own `this` binding - they inherit from
+			 * the outer lexical scope. Without this fix, `this` inside an arrow function
+			 * would resolve to the Node.js global object, exposing process.env and other
+			 * sensitive data.
+			 *
+			 * We use SAFE_THIS (a sequence expression) instead of EMPTY_CONTEXT directly
+			 * to ensure the object literal is unambiguously parsed as an expression.
+			 */
+			path.replace(SAFE_THIS);
 		},
 	});
 };
@@ -185,8 +240,62 @@ export const DollarSignValidator: ASTAfterHook = (ast, _dataNode) => {
 	});
 };
 
+const blockedBaseClasses = new Set([
+	'Function',
+	'GeneratorFunction',
+	'AsyncFunction',
+	'AsyncGeneratorFunction',
+]);
+
 export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 	astVisit(ast, {
+		visitVariableDeclarator(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			if (node.id.type === 'Identifier' && RESERVED_VARIABLE_NAMES.has(node.id.name)) {
+				throw new ExpressionReservedVariableError(node.id.name);
+			}
+		},
+
+		visitFunction(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			for (const param of node.params) {
+				if (param.type === 'Identifier' && RESERVED_VARIABLE_NAMES.has(param.name)) {
+					throw new ExpressionReservedVariableError(param.name);
+				}
+			}
+		},
+
+		visitCatchClause(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			if (node.param?.type === 'Identifier' && RESERVED_VARIABLE_NAMES.has(node.param.name)) {
+				throw new ExpressionReservedVariableError(node.param.name);
+			}
+		},
+
+		visitClassDeclaration(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			if (node.superClass?.type === 'Identifier' && blockedBaseClasses.has(node.superClass.name)) {
+				throw new ExpressionClassExtensionError(node.superClass.name);
+			}
+		},
+
+		visitClassExpression(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			if (node.superClass?.type === 'Identifier' && blockedBaseClasses.has(node.superClass.name)) {
+				throw new ExpressionClassExtensionError(node.superClass.name);
+			}
+		},
+
 		visitMemberExpression(path) {
 			this.traverse(path);
 			const node = path.node;
@@ -232,6 +341,10 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 
 			for (const prop of node.properties) {
 				if (prop.type === 'Property') {
+					if (prop.computed) {
+						throw new ExpressionComputedDestructuringError();
+					}
+
 					let keyName: string | undefined;
 
 					if (prop.key.type === 'Identifier') {
@@ -246,6 +359,10 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 				}
 			}
 		},
+
+		visitWithStatement() {
+			throw new ExpressionWithStatementError();
+		},
 	});
 };
 
@@ -254,5 +371,5 @@ export const sanitizer = (value: unknown): unknown => {
 	if (!isSafeObjectProperty(propertyKey)) {
 		throw new ExpressionError(`Cannot access "${propertyKey}" due to security concerns`);
 	}
-	return value;
+	return propertyKey;
 };

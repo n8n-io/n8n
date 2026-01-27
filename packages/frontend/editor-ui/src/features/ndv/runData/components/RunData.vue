@@ -56,6 +56,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
@@ -226,6 +227,7 @@ const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const sourceControlStore = useSourceControlStore();
+const collaborationStore = useCollaborationStore();
 const rootStore = useRootStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 
@@ -292,7 +294,11 @@ const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
 const hasBinaryData = computed(() => binaryData.value?.length > 0);
 const hasNoData = computed(() => !rawInputData.value.length && !pinnedData.hasData.value);
 const isReadOnly = computed(
-	() => isReadOnlyRoute.value || readOnlyEnv.value || isArchivedWorkflow.value,
+	() =>
+		isReadOnlyRoute.value ||
+		readOnlyEnv.value ||
+		isArchivedWorkflow.value ||
+		collaborationStore.shouldBeReadOnly,
 );
 
 const shouldShowSchemaView = computed(() => {

@@ -60,6 +60,7 @@ describe('workflow-helpers', () => {
 			const childResults: IRun = {
 				mode: 'manual',
 				startedAt: new Date(),
+				storedAt: 'db',
 				status: 'success',
 				data: createRunExecutionData({
 					resultData: {
@@ -124,6 +125,7 @@ describe('workflow-helpers', () => {
 			const childResults: IRun = {
 				mode: 'manual',
 				startedAt: new Date(),
+				storedAt: 'db',
 				status: 'success',
 				data: createRunExecutionData({
 					resultData: {
@@ -180,6 +182,7 @@ describe('workflow-helpers', () => {
 			const childResults: IRun = {
 				mode: 'manual',
 				startedAt: new Date(),
+				storedAt: 'db',
 				status: 'success',
 				data: createRunExecutionData({ resultData: { runData: {} } }),
 			};
@@ -235,6 +238,7 @@ describe('workflow-helpers', () => {
 			const childResults: IRun = {
 				mode: 'manual',
 				startedAt: new Date(),
+				storedAt: 'db',
 				status: 'success',
 				data: createRunExecutionData({
 					resultData: {

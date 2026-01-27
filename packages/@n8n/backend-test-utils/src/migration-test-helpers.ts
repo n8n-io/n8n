@@ -96,8 +96,38 @@ export async function initDbUpToMigration(beforeMigrationName: string): Promise<
  */
 export async function undoLastSingleMigration(): Promise<void> {
 	const dataSource = Container.get(DataSource);
+
+	// Get the last executed migration from the migrations table
+	const executedMigrations = await dataSource.query<Array<{ name: string }>>(
+		'SELECT * FROM migrations ORDER BY timestamp DESC LIMIT 1',
+	);
+
+	if (executedMigrations.length === 0) {
+		throw new UnexpectedError('No migrations found to undo');
+	}
+
+	const lastMigrationName = executedMigrations[0].name;
+
+	// Find the migration class by name
+	type MigrationConstructor = new () => { transaction?: false };
+	type MigrationClass = MigrationConstructor & {
+		prototype?: { transaction?: false; __n8n_wrapped?: boolean };
+		name: string;
+	};
+	const migration = (dataSource.options.migrations as MigrationClass[]).find(
+		(m) => m.name === lastMigrationName,
+	);
+
+	// Create an instance to check the transaction property (class fields are on instances, not prototypes)
+	let hasTransactionDisabled = false;
+	if (migration) {
+		const instance = new migration();
+		hasTransactionDisabled = instance.transaction === false;
+	}
+
+	// Use transaction: 'none' for migrations with transaction = false, otherwise use 'each'
 	await dataSource.undoLastMigration({
-		transaction: 'each',
+		transaction: hasTransactionDisabled ? 'none' : 'each',
 	});
 }
 

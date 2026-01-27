@@ -5,12 +5,21 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GLOBAL_OWNER_ROLE, UserRepository } from '@n8n/db';
-import { Body, Get, Post, Query, RestController } from '@n8n/decorators';
+import { Time } from '@n8n/constants';
+import {
+	Body,
+	createBodyKeyedRateLimiter,
+	Get,
+	Post,
+	Query,
+	RestController,
+} from '@n8n/decorators';
 import { hasGlobalScope } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { ErrorReporter } from 'n8n-core';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -28,6 +37,7 @@ import {
 	isSamlCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+import { createJitterMiddleware } from '@/middlewares';
 
 @RestController()
 export class PasswordResetController {
@@ -42,12 +52,21 @@ export class PasswordResetController {
 		private readonly passwordUtility: PasswordUtility,
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	/**
 	 * Send a password reset email.
 	 */
-	@Post('/forgot-password', { skipAuth: true, rateLimit: { limit: 3 } })
+	@Post('/forgot-password', {
+		skipAuth: true,
+		ipRateLimit: { limit: 20, windowMs: 5 * Time.minutes.toMilliseconds },
+		keyedRateLimit: createBodyKeyedRateLimiter<ForgotPasswordRequestDto>({
+			limit: 3,
+			field: 'email',
+		}),
+		middlewares: [createJitterMiddleware({ minMs: 200, maxMs: 1000 })],
+	})
 	async forgotPassword(
 		_req: AuthlessRequest,
 		_res: Response,
@@ -62,82 +81,92 @@ export class PasswordResetController {
 			);
 		}
 
-		const { email } = payload;
-
-		// User should just be able to reset password if one is already present
-		const user = await this.userRepository.findNonShellUser(email);
-		if (!user) {
-			this.logger.debug('No user found in the system');
-			return;
-		}
-
-		if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
-			this.logger.debug(
-				'Request to send password reset email failed because the user limit was reached',
-			);
-			throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
-		}
-
-		if (
-			(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
-			!(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
-		) {
-			const currentAuthenticationMethod = isSamlCurrentAuthenticationMethod() ? 'SAML' : 'OIDC';
-			this.logger.debug(
-				`Request to send password reset email failed because login is handled by ${currentAuthenticationMethod}`,
-			);
-			throw new ForbiddenError(
-				`Login is handled by ${currentAuthenticationMethod}. Please contact your Identity Provider to reset your password.`,
-			);
-		}
-
-		const ldapIdentity = user.authIdentities?.find((i) => i.providerType === 'ldap');
-		if (!user.password || (ldapIdentity && user.disabled)) {
-			this.logger.debug(
-				'Request to send password reset email failed because no user was found for the provided email',
-				{ invalidEmail: email },
-			);
-			return;
-		}
-
-		if (this.license.isLdapEnabled() && ldapIdentity) {
-			throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
-		}
-
-		const url = this.authService.generatePasswordResetUrl(user);
-
-		const { id, firstName } = user;
 		try {
-			await this.mailer.passwordReset({
-				email,
-				firstName,
-				passwordResetUrl: url,
-			});
-		} catch (error) {
-			this.eventService.emit('email-failed', {
-				user,
+			const { email } = payload;
+
+			// User should just be able to reset password if one is already present
+			const user = await this.userRepository.findNonShellUser(email);
+			if (!user) {
+				this.logger.debug('No user found in the system');
+				return;
+			}
+
+			if (user.role.slug !== GLOBAL_OWNER_ROLE.slug && !this.license.isWithinUsersLimit()) {
+				this.logger.debug(
+					'Request to send password reset email failed because the user limit was reached',
+				);
+				throw new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED);
+			}
+
+			if (
+				(isSamlCurrentAuthenticationMethod() || isOidcCurrentAuthenticationMethod()) &&
+				!(hasGlobalScope(user, 'user:resetPassword') || user.settings?.allowSSOManualLogin === true)
+			) {
+				const currentAuthenticationMethod = isSamlCurrentAuthenticationMethod() ? 'SAML' : 'OIDC';
+				this.logger.debug(
+					`Request to send password reset email failed because login is handled by ${currentAuthenticationMethod}`,
+				);
+				throw new ForbiddenError(
+					`Login is handled by ${currentAuthenticationMethod}. Please contact your Identity Provider to reset your password.`,
+				);
+			}
+
+			const ldapIdentity = user.authIdentities?.find((i) => i.providerType === 'ldap');
+			if (!user.password || (ldapIdentity && user.disabled)) {
+				this.logger.debug(
+					'Request to send password reset email failed because no user was found for the provided email',
+					{ invalidEmail: email },
+				);
+				return;
+			}
+
+			if (this.license.isLdapEnabled() && ldapIdentity) {
+				throw new UnprocessableRequestError('forgotPassword.ldapUserPasswordResetUnavailable');
+			}
+
+			const url = this.authService.generatePasswordResetUrl(user);
+
+			const { id, firstName } = user;
+			try {
+				await this.mailer.passwordReset({
+					email,
+					firstName,
+					passwordResetUrl: url,
+				});
+			} catch (error) {
+				this.eventService.emit('email-failed', {
+					user,
+					messageType: 'Reset password',
+					publicApi: false,
+				});
+				if (error instanceof Error) {
+					throw new InternalServerError(
+						`Please contact your administrator: ${error.message}`,
+						error,
+					);
+				}
+			}
+
+			this.logger.info('Sent password reset email successfully', { userId: user.id, email });
+			this.eventService.emit('user-transactional-email-sent', {
+				userId: id,
 				messageType: 'Reset password',
 				publicApi: false,
 			});
-			if (error instanceof Error) {
-				throw new InternalServerError(`Please contact your administrator: ${error.message}`, error);
-			}
+
+			this.eventService.emit('user-password-reset-request-click', { user });
+		} catch (error) {
+			// Catch any unexpected errors to prevent information leakage
+			this.errorReporter.error(
+				new Error('Unexpected error in forgot password endpoint', { cause: error }),
+			);
 		}
-
-		this.logger.info('Sent password reset email successfully', { userId: user.id, email });
-		this.eventService.emit('user-transactional-email-sent', {
-			userId: id,
-			messageType: 'Reset password',
-			publicApi: false,
-		});
-
-		this.eventService.emit('user-password-reset-request-click', { user });
 	}
 
 	/**
 	 * Verify password reset token and user ID.
 	 */
-	@Get('/resolve-password-token', { skipAuth: true })
+	@Get('/resolve-password-token', { skipAuth: true, ipRateLimit: true })
 	async resolvePasswordToken(
 		_req: AuthlessRequest,
 		_res: Response,
@@ -162,7 +191,10 @@ export class PasswordResetController {
 	/**
 	 * Verify password reset token and update password.
 	 */
-	@Post('/change-password', { skipAuth: true })
+	@Post('/change-password', {
+		skipAuth: true,
+		ipRateLimit: true,
+	})
 	async changePassword(
 		req: AuthlessRequest,
 		res: Response,

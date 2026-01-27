@@ -92,6 +92,11 @@ export interface LogQueryOptions {
 export class LogsHelper {
 	constructor(private readonly endpoint: string) {}
 
+	async exportAll(options: LogQueryOptions = {}): Promise<string> {
+		const logs = await this.query('*', { limit: 10000, ...options });
+		return logs.map((log) => JSON.stringify(log)).join('\n');
+	}
+
 	async query(query: string, options: LogQueryOptions = {}): Promise<LogEntry[]> {
 		const params = new URLSearchParams({ query });
 		if (options.limit) params.set('limit', String(options.limit));

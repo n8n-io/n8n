@@ -901,7 +901,7 @@ describe('useWorkflowsStore', () => {
 
 	describe('setWorkflowActive()', () => {
 		it('should set workflow as active when it is not already active', async () => {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 			workflowsStore.workflow.id = '1';
 
@@ -946,7 +946,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not set current workflow as active when it is not the target', () => {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 			workflowsStore.workflow.id = '1';
 			workflowsStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 
@@ -1050,7 +1050,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should set stateIsDirty to true', async () => {
-			uiStore.stateIsDirty = false;
+			uiStore.markStateClean();
 			const node = { name: 'TestNode' } as INodeUi;
 			const data = [{ json: 'testData' }] as unknown as INodeExecutionData[];
 			workflowsStore.pinData({ node, data });
@@ -2102,25 +2102,25 @@ describe('useWorkflowsStore', () => {
 	});
 
 	describe('getWebhookUrl', () => {
-		it('should return undefined when node does not exist', () => {
+		it('should return undefined when node does not exist', async () => {
 			workflowsStore.setNodes([]);
 
-			const result = workflowsStore.getWebhookUrl('non-existent-node', 'test');
+			const result = await workflowsStore.getWebhookUrl('non-existent-node', 'test');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should return undefined when node type does not exist', () => {
+		it('should return undefined when node type does not exist', async () => {
 			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
 			workflowsStore.setNodes([testNode]);
 			getNodeType.mockReturnValue(null);
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should return undefined when node type has no webhooks', () => {
+		it('should return undefined when node type has no webhooks', async () => {
 			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
 			workflowsStore.setNodes([testNode]);
 			getNodeType.mockReturnValue({
@@ -2130,12 +2130,12 @@ describe('useWorkflowsStore', () => {
 				properties: [],
 			});
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should return webhook URL for test type', () => {
+		it('should return webhook URL for test type', async () => {
 			const testNode = createTestNode({
 				id: 'node-1',
 				name: 'Webhook Node',
@@ -2149,14 +2149,14 @@ describe('useWorkflowsStore', () => {
 				properties: [],
 			});
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
 
 			expect(result).toBeDefined();
 			expect(typeof result).toBe('string');
 			expect(result).toContain('webhook');
 		});
 
-		it('should return webhook URL for production type', () => {
+		it('should return webhook URL for production type', async () => {
 			const testNode = createTestNode({
 				id: 'node-1',
 				name: 'Webhook Node',
@@ -2170,14 +2170,14 @@ describe('useWorkflowsStore', () => {
 				properties: [],
 			});
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'production');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'production');
 
 			expect(result).toBeDefined();
 			expect(typeof result).toBe('string');
 			expect(result).toContain('webhook');
 		});
 
-		it('should use the first webhook when node has multiple webhooks', () => {
+		it('should use the first webhook when node has multiple webhooks', async () => {
 			const testNode = createTestNode({
 				id: 'node-1',
 				name: 'Webhook Node',
@@ -2194,7 +2194,7 @@ describe('useWorkflowsStore', () => {
 				properties: [],
 			});
 
-			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
 
 			expect(result).toBeDefined();
 			expect(typeof result).toBe('string');

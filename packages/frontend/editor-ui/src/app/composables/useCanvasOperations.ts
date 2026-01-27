@@ -103,6 +103,7 @@ import type {
 	Workflow,
 	NodeConnectionType,
 	INodeParameters,
+	INodeFilter,
 } from 'n8n-workflow';
 import {
 	deepCopy,
@@ -110,6 +111,7 @@ import {
 	NodeHelpers,
 	TelemetryHelpers,
 	isCommunityPackageName,
+	isHitlToolType,
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
@@ -211,11 +213,19 @@ export function useCanvasOperations() {
 
 	function tidyUp(
 		{ result, source, target }: CanvasLayoutEvent,
-		{ trackEvents = true }: { trackEvents?: boolean } = {},
+		{
+			trackEvents = true,
+			trackHistory = true,
+			trackBulk = true,
+		}: {
+			trackEvents?: boolean;
+			trackHistory?: boolean;
+			trackBulk?: boolean;
+		} = {},
 	) {
 		updateNodesPosition(
 			result.nodes.map(({ id, x, y }) => ({ id, position: { x, y } })),
-			{ trackBulk: true, trackHistory: true },
+			{ trackBulk, trackHistory },
 		);
 
 		if (trackEvents) {
@@ -315,13 +325,17 @@ export function useCanvasOperations() {
 		replaceNodeParameters(nodeId, newParameters, currentParameters);
 	}
 
+	/**
+	 * Rename a node and update all references (connections, expressions, pinData, etc.)
+	 * @returns `true` if rename succeeded, `false` if it failed or was skipped
+	 */
 	async function renameNode(
 		currentName: string,
 		newName: string,
-		{ trackHistory = false, trackBulk = true } = {},
-	) {
+		{ trackHistory = false, trackBulk = true, showErrorToast = true } = {},
+	): Promise<boolean> {
 		if (currentName === newName) {
-			return;
+			return false;
 		}
 
 		if (trackHistory && trackBulk) {
@@ -335,12 +349,14 @@ export function useCanvasOperations() {
 		try {
 			workflow.renameNode(currentName, newName);
 		} catch (error) {
-			toast.showMessage({
-				type: 'error',
-				title: error.message,
-				message: error.description,
-			});
-			return;
+			if (showErrorToast) {
+				toast.showMessage({
+					type: 'error',
+					title: error.message,
+					message: error.description,
+				});
+			}
+			return false;
 		}
 
 		if (trackHistory) {
@@ -361,6 +377,8 @@ export function useCanvasOperations() {
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
 		}
+
+		return true;
 	}
 
 	async function revertRenameNode(currentName: string, previousName: string) {
@@ -477,7 +495,7 @@ export function useCanvasOperations() {
 
 	function revertDeleteNode(node: INodeUi) {
 		workflowsStore.addNode(node);
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 	}
 
 	function trackDeleteNode(id: string) {
@@ -773,7 +791,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!options.keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 
 		return addedNodes;
@@ -827,7 +845,6 @@ export function useCanvasOperations() {
 		}
 
 		workflowsStore.addNode(nodeData);
-
 		if (options.trackHistory) {
 			historyStore.pushCommandToUndo(new AddNodeCommand(nodeData, Date.now()));
 		}
@@ -838,7 +855,7 @@ export function useCanvasOperations() {
 
 		void nextTick(() => {
 			if (!options.keepPristine) {
-				uiStore.stateIsDirty = true;
+				uiStore.markStateDirty();
 			}
 
 			workflowsStore.setNodePristine(nodeData.name, true);
@@ -893,10 +910,48 @@ export function useCanvasOperations() {
 		if (!lastInteractedWithNode) {
 			return;
 		}
-
+		const isNewHitlToolNode = isHitlToolType(node.type);
 		const lastInteractedWithNodeId = lastInteractedWithNode.id;
 		const lastInteractedWithNodeConnection = uiStore.lastInteractedWithNodeConnection;
 		const lastInteractedWithNodeHandle = uiStore.lastInteractedWithNodeHandle;
+		if (isNewHitlToolNode && lastInteractedWithNodeConnection) {
+			const { type: connectionType } = parseCanvasConnectionHandleString(
+				lastInteractedWithNodeHandle,
+			);
+			const nodeId = node.id;
+			const nodeHandle = createCanvasConnectionHandleString({
+				mode: CanvasConnectionMode.Input,
+				type: connectionType,
+				index: 0,
+			});
+			// create connection from master(e.g. agent) node to hitl node
+			const connectionFromHitl: Connection = {
+				target: lastInteractedWithNodeConnection.target,
+				targetHandle: lastInteractedWithNodeConnection.targetHandle,
+				source: nodeId,
+				sourceHandle: nodeHandle,
+			};
+			createConnection(connectionFromHitl);
+
+			// delete existing connection from agent node to tool node
+			deleteConnection(lastInteractedWithNodeConnection);
+
+			const connection: Connection = {
+				source: lastInteractedWithNodeConnection.source,
+				sourceHandle: lastInteractedWithNodeConnection.sourceHandle,
+				target: nodeId,
+				targetHandle: nodeHandle,
+			};
+			createConnection(connection);
+
+			return;
+		}
+
+		const trackOptions = {
+			trackHistory: options.trackHistory,
+			trackBulk: false,
+		};
+
 		// If we have a specific endpoint to connect to
 		if (lastInteractedWithNodeHandle) {
 			const { type: connectionType, mode } = parseCanvasConnectionHandleString(
@@ -911,54 +966,66 @@ export function useCanvasOperations() {
 			});
 
 			if (mode === CanvasConnectionMode.Input) {
-				createConnection({
-					source: nodeId,
-					sourceHandle: nodeHandle,
-					target: lastInteractedWithNodeId,
-					targetHandle: lastInteractedWithNodeHandle,
-				});
+				createConnection(
+					{
+						source: nodeId,
+						sourceHandle: nodeHandle,
+						target: lastInteractedWithNodeId,
+						targetHandle: lastInteractedWithNodeHandle,
+					},
+					trackOptions,
+				);
 			} else {
-				createConnection({
-					source: lastInteractedWithNodeId,
-					sourceHandle: lastInteractedWithNodeHandle,
-					target: nodeId,
-					targetHandle: nodeHandle,
-				});
+				createConnection(
+					{
+						source: lastInteractedWithNodeId,
+						sourceHandle: lastInteractedWithNodeHandle,
+						target: nodeId,
+						targetHandle: nodeHandle,
+					},
+					trackOptions,
+				);
 			}
 		} else {
 			// If a node is last selected then connect between the active and its child ones
 			// Connect active node to the newly created one
-			createConnection({
-				source: lastInteractedWithNodeId,
-				sourceHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Output,
-					type: NodeConnectionTypes.Main,
-					index: 0,
-				}),
-				target: node.id,
-				targetHandle: createCanvasConnectionHandleString({
-					mode: CanvasConnectionMode.Input,
-					type: NodeConnectionTypes.Main,
-					index: 0,
-				}),
-			});
-		}
-
-		if (lastInteractedWithNodeConnection) {
-			deleteConnection(lastInteractedWithNodeConnection, { trackHistory: options.trackHistory });
-
-			const targetNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
-			if (targetNode) {
-				createConnection({
-					source: node.id,
+			createConnection(
+				{
+					source: lastInteractedWithNodeId,
 					sourceHandle: createCanvasConnectionHandleString({
+						mode: CanvasConnectionMode.Output,
+						type: NodeConnectionTypes.Main,
+						index: 0,
+					}),
+					target: node.id,
+					targetHandle: createCanvasConnectionHandleString({
 						mode: CanvasConnectionMode.Input,
 						type: NodeConnectionTypes.Main,
 						index: 0,
 					}),
-					target: lastInteractedWithNodeConnection.target,
-					targetHandle: lastInteractedWithNodeConnection.targetHandle,
-				});
+				},
+				trackOptions,
+			);
+		}
+
+		if (lastInteractedWithNodeConnection) {
+			deleteConnection(lastInteractedWithNodeConnection, trackOptions);
+
+			const targetNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
+			if (targetNode) {
+				createConnection(
+					{
+						source: node.id,
+						sourceHandle: createCanvasConnectionHandleString({
+							mode: CanvasConnectionMode.Input,
+							type: NodeConnectionTypes.Main,
+							index: 0,
+						}),
+						target: lastInteractedWithNodeConnection.target,
+						targetHandle: lastInteractedWithNodeConnection.targetHandle,
+					},
+					trackOptions,
+				);
 			}
 		}
 	}
@@ -1164,6 +1231,53 @@ export function useCanvasOperations() {
 				// - clicking the plus button of a node handle
 				// - clicking the plus button of a node edge / connection
 				// - selecting a node, adding a node via the node creator
+
+				// When adding a HITL node from clicking the plus button of a node connection
+				const isNewHitlToolNode = isHitlToolType(node.type);
+				if (
+					isNewHitlToolNode &&
+					lastInteractedWithNodeConnection &&
+					connectionType === NodeConnectionTypes.AiTool
+				) {
+					// Get the source node (main node) from the connection
+					const toolUserNode = workflowsStore.getNodeById(lastInteractedWithNodeConnection.target);
+					if (toolUserNode) {
+						// Position the HITL node vertically between the source (main) node and target (tool) node
+						// X position: same as the tool node, slightly shifted to the left because of the size difference
+						// Y position: halfway between source and target nodes
+						const sourceY = toolUserNode.position[1];
+						const targetY = lastInteractedWithNode.position[1];
+						const yDiff = (targetY - sourceY) / 2;
+						const middleY = sourceY + yDiff;
+
+						position = [
+							lastInteractedWithNode.position[0] - CONFIGURABLE_NODE_SIZE[0] / 2,
+							middleY,
+						];
+
+						const isTooClose = Math.abs(middleY - targetY) < PUSH_NODES_OFFSET;
+						if (isTooClose) {
+							// slightly move the tool node vertically
+							const verticalOffset = PUSH_NODES_OFFSET / 2;
+							updateNodePosition(
+								lastInteractedWithNode.id,
+								{
+									x: lastInteractedWithNode.position[0],
+									y:
+										lastInteractedWithNode.position[1] +
+										(yDiff > 0 ? verticalOffset : -verticalOffset),
+								},
+								{ trackHistory: true },
+							);
+						}
+
+						return NodeViewUtils.getNewNodePosition(workflowsStore.allNodes, position, {
+							offset: pushOffsets,
+							size: nodeSize,
+							viewport: options.viewport,
+						});
+					}
+				}
 
 				const lastInteractedWithNodeInputs = NodeHelpers.getNodeInputs(
 					editableWorkflowObject.value,
@@ -1443,7 +1557,22 @@ export function useCanvasOperations() {
 				editableWorkflowObject.value,
 				candidate.name,
 			);
-			downstream.forEach((name) => candidateNames.add(name));
+			downstream
+				// Filter the downstream nodes to find candidates that need to be shifted right.
+				.filter((name) => {
+					const node = workflowsStore.getNodeByName(name);
+					if (!node) {
+						return false;
+					}
+					const nodeRightEdge = node.position[0] + DEFAULT_NODE_SIZE[0];
+
+					// Check if the current node visually overlaps with, or is entirely to the right of,
+					// the new insertion point (insertX).
+					const overlapsOrIsToTheRight = nodeRightEdge > insertX || node.position[0] >= insertX;
+
+					return overlapsOrIsToTheRight;
+				})
+				.forEach((name) => candidateNames.add(name));
 		}
 
 		// Step 3: Get all candidate regular nodes (they overlap with or are downstream of insertion)
@@ -1666,7 +1795,7 @@ export function useCanvasOperations() {
 		});
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -1771,6 +1900,11 @@ export function useCanvasOperations() {
 			connection: mappedConnection,
 		});
 
+		void nextTick(() => {
+			nodeHelpers.updateNodeInputIssues(sourceNode);
+			nodeHelpers.updateNodeInputIssues(targetNode);
+		});
+
 		if (trackHistory) {
 			historyStore.pushCommandToUndo(new RemoveConnectionCommand(mappedConnection, Date.now()));
 
@@ -1868,7 +2002,7 @@ export function useCanvasOperations() {
 				return connectionType === type;
 			});
 
-		const getInputFilter = (
+		const getConnectionFilter = (
 			connection?: NodeConnectionType | INodeInputConfiguration | INodeOutputConfiguration,
 		) => {
 			if (connection && typeof connection === 'object' && 'filter' in connection) {
@@ -1907,6 +2041,10 @@ export function useCanvasOperations() {
 
 		const sourceNodeHasOutputConnectionPortOfType =
 			sourceConnection.index < sourceOutputsOfType.length;
+		const sourceConnectionDefinition = sourceNodeHasOutputConnectionPortOfType
+			? sourceOutputsOfType[sourceConnection.index]
+			: undefined;
+		const sourceConnectionFilter = getConnectionFilter(sourceConnectionDefinition);
 
 		const isMissingOutputConnection =
 			!sourceNodeHasOutputConnectionOfType || !sourceNodeHasOutputConnectionPortOfType;
@@ -1939,14 +2077,18 @@ export function useCanvasOperations() {
 		const targetConnectionDefinition = targetNodeHasInputConnectionPortOfType
 			? targetInputsOfType[targetConnection.index]
 			: undefined;
-		const targetConnectionFilter = getInputFilter(targetConnectionDefinition);
+		const targetConnectionFilter = getConnectionFilter(targetConnectionDefinition);
 
-		if (
-			(targetConnectionFilter?.nodes?.length &&
-				!targetConnectionFilter.nodes.includes(sourceNode.type)) ||
-			(targetConnectionFilter?.excludedNodes?.length &&
-				targetConnectionFilter.excludedNodes.includes(sourceNode.type))
-		) {
+		function isConnectionFiltered(filter: INodeFilter | undefined, nodeType: string): boolean {
+			const isNotIncluded = !!filter?.nodes?.length && !filter.nodes.includes(nodeType);
+			const isExcluded = !!filter?.excludedNodes?.length && filter.excludedNodes.includes(nodeType);
+			return isNotIncluded || isExcluded;
+		}
+
+		const isFilteredByTarget = isConnectionFiltered(targetConnectionFilter, sourceNode.type);
+		const isFilteredBySource = isConnectionFiltered(sourceConnectionFilter, targetNode.type);
+
+		if (isFilteredByTarget || isFilteredBySource) {
 			toast.showToast({
 				title: i18n.baseText('nodeView.showError.nodeNodeCompatible.title'),
 				message: i18n.baseText('nodeView.showError.nodeNodeCompatible.message', {
@@ -1987,7 +2129,7 @@ export function useCanvasOperations() {
 		}
 
 		if (!keepPristine) {
-			uiStore.stateIsDirty = true;
+			uiStore.markStateDirty();
 		}
 	}
 
@@ -2016,7 +2158,7 @@ export function useCanvasOperations() {
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		// Reset executions
 		executionsStore.activeExecution = null;
@@ -2239,20 +2381,25 @@ export function useCanvasOperations() {
 			trackBulk: false,
 			trackHistory,
 			viewport,
+			keepPristine: true,
 		});
 		await addConnections(
 			mapLegacyConnectionsToCanvasConnections(
 				tempWorkflow.connectionsBySourceNode,
 				Object.values(tempWorkflow.nodes),
 			),
-			{ trackBulk: false, trackHistory },
+			{ trackBulk: false, trackHistory, keepPristine: true },
 		);
 
 		if (trackBulk && trackHistory) {
 			historyStore.stopRecordingUndo();
 		}
 
-		uiStore.stateIsDirty = setStateDirty;
+		if (setStateDirty) {
+			uiStore.markStateDirty();
+		} else {
+			uiStore.markStateClean();
+		}
 
 		return {
 			nodes: Object.values(tempWorkflow.nodes),
@@ -2304,17 +2451,14 @@ export function useCanvasOperations() {
 						nodeNames.add(newName);
 					}
 
-					// Generate new webhookId if workflow already contains a node with the same webhookId
+					// Generate new webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						const isDuplicate = Object.values(workflowsStore.workflowObject.nodes).some(
-							(n) => n.webhookId === node.webhookId,
-						);
-						if (isDuplicate) {
+						if (node.webhookId) {
 							nodeHelpers.assignWebhookId(node);
 
 							if (node.parameters.path) {
 								node.parameters.path = node.webhookId;
-							} else if ((node.parameters.options as IDataObject).path) {
+							} else if ((node.parameters.options as IDataObject)?.path) {
 								(node.parameters.options as IDataObject).path = node.webhookId;
 							}
 						}
@@ -2627,7 +2771,7 @@ export function useCanvasOperations() {
 			}
 		}
 
-		uiStore.stateIsDirty = false;
+		uiStore.markStateClean();
 
 		return data;
 	}
@@ -2668,7 +2812,7 @@ export function useCanvasOperations() {
 		if (workflow.connections) {
 			workflowsStore.setConnections(workflow.connections);
 		}
-		await addNodes(convertedNodes ?? []);
+		await addNodes(convertedNodes ?? [], { keepPristine: true });
 		await workflowState.getNewWorkflowDataAndMakeShareable(name, projectsStore.currentProjectId);
 		workflowState.addToWorkflowMetadata({ templateId: `${id}` });
 	}
@@ -2704,7 +2848,7 @@ export function useCanvasOperations() {
 		});
 		deleteNode(previousId, { trackHistory, trackBulk: false });
 
-		uiStore.stateIsDirty = true;
+		uiStore.markStateDirty();
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();
@@ -2837,8 +2981,6 @@ export function useCanvasOperations() {
 			workflowState.setWorkflowId(route.params.name);
 		}
 
-		uiStore.stateIsDirty = true;
-
 		canvasStore.stopLoading();
 
 		void externalHooks.run('template.open', {
@@ -2885,8 +3027,6 @@ export function useCanvasOperations() {
 			workflow,
 		});
 
-		uiStore.stateIsDirty = true;
-
 		canvasStore.stopLoading();
 
 		fitView();
@@ -2924,6 +3064,7 @@ export function useCanvasOperations() {
 		cutNodes,
 		duplicateNodes,
 		getNodesToSave,
+		getNodesToShift,
 		revertDeleteNode,
 		addConnections,
 		createConnection,

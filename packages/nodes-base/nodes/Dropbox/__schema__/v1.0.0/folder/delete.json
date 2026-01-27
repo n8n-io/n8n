@@ -1,0 +1,26 @@
+{
+    "type": "object",
+    "properties": {
+        "metadata": {
+            "type": "object",
+            "properties": {
+                ".tag": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path_display": {
+                    "type": "string"
+                },
+                "path_lower": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "version": 1
+}

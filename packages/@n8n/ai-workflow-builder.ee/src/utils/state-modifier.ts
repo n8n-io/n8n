@@ -1,6 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { RunnableConfig } from '@langchain/core/runnables';
 import type { Logger } from '@n8n/backend-common';
 
 import { cleanupDanglingToolCallMessages } from './cleanup-dangling-tool-call-messages';
@@ -142,12 +143,19 @@ export function handleCleanupDangling(
  *
  * For manual /compact: Removes all messages, routes to responder for acknowledgment.
  * For auto-compact: Removes old messages, preserves last user message to continue processing.
+ *
+ * @param messages - Conversation messages to compact
+ * @param previousSummary - Previous conversation summary
+ * @param llm - Language model for summarization
+ * @param isAutoCompact - Whether this is auto-compaction (preserve last message) or manual
+ * @param config - Optional RunnableConfig for tracing callbacks
  */
 export async function handleCompactMessages(
 	messages: BaseMessage[],
 	previousSummary: string,
 	llm: BaseChatModel,
 	isAutoCompact: boolean,
+	config?: RunnableConfig,
 ): Promise<{
 	previousSummary: string;
 	messages: BaseMessage[];
@@ -158,7 +166,7 @@ export async function handleCompactMessages(
 		throw new Error('Cannot compact messages: no HumanMessage found');
 	}
 
-	const compactedMessages = await conversationCompactChain(llm, messages, previousSummary);
+	const compactedMessages = await conversationCompactChain(llm, messages, previousSummary, config);
 
 	// For manual /compact: just remove messages, responder will generate acknowledgment
 	// For auto-compact: remove messages but preserve the last user message to continue processing
@@ -252,12 +260,19 @@ export function handleClearErrorState(
 
 /**
  * Generates a workflow name from the initial user message.
+ *
+ * @param messages - Conversation messages
+ * @param workflowJSON - Current workflow state
+ * @param llm - Language model for name generation
+ * @param logger - Optional logger
+ * @param config - Optional RunnableConfig for tracing callbacks
  */
 export async function handleCreateWorkflowName(
 	messages: BaseMessage[],
 	workflowJSON: SimpleWorkflow,
 	llm: BaseChatModel,
 	logger?: Logger,
+	config?: RunnableConfig,
 ): Promise<{ workflowJSON: SimpleWorkflow }> {
 	if (messages.length === 1 && messages[0] instanceof HumanMessage) {
 		const initialMessage = messages[0];
@@ -267,7 +282,7 @@ export async function handleCreateWorkflowName(
 		}
 
 		logger?.debug('Generating workflow name');
-		const { name } = await workflowNameChain(llm, initialMessage.content);
+		const { name } = await workflowNameChain(llm, initialMessage.content, config);
 
 		return {
 			workflowJSON: { ...workflowJSON, name },

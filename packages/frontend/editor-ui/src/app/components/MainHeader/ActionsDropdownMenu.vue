@@ -40,11 +40,11 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
 	isNewWorkflow: boolean;
-	readOnly?: boolean;
 	isArchived: IWorkflowDb['isArchived'];
 	id: IWorkflowDb['id'];
 	name: IWorkflowDb['name'];
@@ -53,16 +53,13 @@ const props = defineProps<{
 	meta: IWorkflowDb['meta'];
 }>();
 
-const emit = defineEmits<{
-	'workflow:saved': [];
-}>();
-
 const importFileRef = ref<HTMLInputElement | undefined>();
 const toast = useToast();
 const locale = useI18n();
 const route = useRoute();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
+const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
 const $style = useCssModule();
@@ -86,6 +83,8 @@ const onExecutionsTab = computed(() => {
 		VIEWS.EXECUTION_PREVIEW,
 	].includes((route.name as string) || '');
 });
+
+const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
@@ -144,7 +143,11 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	if (!props.readOnly && !props.isArchived) {
+	if (
+		!collaborationReadOnly.value &&
+		!props.isArchived &&
+		!sourceControlStore.preferences.branchReadOnly
+	) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.RENAME,
 			label: locale.baseText('generic.rename'),
@@ -153,7 +156,10 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	}
 
 	if (
-		(props.workflowPermissions.update === true && !props.readOnly && !props.isArchived) ||
+		(props.workflowPermissions.update === true &&
+			!collaborationReadOnly.value &&
+			!props.isArchived &&
+			!sourceControlStore.preferences.branchReadOnly) ||
 		props.isNewWorkflow
 	) {
 		actions.unshift({
@@ -199,7 +205,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
 
-	if (activeVersion.value && props.workflowPermissions.publish && !props.readOnly) {
+	if (activeVersion.value && props.workflowPermissions.publish && !collaborationReadOnly.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.UNPUBLISH,
 			label: locale.baseText('menuActions.unpublish'),
@@ -207,7 +213,12 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	if ((props.workflowPermissions.delete === true && !props.readOnly) || props.isNewWorkflow) {
+	if (
+		(props.workflowPermissions.delete === true &&
+			!collaborationReadOnly.value &&
+			!sourceControlStore.preferences.branchReadOnly) ||
+		props.isNewWorkflow
+	) {
 		if (props.isArchived) {
 			actions.push({
 				id: WORKFLOW_MENU_ACTIONS.UNARCHIVE,
@@ -336,8 +347,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.PUSH: {
 			try {
-				emit('workflow:saved');
-
 				// Navigate to route with sourceControl param - modal will handle data loading and loading states
 				void router.push({
 					query: {

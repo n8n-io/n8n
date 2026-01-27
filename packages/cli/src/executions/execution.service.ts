@@ -41,6 +41,7 @@ import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
@@ -48,6 +49,7 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { ExecutionPersistence } from './execution-persistence';
 import type { ExecutionRequest, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
@@ -103,6 +105,7 @@ export class ExecutionService {
 		private readonly executionAnnotationRepository: ExecutionAnnotationRepository,
 		private readonly annotationTagMappingRepository: AnnotationTagMappingRepository,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeTypes: NodeTypes,
 		private readonly waitTracker: WaitTracker,
@@ -110,6 +113,7 @@ export class ExecutionService {
 		private readonly concurrencyControl: ConcurrencyControlService,
 		private readonly license: License,
 		private readonly workflowSharingService: WorkflowSharingService,
+		private readonly eventService: EventService,
 	) {}
 
 	async findOne(
@@ -268,6 +272,20 @@ export class ExecutionService {
 			throw new UnexpectedError('The retry did not start for an unknown reason.');
 		}
 
+		this.eventService.emit('workflow-executed', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			workflowId: execution.workflowId,
+			workflowName: execution.workflowData.name,
+			executionId: retriedExecutionId,
+			source: 'user-retry',
+		});
+
 		return {
 			id: retriedExecutionId,
 			mode: executionData.mode,
@@ -281,6 +299,7 @@ export class ExecutionService {
 			workflowData: execution.workflowData,
 			customData: execution.customData,
 			annotation: execution.annotation,
+			storedAt: execution.storedAt,
 		};
 	}
 
@@ -304,9 +323,22 @@ export class ExecutionService {
 			delete requestFilters.metadata;
 		}
 
-		await this.executionRepository.deleteExecutionsByFilter(requestFilters, sharedWorkflowIds, {
+		await this.executionPersistence.hardDeleteBy({
+			filters: requestFilters,
+			accessibleWorkflowIds: sharedWorkflowIds,
+			deleteConditions: { deleteBefore, ids },
+		});
+
+		this.eventService.emit('execution-deleted', {
+			user: {
+				id: req.user.id,
+				email: req.user.email,
+				firstName: req.user.firstName,
+				lastName: req.user.lastName,
+				role: req.user.role,
+			},
+			executionIds: ids ?? [],
 			deleteBefore,
-			ids,
 		});
 	}
 

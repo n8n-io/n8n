@@ -36,11 +36,12 @@ jobs:
       - name: Run Container Coverage Tests
         id: coverage-tests
         run: |
-          pnpm --filter n8n-playwright test:container:standard \
+          pnpm --filter n8n-playwright test:container:sqlite \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
           BUILD_WITH_COVERAGE: 'true'
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          CURRENTS_PROJECT_ID: 'LRxcNt'
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}

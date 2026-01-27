@@ -205,7 +205,6 @@ const {
 	display: flex;
 	align-items: center;
 	padding: var(--spacing--2xs) var(--spacing--3xs);
-	margin-bottom: var(--spacing--2xs);
 	justify-content: space-between;
 	gap: var(--spacing--4xs);
 
@@ -238,7 +237,7 @@ const {
 	align-self: center;
 	padding: 2px;
 	border-radius: var(--radius--sm);
-	margin: 7px 12px 0 5px;
+	margin: 0 var(--spacing--xs) 0 var(--spacing--3xs);
 }
 
 .iconButton {

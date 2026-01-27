@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ComponentInstance } from 'vue';
+import type { ComponentPublicInstance } from 'vue';
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { EventBus } from '@n8n/utils/event-bus';
@@ -82,7 +82,7 @@ const projectStore = useProjectsStore();
 const router = useRouter();
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
-const dropdown = ref<ComponentInstance<typeof ResourceLocatorDropdown>>();
+const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
 const telemetry = useTelemetry();
 const toast = useToast();
 

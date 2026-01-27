@@ -7,7 +7,6 @@ import {
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
-	AiSessionMetadataResponseDto,
 	AiTruncateMessagesRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -42,7 +41,7 @@ export class AiController {
 	// "Cannot set headers after they are sent" error for streaming responses.
 	// This ensures errors during streaming are handled within the stream itself.
 	@Licensed('feat:aiBuilder')
-	@Post('/build', { rateLimit: { limit: 100 }, usesTemplates: true })
+	@Post('/build', { ipRateLimit: { limit: 100 }, usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
@@ -120,7 +119,7 @@ export class AiController {
 		}
 	}
 
-	@Post('/chat', { rateLimit: { limit: 100 } })
+	@Post('/chat', { ipRateLimit: { limit: 100 } })
 	async chat(req: AuthenticatedRequest, res: FlushableResponse, @Body payload: AiChatRequestDto) {
 		try {
 			const aiResponse = await this.aiService.chat(payload, req.user);
@@ -215,7 +214,7 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiBuilder')
-	@Post('/sessions', { rateLimit: { limit: 100 } })
+	@Post('/sessions', { ipRateLimit: { limit: 100 } })
 	async getSessions(
 		req: AuthenticatedRequest,
 		_: Response,
@@ -224,25 +223,6 @@ export class AiController {
 		try {
 			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
 			return sessions;
-		} catch (e) {
-			assert(e instanceof Error);
-			throw new InternalServerError(e.message, e);
-		}
-	}
-
-	@Licensed('feat:aiBuilder')
-	@Post('/sessions/metadata', { rateLimit: { limit: 100 } })
-	async getSessionsMetadata(
-		req: AuthenticatedRequest,
-		_: Response,
-		@Body payload: AiSessionRetrievalRequestDto,
-	): Promise<AiSessionMetadataResponseDto> {
-		try {
-			const metadata = await this.workflowBuilderService.getSessionsMetadata(
-				payload.workflowId,
-				req.user,
-			);
-			return metadata;
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
@@ -264,7 +244,7 @@ export class AiController {
 	}
 
 	@Licensed('feat:aiBuilder')
-	@Post('/build/truncate-messages', { rateLimit: { limit: 100 } })
+	@Post('/build/truncate-messages', { ipRateLimit: { limit: 100 } })
 	async truncateMessages(
 		req: AuthenticatedRequest,
 		_: Response,

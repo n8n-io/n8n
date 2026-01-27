@@ -7,14 +7,13 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import type {
-	QueryRunner,
-	QueryValues,
-	QueryWithValues,
-	SortRule,
-	WhereClause,
-} from '../../helpers/interfaces';
-import { addSortRules, addWhereClauses, escapeSqlIdentifier } from '../../helpers/utils';
+import type { QueryRunner, QueryValues, QueryWithValues, SortRule } from '../../helpers/interfaces';
+import {
+	addSortRules,
+	addWhereClauses,
+	escapeSqlIdentifier,
+	getWhereClauses,
+} from '../../helpers/utils';
 import {
 	optionsCollection,
 	sortFixedCollection,
@@ -98,8 +97,7 @@ export async function execute(
 
 		let values: QueryValues = [];
 
-		const whereClauses =
-			((this.getNodeParameter('where', i, []) as IDataObject).values as WhereClause[]) || [];
+		const whereClauses = getWhereClauses(this, i);
 
 		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
 
