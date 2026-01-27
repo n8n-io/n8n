@@ -238,9 +238,7 @@ const processData = node({{
 
 // 2. Compose workflow
 return workflow('id', 'name')
-  .add(startTrigger)
-  .to(fetchData)
-  .to(processData);
+  .add(startTrigger.to(fetchData).to(processData));
 \`\`\`
 
 ## Conditional Branching (IF)
@@ -250,10 +248,9 @@ return workflow('id', 'name')
 \`\`\`typescript
 // Assume nodes declared: checkValid (IF), formatData, enrichData, saveToDb, logError
 return workflow('id', 'name')
-  .add(startTrigger)
-  .to(checkValid
+  .add(startTrigger.to(checkValid
     .onTrue(formatData.to(enrichData).to(saveToDb))  // Chain 3 nodes on true branch
-    .onFalse(logError));
+    .onFalse(logError)));
 \`\`\`
 
 WRONG - nodes after IF run for BOTH branches:
@@ -274,11 +271,10 @@ RIGHT - chain inside the branch:
 \`\`\`typescript
 // Assume nodes declared: routeByPriority (Switch), processUrgent, notifyTeam, escalate, processNormal, archive
 return workflow('id', 'name')
-  .add(startTrigger)
-  .to(routeByPriority
+  .add(startTrigger.to(routeByPriority
     .onCase(0, processUrgent.to(notifyTeam).to(escalate))  // Chain of 3 nodes
     .onCase(1, processNormal)
-    .onCase(2, archive));
+    .onCase(2, archive)));
 \`\`\`
 
 ## Parallel Execution (Merge)
@@ -343,12 +339,10 @@ const sibNode = splitInBatches({{ name: 'Batch Process', parameters: {{ batchSiz
 
 // 3. Compose workflow - use nextBatch() for explicit loop-back
 return workflow('id', 'name')
-  .add(startTrigger)
-  .to(fetchRecords)
-  .to(sibNode
+  .add(startTrigger.to(fetchRecords).to(sibNode
     .onDone(finalizeResults)
     .onEachBatch(processRecord.to(nextBatch(sibNode)))  // nextBatch() makes loop intent explicit
-  );
+  ));
 \`\`\`
 
 ## Multiple Triggers (Separate Chains)
@@ -452,8 +446,7 @@ const aiAgent = node({{
 
 // 3. Compose workflow
 return workflow('ai-assistant', 'AI Assistant')
-  .add(startTrigger)
-  .to(aiAgent);
+  .add(startTrigger.to(aiAgent));
 \`\`\`
 
 ## AI Agent with Tools
@@ -496,8 +489,7 @@ const aiAgent = node({{
 
 // 3. Compose workflow
 return workflow('ai-calculator', 'AI Calculator')
-  .add(startTrigger)
-  .to(aiAgent);
+  .add(startTrigger.to(aiAgent));
 \`\`\`
 
 ## AI Agent with $fromAI (AI-Driven Parameters)
@@ -549,8 +541,7 @@ const aiAgent = node({{
 
 // 3. Compose workflow
 return workflow('ai-email', 'AI Email Sender')
-  .add(startTrigger)
-  .to(aiAgent);
+  .add(startTrigger.to(aiAgent));
 \`\`\``;
 
 /**
@@ -631,7 +622,7 @@ Generate your response as a JSON object with a single field \`workflowCode\`:
 
 \`\`\`json
 {{
-  "workflowCode": "const startTrigger = trigger({{...}});\\nconst processData = node({{...}});\\n\\nreturn workflow('unique-id', 'Workflow Name')\\n  .add(startTrigger)\\n  .to(processData);"
+  "workflowCode": "const startTrigger = trigger({{...}});\\nconst processData = node({{...}});\\n\\nreturn workflow('unique-id', 'Workflow Name')\\n  .add(startTrigger.to(processData));"
 }}
 \`\`\`
 
@@ -647,7 +638,7 @@ Example output:
 
 \`\`\`json
 {{
-  "workflowCode": "const startTrigger = trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: {{ name: 'Start', position: [240, 300] }} }});\\nconst createMessage = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Create Message', parameters: {{ mode: 'manual', fields: {{ values: [{{ name: 'message', stringValue: 'Hello, World!' }}] }} }}, position: [540, 300] }} }});\\n\\nreturn workflow('hello-world', 'Hello World Workflow')\\n  .add(startTrigger)\\n  .to(createMessage);"
+  "workflowCode": "const startTrigger = trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: {{ name: 'Start', position: [240, 300] }} }});\\nconst createMessage = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Create Message', parameters: {{ mode: 'manual', fields: {{ values: [{{ name: 'message', stringValue: 'Hello, World!' }}] }} }}, position: [540, 300] }} }});\\n\\nreturn workflow('hello-world', 'Hello World Workflow')\\n  .add(startTrigger.to(createMessage));"
 }}
 \`\`\`
 

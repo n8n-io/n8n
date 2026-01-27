@@ -448,8 +448,7 @@ export interface TriggerInput<
  *
  * @example
  * workflow('my-workflow', 'My Workflow', { timezone: 'UTC' })
- *   .add(trigger({ ... }))
- *   .to(node({ ... }));
+ *   .add(trigger({ ... }).to(node({ ... })));
  */
 export type WorkflowFn = (id: string, name: string, settings?: WorkflowSettings) => WorkflowBuilder;
 
@@ -542,13 +541,11 @@ export type NewCredentialFn = (name: string) => CredentialReference;
  *
  * // Fluent API with nextBatch() for explicit loop-back
  * workflow('id', 'Batch Process')
- *   .add(startTrigger)
- *   .to(fetchRecords)
- *   .to(
+ *   .add(startTrigger.to(fetchRecords).to(
  *     sibNode
  *       .onDone(finalizeNode)                            // When all batches done
  *       .onEachBatch(processNode.to(nextBatch(sibNode))) // Loop back with nextBatch()
- *   );
+ *   ));
  */
 export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder;
 
