@@ -52,9 +52,9 @@ const route = useRoute();
 const workflowSaving = useWorkflowSaving({ router });
 
 const workflow = ref(
-	data.id && workflowsStore.workflowsById[data.id]
-		? workflowsStore.workflowsById[data.id]
-		: workflowsStore.workflow,
+	data.id && workflowsStore.workflowDocumentById[data.id]
+		? workflowsStore.workflowDocumentById[data.id]
+		: workflowsStore.workflowDocumentById[workflowsStore.workflowId],
 );
 const loading = ref(true);
 const isDirty = ref(false);

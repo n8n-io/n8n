@@ -16,7 +16,7 @@ export function useClearExecutionButtonVisible() {
 	const nodeTypesStore = useNodeTypesStore();
 	const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 	const allTriggerNodesDisabled = computed(() =>
-		editableWorkflow.value.nodes
+		(editableWorkflow.value?.nodes ?? [])
 			.filter((node) => nodeTypesStore.isTriggerNode(node.type))
 			.every((node) => node.disabled),
 	);

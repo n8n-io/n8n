@@ -18,6 +18,7 @@ import type {
 	INodeUi,
 	INodeUpdatePropertiesInformation,
 	IWorkflowDb,
+	IWorkflowSettings,
 	NodeFilterType,
 } from '@/Interface';
 import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/users';
@@ -41,7 +42,7 @@ interface UserSavedCredentialsEventData {
 }
 
 interface UpdatedWorkflowSettingsEventData {
-	oldSettings: Record<string, unknown>;
+	oldSettings: IWorkflowSettings;
 }
 
 interface NodeTypeChangedEventData {

@@ -75,7 +75,7 @@ describe('WorkflowPublishModal', () => {
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 
-		workflowsStore.workflow = {
+		const workflow = {
 			id: 'workflow-1',
 			name: 'Test Workflow',
 			active: false,
@@ -96,6 +96,8 @@ describe('WorkflowPublishModal', () => {
 			nodes: [],
 			connections: {},
 		};
+		workflowsStore.workflowId = workflow.id;
+		workflowsStore.workflowDocumentById = { [workflow.id]: workflow } as never;
 
 		workflowsStore.workflowTriggerNodes = [
 			{

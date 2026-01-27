@@ -504,6 +504,10 @@ export const useFlattenSchema = () => {
 		additionalInfo: (node: INodeUi) => string,
 		truncateLimit: number,
 	) => {
+		const workflowsStore = useWorkflowsStore();
+		const binaryMode =
+			workflowsStore.workflowDocumentById?.[workflowsStore.workflowId]?.settings?.binaryMode;
+
 		return nodes.reduce<Renders[]>((acc, item) => {
 			acc.push({
 				title: item.node.name,
@@ -560,7 +564,7 @@ export const useFlattenSchema = () => {
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,
-						binaryMode: useWorkflowsStore().workflow.settings?.binaryMode,
+						binaryMode,
 					}),
 				}),
 			);

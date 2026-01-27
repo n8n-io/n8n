@@ -1,4 +1,5 @@
 import type { INodeUi } from '@/Interface';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { useContextMenu } from './useContextMenu';
 import {
 	BASIC_CHAIN_NODE_TYPE,
@@ -47,14 +48,25 @@ describe('useContextMenu', () => {
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.nodes = nodes;
-		workflowsStore.workflow.scopes = ['workflow:update'];
-		workflowsStore.workflowObject = {
-			nodes,
-			getNode: (_: string) => {
-				return {};
-			},
-		} as never;
+		// Set up the new dictionary pattern
+		const workflowId = 'test-workflow-id';
+		workflowsStore.workflowId = workflowId;
+		workflowsStore.workflowDocumentById = {
+			[workflowId]: createTestWorkflow({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes,
+				scopes: ['workflow:update'],
+			}),
+		};
+		workflowsStore.workflowObjectById = {
+			[workflowId]: {
+				nodes,
+				getNode: (_: string) => {
+					return {};
+				},
+			} as never,
+		};
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);
@@ -219,7 +231,7 @@ describe('useContextMenu', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
-			workflowsStore.workflow.active = false;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].active = false;
 
 			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
 
@@ -239,7 +251,7 @@ describe('useContextMenu', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
-			workflowsStore.workflow.active = true;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].active = true;
 
 			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
 
@@ -264,7 +276,7 @@ describe('useContextMenu', () => {
 				webhookId: 'chat-webhook',
 			});
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
-			workflowsStore.workflow.active = false;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].active = false;
 
 			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
 
@@ -285,7 +297,7 @@ describe('useContextMenu', () => {
 				webhookId: 'chat-webhook',
 			});
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
-			workflowsStore.workflow.active = true;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].active = true;
 
 			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
 
@@ -305,7 +317,7 @@ describe('useContextMenu', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const regularNode = nodeFactory({ type: NO_OP_NODE_TYPE });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(regularNode);
-			workflowsStore.workflow.active = true;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].active = true;
 
 			open(mockEvent, { source: 'node-right-click', nodeId: regularNode.id });
 
@@ -334,7 +346,7 @@ describe('useContextMenu', () => {
 	describe('Read-only mode', () => {
 		it('should return the correct actions when right clicking a sticky', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
-			workflowsStore.workflow.scopes = ['workflow:read'];
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].scopes = ['workflow:read'];
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
 			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(sticky);

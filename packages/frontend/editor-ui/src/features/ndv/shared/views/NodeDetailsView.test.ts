@@ -43,8 +43,9 @@ async function createPiniaStore(isActiveNode: boolean) {
 	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.workflow = workflow;
-	workflowsStore.workflowObject = createTestWorkflowObject(workflow);
+	workflowsStore.workflowId = workflow.id;
+	workflowsStore.workflowDocumentById[workflow.id] = workflow;
+	workflowsStore.workflowObjectById[workflow.id] = createTestWorkflowObject(workflow);
 	workflowsStore.nodeMetadata[node.name] = { pristine: true };
 
 	if (isActiveNode) {
@@ -56,7 +57,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	return {
 		pinia,
-		workflowObject: workflowsStore.workflowObject as Workflow,
+		workflowObject: workflowsStore.workflowObjectById[workflow.id] as Workflow,
 		nodeName: node.name,
 	};
 }

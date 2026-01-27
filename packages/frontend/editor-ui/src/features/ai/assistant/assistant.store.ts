@@ -354,9 +354,12 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 						authType: nodeInfo?.authType?.name,
 					}
 				: undefined,
-			currentWorkflow: workflowDataStale.value
-				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
-				: undefined,
+			currentWorkflow:
+				workflowDataStale.value && workflowsStore.workflowDocumentById[workflowsStore.workflowId]
+					? assistantHelpers.simplifyWorkflowForAssistant(
+							workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+						)
+					: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
 					? assistantHelpers.simplifyResultData(executionResult)
@@ -677,8 +680,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			codeDiffMessage.replacing = true;
 			const suggestionId = codeDiffMessage.suggestionId;
 
-			const workflowObject = workflowsStore.workflowObject;
-			const activeNode = workflowObject.getNode(chatSessionError.value.node.name);
+			const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+			const activeNode = workflowObject?.getNode(chatSessionError.value.node.name);
 			assert(activeNode);
 
 			const cached = suggestions.value[suggestionId];
@@ -723,8 +726,8 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			const suggestion = suggestions.value[suggestionId];
 			assert(suggestion);
 
-			const workflowObject = workflowsStore.workflowObject;
-			const activeNode = workflowObject.getNode(chatSessionError.value.node.name);
+			const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+			const activeNode = workflowObject?.getNode(chatSessionError.value.node.name);
 			assert(activeNode);
 
 			const suggested = suggestion.previous;

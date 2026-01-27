@@ -46,9 +46,14 @@ export function useWorkflowExtraction() {
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
-	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
+	const adjacencyList = computed(() => {
+		const currentWorkflowDocument = workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+		return buildAdjacencyList(currentWorkflowDocument?.connections ?? {});
+	});
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowObject = computed(
+		() => workflowsStore.workflowObjectById[workflowsStore.workflowId] as Workflow,
+	);
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -254,8 +259,10 @@ export function useWorkflowExtraction() {
 				...endNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
-			projectId: workflowsStore.workflow.homeProject?.id,
-			parentFolderId: workflowsStore.workflow.parentFolder?.id ?? undefined,
+			projectId: workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.homeProject?.id,
+			parentFolderId:
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.parentFolder?.id ??
+				undefined,
 		};
 	}
 
@@ -396,7 +403,9 @@ export function useWorkflowExtraction() {
 		);
 
 		for (const node of selectionChildNodes) {
-			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
+			const currentNode = workflowsStore.workflowDocumentById[
+				workflowsStore.workflowId
+			]?.nodes.find((x) => x.id === node.id);
 
 			if (isEqual(node, currentNode)) continue;
 
@@ -448,7 +457,9 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
+		const allNodeNames =
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes.map((x) => x.name) ??
+			[];
 
 		let startNodeName = 'Start';
 		const subGraphNames = subGraph.map((x) => x.name);
@@ -494,7 +505,7 @@ export function useWorkflowExtraction() {
 			newWorkflowName,
 			selection,
 			nodes,
-			workflowsStore.workflow.connections,
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.connections ?? {},
 			variables,
 			afterVariables,
 			startNodeName,

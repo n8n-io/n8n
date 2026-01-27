@@ -7,7 +7,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { mockedStore } from '@/__tests__/utils';
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 
@@ -73,12 +73,15 @@ describe('useWorkflowUpdate', () => {
 
 		// Setup default mocks
 		workflowsStore.allNodes = [];
-		workflowsStore.workflow = {
-			id: 'test-workflow',
-			name: DEFAULT_NEW_WORKFLOW_NAME,
-			nodes: [],
-			connections: {},
-		} as unknown as ReturnType<typeof useWorkflowsStore>['workflow'];
+		// Set up the new dictionary pattern
+		const workflowId = 'test-workflow';
+		workflowsStore.workflowId = workflowId;
+		workflowsStore.workflowDocumentById = {
+			[workflowId]: createTestWorkflow({
+				id: workflowId,
+				name: DEFAULT_NEW_WORKFLOW_NAME,
+			}),
+		};
 		workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue({
 			nodes: {},
 			connectionsBySourceNode: {},
@@ -405,7 +408,8 @@ describe('useWorkflowUpdate', () => {
 
 		describe('workflow name update', () => {
 			it('should update workflow name on initial generation when name starts with default', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId].name =
+					DEFAULT_NEW_WORKFLOW_NAME;
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -425,7 +429,8 @@ describe('useWorkflowUpdate', () => {
 			});
 
 			it('should not update workflow name when not initial generation', async () => {
-				workflowsStore.workflow.name = DEFAULT_NEW_WORKFLOW_NAME;
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId].name =
+					DEFAULT_NEW_WORKFLOW_NAME;
 
 				const { updateWorkflow } = useWorkflowUpdate();
 
@@ -442,7 +447,8 @@ describe('useWorkflowUpdate', () => {
 			});
 
 			it('should not update workflow name when current name does not start with default', async () => {
-				workflowsStore.workflow.name = 'Custom Workflow Name';
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId].name =
+					'Custom Workflow Name';
 
 				const { updateWorkflow } = useWorkflowUpdate();
 

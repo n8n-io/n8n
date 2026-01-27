@@ -412,7 +412,7 @@ const handleDelete = (optionName: string, index?: number) => {
 
 const trackFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id: workflowsStore.workflowId,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
@@ -420,7 +420,7 @@ const trackFieldAdded = () => {
 const trackFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id: workflowsStore.workflowId,
 		node_id: ndvStore.activeNode?.id,
 	});
 };

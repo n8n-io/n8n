@@ -44,13 +44,17 @@ export const useEvaluationStore = defineStore(
 		});
 
 		const evaluationTriggerExists = computed(() => {
-			return workflowsStore.workflow.nodes.some(
+			const currentWorkflowDocument =
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+			return (currentWorkflowDocument?.nodes ?? []).some(
 				(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 			);
 		});
 
 		function evaluationNodeExist(operation: string) {
-			return workflowsStore.workflow.nodes.some((node) => {
+			const currentWorkflowDocument =
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+			return (currentWorkflowDocument?.nodes ?? []).some((node) => {
 				if (node.type !== EVALUATION_NODE_TYPE) {
 					return false;
 				}

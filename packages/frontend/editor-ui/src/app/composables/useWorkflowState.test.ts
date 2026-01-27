@@ -25,12 +25,14 @@ describe('useWorkflowState', () => {
 				newName: 'New Workflow Name',
 				setStateDirty: false,
 			});
-			expect(workflowsStore.workflow.name).toBe('New Workflow Name');
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.name).toBe(
+				'New Workflow Name',
+			);
 		});
 
 		it('should propagate name to workflowObject for pre-exec expressions', () => {
 			workflowState.setWorkflowName({ newName: 'WF Title', setStateDirty: false });
-			expect(workflowsStore.workflowObject.name).toBe('WF Title');
+			expect(workflowsStore.workflowObjectById[workflowsStore.workflowId]?.name).toBe('WF Title');
 		});
 	});
 
@@ -140,7 +142,9 @@ describe('useWorkflowState', () => {
 
 			workflowState.setNodeValue({ name: 'Edit Fields', key: 'executeOnce', value: true });
 
-			expect(workflowsStore.workflow.nodes[0].executeOnce).toBe(true);
+			expect(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes[0].executeOnce,
+			).toBe(true);
 			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toEqual(
 				expect.any(Number),
 			);
@@ -164,7 +168,9 @@ describe('useWorkflowState', () => {
 
 			workflowState.setNodePositionById(nodeId, [0, 0]);
 
-			expect(workflowsStore.workflow.nodes[0].position).toStrictEqual([0, 0]);
+			expect(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes[0].position,
+			).toStrictEqual([0, 0]);
 			expect(workflowsStore.nodeMetadata[nodeName].parametersLastUpdatedAt).toBe(undefined);
 		});
 	});
@@ -203,39 +209,42 @@ describe('useWorkflowState', () => {
 				expectedResult: true,
 			},
 		])('$description', ({ nodeIndex, nodeData, initialNodes, expectedNodes, expectedResult }) => {
-			workflowsStore.workflow.nodes = initialNodes as unknown as IWorkflowDb['nodes'];
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].nodes =
+				initialNodes as unknown as IWorkflowDb['nodes'];
 
 			const result = workflowState.updateNodeAtIndex(nodeIndex, nodeData);
 
 			expect(result).toBe(expectedResult);
-			expect(workflowsStore.workflow.nodes).toEqual(expectedNodes);
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes).toEqual(
+				expectedNodes,
+			);
 		});
 
 		it('should throw error if out of bounds', () => {
-			workflowsStore.workflow.nodes = [];
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].nodes = [];
 			expect(() => workflowState.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
 		});
 	});
 
 	describe('pinned data', () => {
 		it('sets workflow pin data', () => {
-			workflowsStore.workflow.pinData = undefined;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].pinData = undefined;
 			const data: IPinData = {
 				TestNode: [{ json: { test: true } }],
 				TestNode1: [{ json: { test: false } }],
 			};
 			workflowState.setWorkflowPinData(data);
-			expect(workflowsStore.workflow.pinData).toEqual(data);
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.pinData).toEqual(data);
 		});
 
 		it('sets workflow pin data, adding json keys', () => {
-			workflowsStore.workflow.pinData = undefined;
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].pinData = undefined;
 			const data = {
 				TestNode: [{ test: true }],
 				TestNode1: [{ test: false }],
 			};
 			workflowState.setWorkflowPinData(data as unknown as IPinData);
-			expect(workflowsStore.workflow.pinData).toEqual({
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.pinData).toEqual({
 				TestNode: [{ json: { test: true } }],
 				TestNode1: [{ json: { test: false } }],
 			});
@@ -254,7 +263,9 @@ describe('useWorkflowState', () => {
 			const result = workflowState.updateNodeById('node-1', { name: 'Updated First Node' });
 
 			expect(result).toBe(true);
-			expect(workflowsStore.workflow.nodes[0].name).toBe('Updated First Node');
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes[0].name).toBe(
+				'Updated First Node',
+			);
 		});
 
 		it('should return false if node ID is not found', () => {
@@ -262,8 +273,12 @@ describe('useWorkflowState', () => {
 
 			expect(result).toBe(false);
 			// Nodes should remain unchanged
-			expect(workflowsStore.workflow.nodes[0].name).toBe('First Node');
-			expect(workflowsStore.workflow.nodes[1].name).toBe('Second Node');
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes[0].name).toBe(
+				'First Node',
+			);
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes[1].name).toBe(
+				'Second Node',
+			);
 		});
 
 		it('should update only specified properties', () => {
@@ -273,10 +288,16 @@ describe('useWorkflowState', () => {
 			});
 
 			expect(result).toBe(true);
-			expect(workflowsStore.workflow.nodes[1].name).toBe('Updated Second Node');
-			expect(workflowsStore.workflow.nodes[1].disabled).toBe(true);
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes[1].name).toBe(
+				'Updated Second Node',
+			);
+			expect(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes[1].disabled,
+			).toBe(true);
 			// Other properties should remain unchanged
-			expect(workflowsStore.workflow.nodes[1].id).toBe('node-2');
+			expect(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes[1].id).toBe(
+				'node-2',
+			);
 		});
 
 		it('should return false if node data is unchanged', () => {

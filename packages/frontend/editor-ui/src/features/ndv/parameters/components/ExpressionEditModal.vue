@@ -78,7 +78,9 @@ const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
-	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	if (!workflowObject) return [];
+	const nodes = workflowObject.getParentNodesByDepth(node.name);
 
 	return nodes.filter(({ name }) => name !== node.name);
 });
@@ -91,7 +93,9 @@ const rootNode = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return workflowsStore.workflowObject.getParentNodesByDepth(rootNode.value);
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	if (!workflowObject) return [];
+	return workflowObject.getParentNodesByDepth(rootNode.value);
 });
 
 watch(

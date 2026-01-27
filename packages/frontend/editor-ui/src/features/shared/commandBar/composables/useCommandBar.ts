@@ -207,21 +207,22 @@ export function useCommandBar() {
 	});
 
 	const context = computed(() => {
+		const workflowName = workflowStore.workflowDocumentById[workflowStore.workflowId]?.name;
 		switch (router.currentRoute.value.name) {
 			case VIEWS.WORKFLOW:
 			case VIEWS.NEW_WORKFLOW:
-				return workflowStore.workflow.name
-					? i18n.baseText('commandBar.sections.workflow') + ' ⋅ ' + workflowStore.workflow.name
+				return workflowName
+					? i18n.baseText('commandBar.sections.workflow') + ' ⋅ ' + workflowName
 					: '';
 			case VIEWS.EXECUTION_PREVIEW:
 			case VIEWS.EXECUTION_DEBUG:
-				return workflowStore.workflow.name
-					? i18n.baseText('commandBar.sections.execution') + ' ⋅ ' + workflowStore.workflow.name
+				return workflowName
+					? i18n.baseText('commandBar.sections.execution') + ' ⋅ ' + workflowName
 					: '';
 			case VIEWS.EVALUATION:
 			case VIEWS.EVALUATION_EDIT:
 			case VIEWS.EVALUATION_RUNS_DETAIL:
-				return workflowStore.workflow.name ? ' ⋅ ' + workflowStore.workflow.name : '';
+				return workflowName ? ' ⋅ ' + workflowName : '';
 			default:
 				return '';
 		}

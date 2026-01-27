@@ -17,7 +17,9 @@ const isDynamicCredentialsEnabled = computed(() =>
 	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
 );
 
-const node = computed(() => workflowsStore.workflowObject.getNode(name.value));
+const node = computed(() =>
+	workflowsStore.workflowObjectById[workflowsStore.workflowId]?.getNode(name.value),
+);
 const size = 'medium';
 
 const hasResolvableCredential = computed(() => {

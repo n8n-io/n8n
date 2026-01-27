@@ -90,7 +90,8 @@ const { isReady } = useAsyncState(async () => {
 	}
 
 	const workflowId = props.name;
-	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
+	const isAlreadyInitialized =
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.id === workflowId;
 
 	// Skip fetching if it's a new workflow that hasn't been saved yet
 	if (isNewWorkflowRoute.value || isAlreadyInitialized) {
@@ -98,7 +99,7 @@ const { isReady } = useAsyncState(async () => {
 	}
 
 	// Check if we are loading the Evaluation tab directly, without having loaded the workflow
-	if (!workflowsStore.workflowsById[workflowId]) {
+	if (!workflowsStore.workflowDocumentById[workflowId]) {
 		try {
 			const data = await workflowsStore.fetchWorkflow(workflowId);
 

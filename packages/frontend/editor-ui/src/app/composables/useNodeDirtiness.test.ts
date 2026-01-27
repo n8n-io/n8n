@@ -146,11 +146,11 @@ describe(useNodeDirtiness, () => {
 
 			const workflowState = useWorkflowState();
 			workflowState.setWorkflowExecutionData({
-				id: workflowsStore.workflow.id,
+				id: workflowsStore.workflowDocumentById[workflowsStore.workflowId].id,
 				finished: true,
 				mode: 'manual',
 				status: 'success',
-				workflowData: workflowsStore.workflow,
+				workflowData: workflowsStore.workflowDocumentById[workflowsStore.workflowId],
 				startedAt: runAt,
 				createdAt: runAt,
 				data: createRunExecutionData({
@@ -443,8 +443,7 @@ describe(useNodeDirtiness, () => {
 
 		const workflow = createTestWorkflow({ nodes: Object.values(nodes), connections });
 
-		workflowsStore.setNodes(workflow.nodes);
-		workflowsStore.setConnections(workflow.connections);
+		workflowsStore.setWorkflow(workflow);
 
 		for (const name of nodeNamesWithPinnedData) {
 			workflowsStore.pinData({

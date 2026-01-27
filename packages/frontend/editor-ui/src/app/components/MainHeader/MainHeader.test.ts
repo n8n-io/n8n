@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import MainHeader from '@/app/components/MainHeader/MainHeader.vue';
@@ -100,21 +101,17 @@ describe('MainHeader', () => {
 		sourceControlStore = mockedStore(useSourceControlStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 
-		workflowsStore.workflow = {
-			id: '1',
-			name: 'Test Workflow',
-			active: false,
-			activeVersionId: null,
-			activeVersion: null,
-			versionId: 'version-1',
-			scopes: ['workflow:read', 'workflow:update'],
-			isArchived: false,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			nodes: [],
-			connections: {},
-			tags: [],
-			meta: {},
+		// Set up the new dictionary pattern
+		const workflowId = '1';
+		workflowsStore.workflowId = workflowId;
+		workflowsStore.workflowDocumentById = {
+			[workflowId]: createTestWorkflow({
+				id: workflowId,
+				name: 'Test Workflow',
+				active: false,
+				scopes: ['workflow:read', 'workflow:update'],
+				isArchived: false,
+			}),
 		};
 
 		sourceControlStore.preferences.branchReadOnly = false;
@@ -126,5 +123,40 @@ describe('MainHeader', () => {
 
 		const workflowDetails = getByTestId('workflow-details-stub');
 		expect(workflowDetails).toBeInTheDocument();
+	});
+
+	describe('readOnly computed', () => {
+		it('should be false when there are no read-only conditions', () => {
+			sourceControlStore.preferences.branchReadOnly = false;
+			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].isArchived = false;
+
+			const { getByTestId } = renderComponent();
+
+			const workflowDetails = getByTestId('workflow-details-stub');
+			expect(workflowDetails).toHaveAttribute('data-read-only', 'false');
+		});
+
+		it('should be true when branch is read-only', () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].isArchived = false;
+
+			const { getByTestId } = renderComponent();
+
+			const workflowDetails = getByTestId('workflow-details-stub');
+			expect(workflowDetails).toHaveAttribute('data-read-only', 'true');
+		});
+
+		it('should be true when collaboration requires read-only', () => {
+			sourceControlStore.preferences.branchReadOnly = false;
+			vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(true);
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].isArchived = false;
+
+			const { getByTestId } = renderComponent();
+
+			const workflowDetails = getByTestId('workflow-details-stub');
+			expect(workflowDetails).toHaveAttribute('data-read-only', 'true');
+		});
 	});
 });

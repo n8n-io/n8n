@@ -197,7 +197,7 @@ async function setupStore() {
 			outputs: [NodeConnectionTypes.Main],
 		}),
 	]);
-	workflowsStore.workflow = workflow as IWorkflowDb;
+	workflowsStore.workflowDocumentById[workflow.id] = workflow as IWorkflowDb;
 	ndvStore.setActiveNodeName('Test Node Name', 'other');
 
 	return pinia;

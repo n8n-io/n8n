@@ -52,7 +52,9 @@ const currentTab = ref<ChatEmbedModalTabValue>('cdn');
 
 const webhookNode = computed(() => {
 	for (const type of [CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE]) {
-		const node = workflowsStore.workflow.nodes.find((node) => node.type === type);
+		const node = workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes.find(
+			(node) => node.type === type,
+		);
 		if (node) {
 			// This has to be kept up-to-date with the mode in the Chat-Trigger node
 			if (type === CHAT_TRIGGER_NODE_TYPE && !node.parameters.public) {

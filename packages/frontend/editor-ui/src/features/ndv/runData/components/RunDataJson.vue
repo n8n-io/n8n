@@ -75,7 +75,8 @@ const getJsonParameterPath = (path: string) => {
 		nodeName: props.node.name,
 		distanceFromActive: props.distanceFromActive,
 		path: subPath,
-		binaryMode: workflowsStore.workflow.settings?.binaryMode,
+		binaryMode:
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.settings?.binaryMode,
 	});
 };
 

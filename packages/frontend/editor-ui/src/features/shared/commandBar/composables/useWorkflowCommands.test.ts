@@ -88,9 +88,9 @@ describe('useWorkflowCommands', () => {
 		getWorkflowDataToSaveMock.mockResolvedValue(mockWorkflow.value);
 		saveCurrentWorkflowMock.mockResolvedValue(true);
 
-		mockWorkflowsStore.workflow = mockWorkflow.value;
-		// Mark workflow as existing by adding it to workflowsById
-		mockWorkflowsStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
+		// Set up the new dictionary pattern for workflows store
+		mockWorkflowsStore.workflowId = mockWorkflow.value.id;
+		mockWorkflowsStore.workflowDocumentById = { [mockWorkflow.value.id]: mockWorkflow.value };
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
 			value: { workflowSaving: false } as unknown as typeof mockUIStore.isActionActive,
@@ -227,7 +227,10 @@ describe('useWorkflowCommands', () => {
 
 	describe('duplicate workflow', () => {
 		it('should not include duplicate command when user lacks create permission', () => {
-			mockWorkflowsStore.workflow.scopes = ['workflow:read', 'workflow:update'];
+			mockWorkflowsStore.workflowDocumentById[mockWorkflowsStore.workflowId].scopes = [
+				'workflow:read',
+				'workflow:update',
+			];
 
 			const { commands } = useWorkflowCommands();
 			const duplicateCommand = commands.value.find((cmd) => cmd.id === 'duplicate-workflow');
@@ -270,7 +273,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should not show publish/unpublish commands when workflow is archived', () => {
-			mockWorkflowsStore.workflow.isArchived = true;
+			mockWorkflowsStore.workflowDocumentById[mockWorkflowsStore.workflowId].isArchived = true;
 
 			const { commands } = useWorkflowCommands();
 			const publishCommand = commands.value.find((cmd) => cmd.id === 'publish-workflow');
@@ -375,7 +378,7 @@ describe('useWorkflowCommands', () => {
 
 	describe('lifecycle commands', () => {
 		it('should show archive command when workflow is not archived', () => {
-			mockWorkflowsStore.workflow.isArchived = false;
+			mockWorkflowsStore.workflowDocumentById[mockWorkflowsStore.workflowId].isArchived = false;
 
 			const { commands } = useWorkflowCommands();
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
@@ -386,7 +389,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should show unarchive and delete commands when workflow is archived', () => {
-			mockWorkflowsStore.workflow.isArchived = true;
+			mockWorkflowsStore.workflowDocumentById[mockWorkflowsStore.workflowId].isArchived = true;
 
 			const { commands } = useWorkflowCommands();
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
@@ -399,7 +402,10 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should not show lifecycle commands without delete permission', () => {
-			mockWorkflowsStore.workflow.scopes = ['workflow:read', 'workflow:update'];
+			mockWorkflowsStore.workflowDocumentById[mockWorkflowsStore.workflowId].scopes = [
+				'workflow:read',
+				'workflow:update',
+			];
 
 			const { commands } = useWorkflowCommands();
 			const archiveCommand = commands.value.find((cmd) => cmd.id === 'archive-workflow');
@@ -419,7 +425,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle unarchive workflow', async () => {
-			mockWorkflowsStore.workflow.isArchived = true;
+			mockWorkflowsStore.workflowDocumentById[mockWorkflowsStore.workflowId].isArchived = true;
 
 			const { commands } = useWorkflowCommands();
 			const unarchiveCommand = commands.value.find((cmd) => cmd.id === 'unarchive-workflow');
@@ -430,7 +436,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should handle delete workflow', async () => {
-			mockWorkflowsStore.workflow.isArchived = true;
+			mockWorkflowsStore.workflowDocumentById[mockWorkflowsStore.workflowId].isArchived = true;
 
 			const { commands } = useWorkflowCommands();
 			const deleteCommand = commands.value.find((cmd) => cmd.id === 'delete-workflow');
@@ -452,9 +458,13 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should allow actions for new workflows regardless of permissions', () => {
-			// For new workflows, remove from workflowsById so isNewWorkflow returns true
-			mockWorkflowsStore.workflowsById = {};
-			mockWorkflowsStore.workflow.scopes = ['workflow:read'];
+			// For new workflows, remove from workflowDocumentById so isNewWorkflow returns true
+			mockWorkflowsStore.workflowDocumentById = {};
+			mockWorkflowsStore.workflowDocumentById[mockWorkflowsStore.workflowId] = {
+				...mockWorkflow.value,
+				id: '', // Empty ID indicates a new workflow
+				scopes: ['workflow:read'],
+			};
 
 			const { commands } = useWorkflowCommands();
 			const saveCommand = commands.value.find((cmd) => cmd.id === 'rename-workflow');

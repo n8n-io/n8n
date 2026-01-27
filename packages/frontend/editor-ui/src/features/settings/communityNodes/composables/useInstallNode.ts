@@ -74,8 +74,9 @@ export function useInstallNode() {
 
 			// update parameters and webhooks for freshly installed nodes
 			const nodeType = props.nodeType;
-			if (nodeType && workflowsStore.workflow.nodes?.length) {
-				const nodesToUpdate = workflowsStore.workflow.nodes.filter(
+			const workflowNodes = workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes;
+			if (nodeType && workflowNodes?.length) {
+				const nodesToUpdate = workflowNodes.filter(
 					(node) => node.type === removePreviewToken(nodeType),
 				);
 				canvasOperations.initializeUnknownNodes(nodesToUpdate);

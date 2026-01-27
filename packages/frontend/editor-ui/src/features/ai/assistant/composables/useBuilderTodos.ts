@@ -103,7 +103,8 @@ export function useBuilderTodos() {
 		const issues: WorkflowValidationIssue[] = [];
 		const seen = new Set<string>();
 
-		for (const node of workflowsStore.workflow.nodes) {
+		for (const node of workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes ??
+			[]) {
 			if (!node?.parameters) continue;
 
 			const placeholders = findPlaceholderDetails(node.parameters);

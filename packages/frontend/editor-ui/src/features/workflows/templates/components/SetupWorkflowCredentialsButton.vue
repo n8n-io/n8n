@@ -27,7 +27,8 @@ const isTemplateImportRoute = computed(() => {
 });
 
 const isTemplateSetupCompleted = computed(() => {
-	return !!workflowsStore.workflow?.meta?.templateCredsSetupCompleted;
+	return !!workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.meta
+		?.templateCredsSetupCompleted;
 });
 
 const allCredentialsFilled = computed(() => {
@@ -44,7 +45,8 @@ const allCredentialsFilled = computed(() => {
 });
 
 const showButton = computed(() => {
-	const isCreatedFromTemplate = !!workflowsStore.workflow?.meta?.templateId;
+	const isCreatedFromTemplate =
+		!!workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.meta?.templateId;
 	if (!isCreatedFromTemplate || isTemplateSetupCompleted.value) {
 		return false;
 	}
@@ -77,7 +79,8 @@ onBeforeUnmount(() => {
 });
 
 onMounted(() => {
-	const templateId = workflowsStore.workflow?.meta?.templateId;
+	const templateId =
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.meta?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
 	if (

@@ -103,8 +103,10 @@ describe('useNodeCommands', () => {
 			value: { branchReadOnly: false },
 		});
 
-		Object.defineProperty(mockWorkflowsStore, 'workflow', {
-			value: { isArchived: false, scopes: [] },
+		Object.defineProperty(mockWorkflowsStore, 'workflowDocumentById', {
+			value: { '123': { isArchived: false, scopes: [] } },
+			writable: true,
+			configurable: true,
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
@@ -168,8 +170,9 @@ describe('useNodeCommands', () => {
 		});
 
 		it('should not include add node command when workflow is archived', () => {
-			Object.defineProperty(mockWorkflowsStore, 'workflow', {
-				value: { isArchived: true, scopes: [] },
+			Object.defineProperty(mockWorkflowsStore, 'workflowDocumentById', {
+				value: { '123': { isArchived: true, scopes: [] } },
+				configurable: true,
 			});
 
 			const { commands } = useNodeCommands({

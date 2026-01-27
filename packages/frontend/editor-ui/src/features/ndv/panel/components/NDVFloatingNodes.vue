@@ -67,7 +67,14 @@ function getINodesFromNames(names: string[]): NodeConfig[] {
 const connectedNodes = computed<
 	Record<FloatingNodePosition, Array<{ node: INodeUi; nodeType: INodeTypeDescription }>>
 >(() => {
-	const workflowObject = workflowsStore.workflowObject;
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
+	if (!workflowObject) {
+		return {
+			[FloatingNodePosition.top]: [],
+			[FloatingNodePosition.right]: [],
+			[FloatingNodePosition.left]: [],
+		};
+	}
 	const rootName = props.rootNode.name;
 
 	return {

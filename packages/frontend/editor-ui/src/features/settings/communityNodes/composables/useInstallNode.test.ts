@@ -1,5 +1,5 @@
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import type { IWorkflowDb } from '@/Interface';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -98,21 +98,15 @@ beforeEach(() => {
 		version: '1.0.0',
 	} as unknown as CommunityNodeType);
 
-	workflowsStore.workflow = {
-		id: 'test-workflow',
-		name: 'Test Workflow',
-		active: false,
-		isArchived: false,
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-		nodes: [],
-		connections: {},
-		settings: {},
-		staticData: {},
-		tags: [],
-		triggerCount: 0,
-		versionId: '1',
-	} as unknown as IWorkflowDb;
+	// Set up the new dictionary pattern
+	const workflowId = 'test-workflow';
+	workflowsStore.workflowId = workflowId;
+	workflowsStore.workflowDocumentById = {
+		[workflowId]: createTestWorkflow({
+			id: workflowId,
+			name: 'Test Workflow',
+		}),
+	};
 
 	vi.clearAllMocks();
 });
@@ -197,7 +191,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].nodes = mockNodes as INode[];
 
 			const { installNode } = useInstallNode();
 
@@ -221,7 +215,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should not initialize nodes when nodeType is not provided', async () => {
-			workflowsStore.workflow.nodes = [
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].nodes = [
 				{
 					id: 'node-1',
 					type: 'test-node',
@@ -243,7 +237,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should not initialize nodes when workflow has no nodes', async () => {
-			workflowsStore.workflow.nodes = [];
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].nodes = [];
 
 			const { installNode } = useInstallNode();
 
@@ -416,7 +410,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].nodes = mockNodes as INode[];
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 
@@ -468,7 +462,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId].nodes = mockNodes as INode[];
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 

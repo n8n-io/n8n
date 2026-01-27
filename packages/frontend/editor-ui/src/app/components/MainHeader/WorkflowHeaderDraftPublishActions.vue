@@ -66,9 +66,11 @@ type WorkflowPublishState =
 	| 'published-invalid-trigger'; // Published but no trigger nodes
 
 const workflowPublishState = computed((): WorkflowPublishState => {
-	const hasBeenPublished = !!workflowsStore.workflow.activeVersion;
+	const hasBeenPublished =
+		!!workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.activeVersion;
 	const hasChanges =
-		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId ||
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.versionId !==
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.activeVersion?.versionId ||
 		uiStore.stateIsDirty;
 
 	// Not published states
@@ -159,7 +161,8 @@ const publishButtonConfig = computed(() => {
 			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
 			showVersionInfo: false,
 		};
-		const isWorkflowPublished = !!workflowsStore.workflow.activeVersion;
+		const isWorkflowPublished =
+			!!workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.activeVersion;
 		if (isWorkflowPublished) {
 			return {
 				...defaultConfigForNoPermission,
@@ -257,7 +260,9 @@ const publishButtonConfig = computed(() => {
 	return configs[workflowPublishState.value];
 });
 
-const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
+const activeVersion = computed(
+	() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.activeVersion,
+);
 
 const activeVersionName = computed(() => {
 	if (!activeVersion.value) {

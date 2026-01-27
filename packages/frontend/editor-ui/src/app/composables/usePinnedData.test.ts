@@ -86,7 +86,9 @@ describe('usePinnedData', () => {
 			const testData = [{ json: { key: 'value' } }];
 
 			expect(() => setData(testData, 'pin-icon-click')).not.toThrow();
-			expect(workflowsStore.workflow.pinData?.[node.value.name]).toEqual(testData);
+			expect(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.pinData?.[node.value.name],
+			).toEqual(testData);
 		});
 	});
 
@@ -100,14 +102,21 @@ describe('usePinnedData', () => {
 			setData(testData, 'pin-icon-click');
 			unsetData('context-menu');
 
-			expect(workflowsStore.workflow.pinData?.[node.value.name]).toBeUndefined();
+			expect(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.pinData?.[node.value.name],
+			).toBeUndefined();
 		});
 	});
 
 	describe('onSetDataSuccess()', () => {
 		it('should trigger telemetry on successful data setting with correct payload values', async () => {
 			const workflowsStore = useWorkflowsStore();
-			workflowsStore.workflow.id = 'test-workflow-id';
+			// Set up the new dictionary pattern
+			const testWorkflowId = 'test-workflow-id';
+			workflowsStore.workflowId = testWorkflowId;
+			workflowsStore.workflowDocumentById = {
+				[testWorkflowId]: { id: testWorkflowId, name: 'Test', nodes: [], connections: {} } as never,
+			};
 
 			const telemetry = useTelemetry();
 			const spy = vi.spyOn(telemetry, 'track');

@@ -32,7 +32,10 @@ describe('useGetNodeCreatorFilter', () => {
 			getNode: getNodeMock,
 		} as unknown as Workflow;
 
-		mockUseWorkflowsStore.workflowObject = mockWorkflow;
+		mockUseWorkflowsStore.workflowId = 'test-workflow-id';
+		mockUseWorkflowsStore.workflowObjectById = {
+			'test-workflow-id': mockWorkflow,
+		};
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 

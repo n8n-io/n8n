@@ -450,8 +450,9 @@ describe('AskAssistantBuild', () => {
 	describe('user message handling', () => {
 		it('should initialize builder chat when a user sends a message', async () => {
 			// Mock empty workflow to ensure initialGeneration is true
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow to send emails';
@@ -471,8 +472,9 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should request write access when sending a message', async () => {
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow';
@@ -665,8 +667,9 @@ describe('AskAssistantBuild', () => {
 	describe('initialGeneration flag reset', () => {
 		it('should reset initialGeneration flag when streaming ends and workflow has nodes', async () => {
 			// Setup: empty workflow
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			renderComponent();
 
@@ -676,18 +679,21 @@ describe('AskAssistantBuild', () => {
 
 			// Simulate workflow update with nodes
 			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
+				workflowDocumentById: {
+					abc123: {
+						id: 'abc123',
+						nodes: [
+							{
+								id: 'node1',
+								name: 'Start',
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [0, 0],
+								typeVersion: 1,
+								parameters: {},
+							} as INodeUi,
+						],
+						connections: {},
+					},
 				},
 			});
 
@@ -704,8 +710,9 @@ describe('AskAssistantBuild', () => {
 
 		it('should NOT reset initialGeneration flag when workflow is still empty', async () => {
 			// Setup: empty workflow
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			renderComponent();
 
@@ -729,18 +736,21 @@ describe('AskAssistantBuild', () => {
 		it('should hide ExecuteMessage component when there is an error after workflow update', async () => {
 			// Setup: workflow with nodes
 			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
+				workflowDocumentById: {
+					abc123: {
+						id: 'abc123',
+						nodes: [
+							{
+								id: 'node1',
+								name: 'Start',
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [0, 0],
+								typeVersion: 1,
+								parameters: {},
+							} as INodeUi,
+						],
+						connections: {},
+					},
 				},
 			});
 
@@ -770,18 +780,21 @@ describe('AskAssistantBuild', () => {
 		it('should show ExecuteMessage component when there is NO error after workflow update', async () => {
 			// Setup: workflow with nodes
 			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
+				workflowDocumentById: {
+					abc123: {
+						id: 'abc123',
+						nodes: [
+							{
+								id: 'node1',
+								name: 'Start',
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [0, 0],
+								typeVersion: 1,
+								parameters: {},
+							} as INodeUi,
+						],
+						connections: {},
+					},
 				},
 			});
 
@@ -811,18 +824,21 @@ describe('AskAssistantBuild', () => {
 		it('should show ExecuteMessage component when error occurs BEFORE workflow update', async () => {
 			// Setup: workflow with nodes
 			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
+				workflowDocumentById: {
+					abc123: {
+						id: 'abc123',
+						nodes: [
+							{
+								id: 'node1',
+								name: 'Start',
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [0, 0],
+								typeVersion: 1,
+								parameters: {},
+							} as INodeUi,
+						],
+						connections: {},
+					},
 				},
 			});
 
@@ -853,18 +869,21 @@ describe('AskAssistantBuild', () => {
 		it('should hide ExecuteMessage component when using update_node_parameters tool followed by error', async () => {
 			// Setup: workflow with nodes
 			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'HTTP Request',
-							type: 'n8n-nodes-base.httpRequest',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
+				workflowDocumentById: {
+					abc123: {
+						id: 'abc123',
+						nodes: [
+							{
+								id: 'node1',
+								name: 'HTTP Request',
+								type: 'n8n-nodes-base.httpRequest',
+								position: [0, 0],
+								typeVersion: 1,
+								parameters: {},
+							} as INodeUi,
+						],
+						connections: {},
+					},
 				},
 			});
 
@@ -896,18 +915,21 @@ describe('AskAssistantBuild', () => {
 		it('should hide ExecuteMessage component when task is aborted after workflow update', async () => {
 			// Setup: workflow with nodes
 			workflowsStore.$patch({
-				workflow: {
-					nodes: [
-						{
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.manualTrigger',
-							position: [0, 0],
-							typeVersion: 1,
-							parameters: {},
-						} as INodeUi,
-					],
-					connections: {},
+				workflowDocumentById: {
+					abc123: {
+						id: 'abc123',
+						nodes: [
+							{
+								id: 'node1',
+								name: 'Start',
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [0, 0],
+								typeVersion: 1,
+								parameters: {},
+							} as INodeUi,
+						],
+						connections: {},
+					},
 				},
 			});
 
@@ -959,7 +981,9 @@ describe('AskAssistantBuild', () => {
 
 			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
 
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			renderComponent();
 
@@ -1027,7 +1051,9 @@ describe('AskAssistantBuild', () => {
 				// Second update adds node-2
 				.mockResolvedValueOnce({ success: true, newNodeIds: ['node-2'] });
 
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			renderComponent();
 
@@ -1081,8 +1107,9 @@ describe('AskAssistantBuild', () => {
 		});
 
 		it('should reset accumulated node IDs on new user message', async () => {
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			const { container } = renderComponent();
 
@@ -1184,7 +1211,9 @@ describe('AskAssistantBuild', () => {
 
 			updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: ['new-node-1'] });
 
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 			builderStore.initialGeneration = true;
 
 			renderComponent();
@@ -1265,7 +1294,9 @@ describe('AskAssistantBuild', () => {
 			const testError = new Error('Failed to update workflow');
 			updateWorkflowMock.mockResolvedValue({ success: false, error: testError });
 
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			renderComponent();
 
@@ -1305,7 +1336,9 @@ describe('AskAssistantBuild', () => {
 				// Second update fails
 				.mockResolvedValueOnce({ success: false, error: new Error('Failed') });
 
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			renderComponent();
 
@@ -1363,7 +1396,9 @@ describe('AskAssistantBuild', () => {
 			const testError = new Error('Failed to update workflow');
 			updateWorkflowMock.mockResolvedValue({ success: false, error: testError });
 
-			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
+			workflowsStore.$patch({
+				workflowDocumentById: { abc123: { id: 'abc123', nodes: [], connections: {} } },
+			});
 
 			renderComponent();
 

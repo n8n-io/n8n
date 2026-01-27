@@ -1,6 +1,6 @@
 import { AGENT_NODE_TYPE, AGENT_TOOL_NODE_TYPE } from '@/app/constants';
-import type { INodeUi } from '@/Interface';
-import type { NodeConnectionType, INodeInputConfiguration, Workflow } from 'n8n-workflow';
+import type { INodeCreateElement, INodeUi } from '@/Interface';
+import type { NodeConnectionType, INodeInputConfiguration } from 'n8n-workflow';
 import { NodeHelpers, NodeConnectionTypes, isHitlToolType } from 'n8n-workflow';
 import type { NodeCreatorFilter } from './useViewStacks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -11,7 +11,7 @@ export function useGetNodeCreatorFilter() {
 	const workflowStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 
-	const workflowObject = computed(() => workflowStore.workflowObject as Workflow);
+	const workflowObject = computed(() => workflowStore.workflowObjectById[workflowStore.workflowId]);
 
 	function getNodeCreatorFilter(
 		nodeName: string,
@@ -48,7 +48,7 @@ export function useGetNodeCreatorFilter() {
 			// show HITL tools only for agent node
 			// HITL tools are not compatible with other nodes
 			const conditions: NodeCreatorFilter['conditions'] = [
-				(node) => (isConnectionToAgent ? true : !isHitlToolType(node.key)),
+				(node: INodeCreateElement) => (isConnectionToAgent ? true : !isHitlToolType(node.key)),
 			];
 			filter = { ...filter, conditions };
 		}

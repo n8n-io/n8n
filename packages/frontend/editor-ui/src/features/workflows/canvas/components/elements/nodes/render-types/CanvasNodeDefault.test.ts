@@ -51,8 +51,10 @@ beforeEach(() => {
 	setActivePinia(pinia);
 	const workflowsStore = useWorkflowsStore();
 	nodeTypesStore = mockedStore(useNodeTypesStore);
-	const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-	workflowsStore.workflowObject = workflowObject;
+	const workflowObject = createTestWorkflowObject(
+		workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+	);
+	workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
 });
 

@@ -112,7 +112,10 @@ describe('completion utils', () => {
 			});
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.workflowId = 'test-workflow-id';
+			workflowsStore.workflowObjectById = {
+				'test-workflow-id': workflowObject,
+			};
 			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });
 
@@ -143,7 +146,10 @@ describe('completion utils', () => {
 			});
 
 			const workflowsStore = mockedStore(useWorkflowsStore);
-			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.workflowId = 'test-workflow-id';
+			workflowsStore.workflowObjectById = {
+				'test-workflow-id': workflowObject,
+			};
 
 			const ndvStoreMock: MockInstance = vi.spyOn(ndvStore, 'useNDVStore');
 			ndvStoreMock.mockReturnValue({ activeNode: nodes[2] });

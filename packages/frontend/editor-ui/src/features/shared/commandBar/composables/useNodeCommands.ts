@@ -40,10 +40,14 @@ export function useNodeCommands(options: {
 	const isReadOnly = computed(
 		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 	);
-	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+	const isArchived = computed(
+		() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.isArchived,
+	);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() =>
+			getResourcePermissions(workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.scopes)
+				.workflow,
 	);
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>
@@ -131,7 +135,7 @@ export function useNodeCommands(options: {
 	};
 
 	const openNodeCommands = computed<CommandBarItem[]>(() => {
-		return editableWorkflow.value.nodes.map((node) => buildOpenNodeCommand(node, false));
+		return (editableWorkflow.value?.nodes ?? []).map((node) => buildOpenNodeCommand(node, false));
 	});
 
 	const rootOpenNodeCommandItems = computed<CommandBarItem[]>(() => {
@@ -139,7 +143,7 @@ export function useNodeCommands(options: {
 			return [];
 		}
 
-		return editableWorkflow.value.nodes.map((node) => buildOpenNodeCommand(node, true));
+		return (editableWorkflow.value?.nodes ?? []).map((node) => buildOpenNodeCommand(node, true));
 	});
 
 	const nodeCommands = computed<CommandBarItem[]>(() => {

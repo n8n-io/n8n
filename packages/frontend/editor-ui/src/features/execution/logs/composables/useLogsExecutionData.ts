@@ -65,9 +65,10 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		),
 	);
 	const hasChat = computed(() =>
-		[Object.values(workflow.value?.nodes ?? {}), workflowsStore.workflow.nodes].some((nodes) =>
-			nodes.some(isChatNode),
-		),
+		[
+			Object.values(workflow.value?.nodes ?? {}),
+			workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.nodes ?? [],
+		].some((nodes) => nodes.some(isChatNode)),
 	);
 
 	const entries = computed<LogEntry[]>(() => {

@@ -118,7 +118,7 @@ describe('WorkflowExecutionsPreview.vue', () => {
 				[EnterpriseEditionFeature.DebugInEditor]: availability,
 			} as FrontendSettings['enterprise'];
 
-			workflowsStore.workflowsById[executionData.workflowId] = { scopes } as IWorkflowDb;
+			workflowsStore.workflowDocumentById[executionData.workflowId] = { scopes } as IWorkflowDb;
 
 			await router.push(path);
 

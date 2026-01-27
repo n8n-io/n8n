@@ -119,7 +119,7 @@ export function useResolvedExpression({
 			toRef(additionalData),
 			() => workflowsStore.getWorkflowExecution,
 			() => workflowsStore.getWorkflowRunData,
-			() => workflowsStore.workflow.name,
+			() => workflowsStore.workflowDocumentById[workflowsStore.workflowId]?.name,
 			targetItem,
 		],
 		debouncedUpdateExpression,

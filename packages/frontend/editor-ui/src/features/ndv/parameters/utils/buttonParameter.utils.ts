@@ -19,7 +19,8 @@ export type TextareaRowData = {
 
 export function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { workflowObject, getNodeByName } = useWorkflowsStore();
+	const workflowsStore = useWorkflowsStore();
+	const workflowObject = workflowsStore.workflowObjectById[workflowsStore.workflowId];
 
 	if (!activeNode || !workflowObject) return [];
 
@@ -28,7 +29,7 @@ export function getParentNodes() {
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => getNodeByName(n.name))
+		.map((n) => workflowsStore.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 
