@@ -1,0 +1,243 @@
+name: 'Test: Outdated Branch Push'
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/test-outdated-branch-push.yml'
+
+jobs:
+  # Test 1: Simple push from outdated.x (should reproduce the timeout)
+  test-push-from-outdated:
+    name: 'Test 1: Push from outdated.x'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout outdated.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: 'outdated.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Push test branch
+        id: push_test
+        run: |
+          BRANCH="ci-test/outdated-push-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          echo "test-$(date)" >> test-file.txt
+          git add test-file.txt
+          git commit -m "Test push from outdated.x"
+
+          echo "Pushing $BRANCH..."
+          START=$(date +%s)
+          if timeout 60 git push origin "$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAILED/TIMEOUT" >> "$GITHUB_OUTPUT"
+          fi
+          END=$(date +%s)
+          echo "duration=$((END-START))s" >> "$GITHUB_OUTPUT"
+
+      - name: Report
+        run: |
+          echo "Result: ${{ steps.push_test.outputs.result }}"
+          echo "Duration: ${{ steps.push_test.outputs.duration }}"
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "ci-test/outdated-push-${{ github.run_id }}" 2>/dev/null || true
+
+  # Test 2: Push from outdated.x WITH synced .github (the fix)
+  test-push-with-synced-workflows:
+    name: 'Test 2: Push from outdated.x with synced .github'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout outdated.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: 'outdated.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Sync .github from master (THE FIX)
+        run: |
+          git fetch origin master
+          git checkout origin/master -- .github/
+          echo "Synced .github/ from master"
+
+      - name: Push test branch
+        id: push_test
+        run: |
+          BRANCH="ci-test/outdated-synced-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          echo "test-$(date)" >> test-file.txt
+          git add -A
+          git commit -m "Test push from outdated.x with synced .github"
+
+          echo "Pushing $BRANCH..."
+          START=$(date +%s)
+          if timeout 60 git push origin "$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAILED/TIMEOUT" >> "$GITHUB_OUTPUT"
+          fi
+          END=$(date +%s)
+          echo "duration=$((END-START))s" >> "$GITHUB_OUTPUT"
+
+      - name: Report
+        run: |
+          echo "Result: ${{ steps.push_test.outputs.result }}"
+          echo "Duration: ${{ steps.push_test.outputs.duration }}"
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "ci-test/outdated-synced-${{ github.run_id }}" 2>/dev/null || true
+
+  # Test 3: create-pull-request from outdated.x (reproduces real failure)
+  test-create-pr-from-outdated:
+    name: 'Test 3: create-pull-request from outdated.x'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout outdated.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: 'outdated.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Make test changes
+        run: echo "test-$(date)" >> test-file.txt
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          branch: ci-test/outdated-pr-${{ github.run_id }}
+          title: 'Test: create-pull-request from outdated.x'
+          body: 'Testing if outdated.x reproduces the workflow validation timeout'
+          delete-branch: true
+          draft: true
+
+      - name: Close PR
+        if: steps.cpr.outputs.pull-request-number
+        run: gh pr close ${{ steps.cpr.outputs.pull-request-number }} --delete-branch
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+
+  # Test 4: create-pull-request from outdated.x WITH synced .github
+  test-create-pr-with-synced-workflows:
+    name: 'Test 4: create-pull-request with synced .github'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout outdated.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: 'outdated.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Sync .github from master (THE FIX)
+        run: |
+          git fetch origin master
+          git checkout origin/master -- .github/
+          echo "Synced .github/ from master"
+
+      - name: Make test changes
+        run: echo "test-$(date)" >> test-file.txt
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          branch: ci-test/outdated-synced-pr-${{ github.run_id }}
+          title: 'Test: create-pull-request with synced .github'
+          body: 'Testing if syncing .github fixes the workflow validation timeout'
+          delete-branch: true
+          draft: true
+
+      - name: Close PR
+        if: steps.cpr.outputs.pull-request-number
+        run: gh pr close ${{ steps.cpr.outputs.pull-request-number }} --delete-branch
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+
+  summary:
+    name: 'Results Summary'
+    runs-on: ubuntu-latest
+    needs:
+      - test-push-from-outdated
+      - test-push-with-synced-workflows
+      - test-create-pr-from-outdated
+      - test-create-pr-with-synced-workflows
+    if: always()
+
+    steps:
+      - name: Print Summary
+        run: |
+          echo "============================================"
+          echo "OUTDATED.X PUSH TEST RESULTS"
+          echo "============================================"
+          echo "Test 1 (plain push):        ${{ needs.test-push-from-outdated.result }}"
+          echo "Test 2 (push + sync):       ${{ needs.test-push-with-synced-workflows.result }}"
+          echo "Test 3 (create-pr):         ${{ needs.test-create-pr-from-outdated.result }}"
+          echo "Test 4 (create-pr + sync):  ${{ needs.test-create-pr-with-synced-workflows.result }}"
+          echo "============================================"
+          echo ""
+          echo "INTERPRETATION:"
+          echo "- Tests 1 & 3 fail, Tests 2 & 4 pass -> Syncing .github is the fix"
+          echo "- All fail -> Something else is wrong"
+          echo "- All pass -> outdated.x not divergent enough"
