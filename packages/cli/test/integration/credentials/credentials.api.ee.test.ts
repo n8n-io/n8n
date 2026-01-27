@@ -182,16 +182,10 @@ describe('GET /credentials', () => {
 		expect(Array.isArray(ownerCredential.sharedWithProjects)).toBe(true);
 		expect(ownerCredential.sharedWithProjects).toHaveLength(3);
 
-		// Fix order issue (MySQL might return items in any order)
-		const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWithProjects].sort(
-			(a, b) => (a.id < b.id ? -1 : 1),
-		);
-		const orderedSharedWith = [...sharedWith].sort((a, b) => (a.id < b.id ? -1 : 1));
-
-		ownerCredentialsSharedWithOrdered.forEach((sharee, idx) => {
+		ownerCredential.sharedWithProjects.forEach((sharee, idx) => {
 			expect(sharee).toMatchObject({
-				id: orderedSharedWith[idx].id,
-				type: orderedSharedWith[idx].type,
+				id: sharedWith[idx].id,
+				type: sharedWith[idx].type,
 			});
 		});
 
