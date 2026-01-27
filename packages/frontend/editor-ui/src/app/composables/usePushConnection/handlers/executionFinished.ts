@@ -203,9 +203,12 @@ export async function fetchExecutionData(
 	const workflowsStore = useWorkflowsStore();
 	try {
 		const executionResponse = await workflowsStore.fetchExecutionDataById(executionId);
+		if (!executionResponse?.data || !executionResponse.workflowId) {
+			return;
+		}
 		const currentWorkflowDocument =
 			workflowsStore.workflowDocumentById[executionResponse.workflowId];
-		if (!executionResponse?.data || !currentWorkflowDocument) {
+		if (!currentWorkflowDocument) {
 			return;
 		}
 

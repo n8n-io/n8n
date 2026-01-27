@@ -796,9 +796,11 @@ describe('useRunWorkflow({ router })', () => {
 				vi.mocked(pushConnectionStore).isConnected = true;
 				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
 				vi.mocked(workflowsStore).nodesIssuesExist = false;
-				vi.mocked(workflowsStore).workflowObject = {
-					name: 'Test Workflow',
-				} as Workflow;
+				vi.mocked(workflowsStore).workflowObjectById = {
+					'123': {
+						name: 'Test Workflow',
+					} as Workflow,
+				};
 				vi.mocked(workflowsStore).getWorkflowRunData = {
 					NodeName: [],
 				};

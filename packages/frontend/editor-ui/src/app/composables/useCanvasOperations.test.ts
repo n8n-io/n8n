@@ -691,7 +691,9 @@ describe('useCanvasOperations', () => {
 			});
 
 			const nodeTypeDescription = mockNodeTypeDescription();
-			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			const workflowObject = createTestWorkflowObject(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+			);
 
 			// Mock the tool node as lastInteractedWithNode
 			uiStore.lastInteractedWithNode = toolNode;
@@ -704,7 +706,7 @@ describe('useCanvasOperations', () => {
 			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
 
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
 			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
 			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
@@ -749,7 +751,9 @@ describe('useCanvasOperations', () => {
 			});
 
 			const nodeTypeDescription = mockNodeTypeDescription();
-			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			const workflowObject = createTestWorkflowObject(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+			);
 
 			uiStore.lastInteractedWithNode = toolNode;
 			uiStore.lastInteractedWithNodeConnection = {
@@ -761,7 +765,7 @@ describe('useCanvasOperations', () => {
 			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
 
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
 			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
 			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
@@ -808,7 +812,9 @@ describe('useCanvasOperations', () => {
 			});
 
 			const nodeTypeDescription = mockNodeTypeDescription();
-			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			const workflowObject = createTestWorkflowObject(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+			);
 
 			uiStore.lastInteractedWithNode = toolNode;
 			uiStore.lastInteractedWithNodeConnection = {
@@ -820,7 +826,7 @@ describe('useCanvasOperations', () => {
 			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
 
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
 			workflowObject.getNode = vi.fn().mockReturnValue(regularNode);
 			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
@@ -862,7 +868,9 @@ describe('useCanvasOperations', () => {
 			});
 
 			const nodeTypeDescription = mockNodeTypeDescription();
-			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+			const workflowObject = createTestWorkflowObject(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+			);
 
 			uiStore.lastInteractedWithNode = regularNode;
 			uiStore.lastInteractedWithNodeConnection = {
@@ -874,7 +882,7 @@ describe('useCanvasOperations', () => {
 			uiStore.lastInteractedWithNodeHandle = `outputs/${NodeConnectionTypes.AiTool}/0`;
 
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
-			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
 			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
 			workflowsStore.getNodeById = vi.fn().mockReturnValue(mainNode);
@@ -2574,14 +2582,16 @@ describe('useCanvasOperations', () => {
 				index: 0,
 			};
 
-			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-			workflowsStore.workflowObject = workflowObject;
+			const workflowObject = createTestWorkflowObject(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+			);
+			workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
 
 			const { isConnectionAllowed, editableWorkflowObject } = useCanvasOperations();
 
-			editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
-			editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+			editableWorkflowObject.value!.nodes[sourceNode.name] = sourceNode;
+			editableWorkflowObject.value!.nodes[targetNode.name] = targetNode;
 			nodeTypesStore.getNodeType = vi.fn(
 				(nodeTypeName: string) =>
 					({
@@ -2639,14 +2649,16 @@ describe('useCanvasOperations', () => {
 				index: 0,
 			};
 
-			const workflowObject = createTestWorkflowObject(workflowsStore.workflow);
-			workflowsStore.workflowObject = workflowObject;
+			const workflowObject = createTestWorkflowObject(
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId],
+			);
+			workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 			workflowsStore.cloneWorkflowObject = vi.fn().mockReturnValue(workflowObject);
 
 			const { isConnectionAllowed, editableWorkflowObject } = useCanvasOperations();
 
-			editableWorkflowObject.value.nodes[sourceNode.name] = sourceNode;
-			editableWorkflowObject.value.nodes[targetNode.name] = targetNode;
+			editableWorkflowObject.value!.nodes[sourceNode.name] = sourceNode;
+			editableWorkflowObject.value!.nodes[targetNode.name] = targetNode;
 			nodeTypesStore.getNodeType = vi.fn(
 				(nodeTypeName: string) =>
 					({
@@ -5863,8 +5875,10 @@ describe('useCanvasOperations', () => {
 				return null;
 			});
 
-			workflowsStore.workflow.nodes = [agentNode, toolNode];
-			workflowsStore.workflow.connections = {
+			const currentWorkflowDocument =
+				workflowsStore.workflowDocumentById[workflowsStore.workflowId];
+			currentWorkflowDocument.nodes = [agentNode, toolNode];
+			currentWorkflowDocument.connections = {
 				[agentNode.name]: {
 					[NodeConnectionTypes.AiTool]: [
 						[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
@@ -5884,11 +5898,11 @@ describe('useCanvasOperations', () => {
 			});
 
 			const workflowObject = createTestWorkflowObject({
-				...workflowsStore.workflow,
+				...currentWorkflowDocument,
 				nodeTypes: mockNodeTypes,
 			});
 			workflowObject.getNode = vi.fn().mockReturnValue(hitlNode);
-			workflowsStore.workflowObject = workflowObject;
+			workflowsStore.workflowObjectById[workflowsStore.workflowId] = workflowObject;
 
 			workflowsStore.getNodeById = vi.fn((id: string) => {
 				if (id === 'agent') return agentNode;

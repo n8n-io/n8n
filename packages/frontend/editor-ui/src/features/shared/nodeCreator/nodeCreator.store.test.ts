@@ -13,9 +13,9 @@ import { parseCanvasConnectionHandleString } from '@/features/workflows/canvas/c
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription, Workflow } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
-import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';

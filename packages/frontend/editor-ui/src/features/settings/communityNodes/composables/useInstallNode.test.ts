@@ -1,5 +1,4 @@
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import type { IWorkflowDb } from '@/Interface';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
