@@ -513,3 +513,155 @@ describe('tool() with $fromAI support', () => {
 		expect(t.config.parameters?.data).toContain('{"key":"value"}');
 	});
 });
+
+// =============================================================================
+// Tests for Subnode Reuse Across Multiple Parents
+// =============================================================================
+
+describe('subnode reuse across multiple parents', () => {
+	let subnodeBuilders: typeof import('../subnode-builders');
+	let nodeBuilders: typeof import('../node-builder');
+	let workflowBuilders: typeof import('../workflow-builder');
+
+	beforeAll(async () => {
+		subnodeBuilders = await import('../subnode-builders');
+		nodeBuilders = await import('../node-builder');
+		workflowBuilders = await import('../workflow-builder');
+	});
+
+	it('should connect same embedding to multiple parent nodes', () => {
+		// Single embedding reused by two vector stores
+		const sharedEmbedding = subnodeBuilders.embedding({
+			type: '@n8n/n8n-nodes-langchain.embeddingsOpenAi',
+			version: 1.2,
+			config: {
+				name: 'Shared Embeddings',
+				parameters: { model: 'text-embedding-3-small' },
+			},
+		});
+
+		const vectorStore1 = nodeBuilders.node({
+			type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+			version: 1.3,
+			config: {
+				name: 'Vector Store 1',
+				parameters: { mode: 'insert' },
+				subnodes: { embedding: sharedEmbedding },
+			},
+		});
+
+		const vectorStore2 = nodeBuilders.node({
+			type: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+			version: 1.3,
+			config: {
+				name: 'Vector Store 2',
+				parameters: { mode: 'retrieve-as-tool' },
+				subnodes: { embedding: sharedEmbedding },
+			},
+		});
+
+		const t = nodeBuilders.trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const wf = workflowBuilders.workflow('test', 'Test').add(t.to([vectorStore1, vectorStore2]));
+		const json = wf.toJSON();
+
+		// The shared embedding should connect to BOTH vector stores
+		const embeddingConnections = json.connections['Shared Embeddings']?.ai_embedding?.[0];
+		expect(embeddingConnections).toHaveLength(2);
+		expect(embeddingConnections!.map((c) => c.node).sort()).toEqual(
+			['Vector Store 1', 'Vector Store 2'].sort(),
+		);
+	});
+
+	it('should connect same language model to multiple agent nodes', () => {
+		const sharedModel = subnodeBuilders.languageModel({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.3,
+			config: {
+				name: 'Shared Model',
+				parameters: { model: { mode: 'list', value: 'gpt-4o-mini' } },
+			},
+		});
+
+		const agent1 = nodeBuilders.node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 3.1,
+			config: { name: 'Agent 1', parameters: {}, subnodes: { model: sharedModel } },
+		});
+
+		const agent2 = nodeBuilders.node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 3.1,
+			config: { name: 'Agent 2', parameters: {}, subnodes: { model: sharedModel } },
+		});
+
+		const t = nodeBuilders.trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const wf = workflowBuilders.workflow('test', 'Test').add(t.to(agent1).to(agent2));
+		const json = wf.toJSON();
+
+		// The shared model should connect to BOTH agents
+		const modelConnections = json.connections['Shared Model']?.ai_languageModel?.[0];
+		expect(modelConnections).toHaveLength(2);
+		expect(modelConnections!.map((c) => c.node).sort()).toEqual(['Agent 1', 'Agent 2'].sort());
+	});
+
+	it('should connect same tool to multiple agent nodes', () => {
+		const sharedTool = subnodeBuilders.tool({
+			type: '@n8n/n8n-nodes-langchain.toolCalculator',
+			version: 1,
+			config: { name: 'Shared Calculator' },
+		});
+
+		const model1 = subnodeBuilders.languageModel({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.3,
+			config: { name: 'Model 1', parameters: {} },
+		});
+
+		const model2 = subnodeBuilders.languageModel({
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: 1.3,
+			config: { name: 'Model 2', parameters: {} },
+		});
+
+		const agent1 = nodeBuilders.node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 3.1,
+			config: {
+				name: 'Agent 1',
+				parameters: {},
+				subnodes: { model: model1, tools: [sharedTool] },
+			},
+		});
+
+		const agent2 = nodeBuilders.node({
+			type: '@n8n/n8n-nodes-langchain.agent',
+			version: 3.1,
+			config: {
+				name: 'Agent 2',
+				parameters: {},
+				subnodes: { model: model2, tools: [sharedTool] },
+			},
+		});
+
+		const t = nodeBuilders.trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const wf = workflowBuilders.workflow('test', 'Test').add(t.to([agent1, agent2]));
+		const json = wf.toJSON();
+
+		// The shared tool should connect to BOTH agents
+		const toolConnections = json.connections['Shared Calculator']?.ai_tool?.[0];
+		expect(toolConnections).toHaveLength(2);
+		expect(toolConnections!.map((c) => c.node).sort()).toEqual(['Agent 1', 'Agent 2'].sort());
+	});
+});

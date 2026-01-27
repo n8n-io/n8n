@@ -2336,6 +2336,24 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Helper to add a subnode with its AI connection (recursively handles nested subnodes)
 		const addSubnode = (subnode: NodeInstance<string, string, unknown>, connectionType: string) => {
+			const existingSubnode = nodes.get(subnode.name);
+
+			if (existingSubnode) {
+				// Subnode already exists - merge the new AI connection
+				let existingAiConns = existingSubnode.connections.get(connectionType);
+				if (!existingAiConns) {
+					existingAiConns = new Map();
+					existingSubnode.connections.set(connectionType, existingAiConns);
+				}
+				const existingOutputConns = existingAiConns.get(0) ?? [];
+				existingAiConns.set(0, [
+					...existingOutputConns,
+					{ node: nodeInstance.name, type: connectionType, index: 0 },
+				]);
+				return; // Don't process nested subnodes again - already done
+			}
+
+			// New subnode - add it with its connection
 			const subnodeConns = new Map<string, Map<number, ConnectionTarget[]>>();
 			subnodeConns.set('main', new Map());
 			// Create AI connection from subnode to parent node
@@ -2347,7 +2365,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				connections: subnodeConns,
 			});
 
-			// Recursively process any nested subnodes this subnode might have
+			// Recursively process any nested subnodes this subnode might have (only for new subnodes)
 			const nestedSubnodes = subnode.config?.subnodes as SubnodeConfig | undefined;
 			if (nestedSubnodes) {
 				this.processSubnodesRecursively(nodes, subnode, nestedSubnodes);
@@ -2434,6 +2452,24 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			subnode: NodeInstance<string, string, unknown>,
 			connectionType: string,
 		) => {
+			const existingSubnode = nodes.get(subnode.name);
+
+			if (existingSubnode) {
+				// Subnode already exists - merge the new AI connection
+				let existingAiConns = existingSubnode.connections.get(connectionType);
+				if (!existingAiConns) {
+					existingAiConns = new Map();
+					existingSubnode.connections.set(connectionType, existingAiConns);
+				}
+				const existingOutputConns = existingAiConns.get(0) ?? [];
+				existingAiConns.set(0, [
+					...existingOutputConns,
+					{ node: parentNode.name, type: connectionType, index: 0 },
+				]);
+				return; // Don't process nested subnodes again - already done
+			}
+
+			// New subnode - add it with its connection
 			const subnodeConns = new Map<string, Map<number, ConnectionTarget[]>>();
 			subnodeConns.set('main', new Map());
 			// Create AI connection from subnode to parent
@@ -2445,7 +2481,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				connections: subnodeConns,
 			});
 
-			// Recursively process any nested subnodes
+			// Recursively process any nested subnodes (only for new subnodes)
 			const nestedSubnodes = subnode.config?.subnodes as SubnodeConfig | undefined;
 			if (nestedSubnodes) {
 				this.processSubnodesRecursively(nodes, subnode, nestedSubnodes);
