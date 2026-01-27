@@ -37,6 +37,10 @@ const AUTH_TAGS = {
 	NONE: '@auth:none',
 } as const;
 
+const DB_TAGS = {
+	RESET: '@db:reset',
+} as const;
+
 export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
@@ -70,22 +74,41 @@ export class ApiHelpers {
 
 	/**
 	 * Setup test environment based on test tags
-	 * @param tags - Array of test tags (e.g., ['@auth:owner', '@auth:member'])
+	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
 	 * @param memberIndex - Which member to use (if auth role is 'member')
 	 *
 	 * Examples:
-	 * - ['@auth:owner'] = signin as owner
-	 * - ['@auth:admin'] = signin as admin
+	 * - ['@db:reset', '@auth:owner'] = reset DB + signin as owner
+	 * - ['@auth:admin'] = signin as admin (no reset)
 	 * - ['@auth:none'] = no signin (unauthenticated)
 	 */
 	async setupFromTags(tags: string[], memberIndex: number = 0): Promise<LoginResponseData | null> {
+		const shouldReset = this.shouldResetDatabase(tags);
 		const role = this.getRoleFromTags(tags);
 
-		if (role) {
+		if (shouldReset && role) {
+			// Reset + signin
+			await this.resetDatabase();
+			return await this.signin(role, memberIndex);
+		} else if (shouldReset) {
+			// Reset only, manual signin required
+			await this.resetDatabase();
+			return null;
+		} else if (role) {
+			// Signin only
 			return await this.signin(role, memberIndex);
 		}
 
+		// No setup required
 		return null;
+	}
+
+	/**
+	 * Check if database should be reset based on tags
+	 */
+	private shouldResetDatabase(tags: string[]): boolean {
+		const lowerTags = tags.map((tag) => tag.toLowerCase());
+		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
 	}
 
 	/**

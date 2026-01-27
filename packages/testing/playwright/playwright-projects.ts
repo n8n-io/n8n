@@ -13,8 +13,9 @@ import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 // - @capability:X - add-on features (email, proxy, source-control, etc.)
 // - @mode:X - infrastructure modes (postgres, queue, multi-main)
 // - @licensed - enterprise license features (log streaming, SSO, etc.)
+// - @db:reset - tests needing per-test database reset (requires isolated containers)
 const CONTAINER_ONLY = new RegExp(
-	`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})|@mode:(${CONTAINER_ONLY_MODES.join('|')})|@${LICENSED_TAG}`,
+	`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})|@mode:(${CONTAINER_ONLY_MODES.join('|')})|@${LICENSED_TAG}|@db:reset`,
 );
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
