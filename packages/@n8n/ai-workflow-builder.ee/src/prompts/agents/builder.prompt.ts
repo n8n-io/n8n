@@ -43,7 +43,7 @@ const NODE_CREATION = `Each add_nodes call creates one node:
 - initialParametersReasoning: Brief explanation
 - initialParameters: Parameters to set initially (or empty object if none)
 
-Include a "Workflow Configuration" Set node after the trigger to give users a central place to define variables and settings that the workflow references, making customization easier.`;
+Only add nodes that directly contribute to the workflow logic. Do NOT add unnecessary "configuration" or "setup" nodes that just pass data through.`;
 
 const AI_CONNECTIONS = `AI capability connections flow from sub-node TO parent (reversed from normal data flow) because sub-nodes provide capabilities that the parent consumes.
 
@@ -93,13 +93,35 @@ BRANCH CONVERGENCE:
 - Set: Use after IF/Switch where only ONE branch executes. Using Merge here would wait forever.
 - Multiple error branches: When error outputs from DIFFERENT nodes go to the same destination, connect them directly (no Merge). Only one error occurs at a time, so Merge would wait forever for the other branch.
 
+SHARED DESTINATION PATTERN:
+When multiple branches should ALL connect to the same downstream node (e.g., all Switch outputs save to database):
+- Connect EACH branch output directly to the shared destination node
+- Do NOT use Merge (would wait forever since only one branch executes per item)
+- The shared destination executes once per item, receiving data from whichever branch ran
+
+Example: Switch routes by priority, but ALL tickets save to database:
+  Switch output 0 (critical) → PagerDuty AND → Database
+  Switch output 1 (high) → Slack AND → Database
+  Switch output 2 (medium) → Email AND → Database
+Each Switch output connects to BOTH its handler AND the shared Database node.
+
 DATA RESTRUCTURING:
 - Split Out: Converts single item with array field into multiple items for individual processing.
 - Aggregate: Combines multiple items into one (grouping, counting, gathering into arrays).
 
 LOOPING PATTERNS:
-- Split In Batches: For processing 100+ items. Output 0 = "done" (final result), Output 1 = "loop" (connect processing here).
-- Split Out → Loop: When input is single item with array field, use Split Out first to create multiple items, then Loop.
+Split In Batches: For processing large item sets in manageable chunks.
+  Outputs:
+  - Output 0 ("done"): Fires ONCE after ALL batches complete. Connect post-loop nodes here (aggregation, final processing).
+  - Output 1 ("loop"): Fires for EACH batch. Connect processing nodes here.
+
+  Connection pattern (creates the loop):
+  1. Split In Batches output 1 → Processing Node(s) → back to Split In Batches input
+  2. Split In Batches output 0 → Next workflow step (runs after loop completes)
+
+  Common mistake: Connecting processing to output 0 (runs once at end) instead of output 1 (runs per batch).
+
+- Split Out → Process: When input is single item with array field, use Split Out first to create multiple items for individual processing.
 
 DATASET COMPARISON:
 - Compare Datasets: Two inputs—connect first source to Input A (index 0), second source to Input B (index 1). Outputs four branches: "In A only", "Same", "Different", "In B only".`;
@@ -132,6 +154,26 @@ const DATA_REFERENCING = `Reference data from previous nodes:
 - $('NodeName').item.json.fieldName - Specific node's output
 
 Use .item rather than .first() or .last() because .item automatically references the corresponding item in paired execution, which handles most use cases correctly.`;
+
+const EXPRESSION_SYNTAX = `n8n field values have two modes:
+
+1. FIXED VALUE (no prefix): Static text used as-is
+   Example: "Hello World" → outputs literal "Hello World"
+
+2. EXPRESSION (= prefix): Evaluated JavaScript expression
+   Example: ={{ $json.name }} → outputs the value of the name field
+   Example: ={{ $json.count > 10 ? 'many' : 'few' }} → conditional logic
+
+Rules:
+- Text fields with dynamic content MUST start with =
+- The = tells n8n to evaluate what follows as an expression
+- Without =, {{ $json.field }} is literal text, not a data reference
+
+Common patterns:
+- Static value: "support@company.com"
+- Dynamic value: ={{ $json.email }}
+- String concatenation: ={{ 'Hello ' + $json.name }}
+- Conditional: ={{ $json.status === 'active' ? 'Yes' : 'No' }}`;
 
 const TOOL_NODES = `Tool nodes (types ending in "Tool") use $fromAI for dynamic values that the AI Agent determines at runtime:
 - $fromAI('key', 'description', 'type', defaultValue)
@@ -229,7 +271,16 @@ Connecting error outputs: When using 'continueErrorOutput', the error output is 
 - IF node (2 outputs): output 0 = true, output 1 = false, output 2 = error
 - Switch node (N outputs): outputs 0 to N-1 = branches, output N = error
 
-Connect using sourceOutputIndex to route to the appropriate handler. The error output already guarantees all items are errors, so no additional IF verification is needed.`;
+Connect using sourceOutputIndex to route to the appropriate handler. The error output already guarantees all items are errors, so no additional IF verification is needed.
+
+Error output data structure: When a node errors with continueErrorOutput, the error output receives items with:
+- $json.error.message - The error message string
+- $json.error.description - Detailed error description (if available)
+- $json.error.name - Error type name (e.g., "NodeApiError")
+- Original input data is NOT preserved in error output
+
+To log errors, reference: ={{ $json.error.message }}
+To preserve input context, store input data in a Set node BEFORE the error-prone node.`;
 
 // === SHARED SECTIONS ===
 
@@ -281,6 +332,7 @@ export function buildBuilderPrompt(): string {
 			.section('workflow_patterns', WORKFLOW_PATTERNS)
 			// Configuration
 			.section('data_referencing', DATA_REFERENCING)
+			.section('expression_syntax', EXPRESSION_SYNTAX)
 			.section('tool_nodes', TOOL_NODES)
 			.section('critical_parameters', CRITICAL_PARAMETERS)
 			.section('common_settings', COMMON_SETTINGS)
