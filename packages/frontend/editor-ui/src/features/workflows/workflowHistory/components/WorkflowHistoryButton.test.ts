@@ -2,6 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowHistoryButton from './WorkflowHistoryButton.vue';
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import { AutoSaveState } from '@/app/constants';
 import { nextTick } from 'vue';
@@ -89,15 +90,19 @@ describe('WorkflowHistoryButton', () => {
 
 		await nextTick();
 
+		const uiStore = useUIStore();
 		const autosaveStore = useWorkflowAutosaveStore();
+
+		// Simulate autosave in progress
 		autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
+		uiStore.addActiveAction('workflowSaving');
 		await nextTick();
 
 		const button = getByTestId('workflow-history-button');
 		expect(button).toHaveAttribute('disabled');
 	});
 
-	it('should show loading spinner only when autosave is in progress', async () => {
+	it('should be disabled when manual save (e.g. during renaming) is in progress', async () => {
 		const { getByTestId } = renderComponent({
 			props: {
 				workflowId: '1',
@@ -105,6 +110,25 @@ describe('WorkflowHistoryButton', () => {
 			},
 		});
 
+		await nextTick();
+
+		const uiStore = useUIStore();
+		uiStore.addActiveAction('workflowSaving');
+		await nextTick();
+
+		const button = getByTestId('workflow-history-button');
+		expect(button).toHaveAttribute('disabled');
+	});
+
+	it('should show loading spinner only when save is in progress', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				workflowId: '1',
+				isNewWorkflow: false,
+			},
+		});
+
+		const uiStore = useUIStore();
 		const autosaveStore = useWorkflowAutosaveStore();
 
 		// Initially not loading
@@ -115,8 +139,10 @@ describe('WorkflowHistoryButton', () => {
 		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 		await nextTick();
 		expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('false');
+		expect(getByTestId('workflow-history-button')).toHaveAttribute('disabled');
 
 		// In progress should show loading
+		uiStore.addActiveAction('workflowSaving');
 		autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
 		await nextTick();
 		expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('true');
@@ -193,8 +219,12 @@ describe('WorkflowHistoryButton', () => {
 
 		await nextTick();
 
+		const uiStore = useUIStore();
 		const autosaveStore = useWorkflowAutosaveStore();
+
+		// Simulate autosave in progress
 		autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
+		uiStore.addActiveAction('workflowSaving');
 		await nextTick();
 
 		const tooltip = container.querySelector('.tooltip-content');

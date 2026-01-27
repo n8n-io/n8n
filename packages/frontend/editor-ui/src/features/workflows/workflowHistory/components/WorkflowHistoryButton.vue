@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { AutoSaveState, VIEWS } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowAutosaveStore } from '@/app/stores/workflowAutosave.store';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { useDebounce } from '@/app/composables/useDebounce';
@@ -15,6 +16,7 @@ const props = defineProps<{
 	isNewWorkflow: boolean;
 }>();
 
+const uiStore = useUIStore();
 const autosaveStore = useWorkflowAutosaveStore();
 const isWorkflowSaving = ref(false);
 const { debounce } = useDebounce();
@@ -27,12 +29,11 @@ const debouncedRemoveSaveIndicator = debounce(
 );
 
 watch(
-	() => autosaveStore.autoSaveState,
-	(state) => {
-		// Only show loading spinner when actually saving (not when scheduled)
-		if (state === AutoSaveState.InProgress) {
+	() => uiStore.isActionActive.workflowSaving,
+	(isSaving) => {
+		if (isSaving) {
 			isWorkflowSaving.value = true;
-		} else if (state === AutoSaveState.Idle) {
+		} else {
 			debouncedRemoveSaveIndicator();
 		}
 	},
