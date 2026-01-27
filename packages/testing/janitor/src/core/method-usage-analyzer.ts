@@ -72,7 +72,9 @@ export class MethodUsageAnalyzer {
 		const index = this.buildIndex();
 		const key = `${className}.${methodName}`;
 		const usages = index.methods[key] || [];
-		const affectedTestFiles = [...new Set(usages.map((u) => u.testFile))].sort();
+		const affectedTestFiles = [...new Set(usages.map((u) => u.testFile))].sort((a, b) =>
+			a.localeCompare(b),
+		);
 
 		return { className, methodName, usages, affectedTestFiles };
 	}

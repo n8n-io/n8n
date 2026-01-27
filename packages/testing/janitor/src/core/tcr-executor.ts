@@ -6,7 +6,6 @@ import { execSync } from 'node:child_process';
 import * as path from 'node:path';
 import { Project } from 'ts-morph';
 
-import { getConfig, hasConfig } from '../config.js';
 import { diffFileMethods, type MethodChange } from './ast-diff-analyzer.js';
 import { loadBaseline, filterNewViolations } from './baseline.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
@@ -20,7 +19,15 @@ import { NoPageInFlowRule } from '../rules/no-page-in-flow.rule.js';
 import { ScopeLockdownRule } from '../rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from '../rules/selector-purity.rule.js';
 import { TestDataHygieneRule } from '../rules/test-data-hygiene.rule.js';
+import {
+	getChangedFiles as gitGetChangedFiles,
+	getTotalDiffLines as gitGetTotalDiffLines,
+	commit as gitCommit,
+	revert as gitRevert,
+} from '../utils/git-operations.js';
+import { createLogger, type Logger } from '../utils/logger.js';
 import { getRootDir } from '../utils/paths.js';
+import { buildTestCommand } from '../utils/test-command.js';
 
 export interface TcrOptions {
 	baseRef?: string;
@@ -51,11 +58,13 @@ export interface TcrResult {
 export class TcrExecutor {
 	private project: Project;
 	private methodUsageIndex: MethodUsageIndex | null = null;
+	private root: string;
+	private logger: Logger = createLogger();
 
 	constructor() {
-		const root = getRootDir();
+		this.root = getRootDir();
 		this.project = new Project({
-			tsConfigFilePath: path.join(root, 'tsconfig.json'),
+			tsConfigFilePath: path.join(this.root, 'tsconfig.json'),
 			skipAddingFilesFromTsConfig: false,
 		});
 	}
@@ -71,169 +80,108 @@ export class TcrExecutor {
 			testCommand,
 		} = options;
 
+		this.logger = createLogger({ verbose });
+
 		const changedFiles = this.getChangedFiles(targetBranch);
 
-		if (maxDiffLines && changedFiles.length > 0) {
-			const totalDiffLines = this.getTotalDiffLines(targetBranch);
-			if (totalDiffLines > maxDiffLines) {
-				if (verbose)
-					console.log(`\n✗ Diff too large: ${totalDiffLines} lines exceeds max ${maxDiffLines}`);
-				return {
-					success: false,
-					failedStep: 'diff-too-large',
-					changedFiles,
-					changedMethods: [],
-					affectedTests: [],
-					testsRun: [],
-					testsPassed: false,
-					ruleViolations: 0,
-					typecheckPassed: true,
-					action: 'dry-run',
-					durationMs: performance.now() - startTime,
-					totalDiffLines,
-				};
-			}
-			if (verbose) console.log(`Diff size: ${totalDiffLines} lines (max: ${maxDiffLines})`);
+		// Validation: diff size
+		const diffValidation = this.validateDiffSize(changedFiles, maxDiffLines, targetBranch);
+		if (diffValidation) {
+			return this.buildResult({ ...diffValidation, durationMs: performance.now() - startTime });
 		}
 
+		// No changes
 		if (changedFiles.length === 0) {
-			if (verbose) console.log('No changes detected');
-			return {
+			this.logger.debug('No changes detected');
+			return this.buildResult({
 				success: true,
-				changedFiles: [],
-				changedMethods: [],
-				affectedTests: [],
-				testsRun: [],
-				testsPassed: true,
-				ruleViolations: 0,
-				typecheckPassed: true,
 				action: 'dry-run',
 				durationMs: performance.now() - startTime,
-			};
+			});
 		}
 
-		if (verbose) {
-			console.log(`Changed files: ${changedFiles.length}`);
-			changedFiles.forEach((f) => console.log(`  - ${f}`));
-		}
+		this.logger.debug(`Changed files: ${changedFiles.length}`);
+		this.logger.debugList(changedFiles);
 
-		if (verbose) console.log('\nRunning janitor rules...');
-		const ruleViolations = this.runRules(changedFiles, verbose);
+		// Validation: rules
+		this.logger.debug('\nRunning janitor rules...');
+		const ruleViolations = this.runRules(changedFiles);
 
 		if (ruleViolations > 0) {
-			if (verbose) console.log(`\n✗ Found ${ruleViolations} rule violation(s)`);
-			if (execute) this.revert();
-
-			return {
+			this.logger.debug(`\n\u2717 Found ${ruleViolations} rule violation(s)`);
+			if (execute) this.doRevert();
+			return this.buildResult({
 				success: false,
 				failedStep: 'rules',
 				changedFiles,
-				changedMethods: [],
-				affectedTests: [],
-				testsRun: [],
-				testsPassed: false,
 				ruleViolations,
-				typecheckPassed: true,
 				action: execute ? 'revert' : 'dry-run',
 				durationMs: performance.now() - startTime,
-			};
+			});
 		}
-		if (verbose) console.log('✓ Rules passed');
+		this.logger.debug('\u2713 Rules passed');
 
-		if (verbose) console.log('\nRunning typecheck...');
-		const typecheckPassed = this.runTypecheck(verbose);
+		// Validation: typecheck
+		this.logger.debug('\nRunning typecheck...');
+		const typecheckPassed = this.runTypecheck();
 
 		if (!typecheckPassed) {
-			if (verbose) console.log('✗ Typecheck failed');
-			if (execute) this.revert();
-
-			return {
+			this.logger.debug('\u2717 Typecheck failed');
+			if (execute) this.doRevert();
+			return this.buildResult({
 				success: false,
 				failedStep: 'typecheck',
 				changedFiles,
-				changedMethods: [],
-				affectedTests: [],
-				testsRun: [],
-				testsPassed: false,
 				ruleViolations,
 				typecheckPassed: false,
 				action: execute ? 'revert' : 'dry-run',
 				durationMs: performance.now() - startTime,
-			};
+			});
 		}
-		if (verbose) console.log('✓ Typecheck passed');
+		this.logger.debug('\u2713 Typecheck passed');
 
-		const changedMethods: MethodChange[] = [];
-		for (const file of changedFiles) {
-			if (file.endsWith('.ts') && !file.endsWith('.spec.ts')) {
-				const diff = diffFileMethods(file, baseRef);
-				changedMethods.push(...diff.changedMethods);
-			}
-		}
+		// Analyze changed methods
+		const changedMethods = this.extractChangedMethods(changedFiles, baseRef);
+		this.logChangedMethods(changedMethods);
 
-		if (verbose && changedMethods.length > 0) {
-			console.log(`\nChanged methods: ${changedMethods.length}`);
-			for (const change of changedMethods) {
-				const symbol =
-					change.changeType === 'added' ? '+' : change.changeType === 'removed' ? '-' : '~';
-				console.log(`  ${symbol} ${change.className}.${change.methodName}`);
-			}
-		}
-
+		// Find affected tests
 		const affectedTests = this.findAffectedTests(changedFiles, changedMethods);
+		this.logger.debug(`\nAffected tests: ${affectedTests.length}`);
+		this.logger.debugList(affectedTests);
 
-		if (verbose) {
-			console.log(`\nAffected tests: ${affectedTests.length}`);
-			affectedTests.forEach((t) => console.log(`  - ${t}`));
-		}
-
+		// No tests affected
 		if (affectedTests.length === 0) {
-			if (verbose) console.log('\nNo tests affected by changes');
-
+			this.logger.debug('\nNo tests affected by changes');
 			if (execute) {
-				this.commit(options.commitMessage ?? 'TCR: No tests affected');
-				return {
+				this.doCommit(options.commitMessage ?? 'TCR: No tests affected');
+				return this.buildResult({
 					success: true,
 					changedFiles,
 					changedMethods,
-					affectedTests: [],
-					testsRun: [],
-					testsPassed: true,
 					ruleViolations,
 					typecheckPassed,
 					action: 'commit',
 					durationMs: performance.now() - startTime,
-				};
+				});
 			}
-
-			return {
+			return this.buildResult({
 				success: true,
 				changedFiles,
 				changedMethods,
-				affectedTests: [],
-				testsRun: [],
-				testsPassed: true,
 				ruleViolations,
 				typecheckPassed,
 				action: 'dry-run',
 				durationMs: performance.now() - startTime,
-			};
+			});
 		}
 
-		const testsPassed = this.runTests(affectedTests, verbose, testCommand);
+		// Run tests
+		const testsPassed = this.runTests(affectedTests, testCommand);
 
-		let action: 'commit' | 'revert' | 'dry-run' = 'dry-run';
-		if (execute) {
-			if (testsPassed) {
-				this.commit(options.commitMessage ?? 'TCR: Tests passed');
-				action = 'commit';
-			} else {
-				this.revert();
-				action = 'revert';
-			}
-		}
+		// Commit or revert based on test results
+		const action = this.determineAction(execute, testsPassed, options.commitMessage);
 
-		return {
+		return this.buildResult({
 			success: testsPassed,
 			failedStep: testsPassed ? undefined : 'tests',
 			changedFiles,
@@ -245,13 +193,129 @@ export class TcrExecutor {
 			typecheckPassed,
 			action,
 			durationMs: performance.now() - startTime,
+		});
+	}
+
+	// --- Result Builder ---
+
+	private buildResult(params: Partial<TcrResult>): TcrResult {
+		return {
+			success: params.success ?? false,
+			failedStep: params.failedStep,
+			changedFiles: params.changedFiles ?? [],
+			changedMethods: params.changedMethods ?? [],
+			affectedTests: params.affectedTests ?? [],
+			testsRun: params.testsRun ?? [],
+			testsPassed: params.testsPassed ?? false,
+			ruleViolations: params.ruleViolations ?? 0,
+			typecheckPassed: params.typecheckPassed ?? true,
+			action: params.action ?? 'dry-run',
+			durationMs: params.durationMs ?? 0,
+			totalDiffLines: params.totalDiffLines,
+			testCommand: params.testCommand,
 		};
 	}
 
-	private runRules(changedFiles: string[], verbose: boolean): number {
-		const root = getRootDir();
-		const runner = new RuleRunner();
+	// --- Validation Methods ---
 
+	private validateDiffSize(
+		changedFiles: string[],
+		maxDiffLines: number | undefined,
+		targetBranch: string | undefined,
+	): Partial<TcrResult> | null {
+		if (!maxDiffLines || changedFiles.length === 0) return null;
+
+		const totalDiffLines = gitGetTotalDiffLines(this.root, targetBranch);
+		if (totalDiffLines > maxDiffLines) {
+			this.logger.debug(
+				`\n\u2717 Diff too large: ${totalDiffLines} lines exceeds max ${maxDiffLines}`,
+			);
+			return {
+				success: false,
+				failedStep: 'diff-too-large',
+				changedFiles,
+				totalDiffLines,
+				action: 'dry-run',
+			};
+		}
+
+		this.logger.debug(`Diff size: ${totalDiffLines} lines (max: ${maxDiffLines})`);
+		return null;
+	}
+
+	// --- Action Helpers ---
+
+	private determineAction(
+		execute: boolean,
+		testsPassed: boolean,
+		commitMessage?: string,
+	): 'commit' | 'revert' | 'dry-run' {
+		if (!execute) return 'dry-run';
+
+		if (testsPassed) {
+			this.doCommit(commitMessage ?? 'TCR: Tests passed');
+			return 'commit';
+		}
+
+		this.doRevert();
+		return 'revert';
+	}
+
+	private doCommit(message: string): void {
+		if (gitCommit(message, this.root)) {
+			this.logger.info(`\n\u2713 Committed: ${message}`);
+		} else {
+			this.logger.error('Failed to commit');
+		}
+	}
+
+	private doRevert(): void {
+		if (gitRevert(this.root)) {
+			this.logger.info('\n\u2717 Reverted changes');
+		} else {
+			this.logger.error('Failed to revert');
+		}
+	}
+
+	// --- Method Analysis ---
+
+	private extractChangedMethods(changedFiles: string[], baseRef: string): MethodChange[] {
+		const changedMethods: MethodChange[] = [];
+		for (const file of changedFiles) {
+			if (file.endsWith('.ts') && !file.endsWith('.spec.ts')) {
+				const diff = diffFileMethods(file, baseRef);
+				changedMethods.push(...diff.changedMethods);
+			}
+		}
+		return changedMethods;
+	}
+
+	private logChangedMethods(changedMethods: MethodChange[]): void {
+		if (changedMethods.length === 0) return;
+		this.logger.debug(`\nChanged methods: ${changedMethods.length}`);
+		for (const change of changedMethods) {
+			const symbol =
+				change.changeType === 'added' ? '+' : change.changeType === 'removed' ? '-' : '~';
+			this.logger.debug(`  ${symbol} ${change.className}.${change.methodName}`);
+		}
+	}
+
+	private runRules(changedFiles: string[]): number {
+		const runner = this.createRuleRunner();
+		const { project } = createProject(this.root);
+
+		const tsFiles = changedFiles
+			.filter((f) => f.endsWith('.ts'))
+			.map((f) => path.relative(this.root, f));
+
+		if (tsFiles.length === 0) return 0;
+
+		const report = runner.run(project, this.root, { files: tsFiles });
+		return this.countNewViolations(report);
+	}
+
+	private createRuleRunner(): RuleRunner {
+		const runner = new RuleRunner();
 		runner.registerRule(new BoundaryProtectionRule());
 		runner.registerRule(new ScopeLockdownRule());
 		runner.registerRule(new SelectorPurityRule());
@@ -260,234 +324,159 @@ export class TcrExecutor {
 		runner.registerRule(new DeadCodeRule());
 		runner.registerRule(new DeduplicationRule());
 		runner.registerRule(new TestDataHygieneRule());
+		return runner;
+	}
 
-		const { project } = createProject(root);
+	private countNewViolations(report: ReturnType<RuleRunner['run']>): number {
+		const baseline = loadBaseline(this.root);
 
-		const tsFiles = changedFiles
-			.filter((f) => f.endsWith('.ts'))
-			.map((f) => path.relative(root, f));
+		if (!baseline) {
+			this.logViolationsWithoutBaseline(report);
+			return report.summary.totalViolations;
+		}
 
-		if (tsFiles.length === 0) return 0;
+		return this.countFilteredViolations(report, baseline);
+	}
 
-		const report = runner.run(project, root, { files: tsFiles });
+	private logViolationsWithoutBaseline(report: ReturnType<RuleRunner['run']>): void {
+		if (report.summary.totalViolations === 0) return;
 
-		// Auto-filter by baseline if present
-		const baseline = loadBaseline(root);
-		let newViolationCount = report.summary.totalViolations;
-
-		if (baseline) {
-			// Count only NEW violations (not in baseline)
-			let filteredCount = 0;
-			for (const result of report.results) {
-				const newViolations = filterNewViolations(result.violations, baseline, root);
-				filteredCount += newViolations.length;
-
-				if (verbose && newViolations.length > 0) {
-					console.log(
-						`\n${result.rule}: ${newViolations.length} new (${result.violations.length} total)`,
-					);
-					for (const v of newViolations) {
-						console.log(`  ${path.relative(root, v.file)}:${v.line} - ${v.message}`);
-					}
-				}
+		this.logger.debug('\nViolations in changed files:');
+		for (const result of report.results) {
+			if (result.violations.length > 0) {
+				this.logger.debug(`  ${result.rule}: ${result.violations.length}`);
 			}
-			newViolationCount = filteredCount;
+		}
+	}
 
-			if (verbose) {
-				const baselinedCount = report.summary.totalViolations - filteredCount;
-				console.log(`\nBaseline: ${baselinedCount} known violations filtered`);
-			}
-		} else if (verbose && report.summary.totalViolations > 0) {
-			console.log('\nViolations in changed files:');
-			for (const result of report.results) {
-				if (result.violations.length > 0) {
-					console.log(`  ${result.rule}: ${result.violations.length}`);
+	private countFilteredViolations(
+		report: ReturnType<RuleRunner['run']>,
+		baseline: NonNullable<ReturnType<typeof loadBaseline>>,
+	): number {
+		let filteredCount = 0;
+
+		for (const result of report.results) {
+			const newViolations = filterNewViolations(result.violations, baseline, this.root);
+			filteredCount += newViolations.length;
+
+			if (newViolations.length > 0) {
+				this.logger.debug(
+					`\n${result.rule}: ${newViolations.length} new (${result.violations.length} total)`,
+				);
+				for (const v of newViolations) {
+					this.logger.debug(`  ${path.relative(this.root, v.file)}:${v.line} - ${v.message}`);
 				}
 			}
 		}
 
-		return newViolationCount;
+		const baselinedCount = report.summary.totalViolations - filteredCount;
+		this.logger.debug(`\nBaseline: ${baselinedCount} known violations filtered`);
+
+		return filteredCount;
 	}
 
-	private runTypecheck(verbose: boolean): boolean {
-		const root = getRootDir();
+	private runTypecheck(): boolean {
 		try {
-			execSync('pnpm typecheck', { cwd: root, stdio: verbose ? 'inherit' : 'pipe' });
+			const stdio = this.logger.isVerbose() ? 'inherit' : 'pipe';
+			execSync('pnpm typecheck', { cwd: this.root, stdio });
 			return true;
 		} catch {
 			return false;
 		}
 	}
 
-	private getGitRoot(): string {
-		try {
-			return execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim();
-		} catch {
-			return getRootDir();
-		}
-	}
-
 	private getChangedFiles(targetBranch?: string): string[] {
-		const janitorRoot = getRootDir();
-		const gitRoot = this.getGitRoot();
-
-		try {
-			if (targetBranch) {
-				const output = execSync(`git diff --name-only ${targetBranch}...HEAD`, {
-					cwd: gitRoot,
-					encoding: 'utf-8',
-				});
-
-				const files: string[] = [];
-				for (const line of output.split('\n')) {
-					if (!line.trim()) continue;
-					const fullPath = path.join(gitRoot, line);
-					if (fullPath.startsWith(janitorRoot)) files.push(fullPath);
-				}
-				return files;
-			}
-
-			const status = execSync('git status --porcelain', { cwd: gitRoot, encoding: 'utf-8' });
-			const files: string[] = [];
-
-			for (const line of status.split('\n')) {
-				if (!line.trim()) continue;
-				const match = line.match(/^.{2}\s+(.+)$/);
-				if (match) {
-					const filePath = match[1];
-					const actualPath = filePath.includes(' -> ') ? filePath.split(' -> ')[1] : filePath;
-					const fullPath = path.join(gitRoot, actualPath);
-					if (fullPath.startsWith(janitorRoot)) files.push(fullPath);
-				}
-			}
-
-			return files;
-		} catch {
-			return [];
-		}
-	}
-
-	private getTotalDiffLines(targetBranch?: string): number {
-		const gitRoot = this.getGitRoot();
-
-		try {
-			const cmd = targetBranch ? `git diff --stat ${targetBranch}...HEAD` : 'git diff --stat HEAD';
-			const output = execSync(cmd, { cwd: gitRoot, encoding: 'utf-8' });
-
-			const lines = output.trim().split('\n');
-			const summaryLine = lines[lines.length - 1];
-
-			let total = 0;
-			const insertionsMatch = summaryLine.match(/(\d+)\s+insertions?\(\+\)/);
-			const deletionsMatch = summaryLine.match(/(\d+)\s+deletions?\(-\)/);
-
-			if (insertionsMatch) total += parseInt(insertionsMatch[1], 10);
-			if (deletionsMatch) total += parseInt(deletionsMatch[1], 10);
-
-			return total;
-		} catch {
-			return 0;
-		}
-	}
-
-	private commit(message: string): void {
-		const gitRoot = this.getGitRoot();
-		try {
-			execSync('git add -A', { cwd: gitRoot });
-			execSync(`git commit -m "${message}"`, { cwd: gitRoot });
-			console.log(`\n✓ Committed: ${message}`);
-		} catch (error) {
-			console.error('Failed to commit:', error);
-		}
-	}
-
-	private revert(): void {
-		const gitRoot = this.getGitRoot();
-		try {
-			execSync('git checkout -- .', { cwd: gitRoot });
-			console.log('\n✗ Reverted changes');
-		} catch (error) {
-			console.error('Failed to revert:', error);
-		}
+		return gitGetChangedFiles({ targetBranch, scopeDir: this.root });
 	}
 
 	private findAffectedTests(changedFiles: string[], changedMethods: MethodChange[]): string[] {
 		const affectedTests = new Set<string>();
-		const root = getRootDir();
 
-		// Separate changed test files from other files
-		const changedTestFiles = changedFiles
-			.filter((f) => f.endsWith('.spec.ts'))
-			.map((f) => path.relative(root, f));
+		const changedTestFiles = this.getChangedTestFiles(changedFiles);
+		const methodIndex = this.getMethodUsageIndex();
 
-		// Build method usage index for modified/removed method lookup
-		if (!this.methodUsageIndex) {
-			const analyzer = new MethodUsageAnalyzer(this.project);
-			this.methodUsageIndex = analyzer.buildIndex();
-		}
+		// Find tests using modified/removed methods
+		this.addTestsUsingMethods(
+			changedMethods.filter((m) => m.changeType !== 'added'),
+			methodIndex,
+			affectedTests,
+		);
 
-		// Separate methods by change type
-		const addedMethods = changedMethods.filter((m) => m.changeType === 'added');
-		const modifiedOrRemovedMethods = changedMethods.filter((m) => m.changeType !== 'added');
+		// Find tests using newly added methods
+		this.addTestsUsingNewMethods(
+			changedMethods.filter((m) => m.changeType === 'added'),
+			changedTestFiles,
+			affectedTests,
+		);
 
-		// For MODIFIED/REMOVED methods: use method usage index (existing behavior)
-		for (const change of modifiedOrRemovedMethods) {
-			const key = `${change.className}.${change.methodName}`;
-			const usages = this.methodUsageIndex.methods[key] ?? [];
-			for (const usage of usages) {
-				affectedTests.add(usage.testFile);
-			}
-		}
-
-		// For ADDED methods: check if changed test files use the new method
-		// (since a new method can only be used by files that were also changed)
-		if (addedMethods.length > 0 && changedTestFiles.length > 0) {
-			for (const testFile of changedTestFiles) {
-				const fullPath = path.join(root, testFile);
-				const sourceFile = this.project.getSourceFile(fullPath);
-				if (!sourceFile) continue;
-
-				const content = sourceFile.getFullText();
-				for (const method of addedMethods) {
-					// Check if test file references the new method
-					const methodPattern = new RegExp(`\\.${method.methodName}\\s*\\(`);
-					if (methodPattern.test(content)) {
-						affectedTests.add(testFile);
-						break;
-					}
-				}
-			}
-		}
-
-		// Also include any directly changed test files
+		// Include directly changed test files
 		for (const testFile of changedTestFiles) {
 			affectedTests.add(testFile);
 		}
 
-		return Array.from(affectedTests).sort();
+		return Array.from(affectedTests).sort((a, b) => a.localeCompare(b));
 	}
 
-	private runTests(testFiles: string[], verbose: boolean, testCommand?: string): boolean {
-		const root = getRootDir();
+	private getChangedTestFiles(changedFiles: string[]): string[] {
+		return changedFiles
+			.filter((f) => f.endsWith('.spec.ts'))
+			.map((f) => path.relative(this.root, f));
+	}
 
-		if (verbose) console.log(`\nRunning ${testFiles.length} test file(s)...`);
+	private getMethodUsageIndex(): MethodUsageIndex {
+		if (!this.methodUsageIndex) {
+			const analyzer = new MethodUsageAnalyzer(this.project);
+			this.methodUsageIndex = analyzer.buildIndex();
+		}
+		return this.methodUsageIndex;
+	}
+
+	private addTestsUsingMethods(
+		methods: MethodChange[],
+		methodIndex: MethodUsageIndex,
+		affectedTests: Set<string>,
+	): void {
+		for (const change of methods) {
+			const key = `${change.className}.${change.methodName}`;
+			const usages = methodIndex.methods[key] ?? [];
+			for (const usage of usages) {
+				affectedTests.add(usage.testFile);
+			}
+		}
+	}
+
+	private addTestsUsingNewMethods(
+		addedMethods: MethodChange[],
+		changedTestFiles: string[],
+		affectedTests: Set<string>,
+	): void {
+		if (addedMethods.length === 0 || changedTestFiles.length === 0) return;
+
+		for (const testFile of changedTestFiles) {
+			const fullPath = path.join(this.root, testFile);
+			const sourceFile = this.project.getSourceFile(fullPath);
+			if (!sourceFile) continue;
+
+			const content = sourceFile.getFullText();
+			for (const method of addedMethods) {
+				const methodPattern = new RegExp(`\\.${method.methodName}\\s*\\(`);
+				if (methodPattern.test(content)) {
+					affectedTests.add(testFile);
+					break;
+				}
+			}
+		}
+	}
+
+	private runTests(testFiles: string[], testCommand?: string): boolean {
+		this.logger.debug(`\nRunning ${testFiles.length} test file(s)...`);
 
 		try {
-			const fileArgs = testFiles.join(' ');
+			const cmd = buildTestCommand(testFiles, testCommand);
+			this.logger.debug(`Command: ${cmd}`);
 
-			// Priority: CLI option > config > fallback
-			let cmd: string;
-			if (testCommand) {
-				cmd = `${testCommand} ${fileArgs}`;
-			} else if (hasConfig()) {
-				cmd = `${getConfig().tcr.testCommand} ${fileArgs}`;
-			} else {
-				cmd = `npx playwright test ${fileArgs} --workers=1`;
-			}
-
-			if (verbose) console.log(`Command: ${cmd}`);
-
-			execSync(cmd, { cwd: root, stdio: verbose ? 'inherit' : 'pipe' });
+			const stdio = this.logger.isVerbose() ? 'inherit' : 'pipe';
+			execSync(cmd, { cwd: this.root, stdio });
 			return true;
 		} catch {
 			return false;

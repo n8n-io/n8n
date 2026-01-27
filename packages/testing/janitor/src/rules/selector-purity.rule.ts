@@ -104,10 +104,12 @@ export class SelectorPurityRule extends BaseRule {
 				return true;
 			}
 			// Direct page.* patterns (tests)
-			if (text.match(new RegExp(`(?<!\\w)page\\.${method}`))) {
+			const directPagePattern = new RegExp(`(?<!\\w)page\\.${method}`);
+			if (directPagePattern.test(text)) {
 				return true;
 			}
-			if (text.match(new RegExp(`this\\.page\\.${method}`))) {
+			const thisPagePattern = new RegExp(`this\\.page\\.${method}`);
+			if (thisPagePattern.test(text)) {
 				return true;
 			}
 		}

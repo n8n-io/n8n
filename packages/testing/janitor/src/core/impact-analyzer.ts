@@ -71,11 +71,13 @@ export class ImpactAnalyzer {
 
 		// Convert to relative paths and filter
 		const allAffected = Array.from(affectedSet).map((f) => this.getRelativePath(f));
-		const affectedTests = allAffected.filter((f) => this.isTestFile(f)).sort();
+		const affectedTests = allAffected
+			.filter((f) => this.isTestFile(f))
+			.sort((a, b) => a.localeCompare(b));
 
 		return {
 			changedFiles: absolutePaths.map((f) => this.getRelativePath(f)),
-			affectedFiles: allAffected.sort(),
+			affectedFiles: allAffected.sort((a, b) => a.localeCompare(b)),
 			affectedTests,
 			graph,
 		};

@@ -1,4 +1,4 @@
-import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
+import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
 
 import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
@@ -42,62 +42,75 @@ export class DeduplicationRule extends BaseRule {
 	}
 
 	analyze(_project: Project, files: SourceFile[]): Violation[] {
-		const violations: Violation[] = [];
+		const { pagesScope, componentsScope } = this.buildSelectorMaps(files);
 
-		// Collect test IDs by scope
+		return [
+			...this.findDuplicates(pagesScope, 'pages', files),
+			...this.findDuplicates(componentsScope, 'components', files),
+		];
+	}
+
+	private buildSelectorMaps(files: SourceFile[]): {
+		pagesScope: Map<string, TestIdUsage[]>;
+		componentsScope: Map<string, TestIdUsage[]>;
+	} {
 		const pagesScope = new Map<string, TestIdUsage[]>();
 		const componentsScope = new Map<string, TestIdUsage[]>();
 
 		for (const file of files) {
 			const filePath = file.getFilePath();
-			const isComponent = isComponentFile(filePath);
-			const scope = isComponent ? componentsScope : pagesScope;
-
-			// Find all getByTestId calls with string literal arguments
-			const calls = file.getDescendantsOfKind(SyntaxKind.CallExpression);
-
-			for (const call of calls) {
-				const expr = call.getExpression();
-				const text = expr.getText();
-
-				// Only interested in getByTestId calls
-				if (!text.endsWith('.getByTestId')) {
-					continue;
-				}
-
-				const args = call.getArguments();
-				if (args.length === 0) continue;
-
-				const firstArg = args[0];
-				if (firstArg.getKind() !== SyntaxKind.StringLiteral) continue;
-
-				const stringLit = firstArg.asKind(SyntaxKind.StringLiteral);
-				if (!stringLit) continue;
-
-				const testId = stringLit.getLiteralText();
-				const root = this.extractLocatorRoot(text);
-				const usage: TestIdUsage = {
-					file: filePath,
-					line: call.getStartLineNumber(),
-					column: call.getStart() - call.getStartLinePos(),
-					root,
-				};
-
-				// Use root:testId as the deduplication key
-				const key = `${root}:${testId}`;
-
-				if (!scope.has(key)) {
-					scope.set(key, []);
-				}
-				scope.get(key)!.push(usage);
-			}
+			const scope = isComponentFile(filePath) ? componentsScope : pagesScope;
+			this.collectTestIdUsages(file, scope);
 		}
 
-		// Find duplicates in each scope
-		violations.push(...this.findDuplicates(pagesScope, 'pages', files));
-		violations.push(...this.findDuplicates(componentsScope, 'components', files));
+		return { pagesScope, componentsScope };
+	}
 
-		return violations;
+	private collectTestIdUsages(file: SourceFile, scope: Map<string, TestIdUsage[]>): void {
+		const filePath = file.getFilePath();
+		const calls = file.getDescendantsOfKind(SyntaxKind.CallExpression);
+
+		for (const call of calls) {
+			const usage = this.extractTestIdUsage(call, filePath);
+			if (!usage) continue;
+
+			const key = `${usage.root}:${usage.testId}`;
+			const existing = scope.get(key) ?? [];
+			existing.push({
+				file: usage.file,
+				line: usage.line,
+				column: usage.column,
+				root: usage.root,
+			});
+			scope.set(key, existing);
+		}
+	}
+
+	private extractTestIdUsage(
+		call: CallExpression,
+		filePath: string,
+	): (TestIdUsage & { testId: string }) | null {
+		const expr = call.getExpression();
+		const text = expr.getText();
+
+		if (!text.endsWith('.getByTestId')) return null;
+
+		const args = call.getArguments();
+		if (args.length === 0) return null;
+
+		const firstArg = args[0];
+		if (firstArg.getKind() !== SyntaxKind.StringLiteral) return null;
+
+		const stringLit = firstArg.asKind(SyntaxKind.StringLiteral);
+		if (!stringLit) return null;
+
+		return {
+			file: filePath,
+			line: call.getStartLineNumber(),
+			column: call.getStart() - call.getStartLinePos(),
+			root: this.extractLocatorRoot(text),
+			testId: stringLit.getLiteralText(),
+		};
 	}
 
 	private findDuplicates(
