@@ -1,9 +1,10 @@
-import type { Project, SourceFile } from 'ts-morph';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+import type { Project, SourceFile } from 'ts-morph';
+
 import { BaseRule } from './base-rule.js';
-import type { Violation, FixResult } from '../types.js';
 import { getConfig } from '../config.js';
+import type { Violation, FixResult } from '../types.js';
 import { getRootDir, getRelativePath, getTestDataFiles } from '../utils/paths.js';
 
 /**

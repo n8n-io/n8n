@@ -2,6 +2,9 @@
  * Inventory Analyzer - Generates inventory of Playwright test codebase
  */
 
+import * as fs from 'fs';
+import { glob } from 'glob';
+import * as path from 'path';
 import {
 	SyntaxKind,
 	type Project,
@@ -12,12 +15,10 @@ import {
 	type FunctionDeclaration,
 	type CallExpression,
 } from 'ts-morph';
-import * as path from 'path';
-import * as fs from 'fs';
-import { glob } from 'glob';
+
 import { getConfig } from '../config.js';
-import { getRootDir } from '../utils/paths.js';
 import { getSourceFiles } from './project-loader.js';
+import { getRootDir } from '../utils/paths.js';
 
 export interface ParameterInfo {
 	name: string;
@@ -186,7 +187,7 @@ export class InventoryAnalyzer {
 
 	private extractPageInfo(classDecl: ClassDeclaration, file: SourceFile): PageInfo {
 		return {
-			name: classDecl.getName() || 'Anonymous',
+			name: classDecl.getName() ?? 'Anonymous',
 			file: this.getRelativePath(file.getFilePath()),
 			container: this.extractContainer(classDecl),
 			methods: this.extractMethods(classDecl),
@@ -198,7 +199,7 @@ export class InventoryAnalyzer {
 	private extractContainer(classDecl: ClassDeclaration): string | null {
 		const getter = classDecl.getGetAccessor('container');
 		if (getter) {
-			const body = getter.getBody()?.getText() || '';
+			const body = getter.getBody()?.getText() ?? '';
 			const match = body.match(/getByTestId\(['"]([^'"]+)['"]\)/);
 			return match ? `getByTestId('${match[1]}')` : 'custom';
 		}
@@ -206,7 +207,7 @@ export class InventoryAnalyzer {
 		const prop = classDecl.getProperty('container');
 		if (prop) {
 			const initializer = prop.getInitializer()?.getText();
-			return initializer || 'defined';
+			return initializer ?? 'defined';
 		}
 
 		const method = classDecl.getMethod('getContainer');
@@ -227,7 +228,7 @@ export class InventoryAnalyzer {
 
 			for (const classDecl of file.getClasses()) {
 				if (classDecl.isExported()) {
-					const componentName = classDecl.getName() || '';
+					const componentName = classDecl.getName() ?? '';
 					const mountedIn = this.findComponentUsage(componentName);
 
 					components.push({
@@ -284,7 +285,7 @@ export class InventoryAnalyzer {
 
 	private extractComposableInfo(classDecl: ClassDeclaration, file: SourceFile): ComposableInfo {
 		return {
-			name: classDecl.getName() || 'Anonymous',
+			name: classDecl.getName() ?? 'Anonymous',
 			file: this.getRelativePath(file.getFilePath()),
 			methods: this.extractMethods(classDecl),
 			usesPages: this.findPageObjectUsage(classDecl),
@@ -333,7 +334,7 @@ export class InventoryAnalyzer {
 			.map((m) => this.extractServiceMethod(m));
 
 		return {
-			name: classDecl.getName() || 'Anonymous',
+			name: classDecl.getName() ?? 'Anonymous',
 			file: this.getRelativePath(file.getFilePath()),
 			methods,
 		};
@@ -368,7 +369,7 @@ export class InventoryAnalyzer {
 			if (match) return match[1];
 		}
 
-		const body = method.getBody()?.getText() || '';
+		const body = method.getBody()?.getText() ?? '';
 		const urlMatch = body.match(/['"`](\/api\/[^'"`]+)['"`]/);
 		if (urlMatch) return urlMatch[1];
 
@@ -411,11 +412,11 @@ export class InventoryAnalyzer {
 
 		if (firstArg.getKind() === SyntaxKind.ObjectLiteralExpression) {
 			const objLit = firstArg.asKind(SyntaxKind.ObjectLiteralExpression);
-			for (const prop of objLit?.getProperties() || []) {
+			for (const prop of objLit?.getProperties() ?? []) {
 				if (prop.getKind() === SyntaxKind.PropertyAssignment) {
 					const propAssign = prop.asKind(SyntaxKind.PropertyAssignment);
-					const name = propAssign?.getName() || '';
-					const init = propAssign?.getInitializer()?.getText() || '';
+					const name = propAssign?.getName() ?? '';
+					const init = propAssign?.getInitializer()?.getText() ?? '';
 					provides[name] = this.inferFixtureType(init);
 				}
 			}
@@ -452,7 +453,7 @@ export class InventoryAnalyzer {
 
 			if (functions.length > 0) {
 				helpers.push({
-					name: this.getClassName(file) || path.basename(file.getFilePath(), '.ts'),
+					name: this.getClassName(file) ?? path.basename(file.getFilePath(), '.ts'),
 					file: this.getRelativePath(file.getFilePath()),
 					functions,
 				});
@@ -468,7 +469,7 @@ export class InventoryAnalyzer {
 
 	private extractFunctionInfo(func: FunctionDeclaration): MethodInfo {
 		return {
-			name: func.getName() || 'anonymous',
+			name: func.getName() ?? 'anonymous',
 			params: func.getParameters().map((p) => ({
 				name: p.getName(),
 				type: this.simplifyType(p.getType().getText()),
@@ -488,7 +489,7 @@ export class InventoryAnalyzer {
 		for (const file of files) {
 			for (const classDecl of file.getClasses()) {
 				if (classDecl.isExported()) {
-					const name = classDecl.getName() || '';
+					const name = classDecl.getName() ?? '';
 					factories.push({
 						name,
 						file: this.getRelativePath(file.getFilePath()),
@@ -501,7 +502,7 @@ export class InventoryAnalyzer {
 			for (const func of file.getFunctions()) {
 				if (func.isExported() && func.getName()?.toLowerCase().includes('factory')) {
 					factories.push({
-						name: func.getName() || 'anonymous',
+						name: func.getName() ?? 'anonymous',
 						file: this.getRelativePath(file.getFilePath()),
 						methods: [this.extractFunctionInfo(func)],
 						builds: this.simplifyType(func.getReturnType().getText()),
@@ -514,10 +515,10 @@ export class InventoryAnalyzer {
 	}
 
 	private inferFactoryProduct(classDecl: ClassDeclaration): string {
-		const buildMethod = classDecl.getMethod('build') || classDecl.getMethod('create');
+		const buildMethod = classDecl.getMethod('build') ?? classDecl.getMethod('create');
 		if (buildMethod) return this.simplifyType(buildMethod.getReturnType().getText());
 
-		const name = classDecl.getName() || '';
+		const name = classDecl.getName() ?? '';
 		if (name.endsWith('Factory')) return name.replace('Factory', '');
 		if (name.endsWith('Builder')) return name.replace('Builder', '');
 

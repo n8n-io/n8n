@@ -48,6 +48,10 @@ export class WorkflowsPage extends BasePage {
 		await this.fillByTestId('resources-list-search', searchTerm);
 	}
 
+	getNoWorkflowsFoundMessage() {
+		return this.page.getByText('No workflows found');
+	}
+
 	async shareWorkflow(workflowName: string) {
 		const workflow = this.cards.getWorkflow(workflowName);
 		await workflow.getByTestId('workflow-card-actions').click();

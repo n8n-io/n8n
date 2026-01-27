@@ -1,7 +1,23 @@
+import { Project, type SourceFile } from 'ts-morph';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { Project } from 'ts-morph';
+
 import { TestDataHygieneRule } from './test-data-hygiene.rule.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
+
+/** Test interface to access private members of TestDataHygieneRule */
+interface TestableTestDataHygieneRule {
+	badNamePatterns: RegExp[];
+	buildReferenceIndex(files: SourceFile[]): {
+		fileNames: Set<string>;
+		folderNames: Set<string>;
+	};
+	isOrphaned(
+		relativePath: string,
+		fileName: string,
+		dirName: string,
+		references: { fileNames: Set<string>; folderNames: Set<string> },
+	): boolean;
+}
 
 describe('TestDataHygieneRule', () => {
 	let project: Project;
@@ -43,10 +59,10 @@ describe('TestDataHygieneRule', () => {
 			'cat-1801.json',
 		];
 
-		const patterns = (rule as any).badNamePatterns as RegExp[];
+		const patterns = (rule as unknown as TestableTestDataHygieneRule).badNamePatterns;
 
 		for (const name of badNames) {
-			const matches = patterns.some((p: RegExp) => p.test(name));
+			const matches = patterns.some((p) => p.test(name));
 			expect(matches).toBe(true);
 		}
 	});
@@ -60,10 +76,10 @@ describe('TestDataHygieneRule', () => {
 			'subworkflow-child-workflow.json',
 		];
 
-		const patterns = (rule as any).badNamePatterns as RegExp[];
+		const patterns = (rule as unknown as TestableTestDataHygieneRule).badNamePatterns;
 
 		for (const name of goodNames) {
-			const matches = patterns.some((p: RegExp) => p.test(name));
+			const matches = patterns.some((p) => p.test(name));
 			expect(matches).toBe(false);
 		}
 	});
@@ -71,10 +87,10 @@ describe('TestDataHygieneRule', () => {
 	it('detects ticket-only names', () => {
 		const ticketNames = ['cat-1801.json', 'CAT-123.json', 'ado-456.json', 'SUG-38.json'];
 
-		const patterns = (rule as any).badNamePatterns as RegExp[];
+		const patterns = (rule as unknown as TestableTestDataHygieneRule).badNamePatterns;
 
 		for (const name of ticketNames) {
-			const matches = patterns.some((p: RegExp) => p.test(name));
+			const matches = patterns.some((p) => p.test(name));
 			expect(matches).toBe(true);
 		}
 	});
@@ -91,7 +107,7 @@ test('imports workflow', async ({ n8n }) => {
 `,
 		);
 
-		const refs = (rule as any).buildReferenceIndex([file]);
+		const refs = (rule as unknown as TestableTestDataHygieneRule).buildReferenceIndex([file]);
 
 		expect(refs.fileNames.has('my-workflow.json')).toBe(true);
 	});
@@ -108,7 +124,7 @@ test('loads expectations', async ({ proxyServer }) => {
 `,
 		);
 
-		const refs = (rule as any).buildReferenceIndex([file]);
+		const refs = (rule as unknown as TestableTestDataHygieneRule).buildReferenceIndex([file]);
 
 		expect(refs.folderNames.has('langchain')).toBe(true);
 	});
@@ -117,7 +133,7 @@ test('loads expectations', async ({ proxyServer }) => {
 		const refs = { fileNames: new Set<string>(), folderNames: new Set(['langchain']) };
 
 		// langchain folder is referenced
-		const langchainOrphaned = (rule as any).isOrphaned(
+		const langchainOrphaned = (rule as unknown as TestableTestDataHygieneRule).isOrphaned(
 			'expectations/langchain/test.json',
 			'test.json',
 			'expectations/langchain',
@@ -126,7 +142,7 @@ test('loads expectations', async ({ proxyServer }) => {
 		expect(langchainOrphaned).toBe(false);
 
 		// unused-folder is not referenced
-		const unusedOrphaned = (rule as any).isOrphaned(
+		const unusedOrphaned = (rule as unknown as TestableTestDataHygieneRule).isOrphaned(
 			'expectations/unused-folder/test.json',
 			'test.json',
 			'expectations/unused-folder',
@@ -138,7 +154,7 @@ test('loads expectations', async ({ proxyServer }) => {
 	it('detects orphaned workflow files', () => {
 		const refs = { fileNames: new Set(['used-workflow.json']), folderNames: new Set<string>() };
 
-		const usedOrphaned = (rule as any).isOrphaned(
+		const usedOrphaned = (rule as unknown as TestableTestDataHygieneRule).isOrphaned(
 			'workflows/used-workflow.json',
 			'used-workflow.json',
 			'workflows',
@@ -146,7 +162,7 @@ test('loads expectations', async ({ proxyServer }) => {
 		);
 		expect(usedOrphaned).toBe(false);
 
-		const unusedOrphaned = (rule as any).isOrphaned(
+		const unusedOrphaned = (rule as unknown as TestableTestDataHygieneRule).isOrphaned(
 			'workflows/unused-workflow.json',
 			'unused-workflow.json',
 			'workflows',

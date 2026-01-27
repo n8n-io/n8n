@@ -1,8 +1,9 @@
 import type { Project, SourceFile } from 'ts-morph';
+
 import { BaseRule } from './base-rule.js';
+import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { truncateText } from '../utils/ast-helpers.js';
-import { getConfig } from '../config.js';
 
 /**
  * API Purity Rule
@@ -111,7 +112,7 @@ export class ApiPurityRule extends BaseRule {
 			return `Use an API service method: this.${apiName}.workflows.delete(), etc.`;
 		}
 		if (matchText.includes('fetch')) {
-			return `Use an API service instead of fetch(). Add the endpoint to the appropriate service class.`;
+			return 'Use an API service instead of fetch(). Add the endpoint to the appropriate service class.';
 		}
 		return `Add this endpoint to an API service class and use it via this.${apiName}.*`;
 	}

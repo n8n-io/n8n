@@ -21,9 +21,7 @@ import {
 	formatTcrResultConsole,
 	formatTcrResultJSON,
 	InventoryAnalyzer,
-	formatInventoryConsole,
 	formatInventoryJSON,
-	formatInventoryMarkdown,
 	ImpactAnalyzer,
 	formatImpactConsole,
 	formatImpactJSON,
@@ -33,7 +31,6 @@ import {
 	type RunOptions,
 } from '@n8n/playwright-janitor';
 import { execSync } from 'child_process';
-import * as path from 'path';
 import config from '../janitor.config';
 
 // Initialize config immediately so all analyzers can use getRootDir()
@@ -44,7 +41,6 @@ type Command = 'analyze' | 'tcr' | 'inventory' | 'impact';
 interface CliOptions {
 	command: Command;
 	json: boolean;
-	markdown: boolean;
 	verbose: boolean;
 	rule?: string;
 	files?: string[];
@@ -84,7 +80,6 @@ function parseArgs(): CliOptions {
 	const options: CliOptions = {
 		command,
 		json: false,
-		markdown: false,
 		verbose: false,
 		rule: undefined,
 		files: [],
@@ -105,8 +100,6 @@ function parseArgs(): CliOptions {
 			options.help = true;
 		} else if (arg === '--json') {
 			options.json = true;
-		} else if (arg === '--markdown' || arg === '--md') {
-			options.markdown = true;
 		} else if (arg === '--verbose' || arg === '-v') {
 			options.verbose = true;
 		} else if (arg === '--fix') {
@@ -188,15 +181,10 @@ Shows a complete inventory of:
   - Test files and test cases
 
 Options:
-  --json             Output as JSON
-  --markdown, --md   Output as Markdown
-  --verbose, -v      Include method signatures
   --help, -h         Show this help
 
 Examples:
-  pnpm janitor inventory               # Console summary
-  pnpm janitor inventory --json        # JSON for AI parsing
-  pnpm janitor inventory --md          # Markdown documentation
+  pnpm janitor inventory               # JSON output
 `);
 }
 
@@ -275,13 +263,7 @@ function runInventory(options: CliOptions): void {
 	const analyzer = new InventoryAnalyzer(project);
 	const report = analyzer.generate();
 
-	if (options.json) {
-		console.log(formatInventoryJSON(report));
-	} else if (options.markdown) {
-		console.log(formatInventoryMarkdown(report));
-	} else {
-		formatInventoryConsole(report, options.verbose);
-	}
+	console.log(formatInventoryJSON(report));
 }
 
 function runImpact(options: CliOptions): void {

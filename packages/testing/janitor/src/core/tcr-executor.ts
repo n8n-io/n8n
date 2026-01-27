@@ -5,19 +5,20 @@
 import { execSync } from 'child_process';
 import * as path from 'path';
 import { Project } from 'ts-morph';
+
 import { diffFileMethods, type MethodChange } from './ast-diff-analyzer.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
-import { getRootDir } from '../utils/paths.js';
-import { RuleRunner } from './rule-runner.js';
 import { createProject } from './project-loader.js';
+import { RuleRunner } from './rule-runner.js';
+import { ApiPurityRule } from '../rules/api-purity.rule.js';
 import { BoundaryProtectionRule } from '../rules/boundary-protection.rule.js';
+import { DeadCodeRule } from '../rules/dead-code.rule.js';
+import { DeduplicationRule } from '../rules/deduplication.rule.js';
+import { NoPageInFlowRule } from '../rules/no-page-in-flow.rule.js';
 import { ScopeLockdownRule } from '../rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from '../rules/selector-purity.rule.js';
-import { DeadCodeRule } from '../rules/dead-code.rule.js';
-import { ApiPurityRule } from '../rules/api-purity.rule.js';
-import { NoPageInFlowRule } from '../rules/no-page-in-flow.rule.js';
-import { DeduplicationRule } from '../rules/deduplication.rule.js';
 import { TestDataHygieneRule } from '../rules/test-data-hygiene.rule.js';
+import { getRootDir } from '../utils/paths.js';
 
 export interface TcrOptions {
 	baseRef?: string;
@@ -59,7 +60,7 @@ export class TcrExecutor {
 		});
 	}
 
-	async run(options: TcrOptions = {}): Promise<TcrResult> {
+	run(options: TcrOptions = {}): TcrResult {
 		const startTime = performance.now();
 		const {
 			baseRef = 'HEAD',
@@ -198,7 +199,7 @@ export class TcrExecutor {
 			if (verbose) console.log('\nNo tests affected by changes');
 
 			if (execute) {
-				this.commit(options.commitMessage || 'TCR: No tests affected');
+				this.commit(options.commitMessage ?? 'TCR: No tests affected');
 				return {
 					success: true,
 					changedFiles,
@@ -227,12 +228,12 @@ export class TcrExecutor {
 			};
 		}
 
-		const testsPassed = await this.runTests(affectedTests, verbose, testCommand);
+		const testsPassed = this.runTests(affectedTests, verbose, testCommand);
 
 		let action: 'commit' | 'revert' | 'dry-run' = 'dry-run';
 		if (execute) {
 			if (testsPassed) {
-				this.commit(options.commitMessage || 'TCR: Tests passed');
+				this.commit(options.commitMessage ?? 'TCR: Tests passed');
 				action = 'commit';
 			} else {
 				this.revert();
@@ -279,7 +280,7 @@ export class TcrExecutor {
 		const report = runner.run(project, root, { files: tsFiles });
 
 		if (verbose && report.summary.totalViolations > 0) {
-			console.log(`\nViolations in changed files:`);
+			console.log('\nViolations in changed files:');
 			for (const result of report.results) {
 				if (result.violations.length > 0) {
 					console.log(`  ${result.rule}: ${result.violations.length}`);
@@ -414,7 +415,7 @@ export class TcrExecutor {
 		// For MODIFIED/REMOVED methods: use method usage index (existing behavior)
 		for (const change of modifiedOrRemovedMethods) {
 			const key = `${change.className}.${change.methodName}`;
-			const usages = this.methodUsageIndex.methods[key] || [];
+			const usages = this.methodUsageIndex.methods[key] ?? [];
 			for (const usage of usages) {
 				affectedTests.add(usage.testFile);
 			}
@@ -448,11 +449,7 @@ export class TcrExecutor {
 		return Array.from(affectedTests).sort();
 	}
 
-	private async runTests(
-		testFiles: string[],
-		verbose: boolean,
-		testCommand?: string,
-	): Promise<boolean> {
+	private runTests(testFiles: string[], verbose: boolean, testCommand?: string): boolean {
 		const root = getRootDir();
 
 		if (verbose) console.log(`\nRunning ${testFiles.length} test file(s)...`);

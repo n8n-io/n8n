@@ -4,7 +4,6 @@
  * This configures the janitor for the n8n Playwright test suite.
  */
 import { defineConfig } from '@n8n/playwright-janitor';
-import * as path from 'path';
 
 export default defineConfig({
 	rootDir: __dirname,

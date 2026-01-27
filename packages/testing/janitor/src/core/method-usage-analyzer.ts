@@ -2,12 +2,13 @@
  * Method Usage Analyzer - Builds index of page object method usages in tests
  */
 
-import { type Project } from 'ts-morph';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+import { type Project } from 'ts-morph';
+
 import { getConfig } from '../config.js';
-import { getRootDir, findFilesRecursive } from '../utils/paths.js';
 import { FacadeResolver } from './facade-resolver.js';
+import { getRootDir, findFilesRecursive } from '../utils/paths.js';
 
 export interface MethodUsage {
 	testFile: string;

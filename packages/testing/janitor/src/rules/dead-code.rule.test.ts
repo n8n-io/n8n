@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Project } from 'ts-morph';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { DeadCodeRule } from './dead-code.rule.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
+import { isMethodFix } from '../types.js';
 
 describe('DeadCodeRule', () => {
 	let project: Project;
@@ -193,9 +195,12 @@ const page = new TestPage();
 		const violations = rule.analyze(project, [file]);
 
 		expect(violations).toHaveLength(1);
-		expect(violations[0].fixData).toBeDefined();
-		expect(violations[0].fixData?.type).toBe('method');
-		expect((violations[0].fixData as any)?.className).toBe('TestPage');
-		expect((violations[0].fixData as any)?.memberName).toBe('unusedMethod');
+		const fixData = violations[0].fixData;
+		expect(fixData).toBeDefined();
+		expect(fixData?.type).toBe('method');
+		if (fixData && isMethodFix(fixData)) {
+			expect(fixData.className).toBe('TestPage');
+			expect(fixData.memberName).toBe('unusedMethod');
+		}
 	});
 });

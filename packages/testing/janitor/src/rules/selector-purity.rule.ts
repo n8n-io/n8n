@@ -1,8 +1,9 @@
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
+
 import { BaseRule } from './base-rule.js';
+import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { LOCATOR_METHODS, PAGE_LEVEL_METHODS, truncateText } from '../utils/ast-helpers.js';
-import { getConfig } from '../config.js';
 
 /**
  * Selector Purity Rule

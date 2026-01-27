@@ -1,5 +1,7 @@
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
+
 import { BaseRule } from './base-rule.js';
+import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import {
 	hasContainerMember,
@@ -9,7 +11,6 @@ import {
 	isLocatorCall,
 } from '../utils/ast-helpers.js';
 import { isExcludedPage } from '../utils/paths.js';
-import { getConfig } from '../config.js';
 
 /**
  * Check if a call expression is inside a container getter or property definition
@@ -82,7 +83,7 @@ export class ScopeLockdownRule extends BaseRule {
 					continue;
 				}
 
-				const className = classDecl.getName() || 'Anonymous';
+				const className = classDecl.getName() ?? 'Anonymous';
 				const calls = getCallExpressions(classDecl);
 
 				for (const call of calls) {

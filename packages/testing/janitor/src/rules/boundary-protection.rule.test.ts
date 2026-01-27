@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Project } from 'ts-morph';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { BoundaryProtectionRule } from './boundary-protection.rule.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
 

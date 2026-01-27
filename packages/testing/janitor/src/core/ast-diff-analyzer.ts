@@ -6,10 +6,10 @@
  */
 
 import { execSync } from 'child_process';
-import { Project, type SourceFile, SyntaxKind } from 'ts-morph';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Project, type SourceFile, SyntaxKind } from 'ts-morph';
 
 export interface MethodChange {
 	className: string;
@@ -65,7 +65,7 @@ function extractMethods(sourceFile: SourceFile): Map<string, string> {
 	const classes = sourceFile.getClasses();
 
 	for (const classDecl of classes) {
-		const className = classDecl.getName() || 'AnonymousClass';
+		const className = classDecl.getName() ?? 'AnonymousClass';
 
 		// Get all methods (including getters/setters)
 		const classMethods = classDecl.getMethods();

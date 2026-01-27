@@ -13,6 +13,13 @@ export default [
 		],
 	},
 	{
+		// Allow default export for config files
+		files: ['janitor.config.ts'],
+		rules: {
+			'import-x/no-default-export': 'off',
+		},
+	},
+	{
 		rules: {
 			'@typescript-eslint/no-unsafe-argument': 'off',
 			'@typescript-eslint/no-unsafe-assignment': 'off',
