@@ -197,7 +197,7 @@ export class InstanceSettings {
 
 			if (!inTest) this.logger.debug(`User settings loaded from: ${this.settingsFile}`);
 
-			const { encryptionKey, tunnelSubdomain } = settings;
+			const { encryptionKey, tunnelSubdomain, fsStorageMigrated } = settings;
 
 			if (encryptionKeyFromEnv && encryptionKey !== encryptionKeyFromEnv) {
 				throw new ApplicationError(
@@ -205,7 +205,7 @@ export class InstanceSettings {
 				);
 			}
 
-			return { encryptionKey, tunnelSubdomain };
+			return { encryptionKey, tunnelSubdomain, fsStorageMigrated };
 		}
 
 		if (!encryptionKeyFromEnv) {
