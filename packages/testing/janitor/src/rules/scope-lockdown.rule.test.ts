@@ -1,31 +1,13 @@
-import { Project } from 'ts-morph';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe } from 'vitest';
 
 import { ScopeLockdownRule } from './scope-lockdown.rule.js';
-import { setConfig, resetConfig, defineConfig } from '../config.js';
+import { test, expect } from '../test/fixtures.js';
 
 describe('ScopeLockdownRule', () => {
-	let project: Project;
-	let rule: ScopeLockdownRule;
+	const rule = new ScopeLockdownRule();
 
-	beforeEach(() => {
-		project = new Project({ useInMemoryFileSystem: true });
-		rule = new ScopeLockdownRule();
-
-		setConfig(
-			defineConfig({
-				rootDir: '/',
-				excludeFromPages: ['BasePage.ts'],
-			}),
-		);
-	});
-
-	afterEach(() => {
-		resetConfig();
-	});
-
-	it('detects unscoped locator calls when container exists', () => {
-		const file = project.createSourceFile(
+	test('detects unscoped locator calls when container exists', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -46,8 +28,8 @@ export class TestPage {
 		expect(unscopedCall).toBeDefined();
 	});
 
-	it('allows properly scoped locators', () => {
-		const file = project.createSourceFile(
+	test('allows properly scoped locators', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -67,8 +49,8 @@ export class TestPage {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('allows page-level methods like goto and waitForResponse', () => {
-		const file = project.createSourceFile(
+	test('allows page-level methods like goto and waitForResponse', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -91,8 +73,8 @@ export class TestPage {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('skips component files', () => {
-		const file = project.createSourceFile(
+	test('skips component files', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/components/TestComponent.ts',
 			`
 export class TestComponent {
@@ -110,8 +92,8 @@ export class TestComponent {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('skips BasePage.ts', () => {
-		const file = project.createSourceFile(
+	test('skips BasePage.ts', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/BasePage.ts',
 			`
 export class BasePage {
@@ -127,8 +109,8 @@ export class BasePage {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('skips classes without container (standalone pages)', () => {
-		const file = project.createSourceFile(
+	test('skips classes without container (standalone pages)', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/LoginPage.ts',
 			`
 export class LoginPage {

@@ -1,43 +1,13 @@
-import { Project } from 'ts-morph';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe } from 'vitest';
 
 import { BoundaryProtectionRule } from './boundary-protection.rule.js';
-import { setConfig, resetConfig, defineConfig } from '../config.js';
+import { test, expect } from '../test/fixtures.js';
 
 describe('BoundaryProtectionRule', () => {
-	let project: Project;
-	let rule: BoundaryProtectionRule;
+	const rule = new BoundaryProtectionRule();
 
-	beforeEach(() => {
-		project = new Project({ useInMemoryFileSystem: true });
-		rule = new BoundaryProtectionRule();
-
-		// Set up minimal config for tests
-		setConfig(
-			defineConfig({
-				rootDir: '/',
-				patterns: {
-					pages: ['pages/**/*.ts'],
-					components: ['pages/components/**/*.ts'],
-					flows: ['composables/**/*.ts'],
-					tests: ['tests/**/*.spec.ts'],
-					services: ['services/**/*.ts'],
-					fixtures: ['fixtures/**/*.ts'],
-					helpers: ['helpers/**/*.ts'],
-					factories: ['factories/**/*.ts'],
-					testData: [],
-				},
-				excludeFromPages: ['BasePage.ts'],
-			}),
-		);
-	});
-
-	afterEach(() => {
-		resetConfig();
-	});
-
-	it('should allow imports from components', () => {
-		const file = project.createSourceFile(
+	test('should allow imports from components', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/CanvasPage.ts',
 			`
 import { NodePanel } from './components/NodePanel';
@@ -52,8 +22,8 @@ export class CanvasPage {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('should flag direct page imports', () => {
-		const file = project.createSourceFile(
+	test('should flag direct page imports', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/CanvasPage.ts',
 			`
 import { WorkflowPage } from './WorkflowPage';
@@ -65,7 +35,7 @@ export class CanvasPage {
 		);
 
 		// Also create the imported file so ts-morph can resolve it
-		project.createSourceFile(
+		createFile(
 			'/pages/WorkflowPage.ts',
 			`
 export class WorkflowPage {}
@@ -78,8 +48,8 @@ export class WorkflowPage {}
 		expect(violations[0].rule).toBe('boundary-protection');
 	});
 
-	it('should allow imports from base classes', () => {
-		const file = project.createSourceFile(
+	test('should allow imports from base classes', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/CanvasPage.ts',
 			`
 import { BasePage } from './BasePage';
@@ -93,8 +63,8 @@ export class CanvasPage extends BasePage {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('should skip excluded files', () => {
-		const file = project.createSourceFile(
+	test('should skip excluded files', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/BasePage.ts',
 			`
 import { SomePage } from './SomePage';
@@ -108,8 +78,8 @@ export class BasePage {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('should allow external package imports', () => {
-		const file = project.createSourceFile(
+	test('should allow external package imports', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/CanvasPage.ts',
 			`
 import { Page } from '@playwright/test';

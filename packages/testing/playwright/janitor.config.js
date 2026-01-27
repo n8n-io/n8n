@@ -3,7 +3,11 @@
  *
  * This configures the janitor for the n8n Playwright test suite.
  */
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { defineConfig } from '@n8n/playwright-janitor';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
 	rootDir: __dirname,

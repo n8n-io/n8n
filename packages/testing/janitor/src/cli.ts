@@ -13,7 +13,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { setConfig, defineConfig, type JanitorConfig } from './config.js';
+import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
+import {
+	generateBaseline,
+	saveBaseline,
+	loadBaseline,
+	filterReportByBaseline,
+	formatBaselineInfo,
+	getBaselinePath,
+} from './core/baseline.js';
 import {
 	ImpactAnalyzer,
 	formatImpactConsole,
@@ -43,7 +51,7 @@ import { SelectorPurityRule } from './rules/selector-purity.rule.js';
 import { TestDataHygieneRule } from './rules/test-data-hygiene.rule.js';
 import type { RunOptions } from './types.js';
 
-type Command = 'analyze' | 'tcr' | 'inventory' | 'impact' | 'method-impact';
+type Command = 'analyze' | 'tcr' | 'inventory' | 'impact' | 'method-impact' | 'baseline';
 
 interface CliOptions {
 	command: Command;
@@ -60,8 +68,6 @@ interface CliOptions {
 	execute: boolean;
 	message?: string;
 	baseRef?: string;
-	skipRules: boolean;
-	skipTypecheck: boolean;
 	targetBranch?: string;
 	maxDiffLines?: number;
 	testCommand?: string;
@@ -72,6 +78,8 @@ interface CliOptions {
 	methodIndex: boolean;
 	// Rule-specific options
 	allowInExpect: boolean;
+	// Baseline options
+	ignoreBaseline: boolean;
 }
 
 function parseArgs(): CliOptions {
@@ -94,6 +102,9 @@ function parseArgs(): CliOptions {
 		} else if (args[0] === 'method-impact') {
 			command = 'method-impact';
 			startIdx = 1;
+		} else if (args[0] === 'baseline') {
+			command = 'baseline';
+			startIdx = 1;
 		}
 	}
 
@@ -111,8 +122,6 @@ function parseArgs(): CliOptions {
 		execute: false,
 		message: undefined,
 		baseRef: undefined,
-		skipRules: false,
-		skipTypecheck: false,
 		targetBranch: undefined,
 		maxDiffLines: undefined,
 		testCommand: undefined,
@@ -120,6 +129,7 @@ function parseArgs(): CliOptions {
 		method: undefined,
 		methodIndex: false,
 		allowInExpect: false,
+		ignoreBaseline: false,
 	};
 
 	for (let i = startIdx; i < args.length; i++) {
@@ -131,11 +141,10 @@ function parseArgs(): CliOptions {
 		else if (arg === '--write') options.write = true;
 		else if (arg === '--list' || arg === '-l') options.list = true;
 		else if (arg === '--execute' || arg === '-x') options.execute = true;
-		else if (arg === '--skip-rules') options.skipRules = true;
-		else if (arg === '--skip-typecheck') options.skipTypecheck = true;
 		else if (arg === '--test-list') options.testList = true;
 		else if (arg === '--index') options.methodIndex = true;
 		else if (arg === '--allow-in-expect') options.allowInExpect = true;
+		else if (arg === '--ignore-baseline') options.ignoreBaseline = true;
 		else if (arg.startsWith('--config=')) options.config = arg.slice(9);
 		else if (arg.startsWith('--rule=')) options.rule = arg.slice(7);
 		else if (arg.startsWith('--file=')) options.files?.push(arg.slice(7));
@@ -162,13 +171,14 @@ Usage:
 
 Commands:
   (default)          Run static analysis rules
+  baseline           Create/update baseline of known violations
   inventory          Show codebase inventory (pages, components, flows, tests)
   impact             Analyze impact of file changes (which tests to run)
   method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
   tcr                Run TCR (Test && Commit || Revert) workflow
 
 Analysis Options:
-  --config=<path>    Path to janitor.config.ts (default: ./janitor.config.ts)
+  --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
   --rule=<id>        Run a specific rule
   --file=<path>      Analyze a specific file
   --files=<p1,p2>    Analyze multiple files (comma-separated)
@@ -178,6 +188,7 @@ Analysis Options:
   --fix --write      Apply fixes to disk
   --list, -l         List available rules
   --allow-in-expect  Skip selector-purity violations inside expect()
+  --ignore-baseline  Show all violations, ignoring .janitor-baseline.json
   --help, -h         Show this help
 
 Examples:
@@ -188,6 +199,7 @@ Examples:
   playwright-janitor --fix --write           # Apply auto-fixes
 
 For command-specific help:
+  playwright-janitor baseline --help
   playwright-janitor inventory --help
   playwright-janitor impact --help
   playwright-janitor method-impact --help
@@ -236,11 +248,31 @@ Options:
   --target-branch=<name>  Branch to diff against
   --max-diff-lines=<n>    Skip if diff exceeds N lines
   --test-command=<cmd>    Test command (files appended)
-  --skip-rules            Skip janitor rules
-  --skip-typecheck        Skip typecheck
   --json, --verbose
 
 Example: playwright-janitor tcr --execute -m="Fix bug"
+`);
+}
+
+function showBaselineHelp(): void {
+	console.log(`
+Baseline - Snapshot current violations for incremental cleanup
+
+Creates .janitor-baseline.json with all current violations. When this file
+exists, janitor and TCR only fail on NEW violations not in the baseline.
+
+Usage:
+  playwright-janitor baseline              # Create/update baseline
+  playwright-janitor baseline --verbose    # Show what's being baselined
+
+Workflow:
+  1. Run 'janitor baseline' to snapshot current state
+  2. Commit .janitor-baseline.json
+  3. Now TCR only fails on new violations
+  4. As you fix violations, re-run 'janitor baseline' to update
+
+Example:
+  playwright-janitor baseline && git add .janitor-baseline.json
 `);
 }
 
@@ -265,17 +297,16 @@ function createRunner(): RuleRunner {
 async function loadConfig(configPath?: string): Promise<JanitorConfig> {
 	const cwd = process.cwd();
 
-	// Try to find config file
+	// Try to find config file (JS files only - TS requires a runtime like tsx)
 	const configLocations = configPath
 		? [configPath]
-		: ['janitor.config.ts', 'janitor.config.js', '.janitorrc.ts', '.janitorrc.js'];
+		: ['janitor.config.js', 'janitor.config.mjs', '.janitorrc.js'];
 
 	for (const location of configLocations) {
 		const fullPath = path.isAbsolute(location) ? location : path.join(cwd, location);
 
 		if (fs.existsSync(fullPath)) {
 			try {
-				// Dynamic import for config file
 				const configModule = (await import(fullPath)) as {
 					default?: JanitorConfig;
 				} & JanitorConfig;
@@ -293,18 +324,12 @@ async function loadConfig(configPath?: string): Promise<JanitorConfig> {
 	}
 
 	// No config file found - create minimal config
-	console.warn('No janitor.config.ts found, using minimal defaults');
+	console.warn('No janitor.config.js found, using minimal defaults');
 	return defineConfig({ rootDir: cwd });
 }
 
-async function runInventory(options: CliOptions): Promise<void> {
-	if (options.help) {
-		showInventoryHelp();
-		return;
-	}
-
-	const config = await loadConfig(options.config);
-	setConfig(config);
+function runInventory(): void {
+	const config = getConfig();
 	const { project } = createProject(config.rootDir);
 	const analyzer = new InventoryAnalyzer(project);
 	const report = analyzer.generate();
@@ -312,14 +337,7 @@ async function runInventory(options: CliOptions): Promise<void> {
 }
 
 async function runImpact(options: CliOptions): Promise<void> {
-	if (options.help) {
-		showImpactHelp();
-		return;
-	}
-
-	// Load configuration
-	const config = await loadConfig(options.config);
-	setConfig(config);
+	const config = getConfig();
 
 	// Create project
 	const { project } = createProject(config.rootDir);
@@ -372,15 +390,8 @@ async function runImpact(options: CliOptions): Promise<void> {
 	}
 }
 
-async function runMethodImpact(options: CliOptions): Promise<void> {
-	if (options.help) {
-		showMethodImpactHelp();
-		return;
-	}
-
-	// Load configuration
-	const config = await loadConfig(options.config);
-	setConfig(config);
+function runMethodImpact(options: CliOptions): void {
+	const config = getConfig();
 
 	// Create project
 	const { project } = createProject(config.rootDir);
@@ -425,11 +436,6 @@ async function runMethodImpact(options: CliOptions): Promise<void> {
 }
 
 function runTcr(options: CliOptions): void {
-	if (options.help) {
-		showTcrHelp();
-		return;
-	}
-
 	const tcr = new TcrExecutor();
 
 	const result = tcr.run({
@@ -437,8 +443,6 @@ function runTcr(options: CliOptions): void {
 		commitMessage: options.message,
 		baseRef: options.baseRef,
 		verbose: options.verbose,
-		skipRules: options.skipRules,
-		skipTypecheck: options.skipTypecheck,
 		targetBranch: options.targetBranch,
 		maxDiffLines: options.maxDiffLines,
 		testCommand: options.testCommand,
@@ -458,26 +462,8 @@ function runTcr(options: CliOptions): void {
 }
 
 async function runAnalyze(options: CliOptions): Promise<void> {
-	if (options.help) {
-		showHelp();
-		return;
-	}
-
+	const config = getConfig();
 	const runner = createRunner();
-
-	if (options.list) {
-		console.log('\nAvailable rules:\n');
-		for (const ruleId of runner.getRegisteredRules()) {
-			const fixable = runner.isRuleFixable(ruleId) ? ' [fixable]' : '';
-			console.log(`  - ${ruleId}${fixable}`);
-		}
-		console.log('');
-		return;
-	}
-
-	// Load configuration
-	const config = await loadConfig(options.config);
-	setConfig(config);
 
 	// Create project
 	const { project, root } = createProject(config.rootDir);
@@ -502,7 +488,7 @@ async function runAnalyze(options: CliOptions): Promise<void> {
 	}
 
 	// Run analysis
-	const report = options.rule
+	let report = options.rule
 		? runner.runRule(project, root, options.rule, runOptions)
 		: runner.run(project, root, runOptions);
 
@@ -511,10 +497,32 @@ async function runAnalyze(options: CliOptions): Promise<void> {
 		process.exit(1);
 	}
 
+	// Auto-filter by baseline if present (unless --ignore-baseline or --fix)
+	const baseline = loadBaseline(config.rootDir);
+	let baselineFiltered = false;
+	const originalViolations = report.summary.totalViolations;
+
+	if (baseline && !options.fix && !options.ignoreBaseline) {
+		// Don't filter during fix mode or when baseline is ignored
+		report = filterReportByBaseline(report, baseline, config.rootDir);
+		baselineFiltered = true;
+	}
+
 	// Output results
 	if (options.json) {
 		console.log(toJSON(report));
 	} else {
+		if (baselineFiltered && options.verbose) {
+			console.log(formatBaselineInfo(baseline!));
+			console.log(
+				`New violations: ${report.summary.totalViolations} (${originalViolations} total, ${originalViolations - report.summary.totalViolations} in baseline)\n`,
+			);
+		} else if (baselineFiltered && report.summary.totalViolations < originalViolations) {
+			console.log(
+				`Using baseline: ${originalViolations - report.summary.totalViolations} known violations filtered\n`,
+			);
+		}
+
 		toConsole(report, options.verbose);
 
 		if (options.fix) {
@@ -528,21 +536,103 @@ async function runAnalyze(options: CliOptions): Promise<void> {
 	}
 }
 
+function runBaseline(options: CliOptions): void {
+	const config = getConfig();
+
+	// Create runner and project
+	const runner = createRunner();
+	const { project, root } = createProject(config.rootDir);
+
+	// Run full analysis (no file filter, no baseline filter)
+	const report = runner.run(project, root, {});
+
+	if (!report) {
+		console.error('Failed to generate report');
+		process.exit(1);
+	}
+
+	// Generate and save baseline
+	const baseline = generateBaseline(report, config.rootDir);
+	saveBaseline(baseline, config.rootDir);
+
+	const baselinePath = getBaselinePath(config.rootDir);
+
+	if (options.verbose) {
+		console.log(`\nBaseline created: ${baselinePath}`);
+		console.log(`Total violations: ${baseline.totalViolations}`);
+		console.log(`Files with violations: ${Object.keys(baseline.violations).length}`);
+		console.log('\nViolations by rule:');
+		for (const result of report.results) {
+			if (result.violations.length > 0) {
+				console.log(`  ${result.rule}: ${result.violations.length}`);
+			}
+		}
+	} else {
+		console.log(`Baseline created: ${baselinePath} (${baseline.totalViolations} violations)`);
+	}
+
+	console.log('\nNext steps:');
+	console.log('  git add .janitor-baseline.json');
+	console.log('  git commit -m "chore: add janitor baseline"');
+}
+
 async function main(): Promise<void> {
 	const options = parseArgs();
+
+	// Handle help/list commands that don't need config
+	if (options.help) {
+		switch (options.command) {
+			case 'tcr':
+				showTcrHelp();
+				break;
+			case 'baseline':
+				showBaselineHelp();
+				break;
+			case 'inventory':
+				showInventoryHelp();
+				break;
+			case 'impact':
+				showImpactHelp();
+				break;
+			case 'method-impact':
+				showMethodImpactHelp();
+				break;
+			default:
+				showHelp();
+		}
+		return;
+	}
+
+	if (options.list) {
+		const runner = createRunner();
+		console.log('\nAvailable rules:\n');
+		for (const ruleId of runner.getRegisteredRules()) {
+			const fixable = runner.isRuleFixable(ruleId) ? ' [fixable]' : '';
+			console.log(`  - ${ruleId}${fixable}`);
+		}
+		console.log('');
+		return;
+	}
+
+	// Load config once for all commands that need it
+	const config = await loadConfig(options.config);
+	setConfig(config);
 
 	switch (options.command) {
 		case 'tcr':
 			runTcr(options);
 			break;
+		case 'baseline':
+			runBaseline(options);
+			break;
 		case 'inventory':
-			await runInventory(options);
+			runInventory();
 			break;
 		case 'impact':
 			await runImpact(options);
 			break;
 		case 'method-impact':
-			await runMethodImpact(options);
+			runMethodImpact(options);
 			break;
 		default:
 			await runAnalyze(options);

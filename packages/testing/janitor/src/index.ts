@@ -174,6 +174,19 @@ export {
 	type InventoryReport,
 } from './core/inventory-analyzer.js';
 
+export {
+	generateBaseline,
+	saveBaseline,
+	loadBaseline,
+	hasBaseline,
+	filterNewViolations,
+	filterReportByBaseline,
+	formatBaselineInfo,
+	getBaselinePath,
+	type BaselineEntry,
+	type BaselineFile,
+} from './core/baseline.js';
+
 import { setConfig, type JanitorConfig } from './config.js';
 import { createProject } from './core/project-loader.js';
 import { RuleRunner } from './core/rule-runner.js';

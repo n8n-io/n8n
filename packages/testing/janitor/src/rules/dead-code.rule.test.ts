@@ -1,31 +1,14 @@
-import { Project } from 'ts-morph';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe } from 'vitest';
 
 import { DeadCodeRule } from './dead-code.rule.js';
-import { setConfig, resetConfig, defineConfig } from '../config.js';
+import { test, expect } from '../test/fixtures.js';
 import { isMethodFix } from '../types.js';
 
 describe('DeadCodeRule', () => {
-	let project: Project;
-	let rule: DeadCodeRule;
+	const rule = new DeadCodeRule();
 
-	beforeEach(() => {
-		project = new Project({ useInMemoryFileSystem: true });
-		rule = new DeadCodeRule();
-
-		setConfig(
-			defineConfig({
-				rootDir: '/',
-			}),
-		);
-	});
-
-	afterEach(() => {
-		resetConfig();
-	});
-
-	it('allows methods with external references', () => {
-		project.createSourceFile(
+	test('allows methods with external references', ({ project, createFile }) => {
+		createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -36,7 +19,7 @@ export class TestPage {
 `,
 		);
 
-		project.createSourceFile(
+		createFile(
 			'/tests/test.spec.ts',
 			`
 import { TestPage } from '../pages/TestPage';
@@ -52,8 +35,8 @@ page.clickButton();
 		expect(violations).toHaveLength(0);
 	});
 
-	it('detects unused method', () => {
-		const file = project.createSourceFile(
+	test('detects unused method', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -63,7 +46,7 @@ export class TestPage {
 `,
 		);
 
-		project.createSourceFile(
+		createFile(
 			'/tests/test.spec.ts',
 			`
 import { TestPage } from '../pages/TestPage';
@@ -79,8 +62,8 @@ page.usedMethod();
 		expect(violations[0].fixable).toBe(true);
 	});
 
-	it('detects unused property', () => {
-		const file = project.createSourceFile(
+	test('detects unused property', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -90,7 +73,7 @@ export class TestPage {
 `,
 		);
 
-		project.createSourceFile(
+		createFile(
 			'/tests/test.spec.ts',
 			`
 import { TestPage } from '../pages/TestPage';
@@ -105,8 +88,8 @@ console.log(page.usedProp);
 		expect(violations[0].message).toContain('unusedProp');
 	});
 
-	it('detects dead class with no references', () => {
-		const file = project.createSourceFile(
+	test('detects dead class with no references', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/DeadPage.ts',
 			`
 export class DeadPage {
@@ -122,8 +105,8 @@ export class DeadPage {
 		expect(violations[0].message).toContain('DeadPage');
 	});
 
-	it('skips private methods', () => {
-		const file = project.createSourceFile(
+	test('skips private methods', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -135,7 +118,7 @@ export class TestPage {
 `,
 		);
 
-		project.createSourceFile(
+		createFile(
 			'/tests/test.spec.ts',
 			`
 import { TestPage } from '../pages/TestPage';
@@ -149,8 +132,8 @@ page.publicMethod();
 		expect(violations).toHaveLength(0);
 	});
 
-	it('skips protected properties', () => {
-		const file = project.createSourceFile(
+	test('skips protected properties', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -160,7 +143,7 @@ export class TestPage {
 `,
 		);
 
-		project.createSourceFile(
+		createFile(
 			'/tests/test.spec.ts',
 			`
 import { TestPage } from '../pages/TestPage';
@@ -174,8 +157,8 @@ page.publicMethod();
 		expect(violations).toHaveLength(0);
 	});
 
-	it('provides correct fix data', () => {
-		const file = project.createSourceFile(
+	test('provides correct fix data', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/TestPage.ts',
 			`
 export class TestPage {
@@ -184,7 +167,7 @@ export class TestPage {
 `,
 		);
 
-		project.createSourceFile(
+		createFile(
 			'/tests/test.spec.ts',
 			`
 import { TestPage } from '../pages/TestPage';

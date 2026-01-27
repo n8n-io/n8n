@@ -25,7 +25,8 @@ Static analysis for Playwright test architecture. Catches problems before they s
 
 | User Says | Intent | Approach |
 |-----------|--------|----------|
-| "Clean up the test codebase" | Incremental cleanup | Use `--max-diff-lines=500` to keep PRs reviewable. Fix easiest files first. |
+| "Clean up the test codebase" | Incremental cleanup | Create baseline first, then use `--max-diff-lines=500` for small PRs. |
+| "Start tracking violations" | Enable incremental cleanup | Run `janitor baseline` to snapshot current state, commit `.janitor-baseline.json`. |
 | "Add a test for X" | New test following patterns | After writing, run janitor to verify architecture compliance. |
 | "Fix architecture drift" | Enforce layered architecture | Run `selector-purity` and `no-page-in-flow` rules. |
 | "Find dead code" | Remove unused methods | Run `dead-code` rule with `--fix --write` for auto-removal. |
@@ -55,19 +56,41 @@ Tests → Flows/Composables → Page Objects → Components → Playwright API
 
 ```bash
 # Analyze entire codebase
-pnpm --filter=@n8n/playwright-janitor janitor --json
+pnpm janitor
 
 # Analyze specific file
-pnpm --filter=@n8n/playwright-janitor janitor --file=pages/CanvasPage.ts --verbose
+pnpm janitor --file=pages/CanvasPage.ts --verbose
 
 # Run specific rule
-pnpm --filter=@n8n/playwright-janitor janitor --rule=dead-code
+pnpm janitor --rule=dead-code
 
 # Auto-fix (dead-code only)
-pnpm --filter=@n8n/playwright-janitor janitor --rule=dead-code --fix --write
+pnpm janitor:fix --rule=dead-code
 
 # List all rules
-pnpm --filter=@n8n/playwright-janitor janitor --list
+pnpm janitor --list
+
+# JSON output
+pnpm janitor --json
+```
+
+### Baseline (Incremental Cleanup)
+
+For codebases with existing violations, create a baseline to enable incremental cleanup:
+
+```bash
+# Create baseline - snapshots current violations
+pnpm janitor baseline
+
+# Commit the baseline
+git add .janitor-baseline.json && git commit -m "chore: add janitor baseline"
+```
+
+Once baseline exists, janitor and TCR **only fail on NEW violations**. Pre-existing violations are tracked but don't block work.
+
+```bash
+# Update baseline after fixing violations
+pnpm janitor baseline
 ```
 
 ### Incremental Cleanup Strategy
@@ -75,12 +98,21 @@ pnpm --filter=@n8n/playwright-janitor janitor --list
 For large cleanups, keep diffs small and reviewable:
 
 ```bash
+# Show ALL violations (ignoring baseline) for cleanup work
+pnpm janitor --ignore-baseline --json
+
 # Find easiest files to fix (lowest violation count)
-pnpm --filter=@n8n/playwright-janitor janitor --json 2>/dev/null | jq '.fileReports | sort_by(.violationCount) | .[:5]'
+pnpm janitor --ignore-baseline --json 2>/dev/null | jq '.fileReports | sort_by(.violationCount) | .[:5]'
 
 # TCR with max diff size (skip if changes are too large)
-pnpm --filter=@n8n/playwright-janitor janitor tcr --max-diff-lines=500 --execute -m="chore: cleanup"
+pnpm janitor tcr --max-diff-lines=500 --execute -m="chore: cleanup"
 ```
+
+**AI Cleanup Workflow:**
+1. Use `--ignore-baseline` to see all violations (not just new ones)
+2. Pick small fixes from the list
+3. Fix violations, then TCR to safely commit
+4. After fixing, run `pnpm janitor baseline` to update the baseline
 
 ### TCR Workflow (Test && Commit || Revert)
 
@@ -88,13 +120,13 @@ Safe refactoring loop: make changes, run affected tests, auto-commit or auto-rev
 
 ```bash
 # Dry run - see what would happen
-pnpm --filter=@n8n/playwright-janitor janitor tcr --verbose
+pnpm janitor tcr --verbose
 
 # Execute - actually commit/revert
-pnpm --filter=@n8n/playwright-janitor janitor tcr --execute -m="chore: remove dead code"
+pnpm janitor tcr --execute -m="chore: remove dead code"
 
 # With guardrails - skip if diff too large
-pnpm --filter=@n8n/playwright-janitor janitor tcr --execute --max-diff-lines=500 -m="chore: cleanup"
+pnpm janitor tcr --execute --max-diff-lines=500 -m="chore: cleanup"
 ```
 
 ### After Writing New Tests
@@ -102,7 +134,7 @@ pnpm --filter=@n8n/playwright-janitor janitor tcr --execute --max-diff-lines=500
 Always run janitor after adding or modifying tests to catch architecture violations early:
 
 ```bash
-pnpm --filter=@n8n/playwright-janitor janitor --file=tests/my-new-test.spec.ts --verbose
+pnpm janitor --file=tests/my-new-test.spec.ts --verbose
 ```
 
 See `packages/testing/janitor/README.md` for full documentation.

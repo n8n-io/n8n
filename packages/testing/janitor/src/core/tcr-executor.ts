@@ -7,6 +7,7 @@ import * as path from 'path';
 import { Project } from 'ts-morph';
 
 import { diffFileMethods, type MethodChange } from './ast-diff-analyzer.js';
+import { loadBaseline, filterNewViolations } from './baseline.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
 import { createProject } from './project-loader.js';
 import { RuleRunner } from './rule-runner.js';
@@ -25,8 +26,6 @@ export interface TcrOptions {
 	execute?: boolean;
 	commitMessage?: string;
 	verbose?: boolean;
-	skipRules?: boolean;
-	skipTypecheck?: boolean;
 	targetBranch?: string;
 	maxDiffLines?: number;
 	testCommand?: string;
@@ -66,8 +65,6 @@ export class TcrExecutor {
 			baseRef = 'HEAD',
 			execute = false,
 			verbose = false,
-			skipRules = false,
-			skipTypecheck = false,
 			targetBranch,
 			maxDiffLines,
 			testCommand,
@@ -119,57 +116,51 @@ export class TcrExecutor {
 			changedFiles.forEach((f) => console.log(`  - ${f}`));
 		}
 
-		let ruleViolations = 0;
-		if (!skipRules) {
-			if (verbose) console.log('\nRunning janitor rules...');
-			ruleViolations = this.runRules(changedFiles, verbose);
+		if (verbose) console.log('\nRunning janitor rules...');
+		const ruleViolations = this.runRules(changedFiles, verbose);
 
-			if (ruleViolations > 0) {
-				if (verbose) console.log(`\n✗ Found ${ruleViolations} rule violation(s)`);
-				if (execute) this.revert();
+		if (ruleViolations > 0) {
+			if (verbose) console.log(`\n✗ Found ${ruleViolations} rule violation(s)`);
+			if (execute) this.revert();
 
-				return {
-					success: false,
-					failedStep: 'rules',
-					changedFiles,
-					changedMethods: [],
-					affectedTests: [],
-					testsRun: [],
-					testsPassed: false,
-					ruleViolations,
-					typecheckPassed: true,
-					action: execute ? 'revert' : 'dry-run',
-					durationMs: performance.now() - startTime,
-				};
-			}
-			if (verbose) console.log('✓ Rules passed');
+			return {
+				success: false,
+				failedStep: 'rules',
+				changedFiles,
+				changedMethods: [],
+				affectedTests: [],
+				testsRun: [],
+				testsPassed: false,
+				ruleViolations,
+				typecheckPassed: true,
+				action: execute ? 'revert' : 'dry-run',
+				durationMs: performance.now() - startTime,
+			};
 		}
+		if (verbose) console.log('✓ Rules passed');
 
-		let typecheckPassed = true;
-		if (!skipTypecheck) {
-			if (verbose) console.log('\nRunning typecheck...');
-			typecheckPassed = this.runTypecheck(verbose);
+		if (verbose) console.log('\nRunning typecheck...');
+		const typecheckPassed = this.runTypecheck(verbose);
 
-			if (!typecheckPassed) {
-				if (verbose) console.log('✗ Typecheck failed');
-				if (execute) this.revert();
+		if (!typecheckPassed) {
+			if (verbose) console.log('✗ Typecheck failed');
+			if (execute) this.revert();
 
-				return {
-					success: false,
-					failedStep: 'typecheck',
-					changedFiles,
-					changedMethods: [],
-					affectedTests: [],
-					testsRun: [],
-					testsPassed: false,
-					ruleViolations,
-					typecheckPassed: false,
-					action: execute ? 'revert' : 'dry-run',
-					durationMs: performance.now() - startTime,
-				};
-			}
-			if (verbose) console.log('✓ Typecheck passed');
+			return {
+				success: false,
+				failedStep: 'typecheck',
+				changedFiles,
+				changedMethods: [],
+				affectedTests: [],
+				testsRun: [],
+				testsPassed: false,
+				ruleViolations,
+				typecheckPassed: false,
+				action: execute ? 'revert' : 'dry-run',
+				durationMs: performance.now() - startTime,
+			};
 		}
+		if (verbose) console.log('✓ Typecheck passed');
 
 		const changedMethods: MethodChange[] = [];
 		for (const file of changedFiles) {
@@ -279,7 +270,33 @@ export class TcrExecutor {
 
 		const report = runner.run(project, root, { files: tsFiles });
 
-		if (verbose && report.summary.totalViolations > 0) {
+		// Auto-filter by baseline if present
+		const baseline = loadBaseline(root);
+		let newViolationCount = report.summary.totalViolations;
+
+		if (baseline) {
+			// Count only NEW violations (not in baseline)
+			let filteredCount = 0;
+			for (const result of report.results) {
+				const newViolations = filterNewViolations(result.violations, baseline, root);
+				filteredCount += newViolations.length;
+
+				if (verbose && newViolations.length > 0) {
+					console.log(
+						`\n${result.rule}: ${newViolations.length} new (${result.violations.length} total)`,
+					);
+					for (const v of newViolations) {
+						console.log(`  ${path.relative(root, v.file)}:${v.line} - ${v.message}`);
+					}
+				}
+			}
+			newViolationCount = filteredCount;
+
+			if (verbose) {
+				const baselinedCount = report.summary.totalViolations - filteredCount;
+				console.log(`\nBaseline: ${baselinedCount} known violations filtered`);
+			}
+		} else if (verbose && report.summary.totalViolations > 0) {
 			console.log('\nViolations in changed files:');
 			for (const result of report.results) {
 				if (result.violations.length > 0) {
@@ -288,7 +305,7 @@ export class TcrExecutor {
 			}
 		}
 
-		return report.summary.totalViolations;
+		return newViolationCount;
 	}
 
 	private runTypecheck(verbose: boolean): boolean {
