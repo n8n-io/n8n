@@ -23,7 +23,7 @@ const emit = defineEmits<{
 
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
-const { renameNode } = useCanvasOperations();
+const { renameNode } = useCanvasOperations(workflowsStore.workflowId);
 const nodeHelpers = useNodeHelpers();
 const ndvStore = useNDVStore();
 

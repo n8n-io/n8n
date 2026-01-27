@@ -6,7 +6,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export async function workflowAutoDeactivated({ data }: WorkflowAutoDeactivated) {
 	const workflowsStore = useWorkflowsStore();
-	const { initializeWorkspace } = useCanvasOperations();
+	const { initializeWorkspace } = useCanvasOperations(workflowsStore.workflowId);
 	const bannersStore = useBannersStore();
 	const uiStore = useUIStore();
 

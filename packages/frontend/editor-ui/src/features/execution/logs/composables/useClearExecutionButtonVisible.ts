@@ -12,7 +12,7 @@ export function useClearExecutionButtonVisible() {
 	const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
 	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
 	const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
-	const { editableWorkflow } = useCanvasOperations();
+	const { editableWorkflow } = useCanvasOperations(workflowsStore.workflowId);
 	const nodeTypesStore = useNodeTypesStore();
 	const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
 	const allTriggerNodesDisabled = computed(() =>

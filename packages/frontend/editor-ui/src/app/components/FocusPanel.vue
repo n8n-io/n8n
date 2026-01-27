@@ -90,7 +90,7 @@ const ndvStore = useNDVStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
 const activeElement = useActiveElement();
-const { renameNode } = useCanvasOperations();
+const { renameNode } = useCanvasOperations(workflowsStore.workflowId);
 
 useTelemetryContext({ view_shown: 'focus_panel' });
 

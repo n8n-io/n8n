@@ -29,7 +29,7 @@ const router = useRouter();
 const toast = useToast();
 const { callDebounced } = useDebounce();
 
-const { initializeWorkspace } = useCanvasOperations();
+const { initializeWorkspace } = useCanvasOperations(workflowsStore.workflowId);
 
 const loading = ref(false);
 const loadingMore = ref(false);

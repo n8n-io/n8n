@@ -163,7 +163,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 	actionName?: string;
 };
 
-export function useCanvasOperations() {
+export function useCanvasOperations(workflowId: string) {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
@@ -506,13 +506,13 @@ export function useCanvasOperations() {
 
 		if (node.type === STICKY_NODE_TYPE) {
 			telemetry.track('User deleted workflow note', {
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId,
 			});
 		} else {
 			void externalHooks.run('node.deleteNode', { node });
 			telemetry.track('User deleted node', {
 				node_type: node.type,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId,
 			});
 		}
 	}
@@ -1042,7 +1042,7 @@ export function useCanvasOperations() {
 
 	function trackAddStickyNoteNode() {
 		telemetry.track('User inserted workflow note', {
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId,
 		});
 	}
 
@@ -1063,7 +1063,7 @@ export function useCanvasOperations() {
 			node_type: nodeData.type,
 			node_version: nodeData.typeVersion,
 			is_auto_add: options.isAutoAdd,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId,
 			drag_and_drop: options.dragAndDrop,
 			input_node_type: uiStore.lastInteractedWithNode
 				? uiStore.lastInteractedWithNode.type
@@ -2145,7 +2145,7 @@ export function useCanvasOperations() {
 		// Make sure that if there is a waiting test-webhook, it gets removed
 		if (workflowsStore.executionWaitingForWebhook) {
 			try {
-				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+				void workflowsStore.removeTestWebhook(workflowId);
 			} catch (error) {}
 		}
 
@@ -2498,18 +2498,18 @@ export function useCanvasOperations() {
 
 					if (source === 'paste') {
 						telemetry.track('User pasted nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowId,
 							node_graph_string: nodeGraph,
 						});
 					} else if (source === 'duplicate') {
 						telemetry.track('User duplicated nodes', {
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowId,
 							node_graph_string: nodeGraph,
 						});
 					} else {
 						telemetry.track('User imported workflow', {
 							source,
-							workflow_id: workflowsStore.workflowId,
+							workflow_id: workflowId,
 							node_graph_string: nodeGraph,
 						});
 					}
@@ -2721,7 +2721,7 @@ export function useCanvasOperations() {
 
 		telemetry.track('User copied nodes', {
 			node_types: workflowData.nodes.map((node) => node.type),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId,
 		});
 	}
 

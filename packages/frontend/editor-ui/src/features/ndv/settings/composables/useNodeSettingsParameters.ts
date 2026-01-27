@@ -42,7 +42,7 @@ export function useNodeSettingsParameters() {
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const workflowHelpers = useWorkflowHelpers();
-	const canvasOperations = useCanvasOperations();
+	const canvasOperations = useCanvasOperations(workflowsStore.workflowId);
 	const externalHooks = useExternalHooks();
 
 	function updateNodeParameter(

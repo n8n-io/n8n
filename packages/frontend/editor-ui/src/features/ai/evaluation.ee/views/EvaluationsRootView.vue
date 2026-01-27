@@ -31,7 +31,7 @@ const locale = useI18n();
 const route = useRoute();
 const sourceControlStore = useSourceControlStore();
 
-const { initializeWorkspace } = useCanvasOperations();
+const { initializeWorkspace } = useCanvasOperations(workflowsStore.workflowId);
 
 const evaluationsLicensed = computed(() => {
 	return usageStore.workflowsWithEvaluationsLimit !== 0;

@@ -29,11 +29,13 @@ export function useNodeCommands(options: {
 	const i18n = useI18n();
 	const { lastQuery } = options;
 
-	const { addNodes, setNodeActive, editableWorkflow } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
+	const { addNodes, setNodeActive, editableWorkflow } = useCanvasOperations(
+		workflowsStore.workflowId,
+	);
 	const collaborationStore = useCollaborationStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 

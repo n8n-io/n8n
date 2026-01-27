@@ -23,7 +23,7 @@ const mockEditableWorkflow = {
 };
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
-	useCanvasOperations: () => ({
+	useCanvasOperations: (_workflowId: string) => ({
 		addNodes: vi.fn(),
 		setNodeActive: vi.fn(),
 		editableWorkflow: mockEditableWorkflow,
@@ -79,13 +79,12 @@ describe('useNodeCommands', () => {
 		setActivePinia(createTestingPinia());
 
 		mockGetResourcePermissions = vi.mocked(getResourcePermissions);
-		const canvasOps = useCanvasOperations();
-		mockAddNodes = vi.mocked(canvasOps.addNodes);
-		mockCanvasEventBusEmit = vi.mocked(canvasEventBus.emit);
-
 		mockNodeTypesStore = useNodeTypesStore();
 		mockSourceControlStore = useSourceControlStore();
 		mockWorkflowsStore = useWorkflowsStore();
+		const canvasOps = useCanvasOperations(mockWorkflowsStore.workflowId);
+		mockAddNodes = vi.mocked(canvasOps.addNodes);
+		mockCanvasEventBusEmit = vi.mocked(canvasEventBus.emit);
 
 		mockGetResourcePermissions.mockReturnValue({
 			workflow: { update: true, execute: true },
