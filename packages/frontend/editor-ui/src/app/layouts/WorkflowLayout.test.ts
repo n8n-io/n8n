@@ -5,9 +5,9 @@ import WorkflowLayout from './WorkflowLayout.vue';
 import { computed, ref } from 'vue';
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('vue-router')>();
+	const actual = await importOriginal();
 	return {
-		...actual,
+		...(actual as object),
 		useRoute: vi.fn(() => ({
 			params: { name: 'test-workflow-id' },
 			query: {},
