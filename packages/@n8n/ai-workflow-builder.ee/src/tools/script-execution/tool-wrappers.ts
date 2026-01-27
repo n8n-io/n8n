@@ -1289,7 +1289,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	}
 
 	/**
-	 * Directly set node parameters without LLM translation (fastest method)
+	 * Directly set node parameters (use when you know the exact parameter structure)
 	 */
 	async function setParameters(input: SetParametersInput): Promise<SetParametersResult> {
 		try {
@@ -1342,7 +1342,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	}
 
 	/**
-	 * Batch set parameters on multiple nodes without LLM (fastest for bulk)
+	 * Batch set parameters on multiple nodes (use when you know the parameter structures)
 	 */
 	async function setAll(input: BatchSetParametersInput): Promise<BatchSetParametersResult> {
 		try {

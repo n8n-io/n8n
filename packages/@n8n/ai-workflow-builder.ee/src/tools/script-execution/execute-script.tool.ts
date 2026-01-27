@@ -294,32 +294,31 @@ export function createExecuteScriptTool(
 			name: builderToolBase.toolName,
 			description: `Execute a TypeScript script to perform multiple workflow operations at once.
 
-SHORT-FORM SYNTAX (REQUIRED - reduces tokens significantly):
+SHORT-FORM SYNTAX:
 - Node: {t:'nodeType',n:'Name',p:{params}} - only t is required
-- Connection: {s:source,d:dest} - s=source, d=destination
+- Connection: {s:source,d:dest,so:outputIndex,di:inputIndex}
 
 AVAILABLE IN SCRIPT:
-- tools.add({nodes:[...]}) - Add nodes (short: t,v,n,p)
-- tools.conn({connections:[...]}) - Connect (short: s,d)
-- tools.set({nodeId,params}) - FAST direct params (no LLM)
-- tools.setAll({updates:[...]}) - Batch direct params
-- tools.updateNodeParameters({nodeId,changes}) - SLOW LLM-based
-- tools.removeNode/removeConnection/renameNode
+- tools.add({nodes:[...]}) - Add nodes
+- tools.conn({connections:[...]}) - Connect nodes
+- tools.updateAll({updates:[...]}) - REQUIRED: Configure all nodes (describe in natural language)
+- tools.updateNodeParameters({nodeId,changes}) - Configure single node
+- tools.set({nodeId,params}) - Only for simple params (AI Agent systemMessage)
 
-Property shortcuts:
-- t=nodeType, v=nodeVersion (optional), n=name (optional), p=initialParameters (optional)
-- s=sourceNodeId, d=targetNodeId
-
-EXAMPLE - ALWAYS use short form:
+EXAMPLE - Create nodes, connect them, then configure ALL with updateAll:
 \`\`\`javascript
 const r = await tools.add({nodes:[
-  {t:'n8n-nodes-base.manualTrigger',n:'Trigger'},
-  {t:'@n8n/n8n-nodes-langchain.agent',n:'Agent',p:{hasOutputParser:false}},
-  {t:'@n8n/n8n-nodes-langchain.lmChatOpenAi',n:'Model'}
+  {t:'n8n-nodes-base.webhook',n:'Webhook',p:{httpMethod:'POST',path:'data'}},
+  {t:'n8n-nodes-base.set',n:'Process'},
+  {t:'n8n-nodes-base.slack',n:'Notify'}
 ]});
-const [t,a,m] = r.results;
-await tools.conn({connections:[{s:t,d:a},{s:m,d:a}]});
-await tools.set({nodeId:a,params:{systemMessage:'You are helpful'}});
+const [wh,proc,slack] = r.results;
+await tools.conn({connections:[{s:wh,d:proc},{s:proc,d:slack}]});
+// CRITICAL: Configure ALL nodes - describe what each should do
+await tools.updateAll({updates:[
+  {nodeId:proc.nodeId,changes:["Add field 'status' with value 'received'","Add field 'timestamp' with {{$now}}"]},
+  {nodeId:slack.nodeId,changes:["Set message showing status and timestamp","Configure to send to notifications channel"]}
+]});
 \`\`\``,
 			schema: executeScriptSchema,
 		},

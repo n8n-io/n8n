@@ -363,12 +363,12 @@ export interface UpdateNodeParametersResult {
 // ============================================================================
 
 /**
- * Input for directly setting node parameters (bypasses LLM)
+ * Input for directly setting node parameters
  */
 export interface SetParametersInput {
 	/** The ID of the node to update - can be UUID or AddNodeResult */
 	nodeId: NodeReference;
-	/** Parameters to set/merge on the node (direct object, no LLM translation) */
+	/** Parameters to set/merge on the node (direct object) */
 	params: INodeParameters;
 	/** If true, replaces all parameters. If false (default), merges with existing */
 	replace?: boolean;
@@ -613,7 +613,7 @@ export interface ScriptTools {
 	updateAll(input: BatchUpdateParametersInput): Promise<BatchUpdateParametersResult>;
 
 	/**
-	 * Directly set node parameters without LLM translation (fastest)
+	 * Directly set node parameters (use when you know the exact parameter structure)
 	 * @param input Node ID and parameters object to set
 	 * @returns Result with final parameters on success
 	 */
@@ -623,7 +623,7 @@ export interface ScriptTools {
 	set(input: SetParametersInput): Promise<SetParametersResult>;
 
 	/**
-	 * Batch set parameters on multiple nodes without LLM (fastest for bulk)
+	 * Batch set parameters on multiple nodes (use when you know the parameter structures)
 	 * @param input Array of parameter updates
 	 * @returns Results for each update in order
 	 */
@@ -665,10 +665,9 @@ export interface ScriptExecutionContext {
  * NOTE: Curly braces are doubled ({{ }}) to escape them for LangChain template parsing.
  */
 export const TOOL_INTERFACE_DEFINITIONS = `
-// PREFERRED: Short-form interfaces (fewer tokens, faster)
+// Short-form interfaces
 
 // Short form for adding nodes: t=type, v=version, n=name, p=params
-// All fields except 't' are optional!
 interface AddNodeInputShort {{
   t: string;    // nodeType, e.g., "n8n-nodes-base.httpRequest"
   v?: number;   // nodeVersion (optional, defaults to latest)
@@ -676,53 +675,47 @@ interface AddNodeInputShort {{
   p?: object;   // initialParameters (optional, defaults to {{}})
 }}
 
-// Short form for connections: s=source, d=destination
+// Short form for connections: s=source, d=destination, so=sourceOutput, di=destInput
 interface ConnectNodesInputShort {{
   s: NodeRef;   // sourceNodeId
   d: NodeRef;   // targetNodeId (d = destination)
+  so?: number;  // sourceOutputIndex (default 0) - use for Switch nodes
+  di?: number;  // targetInputIndex (default 0) - use for Merge nodes
 }}
 
-// NodeRef can be string UUID OR AddNodeResult object directly
 type NodeRef = string | AddNodeResult;
 
-// Result from adding a node
 interface AddNodeResult {{
   success: boolean;
-  nodeId?: string;    // UUID - USE THIS FOR CONNECTIONS
+  nodeId?: string;    // UUID - use .nodeId for updateAll
   nodeName?: string;
   error?: string;
 }}
 
-// Batch operations - ALWAYS use these with short aliases
-// tools.add() for adding nodes, tools.conn() for connections
+// Batch operations
 interface AddNodesInput {{ nodes: AddNodeInputShort[]; }}
-interface AddNodesResult {{ success: boolean; results: AddNodeResult[]; }}
-
 interface ConnectMultipleInput {{ connections: ConnectNodesInputShort[]; }}
-interface ConnectMultipleResult {{ success: boolean; results: ConnectNodesResult[]; }}
 
-// FAST: Direct parameter setting (NO LLM call - use when you know exact params)
-interface SetParametersInput {{
-  nodeId: NodeRef;     // UUID or AddNodeResult
-  params: object;      // Direct parameter object to set
-  replace?: boolean;   // true=replace all, false=merge (default)
-}}
-
-// tools.set() - Set params on one node (no LLM)
-// tools.setAll() - Set params on multiple nodes (no LLM)
-interface BatchSetParametersInput {{ updates: SetParametersInput[]; }}
-
-// SLOW: LLM-based parameter updates (use only when needed)
+// PRIMARY: Configure nodes with natural language (REQUIRED for all nodes)
+// Describe what each node should do - the system figures out exact params
 interface UpdateNodeParametersInput {{
-  nodeId: string;
-  changes: string[];   // Natural language, e.g. ["Set URL to https://..."]
+  nodeId: string;      // Use result.nodeId from add()
+  changes: string[];   // Natural language descriptions
 }}
 
-// tools.updateAll() - Single LLM call for multiple nodes (faster than multiple updateNodeParameters)
+// tools.updateAll() - Configure multiple nodes (RECOMMENDED)
+// tools.updateNodeParameters() - Configure single node
 interface BatchUpdateParametersInput {{ updates: UpdateNodeParametersInput[]; }}
+
+// SECONDARY: Direct parameter setting (only for simple, known params)
+// Only use for AI Agent systemMessage/prompt or other simple string params
+interface SetParametersInput {{
+  nodeId: NodeRef;
+  params: object;
+  replace?: boolean;
+}}
 
 // Other tools
 interface RemoveNodeInput {{ nodeId: string; }}
 interface RenameNodeInput {{ nodeId: string; newName: string; }}
-interface GetNodeParameterInput {{ nodeId: string; path: string; }}
 `.trim();

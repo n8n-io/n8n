@@ -62,9 +62,45 @@ describe('Tool Wrappers', () => {
 		outputs: [{ type: 'ai_outputParser' }],
 	});
 
+	// Switch node with multiple outputs
+	const switchType = createNodeType({
+		displayName: 'Switch',
+		name: 'n8n-nodes-base.switch',
+		group: ['transform'],
+		inputs: ['main'],
+		outputs: ['main', 'main', 'main'], // 3 outputs for testing
+	});
+
+	// Merge node with multiple inputs
+	const mergeType = createNodeType({
+		displayName: 'Merge',
+		name: 'n8n-nodes-base.merge',
+		group: ['transform'],
+		inputs: ['main', 'main'], // 2 inputs for testing
+		outputs: ['main'],
+	});
+
+	// Set node for generic data manipulation
+	const setType = createNodeType({
+		displayName: 'Set',
+		name: 'n8n-nodes-base.set',
+		group: ['transform'],
+		inputs: ['main'],
+		outputs: ['main'],
+	});
+
 	beforeEach(() => {
 		operationsCollector = new OperationsCollector();
-		nodeTypes = [manualTriggerType, httpRequestType, agentType, chatModelType, outputParserType];
+		nodeTypes = [
+			manualTriggerType,
+			httpRequestType,
+			agentType,
+			chatModelType,
+			outputParserType,
+			switchType,
+			mergeType,
+			setType,
+		];
 
 		const workflow = createWorkflow([]);
 
@@ -967,6 +1003,156 @@ describe('Tool Wrappers', () => {
 			expect(connectResult.success).toBe(true);
 			expect(connectResult.results).toHaveLength(1);
 			expect(connectResult.results[0].success).toBe(true);
+		});
+	});
+
+	describe('Multi-output/multi-input connections', () => {
+		it('should connect Switch node outputs to different targets using so (sourceOutputIndex)', async () => {
+			// Create Switch node with multiple outputs + target nodes
+			const nodesResult = await tools.add({
+				nodes: [
+					{ t: 'n8n-nodes-base.manualTrigger', n: 'Trigger' },
+					{ t: 'n8n-nodes-base.switch', n: 'Router' },
+					{ t: 'n8n-nodes-base.set', n: 'Path A' },
+					{ t: 'n8n-nodes-base.set', n: 'Path B' },
+					{ t: 'n8n-nodes-base.set', n: 'Path C' },
+				],
+			});
+
+			const [trigger, switchNode, pathA, pathB, pathC] = nodesResult.results;
+
+			// Connect with different source output indices
+			const connectResult = await tools.conn({
+				connections: [
+					{ s: trigger, d: switchNode },
+					{ s: switchNode, d: pathA, so: 0 }, // Switch output 0 -> Path A
+					{ s: switchNode, d: pathB, so: 1 }, // Switch output 1 -> Path B
+					{ s: switchNode, d: pathC, so: 2 }, // Switch output 2 -> Path C
+				],
+			});
+
+			expect(connectResult.success).toBe(true);
+			expect(connectResult.results).toHaveLength(4);
+			expect(connectResult.results.every((r) => r.success)).toBe(true);
+
+			// Verify the mergeConnections operation has correct structure
+			const operations = operationsCollector.getOperations();
+			const connOp = operations.find((op) => op.type === 'mergeConnections');
+			expect(connOp).toBeDefined();
+			if (connOp?.type === 'mergeConnections') {
+				// Switch node should have connections from outputs 0, 1, and 2
+				const switchConnections = connOp.connections['Router']?.main;
+				expect(switchConnections).toBeDefined();
+				expect(switchConnections?.length).toBeGreaterThanOrEqual(3);
+				// Output 0 connects to Path A
+				expect(switchConnections?.[0]?.[0]?.node).toBe('Path A');
+				// Output 1 connects to Path B
+				expect(switchConnections?.[1]?.[0]?.node).toBe('Path B');
+				// Output 2 connects to Path C
+				expect(switchConnections?.[2]?.[0]?.node).toBe('Path C');
+			}
+		});
+
+		it('should connect multiple sources to Merge node inputs using di (targetInputIndex)', async () => {
+			// Create nodes that feed into a Merge
+			const nodesResult = await tools.add({
+				nodes: [
+					{ t: 'n8n-nodes-base.set', n: 'Source A' },
+					{ t: 'n8n-nodes-base.set', n: 'Source B' },
+					{ t: 'n8n-nodes-base.merge', n: 'Combine' },
+					{ t: 'n8n-nodes-base.set', n: 'Output' },
+				],
+			});
+
+			const [sourceA, sourceB, merge, output] = nodesResult.results;
+
+			// Connect with different target input indices
+			const connectResult = await tools.conn({
+				connections: [
+					{ s: sourceA, d: merge, di: 0 }, // Source A -> Merge input 0
+					{ s: sourceB, d: merge, di: 1 }, // Source B -> Merge input 1
+					{ s: merge, d: output }, // Merge -> Output
+				],
+			});
+
+			expect(connectResult.success).toBe(true);
+			expect(connectResult.results).toHaveLength(3);
+			expect(connectResult.results.every((r) => r.success)).toBe(true);
+
+			// Verify the mergeConnections operation has correct structure
+			const operations = operationsCollector.getOperations();
+			const connOp = operations.find((op) => op.type === 'mergeConnections');
+			expect(connOp).toBeDefined();
+			if (connOp?.type === 'mergeConnections') {
+				// Source A should connect to Merge input 0
+				const sourceAConn = connOp.connections['Source A']?.main?.[0]?.[0];
+				expect(sourceAConn?.node).toBe('Combine');
+				expect(sourceAConn?.index).toBe(0);
+				// Source B should connect to Merge input 1
+				const sourceBConn = connOp.connections['Source B']?.main?.[0]?.[0];
+				expect(sourceBConn?.node).toBe('Combine');
+				expect(sourceBConn?.index).toBe(1);
+			}
+		});
+
+		it('should handle combined Switch outputs and Merge inputs', async () => {
+			// Complex scenario: Switch -> multiple paths -> Merge
+			const nodesResult = await tools.add({
+				nodes: [
+					{ t: 'n8n-nodes-base.manualTrigger', n: 'Trigger' },
+					{ t: 'n8n-nodes-base.switch', n: 'Router' },
+					{ t: 'n8n-nodes-base.set', n: 'Branch 1' },
+					{ t: 'n8n-nodes-base.set', n: 'Branch 2' },
+					{ t: 'n8n-nodes-base.merge', n: 'Combine' },
+					{ t: 'n8n-nodes-base.set', n: 'Final' },
+				],
+			});
+
+			const [trigger, switchNode, branch1, branch2, merge, final] = nodesResult.results;
+
+			// Connect the full workflow
+			const connectResult = await tools.conn({
+				connections: [
+					{ s: trigger, d: switchNode },
+					{ s: switchNode, d: branch1, so: 0 }, // Switch output 0 -> Branch 1
+					{ s: switchNode, d: branch2, so: 1 }, // Switch output 1 -> Branch 2
+					{ s: branch1, d: merge, di: 0 }, // Branch 1 -> Merge input 0
+					{ s: branch2, d: merge, di: 1 }, // Branch 2 -> Merge input 1
+					{ s: merge, d: final }, // Merge -> Final
+				],
+			});
+
+			expect(connectResult.success).toBe(true);
+			expect(connectResult.results).toHaveLength(6);
+			expect(connectResult.results.every((r) => r.success)).toBe(true);
+		});
+
+		it('should default to output 0 and input 0 when indices not specified', async () => {
+			const nodesResult = await tools.add({
+				nodes: [
+					{ t: 'n8n-nodes-base.switch', n: 'Switch' },
+					{ t: 'n8n-nodes-base.set', n: 'Target' },
+				],
+			});
+
+			const [switchNode, target] = nodesResult.results;
+
+			// Connect without specifying indices - should use 0, 0
+			const connectResult = await tools.conn({
+				connections: [{ s: switchNode, d: target }],
+			});
+
+			expect(connectResult.success).toBe(true);
+
+			// Verify default indices were used
+			const operations = operationsCollector.getOperations();
+			const connOp = operations.find((op) => op.type === 'mergeConnections');
+			if (connOp?.type === 'mergeConnections') {
+				// Should connect from output 0
+				const switchConnections = connOp.connections['Switch']?.main;
+				expect(switchConnections?.[0]?.[0]?.node).toBe('Target');
+				expect(switchConnections?.[0]?.[0]?.index).toBe(0); // Target input 0
+			}
 		});
 	});
 
