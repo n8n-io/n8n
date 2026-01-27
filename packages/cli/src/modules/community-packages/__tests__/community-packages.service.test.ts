@@ -10,12 +10,7 @@ import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
 
-import {
-	NODE_PACKAGE_PREFIX,
-	NPM_COMMAND_TOKENS,
-	NPM_PACKAGE_STATUS_GOOD,
-	RESPONSE_ERROR_MESSAGES,
-} from '@/constants';
+import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import type { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -23,8 +18,8 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { COMMUNITY_NODE_VERSION, COMMUNITY_PACKAGE_VERSION } from '@test-integration/constants';
 import { mockPackageName, mockPackagePair } from '@test-integration/utils';
 
-import type { CommunityPackagesConfig } from '../community-packages.config';
 import { getCommunityNodeTypes } from '../community-node-types-utils';
+import type { CommunityPackagesConfig } from '../community-packages.config';
 import { CommunityPackagesService } from '../community-packages.service';
 import type { CommunityPackages } from '../community-packages.types';
 import { InstalledNodes } from '../installed-nodes.entity';
@@ -376,11 +371,11 @@ describe('CommunityPackagesService', () => {
 			jest.clearAllMocks();
 
 			mocked(execFile).mockImplementation(execMockForThisBlock);
-			mocked(executeNpmCommand).mockImplementation((args: string[]) => {
+			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
 				if (args[0] === 'pack') {
-					return Promise.resolve(testBlockTarballName);
+					return testBlockTarballName;
 				}
-				return Promise.resolve('Done');
+				return 'Done';
 			});
 
 			mocked(readFile).mockResolvedValue(
