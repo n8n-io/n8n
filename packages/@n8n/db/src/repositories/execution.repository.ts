@@ -39,7 +39,6 @@ import {
 } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
 
-import { ExecutionDataRepository } from './execution-data.repository';
 import {
 	AnnotationTagEntity,
 	AnnotationTagMapping,
@@ -52,7 +51,6 @@ import {
 	WorkflowEntity,
 } from '../entities';
 import type {
-	CreateExecutionPayload,
 	ExecutionSummaries,
 	IExecutionBase,
 	IExecutionFlattedDb,
@@ -154,7 +152,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly executionDataRepository: ExecutionDataRepository,
 		private readonly binaryDataService: BinaryDataService,
 	) {
 		super(ExecutionEntity, dataSource.manager);
