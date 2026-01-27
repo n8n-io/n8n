@@ -182,10 +182,16 @@ describe('GET /credentials', () => {
 		expect(Array.isArray(ownerCredential.sharedWithProjects)).toBe(true);
 		expect(ownerCredential.sharedWithProjects).toHaveLength(3);
 
-		ownerCredential.sharedWithProjects.forEach((sharee, idx) => {
+		// Fix order issue (PostgreSQL might return items in any order)
+		const ownerCredentialsSharedWithOrdered = [...ownerCredential.sharedWithProjects].sort(
+			(a, b) => (a.id < b.id ? -1 : 1),
+		);
+		const orderedSharedWith = [...sharedWith].sort((a, b) => (a.id < b.id ? -1 : 1));
+
+		ownerCredentialsSharedWithOrdered.forEach((sharee, idx) => {
 			expect(sharee).toMatchObject({
-				id: sharedWith[idx].id,
-				type: sharedWith[idx].type,
+				id: orderedSharedWith[idx].id,
+				type: orderedSharedWith[idx].type,
 			});
 		});
 
