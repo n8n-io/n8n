@@ -58,7 +58,7 @@ const CONNECTION_TYPE_TO_SDK: Record<string, { fn: string; subnodeField: string 
 	ai_languageModel: { fn: 'languageModel()', subnodeField: 'subnodes.model' },
 	ai_memory: { fn: 'memory()', subnodeField: 'subnodes.memory' },
 	ai_outputParser: { fn: 'outputParser()', subnodeField: 'subnodes.outputParser' },
-	ai_embedding: { fn: 'embedding()', subnodeField: 'subnodes.embedding' },
+	ai_embedding: { fn: 'embeddings()', subnodeField: 'subnodes.embeddings' },
 	ai_document: { fn: 'documentLoader()', subnodeField: 'subnodes.documentLoader' },
 	ai_textSplitter: { fn: 'textSplitter()', subnodeField: 'subnodes.textSplitter' },
 };
