@@ -1,7 +1,12 @@
-import type { ExecutionDataStorageLocation, ExecutionDeletionCriteria } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import type {
+	CreateExecutionPayload,
+	ExecutionDataStorageLocation,
+	ExecutionDeletionCriteria,
+} from '@n8n/db';
+import { ExecutionData, ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BinaryDataService } from 'n8n-core';
+import { stringify } from 'flatted';
+import { BinaryDataService, StorageConfig } from 'n8n-core';
 
 import { FsStore } from './execution-data/fs-store';
 import type { ExecutionRef } from './execution-data/types';
@@ -18,7 +23,38 @@ export class ExecutionPersistence {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly fsStore: FsStore,
+		private readonly storageConfig: StorageConfig,
 	) {}
+
+	async create(payload: CreateExecutionPayload) {
+		const { data: rawData, workflowData, ...rest } = payload;
+		const { connections, nodes, name, settings, id } = workflowData;
+		const storedAt = this.storageConfig.modeTag;
+		const executionEntity = { ...rest, createdAt: new Date(), storedAt };
+		const data = stringify(rawData);
+		const workflowVersionId = workflowData.versionId ?? null;
+
+		return await this.executionRepository.manager.transaction(async (tx) => {
+			const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
+			const { id: executionId } = identifiers[0] as { id: string };
+
+			if (storedAt === 'db') {
+				await tx.insert(ExecutionData, {
+					executionId,
+					workflowData: { connections, nodes, name, settings, id },
+					data,
+					workflowVersionId,
+				});
+				return executionId;
+			}
+
+			await this.fsStore.write(
+				{ workflowId: workflowData.id, executionId },
+				{ data, workflowData, workflowVersionId },
+			);
+			return executionId;
+		});
+	}
 
 	async hardDelete(target: DeletionTarget | DeletionTarget[]) {
 		const targets = Array.isArray(target) ? target : [target];
