@@ -272,6 +272,7 @@ export class Chat implements INodeType {
 						// user has typed something - we assume it's
 						// disapproval
 						data: {
+							...(typeof data.json.data === 'object' ? data.json.data : {}),
 							approved: isFreeText ? undefined : false,
 						},
 					},
