@@ -7,7 +7,6 @@ import type {
 	LeafNode,
 	ChainNode,
 	IfElseCompositeNode,
-	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
 } from './composite-tree';
 
@@ -242,17 +241,26 @@ describe('composite-builder', () => {
 				const graph = prepareGraph(json);
 				const tree = buildCompositeTree(graph);
 
-				// Should have chain: Trigger -> Merge
-				expect(tree.roots).toHaveLength(1);
-				const chain = tree.roots[0] as ChainNode;
+				// With the new deferred connections approach, merge nodes use .input(n) syntax
+				// The merge node should be in the variables and have deferred connections
+				expect(tree.variables.has('Merge')).toBe(true);
 
-				// Find merge in the chain
-				const mergeNode = chain.nodes.find((n) => n.kind === 'merge');
-				expect(mergeNode).toBeDefined();
+				// Check that deferred connections are created for both branches
+				expect(tree.deferredConnections).toHaveLength(2);
 
-				const merge = mergeNode as MergeCompositeNode;
-				expect(merge.mergeNode.name).toBe('Merge');
-				expect(merge.branches).toHaveLength(2);
+				// Check that Branch1 connects to merge input 0
+				const branch1Conn = tree.deferredConnections.find(
+					(c) => c.sourceNodeName === 'Branch1' && c.targetInputIndex === 0,
+				);
+				expect(branch1Conn).toBeDefined();
+				expect(branch1Conn?.targetNode.name).toBe('Merge');
+
+				// Check that Branch2 connects to merge input 1
+				const branch2Conn = tree.deferredConnections.find(
+					(c) => c.sourceNodeName === 'Branch2' && c.targetInputIndex === 1,
+				);
+				expect(branch2Conn).toBeDefined();
+				expect(branch2Conn?.targetNode.name).toBe('Merge');
 			});
 		});
 

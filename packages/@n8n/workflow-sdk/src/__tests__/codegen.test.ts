@@ -891,7 +891,7 @@ describe('generateWorkflowCode with AI subnodes', () => {
 			]);
 		});
 
-		it('should generate merge() syntax for fan-in merge patterns', () => {
+		it('should generate .input(n) syntax for fan-in merge patterns', () => {
 			const json: WorkflowJSON = {
 				id: 'merge-test',
 				name: 'Merge Workflow',
@@ -948,12 +948,11 @@ describe('generateWorkflowCode with AI subnodes', () => {
 
 			const code = generateWorkflowCode(json);
 
-			// Should use merge() syntax with named inputs
-			// Note: We use merge() syntax instead of .input(n) because the .input(n)
-			// syntax doesn't work correctly for merges inside IF/Switch branches
-			expect(code).toContain('merge(');
-			expect(code).toContain('{ input0:');
-			expect(code).toContain('input1:');
+			// Should use .input(n) syntax for connecting branches to merge
+			// This avoids duplicate key issues and ensures correct output indices
+			expect(code).toContain('.input(0)');
+			expect(code).toContain('.input(1)');
+			expect(code).toContain('merge_node'); // The merge node variable
 		});
 
 		it('should generate fluent API for IF node patterns', () => {

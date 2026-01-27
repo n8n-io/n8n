@@ -275,10 +275,11 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should use named syntax with merge node and input mapping
-				expect(code).toContain('merge(');
-				expect(code).toContain('{ input0:');
-				expect(code).toContain('input1:');
+				// Should use .input(n) syntax for connecting branches to merge
+				// Each branch should have .then(merge_node.input(n))
+				expect(code).toContain('.input(0)');
+				expect(code).toContain('.input(1)');
+				expect(code).toContain('merge_node'); // The merge node variable
 			});
 		});
 

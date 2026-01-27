@@ -13,7 +13,6 @@ import type {
 	VariableReference,
 	IfElseCompositeNode,
 	SwitchCaseCompositeNode,
-	MergeCompositeNode,
 	SplitInBatchesCompositeNode,
 	FanOutCompositeNode,
 	ExplicitConnectionsNode,
@@ -706,14 +705,37 @@ function buildBranchTargets(
 			return builtBranches;
 		}
 
-		// NOT in branch context - use original logic for fan-out merge
+		// NOT in branch context - use deferred connections for fan-out merge
 		// Mark merge as visited FIRST so non-merge targets don't chain to it
-		// This prevents buildFromNode for non-merge targets from following their
-		// output connection to the merge and building it prematurely
 		ctx.visited.add(mergeNode.name);
 
-		// Build chains for non-merge targets
-		// These will form part of the merge's input branches
+		// Register merge node as variable for .input(n) syntax
+		ctx.variables.set(mergeNode.name, mergeNode);
+
+		// Track this merge for downstream chain building
+		ctx.deferredMergeNodes.add(mergeNode.name);
+
+		// Create deferred connections for ALL merge inputs
+		for (const [inputSlot, sources] of mergeNode.inputSources) {
+			const inputIndex = extractInputIndex(inputSlot);
+
+			for (const source of sources) {
+				// Ensure source node is registered as a variable so it gets declared
+				const sourceNode = ctx.graph.nodes.get(source.from);
+				if (sourceNode) {
+					ctx.variables.set(source.from, sourceNode);
+				}
+
+				ctx.deferredConnections.push({
+					sourceNodeName: source.from,
+					sourceOutputIndex: getOutputIndex(source.outputSlot),
+					targetNode: mergeNode,
+					targetInputIndex: inputIndex,
+				});
+			}
+		}
+
+		// Build chains for non-merge targets (they may have downstream processing)
 		const builtBranches: CompositeNode[] = [];
 		for (const targetName of nonMergeTargets) {
 			if (!ctx.visited.has(targetName)) {
@@ -721,119 +743,10 @@ function buildBranchTargets(
 			}
 		}
 
-		// Build a merge composite that includes both:
-		// 1. The branches we just built (non-merge targets)
-		// 2. Any other input sources the merge has (from its inputSources)
-
-		// Register merge node as a variable since it will be referenced via .input(n) syntax
-		ctx.variables.set(mergeNode.name, mergeNode);
-
-		// Build branches array for the merge composite with input indices
-		// Include variable references to already-built nodes
-		const mergeBranches: CompositeNode[] = [];
-		const mergeInputIndices: number[] = [];
-		const processedBranches = new Set<string>();
-
-		// Iterate over inputSources to preserve input index information
-		for (const [inputSlot, sources] of mergeNode.inputSources) {
-			const inputIndex = extractInputIndex(inputSlot);
-
-			for (const source of sources) {
-				// Skip duplicates
-				if (processedBranches.has(source.from)) continue;
-				processedBranches.add(source.from);
-
-				const branchNode = ctx.graph.nodes.get(source.from);
-				if (branchNode) {
-					if (ctx.variables.has(source.from)) {
-						// Use varRef for declared variables
-						mergeBranches.push(createVarRef(source.from));
-					} else if (ctx.visited.has(source.from)) {
-						// Already built - add as varRef and register as variable
-						ctx.variables.set(source.from, branchNode);
-						mergeBranches.push(createVarRef(source.from));
-					} else {
-						// Not yet built - inline as leaf
-						mergeBranches.push(createLeaf(branchNode));
-					}
-					mergeInputIndices.push(inputIndex);
-				}
-			}
-		}
-
-		const mergeComposite: MergeCompositeNode = {
-			kind: 'merge',
-			mergeNode,
-			branches: mergeBranches,
-			inputIndices: mergeInputIndices,
-		};
-
-		// Check if merge has downstream continuation
-		const mergeOutputs = getAllFirstOutputTargets(mergeNode);
-		const unvisitedOutputs = mergeOutputs.filter((target) => !ctx.visited.has(target));
-
-		if (unvisitedOutputs.length === 0) {
-			// Check if there are visited outputs (loops) that need connections
-			const visitedOutputs = mergeOutputs.filter((target) => ctx.visited.has(target));
-			if (visitedOutputs.length > 0) {
-				// Create varRefs for loop-back connections
-				const loopTargets: CompositeNode[] = [];
-				for (const target of visitedOutputs) {
-					const targetNode = ctx.graph.nodes.get(target);
-					if (targetNode) {
-						ctx.variables.set(target, targetNode);
-						loopTargets.push(createVarRef(target));
-					}
-				}
-				if (loopTargets.length === 1) {
-					return {
-						kind: 'chain',
-						nodes: [mergeComposite, loopTargets[0]],
-					};
-				}
-				if (loopTargets.length > 1) {
-					return {
-						kind: 'chain',
-						nodes: [mergeComposite, ...loopTargets],
-					};
-				}
-			}
-			return mergeComposite;
-		}
-
-		if (unvisitedOutputs.length === 1) {
-			// Single downstream target - chain to it
-			const nextComposite = buildFromNode(unvisitedOutputs[0], ctx);
-			return {
-				kind: 'chain',
-				nodes: [mergeComposite, nextComposite],
-			};
-		}
-
-		// Multiple downstream targets - build as fan-out
-		const fanOutBranches: CompositeNode[] = [];
-		for (const target of unvisitedOutputs) {
-			if (!ctx.visited.has(target)) {
-				fanOutBranches.push(buildFromNode(target, ctx));
-			}
-		}
-
-		if (fanOutBranches.length === 0) {
-			return mergeComposite;
-		}
-
-		if (fanOutBranches.length === 1) {
-			return {
-				kind: 'chain',
-				nodes: [mergeComposite, fanOutBranches[0]],
-			};
-		}
-
-		// Return chain with fan-out array
-		return {
-			kind: 'chain',
-			nodes: [mergeComposite, ...fanOutBranches],
-		};
+		// Return the built branches (which don't include merge - it's handled via deferred)
+		if (builtBranches.length === 0) return createVarRef(mergeNode.name);
+		if (builtBranches.length === 1) return builtBranches[0];
+		return builtBranches;
 	}
 
 	// Multiple targets - build all branches
@@ -1015,54 +928,43 @@ function extractInputIndex(slotName: string): number {
 
 /**
  * Build composite for a Merge node
+ *
+ * Always creates deferred connections for each input instead of a MergeCompositeNode.
+ * This avoids duplicate key issues in the old merge() syntax and ensures correct
+ * output indices when IF/Switch branches connect to merge inputs.
+ *
+ * Returns a variable reference to the merge node. The actual connections
+ * are expressed at root level via .input(n) syntax.
  */
-function buildMerge(node: SemanticNode, ctx: BuildContext): MergeCompositeNode {
+function buildMerge(node: SemanticNode, ctx: BuildContext): VariableReference {
 	// Register merge node as a variable since it will be referenced via .input(n) syntax
 	ctx.variables.set(node.name, node);
 
-	// Collect branches from inputSources WITH their input indices
-	const branches: CompositeNode[] = [];
-	const inputIndices: number[] = [];
-	const processedBranches = new Set<string>();
+	// Track this merge for downstream chain building
+	ctx.deferredMergeNodes.add(node.name);
 
-	// Iterate over inputSources to preserve input index information
-	// Input sources are keyed by slot name (e.g., "branch0", "branch1")
+	// Create deferred connections for each input
 	for (const [inputSlot, sources] of node.inputSources) {
 		const inputIndex = extractInputIndex(inputSlot);
 
 		for (const source of sources) {
-			// Skip duplicates (same branch might appear in multiple sources)
-			if (processedBranches.has(source.from)) continue;
-			processedBranches.add(source.from);
-
-			const branchNode = ctx.graph.nodes.get(source.from);
-			if (branchNode) {
-				// Check if node has outputs going elsewhere (not just to this merge)
-				const hasOtherOutputs = hasOutputsOutsideMerge(branchNode, node);
-
-				if (ctx.variables.has(source.from)) {
-					// Already a declared variable - use varRef
-					branches.push(createVarRef(source.from));
-				} else if (hasOtherOutputs) {
-					// Node has outputs to other destinations - must be a variable
-					// so those outputs can be processed separately
-					ctx.variables.set(source.from, branchNode);
-					branches.push(createVarRef(source.from));
-				} else {
-					// Safe to inline as leaf
-					branches.push(createLeaf(branchNode));
-				}
-				inputIndices.push(inputIndex);
+			// Ensure source node is registered as a variable so it gets declared
+			const sourceNode = ctx.graph.nodes.get(source.from);
+			if (sourceNode) {
+				ctx.variables.set(source.from, sourceNode);
 			}
+
+			ctx.deferredConnections.push({
+				sourceNodeName: source.from,
+				sourceOutputIndex: getOutputIndex(source.outputSlot),
+				targetNode: node,
+				targetInputIndex: inputIndex,
+			});
 		}
 	}
 
-	return {
-		kind: 'merge',
-		mergeNode: node,
-		branches,
-		inputIndices,
-	};
+	// Return just a variable reference to the merge
+	return createVarRef(node.name);
 }
 
 /**
@@ -1309,54 +1211,59 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 				// Register merge node as a variable since it will be referenced via .input(n) syntax
 				ctx.variables.set(mergePattern.mergeNode.name, mergePattern.mergeNode);
 
-				// Generate merge composite with all branches and their input indices
-				const branches: CompositeNode[] = [];
-				const inputIndices: number[] = [];
-				const processedBranches = new Set<string>();
+				// Track this merge for downstream chain building
+				ctx.deferredMergeNodes.add(mergePattern.mergeNode.name);
 
-				// Iterate over merge's inputSources to preserve input index information
+				// Mark merge as visited first to prevent building into merge
+				ctx.visited.add(mergePattern.mergeNode.name);
+
+				// Create deferred connections for ALL merge inputs
 				for (const [inputSlot, sources] of mergePattern.mergeNode.inputSources) {
 					const inputIndex = extractInputIndex(inputSlot);
 
 					for (const source of sources) {
-						// Skip if not in the pattern's branches or already processed
-						if (!mergePattern.branches.includes(source.from)) continue;
-						if (processedBranches.has(source.from)) continue;
-						processedBranches.add(source.from);
-
-						const branchNode = ctx.graph.nodes.get(source.from);
-						if (branchNode) {
-							ctx.visited.add(source.from);
-							branches.push(createLeaf(branchNode));
-						} else {
-							branches.push(createVarRef(source.from));
+						// Ensure source node is registered as a variable so it gets declared
+						const sourceNode = ctx.graph.nodes.get(source.from);
+						if (sourceNode) {
+							ctx.variables.set(source.from, sourceNode);
 						}
-						inputIndices.push(inputIndex);
+
+						ctx.deferredConnections.push({
+							sourceNodeName: source.from,
+							sourceOutputIndex: getOutputIndex(source.outputSlot),
+							targetNode: mergePattern.mergeNode,
+							targetInputIndex: inputIndex,
+						});
 					}
 				}
 
-				ctx.visited.add(mergePattern.mergeNode.name);
-				const mergeComposite: MergeCompositeNode = {
-					kind: 'merge',
-					mergeNode: mergePattern.mergeNode,
-					branches,
-					inputIndices,
-				};
-
-				// Check if merge has downstream continuation
-				const mergeOutputs = getAllFirstOutputTargets(mergePattern.mergeNode);
-				if (mergeOutputs.length > 0) {
-					const nextComposite = buildFromNode(mergeOutputs[0], ctx);
-					return {
-						kind: 'chain',
-						nodes: [compositeNode, mergeComposite, nextComposite],
-					};
+				// Build branch nodes (they will stop at merge since it's visited)
+				// This ensures any chains leading to the branches are properly built
+				const builtBranches: CompositeNode[] = [];
+				for (const branchName of mergePattern.branches) {
+					if (!ctx.visited.has(branchName)) {
+						builtBranches.push(buildFromNode(branchName, ctx));
+					}
 				}
 
-				return {
-					kind: 'chain',
-					nodes: [compositeNode, mergeComposite],
-				};
+				// Return a fan-out if we have branches, otherwise just the composite
+				if (builtBranches.length > 0) {
+					if (builtBranches.length === 1) {
+						return {
+							kind: 'chain',
+							nodes: [compositeNode, builtBranches[0]],
+						};
+					}
+					const fanOut: FanOutCompositeNode = {
+						kind: 'fanOut',
+						sourceNode: compositeNode,
+						targets: builtBranches,
+					};
+					return fanOut;
+				}
+
+				// Just return the source node - merge connections are handled via deferred
+				return compositeNode;
 			}
 			// Fan-out without merge - create proper fan-out composite
 			const fanOutBranches: CompositeNode[] = [];
@@ -1399,34 +1306,58 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 			}
 		} else if (nextTargets.length === 1) {
 			const nextTarget = nextTargets[0];
+			const nextNode = ctx.graph.nodes.get(nextTarget);
 
 			// IMPORTANT: When in branch context and next target is a merge node,
 			// we should NOT chain to it. Instead, defer the connection and stop here.
 			// This allows the merge to be expressed with .input(n) syntax at root level.
-			if (ctx.isBranchContext) {
-				const nextNode = ctx.graph.nodes.get(nextTarget);
-				if (nextNode && isMergeType(nextNode.type)) {
-					// Mark merge as visited and register as variable
-					ctx.visited.add(nextTarget);
-					ctx.variables.set(nextTarget, nextNode);
+			if (ctx.isBranchContext && nextNode && isMergeType(nextNode.type)) {
+				// Mark merge as visited and register as variable
+				ctx.visited.add(nextTarget);
+				ctx.variables.set(nextTarget, nextNode);
 
+				// Find which input index this node connects to on merge
+				const inputIndex = findMergeInputIndex(nextNode, node.name);
+
+				// Defer this connection to be expressed at root level
+				ctx.deferredConnections.push({
+					targetNode: nextNode,
+					targetInputIndex: inputIndex,
+					sourceNodeName: node.name,
+					sourceOutputIndex: 0,
+				});
+
+				// Track this merge for downstream chain building
+				ctx.deferredMergeNodes.add(nextTarget);
+
+				// Return just this node (don't chain to merge)
+				return compositeNode;
+			}
+
+			// If next target is a merge node that's already being handled via deferred connections
+			// (and we're NOT in branch context), create a deferred connection but don't chain to it.
+			if (nextNode && isMergeType(nextNode.type) && ctx.deferredMergeNodes.has(nextTarget)) {
+				// Check if a deferred connection already exists for this source to prevent duplicates
+				// (the detectMergePattern path may have already created the connection)
+				const alreadyHasConnection = ctx.deferredConnections.some(
+					(c) => c.sourceNodeName === node.name && c.targetNode.name === nextTarget,
+				);
+
+				if (!alreadyHasConnection) {
 					// Find which input index this node connects to on merge
 					const inputIndex = findMergeInputIndex(nextNode, node.name);
 
-					// Defer this connection to be expressed at root level
+					// Create deferred connection for this source to the merge
 					ctx.deferredConnections.push({
 						targetNode: nextNode,
 						targetInputIndex: inputIndex,
 						sourceNodeName: node.name,
 						sourceOutputIndex: 0,
 					});
-
-					// Track this merge for downstream chain building
-					ctx.deferredMergeNodes.add(nextTarget);
-
-					// Return just this node (don't chain to merge)
-					return compositeNode;
 				}
+
+				// Return just this node (don't chain to merge)
+				return compositeNode;
 			}
 
 			const nextComposite = buildFromNode(nextTarget, ctx);
