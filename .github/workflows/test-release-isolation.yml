@@ -1,0 +1,301 @@
+name: 'CI: Isolate Release Push Failure'
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/test-release-isolation.yml'
+
+jobs:
+  # Test 1a/b/c: Push from 1.x WITHOUT syncing .github (run 3x for intermittent check)
+  test-1x-no-sync:
+    name: 'Test 1: 1.x divergent .github (x3)'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        run: [a, b, c]
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout 1.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: '1.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Show .github diff
+        run: |
+          git fetch origin master
+          echo "Files different from master:"
+          git diff --name-only origin/master -- .github/ | head -20
+          echo "Total files: $(git diff --name-only origin/master -- .github/ | wc -l)"
+
+      - name: Push test branch
+        id: push_test
+        run: |
+          BRANCH="ci-test-isolation/1x-nosync-${{ matrix.run }}-$(date +%s)"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH"
+          echo "test-$(date)-${{ matrix.run }}" >> test-file.txt
+          git add test-file.txt
+          git commit -m "Test 1${{ matrix.run }}: 1.x divergent .github"
+
+          echo "Pushing $BRANCH..."
+          if git push origin "$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "$BRANCH" 2>/dev/null || true
+
+  # Test 2: Push from 1.x WITH synced .github
+  test-1x-with-sync:
+    name: 'Test 2: 1.x synced .github'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout 1.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: '1.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Sync .github from master
+        run: |
+          git fetch origin master
+          echo "BEFORE: $(git diff --name-only origin/master -- .github/ | wc -l) files differ"
+          git checkout origin/master -- .github/
+          git add .github/
+          git commit -m "Sync .github from master" || true
+          echo "AFTER: $(git diff --name-only origin/master -- .github/ | wc -l) files differ"
+
+      - name: Push test branch
+        id: push_test
+        run: |
+          BRANCH="ci-test-isolation/1x-sync-$(date +%s)"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH"
+          echo "test-$(date)" >> test-file.txt
+          git add test-file.txt
+          git commit -m "Test 2: 1.x with synced .github"
+
+          echo "Pushing $BRANCH..."
+          if git push origin "$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "$BRANCH" 2>/dev/null || true
+
+  # Test 3: Push from master (control)
+  test-master:
+    name: 'Test 3: master (control)'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout master
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: 'master'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Push test branch
+        id: push_test
+        run: |
+          BRANCH="ci-test-isolation/master-$(date +%s)"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH"
+          echo "test-$(date)" >> test-file.txt
+          git add test-file.txt
+          git commit -m "Test 3: master control"
+
+          echo "Pushing $BRANCH..."
+          if git push origin "$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "$BRANCH" 2>/dev/null || true
+
+  # Test 4: Push from 1.x with release-pr style branch name
+  test-release-pr-name:
+    name: 'Test 4: 1.x with release-pr/ prefix'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout 1.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: '1.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Push test branch (release-pr style name)
+        id: push_test
+        run: |
+          # Use release-pr/ prefix like the real workflow, but with test version
+          BRANCH="ci-test-isolation/release-pr-style-99.99.99-$(date +%s)"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH"
+          echo "test-$(date)" >> test-file.txt
+          git add test-file.txt
+          git commit -m "Test 4: release-pr style branch name"
+
+          echo "Pushing $BRANCH..."
+          if git push origin "$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "$BRANCH" 2>/dev/null || true
+
+  # Test 5: Push with --force-with-lease (like peter-evans does)
+  test-force-with-lease:
+    name: 'Test 5: --force-with-lease push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout 1.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: '1.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Push with --force-with-lease
+        id: push_test
+        run: |
+          BRANCH="ci-test-isolation/1x-force-lease-$(date +%s)"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH"
+          echo "test-$(date)" >> test-file.txt
+          git add test-file.txt
+          git commit -m "Test 5: force-with-lease push"
+
+          # Use exact refspec syntax like peter-evans does
+          echo "Pushing: git push --force-with-lease origin $BRANCH:refs/heads/$BRANCH"
+          if git push --force-with-lease origin "$BRANCH:refs/heads/$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "$BRANCH" 2>/dev/null || true
+
+  # Summary
+  summary:
+    name: 'Results Summary'
+    runs-on: ubuntu-latest
+    needs:
+      [
+        test-1x-no-sync,
+        test-1x-with-sync,
+        test-master,
+        test-release-pr-name,
+        test-force-with-lease,
+      ]
+    if: always()
+
+    steps:
+      - name: Print Summary
+        run: |
+          echo "============================================"
+          echo "TEST RESULTS"
+          echo "============================================"
+          echo "Test 1 (1.x no sync x3):    ${{ needs.test-1x-no-sync.result }}"
+          echo "Test 2 (1.x with sync):     ${{ needs.test-1x-with-sync.result }}"
+          echo "Test 3 (master):            ${{ needs.test-master.result }}"
+          echo "Test 4 (release-pr name):   ${{ needs.test-release-pr-name.result }}"
+          echo "Test 5 (--force-with-lease):${{ needs.test-force-with-lease.result }}"
+          echo "============================================"
+          echo ""
+          echo "INTERPRETATION:"
+          echo "- Test 1 fails, Test 2 passes → .github diff is the cause"
+          echo "- Test 1 mixed (some pass/fail) → intermittent issue"
+          echo "- Test 1 & 2 both fail → not just .github (token scope?)"
+          echo "- Test 5 fails differently → force-push specific issue"
