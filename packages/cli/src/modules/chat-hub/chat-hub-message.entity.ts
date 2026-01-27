@@ -8,9 +8,9 @@ import {
 	type Relation,
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
+import type { IBinaryData } from 'n8n-workflow';
 
 import type { ChatHubSession } from './chat-hub-session.entity';
-import type { IBinaryData } from 'n8n-workflow';
 
 @Entity({ name: 'chat_hub_messages' })
 export class ChatHubMessage extends WithTimestamps {
@@ -114,6 +114,16 @@ export class ChatHubMessage extends WithTimestamps {
 	revisionOfMessageId: string | null;
 
 	/**
+	 * Correlation ID linking this message to a specific execution turn.
+	 * A "turn" represents one request-response execution cycle.
+	 * Memory entries created during the same turn share this turnId.
+	 * This enables memory isolation on edit/retry - superseded messages
+	 * have their turnIds excluded from memory loading.
+	 */
+	@Column({ type: String, nullable: true })
+	turnId: string | null;
+
+	/**
 	 * Status of the message, e.g. 'running', 'success', 'error', 'cancelled'.
 	 */
 	@Column({ type: 'varchar', length: 16, default: 'success' })
@@ -126,5 +136,5 @@ export class ChatHubMessage extends WithTimestamps {
 	 * - When using default mode: Base64-encoded data is stored directly in the 'data' field
 	 */
 	@Column({ type: 'json', nullable: true })
-	attachments: Array<IBinaryData> | null;
+	attachments: IBinaryData[] | null;
 }

@@ -15,6 +15,8 @@ export const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = [
 ] as const satisfies ExecutionStatus[];
 export const TOOLS_AGENT_NODE_MIN_VERSION = 2.2;
 export const CHAT_TRIGGER_NODE_MIN_VERSION = 1.2;
+// Min version that supports Persistent Memory option on Simple Memory nodes
+export const PERSISTENT_MEMORY_MIN_VERSION = 1.4;
 
 export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {

@@ -7,6 +7,9 @@ export class ChatHubModule implements ModuleInterface {
 	async init() {
 		await import('./chat-hub.controller');
 		await import('./chat-hub.settings.controller');
+
+		const { ChatMemoryCleanupService } = await import('./chat-memory-cleanup.service');
+		Container.get(ChatMemoryCleanupService).startCleanup();
 	}
 
 	async settings() {
@@ -21,10 +24,21 @@ export class ChatHubModule implements ModuleInterface {
 		const { ChatHubSession } = await import('./chat-hub-session.entity');
 		const { ChatHubMessage } = await import('./chat-hub-message.entity');
 		const { ChatHubAgent } = await import('./chat-hub-agent.entity');
+		const { ChatMemorySession } = await import('./chat-memory-session.entity');
+		const { ChatMemory } = await import('./chat-memory.entity');
 
-		return [ChatHubSession, ChatHubMessage, ChatHubAgent];
+		return [ChatHubSession, ChatHubMessage, ChatHubAgent, ChatMemorySession, ChatMemory];
+	}
+
+	async context() {
+		const { ChatMemoryProxyService } = await import('./chat-memory-proxy.service');
+
+		return { chatMemoryProxyProvider: Container.get(ChatMemoryProxyService) };
 	}
 
 	@OnShutdown()
-	async shutdown() {}
+	async shutdown() {
+		const { ChatMemoryCleanupService } = await import('./chat-memory-cleanup.service');
+		Container.get(ChatMemoryCleanupService).stopCleanup();
+	}
 }

@@ -10,11 +10,11 @@ import type {
 import { Workflow, BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '../errors/response-errors/not-found.error';
+import { NodeTypes } from '../node-types';
+import type { ChatMessage } from './chat-service.types';
+import { OwnershipService } from '../services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { WorkflowRunner } from '../workflow-runner';
-import type { ChatMessage } from './chat-service.types';
-import { NodeTypes } from '../node-types';
-import { OwnershipService } from '../services/ownership.service';
 
 @Service()
 export class ChatExecutionManager {
@@ -25,9 +25,9 @@ export class ChatExecutionManager {
 		private readonly nodeTypes: NodeTypes,
 	) {}
 
-	async runWorkflow(execution: IExecutionResponse, message: ChatMessage) {
+	async runWorkflow(execution: IExecutionResponse, message: ChatMessage, userId?: string) {
 		await this.workflowRunner.run(
-			await this.getRunData(execution, message),
+			await this.getRunData(execution, message, userId),
 			true,
 			true,
 			execution.id,
@@ -126,7 +126,7 @@ export class ChatExecutionManager {
 		return [[nodeExecutionData]];
 	}
 
-	private async getRunData(execution: IExecutionResponse, message: ChatMessage) {
+	private async getRunData(execution: IExecutionResponse, message: ChatMessage, userId?: string) {
 		const { workflowData, mode: executionMode, data: runExecutionData } = execution;
 
 		const result = await this.runNode(execution, message);
@@ -153,6 +153,7 @@ export class ChatExecutionManager {
 			workflowData,
 			pinData: runExecutionData.resultData.pinData,
 			projectId: project?.id,
+			userId,
 		};
 
 		return runData;

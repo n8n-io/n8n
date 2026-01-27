@@ -18,8 +18,8 @@ import {
 } from '@n8n/typeorm';
 import type { INode } from 'n8n-workflow';
 
-import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
+import type { ChatHubMessage } from './chat-hub-message.entity';
 
 export interface IChatHubSession {
 	id: string;
