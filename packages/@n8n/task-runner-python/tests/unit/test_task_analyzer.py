@@ -248,7 +248,9 @@ class TestFormatStringAttacks(TestTaskAnalyzer):
         for code in safe_escaped:
             analyzer.validate(code)
 
-    def test_unformatted_strings_with_patterns_allowed(self, analyzer: TaskAnalyzer) -> None:
+    def test_unformatted_strings_with_patterns_allowed(
+        self, analyzer: TaskAnalyzer
+    ) -> None:
         safe_code = [
             'docs = "{.__class__}"',
             'msg = "{.__builtins__}"',
