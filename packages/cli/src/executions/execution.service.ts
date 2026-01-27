@@ -323,9 +323,10 @@ export class ExecutionService {
 			delete requestFilters.metadata;
 		}
 
-		await this.executionPersistence.deleteBy(requestFilters, sharedWorkflowIds, {
-			deleteBefore,
-			ids,
+		await this.executionPersistence.hardDeleteBy({
+			filters: requestFilters,
+			accessibleWorkflowIds: sharedWorkflowIds,
+			deleteConditions: { deleteBefore, ids },
 		});
 
 		this.eventService.emit('execution-deleted', {

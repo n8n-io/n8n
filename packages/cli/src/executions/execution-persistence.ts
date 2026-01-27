@@ -1,4 +1,4 @@
-import type { ExecutionDataStorageLocation } from '@n8n/db';
+import type { ExecutionDataStorageLocation, ExecutionDeletionCriteria } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BinaryDataService } from 'n8n-core';
@@ -20,7 +20,7 @@ export class ExecutionPersistence {
 		private readonly fsStore: FsStore,
 	) {}
 
-	async delete(target: DeletionTarget | DeletionTarget[]) {
+	async hardDelete(target: DeletionTarget | DeletionTarget[]) {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
@@ -33,16 +33,8 @@ export class ExecutionPersistence {
 		]);
 	}
 
-	async deleteBy(
-		filters: Parameters<typeof this.executionRepository.deleteExecutionsByFilter>[0],
-		accessibleWorkflowIds: Parameters<typeof this.executionRepository.deleteExecutionsByFilter>[1],
-		deleteConditions: Parameters<typeof this.executionRepository.deleteExecutionsByFilter>[2],
-	) {
-		const refs = await this.executionRepository.deleteExecutionsByFilter(
-			filters,
-			accessibleWorkflowIds,
-			deleteConditions,
-		);
+	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
+		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
 		const fsRefs = refs.filter((r) => r.storedAt === 'fs');
 		if (fsRefs.length > 0) await this.fsStore.delete(fsRefs);

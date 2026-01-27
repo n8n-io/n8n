@@ -430,7 +430,7 @@ export class ActiveWorkflowManager {
 			startedAt: new Date(),
 			stoppedAt: new Date(),
 			status: 'running',
-			storedAt: this.storageConfig.mode === 'database' ? 'db' : 'fs',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		executeErrorWorkflow(workflowData, fullRunData, mode);

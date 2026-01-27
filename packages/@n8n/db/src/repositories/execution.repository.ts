@@ -81,6 +81,15 @@ export interface IGetExecutionsQueryFilter {
 	startedBefore?: string;
 }
 
+export type ExecutionDeletionCriteria = {
+	filters: IGetExecutionsQueryFilter | undefined;
+	accessibleWorkflowIds: string[];
+	deleteConditions: {
+		deleteBefore?: Date;
+		ids?: string[];
+	};
+};
+
 function parseFiltersToQueryBuilder(
 	qb: SelectQueryBuilder<ExecutionEntity>,
 	filters?: IGetExecutionsQueryFilter,
@@ -455,14 +464,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutionsByFilter(
-		filters: IGetExecutionsQueryFilter | undefined,
-		accessibleWorkflowIds: string[],
-		deleteConditions: {
-			deleteBefore?: Date;
-			ids?: string[];
-		},
-	): Promise<
+	async deleteExecutionsByFilter({
+		filters,
+		accessibleWorkflowIds,
+		deleteConditions,
+	}: ExecutionDeletionCriteria): Promise<
 		Array<{ executionId: string; workflowId: string; storedAt: ExecutionDataStorageLocation }>
 	> {
 		if (!deleteConditions?.deleteBefore && !deleteConditions?.ids) {

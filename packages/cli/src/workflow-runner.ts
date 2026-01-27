@@ -121,7 +121,7 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 			status: 'error',
-			storedAt: this.storageConfig.mode === 'database' ? 'db' : 'fs',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		// Remove from active execution with empty data. That will

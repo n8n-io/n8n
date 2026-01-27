@@ -35,7 +35,7 @@ export class FailedRunFactory {
 			startedAt: new Date(),
 			stoppedAt: new Date(),
 			status: 'error',
-			storedAt: this.storageConfig.mode === 'database' ? 'db' : 'fs',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		if (node) {

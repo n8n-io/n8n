@@ -22,13 +22,13 @@ describe('ExecutionPersistence', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('delete', () => {
+	describe('hardDelete', () => {
 		const baseTarget = { workflowId: 'wf-1', executionId: 'exec-1' };
 
 		it('should delete execution, binary data, and fs data when storedAt is fs', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 
-			await executionPersistence.delete(target);
+			await executionPersistence.hardDelete(target);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
 			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ type: 'execution', ...target }]);
@@ -38,7 +38,7 @@ describe('ExecutionPersistence', () => {
 		it('should delete execution and binary data but not fs data when storedAt is db', async () => {
 			const target = { ...baseTarget, storedAt: 'db' as const };
 
-			await executionPersistence.delete(target);
+			await executionPersistence.hardDelete(target);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
 			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ type: 'execution', ...target }]);
@@ -51,7 +51,7 @@ describe('ExecutionPersistence', () => {
 				{ workflowId: 'wf-2', executionId: 'exec-2', storedAt: 'db' as const },
 			];
 
-			await executionPersistence.delete(targets);
+			await executionPersistence.hardDelete(targets);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1', 'exec-2']);
 			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
@@ -62,7 +62,7 @@ describe('ExecutionPersistence', () => {
 		});
 
 		it('should skip all operations when given empty array', async () => {
-			await executionPersistence.delete([]);
+			await executionPersistence.hardDelete([]);
 
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();

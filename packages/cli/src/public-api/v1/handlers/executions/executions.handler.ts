@@ -53,7 +53,7 @@ export = {
 				});
 			}
 
-			await Container.get(ExecutionPersistence).delete({
+			await Container.get(ExecutionPersistence).hardDelete({
 				workflowId: execution.workflowId,
 				executionId: execution.id,
 				storedAt: execution.storedAt,

@@ -539,13 +539,13 @@ describe('Execution Lifecycle Hooks', () => {
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [unfinishedRun, {}]);
 
-					expect(executionPersistence.delete).not.toHaveBeenCalled();
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 
 				it('should not delete waiting executions', async () => {
 					await lifecycleHooks.runHook('workflowExecuteAfter', [waitingRun, {}]);
 
-					expect(executionPersistence.delete).not.toHaveBeenCalled();
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 
 				it('should soft delete manual executions when manual saving is disabled', async () => {
@@ -595,7 +595,7 @@ describe('Execution Lifecycle Hooks', () => {
 						testKey1: 'testValue1',
 						testKey2: 'testValue2',
 					});
-					expect(executionPersistence.delete).not.toHaveBeenCalled();
+					expect(executionPersistence.hardDelete).not.toHaveBeenCalled();
 				});
 			});
 
@@ -762,7 +762,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [successfulRun, {}]);
 
-				expect(executionPersistence.delete).toHaveBeenCalledWith({
+				expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
 					storedAt: 'db',
@@ -786,7 +786,7 @@ describe('Execution Lifecycle Hooks', () => {
 
 				await lifecycleHooks.runHook('workflowExecuteAfter', [failedRun, {}]);
 
-				expect(executionPersistence.delete).toHaveBeenCalledWith({
+				expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
 					workflowId,
 					executionId,
 					storedAt: 'db',
@@ -824,7 +824,7 @@ describe('Execution Lifecycle Hooks', () => {
 					// Metadata should not be saved before deletion
 					expect(executionMetadataService.save).not.toHaveBeenCalled();
 					// Execution should be deleted
-					expect(executionPersistence.delete).toHaveBeenCalledWith({
+					expect(executionPersistence.hardDelete).toHaveBeenCalledWith({
 						workflowId,
 						executionId,
 						storedAt: 'db',

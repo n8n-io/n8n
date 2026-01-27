@@ -144,7 +144,7 @@ export class ExecutionsPruningService {
 		const executionIds = refs.map((r) => r.executionId);
 
 		try {
-			await this.executionPersistence.delete(refs);
+			await this.executionPersistence.hardDelete(refs);
 
 			this.logger.debug('Hard-deleted executions', { executionIds });
 		} catch (error) {

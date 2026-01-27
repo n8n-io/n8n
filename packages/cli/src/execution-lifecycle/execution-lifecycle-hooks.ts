@@ -408,7 +408,7 @@ function hookFunctionsSave(
 			if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
 
-				await executionPersistence.delete({
+				await executionPersistence.hardDelete({
 					workflowId: this.workflowData.id,
 					executionId: this.executionId,
 					storedAt: fullRunData.storedAt,
@@ -619,7 +619,7 @@ export function getLifecycleHooksForScalingMain(
 			(fullRunData.status !== 'success' && !saveSettings.error);
 
 		if (!isManualMode && shouldNotSave && !fullRunData.waitTill) {
-			await executionPersistence.delete({
+			await executionPersistence.hardDelete({
 				workflowId: this.workflowData.id,
 				executionId: this.executionId,
 				storedAt: fullRunData.storedAt,
