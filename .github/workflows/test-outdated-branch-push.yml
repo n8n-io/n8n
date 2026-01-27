@@ -7,6 +7,36 @@ on:
       - '.github/workflows/test-outdated-branch-push.yml'
 
 jobs:
+  # Test 0: Check what permissions the app token has
+  check-token-permissions:
+    name: 'Test 0: Check token permissions'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Check installation permissions
+        run: |
+          echo "=== App Installation Permissions ==="
+          gh api /installation --jq '.permissions' || echo "Could not fetch installation info"
+
+          echo ""
+          echo "=== Does it have 'workflows' permission? ==="
+          WORKFLOWS=$(gh api /installation --jq '.permissions.workflows // "NOT SET"')
+          echo "workflows: $WORKFLOWS"
+
+          if [ "$WORKFLOWS" = "write" ]; then
+            echo "✅ Has workflows:write permission"
+          else
+            echo "❌ Missing workflows:write permission - this may cause push failures"
+          fi
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
   # Test 1: Simple push from outdated.x (should reproduce the timeout)
   test-push-from-outdated:
     name: 'Test 1: Push from outdated.x'
