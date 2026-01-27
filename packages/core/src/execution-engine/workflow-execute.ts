@@ -11,6 +11,7 @@ import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,
+	ExecutionStorageLocation,
 	GenericValue,
 	IConnection,
 	IDataObject,
@@ -107,6 +108,7 @@ export class WorkflowExecute {
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
 		private runExecutionData: IRunExecutionData = createRunExecutionData(),
+		private readonly storedAt: ExecutionStorageLocation = 'db',
 	) {}
 
 	/**
@@ -2481,6 +2483,7 @@ export class WorkflowExecute {
 			mode: this.mode,
 			startedAt,
 			stoppedAt: stoppedAt ?? new Date(),
+			storedAt: this.storedAt,
 			status: this.status,
 		};
 	}

@@ -223,8 +223,9 @@ describe('WorkflowSettingsVue', () => {
 		});
 	});
 
-	it('should not remove valid workflow ID characters', async () => {
-		const validWorkflowList = '1234567890, abcde, efgh, 1234';
+	it('should not remove valid workflow ID characters including hyphens and underscores', async () => {
+		const validWorkflowList =
+			'1234567890, abcde, efgh, 1234, luPpn77f_KhU1e-F9bQXu, another-valid_id';
 
 		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
 		const { getByTestId } = createComponent({ pinia });

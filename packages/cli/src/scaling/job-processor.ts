@@ -223,6 +223,7 @@ export class JobProcessor {
 						startedAt: now,
 						stoppedAt: now,
 						data: createRunExecutionData({ resultData: { error, runData: {} } }),
+						storedAt: execution.storedAt,
 					};
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
