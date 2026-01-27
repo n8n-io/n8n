@@ -5,6 +5,8 @@ import type {
 	ChatStreamChunk,
 	ChatStreamEnd,
 	ChatStreamError,
+	ChatExecutionBegin,
+	ChatExecutionEnd,
 	ChatHumanMessageCreated,
 	ChatMessageEdited,
 	ChatSessionId,
@@ -23,7 +25,6 @@ export interface ChatPushStreamState {
 	messageId: ChatMessageId;
 	lastSequenceNumber: number;
 	content: string;
-	isActive: boolean;
 }
 
 /**
@@ -37,31 +38,23 @@ export function useChatPushHandler() {
 	const removeEventListener = ref<(() => void) | null>(null);
 
 	/**
-	 * Check if a push message is a chat stream event
+	 * Handle a chat execution begin event (whole streaming session starts)
 	 */
-	function isChatStreamMessage(
-		event: PushMessage,
-	): event is ChatStreamBegin | ChatStreamChunk | ChatStreamEnd | ChatStreamError {
-		return (
-			event.type === 'chatStreamBegin' ||
-			event.type === 'chatStreamChunk' ||
-			event.type === 'chatStreamEnd' ||
-			event.type === 'chatStreamError'
-		);
+	function handleExecutionBegin(event: ChatExecutionBegin): void {
+		const { sessionId } = event.data;
+		chatStore.handleWebSocketExecutionBegin?.({ sessionId });
 	}
 
 	/**
-	 * Check if a push message is a human message created event
+	 * Handle a chat execution end event (whole streaming session ends)
 	 */
-	function isChatHumanMessage(event: PushMessage): event is ChatHumanMessageCreated {
-		return event.type === 'chatHumanMessageCreated';
-	}
+	function handleExecutionEnd(event: ChatExecutionEnd): void {
+		const { sessionId, status } = event.data;
 
-	/**
-	 * Check if a push message is a message edited event
-	 */
-	function isChatMessageEdited(event: PushMessage): event is ChatMessageEdited {
-		return event.type === 'chatMessageEdited';
+		// Clean up all active streams for this session
+		activeStreams.value.delete(sessionId);
+
+		chatStore.handleWebSocketExecutionEnd?.({ sessionId, status });
 	}
 
 	/**
@@ -77,7 +70,6 @@ export function useChatPushHandler() {
 			messageId,
 			lastSequenceNumber: sequenceNumber,
 			content: '',
-			isActive: true,
 		});
 
 		// Update the chat store streaming state if this is the current session
@@ -105,21 +97,17 @@ export function useChatPushHandler() {
 		const { sessionId, messageId, sequenceNumber, content } = event.data;
 
 		const streamState = activeStreams.value.get(sessionId);
-		if (!streamState || !streamState.isActive) {
+		if (!streamState || streamState.messageId !== messageId) {
 			return;
 		}
 
-		// Check for sequence gaps (out-of-order chunks)
 		if (sequenceNumber <= streamState.lastSequenceNumber) {
-			// Duplicate or out-of-order chunk, ignore
 			return;
 		}
 
-		// Update stream state
 		streamState.lastSequenceNumber = sequenceNumber;
 		streamState.content += content;
 
-		// Emit chunk to the store handler
 		chatStore.handleWebSocketStreamChunk?.({
 			sessionId,
 			messageId,
@@ -134,17 +122,8 @@ export function useChatPushHandler() {
 	function handleStreamEnd(event: ChatStreamEnd): void {
 		const { sessionId, messageId, status } = event.data;
 
-		const streamState = activeStreams.value.get(sessionId);
-		if (streamState) {
-			streamState.isActive = false;
-		}
+		activeStreams.value.delete(sessionId);
 
-		// Clean up after a short delay to allow any late chunks to arrive
-		setTimeout(() => {
-			activeStreams.value.delete(sessionId);
-		}, 1000);
-
-		// Emit end event to the store handler
 		chatStore.handleWebSocketStreamEnd?.({
 			sessionId,
 			messageId,
@@ -158,15 +137,8 @@ export function useChatPushHandler() {
 	function handleStreamError(event: ChatStreamError): void {
 		const { sessionId, messageId, error } = event.data;
 
-		const streamState = activeStreams.value.get(sessionId);
-		if (streamState) {
-			streamState.isActive = false;
-		}
-
-		// Clean up
 		activeStreams.value.delete(sessionId);
 
-		// Emit error event to the store handler
 		chatStore.handleWebSocketStreamError?.({
 			sessionId,
 			messageId,
@@ -192,22 +164,19 @@ export function useChatPushHandler() {
 	 * Process a push message if it's a chat stream event
 	 */
 	function processMessage(event: PushMessage): void {
-		// Handle human message sync events first
-		if (isChatHumanMessage(event)) {
-			handleHumanMessageCreated(event);
-			return;
-		}
-		if (isChatMessageEdited(event)) {
-			handleMessageEdited(event);
-			return;
-		}
-
-		// Handle stream events
-		if (!isChatStreamMessage(event)) {
-			return;
-		}
-
 		switch (event.type) {
+			case 'chatHumanMessageCreated':
+				handleHumanMessageCreated(event);
+				break;
+			case 'chatMessageEdited':
+				handleMessageEdited(event);
+				break;
+			case 'chatExecutionBegin':
+				handleExecutionBegin(event);
+				break;
+			case 'chatExecutionEnd':
+				handleExecutionEnd(event);
+				break;
 			case 'chatStreamBegin':
 				handleStreamBegin(event);
 				break;
@@ -243,7 +212,6 @@ export function useChatPushHandler() {
 			removeEventListener.value = null;
 		}
 
-		// Clear all active streams
 		activeStreams.value.clear();
 	}
 
@@ -258,8 +226,8 @@ export function useChatPushHandler() {
 	 * Check if a session has an active stream
 	 */
 	function hasActiveStream(sessionId: ChatSessionId): boolean {
-		const state = activeStreams.value.get(sessionId);
-		return state?.isActive ?? false;
+		const activeStream = activeStreams.value.get(sessionId);
+		return !!activeStream;
 	}
 
 	/**
@@ -283,6 +251,11 @@ export function useChatPushHandler() {
  * Types for the store handlers that useChatPushHandler will call
  */
 export interface ChatWebSocketHandlers {
+	handleWebSocketExecutionBegin?: (data: { sessionId: ChatSessionId }) => void;
+	handleWebSocketExecutionEnd?: (data: {
+		sessionId: ChatSessionId;
+		status: 'success' | 'error' | 'cancelled';
+	}) => void;
 	handleWebSocketStreamBegin?: (data: {
 		sessionId: ChatSessionId;
 		messageId: ChatMessageId;

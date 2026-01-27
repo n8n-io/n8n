@@ -1,5 +1,7 @@
 import type {
 	ChatAttachmentInfo,
+	ChatExecutionBegin,
+	ChatExecutionEnd,
 	ChatHubMessageStatus,
 	ChatHumanMessageCreated,
 	ChatMessageEdited,
@@ -55,28 +57,102 @@ export class ChatStreamService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly sessionStore: ChatSessionStoreService,
 	) {
-		this.logger = this.logger.scoped('scaling');
+		this.logger = this.logger.scoped('chat-hub');
+	}
+
+	// #region Execution-level methods (for the entire streaming session)
+
+	/**
+	 * Start a chat execution (can contain multiple messages, e.g., with tool calls)
+	 */
+	async startExecution(userId: string, sessionId: ChatSessionId): Promise<void> {
+		// Register the execution in the session store
+		await this.sessionStore.startExecution({
+			sessionId,
+			userId,
+		});
+
+		const message: ChatExecutionBegin = {
+			type: 'chatExecutionBegin',
+			data: {
+				sessionId,
+				timestamp: Date.now(),
+			},
+		};
+
+		this.push.sendToUsers(message, [userId]);
+
+		if (this.shouldRelayViaPubSub()) {
+			await this.publisher.publishCommand({
+				command: 'relay-chat-stream-event',
+				payload: {
+					eventType: 'execution-begin',
+					userId,
+					sessionId,
+					messageId: '',
+					sequenceNumber: 0,
+					payload: {},
+				},
+			});
+		}
 	}
 
 	/**
-	 * Start a new stream for a message
+	 * End a chat execution
+	 */
+	async endExecution(
+		userId: string,
+		sessionId: ChatSessionId,
+		status: 'success' | 'error' | 'cancelled',
+	): Promise<void> {
+		const message: ChatExecutionEnd = {
+			type: 'chatExecutionEnd',
+			data: {
+				sessionId,
+				status,
+				timestamp: Date.now(),
+			},
+		};
+
+		this.push.sendToUsers(message, [userId]);
+
+		if (this.shouldRelayViaPubSub()) {
+			await this.publisher.publishCommand({
+				command: 'relay-chat-stream-event',
+				payload: {
+					eventType: 'execution-end',
+					userId,
+					sessionId,
+					messageId: '',
+					sequenceNumber: 0,
+					payload: { status },
+				},
+			});
+		}
+
+		// Clean up the session state
+		await this.sessionStore.endExecution(sessionId);
+	}
+
+	// #endregion
+
+	// #region Message-level methods (for individual messages within an execution)
+
+	/**
+	 * Start a new message stream within an execution
 	 */
 	async startStream(params: StartStreamParams): Promise<void> {
 		const { sessionId, messageId, previousMessageId, retryOfMessageId, executionId } = params;
 
-		// Register the stream in the session store
-		await this.sessionStore.startStream({
-			sessionId,
-			messageId,
-			userId: params.userId,
-		});
+		// Update the current message ID in the session store
+		await this.sessionStore.setCurrentMessage(sessionId, messageId);
 
 		const message: ChatStreamBegin = {
 			type: 'chatStreamBegin',
 			data: {
 				sessionId,
 				messageId,
-				sequenceNumber: 0,
+				sequenceNumber: await this.sessionStore.incrementSequence(sessionId),
 				timestamp: Date.now(),
 				previousMessageId,
 				retryOfMessageId,
@@ -96,8 +172,8 @@ export class ChatStreamService {
 		content: string,
 	): Promise<void> {
 		const streamState = await this.sessionStore.getStreamState(sessionId);
-		if (!streamState || streamState.messageId !== messageId) {
-			this.logger.warn(`No active stream found for session ${sessionId} message ${messageId}`);
+		if (!streamState) {
+			this.logger.warn(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
@@ -125,7 +201,7 @@ export class ChatStreamService {
 	}
 
 	/**
-	 * End a stream successfully
+	 * End a message stream (but keep execution state for potential follow-up messages)
 	 */
 	async endStream(
 		sessionId: ChatSessionId,
@@ -133,8 +209,8 @@ export class ChatStreamService {
 		status: ChatHubMessageStatus,
 	): Promise<void> {
 		const streamState = await this.sessionStore.getStreamState(sessionId);
-		if (!streamState || streamState.messageId !== messageId) {
-			this.logger.warn(`No active stream found for session ${sessionId} message ${messageId}`);
+		if (!streamState) {
+			this.logger.warn(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
@@ -157,12 +233,12 @@ export class ChatStreamService {
 			'end',
 		);
 
-		// Clean up the stream state
-		await this.sessionStore.endStream(sessionId);
+		// Don't clean up session state here - there may be more messages coming
+		// (e.g., tool call responses). State is cleaned up by endExecution().
 	}
 
 	/**
-	 * Send an error for a stream
+	 * Send an error for a message stream
 	 */
 	async sendError(
 		sessionId: ChatSessionId,
@@ -170,8 +246,8 @@ export class ChatStreamService {
 		error: string,
 	): Promise<void> {
 		const streamState = await this.sessionStore.getStreamState(sessionId);
-		if (!streamState || streamState.messageId !== messageId) {
-			this.logger.warn(`No active stream found for session ${sessionId} message ${messageId}`);
+		if (!streamState) {
+			this.logger.warn(`No active execution found for session ${sessionId}`);
 			return;
 		}
 
@@ -194,9 +270,10 @@ export class ChatStreamService {
 			'error',
 		);
 
-		// Clean up the stream state
-		await this.sessionStore.endStream(sessionId);
+		// Don't clean up session state here - endExecution() handles that
 	}
+
+	// #endregion
 
 	/**
 	 * Get pending chunks for reconnection replay
@@ -229,7 +306,7 @@ export class ChatStreamService {
 	 */
 	@OnPubSubEvent('relay-chat-stream-event', { instanceType: 'main' })
 	handleRelayChatStreamEvent(payload: {
-		eventType: 'begin' | 'chunk' | 'end' | 'error';
+		eventType: 'execution-begin' | 'execution-end' | 'begin' | 'chunk' | 'end' | 'error';
 		userId: string;
 		sessionId: string;
 		messageId: string;
@@ -246,9 +323,28 @@ export class ChatStreamService {
 		const { eventType, userId, sessionId, messageId, sequenceNumber } = payload;
 		const timestamp = Date.now();
 
-		let message: ChatStreamEvent;
+		let message: ChatStreamEvent | ChatExecutionBegin | ChatExecutionEnd;
 
 		switch (eventType) {
+			case 'execution-begin':
+				message = {
+					type: 'chatExecutionBegin',
+					data: {
+						sessionId,
+						timestamp,
+					},
+				};
+				break;
+			case 'execution-end':
+				message = {
+					type: 'chatExecutionEnd',
+					data: {
+						sessionId,
+						status: (payload.payload.status as 'success' | 'error' | 'cancelled') ?? 'success',
+						timestamp,
+					},
+				};
+				break;
 			case 'begin':
 				message = {
 					type: 'chatStreamBegin',

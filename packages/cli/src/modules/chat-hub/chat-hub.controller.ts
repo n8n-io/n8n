@@ -30,14 +30,14 @@ import {
 import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { extractAuthenticationMetadata } from './chat-hub-extractor';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubModelsService } from './chat-hub.models.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
-import { extractAuthenticationMetadata } from './chat-hub-extractor';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 @RestController('/chat')
 export class ChatHubController {

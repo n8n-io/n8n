@@ -98,15 +98,15 @@ export type PubSubCommandMap = {
 	 * the main that has the WebSocket connection to the client.
 	 */
 	'relay-chat-stream-event': {
-		/** Event type: begin, chunk, end, or error */
-		eventType: 'begin' | 'chunk' | 'end' | 'error';
+		/** Event type: execution-level or message-level */
+		eventType: 'execution-begin' | 'execution-end' | 'begin' | 'chunk' | 'end' | 'error';
 		/** User ID - sends to all user connections */
 		userId: string;
 		/** Chat session ID */
 		sessionId: string;
-		/** Message ID being streamed */
+		/** Message ID being streamed (empty for execution-level events) */
 		messageId: string;
-		/** Sequence number for ordering */
+		/** Sequence number for ordering (0 for execution-level events) */
 		sequenceNumber: number;
 		/** Event-specific payload */
 		payload: {

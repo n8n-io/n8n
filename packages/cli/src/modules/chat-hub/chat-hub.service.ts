@@ -122,7 +122,9 @@ export class ChatHubService {
 		private readonly chatStreamService: ChatStreamService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
-	) {}
+	) {
+		this.logger = this.logger.scoped('chat-hub');
+	}
 
 	private async deleteChatWorkflow(workflowId: string): Promise<void> {
 		await this.workflowRepository.delete(workflowId);
@@ -2589,42 +2591,69 @@ export class ChatHubService {
 		executionData: IRunExecutionData,
 		sessionId: string,
 		previousMessageId: string,
-		responseMessageId: string,
+		_responseMessageId: string,
 		retryOfMessageId: string | null,
 		executionMode: WorkflowExecuteMode,
 	) {
 		let executionId: string | undefined;
+		let executionStatus: 'success' | 'error' | 'cancelled' = 'success';
 
-		// Start the stream via WebSocket
-		await this.chatStreamService.startStream({
-			userId: user.id,
-			sessionId,
-			messageId: responseMessageId,
-			previousMessageId,
-			retryOfMessageId,
-			executionId: null,
+		// Start the execution (tracks state for the whole streaming session)
+		await this.chatStreamService.startExecution(user.id, sessionId);
+
+		// Create aggregator to handle multiple messages (e.g., tool calls followed by response)
+		const aggregator = createStructuredChunkAggregator(previousMessageId, retryOfMessageId, {
+			onBegin: async (message) => {
+				// Save the AI message to DB
+				await this.saveAIMessage({
+					id: message.id,
+					sessionId,
+					previousMessageId: message.previousMessageId ?? previousMessageId,
+					content: '',
+					model,
+					executionId,
+					retryOfMessageId: message.retryOfMessageId,
+					status: 'running',
+				});
+
+				// Start the stream via WebSocket for this message
+				await this.chatStreamService.startStream({
+					userId: user.id,
+					sessionId,
+					messageId: message.id,
+					previousMessageId: message.previousMessageId,
+					retryOfMessageId: message.retryOfMessageId,
+					executionId: executionId ? parseInt(executionId, 10) : null,
+				});
+			},
+			onItem: async (message, chunk) => {
+				await this.chatStreamService.sendChunk(sessionId, message.id, chunk);
+			},
+			onEnd: async (message) => {
+				// Update the message in the database
+				await this.messageRepository.updateChatMessage(message.id, {
+					content: message.content,
+					status: message.status,
+				});
+
+				// End the stream for this message
+				await this.chatStreamService.endStream(sessionId, message.id, message.status);
+			},
+			onError: async (message, errorText) => {
+				executionStatus = 'error';
+				// Update the message in the database
+				await this.messageRepository.updateChatMessage(message.id, {
+					content: message.content + (message.content ? '\n\n' : '') + errorText,
+					status: 'error',
+				});
+
+				// End the stream with error
+				await this.chatStreamService.endStream(sessionId, message.id, 'error');
+			},
 		});
 
-		// Save the AI message to DB
-		await this.saveAIMessage({
-			id: responseMessageId,
-			sessionId,
-			previousMessageId,
-			content: '',
-			model,
-			executionId: undefined,
-			retryOfMessageId,
-			status: 'running',
-		});
-
-		// Create a fake Response-like object that routes to ChatStreamService
-		const streamAdapter = this.createWebSocketStreamAdapter(
-			sessionId,
-			responseMessageId,
-			previousMessageId,
-			retryOfMessageId,
-			() => executionId,
-		);
+		// Create a fake Response-like object that routes to ChatStreamService via aggregator
+		const streamAdapter = this.createWebSocketStreamAdapter(aggregator);
 
 		try {
 			const execution = await this.workflowExecutionService.executeChatWorkflow(
@@ -2645,25 +2674,23 @@ export class ChatHubService {
 			await this.waitForExecutionCompletion(executionId);
 		} catch (error) {
 			if (error instanceof ManualExecutionCancelledError) {
-				// Message already marked as cancelled
-				return;
+				executionStatus = 'cancelled';
+			} else {
+				executionStatus = 'error';
+				throw error;
 			}
-			throw error;
+		} finally {
+			// End the execution (cleanup session state)
+			await this.chatStreamService.endExecution(user.id, sessionId, executionStatus);
 		}
 	}
 
 	/**
-	 * Create a Response-like object that routes streaming data to ChatStreamService
+	 * Create a Response-like object that routes streaming data to ChatStreamService via aggregator
 	 */
 	private createWebSocketStreamAdapter(
-		sessionId: string,
-		messageId: string,
-		_previousMessageId: string,
-		_retryOfMessageId: string | null,
-		_getExecutionId: () => string | undefined,
+		aggregator: ReturnType<typeof createStructuredChunkAggregator>,
 	): Response {
-		let contentBuffer = '';
-
 		// Create a minimal Response-like object
 		const adapter = {
 			headersSent: false,
@@ -2679,28 +2706,13 @@ export class ChatHubService {
 			write: (chunk: string | Buffer, _encoding?: BufferEncoding, doneCb?: () => void) => {
 				const text = Buffer.isBuffer(chunk) ? chunk.toString('utf8') : chunk;
 
-				// Process each line (JSONL format)
+				// Process each line (JSONL format) through the aggregator
 				const lines = text.split('\n').filter((line) => line.trim());
 				for (const line of lines) {
 					try {
 						const parsed = jsonParse<StructuredChunk>(line.trim());
-
-						if (parsed.type === 'begin') {
-							// Already sent begin via chatStreamService.startStream
-						} else if (parsed.type === 'item' && parsed.content) {
-							contentBuffer += parsed.content;
-							void this.chatStreamService.sendChunk(sessionId, messageId, parsed.content);
-						} else if (parsed.type === 'end') {
-							void this.finalizeWebSocketStream(sessionId, messageId, contentBuffer, 'success');
-						} else if (parsed.type === 'error') {
-							const errorContent = parsed.content || 'Unknown error';
-							void this.finalizeWebSocketStream(
-								sessionId,
-								messageId,
-								contentBuffer + (contentBuffer ? '\n\n' : '') + errorContent,
-								'error',
-							);
-						}
+						// The aggregator handles all chunk types (begin, item, end, error)
+						void aggregator.ingest(parsed);
 					} catch {
 						// Not valid JSON, ignore
 					}
@@ -2724,25 +2736,6 @@ export class ChatHubService {
 		};
 
 		return adapter as unknown as Response;
-	}
-
-	/**
-	 * Finalize a WebSocket stream and update the database
-	 */
-	private async finalizeWebSocketStream(
-		sessionId: string,
-		messageId: string,
-		content: string,
-		status: ChatHubMessageStatus,
-	) {
-		// Update the message in the database
-		await this.messageRepository.updateChatMessage(messageId, {
-			content,
-			status,
-		});
-
-		// End the stream
-		await this.chatStreamService.endStream(sessionId, messageId, status);
 	}
 
 	/**

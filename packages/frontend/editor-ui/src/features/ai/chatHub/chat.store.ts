@@ -1047,7 +1047,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}
 
 	/**
-	 * Handle the end of a WebSocket stream
+	 * Handle the end of a WebSocket stream (individual message stream ends, but execution may continue)
 	 */
 	function handleWebSocketStreamEnd(data: {
 		sessionId: ChatSessionId;
@@ -1059,18 +1059,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		// Update the message status
 		updateMessage(sessionId, messageId, status);
 
-		// Clear streaming state if this is the current session
-		if (streaming.value?.sessionId === sessionId) {
-			const currentSessionId = streaming.value.sessionId;
-			streaming.value = undefined;
-
-			// Fetch updated conversation title
-			void fetchConversationTitle(currentSessionId);
-		}
+		// NOTE: Don't clear streaming state here - the execution may continue
+		// with more messages (e.g., tool calls). Streaming state is cleared
+		// by handleWebSocketExecutionEnd when the whole execution completes.
 	}
 
 	/**
-	 * Handle a WebSocket stream error
+	 * Handle a WebSocket stream error (individual message has an error)
 	 */
 	function handleWebSocketStreamError(data: {
 		sessionId: ChatSessionId;
@@ -1092,13 +1087,44 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 
 		updateMessage(sessionId, messageId, 'error', message.content);
 
+		// NOTE: Don't clear streaming state or show error toast here - the execution
+		// may continue with recovery. Errors are shown in handleWebSocketExecutionEnd.
+	}
+
+	/**
+	 * Handle execution begin (whole streaming session starts)
+	 */
+	function handleWebSocketExecutionBegin(data: { sessionId: ChatSessionId }) {
+		// For local streams, streaming.value is already set by sendMessage/editMessage/regenerate.
+		// For remote streams (from other clients), we don't set streaming state since
+		// we're not the one driving the conversation.
+
+		// Just ensure we don't have stale state for this session
+		if (streaming.value?.sessionId !== data.sessionId) {
+			// This is a remote stream - no action needed
+			return;
+		}
+		// For local streams, streaming.value is already set correctly
+	}
+
+	/**
+	 * Handle execution end (whole streaming session ends)
+	 */
+	function handleWebSocketExecutionEnd(data: {
+		sessionId: ChatSessionId;
+		status: 'success' | 'error' | 'cancelled';
+	}) {
+		const { sessionId, status } = data;
+
 		// Clear streaming state if this is the current session
 		if (streaming.value?.sessionId === sessionId) {
 			const currentSessionId = streaming.value.sessionId;
 			streaming.value = undefined;
 
-			// Show error toast
-			toast.showError(new Error(error), i18n.baseText('chatHub.error.unknown'));
+			// Show error toast if the execution failed
+			if (status === 'error') {
+				toast.showError(new Error('Execution failed'), i18n.baseText('chatHub.error.unknown'));
+			}
 
 			// Fetch updated conversation title
 			void fetchConversationTitle(currentSessionId);
@@ -1266,6 +1292,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		updateSessionModel,
 		deleteSession,
 		updateToolsInSession,
+		conversationsBySession,
 
 		/**
 		 * conversation
@@ -1298,6 +1325,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		/**
 		 * WebSocket streaming handlers
 		 */
+		handleWebSocketExecutionBegin,
+		handleWebSocketExecutionEnd,
 		handleWebSocketStreamBegin,
 		handleWebSocketStreamChunk,
 		handleWebSocketStreamEnd,

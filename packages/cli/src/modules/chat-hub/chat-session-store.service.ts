@@ -41,6 +41,14 @@ export interface StartStreamParams {
 	userId: string;
 }
 
+/**
+ * Parameters for starting a new execution
+ */
+export interface StartExecutionParams {
+	sessionId: ChatSessionId;
+	userId: string;
+}
+
 /** TTL for stream state in seconds */
 const STREAM_STATE_TTL = 60 * 5; // 5 minutes
 
@@ -71,13 +79,75 @@ export class ChatSessionStoreService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly redisClientService: RedisClientService,
 	) {
-		this.logger = this.logger.scoped('scaling');
+		this.logger = this.logger.scoped('chat-hub');
 		this.useRedis = this.instanceSettings.isMultiMain || this.executionsConfig.mode === 'queue';
 		this.redisPrefix = `${this.globalConfig.redis.prefix}:chat-stream:`;
 
 		if (this.useRedis) {
 			this.redisClient = this.redisClientService.createClient({ type: 'subscriber(n8n)' });
 		}
+	}
+
+	/**
+	 * Start tracking a new execution (can contain multiple messages)
+	 */
+	async startExecution(params: StartExecutionParams): Promise<void> {
+		const { sessionId, userId } = params;
+
+		const state: StreamState = {
+			sessionId,
+			messageId: '', // Will be set when first message starts
+			userId,
+			sequenceNumber: 0,
+			startedAt: Date.now(),
+		};
+
+		if (this.useRedis) {
+			await this.setRedisState(sessionId, state);
+			await this.setRedisChunks(sessionId, []);
+		} else {
+			this.memoryStore.set(sessionId, state);
+			this.chunkBuffer.set(sessionId, []);
+			this.scheduleCleanup(sessionId);
+		}
+
+		this.logger.debug(`Started execution for session ${sessionId}`);
+	}
+
+	/**
+	 * End an execution and clean up state
+	 */
+	async endExecution(sessionId: ChatSessionId): Promise<void> {
+		if (this.useRedis) {
+			await this.deleteRedisState(sessionId);
+			await this.deleteRedisChunks(sessionId);
+		} else {
+			this.memoryStore.delete(sessionId);
+			this.chunkBuffer.delete(sessionId);
+			this.cancelCleanup(sessionId);
+		}
+
+		this.logger.debug(`Ended execution for session ${sessionId}`);
+	}
+
+	/**
+	 * Set the current message ID being streamed
+	 */
+	async setCurrentMessage(sessionId: ChatSessionId, messageId: ChatMessageId): Promise<void> {
+		if (this.useRedis) {
+			const state = await this.getRedisState(sessionId);
+			if (state) {
+				state.messageId = messageId;
+				await this.setRedisState(sessionId, state);
+			}
+		} else {
+			const state = this.memoryStore.get(sessionId);
+			if (state) {
+				state.messageId = messageId;
+			}
+		}
+
+		this.logger.debug(`Set current message for session ${sessionId} to ${messageId}`);
 	}
 
 	/**

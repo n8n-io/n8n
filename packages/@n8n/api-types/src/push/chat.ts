@@ -114,11 +114,48 @@ export type ChatMessageEdited = {
 };
 
 /**
- * Union type of AI stream-related push messages
+ * Sent when a chat execution begins (can contain multiple messages, e.g., with tool calls)
+ */
+export type ChatExecutionBegin = {
+	type: 'chatExecutionBegin';
+	data: {
+		/** Unique identifier for the chat session */
+		sessionId: ChatSessionId;
+		/** Timestamp when execution started */
+		timestamp: number;
+	};
+};
+
+/**
+ * Sent when a chat execution ends (all messages have been sent)
+ */
+export type ChatExecutionEnd = {
+	type: 'chatExecutionEnd';
+	data: {
+		/** Unique identifier for the chat session */
+		sessionId: ChatSessionId;
+		/** Final status of the execution */
+		status: 'success' | 'error' | 'cancelled';
+		/** Timestamp when execution ended */
+		timestamp: number;
+	};
+};
+
+/**
+ * Union type of AI stream-related push messages (message level)
  */
 export type ChatStreamEvent = ChatStreamBegin | ChatStreamChunk | ChatStreamEnd | ChatStreamError;
 
 /**
+ * Union type of execution-level push messages
+ */
+export type ChatExecutionEvent = ChatExecutionBegin | ChatExecutionEnd;
+
+/**
  * Union type of all chat push messages
  */
-export type ChatStreamPushMessage = ChatStreamEvent | ChatHumanMessageCreated | ChatMessageEdited;
+export type ChatStreamPushMessage =
+	| ChatStreamEvent
+	| ChatExecutionEvent
+	| ChatHumanMessageCreated
+	| ChatMessageEdited;
