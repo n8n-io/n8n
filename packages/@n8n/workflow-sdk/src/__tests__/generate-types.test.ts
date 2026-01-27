@@ -2377,55 +2377,67 @@ describe('generate-types', () => {
 		});
 
 		describe('generateDiscriminatorFile', () => {
-			it('should generate operation file for resource/operation combo', () => {
+			it('should generate self-contained operation file for resource/operation combo', () => {
 				const combo = { resource: 'ticket', operation: 'get' };
 				const props = generateTypes.getPropertiesForCombination(mockFreshserviceNode, combo);
 
+				// New signature: importDepth instead of sharedImportPath
 				const content = generateTypes.generateDiscriminatorFile(
 					mockFreshserviceNode,
 					1,
 					combo,
 					props,
 					undefined,
-					'./_shared',
+					6, // import depth for nested files (v1/resource_ticket/operation_get.ts)
 				);
 
 				// Should have header with discriminator info
 				expect(content).toContain('Discriminator: resource=ticket, operation=get');
 
-				// Should import from _shared
-				expect(content).toContain("from './_shared'");
-				expect(content).toContain('FreshserviceV1NodeBase');
+				// Should import DIRECTLY from base (not from _shared)
+				expect(content).toContain("from '../../../../../../base'");
+				expect(content).not.toContain("from '../_shared'");
+				expect(content).not.toContain("from './_shared'");
 
 				// Should have config type with discriminators
 				expect(content).toContain('FreshserviceV1TicketGetConfig');
 				expect(content).toContain("resource: 'ticket'");
 				expect(content).toContain("operation: 'get'");
 
-				// Should have node type
+				// Should have node type with inlined fields (not extending NodeBase)
 				expect(content).toContain('FreshserviceV1TicketGetNode');
-				expect(content).toContain('FreshserviceV1NodeBase &');
+				expect(content).toContain("type: 'n8n-nodes-base.freshservice'");
+				expect(content).toContain('version: 1');
+				expect(content).not.toContain('FreshserviceV1NodeBase');
 			});
 
-			it('should generate mode file for single discriminator', () => {
+			it('should generate self-contained mode file for single discriminator', () => {
 				const combo = { mode: 'runOnceForAllItems' };
 				const props = generateTypes.getPropertiesForCombination(mockCodeNode, combo);
 
+				// New signature: importDepth instead of sharedImportPath
 				const content = generateTypes.generateDiscriminatorFile(
 					mockCodeNode,
 					2,
 					combo,
 					props,
 					undefined,
-					'./_shared',
+					5, // import depth for flat files (v2/mode_run_once_for_all_items.ts)
 				);
+
+				// Should import DIRECTLY from base
+				expect(content).toContain("from '../../../../../base'");
+				expect(content).not.toContain("from './_shared'");
 
 				// Should have config type
 				expect(content).toContain('CodeV2RunOnceForAllItemsConfig');
 				expect(content).toContain("mode: 'runOnceForAllItems'");
 
-				// Should have node type
+				// Should have node type with inlined fields
 				expect(content).toContain('CodeV2RunOnceForAllItemsNode');
+				expect(content).toContain("type: 'n8n-nodes-base.code'");
+				expect(content).toContain('version: 2');
+				expect(content).not.toContain('CodeV2NodeBase');
 			});
 
 			it('should include output type when schema is provided', () => {
@@ -2445,7 +2457,7 @@ describe('generate-types', () => {
 					combo,
 					props,
 					schema,
-					'./_shared',
+					6,
 				);
 
 				// Should have output type
@@ -2455,6 +2467,72 @@ describe('generate-types', () => {
 
 				// Node type should reference output
 				expect(content).toContain('output?: FreshserviceV1TicketGetOutput');
+			});
+
+			it('should inline credentials interface when node has credentials', () => {
+				const combo = { resource: 'ticket', operation: 'get' };
+				const props = generateTypes.getPropertiesForCombination(mockFreshserviceNode, combo);
+
+				const content = generateTypes.generateDiscriminatorFile(
+					mockFreshserviceNode,
+					1,
+					combo,
+					props,
+					undefined,
+					6,
+				);
+
+				// Should have inline credentials interface
+				expect(content).toContain('interface Credentials');
+				// freshserviceApi is marked as required: true in the mock, so no ? mark
+				expect(content).toContain('freshserviceApi: CredentialReference');
+
+				// Node type should reference credentials (credentials field itself is always optional)
+				expect(content).toContain('credentials?: Credentials');
+			});
+
+			it('should inline helper types when properties need them', () => {
+				// Create a mock node with assignmentCollection property
+				const mockNodeWithAssignment: NodeTypeDescription = {
+					name: 'n8n-nodes-base.set',
+					displayName: 'Set',
+					group: ['transform'],
+					version: 3,
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [
+						{
+							displayName: 'Mode',
+							name: 'mode',
+							type: 'options',
+							options: [{ name: 'Manual', value: 'manual' }],
+							default: 'manual',
+						},
+						{
+							displayName: 'Fields',
+							name: 'assignments',
+							type: 'assignmentCollection',
+							default: {},
+							displayOptions: { show: { mode: ['manual'] } },
+						},
+					],
+				};
+
+				const combo = { mode: 'manual' };
+				const props = generateTypes.getPropertiesForCombination(mockNodeWithAssignment, combo);
+
+				const content = generateTypes.generateDiscriminatorFile(
+					mockNodeWithAssignment,
+					3,
+					combo,
+					props,
+					undefined,
+					5,
+				);
+
+				// Should have inline helper type definition
+				expect(content).toContain('type AssignmentCollectionValue');
+				expect(content).toContain('assignments: Array<');
 			});
 		});
 
@@ -2507,13 +2585,13 @@ describe('generate-types', () => {
 		});
 
 		describe('generateSplitVersionIndexFile', () => {
-			it('should generate version index for resource/operation pattern', () => {
+			it('should generate version index for resource/operation pattern without _shared re-export', () => {
 				const combinations = generateTypes.extractDiscriminatorCombinations(mockFreshserviceNode);
 				const tree = generateTypes.buildDiscriminatorTree(combinations);
 				const content = generateTypes.generateSplitVersionIndexFile(mockFreshserviceNode, 1, tree);
 
-				// Should re-export shared
-				expect(content).toContain("export * from './_shared'");
+				// Should NOT re-export from _shared (removed)
+				expect(content).not.toContain("export * from './_shared'");
 
 				// Should re-export resource directories
 				expect(content).toContain("export * from './resource_ticket'");
@@ -2525,13 +2603,13 @@ describe('generate-types', () => {
 				expect(content).toContain('FreshserviceV1AgentNode');
 			});
 
-			it('should generate version index for single discriminator pattern', () => {
+			it('should generate version index for single discriminator pattern without _shared re-export', () => {
 				const combinations = generateTypes.extractDiscriminatorCombinations(mockCodeNode);
 				const tree = generateTypes.buildDiscriminatorTree(combinations);
 				const content = generateTypes.generateSplitVersionIndexFile(mockCodeNode, 2, tree);
 
-				// Should re-export shared
-				expect(content).toContain("export * from './_shared'");
+				// Should NOT re-export from _shared (removed)
+				expect(content).not.toContain("export * from './_shared'");
 
 				// Should re-export mode files
 				expect(content).toContain("export * from './mode_run_once_for_all_items'");
@@ -2543,16 +2621,15 @@ describe('generate-types', () => {
 		});
 
 		describe('planSplitVersionFiles', () => {
-			it('should plan correct file structure for resource/operation node', () => {
+			it('should plan correct file structure for resource/operation node without _shared.ts', () => {
 				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
 
-				// Should have _shared.ts
-				expect(plan.has('_shared.ts')).toBe(true);
-				expect(plan.get('_shared.ts')).toContain('FreshserviceV1NodeBase');
+				// Should NOT have _shared.ts (removed)
+				expect(plan.has('_shared.ts')).toBe(false);
 
-				// Should have version index
+				// Should have version index without _shared re-export
 				expect(plan.has('index.ts')).toBe(true);
-				expect(plan.get('index.ts')).toContain("export * from './_shared'");
+				expect(plan.get('index.ts')).not.toContain("export * from './_shared'");
 
 				// Should have resource directories with index files
 				expect(plan.has('resource_ticket/index.ts')).toBe(true);
@@ -2573,16 +2650,15 @@ describe('generate-types', () => {
 				expect(ticketGetContent).toContain('FreshserviceV1TicketGetNode');
 			});
 
-			it('should plan correct file structure for single discriminator node (mode)', () => {
+			it('should plan correct file structure for single discriminator node (mode) without _shared.ts', () => {
 				const plan = generateTypes.planSplitVersionFiles(mockCodeNode, 2);
 
-				// Should have _shared.ts
-				expect(plan.has('_shared.ts')).toBe(true);
-				expect(plan.get('_shared.ts')).toContain('CodeV2NodeBase');
+				// Should NOT have _shared.ts (removed)
+				expect(plan.has('_shared.ts')).toBe(false);
 
-				// Should have version index
+				// Should have version index without _shared re-export
 				expect(plan.has('index.ts')).toBe(true);
-				expect(plan.get('index.ts')).toContain("export * from './_shared'");
+				expect(plan.get('index.ts')).not.toContain("export * from './_shared'");
 
 				// Should have mode files (flat, not nested)
 				expect(plan.has('mode_run_once_for_all_items.ts')).toBe(true);
@@ -2598,17 +2674,29 @@ describe('generate-types', () => {
 				expect([...plan.keys()].some((k) => k.startsWith('resource_'))).toBe(false);
 			});
 
-			it('should use correct import paths in discriminator files', () => {
+			it('should generate self-contained discriminator files that import from base', () => {
 				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
 
-				// Operation files should import from parent _shared
+				// Operation files should import DIRECTLY from base (not _shared)
 				const ticketGetContent = plan.get('resource_ticket/operation_get.ts');
-				expect(ticketGetContent).toContain("from '../_shared'");
+				expect(ticketGetContent).toContain("from '../../../../../../base'");
+				expect(ticketGetContent).not.toContain("from '../_shared'");
 
-				// Mode files should import from sibling _shared
+				// Mode files should import DIRECTLY from base (not _shared)
 				const codePlan = generateTypes.planSplitVersionFiles(mockCodeNode, 2);
 				const modeContent = codePlan.get('mode_run_once_for_all_items.ts');
-				expect(modeContent).toContain("from './_shared'");
+				expect(modeContent).toContain("from '../../../../../base'");
+				expect(modeContent).not.toContain("from './_shared'");
+			});
+
+			it('should inline node type fields instead of using NodeBase', () => {
+				const plan = generateTypes.planSplitVersionFiles(mockFreshserviceNode, 1);
+
+				// Operation files should have inline node type
+				const ticketGetContent = plan.get('resource_ticket/operation_get.ts');
+				expect(ticketGetContent).toContain("type: 'n8n-nodes-base.freshservice'");
+				expect(ticketGetContent).toContain('version: 1');
+				expect(ticketGetContent).not.toContain('FreshserviceV1NodeBase');
 			});
 		});
 	});

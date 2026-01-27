@@ -1687,11 +1687,12 @@ export function generateDiscriminatorFile(
 	combo: DiscriminatorCombination,
 	props: NodeProperty[],
 	schema?: JsonSchema,
-	sharedImportPath: string = './_shared',
+	importDepth: number = 5,
 ): string {
 	const prefix = getPackagePrefix(node.name);
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
 	const versionSuffix = versionToTypeName(version);
+	const isTrigger = isTriggerNode(node);
 
 	// Build type name from discriminator values
 	const comboValues = Object.entries(combo)
@@ -1700,7 +1701,6 @@ export function generateDiscriminatorFile(
 	const configName = `${nodeName}${versionSuffix}${comboValues.join('')}Config`;
 	const outputTypeName = `${nodeName}${versionSuffix}${comboValues.join('')}Output`;
 	const nodeTypeName = `${nodeName}${versionSuffix}${comboValues.join('')}Node`;
-	const baseTypeName = `${nodeName}${versionSuffix}NodeBase`;
 
 	const lines: string[] = [];
 
@@ -1719,22 +1719,76 @@ export function generateDiscriminatorFile(
 	lines.push('// @ts-nocheck - Generated file may have unused imports');
 	lines.push('');
 
-	// Imports from shared file
-	const sharedImports: string[] = ['Expression', 'NodeConfig', baseTypeName];
-
 	// Check what helper types we need
 	const needsResourceLocator = props.some((p) => p.type === 'resourceLocator');
 	const needsFilter = props.some((p) => p.type === 'filter');
 	const needsAssignment = props.some((p) => p.type === 'assignmentCollection');
 	const needsIDataObject = props.some((p) => p.type === 'json');
+	const needsCredentialReference = node.credentials && node.credentials.length > 0;
 
-	if (needsResourceLocator) sharedImports.push('ResourceLocatorValue');
-	if (needsFilter) sharedImports.push('FilterValue');
-	if (needsAssignment) sharedImports.push('AssignmentCollectionValue');
-	if (needsIDataObject) sharedImports.push('IDataObject');
+	// Build imports directly from base (self-contained, no _shared.ts)
+	const basePath = '../'.repeat(importDepth) + 'base';
+	const baseImports: string[] = ['Expression', 'NodeConfig'];
+	if (needsCredentialReference) baseImports.push('CredentialReference');
+	if (needsIDataObject) baseImports.push('IDataObject');
 
-	lines.push(`import type { ${sharedImports.join(', ')} } from '${sharedImportPath}';`);
+	lines.push(`import type { ${baseImports.join(', ')} } from '${basePath}';`);
 	lines.push('');
+
+	// Inline helper types (only the ones needed)
+	if (needsResourceLocator || needsFilter || needsAssignment) {
+		lines.push('// Helper types for special n8n fields');
+		if (needsResourceLocator) {
+			lines.push(
+				'type ResourceLocatorValue = { __rl: true; mode: string; value: string; cachedResultName?: string };',
+			);
+		}
+		if (needsFilter) {
+			lines.push(
+				'type FilterValue = { conditions: Array<{ leftValue: unknown; operator: { type: string; operation: string }; rightValue: unknown }> };',
+			);
+		}
+		if (needsAssignment) {
+			lines.push(
+				'type AssignmentCollectionValue = { assignments: Array<{ id: string; name: string; value: unknown; type: string }> };',
+			);
+		}
+		lines.push('');
+	}
+
+	// Inline credentials interface (if node has credentials)
+	if (node.credentials && node.credentials.length > 0) {
+		lines.push('// ' + '='.repeat(75));
+		lines.push('// Credentials');
+		lines.push('// ' + '='.repeat(75));
+		lines.push('');
+		lines.push('interface Credentials {');
+		const seenCreds = new Set<string>();
+		for (const cred of node.credentials) {
+			if (seenCreds.has(cred.name)) continue;
+			seenCreds.add(cred.name);
+			const optional = !cred.required ? '?' : '';
+			lines.push(`\t${cred.name}${optional}: CredentialReference;`);
+		}
+
+		// Add generic auth credentials if node supports genericAuthType
+		const hasGenericAuthType = node.properties.some(
+			(p) => p.name === 'genericAuthType' && p.type === 'credentialsSelect',
+		);
+		if (hasGenericAuthType) {
+			lines.push(
+				`\t/** Generic auth credentials - set the 'genericAuthType' config parameter to select which one to use */`,
+			);
+			for (const credName of GENERIC_AUTH_TYPE_VALUES) {
+				if (!seenCreds.has(credName)) {
+					seenCreds.add(credName);
+					lines.push(`\t${credName}?: CredentialReference;`);
+				}
+			}
+		}
+		lines.push('}');
+		lines.push('');
+	}
 
 	// Find description for JSDoc from discriminator option
 	let description: string | undefined;
@@ -1792,13 +1846,21 @@ export function generateDiscriminatorFile(
 		lines.push('');
 	}
 
-	// Node type
+	// Node type (inline, not extending NodeBase)
 	lines.push('// ' + '='.repeat(75));
 	lines.push('// Node Type');
 	lines.push('// ' + '='.repeat(75));
 	lines.push('');
 
-	lines.push(`export type ${nodeTypeName} = ${baseTypeName} & {`);
+	lines.push(`export type ${nodeTypeName} = {`);
+	lines.push(`\ttype: '${node.name}';`);
+	lines.push(`\tversion: ${version};`);
+	if (node.credentials && node.credentials.length > 0) {
+		lines.push('\tcredentials?: Credentials;');
+	}
+	if (isTrigger) {
+		lines.push('\tisTrigger: true;');
+	}
 	lines.push(`\tconfig: NodeConfig<${configName}>;`);
 	if (schema) {
 		lines.push(`\toutput?: ${outputTypeName};`);
@@ -1888,12 +1950,8 @@ export function generateSplitVersionIndexFile(
 
 	lines.push('/**');
 	lines.push(` * ${node.displayName} Node - Version ${version}`);
-	lines.push(' * Re-exports shared types and all discriminator combinations.');
+	lines.push(' * Re-exports all discriminator combinations.');
 	lines.push(' */');
-	lines.push('');
-
-	// Re-export shared types
-	lines.push("export * from './_shared';");
 	lines.push('');
 
 	// Collect all node type names for the union
@@ -1970,8 +2028,7 @@ export function planSplitVersionFiles(
 	const combinations = extractDiscriminatorCombinations(node);
 	const tree = buildDiscriminatorTree(combinations);
 
-	// Generate _shared.ts
-	files.set('_shared.ts', generateSharedFile(node, version));
+	// No _shared.ts - each discriminator file is self-contained
 
 	if (tree.type === 'resource_operation' && tree.resources) {
 		// Resource/operation pattern: nested directories
@@ -1988,15 +2045,8 @@ export function planSplitVersionFiles(
 				const fileName = `operation_${toSnakeCase(operation)}.ts`;
 				const filePath = `${resourceDir}/${fileName}`;
 
-				// Import path goes up one level from resource dir to version dir
-				const content = generateDiscriminatorFile(
-					node,
-					version,
-					combo,
-					props,
-					undefined,
-					'../_shared',
-				);
+				// Import depth: 6 levels deep (node/version/resource_x/operation.ts -> base)
+				const content = generateDiscriminatorFile(node, version, combo, props, undefined, 6);
 				files.set(filePath, content);
 			}
 
@@ -2016,15 +2066,8 @@ export function planSplitVersionFiles(
 			const props = getPropertiesForCombination(nodeForCombination, combo);
 			const fileName = `${discName}_${toSnakeCase(value)}.ts`;
 
-			// Import path is sibling in same directory
-			const content = generateDiscriminatorFile(
-				node,
-				version,
-				combo,
-				props,
-				undefined,
-				'./_shared',
-			);
+			// Import depth: 5 levels deep (node/version/mode.ts -> base)
+			const content = generateDiscriminatorFile(node, version, combo, props, undefined, 5);
 			files.set(fileName, content);
 		}
 	}
