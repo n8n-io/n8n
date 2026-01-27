@@ -3873,7 +3873,7 @@ describe('useCanvasOperations', () => {
 				createNodeActive: false,
 			});
 			expect(nodeCreatorStore.setShowScrim).toHaveBeenCalledWith(false);
-			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('workflow-id');
+			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith(workflowId);
 			expect(workflowsStore.resetWorkflow).toHaveBeenCalled();
 			expect(resetStateSpy).toHaveBeenCalled();
 			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
