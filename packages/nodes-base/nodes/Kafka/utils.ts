@@ -9,13 +9,18 @@ import type {
 import { logLevel } from 'kafkajs';
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 import type { Logger, ITriggerFunctions, IDataObject, IRun } from 'n8n-workflow';
-import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+
+// Default delay in milliseconds before retrying after a failed offset resolution.
+// This prevents rapid retry loops that could overwhelm the Kafka broker
+const DEFAULT_ERROR_RETRY_DELAY_MS = 5000;
 
 export interface KafkaTriggerOptions {
 	allowAutoTopicCreation?: boolean;
 	autoCommitThreshold?: number;
 	autoCommitInterval?: number;
 	batchSize?: number;
+	errorRetryDelay?: number;
 	fetchMaxBytes?: number;
 	fetchMinBytes?: number;
 	heartbeatInterval?: number;
@@ -30,13 +35,23 @@ export interface KafkaTriggerOptions {
 	sessionTimeout?: number;
 }
 
+interface KafkaCredentials {
+	clientId: string;
+	brokers: string;
+	ssl: boolean;
+	authentication: boolean;
+	username?: string;
+	password?: string;
+	saslMechanism?: 'plain' | 'scram-sha-256' | 'scram-sha-512';
+}
+
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
 export async function createConfig(ctx: ITriggerFunctions) {
-	const credentials = await ctx.getCredentials('kafka');
-	const clientId = credentials.clientId as string;
-	const brokers = ((credentials.brokers as string) ?? '').split(',').map((item) => item.trim());
-	const ssl = credentials.ssl as boolean;
+	const credentials = (await ctx.getCredentials('kafka')) as KafkaCredentials;
+	const clientId = credentials.clientId;
+	const brokers = (credentials.brokers ?? '').split(',').map((item) => item.trim());
+	const ssl = credentials.ssl;
 
 	const config: KafkaConfig = {
 		clientId,
@@ -45,7 +60,7 @@ export async function createConfig(ctx: ITriggerFunctions) {
 		logLevel: logLevel.ERROR,
 	};
 
-	if (credentials.authentication === true) {
+	if (credentials.authentication) {
 		if (!(credentials.username && credentials.password)) {
 			throw new NodeOperationError(
 				ctx.getNode(),
@@ -242,6 +257,7 @@ export function configureDataEmitter(
 ) {
 	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
 	const mode = getResolveOffsetMode(ctx, options, nodeVersion);
+	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
 	if (mode === 'immediately') {
 		return async (dataArray: IDataObject[]) => {
@@ -292,8 +308,9 @@ export function configureDataEmitter(
 			}
 
 			return { success: true };
-		} catch (error) {
-			await sleep(5000);
+		} catch (e) {
+			await sleep(errorRetryDelay);
+			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });
 			return { success: false };
 		}

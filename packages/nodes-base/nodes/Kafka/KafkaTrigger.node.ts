@@ -89,7 +89,7 @@ export class KafkaTrigger implements INodeType {
 					{
 						name: 'On Execution Success',
 						value: 'onSuccess',
-						description: 'Resolve offset only if execution statue equlas success',
+						description: 'Resolve offset only if execution status equals success',
 					},
 					{
 						name: 'On Allowed Execution Statuses',
@@ -188,7 +188,7 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to allow sending message to a previously non exisiting topic',
+						description: 'Whether to allow sending message to a previously non existing topic',
 					},
 					{
 						displayName: 'Auto Commit Threshold',
@@ -315,6 +315,26 @@ export class KafkaTrigger implements INodeType {
 						description: 'The maximum time allowed for a consumer to join the group',
 					},
 					{
+						displayName: 'Retry Delay on Error',
+						name: 'errorRetryDelay',
+						type: 'number',
+						default: 5000,
+						description:
+							'Delay in milliseconds before retrying after a failed offset resolution. This prevents rapid retry loops that could overwhelm the Kafka broker.',
+						hint: 'Value in milliseconds',
+						typeOptions: {
+							minValue: 1000,
+						},
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.2 } }],
+							},
+							hide: {
+								'/resolveOffset': ['immediately'],
+							},
+						},
+					},
+					{
 						displayName: 'Session Timeout',
 						name: 'sessionTimeout',
 						type: 'number',
@@ -350,7 +370,7 @@ export class KafkaTrigger implements INodeType {
 		const batchSize = options.batchSize ?? 1;
 		const partitionsConsumedConcurrently = options.partitionsConsumedConcurrently || undefined;
 
-		const dataEmmiter = configureDataEmitter(this, options, nodeVersion);
+		const dataEmitter = configureDataEmitter(this, options, nodeVersion);
 
 		const startConsumer = async () => {
 			try {
@@ -362,7 +382,7 @@ export class KafkaTrigger implements INodeType {
 					partitionsConsumedConcurrently,
 					...getAutoCommitSettings(options, nodeVersion),
 					eachBatch: async ({ batch, resolveOffset, heartbeat }: EachBatchPayload) => {
-						// avoid throwwing error in the callback, as it leads to consumer stop, disconnect and crash
+						// avoid throwing error in the callback, as it leads to consumer stop, disconnect and crash
 						const messages = batch.messages;
 						const messageTopic = batch.topic;
 
@@ -373,7 +393,7 @@ export class KafkaTrigger implements INodeType {
 								chunk.map(async (message) => await processMessage(message, messageTopic)),
 							);
 
-							const result = await dataEmmiter(processedData);
+							const result = await dataEmitter(processedData);
 
 							if (!result.success) {
 								await heartbeat();
