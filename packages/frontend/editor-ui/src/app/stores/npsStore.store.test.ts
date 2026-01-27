@@ -405,4 +405,15 @@ describe('fetchPromptsData caching', () => {
 		expect(getPromptsData).not.toHaveBeenCalled();
 		expect(localStorage.getItem(CACHE_KEY)).toBeNull();
 	});
+
+	it('does not cache when showContactPrompt is true', async () => {
+		const promptsWithContactPrompt: N8nPrompts = { showContactPrompt: true };
+		getPromptsData.mockResolvedValue(promptsWithContactPrompt);
+
+		await npsSurveyStore.fetchPromptsData();
+
+		expect(getPromptsData).toHaveBeenCalledWith(INSTANCE_ID, USER_ID);
+		expect(npsSurveyStore.promptsData).toEqual(promptsWithContactPrompt);
+		expect(localStorage.getItem(CACHE_KEY)).toBeNull();
+	});
 });

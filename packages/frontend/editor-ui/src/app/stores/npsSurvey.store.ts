@@ -197,7 +197,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 					settingsStore.settings.instanceId,
 					currentUserId.value,
 				);
-				if (promptsData.value) {
+				if (promptsData.value && !promptsData.value.showContactPrompt) {
 					setCachedPromptsData(promptsData.value);
 				}
 			} catch (e) {
