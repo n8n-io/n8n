@@ -44,6 +44,7 @@ import { reactionFields, reactionOperations } from './ReactionDescription';
 import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
+import { parseSlackTimestamp } from './utils';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
 import {
@@ -554,10 +555,10 @@ export class SlackV2 implements INodeType {
 							qs.inclusive = filters.inclusive as boolean;
 						}
 						if (filters.latest) {
-							qs.latest = new Date(filters.latest as string).getTime() / 1000;
+							qs.latest = parseSlackTimestamp(filters.latest as string);
 						}
 						if (filters.oldest) {
-							qs.oldest = new Date(filters.oldest as string).getTime() / 1000;
+							qs.oldest = parseSlackTimestamp(filters.oldest as string);
 						}
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
@@ -735,10 +736,10 @@ export class SlackV2 implements INodeType {
 							qs.inclusive = filters.inclusive as boolean;
 						}
 						if (filters.latest) {
-							qs.latest = new Date(filters.latest as string).getTime() / 1000;
+							qs.latest = parseSlackTimestamp(filters.latest as string);
 						}
 						if (filters.oldest) {
-							qs.oldest = new Date(filters.oldest as string).getTime() / 1000;
+							qs.oldest = parseSlackTimestamp(filters.oldest as string);
 						}
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(

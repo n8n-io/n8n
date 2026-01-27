@@ -2,6 +2,33 @@ import { type MockProxy, mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { getTarget, createSendAndWaitMessageBody } from '../../V2/GenericFunctions';
+import { parseSlackTimestamp } from '../../V2/utils';
+
+describe('parseSlackTimestamp', () => {
+	it('should return Slack timestamp as-is when it is a numeric string', () => {
+		expect(parseSlackTimestamp('1663233118.856619')).toBe('1663233118.856619');
+	});
+
+	it('should return integer timestamp as-is when it is a numeric string', () => {
+		expect(parseSlackTimestamp('1663233118')).toBe('1663233118');
+	});
+
+	it('should convert ISO date string to Unix timestamp', () => {
+		const isoDate = '2024-01-15T10:30:00.000Z';
+		const expectedTimestamp = new Date(isoDate).getTime() / 1000;
+		expect(parseSlackTimestamp(isoDate)).toBe(expectedTimestamp);
+	});
+
+	it('should convert date-only string to Unix timestamp', () => {
+		const dateString = '2024-01-15';
+		const expectedTimestamp = new Date(dateString).getTime() / 1000;
+		expect(parseSlackTimestamp(dateString)).toBe(expectedTimestamp);
+	});
+
+	it('should return original value for invalid date strings', () => {
+		expect(parseSlackTimestamp('invalid-date')).toBe('invalid-date');
+	});
+});
 
 describe('Slack Utility Functions', () => {
 	let mockExecuteFunctions: MockProxy<IExecuteFunctions>;
