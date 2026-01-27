@@ -44,6 +44,32 @@ const properties: INodeProperties[] = [
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 				description: "The fields of type 'attachment' that should be downloaded",
 			},
+			{
+				displayName: 'Return Fields by Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to return field values by field ID instead of field name. This is recommended to avoid your integration breaking if you rename Airtable fields.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Return Fields by Field ID',
+				name: 'returnFieldsByFieldId',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to return field values by field ID instead of field name. This is recommended to avoid your integration breaking if you rename Airtable fields.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 2.2 } }],
+					},
+				},
+			},
 		],
 	},
 ];
@@ -69,10 +95,14 @@ export async function execute(
 		let id;
 		try {
 			id = this.getNodeParameter('id', i) as string;
+			const options = this.getNodeParameter('options', i, {});
 
-			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`);
+			const qs: IDataObject = {};
+			if (options.returnFieldsByFieldId !== undefined) {
+				qs.returnFieldsByFieldId = options.returnFieldsByFieldId as boolean;
+			}
 
-			const options = this.getNodeParameter('options', 0, {});
+			const responseData = await apiRequest.call(this, 'GET', `${base}/${table}/${id}`, {}, qs);
 
 			if (options.downloadFields) {
 				const itemWithAttachments = await downloadRecordAttachments.call(
