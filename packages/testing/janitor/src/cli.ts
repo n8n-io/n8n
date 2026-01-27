@@ -49,35 +49,9 @@ import {
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
 import { toJSON, toConsole, printFixResults } from './core/reporter.js';
-import { RuleRunner } from './core/rule-runner.js';
 import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
-import { ApiPurityRule } from './rules/api-purity.rule.js';
-import { BoundaryProtectionRule } from './rules/boundary-protection.rule.js';
-import { DeadCodeRule } from './rules/dead-code.rule.js';
-import { DeduplicationRule } from './rules/deduplication.rule.js';
-import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
-import { ScopeLockdownRule } from './rules/scope-lockdown.rule.js';
-import { SelectorPurityRule } from './rules/selector-purity.rule.js';
-import { TestDataHygieneRule } from './rules/test-data-hygiene.rule.js';
+import { createDefaultRunner } from './index.js';
 import type { RunOptions } from './types.js';
-
-function createRunner(): RuleRunner {
-	const runner = new RuleRunner();
-
-	// Architecture rules
-	runner.registerRule(new BoundaryProtectionRule());
-	runner.registerRule(new ScopeLockdownRule());
-	runner.registerRule(new SelectorPurityRule());
-	runner.registerRule(new NoPageInFlowRule());
-	runner.registerRule(new ApiPurityRule());
-
-	// Code quality rules
-	runner.registerRule(new DeadCodeRule());
-	runner.registerRule(new DeduplicationRule());
-	runner.registerRule(new TestDataHygieneRule());
-
-	return runner;
-}
 
 async function loadConfig(configPath?: string): Promise<JanitorConfig> {
 	const cwd = process.cwd();
@@ -231,7 +205,7 @@ function runTcr(options: CliOptions): void {
 
 function runAnalyze(options: CliOptions): void {
 	const config = getConfig();
-	const runner = createRunner();
+	const runner = createDefaultRunner();
 
 	// Create project
 	const { project, root } = createProject(config.rootDir);
@@ -308,7 +282,7 @@ function runBaseline(options: CliOptions): void {
 	const config = getConfig();
 
 	// Create runner and project
-	const runner = createRunner();
+	const runner = createDefaultRunner();
 	const { project, root } = createProject(config.rootDir);
 
 	// Run full analysis (no file filter, no baseline filter)
@@ -372,7 +346,7 @@ async function main(): Promise<void> {
 	}
 
 	if (options.list) {
-		const runner = createRunner();
+		const runner = createDefaultRunner();
 		console.log('\nAvailable rules:\n');
 		for (const ruleId of runner.getRegisteredRules()) {
 			const fixable = runner.isRuleFixable(ruleId) ? ' [fixable]' : '';

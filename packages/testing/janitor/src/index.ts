@@ -90,6 +90,7 @@ export {
 	NoPageInFlowRule,
 	DeduplicationRule,
 	TestDataHygieneRule,
+	DuplicateLogicRule,
 } from './rules/index.js';
 
 export {
@@ -194,6 +195,7 @@ import { ApiPurityRule } from './rules/api-purity.rule.js';
 import { BoundaryProtectionRule } from './rules/boundary-protection.rule.js';
 import { DeadCodeRule } from './rules/dead-code.rule.js';
 import { DeduplicationRule } from './rules/deduplication.rule.js';
+import { DuplicateLogicRule } from './rules/duplicate-logic.rule.js';
 import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
 import { ScopeLockdownRule } from './rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from './rules/selector-purity.rule.js';
@@ -210,6 +212,7 @@ export function createDefaultRunner(): RuleRunner {
 	runner.registerRule(new DeadCodeRule());
 	runner.registerRule(new DeduplicationRule());
 	runner.registerRule(new TestDataHygieneRule());
+	runner.registerRule(new DuplicateLogicRule());
 	return runner;
 }
 

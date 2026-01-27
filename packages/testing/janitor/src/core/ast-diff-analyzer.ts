@@ -5,7 +5,7 @@
  * identifying exactly which methods were added, removed, or modified.
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -29,7 +29,7 @@ export interface FileDiffResult {
  * Get the git root directory
  */
 function getGitRoot(): string {
-	return execSync('git rev-parse --show-toplevel', {
+	return execFileSync('git', ['rev-parse', '--show-toplevel'], {
 		encoding: 'utf-8',
 	}).trim();
 }
@@ -46,7 +46,7 @@ function getGitFileContent(filePath: string, ref: string = 'HEAD'): string | nul
 		const gitRoot = getGitRoot();
 		const relativePath = path.relative(gitRoot, absolutePath);
 
-		return execSync(`git show ${ref}:${relativePath}`, {
+		return execFileSync('git', ['show', `${ref}:${relativePath}`], {
 			encoding: 'utf-8',
 			stdio: ['pipe', 'pipe', 'pipe'],
 		});

@@ -39,6 +39,7 @@ Static analysis for Playwright test architecture. Catches problems before they s
 | "Add a test for X" | New test following patterns | After writing, run janitor to verify architecture compliance. |
 | "Fix architecture drift" | Enforce layered architecture | Run `selector-purity` and `no-page-in-flow` rules. |
 | "Find dead code" | Remove unused methods | Run `dead-code` rule with `--fix --write` for auto-removal. |
+| "Find copy-paste code" | Detect duplicates | Run `duplicate-logic` rule to find structural duplicates. |
 | "This file is messy" | Targeted cleanup | Analyze specific file, fix issues, TCR to safely commit. |
 | "Refactor this page object" | Safe refactoring | Use TCR - changes commit if tests pass, revert if they fail. |
 | "What tests would break?" | Impact analysis | Run `impact` command before changing shared code. |
@@ -60,6 +61,7 @@ Tests → Flows/Composables → Page Objects → Components → Playwright API
 | `scope-lockdown` | Unscoped locators that escape their container |
 | `dead-code` | Unused public methods in page objects |
 | `deduplication` | Same selector defined in multiple files |
+| `duplicate-logic` | Copy-pasted code across tests/pages (AST fingerprinting) |
 
 ### Commands
 
