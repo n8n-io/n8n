@@ -504,3 +504,16 @@ export type RetrieverFn = typeof retriever;
 export type DocumentLoaderFn = typeof documentLoader;
 export type TextSplitterFn = typeof textSplitter;
 export type RerankerFn = typeof reranker;
+
+// =============================================================================
+// Aliases
+// =============================================================================
+
+/**
+ * Alias for embedding() - Creates an embedding subnode instance.
+ *
+ * This is a convenience alias for users who prefer the plural form.
+ * Functionally identical to embedding().
+ */
+export const embeddings = embedding;
+export type EmbeddingsFn = EmbeddingFn;

@@ -101,6 +101,7 @@ export {
 	tool,
 	outputParser,
 	embedding,
+	embeddings, // Alias for embedding()
 	vectorStore,
 	retriever,
 	documentLoader,

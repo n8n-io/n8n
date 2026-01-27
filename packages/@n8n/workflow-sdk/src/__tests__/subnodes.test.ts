@@ -149,6 +149,12 @@ describe('subnode factories', () => {
 		});
 	});
 
+	describe('embeddings()', () => {
+		it('should be an alias for embedding()', () => {
+			expect(subnodeBuilders.embeddings).toBe(subnodeBuilders.embedding);
+		});
+	});
+
 	describe('vectorStore()', () => {
 		it('should create a VectorStoreInstance with correct marker', () => {
 			const vs = subnodeBuilders.vectorStore({
