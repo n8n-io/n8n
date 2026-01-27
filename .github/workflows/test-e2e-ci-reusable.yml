@@ -123,7 +123,7 @@ jobs:
     name: 'Cleanup Docker Image'
     needs: [multi-main-e2e, multi-main-isolated]
     if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       packages: write
       contents: read
@@ -137,4 +137,11 @@ jobs:
       - name: Delete images from GHCR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/cleanup-ghcr-images.mjs --tag pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
+        run: |
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            echo "PR context: cleaning all images for PR ${{ github.event.pull_request.number }}"
+            node .github/scripts/cleanup-ghcr-images.mjs --pr ${{ github.event.pull_request.number }}
+          else
+            echo "Merge queue context: cleaning image pr--${{ github.run_id }}"
+            node .github/scripts/cleanup-ghcr-images.mjs --tag pr--${{ github.run_id }}
+          fi

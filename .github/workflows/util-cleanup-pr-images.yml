@@ -1,19 +1,14 @@
 name: 'Util: Cleanup PR Docker Images'
 
 on:
-  pull_request:
-    types: [closed]
   schedule:
     # Weekly cleanup: Sunday at 3 AM UTC
     - cron: '0 3 * * 0'
 
 jobs:
   cleanup:
-    name: 'Delete PR images'
-    # Skip for fork PRs (they don't have GHCR images)
-    # Always run on schedule
-    if: ${{ github.event_name == 'schedule' || !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-latest
+    name: 'Delete stale PR images'
+    runs-on: ubuntu-slim
     permissions:
       packages: write
       contents: read
@@ -21,20 +16,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          # On PR close, the PR branch may be deleted - use default branch
-          # On schedule, use the default ref
-          ref: ${{ github.event.repository.default_branch || github.ref }}
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false
 
-      - name: Delete images for closed PR
-        if: ${{ github.event_name == 'pull_request' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/cleanup-ghcr-images.mjs --pr ${{ github.event.pull_request.number }}
-
       - name: Delete stale PR images
-        if: ${{ github.event_name == 'schedule' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node .github/scripts/cleanup-ghcr-images.mjs --stale 7
