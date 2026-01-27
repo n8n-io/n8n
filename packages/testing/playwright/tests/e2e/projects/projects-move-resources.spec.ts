@@ -1,9 +1,9 @@
-import { test, expect } from '../../../fixtures/base';
 import {
 	INSTANCE_ADMIN_CREDENTIALS,
 	INSTANCE_MEMBER_CREDENTIALS,
 	INSTANCE_OWNER_CREDENTIALS,
 } from '../../../config/test-users';
+import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: { env: { TEST_ISOLATION: 'projects-move-resources' } } });
 

@@ -141,7 +141,7 @@ test.describe('Global credentials', () => {
 			n8n.credentials.cards
 				.getCredential('Global HTTP Header Cred')
 				.getByTestId('credential-global-badge'),
-		).not.toBeVisible();
+		).toBeHidden();
 	});
 
 	test('member should not see credential after global sharing removed', async ({ n8n }) => {
@@ -151,6 +151,6 @@ test.describe('Global credentials', () => {
 		await n8n.navigate.toCredentials();
 
 		// Verify credential is no longer visible to member
-		await expect(n8n.credentials.cards.getCredential('Global HTTP Header Cred')).not.toBeVisible();
+		await expect(n8n.credentials.cards.getCredential('Global HTTP Header Cred')).toBeHidden();
 	});
 });
