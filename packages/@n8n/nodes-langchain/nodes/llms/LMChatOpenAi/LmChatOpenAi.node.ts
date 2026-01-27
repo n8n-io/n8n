@@ -10,6 +10,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
 import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
@@ -748,6 +749,7 @@ export class LmChatOpenAi implements INodeType {
 		};
 
 		if (options.baseURL) {
+			checkDomainRestrictions(this, credentials, options.baseURL);
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
