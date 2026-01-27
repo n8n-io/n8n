@@ -29,11 +29,11 @@ import Modal from '@/app/components/Modal.vue';
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCallout,
 	N8nHeading,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
-	N8nNotice,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -477,11 +477,11 @@ onMounted(() => {
 				<N8nText bold size="medium">Additional changes to be pulled:</N8nText>
 				<N8nText size="small">{{ otherFilesText }}</N8nText>
 			</div>
-			<N8nNotice
+			<N8nCallout
 				v-if="hasDataTableConflicts"
 				theme="warning"
-				:compact="false"
-				:content="dataTableWarningContent"
+				class="mb-xs"
+				v-html="dataTableWarningContent"
 			/>
 			<div :class="$style.footer">
 				<N8nButton type="tertiary" class="mr-2xs" @click="close">
