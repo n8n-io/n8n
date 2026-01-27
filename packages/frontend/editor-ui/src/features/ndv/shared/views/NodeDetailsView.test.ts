@@ -43,6 +43,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
+	workflowsStore.workflowId = workflow.id;
 	workflowsStore.workflowDocumentById[workflow.id] = workflow;
 	workflowsStore.workflowObjectById[workflow.id] = createTestWorkflowObject(workflow);
 	workflowsStore.nodeMetadata[node.name] = { pristine: true };

@@ -1,4 +1,4 @@
-import { createTestNode } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import { SET_NODE_TYPE } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -48,7 +48,13 @@ describe('ExperimentalNodeDetailsDrawer', () => {
 		});
 
 		workflowsStore = useWorkflowsStore(pinia);
-		workflowsStore.setNodes(mockNodes);
+		const workflow = createTestWorkflow({
+			nodes: mockNodes,
+			connections: {},
+		});
+		workflowsStore.workflowId = workflow.id;
+		workflowsStore.workflowDocumentById[workflow.id] = workflow;
+		workflowsStore.workflowObjectById[workflow.id] = createTestWorkflowObject(workflow);
 		nodeTypesStore = useNodeTypesStore(pinia);
 		nodeTypesStore.setNodeTypes([
 			{
