@@ -322,4 +322,45 @@ describe('WorkflowsController', () => {
 			});
 		});
 	});
+
+	describe('share', () => {
+		it('should throw BadRequestError when workflow sharing is disabled', async () => {
+			controller.globalConfig = {
+				workflows: {
+					disableSharing: true,
+				},
+			} as any;
+
+			const mockRequest = mock<WorkflowRequest.Share>({
+				params: { workflowId: 'workflow-123' },
+				body: { shareWithIds: ['user-456'] },
+			});
+
+			await expect(controller.share(mockRequest)).rejects.toThrow(BadRequestError);
+			await expect(controller.share(mockRequest)).rejects.toThrow(
+				'Workflow sharing is disabled on this instance.',
+			);
+		});
+	});
+
+	describe('transfer', () => {
+		it('should throw BadRequestError when workflow sharing is disabled', async () => {
+			controller.globalConfig = {
+				workflows: {
+					disableSharing: true,
+				},
+			} as any;
+
+			const mockRequest = mock<AuthenticatedRequest>({
+				params: { workflowId: 'workflow-123' },
+			});
+
+			await expect(
+				controller.transfer(mockRequest, mock<Response>(), 'workflow-123', {} as any),
+			).rejects.toThrow(BadRequestError);
+			await expect(
+				controller.transfer(mockRequest, mock<Response>(), 'workflow-123', {} as any),
+			).rejects.toThrow('Workflow sharing is disabled on this instance.');
+		});
+	});
 });
