@@ -20,21 +20,32 @@ jobs:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
-      - name: Check installation permissions
+      - name: Check token permissions
         run: |
-          echo "=== App Installation Permissions ==="
-          gh api /installation --jq '.permissions' || echo "Could not fetch installation info"
+          echo "=== Method 1: Check via rate_limit headers ==="
+          curl -s -I -H "Authorization: Bearer $GH_TOKEN" \
+            https://api.github.com/repos/n8n-io/n8n | grep -iE "x-oauth-scopes|x-accepted-oauth-scopes|x-github-media-type" || true
 
           echo ""
-          echo "=== Does it have 'workflows' permission? ==="
-          WORKFLOWS=$(gh api /installation --jq '.permissions.workflows // "NOT SET"')
-          echo "workflows: $WORKFLOWS"
-
-          if [ "$WORKFLOWS" = "write" ]; then
-            echo "✅ Has workflows:write permission"
+          echo "=== Method 2: Try to list workflows (needs workflows:read) ==="
+          if gh api repos/n8n-io/n8n/actions/workflows --jq '.total_count' 2>/dev/null; then
+            echo "✅ Can read workflows"
           else
-            echo "❌ Missing workflows:write permission - this may cause push failures"
+            echo "❌ Cannot read workflows"
           fi
+
+          echo ""
+          echo "=== Method 3: Check token metadata ==="
+          # This shows what the token can access
+          gh api /user 2>/dev/null && echo "Token is user-based" || echo "Token is app-based (expected)"
+
+          echo ""
+          echo "=== Method 4: Try repos endpoint for this installation ==="
+          gh api /installation/repositories --jq '.total_count' 2>/dev/null || echo "Cannot access installation repos endpoint"
+
+          echo ""
+          echo "=== Method 5: Check app info ==="
+          gh api /app --jq '{name: .name, permissions: .permissions}' 2>/dev/null || echo "Cannot access /app endpoint"
         env:
           GH_TOKEN: ${{ steps.app_token.outputs.token }}
   # Test 1: Simple push from outdated.x (should reproduce the timeout)
