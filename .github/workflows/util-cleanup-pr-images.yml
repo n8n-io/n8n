@@ -7,7 +7,7 @@ on:
 
 jobs:
   cleanup:
-    name: 'Delete all PR images'
+    name: 'Delete stale PR images'
     runs-on: ubuntu-slim
     permissions:
       packages: write
@@ -19,7 +19,7 @@ jobs:
           sparse-checkout: .github/scripts
           sparse-checkout-cone-mode: false
 
-      - name: Delete all PR images
+      - name: Delete stale PR images
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node .github/scripts/cleanup-ghcr-images.mjs --all
+        run: node .github/scripts/cleanup-ghcr-images.mjs --stale 7

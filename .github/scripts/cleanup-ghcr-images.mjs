@@ -2,9 +2,15 @@
 /**
  * Cleanup GHCR images for n8n CI
  *
- * Usage:
- *   node cleanup-ghcr-images.mjs --pr <number>   # Delete all pr-{number}-* tags (early termination)
- *   node cleanup-ghcr-images.mjs --all           # Delete all pr-* images (parallel pagination)
+ * Modes:
+ *   --tag <tag>     Delete exact tag (merge queue cleanup - single image)
+ *   --pr <number>   Delete all pr-{number}-* tags (PR cleanup - all runs for a PR)
+ *   --stale <days>  Delete pr-* images older than N days (weekly scheduled cleanup)
+ *
+ * Context:
+ *   - PR runs use --pr to clean all images from failed/retried commits
+ *   - Merge queue runs use --tag since PR number isn't available (image tagged pr--{run_id})
+ *   - Weekly cron uses --stale to catch any orphaned images
  */
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -12,10 +18,16 @@ import { promisify } from 'node:util';
 const execAsync = promisify(exec);
 const ORG = 'n8n-io';
 const PACKAGES = ['n8n', 'runners'];
-const [mode, value] = process.argv.slice(2);
+const [mode, rawValue] = process.argv.slice(2);
 
-if (!['--pr', '--all'].includes(mode) || (mode === '--pr' && !value)) {
-	console.error('Usage: cleanup-ghcr-images.mjs --pr <number> | --all');
+if (!['--tag', '--pr', '--stale'].includes(mode) || !rawValue) {
+	console.error('Usage: cleanup-ghcr-images.mjs --tag <tag> | --pr <number> | --stale <days>');
+	process.exit(1);
+}
+
+const value = mode === '--stale' ? parseInt(rawValue, 10) : rawValue;
+if (mode === '--stale' && (isNaN(value) || value <= 0)) {
+	console.error('Error: --stale requires a positive number of days');
 	process.exit(1);
 }
 
@@ -44,6 +56,17 @@ const isPrImage = (v, prNum) => {
 	return prNum ? tags.some((t) => t.startsWith(`pr-${prNum}-`)) : tags.some((t) => t.startsWith('pr-'));
 };
 
+const isStale = (v, days) => {
+	const cutoff = Date.now() - days * 86400000;
+	return isPrImage(v) && new Date(v.created_at) < cutoff;
+};
+
+async function getVersionsForTag(pkg, tag) {
+	const batch = await fetchPage(pkg, 1);
+	const match = batch.find((v) => v.metadata?.container?.tags?.includes(tag));
+	return match ? [match] : [];
+}
+
 async function getVersionsForPr(pkg, prNumber) {
 	const versions = [];
 	let emptyPages = 0;
@@ -65,12 +88,19 @@ async function getVersionsForPr(pkg, prNumber) {
 	return versions;
 }
 
-async function getVersionsForAll(pkg) {
+async function getVersionsForStale(pkg, days) {
 	const versions = [];
+	const cutoff = Date.now() - days * 86400000;
+	// Use 2x cutoff as safety window for early termination
+	const earlyExitCutoff = Date.now() - days * 2 * 86400000;
+	let pagesWithoutPrImages = 0;
+
 	const firstPage = await fetchPage(pkg, 1);
 	if (!firstPage.length) return [];
 
-	versions.push(...firstPage.filter((v) => isPrImage(v)));
+	for (const v of firstPage) {
+		if (isStale(v, days)) versions.push(v);
+	}
 	if (firstPage.length < 100) return versions;
 
 	for (let page = 2; ; page += 10) {
@@ -80,8 +110,34 @@ async function getVersionsForAll(pkg) {
 		let done = false;
 		for (const batch of batches) {
 			if (!batch.length || batch.length < 100) done = true;
-			versions.push(...batch.filter((v) => isPrImage(v)));
-			if (!batch.length) break;
+
+			let hasPrImages = false;
+			for (const v of batch) {
+				if (isPrImage(v)) {
+					hasPrImages = true;
+					if (new Date(v.created_at) < cutoff) versions.push(v);
+				}
+			}
+
+			// Early termination: if we've gone through pages without finding
+			// any PR images and all items are older than 2x cutoff, we're past
+			// the PR image window
+			if (!hasPrImages) {
+				pagesWithoutPrImages++;
+				const oldestInBatch = batch[batch.length - 1];
+				if (
+					pagesWithoutPrImages >= 3 &&
+					oldestInBatch &&
+					new Date(oldestInBatch.created_at) < earlyExitCutoff
+				) {
+					console.log(`  Early termination at page ${page + batches.indexOf(batch)}`);
+					done = true;
+				}
+			} else {
+				pagesWithoutPrImages = 0;
+			}
+
+			if (!batch.length || done) break;
 		}
 		if (done) break;
 	}
@@ -95,7 +151,11 @@ for (const pkg of PACKAGES) {
 	let consecutiveErrors = 0;
 
 	const toDelete =
-		mode === '--pr' ? await getVersionsForPr(pkg, value) : await getVersionsForAll(pkg);
+		mode === '--tag'
+			? await getVersionsForTag(pkg, value)
+			: mode === '--pr'
+				? await getVersionsForPr(pkg, value)
+				: await getVersionsForStale(pkg, value);
 
 	if (!toDelete.length) {
 		console.log(`  No matching images found`);
