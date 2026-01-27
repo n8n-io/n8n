@@ -1437,5 +1437,50 @@ describe('Workflow Builder', () => {
 			// Trigger should connect to Switch
 			expect(json.connections[triggerNode.name]?.main[0]?.[0]?.node).toBe('Switch');
 		});
+
+		it('should include trigger node when using trigger.to(switch).onCase() directly in add()', () => {
+			// BUG: When trigger.to(switch).onCase() is passed to add(),
+			// the trigger node is lost because NodeChain.onCase() delegates to
+			// tail.onCase() which creates a new SwitchCaseBuilder without the chain context
+			const triggerNode = trigger({
+				type: 'n8n-nodes-base.webhook',
+				version: 2.1,
+				config: { name: 'Webhook Trigger' },
+			});
+			const switchNode = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.4,
+				config: { name: 'Route by Amount' },
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+			const case0 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Auto Approve' },
+			});
+			const case1 = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Manual Approve' },
+			});
+
+			// This pattern loses the trigger: trigger.to(switch).onCase()
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const switchBuilder = triggerNode.to(switchNode).onCase!(0, case0).onCase(1, case1) as any;
+			const wf = workflow('test', 'Test').add(switchBuilder);
+
+			const json = wf.toJSON();
+
+			// All 4 nodes should be present (trigger + switch + 2 cases)
+			expect(json.nodes).toHaveLength(4);
+			expect(json.nodes.map((n) => n.name)).toContain('Webhook Trigger');
+
+			// Trigger should connect to Switch
+			expect(json.connections['Webhook Trigger']).toBeDefined();
+			expect(json.connections['Webhook Trigger']!.main[0]![0]!.node).toBe('Route by Amount');
+
+			// Switch should connect to cases
+			expect(json.connections['Route by Amount']!.main[0]![0]!.node).toBe('Auto Approve');
+			expect(json.connections['Route by Amount']!.main[1]![0]!.node).toBe('Manual Approve');
+		});
 	});
 });

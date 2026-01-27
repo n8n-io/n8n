@@ -584,10 +584,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 					const mainConns = graphNode.connections.get('main') || new Map();
 					const outputConns = mainConns.get(outputIndex) || [];
-					// Avoid duplicates
-					const alreadyExists = outputConns.some((c: ConnectionTarget) => c.node === targetName);
+					// Avoid duplicates - check both target node AND input index
+					const targetIndex = targetInputIndex ?? 0;
+					const alreadyExists = outputConns.some(
+						(c: ConnectionTarget) => c.node === targetName && c.index === targetIndex,
+					);
 					if (!alreadyExists) {
-						outputConns.push({ node: targetName, type: 'main', index: targetInputIndex ?? 0 });
+						outputConns.push({ node: targetName, type: 'main', index: targetIndex });
 						mainConns.set(outputIndex, outputConns);
 						graphNode.connections.set('main', mainConns);
 					}
@@ -1060,31 +1063,45 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	): void {
 		const { ValidationWarning } = require('./validation/index');
 		const instance = graphNode.instance;
+		const mergeNodeName = instance.name;
 
-		// Count incoming connections to this merge node
-		let inputCount = 0;
-		const mainConnections = graphNode.connections.get('main');
-		if (mainConnections) {
-			for (const [_outputIndex, targets] of mainConnections) {
-				inputCount += targets.length;
-			}
-		}
+		// Track which distinct input indices have connections
+		const connectedInputIndices = new Set<number>();
 
-		// Also count connections declared via .then() from other nodes
-		// by checking all nodes in the workflow that connect to this node
+		// Check all other nodes' connections (graphNode.connections stores OUTGOING connections)
+		// We need to find connections where this merge node is the TARGET
 		for (const [_name, otherNode] of this._nodes) {
+			const mainConns = otherNode.connections.get('main');
+			if (mainConns) {
+				for (const [_outputIndex, targets] of mainConns) {
+					for (const target of targets) {
+						if (target.node === mergeNodeName) {
+							connectedInputIndices.add(target.index);
+						}
+					}
+				}
+			}
+
+			// Also check connections declared via .then() from NodeInstances
 			if (typeof otherNode.instance.getConnections === 'function') {
 				const conns = otherNode.instance.getConnections();
 				for (const conn of conns) {
 					// Handle both NodeInstance and InputTarget
 					const targetNode = isInputTarget(conn.target) ? conn.target.node : conn.target;
-					if (targetNode === instance || targetNode.name === instance.name) {
-						inputCount++;
+					const targetNodeName =
+						typeof targetNode === 'object' && 'name' in targetNode ? targetNode.name : undefined;
+					if (targetNode === instance || targetNodeName === mergeNodeName) {
+						// For InputTarget, use the specified index; for regular connections use targetInputIndex; default to 0
+						const targetIndex = isInputTarget(conn.target)
+							? conn.target.inputIndex
+							: (conn.targetInputIndex ?? 0);
+						connectedInputIndices.add(targetIndex);
 					}
 				}
 			}
 		}
 
+		const inputCount = connectedInputIndices.size;
 		if (inputCount < 2) {
 			warnings.push(
 				new ValidationWarning(
@@ -1861,6 +1878,33 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
+	 * Get the input index for a source node in a merge's named inputs.
+	 * Returns undefined if the target is not a merge with named inputs or if the source is not found.
+	 */
+	private getMergeInputIndexForSource(
+		sourceNode: NodeInstance<string, string, unknown>,
+		mergeTarget: unknown,
+	): number | undefined {
+		if (!this.isMergeComposite(mergeTarget)) return undefined;
+		const mergeComposite = mergeTarget as MergeComposite<NodeInstance<string, string, unknown>[]>;
+		if (!isMergeNamedInputSyntax(mergeComposite)) return undefined;
+
+		const namedMerge = mergeComposite as MergeComposite<NodeInstance<string, string, unknown>[]> & {
+			inputMapping: Map<number, NodeInstance<string, string, unknown>[]>;
+		};
+
+		// Find which input index this source node is mapped to
+		for (const [inputIndex, tailNodes] of namedMerge.inputMapping) {
+			for (const tailNode of tailNodes) {
+				if (tailNode === sourceNode || tailNode.name === sourceNode.name) {
+					return inputIndex;
+				}
+			}
+		}
+		return undefined;
+	}
+
+	/**
 	 * Add nodes from an IfElseBuilder (fluent API) to the nodes map
 	 */
 	private addIfElseBuilderNodes(
@@ -1870,11 +1914,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Build the IF node connections to its branches
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add branch nodes and process nested composites
-		this.addBranchTargetNodes(nodes, builder.trueBranch);
-		this.addBranchTargetNodes(nodes, builder.falseBranch);
+		// IMPORTANT: Build IF connections BEFORE adding branch nodes
+		// This ensures that when addMergeNodes runs, it can detect existing IF→Merge connections
+		// and skip creating duplicates at the wrong output index
 
 		// Connect IF to true branch (output 0)
+		// Always create this connection - the IF builder knows the correct output index
+		// (Merge nodes will skip duplicates when they process their named inputs)
 		if (builder.trueBranch !== null && builder.trueBranch !== undefined) {
 			const target = builder.trueBranch;
 			if (isFanOut(target)) {
@@ -1882,19 +1928,26 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				for (const t of target.targets) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
-						targets.push({ node: targetName, type: 'main', index: 0 });
+						// For merge targets, use the input index from the merge's named inputs if available
+						const targetInputIndex = this.getMergeInputIndexForSource(builder.ifNode, t) ?? 0;
+						targets.push({ node: targetName, type: 'main', index: targetInputIndex });
 					}
 				}
-				ifMainConns.set(0, targets);
+				if (targets.length > 0) {
+					ifMainConns.set(0, targets);
+				}
 			} else {
 				const targetName = this.getTargetNodeName(target);
 				if (targetName) {
-					ifMainConns.set(0, [{ node: targetName, type: 'main', index: 0 }]);
+					// For merge targets, use the input index from the merge's named inputs if available
+					const targetInputIndex = this.getMergeInputIndexForSource(builder.ifNode, target) ?? 0;
+					ifMainConns.set(0, [{ node: targetName, type: 'main', index: targetInputIndex }]);
 				}
 			}
 		}
 
 		// Connect IF to false branch (output 1)
+		// Always create this connection - the IF builder knows the correct output index
 		if (builder.falseBranch !== null && builder.falseBranch !== undefined) {
 			const target = builder.falseBranch;
 			if (isFanOut(target)) {
@@ -1902,25 +1955,59 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				for (const t of target.targets) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
-						targets.push({ node: targetName, type: 'main', index: 0 });
+						// For merge targets, use the input index from the merge's named inputs if available
+						const targetInputIndex = this.getMergeInputIndexForSource(builder.ifNode, t) ?? 0;
+						targets.push({ node: targetName, type: 'main', index: targetInputIndex });
 					}
 				}
-				ifMainConns.set(1, targets);
+				if (targets.length > 0) {
+					ifMainConns.set(1, targets);
+				}
 			} else {
 				const targetName = this.getTargetNodeName(target);
 				if (targetName) {
-					ifMainConns.set(1, [{ node: targetName, type: 'main', index: 0 }]);
+					// For merge targets, use the input index from the merge's named inputs if available
+					const targetInputIndex = this.getMergeInputIndexForSource(builder.ifNode, target) ?? 0;
+					ifMainConns.set(1, [{ node: targetName, type: 'main', index: targetInputIndex }]);
 				}
 			}
 		}
 
 		// Add the IF node with connections to branches
-		const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
-		ifConns.set('main', ifMainConns);
-		nodes.set(builder.ifNode.name, {
-			instance: builder.ifNode,
-			connections: ifConns,
-		});
+		// If the node already exists (e.g., added by addMergeNodes via addBranchToGraph),
+		// merge the connections rather than overwriting
+		const existingIfNode = nodes.get(builder.ifNode.name);
+		if (existingIfNode) {
+			// Merge ifMainConns into existing connections
+			const existingMainConns = existingIfNode.connections.get('main') || new Map();
+			for (const [outputIndex, targets] of ifMainConns) {
+				const existingTargets = existingMainConns.get(outputIndex) || [];
+				// Add new targets that don't already exist
+				for (const target of targets) {
+					const alreadyExists = existingTargets.some(
+						(t: ConnectionTarget) => t.node === target.node && t.index === target.index,
+					);
+					if (!alreadyExists) {
+						existingTargets.push(target);
+					}
+				}
+				existingMainConns.set(outputIndex, existingTargets);
+			}
+			existingIfNode.connections.set('main', existingMainConns);
+		} else {
+			// Node doesn't exist, add it fresh
+			const ifConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			ifConns.set('main', ifMainConns);
+			nodes.set(builder.ifNode.name, {
+				instance: builder.ifNode,
+				connections: ifConns,
+			});
+		}
+
+		// NOW add branch nodes - this must happen AFTER IF node is added with its connections
+		// so that addMergeNodes can detect existing IF→Merge connections and skip duplicates
+		this.addBranchTargetNodes(nodes, builder.trueBranch);
+		this.addBranchTargetNodes(nodes, builder.falseBranch);
 	}
 
 	/**
@@ -1933,12 +2020,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Build the Switch node connections to its cases
 		const switchMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add all case nodes using addBranchTargetNodes to properly handle nested composites
-		for (const [, target] of builder.caseMapping) {
-			this.addBranchTargetNodes(nodes, target);
-		}
+		// IMPORTANT: Build Switch connections BEFORE adding case nodes
+		// This ensures that when addMergeNodes runs, it can detect existing Switch→Merge connections
+		// and skip creating duplicates at the wrong output index
 
 		// Connect switch to each case at the correct output index
+		// Always create connections - the Switch builder knows the correct output index
+		// (Merge nodes will skip duplicates when they process their named inputs)
 		for (const [caseIndex, target] of builder.caseMapping) {
 			if (target === null) continue; // Skip null cases
 
@@ -1948,26 +2036,75 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				for (const t of target.targets) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
-						targets.push({ node: targetName, type: 'main', index: 0 });
+						// For merge targets, use the input index from the merge's named inputs if available
+						const targetInputIndex = this.getMergeInputIndexForSource(builder.switchNode, t) ?? 0;
+						targets.push({ node: targetName, type: 'main', index: targetInputIndex });
 					}
 				}
-				switchMainConns.set(caseIndex, targets);
+				if (targets.length > 0) {
+					switchMainConns.set(caseIndex, targets);
+				}
 			} else {
 				// Single target
 				const targetName = this.getTargetNodeName(target);
 				if (targetName) {
-					switchMainConns.set(caseIndex, [{ node: targetName, type: 'main', index: 0 }]);
+					// For merge targets, use the input index from the merge's named inputs if available
+					const targetInputIndex =
+						this.getMergeInputIndexForSource(builder.switchNode, target) ?? 0;
+					switchMainConns.set(caseIndex, [
+						{ node: targetName, type: 'main', index: targetInputIndex },
+					]);
 				}
 			}
 		}
 
 		// Add the Switch node with connections to cases
-		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
-		switchConns.set('main', switchMainConns);
-		nodes.set(builder.switchNode.name, {
-			instance: builder.switchNode,
-			connections: switchConns,
-		});
+		// If the node already exists (e.g., added by addMergeNodes via addBranchToGraph),
+		// merge the connections rather than overwriting
+		const existingNode = nodes.get(builder.switchNode.name);
+		if (existingNode) {
+			// Merge switchMainConns into existing connections
+			const existingMainConns = existingNode.connections.get('main') || new Map();
+			for (const [outputIndex, targets] of switchMainConns) {
+				const existingTargets = existingMainConns.get(outputIndex) || [];
+				// Add new targets that don't already exist
+				for (const target of targets) {
+					const alreadyExists = existingTargets.some(
+						(t: ConnectionTarget) => t.node === target.node && t.index === target.index,
+					);
+					if (!alreadyExists) {
+						existingTargets.push(target);
+					}
+				}
+				existingMainConns.set(outputIndex, existingTargets);
+			}
+			existingNode.connections.set('main', existingMainConns);
+		} else {
+			// Node doesn't exist, add it fresh
+			const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
+			switchConns.set('main', switchMainConns);
+			nodes.set(builder.switchNode.name, {
+				instance: builder.switchNode,
+				connections: switchConns,
+			});
+		}
+
+		// NOW add case nodes - this must happen AFTER Switch node is added with its connections
+		// so that addMergeNodes can detect existing Switch→Merge connections and skip duplicates
+		for (const [, target] of builder.caseMapping) {
+			this.addBranchTargetNodes(nodes, target);
+		}
+
+		// Add nodes from source chain if present (e.g., trigger.to(switch).onCase(...))
+		const builderImpl = builder as {
+			sourceChain?: NodeChain<
+				NodeInstance<string, string, unknown>,
+				NodeInstance<string, string, unknown>
+			>;
+		};
+		if (builderImpl.sourceChain) {
+			this.addBranchToGraph(nodes, builderImpl.sourceChain);
+		}
 	}
 
 	/**
@@ -1992,23 +2129,46 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				_allInputNodes: NodeInstance<string, string, unknown>[];
 			};
 
+			// Track the actual key each node was added under (may differ from node.name if renamed)
+			const nodeActualKeys = new Map<NodeInstance<string, string, unknown>, string>();
+
 			// Add all input nodes
 			for (const inputNode of namedMerge._allInputNodes) {
-				this.addBranchToGraph(nodes, inputNode);
+				const actualKey = this.addBranchToGraph(nodes, inputNode);
+				nodeActualKeys.set(inputNode, actualKey);
 			}
 
 			// Connect tail nodes to merge at their specified input indices
+			// Skip connections that already exist (e.g., created by IF/Switch builders with correct output index)
 			for (const [inputIndex, tailNodes] of namedMerge.inputMapping) {
 				for (const tailNode of tailNodes) {
-					const tailGraphNode = nodes.get(tailNode.name);
+					// Use the actual key the node was added under, falling back to node.name
+					const actualKey = nodeActualKeys.get(tailNode) ?? tailNode.name;
+					const tailGraphNode = nodes.get(actualKey);
 					if (tailGraphNode) {
 						const tailMainConns = tailGraphNode.connections.get('main') || new Map();
-						const existingConns = tailMainConns.get(0) || [];
-						tailMainConns.set(0, [
-							...existingConns,
-							{ node: composite.mergeNode.name, type: 'main', index: inputIndex },
-						]);
-						tailGraphNode.connections.set('main', tailMainConns);
+						// Check all output indices for an existing connection to this merge at this input
+						let connectionExists = false;
+						for (const [, conns] of tailMainConns) {
+							if (
+								conns.some(
+									(c: ConnectionTarget) =>
+										c.node === composite.mergeNode.name && c.index === inputIndex,
+								)
+							) {
+								connectionExists = true;
+								break;
+							}
+						}
+						if (!connectionExists) {
+							// No existing connection found, create one at output 0
+							const existingConns = tailMainConns.get(0) || [];
+							tailMainConns.set(0, [
+								...existingConns,
+								{ node: composite.mergeNode.name, type: 'main', index: inputIndex },
+							]);
+							tailGraphNode.connections.set('main', tailMainConns);
+						}
 					}
 				}
 			}
@@ -3095,11 +3255,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 		const ifMainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add branch nodes and process nested composites
-		this.addBranchTargetNodes(newNodes, builder.trueBranch);
-		this.addBranchTargetNodes(newNodes, builder.falseBranch);
+		// IMPORTANT: Build IF connections BEFORE adding branch nodes
+		// This ensures that when addMergeNodes runs, it can detect existing IF→Merge connections
+		// and skip creating duplicates at the wrong output index
 
 		// Connect IF to true branch at output 0
+		// Always create connections - the IF builder knows the correct output index
 		const trueBranch = builder.trueBranch;
 		if (trueBranch !== null) {
 			if (isFanOut(trueBranch)) {
@@ -3108,20 +3269,28 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				for (const t of trueBranch.targets) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
-						targets.push({ node: targetName, type: 'main', index: 0 });
+						// For merge targets, use the input index from the merge's named inputs if available
+						const targetInputIndex = this.getMergeInputIndexForSource(builder.ifNode, t) ?? 0;
+						targets.push({ node: targetName, type: 'main', index: targetInputIndex });
 					}
 				}
-				ifMainConns.set(0, targets);
+				if (targets.length > 0) {
+					ifMainConns.set(0, targets);
+				}
 			} else {
 				// Single target
 				const targetName = this.getTargetNodeName(trueBranch);
 				if (targetName) {
-					ifMainConns.set(0, [{ node: targetName, type: 'main', index: 0 }]);
+					// For merge targets, use the input index from the merge's named inputs if available
+					const targetInputIndex =
+						this.getMergeInputIndexForSource(builder.ifNode, trueBranch) ?? 0;
+					ifMainConns.set(0, [{ node: targetName, type: 'main', index: targetInputIndex }]);
 				}
 			}
 		}
 
 		// Connect IF to false branch at output 1
+		// Always create connections - the IF builder knows the correct output index
 		const falseBranch = builder.falseBranch;
 		if (falseBranch !== null) {
 			if (isFanOut(falseBranch)) {
@@ -3130,15 +3299,22 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				for (const t of falseBranch.targets) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
-						targets.push({ node: targetName, type: 'main', index: 0 });
+						// For merge targets, use the input index from the merge's named inputs if available
+						const targetInputIndex = this.getMergeInputIndexForSource(builder.ifNode, t) ?? 0;
+						targets.push({ node: targetName, type: 'main', index: targetInputIndex });
 					}
 				}
-				ifMainConns.set(1, targets);
+				if (targets.length > 0) {
+					ifMainConns.set(1, targets);
+				}
 			} else {
 				// Single target
 				const targetName = this.getTargetNodeName(falseBranch);
 				if (targetName) {
-					ifMainConns.set(1, [{ node: targetName, type: 'main', index: 0 }]);
+					// For merge targets, use the input index from the merge's named inputs if available
+					const targetInputIndex =
+						this.getMergeInputIndexForSource(builder.ifNode, falseBranch) ?? 0;
+					ifMainConns.set(1, [{ node: targetName, type: 'main', index: targetInputIndex }]);
 				}
 			}
 		}
@@ -3150,6 +3326,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			instance: builder.ifNode,
 			connections: ifConns,
 		});
+
+		// NOW add branch nodes - this must happen AFTER IF node is added with its connections
+		// so that addMergeNodes can detect existing IF→Merge connections and skip duplicates
+		this.addBranchTargetNodes(newNodes, builder.trueBranch);
+		this.addBranchTargetNodes(newNodes, builder.falseBranch);
 
 		// Connect current node to IF node
 		if (this._currentNode) {
@@ -3179,12 +3360,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const switchConns = new Map<string, Map<number, ConnectionTarget[]>>();
 		const mainConns = new Map<number, ConnectionTarget[]>();
 
-		// Add all case nodes using addBranchTargetNodes to properly handle nested composites
-		for (const [, target] of builder.caseMapping) {
-			this.addBranchTargetNodes(newNodes, target);
-		}
+		// IMPORTANT: Build Switch connections BEFORE adding case nodes
+		// This ensures that when addMergeNodes runs, it can detect existing Switch→Merge connections
+		// and skip creating duplicates at the wrong output index
 
 		// Connect switch to each case at the correct output index
+		// Always create connections - the Switch builder knows the correct output index
 		for (const [caseIndex, target] of builder.caseMapping) {
 			if (target === null) continue; // Skip null cases
 
@@ -3194,15 +3375,22 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				for (const t of target.targets) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
-						targets.push({ node: targetName, type: 'main', index: 0 });
+						// For merge targets, use the input index from the merge's named inputs if available
+						const targetInputIndex = this.getMergeInputIndexForSource(builder.switchNode, t) ?? 0;
+						targets.push({ node: targetName, type: 'main', index: targetInputIndex });
 					}
 				}
-				mainConns.set(caseIndex, targets);
+				if (targets.length > 0) {
+					mainConns.set(caseIndex, targets);
+				}
 			} else {
 				// Single target
 				const targetName = this.getTargetNodeName(target);
 				if (targetName) {
-					mainConns.set(caseIndex, [{ node: targetName, type: 'main', index: 0 }]);
+					// For merge targets, use the input index from the merge's named inputs if available
+					const targetInputIndex =
+						this.getMergeInputIndexForSource(builder.switchNode, target) ?? 0;
+					mainConns.set(caseIndex, [{ node: targetName, type: 'main', index: targetInputIndex }]);
 				}
 			}
 		}
@@ -3213,6 +3401,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			instance: builder.switchNode,
 			connections: switchConns,
 		});
+
+		// NOW add case nodes - this must happen AFTER Switch node is added with its connections
+		// so that addMergeNodes can detect existing Switch→Merge connections and skip duplicates
+		for (const [, target] of builder.caseMapping) {
+			this.addBranchTargetNodes(newNodes, target);
+		}
 
 		// Connect current node to Switch node
 		if (this._currentNode) {

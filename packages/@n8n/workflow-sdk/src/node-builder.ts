@@ -579,7 +579,10 @@ class NodeChainImpl<
 		if (!this.tail.onCase) {
 			throw new Error('.onCase() is only available on Switch nodes (n8n-nodes-base.switch)');
 		}
-		return this.tail.onCase(index, target);
+		const builder = this.tail.onCase(index, target);
+		// Pass this chain to the builder so workflow-builder can add all chain nodes
+		(builder as SwitchCaseBuilderImpl<TTail['_outputType']>).sourceChain = this;
+		return builder;
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(handler: T): this {
@@ -797,6 +800,11 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 	readonly caseMapping: Map<number, SwitchCaseTarget> = new Map();
 	/** All nodes from all cases (for workflow-builder) */
 	_allCaseNodes: NodeInstance<string, string, unknown>[] = [];
+	/** Source chain if created from NodeChain.onCase() (e.g., trigger.to(switch).onCase()) */
+	sourceChain?: NodeChain<
+		NodeInstance<string, string, unknown>,
+		NodeInstance<string, string, unknown>
+	>;
 
 	constructor(switchNode: NodeInstance<'n8n-nodes-base.switch', string, TOutput>) {
 		this.switchNode = switchNode;
