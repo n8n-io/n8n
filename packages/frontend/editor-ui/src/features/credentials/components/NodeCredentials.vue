@@ -8,6 +8,7 @@ import type {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { I18nT } from 'vue-i18n';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
@@ -15,7 +16,7 @@ import { useToast } from '@/app/composables/useToast';
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import { CREDENTIAL_ONLY_NODE_PREFIX, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -32,11 +33,15 @@ import {
 import { isEmpty } from '@/app/utils/typesUtils';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useNodeCredentialOptions } from '../composables/useNodeCredentialOptions';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 import {
+	N8nBadge,
 	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
+	N8nLink,
+	N8nNotice,
 	N8nOption,
 	N8nSelect,
 	N8nText,
@@ -75,6 +80,7 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const workflowState = injectWorkflowState();
+const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
 const canCreateCredentials = computed(
 	() =>
@@ -123,6 +129,33 @@ const credentialTypeNames = computed(() => {
 const selected = computed<Record<string, INodeCredentialsDetails>>(
 	() => props.node.credentials ?? {},
 );
+
+const isDynamicCredentialsEnabled = computed(() =>
+	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
+);
+
+const hasWorkflowResolver = computed(() => {
+	return !!workflowsStore.workflowSettings?.credentialResolverId;
+});
+
+function isCredentialResolvable(credentialType: string): boolean {
+	if (!isDynamicCredentialsEnabled.value) return false;
+	const credentialId = selected.value[credentialType]?.id;
+	if (!credentialId) return false;
+	const credential = credentialsStore.getCredentialById(credentialId);
+	return credential?.isResolvable === true;
+}
+
+function showResolvableWarning(credentialType: string): boolean {
+	return isCredentialResolvable(credentialType) && !hasWorkflowResolver.value;
+}
+
+// TODO: use actual docs link when available
+const dynamicCredentialsDocsUrl = '';
+
+function openWorkflowSettings() {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+}
 
 watch(
 	() => props.node.parameters,
@@ -493,45 +526,80 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 					:class="getIssues(type.name).length && !hideIssues ? $style.hasIssues : $style.input"
 					data-test-id="node-credentials-select"
 				>
-					<N8nSelect
-						ref="selectRefs"
-						:model-value="getSelectedId(type)"
-						:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
-						size="small"
-						filterable
-						:filter-method="setFilter"
-						:popper-class="$style.selectPopper"
-						@update:model-value="
-							(value: string) => onCredentialSelected(type.name, value, showMixedCredentials(type))
-						"
-						@blur="emit('blur', 'credentials')"
-					>
-						<N8nOption
-							v-for="item in options.filter((o) => matches(filter, o.name))"
-							:key="item.id"
-							:data-test-id="`node-credentials-select-item-${item.id}`"
-							:label="item.name"
-							:value="item.id"
+					<div :class="$style.selectContainer">
+						<N8nSelect
+							ref="selectRefs"
+							:model-value="getSelectedId(type)"
+							:placeholder="getSelectPlaceholder(type.name, getIssues(type.name))"
+							size="small"
+							filterable
+							:filter-method="setFilter"
+							:popper-class="$style.selectPopper"
+							:class="{ [$style.selectWithDynamic]: isCredentialResolvable(type.name) }"
+							@update:model-value="
+								(value: string) =>
+									onCredentialSelected(type.name, value, showMixedCredentials(type))
+							"
+							@blur="emit('blur', 'credentials')"
 						>
-							<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
-								<N8nText bold>{{ item.name }}</N8nText>
-								<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
-							</div>
-						</N8nOption>
-						<template #empty> </template>
-						<template #footer>
-							<button
-								type="button"
-								data-test-id="node-credentials-select-item-new"
-								:class="[$style.newCredential]"
-								:disabled="!canCreateCredentials"
-								@click="onClickCreateCredential(type)"
+							<N8nOption
+								v-for="item in options.filter((o) => matches(filter, o.name))"
+								:key="item.id"
+								:data-test-id="`node-credentials-select-item-${item.id}`"
+								:label="item.name"
+								:value="item.id"
 							>
-								<N8nIcon size="xsmall" icon="plus" />
-								{{ NEW_CREDENTIALS_TEXT }}
-							</button>
-						</template>
-					</N8nSelect>
+								<div :class="[$style.credentialOption, 'mt-2xs', 'mb-2xs']">
+									<div :class="$style.credentialOptionName">
+										<N8nText bold>{{ item.name }}</N8nText>
+										<N8nTooltip
+											v-if="isDynamicCredentialsEnabled && item.isResolvable"
+											placement="top"
+										>
+											<template #content>{{
+												i18n.baseText('credentials.dynamic.tooltip')
+											}}</template>
+											<N8nIcon
+												icon="key-round"
+												size="medium"
+												:class="$style.dynamicIcon"
+												data-test-id="credential-option-dynamic-icon"
+											/>
+										</N8nTooltip>
+									</div>
+									<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
+								</div>
+							</N8nOption>
+							<template #empty> </template>
+							<template #footer>
+								<button
+									type="button"
+									data-test-id="node-credentials-select-item-new"
+									:class="[$style.newCredential]"
+									:disabled="!canCreateCredentials"
+									@click="onClickCreateCredential(type)"
+								>
+									<N8nIcon size="xsmall" icon="plus" />
+									{{ NEW_CREDENTIALS_TEXT }}
+								</button>
+							</template>
+						</N8nSelect>
+						<div v-if="isCredentialResolvable(type.name)" :class="$style.dynamicIndicator">
+							<N8nTooltip placement="top">
+								<template #content>{{ i18n.baseText('credentials.dynamic.tooltip') }}</template>
+								<N8nBadge
+									theme="tertiary"
+									class="pl-3xs pr-3xs"
+									data-test-id="node-credential-dynamic-icon"
+								>
+									<span :class="$style.dynamicBadgeText">
+										<N8nIcon icon="key-round" size="medium" />
+										{{ i18n.baseText('credentials.dynamic.badge') }}
+									</span>
+								</N8nBadge>
+							</N8nTooltip>
+						</div>
+					</div>
 
 					<div v-if="getIssues(type.name).length && !hideIssues" :class="$style.warning">
 						<N8nTooltip placement="top">
@@ -558,6 +626,25 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 						/>
 					</div>
 				</div>
+				<N8nNotice
+					v-if="showResolvableWarning(type.name)"
+					theme="warning"
+					:class="$style.resolverWarning"
+					data-test-id="node-credential-resolver-warning"
+				>
+					<I18nT keypath="credentials.dynamic.warning.noResolver" tag="span" scope="global">
+						<template #workflowSettings>
+							<N8nLink @click="openWorkflowSettings">
+								{{ i18n.baseText('credentials.dynamic.warning.noResolver.workflowSettings') }}
+							</N8nLink>
+						</template>
+						<template v-if="dynamicCredentialsDocsUrl" #documentation>
+							<N8nLink :href="dynamicCredentialsDocsUrl" new-window>
+								{{ i18n.baseText('credentials.dynamic.warning.noResolver.documentation') }}
+							</N8nLink>
+						</template>
+					</I18nT>
+				</N8nNotice>
 			</N8nInputLabel>
 		</div>
 	</div>
@@ -608,6 +695,11 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 	align-items: center;
 }
 
+.selectContainer {
+	position: relative;
+	flex: 1;
+}
+
 .hasIssues {
 	composes: input;
 	--input--border-color: var(--color--danger);
@@ -616,6 +708,42 @@ async function onClickCreateCredential(type: ICredentialType | INodeCredentialDe
 .credentialOption {
 	display: flex;
 	flex-direction: column;
+}
+
+.credentialOptionName {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.dynamicIcon {
+	color: var(--color--text--tint-1);
+}
+
+.selectWithDynamic {
+	:global(.el-input__inner) {
+		padding-right: 80px;
+	}
+}
+
+.dynamicIndicator {
+	position: absolute;
+	right: 28px;
+	top: 50%;
+	transform: translateY(-50%);
+	z-index: 1;
+}
+
+.dynamicBadgeText {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--3xs);
+	height: 18px;
+}
+
+.resolverWarning {
+	margin-top: var(--spacing--2xs);
 }
 
 .newCredential {
