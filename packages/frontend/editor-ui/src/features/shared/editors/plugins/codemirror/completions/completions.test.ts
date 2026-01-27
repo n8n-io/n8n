@@ -366,7 +366,7 @@ describe('Resolution-based completions', () => {
 
 			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
-			externalSecretsStore.state.secrets = {
+			externalSecretsStore.state.globalSecrets = {
 				[provider]: secrets,
 			};
 
@@ -389,7 +389,7 @@ describe('Resolution-based completions', () => {
 
 			uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].open = true;
 			set(settingsStore.settings, ['enterprise', EnterpriseEditionFeature.ExternalSecrets], true);
-			externalSecretsStore.state.secrets = {
+			externalSecretsStore.state.globalSecrets = {
 				[provider]: secrets,
 			};
 
