@@ -852,7 +852,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Check: Static prompt (no expression)
 		const text = params.text as string | undefined;
-		if (!text || !this.containsExpression(text)) {
+		const hasValidExpression = text ? this.containsExpression(text) : false;
+		const hasMalformedExpression = text
+			? WorkflowBuilderImpl.MISSING_EXPR_PREFIX_PATTERN.test(text)
+			: false;
+
+		// Only warn about static prompt if there's NO expression at all
+		// (MISSING_EXPRESSION_PREFIX will handle malformed expressions)
+		if (!text || (!hasValidExpression && !hasMalformedExpression)) {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',
@@ -896,7 +903,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Check: Static prompt (no expression)
 		const text = params.text as string | undefined;
-		if (!text || !this.containsExpression(text)) {
+		const hasValidExpression = text ? this.containsExpression(text) : false;
+		const hasMalformedExpression = text
+			? WorkflowBuilderImpl.MISSING_EXPR_PREFIX_PATTERN.test(text)
+			: false;
+
+		// Only warn about static prompt if there's NO expression at all
+		// (MISSING_EXPRESSION_PREFIX will handle malformed expressions)
+		if (!text || (!hasValidExpression && !hasMalformedExpression)) {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_STATIC_PROMPT',

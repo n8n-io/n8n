@@ -140,4 +140,94 @@ describe('Validation', () => {
 			expect(error.nodeName).toBe('Webhook');
 		});
 	});
+
+	describe('chained .to() connections', () => {
+		it('should not flag nodes connected via chained .to() as disconnected', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const node1 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'Node1' } });
+			const node2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'Node2' } });
+			const node3 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'Node3' } });
+
+			// Chained .to() pattern: t -> node1 -> node2 -> node3
+			const wf = workflow('test', 'Test').add(t.to(node1.to(node2.to(node3))));
+
+			const result = validateWorkflow(wf);
+			const disconnectedWarnings = result.warnings.filter((w) => w.code === 'DISCONNECTED_NODE');
+			// All nodes should be connected - no DISCONNECTED_NODE warnings
+			expect(disconnectedWarnings).toHaveLength(0);
+		});
+	});
+
+	describe('AGENT_STATIC_PROMPT with malformed expressions', () => {
+		it('should not emit AGENT_STATIC_PROMPT when malformed expressions exist', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					parameters: {
+						promptType: 'define',
+						text: 'Process: {{ $json.data }}', // Missing = prefix (malformed)
+						options: { systemMessage: 'You are helpful' },
+					},
+				},
+			});
+
+			// Use wf.validate() for builder-specific checks (AGENT_STATIC_PROMPT, MISSING_EXPRESSION_PREFIX)
+			const wf = workflow('test', 'Test').add(t).then(agent);
+			const result = wf.validate();
+
+			// Should have MISSING_EXPRESSION_PREFIX (correct detection)
+			expect(result.warnings.some((w) => w.code === 'MISSING_EXPRESSION_PREFIX')).toBe(true);
+			// Should NOT have AGENT_STATIC_PROMPT (there ARE expressions, just malformed)
+			expect(result.warnings.some((w) => w.code === 'AGENT_STATIC_PROMPT')).toBe(false);
+		});
+
+		it('should emit AGENT_STATIC_PROMPT when no expressions exist at all', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					parameters: {
+						promptType: 'define',
+						text: 'Process all items', // No expression at all
+						options: { systemMessage: 'You are helpful' },
+					},
+				},
+			});
+
+			// Use wf.validate() for builder-specific checks
+			const wf = workflow('test', 'Test').add(t).then(agent);
+			const result = wf.validate();
+
+			// Should NOT have MISSING_EXPRESSION_PREFIX (no malformed expressions)
+			expect(result.warnings.some((w) => w.code === 'MISSING_EXPRESSION_PREFIX')).toBe(false);
+			// Should have AGENT_STATIC_PROMPT (static text, no expression at all)
+			expect(result.warnings.some((w) => w.code === 'AGENT_STATIC_PROMPT')).toBe(true);
+		});
+
+		it('should not emit AGENT_STATIC_PROMPT for ChainLlm when malformed expressions exist', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const chainLlm = node({
+				type: '@n8n/n8n-nodes-langchain.chainLlm',
+				version: 1.4,
+				config: {
+					parameters: {
+						promptType: 'define',
+						text: 'Summarize: {{ $json.content }}', // Missing = prefix (malformed)
+					},
+				},
+			});
+
+			// Use wf.validate() for builder-specific checks
+			const wf = workflow('test', 'Test').add(t).then(chainLlm);
+			const result = wf.validate();
+
+			// Should have MISSING_EXPRESSION_PREFIX (correct detection)
+			expect(result.warnings.some((w) => w.code === 'MISSING_EXPRESSION_PREFIX')).toBe(true);
+			// Should NOT have AGENT_STATIC_PROMPT (there ARE expressions, just malformed)
+			expect(result.warnings.some((w) => w.code === 'AGENT_STATIC_PROMPT')).toBe(false);
+		});
+	});
 });
