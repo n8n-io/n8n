@@ -75,7 +75,7 @@ class SecurityValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
-        """Detect calls to __import__() and .format() that could bypass security restrictions."""
+        """Detect calls to __import__() that could bypass security restrictions."""
 
         is_import_call = (
             # __import__()
@@ -100,16 +100,6 @@ class SecurityValidator(ast.NodeVisitor):
                 self._validate_import(module_name, node.lineno)
             else:
                 self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORT)
-
-        is_format_call = (
-            isinstance(node.func, ast.Attribute)
-            and node.func.attr == "format"
-            and isinstance(node.func.value, ast.Constant)
-            and isinstance(node.func.value.value, str)
-        )
-
-        if is_format_call:
-            self._check_format_string(node.func.value.value, node.lineno)
 
         self.generic_visit(node)
 
@@ -139,6 +129,14 @@ class SecurityValidator(ast.NodeVisitor):
                 self._add_violation(
                     node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=key)
                 )
+
+        self.generic_visit(node)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        """Detect string constants containing dangerous format patterns."""
+
+        if isinstance(node.value, str):
+            self._check_format_string(node.value, node.lineno)
 
         self.generic_visit(node)
 
