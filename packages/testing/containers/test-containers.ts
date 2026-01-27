@@ -101,4 +101,5 @@ export const TEST_CONTAINER_IMAGES = {
 	cloudflared: getImage('cloudflared'),
 	kafka: getImage('kafka'),
 	mysql: getImage('mysql'),
+	ngrok: getImage('ngrok'),
 } as const;
