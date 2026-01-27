@@ -505,6 +505,10 @@
 	// Input Triple
 	--input-triple--color--background: var(--color--background--light-2);
 
+	// Focus states
+	--focus--border-width: 2px;
+	--focus--border-color: var(--color--secondary);
+
 	// Node error
 	--node--error-output--color--text: var(--color--danger);
 
