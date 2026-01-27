@@ -14,7 +14,6 @@ import type {
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
-	randomInt,
 	sleep,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
@@ -83,6 +82,7 @@ describe('ActiveExecutions', () => {
 
 		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
 		executionRepository.updateExistingExecution.mockResolvedValue(true);
+		executionRepository.setRunning.mockResolvedValue(Promise.resolve(new Date()));
 
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
 		workflowExecution.cancel = jest.fn();
@@ -125,6 +125,43 @@ describe('ActiveExecutions', () => {
 
 		// Verify execution was NOT added to active executions
 		expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+	});
+
+	describe('add capacity release on error', () => {
+		test('Should release capacity when updateExistingExecution returns false', async () => {
+			// Mock updateExistingExecution to return false (another process is resuming)
+			executionRepository.updateExistingExecution.mockResolvedValue(false);
+
+			await expect(activeExecutions.add(executionData, FAKE_SECOND_EXECUTION_ID)).rejects.toThrow(
+				'Execution is already being resumed by another process',
+			);
+
+			// Verify capacity was reserved and then released
+			expect(concurrencyControl.throttle).toHaveBeenCalledWith({
+				mode: 'manual',
+				executionId: FAKE_SECOND_EXECUTION_ID,
+			});
+			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'manual' });
+		});
+
+		test('Should release capacity when setRunning throws after reserve', async () => {
+			const dbError = new Error('Failed to set running status');
+			executionRepository.setRunning.mockRejectedValue(dbError);
+
+			await expect(activeExecutions.add(executionData)).rejects.toThrow(
+				'Failed to set running status',
+			);
+
+			// Verify capacity was reserved and then released
+			expect(concurrencyControl.throttle).toHaveBeenCalledWith({
+				mode: 'manual',
+				executionId: FAKE_EXECUTION_ID,
+			});
+			expect(concurrencyControl.release).toHaveBeenCalledWith({ mode: 'manual' });
+
+			// Verify execution was NOT added to active executions
+			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
+		});
 	});
 
 	describe('attachWorkflowExecution', () => {
@@ -322,9 +359,8 @@ describe('ActiveExecutions', () => {
 		let waitingExecutionId1: string, waitingExecutionId2: string;
 
 		beforeEach(async () => {
-			executionRepository.createNewExecution.mockImplementation(async () =>
-				randomInt(1000, 2000).toString(),
-			);
+			let i = 1000;
+			executionRepository.createNewExecution.mockImplementation(async () => `${i++}`);
 
 			(sleep as jest.Mock).mockImplementation(() => {
 				// @ts-expect-error private property

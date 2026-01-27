@@ -1500,6 +1500,143 @@ describe('JsTaskRunner', () => {
 		});
 	});
 
+	describe('Error.prepareStackTrace RCE prevention', () => {
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should block Error.prepareStackTrace access in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? 'return [{ json: { result: Error.prepareStackTrace } }]'
+							: 'return { json: { result: Error.prepareStackTrace } }',
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should block Error.captureStackTrace access in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? 'return [{ json: { result: Error.captureStackTrace } }]'
+							: 'return { json: { result: Error.captureStackTrace } }',
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should prevent Object.defineProperty from setting Error.prepareStackTrace in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				// First try to define prepareStackTrace, then check if it's still undefined
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								Object.defineProperty(Error, 'prepareStackTrace', { value: () => 'pwned' });
+								return [{ json: { result: Error.prepareStackTrace } }];
+							`
+							: `
+								Object.defineProperty(Error, 'prepareStackTrace', { value: () => 'pwned' });
+								return { json: { result: Error.prepareStackTrace } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				// prepareStackTrace should still be undefined because defineProperty is neutered
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.result).toBeUndefined();
+			},
+		);
+
+		test('should prevent full RCE exploit chain via prepareStackTrace', async () => {
+			// This is the actual exploit payload - should NOT execute system commands
+			// Even though the code runs without throwing, the exploit should not work
+			// because Object.defineProperty is neutered and prepareStackTrace remains undefined
+			const outcome = await executeForAllItems({
+				code: `
+					Object.defineProperty(Error, 'prepareStackTrace', {
+						value: (e, stack) => {
+							const g = stack[0].getThis();
+							return g.global.process.getBuiltinModule('child_process').execSync('echo pwned').toString();
+						}
+					});
+					const result = new Error().stack;
+					// Check if the result contains 'pwned' - if so, exploit succeeded
+					const exploited = typeof result === 'string' && result.includes('pwned');
+					return [{ json: { exploited, result: typeof result } }];
+				`,
+				inputItems: [{ a: 1 }],
+			});
+			// The exploit should fail - prepareStackTrace wasn't actually set
+			// so .stack returns a normal stack trace string, not 'pwned'
+			const result = outcome.result as Array<{ json: IDataObject }>;
+			expect(result[0].json.exploited).toBe(false);
+			expect(result[0].json.result).toBe('string'); // Normal stack trace
+		});
+	});
+
+	describe('Object.defineProperty security', () => {
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should neuter Object.defineProperty in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								const obj = {};
+								Object.defineProperty(obj, 'test', { value: 123 });
+								return [{ json: { hasProperty: 'test' in obj, value: obj.test } }];
+							`
+							: `
+								const obj = {};
+								Object.defineProperty(obj, 'test', { value: 123 });
+								return { json: { hasProperty: 'test' in obj, value: obj.test } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				// defineProperty is neutered, property won't be defined
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.hasProperty).toBe(false);
+				expect(result[0].json.value).toBeUndefined();
+			},
+		);
+
+		test.each([['runOnceForAllItems'], ['runOnceForEachItem']] as const)(
+			'should neuter Object.defineProperties in %s mode',
+			async (mode) => {
+				const execute = mode === 'runOnceForAllItems' ? executeForAllItems : executeForEachItem;
+				const outcome = await execute({
+					code:
+						mode === 'runOnceForAllItems'
+							? `
+								const obj = {};
+								Object.defineProperties(obj, { a: { value: 1 }, b: { value: 2 } });
+								return [{ json: { hasA: 'a' in obj, hasB: 'b' in obj } }];
+							`
+							: `
+								const obj = {};
+								Object.defineProperties(obj, { a: { value: 1 }, b: { value: 2 } });
+								return { json: { hasA: 'a' in obj, hasB: 'b' in obj } };
+							`,
+					inputItems: [{ a: 1 }],
+				});
+				const result = outcome.result as Array<{ json: IDataObject }>;
+				expect(result[0].json.hasA).toBe(false);
+				expect(result[0].json.hasB).toBe(false);
+			},
+		);
+	});
+
 	describe('stack trace', () => {
 		it('should extract correct line number from user-defined function stack trace', async () => {
 			const runner = createRunnerWithOpts({});

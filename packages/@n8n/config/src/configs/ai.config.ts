@@ -6,6 +6,15 @@ export class AiConfig {
 	@Env('N8N_AI_ENABLED')
 	enabled: boolean = false;
 
+	/**
+	 * Default timeout for AI HTTP requests in milliseconds.
+	 * This timeout controls how long to wait for responses from AI services.
+	 * Aligned with EXECUTIONS_TIMEOUT_MAX (1 hour) to ensure AI requests don't exceed workflow execution limits.
+	 * Default: 3600000 (1 hour)
+	 */
+	@Env('N8N_AI_TIMEOUT_MAX')
+	timeout: number = 3600000;
+
 	get openAiDefaultHeaders(): Record<string, string> {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		return { 'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' };

@@ -1,5 +1,5 @@
 import { DynamicTool, type Tool } from '@langchain/core/tools';
-import { Toolkit } from '@langchain/classic/agents';
+import { StructuredToolkit } from 'n8n-core';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import { NodeOperationError } from 'n8n-workflow';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
@@ -253,21 +253,13 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should flatten tools from a toolkit', async () => {
-		class MockToolkit extends Toolkit {
-			tools: Tool[];
-
-			constructor(tools: unknown[]) {
-				super();
-				this.tools = tools as Tool[];
-			}
-		}
 		const mockTools = [
 			{ name: 'tool1', description: 'desc1' },
 
-			new MockToolkit([
+			new StructuredToolkit([
 				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
 				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
-			]),
+			] as any),
 		];
 
 		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
@@ -293,21 +285,13 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should add metadata to all tools with source node information', async () => {
-		class MockToolkit extends Toolkit {
-			tools: Tool[];
-
-			constructor(tools: unknown[]) {
-				super();
-				this.tools = tools as Tool[];
-			}
-		}
 		const mockParentNodes = [{ name: 'RegularTool' }, { name: 'MCP Client Tool' }];
 		const mockTools = [
 			{ name: 'tool1', description: 'desc1' },
-			new MockToolkit([
+			new StructuredToolkit([
 				{ name: 'toolkitTool1', description: 'toolkitToolDesc1' },
 				{ name: 'toolkitTool2', description: 'toolkitToolDesc2' },
-			]),
+			] as any),
 		];
 
 		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);
@@ -339,19 +323,11 @@ describe('getConnectedTools', () => {
 	});
 
 	it('should preserve existing metadata when adding toolkit metadata', async () => {
-		class MockToolkit extends Toolkit {
-			tools: Tool[];
-
-			constructor(tools: unknown[]) {
-				super();
-				this.tools = tools as Tool[];
-			}
-		}
 		const mockParentNodes = [{ name: 'MCP Client Tool' }];
 		const mockTools = [
-			new MockToolkit([
+			new StructuredToolkit([
 				{ name: 'toolkitTool1', description: 'desc1', metadata: { customField: 'value' } },
-			]),
+			] as any),
 		];
 
 		mockExecuteFunctions.getInputConnectionData = jest.fn().mockResolvedValue(mockTools);

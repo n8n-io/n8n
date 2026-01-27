@@ -48,6 +48,7 @@ import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
+import { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -92,6 +93,7 @@ export class ActiveWorkflowManager {
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly push: Push,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -359,6 +361,15 @@ export class ActiveWorkflowManager {
 					mode,
 					responsePromise,
 				);
+
+				void executePromise.then((executionId) => {
+					this.eventService.emit('workflow-executed', {
+						workflowId: workflowData.id,
+						workflowName: workflowData.name,
+						executionId,
+						source: 'trigger',
+					});
+				});
 
 				if (donePromise) {
 					void executePromise.then((executionId) => {

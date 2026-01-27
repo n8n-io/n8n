@@ -1,4 +1,4 @@
-name: Test Master
+name: 'CI: Master (Build, Test, Lint)'
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
 
   unit-test:
     name: Unit tests
-    uses: ./.github/workflows/units-tests-reusable.yml
+    uses: ./.github/workflows/test-unit-reusable.yml
     strategy:
       matrix:
         node-version: [20.x, 22.x, 24.3.x]
@@ -33,7 +33,7 @@ jobs:
 
   lint:
     name: Lint
-    uses: ./.github/workflows/linting-reusable.yml
+    uses: ./.github/workflows/test-linting-reusable.yml
     with:
       ref: ${{ github.sha }}
 

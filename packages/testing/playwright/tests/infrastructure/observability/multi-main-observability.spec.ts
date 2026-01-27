@@ -39,15 +39,14 @@
  *   pnpm playwright test -- --grep "Multi-main Observability"
  */
 
-import { SYSLOG_DEFAULTS, ObservabilityHelper } from 'n8n-containers';
-
 import { test, expect } from '../../../fixtures/base';
 
 // Configure test to run with multi-main queue mode and observability stack
 test.use({
 	capability: {
-		observability: true,
-		queueMode: { mains: 2, workers: 1 },
+		services: ['victoriaLogs', 'victoriaMetrics', 'vector'],
+		mains: 2,
+		workers: 1,
 	},
 });
 
@@ -62,8 +61,7 @@ test.describe('Multi-main Observability @capability:observability @mode:multi-ma
 	 * service discovery configuration in VictoriaMetrics.
 	 */
 	test('should scrape metrics from all n8n instances', async ({ n8nContainer }) => {
-		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
+		const obs = n8nContainer.services.observability;
 
 		// Expected targets: 2 mains + 1 worker = 3 instances
 		const expectedTargets = 3;
@@ -114,21 +112,19 @@ test.describe('Multi-main Observability @capability:observability @mode:multi-ma
 		// ========== STEP 1: Enable log streaming feature ==========
 		await api.enableFeature('logStreaming');
 
-		const obsStack = n8nContainer.observability!;
-		const obs = new ObservabilityHelper(obsStack);
-		const { host, port } = obsStack.victoriaLogs.syslog;
+		const obs = n8nContainer.services.observability;
 
 		// ========== STEP 2: Configure syslog destination ==========
 		// Create a syslog destination pointing to VictoriaLogs
 		const destination = await api.createSyslogDestination({
-			host,
-			port,
-			protocol: SYSLOG_DEFAULTS.protocol,
+			host: obs.syslog.host,
+			port: obs.syslog.port,
+			protocol: obs.syslog.protocol,
 			label: 'Multi-main VictoriaLogs',
 		});
 
 		console.log('Created syslog destination:', destination.id);
-		console.log(`  Target: ${host}:${port} (${SYSLOG_DEFAULTS.protocol})`);
+		console.log(`  Target: ${obs.syslog.host}:${obs.syslog.port} (${obs.syslog.protocol})`);
 
 		// ========== STEP 3: Send test message ==========
 		// The test message triggers n8n to send a "n8n.destination.test" event

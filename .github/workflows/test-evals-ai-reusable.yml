@@ -1,0 +1,108 @@
+name: 'Test: Evals AI'
+
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'GitHub branch to test.'
+        type: string
+        default: 'master'
+      suite:
+        description: 'Evaluation suite to run (pairwise or llm-judge).'
+        type: string
+        default: 'pairwise'
+      dataset:
+        description: 'LangSmith dataset to use.'
+        type: string
+        required: true
+      repetitions:
+        description: 'Number of repetitions to run.'
+        type: number
+        default: 1
+      judges:
+        description: 'Number of judges to use.'
+        type: number
+        default: 1
+      concurrency:
+        description: 'Max concurrent evaluations.'
+        type: number
+        default: 10
+      experiment_name_prefix:
+        description: 'Prefix for the experiment name. If empty, will be auto-generated from branch name.'
+        type: string
+        default: ''
+
+jobs:
+  evals:
+    name: Run ${{ inputs.suite }} Evaluations
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      N8N_AI_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+      LANGSMITH_TRACING: true
+      LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+      LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Generate experiment name
+        id: experiment
+        run: |
+          DATE=$(date +%Y_%m_%d)
+          PREFIX="${{ inputs.experiment_name_prefix }}"
+
+          if [ -n "$PREFIX" ]; then
+            NAME="${PREFIX}_${DATE}"
+          else
+            # Extract ticket ID from branch name (e.g., AI-1234 from ai-1234-feature-name)
+            BRANCH="${{ inputs.branch }}"
+            TICKET=$(echo "$BRANCH" | grep -oE '^[Aa][Ii]-[0-9]+' | tr '[:lower:]' '[:upper:]' || true)
+            if [ -n "$TICKET" ]; then
+              NAME="${TICKET}_${DATE}"
+            else
+              # Sanitize branch name for experiment name
+              SANITIZED_BRANCH=$(echo "$BRANCH" | sed 's/[^a-zA-Z0-9_.-]/_/g' | sed 's/__*/_/g')
+              NAME="CI_${SANITIZED_BRANCH}_${DATE}"
+            fi
+          fi
+
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Generated experiment name: $NAME"
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1 # 6.5.0
+        with:
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3.0.0
+
+      - name: Install Python
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: uv python install 3.11
+
+      - name: Install workflow comparison dependencies
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: just sync-all
+
+      - name: Export Node Types
+        run: |
+          ./packages/cli/bin/n8n export:nodes --output ./packages/@n8n/ai-workflow-builder.ee/evaluations/nodes.json
+
+      - name: Run Evaluations
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations
+        run: |
+          pnpm eval \
+            --suite "${{ inputs.suite }}" \
+            --backend langsmith \
+            --dataset "${{ inputs.dataset }}" \
+            --repetitions ${{ inputs.repetitions }} \
+            --judges ${{ inputs.judges }} \
+            --concurrency ${{ inputs.concurrency }} \
+            --name "${{ steps.experiment.outputs.name }}" \
+            ${{ secrets.EVALS_WEBHOOK_URL && format('--webhook-url "{0}"', secrets.EVALS_WEBHOOK_URL) || '' }} \
+            ${{ secrets.EVALS_WEBHOOK_SECRET && format('--webhook-secret "{0}"', secrets.EVALS_WEBHOOK_SECRET) || '' }}

@@ -19,7 +19,11 @@ import { modifySelectQuery, rowToExecutionData } from '../../helpers/utils';
 type AlaSQLBase = typeof alasqlImport;
 type AlaSQLExtended = AlaSQLBase & {
 	// Access `engines` internal structure to override file access engines
-	engines?: AlaSQLBase['fn'];
+	engines?: Record<string, unknown>;
+	// Access `into` handlers to override file write operations
+	into?: Record<string, unknown>;
+	// Access `utils` for utility functions
+	utils?: Record<string, unknown>;
 	// Fix Database constructor typing
 	Database: AlaSQLBase['Database'] & { new (databaseId: string): AlaSQLBase['Database'] };
 };
@@ -31,36 +35,88 @@ function disableAlasqlFileAccess() {
 		throw new Error('File access operations are disabled for security reasons');
 	};
 
-	// Disable file reading functions that could be used to access the file system
-	if (alasql.fn) {
-		alasql.fn.FILE = disabledFunction;
-		alasql.fn.JSON = disabledFunction;
-		alasql.fn.TXT = disabledFunction;
-		alasql.fn.CSV = disabledFunction;
-		alasql.fn.XLSX = disabledFunction;
-		alasql.fn.XLS = disabledFunction;
-		alasql.fn.LOAD = disabledFunction;
-		alasql.fn.SAVE = disabledFunction;
-	}
-
-	// Also disable the FROM handlers which are used for file operations
+	// Block ALL FROM handlers that can read files or external resources
 	if (alasql.from) {
-		alasql.from.FILE = disabledFunction;
-		alasql.from.JSON = disabledFunction;
-		alasql.from.TXT = disabledFunction;
-		alasql.from.CSV = disabledFunction;
-		alasql.from.XLSX = disabledFunction;
-		alasql.from.XLS = disabledFunction;
+		const fromHandlers = [
+			'FILE',
+			'JSON',
+			'JSONL',
+			'NDJSON',
+			'TXT',
+			'CSV',
+			'TAB',
+			'TSV',
+			'XLS',
+			'XLSX',
+			'ODS',
+			'XML',
+			'GEXF',
+			'HTML',
+			'TABLETOP',
+			'METEOR',
+		];
+		fromHandlers.forEach((handler) => {
+			alasql.from[handler] = disabledFunction;
+		});
 	}
 
-	// Override the engines that handle file operations
+	// Block ALL INTO handlers that can write files
+	if (alasql.into) {
+		const intoHandlers = [
+			'FILE',
+			'JSON',
+			'TXT',
+			'CSV',
+			'TAB',
+			'TSV',
+			'SQL',
+			'XLS',
+			'XLSXML',
+			'XLSX',
+			'HTML',
+		];
+		const intoObj = alasql.into;
+		intoHandlers.forEach((handler) => {
+			intoObj[handler] = disabledFunction;
+		});
+	}
+
+	// Block ALL file-based database engines
 	if (alasql.engines) {
-		alasql.engines.FILE = disabledFunction;
-		alasql.engines.JSON = disabledFunction;
-		alasql.engines.TXT = disabledFunction;
-		alasql.engines.CSV = disabledFunction;
-		alasql.engines.XLSX = disabledFunction;
-		alasql.engines.XLS = disabledFunction;
+		const engines = [
+			'FILE',
+			'FILESTORAGE',
+			'LOCALSTORAGE',
+			'INDEXEDDB',
+			'SQLITE',
+			'JSON',
+			'TXT',
+			'CSV',
+			'XLSX',
+			'XLS',
+		];
+		const enginesObj = alasql.engines;
+		engines.forEach((engine) => {
+			enginesObj[engine] = disabledFunction;
+		});
+	}
+
+	// Block file system utility functions
+	if (alasql.utils) {
+		alasql.utils.loadFile = disabledFunction;
+		alasql.utils.loadBinaryFile = disabledFunction;
+		alasql.utils.saveFile = disabledFunction;
+		alasql.utils.removeFile = disabledFunction;
+		alasql.utils.deleteFile = disabledFunction;
+		alasql.utils.fileExists = disabledFunction;
+	}
+
+	// Block fn handlers if present
+	if (alasql.fn) {
+		const fnHandlers = ['FILE', 'JSON', 'TXT', 'CSV', 'XLSX', 'XLS', 'LOAD', 'SAVE'];
+		fnHandlers.forEach((handler) => {
+			alasql.fn[handler] = disabledFunction;
+		});
 	}
 }
 

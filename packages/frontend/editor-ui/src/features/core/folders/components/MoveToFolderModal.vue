@@ -391,7 +391,7 @@ onMounted(async () => {
 							>
 							<template #resourceTypeLabel>{{ resourceTypeLabel }}</template>
 						</I18nT>
-						<span
+						<div
 							v-if="props.data.resource.sharedWithProjects?.length ?? 0 > 0"
 							:class="$style.textBlock"
 						>
@@ -403,7 +403,7 @@ onMounted(async () => {
 									},
 								})
 							}}
-						</span>
+						</div>
 					</N8nText>
 				</div>
 			</EnterpriseEdition>
@@ -430,33 +430,35 @@ onMounted(async () => {
 				:class="$style.textBlock"
 				data-test-id="move-modal-share-credentials-checkbox"
 			>
-				<I18nT
-					:keypath="
-						data.resourceType === 'workflow'
-							? 'folders.move.modal.message.usedCredentials.workflow'
-							: 'folders.move.modal.message.usedCredentials.folder'
-					"
-					scope="global"
-				>
-					<template #usedCredentials>
-						<N8nTooltip placement="top">
-							<span :class="$style.tooltipText">
-								{{
-									i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
-										adjustToNumber: shareableCredentials.length,
-										interpolate: { count: shareableCredentials.length },
-									})
-								}}
-							</span>
-							<template #content>
-								<ProjectMoveResourceModalCredentialsList
-									:current-project-id="projectsStore.currentProjectId"
-									:credentials="shareableCredentials"
-								/>
-							</template>
-						</N8nTooltip>
-					</template>
-				</I18nT>
+				<template #label>
+					<I18nT
+						:keypath="
+							data.resourceType === 'workflow'
+								? 'folders.move.modal.message.usedCredentials.workflow'
+								: 'folders.move.modal.message.usedCredentials.folder'
+						"
+						scope="global"
+					>
+						<template #usedCredentials>
+							<N8nTooltip placement="top">
+								<span :class="$style.tooltipText">
+									{{
+										i18n.baseText('projects.move.resource.modal.message.usedCredentials.number', {
+											adjustToNumber: shareableCredentials.length,
+											interpolate: { count: shareableCredentials.length },
+										})
+									}}
+								</span>
+								<template #content>
+									<ProjectMoveResourceModalCredentialsList
+										:current-project-id="projectsStore.currentProjectId"
+										:credentials="shareableCredentials"
+									/>
+								</template>
+							</N8nTooltip>
+						</template>
+					</I18nT>
+				</template>
 			</N8nCheckbox>
 			<N8nCallout
 				v-if="shareableCredentials.length && !shareUsedCredentials"
@@ -466,7 +468,7 @@ onMounted(async () => {
 			>
 				{{ i18n.baseText('folders.move.modal.message.usedCredentials.warning') }}
 			</N8nCallout>
-			<span v-if="unShareableCredentials.length" :class="$style.textBlock">
+			<div v-if="unShareableCredentials.length" :class="$style.textBlock">
 				<I18nT
 					keypath="projects.move.resource.modal.message.unAccessibleCredentials.note"
 					scope="global"
@@ -485,7 +487,7 @@ onMounted(async () => {
 						</N8nTooltip>
 					</template>
 				</I18nT>
-			</span>
+			</div>
 		</template>
 		<template #footer="{ close }">
 			<div :class="$style.footer">

@@ -27,10 +27,6 @@ export class CanvasPage extends BasePage {
 		this.page.getByRole('dialog').filter({ hasText: 'Convert' }),
 	);
 
-	saveWorkflowButton(): Locator {
-		return this.page.getByRole('button', { name: 'Save' });
-	}
-
 	nodeCreatorItemByName(text: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(text, { exact: true });
 	}
@@ -84,10 +80,6 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('node-creator-plus-button');
 	}
 
-	async clickSaveWorkflowButton(): Promise<void> {
-		await this.saveWorkflowButton().click();
-	}
-
 	async fillNodeCreatorSearchBar(text: string): Promise<void> {
 		await this.nodeCreatorSearchBar().fill(text);
 	}
@@ -126,10 +118,15 @@ export class CanvasPage extends BasePage {
 			closeNDV?: boolean;
 			action?: string;
 			trigger?: string;
+			fromNode?: string;
 		},
 	): Promise<void> {
-		// Always start with canvas plus button
-		await this.clickNodeCreatorPlusButton();
+		if (options?.fromNode) {
+			await this.clickNodePlusEndpoint(options.fromNode);
+		} else {
+			// Always start with canvas plus button
+			await this.clickNodeCreatorPlusButton();
+		}
 
 		// Search for and select the node, works on exact name match only
 		await this.fillNodeCreatorSearchBar(nodeName);
@@ -163,14 +160,13 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async saveWorkflow(): Promise<void> {
-		const responsePromise = this.page.waitForResponse(
+	async waitForSaveWorkflowCompleted() {
+		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
 				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
+			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
 		);
-		await this.clickSaveWorkflowButton();
-		await responsePromise;
 	}
 
 	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
@@ -437,10 +433,6 @@ export class CanvasPage extends BasePage {
 		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag.selected');
 	}
 
-	getWorkflowSaveButton(): Locator {
-		return this.page.getByTestId('workflow-save-button');
-	}
-
 	getOpenPublishModalButton(): Locator {
 		return this.page.getByTestId('workflow-open-publish-modal-button');
 	}
@@ -454,7 +446,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getPublishedIndicator(): Locator {
-		return this.page.getByTestId('workflow-active-version-indicator');
+		return this.page.getByRole('button', { name: 'Published' });
 	}
 
 	getLoadingMask(): Locator {
@@ -871,9 +863,17 @@ export class CanvasPage extends BasePage {
 			| 'ai_vectorRetriever'
 			| 'ai_vectorStore',
 		parentNodeName: string,
-		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
+		{
+			closeNDV = false,
+			exactMatch = false,
+			subcategory,
+		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
+
+		if (subcategory) {
+			await this.nodeCreator.navigateToSubcategory(subcategory);
+		}
 
 		if (exactMatch) {
 			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();

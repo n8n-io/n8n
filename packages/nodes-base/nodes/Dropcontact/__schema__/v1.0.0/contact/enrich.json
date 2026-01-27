@@ -36,6 +36,12 @@
         "last_name": {
             "type": "string"
         },
+        "linkedin": {
+            "type": "string"
+        },
+        "location": {
+            "type": "string"
+        },
         "nb_employees": {
             "type": "string"
         },
@@ -46,5 +52,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

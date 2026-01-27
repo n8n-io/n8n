@@ -143,6 +143,7 @@ BLOCKED_ATTRIBUTES = {
     "cr_code",
     "ag_frame",
     "ag_code",
+    "obj",
     "__thisclass__",
     "__self_class__",
     # introspection attributes

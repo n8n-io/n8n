@@ -22,7 +22,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
-import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 
 import { N8nAssistantIcon, N8nButton, N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
@@ -54,7 +53,6 @@ const telemetry = useTelemetry();
 const assistantStore = useAssistantStore();
 const builderStore = useBuilderStore();
 const chatPanelStore = useChatPanelStore();
-const { isEnabled: isCommandBarEnabled } = useCommandBar();
 
 const { getAddedNodesAndConnections } = useActions();
 
@@ -150,7 +148,6 @@ function openCommandBar(event: MouseEvent) {
 			/>
 		</KeyboardShortcutTooltip>
 		<KeyboardShortcutTooltip
-			v-if="isCommandBarEnabled"
 			:label="i18n.baseText('nodeView.openCommandBar')"
 			:shortcut="{ keys: ['k'], metaKey: true }"
 			placement="left"

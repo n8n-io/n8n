@@ -106,6 +106,7 @@ export class ExecutionsPage extends BasePage {
 
 	async selectStatus(status: string): Promise<void> {
 		await this.getStatusSelect().click();
-		await this.page.locator('.el-select-dropdown__item').filter({ hasText: status }).click();
+		await this.page.waitForTimeout(1000);
+		await this.page.getByRole('option', { name: status }).click();
 	}
 }

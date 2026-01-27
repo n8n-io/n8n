@@ -2,6 +2,7 @@
 
 exports[`N8nPromptInput > rendering > should render correctly with default props 1`] = `
 <div>
+  
   <div
     class="wrapper"
   >
@@ -62,11 +63,13 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
     <!-- Credits bar below input -->
     <!--v-if-->
   </div>
+  
 </div>
 `;
 
 exports[`N8nPromptInput > rendering > should render streaming state without disabling textarea 1`] = `
 <div>
+  
   <div
     class="wrapper"
   >
@@ -126,5 +129,6 @@ exports[`N8nPromptInput > rendering > should render streaming state without disa
     <!-- Credits bar below input -->
     <!--v-if-->
   </div>
+  
 </div>
 `;

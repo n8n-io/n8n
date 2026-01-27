@@ -29,6 +29,7 @@ interface HttpNodeParameters extends Record<string, unknown> {
 		parameters: Parameter[];
 	};
 	jsonBody?: object;
+	body?: string;
 	options: {
 		allowUnauthorizedCerts?: boolean;
 		proxy?: string;
@@ -330,11 +331,13 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	}
 
 	if (contentType && !SUPPORTED_CONTENT_TYPES.includes(contentType)) {
+		const data = curlJson?.data;
+
 		return Object.assign(httpNodeParameters, {
 			sendBody: true,
 			contentType: 'raw',
 			rawContentType: contentType,
-			body: Object.keys(curlJson?.data ?? {})[0],
+			body: data ? (typeof data === 'string' ? data : JSON.stringify(data)) : undefined,
 		});
 	}
 

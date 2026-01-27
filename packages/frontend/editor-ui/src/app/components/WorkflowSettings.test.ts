@@ -14,6 +14,16 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
+import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+
+const toast = {
+	showMessage: vi.fn(),
+	showError: vi.fn(),
+};
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => toast,
+}));
 
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
@@ -125,22 +135,92 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy-workflow-ids')).toBeVisible();
 	});
 
-	it('should fetch all workflows and render them in the error workflows dropdown', async () => {
-		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
-		const { getByTestId } = createComponent({ pinia });
+	describe('Error Workflow', () => {
+		it('should fetch all workflows and render them in the error workflows dropdown', async () => {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+			const { getByTestId } = createComponent({ pinia });
 
-		await nextTick();
-		const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			await nextTick();
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
 
-		// first is `- No Workflow -`, second is the workflow returned by
-		// `workflowsStore.fetchAllWorkflows`
-		expect(dropdownItems).toHaveLength(2);
-		expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
-		expect(searchWorkflowsSpy).toHaveBeenCalledWith(
-			expect.objectContaining({
-				query: undefined,
-			}),
-		);
+			// first is `- No Workflow -`, second is the workflow returned by
+			// `workflowsStore.fetchAllWorkflows`
+			expect(dropdownItems).toHaveLength(2);
+			expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
+			expect(searchWorkflowsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					query: undefined,
+				}),
+			);
+		});
+
+		it('should initialize undefined errorWorkflow to DEFAULT', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			expect(dropdownItems[0]).toHaveTextContent('No Workflow');
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: 'DEFAULT' }),
+				}),
+			);
+		});
+
+		it('should send DEFAULT value for errorWorkflow to backend when set to "No Workflow"', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+				errorWorkflow: 'some-workflow-id',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+
+			// Select "No Workflow" (first option)
+			await userEvent.click(dropdownItems[0]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: 'DEFAULT' }),
+				}),
+			);
+		});
+
+		it('should save workflow with errorWorkflow when a specific workflow is selected', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+
+			// Select the test workflow (second option)
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ errorWorkflow: '1' }),
+				}),
+			);
+		});
 	});
 
 	it('should not remove valid workflow ID characters', async () => {
@@ -230,7 +310,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		await userEvent.type(timeSavedPerExecutionInput as Element, '10');
 		expect(timeSavedPerExecutionInput).toHaveValue(10);
@@ -252,7 +334,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 		await waitFor(() => expect(timeSavedPerExecutionInput).toHaveValue(10));
 
 		await userEvent.clear(timeSavedPerExecutionInput as Element);
@@ -277,7 +361,9 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
 	});
@@ -300,9 +386,177 @@ describe('WorkflowSettingsVue', () => {
 			expect(getByTestId('workflow-settings-time-saved-per-execution')).toBeVisible();
 		});
 
-		const timeSavedPerExecutionInput = getByTestId('workflow-settings-time-saved-per-execution');
+		const timeSavedPerExecutionInput = getByTestId(
+			'workflow-settings-time-saved-per-execution',
+		)?.querySelector('input[type="number"]');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
+	});
+
+	describe('Execution Order & Binary Mode', () => {
+		it('should render execution order dropdown with correct options', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+
+			expect(dropdownItems.length).toBeGreaterThanOrEqual(2);
+			expect(dropdownItems[0]).toHaveTextContent(
+				'Executes the first node of each branch, then the second node of each branch, and so on.',
+			);
+			expect(dropdownItems[1]).toHaveTextContent(
+				'Executes each branch in turn, from topmost to bottommost, completing one branch before starting another.',
+			);
+		});
+
+		it('should set binaryMode to separate when selecting v0', async () => {
+			workflowsStore.workflowSettings.executionOrder = 'v1';
+			workflowsStore.workflowSettings.binaryMode = BINARY_MODE_COMBINED;
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+			await userEvent.click(dropdownItems[0]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						executionOrder: 'v0',
+						binaryMode: 'separate',
+					}),
+				}),
+			);
+		});
+
+		it('should set binaryMode to separate when selecting v1', async () => {
+			workflowsStore.workflowSettings.executionOrder = 'v0';
+			workflowsStore.workflowSettings.binaryMode = BINARY_MODE_COMBINED;
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({
+						executionOrder: 'v1',
+						binaryMode: 'separate',
+					}),
+				}),
+			);
+		});
+
+		it('should show binary mode warning toast when binary mode changes', async () => {
+			workflowsStore.workflowSettings.executionOrder = 'v1';
+			workflowsStore.workflowSettings.binaryMode = BINARY_MODE_COMBINED;
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+			await userEvent.click(dropdownItems[0]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			await waitFor(() => {
+				expect(toast.showMessage).toHaveBeenCalledWith(
+					expect.objectContaining({
+						title: 'Execution Logic changed',
+						type: 'warning',
+						duration: 0,
+					}),
+				);
+			});
+		});
+
+		it('should not show warning when binary mode does not change', async () => {
+			workflowsStore.workflowSettings.executionOrder = 'v0';
+			workflowsStore.workflowSettings.binaryMode = 'separate';
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			toast.showMessage.mockClear();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+			await userEvent.click(dropdownItems[1]);
+
+			await new Promise((resolve) => setTimeout(resolve, 100));
+
+			expect(toast.showMessage).not.toHaveBeenCalled();
+		});
+
+		it('should default to v1 execution order when not set', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v1',
+			};
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-execution-order'),
+			);
+
+			expect(dropdownItems[1]).toHaveTextContent('v1');
+		});
+
+		it('should disable execution order dropdown when environment is read-only', async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const executionOrderDropdown = within(
+				getByTestId('workflow-settings-execution-order'),
+			).getByRole('combobox');
+
+			expect(executionOrderDropdown).toBeDisabled();
+		});
+
+		it('should disable execution order dropdown when user has no update permission', async () => {
+			workflowsStore.getWorkflowById.mockImplementation(() => ({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				activeVersionId: 'v1',
+				isArchived: false,
+				nodes: [],
+				connections: {},
+				createdAt: 1,
+				updatedAt: 1,
+				versionId: '123',
+				scopes: ['workflow:read'],
+			}));
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const executionOrderDropdown = within(
+				getByTestId('workflow-settings-execution-order'),
+			).getByRole('combobox');
+
+			expect(executionOrderDropdown).toBeDisabled();
+		});
 	});
 
 	describe('Credential Resolver', () => {

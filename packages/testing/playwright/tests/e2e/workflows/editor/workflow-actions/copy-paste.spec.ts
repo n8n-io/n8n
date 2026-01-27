@@ -4,8 +4,9 @@ import { CODE_NODE_NAME, SCHEDULE_TRIGGER_NODE_NAME } from '../../../../../confi
 import { test, expect } from '../../../../../fixtures/base';
 import { resolveFromRoot } from '../../../../../utils/path-helper';
 
-// eslint-disable-next-line playwright/no-skipped-test
-test.skip('Workflow Copy Paste', () => {
+test.describe('Workflow Copy Paste @fixme', () => {
+	test.fixme();
+
 	test.beforeEach(async ({ n8n }) => {
 		await n8n.start.fromBlankCanvas();
 	});

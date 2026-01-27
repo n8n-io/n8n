@@ -19,6 +19,10 @@ export class SettingsLogStreamingPage extends BasePage {
 		return this.getActionBoxLicensed().locator('button');
 	}
 
+	getAddNewDestinationButton(): Locator {
+		return this.page.getByRole('button', { name: 'Add new destination' });
+	}
+
 	getDestinationModal(): Locator {
 		return this.page.getByTestId('destination-modal');
 	}
@@ -83,8 +87,10 @@ export class SettingsLogStreamingPage extends BasePage {
 		return this.page.locator('.btn--confirm');
 	}
 
-	async clickAddFirstDestination(): Promise<void> {
-		await this.getAddFirstDestinationButton().click();
+	async addDestination(): Promise<void> {
+		const addFirstButton = this.getAddFirstDestinationButton();
+		const addNewButton = this.getAddNewDestinationButton();
+		await addFirstButton.or(addNewButton).click();
 	}
 
 	async clickSelectDestinationType(): Promise<void> {
@@ -122,7 +128,11 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	async saveDestination(): Promise<void> {
+		const responsePromise = this.page.waitForResponse(
+			(res) => res.url().includes('/eventbus/destination') && res.request().method() === 'POST',
+		);
 		await this.getDestinationSaveButton().click();
+		await responsePromise;
 	}
 
 	async deleteDestination(): Promise<void> {
@@ -162,7 +172,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	 * @param destinationName - The name to give the new destination
 	 */
 	async createDestination(destinationName: string): Promise<void> {
-		await this.clickAddFirstDestination();
+		await this.addDestination();
 		await this.getDestinationModal().waitFor({ state: 'visible' });
 		await this.clickSelectDestinationType();
 		await this.selectDestinationType(0); // Webhook
@@ -184,7 +194,7 @@ export class SettingsLogStreamingPage extends BasePage {
 		host: string;
 		port: number;
 	}): Promise<void> {
-		await this.clickAddFirstDestination();
+		await this.addDestination();
 		await this.getDestinationModal().waitFor({ state: 'visible' });
 		await this.clickSelectDestinationType();
 		await this.selectDestinationType(2); // Syslog (0=Webhook, 1=Sentry, 2=Syslog)

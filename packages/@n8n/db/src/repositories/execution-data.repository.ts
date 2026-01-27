@@ -26,4 +26,10 @@ export class ExecutionDataRepository extends Repository<ExecutionData> {
 			},
 		}).then((executionData) => executionData.map(({ workflowData }) => workflowData));
 	}
+
+	async deleteMany(executionIds: string[]) {
+		if (executionIds.length === 0) return;
+
+		await this.delete({ executionId: In(executionIds) });
+	}
 }

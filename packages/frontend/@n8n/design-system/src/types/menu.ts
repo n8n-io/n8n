@@ -34,6 +34,7 @@ export type IMenuItem = {
 	children?: IMenuElement[];
 	isLoading?: boolean;
 	disabled?: boolean;
+	disabledReason?: string;
 	notification?: boolean;
 	size?: 'medium' | 'small';
 	beta?: boolean;

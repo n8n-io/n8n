@@ -1,0 +1,23 @@
+{
+	"type": "object",
+	"properties": {
+		"invocationId": {
+			"type": "string"
+		},
+		"status": {
+			"type": "string"
+		},
+		"output": {
+			"type": "object",
+			"properties": {
+				"error": {
+					"type": "boolean"
+				},
+				"success": {
+					"type": "boolean"
+				}
+			}
+		}
+	},
+	"version": 1
+}

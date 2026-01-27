@@ -10,17 +10,18 @@ test.describe('Evaluations @capability:proxy', () => {
 	});
 
 	// @AI team to look at this
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('should load evaluations workflow and execute twice', async ({ n8n, proxyServer }) => {
-		await proxyServer.loadExpectations('evaluations');
+	test.fixme(
+		'should load evaluations workflow and execute twice @fixme',
+		async ({ n8n, proxyServer }) => {
+			await proxyServer.loadExpectations('evaluations');
 
-		await n8n.api.credentials.createCredentialFromDefinition({
-			name: 'Test Google Sheets',
-			type: 'googleApi',
-			data: {
-				email: 'email@quickstart-1234.iam.gserviceaccount.com',
-				// mock private key
-				privateKey: `-----BEGIN PRIVATE KEY-----
+			await n8n.api.credentials.createCredentialFromDefinition({
+				name: 'Test Google Sheets',
+				type: 'googleApi',
+				data: {
+					email: 'email@quickstart-1234.iam.gserviceaccount.com',
+					// mock private key
+					privateKey: `-----BEGIN PRIVATE KEY-----
 MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDx1//AaoSkyHYl
 npqS3+uaePYhJXKD/T1h6zGThAUooN7ZzWK46nNcU1vghQMTlPMHfUTbl4xzZxEL
 OYjyTPOKpwJvhmy44MU+zTQYJuUaU4dQuOCnnC61CL91Xy+8GJd7PvdUeVRWENWu
@@ -48,41 +49,43 @@ nmfqICLWEc/UZSxmxau1rOz71GJiiHgXFmQgiZtpf3Qp3wKKtoFkf+sJ6zP2VX35
 2tJcTO9lKm6kNa3eaveE/NJrkH5a0IpxrvDT1TvmnapaNEKuGZJAX5BNaggDrfEJ
 m82JpEptTfAxFHtd8+Sb0U2G
 -----END PRIVATE KEY-----`,
-			},
-		});
+				},
+			});
 
-		await n8n.navigate.toWorkflow('new');
-		// Import the evaluations workflow
-		await n8n.canvas.importWorkflow('evaluations_loop.json', 'Evaluations');
+			await n8n.navigate.toWorkflow('new');
+			// Import the evaluations workflow
+			await n8n.canvas.importWorkflow('evaluations_loop.json', 'Evaluations');
 
-		// Open each node to ensure credentials are set
-		await n8n.canvas.openNode('When fetching a dataset row');
-		await n8n.page.keyboard.press('Escape');
+			// Open each node to ensure credentials are set
+			await n8n.canvas.openNode('When fetching a dataset row');
+			await n8n.page.keyboard.press('Escape');
 
-		// Open each node to ensure credentials are set
-		await n8n.canvas.openNode('Set outputs');
-		await n8n.page.keyboard.press('Escape');
+			// Open each node to ensure credentials are set
+			await n8n.canvas.openNode('Set outputs');
+			await n8n.page.keyboard.press('Escape');
 
-		// Execute workflow from canvas - first execution
-		await n8n.canvas.clickExecuteWorkflowButton();
+			// Execute workflow from canvas - first execution
+			await n8n.canvas.clickExecuteWorkflowButton();
 
-		// wait for first run to finish
-		await n8n.notifications.waitForNotificationAndClose('Successful', { timeout: 10000 });
+			// wait for first run to finish
+			await n8n.notifications.waitForNotificationAndClose('Successful', { timeout: 10000 });
 
-		// wait for second run to finish
-		await n8n.notifications.waitForNotificationAndClose('Successful', { timeout: 10000 });
+			// wait for second run to finish
+			await n8n.notifications.waitForNotificationAndClose('Successful', { timeout: 10000 });
 
-		// 💡 To update recordings, remove stored expectations, set real credentials above and rerecord here.
-		// await proxyServer.recordExpectations('evaluations', { host: 'google', dedupe: true });
+			// 💡 To update recordings, remove stored expectations, set real credentials above and rerecord here.
+			// await proxyServer.recordExpectations('evaluations', { host: 'google', dedupe: true });
 
-		const batchUpdateRequests = (await proxyServer.getAllRequestsMade()).filter((request) => {
-			const path = request.httpRequest?.path;
-			const method = request.httpRequest?.method;
+			const batchUpdateRequests = (await proxyServer.getAllRequestsMade()).filter((request) => {
+				const path = request.httpRequest?.path;
+				const method = request.httpRequest?.method;
 
-			return method === 'POST' && typeof path === 'string' && path.endsWith('/values:batchUpdate');
-		});
+				return (
+					method === 'POST' && typeof path === 'string' && path.endsWith('/values:batchUpdate')
+				);
+			});
 
-		/**
+			/**
 		 * Original Table in Google Sheets
 		 * The loop should execute twice over both rows here
 		 * Incrementing each value by 1 (expression in Set Output node)
@@ -92,25 +95,26 @@ m82JpEptTfAxFHtd8+Sb0U2G
 			 hello	wolrd	 104
 		 */
 
-		// Set output node was called twice in a loop, updating Google sheets output value
-		expect(batchUpdateRequests.length).toEqual(2);
-		expect((batchUpdateRequests[0]?.httpRequest?.body as { json: object })?.json).toEqual({
-			data: [
-				{
-					range: 'Sheet2!C2',
-					values: [[11]],
-				},
-			],
-			valueInputOption: 'RAW',
-		});
-		expect((batchUpdateRequests[1]?.httpRequest?.body as { json: object })?.json).toEqual({
-			data: [
-				{
-					range: 'Sheet2!C3',
-					values: [[105]],
-				},
-			],
-			valueInputOption: 'RAW',
-		});
-	});
+			// Set output node was called twice in a loop, updating Google sheets output value
+			expect(batchUpdateRequests.length).toEqual(2);
+			expect((batchUpdateRequests[0]?.httpRequest?.body as { json: object })?.json).toEqual({
+				data: [
+					{
+						range: 'Sheet2!C2',
+						values: [[11]],
+					},
+				],
+				valueInputOption: 'RAW',
+			});
+			expect((batchUpdateRequests[1]?.httpRequest?.body as { json: object })?.json).toEqual({
+				data: [
+					{
+						range: 'Sheet2!C3',
+						values: [[105]],
+					},
+				],
+				valueInputOption: 'RAW',
+			});
+		},
+	);
 });

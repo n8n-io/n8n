@@ -315,6 +315,7 @@ export class NodeTestHarness {
 						} else {
 							for (const key in binary) {
 								delete binary[key].directory;
+								delete binary[key].bytes;
 							}
 						}
 					}

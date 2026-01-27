@@ -109,7 +109,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
-	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);
+	const isAiCreditsEnabled = computed(
+		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
+	);
 
 	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
 
@@ -239,6 +241,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSettings(fetchedSettings);
 		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 
+		// Set MFA enforced state even for public settings mode
+		// as it is needed to determine if the MFA setup page should be shown
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
+
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
 			// when public settings are returned we can skip the rest of the setup
@@ -254,8 +260,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
 		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
 		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
-
-		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
