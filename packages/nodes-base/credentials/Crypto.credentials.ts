@@ -1,8 +1,6 @@
 import type { ICredentialType, INodeProperties, Icon, ThemeIconColor } from 'n8n-workflow';
 
-// eslint-disable-next-line n8n-nodes-base/cred-class-name-unsuffixed
 export class Crypto implements ICredentialType {
-	// eslint-disable-next-line n8n-nodes-base/cred-class-field-name-unsuffixed
 	name = 'crypto';
 
 	displayName = 'Crypto';
