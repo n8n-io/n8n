@@ -2254,6 +2254,29 @@ export type NodeDefaults = Partial<{
 	name: string;
 }>;
 
+/**
+ * Configuration for a single AI subnode input in builderHint.inputs
+ */
+export interface IBuilderHintInputConfig {
+	/** Whether this AI input is required */
+	required: boolean;
+	/** Conditions under which this input should be available/required */
+	displayOptions?: IDisplayOptions;
+}
+
+/**
+ * Maps AI input types (e.g. 'ai_languageModel', 'ai_memory') to their configuration
+ */
+export type BuilderHintInputs = Record<string, IBuilderHintInputConfig>;
+
+/**
+ * Builder hints for workflow-sdk type generation
+ */
+export interface IBuilderHint {
+	/** Explicit AI input requirements for accurate type generation */
+	inputs?: BuilderHintInputs;
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: NodeDefaults;
@@ -2286,6 +2309,8 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 	features?: NodeFeaturesDefinition;
+	/** Hints for workflow-sdk type generation, including explicit AI input requirements */
+	builderHint?: IBuilderHint;
 }
 
 export type TriggerPanelDefinition = {

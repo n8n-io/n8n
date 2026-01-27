@@ -31,6 +31,17 @@ export class AgentToolV2 implements INodeType {
 				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback !== undefined && $parameter.needsFallback === true)
 			}}`,
 			outputs: [NodeConnectionTypes.AiTool],
+			builderHint: {
+				inputs: {
+					ai_languageModel: { required: true },
+					ai_memory: { required: false },
+					ai_tool: { required: false },
+					ai_outputParser: {
+						required: false,
+						displayOptions: { show: { hasOutputParser: [true] } },
+					},
+				},
+			},
 			properties: [
 				toolDescription,
 				{

@@ -63,6 +63,11 @@ export class TextClassifier implements INodeType {
 			},
 		],
 		outputs: `={{(${configuredOutputs})($parameter)}}`,
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Text to Classify',

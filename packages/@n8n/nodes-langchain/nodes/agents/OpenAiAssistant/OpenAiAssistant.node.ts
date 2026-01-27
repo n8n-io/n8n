@@ -50,6 +50,11 @@ export class OpenAiAssistant implements INodeType {
 			{ type: NodeConnectionTypes.AiTool, displayName: 'Tools' },
 		],
 		outputs: [NodeConnectionTypes.Main],
+		builderHint: {
+			inputs: {
+				ai_tool: { required: false },
+			},
+		},
 		credentials: [
 			{
 				name: 'openAiApi',

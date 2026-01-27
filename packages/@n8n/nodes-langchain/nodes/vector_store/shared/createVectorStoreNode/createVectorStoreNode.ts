@@ -116,6 +116,21 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				return [{ displayName: "", type: "${NodeConnectionTypes.Main}"}]
 			})($parameter)
 		}}`,
+			builderHint: {
+				inputs: {
+					ai_embedding: { required: true },
+					ai_document: {
+						required: true,
+						displayOptions: { show: { mode: ['insert'] } },
+					},
+					ai_reranker: {
+						required: false,
+						displayOptions: {
+							show: { mode: ['load', 'retrieve', 'retrieve-as-tool'], useReranker: [true] },
+						},
+					},
+				},
+			},
 			properties: [
 				ragStarterCallout,
 				{

@@ -48,6 +48,11 @@ export class RetrieverVectorStore implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiRetriever],
 		outputNames: ['Retriever'],
+		builderHint: {
+			inputs: {
+				ai_vectorStore: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Limit',

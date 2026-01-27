@@ -57,6 +57,11 @@ export class DocumentBinaryInputLoader implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: { required: true },
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{

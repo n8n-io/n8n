@@ -50,6 +50,11 @@ export class DocumentJsonInputLoader implements INodeType {
 
 		outputs: [NodeConnectionTypes.AiDocument],
 		outputNames: ['Document'],
+		builderHint: {
+			inputs: {
+				ai_textSplitter: { required: false },
+			},
+		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
 			{

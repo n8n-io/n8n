@@ -59,6 +59,12 @@ export class RetrieverContextualCompression implements INodeType {
 				type: NodeConnectionTypes.AiRetriever,
 			},
 		],
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+				ai_retriever: { required: true },
+			},
+		},
 		properties: [],
 	};
 

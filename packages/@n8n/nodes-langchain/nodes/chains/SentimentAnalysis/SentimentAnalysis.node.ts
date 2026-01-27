@@ -64,6 +64,11 @@ export class SentimentAnalysis implements INodeType {
 			},
 		],
 		outputs: `={{(${configuredOutputs})($parameter, "${DEFAULT_CATEGORIES}")}}`,
+		builderHint: {
+			inputs: {
+				ai_languageModel: { required: true },
+			},
+		},
 		properties: [
 			{
 				displayName: 'Text to Analyze',
