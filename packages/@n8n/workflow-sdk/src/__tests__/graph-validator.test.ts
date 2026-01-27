@@ -489,11 +489,11 @@ describe('graph validation', () => {
 				config: { name: 'Merge', position: [400, 100] },
 			});
 
-			// Build workflow with two branches into merge
+			// Build workflow with two branches into merge on different inputs
 			const wf = workflow('test-id', 'Merge Workflow')
 				.add(startTrigger.then([branch1, branch2]))
-				.add(branch1.then(mergeNode))
-				.add(branch2.then(mergeNode, 0)); // Connect to input 0
+				.add(branch1.then(mergeNode.input(0)))
+				.add(branch2.then(mergeNode.input(1))); // Connect to input 1
 
 			const result = wf.validate();
 
