@@ -257,8 +257,9 @@ describe('N8nDialog', () => {
 			// Wait for the accessibility check to run (uses requestAnimationFrame)
 			await new Promise((resolve) => requestAnimationFrame(resolve));
 
+			// Reka UI emits its own warning when DialogTitle is missing
 			expect(consoleSpy).toHaveBeenCalledWith(
-				expect.stringContaining('[N8nDialogContent] Dialog is missing accessible title'),
+				expect.stringContaining('DialogContent` requires a `DialogTitle`'),
 			);
 
 			consoleSpy.mockRestore();
@@ -278,7 +279,7 @@ describe('N8nDialog', () => {
 
 			// Should not warn because DialogTitle is provided in renderDialog
 			expect(consoleSpy).not.toHaveBeenCalledWith(
-				expect.stringContaining('[N8nDialogContent] Dialog is missing accessible title'),
+				expect.stringContaining('DialogContent` requires a `DialogTitle`'),
 			);
 
 			consoleSpy.mockRestore();
@@ -317,9 +318,9 @@ describe('N8nDialog', () => {
 			// Wait for the accessibility check to run
 			await new Promise((resolve) => requestAnimationFrame(resolve));
 
-			// Should not warn because ariaLabel is provided
+			// Should not warn because ariaLabel renders a fallback DialogTitle
 			expect(consoleSpy).not.toHaveBeenCalledWith(
-				expect.stringContaining('[N8nDialogContent] Dialog is missing accessible title'),
+				expect.stringContaining('DialogContent` requires a `DialogTitle`'),
 			);
 
 			consoleSpy.mockRestore();

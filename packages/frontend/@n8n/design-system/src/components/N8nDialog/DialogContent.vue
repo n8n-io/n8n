@@ -6,7 +6,7 @@ import {
 	DialogDescription,
 	VisuallyHidden,
 } from 'reka-ui';
-import { computed, nextTick, onMounted, shallowRef, useCssModule } from 'vue';
+import { computed, shallowRef, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
@@ -87,35 +87,9 @@ const sizeClasses: Record<DialogContentSize, string> = {
 
 const sizeClass = computed(() => sizeClasses[props.size]);
 
-/**
- * NOTE (@heymynameisrob): Check if DialogTitle or DialogDescription components exist in the slot content
- * and warn in dev mode if no accessible title is provided
- */
-const checkForAccessibilityComponents = () => {
-	const el = contentRef.value?.$el;
-	if (!el || !(el instanceof HTMLElement)) return;
-
-	const titleElements = el.querySelectorAll('[id^="reka-dialog-title"]');
-	const hasTitleFromSlot = props.ariaLabel ? titleElements.length > 1 : titleElements.length > 0;
-
-	if (import.meta.env.DEV) {
-		if (!hasTitleFromSlot && !props.ariaLabel) {
-			console.warn(
-				'[N8nDialogContent] Dialog is missing accessible title. ' +
-					'Either include <N8nDialogTitle> in your dialog content or provide an "ariaLabel" prop.',
-			);
-		}
-	}
-};
-
 /** ARIA Fallbacks: These are visually hidden but accessible to screen readers **/
 const needsFallbackTitle = computed(() => !!props.ariaLabel);
 const needsFallbackDescription = computed(() => !!props.ariaDescription);
-
-onMounted(async () => {
-	await nextTick();
-	checkForAccessibilityComponents();
-});
 </script>
 
 <template>
