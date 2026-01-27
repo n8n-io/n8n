@@ -28,9 +28,7 @@ export class CreateSecretsProviderConnectionTables1769433700000 implements Rever
 				tableName: 'project',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			})
-			.withIndexOn('providerKey')
-			.withIndexOn('projectId');
+			});
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
