@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-01-27T12:45:39.009Z",
-	"totalViolations": 336,
+	"generated": "2026-01-27T15:30:11.070Z",
+	"totalViolations": 322,
 	"violations": {
 		"pages/NodeDetailsViewPage.ts": [
 			{
@@ -635,80 +635,6 @@
 				"hash": "5244a408a8df"
 			}
 		],
-		"composables/CanvasComposer.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 56,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('workflow-history-button').click()",
-				"hash": "174aa80be5ca"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 56,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('workflow-history-button')",
-				"hash": "d04749e06a9b"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 57,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('workflow-history-close-button'...",
-				"hash": "61e4294711b0"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 57,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('workflow-history-close-button')",
-				"hash": "6a2b7e5baff0"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 67,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('menu-item').first().click()",
-				"hash": "fcd79f1ac20d"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 67,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('menu-item').first()",
-				"hash": "514b5d0bf3c8"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 67,
-				"message": "Direct page locator call: this.n8n.page.getByTestId('menu-item')",
-				"hash": "4d2956af3a7f"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 56,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "c324de315cb4"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 57,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "c324de315cb4"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 67,
-				"message": "Direct page access in composable: this.n8n.page.getByTestId",
-				"hash": "c324de315cb4"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 138,
-				"message": "Direct page access in composable: this.n8n.page.url",
-				"hash": "504827a38388"
-			},
-			{
-				"rule": "no-page-in-flow",
-				"line": 148,
-				"message": "Direct page access in composable: this.n8n.page.url",
-				"hash": "504827a38388"
-			}
-		],
 		"composables/NodeDetailsViewComposer.ts": [
 			{
 				"rule": "selector-purity",
@@ -853,6 +779,26 @@
 				"hash": "c324de315cb4"
 			}
 		],
+		"tests/e2e/ai/hitl-for-tools.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 83,
+				"message": "Direct page locator call: n8n.page.getByTestId('add-connection-button')",
+				"hash": "e87a57e25440"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 138,
+				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat').getByText('Approve')",
+				"hash": "158ef58d883a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 138,
+				"message": "Direct page locator call: n8n.page.getByTestId('canvas-chat')",
+				"hash": "0810223b0675"
+			}
+		],
 		"tests/e2e/ai/langchain-memory.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -896,7 +842,7 @@
 		"tests/e2e/chat-hub/chat-hub-basic.spec.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 35,
+				"line": 30,
 				"message": "Direct page locator call: n8n.page.getByTestId('editCredential-modal')",
 				"hash": "2786a49972b3"
 			}
@@ -904,19 +850,19 @@
 		"tests/e2e/chat-hub/chat-hub-personal-agent.spec.ts": [
 			{
 				"rule": "selector-purity",
-				"line": 86,
+				"line": 88,
 				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
 				"hash": "5fd52ad894c3"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 86,
+				"line": 88,
 				"message": "Direct page locator call: n8n.page.getByRole('dialog').getByText('Delete', { exact:...",
 				"hash": "5fd52ad894c3"
 			},
 			{
 				"rule": "selector-purity",
-				"line": 86,
+				"line": 88,
 				"message": "Direct page locator call: n8n.page.getByRole('dialog')",
 				"hash": "68deb7ade2bb"
 			}
@@ -939,26 +885,6 @@
 				"line": 302,
 				"message": "Raw API call detected: fetch(",
 				"hash": "b52df352569e"
-			}
-		],
-		"tests/e2e/node-creator/categories.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 75,
-				"message": "Direct page locator call: n8n.page.getByTestId('actions-panel-no-triggers-callout')",
-				"hash": "5826fc807cfb"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 85,
-				"message": "Direct page locator call: n8n.page.getByTestId('actions-panel-activation-callout')",
-				"hash": "104a410c9871"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 97,
-				"message": "Direct page locator call: n8n.page.getByTestId('actions-panel-no-triggers-callout')",
-				"hash": "5826fc807cfb"
 			}
 		],
 		"tests/e2e/nodes/community-nodes.spec.ts": [
@@ -1795,6 +1721,20 @@
 				"hash": "5128d500e46f"
 			}
 		],
+		"composables/CanvasComposer.ts": [
+			{
+				"rule": "no-page-in-flow",
+				"line": 138,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "504827a38388"
+			},
+			{
+				"rule": "no-page-in-flow",
+				"line": 148,
+				"message": "Direct page access in composable: this.n8n.page.url",
+				"hash": "504827a38388"
+			}
+		],
 		"composables/DataTablesComposer.ts": [
 			{
 				"rule": "no-page-in-flow",
@@ -2079,22 +2019,6 @@
 				"hash": "30c7a494b54c"
 			}
 		],
-		"workflows/memory-test-workflow.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: memory-test-workflow.json is not referenced in any test",
-				"hash": "cd4f8ac67ffc"
-			}
-		],
-		"workflows/ai_assistant_test_workflow.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: ai_assistant_test_workflow.json is not referenced in any test",
-				"hash": "e2626625e789"
-			}
-		],
 		"workflows/Test_workflow_5.json": [
 			{
 				"rule": "test-data-hygiene",
@@ -2109,20 +2033,6 @@
 				"line": 1,
 				"message": "Poorly named test data: Test_workflow_3.json",
 				"hash": "f8c622dd26a0"
-			}
-		],
-		"workflows/Test_workflow_2.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Poorly named test data: Test_workflow_2.json",
-				"hash": "e08546eea086"
-			},
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: Test_workflow_2.json is not referenced in any test",
-				"hash": "5725d67e99eb"
 			}
 		],
 		"workflows/Test_workflow_1.json": [
