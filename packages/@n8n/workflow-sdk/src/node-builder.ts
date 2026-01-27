@@ -943,28 +943,24 @@ export interface SwitchCaseFactoryConfig {
 }
 
 /**
- * Create a Switch case composite with a Switch node and case targets.
+ * Create a Switch node for multi-way routing.
+ * Use .onCase() fluent API to connect case targets.
  *
- * @param cases - Array of case targets (nodes, arrays of nodes, or null for no connection)
  * @param config - Optional configuration for the Switch node
- * @returns A SwitchCaseComposite for use in workflow builder
+ * @returns A Switch NodeInstance with .onCase() fluent API
  *
  * @example
  * ```typescript
- * const routeByType = switchCase(
- *   [handleTypeA, handleTypeB, handleFallback],
- *   { parameters: { mode: 'rules', rules: { ... } } }
- * );
- * workflow().then(trigger).then(routeByType);
+ * const routeByType = switchCase({ name: 'Route by Type' })
+ *   .onCase(0, handleTypeA)
+ *   .onCase(1, handleTypeB)
+ *   .onCase(2, handleFallback);
  * ```
  */
-export function switchCase(
-	cases: Array<
-		NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[] | null
-	>,
+export function switchCase<TOutput = unknown>(
 	config?: SwitchCaseFactoryConfig,
-): SwitchCaseComposite {
-	const switchNode = node({
+): NodeInstance<'n8n-nodes-base.switch', string, TOutput> {
+	return node({
 		type: 'n8n-nodes-base.switch',
 		version: config?.version ?? 3.4,
 		config: {
@@ -974,12 +970,7 @@ export function switchCase(
 			credentials: config?.credentials,
 			position: config?.position,
 		},
-	}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
-
-	return {
-		switchNode,
-		cases,
-	};
+	}) as NodeInstance<'n8n-nodes-base.switch', string, TOutput>;
 }
 
 /**

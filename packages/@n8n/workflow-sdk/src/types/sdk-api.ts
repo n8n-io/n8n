@@ -810,27 +810,19 @@ export type IfElseFn = (
 ) => IfElseComposite;
 
 /**
- * switchCase(cases, config?) - Creates a Switch node with multi-way routing
+ * switchCase(config?) - Creates a Switch node for multi-way routing
  *
  * Use .onCase() fluent syntax for multi-way branching:
  *
  * @example
- * const routeByType = switchCase([handleTypeA, handleTypeB, handleFallback], {
- *   parameters: { mode: 'rules', rules: { ... } }
- * });
- *
- * // Fluent API: connect cases with .onCase(index, node)
- * workflow('id', 'Router')
- *   .add(trigger({ ... }))
- *   .to(routeByType.switchNode
- *     .onCase(0, handleTypeA)
- *     .onCase(1, handleTypeB)
- *     .onCase(2, handleFallback));
+ * const routeByType = switchCase({ name: 'Route by Type' })
+ *   .onCase(0, handleTypeA)
+ *   .onCase(1, handleTypeB)
+ *   .onCase(2, handleFallback);
  */
 export type SwitchCaseFn = (
-	cases: NodeInstance<string, string>[],
 	config?: SwitchCaseConfig,
-) => SwitchCaseComposite;
+) => NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 
 /**
  * splitInBatches(config?) - Creates batch processing with loop

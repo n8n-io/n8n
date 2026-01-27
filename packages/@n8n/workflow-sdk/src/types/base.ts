@@ -929,9 +929,8 @@ export type IfElseFn = (
 ) => IfElseComposite;
 
 export type SwitchCaseFn = (
-	cases: NodeInstance<string, string, unknown>[],
 	config?: SwitchCaseConfig,
-) => SwitchCaseComposite;
+) => NodeInstance<'n8n-nodes-base.switch', string, unknown>;
 
 export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder<unknown>;
 
