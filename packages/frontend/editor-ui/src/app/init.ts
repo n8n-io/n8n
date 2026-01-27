@@ -165,9 +165,7 @@ export async function initializeAuthenticatedFeatures(
 					if (cloudPlanStore.trialExpired) {
 						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {
-						if (!cloudPlanStore.isTrialUpgradeOnSidebar) {
-							bannersStore.pushBannerToStack('TRIAL');
-						}
+						bannersStore.pushBannerToStack('TRIAL');
 					}
 				} else if (cloudPlanStore.currentUserCloudInfo?.confirmed === false) {
 					bannersStore.pushBannerToStack('EMAIL_CONFIRMATION');
@@ -217,7 +215,7 @@ export async function initializeAuthenticatedFeatures(
 	// Initialize run data worker and load node types
 	if (window.localStorage.getItem(LOCAL_STORAGE_DATA_WORKER) === 'true') {
 		const coordinator = await import('@/app/workers');
-		await coordinator.initialize();
+		await coordinator.initialize({ version: settingsStore.settings.versionCli });
 		await coordinator.loadNodeTypes(rootStore.baseUrl);
 	}
 

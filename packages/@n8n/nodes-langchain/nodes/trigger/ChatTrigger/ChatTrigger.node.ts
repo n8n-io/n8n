@@ -395,12 +395,13 @@ export class ChatTrigger extends Node {
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Make Available in n8n Chat',
+				displayName: 'Make Available in n8n Chat Hub',
 				name: 'availableInChat',
 				type: 'boolean',
 				default: false,
 				noDataExpression: true,
-				description: 'Whether to make the agent available in n8n Chat',
+				description:
+					'Whether to make the agent available in n8n Chat Hub for n8n instance users to chat with',
 			},
 			{
 				displayName:

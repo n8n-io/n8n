@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { Router } from 'express';
+import type { ErrorRequestHandler, Router } from 'express';
 import express from 'express';
 import type { HttpError } from 'express-openapi-validator/dist/framework/types';
 import fs from 'fs/promises';
@@ -51,9 +51,22 @@ async function createApiRouter(
 	});
 
 	const { middleware: openApiValidatorMiddleware } = await import('express-openapi-validator');
+
+	// Error handler specifically for JSON parsing - must come immediately after express.json()
+	const jsonParseErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
+		if (error instanceof SyntaxError && 'body' in error) {
+			res.status(400).json({
+				message: 'Invalid JSON in request body',
+			});
+			return;
+		}
+		next(error);
+	};
+
 	apiController.use(
 		`/${publicApiEndpoint}/${version}`,
 		express.json(),
+		jsonParseErrorHandler,
 		openApiValidatorMiddleware({
 			apiSpec: openApiSpecPath,
 			operationHandlers: handlersDirectory,
@@ -77,6 +90,13 @@ async function createApiRouter(
 						} catch (e) {
 							return false;
 						}
+					},
+				},
+				nanoid: {
+					type: 'string',
+					validate: (id: string) => {
+						// Nanoids in n8n are 16 characters long and use alphanumeric characters
+						return /^[A-Za-z0-9]{16}$/.test(id);
 					},
 				},
 			},

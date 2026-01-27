@@ -25,8 +25,10 @@ import { PolicyProjectAssignment } from './policy-project-assignment';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import { Role } from './role';
 import { Scope } from './scope';
+import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
 import { SharedCredentials } from './shared-credentials';
 import { SharedWorkflow } from './shared-workflow';
@@ -80,6 +82,8 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
 	// Node Governance entities
 	NodeGovernancePolicy,
 	type PolicyType,
@@ -127,6 +131,8 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ProjectSecretsProviderAccess,
+	SecretsProviderConnection,
 	// Node Governance entities
 	NodeGovernancePolicy,
 	PolicyProjectAssignment,

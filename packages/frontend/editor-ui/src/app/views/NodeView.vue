@@ -48,7 +48,10 @@ import type {
 	ConnectStartEvent,
 	ViewportBoundaries,
 } from '@/features/workflows/canvas/canvas.types';
-import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import {
+	CanvasConnectionMode,
+	CanvasNodeRenderType,
+} from '@/features/workflows/canvas/canvas.types';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
@@ -65,6 +68,7 @@ import {
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -75,6 +79,7 @@ import {
 	EVALUATION_NODE_TYPE,
 	isTriggerNode,
 	NodeHelpers,
+	NodeConnectionTypes,
 } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -119,7 +124,10 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
-import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
+import {
+	parseCanvasConnectionHandleString,
+	shouldIgnoreCanvasShortcut,
+} from '@/features/workflows/canvas/canvas.utils';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
@@ -298,6 +306,11 @@ const routeNodeId = computed(() => {
 // Check if this is a new workflow by looking for the ?new query param
 const isNewWorkflowRoute = computed(() => {
 	return route.query.new === 'true';
+});
+
+// Check if canvas controls should be hidden (e.g., for workflow preview thumbnails)
+const hideCanvasControls = computed(() => {
+	return route.query.hideControls === 'true';
 });
 
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
@@ -1137,10 +1150,21 @@ function onCreateSticky() {
 }
 
 function onClickConnectionAdd(connection: Connection) {
-	nodeCreatorStore.openNodeCreatorForConnectingNode({
-		connection,
-		eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
-	});
+	const { type, mode } = parseCanvasConnectionHandleString(connection.sourceHandle);
+	const isAddBetwenTool =
+		type === NodeConnectionTypes.AiTool && mode === CanvasConnectionMode.Output;
+	if (isAddBetwenTool) {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			nodeCreatorView: HUMAN_IN_THE_LOOP_CATEGORY,
+		});
+	} else {
+		nodeCreatorStore.openNodeCreatorForConnectingNode({
+			connection,
+			eventSource: NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+		});
+	}
 }
 
 function onClickReplaceNode(nodeId: string) {
@@ -1246,8 +1270,8 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
-function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
-	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
+async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+	const webhookUrl = await workflowsStore.getWebhookUrl(id, webhookType);
 	if (!webhookUrl) return;
 
 	void clipboard.copy(webhookUrl);
@@ -1270,7 +1294,7 @@ async function onCopyTestUrl(id: string) {
 		return;
 	}
 
-	copyWebhookUrl(id, 'test');
+	void copyWebhookUrl(id, 'test');
 }
 
 async function onCopyProductionUrl(id: string) {
@@ -1282,7 +1306,7 @@ async function onCopyProductionUrl(id: string) {
 		});
 		return;
 	}
-	copyWebhookUrl(id, 'production');
+	void copyWebhookUrl(id, 'production');
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {
@@ -1552,6 +1576,11 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 				canOpenNDV.value = json.canOpenNDV ?? true;
 				hideNodeIssues.value = json.hideNodeIssues ?? false;
 				isExecutionPreview.value = false;
+
+				// Apply tidy-up if requested
+				if (json.tidyUp === true) {
+					canvasEventBus.emit('tidyUp', { source: 'import-workflow-data' });
+				}
 			} catch (e) {
 				if (window.top) {
 					window.top.postMessage(
@@ -1896,6 +1925,9 @@ watch(
 	() => uiStore.dirtyStateSetCount,
 	(dirtyStateSetCount) => {
 		if (dirtyStateSetCount > 0) {
+			// Skip write access and auto-save in demo mode
+			if (isDemoRoute.value) return;
+
 			collaborationStore.requestWriteAccess();
 
 			// Trigger auto-save (debounced) for writers only
@@ -2072,6 +2104,7 @@ onBeforeUnmount(() => {
 			:executing="isWorkflowRunning"
 			:key-bindings="keyBindingsEnabled"
 			:suppress-interaction="experimentalNdvStore.isMapperOpen"
+			:hide-controls="hideCanvasControls"
 			@update:nodes:position="onUpdateNodesPosition"
 			@update:node:position="onUpdateNodePosition"
 			@update:node:activated="onSetNodeActivated"

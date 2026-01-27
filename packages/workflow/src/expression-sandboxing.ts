@@ -5,11 +5,17 @@ import {
 	ExpressionComputedDestructuringError,
 	ExpressionDestructuringError,
 	ExpressionError,
+	ExpressionReservedVariableError,
+	ExpressionWithStatementError,
 } from './errors';
 import { isSafeObjectProperty } from './utils';
 
 export const sanitizerName = '__sanitize';
 const sanitizerIdentifier = b.identifier(sanitizerName);
+
+const DATA_NODE_NAME = '___n8n_data';
+
+const RESERVED_VARIABLE_NAMES = new Set([DATA_NODE_NAME, sanitizerName]);
 
 export const DOLLAR_SIGN_ERROR = 'Cannot access "$" without calling it as a function';
 
@@ -243,6 +249,35 @@ const blockedBaseClasses = new Set([
 
 export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 	astVisit(ast, {
+		visitVariableDeclarator(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			if (node.id.type === 'Identifier' && RESERVED_VARIABLE_NAMES.has(node.id.name)) {
+				throw new ExpressionReservedVariableError(node.id.name);
+			}
+		},
+
+		visitFunction(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			for (const param of node.params) {
+				if (param.type === 'Identifier' && RESERVED_VARIABLE_NAMES.has(param.name)) {
+					throw new ExpressionReservedVariableError(param.name);
+				}
+			}
+		},
+
+		visitCatchClause(path) {
+			this.traverse(path);
+			const node = path.node;
+
+			if (node.param?.type === 'Identifier' && RESERVED_VARIABLE_NAMES.has(node.param.name)) {
+				throw new ExpressionReservedVariableError(node.param.name);
+			}
+		},
+
 		visitClassDeclaration(path) {
 			this.traverse(path);
 			const node = path.node;
@@ -323,6 +358,10 @@ export const PrototypeSanitizer: ASTAfterHook = (ast, dataNode) => {
 					}
 				}
 			}
+		},
+
+		visitWithStatement() {
+			throw new ExpressionWithStatementError();
 		},
 	});
 };
