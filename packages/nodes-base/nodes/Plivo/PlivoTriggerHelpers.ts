@@ -24,8 +24,12 @@ export async function verifyPlivoSignature(this: IWebhookFunctions): Promise<boo
 
 	const req = this.getRequestObject();
 
-	const signature = req.headers['x-plivo-signature-v3'] as string | undefined;
-	const nonce = req.headers['x-plivo-signature-v3-nonce'] as string | undefined;
+	const signatureHeader = req.headers['x-plivo-signature-v3'];
+	const nonceHeader = req.headers['x-plivo-signature-v3-nonce'];
+
+	// Headers can be string | string[] | undefined, extract first value if array
+	const signature = Array.isArray(signatureHeader) ? signatureHeader[0] : signatureHeader;
+	const nonce = Array.isArray(nonceHeader) ? nonceHeader[0] : nonceHeader;
 
 	if (!signature || !nonce) {
 		return false;
@@ -87,8 +91,8 @@ export function detectEventType(bodyData: Record<string, unknown>): string {
 
 	// Check for Call-related events
 	if (bodyData.CallUUID !== undefined) {
-		const direction = bodyData.Direction as string | undefined;
-		const callStatus = bodyData.CallStatus as string | undefined;
+		const direction = typeof bodyData.Direction === 'string' ? bodyData.Direction : undefined;
+		const callStatus = typeof bodyData.CallStatus === 'string' ? bodyData.CallStatus : undefined;
 
 		// Incoming call: Direction is 'inbound' and status is 'ringing' or similar
 		if (direction === 'inbound' && callStatus === 'ringing') {
