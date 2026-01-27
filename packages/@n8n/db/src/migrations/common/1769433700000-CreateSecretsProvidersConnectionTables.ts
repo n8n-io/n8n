@@ -4,21 +4,21 @@ const secretsProviderConnectionTable = 'secrets_provider_connection';
 const projectSecretsProviderAccessTable = 'project_secrets_provider_access';
 
 export class CreateSecretsProviderConnectionTables1769433700000 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column, createIndex } }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		// Create secrets_provider_connection table first (parent table)
-		await createTable(secretsProviderConnectionTable).withColumns(
-			column('id').int.primary.autoGenerate2,
-			column('providerKey').varchar(128).notNull,
-			column('type')
-				.varchar(36)
-				.notNull.comment(
-					'Type of secrets provider. Possible values: awsSecretsManager, gcpSecretsManager, vault, azureKeyVault, infisical',
-				),
-			column('encryptedSettings').text.notNull,
-			column('isEnabled').bool.default(false).notNull,
-		).withTimestamps;
-
-		await createIndex(secretsProviderConnectionTable, ['providerKey'], true);
+		await createTable(secretsProviderConnectionTable)
+			.withColumns(
+				column('id').int.primary.autoGenerate2,
+				column('providerKey').varchar(128).notNull,
+				column('type')
+					.varchar(36)
+					.notNull.comment(
+						'Type of secrets provider. Possible values: awsSecretsManager, gcpSecretsManager, vault, azureKeyVault, infisical',
+					),
+				column('encryptedSettings').text.notNull,
+				column('isEnabled').bool.default(false).notNull,
+			)
+			.withTimestamps.withIndexOn('providerKey', true);
 
 		// Create project_secrets_provider_access table (join table with FKs)
 		await createTable(projectSecretsProviderAccessTable)
@@ -35,7 +35,8 @@ export class CreateSecretsProviderConnectionTables1769433700000 implements Rever
 				tableName: 'project',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-			});
+			})
+			.withIndexOn('projectId');
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
