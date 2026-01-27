@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -46,20 +45,14 @@ export class WorkflowIndexService {
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
 			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
 		});
-		this.eventService.on('workflow-activated', async ({ workflow }) => {
-			await this.updateIndexForPublishedVersion(workflow);
-		});
 	}
 
 	async buildIndex() {
 		// Build draft index
 		const draftCount = await this.buildDraftIndex();
 
-		// Build published version index
-		const publishedCount = await this.buildPublishedVersionIndex();
-
 		this.logger.info(
-			`Finished building workflow dependency index. Processed ${draftCount} draft workflows and ${publishedCount} published workflows.`,
+			`Finished building workflow dependency index. Processed ${draftCount} draft workflows.`,
 		);
 	}
 
@@ -91,42 +84,6 @@ export class WorkflowIndexService {
 
 		if (processedCount >= LOOP_LIMIT) {
 			const message = `Stopping draft workflow indexing because we hit the limit of ${LOOP_LIMIT} workflows. There's probably a bug causing an infinite loop.`;
-			this.logger.warn(message);
-			this.errorReporter.warn(new Error(message));
-		}
-
-		return processedCount;
-	}
-
-	private async buildPublishedVersionIndex(): Promise<number> {
-		const batchSize = this.batchSize;
-		let processedCount = 0;
-
-		while (processedCount < LOOP_LIMIT) {
-			// Get only workflows that need published version indexing.
-			const workflows =
-				await this.workflowRepository.findWorkflowsNeedingPublishedVersionIndexing(batchSize);
-
-			if (workflows.length === 0) {
-				break;
-			}
-
-			// Build the index for each workflow in the batch.
-			for (const workflow of workflows) {
-				await this.updateIndexForPublishedVersion(workflow);
-			}
-
-			processedCount += workflows.length;
-			this.logger.debug(`Indexed ${processedCount} published workflows so far`);
-
-			// If we got fewer workflows than the batch size, we're done.
-			if (workflows.length < batchSize) {
-				break;
-			}
-		}
-
-		if (processedCount >= LOOP_LIMIT) {
-			const message = `Stopping published workflow indexing because we hit the limit of ${LOOP_LIMIT} workflows. There's probably a bug causing an infinite loop.`;
 			this.logger.warn(message);
 			this.errorReporter.warn(new Error(message));
 		}
@@ -182,79 +139,6 @@ export class WorkflowIndexService {
 		}
 		this.logger.debug(
 			`Workflow draft dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id}`,
-		);
-	}
-
-	/**
-	 * Update the published version dependency index for a given workflow.
-	 * This extracts dependencies from the workflow's activeVersion.
-	 *
-	 * When re-publishing, stale published version dependencies are removed first
-	 * (keeps only current published version's deps).
-	 */
-	async updateIndexForPublishedVersion(workflow: IWorkflowDb | WorkflowEntity) {
-		const { activeVersionId, activeVersion } = workflow;
-
-		// Skip if workflow is not active or doesn't have a published version
-		if (!activeVersionId || !activeVersion) {
-			this.logger.debug(
-				`Skipping published version indexing for workflow ${workflow.id}: no active version`,
-			);
-			return;
-		}
-
-		// Remove any stale published version dependencies (from previous publications)
-		try {
-			await this.dependencyRepository.removePublishedDependenciesForWorkflow(workflow.id);
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(
-				`Failed to remove stale published dependencies for workflow ${workflow.id}: ${error.message}`,
-			);
-			this.errorReporter.error(error);
-			return;
-		}
-
-		// Generate the dependency updates for the published version
-		const dependencyUpdates = new WorkflowDependencies(
-			workflow.id,
-			workflow.versionCounter,
-			activeVersionId, // published version dependencies
-		);
-
-		// Extract dependencies from the activeVersion's nodes
-		activeVersion.nodes.forEach((node) => {
-			this.addNodeTypeDependencies(node, dependencyUpdates);
-			this.addCredentialDependencies(node, dependencyUpdates);
-			this.addWorkflowCallDependencies(node, dependencyUpdates);
-			this.addWebhookPathDependencies(node, dependencyUpdates);
-		});
-
-		// If no dependencies were extracted, add a placeholder to mark the workflow as indexed
-		if (dependencyUpdates.dependencies.length === 0) {
-			dependencyUpdates.add({
-				dependencyType: 'workflowIndexed',
-				dependencyKey: WORKFLOW_INDEXED_PLACEHOLDER_KEY,
-				dependencyInfo: null,
-			});
-		}
-
-		let updated: boolean;
-		try {
-			updated = await this.dependencyRepository.updateDependenciesForWorkflow(
-				workflow.id,
-				dependencyUpdates,
-			);
-		} catch (e) {
-			const error = ensureError(e);
-			this.logger.error(
-				`Failed to update workflow published version dependency index for workflow ${workflow.id}: ${error.message}`,
-			);
-			this.errorReporter.error(error);
-			return;
-		}
-		this.logger.debug(
-			`Workflow published version dependency index ${updated ? 'updated' : 'skipped'} for workflow ${workflow.id} (version ${activeVersionId})`,
 		);
 	}
 

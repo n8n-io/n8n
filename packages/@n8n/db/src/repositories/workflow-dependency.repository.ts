@@ -65,8 +65,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		tx: EntityManager,
 	): Promise<boolean> {
 		// Scope delete by publishedVersionId: use IsNull() for drafts, exact value for published versions
-		const publishedVersionCondition =
-			dependencies.publishedVersionId === null ? IsNull() : dependencies.publishedVersionId;
+		const publishedVersionCondition = dependencies.publishedVersionId ?? IsNull();
 
 		const deleteResult = await tx.delete(WorkflowDependency, {
 			workflowId,
