@@ -8,6 +8,7 @@ import {
 } from '@/app/constants';
 import { useSettingsStore } from './settings.store';
 import type { N8nPrompts } from '@n8n/rest-api-client/api/prompts';
+import { jsonParse } from 'n8n-workflow';
 
 const { openModal, updateNpsSurveyState, getPromptsData } = vi.hoisted(() => {
 	return {
@@ -343,7 +344,7 @@ describe('fetchPromptsData caching', () => {
 		expect(getPromptsData).toHaveBeenCalledWith(INSTANCE_ID, USER_ID);
 		expect(npsSurveyStore.promptsData).toEqual(mockPromptsData);
 
-		const cached = JSON.parse(localStorage.getItem(CACHE_KEY)!) as unknown;
+		const cached: unknown = jsonParse(localStorage.getItem(CACHE_KEY)!);
 		expect(cached).toEqual({
 			data: mockPromptsData,
 			timestamp: NOW,
