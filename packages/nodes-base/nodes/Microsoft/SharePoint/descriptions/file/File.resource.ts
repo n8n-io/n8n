@@ -24,7 +24,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/sites/{{ $parameter["site"] }}/drive/items/{{ $parameter["file"] }}/content',
+						url: '=/sites/{{ $parameter["site"] }}/drives/{{ $parameter["drive"] }}/items/{{ $parameter["file"] }}/content',
 						json: false,
 						encoding: 'arraybuffer',
 					},
@@ -41,7 +41,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PATCH',
-						url: '=/sites/{{ $parameter["site"] }}/drive/items/{{ $parameter["file"] }}',
+						url: '=/sites/{{ $parameter["site"] }}/drives/{{ $parameter["drive"] }}/items/{{ $parameter["file"] }}',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],
@@ -56,7 +56,7 @@ export const description: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/sites/{{ $parameter["site"] }}/drive/items/{{ $parameter["folder"] }}:/{{ $parameter["fileName"] }}:/content',
+						url: '=/sites/{{ $parameter["site"] }}/drives/{{ $parameter["drive"] }}/items/{{ $parameter["folder"] }}:/{{ $parameter["fileName"] }}:/content',
 					},
 					output: {
 						postReceive: [handleErrorPostReceive],

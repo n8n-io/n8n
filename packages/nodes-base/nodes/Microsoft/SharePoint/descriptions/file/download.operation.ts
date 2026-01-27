@@ -1,9 +1,11 @@
 import { updateDisplayOptions, type INodeProperties } from 'n8n-workflow';
 
 import {
+	driveRLC,
 	fileRLC,
 	folderRLC,
 	siteRLC,
+	untilDriveSelected,
 	untilFolderSelected,
 	untilSiteSelected,
 } from '../common.descriptions';
@@ -11,7 +13,16 @@ import {
 const properties: INodeProperties[] = [
 	{
 		...siteRLC,
-		description: 'Select the site to retrieve folders from',
+		description: 'Select the site to retrieve document libraries from',
+	},
+	{
+		...driveRLC,
+		description: 'Select the document library to browse',
+		displayOptions: {
+			hide: {
+				...untilSiteSelected,
+			},
+		},
 	},
 	{
 		...folderRLC,
@@ -19,6 +30,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
+				...untilDriveSelected,
 			},
 		},
 	},
@@ -28,6 +40,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
+				...untilDriveSelected,
 				...untilFolderSelected,
 			},
 		},

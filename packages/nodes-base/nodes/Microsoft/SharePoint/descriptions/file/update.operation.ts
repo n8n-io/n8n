@@ -8,9 +8,11 @@ import {
 
 import { microsoftSharePointApiRequest } from '../../transport';
 import {
+	driveRLC,
 	fileRLC,
 	folderRLC,
 	siteRLC,
+	untilDriveSelected,
 	untilFolderSelected,
 	untilSiteSelected,
 } from '../common.descriptions';
@@ -18,7 +20,16 @@ import {
 const properties: INodeProperties[] = [
 	{
 		...siteRLC,
-		description: 'Select the site to retrieve folders from',
+		description: 'Select the site to retrieve document libraries from',
+	},
+	{
+		...driveRLC,
+		description: 'Select the document library',
+		displayOptions: {
+			hide: {
+				...untilSiteSelected,
+			},
+		},
 	},
 	{
 		...folderRLC,
@@ -26,6 +37,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
+				...untilDriveSelected,
 			},
 		},
 	},
@@ -35,6 +47,7 @@ const properties: INodeProperties[] = [
 		displayOptions: {
 			hide: {
 				...untilSiteSelected,
+				...untilDriveSelected,
 				...untilFolderSelected,
 			},
 		},
@@ -89,6 +102,9 @@ const properties: INodeProperties[] = [
 							const site = this.getNodeParameter('site', undefined, {
 								extractValue: true,
 							}) as string;
+							const drive = this.getNodeParameter('drive', undefined, {
+								extractValue: true,
+							}) as string;
 							const file = this.getNodeParameter('file', undefined, {
 								extractValue: true,
 							}) as string;
@@ -98,7 +114,7 @@ const properties: INodeProperties[] = [
 							const response = await microsoftSharePointApiRequest.call(
 								this,
 								'PUT',
-								`/sites/${site}/drive/items/${file}/content`,
+								`/sites/${site}/drives/${drive}/items/${file}/content`,
 								binaryDataBuffer,
 							);
 							item.json = response;

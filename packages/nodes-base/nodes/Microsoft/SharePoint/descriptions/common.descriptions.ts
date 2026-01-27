@@ -1,5 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+export const untilDriveSelected = { drive: [''] };
+
 export const untilFolderSelected = { folder: [''] };
 
 export const untilItemSelected = { item: [''] };
@@ -7,6 +9,35 @@ export const untilItemSelected = { item: [''] };
 export const untilListSelected = { list: [''] };
 
 export const untilSiteSelected = { site: [''] };
+
+export const driveRLC: INodeProperties = {
+	displayName: 'Document Library',
+	name: 'drive',
+	default: {
+		mode: 'list',
+		value: '',
+	},
+	description: 'Select the document library to browse',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getDrives',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			placeholder: 'e.g. b!abc123',
+			type: 'string',
+		},
+	],
+	required: true,
+	type: 'resourceLocator',
+};
 
 export const fileRLC: INodeProperties = {
 	displayName: 'File',
