@@ -1,6 +1,7 @@
 {
   "name": "n8n-playwright",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "N8N_BASE_URL=http://localhost:5678 N8N_EDITOR_URL=http://localhost:8080 RESET_E2E_DB=true playwright test --project=e2e",
     "test:all": "playwright test",
@@ -28,8 +29,8 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "janitor": "tsx scripts/run-janitor.ts",
-    "janitor:fix": "tsx scripts/run-janitor.ts --fix --write"
+    "janitor": "playwright-janitor",
+    "janitor:fix": "playwright-janitor --fix --write"
   },
   "devDependencies": {
     "@currents/playwright": "catalog:e2e",

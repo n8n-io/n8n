@@ -1,42 +1,13 @@
-import { Project } from 'ts-morph';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe } from 'vitest';
 
 import { SelectorPurityRule } from './selector-purity.rule.js';
-import { setConfig, resetConfig, defineConfig } from '../config.js';
+import { test, expect } from '../test/fixtures.js';
 
 describe('SelectorPurityRule', () => {
-	let project: Project;
-	let rule: SelectorPurityRule;
+	const rule = new SelectorPurityRule();
 
-	beforeEach(() => {
-		project = new Project({ useInMemoryFileSystem: true });
-		rule = new SelectorPurityRule();
-
-		setConfig(
-			defineConfig({
-				rootDir: '/',
-				fixtureObjectName: 'n8n',
-				patterns: {
-					pages: ['pages/**/*.ts'],
-					components: ['pages/components/**/*.ts'],
-					flows: ['composables/**/*.ts'],
-					tests: ['tests/**/*.spec.ts'],
-					services: ['services/**/*.ts'],
-					fixtures: ['fixtures/**/*.ts'],
-					helpers: ['helpers/**/*.ts'],
-					factories: ['factories/**/*.ts'],
-					testData: [],
-				},
-			}),
-		);
-	});
-
-	afterEach(() => {
-		resetConfig();
-	});
-
-	it('detects direct n8n.page.getByTestId in composable', () => {
-		const file = project.createSourceFile(
+	test('detects direct n8n.page.getByTestId in composable', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/TestComposer.ts',
 			`
 export class TestComposer {
@@ -54,8 +25,8 @@ export class TestComposer {
 		expect(violations.length).toBeGreaterThan(0);
 	});
 
-	it('allows page object method calls', () => {
-		const file = project.createSourceFile(
+	test('allows page object method calls', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/TestComposer.ts',
 			`
 export class TestComposer {
@@ -74,8 +45,8 @@ export class TestComposer {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('allows page.keyboard and page.evaluate', () => {
-		const file = project.createSourceFile(
+	test('allows page.keyboard and page.evaluate', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/TestComposer.ts',
 			`
 export class TestComposer {
@@ -96,8 +67,8 @@ export class TestComposer {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('detects direct page.getByTestId in test files', () => {
-		const file = project.createSourceFile(
+	test('detects direct page.getByTestId in test files', ({ project, createFile }) => {
+		const file = createFile(
 			'/tests/e2e/my-test.spec.ts',
 			`
 test('my test', async ({ n8n }) => {
@@ -111,8 +82,8 @@ test('my test', async ({ n8n }) => {
 		expect(violations.length).toBeGreaterThan(0);
 	});
 
-	it('detects various locator methods', () => {
-		const file = project.createSourceFile(
+	test('detects various locator methods', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/TestComposer.ts',
 			`
 export class TestComposer {

@@ -31,6 +31,7 @@ export interface RuleSettings {
 	enabled?: boolean;
 	severity?: Severity | 'off';
 	allowPatterns?: RegExp[];
+	allowInExpect?: boolean;
 }
 
 export interface RuleConfig {

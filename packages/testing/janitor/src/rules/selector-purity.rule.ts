@@ -61,7 +61,10 @@ export class SelectorPurityRule extends BaseRule {
 					}
 
 					// Skip violations inside expect() if allowInExpect is enabled
-					if (this.config.allowInExpect && this.isInsideExpect(call)) {
+					// Check both runtime config and config file settings
+					const ruleSettings = getConfig().rules?.[this.id];
+					const allowInExpect = this.config.allowInExpect ?? ruleSettings?.allowInExpect;
+					if (allowInExpect && this.isInsideExpect(call)) {
 						continue;
 					}
 

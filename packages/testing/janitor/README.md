@@ -66,7 +66,7 @@ pnpm add -D @n8n/playwright-janitor
 
 ### Configuration
 
-Create a `janitor.config.ts` in your Playwright test root:
+Create a `janitor.config.js` in your Playwright test root:
 
 ```typescript
 import { defineConfig } from '@n8n/playwright-janitor';
@@ -120,6 +120,33 @@ const report = runAnalysis(config);
 toConsole(report);
 process.exit(report.summary.totalViolations > 0 ? 1 : 0);
 ```
+
+### Baseline (Incremental Cleanup)
+
+For existing codebases with many violations, use a baseline to enable incremental cleanup:
+
+```bash
+# Create baseline of current violations
+playwright-janitor baseline
+
+# Commit the baseline
+git add .janitor-baseline.json
+git commit -m "chore: add janitor baseline"
+```
+
+Once a baseline exists, janitor and TCR **only fail on new violations**. Pre-existing violations are tracked but don't block commits.
+
+```bash
+# This now passes (only checks for NEW violations)
+playwright-janitor tcr --execute -m="Add new feature"
+
+# As you fix violations, update the baseline
+playwright-janitor baseline
+git add .janitor-baseline.json
+git commit -m "chore: update baseline after cleanup"
+```
+
+**Baseline file format:** `.janitor-baseline.json` - tracks violations by file and content hash, so line number shifts don't cause false positives.
 
 ## Rules
 
@@ -180,6 +207,8 @@ export class NodePanel {
 **Severity:** error
 
 Raw Playwright locators (`getByTestId`, `locator`, etc.) should only appear in page objects, not in tests or flows.
+
+**Note:** Selectors inside `expect()` calls are allowed by default (`allowInExpect: true`). This recognizes that assertions often need to check specific elements.
 
 ```typescript
 // Bad - Selector in test file
@@ -346,7 +375,7 @@ interface JanitorConfig {
 ### Globally
 
 ```typescript
-// janitor.config.ts
+// janitor.config.js
 export default defineConfig({
   // ...
   rules: {

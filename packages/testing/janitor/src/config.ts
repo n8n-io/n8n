@@ -120,7 +120,7 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 	rules: {
 		'boundary-protection': { enabled: true, severity: 'error' },
 		'scope-lockdown': { enabled: true, severity: 'error' },
-		'selector-purity': { enabled: true, severity: 'error' },
+		'selector-purity': { enabled: true, severity: 'error', allowInExpect: true },
 		deduplication: { enabled: true, severity: 'warning' },
 		'dead-code': { enabled: true, severity: 'warning' },
 		'no-page-in-flow': {

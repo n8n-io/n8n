@@ -1,43 +1,13 @@
-import { Project } from 'ts-morph';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe } from 'vitest';
 
 import { NoPageInFlowRule } from './no-page-in-flow.rule.js';
-import { setConfig, resetConfig, defineConfig } from '../config.js';
+import { test, expect } from '../test/fixtures.js';
 
 describe('NoPageInFlowRule', () => {
-	let project: Project;
-	let rule: NoPageInFlowRule;
+	const rule = new NoPageInFlowRule();
 
-	beforeEach(() => {
-		project = new Project({ useInMemoryFileSystem: true });
-		rule = new NoPageInFlowRule();
-
-		setConfig(
-			defineConfig({
-				rootDir: '/',
-				fixtureObjectName: 'n8n',
-				flowLayerName: 'Composable',
-				patterns: {
-					pages: ['pages/**/*.ts'],
-					components: ['pages/components/**/*.ts'],
-					flows: ['composables/**/*.ts'],
-					tests: ['tests/**/*.spec.ts'],
-					services: ['services/**/*.ts'],
-					fixtures: ['fixtures/**/*.ts'],
-					helpers: ['helpers/**/*.ts'],
-					factories: ['factories/**/*.ts'],
-					testData: [],
-				},
-			}),
-		);
-	});
-
-	afterEach(() => {
-		resetConfig();
-	});
-
-	it('allows page object usage', () => {
-		const file = project.createSourceFile(
+	test('allows page object usage', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`
 export class WorkflowComposer {
@@ -56,8 +26,8 @@ export class WorkflowComposer {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('detects direct page.getByTestId access', () => {
-		const file = project.createSourceFile(
+	test('detects direct page.getByTestId access', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`
 export class WorkflowComposer {
@@ -76,8 +46,8 @@ export class WorkflowComposer {
 		expect(violations[0].message).toContain('page.getByTestId');
 	});
 
-	it('detects page.locator access', () => {
-		const file = project.createSourceFile(
+	test('detects page.locator access', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`
 export class WorkflowComposer {
@@ -95,8 +65,8 @@ export class WorkflowComposer {
 		expect(violations).toHaveLength(1);
 	});
 
-	it('detects page.goto access', () => {
-		const file = project.createSourceFile(
+	test('detects page.goto access', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`
 export class WorkflowComposer {
@@ -115,8 +85,8 @@ export class WorkflowComposer {
 		expect(violations[0].suggestion).toContain('navigation');
 	});
 
-	it('detects multiple direct page accesses', () => {
-		const file = project.createSourceFile(
+	test('detects multiple direct page accesses', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`
 export class WorkflowComposer {
@@ -136,8 +106,8 @@ export class WorkflowComposer {
 		expect(violations).toHaveLength(3);
 	});
 
-	it('reports correct line numbers', () => {
-		const file = project.createSourceFile(
+	test('reports correct line numbers', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`export class WorkflowComposer {
 	constructor(private n8n: any) {}
@@ -156,8 +126,8 @@ export class WorkflowComposer {
 		expect(violations[0].line).toBe(6);
 	});
 
-	it('provides context-specific suggestions', () => {
-		const file = project.createSourceFile(
+	test('provides context-specific suggestions', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`
 export class WorkflowComposer {

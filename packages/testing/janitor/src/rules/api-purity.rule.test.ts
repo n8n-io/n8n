@@ -1,43 +1,13 @@
-import { Project } from 'ts-morph';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe } from 'vitest';
 
 import { ApiPurityRule } from './api-purity.rule.js';
-import { setConfig, resetConfig, defineConfig } from '../config.js';
+import { test, expect } from '../test/fixtures.js';
 
 describe('ApiPurityRule', () => {
-	let project: Project;
-	let rule: ApiPurityRule;
+	const rule = new ApiPurityRule();
 
-	beforeEach(() => {
-		project = new Project({ useInMemoryFileSystem: true });
-		rule = new ApiPurityRule();
-
-		setConfig(
-			defineConfig({
-				rootDir: '/',
-				apiFixtureName: 'api',
-				rawApiPatterns: [/\brequest\.(get|post|put|patch|delete|head)\s*\(/i, /\bfetch\s*\(/],
-				patterns: {
-					pages: ['pages/**/*.ts'],
-					components: ['pages/components/**/*.ts'],
-					flows: ['composables/**/*.ts'],
-					tests: ['tests/**/*.spec.ts'],
-					services: ['services/**/*.ts'],
-					fixtures: ['fixtures/**/*.ts'],
-					helpers: ['helpers/**/*.ts'],
-					factories: ['factories/**/*.ts'],
-					testData: [],
-				},
-			}),
-		);
-	});
-
-	afterEach(() => {
-		resetConfig();
-	});
-
-	it('allows API service usage', () => {
-		const file = project.createSourceFile(
+	test('allows API service usage', ({ project, createFile }) => {
+		const file = createFile(
 			'/tests/workflow.spec.ts',
 			`
 import { test } from '../fixtures/base';
@@ -54,8 +24,8 @@ test('creates workflow', async ({ n8n, api }) => {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('detects request.get() calls', () => {
-		const file = project.createSourceFile(
+	test('detects request.get() calls', ({ project, createFile }) => {
+		const file = createFile(
 			'/tests/workflow.spec.ts',
 			`
 import { test } from '../fixtures/base';
@@ -72,8 +42,8 @@ test('gets workflow', async ({ request }) => {
 		expect(violations[0].message).toContain('request.get');
 	});
 
-	it('detects request.post() calls', () => {
-		const file = project.createSourceFile(
+	test('detects request.post() calls', ({ project, createFile }) => {
+		const file = createFile(
 			'/tests/workflow.spec.ts',
 			`
 import { test } from '../fixtures/base';
@@ -90,8 +60,8 @@ test('creates workflow', async ({ request }) => {
 		expect(violations[0].suggestion).toContain('api');
 	});
 
-	it('detects fetch() calls', () => {
-		const file = project.createSourceFile(
+	test('detects fetch() calls', ({ project, createFile }) => {
+		const file = createFile(
 			'/tests/workflow.spec.ts',
 			`
 import { test } from '../fixtures/base';
@@ -108,8 +78,8 @@ test('fetches data', async () => {
 		expect(violations[0].message).toContain('fetch');
 	});
 
-	it('detects multiple raw API calls', () => {
-		const file = project.createSourceFile(
+	test('detects multiple raw API calls', ({ project, createFile }) => {
+		const file = createFile(
 			'/tests/workflow.spec.ts',
 			`
 import { test } from '../fixtures/base';
@@ -127,8 +97,8 @@ test('multiple API calls', async ({ request }) => {
 		expect(violations).toHaveLength(3);
 	});
 
-	it('detects raw API calls in composables', () => {
-		const file = project.createSourceFile(
+	test('detects raw API calls in composables', ({ project, createFile }) => {
+		const file = createFile(
 			'/composables/WorkflowComposer.ts',
 			`
 export class WorkflowComposer {
@@ -144,8 +114,8 @@ export class WorkflowComposer {
 		expect(violations).toHaveLength(1);
 	});
 
-	it('reports correct line numbers', () => {
-		const file = project.createSourceFile(
+	test('reports correct line numbers', ({ project, createFile }) => {
+		const file = createFile(
 			'/tests/workflow.spec.ts',
 			`import { test } from '../fixtures/base';
 

@@ -1,41 +1,13 @@
-import { Project } from 'ts-morph';
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe } from 'vitest';
 
 import { DeduplicationRule } from './deduplication.rule.js';
-import { setConfig, resetConfig, defineConfig } from '../config.js';
+import { test, expect } from '../test/fixtures.js';
 
 describe('DeduplicationRule', () => {
-	let project: Project;
-	let rule: DeduplicationRule;
+	const rule = new DeduplicationRule();
 
-	beforeEach(() => {
-		project = new Project({ useInMemoryFileSystem: true });
-		rule = new DeduplicationRule();
-
-		setConfig(
-			defineConfig({
-				rootDir: '/',
-				patterns: {
-					pages: ['pages/**/*.ts'],
-					components: ['pages/components/**/*.ts'],
-					flows: ['composables/**/*.ts'],
-					tests: ['tests/**/*.spec.ts'],
-					services: ['services/**/*.ts'],
-					fixtures: ['fixtures/**/*.ts'],
-					helpers: ['helpers/**/*.ts'],
-					factories: ['factories/**/*.ts'],
-					testData: [],
-				},
-			}),
-		);
-	});
-
-	afterEach(() => {
-		resetConfig();
-	});
-
-	it('detects duplicate test IDs across files', () => {
-		const file1 = project.createSourceFile(
+	test('detects duplicate test IDs across files', ({ project, createFile }) => {
+		const file1 = createFile(
 			'/pages/PageA.ts',
 			`
 export class PageA {
@@ -45,7 +17,7 @@ export class PageA {
 }
 `,
 		);
-		const file2 = project.createSourceFile(
+		const file2 = createFile(
 			'/pages/PageB.ts',
 			`
 export class PageB {
@@ -62,8 +34,8 @@ export class PageB {
 		expect(violations[0].message).toContain('my-button');
 	});
 
-	it('allows unique test IDs', () => {
-		const file1 = project.createSourceFile(
+	test('allows unique test IDs', ({ project, createFile }) => {
+		const file1 = createFile(
 			'/pages/PageA.ts',
 			`
 export class PageA {
@@ -73,7 +45,7 @@ export class PageA {
 }
 `,
 		);
-		const file2 = project.createSourceFile(
+		const file2 = createFile(
 			'/pages/PageB.ts',
 			`
 export class PageB {
@@ -89,8 +61,8 @@ export class PageB {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('allows same test ID within same file', () => {
-		const file = project.createSourceFile(
+	test('allows same test ID within same file', ({ project, createFile }) => {
+		const file = createFile(
 			'/pages/PageA.ts',
 			`
 export class PageA {
@@ -110,8 +82,8 @@ export class PageA {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('separates components and pages scopes', () => {
-		const pageFile = project.createSourceFile(
+	test('separates components and pages scopes', ({ project, createFile }) => {
+		const pageFile = createFile(
 			'/pages/PageA.ts',
 			`
 export class PageA {
@@ -121,7 +93,7 @@ export class PageA {
 }
 `,
 		);
-		const componentFile = project.createSourceFile(
+		const componentFile = createFile(
 			'/pages/components/ComponentA.ts',
 			`
 export class ComponentA {
@@ -137,8 +109,8 @@ export class ComponentA {
 		expect(violations).toHaveLength(0);
 	});
 
-	it('skips dynamic test IDs (template literals)', () => {
-		const file1 = project.createSourceFile(
+	test('skips dynamic test IDs (template literals)', ({ project, createFile }) => {
+		const file1 = createFile(
 			'/pages/PageA.ts',
 			`
 export class PageA {
@@ -148,7 +120,7 @@ export class PageA {
 }
 `,
 		);
-		const file2 = project.createSourceFile(
+		const file2 = createFile(
 			'/pages/PageB.ts',
 			`
 export class PageB {
