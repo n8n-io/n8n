@@ -54,7 +54,9 @@ export const Basic = {
 		</div>
 		`,
 	}),
-	args: {},
+	args: {
+		title: 'Save changes?',
+	},
 } satisfies Story;
 
 export const Destructive = {
@@ -85,7 +87,9 @@ export const Destructive = {
 		</div>
 		`,
 	}),
-	args: {},
+	args: {
+		title: 'Delete item?',
+	},
 } satisfies Story;
 
 export const WithLoading = {
@@ -124,7 +128,9 @@ export const WithLoading = {
 		</div>
 		`,
 	}),
-	args: {},
+	args: {
+		title: 'Process data?',
+	},
 } satisfies Story;
 
 export const Sizes = {
@@ -157,5 +163,7 @@ export const Sizes = {
 		</div>
 		`,
 	}),
-	args: {},
+	args: {
+		title: 'Small Dialog',
+	},
 } satisfies Story;
