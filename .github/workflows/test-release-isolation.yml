@@ -319,6 +319,50 @@ jobs:
         if: always()
         run: git push origin --delete "$BRANCH" 2>/dev/null || true
 
+  # Test 7: Use peter-evans/create-pull-request action (like the real release workflow)
+  test-create-pr-action:
+    name: 'Test 7: create-pull-request action from 1.x'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout 1.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: '1.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Make test changes
+        run: |
+          echo "test-$(date)" >> test-file.txt
+
+      - name: Create Pull Request
+        id: cpr
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          branch: ci-test-isolation/create-pr-action-${{ github.run_id }}
+          title: 'Test 7: create-pull-request action from 1.x'
+          body: 'Testing if create-pull-request action triggers timeout'
+          delete-branch: true
+          draft: true
+
+      - name: Close PR
+        if: steps.cpr.outputs.pull-request-number
+        run: gh pr close ${{ steps.cpr.outputs.pull-request-number }} --delete-branch
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+
   # Summary
   summary:
     name: 'Results Summary'
@@ -331,6 +375,7 @@ jobs:
         test-release-pr-name,
         test-force-with-lease,
         test-workflow-change,
+        test-create-pr-action,
       ]
     if: always()
 
@@ -346,6 +391,7 @@ jobs:
           echo "Test 4 (release-pr name):   ${{ needs.test-release-pr-name.result }}"
           echo "Test 5 (--force-with-lease):${{ needs.test-force-with-lease.result }}"
           echo "Test 6 (workflow change):   ${{ needs.test-workflow-change.result }}"
+          echo "Test 7 (create-pr action):  ${{ needs.test-create-pr-action.result }}"
           echo "============================================"
           echo ""
           echo "INTERPRETATION:"
@@ -354,3 +400,4 @@ jobs:
           echo "- Test 1 & 2 both fail → not just .github (token scope?)"
           echo "- Test 5 fails differently → force-push specific issue"
           echo "- Test 6 fails → workflow file changes trigger timeout"
+          echo "- Test 7 fails → create-pull-request action itself is the issue"
