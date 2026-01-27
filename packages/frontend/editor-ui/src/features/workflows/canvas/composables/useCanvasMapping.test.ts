@@ -6,6 +6,7 @@ import { ref } from 'vue';
 
 import {
 	createTestNode,
+	createTestWorkflow,
 	createTestWorkflowObject,
 	mockNode,
 	mockNodes,
@@ -284,7 +285,7 @@ describe('useCanvasMapping', () => {
 
 			workflowsStore.workflowId = 'test-workflow-id';
 			workflowsStore.workflowDocumentById = {
-				'test-workflow-id': { connections } as any,
+				'test-workflow-id': createTestWorkflow({ connections }),
 			};
 
 			const workflowObject = createTestWorkflowObject({
