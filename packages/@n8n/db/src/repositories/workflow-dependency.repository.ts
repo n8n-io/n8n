@@ -113,10 +113,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * The chance of this happening in practice is also very low.
 	 *
 	 * @param workflowId The ID of the workflow
-	 * @param publishedVersionId Filter for publishedVersionId:
-	 *   - undefined = remove all dependencies for this workflow
-	 *   - null = remove only draft dependencies (publishedVersionId IS NULL)
-	 *   - string = remove only dependencies with that specific publishedVersionId
+	 * @param publishedVersionId Filter for publishedVersionId, null to remove draft dependencies
 	 * @returns Whether any dependencies were removed
 	 */
 	async removeDependenciesForWorkflow(
@@ -147,7 +144,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		// Build where conditions with publishedVersionId filter
 		const whereConditions: Record<string, unknown> = {
 			workflowId,
-			publishedVersionId: publishedVersionId === null ? IsNull() : publishedVersionId,
+			publishedVersionId: publishedVersionId ?? IsNull(),
 		};
 
 		if (this.databaseConfig.type === 'sqlite') {

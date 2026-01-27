@@ -43,7 +43,10 @@ export class WorkflowIndexService {
 			await this.updateIndexFor(workflow);
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
-			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
+			await this.dependencyRepository.removeDependenciesForWorkflow(
+				workflowId,
+				/*publishedVersionId=*/ null,
+			);
 		});
 	}
 
