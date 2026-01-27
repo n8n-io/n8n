@@ -291,7 +291,7 @@ describe('ToolExecutor Node', () => {
 		it('should handle gated tool in toolkit and return engine request', async () => {
 			const mockHitlMetadata = {
 				tool: 'gated_tool',
-				toolInput: { param: 'value' },
+				toolInput: { toolParameters: { param: 'value' } },
 			};
 
 			mockHasGatedToolNodeName.mockReturnValue(true);
@@ -345,6 +345,7 @@ describe('ToolExecutor Node', () => {
 			expect(result.actions[0].actionType).toBe('ExecutionNodeAction');
 			expect(result.actions[0].input).toMatchObject({
 				tool: 'gated_tool',
+				toolParameters: { param: 'value' },
 				approval: 'pending',
 			});
 		});
