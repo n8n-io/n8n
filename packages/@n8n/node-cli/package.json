@@ -51,7 +51,7 @@
     "change-case": "^5.4.4",
     "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import-x": "^4.15.2",
-    "eslint-plugin-n8n-nodes-base": "1.16.3",
+    "eslint-plugin-n8n-nodes-base": "1.16.5",
     "fast-glob": "catalog:",
     "handlebars": "4.7.8",
     "picocolors": "catalog:",
