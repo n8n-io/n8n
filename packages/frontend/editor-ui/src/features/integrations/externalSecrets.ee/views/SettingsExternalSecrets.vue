@@ -47,7 +47,7 @@ function goToUpgrade() {
 		>
 			<N8nCallout theme="secondary" class="mt-2xl mb-l">
 				{{ i18n.baseText('settings.externalSecrets.info') }}
-				<a :href="i18n.baseText('settings.externalSecrets.docs')" target="_blank">
+				<a href="https://docs.n8n.io/external-secrets/" target="_blank">
 					{{ i18n.baseText('settings.externalSecrets.info.link') }}
 				</a>
 			</N8nCallout>
@@ -70,7 +70,7 @@ function goToUpgrade() {
 			<template #description>
 				<I18nT keypath="settings.externalSecrets.actionBox.description" scope="global">
 					<template #link>
-						<a :href="i18n.baseText('settings.externalSecrets.docs')" target="_blank">
+						<a href="https://docs.n8n.io/external-secrets/" target="_blank">
 							{{ i18n.baseText('settings.externalSecrets.actionBox.description.link') }}
 						</a>
 					</template>
