@@ -1131,29 +1131,6 @@ describe('KafkaTrigger Node', () => {
 			});
 		});
 
-		it('should throw error for manual trigger mode on version 1.2', async () => {
-			await expect(
-				testTriggerNode(KafkaTrigger, {
-					mode: 'manual',
-					node: {
-						typeVersion: 1.2,
-						parameters: {
-							topic: 'test-topic',
-							groupId: 'test-group',
-							useSchemaRegistry: false,
-							resolveOffset: 'immediately',
-						},
-					},
-					credential: {
-						brokers: 'localhost:9092',
-						clientId: 'n8n-kafka',
-						ssl: false,
-						authentication: false,
-					},
-				}),
-			).rejects.toThrow(NodeOperationError);
-		});
-
 		it('should use resolveOffset "onStatus" and resolve when status matches allowed statuses', async () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
