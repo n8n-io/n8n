@@ -23,6 +23,7 @@ import type {
 	INodeType,
 	NodeTypeAndVersion,
 	INode,
+	IDataObject,
 } from 'n8n-workflow';
 
 import {
@@ -259,6 +260,20 @@ export class Chat implements INodeType {
 			];
 		}
 
+		let nestedData: IDataObject = {};
+		if (typeof data.json.data === 'object') {
+			nestedData = {
+				...data.json.data,
+			};
+		}
+
+		// if the response type is not "Free Text" and the
+		// user has typed something - we assume it's
+		// disapproval
+		if (!isFreeText) {
+			nestedData.approved = false;
+		}
+
 		return [
 			[
 				{
@@ -268,13 +283,7 @@ export class Chat implements INodeType {
 						// node can be connected to the AI Agent directly
 						// (it expects `$json.chatInput` field)
 						...data.json,
-						// if the response type is not "Free Text" and the
-						// user has typed something - we assume it's
-						// disapproval
-						data: {
-							...(typeof data.json.data === 'object' ? data.json.data : {}),
-							approved: isFreeText ? undefined : false,
-						},
+						data: Object.keys(nestedData).length > 0 ? nestedData : undefined,
 					},
 				},
 			],
