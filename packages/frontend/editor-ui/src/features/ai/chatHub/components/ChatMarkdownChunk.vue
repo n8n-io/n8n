@@ -73,7 +73,6 @@ defineExpose({
 	h4,
 	h5,
 	h6 {
-		display: inline-block;
 		margin: 0;
 		color: var(--color--text--shade-1);
 		line-height: var(--line-height--md);
@@ -112,8 +111,9 @@ defineExpose({
 	}
 
 	// Headings inside list items should have no top margin
-	li > :is(h1, h2, h3, h4, h5, h6):first-child {
+	li > :is(h1, h2, h3, h4, h5, h6, p, strong):first-child {
 		margin-top: 0;
+		display: inline-block;
 	}
 
 	// Strong/bold text
