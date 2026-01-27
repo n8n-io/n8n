@@ -280,7 +280,7 @@ describe('Test Chat Node', () => {
 			expect(memory.chatHistory.addUserMessage).toHaveBeenCalledWith('user message');
 		});
 
-		it('v1.2 should return output data directly without nested `data` field', async () => {
+		it('v1.2 should return output data directly without nested `data` field (except `approved`)', async () => {
 			const chatNode = mock<INode>({
 				name: 'Chat',
 				type: CHAT_NODE_TYPE,
@@ -311,7 +311,9 @@ describe('Test Chat Node', () => {
 						...data,
 						json: {
 							...data.json,
-							approved: false,
+							data: {
+								approved: false,
+							},
 						},
 					},
 				],
