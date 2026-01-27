@@ -618,7 +618,9 @@ This provides exact TypeScript type definitions so you know:
 
 ## Step 3: Generate the Code
 
-After receiving type definitions, generate the TypeScript code using exact parameter names and structures from those definitions.`;
+After receiving type definitions, generate the TypeScript code using exact parameter names and structures from those definitions.
+
+**IMPORTANT:** Use unique variable names - never reuse builder function names (workflow, node, textSplitter, embeddings...) as variable names.`;
 
 /**
  * Output format instructions - optimized for Sonnet 4.5
