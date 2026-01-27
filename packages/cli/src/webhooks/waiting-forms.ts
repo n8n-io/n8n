@@ -86,15 +86,15 @@ export class WaitingForms extends WaitingWebhooks {
 
 		const execution = await this.getExecution(executionId);
 
-		// Validate token for forms if required
-		if (execution?.data.resumeToken) {
-			const { valid, webhookPath } = this.validateToken(req, execution);
+		// Validate signature for forms if required (backwards compat: skip for old executions)
+		if (execution?.data.validateSignature) {
+			const { valid, webhookPath } = this.validateSignature(req);
 			if (!valid) {
 				res.status(401).render('form-invalid-token');
 				return { noWebhookResponse: true };
 			}
 
-			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
+			// Use webhook path parsed from signature if not in route (backwards compat for old URL format)
 			if (!suffix && webhookPath) {
 				suffix = webhookPath;
 			}

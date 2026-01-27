@@ -2,9 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { timingSafeEqual } from 'crypto';
 import type express from 'express';
-import { InstanceSettings, RESUME_TOKEN_QUERY_PARAM } from 'n8n-core';
+import { InstanceSettings, WAITING_TOKEN_QUERY_PARAM, validateUrlSignature } from 'n8n-core';
 import {
 	type INodes,
 	type IWorkflowBase,
@@ -96,7 +95,7 @@ export class WaitingWebhooks implements IWebhookManager {
 	}
 
 	/**
-	 * Validates the token in the request against the stored token in execution data.
+	 * Validates the HMAC signature in the request URL.
 	 * Uses timing-safe comparison to prevent timing attacks.
 	 *
 	 * Backwards compatibility note:
@@ -111,35 +110,32 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * To maintain backwards compatibility, we detect when the signature contains a '/' and
 	 * extract the webhook path from it, allowing both URL formats to work.
 	 *
-	 * @returns Object with validation result and optionally the webhook path parsed from the token
+	 * @returns Object with validation result and optionally the webhook path parsed from the signature
 	 */
-	protected validateToken(
-		req: express.Request,
-		execution: IExecutionResponse,
-	): { valid: boolean; webhookPath?: string } {
+	protected validateSignature(req: express.Request): { valid: boolean; webhookPath?: string } {
 		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
-		let providedToken = url.searchParams.get(RESUME_TOKEN_QUERY_PARAM);
-		const storedToken = execution.data.resumeToken;
+		let providedSignature = url.searchParams.get(WAITING_TOKEN_QUERY_PARAM);
 		let webhookPath: string | undefined;
 
-		if (!providedToken || !storedToken) {
+		if (!providedSignature) {
 			return { valid: false };
 		}
 
 		// Handle backwards compat: extract webhook path if it was appended after the signature
-		// e.g., ?signature=abc123/my-suffix -> token is "abc123", webhookPath is "my-suffix"
-		if (providedToken.includes('/')) {
-			const slashIndex = providedToken.indexOf('/');
-			webhookPath = providedToken.slice(slashIndex + 1);
-			providedToken = providedToken.slice(0, slashIndex);
+		// e.g., ?signature=abc123/my-suffix -> signature is "abc123", webhookPath is "my-suffix"
+		if (providedSignature.includes('/')) {
+			const slashIndex = providedSignature.indexOf('/');
+			webhookPath = providedSignature.slice(slashIndex + 1);
+			providedSignature = providedSignature.slice(0, slashIndex);
+			// Update URL for validation (remove the path suffix from signature param)
+			url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, providedSignature);
 		}
 
-		// Use timing-safe comparison to prevent timing attacks
-		if (providedToken.length !== storedToken.length) {
-			return { valid: false };
-		}
-
-		const valid = timingSafeEqual(Buffer.from(providedToken), Buffer.from(storedToken));
+		const valid = validateUrlSignature(
+			providedSignature,
+			url,
+			this.instanceSettings.hmacSignatureSecret,
+		);
 		return { valid, webhookPath };
 	}
 
@@ -159,19 +155,21 @@ export class WaitingWebhooks implements IWebhookManager {
 
 		const execution = await this.getExecution(executionId);
 
-		if (execution?.data.resumeToken) {
-			const { valid, webhookPath } = this.validateToken(req, execution);
+		// Only validate signature for executions that have validateSignature flag set
+		// This provides backwards compatibility for old executions created before signature validation
+		if (execution?.data.validateSignature) {
+			const { valid, webhookPath } = this.validateSignature(req);
 			if (!valid) {
 				const { workflowData } = execution;
 				const { nodes } = this.createWorkflow(workflowData);
 				if (this.isSendAndWaitRequest(nodes, suffix)) {
 					res.status(401).render('form-invalid-token');
 				} else {
-					res.status(401).json({ error: 'Invalid token' });
+					res.status(401).json({ error: 'Invalid signature' });
 				}
 				return { noWebhookResponse: true };
 			}
-			// Use webhook path parsed from token if not in route (backwards compat for old URL format)
+			// Use webhook path parsed from signature if not in route (backwards compat for old URL format)
 			if (!suffix && webhookPath) {
 				suffix = webhookPath;
 			}

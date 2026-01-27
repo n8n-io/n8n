@@ -18,8 +18,6 @@ describe('RunExecutionDataFactory', () => {
 			expect(result.manualData).toBeUndefined();
 			expect(result.parentExecution).toBeUndefined();
 			expect(result.pushRef).toBeUndefined();
-			// resumeToken is now generated automatically
-			expect(result.resumeToken).toMatch(/^[a-f0-9]{64}$/);
 			expect(result.waitTill).toBeUndefined();
 			expect(result.resultData).toEqual({
 				error: undefined,
@@ -73,8 +71,6 @@ describe('RunExecutionDataFactory', () => {
 			);
 			expect(result.executionData?.runtimeData).toEqual(options.executionData.runtimeData);
 			expect(result.parentExecution).toEqual(options.parentExecution);
-			// resumeToken is automatically generated
-			expect(result.resumeToken).toMatch(/^[a-f0-9]{64}$/);
 			expect(result.waitTill).toEqual(options.waitTill);
 		});
 
@@ -104,15 +100,6 @@ describe('RunExecutionDataFactory', () => {
 				waitingExecution: {},
 				waitingExecutionSource: {},
 			});
-		});
-
-		it('should use provided resumeToken instead of generating a new one', () => {
-			const existingToken = 'a'.repeat(64); // 64 character hex string
-			const result = createRunExecutionData({
-				resumeToken: existingToken,
-			});
-
-			expect(result.resumeToken).toBe(existingToken);
 		});
 	});
 

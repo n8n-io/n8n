@@ -132,6 +132,15 @@ export class InstanceSettings {
 		return this.settings.encryptionKey;
 	}
 
+	/**
+	 * HMAC secret key for signing webhook resume URLs.
+	 * Derived from encryption key to ensure consistent signing across restarts.
+	 */
+	@Memoized
+	get hmacSignatureSecret() {
+		return createHash('sha256').update(`hmac-${this.encryptionKey}`).digest('hex');
+	}
+
 	get tunnelSubdomain() {
 		return this.settings.tunnelSubdomain;
 	}

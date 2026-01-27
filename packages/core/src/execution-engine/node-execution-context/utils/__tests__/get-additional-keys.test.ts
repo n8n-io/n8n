@@ -13,6 +13,7 @@ describe('getAdditionalKeys', () => {
 		executionId: '123',
 		webhookWaitingBaseUrl: 'https://webhook.test',
 		formWaitingBaseUrl: 'https://form.test',
+		hmacSignatureSecret: undefined,
 		variables: { testVar: 'value' },
 		externalSecretsProxy,
 	});
@@ -93,7 +94,7 @@ describe('getAdditionalKeys', () => {
 		}).toThrow();
 	});
 
-	it('should correctly set resume URLs without resumeToken', () => {
+	it('should set plain resume URLs when hmacSignatureSecret is not provided', () => {
 		const result = getAdditionalKeys(additionalData, 'manual', null);
 
 		expect(result.$execution?.resumeUrl).toBe('https://webhook.test/123');
@@ -101,28 +102,27 @@ describe('getAdditionalKeys', () => {
 		expect(result.$resumeWebhookUrl).toBe('https://webhook.test/123'); // Test deprecated property
 	});
 
-	it('should add resumeToken to resume URLs when runExecutionData has resumeToken', () => {
-		const runDataWithToken = mock<IRunExecutionData>({
-			resultData: {
-				runData: {},
-				metadata: {},
-			},
-			resumeToken: 'test-resume-token-12345',
+	it('should add HMAC signature to resume URLs when additionalData has hmacSignatureSecret', () => {
+		const additionalDataWithSecret = mock<IWorkflowExecuteAdditionalData>({
+			executionId: '123',
+			webhookWaitingBaseUrl: 'https://webhook.test',
+			formWaitingBaseUrl: 'https://form.test',
+			variables: { testVar: 'value' },
+			externalSecretsProxy,
+			hmacSignatureSecret: 'test-secret-key',
 		});
 
-		const result = getAdditionalKeys(additionalData, 'manual', runDataWithToken);
+		const result = getAdditionalKeys(additionalDataWithSecret, 'manual', null);
 
-		// URLs should contain signature parameter with the resumeToken
-		expect(result.$execution?.resumeUrl).toBe(
-			'https://webhook.test/123?signature=test-resume-token-12345',
-		);
-		expect(result.$execution?.resumeFormUrl).toBe(
-			'https://form.test/123?signature=test-resume-token-12345',
-		);
-		// Deprecated property should also have the token
-		expect(result.$resumeWebhookUrl).toBe(
-			'https://webhook.test/123?signature=test-resume-token-12345',
-		);
+		// URLs should contain signature parameter with HMAC signature (64-character hex string)
+		const resumeUrl = new URL(result.$execution?.resumeUrl ?? '');
+		const resumeFormUrl = new URL(result.$execution?.resumeFormUrl ?? '');
+		const deprecatedUrl = new URL(result.$resumeWebhookUrl ?? '');
+
+		// Check that signature parameter exists and is a valid 64-char hex string
+		expect(resumeUrl.searchParams.get('signature')).toMatch(/^[a-f0-9]{64}$/);
+		expect(resumeFormUrl.searchParams.get('signature')).toMatch(/^[a-f0-9]{64}$/);
+		expect(deprecatedUrl.searchParams.get('signature')).toMatch(/^[a-f0-9]{64}$/);
 	});
 
 	it('should return test mode when manual', () => {

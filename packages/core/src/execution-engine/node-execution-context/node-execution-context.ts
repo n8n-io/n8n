@@ -38,9 +38,10 @@ import {
 	HTTP_REQUEST_AS_TOOL_NODE_TYPE,
 	HTTP_REQUEST_NODE_TYPE,
 	HTTP_REQUEST_TOOL_NODE_TYPE,
-	RESUME_TOKEN_QUERY_PARAM,
+	WAITING_TOKEN_QUERY_PARAM,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
+import { generateUrlSignature, prepareUrlForSigning } from '@/utils/signature-helpers';
 
 import { cleanupParameterData } from './utils/cleanup-parameter-data';
 import { ensureType } from './utils/ensure-type';
@@ -260,9 +261,14 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 			baseURL.searchParams.set(key, value);
 		}
 
-		if (this.runExecutionData?.resumeToken) {
-			baseURL.searchParams.set(RESUME_TOKEN_QUERY_PARAM, this.runExecutionData.resumeToken);
-		}
+		// Sign the full URL (pathname + query params) using instance secret as HMAC key
+		// This ensures action parameters (like approved=true/false) cannot be tampered with
+		const urlForSigning = prepareUrlForSigning(baseURL);
+		const signature = generateUrlSignature(
+			urlForSigning,
+			this.instanceSettings.hmacSignatureSecret,
+		);
+		baseURL.searchParams.set(WAITING_TOKEN_QUERY_PARAM, signature);
 
 		return baseURL.toString();
 	}

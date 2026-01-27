@@ -41,10 +41,11 @@ export interface IRunExecutionDataV0 {
 	};
 	parentExecution?: RelatedExecution;
 	/**
-	 * Random token used to validate waiting webhook requests.
-	 * Generated when execution starts
+	 * Flag indicating that signature validation is required for webhook resume.
+	 * When true, incoming webhook requests must have a valid HMAC signature.
+	 * Used for backwards compatibility, old executions without this flag skip validation.
 	 */
-	resumeToken?: string;
+	validateSignature?: boolean;
 	waitTill?: Date;
 	pushRef?: string;
 

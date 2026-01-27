@@ -99,6 +99,7 @@ export interface PartialAdditionalData {
 	executionTimeoutTimestamp?: number;
 	userId?: string;
 	variables: IDataObject;
+	hmacSignatureSecret?: string;
 }
 
 /** RPC methods that are exposed directly to the Code Node */

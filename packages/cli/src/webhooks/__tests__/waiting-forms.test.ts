@@ -302,7 +302,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
-					resumeToken: undefined, // Explicitly set to avoid token validation in test
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -447,7 +447,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 					},
-					resumeToken: undefined, // Explicitly set to avoid token validation in test
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -505,7 +505,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 					},
-					resumeToken: undefined, // Explicitly set to avoid token validation in test
+					validateSignature: undefined, // Explicitly set to avoid signature validation in test
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -551,10 +551,8 @@ describe('WaitingForms', () => {
 		});
 	});
 
-	describe('executeWebhook - token validation', () => {
-		const STORED_TOKEN = 'a'.repeat(64);
-
-		it('should return 401 when resumeToken exists but request has no token', async () => {
+	describe('executeWebhook - signature validation', () => {
+		it('should return 401 when validateSignature is true but request has no signature', async () => {
 			const execution = mock<IExecutionResponse>({
 				finished: false,
 				status: 'waiting',
@@ -564,7 +562,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
-					resumeToken: STORED_TOKEN, // Token validation enabled
+					validateSignature: true, // Signature validation enabled
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -604,7 +602,7 @@ describe('WaitingForms', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
-		it('should skip token validation when resumeToken is undefined (backwards compat)', async () => {
+		it('should skip signature validation when validateSignature is undefined (backwards compat)', async () => {
 			const execution = mock<IExecutionResponse>({
 				finished: true,
 				status: 'success',
@@ -614,7 +612,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
-					resumeToken: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					validateSignature: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
 				},
 				workflowData: {
 					id: 'workflow1',

@@ -1370,7 +1370,7 @@ describe('WorkflowExecute', () => {
 
 		const executionData = mock<IExecuteData>();
 		const runExecutionData = mock<IRunExecutionData>();
-		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hmacSignatureSecret: undefined });
 		const abortController = new AbortController();
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
@@ -1486,6 +1486,7 @@ describe('WorkflowExecute', () => {
 				mock<IWorkflowExecuteAdditionalData>({
 					webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
 					formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+					hmacSignatureSecret: undefined,
 				}),
 				'manual',
 				runExecutionData,
@@ -2318,7 +2319,7 @@ describe('WorkflowExecute', () => {
 		const nodeTypes = mock<INodeTypes>();
 
 		const runExecutionData = mock<IRunExecutionData>();
-		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hmacSignatureSecret: undefined });
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 		const testCases: Array<{
@@ -2459,7 +2460,7 @@ describe('WorkflowExecute', () => {
 			});
 
 			mockHooks = mock<ExecutionLifecycleHooks>();
-			additionalData = mock<IWorkflowExecuteAdditionalData>();
+			additionalData = mock<IWorkflowExecuteAdditionalData>({ hmacSignatureSecret: undefined });
 			additionalData.hooks = mockHooks;
 			additionalData.currentNodeExecutionIndex = 0;
 
@@ -2931,10 +2932,9 @@ describe('WorkflowExecute', () => {
 			};
 
 			expect(runHook.mock.lastCall[0]).toEqual('workflowExecuteAfter');
-			// Compare data without resumeToken since it's randomly generated
-			const actualData = { ...runHook.mock.lastCall[1][0].data };
-			delete actualData.resumeToken;
-			expect(JSON.stringify(actualData)).toBe(JSON.stringify(updatedExecutionData.data));
+			expect(JSON.stringify(runHook.mock.lastCall[1][0].data)).toBe(
+				JSON.stringify(updatedExecutionData.data),
+			);
 			expect(runHook.mock.lastCall[1][0].status).toEqual('canceled');
 		});
 
