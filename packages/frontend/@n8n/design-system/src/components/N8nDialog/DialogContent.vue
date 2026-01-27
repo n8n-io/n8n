@@ -155,7 +155,9 @@ onMounted(async () => {
 	</Transition>
 </template>
 
-<style module>
+<style module lang="scss">
+@use '@n8n/design-system/css/mixins/focus';
+
 .content {
 	position: fixed;
 	top: 50%;
@@ -256,10 +258,7 @@ onMounted(async () => {
 		background-color: var(--color--background);
 	}
 
-	&:focus-visible {
-		box-shadow: 0 0 0 var(--spacing--5xs) var(--color--primary);
-		outline: none;
-	}
+	@include focus.focus-visible-ring;
 }
 
 :global(.n8n-dialog-fade-enter-active),
