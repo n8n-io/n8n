@@ -39,6 +39,14 @@ export class NodeCreator {
 		return this.page.getByTestId('node-creator-no-results');
 	}
 
+	getNoTriggersCallout(): Locator {
+		return this.page.getByTestId('actions-panel-no-triggers-callout');
+	}
+
+	getActivationCallout(): Locator {
+		return this.page.getByTestId('actions-panel-activation-callout');
+	}
+
 	getTriggerText(): Locator {
 		return this.page.getByText('What triggers this workflow?');
 	}

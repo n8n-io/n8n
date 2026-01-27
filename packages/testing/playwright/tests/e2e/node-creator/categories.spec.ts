@@ -72,7 +72,7 @@ test.describe('Node Creator Categories', () => {
 		await n8n.canvas.nodeCreator.searchFor('Customer Datastore (n8n training)');
 		await n8n.canvas.nodeCreator.selectItem('Customer Datastore (n8n training)');
 
-		await expect(n8n.page.getByTestId('actions-panel-no-triggers-callout')).toBeVisible();
+		await expect(n8n.canvas.nodeCreator.getNoTriggersCallout()).toBeVisible();
 		await expect(n8n.canvas.nodeCreator.getItem('On a Schedule')).toBeVisible();
 		await expect(n8n.canvas.nodeCreator.getItem('On a Webhook call')).toBeVisible();
 	});
@@ -82,7 +82,7 @@ test.describe('Node Creator Categories', () => {
 		await n8n.canvas.nodeCreator.searchFor('Customer Datastore (n8n training)');
 		await n8n.canvas.nodeCreator.selectItem('Customer Datastore (n8n training)');
 
-		await expect(n8n.page.getByTestId('actions-panel-activation-callout')).toBeVisible();
+		await expect(n8n.canvas.nodeCreator.getActivationCallout()).toBeVisible();
 	});
 
 	test('should show Trigger and Actions sections during search', async ({ n8n }) => {
@@ -94,7 +94,7 @@ test.describe('Node Creator Categories', () => {
 
 		await expect(n8n.canvas.nodeCreator.getCategoryItem('Triggers')).toBeVisible();
 		await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions')).toBeVisible();
-		await expect(n8n.page.getByTestId('actions-panel-no-triggers-callout')).toBeVisible();
+		await expect(n8n.canvas.nodeCreator.getNoTriggersCallout()).toBeVisible();
 		await expect(n8n.canvas.nodeCreator.getItem('On a Schedule')).toBeVisible();
 		await expect(n8n.canvas.nodeCreator.getItem('On a Webhook call')).toBeVisible();
 	});
