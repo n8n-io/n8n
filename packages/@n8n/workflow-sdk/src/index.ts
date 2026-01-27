@@ -92,7 +92,16 @@ export { isNodeChain } from './types/base';
 export { workflow } from './workflow-builder';
 
 // Node builders
-export { node, trigger, sticky, placeholder, newCredential, ifElse, ifNode } from './node-builder';
+export {
+	node,
+	trigger,
+	sticky,
+	placeholder,
+	newCredential,
+	ifElse,
+	ifNode,
+	switchCase,
+} from './node-builder';
 
 // Subnode builders (for AI/LangChain nodes)
 export {

@@ -931,6 +931,58 @@ export function ifElse<TOutput = unknown>(
 export const ifNode = ifElse;
 
 /**
+ * Config for switchCase() factory function
+ */
+export interface SwitchCaseFactoryConfig {
+	name?: string;
+	version?: number;
+	parameters?: IDataObject;
+	credentials?: Record<string, CredentialReference | NewCredentialValue>;
+	position?: [number, number];
+	id?: string;
+}
+
+/**
+ * Create a Switch case composite with a Switch node and case targets.
+ *
+ * @param cases - Array of case targets (nodes, arrays of nodes, or null for no connection)
+ * @param config - Optional configuration for the Switch node
+ * @returns A SwitchCaseComposite for use in workflow builder
+ *
+ * @example
+ * ```typescript
+ * const routeByType = switchCase(
+ *   [handleTypeA, handleTypeB, handleFallback],
+ *   { parameters: { mode: 'rules', rules: { ... } } }
+ * );
+ * workflow().then(trigger).then(routeByType);
+ * ```
+ */
+export function switchCase(
+	cases: Array<
+		NodeInstance<string, string, unknown> | NodeInstance<string, string, unknown>[] | null
+	>,
+	config?: SwitchCaseFactoryConfig,
+): SwitchCaseComposite {
+	const switchNode = node({
+		type: 'n8n-nodes-base.switch',
+		version: config?.version ?? 3.4,
+		config: {
+			id: config?.id,
+			name: config?.name,
+			parameters: config?.parameters,
+			credentials: config?.credentials,
+			position: config?.position,
+		},
+	}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+
+	return {
+		switchNode,
+		cases,
+	};
+}
+
+/**
  * Create a trigger node instance
  *
  * @param input - Trigger input with type, version, and config
