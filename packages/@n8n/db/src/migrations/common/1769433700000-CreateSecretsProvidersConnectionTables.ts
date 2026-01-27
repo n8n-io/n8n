@@ -23,12 +23,12 @@ export class CreateSecretsProviderConnectionTables1769433700000 implements Rever
 		// Create project_secrets_provider_access table (join table with FKs)
 		await createTable(projectSecretsProviderAccessTable)
 			.withColumns(
-				column('providerKey').varchar().primary.notNull,
+				column('secretsProviderConnectionId').varchar().primary.notNull,
 				column('projectId').varchar(36).primary.notNull,
 			)
-			.withTimestamps.withForeignKey('providerKey', {
+			.withTimestamps.withForeignKey('secretsProviderConnectionId', {
 				tableName: secretsProviderConnectionTable,
-				columnName: 'providerKey',
+				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
 			.withForeignKey('projectId', {
