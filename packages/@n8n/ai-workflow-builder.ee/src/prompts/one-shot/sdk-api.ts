@@ -236,11 +236,7 @@ export interface NodeInstance<
 
 	/**
 	 * Select a specific output index for connection.
-	 * Use for multi-output nodes (IF, Switch, classifiers).
-	 *
-	 * @example
-	 * ifNode.output(0).to(trueHandler)   // true branch
-	 * ifNode.output(1).to(falseHandler)  // false branch
+	 * Used for multi-output nodes
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
@@ -289,10 +285,10 @@ export interface SwitchCaseBuilder {
  * Created by node() with type 'n8n-nodes-base.if'.
  *
  * @example
- * const ifNode = node({ type: 'n8n-nodes-base.if', ... });
- * ifNode.onTrue(trueHandler).onFalse(falseHandler)
+ * const ifElseNode = ifElse({ type: 'n8n-nodes-base.if', ... });
+ * ifElseNode.onTrue(trueHandler).onFalse(falseHandler)
  */
-export interface IfNodeInstance extends NodeInstance<'n8n-nodes-base.if', string, unknown> {
+export interface IfElseNodeInstance extends NodeInstance<'n8n-nodes-base.if', string, unknown> {
 	/** Connect the true branch (output 0) */
 	onTrue<T extends NodeInstance>(target: T): IfElseBuilder;
 	/** Connect the false branch (output 1) */

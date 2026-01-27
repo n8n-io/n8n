@@ -246,30 +246,21 @@ return workflow('id', 'name')
 **CRITICAL:** Each branch defines a COMPLETE processing path. Chain multiple steps INSIDE the branch using .to().
 
 \`\`\`typescript
-// Assume nodes declared: checkValid (IF), formatData, enrichData, saveToDb, logError
+// Assume other nodes are declared
+const checkValid = ifElse({ type: 'n8n-nodes-base.if', ... });
+
 return workflow('id', 'name')
   .add(startTrigger.to(checkValid
     .onTrue(formatData.to(enrichData.to(saveToDb)))  // Chain 3 nodes on true branch
     .onFalse(logError)));
 \`\`\`
 
-WRONG - nodes after IF run for BOTH branches:
-\`\`\`typescript
-.to(checkValid.onTrue(formatData).onFalse(logError))
-.to(enrichData)  // WRONG: runs after both branches!
-\`\`\`
-
-RIGHT - chain inside the branch:
-\`\`\`typescript
-.to(checkValid.onTrue(formatData.to(enrichData)).onFalse(logError))
-\`\`\`
-
 ## Multi-Way Routing (Switch)
 
-**CRITICAL:** Same as IF - chain nodes inside each case.
-
 \`\`\`typescript
-// Assume nodes declared: routeByPriority (Switch), processUrgent, notifyTeam, escalate, processNormal, archive
+// Assume other nodes are declared
+const routeByPriority = switchCase({ type: 'n8n-nodes-base.switch', ... });
+
 return workflow('id', 'name')
   .add(startTrigger.to(routeByPriority
     .onCase(0, processUrgent.to(notifyTeam.to(escalate)))  // Chain of 3 nodes

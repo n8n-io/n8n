@@ -785,7 +785,7 @@ export type FanOutFn = (...targets: NodeInstance<string, string, unknown>[]) => 
  * Use .onTrue()/.onFalse() fluent syntax for conditional branching:
  *
  * @example
- * const checkValue = ifElse([handleSuccess, handleFailure], {
+ * const checkValue = ifElse({
  *   parameters: {
  *     conditions: {
  *       conditions: [{
