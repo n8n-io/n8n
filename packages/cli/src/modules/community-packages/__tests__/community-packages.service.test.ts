@@ -39,7 +39,6 @@ jest.mock('../npm-utils', () => ({
 	executeNpmCommand: jest.fn(),
 }));
 
-type ExecFileOptions = NonNullable<Parameters<typeof execFile>[2]>;
 type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
 
 const execMock: typeof execFile = ((...args) => {
