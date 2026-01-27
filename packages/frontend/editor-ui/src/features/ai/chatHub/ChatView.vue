@@ -36,11 +36,20 @@ import {
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	nextTick,
+	onBeforeMount,
+	onBeforeUnmount,
+	ref,
+	useTemplateRef,
+	watch,
+} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';
@@ -56,17 +65,68 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import ChatGreetings from './components/ChatGreetings.vue';
+import { useChatPushHandler } from './composables/useChatPushHandler';
 
 const router = useRouter();
 const route = useRoute();
 const usersStore = useUsersStore();
 const chatStore = useChatStore();
 const settingsStore = useSettingsStore();
+const pushConnectionStore = usePushConnectionStore();
 const toast = useToast();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
 const documentTitle = useDocumentTitle();
 const uiStore = useUIStore();
 const i18n = useI18n();
+
+// Initialize WebSocket push handler for chat streaming
+const chatPushHandler = useChatPushHandler();
+
+onBeforeMount(() => {
+	// Connect to the WebSocket for receiving streaming updates
+	pushConnectionStore.pushConnect();
+	chatPushHandler.initialize();
+});
+
+onBeforeUnmount(() => {
+	chatPushHandler.terminate();
+	pushConnectionStore.pushDisconnect();
+});
+
+// Handle WebSocket reconnection - replay missed chunks if there's an active stream
+watch(
+	() => pushConnectionStore.isConnected,
+	async (isConnected, wasConnected) => {
+		// Only handle reconnection (was disconnected, now connected)
+		if (!isConnected || wasConnected) {
+			return;
+		}
+
+		// Check if we have an active streaming session
+		const currentSessionId = sessionId.value;
+		if (!chatStore.streaming || chatStore.streaming.sessionId !== currentSessionId) {
+			return;
+		}
+
+		// Get the last sequence number we received
+		const lastSequence = chatPushHandler.getLastSequenceNumber(currentSessionId);
+
+		// Call the reconnect API to get missed chunks
+		const result = await chatStore.reconnectToStream(currentSessionId, lastSequence);
+
+		if (result && result.pendingChunks && result.pendingChunks.length > 0) {
+			// Update the push handler's sequence tracking
+			for (const chunk of result.pendingChunks) {
+				// The store's reconnectToStream already appended the content
+				// Just update the push handler's tracking
+				const streamState = chatPushHandler.getStreamState(currentSessionId);
+				if (streamState && chunk.sequenceNumber > streamState.lastSequenceNumber) {
+					streamState.lastSequenceNumber = chunk.sequenceNumber;
+				}
+			}
+		}
+	},
+);
 
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');

@@ -17,6 +17,8 @@ import type {
 	MessageChunk,
 	ChatHubLLMProvider,
 	ChatProviderSettingsDto,
+	ChatSendMessageResponse,
+	ChatReconnectResponse,
 } from '@n8n/api-types';
 
 // Workflows stream data as newline separated JSON objects (jsonl)
@@ -87,6 +89,84 @@ export function regenerateMessageApi(
 		STREAM_SEPARATOR,
 	);
 }
+
+// #region WebSocket-based API functions (use Push for streaming)
+
+/**
+ * Send a message using WebSocket streaming
+ * Returns immediately with message IDs; actual content comes via Push events.
+ * The push-ref header is automatically sent via ctx.pushRef.
+ */
+export async function sendMessageWsApi(
+	ctx: IRestApiContext,
+	payload: ChatHubSendMessageRequest,
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		'/chat/conversations/send',
+		payload,
+	);
+}
+
+/**
+ * Edit a message using WebSocket streaming.
+ * The push-ref header is automatically sent via ctx.pushRef.
+ */
+export async function editMessageWsApi(
+	ctx: IRestApiContext,
+	request: {
+		sessionId: ChatSessionId;
+		editId: ChatMessageId;
+		payload: ChatHubEditMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit`,
+		request.payload,
+	);
+}
+
+/**
+ * Regenerate a message using WebSocket streaming.
+ * The push-ref header is automatically sent via ctx.pushRef.
+ */
+export async function regenerateMessageWsApi(
+	ctx: IRestApiContext,
+	request: {
+		sessionId: ChatSessionId;
+		retryId: ChatMessageId;
+		payload: ChatHubRegenerateMessageRequest;
+	},
+): Promise<ChatSendMessageResponse> {
+	return await makeRestApiRequest<ChatSendMessageResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
+		request.payload,
+	);
+}
+
+/**
+ * Reconnect to an active chat stream after WebSocket reconnection
+ */
+export async function reconnectToSessionApi(
+	ctx: IRestApiContext,
+	sessionId: ChatSessionId,
+	lastSequence?: number,
+): Promise<ChatReconnectResponse> {
+	const queryParams = lastSequence !== undefined ? `?lastSequence=${lastSequence}` : '';
+	return await makeRestApiRequest<ChatReconnectResponse>(
+		ctx,
+		'POST',
+		`/chat/conversations/${sessionId}/reconnect${queryParams}`,
+		{},
+	);
+}
+
+// #endregion
 
 export const stopGenerationApi = async (
 	context: IRestApiContext,

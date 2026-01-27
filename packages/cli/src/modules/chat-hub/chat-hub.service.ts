@@ -87,9 +87,17 @@ import {
 } from './chat-hub.types';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
+import { ChatStreamService } from './chat-stream.service';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
 import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
+
+/**
+ * Streaming context that can be either HTTP response or WebSocket push
+ */
+export type StreamingContext =
+	| { type: 'http'; response: Response }
+	| { type: 'websocket'; userId: string };
 
 @Service()
 export class ChatHubService {
@@ -111,9 +119,12 @@ export class ChatHubService {
 		private readonly chatHubModelsService: ChatHubModelsService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
+		private readonly chatStreamService: ChatStreamService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly globalConfig: GlobalConfig,
-	) {}
+	) {
+		this.logger = this.logger.scoped('chat-hub');
+	}
 
 	private async deleteChatWorkflow(workflowId: string): Promise<void> {
 		await this.workflowRepository.delete(workflowId);
@@ -2096,4 +2107,652 @@ export class ChatHubService {
 
 		return errorText;
 	}
+
+	// #region WebSocket Streaming Methods
+
+	/**
+	 * Send a human message and stream the AI response via WebSocket.
+	 * Returns immediately; streaming happens in background via Push events.
+	 */
+	async sendHumanMessageWs(
+		user: User,
+		payload: HumanMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	): Promise<void> {
+		const {
+			sessionId,
+			messageId,
+			message,
+			model,
+			credentials,
+			previousMessageId,
+			tools,
+			attachments,
+			timeZone,
+		} = payload;
+		const tz = timeZone ?? this.globalConfig.generic.timezone;
+
+		const credentialId = this.getModelCredential(model, credentials);
+
+		let processedAttachments: IBinaryData[] = [];
+		let workflow: PreparedChatWorkflow;
+		try {
+			workflow = await this.messageRepository.manager.transaction(async (trx) => {
+				let session = await this.getChatSession(user, sessionId, trx);
+				session ??= await this.createChatSession(
+					user,
+					sessionId,
+					model,
+					credentialId,
+					tools,
+					payload.agentName,
+					trx,
+				);
+
+				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
+				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+				const history = this.buildMessageHistory(messages, previousMessageId);
+
+				// Store attachments to populate 'id' field via BinaryDataService
+				processedAttachments = await this.chatHubAttachmentService.store(
+					sessionId,
+					messageId,
+					attachments,
+				);
+
+				await this.saveHumanMessage(
+					payload,
+					processedAttachments,
+					user,
+					previousMessageId,
+					model,
+					undefined,
+					trx,
+				);
+
+				return await this.prepareReplyWorkflow(
+					user,
+					sessionId,
+					credentials,
+					model,
+					history,
+					message,
+					tools,
+					processedAttachments,
+					tz,
+					trx,
+					executionMetadata,
+				);
+			});
+		} catch (error) {
+			if (processedAttachments.length > 0) {
+				try {
+					await this.chatHubAttachmentService.deleteAttachments(processedAttachments);
+				} catch {
+					this.errorReporter.warn(`Could not clean up ${processedAttachments.length} files`);
+				}
+			}
+
+			throw error;
+		}
+
+		if (!workflow) {
+			throw new UnexpectedError('Failed to prepare chat workflow.');
+		}
+
+		// Broadcast human message to all user connections for cross-client sync
+		await this.chatStreamService.sendHumanMessage({
+			userId: user.id,
+			sessionId,
+			messageId,
+			previousMessageId,
+			content: message,
+			attachments: processedAttachments.map((a) => ({
+				id: a.id!,
+				fileName: a.fileName ?? 'file',
+				mimeType: a.mimeType,
+			})),
+		});
+
+		const responseMessageId = uuidv4();
+
+		// Start the workflow execution with WebSocket streaming (fire and forget)
+		void this.executeChatWorkflowWithCleanupWs(
+			user,
+			model,
+			workflow.workflowData,
+			workflow.executionData,
+			sessionId,
+			messageId,
+			responseMessageId,
+			null,
+			workflow.responseMode,
+			previousMessageId,
+			credentials,
+			message,
+			processedAttachments,
+		);
+	}
+
+	/**
+	 * Edit a message and stream the AI response via WebSocket.
+	 * Returns immediately; streaming happens in background via Push events.
+	 */
+	async editMessageWs(
+		user: User,
+		payload: EditMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	): Promise<void> {
+		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
+		const tz = timeZone ?? this.globalConfig.generic.timezone;
+
+		let transactionResult: {
+			workflow: PreparedChatWorkflow | null;
+			combinedAttachments: IBinaryData[];
+		} | null = null;
+		let newStoredAttachments: IBinaryData[] = [];
+
+		try {
+			transactionResult = await this.messageRepository.manager.transaction(async (trx) => {
+				const session = await this.getChatSession(user, sessionId, trx);
+				if (!session) {
+					throw new NotFoundError('Chat session not found');
+				}
+
+				const messageToEdit = await this.getChatMessage(session.id, editId, [], trx);
+
+				if (messageToEdit.type === 'ai') {
+					if (model.provider === 'n8n') {
+						throw new BadRequestError(
+							'Editing AI messages with n8n workflow agents is not supported',
+						);
+					}
+
+					// AI edits just change the original message without revisioning or response generation
+					await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
+					return { workflow: null, combinedAttachments: [] };
+				}
+
+				if (messageToEdit.type === 'human') {
+					const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+					const history = this.buildMessageHistory(messages, messageToEdit.previousMessageId);
+
+					const revisionOfMessageId = messageToEdit.revisionOfMessageId ?? messageToEdit.id;
+					const originalAttachments = messageToEdit.attachments ?? [];
+
+					const keptAttachments = payload.keepAttachmentIndices.flatMap((index) => {
+						const attachment = originalAttachments[index];
+						return attachment ? [attachment] : [];
+					});
+
+					newStoredAttachments =
+						payload.newAttachments.length > 0
+							? await this.chatHubAttachmentService.store(
+									sessionId,
+									messageId,
+									payload.newAttachments,
+								)
+							: [];
+
+					const attachments = [...keptAttachments, ...newStoredAttachments];
+
+					await this.saveHumanMessage(
+						payload,
+						attachments,
+						user,
+						messageToEdit.previousMessageId,
+						model,
+						revisionOfMessageId,
+						trx,
+					);
+
+					const workflow = await this.prepareReplyWorkflow(
+						user,
+						sessionId,
+						credentials,
+						model,
+						history,
+						message,
+						session.tools,
+						attachments,
+						tz,
+						trx,
+						executionMetadata,
+					);
+
+					return { workflow, combinedAttachments: attachments };
+				}
+
+				throw new BadRequestError('Only human and AI messages can be edited');
+			});
+		} catch (error) {
+			if (newStoredAttachments.length > 0) {
+				try {
+					await this.chatHubAttachmentService.deleteAttachments(newStoredAttachments);
+				} catch {
+					this.errorReporter.warn(`Could not clean up ${newStoredAttachments.length} files`);
+				}
+			}
+
+			throw error;
+		}
+
+		if (!transactionResult?.workflow) {
+			// AI message edit - no streaming needed
+			return;
+		}
+
+		// Broadcast message edit to all user connections for cross-client sync
+		await this.chatStreamService.sendMessageEdit({
+			userId: user.id,
+			sessionId,
+			originalMessageId: editId,
+			newMessageId: messageId,
+			content: message,
+			attachments: transactionResult.combinedAttachments.map((a) => ({
+				id: a.id!,
+				fileName: a.fileName ?? 'file',
+				mimeType: a.mimeType,
+			})),
+		});
+
+		const responseMessageId = uuidv4();
+
+		// Start the workflow execution with WebSocket streaming (fire and forget)
+		void this.executeChatWorkflowWithCleanupWs(
+			user,
+			model,
+			transactionResult.workflow.workflowData,
+			transactionResult.workflow.executionData,
+			sessionId,
+			messageId,
+			responseMessageId,
+			null,
+			transactionResult.workflow.responseMode,
+			null,
+			{},
+			'',
+			[],
+		);
+	}
+
+	/**
+	 * Regenerate an AI message and stream via WebSocket.
+	 * Returns immediately; streaming happens in background via Push events.
+	 */
+	async regenerateAIMessageWs(
+		user: User,
+		payload: RegenerateMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	): Promise<void> {
+		const { sessionId, retryId, model, credentials, timeZone } = payload;
+		const tz = timeZone ?? this.globalConfig.generic.timezone;
+
+		const { retryOfMessageId, previousMessageId, workflow } =
+			await this.messageRepository.manager.transaction(async (trx) => {
+				const session = await this.getChatSession(user, sessionId, trx);
+				if (!session) {
+					throw new NotFoundError('Chat session not found');
+				}
+
+				const messageToRetry = await this.getChatMessage(session.id, retryId, [], trx);
+
+				if (messageToRetry.type !== 'ai') {
+					throw new BadRequestError('Can only retry AI messages');
+				}
+
+				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
+				const history = this.buildMessageHistory(messages, messageToRetry.previousMessageId);
+
+				const lastHumanMessage = history.filter((m) => m.type === 'human').pop();
+				if (!lastHumanMessage) {
+					throw new BadRequestError('No human message found to base the retry on');
+				}
+
+				const lastHumanMessageIndex = history.indexOf(lastHumanMessage);
+				if (lastHumanMessageIndex !== -1) {
+					history.splice(lastHumanMessageIndex + 1);
+				}
+
+				const retryOfMessageId = messageToRetry.retryOfMessageId ?? messageToRetry.id;
+				const message = lastHumanMessage ? lastHumanMessage.content : '';
+				const attachments = lastHumanMessage.attachments ?? [];
+
+				const workflow = await this.prepareReplyWorkflow(
+					user,
+					sessionId,
+					credentials,
+					model,
+					history,
+					message,
+					session.tools,
+					attachments,
+					tz,
+					trx,
+					executionMetadata,
+				);
+
+				return {
+					previousMessageId: lastHumanMessage.id,
+					retryOfMessageId,
+					workflow,
+				};
+			});
+
+		const responseMessageId = uuidv4();
+
+		// Start the workflow execution with WebSocket streaming (fire and forget)
+		void this.executeChatWorkflowWithCleanupWs(
+			user,
+			model,
+			workflow.workflowData,
+			workflow.executionData,
+			sessionId,
+			previousMessageId,
+			responseMessageId,
+			retryOfMessageId,
+			workflow.responseMode,
+			null,
+			{},
+			'',
+			[],
+		);
+	}
+
+	/**
+	 * Execute a chat workflow with cleanup, using WebSocket streaming
+	 */
+	private async executeChatWorkflowWithCleanupWs(
+		user: User,
+		model: ChatHubConversationModel,
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		sessionId: ChatSessionId,
+		previousMessageId: ChatMessageId,
+		responseMessageId: ChatMessageId,
+		retryOfMessageId: ChatMessageId | null,
+		responseMode: ChatTriggerResponseMode,
+		originalPreviousMessageId: ChatMessageId | null,
+		credentials: INodeCredentials,
+		humanMessage: string,
+		processedAttachments: IBinaryData[],
+	) {
+		try {
+			const executionMode = model.provider === 'n8n' ? 'webhook' : 'chat';
+
+			await this.executeChatWorkflowWs(
+				user,
+				model,
+				workflowData,
+				executionData,
+				sessionId,
+				previousMessageId,
+				responseMessageId,
+				retryOfMessageId,
+				executionMode,
+				responseMode,
+			);
+		} catch (error) {
+			this.logger.error(`Error in WebSocket chat execution: ${error}`);
+			await this.chatStreamService.sendError(
+				sessionId,
+				responseMessageId,
+				error instanceof Error ? error.message : 'Unknown error',
+			);
+		} finally {
+			if (model.provider !== 'n8n') {
+				await this.deleteChatWorkflow(workflowData.id);
+			}
+		}
+
+		// Generate title for the session on receiving the first human message
+		if (originalPreviousMessageId === null && humanMessage) {
+			try {
+				await this.generateSessionTitle(
+					user,
+					sessionId,
+					humanMessage,
+					processedAttachments,
+					credentials,
+					model,
+				);
+			} catch (error) {
+				this.logger.warn(`Title generation failed: ${error}`);
+			}
+		}
+	}
+
+	/**
+	 * Execute a chat workflow using WebSocket streaming
+	 */
+	private async executeChatWorkflowWs(
+		user: User,
+		model: ChatHubConversationModel,
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		sessionId: ChatSessionId,
+		previousMessageId: ChatMessageId,
+		responseMessageId: ChatMessageId,
+		retryOfMessageId: ChatMessageId | null,
+		executionMode: WorkflowExecuteMode,
+		responseMode: ChatTriggerResponseMode,
+	) {
+		this.logger.debug(
+			`Starting WebSocket execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
+		);
+
+		if (!SUPPORTED_RESPONSE_MODES.includes(responseMode)) {
+			throw new BadRequestError(`Response mode "${responseMode}" is not supported yet.`);
+		}
+
+		// For now, only support streaming mode with WebSocket
+		// lastNode and responseNodes modes could be added later
+		if (responseMode !== 'streaming') {
+			throw new BadRequestError(
+				`WebSocket streaming only supports 'streaming' response mode, got '${responseMode}'`,
+			);
+		}
+
+		await this.executeWithWebSocketStreaming(
+			user,
+			model,
+			workflowData,
+			executionData,
+			sessionId,
+			previousMessageId,
+			responseMessageId,
+			retryOfMessageId,
+			executionMode,
+		);
+	}
+
+	/**
+	 * Execute a workflow with WebSocket streaming output
+	 */
+	private async executeWithWebSocketStreaming(
+		user: User,
+		model: ChatHubConversationModel,
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		sessionId: string,
+		previousMessageId: string,
+		_responseMessageId: string,
+		retryOfMessageId: string | null,
+		executionMode: WorkflowExecuteMode,
+	) {
+		let executionId: string | undefined;
+		let executionStatus: 'success' | 'error' | 'cancelled' = 'success';
+
+		// Start the execution (tracks state for the whole streaming session)
+		await this.chatStreamService.startExecution(user.id, sessionId);
+
+		// Create aggregator to handle multiple messages (e.g., tool calls followed by response)
+		const aggregator = createStructuredChunkAggregator(previousMessageId, retryOfMessageId, {
+			onBegin: async (message) => {
+				// Save the AI message to DB
+				await this.saveAIMessage({
+					id: message.id,
+					sessionId,
+					previousMessageId: message.previousMessageId ?? previousMessageId,
+					content: '',
+					model,
+					executionId,
+					retryOfMessageId: message.retryOfMessageId,
+					status: 'running',
+				});
+
+				// Start the stream via WebSocket for this message
+				await this.chatStreamService.startStream({
+					userId: user.id,
+					sessionId,
+					messageId: message.id,
+					previousMessageId: message.previousMessageId,
+					retryOfMessageId: message.retryOfMessageId,
+					executionId: executionId ? parseInt(executionId, 10) : null,
+				});
+			},
+			onItem: async (message, chunk) => {
+				await this.chatStreamService.sendChunk(sessionId, message.id, chunk);
+			},
+			onEnd: async (message) => {
+				// Update the message in the database
+				await this.messageRepository.updateChatMessage(message.id, {
+					content: message.content,
+					status: message.status,
+				});
+
+				// End the stream for this message
+				await this.chatStreamService.endStream(sessionId, message.id, message.status);
+			},
+			onError: async (message, errorText) => {
+				executionStatus = 'error';
+				// Update the message in the database
+				await this.messageRepository.updateChatMessage(message.id, {
+					content: message.content + (message.content ? '\n\n' : '') + errorText,
+					status: 'error',
+				});
+
+				// End the stream with error
+				await this.chatStreamService.endStream(sessionId, message.id, 'error');
+			},
+		});
+
+		// Create a fake Response-like object that routes to ChatStreamService via aggregator
+		const streamAdapter = this.createWebSocketStreamAdapter(aggregator);
+
+		try {
+			const execution = await this.workflowExecutionService.executeChatWorkflow(
+				user,
+				workflowData,
+				executionData,
+				streamAdapter,
+				true,
+				executionMode,
+			);
+
+			executionId = execution.executionId;
+
+			if (!executionId) {
+				throw new OperationalError('There was a problem starting the chat execution.');
+			}
+
+			await this.waitForExecutionCompletion(executionId);
+		} catch (error) {
+			if (error instanceof ManualExecutionCancelledError) {
+				executionStatus = 'cancelled';
+			} else {
+				executionStatus = 'error';
+				throw error;
+			}
+		} finally {
+			// End the execution (cleanup session state)
+			await this.chatStreamService.endExecution(user.id, sessionId, executionStatus);
+		}
+	}
+
+	/**
+	 * Create a Response-like object that routes streaming data to ChatStreamService via aggregator
+	 */
+	private createWebSocketStreamAdapter(
+		aggregator: ReturnType<typeof createStructuredChunkAggregator>,
+	): Response {
+		// Create a minimal Response-like object
+		const adapter = {
+			headersSent: false,
+			writableEnded: false,
+
+			writeHead: (_statusCode: number, _headers?: Record<string, string>) => {
+				adapter.headersSent = true;
+				return adapter;
+			},
+
+			flushHeaders: () => {},
+
+			write: (chunk: string | Buffer, _encoding?: BufferEncoding, doneCb?: () => void) => {
+				const text = Buffer.isBuffer(chunk) ? chunk.toString('utf8') : chunk;
+
+				// Process each line (JSONL format) through the aggregator
+				const lines = text.split('\n').filter((line) => line.trim());
+				for (const line of lines) {
+					try {
+						const parsed = jsonParse<StructuredChunk>(line.trim());
+						// The aggregator handles all chunk types (begin, item, end, error)
+						void aggregator.ingest(parsed);
+					} catch {
+						// Not valid JSON, ignore
+					}
+				}
+
+				if (doneCb) doneCb();
+				return true;
+			},
+
+			end: (_chunk?: unknown, _encoding?: BufferEncoding, doneCb?: () => void) => {
+				adapter.writableEnded = true;
+				if (doneCb) doneCb();
+				return adapter;
+			},
+
+			flush: () => {},
+
+			on: (_event: string, _handler: (...args: unknown[]) => void) => adapter,
+			once: (_event: string, _handler: (...args: unknown[]) => void) => adapter,
+			emit: (_event: string, ..._args: unknown[]) => true,
+		};
+
+		return adapter as unknown as Response;
+	}
+
+	/**
+	 * Reconnect to an active chat stream
+	 * Returns pending chunks that the client may have missed
+	 */
+	async reconnectToStream(
+		sessionId: ChatSessionId,
+		lastReceivedSequence: number,
+	): Promise<{
+		hasActiveStream: boolean;
+		currentMessageId: ChatMessageId | null;
+		pendingChunks: Array<{ sequenceNumber: number; content: string }>;
+		lastSequenceNumber: number;
+	}> {
+		const hasActiveStream = await this.chatStreamService.hasActiveStream(sessionId);
+		const currentMessageId = await this.chatStreamService.getCurrentMessageId(sessionId);
+		const pendingChunks = await this.chatStreamService.getPendingChunks(
+			sessionId,
+			lastReceivedSequence,
+		);
+
+		return {
+			hasActiveStream,
+			currentMessageId,
+			pendingChunks,
+			lastSequenceNumber:
+				pendingChunks.length > 0
+					? pendingChunks[pendingChunks.length - 1].sequenceNumber
+					: lastReceivedSequence,
+		};
+	}
+
+	// #endregion
 }

@@ -53,7 +53,25 @@ export {
 	type ChatHubAgentTool,
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
+	type ChatSendMessageResponse,
+	type ChatReconnectResponse,
 } from './chat-hub';
+
+export type {
+	ChatStreamPushMessage,
+	ChatStreamEvent,
+	ChatStreamBegin,
+	ChatStreamChunk,
+	ChatStreamEnd,
+	ChatStreamError,
+	ChatStreamMetadata,
+	ChatExecutionEvent,
+	ChatExecutionBegin,
+	ChatExecutionEnd,
+	ChatHumanMessageCreated,
+	ChatMessageEdited,
+	ChatAttachmentInfo,
+} from './push/chat';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';
