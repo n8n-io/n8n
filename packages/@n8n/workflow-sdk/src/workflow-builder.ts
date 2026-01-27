@@ -1182,7 +1182,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const issues: Array<{ path: string; value: string }> = [];
 
 		if (typeof value === 'string') {
-			if (WorkflowBuilderImpl.MISSING_EXPR_PREFIX_PATTERN.test(value)) {
+			// If string starts with '=', it's already an expression - {{ }} is valid template syntax inside
+			if (!value.startsWith('=') && WorkflowBuilderImpl.MISSING_EXPR_PREFIX_PATTERN.test(value)) {
 				issues.push({ path, value });
 			}
 		} else if (Array.isArray(value)) {

@@ -173,6 +173,59 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('MISSING_EXPRESSION_PREFIX false positives', () => {
+		it('should not flag {{ $json }} inside expression strings starting with =', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					parameters: {
+						promptType: 'define',
+						// String starts with '=' - entire value is an expression
+						// {{ $json.field }} is valid template syntax within it
+						text: '=You are a helper.\n- Email: {{ $json.leadEmail }}\n- Name: {{ $json.name }}',
+					},
+				},
+			});
+
+			const wf = workflow('test', 'Test').add(t).then(agent);
+			const result = wf.validate();
+
+			// Should NOT have MISSING_EXPRESSION_PREFIX - the string starts with '='
+			// so {{ $json.x }} is valid template syntax within the expression
+			const missingPrefixWarnings = result.warnings.filter(
+				(w) => w.code === 'MISSING_EXPRESSION_PREFIX',
+			);
+			expect(missingPrefixWarnings).toHaveLength(0);
+		});
+
+		it('should still flag {{ $json }} in strings NOT starting with =', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					parameters: {
+						promptType: 'define',
+						// String does NOT start with '=' - this is a plain string
+						// {{ $json.field }} without prefix is invalid
+						text: 'You are a helper. Email: {{ $json.leadEmail }}',
+					},
+				},
+			});
+
+			const wf = workflow('test', 'Test').add(t).then(agent);
+			const result = wf.validate();
+
+			// Should have MISSING_EXPRESSION_PREFIX - the string doesn't start with '='
+			const missingPrefixWarnings = result.warnings.filter(
+				(w) => w.code === 'MISSING_EXPRESSION_PREFIX',
+			);
+			expect(missingPrefixWarnings).toHaveLength(1);
+		});
+	});
+
 	describe('AGENT_STATIC_PROMPT with malformed expressions', () => {
 		it('should not emit AGENT_STATIC_PROMPT when malformed expressions exist', () => {
 			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
