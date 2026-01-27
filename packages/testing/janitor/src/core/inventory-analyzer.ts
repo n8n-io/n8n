@@ -200,7 +200,8 @@ export class InventoryAnalyzer {
 		const getter = classDecl.getGetAccessor('container');
 		if (getter) {
 			const body = getter.getBody()?.getText() ?? '';
-			const match = body.match(/getByTestId\(['"]([^'"]+)['"]\)/);
+			const containerPattern = /getByTestId\(['"]([^'"]+)['"]\)/;
+			const match = containerPattern.exec(body);
 			return match ? `getByTestId('${match[1]}')` : 'custom';
 		}
 
@@ -363,14 +364,16 @@ export class InventoryAnalyzer {
 
 	private extractEndpoint(method: MethodDeclaration): string | undefined {
 		const jsDocs = method.getJsDocs();
+		const endpointPattern = /@endpoint\s+(\S+)/;
 		for (const doc of jsDocs) {
 			const text = doc.getText();
-			const match = text.match(/@endpoint\s+(\S+)/);
+			const match = endpointPattern.exec(text);
 			if (match) return match[1];
 		}
 
 		const body = method.getBody()?.getText() ?? '';
-		const urlMatch = body.match(/['"`](\/api\/[^'"`]+)['"`]/);
+		const urlPattern = /['"`](\/api\/[^'"`]+)['"`]/;
+		const urlMatch = urlPattern.exec(body);
 		if (urlMatch) return urlMatch[1];
 
 		return undefined;
@@ -426,7 +429,8 @@ export class InventoryAnalyzer {
 	}
 
 	private inferFixtureType(initializerText: string): string {
-		const newMatch = initializerText.match(/new\s+(\w+)/);
+		const newPattern = /new\s+(\w+)/;
+		const newMatch = newPattern.exec(initializerText);
 		if (newMatch) return newMatch[1];
 		return 'unknown';
 	}

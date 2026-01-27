@@ -25,7 +25,8 @@ export type BuiltInRuleId =
 	| 'deduplication'
 	| 'test-data-hygiene';
 
-export type RuleId = BuiltInRuleId | (string & {});
+// Allow any string for custom rules, while BuiltInRuleId provides type-safe hints for built-in rules
+export type RuleId = string;
 
 export interface RuleSettings {
 	enabled?: boolean;

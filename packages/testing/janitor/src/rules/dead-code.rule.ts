@@ -57,66 +57,98 @@ export class DeadCodeRule extends BaseRule {
 
 			// Check if entire class is unused
 			if (!this.hasExternalReferences(file, classDecl)) {
-				violations.push(
-					this.createViolation(
-						file,
-						classDecl.getStartLineNumber(),
-						0,
-						`Dead class: ${className} has no external references`,
-						'Remove the entire class or file',
-						true,
-						{ type: 'class', className },
-					),
-				);
+				violations.push(this.createDeadClassViolation(file, classDecl, className));
 				continue; // Don't report individual members if whole class is dead
 			}
 
 			// Check individual members
-			for (const method of classDecl.getMethods()) {
-				if (method.hasModifier(SyntaxKind.PrivateKeyword)) continue;
+			violations.push(...this.checkUnusedMethods(file, classDecl, className));
+			violations.push(...this.checkUnusedProperties(file, classDecl, className));
+		}
 
-				const methodName = method.getName();
-				if (!this.hasExternalReferences(file, method)) {
-					violations.push(
-						this.createViolation(
-							file,
-							method.getStartLineNumber(),
-							0,
-							`Unused method: ${className}.${methodName}()`,
-							'Remove the method or make it private',
-							true,
-							{ type: 'method', className, memberName: methodName },
-						),
-					);
-				}
-			}
+		return violations;
+	}
 
-			for (const prop of classDecl.getProperties()) {
-				if (
-					prop.hasModifier(SyntaxKind.PrivateKeyword) ||
-					prop.hasModifier(SyntaxKind.ProtectedKeyword)
-				) {
-					continue;
-				}
+	private createDeadClassViolation(
+		file: SourceFile,
+		classDecl: ReturnType<SourceFile['getClasses']>[0],
+		className: string,
+	): Violation {
+		return this.createViolation(
+			file,
+			classDecl.getStartLineNumber(),
+			0,
+			`Dead class: ${className} has no external references`,
+			'Remove the entire class or file',
+			true,
+			{ type: 'class', className },
+		);
+	}
 
-				const propName = prop.getName();
-				if (!this.hasExternalReferences(file, prop)) {
-					violations.push(
-						this.createViolation(
-							file,
-							prop.getStartLineNumber(),
-							0,
-							`Unused property: ${className}.${propName}`,
-							'Remove the property or make it private',
-							true,
-							{ type: 'property', className, memberName: propName },
-						),
-					);
-				}
+	private checkUnusedMethods(
+		file: SourceFile,
+		classDecl: ReturnType<SourceFile['getClasses']>[0],
+		className: string,
+	): Violation[] {
+		const violations: Violation[] = [];
+
+		for (const method of classDecl.getMethods()) {
+			if (method.hasModifier(SyntaxKind.PrivateKeyword)) continue;
+
+			const methodName = method.getName();
+			if (!this.hasExternalReferences(file, method)) {
+				violations.push(
+					this.createViolation(
+						file,
+						method.getStartLineNumber(),
+						0,
+						`Unused method: ${className}.${methodName}()`,
+						'Remove the method or make it private',
+						true,
+						{ type: 'method', className, memberName: methodName },
+					),
+				);
 			}
 		}
 
 		return violations;
+	}
+
+	private checkUnusedProperties(
+		file: SourceFile,
+		classDecl: ReturnType<SourceFile['getClasses']>[0],
+		className: string,
+	): Violation[] {
+		const violations: Violation[] = [];
+
+		for (const prop of classDecl.getProperties()) {
+			if (this.isPrivateOrProtected(prop)) continue;
+
+			const propName = prop.getName();
+			if (!this.hasExternalReferences(file, prop)) {
+				violations.push(
+					this.createViolation(
+						file,
+						prop.getStartLineNumber(),
+						0,
+						`Unused property: ${className}.${propName}`,
+						'Remove the property or make it private',
+						true,
+						{ type: 'property', className, memberName: propName },
+					),
+				);
+			}
+		}
+
+		return violations;
+	}
+
+	private isPrivateOrProtected(
+		prop: ReturnType<ReturnType<SourceFile['getClasses']>[0]['getProperties']>[0],
+	): boolean {
+		return (
+			prop.hasModifier(SyntaxKind.PrivateKeyword) || prop.hasModifier(SyntaxKind.ProtectedKeyword)
+		);
 	}
 
 	private hasExternalReferences(
@@ -137,8 +169,34 @@ export class DeadCodeRule extends BaseRule {
 
 	fix(project: Project, violations: Violation[], write: boolean): FixResult[] {
 		const results: FixResult[] = [];
+		const byFile = this.groupViolationsByFile(violations);
+		const filesToDelete = new Set<string>();
 
-		// Group by file for efficient processing
+		for (const [filePath, fileViolations] of byFile) {
+			const sourceFile = project.getSourceFile(filePath);
+			if (!sourceFile) continue;
+
+			// Check if entire file should be deleted
+			if (this.shouldDeleteFile(sourceFile, fileViolations)) {
+				filesToDelete.add(filePath);
+				results.push(this.createFixResult(filePath, 'remove-file', write));
+				continue;
+			}
+
+			// Process individual member removals
+			results.push(...this.processFileViolations(sourceFile, filePath, fileViolations, write));
+		}
+
+		// Apply changes
+		if (write) {
+			project.saveSync();
+			this.deleteFiles(filesToDelete);
+		}
+
+		return results;
+	}
+
+	private groupViolationsByFile(violations: Violation[]): Map<string, Violation[]> {
 		const byFile = new Map<string, Violation[]>();
 		for (const v of violations) {
 			if (!v.fixable || !v.fixData) continue;
@@ -146,79 +204,91 @@ export class DeadCodeRule extends BaseRule {
 			existing.push(v);
 			byFile.set(v.file, existing);
 		}
+		return byFile;
+	}
 
-		// Track files to delete (dead classes)
-		const filesToDelete = new Set<string>();
+	private shouldDeleteFile(sourceFile: SourceFile, fileViolations: Violation[]): boolean {
+		const deadClassViolations = fileViolations.filter((v) => v.fixData?.type === 'class');
+		const allClassesInFile = sourceFile.getClasses();
+		return deadClassViolations.length === allClassesInFile.length && allClassesInFile.length > 0;
+	}
 
-		for (const [filePath, fileViolations] of byFile) {
-			const sourceFile = project.getSourceFile(filePath);
-			if (!sourceFile) continue;
+	private createFixResult(
+		filePath: string,
+		action: 'remove-file' | 'remove-method' | 'remove-property',
+		write: boolean,
+		target?: string,
+	): FixResult {
+		return {
+			file: getRelativePath(filePath),
+			action,
+			target,
+			applied: write,
+		};
+	}
 
-			// Check if all violations for this file are dead classes
-			const deadClassViolations = fileViolations.filter((v) => v.fixData?.type === 'class');
-			const allClassesInFile = sourceFile.getClasses();
+	private processFileViolations(
+		sourceFile: SourceFile,
+		filePath: string,
+		fileViolations: Violation[],
+		write: boolean,
+	): FixResult[] {
+		const results: FixResult[] = [];
 
-			// If all classes in file are dead, delete the file
-			if (deadClassViolations.length === allClassesInFile.length && allClassesInFile.length > 0) {
-				filesToDelete.add(filePath);
-				results.push({
-					file: getRelativePath(filePath),
-					action: 'remove-file',
-					applied: write,
-				});
-				continue;
-			}
+		for (const violation of fileViolations) {
+			const fixData = violation.fixData;
+			if (!fixData || fixData.type === 'class' || fixData.type === 'edit') continue;
 
-			// Process individual member removals
-			for (const violation of fileViolations) {
-				const fixData = violation.fixData;
-				if (!fixData || fixData.type === 'class' || fixData.type === 'edit') continue;
+			const classDecl = sourceFile.getClass(fixData.className);
+			if (!classDecl) continue;
 
-				const classDecl = sourceFile.getClass(fixData.className);
-				if (!classDecl) continue;
-
-				if (fixData.type === 'method') {
-					const method = classDecl.getMethod(fixData.memberName);
-					if (method) {
-						results.push({
-							file: getRelativePath(filePath),
-							action: 'remove-method',
-							target: `${fixData.className}.${fixData.memberName}()`,
-							applied: write,
-						});
-						if (write) {
-							method.remove();
-						}
-					}
-				} else if (fixData.type === 'property') {
-					const prop = classDecl.getProperty(fixData.memberName);
-					if (prop) {
-						results.push({
-							file: getRelativePath(filePath),
-							action: 'remove-property',
-							target: `${fixData.className}.${fixData.memberName}`,
-							applied: write,
-						});
-						if (write) {
-							prop.remove();
-						}
-					}
-				}
-			}
-		}
-
-		// Save modified files
-		if (write) {
-			project.saveSync();
-
-			// Delete dead files
-			for (const filePath of filesToDelete) {
-				if (fs.existsSync(filePath)) {
-					fs.unlinkSync(filePath);
-				}
-			}
+			const result = this.removeMember(classDecl, filePath, fixData, write);
+			if (result) results.push(result);
 		}
 
 		return results;
+	}
+
+	private removeMember(
+		classDecl: ReturnType<SourceFile['getClass']>,
+		filePath: string,
+		fixData: { type: 'method' | 'property'; className: string; memberName: string },
+		write: boolean,
+	): FixResult | null {
+		if (!classDecl) return null;
+
+		if (fixData.type === 'method') {
+			const method = classDecl.getMethod(fixData.memberName);
+			if (method) {
+				if (write) method.remove();
+				return this.createFixResult(
+					filePath,
+					'remove-method',
+					write,
+					`${fixData.className}.${fixData.memberName}()`,
+				);
+			}
+		} else if (fixData.type === 'property') {
+			const prop = classDecl.getProperty(fixData.memberName);
+			if (prop) {
+				if (write) prop.remove();
+				return this.createFixResult(
+					filePath,
+					'remove-property',
+					write,
+					`${fixData.className}.${fixData.memberName}`,
+				);
+			}
+		}
+
+		return null;
+	}
+
+	private deleteFiles(filesToDelete: Set<string>): void {
+		for (const filePath of filesToDelete) {
+			if (fs.existsSync(filePath)) {
+				fs.unlinkSync(filePath);
+			}
+		}
 	}
 }

@@ -13,6 +13,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import {
+	parseArgs,
+	type CliOptions,
+	showHelp,
+	showBaselineHelp,
+	showImpactHelp,
+	showInventoryHelp,
+	showMethodImpactHelp,
+	showTcrHelp,
+} from './cli/index.js';
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import {
 	generateBaseline,
@@ -50,231 +60,6 @@ import { ScopeLockdownRule } from './rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from './rules/selector-purity.rule.js';
 import { TestDataHygieneRule } from './rules/test-data-hygiene.rule.js';
 import type { RunOptions } from './types.js';
-
-type Command = 'analyze' | 'tcr' | 'inventory' | 'impact' | 'method-impact' | 'baseline';
-
-interface CliOptions {
-	command: Command;
-	config?: string;
-	rule?: string;
-	files?: string[];
-	json: boolean;
-	verbose: boolean;
-	fix: boolean;
-	write: boolean;
-	help: boolean;
-	list: boolean;
-	// TCR-specific options
-	execute: boolean;
-	message?: string;
-	baseRef?: string;
-	targetBranch?: string;
-	maxDiffLines?: number;
-	testCommand?: string;
-	// Impact-specific options
-	testList: boolean;
-	// Method-impact specific options
-	method?: string;
-	methodIndex: boolean;
-	// Rule-specific options
-	allowInExpect: boolean;
-	// Baseline options
-	ignoreBaseline: boolean;
-}
-
-function parseArgs(): CliOptions {
-	const args = process.argv.slice(2);
-
-	// Check for subcommand
-	let command: Command = 'analyze';
-	let startIdx = 0;
-
-	if (args[0] && !args[0].startsWith('-')) {
-		if (args[0] === 'tcr') {
-			command = 'tcr';
-			startIdx = 1;
-		} else if (args[0] === 'inventory') {
-			command = 'inventory';
-			startIdx = 1;
-		} else if (args[0] === 'impact') {
-			command = 'impact';
-			startIdx = 1;
-		} else if (args[0] === 'method-impact') {
-			command = 'method-impact';
-			startIdx = 1;
-		} else if (args[0] === 'baseline') {
-			command = 'baseline';
-			startIdx = 1;
-		}
-	}
-
-	const options: CliOptions = {
-		command,
-		config: undefined,
-		rule: undefined,
-		files: [],
-		json: false,
-		verbose: false,
-		fix: false,
-		write: false,
-		help: false,
-		list: false,
-		execute: false,
-		message: undefined,
-		baseRef: undefined,
-		targetBranch: undefined,
-		maxDiffLines: undefined,
-		testCommand: undefined,
-		testList: false,
-		method: undefined,
-		methodIndex: false,
-		allowInExpect: false,
-		ignoreBaseline: false,
-	};
-
-	for (let i = startIdx; i < args.length; i++) {
-		const arg = args[i];
-		if (arg === '--help' || arg === '-h') options.help = true;
-		else if (arg === '--json') options.json = true;
-		else if (arg === '--verbose' || arg === '-v') options.verbose = true;
-		else if (arg === '--fix') options.fix = true;
-		else if (arg === '--write') options.write = true;
-		else if (arg === '--list' || arg === '-l') options.list = true;
-		else if (arg === '--execute' || arg === '-x') options.execute = true;
-		else if (arg === '--test-list') options.testList = true;
-		else if (arg === '--index') options.methodIndex = true;
-		else if (arg === '--allow-in-expect') options.allowInExpect = true;
-		else if (arg === '--ignore-baseline') options.ignoreBaseline = true;
-		else if (arg.startsWith('--config=')) options.config = arg.slice(9);
-		else if (arg.startsWith('--rule=')) options.rule = arg.slice(7);
-		else if (arg.startsWith('--file=')) options.files?.push(arg.slice(7));
-		else if (arg.startsWith('--files=')) options.files?.push(...arg.slice(8).split(','));
-		else if (arg.startsWith('--message=') || arg.startsWith('-m='))
-			options.message = arg.split('=').slice(1).join('=');
-		else if (arg.startsWith('--base=')) options.baseRef = arg.slice(7);
-		else if (arg.startsWith('--method=')) options.method = arg.slice(9);
-		else if (arg.startsWith('--target-branch=')) options.targetBranch = arg.slice(16);
-		else if (arg.startsWith('--max-diff-lines='))
-			options.maxDiffLines = parseInt(arg.slice(17), 10);
-		else if (arg.startsWith('--test-command=')) options.testCommand = arg.slice(15);
-	}
-
-	return options;
-}
-
-function showHelp(): void {
-	console.log(`
-Playwright Janitor - Static analysis for Playwright test architecture
-
-Usage:
-  playwright-janitor [command] [options]
-
-Commands:
-  (default)          Run static analysis rules
-  baseline           Create/update baseline of known violations
-  inventory          Show codebase inventory (pages, components, flows, tests)
-  impact             Analyze impact of file changes (which tests to run)
-  method-impact      Find tests that use a specific method (e.g., CanvasPage.addNode)
-  tcr                Run TCR (Test && Commit || Revert) workflow
-
-Analysis Options:
-  --config=<path>    Path to janitor.config.js (default: ./janitor.config.js)
-  --rule=<id>        Run a specific rule
-  --file=<path>      Analyze a specific file
-  --files=<p1,p2>    Analyze multiple files (comma-separated)
-  --json             Output as JSON
-  --verbose, -v      Detailed output with suggestions
-  --fix              Preview fixes (dry run)
-  --fix --write      Apply fixes to disk
-  --list, -l         List available rules
-  --allow-in-expect  Skip selector-purity violations inside expect()
-  --ignore-baseline  Show all violations, ignoring .janitor-baseline.json
-  --help, -h         Show this help
-
-Examples:
-  playwright-janitor                         # Run all rules
-  playwright-janitor --rule=dead-code        # Run specific rule
-  playwright-janitor inventory               # Show codebase structure
-  playwright-janitor impact --file=pages/X   # Show what tests are affected
-  playwright-janitor --fix --write           # Apply auto-fixes
-
-For command-specific help:
-  playwright-janitor baseline --help
-  playwright-janitor inventory --help
-  playwright-janitor impact --help
-  playwright-janitor method-impact --help
-  playwright-janitor tcr --help
-`);
-}
-
-function showInventoryHelp(): void {
-	console.log(`
-Inventory - Generate JSON inventory of codebase structure
-
-Usage: playwright-janitor inventory
-
-Outputs JSON containing: pages, components, composables, services,
-fixtures, helpers, factories, and test data files.
-
-Example: playwright-janitor inventory > inventory.json
-`);
-}
-
-function showImpactHelp(): void {
-	console.log(`
-Impact - Find affected tests for changed files
-
-Options: --file=<path>, --files=<p1,p2>, --json, --test-list, --verbose
-Example: playwright-janitor impact --test-list | xargs npx playwright test
-`);
-}
-
-function showMethodImpactHelp(): void {
-	console.log(`
-Method Impact - Find tests using a specific method
-
-Options: --method=<Class.method>, --index, --json, --test-list, --verbose
-Example: playwright-janitor method-impact --method=CanvasPage.addNode
-`);
-}
-
-function showTcrHelp(): void {
-	console.log(`
-TCR - Test && Commit || Revert workflow
-
-Options:
-  --execute, -x           Actually commit/revert (default: dry run)
-  --message=<msg>         Commit message
-  --target-branch=<name>  Branch to diff against
-  --max-diff-lines=<n>    Skip if diff exceeds N lines
-  --test-command=<cmd>    Test command (files appended)
-  --json, --verbose
-
-Example: playwright-janitor tcr --execute -m="Fix bug"
-`);
-}
-
-function showBaselineHelp(): void {
-	console.log(`
-Baseline - Snapshot current violations for incremental cleanup
-
-Creates .janitor-baseline.json with all current violations. When this file
-exists, janitor and TCR only fail on NEW violations not in the baseline.
-
-Usage:
-  playwright-janitor baseline              # Create/update baseline
-  playwright-janitor baseline --verbose    # Show what's being baselined
-
-Workflow:
-  1. Run 'janitor baseline' to snapshot current state
-  2. Commit .janitor-baseline.json
-  3. Now TCR only fails on new violations
-  4. As you fix violations, re-run 'janitor baseline' to update
-
-Example:
-  playwright-janitor baseline && git add .janitor-baseline.json
-`);
-}
 
 function createRunner(): RuleRunner {
 	const runner = new RuleRunner();
@@ -343,32 +128,15 @@ async function runImpact(options: CliOptions): Promise<void> {
 	const { project } = createProject(config.rootDir);
 
 	// Determine changed files
-	const changedFiles = options.files ?? [];
+	let changedFiles = options.files ?? [];
 
 	if (changedFiles.length === 0) {
 		// Use git status to find changed files
-		const { execSync } = await import('child_process');
-		try {
-			const status = execSync('git status --porcelain', {
-				cwd: config.rootDir,
-				encoding: 'utf-8',
-			});
-
-			for (const line of status.split('\n')) {
-				if (!line.trim()) continue;
-				const match = line.match(/^.{2}\s+(.+)$/);
-				if (match) {
-					const filePath = match[1];
-					const actualPath = filePath.includes(' -> ') ? filePath.split(' -> ')[1] : filePath;
-					if (actualPath.endsWith('.ts')) {
-						changedFiles.push(actualPath);
-					}
-				}
-			}
-		} catch {
-			console.error('Failed to get git status');
-			process.exit(1);
-		}
+		const { getChangedFiles } = await import('./utils/git-operations.js');
+		changedFiles = getChangedFiles({
+			scopeDir: config.rootDir,
+			extensions: ['.ts'],
+		});
 	}
 
 	if (changedFiles.length === 0) {
