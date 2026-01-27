@@ -164,6 +164,12 @@ export class Github implements INodeType {
 						description: 'Returns all repositories of an organization',
 						action: 'Get repositories for an organization',
 					},
+					{
+						name: 'Get Members',
+						value: 'getMembers',
+						description: 'Returns all members of an organization',
+						action: 'Get members for an organization',
+					},
 				],
 				default: 'getRepositories',
 			},
@@ -2076,7 +2082,7 @@ export class Github implements INodeType {
 			},
 
 			// ----------------------------------
-			//    organization:getRepositories
+			//         organization:getRepositories
 			// ----------------------------------
 			{
 				displayName: 'Return All',
@@ -2099,6 +2105,41 @@ export class Github implements INodeType {
 					show: {
 						resource: ['organization'],
 						operation: ['getRepositories'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
+			},
+
+			// ----------------------------------
+			//         organization:getMembers
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						resource: ['organization'],
+						operation: ['getMembers'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						resource: ['organization'],
+						operation: ['getMembers'],
 						returnAll: [false],
 					},
 				},
@@ -2316,6 +2357,7 @@ export class Github implements INodeType {
 			'release:getAll',
 			'review:getAll',
 			'organization:getRepositories',
+			'organization:getMembers',
 		];
 
 		// For Post
@@ -2396,7 +2438,8 @@ export class Github implements INodeType {
 					fullOperation !== 'user:getRepositories' &&
 					fullOperation !== 'user:getUserIssues' &&
 					fullOperation !== 'user:invite' &&
-					fullOperation !== 'organization:getRepositories'
+					fullOperation !== 'organization:getRepositories' &&
+					fullOperation !== 'organization:getMembers'
 				) {
 					repository = this.getNodeParameter('repository', i, '', { extractValue: true }) as string;
 				}
@@ -2821,6 +2864,20 @@ export class Github implements INodeType {
 						requestMethod = 'GET';
 
 						endpoint = `/orgs/${owner}/repos`;
+						returnAll = this.getNodeParameter('returnAll', 0);
+
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
+					}
+					if (operation === 'getMembers') {
+						// ----------------------------------
+						//         getMembers
+						// ----------------------------------
+
+						requestMethod = 'GET';
+
+						endpoint = `/orgs/${owner}/members`;
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
