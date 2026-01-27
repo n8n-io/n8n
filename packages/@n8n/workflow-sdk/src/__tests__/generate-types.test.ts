@@ -56,6 +56,18 @@ interface NodeTypeDescription {
 	subtitle?: string;
 	usableAsTool?: boolean;
 	hidden?: boolean;
+	builderHint?: {
+		inputs?: Record<
+			string,
+			{
+				required?: boolean;
+				displayOptions?: {
+					show?: Record<string, unknown[]>;
+					hide?: Record<string, unknown[]>;
+				};
+			}
+		>;
+	};
 }
 
 // =============================================================================
@@ -2734,6 +2746,104 @@ describe('generate-types', () => {
 				// tools is optional - has ?
 				expect(content).toContain('tools?: ToolInstance[]');
 			});
+
+			it('should use builderHint.inputs for mode-specific subnode filtering', () => {
+				// Create a mock vector store node with builderHint specifying mode-specific subnodes
+				const mockVectorStoreWithBuilderHint: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+					displayName: 'Simple Vector Store',
+					group: ['transform'],
+					version: 1.3,
+					builderHint: {
+						inputs: {
+							ai_embedding: { required: true },
+							ai_reranker: {
+								required: false,
+								displayOptions: {
+									show: {
+										useReranker: [true],
+									},
+								},
+							},
+							ai_document: {
+								required: true,
+								displayOptions: {
+									show: {
+										mode: ['insert'],
+									},
+								},
+							},
+						},
+					},
+					inputs: '={{ ... }}' as unknown as string[],
+					outputs: [{ type: 'ai_tool' }],
+					properties: [
+						{
+							displayName: 'Mode',
+							name: 'mode',
+							type: 'options',
+							options: [
+								{ name: 'Retrieve As Tool', value: 'retrieve-as-tool' },
+								{ name: 'Insert', value: 'insert' },
+							],
+							default: 'retrieve-as-tool',
+						},
+						{
+							displayName: 'Use Reranker',
+							name: 'useReranker',
+							type: 'boolean',
+							default: false,
+						},
+					],
+				};
+
+				// Test for retrieve-as-tool mode - should NOT include ai_document
+				const retrieveCombo = { mode: 'retrieve-as-tool' };
+				const retrieveProps = generateTypes.getPropertiesForCombination(
+					mockVectorStoreWithBuilderHint,
+					retrieveCombo,
+				);
+
+				const retrieveContent = generateTypes.generateDiscriminatorFile(
+					mockVectorStoreWithBuilderHint,
+					1.3,
+					retrieveCombo,
+					retrieveProps,
+					undefined,
+					5,
+				);
+
+				// Should have embedding (required)
+				expect(retrieveContent).toContain('embedding: EmbeddingInstance');
+				// Should have reranker with displayOptions JSDoc (optional)
+				expect(retrieveContent).toContain('@displayOptions.show { useReranker: [true] }');
+				expect(retrieveContent).toContain('reranker?: RerankerInstance');
+				// Should NOT have documentLoader (mode !== 'insert')
+				expect(retrieveContent).not.toContain('documentLoader');
+
+				// Test for insert mode - should include ai_document
+				const insertCombo = { mode: 'insert' };
+				const insertProps = generateTypes.getPropertiesForCombination(
+					mockVectorStoreWithBuilderHint,
+					insertCombo,
+				);
+
+				const insertContent = generateTypes.generateDiscriminatorFile(
+					mockVectorStoreWithBuilderHint,
+					1.3,
+					insertCombo,
+					insertProps,
+					undefined,
+					5,
+				);
+
+				// Should have embedding
+				expect(insertContent).toContain('embedding: EmbeddingInstance');
+				// Should have reranker with displayOptions
+				expect(insertContent).toContain('reranker?: RerankerInstance');
+				// Should have documentLoader (mode === 'insert')
+				expect(insertContent).toContain('documentLoader: DocumentLoaderInstance');
+			});
 		});
 
 		describe('buildDiscriminatorTree', () => {
@@ -3051,6 +3161,146 @@ describe('generate-types', () => {
 			});
 		});
 
+		describe('extractAIInputTypesFromBuilderHint', () => {
+			it('should extract inputs from builderHint when present', () => {
+				const mockNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+					displayName: 'Simple Vector Store',
+					group: ['transform'],
+					version: 1.3,
+					builderHint: {
+						inputs: {
+							ai_embedding: { required: true },
+							ai_reranker: {
+								required: false,
+								displayOptions: {
+									show: {
+										useReranker: [true],
+									},
+								},
+							},
+							ai_document: {
+								required: true,
+								displayOptions: {
+									show: {
+										mode: ['insert'],
+									},
+								},
+							},
+						},
+					},
+					inputs: '={{ ... }}' as unknown as string[],
+					outputs: ['main'],
+					properties: [],
+				};
+
+				// For retrieve-as-tool mode - ai_document should be excluded
+				const result = generateTypes.extractAIInputTypesFromBuilderHint(mockNode, {
+					mode: 'retrieve-as-tool',
+				});
+
+				expect(result).toContainEqual({ type: 'ai_embedding', required: true });
+				expect(result).toContainEqual({
+					type: 'ai_reranker',
+					required: false,
+					displayOptions: {
+						show: {
+							useReranker: [true],
+						},
+					},
+				});
+				// ai_document should NOT be included (mode !== 'insert')
+				expect(result.find((r) => r.type === 'ai_document')).toBeUndefined();
+			});
+
+			it('should include ai_document for insert mode', () => {
+				const mockNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+					displayName: 'Simple Vector Store',
+					group: ['transform'],
+					version: 1.3,
+					builderHint: {
+						inputs: {
+							ai_embedding: { required: true },
+							ai_document: {
+								required: true,
+								displayOptions: {
+									show: {
+										mode: ['insert'],
+									},
+								},
+							},
+						},
+					},
+					inputs: '={{ ... }}' as unknown as string[],
+					outputs: ['main'],
+					properties: [],
+				};
+
+				const result = generateTypes.extractAIInputTypesFromBuilderHint(mockNode, {
+					mode: 'insert',
+				});
+
+				expect(result.find((r) => r.type === 'ai_document')).toBeDefined();
+				expect(result.find((r) => r.type === 'ai_document')?.required).toBe(true);
+			});
+
+			it('should fall back to extractAIInputTypes when no builderHint', () => {
+				const mockNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [{ type: 'ai_embedding', required: true }],
+					outputs: ['main'],
+					properties: [],
+				};
+
+				const result = generateTypes.extractAIInputTypesFromBuilderHint(mockNode);
+				expect(result).toContainEqual({ type: 'ai_embedding', required: true });
+			});
+
+			it('should strip discriminator displayOptions and keep non-discriminator ones', () => {
+				const mockNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+					displayName: 'Simple Vector Store',
+					group: ['transform'],
+					version: 1.3,
+					builderHint: {
+						inputs: {
+							ai_reranker: {
+								required: false,
+								displayOptions: {
+									show: {
+										mode: ['retrieve-as-tool', 'load'], // discriminator - should be stripped
+										useReranker: [true], // non-discriminator - should be kept
+									},
+								},
+							},
+						},
+					},
+					inputs: '={{ ... }}' as unknown as string[],
+					outputs: ['main'],
+					properties: [],
+				};
+
+				const result = generateTypes.extractAIInputTypesFromBuilderHint(mockNode, {
+					mode: 'retrieve-as-tool',
+				});
+
+				const reranker = result.find((r) => r.type === 'ai_reranker');
+				expect(reranker).toBeDefined();
+				// Should only have non-discriminator displayOptions
+				expect(reranker?.displayOptions).toEqual({
+					show: {
+						useReranker: [true],
+					},
+				});
+				// Mode should NOT be in the displayOptions (it was used for filtering)
+				expect(reranker?.displayOptions?.show?.mode).toBeUndefined();
+			});
+		});
+
 		describe('generateNarrowedSubnodeConfig', () => {
 			it('should generate narrowed config with only accepted subnodes', () => {
 				const aiInputTypes = [
@@ -3126,6 +3376,30 @@ describe('generate-types', () => {
 
 				expect(result).toContain('model?: LanguageModelInstance');
 				expect(result).toContain('tools?: ToolInstance[]');
+			});
+
+			it('should add JSDoc comment for non-discriminator displayOptions', () => {
+				const aiInputTypes = [
+					{ type: 'ai_embedding', required: true },
+					{
+						type: 'ai_reranker',
+						required: false,
+						displayOptions: {
+							show: {
+								useReranker: [true],
+							},
+						},
+					},
+				];
+				const result = generateTypes.generateNarrowedSubnodeConfig(
+					aiInputTypes,
+					'LcVectorStore',
+					'V13',
+				);
+
+				expect(result).toContain('embedding: EmbeddingInstance');
+				expect(result).toContain('@displayOptions.show { useReranker: [true] }');
+				expect(result).toContain('reranker?: RerankerInstance');
 			});
 		});
 

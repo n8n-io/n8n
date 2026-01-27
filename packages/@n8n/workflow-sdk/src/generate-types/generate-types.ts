@@ -1822,8 +1822,8 @@ export function generateDiscriminatorFile(
 	const outputTypeName = `${nodeName}${versionSuffix}${comboSuffix}Output`;
 	const nodeTypeName = `${nodeName}${versionSuffix}${comboSuffix}Node`;
 
-	// Extract AI input types for subnode configuration
-	const aiInputTypes = extractAIInputTypes(node);
+	// Extract AI input types for subnode configuration (use builderHint if available)
+	const aiInputTypes = extractAIInputTypesFromBuilderHint(node, combo);
 	const subnodeInstanceImports = getSubnodeInstanceTypeImports(aiInputTypes);
 	const subnodeConfigTypeName =
 		aiInputTypes.length > 0 ? `${nodeName}${versionSuffix}${comboSuffix}SubnodeConfig` : undefined;
@@ -2300,8 +2300,8 @@ export function generateSingleVersionTypeFile(
 	lines.push('');
 	lines.push('');
 
-	// Extract AI input types for narrowed subnode config
-	const aiInputTypes = extractAIInputTypes(node);
+	// Extract AI input types for narrowed subnode config (use builderHint if available)
+	const aiInputTypes = extractAIInputTypesFromBuilderHint(node);
 	const subnodeInstanceImports = getSubnodeInstanceTypeImports(aiInputTypes);
 	const subnodeConfigTypeName =
 		aiInputTypes.length > 0 ? `${nodeName}${versionSuffix}SubnodeConfig` : undefined;
@@ -3068,6 +3068,23 @@ const AI_SUBNODE_TYPES: Array<{
 export interface AIInputTypeInfo {
 	type: string;
 	required: boolean;
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+}
+
+// Types for builderHint.inputs
+interface BuilderHintInput {
+	required?: boolean;
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+}
+
+interface NodeBuilderHint {
+	inputs?: Record<string, BuilderHintInput>;
 }
 
 /**
@@ -3136,6 +3153,146 @@ export function extractAIInputTypes(node: NodeTypeDescription): AIInputTypeInfo[
 }
 
 /**
+ * Extract AI input types from builderHint.inputs when available.
+ * Falls back to extractAIInputTypes when no builderHint is present.
+ *
+ * This function:
+ * - Uses builderHint.inputs for explicit subnode configuration
+ * - Filters subnodes based on discriminator combo (mode, resource, operation)
+ * - Strips discriminator keys from displayOptions (they're used for filtering)
+ * - Preserves non-discriminator displayOptions for JSDoc generation
+ *
+ * @param node The node type description
+ * @param combo Optional discriminator combination for filtering
+ * @returns Array of AI input types with required status and displayOptions
+ */
+export function extractAIInputTypesFromBuilderHint(
+	node: NodeTypeDescription,
+	combo?: DiscriminatorCombination,
+): AIInputTypeInfo[] {
+	// builderHint is an extended property not yet in the official type definition
+	const nodeWithBuilderHint = node as NodeTypeDescription & { builderHint?: NodeBuilderHint };
+	const builderHint = nodeWithBuilderHint.builderHint;
+	if (!builderHint?.inputs) {
+		// Fall back to existing extraction
+		return extractAIInputTypes(node);
+	}
+
+	const result: AIInputTypeInfo[] = [];
+
+	for (const [inputType, config] of Object.entries(builderHint.inputs)) {
+		if (!inputType.startsWith('ai_')) continue;
+
+		// Check if this input applies to the current discriminator combo
+		if (combo && config.displayOptions?.show) {
+			let applies = true;
+			for (const [key, values] of Object.entries(config.displayOptions.show)) {
+				if (DISCRIMINATOR_FIELDS.includes(key) && combo[key as keyof DiscriminatorCombination]) {
+					// This is a discriminator check
+					const comboValue = combo[key as keyof DiscriminatorCombination];
+					if (!values.includes(comboValue)) {
+						applies = false;
+						break;
+					}
+				}
+			}
+			if (!applies) continue;
+		}
+
+		// Determine if required (default to false for safety)
+		const isRequired = config.required === true;
+
+		// Extract non-discriminator displayOptions for JSDoc
+		const nonDiscriminatorOptions = getNonDiscriminatorDisplayOptions(config.displayOptions);
+
+		const aiInput: AIInputTypeInfo = {
+			type: inputType,
+			required: isRequired,
+		};
+
+		// Only add displayOptions if there are non-discriminator ones
+		if (nonDiscriminatorOptions) {
+			aiInput.displayOptions = nonDiscriminatorOptions;
+		}
+
+		result.push(aiInput);
+	}
+
+	return result;
+}
+
+/**
+ * Extract non-discriminator displayOptions from a displayOptions object.
+ * Discriminators (mode, resource, operation) are stripped as they're used for filtering.
+ */
+function getNonDiscriminatorDisplayOptions(
+	displayOptions?: BuilderHintInput['displayOptions'],
+): AIInputTypeInfo['displayOptions'] | undefined {
+	if (!displayOptions) return undefined;
+
+	const result: AIInputTypeInfo['displayOptions'] = {};
+
+	if (displayOptions.show) {
+		const filteredShow: Record<string, unknown[]> = {};
+		for (const [key, values] of Object.entries(displayOptions.show)) {
+			if (!DISCRIMINATOR_FIELDS.includes(key)) {
+				filteredShow[key] = values;
+			}
+		}
+		if (Object.keys(filteredShow).length > 0) {
+			result.show = filteredShow;
+		}
+	}
+
+	if (displayOptions.hide) {
+		const filteredHide: Record<string, unknown[]> = {};
+		for (const [key, values] of Object.entries(displayOptions.hide)) {
+			if (!DISCRIMINATOR_FIELDS.includes(key)) {
+				filteredHide[key] = values;
+			}
+		}
+		if (Object.keys(filteredHide).length > 0) {
+			result.hide = filteredHide;
+		}
+	}
+
+	// Return undefined if empty
+	if (!result.show && !result.hide) {
+		return undefined;
+	}
+
+	return result;
+}
+
+/**
+ * Format displayOptions as a JSDoc annotation string.
+ * Format: @displayOptions.show { key: [values] }
+ */
+function formatSubnodeDisplayOptionsAsJSDoc(
+	displayOptions: AIInputTypeInfo['displayOptions'],
+): string | undefined {
+	if (!displayOptions) return undefined;
+
+	const parts: string[] = [];
+
+	if (displayOptions.show && Object.keys(displayOptions.show).length > 0) {
+		const showObj = Object.entries(displayOptions.show)
+			.map(([key, values]) => `${key}: ${JSON.stringify(values)}`)
+			.join(', ');
+		parts.push(`@displayOptions.show { ${showObj} }`);
+	}
+
+	if (displayOptions.hide && Object.keys(displayOptions.hide).length > 0) {
+		const hideObj = Object.entries(displayOptions.hide)
+			.map(([key, values]) => `${key}: ${JSON.stringify(values)}`)
+			.join(', ');
+		parts.push(`@displayOptions.hide { ${hideObj} }`);
+	}
+
+	return parts.length > 0 ? parts.join('\n\t * ') : undefined;
+}
+
+/**
  * Generate a narrowed SubnodeConfig interface for a node based on its accepted AI input types.
  *
  * @param aiInputTypes Array of AI input types with required status
@@ -3172,6 +3329,16 @@ export function generateNarrowedSubnodeConfig(
 			typeStr = `${fieldInfo.instanceType} | ${fieldInfo.instanceType}[]`;
 		} else {
 			typeStr = fieldInfo.instanceType;
+		}
+
+		// Add JSDoc comment for displayOptions if present
+		if (aiInput.displayOptions) {
+			const displayOptionsJSDoc = formatSubnodeDisplayOptionsAsJSDoc(aiInput.displayOptions);
+			if (displayOptionsJSDoc) {
+				lines.push(`\t/**`);
+				lines.push(`\t * ${displayOptionsJSDoc}`);
+				lines.push(`\t */`);
+			}
 		}
 
 		// Mark field as optional only if not required
