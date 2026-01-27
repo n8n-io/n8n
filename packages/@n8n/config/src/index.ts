@@ -29,6 +29,7 @@ import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
+import { SetupPanelConfig } from './configs/setup-panel.config';
 import { SsoConfig } from './configs/sso.config';
 import { TagsConfig } from './configs/tags.config';
 import { TemplatesConfig } from './configs/templates.config';
@@ -223,4 +224,7 @@ export class GlobalConfig {
 
 	@Nested
 	workflowHistoryCompaction: WorkflowHistoryCompactionConfig;
+
+	@Nested
+	setupPanel: SetupPanelConfig;
 }
