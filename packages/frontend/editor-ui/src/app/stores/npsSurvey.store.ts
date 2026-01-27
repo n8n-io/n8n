@@ -11,6 +11,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IUserSettings, NpsSurveyState } from 'n8n-workflow';
 import { useSettingsStore } from './settings.store';
 import { updateNpsSurveyState } from '@n8n/rest-api-client/api/npsSurvey';
+import { assert } from '@n8n/utils/assert';
 
 export const MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED = 3;
 
@@ -96,9 +97,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	}
 
 	async function respondNpsSurvey() {
-		if (!currentSurveyState.value) {
-			return;
-		}
+		assert(currentSurveyState.value);
 
 		const updatedState: NpsSurveyState = {
 			responded: true,
@@ -109,9 +108,7 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	}
 
 	async function ignoreNpsSurvey() {
-		if (!currentSurveyState.value) {
-			return;
-		}
+		assert(currentSurveyState.value);
 
 		const state = currentSurveyState.value;
 		const ignoredCount = 'ignoredCount' in state ? state.ignoredCount : 0;
