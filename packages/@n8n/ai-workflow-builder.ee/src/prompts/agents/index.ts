@@ -1,7 +1,7 @@
 /**
- * Opus-optimized Agent Prompts
+ * Agent Prompts
  *
- * Drastically reduced prompts for Claude Opus 4.5.
+ * Prompts for the multi-agent workflow builder system.
  */
 
 export { buildSupervisorPrompt } from './supervisor.prompt';
@@ -17,3 +17,10 @@ export {
 	buildRecoveryModeContext,
 	INSTANCE_URL_PROMPT,
 } from './builder.prompt';
+export {
+	buildResponderPrompt,
+	buildRecursionErrorWithWorkflowGuidance,
+	buildRecursionErrorNoWorkflowGuidance,
+	buildGeneralErrorGuidance,
+	buildDataTableCreationGuidance,
+} from './responder.prompt';

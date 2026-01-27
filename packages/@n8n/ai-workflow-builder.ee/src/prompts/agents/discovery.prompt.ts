@@ -1,8 +1,7 @@
 /**
- * Discovery Agent Prompt (Opus-optimized)
+ * Discovery Agent Prompt
  *
- * Identifies n8n nodes and connection-changing parameters.
- * Reduced from ~440 lines to ~80 lines for Opus 4.5.
+ * Identifies n8n nodes and connection-changing parameters for workflow building.
  */
 
 import {
@@ -11,7 +10,7 @@ import {
 	type WorkflowTechniqueType,
 } from '@/types/categorization';
 
-import { prompt } from '../../builder';
+import { prompt } from '../builder';
 
 /** Few-shot examples for technique classification - kept for external use */
 export const exampleCategorizations: Array<{

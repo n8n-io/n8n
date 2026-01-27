@@ -5,7 +5,7 @@
  * After initial routing, deterministic routing takes over based on coordination log.
  */
 
-import { prompt } from '../../builder';
+import { prompt } from '../builder';
 
 const SUPERVISOR_ROLE = 'You are a Supervisor that routes user requests to specialist agents.';
 

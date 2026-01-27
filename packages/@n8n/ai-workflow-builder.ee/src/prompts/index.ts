@@ -4,9 +4,9 @@
  * This directory contains all prompts used by the AI workflow builder agents and chains.
  * Organization:
  * - builder/ - PromptBuilder utility for composing prompts
- * - opus/ - Opus 4.5 optimized prompts (~88% reduction from original)
- * - agents/ - Original Sonnet prompts (kept for reference during transition)
+ * - agents/ - Agent prompts (supervisor, discovery, builder, responder)
  * - chains/ - Chain-level prompts (categorization, compact, workflow-name, parameter-updater)
+ * - shared/ - Shared prompt fragments
  */
 
 // Prompt builder utility
@@ -20,20 +20,20 @@ export {
 	type SectionOptions,
 } from './builder';
 
-// Agent prompts - Using Opus-optimized versions
+// Agent prompts
 export {
 	buildBuilderPrompt,
 	INSTANCE_URL_PROMPT,
 	buildRecoveryModeContext,
-} from './opus/agents/builder.prompt';
+} from './agents/builder.prompt';
 export {
 	buildDiscoveryPrompt,
 	exampleCategorizations,
 	formatTechniqueList,
 	formatExampleCategorizations,
 	type DiscoveryPromptOptions,
-} from './opus/agents/discovery.prompt';
-export { buildSupervisorPrompt } from './opus/agents/supervisor.prompt';
+} from './agents/discovery.prompt';
+export { buildSupervisorPrompt } from './agents/supervisor.prompt';
 export {
 	buildResponderPrompt,
 	buildRecursionErrorWithWorkflowGuidance,

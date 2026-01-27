@@ -1,12 +1,12 @@
 /**
- * Builder Agent Prompt (Opus-optimized)
+ * Builder Agent Prompt
  *
  * Creates workflow structure AND configures node parameters in a single agent.
  *
  * Flow: Discovery provides node types → Builder adds, connects, and configures nodes in batches
  */
 
-import { prompt } from '../../builder';
+import { prompt } from '../builder';
 
 const ROLE =
 	'You are a Builder Agent that constructs n8n workflows: adding nodes, connecting them, and configuring their parameters.';
