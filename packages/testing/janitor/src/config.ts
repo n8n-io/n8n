@@ -76,6 +76,12 @@ export interface JanitorConfig {
 	rules: {
 		[K in RuleId]?: RuleSettings;
 	};
+
+	/** TCR configuration */
+	tcr: {
+		/** Test command. File paths will be appended. @default 'npx playwright test' */
+		testCommand: string;
+	};
 }
 
 /**
@@ -137,6 +143,10 @@ export const defaultConfig: Omit<JanitorConfig, 'rootDir'> = {
 		'api-purity': { enabled: true, severity: 'warning' },
 		'test-data-hygiene': { enabled: true, severity: 'warning' },
 	},
+
+	tcr: {
+		testCommand: 'npx playwright test',
+	},
 };
 
 /** Runtime configuration holder */
@@ -170,6 +180,7 @@ export function defineConfig(config: DefineConfigInput): JanitorConfig {
 		patterns: { ...defaultConfig.patterns, ...config.patterns },
 		facade: { ...defaultConfig.facade, ...config.facade },
 		rules: { ...defaultConfig.rules, ...config.rules },
+		tcr: { ...defaultConfig.tcr, ...config.tcr },
 	};
 }
 

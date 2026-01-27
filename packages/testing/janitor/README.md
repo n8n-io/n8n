@@ -367,6 +367,11 @@ interface JanitorConfig {
       allowPatterns?: RegExp[];
     };
   };
+
+  /** TCR configuration */
+  tcr: {
+    testCommand: string;  // Default: 'npx playwright test'
+  };
 }
 ```
 
@@ -637,6 +642,8 @@ interface TcrOptions {
   watch?: boolean;
   /** Verbose output */
   verbose?: boolean;
+  /** Override test command (default: from config or 'npx playwright test') */
+  testCommand?: string;
 }
 
 interface TcrResult {

@@ -75,4 +75,8 @@ export default defineConfig({
 		},
 		'api-purity': { enabled: true, severity: 'warning' },
 	},
+
+	tcr: {
+		testCommand: 'pnpm test:local',
+	},
 });
