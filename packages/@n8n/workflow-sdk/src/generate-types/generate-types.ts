@@ -117,6 +117,7 @@ export interface NodeProperty {
 		value?: string | number | boolean;
 		description?: string;
 		displayName?: string;
+		builderHint?: string;
 		values?: NodeProperty[];
 	}>;
 	displayOptions?: {
@@ -667,7 +668,33 @@ function generateFixedCollectionType(prop: NodeProperty): string {
 		if (nestedProps.length > 0) {
 			const innerType = `{\n${nestedProps.join(';\n')};\n\t\t}`;
 			const groupType = isMultipleValues ? `Array<${innerType}>` : innerType;
-			groups.push(`${groupName}?: ${groupType}`);
+
+			// Generate JSDoc for the group if it has builderHint or description
+			const groupJsDocLines: string[] = [];
+			if (group.displayName || group.description) {
+				const desc = (group.description ?? group.displayName ?? '')
+					.replace(/\*\//g, '*\\/')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;');
+				groupJsDocLines.push(`\t\t/** ${desc}`);
+			}
+			if (group.builderHint) {
+				const safeBuilderHint = group.builderHint
+					.replace(/\*\//g, '*\\/')
+					.replace(/</g, '&lt;')
+					.replace(/>/g, '&gt;');
+				if (groupJsDocLines.length === 0) {
+					groupJsDocLines.push(`\t\t/**`);
+				}
+				groupJsDocLines.push(`\t\t * @builderHint ${safeBuilderHint}`);
+			}
+
+			if (groupJsDocLines.length > 0) {
+				groupJsDocLines.push(`\t\t */`);
+				groups.push(`${groupJsDocLines.join('\n')}\n\t\t${groupName}?: ${groupType}`);
+			} else {
+				groups.push(`${groupName}?: ${groupType}`);
+			}
 		}
 	}
 

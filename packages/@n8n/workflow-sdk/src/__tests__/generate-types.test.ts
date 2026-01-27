@@ -30,6 +30,7 @@ interface NodeProperty {
 		value?: string | number | boolean;
 		description?: string;
 		displayName?: string;
+		builderHint?: string;
 		values?: NodeProperty[];
 		type?: string;
 		default?: unknown;
@@ -597,6 +598,34 @@ describe('generate-types', () => {
 			// Should include @builderHint in the JSDoc for nested property
 			expect(result).toContain('@builderHint');
 			expect(result).toContain('You can add multiple intervals');
+		});
+
+		it('should include builderHint on fixedCollection group level in generated type', () => {
+			const prop: NodeProperty = {
+				name: 'rule',
+				displayName: 'Trigger Rules',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				options: [
+					{
+						name: 'interval',
+						displayName: 'Trigger Interval',
+						builderHint: 'You can add multiple intervals to trigger at different times.',
+						values: [
+							{
+								name: 'field',
+								displayName: 'Field',
+								type: 'string',
+								default: 'days',
+							},
+						],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			// Should include @builderHint in the JSDoc for the group (not just nested property)
+			expect(result).toContain('@builderHint You can add multiple intervals');
 		});
 	});
 
