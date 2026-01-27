@@ -13,7 +13,6 @@
 import { workflow } from '../workflow-builder';
 import { node, trigger } from '../node-builder';
 import { splitInBatches } from '../split-in-batches';
-import { fanOut } from '../fan-out';
 import { nextBatch } from '../next-batch';
 import { languageModel, tool } from '../subnode-builders';
 import type { NodeInstance } from '../types/base';
@@ -173,7 +172,7 @@ describe('New SDK API', () => {
 	});
 
 	describe('Edge Case 2: Fan-out Within Branches', () => {
-		it('supports fanOut() inside onTrue()', () => {
+		it('supports plain array inside onTrue()', () => {
 			const nodeA = createNode('A');
 			const nodeB = createNode('B');
 			const ifNode = createIfNode('IF');
@@ -182,7 +181,7 @@ describe('New SDK API', () => {
 			const wf = workflow('test', 'Test')
 				.add(t)
 				.then(
-					ifNode.onTrue!(fanOut(nodeA, nodeB)), // IF output 0 (true) -> both A and B
+					ifNode.onTrue!([nodeA, nodeB]), // IF output 0 (true) -> both A and B
 				);
 
 			const json = wf.toJSON();
@@ -197,7 +196,7 @@ describe('New SDK API', () => {
 			expect(targetNodes).toEqual(['A', 'B']);
 		});
 
-		it('supports fanOut() inside onCase()', () => {
+		it('supports plain array inside onCase()', () => {
 			const nodeA = createNode('A');
 			const nodeB = createNode('B');
 			const nodeC = createNode('C');
@@ -206,7 +205,7 @@ describe('New SDK API', () => {
 
 			const wf = workflow('test', 'Test')
 				.add(t)
-				.then(switchNode.onCase!(0, fanOut(nodeA, nodeB)).onCase(1, nodeC));
+				.then(switchNode.onCase!(0, [nodeA, nodeB]).onCase(1, nodeC));
 
 			const json = wf.toJSON();
 
@@ -472,7 +471,7 @@ describe('New SDK API', () => {
 	});
 
 	describe('Edge Case 11: Fan-out Then Merge', () => {
-		it('supports fanOut targets connecting to merge inputs', () => {
+		it('supports fan-out targets connecting to merge inputs', () => {
 			const mergeNode = createMergeNode('Merge');
 			const nodeA = createNode('A');
 			const nodeB = createNode('B');

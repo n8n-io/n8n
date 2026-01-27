@@ -280,7 +280,9 @@ import {
 import { merge as mergeFn } from './merge';
 import { splitInBatches as splitInBatchesFn } from './split-in-batches';
 import { nextBatch as nextBatchFn } from './next-batch';
-import { fanOut as fanOutFn } from './fan-out';
+// Backward compatibility shim: fanOut() just returns its arguments as an array
+// This allows parsing older generated code that used fanOut()
+const fanOutFn = (...args: unknown[]): unknown[] => args;
 import type { WorkflowJSON } from './types/base';
 
 /**

@@ -11,9 +11,7 @@ import type {
 	IfElseBuilder,
 	SwitchCaseBuilder,
 } from './types/base';
-import { isFanOut } from './fan-out';
 import { isIfElseBuilder, isSwitchCaseBuilder } from './node-builder';
-import type { FanOutTargets } from './fan-out';
 
 /**
  * Internal split in batches node implementation
@@ -91,13 +89,16 @@ export type NodeBatch =
  * - null: no connection for this branch
  * - NodeInstance: single target
  * - NodeChain: a chain of nodes
- * - FanOutTargets: multiple parallel targets via fanOut()
+ * - Plain array: multiple parallel targets (fan-out)
  */
 export type BranchTarget =
 	| null
 	| NodeInstance<string, string, unknown>
 	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	| FanOutTargets;
+	| (
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	  )[];
 
 /**
  * Named object syntax for splitInBatches branches.
@@ -406,8 +407,8 @@ function extractNodesFromTarget(target: BranchTarget): NodeInstance<string, stri
 	if (target === null) {
 		return [];
 	}
-	if (isFanOut(target)) {
-		return target.targets.flatMap((t) => extractNodesFromTarget(t as BranchTarget));
+	if (Array.isArray(target)) {
+		return target.flatMap((t) => extractNodesFromTarget(t as BranchTarget));
 	}
 	if (isNodeChain(target)) {
 		return target.allNodes;
@@ -440,8 +441,8 @@ function getFirstNodes(target: BranchTarget): NodeInstance<string, string, unkno
 	if (target === null) {
 		return [];
 	}
-	if (isFanOut(target)) {
-		return target.targets.flatMap((t) => getFirstNodes(t as BranchTarget));
+	if (Array.isArray(target)) {
+		return target.flatMap((t) => getFirstNodes(t as BranchTarget));
 	}
 	if (isNodeChain(target)) {
 		return [target.head];

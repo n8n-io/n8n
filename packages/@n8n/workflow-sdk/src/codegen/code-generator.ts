@@ -666,9 +666,9 @@ function generateBranchCode(
 	if (branch === null) return 'null';
 
 	if (Array.isArray(branch)) {
-		// Fan-out within branch - generate as fanOut(branch1, branch2, ...)
+		// Fan-out within branch - generate as plain array [branch1, branch2, ...]
 		const branchesCode = branch.map((b) => generateComposite(b, ctx)).join(', ');
-		return `fanOut(${branchesCode})`;
+		return `[${branchesCode}]`;
 	}
 
 	return generateComposite(branch, ctx);
@@ -833,7 +833,7 @@ function generateSplitInBatches(sib: SplitInBatchesCompositeNode, ctx: Generatio
 
 				return branchCode;
 			});
-			eachCode = `fanOut(${transformedBranches.join(', ')})`;
+			eachCode = `[${transformedBranches.join(', ')}]`;
 		} else {
 			// Single composite case
 			eachCode = generateBranchCode(sib.loopChain, innerCtx);
@@ -873,13 +873,13 @@ function generateFanOut(fanOut: FanOutCompositeNode, ctx: GenerationContext): st
 	// Generate source node code
 	const sourceCode = generateComposite(fanOut.sourceNode, ctx);
 
-	// Generate all target branches
+	// Generate all target branches as plain array
 	const targetsCode = fanOut.targets
 		.map((target) => generateComposite(target, innerCtx))
 		.join(',\n' + getIndent(innerCtx));
 
-	// Return with fanOut() function for clarity
-	return `${sourceCode}\n${getIndent(ctx)}.then(fanOut(\n${getIndent(innerCtx)}${targetsCode}))`;
+	// Return with plain array syntax for clarity
+	return `${sourceCode}\n${getIndent(ctx)}.then([\n${getIndent(innerCtx)}${targetsCode}])`;
 }
 
 /**

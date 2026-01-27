@@ -23,9 +23,6 @@ export type {
 	MergeMode,
 } from './sdk-api';
 
-// Import FanOutTargets for type definitions
-import type { FanOutTargets } from '../fan-out';
-
 // Import for internal use
 import type {
 	IDataObject,
@@ -626,24 +623,30 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, fanOut, or nested builder
+ * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), or nested builder
  */
 export type IfElseTarget =
 	| null
 	| NodeInstance<string, string, unknown>
 	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	| FanOutTargets
+	| (
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	  )[]
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, fanOut, or nested builder
+ * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
  */
 export type SwitchCaseTarget =
 	| null
 	| NodeInstance<string, string, unknown>
 	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	| FanOutTargets
+	| (
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	  )[]
 	| IfElseBuilder<unknown>
 	| SwitchCaseBuilder<unknown>;
 
@@ -673,7 +676,7 @@ export interface IfElseBuilder<TOutput = unknown> {
 	 * Set the target for the true branch (output 0).
 	 * Can be called in any order with onFalse().
 	 *
-	 * @param target - The node, chain, or fanOut to execute when condition is true
+	 * @param target - The node, chain, or array (fan-out) to execute when condition is true
 	 */
 	onTrue(target: IfElseTarget): IfElseBuilder<TOutput>;
 
@@ -681,7 +684,7 @@ export interface IfElseBuilder<TOutput = unknown> {
 	 * Set the target for the false branch (output 1).
 	 * Can be called in any order with onTrue().
 	 *
-	 * @param target - The node, chain, or fanOut to execute when condition is false
+	 * @param target - The node, chain, or array (fan-out) to execute when condition is false
 	 */
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput>;
 
@@ -719,7 +722,7 @@ export interface SwitchCaseBuilder<TOutput = unknown> {
 	 * Can be called multiple times for different cases.
 	 *
 	 * @param index - The output index (0-based)
-	 * @param target - The node, chain, or fanOut to execute for this case
+	 * @param target - The node, chain, or array (fan-out) to execute for this case
 	 */
 	onCase(index: number, target: SwitchCaseTarget): SwitchCaseBuilder<TOutput>;
 
@@ -762,7 +765,10 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 			| null
 			| NodeInstance<string, string, unknown>
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| FanOutTargets,
+			| (
+					| NodeInstance<string, string, unknown>
+					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+			  )[],
 	): SplitInBatchesBuilder<TOutput>;
 
 	/**
@@ -780,7 +786,10 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 			| null
 			| NodeInstance<string, string, unknown>
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| FanOutTargets,
+			| (
+					| NodeInstance<string, string, unknown>
+					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+			  )[],
 	): SplitInBatchesBuilder<TOutput>;
 }
 

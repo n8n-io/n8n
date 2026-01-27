@@ -1,6 +1,5 @@
 import { workflow } from '../workflow-builder';
 import { node, trigger, isSwitchCaseBuilder } from '../node-builder';
-import { fanOut } from '../fan-out';
 import type { NodeInstance } from '../types/base';
 
 // Helper type for Switch node
@@ -158,7 +157,7 @@ describe('Switch Case fluent API', () => {
 			expect(switchConns.main[2]![0]!.node).toBe('Case 2');
 		});
 
-		it('should support fanOut() for multiple targets from one case', () => {
+		it('should support plain array for multiple targets from one case', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const switchNode = node({
 				type: 'n8n-nodes-base.switch',
@@ -181,10 +180,10 @@ describe('Switch Case fluent API', () => {
 				config: { name: 'Target C' },
 			});
 
-			// Fluent syntax with fanOut
+			// Fluent syntax with plain array for fan-out
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.then(switchNode.onCase!(0, fanOut(targetA, targetB)).onCase(1, targetC));
+				.then(switchNode.onCase!(0, [targetA, targetB]).onCase(1, targetC));
 
 			const json = wf.toJSON();
 

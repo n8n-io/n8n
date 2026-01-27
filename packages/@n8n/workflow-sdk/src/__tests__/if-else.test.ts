@@ -1,6 +1,5 @@
 import { workflow } from '../workflow-builder';
 import { node, trigger, isIfElseBuilder, ifElse, ifNode } from '../node-builder';
-import { fanOut } from '../fan-out';
 import { parseWorkflowCode } from '../parse-workflow-code';
 import type { NodeInstance } from '../types/base';
 
@@ -217,7 +216,7 @@ describe('IF Else fluent API', () => {
 			expect(ifConns.main[1]).toBeUndefined();
 		});
 
-		it('should support fanOut() for multiple targets from one branch', () => {
+		it('should support plain array for multiple targets from one branch', () => {
 			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
 			const ifNode = node({
 				type: 'n8n-nodes-base.if',
@@ -240,10 +239,10 @@ describe('IF Else fluent API', () => {
 				config: { name: 'Target C' },
 			});
 
-			// Fluent syntax with fanOut
+			// Fluent syntax with plain array for fan-out
 			const wf = workflow('test-id', 'Test')
 				.add(t)
-				.then(ifNode.onTrue!(fanOut(targetA, targetB)).onFalse(targetC));
+				.then(ifNode.onTrue!([targetA, targetB]).onFalse(targetC));
 
 			const json = wf.toJSON();
 

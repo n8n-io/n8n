@@ -130,8 +130,7 @@ export type { SwitchCaseTarget } from './switch-case';
 // Split in batches
 export { splitInBatches } from './split-in-batches';
 
-// Fan-out helper for explicit parallel connections
-export { fanOut, isFanOut, type FanOutTargets } from './fan-out';
+// Note: fanOut() removed - use plain arrays for parallel connections
 // Note: fanIn() removed - use multiple .then(node.input(n)) calls instead
 
 // Loop-back helper for split in batches

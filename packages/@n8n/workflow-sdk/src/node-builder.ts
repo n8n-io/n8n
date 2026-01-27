@@ -24,7 +24,6 @@ import {
 	type SwitchCaseTarget,
 	type IDataObject,
 } from './types/base';
-import { isFanOut, type FanOutTargets } from './fan-out';
 
 /**
  * Type guard to check if a value is an InputTarget
@@ -223,7 +222,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[] | FanOutTargets | InputTarget,
+		target: T | T[] | InputTarget,
 		outputIndex: number = 0,
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
 		// Handle InputTarget - terminal target with specific input index
@@ -237,13 +236,10 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 			return new NodeChainImpl(this, target.node as T, [this, target.node]);
 		}
 
-		// Handle FanOutTargets - extract targets array
-		let targets: (T | NodeInstance<string, string, unknown>)[];
-		if (isFanOut(target)) {
-			targets = target.targets;
-		} else {
-			targets = Array.isArray(target) ? target : [target];
-		}
+		// Handle array (fan-out) or single target
+		const targets: (T | NodeInstance<string, string, unknown>)[] = Array.isArray(target)
+			? target
+			: [target];
 
 		for (const t of targets) {
 			this._connections.push({ target: t, outputIndex });
@@ -284,7 +280,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	 * Alias for then() - connect this node to one or more target nodes.
 	 */
 	to<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[] | FanOutTargets | InputTarget,
+		target: T | T[] | InputTarget,
 		outputIndex: number = 0,
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
 		return this.then(target, outputIndex);
@@ -460,7 +456,7 @@ class NodeChainImpl<
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[] | FanOutTargets | InputTarget,
+		target: T | T[] | InputTarget,
 		outputIndex: number = 0,
 	): NodeChain<THead, T> {
 		// Handle InputTarget - terminal target with specific input index
@@ -470,13 +466,10 @@ class NodeChainImpl<
 			return new NodeChainImpl(this.head, target.node as T, [...this.allNodes, target.node]);
 		}
 
-		// Handle FanOutTargets - extract targets array
-		let targets: (T | NodeInstance<string, string, unknown>)[];
-		if (isFanOut(target)) {
-			targets = target.targets;
-		} else {
-			targets = Array.isArray(target) ? target : [target];
-		}
+		// Handle array (fan-out) or single target
+		const targets: (T | NodeInstance<string, string, unknown>)[] = Array.isArray(target)
+			? target
+			: [target];
 
 		// Helper to extract all nodes from a target (handles NodeChain, builders, etc.)
 		const flattenTarget = (t: unknown): NodeInstance<string, string, unknown>[] => {
@@ -527,7 +520,7 @@ class NodeChainImpl<
 	 * Alias for then() - connect to target nodes.
 	 */
 	to<T extends NodeInstance<string, string, unknown>>(
-		target: T | T[] | FanOutTargets | InputTarget,
+		target: T | T[] | InputTarget,
 		outputIndex: number = 0,
 	): NodeChain<THead, T> {
 		return this.then(target, outputIndex);
@@ -646,15 +639,15 @@ class OutputSelectorImpl<TType extends string, TVersion extends string, TOutput 
 // =============================================================================
 
 /**
- * Extract all nodes from a target (node, chain, composite, or fanOut)
+ * Extract all nodes from a target (node, chain, composite, or array)
  */
 function extractNodesFromTarget(target: unknown): NodeInstance<string, string, unknown>[] {
 	if (target === null) return [];
 
-	// Handle FanOut
-	if (isFanOut(target)) {
+	// Handle array (fan-out)
+	if (Array.isArray(target)) {
 		const nodes: NodeInstance<string, string, unknown>[] = [];
-		for (const t of target.targets) {
+		for (const t of target) {
 			nodes.push(...extractNodesFromTarget(t));
 		}
 		return nodes;

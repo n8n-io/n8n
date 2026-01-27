@@ -20,7 +20,6 @@ import type {
 } from './types/base';
 import { isNodeChain } from './types/base';
 import { isMergeNamedInputSyntax } from './merge';
-import { isFanOut } from './fan-out';
 import { isInputTarget, isIfElseBuilder, isSwitchCaseBuilder } from './node-builder';
 import type { IfElseBuilder, SwitchCaseBuilder } from './types/base';
 import { isTriggerNodeType } from './utils/trigger-detection';
@@ -216,10 +215,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	>(node: N): WorkflowBuilder {
 		const newNodes = new Map(this._nodes);
 
-		// Handle FanOutTargets marker from fanOut() function
+		// Handle plain array (fan-out)
 		// This adds all targets without creating a primary connection
-		if (isFanOut(node)) {
-			for (const target of node.targets) {
+		if (Array.isArray(node)) {
+			for (const target of node) {
 				if (isInputTarget(target)) {
 					// InputTarget - add the target node
 					const inputTargetNode = target.node as NodeInstance<string, string, unknown>;
@@ -394,11 +393,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Handle array of nodes (fan-out pattern)
 		if (Array.isArray(nodeOrComposite)) {
 			return this.handleFanOut(nodeOrComposite);
-		}
-
-		// Handle FanOutTargets marker from fanOut() function
-		if (isFanOut(nodeOrComposite)) {
-			return this.handleFanOut(nodeOrComposite.targets);
 		}
 
 		// Handle NodeChain (e.g., node().then().then())
@@ -1741,9 +1735,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	private addBranchTargetNodes(nodes: Map<string, GraphNode>, target: unknown): void {
 		if (target === null || target === undefined) return;
 
-		// Handle FanOut - process each target
-		if (isFanOut(target)) {
-			for (const t of target.targets) {
+		// Handle array (fan-out) - process each target
+		if (Array.isArray(target)) {
+			for (const t of target) {
 				this.addBranchTargetNodes(nodes, t);
 			}
 			return;
@@ -1912,9 +1906,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// (Merge nodes will skip duplicates when they process their named inputs)
 		if (builder.trueBranch !== null && builder.trueBranch !== undefined) {
 			const target = builder.trueBranch;
-			if (isFanOut(target)) {
+			if (Array.isArray(target)) {
 				const targets: ConnectionTarget[] = [];
-				for (const t of target.targets) {
+				for (const t of target) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
 						// For merge targets, use the input index from the merge's named inputs if available
@@ -1939,9 +1933,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Always create this connection - the IF builder knows the correct output index
 		if (builder.falseBranch !== null && builder.falseBranch !== undefined) {
 			const target = builder.falseBranch;
-			if (isFanOut(target)) {
+			if (Array.isArray(target)) {
 				const targets: ConnectionTarget[] = [];
-				for (const t of target.targets) {
+				for (const t of target) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
 						// For merge targets, use the input index from the merge's named inputs if available
@@ -2019,10 +2013,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		for (const [caseIndex, target] of builder.caseMapping) {
 			if (target === null) continue; // Skip null cases
 
-			if (isFanOut(target)) {
+			if (Array.isArray(target)) {
 				// Fan-out: multiple targets from one case
 				const targets: ConnectionTarget[] = [];
-				for (const t of target.targets) {
+				for (const t of target) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
 						// For merge targets, use the input index from the merge's named inputs if available
@@ -2260,16 +2254,24 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				// Named syntax: splitInBatches(sibNode, { done: ..., each: ... })
 				// Process done target (output 0)
 				if (builder._doneTarget !== null && builder._doneTarget !== undefined) {
-					const doneTarget = builder._doneTarget as NodeInstance<string, string, unknown>;
-					// Handle FanOut targets
-					if (isFanOut(doneTarget)) {
-						for (const target of doneTarget.targets) {
-							const firstNodeName = this.addBranchToGraph(nodes, target, effectiveNameMapping);
+					const doneTarget = builder._doneTarget;
+					// Handle array (fan-out) targets
+					if (Array.isArray(doneTarget)) {
+						for (const target of doneTarget) {
+							const firstNodeName = this.addBranchToGraph(
+								nodes,
+								target as NodeInstance<string, string, unknown>,
+								effectiveNameMapping,
+							);
 							const output0 = sibMainConns.get(0) || [];
 							sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
 						}
 					} else {
-						const firstNodeName = this.addBranchToGraph(nodes, doneTarget, effectiveNameMapping);
+						const firstNodeName = this.addBranchToGraph(
+							nodes,
+							doneTarget as NodeInstance<string, string, unknown>,
+							effectiveNameMapping,
+						);
 						const output0 = sibMainConns.get(0) || [];
 						sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
 					}
@@ -2277,16 +2279,24 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 				// Process each target (output 1)
 				if (builder._eachTarget !== null && builder._eachTarget !== undefined) {
-					const eachTarget = builder._eachTarget as NodeInstance<string, string, unknown>;
-					// Handle FanOut targets
-					if (isFanOut(eachTarget)) {
-						for (const target of eachTarget.targets) {
-							const firstNodeName = this.addBranchToGraph(nodes, target, effectiveNameMapping);
+					const eachTarget = builder._eachTarget;
+					// Handle array (fan-out) targets
+					if (Array.isArray(eachTarget)) {
+						for (const target of eachTarget) {
+							const firstNodeName = this.addBranchToGraph(
+								nodes,
+								target as NodeInstance<string, string, unknown>,
+								effectiveNameMapping,
+							);
 							const output1 = sibMainConns.get(1) || [];
 							sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
 						}
 					} else {
-						const firstNodeName = this.addBranchToGraph(nodes, eachTarget, effectiveNameMapping);
+						const firstNodeName = this.addBranchToGraph(
+							nodes,
+							eachTarget as NodeInstance<string, string, unknown>,
+							effectiveNameMapping,
+						);
 						const output1 = sibMainConns.get(1) || [];
 						sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
 					}
@@ -3252,10 +3262,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Always create connections - the IF builder knows the correct output index
 		const trueBranch = builder.trueBranch;
 		if (trueBranch !== null) {
-			if (isFanOut(trueBranch)) {
+			if (Array.isArray(trueBranch)) {
 				// Fan-out: multiple targets from true branch
 				const targets: ConnectionTarget[] = [];
-				for (const t of trueBranch.targets) {
+				for (const t of trueBranch) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
 						// For merge targets, use the input index from the merge's named inputs if available
@@ -3282,10 +3292,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Always create connections - the IF builder knows the correct output index
 		const falseBranch = builder.falseBranch;
 		if (falseBranch !== null) {
-			if (isFanOut(falseBranch)) {
+			if (Array.isArray(falseBranch)) {
 				// Fan-out: multiple targets from false branch
 				const targets: ConnectionTarget[] = [];
-				for (const t of falseBranch.targets) {
+				for (const t of falseBranch) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
 						// For merge targets, use the input index from the merge's named inputs if available
@@ -3358,10 +3368,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		for (const [caseIndex, target] of builder.caseMapping) {
 			if (target === null) continue; // Skip null cases
 
-			if (isFanOut(target)) {
+			if (Array.isArray(target)) {
 				// Fan-out: multiple targets from one case
 				const targets: ConnectionTarget[] = [];
-				for (const t of target.targets) {
+				for (const t of target) {
 					const targetName = this.getTargetNodeName(t);
 					if (targetName) {
 						// For merge targets, use the input index from the merge's named inputs if available
@@ -3521,9 +3531,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Process done target (output 0)
 			if (builder._doneTarget !== null && builder._doneTarget !== undefined) {
 				const doneTarget = builder._doneTarget;
-				// Handle FanOut targets
-				if (isFanOut(doneTarget)) {
-					for (const target of doneTarget.targets) {
+				// Handle array (fan-out) targets
+				if (Array.isArray(doneTarget)) {
+					for (const target of doneTarget) {
 						const firstNodeName = this.addBranchToGraph(newNodes, target);
 						const output0 = sibMainConns.get(0) || [];
 						sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
@@ -3541,9 +3551,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Process each target (output 1)
 			if (builder._eachTarget !== null && builder._eachTarget !== undefined) {
 				const eachTarget = builder._eachTarget;
-				// Handle FanOut targets
-				if (isFanOut(eachTarget)) {
-					for (const target of eachTarget.targets) {
+				// Handle array (fan-out) targets
+				if (Array.isArray(eachTarget)) {
+					for (const target of eachTarget) {
 						const firstNodeName = this.addBranchToGraph(newNodes, target);
 						const output1 = sibMainConns.get(1) || [];
 						sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);

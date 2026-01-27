@@ -1501,7 +1501,7 @@ describe('code-generator', () => {
 		});
 
 		describe('fan-out patterns', () => {
-			it('generates fanOut() for fan-out without merge', () => {
+			it('generates plain array for fan-out without merge', () => {
 				const json: WorkflowJSON = {
 					id: 'fanout-test',
 					name: 'Test',
@@ -1550,15 +1550,15 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should use fanOut() syntax for parallel targets
-				expect(code).toContain('.then(fanOut(');
+				// Should use plain array syntax for parallel targets
+				expect(code).toContain('.then([');
 				expect(code).toContain('Target1');
 				expect(code).toContain('Target2');
 				// Should NOT have sequential chaining between targets
 				expect(code).not.toMatch(/Target1.*\.then.*Target2/s);
 			});
 
-			it('generates fanOut() for fan-out with downstream chains', () => {
+			it('generates plain array for fan-out with downstream chains', () => {
 				const json: WorkflowJSON = {
 					id: 'fanout-chains',
 					name: 'Test',
@@ -1623,8 +1623,8 @@ describe('code-generator', () => {
 
 				const code = generateFromWorkflow(json);
 
-				// Should use fanOut() syntax for parallel targets
-				expect(code).toContain('.then(fanOut(');
+				// Should use plain array syntax for parallel targets
+				expect(code).toContain('.then([');
 				// All three branches should be present
 				expect(code).toContain('Instagram');
 				expect(code).toContain('YouTube');
