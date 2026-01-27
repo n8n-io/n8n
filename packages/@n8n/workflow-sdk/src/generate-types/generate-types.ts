@@ -1297,13 +1297,13 @@ export function generatePropertyLine(
 
 	const lines: string[] = [];
 
-	// JSDoc - generate if description, displayOptions, hint, or non-trivial default exists
+	// JSDoc - generate if description, displayOptions, hint, builderHint, or non-trivial default exists
 	// This ensures LLMs can see dependency information even for properties without descriptions
 	const hasDisplayOptions =
 		prop.displayOptions &&
 		((prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) ||
 			(prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0));
-	if (prop.description || hasDisplayOptions || prop.hint) {
+	if (prop.description || hasDisplayOptions || prop.hint || prop.builderHint) {
 		lines.push(generatePropertyJSDoc(prop, discriminatorContext));
 	}
 
