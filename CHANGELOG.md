@@ -1,3 +1,12 @@
+## [2.6.1](https://github.com/n8n-io/n8n/compare/n8n@2.6.0...n8n@2.6.1) (2026-01-27)
+
+
+### Bug Fixes
+
+* Validate OpenAI urls ([#24922](https://github.com/n8n-io/n8n/issues/24922)) ([2e738d6](https://github.com/n8n-io/n8n/commit/2e738d64c8092b40f3f32fdd6ead2c4b5bf4b70f))
+
+
+
 # [2.6.0](https://github.com/n8n-io/n8n/compare/n8n@2.5.0...n8n@2.6.0) (2026-01-26)
 
 
