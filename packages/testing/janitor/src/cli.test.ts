@@ -1,7 +1,7 @@
-import { execSync } from 'child_process';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import { execSync } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 const CLI_PATH = path.join(__dirname, '..', 'dist', 'cli.js');
@@ -151,12 +151,12 @@ describe('CLI', () => {
 				);
 
 				// Should be valid JSON
-				expect(() => JSON.parse(output)).not.toThrow();
+				expect(() => JSON.parse(output) as unknown).not.toThrow();
 			} catch (error) {
 				// Even if there are violations, output should be JSON
-				const stderr = (error as { stdout?: string }).stdout || '';
+				const stderr = (error as { stdout?: string }).stdout ?? '';
 				if (stderr) {
-					expect(() => JSON.parse(stderr)).not.toThrow();
+					expect(() => JSON.parse(stderr) as unknown).not.toThrow();
 				}
 			}
 		});

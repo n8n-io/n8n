@@ -1,6 +1,6 @@
-import * as fs from 'fs';
 import { glob } from 'glob';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 import { getConfig, hasConfig } from '../config.js';
 
@@ -16,7 +16,7 @@ export function getRootDir(): string {
  * Check if a file path is within the pages directory (excluding components)
  */
 export function isPageFile(filePath: string): boolean {
-	const normalized = path.normalize(filePath).replace(/\\/g, '/');
+	const normalized = path.normalize(filePath).replaceAll('\\', '/');
 	return normalized.includes('/pages/') && !normalized.includes('/pages/components/');
 }
 
@@ -24,7 +24,7 @@ export function isPageFile(filePath: string): boolean {
  * Check if a file path is within the pages/components directory
  */
 export function isComponentFile(filePath: string): boolean {
-	const normalized = path.normalize(filePath).replace(/\\/g, '/');
+	const normalized = path.normalize(filePath).replaceAll('\\', '/');
 	return normalized.includes('/pages/components/');
 }
 
@@ -32,7 +32,7 @@ export function isComponentFile(filePath: string): boolean {
  * Check if a file path is within the flows directory (composables/actions/flows)
  */
 export function isFlowFile(filePath: string): boolean {
-	const normalized = path.normalize(filePath).replace(/\\/g, '/');
+	const normalized = path.normalize(filePath).replaceAll('\\', '/');
 	const config = getConfig();
 
 	return config.patterns.flows.some((pattern) => {
@@ -45,7 +45,7 @@ export function isFlowFile(filePath: string): boolean {
  * Check if a file path is within the tests directory
  */
 export function isTestFile(filePath: string): boolean {
-	const normalized = path.normalize(filePath).replace(/\\/g, '/');
+	const normalized = path.normalize(filePath).replaceAll('\\', '/');
 	return normalized.includes('/tests/');
 }
 
@@ -53,7 +53,7 @@ export function isTestFile(filePath: string): boolean {
  * Check if a file should be excluded from page analysis
  */
 export function isExcludedPage(filePath: string): boolean {
-	const normalized = path.normalize(filePath).replace(/\\/g, '/');
+	const normalized = path.normalize(filePath).replaceAll('\\', '/');
 	const config = getConfig();
 
 	return config.excludeFromPages.some((exclude) => normalized.endsWith(exclude));

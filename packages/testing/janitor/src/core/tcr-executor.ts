@@ -2,8 +2,8 @@
  * TCR Executor - Test && Commit || Revert workflow
  */
 
-import { execSync } from 'child_process';
-import * as path from 'path';
+import { execSync } from 'node:child_process';
+import * as path from 'node:path';
 import { Project } from 'ts-morph';
 
 import { diffFileMethods, type MethodChange } from './ast-diff-analyzer.js';
@@ -472,16 +472,11 @@ export class TcrExecutor {
 		if (verbose) console.log(`\nRunning ${testFiles.length} test file(s)...`);
 
 		try {
-			// Build grep pattern from test file paths
-			// Convert paths like "tests/e2e/workflows/editor/tags.spec.ts" to grep pattern
-			const grepPattern = testFiles
-				.map((f) => f.replace(/\//g, '\\/').replace(/\./g, '\\.'))
-				.join('|');
-
-			// Use pnpm test:local with grep for targeted test execution and 1 worker for stability
+			// Pass test files directly to Playwright (not via --grep which matches titles)
+			const fileArgs = testFiles.join(' ');
 			const cmd = testCommand
-				? `${testCommand} --grep="${grepPattern}"`
-				: `pnpm test:local --grep="${grepPattern}" --workers=1`;
+				? `${testCommand} ${fileArgs}`
+				: `pnpm test:local ${fileArgs} --workers=1`;
 
 			if (verbose) console.log(`Command: ${cmd}`);
 

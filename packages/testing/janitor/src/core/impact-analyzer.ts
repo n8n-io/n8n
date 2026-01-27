@@ -5,8 +5,8 @@
  * Uses import graph tracing with facade-aware property-based search.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { type Project, type SourceFile } from 'ts-morph';
 
 import { FacadeResolver } from './facade-resolver.js';

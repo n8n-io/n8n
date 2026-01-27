@@ -1,4 +1,4 @@
-import * as path from 'path';
+import * as path from 'node:path';
 import { Project, type SourceFile } from 'ts-morph';
 
 import { getConfig } from '../config.js';
@@ -40,18 +40,22 @@ export function createInMemoryProject(): Project {
  * @returns Matching source files
  */
 export function getSourceFiles(project: Project, globs: string[]): SourceFile[] {
-	const files: SourceFile[] = [];
 	const root = getConfig().rootDir;
 	const absoluteGlobs = globs.map((glob) => path.join(root, glob));
 
+	// Add files to project if not already present, then return them
+	// This ensures files matching globs are loaded even if not in tsconfig
+	const addedFiles = project.addSourceFilesAtPaths(absoluteGlobs);
+
+	// Also get any existing files that match (in case already loaded via tsconfig)
+	const existingFiles: SourceFile[] = [];
 	for (const glob of absoluteGlobs) {
-		const matchingFiles = project.getSourceFiles(glob);
-		files.push(...matchingFiles);
+		existingFiles.push(...project.getSourceFiles(glob));
 	}
 
-	// Deduplicate in case of overlapping globs
+	// Deduplicate
 	const uniqueFiles = new Map<string, SourceFile>();
-	for (const file of files) {
+	for (const file of [...addedFiles, ...existingFiles]) {
 		uniqueFiles.set(file.getFilePath(), file);
 	}
 

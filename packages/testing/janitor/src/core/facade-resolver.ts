@@ -8,7 +8,7 @@
  * relationship between page object classes and how they're accessed.
  */
 
-import * as path from 'path';
+import * as path from 'node:path';
 import { type Project } from 'ts-morph';
 
 import { getConfig } from '../config.js';

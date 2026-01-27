@@ -19,9 +19,14 @@ export default defineConfig({
 		tests: ['tests/**/*.spec.ts'],
 		services: ['services/**/*.ts'],
 		fixtures: ['fixtures/**/*.ts'],
-		helpers: ['helpers/**/*.ts', 'utils/**/*.ts'],
+		helpers: [
+			'helpers/**/*.ts',
+			'utils/**/*.ts',
+			'config/**/*.ts', // TODO: Move TestRequirements to helpers/
+			'tests/**/fixtures.ts', // TODO: Consolidate colocated fixtures
+		],
 		factories: ['test-data/**/*.ts', 'factories/**/*.ts'],
-		testData: ['workflows/**/*', 'expectations/**/*'],
+		testData: ['workflows/**/*'],
 	},
 
 	excludeFromPages: [

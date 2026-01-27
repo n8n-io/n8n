@@ -2,9 +2,9 @@
  * Inventory Analyzer - Generates inventory of Playwright test codebase
  */
 
-import * as fs from 'fs';
 import { glob } from 'glob';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import {
 	SyntaxKind,
 	type Project,

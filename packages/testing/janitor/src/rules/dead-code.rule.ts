@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
 import { BaseRule } from './base-rule.js';
