@@ -10,7 +10,6 @@ import {
 	type ChatHubLLMProvider,
 	type ChatHubInputModality,
 	type AgentIconOrEmoji,
-	type MessageChunk,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
 import type {
@@ -23,7 +22,6 @@ import type {
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import type { IRestApiContext } from '@n8n/rest-api-client';
 
 export function getRelativeDate(now: Date, dateString: string): string {
 	const date = new Date(dateString);
@@ -429,60 +427,6 @@ export const workflowAgentDefaultIcon: AgentIconOrEmoji = {
 	type: 'icon',
 	value: 'bot' satisfies IconName,
 };
-
-type StreamApi<T> = (
-	ctx: IRestApiContext,
-	payload: T,
-	onChunk: (data: MessageChunk) => void,
-	onDone: () => void,
-	onError: (e: unknown) => void,
-) => void;
-
-/**
- * Converts streaming API to return a promise that resolves when the first chunk is received.
- */
-export function promisifyStreamingApi<T>(
-	streamingApi: StreamApi<T>,
-): (...args: Parameters<StreamApi<T>>) => Promise<void> {
-	return async (ctx, payload, onChunk, onDone, onError) => {
-		let settled = false;
-		let resolvePromise: () => void;
-		let rejectPromise: (reason?: unknown) => void;
-
-		const promise = new Promise<void>((resolve, reject) => {
-			resolvePromise = resolve;
-			rejectPromise = reject;
-		});
-
-		streamingApi(
-			ctx,
-			payload,
-			(chunk) => {
-				if (!settled) {
-					settled = true;
-					resolvePromise();
-				}
-				onChunk(chunk);
-			},
-			() => {
-				if (!settled) {
-					settled = true;
-					resolvePromise();
-				}
-				onDone();
-			},
-			(error: unknown) => {
-				if (!settled) {
-					settled = true;
-					rejectPromise(error);
-				}
-				onError(error);
-			},
-		);
-
-		return await promise;
-	};
-}
 
 export function createFakeAgent(
 	model: ChatHubConversationModel,

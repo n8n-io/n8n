@@ -4,12 +4,16 @@ import { mock } from 'jest-mock-extended';
 import type { Cipher, BinaryDataService } from 'n8n-core';
 import type { IBinaryData } from 'n8n-workflow';
 
+import type { ChatHubAgentService } from '../chat-hub-agent.service';
+import type { ChatHubCredentialsService } from '../chat-hub-credentials.service';
 import { ChatHubWorkflowService } from '../chat-hub-workflow.service';
 import { ChatHubMessage } from '../chat-hub-message.entity';
 import { ChatHubSession } from '../chat-hub-session.entity';
 import { ChatHubAttachmentService } from '../chat-hub.attachment.service';
+import type { ChatHubSettingsService } from '../chat-hub.settings.service';
 import type { ChatHubMessageRepository } from '../chat-message.repository';
 import type { ChatHubAuthenticationMetadata } from '../chat-hub-extractor';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 describe('ChatHubWorkflowService', () => {
 	const logger = mock<Logger>();
@@ -18,6 +22,10 @@ describe('ChatHubWorkflowService', () => {
 	const binaryDataService = mock<BinaryDataService>();
 	const messageRepository = mock<ChatHubMessageRepository>();
 	const mockCipher = mock<Cipher>();
+	const mockChatHubAgentService = mock<ChatHubAgentService>();
+	const mockChatHubCredentialsService = mock<ChatHubCredentialsService>();
+	const mockChatHubSettingsService = mock<ChatHubSettingsService>();
+	const mockWorkflowFinderService = mock<WorkflowFinderService>();
 
 	let chatHubAttachmentService: ChatHubAttachmentService;
 	let service: ChatHubWorkflowService;
@@ -32,6 +40,8 @@ describe('ChatHubWorkflowService', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 
+		logger.scoped.mockReturnValue(logger);
+
 		// Mock cipher encrypt to return a simple string
 		mockCipher.encrypt.mockReturnValue('encrypted-metadata');
 
@@ -44,6 +54,10 @@ describe('ChatHubWorkflowService', () => {
 			sharedWorkflowRepository,
 			chatHubAttachmentService,
 			mockCipher,
+			mockChatHubAgentService,
+			mockChatHubCredentialsService,
+			mockChatHubSettingsService,
+			mockWorkflowFinderService,
 		);
 
 		// Mock repository methods
