@@ -118,7 +118,7 @@ describe('MainHeader', () => {
 		vi.spyOn(collaborationStore, 'shouldBeReadOnly', 'get').mockReturnValue(false);
 	});
 
-it('should render WorkflowDetails component', () => {
+	it('should render WorkflowDetails component', () => {
 		const { getByTestId } = renderComponent();
 
 		const workflowDetails = getByTestId('workflow-details-stub');
