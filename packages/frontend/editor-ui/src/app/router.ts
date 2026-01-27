@@ -74,8 +74,19 @@ const SignoutView = async () => await import('@/features/core/auth/views/Signout
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
-const SettingsExternalSecrets = async () =>
-	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
+const SettingsExternalSecrets = async () => {
+	const { check } = useEnvFeatureFlag();
+
+	if (check.value('EXTERNAL_SECRETS_FOR_PROJECTS')) {
+		return await import(
+			'@/features/integrations/secretsProviders.ee/views/SettingsSecretsProviders.ee.vue'
+		);
+	}
+
+	return await import(
+		'@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue'
+	);
+};
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
