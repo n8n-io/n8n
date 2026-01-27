@@ -1,10 +1,62 @@
 import { workflow } from '../workflow-builder';
-import { node, trigger, isIfElseBuilder } from '../node-builder';
+import { node, trigger, isIfElseBuilder, ifElse, ifNode } from '../node-builder';
 import { fanOut } from '../fan-out';
+import { parseWorkflowCode } from '../parse-workflow-code';
 import type { NodeInstance } from '../types/base';
 
 // Helper type for IF node
 type IfNode = NodeInstance<'n8n-nodes-base.if', string, unknown>;
+
+describe('ifElse() and ifNode() factory functions', () => {
+	it('ifElse() creates an IF node with correct type', () => {
+		const ifN = ifElse({ name: 'My IF' });
+		expect(ifN.type).toBe('n8n-nodes-base.if');
+	});
+
+	it('ifElse() defaults to version 2.3', () => {
+		const ifN = ifElse({ name: 'My IF' });
+		expect(ifN.version).toBe('2.3');
+	});
+
+	it('ifElse() allows custom version', () => {
+		const ifN = ifElse({ name: 'My IF', version: 2.2 });
+		expect(ifN.version).toBe('2.2');
+	});
+
+	it('ifElse() supports .onTrue() and .onFalse()', () => {
+		const ifN = ifElse({ name: 'My IF' });
+		const trueBranch = node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} });
+		const falseBranch = node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} });
+
+		// Use non-null assertion since onTrue is only guaranteed on IF nodes
+		const builder = ifN.onTrue!(trueBranch).onFalse(falseBranch);
+		expect(isIfElseBuilder(builder)).toBe(true);
+	});
+
+	it('ifNode() is an alias for ifElse()', () => {
+		expect(ifNode).toBe(ifElse);
+	});
+});
+
+describe('parseWorkflowCode with ifElse/ifNode', () => {
+	it('parseWorkflowCode recognizes ifElse()', () => {
+		const code = `
+return workflow('test', 'Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(ifElse({ name: 'Check' }).onTrue(node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} })).onFalse(null));
+`;
+		expect(() => parseWorkflowCode(code)).not.toThrow();
+	});
+
+	it('parseWorkflowCode recognizes ifNode()', () => {
+		const code = `
+return workflow('test', 'Test')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .then(ifNode({ name: 'Check' }).onTrue(node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} })).onFalse(null));
+`;
+		expect(() => parseWorkflowCode(code)).not.toThrow();
+	});
+});
 
 describe('IF Else fluent API', () => {
 	describe('ifNode.onTrue().onFalse() syntax', () => {

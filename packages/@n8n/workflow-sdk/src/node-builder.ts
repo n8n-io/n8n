@@ -9,6 +9,7 @@ import {
 	type StickyNoteConfig,
 	type PlaceholderValue,
 	type NewCredentialValue,
+	type CredentialReference,
 	type DeclaredConnection,
 	type NodeChain,
 	type MergeComposite,
@@ -21,6 +22,7 @@ import {
 	type SwitchCaseBuilder,
 	type IfElseTarget,
 	type SwitchCaseTarget,
+	type IDataObject,
 } from './types/base';
 import { isFanOut, type FanOutTargets } from './fan-out';
 
@@ -884,6 +886,49 @@ export function node<TNode extends NodeInput>(
 		input.config as NodeConfig,
 	);
 }
+
+/**
+ * Config for ifElse() factory function
+ */
+export interface IfElseFactoryConfig {
+	name?: string;
+	version?: number;
+	parameters?: IDataObject;
+	credentials?: Record<string, CredentialReference | NewCredentialValue>;
+	position?: [number, number];
+}
+
+/**
+ * Create an IF node with the specified config.
+ * Convenience wrapper around node() with type preset to 'n8n-nodes-base.if'.
+ *
+ * @param config - Optional config with name, version (defaults to 2.3), and other node properties
+ * @returns A configured IF node instance with .onTrue()/.onFalse() methods
+ *
+ * @example
+ * ```typescript
+ * const ifNode = ifElse({ name: 'Check Value' })
+ *   .onTrue(trueHandler)
+ *   .onFalse(falseHandler);
+ * ```
+ */
+export function ifElse<TOutput = unknown>(
+	config?: IfElseFactoryConfig,
+): NodeInstance<'n8n-nodes-base.if', string, TOutput> {
+	return node({
+		type: 'n8n-nodes-base.if',
+		version: config?.version ?? 2.3,
+		config: {
+			name: config?.name,
+			parameters: config?.parameters,
+			credentials: config?.credentials,
+			position: config?.position,
+		},
+	}) as NodeInstance<'n8n-nodes-base.if', string, TOutput>;
+}
+
+/** Alias for ifElse() */
+export const ifNode = ifElse;
 
 /**
  * Create a trigger node instance
