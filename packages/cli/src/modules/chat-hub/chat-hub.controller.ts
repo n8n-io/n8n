@@ -139,7 +139,7 @@ export class ChatHubController {
 		@Body payload: ChatHubSendMessageRequest,
 	): Promise<ChatSendMessageResponse | undefined> {
 		// Check for pushRef header to determine streaming mode
-		const pushRef = req.headers['x-n8n-push-ref'] as string | undefined;
+		const pushRef = req.headers['push-ref'] as string | undefined;
 
 		// WebSocket streaming mode
 		if (pushRef) {
@@ -214,7 +214,7 @@ export class ChatHubController {
 		@Body payload: ChatHubEditMessageRequest,
 	): Promise<ChatSendMessageResponse | undefined> {
 		// Check for pushRef header to determine streaming mode
-		const pushRef = req.headers['x-n8n-push-ref'] as string | undefined;
+		const pushRef = req.headers['push-ref'] as string | undefined;
 
 		// WebSocket streaming mode
 		if (pushRef) {
@@ -293,7 +293,7 @@ export class ChatHubController {
 		@Body payload: ChatHubRegenerateMessageRequest,
 	): Promise<ChatSendMessageResponse | undefined> {
 		// Check for pushRef header to determine streaming mode
-		const pushRef = req.headers['x-n8n-push-ref'] as string | undefined;
+		const pushRef = req.headers['push-ref'] as string | undefined;
 
 		// WebSocket streaming mode
 		if (pushRef) {

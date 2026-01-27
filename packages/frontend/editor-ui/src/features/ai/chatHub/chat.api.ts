@@ -94,28 +94,24 @@ export function regenerateMessageApi(
 
 /**
  * Send a message using WebSocket streaming
- * Returns immediately with message IDs; actual content comes via Push events
+ * Returns immediately with message IDs; actual content comes via Push events.
+ * The push-ref header is automatically sent via ctx.pushRef.
  */
 export async function sendMessageWsApi(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
-	pushRef: string,
 ): Promise<ChatSendMessageResponse> {
 	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
 		'POST',
 		'/chat/conversations/send',
 		payload,
-		{
-			headers: {
-				'X-N8N-Push-Ref': pushRef,
-			},
-		},
 	);
 }
 
 /**
- * Edit a message using WebSocket streaming
+ * Edit a message using WebSocket streaming.
+ * The push-ref header is automatically sent via ctx.pushRef.
  */
 export async function editMessageWsApi(
 	ctx: IRestApiContext,
@@ -124,23 +120,18 @@ export async function editMessageWsApi(
 		editId: ChatMessageId;
 		payload: ChatHubEditMessageRequest;
 	},
-	pushRef: string,
 ): Promise<ChatSendMessageResponse> {
 	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
 		'POST',
 		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit`,
 		request.payload,
-		{
-			headers: {
-				'X-N8N-Push-Ref': pushRef,
-			},
-		},
 	);
 }
 
 /**
- * Regenerate a message using WebSocket streaming
+ * Regenerate a message using WebSocket streaming.
+ * The push-ref header is automatically sent via ctx.pushRef.
  */
 export async function regenerateMessageWsApi(
 	ctx: IRestApiContext,
@@ -149,18 +140,12 @@ export async function regenerateMessageWsApi(
 		retryId: ChatMessageId;
 		payload: ChatHubRegenerateMessageRequest;
 	},
-	pushRef: string,
 ): Promise<ChatSendMessageResponse> {
 	return await makeRestApiRequest<ChatSendMessageResponse>(
 		ctx,
 		'POST',
 		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
 		request.payload,
-		{
-			headers: {
-				'X-N8N-Push-Ref': pushRef,
-			},
-		},
 	);
 }
 
@@ -170,7 +155,6 @@ export async function regenerateMessageWsApi(
 export async function reconnectToSessionApi(
 	ctx: IRestApiContext,
 	sessionId: ChatSessionId,
-	pushRef: string,
 	lastSequence?: number,
 ): Promise<ChatReconnectResponse> {
 	const queryParams = lastSequence !== undefined ? `?lastSequence=${lastSequence}` : '';
@@ -178,7 +162,7 @@ export async function reconnectToSessionApi(
 		ctx,
 		'POST',
 		`/chat/conversations/${sessionId}/reconnect${queryParams}`,
-		{ pushRef },
+		{},
 	);
 }
 

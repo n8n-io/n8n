@@ -8,6 +8,10 @@ import {
 	sendMessageApi,
 	editMessageApi,
 	regenerateMessageApi,
+	sendMessageWsApi,
+	editMessageWsApi,
+	regenerateMessageWsApi,
+	reconnectToSessionApi,
 	fetchConversationsApi as fetchSessionsApi,
 	fetchSingleConversationApi as fetchMessagesApi,
 	updateConversationTitleApi,
@@ -75,6 +79,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
+
+	// WebSocket streaming mode - enabled by default
+	const useWebSocketStreaming = ref(true);
 
 	const agents = ref<ChatModelsResponse | null>(null);
 	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
@@ -557,24 +564,54 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			chat_session_id: sessionId,
 		});
 
-		await promisifyStreamingApi(sendMessageApi)(
-			rootStore.restApiContext,
-			{
-				model: agent.model,
-				messageId,
-				sessionId,
-				message,
-				credentials,
-				previousMessageId,
-				tools,
-				attachments,
-				agentName: agent.name,
-				timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-			},
-			onStreamMessage,
-			onStreamDone,
-			onStreamError,
-		);
+		const payload = {
+			model: agent.model,
+			messageId,
+			sessionId,
+			message,
+			credentials,
+			previousMessageId,
+			tools,
+			attachments,
+			agentName: agent.name,
+			timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+		};
+
+		// Use WebSocket streaming if enabled
+		if (useWebSocketStreaming.value) {
+			try {
+				// Add human message to the conversation immediately
+				addMessage(sessionId, createHumanMessageFromStreamingState(streaming.value));
+
+				// Create session entry if new
+				if (!sessions.value.byId[sessionId]) {
+					sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
+					sessions.value.ids ??= [];
+					sessions.value.ids.unshift(sessionId);
+				}
+
+				const response = await sendMessageWsApi(rootStore.restApiContext, payload);
+
+				// Update streaming state with server-provided message IDs
+				if (streaming.value) {
+					streaming.value.messageId = response.responseMessageId;
+				}
+
+				// Note: Actual streaming content comes via WebSocket push events
+				// The push handler will call handleWebSocketStreamBegin, handleWebSocketStreamChunk, etc.
+			} catch (error) {
+				await onStreamError(error);
+			}
+		} else {
+			// Fall back to HTTP streaming
+			await promisifyStreamingApi(sendMessageApi)(
+				rootStore.restApiContext,
+				payload,
+				onStreamMessage,
+				onStreamDone,
+				onStreamError,
+			);
+		}
 	}
 
 	async function editMessage(
@@ -642,13 +679,34 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			chat_message_id: editId,
 		});
 
-		await promisifyStreamingApi(editMessageApi)(
-			rootStore.restApiContext,
-			{ sessionId, editId, payload },
-			onStreamMessage,
-			onStreamDone,
-			onStreamError,
-		);
+		// Use WebSocket streaming if enabled
+		if (useWebSocketStreaming.value) {
+			try {
+				const response = await editMessageWsApi(rootStore.restApiContext, {
+					sessionId,
+					editId,
+					payload,
+				});
+
+				// Update streaming state with server-provided message IDs
+				if (streaming.value) {
+					streaming.value.messageId = response.responseMessageId;
+				}
+
+				// Note: Actual streaming content comes via WebSocket push events
+			} catch (error) {
+				await onStreamError(error);
+			}
+		} else {
+			// Fall back to HTTP streaming
+			await promisifyStreamingApi(editMessageApi)(
+				rootStore.restApiContext,
+				{ sessionId, editId, payload },
+				onStreamMessage,
+				onStreamDone,
+				onStreamError,
+			);
+		}
 	}
 
 	async function regenerateMessage(
@@ -688,13 +746,34 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			chat_message_id: retryId,
 		});
 
-		await promisifyStreamingApi(regenerateMessageApi)(
-			rootStore.restApiContext,
-			{ sessionId, retryId, payload },
-			onStreamMessage,
-			onStreamDone,
-			onStreamError,
-		);
+		// Use WebSocket streaming if enabled
+		if (useWebSocketStreaming.value) {
+			try {
+				const response = await regenerateMessageWsApi(rootStore.restApiContext, {
+					sessionId,
+					retryId,
+					payload,
+				});
+
+				// Update streaming state with server-provided message IDs
+				if (streaming.value) {
+					streaming.value.messageId = response.responseMessageId;
+				}
+
+				// Note: Actual streaming content comes via WebSocket push events
+			} catch (error) {
+				await onStreamError(error);
+			}
+		} else {
+			// Fall back to HTTP streaming
+			await promisifyStreamingApi(regenerateMessageApi)(
+				rootStore.restApiContext,
+				{ sessionId, retryId, payload },
+				onStreamMessage,
+				onStreamDone,
+				onStreamError,
+			);
+		}
 	}
 
 	async function stopStreamingMessage(sessionId: ChatSessionId) {
@@ -1012,10 +1091,37 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			streaming.value = undefined;
 
 			// Show error toast
-			toast.showError(new Error(error), i18n.baseText('chatHub.error.streamError'));
+			toast.showError(new Error(error), i18n.baseText('chatHub.error.unknown'));
 
 			// Fetch updated conversation title
 			void fetchConversationTitle(currentSessionId);
+		}
+	}
+
+	/**
+	 * Reconnect to an active stream after WebSocket reconnection
+	 */
+	async function reconnectToStream(sessionId: ChatSessionId, lastSequenceNumber: number) {
+		try {
+			const response = await reconnectToSessionApi(
+				rootStore.restApiContext,
+				sessionId,
+				lastSequenceNumber,
+			);
+
+			// Replay any pending chunks
+			if (response.pendingChunks && response.pendingChunks.length > 0) {
+				for (const chunk of response.pendingChunks) {
+					if (response.currentMessageId) {
+						appendMessage(sessionId, response.currentMessageId, chunk.content);
+					}
+				}
+			}
+
+			return response;
+		} catch (error) {
+			// Reconnection failed, but don't throw - the stream might have completed
+			return null;
 		}
 	}
 
@@ -1084,5 +1190,11 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		handleWebSocketStreamChunk,
 		handleWebSocketStreamEnd,
 		handleWebSocketStreamError,
+
+		/**
+		 * WebSocket streaming mode
+		 */
+		useWebSocketStreaming,
+		reconnectToStream,
 	};
 });
