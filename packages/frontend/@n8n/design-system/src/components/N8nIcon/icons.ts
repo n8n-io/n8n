@@ -143,6 +143,7 @@ import IconLucideInfo from '~icons/lucide/info';
 import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
 import IconLucideLayers from '~icons/lucide/layers';
+import IconLucideLayoutTemplate from '~icons/lucide/layout-template';
 import IconLucideLightbulb from '~icons/lucide/lightbulb';
 import IconLucideLink from '~icons/lucide/link';
 import IconLucideList from '~icons/lucide/list';
@@ -219,6 +220,7 @@ import IconLucideTriangleAlert from '~icons/lucide/triangle-alert';
 import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUnlink from '~icons/lucide/unlink';
+import IconLucideUpload from '~icons/lucide/upload';
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
 import IconLucideUserLock from '~icons/lucide/user-lock';
@@ -598,6 +600,7 @@ export const updatedIconSet = {
 	'key-round': IconLucideKeyRound,
 	languages: IconLucideLanguages,
 	layers: IconLucideLayers,
+	'layout-template': IconLucideLayoutTemplate,
 	lightbulb: IconLucideLightbulb,
 	link: IconLucideLink,
 	list: IconLucideList,
@@ -673,6 +676,7 @@ export const updatedIconSet = {
 	'toggle-right': IconLucideToggleRight,
 	'undo-2': IconLucideUndo2,
 	unlink: IconLucideUnlink,
+	upload: IconLucideUpload,
 	user: IconLucideUser,
 	'user-check': IconLucideUserCheck,
 	'user-lock': IconLucideUserLock,
