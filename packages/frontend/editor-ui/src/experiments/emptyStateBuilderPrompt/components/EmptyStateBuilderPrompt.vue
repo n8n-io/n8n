@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import { N8nButton, N8nPromptInput } from '@n8n/design-system';
+import { N8nButton, N8nPromptInput, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { WORKFLOW_SUGGESTIONS } from '../constants';
 import { VIEWS } from '@/app/constants/navigation';
@@ -131,15 +131,21 @@ function handleFileImport() {
 				<span :class="$style.startWithText">{{
 					i18n.baseText('emptyStateBuilderPrompt.orStartWith')
 				}}</span>
-				<N8nButton type="secondary" size="small" icon="play" @click="onFromScratch">
-					{{ i18n.baseText('emptyStateBuilderPrompt.fromScratch') }}
-				</N8nButton>
-				<N8nButton type="secondary" size="small" icon="layout-template" @click="onTemplate">
-					{{ i18n.baseText('emptyStateBuilderPrompt.template') }}
-				</N8nButton>
-				<N8nButton type="secondary" size="small" icon="upload" @click="onImportFromFile">
-					{{ i18n.baseText('emptyStateBuilderPrompt.importFromFile') }}
-				</N8nButton>
+				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.fromScratchTooltip')">
+					<N8nButton type="secondary" size="small" icon="play" @click="onFromScratch">
+						{{ i18n.baseText('emptyStateBuilderPrompt.fromScratch') }}
+					</N8nButton>
+				</N8nTooltip>
+				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.templateTooltip')">
+					<N8nButton type="secondary" size="small" icon="layout-template" @click="onTemplate">
+						{{ i18n.baseText('emptyStateBuilderPrompt.template') }}
+					</N8nButton>
+				</N8nTooltip>
+				<N8nTooltip :content="i18n.baseText('emptyStateBuilderPrompt.importFromFileTooltip')">
+					<N8nButton type="secondary" size="small" icon="upload" @click="onImportFromFile">
+						{{ i18n.baseText('emptyStateBuilderPrompt.importFromFile') }}
+					</N8nButton>
+				</N8nTooltip>
 			</div>
 		</div>
 	</div>
