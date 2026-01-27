@@ -9,6 +9,7 @@ import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.err
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 
 import type { ExecutionRequest } from '../../../types';
@@ -52,9 +53,10 @@ export = {
 				});
 			}
 
-			await Container.get(ExecutionRepository).hardDelete({
+			await Container.get(ExecutionPersistence).hardDelete({
 				workflowId: execution.workflowId,
 				executionId: execution.id,
+				storedAt: execution.storedAt,
 			});
 
 			execution.id = id;

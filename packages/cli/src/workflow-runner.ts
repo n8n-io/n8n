@@ -7,7 +7,7 @@ import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, StorageConfig, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -63,6 +63,7 @@ export class WorkflowRunner {
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly storageConfig: StorageConfig,
 	) {}
 
 	/** The process did error */
@@ -120,6 +121,7 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 			status: 'error',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		// Remove from active execution with empty data. That will
@@ -475,6 +477,7 @@ export class WorkflowRunner {
 					status: fullExecutionData.status,
 					data: fullExecutionData.data,
 					jobId: job.id.toString(),
+					storedAt: fullExecutionData.storedAt,
 				};
 
 				this.activeExecutions.finalizeExecution(executionId, runData);
