@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -47,6 +48,9 @@ export class WorkflowIndexService {
 				workflowId,
 				/*publishedVersionId=*/ null,
 			);
+		});
+		this.eventService.on('workflow-activated', async ({ workflow }) => {
+			await this.updateIndexForPublishedVersion(workflow);
 		});
 	}
 
