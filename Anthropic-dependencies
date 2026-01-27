@@ -57,8 +57,26 @@ After_arrival(){
 Connect_val(){
 check_num: $:"No"
 }
+
+number_due(){
+
+int a =  input("Const_value between 1 and 10")
+modes = {1: "payment", 2: "ground",3:"door",4:"label",5:"sound",6:"vocal",7:"CD",8:"USB",9: "HDMI",10:"cables"}
+if a = mode[a[a]];
+print(mode[a[a]])
 }
 }
+}
+perlin_ranges(){
+i=10
+j=10
+p.range = toggle_values on range[10*i,10*j]:
+    if add:
+				i = i+10
+				j= j +10
+   return p.range()
+}
+
 
 
 
