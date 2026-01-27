@@ -18,7 +18,7 @@ import {
 	getResponseCode,
 	getResponseData,
 	handleFormData,
-	isIpWhitelisted,
+	isIpAllowed,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from '../utils';
@@ -217,65 +217,84 @@ describe('Webhook Utils', () => {
 		});
 	});
 
-	describe('isIpWhitelisted', () => {
-		it('should return true if whitelist is undefined', () => {
-			expect(isIpWhitelisted(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
+	describe('isIpAllowed', () => {
+		it('should return true if allowlist is undefined', () => {
+			expect(isIpAllowed(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
 		});
 
-		it('should return true if whitelist is an empty string', () => {
-			expect(isIpWhitelisted('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		it('should return true if allowlist is an empty string', () => {
+			expect(isIpAllowed('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
 		});
 
-		it('should return true if ip is in the whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.1', ['192.168.1.2'], '192.168.1.1')).toBe(true);
+		it('should return true if ip is in the allowlist', () => {
+			expect(isIpAllowed('192.168.1.1', ['192.168.1.2'], '192.168.1.1')).toBe(true);
 		});
 
-		it('should return true if any ip in ips is in the whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.1', ['192.168.1.1', '192.168.1.2'])).toBe(true);
+		it('should return true if any ip in ips is in the allowlist', () => {
+			expect(isIpAllowed('192.168.1.1', ['192.168.1.1', '192.168.1.2'])).toBe(true);
 		});
 
-		it('should return false if ip and ips are not in the whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.3', ['192.168.1.1', '192.168.1.2'], '192.168.1.4')).toBe(
-				false,
-			);
+		it('should return false if ip and ips are not in the allowlist', () => {
+			expect(isIpAllowed('192.168.1.3', ['192.168.1.1', '192.168.1.2'], '192.168.1.4')).toBe(false);
 		});
 
-		it('should return true if any ip in ips matches any address in the whitelist array', () => {
-			expect(isIpWhitelisted(['192.168.1.1', '192.168.1.2'], ['192.168.1.2', '192.168.1.3'])).toBe(
+		it('should return true if any ip in ips matches any address in the allowlist array', () => {
+			expect(isIpAllowed(['192.168.1.1', '192.168.1.2'], ['192.168.1.2', '192.168.1.3'])).toBe(
 				true,
 			);
 		});
 
-		it('should return true if ip matches any address in the whitelist array', () => {
-			expect(isIpWhitelisted(['192.168.1.1', '192.168.1.2'], ['192.168.1.3'], '192.168.1.2')).toBe(
+		it('should return true if ip matches any address in the allowlist array', () => {
+			expect(isIpAllowed(['192.168.1.1', '192.168.1.2'], ['192.168.1.3'], '192.168.1.2')).toBe(
 				true,
 			);
 		});
 
-		it('should return false if ip and ips do not match any address in the whitelist array', () => {
+		it('should return false if ip and ips do not match any address in the allowlist array', () => {
 			expect(
-				isIpWhitelisted(
-					['192.168.1.4', '192.168.1.5'],
-					['192.168.1.1', '192.168.1.2'],
-					'192.168.1.3',
-				),
+				isIpAllowed(['192.168.1.4', '192.168.1.5'], ['192.168.1.1', '192.168.1.2'], '192.168.1.3'),
 			).toBe(false);
 		});
 
-		it('CAT-1846: should use CIDR matching to determine if ip is in the whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.3', [], '192.168.1.30')).toBe(false);
+		it('CAT-1846: should use CIDR matching to determine if ip is in the allowlist', () => {
+			expect(isIpAllowed('192.168.1.3', [], '192.168.1.30')).toBe(false);
 		});
 
-		it('should handle comma-separated whitelist string', () => {
-			expect(isIpWhitelisted('192.168.1.1, 192.168.1.2', ['192.168.1.3'], '192.168.1.2')).toBe(
-				true,
-			);
+		it('should handle comma-separated allowlist string', () => {
+			expect(isIpAllowed('192.168.1.1, 192.168.1.2', ['192.168.1.3'], '192.168.1.2')).toBe(true);
 		});
 
-		it('should trim whitespace in comma-separated whitelist string', () => {
-			expect(isIpWhitelisted(' 192.168.1.1 , 192.168.1.2 ', ['192.168.1.3'], '192.168.1.2')).toBe(
-				true,
-			);
+		it('should trim whitespace in comma-separated allowlist string', () => {
+			expect(isIpAllowed(' 192.168.1.1 , 192.168.1.2 ', ['192.168.1.3'], '192.168.1.2')).toBe(true);
+		});
+
+		it('should support IPv4 CIDR notation', () => {
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.1.255')).toBe(true);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
+		});
+
+		it('should support IPv6 CIDR notation', () => {
+			expect(isIpAllowed('2001:db8::/32', [], '2001:db8::1')).toBe(true);
+			expect(isIpAllowed('2001:db8::/32', [], '2001:db9::1')).toBe(false);
+		});
+
+		it('should support mixed single IPs and CIDR ranges', () => {
+			expect(isIpAllowed('127.0.0.1, 192.168.0.0/16', [], '192.168.100.50')).toBe(true);
+			expect(isIpAllowed('127.0.0.1, 192.168.0.0/16', [], '10.0.0.1')).toBe(false);
+			expect(isIpAllowed('127.0.0.1, 192.168.0.0/16', [], '127.0.0.1')).toBe(true);
+		});
+
+		it('should handle invalid CIDR notation gracefully', () => {
+			expect(isIpAllowed('192.168.1.0/abc', [], '192.168.1.1')).toBe(false);
+			expect(isIpAllowed('192.168.1.0/99', [], '192.168.1.1')).toBe(false);
+			expect(isIpAllowed('invalid/24', [], '192.168.1.1')).toBe(false);
+		});
+
+		it('should handle /32 and /128 CIDR (single IP)', () => {
+			expect(isIpAllowed('192.168.1.1/32', [], '192.168.1.1')).toBe(true);
+			expect(isIpAllowed('192.168.1.1/32', [], '192.168.1.2')).toBe(false);
+			expect(isIpAllowed('::1/128', [], '::1')).toBe(true);
 		});
 	});
 

@@ -26,13 +26,13 @@ RUN apk add --no-cache busybox-binsh && \
         libc6-compat && \
     # Install full-icu
     npm install -g full-icu@1.5.0 && \
-    # Update npm bundled deps: diff@8.0.3, tar@7.5.3
+    # Update npm bundled deps: diff@8.0.3, tar@7.5.4
     # TODO: Remove when fixed upstream in npm
     cd $(npm root -g)/npm/node_modules && \
     rm -rf diff && \
     wget -qO- https://registry.npmjs.org/diff/-/diff-8.0.3.tgz | tar -xz && mv package diff && \
     rm -rf tar && \
-    wget -qO- https://registry.npmjs.org/tar/-/tar-7.5.3.tgz | tar -xz && mv package tar && \
+    wget -qO- https://registry.npmjs.org/tar/-/tar-7.5.4.tgz | tar -xz && mv package tar && \
     # Cleanup
     rm -rf /tmp/* /root/.npm /root/.cache/node /opt/yarn* && \
     apk del apk-tools
