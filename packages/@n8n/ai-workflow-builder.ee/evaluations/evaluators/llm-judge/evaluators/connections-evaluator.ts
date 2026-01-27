@@ -77,6 +77,91 @@ Valid connection directions for RAG:
   Memory nodes to AI Agent via ai_memory
 </rag_pipeline_architecture>
 
+<loop_and_multi_output_patterns>
+## Split In Batches (Loop Node)
+Split In Batches has TWO outputs with specific semantics:
+- Output 0 ("done"): Fires ONCE after ALL batches complete. Connect aggregation/final processing here.
+- Output 1 ("loop"): Fires for EACH batch. Connect processing nodes here.
+
+Correct loop pattern:
+1. Split In Batches output 1 → Processing Node(s) → Split In Batches INPUT (index 0)
+2. Split In Batches output 0 → Next workflow step
+
+CRITICAL: The loop-back connection goes to the node's INPUT (index 0), creating a cycle. This is CORRECT behavior.
+Do NOT flag "Split In Batches connects to itself" or "circular connection" as an error - this IS the loop pattern.
+
+Example correct connections JSON:
+  "Split In Batches": {
+    "main": [
+      [{ "node": "Aggregate", "type": "main", "index": 0 }],     // Output 0 (done) → final step
+      [{ "node": "HTTP Request", "type": "main", "index": 0 }]   // Output 1 (loop) → processing
+    ]
+  },
+  "HTTP Request": {
+    "main": [
+      [{ "node": "Split In Batches", "type": "main", "index": 0 }]  // Loop back to INPUT - CORRECT
+    ]
+  }
+
+## Switch and IF Nodes (Multi-Output)
+Switch and IF nodes route data to different outputs:
+- IF: Output 0 = true branch, Output 1 = false branch
+- Switch: Outputs 0 to N-1 = case branches
+
+SHARED DESTINATION PATTERN:
+Multiple outputs can ALL connect to the same downstream node. This is valid when different branches need the same final processing:
+  Switch output 0 → Database
+  Switch output 1 → Database
+  Switch output 2 → Database
+
+Do NOT flag multiple connections to the same target as redundant - it's the correct pattern for routing different cases to a shared destination without using Merge (which would wait forever since only one branch executes per item).
+</loop_and_multi_output_patterns>
+
+<chat_trigger_patterns>
+## Chat Trigger and Chat Interface Nodes
+Chat Trigger (@n8n/n8n-nodes-langchain.chatTrigger) is a BIDIRECTIONAL node that handles both input AND output automatically.
+
+CRITICAL: Chat Trigger does NOT need a return connection from downstream nodes.
+- Chat Trigger receives user messages and starts the workflow
+- AI Agent or other nodes process the message
+- The response is automatically sent back through Chat Trigger's built-in response mechanism
+- There is NO "main" connection back to Chat Trigger - this is correct behavior
+
+Valid chat workflow pattern:
+  Chat Trigger → AI Agent (with Chat Model via ai_languageModel)
+
+The AI Agent's output is automatically routed back to the chat interface. Do NOT flag "AI Agent has no connection back to Chat Trigger" as an error.
+
+## Node Positioning
+Node positions (x, y coordinates) in the workflow JSON are for VISUAL LAYOUT ONLY.
+- Position does NOT affect execution order
+- Execution order is determined by connections, not positions
+- A trigger at position [250, 450] executes before a node at [250, 300] if connected that way
+- Do NOT flag node positioning as a connection or execution flow issue
+</chat_trigger_patterns>
+
+<document_loader_patterns>
+## Document Loader Connection Rules
+Document Loader nodes (@n8n/n8n-nodes-langchain.documentLoader*) are CAPABILITY-ONLY nodes.
+
+CRITICAL rules for Document Loaders:
+1. Document Loaders have NO main input connections - this is correct by design
+2. Document Loaders provide ai_document capability to Vector Store or other consumers
+3. Document Loaders read data from workflow context (binary data, URLs) based on their configuration
+4. The data source is configured in the Document Loader's parameters, NOT passed via main connection
+
+Valid pattern:
+  Form Trigger → Vector Store (main connection for triggering insert)
+  Document Loader → Vector Store (ai_document capability)
+
+The Form Trigger does NOT connect to Document Loader. The Document Loader reads the binary data from workflow context automatically.
+
+Do NOT flag these as errors:
+- "Document Loader has no main input connection" - correct, it uses ai_document output only
+- "Missing connection from Trigger to Document Loader" - incorrect expectation
+- "Document Loader is disconnected" - check for ai_document connection instead
+</document_loader_patterns>
+
 <validation_process>
 Work through these steps in your analysis:
 
@@ -94,13 +179,19 @@ Work through these steps in your analysis:
 <scoring>
 Start with 100 points and deduct for violations:
 
-Critical violations (40-50 points): Breaks in main execution path where trigger or data source has no downstream connection. Missing mandatory main inputs for data processing nodes. Cycles that would deadlock execution.
+Critical violations (40-50 points): Breaks in main execution path where trigger or data source has no downstream connection. Missing mandatory main inputs for data processing nodes.
 
 Major violations (15-25 points): Wrong connection type used. Hybrid nodes missing required connections for their configured mode. Data dependencies out of order.
 
-Minor violations (5-10 points): Redundant connections. Branches that should merge but remain isolated. Unused conditional branches without clear termination.
+Minor violations (5-10 points): Branches that should merge but remain isolated. Unused conditional branches without clear termination.
 
-Capability-only nodes without main connections is correct design. Only flag issues for nodes that actually process data on the main path.
+IMPORTANT - These are NOT violations:
+- Capability-only nodes without main connections (correct design)
+- Split In Batches loop-back connections (correct loop pattern)
+- Multiple Switch/IF outputs connecting to the same destination (shared destination pattern)
+- Chat Trigger with no return connection from AI Agent (auto-response is built-in)
+- Document Loader with no main input (reads from workflow context, outputs via ai_document)
+- Node positions not matching visual execution flow (positions are layout only)
 
 Convert final score to 0-1 scale by dividing by 100.
 </scoring>`;

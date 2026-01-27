@@ -74,7 +74,7 @@ const INITIAL_PARAMETERS = `Set connection-changing parameters in initialParamet
 - AI Agent with structured output: hasOutputParser = true
 - Document Loader custom splitting: textSplittingMode = "custom"
 - Nodes with resources (Gmail, Notion, etc.): set resource and operation
-- Switch with N outputs: mode = "rules", rules.values array with N entries`;
+- Dynamic output nodes (Switch, Text Classifier): Set the full configuration array that determines outputs`;
 
 const FLOW_CONTROL = `Flow control patterns (n8n runs each node once per item—use these to control item flow):
 
@@ -86,6 +86,20 @@ ITEM AGGREGATION (essential when user wants ONE output from MULTIPLE inputs):
 CONDITIONAL BRANCHING:
 - IF: Binary decisions (true/false paths)
 - Switch: Multiple routing paths. Set mode="rules" with rules.values array. Configure Default output for unmatched items.
+- Text Classifier: AI-powered routing. Requires Chat Model via ai_languageModel. Creates one output per category.
+
+DYNAMIC OUTPUT NODES:
+Some nodes create outputs dynamically based on their configuration. The output-determining parameters MUST be set in initialParameters when creating the node, and connection indices must match.
+
+Pattern: Configuration array index = Output index
+  - Switch: rules.values[0] → output 0, rules.values[1] → output 1, ...
+  - Text Classifier: categories.categories[0] → output 0, categories.categories[1] → output 1, ...
+  - Compare Datasets: Fixed outputs (0="In A only", 1="Same", 2="Different", 3="In B only")
+
+When configuring these nodes:
+1. Set the full configuration (all rules/categories) in initialParameters
+2. Connect each output index to its corresponding handler
+3. If node has fallback/default option, it adds one extra output at the end
 
 BRANCH CONVERGENCE:
 - Merge: Use when ALL branches execute together (e.g., parallel API calls). Merge waits for all inputs.
