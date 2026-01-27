@@ -8,6 +8,7 @@
 import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
 
 import { prompt } from '../builder';
+import { webhook } from '../shared/node-guidance';
 
 const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
 
@@ -167,6 +168,8 @@ For numeric ranges (e.g., $100-$1000):
 
 Always set renameOutput: true and provide descriptive outputKey labels.`;
 
+const WEBHOOK_CONFIGURATION = webhook.configuration;
+
 const RESOURCE_LOCATOR_CONFIGURATION = `RESOURCE LOCATOR PARAMETERS:
 Some node parameters use "resource locator" type. This allows user to select from dynamic lists (calendars, documents, boards, channels, etc.).
 These parameters have a specific structure in the node configuration:
@@ -279,6 +282,7 @@ export function buildConfiguratorPrompt(): string {
 		.section('data_table_configuration', DATA_TABLE_CONFIGURATION)
 		.section('default_values_guide', DEFAULT_VALUES_GUIDE)
 		.section('switch_node_configuration', SWITCH_NODE_CONFIGURATION)
+		.section('webhook_configuration', WEBHOOK_CONFIGURATION)
 		.section('node_configuration_examples', NODE_CONFIGURATION_EXAMPLES)
 		.section('credential_security', CREDENTIAL_SECURITY)
 		.section('response_format', RESPONSE_FORMAT)

@@ -5,4 +5,5 @@ export * from './from-ai';
 export * from './nodes';
 export * from './tools';
 export * from './trigger';
+export * from './node-usage';
 export * from './workflow-similarity';

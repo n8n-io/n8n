@@ -8,7 +8,7 @@
 import { DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS } from '@/utils/data-table-helpers';
 
 import { prompt } from '../builder';
-import { structuredOutputParser } from '../shared/node-guidance';
+import { structuredOutputParser, webhook } from '../shared/node-guidance';
 
 const dataTableColumnOperationsList = DATA_TABLE_ROW_COLUMN_MAPPING_OPERATIONS.join(', ');
 
@@ -104,6 +104,8 @@ EXAMPLES:
 IMPORTANT: Choose the operation that matches user intent. If unclear, pick the most likely operation based on context`;
 
 const STRUCTURED_OUTPUT_PARSER = structuredOutputParser.configuration;
+
+const WEBHOOK_GUIDANCE = webhook.connections;
 
 const AI_CONNECTIONS = `n8n connections flow from SOURCE (output) to TARGET (input).
 
@@ -522,6 +524,7 @@ export function buildBuilderPrompt(): string {
 		.section('initial_parameters_examples', INITIAL_PARAMETERS_EXAMPLES)
 		.section('resource_operation_pattern', RESOURCE_OPERATION_PATTERN)
 		.section('structured_output_parser_guidance', STRUCTURED_OUTPUT_PARSER)
+		.section('webhook_response_mode', WEBHOOK_GUIDANCE)
 		.section('node_connections_understanding', AI_CONNECTIONS)
 		.section('ai_connection_patterns', AI_CONNECTION_PATTERNS)
 		.section('branching', BRANCHING)
