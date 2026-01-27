@@ -5,7 +5,7 @@
  * Use the factory functions (workflow, node, trigger, etc.) to build workflows.
  *
  * The SDK handles all internal complexity (connections, node IDs, positioning)
- * automatically - just chain nodes with .then() and the SDK does the rest.
+ * automatically - just chain nodes with .to() and the SDK does the rest.
  */
 
 // =============================================================================
@@ -258,8 +258,8 @@ export interface StickyNoteConfig {
  * Use for multi-input nodes like Merge.
  *
  * @example
- * nodeA.then(mergeNode.input(0))  // Connect nodeA to merge input 0
- * nodeB.then(mergeNode.input(1))  // Connect nodeB to merge input 1
+ * nodeA.to(mergeNode.input(0))  // Connect nodeA to merge input 0
+ * nodeB.to(mergeNode.input(1))  // Connect nodeB to merge input 1
  */
 export interface InputTarget {
 	readonly node: NodeInstance;
@@ -272,7 +272,7 @@ export interface InputTarget {
  * Use for multi-output nodes (IF, Switch, text classifiers).
  *
  * @example
- * classifier.output(1).then(categoryB)  // Connect from output 1
+ * classifier.output(1).to(categoryB)  // Connect from output 1
  */
 export interface OutputSelector<
 	TType extends string = string,
@@ -283,12 +283,14 @@ export interface OutputSelector<
 	readonly outputIndex: number;
 
 	/** Connect from this output to a target node */
+	to<T extends NodeInstance>(target: T | InputTarget): NodeChain;
+	/** Alias for to() */
 	then<T extends NodeInstance>(target: T | InputTarget): NodeChain;
 }
 
 /**
  * A configured node instance.
- * Chain nodes together using .then() to connect them.
+ * Chain nodes together using .to() to connect them.
  */
 export interface NodeInstance<
 	TType extends string = string,
@@ -306,12 +308,19 @@ export interface NodeInstance<
 
 	/**
 	 * Connect this node's output 0 to another node.
-	 * Use .output(n).then() for other outputs.
+	 * Use .output(n).to() for other outputs.
+	 * Can pass an array for parallel targets: .to([nodeA, nodeB])
 	 *
 	 * @example
-	 * trigger.then(nodeA).then(nodeB)  // Linear chain
-	 * nodeA.then(mergeNode.input(0))   // Connect to specific input
+	 * trigger.to(nodeA).to(nodeB)  // Linear chain
+	 * nodeA.to(mergeNode.input(0))   // Connect to specific input
+	 * nodeA.to([nodeB, nodeC])  // Fan-out to multiple parallel targets
 	 */
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
+
+	/** Alias for to() */
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T | InputTarget,
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
@@ -321,8 +330,8 @@ export interface NodeInstance<
 	 * Use for multi-input nodes like Merge.
 	 *
 	 * @example
-	 * nodeA.then(mergeNode.input(0))
-	 * nodeB.then(mergeNode.input(1))
+	 * nodeA.to(mergeNode.input(0))
+	 * nodeB.to(mergeNode.input(1))
 	 */
 	input(index: number): InputTarget;
 
@@ -331,8 +340,8 @@ export interface NodeInstance<
 	 * Use for multi-output nodes (IF, Switch, classifiers).
 	 *
 	 * @example
-	 * ifNode.output(0).then(trueHandler)   // true branch
-	 * ifNode.output(1).then(falseHandler)  // false branch
+	 * ifNode.output(0).to(trueHandler)   // true branch
+	 * ifNode.output(1).to(falseHandler)  // false branch
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
@@ -406,7 +415,7 @@ export interface SwitchNodeInstance extends NodeInstance<'n8n-nodes-base.switch'
 
 /**
  * A chain of connected nodes.
- * Created when you call .then() on a node.
+ * Created when you call .to() on a node.
  * Can be added to a workflow with .add().
  */
 export interface NodeChain<
@@ -420,8 +429,14 @@ export interface NodeChain<
 
 	/**
 	 * Continue the chain by connecting to another node.
-	 * Use .output(n).then() to connect from a specific output.
+	 * Use .output(n).to() to connect from a specific output.
+	 * Can pass an array for parallel targets: .to([nodeA, nodeB])
 	 */
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+	): NodeChain<THead, T>;
+
+	/** Alias for to() */
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T | InputTarget,
 	): NodeChain<THead, T>;
@@ -437,7 +452,7 @@ export interface NodeChain<
 export type MergeMode = 'append' | 'combine' | 'multiplex' | 'chooseBranch';
 
 /**
- * Configuration for merge()
+ * Configuration for merge() - internal use only
  */
 export interface MergeConfig {
 	/** Merge mode */
@@ -452,7 +467,7 @@ export interface MergeConfig {
 
 /**
  * Merge composite - parallel branches merging into one.
- * Created internally. Use .input(n) syntax: node1.then(merge.input(0)), node2.then(merge.input(1))
+ * Created internally. Use .input(n) syntax: node1.to(merge.input(0)), node2.to(merge.input(1))
  */
 export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 	readonly mergeNode: NodeInstance<'n8n-nodes-base.merge', string, unknown>;
@@ -517,8 +532,8 @@ export interface SplitInBatchesConfig extends NodeConfig {
  *
  * @example
  * splitInBatches(sibNode)
- *   .onDone(finalizeNode)                    // When all batches done
- *   .onEachBatch(processNode.then(sibNode))  // For each batch (loops back)
+ *   .onDone(finalizeNode)                  // When all batches done
+ *   .onEachBatch(processNode.to(sibNode))  // For each batch (loops back)
  */
 export interface SplitInBatchesBuilder {
 	/** The split in batches node instance */
@@ -538,7 +553,7 @@ export interface SplitInBatchesBuilder {
  *
  * @example
  * workflow('my-id', 'My Workflow')
- *   .add(trigger({ ... }).then(node({ ... })))
+ *   .add(trigger({ ... }).to(node({ ... })))
  *   .settings({ timezone: 'UTC' });
  */
 export interface WorkflowBuilder {
@@ -561,26 +576,33 @@ export interface WorkflowBuilder {
 	/**
 	 * Chain a node after the last added node.
 	 */
-	then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
+	to<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
 
 	/**
 	 * Chain a merge composite (parallel branches merging)
 	 */
-	then<M extends MergeComposite>(merge: M): WorkflowBuilder;
+	to<M extends MergeComposite>(merge: M): WorkflowBuilder;
 
 	/**
 	 * Chain an IF branch composite (conditional branching)
 	 */
-	then(ifElse: IfElseComposite): WorkflowBuilder;
+	to(ifElse: IfElseComposite): WorkflowBuilder;
 
 	/**
 	 * Chain a switch case composite (multi-way routing)
 	 */
-	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
+	to(switchCase: SwitchCaseComposite): WorkflowBuilder;
 
 	/**
 	 * Chain a split in batches builder (loop pattern)
 	 */
+	to(splitInBatches: SplitInBatchesBuilder): WorkflowBuilder;
+
+	/** Alias for to() - Chain a node after the last added node */
+	then<N extends NodeInstance<string, string, unknown>>(node: N): WorkflowBuilder;
+	then<M extends MergeComposite>(merge: M): WorkflowBuilder;
+	then(ifElse: IfElseComposite): WorkflowBuilder;
+	then(switchCase: SwitchCaseComposite): WorkflowBuilder;
 	then(splitInBatches: SplitInBatchesBuilder): WorkflowBuilder;
 
 	/**
@@ -631,7 +653,7 @@ export interface TriggerInput<
  * @example
  * workflow('my-workflow', 'My Workflow', { timezone: 'UTC' })
  *   .add(trigger({ ... }))
- *   .then(node({ ... }));
+ *   .to(node({ ... }));
  */
 export type WorkflowFn = (id: string, name: string, settings?: WorkflowSettings) => WorkflowBuilder;
 
@@ -708,32 +730,18 @@ export type PlaceholderFn = (hint: string) => PlaceholderValue;
  */
 export type NewCredentialFn = (name: string) => NewCredentialValue;
 
-/**
- * merge(branches, config?) - Creates a merge node with parallel input branches
- *
- * Use .input(n) syntax to connect branches to specific merge inputs:
- *
- * @example
- * const mergeNode = merge([fetchUsers, fetchOrders], { mode: 'combine' });
- *
- * // Connect branches to merge inputs using .input(n)
- * workflow('id', 'Parallel APIs')
- *   .add(trigger({ ... })
- *     .then(fetchUsers)
- *     .then(mergeNode.input(0)))
- *   .add(trigger({ ... })
- *     .then(fetchOrders)
- *     .then(mergeNode.input(1)))
- *   .add(mergeNode.then(processResults));
- */
-export type MergeFn = <TBranches extends NodeInstance<string, string>[]>(
-	branches: TBranches,
-	config?: MergeConfig,
-) => MergeComposite<TBranches>;
+// Note: merge() function is internal-only. Use node() to create a Merge node
+// and .input(n) syntax to connect branches:
+//
+// const mergeNode = node({ type: 'n8n-nodes-base.merge', version: 3, config: { ... } });
+// workflow('id', 'name')
+//   .add(branch1.to(mergeNode.input(0)))
+//   .add(branch2.to(mergeNode.input(1)))
+//   .add(mergeNode.to(processResults));
 
 /**
  * FanOutTargets marker - wraps multiple target nodes for parallel connection.
- * Created by fanOut() function.
+ * Created by fanOut() function or by passing an array to .to().
  */
 export interface FanOutTargets {
 	readonly _isFanOut: true;
@@ -743,10 +751,12 @@ export interface FanOutTargets {
 /**
  * fanOut(...targets) - Connect one output to multiple parallel targets
  *
+ * NOTE: Prefer using array syntax with .to() instead: .to([nodeA, nodeB, nodeC])
+ *
  * Use when a single output should fan out to multiple nodes that run in parallel.
  * This is the opposite of Merge (which combines multiple inputs).
  *
- * @example Fan-out to multiple APIs
+ * @example Fan-out to multiple APIs (using array syntax - preferred)
  * const fetchData = node({ type: 'n8n-nodes-base.httpRequest', ... });
  * const sendToSlack = node({ type: 'n8n-nodes-base.slack', ... });
  * const sendToEmail = node({ type: 'n8n-nodes-base.gmail', ... });
@@ -754,18 +764,18 @@ export interface FanOutTargets {
  *
  * workflow('id', 'name')
  *   .add(trigger({ ... }))
- *   .then(fetchData)
- *   .then(fanOut(sendToSlack, sendToEmail, saveToDb));  // All 3 run in parallel
+ *   .to(fetchData)
+ *   .to([sendToSlack, sendToEmail, saveToDb]);  // All 3 run in parallel
  *
- * @example Fan-out with IF branches
+ * @example Fan-out with IF branches (using array syntax)
  * ifNode
- *   .onTrue(fanOut(notifyAdmin, logToDb))  // Both run when true
+ *   .onTrue([notifyAdmin, logToDb])  // Both run when true
  *   .onFalse(handleError);
  *
  * @example Fan-out with splitInBatches
  * splitInBatches(sibNode)
- *   .onDone(fanOut(summarize, notify))  // Both run when done
- *   .onEachBatch(process.then(nextBatch(sibNode)));
+ *   .onDone([summarize, notify])  // Both run when done
+ *   .onEachBatch(process.to(nextBatch(sibNode)));
  */
 export type FanOutFn = (...targets: NodeInstance<string, string, unknown>[]) => FanOutTargets;
 
@@ -790,7 +800,7 @@ export type FanOutFn = (...targets: NodeInstance<string, string, unknown>[]) => 
  * // Fluent API: connect branches with .onTrue() and .onFalse()
  * workflow('id', 'Conditional')
  *   .add(trigger({ ... }))
- *   .then(checkValue.ifNode
+ *   .to(checkValue.ifNode
  *     .onTrue(handleSuccess)
  *     .onFalse(handleFailure));
  */
@@ -812,7 +822,7 @@ export type IfElseFn = (
  * // Fluent API: connect cases with .onCase(index, node)
  * workflow('id', 'Router')
  *   .add(trigger({ ... }))
- *   .then(routeByType.switchNode
+ *   .to(routeByType.switchNode
  *     .onCase(0, handleTypeA)
  *     .onCase(1, handleTypeB)
  *     .onCase(2, handleFallback));
@@ -838,11 +848,11 @@ export type SwitchCaseFn = (
  * // Fluent API with nextBatch() for explicit loop-back
  * workflow('id', 'Batch Process')
  *   .add(startTrigger)
- *   .then(fetchRecords)
- *   .then(
+ *   .to(fetchRecords)
+ *   .to(
  *     sibNode
- *       .onDone(finalizeNode)                              // When all batches done
- *       .onEachBatch(processNode.then(nextBatch(sibNode))) // Loop back with nextBatch()
+ *       .onDone(finalizeNode)                            // When all batches done
+ *       .onEachBatch(processNode.to(nextBatch(sibNode))) // Loop back with nextBatch()
  *   );
  */
 export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatchesBuilder;
@@ -855,7 +865,7 @@ export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatches
  * is an intentional loop-back to the split in batches node.
  *
  * @param sib - The split in batches builder or node instance to loop back to
- * @returns The SIB node instance for use with .then()
+ * @returns The SIB node instance for use with .to()
  *
  * @example
  * const sibNode = splitInBatches({ name: 'Loop', parameters: { batchSize: 10 } });
@@ -863,12 +873,12 @@ export type SplitInBatchesFn = (config?: SplitInBatchesConfig) => SplitInBatches
  * // Using nextBatch() for explicit loop-back (recommended)
  * sibNode
  *   .onDone(finalizeNode)
- *   .onEachBatch(processNode.then(nextBatch(sibNode)));
+ *   .onEachBatch(processNode.to(nextBatch(sibNode)));
  *
  * // Equivalent but less clear intent
  * sibNode
  *   .onDone(finalizeNode)
- *   .onEachBatch(processNode.then(sibNode.sibNode));
+ *   .onEachBatch(processNode.to(sibNode.sibNode));
  */
 export type NextBatchFn = (
 	sib: NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown> | SplitInBatchesBuilder,

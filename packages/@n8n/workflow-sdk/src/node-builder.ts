@@ -279,6 +279,16 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	}
 
 	/**
+	 * Alias for then() - connect this node to one or more target nodes.
+	 */
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | FanOutTargets | InputTarget,
+		outputIndex: number = 0,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
+		return this.then(target, outputIndex);
+	}
+
+	/**
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Use this to connect a node to a specific input of a multi-input node like Merge.
 	 */
@@ -512,6 +522,16 @@ class NodeChainImpl<
 	}
 
 	/**
+	 * Alias for then() - connect to target nodes.
+	 */
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | FanOutTargets | InputTarget,
+		outputIndex: number = 0,
+	): NodeChain<THead, T> {
+		return this.then(target, outputIndex);
+	}
+
+	/**
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Delegates to the tail node's input method.
 	 */
@@ -604,6 +624,15 @@ class OutputSelectorImpl<TType extends string, TVersion extends string, TOutput 
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
 		// Delegate to the node's then method with the specific outputIndex
 		return this.node.then(target, this.outputIndex);
+	}
+
+	/**
+	 * Alias for then() - connect from this output to a target node.
+	 */
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T> {
+		return this.then(target);
 	}
 }
 
@@ -976,6 +1005,13 @@ class StickyNoteInstance implements NodeInstance<'n8n-nodes-base.stickyNote', 'v
 	}
 
 	then<T extends NodeInstance<string, string, unknown>>(
+		_target: T | T[] | InputTarget,
+		_outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>, T> {
+		throw new Error('Sticky notes do not support connections');
+	}
+
+	to<T extends NodeInstance<string, string, unknown>>(
 		_target: T | T[] | InputTarget,
 		_outputIndex?: number,
 	): NodeChain<NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>, T> {

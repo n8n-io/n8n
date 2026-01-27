@@ -194,6 +194,13 @@ export interface OutputSelector<TType extends string, TVersion extends string, T
 	then<T extends NodeInstance<string, string, unknown>>(
 		target: T | T[] | InputTarget,
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
+
+	/**
+	 * Alias for then() - connect from this output to a target node.
+	 */
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
 }
 
 // =============================================================================
@@ -348,6 +355,14 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
 
 	/**
+	 * Alias for then() - connect this node to one or more target nodes.
+	 */
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+		outputIndex?: number,
+	): NodeChain<NodeInstance<TType, TVersion, TOutput>, T>;
+
+	/**
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Use this to connect a node to a specific input of a multi-input node like Merge.
 	 *
@@ -425,6 +440,16 @@ export interface NodeChain<
 	): NodeChain<THead, T>;
 
 	then<T>(target: SplitInBatchesBuilder<T>, outputIndex?: number): NodeChain<THead, TTail>;
+
+	/**
+	 * Alias for then() - connect to target nodes.
+	 */
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+		outputIndex?: number,
+	): NodeChain<THead, T>;
+
+	to<T>(target: SplitInBatchesBuilder<T>, outputIndex?: number): NodeChain<THead, TTail>;
 }
 
 /**

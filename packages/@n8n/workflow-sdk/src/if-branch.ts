@@ -63,6 +63,9 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 			then<T extends NodeInstance<string, string, unknown>>(target: T | T[] | InputTarget) {
 				return self.then(target, index);
 			},
+			to<T extends NodeInstance<string, string, unknown>>(target: T | T[] | InputTarget) {
+				return self.then(target, index);
+			},
 		};
 	}
 
@@ -106,12 +109,20 @@ class IfNodeInstance implements NodeInstance<'n8n-nodes-base.if', string, unknow
 			_outputType: lastTarget._outputType,
 			update: lastTarget.update.bind(lastTarget),
 			then: lastTarget.then.bind(lastTarget),
+			to: lastTarget.to.bind(lastTarget),
 			onError: function <H extends NodeInstance<string, string, unknown>>(handler: H) {
 				lastTarget.onError(handler);
 				return this;
 			},
 			getConnections: () => [...self._connections, ...lastTarget.getConnections()],
 		} as unknown as NodeChain<NodeInstance<'n8n-nodes-base.if', string, unknown>, T>;
+	}
+
+	to<T extends NodeInstance<string, string, unknown>>(
+		target: T | T[] | InputTarget,
+		outputIndex: number = 0,
+	): NodeChain<NodeInstance<'n8n-nodes-base.if', string, unknown>, T> {
+		return this.then(target, outputIndex);
 	}
 
 	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {

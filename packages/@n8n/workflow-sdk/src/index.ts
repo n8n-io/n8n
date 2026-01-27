@@ -62,7 +62,7 @@ export type {
 	StickyFn,
 	PlaceholderFn,
 	NewCredentialFn,
-	MergeFn,
+	// MergeFn removed - merge() is internal only, use node() + .input(n) syntax
 	IfElseFn,
 	IfElseConfig,
 	SwitchCaseFn,

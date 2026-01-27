@@ -62,6 +62,13 @@ class SplitInBatchesNodeInstance
 		throw new Error('SplitInBatches node connections are managed by SplitInBatchesBuilder');
 	}
 
+	to<T extends NodeInstance<string, string, unknown>>(
+		_target: T | T[] | InputTarget,
+		_outputIndex?: number,
+	): NodeChain<NodeInstance<'n8n-nodes-base.splitInBatches', string, unknown>, T> {
+		throw new Error('SplitInBatches node connections are managed by SplitInBatchesBuilder');
+	}
+
 	onError<T extends NodeInstance<string, string, unknown>>(_handler: T): this {
 		throw new Error('SplitInBatches node error handling is managed by SplitInBatchesBuilder');
 	}

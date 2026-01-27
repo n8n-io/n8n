@@ -157,7 +157,7 @@ describe('embed-sdk-api', () => {
 			expect(content).toContain('type WorkflowFn');
 			expect(content).toContain('type NodeFn');
 			expect(content).toContain('type TriggerFn');
-			expect(content).toContain('type MergeFn');
+			// MergeFn removed - merge() is internal only
 		});
 
 		it('should contain JSDoc comments', async () => {
