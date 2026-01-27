@@ -49,8 +49,8 @@ export class StorageConfig {
 	 *
 	 * Migration skips if...
 	 * - already migrated,
-	 * - `N8N_STORAGE_PATH` set (user wants custom new path),
-	 * - `N8N_BINARY_DATA_STORAGE_PATH` (user wants custom old path), or
+	 * - `N8N_STORAGE_PATH` is set (user wants custom new path),
+	 * - `N8N_BINARY_DATA_STORAGE_PATH` is set (user wants custom old path), or
 	 * - `~/.n8n/binaryData` does not exist (nothing to migrate)
 	 *
 	 * Migration throws if...
