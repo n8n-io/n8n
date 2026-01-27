@@ -1623,6 +1623,7 @@ export interface INodeProperties {
 	default: NodeParameterValueType;
 	description?: string;
 	hint?: string;
+	builderHint?: string;
 	disabledOptions?: IDisplayOptions;
 	displayOptions?: IDisplayOptions;
 	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
@@ -1743,6 +1744,7 @@ export interface INodePropertyCollection {
 	displayName: string;
 	name: string;
 	values: INodeProperties[];
+	builderHint?: string;
 }
 
 export interface INodePropertyValueExtractorBase {
