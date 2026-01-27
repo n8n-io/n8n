@@ -56,7 +56,7 @@ function createTemplateRequirements(): TestRequirements {
 	};
 }
 
-test.describe('Template credentials setup', () => {
+test.describe('Template credentials setup @db:reset', () => {
 	test.beforeEach(async ({ setupRequirements }) => {
 		await setupRequirements(createTemplateRequirements());
 	});
