@@ -1817,9 +1817,16 @@ export function generateDiscriminatorFile(
 	const comboValues = Object.entries(combo)
 		.filter(([_, v]) => v !== undefined)
 		.map(([_, v]) => toPascalCase(v!));
-	const configName = `${nodeName}${versionSuffix}${comboValues.join('')}Config`;
-	const outputTypeName = `${nodeName}${versionSuffix}${comboValues.join('')}Output`;
-	const nodeTypeName = `${nodeName}${versionSuffix}${comboValues.join('')}Node`;
+	const comboSuffix = comboValues.join('');
+	const configName = `${nodeName}${versionSuffix}${comboSuffix}Config`;
+	const outputTypeName = `${nodeName}${versionSuffix}${comboSuffix}Output`;
+	const nodeTypeName = `${nodeName}${versionSuffix}${comboSuffix}Node`;
+
+	// Extract AI input types for subnode configuration
+	const aiInputTypes = extractAIInputTypes(node);
+	const subnodeInstanceImports = getSubnodeInstanceTypeImports(aiInputTypes);
+	const subnodeConfigTypeName =
+		aiInputTypes.length > 0 ? `${nodeName}${versionSuffix}${comboSuffix}SubnodeConfig` : undefined;
 
 	const lines: string[] = [];
 
@@ -1849,6 +1856,10 @@ export function generateDiscriminatorFile(
 	const baseImports: string[] = ['Expression', 'NodeConfig'];
 	if (needsCredentialReference) baseImports.push('CredentialReference');
 	if (needsIDataObject) baseImports.push('IDataObject');
+	// Add subnode instance type imports if needed
+	if (subnodeInstanceImports.length > 0) {
+		baseImports.push(...subnodeInstanceImports);
+	}
 
 	lines.push(`import type { ${baseImports.join(', ')} } from '${basePath}';`);
 	lines.push('');
@@ -1964,6 +1975,25 @@ export function generateDiscriminatorFile(
 		lines.push('');
 	}
 
+	// Subnode Configuration (if AI inputs exist)
+	if (subnodeConfigTypeName && aiInputTypes.length > 0) {
+		lines.push('// ' + '='.repeat(75));
+		lines.push('// Subnode Configuration');
+		lines.push('// ' + '='.repeat(75));
+		lines.push('');
+
+		const subnodeConfigCode = generateNarrowedSubnodeConfig(
+			aiInputTypes,
+			nodeName,
+			versionSuffix,
+			comboSuffix,
+		);
+		if (subnodeConfigCode) {
+			lines.push(subnodeConfigCode);
+			lines.push('');
+		}
+	}
+
 	// Node type (inline, not extending NodeBase)
 	lines.push('// ' + '='.repeat(75));
 	lines.push('// Node Type');
@@ -1979,7 +2009,11 @@ export function generateDiscriminatorFile(
 	if (isTrigger) {
 		lines.push('\tisTrigger: true;');
 	}
-	lines.push(`\tconfig: NodeConfig<${configName}>;`);
+	// Include subnodes in config if AI inputs exist
+	const configType = subnodeConfigTypeName
+		? `NodeConfig<${configName}> & { subnodes?: ${subnodeConfigTypeName} }`
+		: `NodeConfig<${configName}>`;
+	lines.push(`\tconfig: ${configType};`);
 	if (schema) {
 		lines.push(`\toutput?: ${outputTypeName};`);
 	}
@@ -3107,19 +3141,21 @@ export function extractAIInputTypes(node: NodeTypeDescription): AIInputTypeInfo[
  * @param aiInputTypes Array of AI input types with required status
  * @param nodeName The node name (PascalCase, e.g., 'LcAgent')
  * @param versionSuffix The version suffix (e.g., 'V31')
+ * @param comboSuffix Optional suffix for discriminator combinations (e.g., 'RetrieveAsTool')
  * @returns TypeScript interface code, or null if no AI inputs
  */
 export function generateNarrowedSubnodeConfig(
 	aiInputTypes: AIInputTypeInfo[],
 	nodeName: string,
 	versionSuffix: string,
+	comboSuffix: string = '',
 ): string | null {
 	if (aiInputTypes.length === 0) {
 		return null;
 	}
 
 	const lines: string[] = [];
-	const interfaceName = `${nodeName}${versionSuffix}SubnodeConfig`;
+	const interfaceName = `${nodeName}${versionSuffix}${comboSuffix}SubnodeConfig`;
 
 	lines.push(`export interface ${interfaceName} {`);
 

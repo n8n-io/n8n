@@ -2629,6 +2629,111 @@ describe('generate-types', () => {
 				expect(content).toContain('type AssignmentCollectionValue');
 				expect(content).toContain('assignments: Array<');
 			});
+
+			it('should include SubnodeConfig for AI nodes with required embeddings', () => {
+				// Create a mock vector store node with required ai_embedding input
+				const mockVectorStoreNodeWithEmbedding: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+					displayName: 'Simple Vector Store',
+					group: ['transform'],
+					version: 1.3,
+					inputs: [{ type: 'ai_embedding', required: true }],
+					outputs: [{ type: 'ai_tool' }],
+					properties: [
+						{
+							displayName: 'Mode',
+							name: 'mode',
+							type: 'options',
+							options: [
+								{ name: 'Retrieve As Tool', value: 'retrieve-as-tool' },
+								{ name: 'Insert', value: 'insert' },
+							],
+							default: 'retrieve-as-tool',
+						},
+						{
+							displayName: 'Description',
+							name: 'toolDescription',
+							type: 'string',
+							default: '',
+							displayOptions: { show: { mode: ['retrieve-as-tool'] } },
+						},
+					],
+				};
+
+				const combo = { mode: 'retrieve-as-tool' };
+				const props = generateTypes.getPropertiesForCombination(
+					mockVectorStoreNodeWithEmbedding,
+					combo,
+				);
+
+				const content = generateTypes.generateDiscriminatorFile(
+					mockVectorStoreNodeWithEmbedding,
+					1.3,
+					combo,
+					props,
+					undefined,
+					5,
+				);
+
+				// Should have SubnodeConfig section
+				expect(content).toContain('SubnodeConfig');
+
+				// Should import EmbeddingInstance from base
+				expect(content).toContain('EmbeddingInstance');
+
+				// Should have embedding field as required (no ?)
+				expect(content).toContain('embedding: EmbeddingInstance');
+				expect(content).not.toContain('embedding?:');
+
+				// Node type should have subnodes field
+				expect(content).toContain('subnodes?:');
+			});
+
+			it('should include SubnodeConfig with optional subnodes when not required', () => {
+				// Create a mock node with optional ai_tool input
+				const mockNodeWithOptionalTool: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [
+						{ type: 'ai_languageModel', required: true },
+						{ type: 'ai_tool' }, // optional - no required field
+					],
+					outputs: ['main'],
+					properties: [
+						{
+							displayName: 'Mode',
+							name: 'mode',
+							type: 'options',
+							options: [{ name: 'Chat', value: 'chat' }],
+							default: 'chat',
+						},
+					],
+				};
+
+				const combo = { mode: 'chat' };
+				const props = generateTypes.getPropertiesForCombination(mockNodeWithOptionalTool, combo);
+
+				const content = generateTypes.generateDiscriminatorFile(
+					mockNodeWithOptionalTool,
+					3.1,
+					combo,
+					props,
+					undefined,
+					5,
+				);
+
+				// Should have SubnodeConfig
+				expect(content).toContain('SubnodeConfig');
+
+				// model is required - no ?
+				expect(content).toContain('model: LanguageModelInstance');
+				expect(content).not.toContain('model?:');
+
+				// tools is optional - has ?
+				expect(content).toContain('tools?: ToolInstance[]');
+			});
 		});
 
 		describe('buildDiscriminatorTree', () => {
