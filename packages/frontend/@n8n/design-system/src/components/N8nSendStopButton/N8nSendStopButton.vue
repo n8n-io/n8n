@@ -8,7 +8,7 @@ export interface N8nSendStopButtonProps {
 	label?: string;
 }
 
-const props = withDefaults(defineProps<N8nSendStopButtonProps>(), {
+withDefaults(defineProps<N8nSendStopButtonProps>(), {
 	streaming: false,
 	disabled: false,
 	size: 'small',
@@ -46,12 +46,12 @@ function handleStop() {
 		type="primary"
 		:size="size"
 		icon-size="large"
-		:square="!props.label"
-		:icon="props.label ? undefined : 'arrow-up'"
+		:square="!label"
+		:icon="label ? undefined : 'arrow-up'"
 		:disabled="disabled"
 		@click="handleSend"
 	>
-		{{ props.label }}
+		{{ label }}
 	</N8nButton>
 </template>
 
