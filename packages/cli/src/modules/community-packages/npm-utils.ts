@@ -1,3 +1,4 @@
+import { NPM_COMMAND_TOKENS } from '@/constants';
 import axios from 'axios';
 import { jsonParse, UnexpectedError, LoggerProxy } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
@@ -8,11 +9,11 @@ const asyncExecFile = promisify(execFile);
 const REQUEST_TIMEOUT = 30000;
 
 const NPM_ERROR_PATTERNS = {
-	PACKAGE_NOT_FOUND: ['npm ERR! 404', 'E404', '404 Not Found'],
-	NO_VERSION_AVAILABLE: ['No valid versions available'],
-	PACKAGE_VERSION_NOT_FOUND: ['version not found'],
-	DISK_NO_SPACE: ['ENOSPC'],
-	DISK_INSUFFICIENT_SPACE: ['insufficient space'],
+	PACKAGE_NOT_FOUND: [NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR],
+	NO_VERSION_AVAILABLE: [NPM_COMMAND_TOKENS.NPM_NO_VERSION_AVAILABLE],
+	PACKAGE_VERSION_NOT_FOUND: [NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR],
+	DISK_NO_SPACE: [NPM_COMMAND_TOKENS.NPM_DISK_NO_SPACE],
+	DISK_INSUFFICIENT_SPACE: [NPM_COMMAND_TOKENS.NPM_DISK_INSUFFICIENT_SPACE],
 } as const;
 
 interface NpmCommandOptions {

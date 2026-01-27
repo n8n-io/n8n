@@ -22,6 +22,7 @@ jest.mock('node:util', () => {
 });
 
 import { executeNpmCommand, verifyIntegrity, checkIfVersionExistsOrThrow } from '../npm-utils';
+import { NPM_COMMAND_TOKENS } from '@/constants';
 
 describe('executeNpmCommand', () => {
 	beforeEach(() => {
@@ -83,7 +84,9 @@ describe('executeNpmCommand', () => {
 
 		it('should throw UnexpectedError for package not found (E404)', async () => {
 			mockAsyncExec.mockRejectedValue(
-				new Error('E404 - GET https://registry.npmjs.org/nonexistent-package'),
+				new Error(
+					`${NPM_COMMAND_TOKENS.NPM_PACKAGE_NOT_FOUND_ERROR} - GET https://registry.npmjs.org/nonexistent-package`,
+				),
 			);
 
 			await expect(executeNpmCommand(['view', 'nonexistent-package'])).rejects.toThrow(
@@ -108,7 +111,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for package version not found', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('version not found for package@1.2.3'));
+			mockAsyncExec.mockRejectedValue(
+				new Error(`${NPM_COMMAND_TOKENS.NPM_PACKAGE_VERSION_NOT_FOUND_ERROR} package@1.2.3`),
+			);
 
 			await expect(executeNpmCommand(['install', 'package@1.2.3'])).rejects.toThrow(
 				new UnexpectedError('Package version not found in npm registry'),
@@ -116,7 +121,9 @@ describe('executeNpmCommand', () => {
 		});
 
 		it('should throw UnexpectedError for disk full (ENOSPC)', async () => {
-			mockAsyncExec.mockRejectedValue(new Error('ENOSPC: no space left on device'));
+			mockAsyncExec.mockRejectedValue(
+				new Error(`${NPM_COMMAND_TOKENS.NPM_DISK_NO_SPACE}: no space left on device`),
+			);
 
 			await expect(executeNpmCommand(['install', 'some-package'])).rejects.toThrow(
 				new UnexpectedError('Disk is full - insufficient space to install package'),
