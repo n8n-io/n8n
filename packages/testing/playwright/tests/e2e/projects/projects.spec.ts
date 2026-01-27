@@ -265,8 +265,8 @@ test.describe('Projects @db:reset', () => {
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 		});
 	});
-	test.describe('when moving resources between projects @db:reset', () => {
-		test.describe.configure({ mode: 'serial' });
+
+	test.describe('when moving resources between projects', () => {
 		test.beforeEach(async ({ n8n }) => {
 			// Create workflow + credential in Home/Personal project
 			await n8n.api.workflows.createWorkflow({
