@@ -308,7 +308,7 @@ describe('getFileSystemHelperFunctions', () => {
 		});
 
 		it('should throw when file access is blocked', async () => {
-			securityConfig.restrictFileAccessTo = '/allowed/path';
+			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
 			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
 			await expect(
 				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
@@ -316,7 +316,7 @@ describe('getFileSystemHelperFunctions', () => {
 		});
 
 		it('should not reveal if file exists if it is within restricted path', async () => {
-			securityConfig.restrictFileAccessTo = '/allowed/path';
+			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
 			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
 
 			await expect(
