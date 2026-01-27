@@ -7,7 +7,7 @@ export class CreateSecretsProviderConnectionTables1769433700000 implements Rever
 	async up({ schemaBuilder: { createTable, column, createIndex } }: MigrationContext) {
 		// Create secrets_provider_connection table first (parent table)
 		await createTable(secretsProviderConnectionTable).withColumns(
-			column('id').varchar().primary.notNull,
+			column('id').int.primary.autoGenerate2,
 			column('providerKey').varchar(128).notNull,
 			column('type')
 				.varchar(36)
@@ -23,7 +23,7 @@ export class CreateSecretsProviderConnectionTables1769433700000 implements Rever
 		// Create project_secrets_provider_access table (join table with FKs)
 		await createTable(projectSecretsProviderAccessTable)
 			.withColumns(
-				column('secretsProviderConnectionId').varchar().primary.notNull,
+				column('secretsProviderConnectionId').int.primary.notNull,
 				column('projectId').varchar(36).primary.notNull,
 			)
 			.withTimestamps.withForeignKey('secretsProviderConnectionId', {
