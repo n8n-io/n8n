@@ -10,20 +10,17 @@
  *   playwright-janitor --help             # Show help
  */
 
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+
 import { setConfig, defineConfig, type JanitorConfig } from './config.js';
-import { createProject } from './core/project-loader.js';
-import { RuleRunner } from './core/rule-runner.js';
-import { toJSON, toConsole, printFixResults } from './core/reporter.js';
-import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
-import { InventoryAnalyzer, formatInventoryJSON } from './core/inventory-analyzer.js';
 import {
 	ImpactAnalyzer,
 	formatImpactConsole,
 	formatImpactJSON,
 	formatTestList,
 } from './core/impact-analyzer.js';
+import { InventoryAnalyzer, formatInventoryJSON } from './core/inventory-analyzer.js';
 import {
 	MethodUsageAnalyzer,
 	formatMethodImpactConsole,
@@ -32,13 +29,17 @@ import {
 	formatMethodUsageIndexConsole,
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
+import { createProject } from './core/project-loader.js';
+import { toJSON, toConsole, printFixResults } from './core/reporter.js';
+import { RuleRunner } from './core/rule-runner.js';
+import { TcrExecutor, formatTcrResultConsole, formatTcrResultJSON } from './core/tcr-executor.js';
+import { ApiPurityRule } from './rules/api-purity.rule.js';
 import { BoundaryProtectionRule } from './rules/boundary-protection.rule.js';
+import { DeadCodeRule } from './rules/dead-code.rule.js';
+import { DeduplicationRule } from './rules/deduplication.rule.js';
+import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
 import { ScopeLockdownRule } from './rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from './rules/selector-purity.rule.js';
-import { DeadCodeRule } from './rules/dead-code.rule.js';
-import { ApiPurityRule } from './rules/api-purity.rule.js';
-import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
-import { DeduplicationRule } from './rules/deduplication.rule.js';
 import { TestDataHygieneRule } from './rules/test-data-hygiene.rule.js';
 import type { RunOptions } from './types.js';
 
@@ -275,15 +276,15 @@ async function loadConfig(configPath?: string): Promise<JanitorConfig> {
 		if (fs.existsSync(fullPath)) {
 			try {
 				// Dynamic import for config file
-				const configModule = await import(fullPath);
-				const config = configModule.default || configModule;
+				const configModule = (await import(fullPath)) as {
+					default?: JanitorConfig;
+				} & JanitorConfig;
+				const config: JanitorConfig = configModule.default ?? configModule;
 
 				// Ensure rootDir is set
-				if (!config.rootDir) {
-					config.rootDir = path.dirname(fullPath);
-				}
+				config.rootDir ??= path.dirname(fullPath);
 
-				return config as JanitorConfig;
+				return config;
 			} catch (error) {
 				console.error(`Error loading config from ${fullPath}:`, error);
 				process.exit(1);
@@ -324,7 +325,7 @@ async function runImpact(options: CliOptions): Promise<void> {
 	const { project } = createProject(config.rootDir);
 
 	// Determine changed files
-	let changedFiles = options.files || [];
+	const changedFiles = options.files ?? [];
 
 	if (changedFiles.length === 0) {
 		// Use git status to find changed files
@@ -423,7 +424,7 @@ async function runMethodImpact(options: CliOptions): Promise<void> {
 	}
 }
 
-async function runTcr(options: CliOptions): Promise<void> {
+function runTcr(options: CliOptions): void {
 	if (options.help) {
 		showTcrHelp();
 		return;
@@ -431,7 +432,7 @@ async function runTcr(options: CliOptions): Promise<void> {
 
 	const tcr = new TcrExecutor();
 
-	const result = await tcr.run({
+	const result = tcr.run({
 		execute: options.execute,
 		commitMessage: options.message,
 		baseRef: options.baseRef,
@@ -532,7 +533,7 @@ async function main(): Promise<void> {
 
 	switch (options.command) {
 		case 'tcr':
-			await runTcr(options);
+			runTcr(options);
 			break;
 		case 'inventory':
 			await runInventory(options);

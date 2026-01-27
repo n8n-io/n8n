@@ -105,7 +105,7 @@ test.describe('Routing', () => {
 		await n8n.page.goto(`/workflow/${workflowId}?new=true`);
 
 		// Wait for the canvas to load
-		await expect(n8n.page.getByTestId('node-view-loader')).not.toBeAttached();
+		await expect(n8n.canvas.getNodeViewLoader()).not.toBeAttached();
 
 		// Verify the existing workflow was loaded (not a blank canvas)
 		await expect(n8n.canvas.getWorkflowName()).toHaveAttribute('title', workflowName);

@@ -317,6 +317,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
 	}
 
+	getWorkflowTagsElement(): Locator {
+		return this.page.getByTestId('workflow-tags');
+	}
+
 	getWorkflowTagsDropdown(): Locator {
 		return this.page.getByTestId('workflow-tags-dropdown');
 	}

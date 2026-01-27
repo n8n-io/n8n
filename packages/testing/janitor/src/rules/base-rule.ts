@@ -1,6 +1,7 @@
 import type { Project, SourceFile } from 'ts-morph';
-import type { Severity, Violation, RuleResult, RuleConfig, FixResult, FixData } from '../types.js';
+
 import { getConfig } from '../config.js';
+import type { Severity, Violation, RuleResult, RuleConfig, FixResult, FixData } from '../types.js';
 
 export abstract class BaseRule {
 	abstract readonly id: string;
@@ -23,7 +24,7 @@ export abstract class BaseRule {
 			return 'info'; // Will be filtered out
 		}
 		if (ruleConfig?.severity) {
-			return ruleConfig.severity as Severity;
+			return ruleConfig.severity;
 		}
 		return this.severity;
 	}

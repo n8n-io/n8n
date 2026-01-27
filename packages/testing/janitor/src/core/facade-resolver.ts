@@ -8,8 +8,9 @@
  * relationship between page object classes and how they're accessed.
  */
 
-import { type Project } from 'ts-morph';
 import * as path from 'path';
+import { type Project } from 'ts-morph';
+
 import { getConfig } from '../config.js';
 import { getRootDir } from '../utils/paths.js';
 
@@ -35,7 +36,7 @@ export class FacadeResolver {
 
 	/** Get property name(s) for a class: "CanvasPage" → ["canvas"] */
 	getPropertiesForClass(className: string): string[] {
-		return this.mapping.classToProperty.get(className) || [];
+		return this.mapping.classToProperty.get(className) ?? [];
 	}
 
 	/** Get class name for a property: "canvas" → "CanvasPage" */
@@ -90,7 +91,7 @@ export class FacadeResolver {
 
 			if (typeName && !config.facade.excludeTypes.includes(typeName)) {
 				// class → property (one class can have multiple properties)
-				const existing = classToProperty.get(typeName) || [];
+				const existing = classToProperty.get(typeName) ?? [];
 				existing.push(propName);
 				classToProperty.set(typeName, existing);
 

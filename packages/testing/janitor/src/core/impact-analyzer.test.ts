@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Project } from 'ts-morph';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { ImpactAnalyzer } from './impact-analyzer.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
 
@@ -211,7 +212,7 @@ test('other test', () => {});
 
 	describe('Test File Detection', () => {
 		it('identifies test files by path pattern', () => {
-			project.createSourceFile('/test-root/tests/example.spec.ts', `test('example', () => {});`);
+			project.createSourceFile('/test-root/tests/example.spec.ts', "test('example', () => {});");
 
 			const analyzer = new ImpactAnalyzer(project);
 			const result = analyzer.analyze(['tests/example.spec.ts']);

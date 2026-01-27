@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { Project } from 'ts-morph';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { SelectorPurityRule } from './selector-purity.rule.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
 

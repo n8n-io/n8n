@@ -5,11 +5,12 @@
  * Uses import graph tracing with facade-aware property-based search.
  */
 
-import { type Project, type SourceFile } from 'ts-morph';
-import * as path from 'path';
 import * as fs from 'fs';
-import { getRootDir, findFilesRecursive } from '../utils/paths.js';
+import * as path from 'path';
+import { type Project, type SourceFile } from 'ts-morph';
+
 import { FacadeResolver } from './facade-resolver.js';
+import { getRootDir, findFilesRecursive } from '../utils/paths.js';
 
 export interface ImpactResult {
 	changedFiles: string[];

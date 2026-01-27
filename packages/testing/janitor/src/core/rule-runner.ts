@@ -1,9 +1,10 @@
+import * as path from 'path';
 import type { Project, SourceFile } from 'ts-morph';
+
 import type { BaseRule } from '../rules/base-rule.js';
 import type { JanitorReport, RuleResult, Severity, RunOptions, RuleConfig } from '../types.js';
 import { getSourceFiles } from './project-loader.js';
 import { getConfig } from '../config.js';
-import * as path from 'path';
 
 export class RuleRunner {
 	private rules: Map<string, BaseRule> = new Map();

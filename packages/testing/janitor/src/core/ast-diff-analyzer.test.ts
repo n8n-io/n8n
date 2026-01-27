@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import { Project } from 'ts-morph';
+import { describe, it, expect } from 'vitest';
 
 /**
  * Tests for AST-based method extraction and diffing logic.
@@ -14,7 +14,7 @@ function extractMethods(sourceFile: ReturnType<Project['createSourceFile']>): Ma
 	const methods = new Map<string, string>();
 
 	for (const classDecl of sourceFile.getClasses()) {
-		const className = classDecl.getName() || 'AnonymousClass';
+		const className = classDecl.getName() ?? 'AnonymousClass';
 
 		for (const method of classDecl.getMethods()) {
 			const methodName = method.getName();

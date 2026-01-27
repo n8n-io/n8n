@@ -1,9 +1,10 @@
 import type { Project, SourceFile } from 'ts-morph';
+
 import { BaseRule } from './base-rule.js';
+import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { getImportPaths, isPageImport } from '../utils/ast-helpers.js';
 import { isExcludedPage } from '../utils/paths.js';
-import { getConfig } from '../config.js';
 
 /**
  * Boundary Protection Rule

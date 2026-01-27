@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Project } from 'ts-morph';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { MethodUsageAnalyzer } from './method-usage-analyzer.js';
 import { setConfig, resetConfig, defineConfig } from '../config.js';
 
@@ -342,9 +343,9 @@ export class AppPage {
 
 			mockReadFileSync.mockImplementation((filePath: unknown) => {
 				if (String(filePath).includes('canvas.spec.ts')) {
-					return `await app.canvas.addNode('X');`;
+					return "await app.canvas.addNode('X');";
 				} else {
-					return `// no canvas calls`;
+					return '// no canvas calls';
 				}
 			});
 
@@ -379,7 +380,7 @@ export class AppPage {
 		});
 
 		it('throws on invalid method format', () => {
-			project.createSourceFile('/test-root/pages/AppPage.ts', `export class AppPage {}`);
+			project.createSourceFile('/test-root/pages/AppPage.ts', 'export class AppPage {}');
 
 			mockFindFilesRecursive.mockReturnValue([]);
 

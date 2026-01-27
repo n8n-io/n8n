@@ -1,7 +1,8 @@
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
+
 import { BaseRule } from './base-rule.js';
-import type { Violation } from '../types.js';
 import { getConfig } from '../config.js';
+import type { Violation } from '../types.js';
 
 /**
  * No Page In Flow Rule

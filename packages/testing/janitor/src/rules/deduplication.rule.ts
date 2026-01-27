@@ -1,8 +1,9 @@
 import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
+
 import { BaseRule } from './base-rule.js';
+import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { isComponentFile, getRelativePath } from '../utils/paths.js';
-import { getConfig } from '../config.js';
 
 interface TestIdUsage {
 	file: string;

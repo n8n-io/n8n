@@ -30,6 +30,10 @@ export class VariablesPage extends BasePage {
 		return this.page.getByTestId('variables-row');
 	}
 
+	getNoVariablesFoundMessage() {
+		return this.page.getByText('No variables found');
+	}
+
 	getVariableRow(key: string) {
 		return this.getVariablesRows().filter({ hasText: key });
 	}

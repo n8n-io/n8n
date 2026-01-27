@@ -1,5 +1,6 @@
-import { Project, type SourceFile } from 'ts-morph';
 import * as path from 'path';
+import { Project, type SourceFile } from 'ts-morph';
+
 import { getConfig } from '../config.js';
 import { getRelativePath as getRelPath } from '../utils/paths.js';
 

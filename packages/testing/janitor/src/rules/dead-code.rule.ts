@@ -1,8 +1,9 @@
-import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 import * as fs from 'fs';
+import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
+
 import { BaseRule } from './base-rule.js';
-import type { Violation, FixResult } from '../types.js';
 import { getConfig } from '../config.js';
+import type { Violation, FixResult } from '../types.js';
 import { getRelativePath } from '../utils/paths.js';
 
 /**
@@ -122,10 +123,10 @@ export class DeadCodeRule extends BaseRule {
 		sourceFile: SourceFile,
 		node: { findReferencesAsNodes: () => unknown[]; getStartLineNumber: () => number },
 	): boolean {
-		const refs = node.findReferencesAsNodes() as {
+		const refs = node.findReferencesAsNodes() as Array<{
 			getSourceFile: () => SourceFile;
 			getStartLineNumber: () => number;
-		}[];
+		}>;
 
 		return refs.some(
 			(ref) =>
@@ -141,7 +142,7 @@ export class DeadCodeRule extends BaseRule {
 		const byFile = new Map<string, Violation[]>();
 		for (const v of violations) {
 			if (!v.fixable || !v.fixData) continue;
-			const existing = byFile.get(v.file) || [];
+			const existing = byFile.get(v.file) ?? [];
 			existing.push(v);
 			byFile.set(v.file, existing);
 		}

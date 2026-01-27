@@ -177,13 +177,13 @@ export {
 import { setConfig, type JanitorConfig } from './config.js';
 import { createProject } from './core/project-loader.js';
 import { RuleRunner } from './core/rule-runner.js';
+import { ApiPurityRule } from './rules/api-purity.rule.js';
 import { BoundaryProtectionRule } from './rules/boundary-protection.rule.js';
+import { DeadCodeRule } from './rules/dead-code.rule.js';
+import { DeduplicationRule } from './rules/deduplication.rule.js';
+import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
 import { ScopeLockdownRule } from './rules/scope-lockdown.rule.js';
 import { SelectorPurityRule } from './rules/selector-purity.rule.js';
-import { DeadCodeRule } from './rules/dead-code.rule.js';
-import { ApiPurityRule } from './rules/api-purity.rule.js';
-import { NoPageInFlowRule } from './rules/no-page-in-flow.rule.js';
-import { DeduplicationRule } from './rules/deduplication.rule.js';
 import { TestDataHygieneRule } from './rules/test-data-hygiene.rule.js';
 import type { JanitorReport, RunOptions } from './types.js';
 
