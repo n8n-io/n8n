@@ -995,25 +995,32 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	}) {
 		const { sessionId, messageId, previousMessageId, retryOfMessageId } = data;
 
-		// If we already have streaming state for this session, use it
-		// Otherwise create a minimal state for the incoming stream
-		if (!streaming.value || streaming.value.sessionId !== sessionId) {
+		// Check if this is our local stream or a remote stream from another client
+		const isLocalStream = streaming.value?.sessionId === sessionId;
+
+		if (isLocalStream) {
+			// Update the streaming state with the message ID from the server
+			streaming.value!.messageId = messageId;
+		}
+
+		// Skip if we already have this message (e.g., from a previous stream begin)
+		const conversation = getConversation(sessionId);
+		if (conversation?.messages[messageId]) {
 			return;
 		}
 
-		// Update the streaming state with the message ID from the server
-		streaming.value.messageId = messageId;
+		// Create the AI message placeholder - use local streaming state if available,
+		// otherwise create with data from the event (for remote streams)
+		const message = createAiMessageFromStreamingState(
+			sessionId,
+			messageId,
+			isLocalStream ? streaming.value : undefined,
+		);
 
-		// Create the AI message placeholder
-		const message = createAiMessageFromStreamingState(sessionId, messageId, streaming.value);
-
-		// Override with server-provided values
-		if (previousMessageId !== null) {
-			message.previousMessageId = previousMessageId;
-		}
-		if (retryOfMessageId !== null) {
-			message.retryOfMessageId = retryOfMessageId;
-		}
+		// Always use server-provided previousMessageId and retryOfMessageId
+		// This ensures correct linking even for remote streams
+		message.previousMessageId = previousMessageId;
+		message.retryOfMessageId = retryOfMessageId;
 
 		addMessage(sessionId, message);
 	}
