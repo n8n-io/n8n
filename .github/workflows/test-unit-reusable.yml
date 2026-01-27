@@ -21,6 +21,15 @@ on:
       CODECOV_TOKEN:
         description: 'Codecov upload token.'
         required: false
+      BUILD_STATS_WEBHOOK_URL:
+        description: 'Webhook URL for test stats.'
+        required: false
+      BUILD_STATS_WEBHOOK_USER:
+        description: 'Basic auth username for test stats webhook.'
+        required: false
+      BUILD_STATS_WEBHOOK_PASSWORD:
+        description: 'Basic auth password for test stats webhook.'
+        required: false
 
 env:
   NODE_OPTIONS: --max-old-space-size=7168
@@ -42,7 +51,15 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Unit
-        run: pnpm test:ci:backend:unit
+        run: pnpm test:ci:backend:unit --summarize
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -75,7 +92,15 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Integration
-        run: pnpm test:ci:backend:integration
+        run: pnpm test:ci:backend:integration --summarize
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -108,7 +133,15 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Nodes
-        run: pnpm turbo test --filter=n8n-nodes-base
+        run: pnpm turbo test --filter=n8n-nodes-base --summarize
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -145,9 +178,17 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend -- --shard=${{ matrix.shard }}/2
+        run: pnpm test:ci:frontend --summarize -- --shard=${{ matrix.shard }}/2
         env:
           VITEST_SHARD: ${{ matrix.shard }}/2
+
+      - name: Send Test Stats
+        if: ${{ !cancelled() }}
+        run: node .github/scripts/send-build-stats.mjs || true
+        env:
+          BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
+          BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
+          BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}

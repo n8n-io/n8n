@@ -1,0 +1,27 @@
+type: object
+properties:
+  name:
+    type: string
+    description: Name of the data table
+    minLength: 1
+    maxLength: 128
+  columns:
+    type: array
+    description: Column definitions for the table
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Column name
+          minLength: 1
+        type:
+          type: string
+          enum: [string, number, boolean, date, json]
+          description: Column data type
+      required:
+        - name
+        - type
+required:
+  - name
+  - columns
