@@ -282,7 +282,6 @@ export interface SwitchCaseBuilder {
 
 /**
  * IF node instance with branching methods.
- * Created by node() with type 'n8n-nodes-base.if'.
  *
  * @example
  * const ifElseNode = ifElse({ type: 'n8n-nodes-base.if', ... });

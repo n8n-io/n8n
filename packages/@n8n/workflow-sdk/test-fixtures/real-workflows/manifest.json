@@ -4,12 +4,28 @@
 		{
 			"id": 6270,
 			"name": "Build your first AI agent",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Your First AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5819,
 			"name": "🤖 Build an interactive AI agent with chat interface and multiple tools",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenAI"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Your First AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5895,
@@ -24,17 +40,43 @@
 		{
 			"id": 7639,
 			"name": "Talk to your Google Sheets using ChatGPT-5",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Talk to Your Data"
+				}
+			]
 		},
 		{
 			"id": 5035,
 			"name": "Generate & auto-post AI videos to social media with Veo3 and Blotato",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent: Generate Video Concept"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Tool: Inject Creativity"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Tool: Build Prompt Structure"
+				}
+			]
 		},
 		{
 			"id": 8500,
 			"name": "Jarvis: productivity AI agent for tasks, calendar, email & expense using MCPs",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 6281,
@@ -44,22 +86,74 @@
 		{
 			"id": 7756,
 			"name": "Nutrition tracker & meal logger with Telegram, Gemini AI and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note17"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note18"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note19"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note20"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note21"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note22"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note23"
+				}
+			]
 		},
 		{
 			"id": 5148,
 			"name": "Local chatbot with retrieval augmented generation (RAG)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5110,
 			"name": "Create & upload AI-generated ASMR YouTube Shorts with Seedance, Fal AI, and GPT-4",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "1. Generate Trendy Idea"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 7990,
 			"name": "Receipt scanning & analysis workflow",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 12345,
@@ -69,12 +163,32 @@
 		{
 			"id": 5962,
 			"name": "Track SEO keyword rankings with Bright Data MCP and GPT-4o AI analysis",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "MCP Client"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "MCP Client"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "🤖 SERP Scraper Agent (MCP)"
+				}
+			]
 		},
 		{
 			"id": 4846,
 			"name": "Generate AI videos with Google Veo3, save to Google Drive and upload to YouTube",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Update Youtube URL"
+				}
+			]
 		},
 		{
 			"id": 5271,
@@ -94,12 +208,24 @@
 		{
 			"id": 9867,
 			"name": "Transform long videos into viral shorts with AI and schedule to social media using Whisper & Gemini",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent - Select Viral Clips"
+				}
+			]
 		},
 		{
 			"id": 4827,
 			"name": "AI-powered WhatsApp chatbot for text, voice, images, and PDF with RAG",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Knowledge Base Agent"
+				}
+			]
 		},
 		{
 			"id": 10358,
@@ -119,7 +245,13 @@
 		{
 			"id": 5170,
 			"name": "🎓 Learn JSON basics with an interactive step-by-step tutorial for beginners",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note8"
+				}
+			]
 		},
 		{
 			"id": 12462,
@@ -144,17 +276,66 @@
 		{
 			"id": 5906,
 			"name": "Automated job applications & status tracking with LinkedIn, Indeed & Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_TRIGGER"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "🕘 Daily Application Trigger"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "🕐 Status Check Trigger"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "📝 Update Job Status"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "📧 Send Application Notification"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "📧 Send Application Notification"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "📝 Update Changed Status"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "📧 Send Status Update"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "📧 Send Status Update"
+				}
+			]
 		},
 		{
 			"id": 5678,
 			"name": "Automate email filtering & AI summarization. 100% free & effective, works 7/24",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent1"
+				}
+			]
 		},
 		{
 			"id": 11572,
 			"name": "Aggregate news articles from NewsAPI, Mediastack & CurrentsAPI into database",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "call currentsapi"
+				}
+			]
 		},
 		{
 			"id": 11204,
@@ -169,12 +350,28 @@
 		{
 			"id": 9383,
 			"name": "Automated law firm lead management & scheduling with AI, Jotform & Calendar",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent1"
+				}
+			]
 		},
 		{
 			"id": 8428,
 			"name": "Create viral ads with AI: NanoBanana & publish on socials via upload-post",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 7156,
@@ -189,12 +386,40 @@
 		{
 			"id": 5010,
 			"name": "RAG Starter Template using Simple Vector Stores, Form trigger and OpenAI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 4110,
 			"name": "Clone viral TikToks with AI avatars & auto-post to 9 platforms using Perplexity & Blotato",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Suggest Similar Idea (Perplexity)"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Available Avatars"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Generate Video with Avatar"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Avatar Video URL"
+				}
+			]
 		},
 		{
 			"id": 4966,
@@ -209,7 +434,13 @@
 		{
 			"id": 4722,
 			"name": "Gmail AI Email Manager",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5691,
@@ -219,7 +450,13 @@
 		{
 			"id": 5948,
 			"name": "Automated competitor pricing monitor with Bright Data MCP & OpenAI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI agent"
+				}
+			]
 		},
 		{
 			"id": 7423,
@@ -239,7 +476,37 @@
 		{
 			"id": 10174,
 			"name": "PPC campaign intelligence & optimization with Google Ads, Sheets & Slack",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Update Campaign Dashboard"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Update Campaign Dashboard"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Generate Daily Summary"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Log All Campaigns"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Log All Campaigns"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Alert: Scale Opportunity"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Alert: Issues Detected"
+				}
+			]
 		},
 		{
 			"id": 12645,
@@ -249,7 +516,21 @@
 		{
 			"id": 12325,
 			"name": "Create & track LinkedIn posts with Google Sheets, GPT-5.1, Unsplash, and Sona",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Content Generation"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Format Content to HTML"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Choose Image"
+				}
+			]
 		},
 		{
 			"id": 8093,
@@ -259,22 +540,50 @@
 		{
 			"id": 9814,
 			"name": "Personalized email outreach with LinkedIn & Crunchbase data and Gemini AI review",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "RapidAPI-Key"
+				}
+			]
 		},
 		{
 			"id": 9576,
 			"name": "Generate AI videos with Sora2 Pro, save to Google Drive and upload to YouTube",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Update Youtube URL"
+				}
+			]
 		},
 		{
 			"id": 6841,
 			"name": "Automate weekly Hollywood film briefing via Tavily and Gemini",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Hollywood News Research Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 6524,
 			"name": "Automate AI news videos to social media with GPT-4o & HeyGen and Postiz",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5626,
@@ -284,12 +593,28 @@
 		{
 			"id": 5449,
 			"name": "Automate sales cold calling pipeline with Apify, GPT-4o, and WhatsApp",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent1"
+				}
+			]
 		},
 		{
 			"id": 9429,
 			"name": "Automated phone receptionist for scheduling with Twilio, ElevenLabs & Claude AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Voice AI Agent"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Reasoning Tool (LangChain)"
+				}
+			]
 		},
 		{
 			"id": 5683,
@@ -299,7 +624,17 @@
 		{
 			"id": 8597,
 			"name": "Build your first AI agent with ChatGPT-5",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent Support"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Reasoning Tool (LangChain)"
+				}
+			]
 		},
 		{
 			"id": 5690,
@@ -309,12 +644,32 @@
 		{
 			"id": 10427,
 			"name": "Analyze Facebook Ads & send insights to Google Sheets with Gemini AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Extracting Long Term Token"
+				},
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Extracting Access Token"
+				},
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Getting Long-Term Token1"
+				}
+			]
 		},
 		{
 			"id": 4352,
 			"name": "AI-powered multi-social media post automation: Google Trends & Perplexity AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Google Trends"
+				}
+			]
 		},
 		{
 			"id": 8591,
@@ -329,17 +684,66 @@
 		{
 			"id": 10531,
 			"name": "AI-driven inventory management with OpenAI forecasting & ERP integration",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Current Inventory"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Sales Velocity"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Send PO to Supplier"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Log to ERP System"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Save to Database"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Send Notification Email"
+				}
+			]
 		},
 		{
 			"id": 9626,
 			"name": "Build a knowledge base chatbot with Jotform, RAG Supabase, Together AI & Gemini",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Grab the uploaded knowledgebase file link"
+				}
+			]
 		},
 		{
 			"id": 7177,
 			"name": "Pharmacy inventory alerts for low stock & expiring medicine with Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_TRIGGER"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Daily Stock Check"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Send Email Alert"
+				}
+			]
 		},
 		{
 			"id": 5979,
@@ -349,7 +753,125 @@
 		{
 			"id": 4600,
 			"name": "🤖 AI content generation for auto service 🚘 automate your social media📲!",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Mistral Cloud Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenRouter Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Anthropic Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Google Gemini Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "xAI Grok Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "DeepSeek Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Hugging Face Inference Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Freepik API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Runware API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Clipdrop API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Ollama Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Azure OpenAI Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "APITemplate.io"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Ideogram API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Replicate API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Imagen Google API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "HuggingFace API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Runway Images"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Minimax Images"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Kling Images"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Leonardo Images"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "GENERATE PROMPT"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Ideogram API"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Replicate API"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Imagen Google API"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "HuggingFace API"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Runway Images"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Minimax Images"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Kling Images"
+				}
+			]
 		},
 		{
 			"id": 10640,
@@ -359,27 +881,97 @@
 		{
 			"id": 9277,
 			"name": "Automate Google Classroom with Gemini AI: Topics, assignments & student tracking",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Google Classroom Ultimate Agent"
+				}
+			]
 		},
 		{
 			"id": 5523,
 			"name": "Evaluate tool usage accuracy in multi-agent AI workflows using evaluation nodes",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Search Agent"
+				}
+			]
 		},
 		{
 			"id": 3066,
 			"name": "✨🤖Automate Multi-Platform Social Media Content Creation with AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Google Gemini LLM"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "gpt-4o"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "pollinations.ai"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Approve Final Post Content"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Image Choice"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Prepare Content Review Email"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Prepare Results Email"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Prepare Results Message"
+				}
+			]
 		},
 		{
 			"id": 10420,
 			"name": "Automated daily financial analysis from Loyverse POS with Google Sheets & email",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note5"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note7"
+				}
+			]
 		},
 		{
 			"id": 5398,
 			"name": "AI Assistant which answers questions with a RAG MCP and a Search Engine MCP",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "MCP Client"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "MCP_Search_List_Tools"
+				}
+			]
 		},
 		{
 			"id": 5835,
@@ -394,7 +986,13 @@
 		{
 			"id": 4484,
 			"name": "Build a voice AI chatbot with ElevenLabs and InfraNodus knowledge experts",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenAI Model"
+				}
+			]
 		},
 		{
 			"id": 9801,
@@ -404,7 +1002,25 @@
 		{
 			"id": 7467,
 			"name": "LeadBot autopilot — chat-to-lead for Salesforce",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note7"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note9"
+				}
+			]
 		},
 		{
 			"id": 6765,
@@ -419,12 +1035,44 @@
 		{
 			"id": 5817,
 			"name": "Build a weekly AI trend alerter with arXiv and Weaviate",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note17"
+				}
+			]
 		},
 		{
 			"id": 4723,
 			"name": "AI Personal Assistant",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Slack"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Slack1"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Email Assistant"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Follow Up Assistant"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Slack Assistant"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Master Orchestrator Agent"
+				}
+			]
 		},
 		{
 			"id": 10889,
@@ -444,7 +1092,13 @@
 		{
 			"id": 5857,
 			"name": "Multimodal chat assistant with GPT-4o for text, images, and PDFs",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5856,
@@ -454,17 +1108,47 @@
 		{
 			"id": 5228,
 			"name": "Generate video from prompt using Vertex AI Veo 3 and upload to Google Drive",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Setting"
+				}
+			]
 		},
 		{
 			"id": 7422,
 			"name": "Amazon affiliate marketing automation",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "asin number"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "FB caption"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Image Prompt Generate"
+				}
+			]
 		},
 		{
 			"id": 5832,
 			"name": "Qualify & reach out to B2B leads with Groq AI, Apollo, Gmail & Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent1"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5711,
@@ -484,7 +1168,33 @@
 		{
 			"id": 5541,
 			"name": "Track AI agent token usage and estimate costs in Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Gemini"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Anthropic"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note"
+				}
+			]
 		},
 		{
 			"id": 5385,
@@ -504,7 +1214,17 @@
 		{
 			"id": 5938,
 			"name": "AI-powered lead research & personalized email generation with Groq & Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Company Research1"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Sales Assistant"
+				}
+			]
 		},
 		{
 			"id": 5881,
@@ -514,22 +1234,82 @@
 		{
 			"id": 4721,
 			"name": "Deep Research - Sales Lead Magnet Agent",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Project Planner"
+				}
+			]
 		},
 		{
 			"id": 5808,
 			"name": "Create custom PDF documents from templates with Gemini & Google Drive",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Template List"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "DocAgent"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note4"
+				}
+			]
 		},
 		{
 			"id": 4912,
 			"name": "Lead workflow: Yelp & Trustpilot scraping + OpenAI analysis via BrightData",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Location Analyzer"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Trigger Trustpilot Scraper"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Check Trustpilot Scrape Progress"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Download Trustpilot Data"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Generate Email Content"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Yelp Scraper"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Check Yelp Scrape Progress"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Yelp Results"
+				}
+			]
 		},
 		{
 			"id": 12202,
 			"name": "Generate text-to-video and image-to-video clips with Kling 2.6 via KIE.AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Set Prompt & Image Url"
+				}
+			]
 		},
 		{
 			"id": 5694,
@@ -544,32 +1324,120 @@
 		{
 			"id": 5296,
 			"name": "AI YouTube trend explorer – n8n automation workflow with Gemini/ChatGPT",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent - Trend Explorer"
+				}
+			]
 		},
 		{
 			"id": 7455,
 			"name": "Process multiple media files in Telegram with Gemini AI & PostgreSQL database",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Typing…"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent1"
+				}
+			]
 		},
 		{
 			"id": 5828,
 			"name": "Generate cold emails & sales letters with OpenAI GPT & Google Docs via Chat",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Copy Assistant"
+				}
+			]
 		},
 		{
 			"id": 6236,
 			"name": "🧑‍🎓 Test your data access techniques with progressive expression challenges",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Answer - Basic Access"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Answer - Array Access"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Answer - Nested Object"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Answer - Array of Objects"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Answer - JS Function"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Answer - Final"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Error - Basic Access"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Check - Basic Access"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Feedback Incorrect1"
+				}
+			]
 		},
 		{
 			"id": 5608,
 			"name": "Convert YouTube videos to shorts with Klap & auto-post to multiple social platforms",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Send Video to Klap for Shorts Generation"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Check Shorts Generation Status"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "List Generated Clip Ideas"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Export HD Short from Klap"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Final Shorts URLs"
+				}
+			]
 		},
 		{
 			"id": 4506,
 			"name": "Generate Youtube video metadata (timestamps, tags, description, ...)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Generate Description"
+				}
+			]
 		},
 		{
 			"id": 11290,
@@ -599,7 +1467,13 @@
 		{
 			"id": 7945,
 			"name": "Index legal documents for hybrid search with Qdrant, OpenAI & BM25",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Check Collection Exists1"
+				}
+			]
 		},
 		{
 			"id": 7849,
@@ -609,7 +1483,17 @@
 		{
 			"id": 1954,
 			"name": "AI agent chat",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 2043,
@@ -634,12 +1518,24 @@
 		{
 			"id": 6897,
 			"name": "Automate CV screening & analysis with Telegram, Gemini AI & Google Workspace",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Qualify CV Agent"
+				}
+			]
 		},
 		{
 			"id": 5952,
 			"name": "Extract customer pain points from support forums with Bright Data & GPT-4",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "🤖 Agent: Scrape Forum & Extract Insights"
+				}
+			]
 		},
 		{
 			"id": 5787,
@@ -654,7 +1550,13 @@
 		{
 			"id": 7004,
 			"name": "AI orchestrator: dynamically selects models based on input type",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 3586,
@@ -674,7 +1576,13 @@
 		{
 			"id": 11205,
 			"name": "Generate marketing ad banners with LINE, Gemini, and Nano Banana Pro",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "HTTP Request2"
+				}
+			]
 		},
 		{
 			"id": 7130,
@@ -684,17 +1592,47 @@
 		{
 			"id": 5953,
 			"name": "Automate email campaign analysis & smart follow-ups with Bright Data & OpenAI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "🤖 Agent: Scrape & Analyze Campaign Performance"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "🤖 Agent: Scrape & Analyze Campaign Performance"
+				}
+			]
 		},
 		{
 			"id": 5850,
 			"name": "AI-powered multi-platform assistant with Google Suite, LinkedIn & Twitter",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 4685,
 			"name": "Lead generation automate on LinkedIn - personalisation, enrichment",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "HTTP Request"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Generate Leads with Apollo.io1"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get Email from Apollo11"
+				}
+			]
 		},
 		{
 			"id": 3859,
@@ -704,7 +1642,17 @@
 		{
 			"id": 12253,
 			"name": "Generate text-, image-, and video-to-video clips with WAN 2.6 via KIE.AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Set Video URL and Prompt"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Set Prompt & Image Url"
+				}
+			]
 		},
 		{
 			"id": 12452,
@@ -714,12 +1662,36 @@
 		{
 			"id": 10290,
 			"name": "Track & query expenses via Telegram with GPT-4.1 mini & Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Read Sheet for Queries"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Send Low Balance Alert"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Append Transaction to Sheet"
+				}
+			]
 		},
 		{
 			"id": 10111,
 			"name": "AI-powered invoice reminder & payment tracker for finance & accounting",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent For Generate Email Content"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent For Generate Email Content"
+				}
+			]
 		},
 		{
 			"id": 8258,
@@ -729,7 +1701,13 @@
 		{
 			"id": 7154,
 			"name": "Beginner AI dataset generator using OpenAI + LangChain in n8n",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Tool: Inject Creativity1"
+				}
+			]
 		},
 		{
 			"id": 5922,
@@ -754,12 +1732,44 @@
 		{
 			"id": 4987,
 			"name": "3D Product Video Generator from 2D Image for E-Commerce Stores",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Remove Image Background"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Create Video"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Check Video Status"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get Video Link"
+				}
+			]
 		},
 		{
 			"id": 4767,
 			"name": "VEO3 video generator with AI optimization and Google Drive storage",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Create VEO3 Video"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Check VEO3 Status"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get VEO3 Video URL"
+				}
+			]
 		},
 		{
 			"id": 5795,
@@ -769,7 +1779,13 @@
 		{
 			"id": 6535,
 			"name": "Lead research report emails",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Create HTML Report"
+				}
+			]
 		},
 		{
 			"id": 5910,
@@ -784,12 +1800,40 @@
 		{
 			"id": 5159,
 			"name": "AI content creation and auto WordPress publishing with Pexels API image workflow",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Generate Article AI"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Generate Image Keyword AI"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Search Pexels Image"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Generate Blog Topics AI"
+				}
+			]
 		},
 		{
 			"id": 4400,
 			"name": "Build a PDF Document RAG System with Mistral OCR, Qdrant and Gemini AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Create collection"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Summarization Chain"
+				}
+			]
 		},
 		{
 			"id": 5841,
@@ -804,12 +1848,28 @@
 		{
 			"id": 3770,
 			"name": "Build your own N8N workflows MCP server",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 3050,
 			"name": "Build your first AI data analyst chatbot",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note9"
+				}
+			]
 		},
 		{
 			"id": 9999,
@@ -819,7 +1879,13 @@
 		{
 			"id": 5833,
 			"name": "Automate Instagram carousel posts with Google Sheets, Drive & Cloudinary",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Setup for Instagram (access token, ig_business_id)"
+				}
+			]
 		},
 		{
 			"id": 5707,
@@ -834,17 +1900,66 @@
 		{
 			"id": 5618,
 			"name": "Scrape LinkedIn profiles & save to Google Sheets with Apify",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_TRIGGER"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Read LinkedIn URLs1"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Send Success Notification1"
+				}
+			]
 		},
 		{
 			"id": 8604,
 			"name": "Analyze cryptocurrency market data with HTX API, GPT-4o and Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note7"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note8"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note10"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note11"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note12"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note13"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note14"
+				}
+			]
 		},
 		{
 			"id": 6542,
 			"name": "Build an All-Source Knowledge Assistant with Claude, RAG, Perplexity, and Drive",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Knowledge Agent"
+				}
+			]
 		},
 		{
 			"id": 4967,
@@ -859,12 +1974,40 @@
 		{
 			"id": 5611,
 			"name": "AI-powered lead generation with Apollo, GPT-4, and Telegram to database",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Run an Actor"
+				}
+			]
 		},
 		{
 			"id": 5270,
 			"name": "🎓 Learn n8n keyboard shortcuts with an interactive hands-on tutorial workflow",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "➡️ First, Rename Me!"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "➡️ Let's add a new node"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "➡️ Select these three nodes"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "➡️ Now select everything"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Node A"
+				}
+			]
 		},
 		{
 			"id": 11089,
@@ -874,32 +2017,79 @@
 		{
 			"id": 8644,
 			"name": "Create high quality UGC images with Nano Banana (Cheaper & Faster)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Setup"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Generate Prompts"
+				}
+			]
 		},
 		{
 			"id": 8210,
 			"name": "Summarize content from URLs, text & PDFs using OpenAI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "OCR.Space"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "OCR Fallback Processing"
+				}
+			]
 		},
 		{
 			"id": 7449,
 			"name": "Talk to your Google Sheets using ChatGPT-5",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Talk to Your Data"
+				}
+			]
 		},
 		{
 			"id": 4949,
 			"name": "Automate WhatsApp booking system with GPT-4 Assistant, Cal.com and SMS reminders",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Send Booking"
+				}
+			]
 		},
 		{
 			"id": 7701,
 			"name": "Real-time stock monitor with smart alerts for Indian & US markets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_TRIGGER"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Market Hours Trigger"
+				}
+			]
 		},
 		{
 			"id": 4867,
 			"name": "AI-powered stock market summary bot",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note8"
+				}
+			]
 		},
 		{
 			"id": 4587,
@@ -929,32 +2119,112 @@
 		{
 			"id": 5751,
 			"name": "YouTube lead generation: Turn comments into enriched prospects with Apify and Gemini AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note1"
+				}
+			]
 		},
 		{
 			"id": 5741,
 			"name": "Generate cinematic videos from text prompts with GPT-4o, Fal.AI Seedance & Audio",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Generate Full Narrative from Prompt"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Break Narrative into {{n}} Scenes"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Describe Each Scene for Video"
+				}
+			]
 		},
 		{
 			"id": 5555,
 			"name": "Business lead generation with Apify web scraping and Google Sheets storage",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get Results (Apify)1"
+				}
+			]
 		},
 		{
 			"id": 5374,
 			"name": "Generate & publish SEO articles with Claude AI, Webflow & image generation",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send error"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Page structure analiser"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Content writer"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Prompt engineer"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "get_image_url"
+				}
+			]
 		},
 		{
 			"id": 4975,
 			"name": "Automated HR Service System with WhatsApp, GPT-4 Classification & Google Workspace",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Leave Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Attendance Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Email Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Shortlist Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Book Meeting"
+				}
+			]
 		},
 		{
 			"id": 6771,
 			"name": "WhatsApp RAG chatbot with Supabase, Gemini 2.5 Flash, and OpenAI embeddings",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "RAG Query Agent"
+				}
+			]
 		},
 		{
 			"id": 6686,
@@ -964,22 +2234,58 @@
 		{
 			"id": 6531,
 			"name": "LinkedIn content creator system",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get Past Ideas"
+				}
+			]
 		},
 		{
 			"id": 5128,
 			"name": "Auto-publish web articles as social posts for X, LinkedIn, Reddit & Threads with Gemini AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Set Input Data"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Social Media Agent"
+				}
+			]
 		},
 		{
 			"id": 3790,
 			"name": "Automated stock analysis reports with technical & news sentiment using GPT-4o",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Set Stock Symbol and API Key"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Generate HTML"
+				}
+			]
 		},
 		{
 			"id": 11109,
 			"name": "Generate complete SEO strategy reports with SerpAPI data and GPT-4 Agent team",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 10729,
@@ -989,7 +2295,13 @@
 		{
 			"id": 10230,
 			"name": "Add Project Tasks to Google Sheets with GPT-4.1-mini Chat Assistant",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Project Manager Agent"
+				}
+			]
 		},
 		{
 			"id": 9876,
@@ -999,7 +2311,21 @@
 		{
 			"id": 5024,
 			"name": "Build custom workflows automatically with GPT-4o, RAG, and web search",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Set Preferences"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 4457,
@@ -1009,12 +2335,36 @@
 		{
 			"id": 3443,
 			"name": "Scrape business leads from Google Maps using OpenAI and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Scrape Website Content (via Apify)"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent - Lead Collection"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Scrape Google Maps (via Apify)"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Scrape Website Content (via Apify)"
+				}
+			]
 		},
 		{
 			"id": 11158,
 			"name": "Extract Amazon product data to Sheets with Olostep API",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "scrape amazon products"
+				}
+			]
 		},
 		{
 			"id": 12739,
@@ -1029,12 +2379,32 @@
 		{
 			"id": 3121,
 			"name": "AI-powered short-form video generator with OpenAI, Flux, Kling, and ElevenLabs",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MERGE_SINGLE_INPUT",
+					"nodeName": "Match captions with videos"
+				}
+			]
 		},
 		{
 			"id": 9152,
 			"name": "Automate AI video ad generation with Google Veo 3, Gemini, and Airtable",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Uploading Image in Airtable"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Generate Video Veo 3"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get the Video"
+				}
+			]
 		},
 		{
 			"id": 5676,
@@ -1044,7 +2414,13 @@
 		{
 			"id": 9986,
 			"name": "AI-powered product video generator (Foreplay + Gemini + Sora 2)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Set Workflow Credentials"
+				}
+			]
 		},
 		{
 			"id": 5552,
@@ -1054,7 +2430,33 @@
 		{
 			"id": 8654,
 			"name": "Multi-agent SEO optimized blog writing system with hyperlinks for E-Commmerce",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Update Article Writer table1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenAI Image Prompt1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Set KWs and Insights fields1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Article Assembly Agent1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Final Edit Agent1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Final Article1"
+				}
+			]
 		},
 		{
 			"id": 3250,
@@ -1064,7 +2466,13 @@
 		{
 			"id": 6290,
 			"name": "Company website chatbot agent (RAG, calendar integrations)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Ultimate Website Chatbot Agent"
+				}
+			]
 		},
 		{
 			"id": 11366,
@@ -1074,7 +2482,21 @@
 		{
 			"id": 9605,
 			"name": "AI based data analysis, data visualization and data report with Ada.im",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get data from database"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get data from Google Sheets"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get data from local file"
+				}
+			]
 		},
 		{
 			"id": 6538,
@@ -1084,7 +2506,13 @@
 		{
 			"id": 5734,
 			"name": "Build a PDF-based RAG system with OpenAI, Pinecone and Cohere reranking",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5670,
@@ -1094,7 +2522,21 @@
 		{
 			"id": 5434,
 			"name": "Scrape TikTok influencer profiles with Bright Data API to Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Sends profile URLs to Bright Data to trigger scraping"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Checks scraping progress from Bright Data"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Gets TikTok influencer details from Bright Data using snapshot ID"
+				}
+			]
 		},
 		{
 			"id": 4573,
@@ -1109,17 +2551,35 @@
 		{
 			"id": 3514,
 			"name": "Build an MCP server with Google Calendar and custom functions",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 11049,
 			"name": "Generate professional documents with Claude AI skills🤹🤖 & upload to Google Drive",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get All Skills"
+				}
+			]
 		},
 		{
 			"id": 10476,
 			"name": "Monitor & manage Docker containers with Telegram bot & AI log analysis",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Switch"
+				}
+			]
 		},
 		{
 			"id": 5413,
@@ -1129,12 +2589,24 @@
 		{
 			"id": 5139,
 			"name": "Automated Instagram reels workflow",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 4366,
 			"name": "Automate email & calendar management with Gmail, Google Calendar & GPT-4o AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Read- Threads History Vector Store"
+				}
+			]
 		},
 		{
 			"id": 12299,
@@ -1146,7 +2618,29 @@
 			"id": 4637,
 			"name": "Automate social media content with AI for Instagram, Facebook, LinkedIn & X",
 			"success": true,
-			"app": "Merge"
+			"app": "Merge",
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Google Docs"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Google Sheets"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Get_Brand_Brief1"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Check Examples1"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Get_Brand_Brief"
+				}
+			]
 		},
 		{
 			"id": 7957,
@@ -1164,7 +2658,13 @@
 			"id": 6993,
 			"name": "Scrape Google Maps by area & generate outreach messages for lead generation",
 			"success": true,
-			"app": "Merge"
+			"app": "Merge",
+			"expectedWarnings": [
+				{
+					"code": "MERGE_SINGLE_INPUT",
+					"nodeName": "Merge"
+				}
+			]
 		},
 		{
 			"id": 6272,
@@ -1200,7 +2700,13 @@
 			"id": 5002,
 			"name": "Generate AI-Powered LinkedIn Posts with Google Gemini and Gen-Imager",
 			"success": true,
-			"searchTerm": "Code"
+			"searchTerm": "Code",
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 9890,
@@ -1236,7 +2742,29 @@
 			"id": 5842,
 			"name": "Transform Reddit questions into SEO blog posts with OpenAI and Google Sheets",
 			"success": true,
-			"searchTerm": "Code"
+			"searchTerm": "Code",
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Intro"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Steps"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Conclusion"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "slug"
+				}
+			]
 		},
 		{
 			"id": 5258,
@@ -1254,19 +2782,37 @@
 			"id": 10214,
 			"name": "Hotel receptionist with WhatsApp, Gemini model-switching, Redis & Google Sheets",
 			"success": true,
-			"searchTerm": "Code"
+			"searchTerm": "Code",
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Execute a SQL query in MySQL"
+				}
+			]
 		},
 		{
 			"id": 5820,
 			"name": "Automatic Gmail categorization and labeling with AI",
 			"success": true,
-			"nodeType": "agent"
+			"nodeType": "agent",
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5757,
 			"name": "Personalized email automation using Google Docs, Pinecone, GPT-4o and Gmail",
 			"success": true,
-			"nodeType": "agent"
+			"nodeType": "agent",
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent1"
+				}
+			]
 		},
 		{
 			"id": 4689,
@@ -1278,13 +2824,33 @@
 			"id": 4478,
 			"name": "Auto-publish YouTube videos to Facebook & Instagram with AI-generated captions",
 			"success": true,
-			"nodeType": "agent"
+			"nodeType": "agent",
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get IG Business Account ID"
+				}
+			]
 		},
 		{
 			"id": 4399,
 			"name": "Anthropic AI agent: Claude Sonnet 4 and Opus 4 with Think and Web Search tool",
 			"success": true,
-			"nodeType": "agent"
+			"nodeType": "agent",
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Anthropic Routing Agent"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 7601,
@@ -1308,7 +2874,21 @@
 			"id": 5435,
 			"name": "AI agent to chat with Snowflake database",
 			"success": true,
-			"nodeType": "agent"
+			"nodeType": "agent",
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent1"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Snowflake1"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Execute SQL"
+				}
+			]
 		},
 		{
 			"id": 4678,
@@ -1344,19 +2924,61 @@
 			"id": 4833,
 			"name": "Multiple websites monitoring with notifications including phone calls",
 			"success": true,
-			"nodeType": "splitInBatches"
+			"nodeType": "splitInBatches",
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Slack Notification for Up"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Telegram Notification for Up"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Notify over Phone Call"
+				}
+			]
 		},
 		{
 			"id": 5682,
 			"name": "Simulate debates between AI agents using Mistral to optimize answers",
 			"success": true,
-			"nodeType": "splitInBatches"
+			"nodeType": "splitInBatches",
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Email Trigger (IMAP)"
+				}
+			]
 		},
 		{
 			"id": 5375,
 			"name": "Generate content strategy reports analyzing Reddit, YouTube & X with Gemini",
 			"success": true,
-			"nodeType": "splitInBatches"
+			"nodeType": "splitInBatches",
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Apify抓取x推文"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "ScrapingBee抓取x推文"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "twitterapi抓取x推文"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "AI Pre-filtering"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI: Synthesize Final Report"
+				}
+			]
 		},
 		{
 			"id": 2896,
@@ -1379,17 +3001,46 @@
 		{
 			"id": 5553,
 			"name": "Automate ASMR video creation and distribution with FalAI and social media integration",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Object & Caption"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note11"
+				}
+			]
 		},
 		{
 			"id": 5196,
 			"name": "Smart email draft generator",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_TRIGGER"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Check New Email (IMAP)"
+				}
+			]
 		},
 		{
 			"id": 5140,
 			"name": "Build and update RAG system with Google Drive, Qdrant, and Gemini Chat",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Create collection"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Edit Fields3"
+				}
+			]
 		},
 		{
 			"id": 5772,
@@ -1399,7 +3050,13 @@
 		{
 			"id": 4696,
 			"name": "Conversational Telegram bot with GPT-5/GPT-4o for text and voice messages",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Text Or Voice"
+				}
+			]
 		},
 		{
 			"id": 6083,
@@ -1409,7 +3066,53 @@
 		{
 			"id": 5310,
 			"name": "🤖 AI customer support agent - never sleep, never miss a customer again!",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Email Trigger"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Normalize Message Data"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get Conversation History"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenAI Support Agent"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Check if Escalation Needed"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Format AI Response"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send WhatsApp Response"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send Telegram Response"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send Email Response"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Save Conversation"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Notify Human Agents"
+				}
+			]
 		},
 		{
 			"id": 2465,
@@ -1429,7 +3132,13 @@
 		{
 			"id": 12110,
 			"name": "Discover buying-intent leads on Twitter and Instagram with GPT-4o-mini and send summaries to Slack and Notion",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Discover Buying-Intent Leads from Social Platforms (AI)"
+				}
+			]
 		},
 		{
 			"id": 10370,
@@ -1439,12 +3148,24 @@
 		{
 			"id": 5821,
 			"name": "Build a scalable AI chatbot with GPT-4 and Pipedream: Calendly, Gmail integration",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5286,
 			"name": "News research and sentiment analysis AI agent with Gemini and SearXNG",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Research Agent"
+				}
+			]
 		},
 		{
 			"id": 4526,
@@ -1459,22 +3180,54 @@
 		{
 			"id": 6534,
 			"name": "AI proposal generator",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Create PandaDoc Proposal"
+				}
+			]
 		},
 		{
 			"id": 5011,
 			"name": "Save Costs In RAG Workflows using the Q&A Tool With Multiple Models",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 3954,
 			"name": "Generate logos and images with consistent visual styles using Imagen 3.0",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Generate HTML"
+				}
+			]
 		},
 		{
 			"id": 3905,
 			"name": "Build a personal assistant with Google Gemini, Gmail and Calendar using MCP",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Personal Assistant"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Personal Assistant"
+				}
+			]
 		},
 		{
 			"id": 5312,
@@ -1509,7 +3262,25 @@
 		{
 			"id": 5893,
 			"name": "Automatic Magento 2 product & coupon alerts to Telegram with duplicate protection",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "New Voucher Entry"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Set Coupon as Posted"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "New Product Entry"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Set Product as Posted"
+				}
+			]
 		},
 		{
 			"id": 5839,
@@ -1519,7 +3290,13 @@
 		{
 			"id": 5157,
 			"name": "Automate daily AI news with Perplexity Sonar Pro (via Telegram)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "REDACTED"
+				}
+			]
 		},
 		{
 			"id": 5001,
@@ -1544,12 +3321,44 @@
 		{
 			"id": 5036,
 			"name": "Binance spot trader - limit & market orders via API",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "LimitBuy Parmeter"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "LimitSale Parameter"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "MarketBuy Parameter"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "MarketSell Parameter"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Open Orders Params"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cancel All Order Params"
+				}
+			]
 		},
 		{
 			"id": 9061,
 			"name": "📁 Extract and clean PDF data from Google Drive",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note5"
+				}
+			]
 		},
 		{
 			"id": 7140,
@@ -1569,12 +3378,40 @@
 		{
 			"id": 5197,
 			"name": "Automated meeting recording & AI summaries with Google Calendar, Vexa & Llama 3.2",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Launch Vexa Bot for Meeting\t"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Stop Vexa Bot\t"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Meeting Audio File\t"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Transcribe Meeting Audio\t"
+				}
+			]
 		},
 		{
 			"id": 4658,
 			"name": "Automate Instagram content discovery & repurposing w/ Apify, GPT-4o & Perplexity",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Run Actor Synchronously"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Search Perplexity"
+				}
+			]
 		},
 		{
 			"id": 9254,
@@ -1584,7 +3421,17 @@
 		{
 			"id": 5818,
 			"name": "Automated Thai content creation & publishing with Ollama, Gemini & Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Convert AI Risoprint Image to File"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Telegram: Send Notification"
+				}
+			]
 		},
 		{
 			"id": 5777,
@@ -1599,7 +3446,17 @@
 		{
 			"id": 4731,
 			"name": "Automated investor intelligence: CrunchBase to Google Sheets data harvester",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Crunchbase Investor Data"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Crunchbase Investor Data"
+				}
+			]
 		},
 		{
 			"id": 3654,
@@ -1614,7 +3471,13 @@
 		{
 			"id": 6239,
 			"name": "LinkedIn job search: auto-match resume with AI + cover letter & Telegram alerts",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 5934,
@@ -1624,7 +3487,13 @@
 		{
 			"id": 5908,
 			"name": "Real-time email RAG assistant with Gmail, OpenAI GPT, and PGVector",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "New RAG Agent"
+				}
+			]
 		},
 		{
 			"id": 5607,
@@ -1634,12 +3503,32 @@
 		{
 			"id": 5305,
 			"name": "Stock market daily digest with Bright Data scraping & Gemini AI email reports",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get progress"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get snapshot + data"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "create summary"
+				}
+			]
 		},
 		{
 			"id": 3900,
 			"name": "Automated YouTube video scheduling & AI metadata generation 🎬",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get Transcript"
+				}
+			]
 		},
 		{
 			"id": 11709,
@@ -1649,7 +3538,13 @@
 		{
 			"id": 5812,
 			"name": "Auto-import contacts from Google Sheets to MailChimp subscriber lists",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Create Import Summary"
+				}
+			]
 		},
 		{
 			"id": 5730,
@@ -1669,17 +3564,43 @@
 		{
 			"id": 3940,
 			"name": "Document Q&A chatbot with Gemini AI and Supabase vector search for Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 3291,
 			"name": "🔍🛠️Generate SEO-optimized WordPress content with AI powered perplexity research",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Copywriter AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Create Title, Slug, Meta"
+				}
+			]
 		},
 		{
 			"id": 3135,
 			"name": "✨🩷Automated social media content publishing factory + system prompt composition",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Prepare Email Contents"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Prepare Social Media Email Contents"
+				}
+			]
 		},
 		{
 			"id": 5794,
@@ -1704,17 +3625,43 @@
 		{
 			"id": 3940,
 			"name": "Document Q&A chatbot with Gemini AI and Supabase vector search for Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 3291,
 			"name": "🔍🛠️Generate SEO-optimized WordPress content with AI powered perplexity research",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Copywriter AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Create Title, Slug, Meta"
+				}
+			]
 		},
 		{
 			"id": 3135,
 			"name": "✨🩷Automated social media content publishing factory + system prompt composition",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Prepare Email Contents"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Prepare Social Media Email Contents"
+				}
+			]
 		},
 		{
 			"id": 5794,
@@ -1729,17 +3676,39 @@
 		{
 			"id": 4733,
 			"name": "Automated job hunter: Upwork opportunity aggregator & AI-powered notifier",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Summarize Job Listings"
+				}
+			]
 		},
 		{
 			"id": 3442,
 			"name": "Fully automated AI video generation & multi-platform publishing",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MERGE_SINGLE_INPUT",
+					"nodeName": "Match captions with videos"
+				}
+			]
 		},
 		{
 			"id": 10157,
 			"name": "Local document question answering with Ollama AI, Agentic RAG & PGVector",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Create Document Metadata Table"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Create Document Rows Table (for Tabular Data)"
+				}
+			]
 		},
 		{
 			"id": 9026,
@@ -1759,7 +3728,17 @@
 		{
 			"id": 2982,
 			"name": "🤖 AI powered RAG chatbot for your docs + Google Drive + Gemini + Qdrant",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Google Drive"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenAI Chat Model"
+				}
+			]
 		},
 		{
 			"id": 3427,
@@ -1769,7 +3748,13 @@
 		{
 			"id": 12485,
 			"name": "Generate daily stock buy/sell signals using technical indicators and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Historical Prices (Alpha Vantage)"
+				}
+			]
 		},
 		{
 			"id": 12478,
@@ -1784,7 +3769,13 @@
 		{
 			"id": 10665,
 			"name": "University FAQ & calendar assistant with Telegram, MongoDB and Gemini AI",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "GENERADOR DE MENSAJE DE VOZ"
+				}
+			]
 		},
 		{
 			"id": 10001,
@@ -1794,12 +3785,40 @@
 		{
 			"id": 9562,
 			"name": "AI-powered X (Twitter) content generator and scheduler with LangChain and Blotato",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI: Generate X Post Content"
+				}
+			]
 		},
 		{
 			"id": 8724,
 			"name": "Automated daily stock market report with Bright Data, GPT-4.1, Airtable/Gmail",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Check Scraper Progress"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Scraper Results"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Generate Daily Summary (AI)"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note3"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note11"
+				}
+			]
 		},
 		{
 			"id": 8448,
@@ -1809,7 +3828,13 @@
 		{
 			"id": 8077,
 			"name": "Service scheduling & route planner for deliveries with Notion, Telegram and Maps",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MERGE_SINGLE_INPUT",
+					"nodeName": "Merge Data"
+				}
+			]
 		},
 		{
 			"id": 7633,
@@ -1834,7 +3859,13 @@
 		{
 			"id": 6018,
 			"name": "Generate contextual recommendations from Slack using Pinecone",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Get row(s) in sheet in Google Sheets"
+				}
+			]
 		},
 		{
 			"id": 5936,
@@ -1844,7 +3875,17 @@
 		{
 			"id": 5897,
 			"name": "Generate comprehensive research reports with Gemini AI and Tavily Search for Japanese users",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Research Agent"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Report Agent"
+				}
+			]
 		},
 		{
 			"id": 5675,
@@ -1859,12 +3900,28 @@
 		{
 			"id": 3791,
 			"name": "Generate & enrich LinkedIn leads with Apollo.io, LinkedIn API, Mail.so & GPT-3.5",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Generate Leads with Apollo.io"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Get Email from Apollo"
+				}
+			]
 		},
 		{
 			"id": 2753,
 			"name": "RAG chatbot for company documents using Google Drive and Gemini",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 7010,
@@ -1889,12 +3946,24 @@
 		{
 			"id": 4674,
 			"name": "Generate AI-powered LinkedIn posts with Ollama, image creation, and Gmail delivery",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Tavily"
+				}
+			]
 		},
 		{
 			"id": 3912,
 			"name": "Automate lead qualification with RetellAI Phone Agent, OpenAI GPT & Google Sheet",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Call new lead using RetellAI"
+				}
+			]
 		},
 		{
 			"id": 3657,
@@ -1904,7 +3973,13 @@
 		{
 			"id": 2859,
 			"name": "Chat with Postgresql database",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 2786,
@@ -1924,7 +3999,13 @@
 		{
 			"id": 9316,
 			"name": "Auto-summarize blog posts to social media with Gemma and Postiz",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Postiz (Create Post)"
+				}
+			]
 		},
 		{
 			"id": 8090,
@@ -1949,7 +4030,13 @@
 		{
 			"id": 5015,
 			"name": "Find and email ANYONE on LinkedIn with OpenAI, Hunter & Gmail",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Code"
+				}
+			]
 		},
 		{
 			"id": 4875,
@@ -1984,7 +4071,13 @@
 		{
 			"id": 5218,
 			"name": "Find the cheapest flights automatically with Bright Data & n8n",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch flight details from skiplegged via bright data"
+				}
+			]
 		},
 		{
 			"id": 5074,
@@ -1999,7 +4092,13 @@
 		{
 			"id": 4892,
 			"name": "Analyze stock charts with GPT-4 Vision and send results via Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Basic LLM Chain"
+				}
+			]
 		},
 		{
 			"id": 4740,
@@ -2014,7 +4113,13 @@
 		{
 			"id": 4402,
 			"name": "AI Chatbot Agent with a Panel of Experts using InfraNodus GraphRAG Knowledge",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 12732,
@@ -2029,7 +4134,17 @@
 		{
 			"id": 7979,
 			"name": "Chat with Google Drive documents using GPT, Pinecone, and RAG",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Generate Embeddings for Search with OpenAI"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Download File From Google Drive1"
+				}
+			]
 		},
 		{
 			"id": 6938,
@@ -2049,7 +4164,17 @@
 		{
 			"id": 5457,
 			"name": "Automate Instagram & Facebook posting with Meta Graph API & System User Tokens",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get Token from static Data"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Refresh token"
+				}
+			]
 		},
 		{
 			"id": 4459,
@@ -2064,7 +4189,13 @@
 		{
 			"id": 3942,
 			"name": "AI-powered restaurant order chatbot with GPT-4o for POS integration",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 3224,
@@ -2094,7 +4225,17 @@
 		{
 			"id": 9438,
 			"name": "Create universal OpenAI-compatible API endpoints for multiple AI workflows",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Powered By n8n Workflow Models"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Powered By n8n Workflow Models"
+				}
+			]
 		},
 		{
 			"id": 9386,
@@ -2104,12 +4245,28 @@
 		{
 			"id": 9394,
 			"name": "Create HubSpot companies & tasks from Jotform submissions with Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Create HubSpot Task"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Set Company Domain"
+				}
+			]
 		},
 		{
 			"id": 8562,
 			"name": "AI Shopify product descriptions: GPT-4o Vision + Claude + Analytics",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Every 5 Minutes"
+				}
+			]
 		},
 		{
 			"id": 4940,
@@ -2119,7 +4276,13 @@
 		{
 			"id": 6020,
 			"name": "Create a context-aware Slack assistant with Google Sheets, Pinecone & GPT-4o",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Get row(s) in sheet in Google Sheets"
+				}
+			]
 		},
 		{
 			"id": 5902,
@@ -2144,7 +4307,17 @@
 		{
 			"id": 4588,
 			"name": "Firecrawl AI-powered market intelligence bot: automated news insights delivery",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Crawl TechCrunch (FireCrawl)"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Summarizer Agent"
+				}
+			]
 		},
 		{
 			"id": 4231,
@@ -2154,17 +4327,63 @@
 		{
 			"id": 2803,
 			"name": "Generate Instagram content from top trends with AI image generation",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Rapid Api params"
+				}
+			]
 		},
 		{
 			"id": 9100,
 			"name": "Automated viral content engine for LinkedIn & X with AI generation & publishing",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Deepseek"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenAI Image"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Post generator"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Content repurpose1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Switch"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Create task"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Perplexity Research"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "If Dipt"
+				}
+			]
 		},
 		{
 			"id": 8067,
 			"name": "Personalized evening wind-down system with mood tracking via Telegram, Notion & Email",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cron: 9PM Daily"
+				}
+			]
 		},
 		{
 			"id": 8042,
@@ -2184,7 +4403,25 @@
 		{
 			"id": 5862,
 			"name": "Dynamic AI model selector with GDPR compliance via Requesty and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "AI Agent (Optional)"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "AI API Request"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent (Optional)"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent (Optional)"
+				}
+			]
 		},
 		{
 			"id": 8042,
@@ -2204,7 +4441,25 @@
 		{
 			"id": 5862,
 			"name": "Dynamic AI model selector with GDPR compliance via Requesty and Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "AI Agent (Optional)"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "AI API Request"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent (Optional)"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent (Optional)"
+				}
+			]
 		},
 		{
 			"id": 5847,
@@ -2244,12 +4499,40 @@
 		{
 			"id": 5153,
 			"name": "TikTok post scraper via keywords | Bright Data + Sheets integration",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Sends keyword to Bright Data's Discover API to start scraping."
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Checks the scraping status using snapshot ID."
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Decode Snapshot from Response"
+				}
+			]
 		},
 		{
 			"id": 4843,
 			"name": "Automate Glassdoor job search with Bright Data scraping & Google Sheets storage",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Scrap data"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Check Delivery Status of Snap ID"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Getting Job Lists"
+				}
+			]
 		},
 		{
 			"id": 3560,
@@ -2264,27 +4547,73 @@
 		{
 			"id": 6537,
 			"name": "Inbox manager (GPT, Google Calendar & Supabase)",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Window Buffer Memory"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "think_tool"
+				}
+			]
 		},
 		{
 			"id": 5720,
 			"name": "Generate content ideas from PDFs with InfraNodus GraphRAG and AI gap analysis",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Convert File to PDF"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "InfraNodus AI Questions"
+				}
+			]
 		},
 		{
 			"id": 4775,
 			"name": "LinkedIn job finder automation using Bright Data API & Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Create Snapshot ID"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Check Snapshot Status"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Scrape Data from SnapID"
+				}
+			]
 		},
 		{
 			"id": 4494,
 			"name": "Airbnb Telegram agent - AI-powered accommodation search with voice support",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Airbnb MCP Client - List Tools"
+				}
+			]
 		},
 		{
 			"id": 3656,
 			"name": "Ai-powered Telegram task manager with MCP server",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 2872,
@@ -2294,7 +4623,21 @@
 		{
 			"id": 9544,
 			"name": "Generate Complete Database Schemas with Claude for SQL Databases",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Agent 2: Schema Reviewer"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Agent 3: Optimizer & Scorer"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Execute SQL in PostgreSQL"
+				}
+			]
 		},
 		{
 			"id": 5761,
@@ -2314,7 +4657,57 @@
 		{
 			"id": 5311,
 			"name": "AI-powered Telegram & WhatsApp business agent workflow",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Normalize Message Data"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get Customer History"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Build AI Context"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "AI Business Assistant"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Process AI Response"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Platform Router"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send Telegram Message"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send WhatsApp Message"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Log Conversation"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Update Customer Record"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Check Escalation"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Notify Support Team"
+				}
+			]
 		},
 		{
 			"id": 4754,
@@ -2329,12 +4722,32 @@
 		{
 			"id": 4630,
 			"name": "Generate videos with AI, ElevenLabs,PIAPI Shotstack/Creatomate & post to Youtube",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Prepare  Assets For Creatomate"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "searchAirtable"
+				}
+			]
 		},
 		{
 			"id": 4371,
 			"name": "Automate blog content creation with OpenAI, Google Sheets & email approval flow",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Copywriter AI Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Copywriter Revision Agent"
+				}
+			]
 		},
 		{
 			"id": 3085,
@@ -2344,12 +4757,28 @@
 		{
 			"id": 2679,
 			"name": "⚡AI-powered YouTube video summarization & analysis",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "YouTube Transcript"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Split Out"
+				}
+			]
 		},
 		{
 			"id": 12600,
 			"name": "Identify buying-intent leads on Twitter and Instagram with Slack and Notion CRM",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Discover Buying-Intent Leads from Social Platforms (AI)"
+				}
+			]
 		},
 		{
 			"id": 12599,

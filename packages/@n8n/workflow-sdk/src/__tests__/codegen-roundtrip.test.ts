@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { generateWorkflowCode } from '../codegen/index';
-import { parseWorkflowCode } from '../parse-workflow-code';
+import { parseWorkflowCode, parseWorkflowCodeToBuilder } from '../parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 import {
 	ensureFixtures,
@@ -14,11 +14,79 @@ import {
 // 5979: Code generator creates duplicate inline nodes, causing duplicate detection to rename them
 const SKIP_WORKFLOWS = new Set<string>(['5979']);
 
+// Workflows to skip validation due to known codegen bugs (invalid warnings)
+// These produce warnings that don't exist in the original workflow (codegen issues to fix)
+// - MERGE_SINGLE_INPUT: Codegen loses some merge node input connections
+// - MISSING_EXPRESSION_PREFIX: Codegen creates expressions without = prefix
+// Once fixed, these should be moved to expectedWarnings in manifest.json
+const SKIP_VALIDATION_WORKFLOWS = new Set<string>([
+	// Committed fixtures (test workflows with complex merge/connection patterns)
+	'1',
+	'2',
+	'3',
+	// Downloaded fixtures with codegen bugs
+	'2872',
+	'2878',
+	'3121',
+	'3224',
+	'3442',
+	'4281',
+	'4295',
+	'4587',
+	'4696',
+	'4740',
+	'4930',
+	'4968',
+	'5271',
+	'5303',
+	'5338',
+	'5453',
+	'5745',
+	'5794',
+	'5805',
+	'5895',
+	'6150',
+	'6272',
+	'6686',
+	'6938',
+	'6993',
+	'7289',
+	'7946',
+	'7957',
+	'8077',
+	'8095',
+	'8448',
+	'8549',
+	'8591',
+	'9200',
+	'9801',
+	'9876',
+	'9999',
+	'10000',
+	'10029',
+	'10132',
+	'10150',
+	'10196',
+	'10358',
+	'10476',
+	'11204',
+	'12299',
+	'12462',
+	'12645',
+	'12732',
+]);
+
+interface ExpectedWarning {
+	code: string;
+	nodeName?: string;
+}
+
 interface TestWorkflow {
 	id: string;
 	name: string;
 	json: WorkflowJSON;
 	nodeCount: number;
+	expectedWarnings?: ExpectedWarning[];
 }
 
 function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
@@ -41,6 +109,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 				name: entry.name,
 				json,
 				nodeCount: json.nodes?.length ?? 0,
+				expectedWarnings: entry.expectedWarnings as ExpectedWarning[] | undefined,
 			});
 		}
 	}
@@ -1650,14 +1719,54 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				return result;
 			};
 
+			// Helper to normalize warnings for comparison
+			const normalizeWarning = (w: ExpectedWarning): string => `${w.code}:${w.nodeName ?? ''}`;
+
 			// Generate individual test for each workflow
-			workflows.forEach(({ id, name, json, nodeCount }) => {
+			workflows.forEach(({ id, name, json, nodeCount, expectedWarnings }) => {
 				it(`should roundtrip workflow ${id}: "${name}" (${nodeCount} nodes)`, () => {
 					// Generate TypeScript code
 					const code = generateWorkflowCode(json);
 
-					// Parse back to JSON
-					const parsedJson = parseWorkflowCode(code);
+					// Parse back to builder and JSON
+					const builder = parseWorkflowCodeToBuilder(code);
+					const parsedJson: WorkflowJSON = builder.toJSON();
+
+					// Validate the parsed workflow
+					if (!SKIP_VALIDATION_WORKFLOWS.has(id)) {
+						const validationResult = builder.validate();
+
+						// Get actual warnings
+						const actualWarnings: ExpectedWarning[] = validationResult.warnings
+							.map((w: { code: string; nodeName?: string }) => ({
+								code: w.code,
+								nodeName: w.nodeName,
+							}))
+							.sort((a: ExpectedWarning, b: ExpectedWarning) =>
+								normalizeWarning(a).localeCompare(normalizeWarning(b)),
+							);
+
+						// Get expected warnings (from manifest or empty array)
+						const expected = (expectedWarnings ?? []).sort(
+							(a: ExpectedWarning, b: ExpectedWarning) =>
+								normalizeWarning(a).localeCompare(normalizeWarning(b)),
+						);
+
+						// Compare warnings
+						if (JSON.stringify(actualWarnings) !== JSON.stringify(expected)) {
+							console.log(`Workflow ${id} warning mismatch:`);
+							console.log(`  Expected (${expected.length}):`);
+							for (const w of expected) {
+								console.log(`    - [${w.code}] ${w.nodeName ?? '(no node)'}`);
+							}
+							console.log(`  Actual (${actualWarnings.length}):`);
+							for (const w of actualWarnings) {
+								console.log(`    - [${w.code}] ${w.nodeName ?? '(no node)'}`);
+							}
+						}
+
+						expect(actualWarnings).toEqual(expected);
+					}
 
 					// Verify basic structure
 					expect(parsedJson.id ?? '').toBe(json.id ?? '');
