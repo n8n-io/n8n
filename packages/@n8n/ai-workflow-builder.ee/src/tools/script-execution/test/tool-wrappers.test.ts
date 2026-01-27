@@ -1,4 +1,4 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { INode, INodeTypeDescription } from 'n8n-workflow';
 
 import { createNode, createNodeType, createWorkflow } from '../../../../test/test-utils';
 import { OperationsCollector } from '../state-provider';
@@ -1134,99 +1134,52 @@ describe('Tool Wrappers', () => {
 			expect(result.error).toContain('not found');
 		});
 
-		describe('parameter sanitization', () => {
-			it('should strip the string "undefined" from parameters', async () => {
-				const node = await tools.addNode({
-					t: 'n8n-nodes-base.httpRequest',
-					n: 'HTTP',
-				});
-
-				const result = await tools.setParameters({
-					nodeId: node,
-					params: {
-						url: 'https://example.com',
-						// Simulate LLM returning "undefined" as a string
-						method: 'undefined',
-					},
-				});
-
-				expect(result.success).toBe(true);
-				// The string "undefined" should be stripped
-				expect(result.parameters).toEqual({ url: 'https://example.com' });
-				expect(result.parameters).not.toHaveProperty('method');
+		it('should handle nested objects correctly', async () => {
+			const node = await tools.addNode({
+				t: 'n8n-nodes-base.httpRequest',
+				n: 'HTTP',
 			});
 
-			it('should strip "undefined" strings from nested objects', async () => {
-				const node = await tools.addNode({
-					t: 'n8n-nodes-base.httpRequest',
-					n: 'HTTP',
-				});
-
-				const result = await tools.setParameters({
-					nodeId: node,
-					params: {
-						url: 'https://example.com',
-						options: {
-							timeout: 5000,
-							proxy: 'undefined', // Should be stripped
-						},
-					},
-				});
-
-				expect(result.success).toBe(true);
-				expect(result.parameters).toEqual({
+			const result = await tools.setParameters({
+				nodeId: node,
+				params: {
 					url: 'https://example.com',
-					options: { timeout: 5000 },
-				});
+					options: {
+						timeout: 5000,
+						proxy: 'http://proxy.example.com',
+					},
+				},
 			});
 
-			it('should strip "undefined" strings from arrays', async () => {
-				const node = await tools.addNode({
-					t: 'n8n-nodes-base.httpRequest',
-					n: 'HTTP',
-				});
+			expect(result.success).toBe(true);
+			expect(result.parameters).toEqual({
+				url: 'https://example.com',
+				options: { timeout: 5000, proxy: 'http://proxy.example.com' },
+			});
+		});
 
-				const result = await tools.setParameters({
-					nodeId: node,
-					params: {
-						url: 'https://example.com',
-						headers: [
-							{ name: 'Content-Type', value: 'application/json' },
-							{ name: 'Auth', value: 'undefined' }, // Value should be stripped
-						],
-					},
-				});
-
-				expect(result.success).toBe(true);
-				expect(result.parameters?.headers).toEqual([
-					{ name: 'Content-Type', value: 'application/json' },
-					{ name: 'Auth' }, // value was stripped
-				]);
+		it('should handle arrays correctly', async () => {
+			const node = await tools.addNode({
+				t: 'n8n-nodes-base.httpRequest',
+				n: 'HTTP',
 			});
 
-			it('should preserve valid values while stripping "undefined"', async () => {
-				const node = await tools.addNode({
-					t: 'n8n-nodes-base.httpRequest',
-					n: 'HTTP',
-				});
-
-				const result = await tools.setParameters({
-					nodeId: node,
-					params: {
-						url: 'https://example.com',
-						method: 'POST',
-						body: 'undefined', // Should be stripped
-						headers: { 'Content-Type': 'application/json' },
-					},
-				});
-
-				expect(result.success).toBe(true);
-				expect(result.parameters).toEqual({
+			const result = await tools.setParameters({
+				nodeId: node,
+				params: {
 					url: 'https://example.com',
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-				});
+					headers: [
+						{ name: 'Content-Type', value: 'application/json' },
+						{ name: 'Auth', value: 'Bearer token' },
+					],
+				},
 			});
+
+			expect(result.success).toBe(true);
+			expect(result.parameters?.headers).toEqual([
+				{ name: 'Content-Type', value: 'application/json' },
+				{ name: 'Auth', value: 'Bearer token' },
+			]);
 		});
 
 		describe('set() alias', () => {
@@ -1380,5 +1333,139 @@ describe('resolveNodeId', () => {
 			nodeType: 'n8n-nodes-base.httpRequest',
 		};
 		expect(resolveNodeId(addNodeResult)).toBe('ghi-789');
+	});
+});
+
+describe('Default Parameter Extraction', () => {
+	// Test case based on user-reported issue: model parameters showing as 'undefined'
+	// after creating lmChatOpenAi nodes
+
+	it('should apply default parameters from node type when creating nodes', async () => {
+		// Create a node type that mimics lmChatOpenAi with model parameter that has displayOptions
+		const chatModelWithDisplayOptions = createNodeType({
+			displayName: 'OpenAI Chat Model',
+			name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: [1, 1.1, 1.2, 1.3],
+			group: ['output'],
+			inputs: [],
+			outputs: [{ type: 'ai_languageModel' }],
+			properties: [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: 'gpt-4',
+					options: [
+						{ name: 'GPT-4', value: 'gpt-4' },
+						{ name: 'GPT-3.5 Turbo', value: 'gpt-3.5-turbo' },
+					],
+					// This displayOptions is version-based, not parameter-based
+					displayOptions: {
+						show: {
+							'@version': [1.1, 1.2, 1.3],
+						},
+					},
+				},
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							displayName: 'System Message',
+							name: 'systemMessage',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+		});
+
+		const operationsCollector = new OperationsCollector();
+		const workflow = createWorkflow([]);
+
+		const tools = createToolWrappers({
+			nodeTypes: [chatModelWithDisplayOptions],
+			workflow,
+			operationsCollector,
+		});
+
+		// Create the node - this should apply defaults from properties
+		const result = await tools.addNode({
+			t: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			n: 'Test Model',
+		});
+
+		expect(result.success).toBe(true);
+
+		// Get the created node from operations
+		const operations = operationsCollector.getOperations();
+		expect(operations).toHaveLength(1);
+		expect(operations[0].type).toBe('addNodes');
+
+		const addedNode = (operations[0] as { type: 'addNodes'; nodes: INode[] }).nodes[0];
+
+		// Check that default parameters were applied
+		// The 'options' property with empty object default should be there
+		expect(addedNode.parameters).toHaveProperty('options');
+		expect(addedNode.parameters.options).toEqual({});
+
+		// NOTE: The model parameter has displayOptions with '@version', which means
+		// extractDefaultParameters will skip it (currently). This test documents
+		// the CURRENT behavior - model is NOT included because of displayOptions.
+		// This is the bug we need to fix!
+		console.log('Created node parameters:', JSON.stringify(addedNode.parameters, null, 2));
+	});
+
+	it('should include defaults for properties with version-only displayOptions', async () => {
+		// This test will FAIL with current code but shows what we WANT to happen
+		const chatModelWithVersionDisplayOptions = createNodeType({
+			displayName: 'OpenAI Chat Model',
+			name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			version: [1, 1.1, 1.2, 1.3],
+			group: ['output'],
+			inputs: [],
+			outputs: [{ type: 'ai_languageModel' }],
+			properties: [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: 'gpt-4',
+					// Version-based displayOptions should NOT prevent default extraction
+					displayOptions: {
+						show: {
+							'@version': [1.1, 1.2, 1.3],
+						},
+					},
+				},
+			],
+		});
+
+		const operationsCollector = new OperationsCollector();
+		const workflow = createWorkflow([]);
+
+		const tools = createToolWrappers({
+			nodeTypes: [chatModelWithVersionDisplayOptions],
+			workflow,
+			operationsCollector,
+		});
+
+		const result = await tools.addNode({
+			t: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			n: 'Test Model',
+		});
+
+		expect(result.success).toBe(true);
+
+		const operations = operationsCollector.getOperations();
+		const addedNode = (operations[0] as { type: 'addNodes'; nodes: INode[] }).nodes[0];
+
+		// This is what we WANT - model default should be included even with @version displayOptions
+		// Currently this will FAIL because extractDefaultParameters skips ANY displayOptions
+		expect(addedNode.parameters).toHaveProperty('model');
+		expect(addedNode.parameters.model).toBe('gpt-4');
 	});
 });

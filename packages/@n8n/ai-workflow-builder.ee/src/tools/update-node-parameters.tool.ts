@@ -370,8 +370,20 @@ async function processParameterUpdates(
 		});
 	}
 
-	// Fix expression prefixes in the new parameters
-	return fixExpressionPrefixes(newParameters.parameters) as INodeParameters;
+	// Merge with existing parameters to preserve defaults/values the LLM might have omitted
+	// LLM-returned values win, but omitted values are preserved from existing
+	const llmParameters = newParameters.parameters as INodeParameters;
+	const mergedParameters = { ...currentParameters, ...llmParameters };
+
+	logger?.debug('Parameter update: merged LLM result with existing', {
+		nodeId,
+		existingCount: Object.keys(currentParameters).length,
+		llmReturnedCount: Object.keys(llmParameters).length,
+		mergedCount: Object.keys(mergedParameters).length,
+	});
+
+	// Fix expression prefixes in the merged parameters
+	return fixExpressionPrefixes(mergedParameters);
 }
 
 export const UPDATING_NODE_PARAMETER_TOOL: BuilderToolBase = {

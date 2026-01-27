@@ -295,6 +295,18 @@ interface NodeLookupResult {
 	error?: string;
 }
 
+/**
+ * Find a node by ID first, then fall back to name lookup.
+ * This allows scripts to use either UUIDs or node names.
+ */
+function findNodeByIdOrName(nodes: INode[], idOrName: string): INode | undefined {
+	// Try ID first (UUID match)
+	let node = nodes.find((n) => n.id === idOrName);
+	// Fall back to name match
+	node ??= nodes.find((n) => n.name === idOrName);
+	return node;
+}
+
 function lookupNodesForConnection(
 	sourceNodeId: string,
 	targetNodeId: string,
@@ -302,11 +314,8 @@ function lookupNodesForConnection(
 	nodeTypes: INodeTypeDescription[],
 ): NodeLookupResult {
 	// Try to find by ID first, then fall back to name lookup
-	let sourceNode = currentNodes.find((n) => n.id === sourceNodeId);
-	sourceNode ??= currentNodes.find((n) => n.name === sourceNodeId);
-
-	let targetNode = currentNodes.find((n) => n.id === targetNodeId);
-	targetNode ??= currentNodes.find((n) => n.name === targetNodeId);
+	const sourceNode = findNodeByIdOrName(currentNodes, sourceNodeId);
+	const targetNode = findNodeByIdOrName(currentNodes, targetNodeId);
 
 	if (!sourceNode || !targetNode) {
 		const missing = !sourceNode ? sourceNodeId : targetNodeId;
@@ -447,55 +456,6 @@ function buildConnectionStructure(
 }
 
 /**
- * Recursively removes undefined values from a parameters object.
- * This prevents the LLM from accidentally setting parameters to the string "undefined".
- */
-function sanitizeParameters(params: INodeParameters): INodeParameters {
-	const result: INodeParameters = {};
-
-	for (const [key, value] of Object.entries(params)) {
-		// Skip undefined values entirely - let the default be used
-		if (value === undefined) {
-			continue;
-		}
-
-		// Skip the string "undefined" - this is likely an LLM mistake
-		if (value === 'undefined') {
-			continue;
-		}
-
-		// Recursively sanitize nested objects (but not arrays)
-		if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-			const sanitized = sanitizeParameters(value as INodeParameters);
-			// Only include if there are remaining properties
-			if (Object.keys(sanitized).length > 0) {
-				result[key] = sanitized;
-			}
-		} else if (Array.isArray(value)) {
-			// For arrays, sanitize each element if it's an object and filter out undefined strings
-			const sanitizedArray: unknown[] = [];
-			for (const item of value) {
-				// Skip the string "undefined"
-				if (item === 'undefined') {
-					continue;
-				}
-				// Recursively sanitize nested objects
-				if (item !== null && typeof item === 'object' && !Array.isArray(item)) {
-					sanitizedArray.push(sanitizeParameters(item as INodeParameters));
-				} else {
-					sanitizedArray.push(item);
-				}
-			}
-			result[key] = sanitizedArray as INodeParameters[keyof INodeParameters];
-		} else {
-			result[key] = value;
-		}
-	}
-
-	return result;
-}
-
-/**
  * Create tool wrappers for use in script execution
  */
 export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
@@ -537,9 +497,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 		try {
 			// Normalize short-form input to full form
 			const normalized = normalizeAddNodeInput(input);
-			const { nodeType, name } = normalized;
-			// Sanitize parameters to remove undefined values
-			const initialParameters = sanitizeParameters(normalized.initialParameters ?? {});
+			const { nodeType, name, initialParameters = {} } = normalized;
 
 			// Default version to latest if not specified
 			let nodeVersion = normalized.nodeVersion;
@@ -679,12 +637,13 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 
 			// Get current nodes
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
-			const nodeToRemove = currentNodes.find((n) => n.id === nodeId);
+			// Support both ID and name lookup for flexibility
+			const nodeToRemove = findNodeByIdOrName(currentNodes, nodeId);
 
 			if (!nodeToRemove) {
 				return {
 					success: false,
-					error: `Node with ID "${nodeId}" not found`,
+					error: `Node "${nodeId}" not found (checked both ID and name)`,
 				};
 			}
 
@@ -720,15 +679,18 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 				}
 			}
 
+			// Use the actual node ID (UUID), not the input which might have been a name
+			const actualNodeId = nodeToRemove.id;
+
 			// Add operation to collector
-			const operation: WorkflowOperation = { type: 'removeNode', nodeIds: [nodeId] };
+			const operation: WorkflowOperation = { type: 'removeNode', nodeIds: [actualNodeId] };
 			operationsCollector.addOperation(operation);
 
 			logger?.debug(`Script: Removed node "${nodeToRemove.name}"`);
 
 			return {
 				success: true,
-				removedNodeId: nodeId,
+				removedNodeId: actualNodeId,
 				removedNodeName: nodeToRemove.name,
 				removedNodeType: nodeToRemove.type,
 				connectionsRemoved,
@@ -750,30 +712,35 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 			const sourceRef = resolveNodeId(input.sourceNodeId);
 			const targetRef = resolveNodeId(input.targetNodeId);
 
+			if (!sourceRef) {
+				return {
+					success: false,
+					error: `Invalid source node reference. Received: ${JSON.stringify(input.sourceNodeId)}`,
+				};
+			}
+			if (!targetRef) {
+				return {
+					success: false,
+					error: `Invalid target node reference. Received: ${JSON.stringify(input.targetNodeId)}`,
+				};
+			}
+
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
 
-			// Find source node - try by ID first, then by name
-			let sourceNode = sourceRef ? currentNodes.find((n) => n.id === sourceRef) : undefined;
-			if (!sourceNode && sourceRef) {
-				sourceNode = currentNodes.find((n) => n.name === sourceRef);
-			}
-
-			// Find target node - try by ID first, then by name
-			let targetNode = sourceRef ? currentNodes.find((n) => n.id === targetRef) : undefined;
-			if (!targetNode && targetRef) {
-				targetNode = currentNodes.find((n) => n.name === targetRef);
-			}
+			// Support both ID and name lookup for flexibility
+			const sourceNode = findNodeByIdOrName(currentNodes, sourceRef);
+			const targetNode = findNodeByIdOrName(currentNodes, targetRef);
 
 			if (!sourceNode) {
 				return {
 					success: false,
-					error: `Source node not found. Received: ${JSON.stringify(input.sourceNodeId)}`,
+					error: `Source node "${sourceRef}" not found (checked both ID and name)`,
 				};
 			}
 			if (!targetNode) {
 				return {
 					success: false,
-					error: `Target node not found. Received: ${JSON.stringify(input.targetNodeId)}`,
+					error: `Target node "${targetRef}" not found (checked both ID and name)`,
 				};
 			}
 
@@ -811,12 +778,13 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 
 			// Get current nodes
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
-			const nodeToRename = currentNodes.find((n) => n.id === nodeId);
+			// Support both ID and name lookup for flexibility
+			const nodeToRename = findNodeByIdOrName(currentNodes, nodeId);
 
 			if (!nodeToRename) {
 				return {
 					success: false,
-					error: `Node with ID "${nodeId}" not found`,
+					error: `Node "${nodeId}" not found (checked both ID and name)`,
 				};
 			}
 
@@ -830,9 +798,16 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 			}
 
 			const oldName = nodeToRename.name;
+			// Use the actual node ID (UUID), not the input which might have been a name
+			const actualNodeId = nodeToRename.id;
 
 			// Add operation to collector
-			const operation: WorkflowOperation = { type: 'renameNode', nodeId, oldName, newName };
+			const operation: WorkflowOperation = {
+				type: 'renameNode',
+				nodeId: actualNodeId,
+				oldName,
+				newName,
+			};
 			operationsCollector.addOperation(operation);
 
 			logger?.debug(`Script: Renamed node "${oldName}" -> "${newName}"`);
@@ -910,12 +885,13 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 
 			// Get current nodes
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
-			const nodeToUpdate = currentNodes.find((n) => n.id === nodeId);
+			// Support both ID and name lookup for flexibility
+			const nodeToUpdate = findNodeByIdOrName(currentNodes, nodeId);
 
 			if (!nodeToUpdate) {
 				return {
 					success: false,
-					error: `Node with ID "${nodeId}" not found`,
+					error: `Node "${nodeId}" not found (checked both ID and name)`,
 				};
 			}
 
@@ -960,28 +936,33 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 				instanceUrl: instanceUrl ?? '',
 			});
 
-			// Sanitize the LLM result to remove undefined values and "undefined" strings
-			const rawParameters = result.parameters as INodeParameters;
-			const updatedParameters = sanitizeParameters(rawParameters);
+			// Merge with existing parameters to preserve defaults/values the LLM might have omitted
+			// LLM-returned values win, but omitted values are preserved from existing
+			const llmParameters = result.parameters as INodeParameters;
+			const existingParameters = nodeToUpdate.parameters ?? {};
+			const updatedParameters = { ...existingParameters, ...llmParameters };
 
 			logger?.debug('Script: Parameter update result', {
 				nodeName: nodeToUpdate.name,
 				nodeId,
 				requestedChanges: changes,
-				previousParameters: nodeToUpdate.parameters,
-				rawParameters,
-				updatedParameters,
+				previousParameters: existingParameters,
+				llmParameters,
+				finalMergedParameters: updatedParameters,
 			});
 
-			// Validate that we got meaningful parameters back
-			if (!updatedParameters || Object.keys(updatedParameters).length === 0) {
-				logger?.warn('Script: LLM returned empty parameters - this may indicate a problem');
+			// Validate that we got meaningful parameters back from the LLM
+			if (!llmParameters || Object.keys(llmParameters).length === 0) {
+				logger?.warn('Script: LLM returned empty parameters - preserving existing values');
 			}
+
+			// Use the actual node ID (UUID), not the input which might have been a name
+			const actualNodeId = nodeToUpdate.id;
 
 			// Add operation to collector
 			const operation: WorkflowOperation = {
 				type: 'updateNode',
-				nodeId,
+				nodeId: actualNodeId,
 				updates: { parameters: updatedParameters },
 			};
 			operationsCollector.addOperation(operation);
@@ -1011,12 +992,13 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 
 			// Get current nodes
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
-			const node = currentNodes.find((n) => n.id === nodeId);
+			// Support both ID and name lookup for flexibility
+			const node = findNodeByIdOrName(currentNodes, nodeId);
 
 			if (!node) {
 				return {
 					success: false,
-					error: `Node with ID "${nodeId}" not found`,
+					error: `Node "${nodeId}" not found (checked both ID and name)`,
 				};
 			}
 
@@ -1103,9 +1085,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 			for (const nodeInput of inputNodes) {
 				// Normalize short-form input
 				const normalized = normalizeAddNodeInput(nodeInput);
-				const { nodeType, name } = normalized;
-				// Sanitize parameters to remove undefined values
-				const initialParameters = sanitizeParameters(normalized.initialParameters ?? {});
+				const { nodeType, name, initialParameters = {} } = normalized;
 
 				// Default version to latest if not specified
 				let nodeVersion = normalized.nodeVersion;
@@ -1324,26 +1304,27 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 
 			// Get current nodes
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
-			const nodeToUpdate = currentNodes.find((n) => n.id === nodeId);
+			// Support both ID and name lookup for flexibility
+			const nodeToUpdate = findNodeByIdOrName(currentNodes, nodeId);
 
 			if (!nodeToUpdate) {
 				return {
 					success: false,
-					error: `Node with ID "${nodeId}" not found`,
+					error: `Node "${nodeId}" not found (checked both ID and name)`,
 				};
 			}
 
-			// Sanitize input parameters to remove undefined values
-			const sanitizedInput = sanitizeParameters(input.params);
-
 			// Merge or replace parameters
 			const currentParams = nodeToUpdate.parameters ?? {};
-			const newParams = input.replace ? sanitizedInput : { ...currentParams, ...sanitizedInput };
+			const newParams = input.replace ? input.params : { ...currentParams, ...input.params };
+
+			// Use the actual node ID (UUID), not the input which might have been a name
+			const actualNodeId = nodeToUpdate.id;
 
 			// Add operation to collector
 			const operation: WorkflowOperation = {
 				type: 'updateNode',
-				nodeId,
+				nodeId: actualNodeId,
 				updates: { parameters: newParams },
 			};
 			operationsCollector.addOperation(operation);
@@ -1387,28 +1368,29 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 					continue;
 				}
 
-				const nodeToUpdate = currentNodes.find((n) => n.id === nodeId);
+				// Support both ID and name lookup for flexibility
+				const nodeToUpdate = findNodeByIdOrName(currentNodes, nodeId);
 				if (!nodeToUpdate) {
 					results.push({
 						success: false,
-						error: `Node with ID "${nodeId}" not found`,
+						error: `Node "${nodeId}" not found (checked both ID and name)`,
 					});
 					continue;
 				}
 
-				// Sanitize input parameters to remove undefined values
-				const sanitizedInput = sanitizeParameters(updateInput.params);
-
 				// Merge or replace parameters
 				const currentParams = nodeToUpdate.parameters ?? {};
 				const newParams = updateInput.replace
-					? sanitizedInput
-					: { ...currentParams, ...sanitizedInput };
+					? updateInput.params
+					: { ...currentParams, ...updateInput.params };
+
+				// Use the actual node ID (UUID), not the input which might have been a name
+				const actualNodeId = nodeToUpdate.id;
 
 				// Add operation to collector
 				const operation: WorkflowOperation = {
 					type: 'updateNode',
-					nodeId,
+					nodeId: actualNodeId,
 					updates: { parameters: newParams },
 				};
 				operationsCollector.addOperation(operation);
