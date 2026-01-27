@@ -79,7 +79,10 @@ Structured Output Parser: Prefer this over manually extracting/parsing AI output
 
 const NODE_SELECTION_PATTERNS = `Node selection by use case:
 
-DOCUMENTS: Extract From File (PDF/Excel/Word/CSV), Document Loader (binary→AI), AWS Textract (OCR), Mindee (invoices)
+DOCUMENTS:
+- RAG/Vector Store workflows: Document Loader (dataType='binary') handles PDF, CSV, JSON from form uploads automatically
+- Standalone text extraction: Extract From File requires IF/Switch to route each file type to correct operation
+- Scanned documents: AWS Textract (OCR), Mindee (invoices/receipts)
 DATA PROCESSING: Aggregate to combine multiple items before summarization/analysis, Split Out to expand arrays into items, Loop Over Items for 100+ items
 SUMMARIZATION: When summarizing multiple items (emails, messages, records), include Aggregate before the AI/summarization node—otherwise each item processes separately
 STORAGE: n8n Data Tables (preferred, requires no credentials), Google Sheets (for collaboration), Airtable (for relationships). Note: Set/Merge transform data in memory only—add a storage node to persist data.

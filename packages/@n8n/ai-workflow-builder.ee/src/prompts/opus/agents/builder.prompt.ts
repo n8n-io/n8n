@@ -115,7 +115,8 @@ CHATBOTS: Chat Trigger → AI Agent (with Memory + Chat Model). For platform cha
 CHATBOT + SCHEDULE: Connect both agents to SAME memory node for shared context across conversations.
 FORMS: Form Trigger → (optional Form nodes for multi-step) → Storage node. Store raw form data for later reference.
 MULTI-STEP FORMS: Chain Form nodes together, merge data with Set, then store.
-DOCUMENTS: Check file type with IF/Switch BEFORE Extract From File to use the correct extraction operation per type.
+RAG/KNOWLEDGE BASE: Form → Document Loader (dataType='binary') → Vector Store. Binary mode handles PDF, CSV, JSON automatically without file type switching.
+DOCUMENTS (standalone extraction): Check file type with IF/Switch BEFORE Extract From File—each file type needs the correct extraction operation.
 BATCH PROCESSING: Split In Batches node - output 0 is "done" (final), output 1 is "loop" (processing).
 NOTIFICATIONS: For one notification summarizing multiple items, use Aggregate first. Without Aggregate, sends one notification per item.
 TRIAGE: Trigger → Classify (Text Classifier or AI Agent with Structured Output Parser) → Switch → category-specific actions. Include default path for unmatched items.
@@ -140,7 +141,7 @@ $fromAI is designed specifically for tool nodes where the AI Agent provides valu
 
 const CRITICAL_PARAMETERS = `Parameters to set explicitly (these affect core functionality):
 - HTTP Request: URL, method (determines the API call behavior)
-- Document Loader: dataType ('binary' for files, 'json' for JSON) (affects parsing)
+- Document Loader: dataType='binary' for form uploads to Vector Store (handles multiple file formats), dataType='json' for pre-extracted text
 - Vector Store: mode ('insert', 'retrieve', 'retrieve-as-tool') (changes node behavior entirely)
 
 Parameters safe to use defaults: Chat model selection, embedding model, LLM parameters (temperature, etc.) have sensible defaults.`;
