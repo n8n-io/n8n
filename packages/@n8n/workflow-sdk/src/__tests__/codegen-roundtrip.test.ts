@@ -16,24 +16,10 @@ const SKIP_WORKFLOWS = new Set<string>(['5979']);
 
 // Workflows to skip validation due to known codegen bugs (invalid warnings)
 // These produce warnings that don't exist in the original workflow (codegen issues to fix)
-// - MERGE_SINGLE_INPUT: Codegen loses some merge node input connections
-// - DISCONNECTED_NODE: Codegen creates disconnected nodes that weren't in original
 // Once fixed, these should be moved to expectedWarnings in manifest.json
+// NOTE: All previous workflows have been fixed and moved to expectedWarnings in manifests
 const SKIP_VALIDATION_WORKFLOWS = new Set<string>([
-	// MERGE_SINGLE_INPUT bugs - codegen loses merge input connections
-	'3066', // Automated AI Powered Social Media Content Factory
-	'3121', // AI Automated TikTok/Youtube Shorts/Reels Generator
-	'3442', // AI-Powered Short-Form Video Generator
-	'4767', // VEO3 Video Generator TEMPLATE
-	'5805', // YT script automation
-	'5851', // Save_your_workflows_into_a_GitHub_repository
-	'6897', // HR CVs Filter
-	'6993', // Unknown
-	// DISCONNECTED_NODE bugs - codegen creates disconnected nodes
-	'4295', // Automated Lead Scraper: Apify to Google Sheets
-	'4696', // Conversational Telegram Bot with GPT-4o
-	'9999', // Unknown (AI Feedback Triage)
-	'10476', // Unknown (Switch disconnected)
+	// Currently empty - all codegen bugs have been fixed!
 ]);
 
 interface ExpectedWarning {
@@ -571,6 +557,255 @@ describe('parseWorkflowCode', () => {
 		// CRITICAL: Verify the CYCLE connection Wait → Job Complete? is preserved
 		expect(parsedJson.connections['Wait']).toBeDefined();
 		expect(parsedJson.connections['Wait']!.main[0]![0]!.node).toBe('Job Complete?');
+	});
+
+	it('should preserve merge input indices when fan-out includes both regular node and merge', () => {
+		// Bug: MERGE_SINGLE_INPUT - when a node fans out to both a regular node AND a merge node,
+		// the merge input index is lost. Pattern from workflow 6897 (HR CVs Filter):
+		//
+		// Download Actual File → Store CV (output 0) → Merge (input 0)
+		// Download Actual File → Merge (input 1)  ← This connection loses its input index!
+		//
+		// The merge node should receive:
+		// - input 0: from Store CV
+		// - input 1: from Download Actual File
+		const originalJson: WorkflowJSON = {
+			id: 'merge-fanout-test',
+			name: 'Merge Fan-out Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'fanout-1',
+					name: 'Fan Out Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: { url: 'https://api.example.com' },
+				},
+				{
+					id: 'branch-1',
+					name: 'Branch Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: { mode: 'manual' },
+				},
+				{
+					id: 'merge-1',
+					name: 'Merge',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [600, 0],
+					parameters: {},
+				},
+				{
+					id: 'after-merge',
+					name: 'After Merge',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [800, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: {
+					main: [[{ node: 'Fan Out Node', type: 'main', index: 0 }]],
+				},
+				// Fan Out Node fans out to BOTH Branch Node AND Merge
+				'Fan Out Node': {
+					main: [
+						[
+							{ node: 'Branch Node', type: 'main', index: 0 },
+							{ node: 'Merge', type: 'main', index: 1 }, // Goes to merge INPUT 1
+						],
+					],
+				},
+				// Branch Node goes to Merge input 0
+				'Branch Node': {
+					main: [[{ node: 'Merge', type: 'main', index: 0 }]],
+				},
+				Merge: {
+					main: [[{ node: 'After Merge', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(5);
+
+		// Verify Fan Out Node has connections to both Branch Node and Merge
+		const fanOutConns = parsedJson.connections['Fan Out Node']?.main[0];
+		expect(fanOutConns).toBeDefined();
+		expect(fanOutConns!.length).toBeGreaterThanOrEqual(2);
+
+		// Find connections to Branch Node and Merge
+		const toBranch = fanOutConns!.find((c) => c.node === 'Branch Node');
+		const toMerge = fanOutConns!.find((c) => c.node === 'Merge');
+
+		expect(toBranch).toBeDefined();
+		expect(toMerge).toBeDefined();
+
+		// CRITICAL: The merge connection from Fan Out Node should go to input 1
+		expect(toMerge!.index).toBe(1);
+
+		// Branch Node should connect to Merge input 0
+		const branchToMerge = parsedJson.connections['Branch Node']?.main[0]?.[0];
+		expect(branchToMerge).toBeDefined();
+		expect(branchToMerge!.node).toBe('Merge');
+		expect(branchToMerge!.index).toBe(0);
+
+		// Verify Merge has output to After Merge
+		expect(parsedJson.connections['Merge']?.main[0]?.[0]?.node).toBe('After Merge');
+	});
+
+	it('should preserve merge input indices when fan-out includes multiple merge nodes', () => {
+		// Bug: MERGE_SINGLE_INPUT - when a node fans out to multiple merge nodes,
+		// the merge input indices are lost. Pattern from workflow 3066:
+		//
+		// Source → Regular Node (output 0)
+		// Source → Merge1 (input 1)
+		// Source → Merge2 (input 1)
+		// Regular Node → Merge1 (input 0)
+		// Other → Merge2 (input 0)
+		//
+		// The merge nodes should receive their correct input indices
+		const originalJson: WorkflowJSON = {
+			id: 'multi-merge-fanout-test',
+			name: 'Multiple Merge Fan-out Test',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'source-1',
+					name: 'Source Node',
+					type: 'n8n-nodes-base.httpRequest',
+					typeVersion: 4.2,
+					position: [200, 0],
+					parameters: { url: 'https://api.example.com' },
+				},
+				{
+					id: 'branch-1',
+					name: 'Branch Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, -100],
+					parameters: { mode: 'manual' },
+				},
+				{
+					id: 'other-1',
+					name: 'Other Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [400, 100],
+					parameters: { mode: 'manual' },
+				},
+				{
+					id: 'merge-1',
+					name: 'Merge1',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [600, -50],
+					parameters: {},
+				},
+				{
+					id: 'merge-2',
+					name: 'Merge2',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3.2,
+					position: [600, 50],
+					parameters: {},
+				},
+				{
+					id: 'end-1',
+					name: 'End',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [800, 0],
+					parameters: {},
+				},
+			],
+			connections: {
+				Trigger: {
+					main: [[{ node: 'Source Node', type: 'main', index: 0 }]],
+				},
+				// Source Node fans out to: Branch Node, Merge1 (input 1), Merge2 (input 1)
+				'Source Node': {
+					main: [
+						[
+							{ node: 'Branch Node', type: 'main', index: 0 },
+							{ node: 'Merge1', type: 'main', index: 1 }, // Goes to Merge1 INPUT 1
+							{ node: 'Merge2', type: 'main', index: 1 }, // Goes to Merge2 INPUT 1
+						],
+					],
+				},
+				// Branch Node goes to Merge1 input 0
+				'Branch Node': {
+					main: [[{ node: 'Merge1', type: 'main', index: 0 }]],
+				},
+				// Other Node goes to Merge2 input 0
+				'Other Node': {
+					main: [[{ node: 'Merge2', type: 'main', index: 0 }]],
+				},
+				Merge1: {
+					main: [[{ node: 'End', type: 'main', index: 0 }]],
+				},
+				Merge2: {
+					main: [[{ node: 'End', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		// Verify all nodes are present
+		expect(parsedJson.nodes).toHaveLength(7);
+
+		// Verify Source Node has connections to Branch Node, Merge1, and Merge2
+		const sourceConns = parsedJson.connections['Source Node']?.main[0];
+		expect(sourceConns).toBeDefined();
+		expect(sourceConns!.length).toBeGreaterThanOrEqual(3);
+
+		// Find connections to each target
+		const toBranch = sourceConns!.find((c) => c.node === 'Branch Node');
+		const toMerge1 = sourceConns!.find((c) => c.node === 'Merge1');
+		const toMerge2 = sourceConns!.find((c) => c.node === 'Merge2');
+
+		expect(toBranch).toBeDefined();
+		expect(toMerge1).toBeDefined();
+		expect(toMerge2).toBeDefined();
+
+		// CRITICAL: Both merge connections from Source Node should go to input 1
+		expect(toMerge1!.index).toBe(1);
+		expect(toMerge2!.index).toBe(1);
+
+		// Branch Node should connect to Merge1 input 0
+		const branchToMerge = parsedJson.connections['Branch Node']?.main[0]?.[0];
+		expect(branchToMerge).toBeDefined();
+		expect(branchToMerge!.node).toBe('Merge1');
+		expect(branchToMerge!.index).toBe(0);
+
+		// Other Node should connect to Merge2 input 0
+		const otherToMerge = parsedJson.connections['Other Node']?.main[0]?.[0];
+		expect(otherToMerge).toBeDefined();
+		expect(otherToMerge!.node).toBe('Merge2');
+		expect(otherToMerge!.index).toBe(0);
 	});
 
 	describe('escapes node references in single-quoted strings', () => {

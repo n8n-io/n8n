@@ -1301,6 +1301,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					// For NodeChains, use head.name (entry point of the chain)
 					if (isNodeChain(conn.target)) {
 						nodesWithIncoming.add(conn.target.head.name);
+					} else if (isSwitchCaseBuilder(conn.target)) {
+						// SwitchCaseBuilder wraps a switch node
+						nodesWithIncoming.add(conn.target.switchNode.name);
+					} else if (isIfElseBuilder(conn.target)) {
+						// IfElseBuilder wraps an if node
+						nodesWithIncoming.add(conn.target.ifNode.name);
 					} else if (typeof conn.target === 'object' && 'name' in conn.target) {
 						nodesWithIncoming.add(conn.target.name);
 					} else {

@@ -335,15 +335,26 @@
 			"id": 12462,
 			"name": "Create AI product images and marketing videos with NanoBanana Pro, Veo 3.1 and Blotato",
 			"success": true,
-			"expectedWarnings": [{ "code": "HARDCODED_CREDENTIALS", "nodeName": "Merge 3 Videos" }]
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Merge 3 Videos"
+				}
+			]
 		},
 		{
 			"id": 9200,
 			"name": "Automate & publish video ad campaigns with NanoBanana, Seedream, GPT-4o, Veo 3",
 			"success": true,
 			"expectedWarnings": [
-				{ "code": "TOOL_NO_PARAMETERS", "nodeName": "Think" },
-				{ "code": "TOOL_NO_PARAMETERS", "nodeName": "Think1" }
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think1"
+				}
 			]
 		},
 		{
@@ -620,8 +631,14 @@
 			"name": "Generate scalable e-commerce product images with GPT-4 and NanoBanana Pro",
 			"success": true,
 			"expectedWarnings": [
-				{ "code": "HARDCODED_CREDENTIALS", "nodeName": "NanoBanana: Create Image" },
-				{ "code": "HARDCODED_CREDENTIALS", "nodeName": "Download Edited Image" }
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "NanoBanana: Create Image"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Download Edited Image"
+				}
 			]
 		},
 		{
@@ -786,7 +803,12 @@
 			"id": 8591,
 			"name": "AI personal assistant for Google Tasks",
 			"success": true,
-			"expectedWarnings": [{ "code": "TOOL_NO_PARAMETERS", "nodeName": "Think" }]
+			"expectedWarnings": [
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 5796,
@@ -2006,7 +2028,21 @@
 		{
 			"id": 9999,
 			"name": "AI-powered feedback triage: Jotform to Trello, Airtable & Slack with Gemini",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Feedback Triage"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note2"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note6"
+				}
+			]
 		},
 		{
 			"id": 5833,
@@ -2237,7 +2273,13 @@
 		{
 			"id": 4295,
 			"name": "Automate business lead scraping from Apify to Google Sheets with data cleaning",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Variables"
+				}
+			]
 		},
 		{
 			"id": 11637,
@@ -2546,13 +2588,7 @@
 		{
 			"id": 3121,
 			"name": "AI-powered short-form video generator with OpenAI, Flux, Kling, and ElevenLabs",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MERGE_SINGLE_INPUT",
-					"nodeName": "Match captions with videos"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 9152,
@@ -2740,13 +2776,7 @@
 		{
 			"id": 10476,
 			"name": "Monitor & manage Docker containers with Telegram bot & AI log analysis",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Switch"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5413,
@@ -2814,7 +2844,12 @@
 			"name": "Conversational Meta ads reporting & management with GPT-5",
 			"success": true,
 			"app": "Merge",
-			"expectedWarnings": [{ "code": "AGENT_STATIC_PROMPT", "nodeName": "AI Agent" }]
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 11617,
@@ -2826,13 +2861,7 @@
 			"id": 6993,
 			"name": "Scrape Google Maps by area & generate outreach messages for lead generation",
 			"success": true,
-			"app": "Merge",
-			"expectedWarnings": [
-				{
-					"code": "MERGE_SINGLE_INPUT",
-					"nodeName": "Merge"
-				}
-			]
+			"app": "Merge"
 		},
 		{
 			"id": 6272,
@@ -3228,13 +3257,7 @@
 		{
 			"id": 4696,
 			"name": "Conversational Telegram bot with GPT-5/GPT-4o for text and voice messages",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Text Or Voice"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 6083,
@@ -3875,13 +3898,7 @@
 		{
 			"id": 3442,
 			"name": "Fully automated AI video generation & multi-platform publishing",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MERGE_SINGLE_INPUT",
-					"nodeName": "Match captions with videos"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 10157,
@@ -4100,7 +4117,12 @@
 			"id": 5303,
 			"name": "Google Search Console and analytics analysis with AI optimizations",
 			"success": true,
-			"expectedWarnings": [{ "code": "AGENT_NO_SYSTEM_MESSAGE", "nodeName": "SEO analyst" }]
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "SEO analyst"
+				}
+			]
 		},
 		{
 			"id": 3791,
@@ -4641,7 +4663,17 @@
 		{
 			"id": 5805,
 			"name": "Create YouTube shorts scripts from video links with Gemini AI and Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Script mapping"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Create Script"
+				}
+			]
 		},
 		{
 			"id": 5862,
@@ -4679,7 +4711,17 @@
 		{
 			"id": 5805,
 			"name": "Create YouTube shorts scripts from video links with Gemini AI and Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Script mapping"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Create Script"
+				}
+			]
 		},
 		{
 			"id": 5862,

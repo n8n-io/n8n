@@ -281,6 +281,15 @@ function getOutputIndex(outputName: string): number {
 }
 
 /**
+ * Convert output index to semantic output slot name.
+ * For Switch nodes, uses 'caseN' format; for regular nodes, uses 'outputN' format.
+ * This is used to look up merge input indices when we know the source's output index.
+ */
+function getOutputSlotName(outputIndex: number, isSwitch = false): string {
+	return isSwitch ? `case${outputIndex}` : `output${outputIndex}`;
+}
+
+/**
  * Get output targets grouped by output index for multi-output nodes.
  * Returns a Map from output index to array of target names.
  * Excludes error outputs (handled separately via .onError())
@@ -334,6 +343,13 @@ function hasOutputsOutsideMerge(node: SemanticNode, mergeNode: SemanticNode): bo
  */
 function isMergeType(type: string): boolean {
 	return type === 'n8n-nodes-base.merge';
+}
+
+/**
+ * Check if a node is a switch node
+ */
+function isSwitchType(type: string): boolean {
+	return type === 'n8n-nodes-base.switch';
 }
 
 /**
@@ -635,7 +651,44 @@ function buildBranchTargets(
 	if (targets.length === 0) return null;
 
 	if (targets.length === 1) {
-		return buildFromNode(targets[0].target, ctx);
+		const singleTarget = targets[0];
+		const targetNode = ctx.graph.nodes.get(singleTarget.target);
+
+		// Special handling for merge nodes in branch context:
+		// When a single branch target is a merge node, we need to create a deferred
+		// connection with the correct input index from targetInputSlot
+		if (ctx.isBranchContext && targetNode && isMergeType(targetNode.type) && sourceNodeName) {
+			// Mark merge as visited and register as variable
+			ctx.visited.add(singleTarget.target);
+			ctx.variables.set(singleTarget.target, targetNode);
+			ctx.deferredMergeNodes.add(singleTarget.target);
+
+			// Get input index from targetInputSlot if available
+			let inputIndex = 0;
+			if (singleTarget.targetInputSlot) {
+				inputIndex = extractInputIndex(singleTarget.targetInputSlot);
+			} else {
+				// Fallback: look up from merge's inputSources using source output slot
+				// Determine the slot name format based on source node type
+				const sourceNode = ctx.graph.nodes.get(sourceNodeName);
+				const isSwitch = sourceNode && isSwitchType(sourceNode.type);
+				const outputSlotName = getOutputSlotName(sourceOutputIndex ?? 0, isSwitch);
+				inputIndex = findMergeInputIndex(targetNode, sourceNodeName, outputSlotName);
+			}
+
+			// Create deferred connection
+			ctx.deferredConnections.push({
+				sourceNodeName,
+				sourceOutputIndex: sourceOutputIndex ?? 0,
+				targetNode,
+				targetInputIndex: inputIndex,
+			});
+
+			// Return variable reference to the merge node
+			return createVarRef(singleTarget.target);
+		}
+
+		return buildFromNode(singleTarget.target, ctx);
 	}
 
 	const targetNames = targets.map((t) => t.target);
@@ -821,11 +874,24 @@ function buildBranchTargets(
 /**
  * Find which input index of a merge node a given source connects to
  */
-function findMergeInputIndex(mergeNode: SemanticNode, sourceName: string): number {
+function findMergeInputIndex(
+	mergeNode: SemanticNode,
+	sourceName: string,
+	sourceOutputSlot?: string,
+): number {
 	for (const [inputSlot, sources] of mergeNode.inputSources) {
 		for (const source of sources) {
 			if (source.from === sourceName) {
-				return extractInputIndex(inputSlot);
+				// If sourceOutputSlot is provided, also match on outputSlot
+				// This is important for multi-output nodes like Switch where
+				// different outputs may connect to different merge inputs
+				if (sourceOutputSlot !== undefined) {
+					if (source.outputSlot === sourceOutputSlot) {
+						return extractInputIndex(inputSlot);
+					}
+				} else {
+					return extractInputIndex(inputSlot);
+				}
 			}
 		}
 	}
@@ -986,9 +1052,17 @@ function buildSplitInBatches(
 	const doneTargets = node.outputs.get('done') ?? [];
 	const loopTargets = node.outputs.get('loop') ?? [];
 
+	// Use a branch context for building done/loop chains
+	// This ensures merge nodes get proper input index handling
+	const branchCtx: BuildContext = {
+		...ctx,
+		isBranchContext: true,
+	};
+
 	// Use buildBranchTargets to handle fan-out within each branch
-	const doneChain = buildBranchTargets(doneTargets, ctx);
-	const loopChain = buildBranchTargets(loopTargets, ctx);
+	// Pass source node name for proper merge input index tracking
+	const doneChain = buildBranchTargets(doneTargets, branchCtx, node.name, 0); // done output index is 0
+	const loopChain = buildBranchTargets(loopTargets, branchCtx, node.name, 1); // loop output index is 1
 
 	return {
 		kind: 'splitInBatches',
@@ -1265,9 +1339,126 @@ function buildFromNode(nodeName: string, ctx: BuildContext): CompositeNode {
 				// Just return the source node - merge connections are handled via deferred
 				return compositeNode;
 			}
-			// Fan-out without merge - create proper fan-out composite
+
+			// Check for "fan-out with direct merge" pattern:
+			// One target IS a Merge node, and other targets feed INTO that Merge
+			const directMergePattern = findDirectMergeInFanOut(nextTargets, ctx);
+			if (directMergePattern) {
+				const { mergeNode, nonMergeTargets } = directMergePattern;
+
+				// Mark merge as visited FIRST so non-merge targets don't chain to it
+				ctx.visited.add(mergeNode.name);
+
+				// Register merge node as variable for .input(n) syntax
+				ctx.variables.set(mergeNode.name, mergeNode);
+
+				// Track this merge for downstream chain building
+				ctx.deferredMergeNodes.add(mergeNode.name);
+
+				// Create deferred connections for ALL merge inputs
+				for (const [inputSlot, sources] of mergeNode.inputSources) {
+					const inputIndex = extractInputIndex(inputSlot);
+
+					for (const source of sources) {
+						// Ensure source node is registered as a variable so it gets declared
+						const sourceNode = ctx.graph.nodes.get(source.from);
+						if (sourceNode) {
+							ctx.variables.set(source.from, sourceNode);
+						}
+
+						ctx.deferredConnections.push({
+							sourceNodeName: source.from,
+							sourceOutputIndex: getOutputIndex(source.outputSlot),
+							targetNode: mergeNode,
+							targetInputIndex: inputIndex,
+						});
+					}
+				}
+
+				// Build chains for non-merge targets (they may have downstream processing)
+				const builtBranches: CompositeNode[] = [];
+				for (const targetName of nonMergeTargets) {
+					if (!ctx.visited.has(targetName)) {
+						builtBranches.push(buildFromNode(targetName, ctx));
+					}
+				}
+
+				// Return the built branches (which don't include merge - it's handled via deferred)
+				if (builtBranches.length === 0) {
+					return {
+						kind: 'chain',
+						nodes: [compositeNode, createVarRef(mergeNode.name)],
+					};
+				}
+				if (builtBranches.length === 1) {
+					return {
+						kind: 'chain',
+						nodes: [compositeNode, builtBranches[0]],
+					};
+				}
+				const fanOut: FanOutCompositeNode = {
+					kind: 'fanOut',
+					sourceNode: compositeNode,
+					targets: builtBranches,
+				};
+				return fanOut;
+			}
+
+			// Fan-out - may include merge nodes that need deferred connections
+			// Get actual connections with input slot info (not just target names)
+			// This preserves the correct input indices for each connection
+			// For multi-output nodes, collect connections from ALL output slots
+			const outputConnections: Array<{
+				target: string;
+				targetInputSlot: string;
+				outputSlot: string;
+			}> = [];
+			for (const [outputSlot, connections] of node.outputs) {
+				if (outputSlot === 'error') continue;
+				for (const conn of connections) {
+					outputConnections.push({
+						target: conn.target,
+						targetInputSlot: conn.targetInputSlot,
+						outputSlot,
+					});
+				}
+			}
+
+			// Track which merge nodes we've handled and collect non-merge targets
+			const handledMerges = new Set<string>();
+			const nonMergeTargets: string[] = [];
+
+			// Process each connection - for merge nodes, create deferred connections with correct input indices
+			for (const conn of outputConnections) {
+				const targetNode = ctx.graph.nodes.get(conn.target);
+				if (!targetNode) continue;
+
+				if (isMergeType(targetNode.type)) {
+					// Mark merge as visited and register as variable (only once per merge)
+					if (!handledMerges.has(conn.target)) {
+						ctx.visited.add(conn.target);
+						ctx.variables.set(conn.target, targetNode);
+						ctx.deferredMergeNodes.add(conn.target);
+						handledMerges.add(conn.target);
+					}
+
+					// Create deferred connection with the correct input index from connection data
+					const inputIndex = extractInputIndex(conn.targetInputSlot);
+					const sourceOutputIndex = getOutputIndex(conn.outputSlot);
+					ctx.deferredConnections.push({
+						sourceNodeName: node.name,
+						sourceOutputIndex,
+						targetNode,
+						targetInputIndex: inputIndex,
+					});
+				} else if (!nonMergeTargets.includes(conn.target)) {
+					// Only add non-merge targets once (for deduplication)
+					nonMergeTargets.push(conn.target);
+				}
+			}
+
 			const fanOutBranches: CompositeNode[] = [];
-			for (const targetName of nextTargets) {
+			for (const targetName of nonMergeTargets) {
 				const targetNode = ctx.graph.nodes.get(targetName);
 				if (targetNode) {
 					if (ctx.visited.has(targetName)) {
@@ -1442,8 +1633,9 @@ export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
 				continue;
 			}
 
-			// For non-merge targets that are not visited, build downstream chain
+			// Build downstream chain for target
 			if (!ctx.visited.has(targetName)) {
+				// For non-visited, non-merge targets, build downstream chain
 				// Reset isBranchContext for building downstream (we're at root level now)
 				const downstreamCtx: BuildContext = {
 					...ctx,
@@ -1454,6 +1646,14 @@ export function buildCompositeTree(graph: SemanticGraph): CompositeTree {
 				ctx.deferredMergeDownstreams.push({
 					mergeNode,
 					downstreamChain,
+				});
+			} else {
+				// Target is already visited - this is a cycle (merge → visited node)
+				// Still need to generate the connection via a variable reference
+				ctx.variables.set(targetName, targetNode);
+				ctx.deferredMergeDownstreams.push({
+					mergeNode,
+					downstreamChain: createVarRef(targetName),
 				});
 			}
 		}
