@@ -58,8 +58,11 @@ describe('ButtonParameter', () => {
 		} as any);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({
-			workflowObject: {
-				getParentNodesByDepth: vi.fn().mockReturnValue([]),
+			workflowId: 'test-workflow-id',
+			workflowObjectById: {
+				'test-workflow-id': {
+					getParentNodesByDepth: vi.fn().mockReturnValue([]),
+				},
 			},
 			getNodeByName: vi.fn().mockReturnValue({}),
 		} as any);

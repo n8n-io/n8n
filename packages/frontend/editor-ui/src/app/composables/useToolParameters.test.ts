@@ -375,7 +375,9 @@ describe('useToolParameters', () => {
 				getParentNodes: vi.fn().mockReturnValue(['Connected Tool']),
 			});
 
-			workflowsStore.workflowObject = mockWorkflow;
+			workflowsStore.workflowObjectById = {
+				[workflowsStore.workflowId]: mockWorkflow,
+			};
 			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
 				if (name === 'Connected Tool') return connectedTool;
 				return null;
@@ -428,7 +430,9 @@ describe('useToolParameters', () => {
 				getParentNodes: vi.fn().mockReturnValue(['Connected Tool']),
 			});
 
-			workflowsStore.workflowObject = mockWorkflow;
+			workflowsStore.workflowObjectById = {
+				[workflowsStore.workflowId]: mockWorkflow,
+			};
 			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
 				if (name === 'Connected Tool') return connectedTool;
 				return null;

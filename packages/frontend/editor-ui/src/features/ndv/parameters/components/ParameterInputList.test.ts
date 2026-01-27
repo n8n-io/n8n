@@ -249,15 +249,18 @@ describe('ParameterInputList', () => {
 				type: FORM_NODE_TYPE,
 			});
 
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
+			workflowStore.workflowId = 'test-workflow-id';
+			workflowStore.workflowObjectById = {
+				'test-workflow-id': createTestWorkflowObject({
+					nodes: [formTriggerNode, formNode],
+					connections: {
+						'Form Trigger': {
+							main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
+						},
 					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
-			});
+					nodeTypes: formWorkflowNodeTypes,
+				}),
+			};
 
 			const { queryByText } = renderComponent({
 				props: {
@@ -921,15 +924,18 @@ describe('ParameterInputList', () => {
 				type: FORM_NODE_TYPE,
 			});
 
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
+			workflowStore.workflowId = 'test-workflow-id';
+			workflowStore.workflowObjectById = {
+				'test-workflow-id': createTestWorkflowObject({
+					nodes: [formTriggerNode, formNode],
+					connections: {
+						'Form Trigger': {
+							main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
+						},
 					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
-			});
+					nodeTypes: formWorkflowNodeTypes,
+				}),
+			};
 
 			const { findByText } = renderComponent({
 				props: {
@@ -959,15 +965,18 @@ describe('ParameterInputList', () => {
 				type: FORM_NODE_TYPE,
 			});
 
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
+			workflowStore.workflowId = 'test-workflow-id';
+			workflowStore.workflowObjectById = {
+				'test-workflow-id': createTestWorkflowObject({
+					nodes: [formTriggerNode, formNode],
+					connections: {
+						'Form Trigger': {
+							main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
+						},
 					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
-			});
+					nodeTypes: formWorkflowNodeTypes,
+				}),
+			};
 
 			const { container, getAllByTestId } = renderComponent({
 				props: {
@@ -995,11 +1004,14 @@ describe('ParameterInputList', () => {
 				type: FORM_TRIGGER_NODE_TYPE,
 			});
 
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode],
-				connections: {},
-				nodeTypes: formWorkflowNodeTypes,
-			});
+			workflowStore.workflowId = 'test-workflow-id';
+			workflowStore.workflowObjectById = {
+				'test-workflow-id': createTestWorkflowObject({
+					nodes: [formTriggerNode],
+					connections: {},
+					nodeTypes: formWorkflowNodeTypes,
+				}),
+			};
 
 			const { container, getAllByTestId } = renderComponent({
 				props: {
@@ -1075,18 +1087,21 @@ describe('ParameterInputList', () => {
 				type: FORM_NODE_TYPE,
 			});
 
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, waitNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Wait', type: NodeConnectionTypes.Main, index: 0 }]],
+			workflowStore.workflowId = 'test-workflow-id';
+			workflowStore.workflowObjectById = {
+				'test-workflow-id': createTestWorkflowObject({
+					nodes: [formTriggerNode, waitNode, formNode],
+					connections: {
+						'Form Trigger': {
+							main: [[{ node: 'Wait', type: NodeConnectionTypes.Main, index: 0 }]],
+						},
+						Wait: {
+							main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
+						},
 					},
-					Wait: {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
-			});
+					nodeTypes: formWorkflowNodeTypes,
+				}),
+			};
 
 			const { findByText, queryByText } = renderComponent({
 				props: {
@@ -1118,11 +1133,14 @@ describe('ParameterInputList', () => {
 				parameters: { resume: 'form' },
 			});
 
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [waitNode],
-				connections: {},
-				nodeTypes: formWorkflowNodeTypes,
-			});
+			workflowStore.workflowId = 'test-workflow-id';
+			workflowStore.workflowObjectById = {
+				'test-workflow-id': createTestWorkflowObject({
+					nodes: [waitNode],
+					connections: {},
+					nodeTypes: formWorkflowNodeTypes,
+				}),
+			};
 
 			const { findByText } = renderComponent({
 				props: {
