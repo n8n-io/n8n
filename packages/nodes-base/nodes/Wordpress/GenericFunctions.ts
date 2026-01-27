@@ -34,7 +34,7 @@ export async function wordpressApiRequest(
 		json: true,
 	};
 	options = Object.assign({}, options, option);
-	if (Object.keys(options.body as IDataObject).length === 0) {
+	if (!Buffer.isBuffer(options.body) && Object.keys(options.body as IDataObject).length === 0) {
 		delete options.body;
 	}
 	try {

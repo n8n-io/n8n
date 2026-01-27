@@ -1,0 +1,39 @@
+{
+	"id": 123,
+	"date": "2023-10-27T10:00:00",
+	"date_gmt": "2023-10-27T10:00:00",
+	"guid": {
+		"rendered": "http://example.com/wp-content/uploads/2023/10/image.png"
+	},
+	"modified": "2023-10-27T10:00:00",
+	"modified_gmt": "2023-10-27T10:00:00",
+	"slug": "image",
+	"status": "inherit",
+	"type": "attachment",
+	"link": "http://example.com/image/",
+	"title": {
+		"rendered": "image"
+	},
+	"author": 1,
+	"comment_status": "open",
+	"ping_status": "closed",
+	"template": "",
+	"meta": [],
+	"description": {
+		"rendered": "<p class=\"attachment\"> <a href=\"http://example.com/wp-content/uploads/2023/10/image.png\"><img width=\"300\" height=\"300\" src=\"http://example.com/wp-content/uploads/2023/10/image.png\" class=\"attachment-medium size-medium\" alt=\"\" decoding=\"async\" loading=\"lazy\" /></a> </p>"
+	},
+	"caption": {
+		"rendered": ""
+	},
+	"alt_text": "",
+	"media_type": "image",
+	"mime_type": "image/png",
+	"media_details": {
+		"width": 300,
+		"height": 300,
+		"file": "2023/10/image.png",
+		"sizes": {}
+	},
+	"post": null,
+	"source_url": "http://example.com/wp-content/uploads/2023/10/image.png"
+}
