@@ -45,7 +45,24 @@ export class WorkflowBuilderService {
 		private readonly telemetry: Telemetry,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
-	) {}
+	) {
+		// Register a post-processor to update node types when they change.
+		// This ensures newly installed/updated/uninstalled community packages are recognized
+		// while preserving existing sessions.
+		this.loadNodesAndCredentials.addPostProcessor(async () => this.refreshNodeTypes());
+	}
+
+	/**
+	 * Update the node types on the existing service instance.
+	 * Called automatically when postProcessLoaders() runs (e.g., after community package changes).
+	 * This preserves existing sessions while making new node types available.
+	 */
+	refreshNodeTypes() {
+		if (this.service) {
+			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+			this.service.updateNodeTypes(nodeTypeDescriptions);
+		}
+	}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
 		if (this.service) return this.service;

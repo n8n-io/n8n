@@ -43,6 +43,7 @@ export async function initActiveWorkflowManager() {
 	mockInstance(BinaryDataConfig);
 	mockInstance(InstanceSettings, {
 		isMultiMain: false,
+		n8nFolder: '/tmp/n8n-test',
 	});
 
 	mockInstance(Push);
