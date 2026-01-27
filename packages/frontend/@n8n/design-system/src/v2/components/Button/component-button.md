@@ -1,5 +1,7 @@
 # Component specification
 
+> **Note:** This document describes the standalone v2 Button component. The main `N8nButton` component in `@n8n/design-system/components` now includes all this functionality with full backwards compatibility. **Use the main N8nButton component for new development.**
+
 - **Component Name:** N8nButton
 
 ## Public API Definition
@@ -171,9 +173,11 @@ Use the `icon` prop for square icon buttons:
 
 ---
 
-## Migration from Legacy N8nButton
+## Migration from Legacy Props
 
-| Legacy             | New                                              |
+The following legacy props are deprecated but still supported for backwards compatibility:
+
+| Legacy Prop        | Current Equivalent                               |
 | ------------------ | ------------------------------------------------ |
 | `type="primary"`   | `variant="solid"`                                |
 | `type="secondary"` | `variant="subtle"`                               |

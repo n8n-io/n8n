@@ -1,23 +1,74 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`components > N8nButton > props > icon > should render icon button 1`] = `"<button class="button button primary medium withIcon" aria-live="polite"><span class="icon"><n8n-icon-stub icon="circle-plus" size="medium" spin="false"></n8n-icon-stub></span>Button</button>"`;
-
-exports[`components > N8nButton > props > loading > should render loading spinner 1`] = `"<button class="button button primary medium loading withIcon" disabled="" aria-busy="true" aria-live="polite"><span class="icon"><n8n-spinner-stub size="medium" type="dots"></n8n-spinner-stub></span>Button</button>"`;
-
-exports[`components > N8nButton > props > square > should render square button 1`] = `
-"<button class="button button primary medium square" aria-live="polite">
-  <!--v-if--><span>48</span>
+exports[`components > N8nButton > Legacy API (backwards compatibility) > props > icon > should render icon button with icon name (legacy compat) 1`] = `
+"<button type="button" class="button button solid medium withIcon" aria-live="polite">
+  <!-- Loading overlay with transition -->
+  <transition-stub name="n8n-button-fade" appear="false" persisted="false" css="true">
+    <!--v-if-->
+  </transition-stub><!-- Button content -->
+  <div class="button-inner">
+    <!-- Icon: slot or legacy prop -->
+    <n8n-icon-stub icon="circle-plus" size="medium" spin="false"></n8n-icon-stub><!-- Content: label prop (deprecated) or default slot -->Button
+  </div>
 </button>"
 `;
 
-exports[`components > N8nButton > props > type > should render highlight button 1`] = `
-"<button class="button button highlight medium" aria-live="polite">
-  <!--v-if-->Button
+exports[`components > N8nButton > Legacy API (backwards compatibility) > props > loading > should render loading spinner 1`] = `
+"<button type="button" disabled="" aria-disabled="true" aria-busy="true" class="button button solid medium loading" aria-live="polite">
+  <!-- Loading overlay with transition -->
+  <transition-stub name="n8n-button-fade" appear="false" persisted="false" css="true">
+    <div class="loading-container">
+      <div class="loading-spinner">
+        <n8n-icon-stub icon="loader" size="medium" spin="false" transform-origin="center"></n8n-icon-stub>
+      </div>
+    </div>
+  </transition-stub><!-- Button content -->
+  <div class="button-inner">
+    <!-- Icon: slot or legacy prop -->
+    <!--v-if-->
+    <!-- Content: label prop (deprecated) or default slot -->Button
+  </div>
 </button>"
 `;
 
-exports[`components > N8nButton > should render correctly 1`] = `
-"<button class="button button primary medium" aria-live="polite">
-  <!--v-if-->Button
+exports[`components > N8nButton > Legacy API (backwards compatibility) > props > square > should render square button 1`] = `
+"<button type="button" class="button button solid medium iconOnly" aria-live="polite">
+  <!-- Loading overlay with transition -->
+  <transition-stub name="n8n-button-fade" appear="false" persisted="false" css="true">
+    <!--v-if-->
+  </transition-stub><!-- Button content -->
+  <div class="button-inner">
+    <!-- Icon: slot or legacy prop -->
+    <!--v-if-->
+    <!-- Content: label prop (deprecated) or default slot --><span>48</span>
+  </div>
+</button>"
+`;
+
+exports[`components > N8nButton > Legacy API (backwards compatibility) > props > type > should render highlight button 1`] = `
+"<button type="button" class="button button legacyCompat highlight medium" aria-live="polite">
+  <!-- Loading overlay with transition -->
+  <transition-stub name="n8n-button-fade" appear="false" persisted="false" css="true">
+    <!--v-if-->
+  </transition-stub><!-- Button content -->
+  <div class="button-inner">
+    <!-- Icon: slot or legacy prop -->
+    <!--v-if-->
+    <!-- Content: label prop (deprecated) or default slot -->Button
+  </div>
+</button>"
+`;
+
+exports[`components > N8nButton > Legacy API (backwards compatibility) > should render correctly 1`] = `
+"<button type="button" class="button button solid medium" aria-live="polite">
+  <!-- Loading overlay with transition -->
+  <transition-stub name="n8n-button-fade" appear="false" persisted="false" css="true">
+    <!--v-if-->
+  </transition-stub><!-- Button content -->
+  <div class="button-inner">
+    <!-- Icon: slot or legacy prop -->
+    <!--v-if-->
+    <!-- Content: label prop (deprecated) or default slot -->Button
+  </div>
 </button>"
 `;
