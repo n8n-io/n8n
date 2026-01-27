@@ -129,6 +129,8 @@ export const nodeProperties: INodeProperties[] = [
 		typeOptions: {
 			rows: 2,
 		},
+		builderHint:
+			'Use expressions to include dynamic data from previous nodes (e.g., "={{ $json.input }}"). Static text prompts ignore incoming data.',
 		displayOptions: {
 			show: {
 				promptType: ['define'],
