@@ -270,8 +270,6 @@ test.describe('Projects', () => {
 	});
 
 	test.describe('when moving resources between projects', () => {
-		test.describe.configure({ mode: 'serial' });
-
 		test.beforeEach(async ({ n8n }) => {
 			// Create workflow + credential in Home/Personal project
 			await n8n.api.workflows.createWorkflow({
