@@ -271,7 +271,9 @@ export class Chat implements INodeType {
 						// if the response type is not "Free Text" and the
 						// user has typed something - we assume it's
 						// disapproval
-						approved: isFreeText ? undefined : false,
+						data: {
+							approved: isFreeText ? undefined : false,
+						},
 					},
 				},
 			],
