@@ -2643,12 +2643,17 @@ describe('generate-types', () => {
 			});
 
 			it('should include SubnodeConfig for AI nodes with required embeddings', () => {
-				// Create a mock vector store node with required ai_embedding input
+				// Create a mock vector store node with required ai_embedding input using builderHint
 				const mockVectorStoreNodeWithEmbedding: NodeTypeDescription = {
 					name: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
 					displayName: 'Simple Vector Store',
 					group: ['transform'],
 					version: 1.3,
+					builderHint: {
+						inputs: {
+							ai_embedding: { required: true },
+						},
+					},
 					inputs: [{ type: 'ai_embedding', required: true }],
 					outputs: [{ type: 'ai_tool' }],
 					properties: [
@@ -2702,12 +2707,18 @@ describe('generate-types', () => {
 			});
 
 			it('should include SubnodeConfig with optional subnodes when not required', () => {
-				// Create a mock node with optional ai_tool input
+				// Create a mock node with builderHint specifying required/optional status
 				const mockNodeWithOptionalTool: NodeTypeDescription = {
 					name: '@n8n/n8n-nodes-langchain.agent',
 					displayName: 'AI Agent',
 					group: ['transform'],
 					version: 3.1,
+					builderHint: {
+						inputs: {
+							ai_languageModel: { required: true },
+							ai_tool: { required: false },
+						},
+					},
 					inputs: [
 						{ type: 'ai_languageModel', required: true },
 						{ type: 'ai_tool' }, // optional - no required field
@@ -3245,19 +3256,20 @@ describe('generate-types', () => {
 				expect(result.find((r) => r.type === 'ai_document')?.required).toBe(true);
 			});
 
-			it('should fall back to extractAIInputTypes when no builderHint', () => {
+			it('should fall back to extractAIInputTypes when no builderHint and mark all as optional', () => {
 				const mockNode: NodeTypeDescription = {
 					name: '@n8n/n8n-nodes-langchain.agent',
 					displayName: 'AI Agent',
 					group: ['transform'],
 					version: 3.1,
-					inputs: [{ type: 'ai_embedding', required: true }],
+					inputs: [{ type: 'ai_embedding', required: true }], // Even if marked required in inputs
 					outputs: ['main'],
 					properties: [],
 				};
 
 				const result = generateTypes.extractAIInputTypesFromBuilderHint(mockNode);
-				expect(result).toContainEqual({ type: 'ai_embedding', required: true });
+				// Should be optional in fallback, regardless of inputs definition
+				expect(result).toContainEqual({ type: 'ai_embedding', required: false });
 			});
 
 			it('should strip discriminator displayOptions and keep non-discriminator ones', () => {
@@ -3485,6 +3497,13 @@ describe('generate-types', () => {
 					description: 'AI Agent node',
 					group: ['transform'],
 					version: 3.1,
+					builderHint: {
+						inputs: {
+							ai_languageModel: { required: true },
+							ai_memory: { required: false },
+							ai_tool: { required: false },
+						},
+					},
 					inputs: [
 						{ type: 'main' },
 						{ type: 'ai_languageModel', displayName: 'Model', required: true },

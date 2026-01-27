@@ -3174,8 +3174,12 @@ export function extractAIInputTypesFromBuilderHint(
 	const nodeWithBuilderHint = node as NodeTypeDescription & { builderHint?: NodeBuilderHint };
 	const builderHint = nodeWithBuilderHint.builderHint;
 	if (!builderHint?.inputs) {
-		// Fall back to existing extraction
-		return extractAIInputTypes(node);
+		// Fall back to existing extraction, but mark all as optional
+		// since we can't reliably determine required status from expressions
+		return extractAIInputTypes(node).map((input) => ({
+			...input,
+			required: false,
+		}));
 	}
 
 	const result: AIInputTypeInfo[] = [];
