@@ -37,12 +37,12 @@ export class SecretsProvidersConnectionsService {
 			isEnabled: false,
 		});
 
-		await this.repository.save(connection);
+		const savedConnection = await this.repository.save(connection);
 
 		if (projectIds.length > 0) {
 			const entries = projectIds.map((projectId) =>
 				this.projectAccessRepository.create({
-					providerKey,
+					secretsProviderConnectionId: savedConnection.id,
 					projectId,
 				}),
 			);
@@ -76,7 +76,7 @@ export class SecretsProvidersConnectionsService {
 		await this.repository.save(connection);
 
 		if (updates.projectIds !== undefined) {
-			await this.projectAccessRepository.setProjectAccess(providerKey, updates.projectIds);
+			await this.projectAccessRepository.setProjectAccess(connection.id, updates.projectIds);
 		}
 
 		return (await this.repository.findOne({ where: { providerKey } })) as SecretsProviderConnection;
@@ -89,7 +89,7 @@ export class SecretsProvidersConnectionsService {
 			throw new NotFoundError(`Connection with key "${providerKey}" not found`);
 		}
 
-		await this.projectAccessRepository.deleteByProviderKey(providerKey);
+		await this.projectAccessRepository.deleteByConnectionId(connection.id);
 		await this.repository.remove(connection);
 
 		return connection;

@@ -321,6 +321,12 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
+			// Save the connection ID for verification after deletion
+			const savedConnection = await Container.get(
+				SecretsProviderConnectionRepository,
+			).findOneByOrFail({ providerKey: 'delete-test' });
+			const connectionId = savedConnection.id;
+
 			// When
 			const response = await ownerAgent
 				.delete('/secret-providers/connections/delete-test')
@@ -335,7 +341,7 @@ describe('Secret Providers Connections API', () => {
 
 			// Then - Verify cascade delete (database check necessary)
 			const remainingAccess = await Container.get(ProjectSecretsProviderAccessRepository).find({
-				where: { providerKey: 'delete-test' },
+				where: { secretsProviderConnectionId: connectionId },
 			});
 			expect(remainingAccess).toHaveLength(0);
 		});

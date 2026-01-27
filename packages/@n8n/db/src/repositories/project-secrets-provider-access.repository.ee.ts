@@ -8,9 +8,11 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 	constructor(dataSource: DataSource) {
 		super(ProjectSecretsProviderAccess, dataSource.manager);
 	}
-	async findByProviderKey(providerKey: string): Promise<ProjectSecretsProviderAccess[]> {
+	async findByConnectionId(
+		secretsProviderConnectionId: number,
+	): Promise<ProjectSecretsProviderAccess[]> {
 		return await this.find({
-			where: { providerKey },
+			where: { secretsProviderConnectionId },
 			relations: ['project'],
 		});
 	}
@@ -22,19 +24,19 @@ export class ProjectSecretsProviderAccessRepository extends Repository<ProjectSe
 		});
 	}
 
-	async deleteByProviderKey(providerKey: string): Promise<void> {
-		await this.delete({ providerKey });
+	async deleteByConnectionId(secretsProviderConnectionId: number): Promise<void> {
+		await this.delete({ secretsProviderConnectionId });
 	}
 
-	async setProjectAccess(providerKey: string, projectIds: string[]): Promise<void> {
+	async setProjectAccess(secretsProviderConnectionId: number, projectIds: string[]): Promise<void> {
 		// Given we're deleting / re-adding we should probably do it in a single operation
 		await this.manager.transaction(async (tx) => {
-			await tx.delete(ProjectSecretsProviderAccess, { providerKey });
+			await tx.delete(ProjectSecretsProviderAccess, { secretsProviderConnectionId });
 
 			if (projectIds.length > 0) {
 				const entries = projectIds.map((projectId) =>
 					this.create({
-						providerKey,
+						secretsProviderConnectionId,
 						projectId,
 					}),
 				);
