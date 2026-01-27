@@ -1110,7 +1110,8 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 				continue; // Skip duplicate property names
 			}
 			seenNames.add(prop.name);
-			const propLine = generatePropertyLine(prop, !prop.required);
+			// Pass combo as discriminator context to filter redundant displayOptions
+			const propLine = generatePropertyLine(prop, !prop.required, combo);
 			if (propLine) {
 				lines.push(propLine);
 			}
@@ -1130,7 +1131,10 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 /**
  * Generate JSDoc comment for a property
  */
-export function generatePropertyJSDoc(prop: NodeProperty): string {
+export function generatePropertyJSDoc(
+	prop: NodeProperty,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	const lines: string[] = ['/**'];
 
 	// Description
@@ -1150,11 +1154,20 @@ export function generatePropertyJSDoc(prop: NodeProperty): string {
 
 	// Display options - conditions for when this property is shown/hidden
 	// Filter out @version since version is implicit from the file
+	// Filter out conditions that match the current discriminator context (redundant)
 	if (prop.displayOptions) {
 		if (prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) {
-			const filteredShow = Object.entries(prop.displayOptions.show).filter(
-				([key]) => key !== '@version',
-			);
+			const filteredShow = Object.entries(prop.displayOptions.show).filter(([key, values]) => {
+				// Filter out @version (existing behavior)
+				if (key === '@version') return false;
+				// Filter out conditions that match current discriminator context
+				if (discriminatorContext && discriminatorContext[key] !== undefined) {
+					const showValues = values as unknown[];
+					// If the discriminator value is in the show list, this is redundant
+					if (showValues.includes(discriminatorContext[key])) return false;
+				}
+				return true;
+			});
 			if (filteredShow.length > 0) {
 				const showConditions = filteredShow
 					.map(
@@ -1166,9 +1179,17 @@ export function generatePropertyJSDoc(prop: NodeProperty): string {
 			}
 		}
 		if (prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0) {
-			const filteredHide = Object.entries(prop.displayOptions.hide).filter(
-				([key]) => key !== '@version',
-			);
+			const filteredHide = Object.entries(prop.displayOptions.hide).filter(([key, values]) => {
+				// Filter out @version (existing behavior)
+				if (key === '@version') return false;
+				// Filter out conditions that match current discriminator context
+				if (discriminatorContext && discriminatorContext[key] !== undefined) {
+					const hideValues = values as unknown[];
+					// If the discriminator value is in the hide list, this is redundant
+					if (hideValues.includes(discriminatorContext[key])) return false;
+				}
+				return true;
+			});
 			if (filteredHide.length > 0) {
 				const hideConditions = filteredHide
 					.map(
@@ -1218,7 +1239,11 @@ export function generateNodeJSDoc(node: NodeTypeDescription): string {
 /**
  * Generate a single property line for an interface
  */
-export function generatePropertyLine(prop: NodeProperty, optional: boolean): string {
+export function generatePropertyLine(
+	prop: NodeProperty,
+	optional: boolean,
+	discriminatorContext?: DiscriminatorCombination,
+): string {
 	const tsType = mapPropertyType(prop);
 	if (!tsType) {
 		return ''; // Skip this property
@@ -1233,7 +1258,7 @@ export function generatePropertyLine(prop: NodeProperty, optional: boolean): str
 		((prop.displayOptions.show && Object.keys(prop.displayOptions.show).length > 0) ||
 			(prop.displayOptions.hide && Object.keys(prop.displayOptions.hide).length > 0));
 	if (prop.description || hasDisplayOptions || prop.hint) {
-		lines.push(generatePropertyJSDoc(prop));
+		lines.push(generatePropertyJSDoc(prop, discriminatorContext));
 	}
 
 	// Property name (quote if reserved word, has spaces, or other invalid chars)
@@ -1747,7 +1772,8 @@ export function generateDiscriminatorFile(
 	for (const prop of props) {
 		if (seenNames.has(prop.name)) continue;
 		seenNames.add(prop.name);
-		const propLine = generatePropertyLine(prop, !prop.required);
+		// Pass combo as discriminator context to filter redundant displayOptions
+		const propLine = generatePropertyLine(prop, !prop.required, combo);
 		if (propLine) {
 			lines.push(propLine);
 		}
@@ -1955,7 +1981,10 @@ export function planSplitVersionFiles(
 			// Generate operation files within resource directory
 			for (const operation of operations) {
 				const combo = { resource, operation };
-				const props = getPropertiesForCombination(node, combo);
+				// Filter properties by version before getting combination-specific props
+				const versionFilteredProps = filterPropertiesForVersion(node.properties, version);
+				const nodeForCombination = { ...node, properties: versionFilteredProps };
+				const props = getPropertiesForCombination(nodeForCombination, combo);
 				const fileName = `operation_${toSnakeCase(operation)}.ts`;
 				const filePath = `${resourceDir}/${fileName}`;
 
@@ -1981,7 +2010,10 @@ export function planSplitVersionFiles(
 
 		for (const value of tree.discriminatorValues) {
 			const combo: DiscriminatorCombination = { [discName]: value };
-			const props = getPropertiesForCombination(node, combo);
+			// Filter properties by version before getting combination-specific props
+			const versionFilteredProps = filterPropertiesForVersion(node.properties, version);
+			const nodeForCombination = { ...node, properties: versionFilteredProps };
+			const props = getPropertiesForCombination(nodeForCombination, combo);
 			const fileName = `${discName}_${toSnakeCase(value)}.ts`;
 
 			// Import path is sibling in same directory
@@ -2666,7 +2698,8 @@ function generateDiscriminatedUnionForEntry(
 				continue; // Skip duplicate property names
 			}
 			seenNames.add(prop.name);
-			const propLine = generatePropertyLine(prop, !prop.required);
+			// Pass combo as discriminator context to filter redundant displayOptions
+			const propLine = generatePropertyLine(prop, !prop.required, combo);
 			if (propLine) {
 				lines.push(propLine);
 			}
