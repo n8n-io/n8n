@@ -45,6 +45,7 @@ export class AgentToolV3 implements INodeType {
 					type: 'boolean',
 					default: false,
 					noDataExpression: true,
+					builderHint: 'IMPORTANT: Set to true to use outputParser subnode',
 				},
 				{
 					displayName: `Connect an <a data-action='openSelectiveNodeCreator' data-action-parameter-connectiontype='${NodeConnectionTypes.AiOutputParser}'>output parser</a> on the canvas to specify the output format you require`,
