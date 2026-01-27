@@ -1,6 +1,5 @@
 import { Time } from '@n8n/constants';
 import type { User, WorkflowRepository } from '@n8n/db';
-import moment from 'moment-timezone';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -261,7 +260,7 @@ export const executeWorkflow = async (
 	// Set the trigger node as the start node and pin data for it
 	// This will enable us to run the workflow from the trigger node with the provided inputs without waiting for an actual trigger event
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-	runData.pinData = getPinDataForTrigger(triggerNode, inputs);
+	runData.pinData = await getPinDataForTrigger(triggerNode, inputs);
 
 	runData.executionData = createRunExecutionData({
 		startData: {},
@@ -353,10 +352,10 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 /**
  * Constructs pin data for the trigger node based on provided inputs.
  */
-const getPinDataForTrigger = (
+const getPinDataForTrigger = async (
 	node: INode,
 	inputs: z.infer<typeof inputSchema>['inputs'],
-): IPinData => {
+): Promise<IPinData> => {
 	switch (node.type) {
 		case WEBHOOK_NODE_TYPE: {
 			// For webhook triggers, provide default empty values if no inputs or wrong type
@@ -402,6 +401,7 @@ const getPinDataForTrigger = (
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
 			// For schedule triggers, we don't map any inputs but we can add expected datetime info
 			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+			const moment = (await import('moment-timezone')).default;
 			const momentTz = moment.tz(timezone);
 			return {
 				[node.name]: [
