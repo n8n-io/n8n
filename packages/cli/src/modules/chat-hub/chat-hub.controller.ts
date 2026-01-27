@@ -132,7 +132,7 @@ export class ChatHubController {
 		_res: Response,
 		@Body payload: ChatHubSendMessageRequest,
 	): Promise<ChatSendMessageResponse> {
-		await this.chatService.sendHumanMessageWs(
+		await this.chatService.sendHumanMessage(
 			req.user,
 			{
 				...payload,
@@ -156,7 +156,7 @@ export class ChatHubController {
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
 	): Promise<ChatSendMessageResponse> {
-		await this.chatService.editMessageWs(
+		await this.chatService.editMessage(
 			req.user,
 			{
 				...payload,
@@ -182,7 +182,7 @@ export class ChatHubController {
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
 	): Promise<ChatSendMessageResponse> {
-		await this.chatService.regenerateAIMessageWs(
+		await this.chatService.regenerateAIMessage(
 			req.user,
 			{
 				...payload,

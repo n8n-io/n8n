@@ -1,4 +1,4 @@
-import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	ChatHubSendMessageRequest,
@@ -14,15 +14,11 @@ import type {
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	ChatHubUpdateConversationRequest,
-	MessageChunk,
 	ChatHubLLMProvider,
 	ChatProviderSettingsDto,
 	ChatSendMessageResponse,
 	ChatReconnectResponse,
 } from '@n8n/api-types';
-
-// Workflows stream data as newline separated JSON objects (jsonl)
-const STREAM_SEPARATOR = '\n';
 
 export const fetchChatModelsApi = async (
 	context: IRestApiContext,
@@ -32,72 +28,11 @@ export const fetchChatModelsApi = async (
 	return await makeRestApiRequest<ChatModelsResponse>(context, 'POST', apiEndpoint, payload);
 };
 
-export function sendMessageApi(
-	ctx: IRestApiContext,
-	payload: ChatHubSendMessageRequest,
-	onMessageUpdated: (data: MessageChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<MessageChunk>(
-		ctx,
-		'/chat/conversations/send',
-		payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
-	);
-}
-
-export function editMessageApi(
-	ctx: IRestApiContext,
-	request: { sessionId: ChatSessionId; editId: ChatMessageId; payload: ChatHubEditMessageRequest },
-	onMessageUpdated: (data: MessageChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<MessageChunk>(
-		ctx,
-		`/chat/conversations/${request.sessionId}/messages/${request.editId}/edit`,
-		request.payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
-	);
-}
-
-export function regenerateMessageApi(
-	ctx: IRestApiContext,
-	request: {
-		sessionId: ChatSessionId;
-		retryId: ChatMessageId;
-		payload: ChatHubRegenerateMessageRequest;
-	},
-	onMessageUpdated: (data: MessageChunk) => void,
-	onDone: () => void,
-	onError: (e: Error) => void,
-) {
-	void streamRequest<MessageChunk>(
-		ctx,
-		`/chat/conversations/${request.sessionId}/messages/${request.retryId}/regenerate`,
-		request.payload,
-		onMessageUpdated,
-		onDone,
-		onError,
-		STREAM_SEPARATOR,
-	);
-}
-
-// #region WebSocket-based API functions (use Push for streaming)
-
 /**
- * Send a message using WebSocket streaming
- * Returns immediately with message IDs; actual content comes via Push events.
- * The push-ref header is automatically sent via ctx.pushRef.
+ * Send a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
  */
-export async function sendMessageWsApi(
+export async function sendMessageApi(
 	ctx: IRestApiContext,
 	payload: ChatHubSendMessageRequest,
 ): Promise<ChatSendMessageResponse> {
@@ -110,10 +45,10 @@ export async function sendMessageWsApi(
 }
 
 /**
- * Edit a message using WebSocket streaming.
- * The push-ref header is automatically sent via ctx.pushRef.
+ * Edit a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
  */
-export async function editMessageWsApi(
+export async function editMessageApi(
 	ctx: IRestApiContext,
 	request: {
 		sessionId: ChatSessionId;
@@ -130,10 +65,10 @@ export async function editMessageWsApi(
 }
 
 /**
- * Regenerate a message using WebSocket streaming.
- * The push-ref header is automatically sent via ctx.pushRef.
+ * Regenerate a message and stream the AI response.
+ * Returns immediately; actual content comes via Push events.
  */
-export async function regenerateMessageWsApi(
+export async function regenerateMessageApi(
 	ctx: IRestApiContext,
 	request: {
 		sessionId: ChatSessionId;
@@ -150,7 +85,7 @@ export async function regenerateMessageWsApi(
 }
 
 /**
- * Reconnect to an active chat stream after WebSocket reconnection
+ * Reconnect to an active chat stream after reconnection
  */
 export async function reconnectToSessionApi(
 	ctx: IRestApiContext,
@@ -165,8 +100,6 @@ export async function reconnectToSessionApi(
 		{},
 	);
 }
-
-// #endregion
 
 export const stopGenerationApi = async (
 	context: IRestApiContext,

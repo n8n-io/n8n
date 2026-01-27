@@ -3,8 +3,6 @@ import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/ba
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { EventEmitter } from 'events';
-import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
@@ -22,16 +20,17 @@ import { retryUntil } from '@test-integration/retry-until';
 
 import { ActiveExecutions } from '../../../active-executions';
 import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
+import { Push } from '../../../push';
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
-import * as chatHubConstants from '../chat-hub.constants';
-import { STREAM_CLOSE_TIMEOUT } from '../chat-hub.constants';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
 
 mockInstance(BinaryDataService);
 mockInstance(WorkflowExecutionService);
+const mockPush = mockInstance(Push);
+mockPush.sendToUsers.mockReturnValue(undefined);
 const mockCipher = mockInstance(Cipher);
 mockCipher.encrypt.mockReturnValue('encrypted-metadata');
 
@@ -897,9 +896,6 @@ describe('chatHub', () => {
 
 	describe('sendHumanMessage', () => {
 		describe('Base LLM chats', () => {
-			let writeMock: jest.Mock;
-
-			let mockResponse: Response;
 			let anthropicCredential: CredentialsEntity;
 
 			let sessionId: string;
@@ -927,20 +923,6 @@ describe('chatHub', () => {
 							finishRun = r;
 						});
 					});
-
-				writeMock = jest.fn().mockReturnValue(true);
-				mockResponse = Object.assign(new EventEmitter(), {
-					write: writeMock,
-					end: jest.fn(function (this: EventEmitter) {
-						setImmediate(() => {
-							this.emit('finish');
-							this.emit('close');
-						});
-						return this;
-					}),
-					writeHead: jest.fn().mockReturnThis(),
-					flushHeaders: jest.fn(),
-				}) as unknown as Response;
 
 				// Create an Anthropic credential for testing
 				anthropicCredential = await saveCredential(
@@ -986,7 +968,6 @@ describe('chatHub', () => {
 				spyExecute.mockRejectedValue(Error());
 
 				await chatHubService.sendHumanMessage(
-					mockResponse,
 					member,
 					{
 						userId: member.id,
@@ -1026,21 +1007,6 @@ describe('chatHub', () => {
 				expect(messages[1]?.status).toBe('success');
 				expect(messages[1]?.content).toBe('How are you?');
 				expect(messages[1]?.previousMessageId).toBe(messageId);
-
-				// Verify chunks were written to response
-				expect(writeMock).toHaveBeenCalledTimes(3);
-				expect(writeMock).toHaveBeenNthCalledWith(1, expect.any(String)); // begin chunk
-
-				// Parse and verify the item chunk
-				const itemChunkCall = writeMock.mock.calls[1][0];
-				const itemChunk = JSON.parse(itemChunkCall.trim());
-				expect(itemChunk.type).toBe('item');
-				expect(itemChunk.content).toBe('How are you?');
-				expect(itemChunk.metadata.messageId).toBe(messages[1].id);
-				expect(itemChunk.metadata.previousMessageId).toBe(messageId);
-				expect(itemChunk.metadata.executionId).toEqual(expect.any(Number));
-
-				expect(writeMock).toHaveBeenNthCalledWith(3, expect.any(String)); // end chunk
 			});
 
 			it('should respond and persist an error chunk sent from workflow execution', async () => {
@@ -1070,7 +1036,6 @@ describe('chatHub', () => {
 				spyExecute.mockRejectedValue(Error());
 
 				await chatHubService.sendHumanMessage(
-					mockResponse,
 					member,
 					{
 						userId: member.id,
@@ -1110,19 +1075,6 @@ describe('chatHub', () => {
 				expect(messages[1]?.status).toBe('error');
 				expect(messages[1]?.content).toBe('chunk error');
 				expect(messages[1]?.previousMessageId).toBe(messageId);
-
-				// Verify error chunk was written to response
-				expect(writeMock).toHaveBeenCalledTimes(2);
-				expect(writeMock).toHaveBeenNthCalledWith(1, expect.any(String)); // begin chunk
-
-				// Parse and verify the error chunk
-				const errorChunkCall = writeMock.mock.calls[1][0];
-				const errorChunk = JSON.parse(errorChunkCall.trim());
-				expect(errorChunk.type).toBe('error');
-				expect(errorChunk.content).toBe('chunk error');
-				expect(errorChunk.metadata.messageId).toBe(messages[1].id);
-				expect(errorChunk.metadata.previousMessageId).toBe(messageId);
-				expect(errorChunk.metadata.executionId).toEqual(expect.any(Number));
 			});
 
 			it('should respond and persist an error set in the workflow execution', async () => {
@@ -1164,7 +1116,6 @@ describe('chatHub', () => {
 				spyExecute.mockRejectedValue(Error());
 
 				await chatHubService.sendHumanMessage(
-					mockResponse,
 					member,
 					{
 						userId: member.id,
@@ -1204,212 +1155,10 @@ describe('chatHub', () => {
 				expect(messages[1]?.status).toBe('error');
 				expect(messages[1]?.content).toBe('wf error');
 				expect(messages[1]?.previousMessageId).toBe(messageId);
-
-				// Verify error chunk was written to response
-				expect(writeMock).toHaveBeenCalledTimes(4);
-				expect(writeMock).toHaveBeenNthCalledWith(1, expect.any(String)); // begin chunk
-
-				// Parse and verify the error chunk
-				const errorChunkCall = writeMock.mock.calls[1][0];
-				const errorChunk = JSON.parse(errorChunkCall.trim());
-				expect(errorChunk.type).toBe('error');
-				expect(errorChunk.content).toBe('wf error');
-				expect(errorChunk.metadata.messageId).toBe(messages[1].id);
-				expect(errorChunk.metadata.previousMessageId).toBe(messageId);
-				expect(errorChunk.metadata.executionId).toEqual(expect.any(Number));
 			});
-
-			it('should clear stream timeout when stream closes normally', async () => {
-				const loggerWarnSpy = jest.spyOn(Container.get(ChatHubService)['logger'], 'warn');
-
-				// Spy on clearTimeout to verify it's called
-				let capturedTimeoutId: NodeJS.Timeout | null = null;
-				const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
-				const originalSetTimeout = global.setTimeout;
-				const setTimeoutSpy = jest
-					.spyOn(global, 'setTimeout')
-					.mockImplementation((callbackFn, delay?: number, ...args) => {
-						// Capture the stream close timeout ID
-						if (delay === STREAM_CLOSE_TIMEOUT) {
-							capturedTimeoutId = {
-								unref: () => {},
-								ref: () => {},
-								hasRef: () => true,
-							} as NodeJS.Timeout;
-							return capturedTimeoutId;
-						}
-						// For all other timeouts, use the real setTimeout
-						return originalSetTimeout(callbackFn, delay, ...args);
-					});
-
-				// First call: main message execution with stream that closes quickly
-				spyExecute.mockImplementationOnce(async (_u, workflowData, data, stream) => {
-					const executionId = await executionRepository.createNewExecution({
-						finished: false,
-						mode: 'chat',
-						status: 'running',
-						workflowId: workflowData.id,
-						data,
-						workflowData,
-					});
-
-					setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'), 10);
-					setTimeout(
-						() => stream!.write('{"type":"item","content":"Response","metadata":{}}\n'),
-						20,
-					);
-					setTimeout(() => stream!.write('{"type":"end","metadata":{}}\n'), 30);
-					setTimeout(() => stream!.end(), 40);
-					setTimeout(async () => {
-						await executionRepository.updateExistingExecution(executionId, { status: 'success' });
-					}, 50);
-					setTimeout(() => finishRun({} as IRun), 60);
-
-					return { executionId };
-				});
-
-				// Second call: title generation (don't care in this test)
-				spyExecute.mockRejectedValue(Error());
-
-				await chatHubService.sendHumanMessage(
-					mockResponse,
-					member,
-					{
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-						credentials: {
-							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
-						},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					},
-					{
-						authToken: 'authtoken',
-						method: 'POST',
-						endpoint: '/api/chat/message',
-					},
-				);
-
-				// Verify clearTimeout was called with the captured timeout ID
-				expect(capturedTimeoutId).not.toBeNull();
-				expect(clearTimeoutSpy).toHaveBeenCalledWith(capturedTimeoutId);
-
-				// Also verify no timeout warning was logged
-				const timeoutWarnings = loggerWarnSpy.mock.calls.filter((call) =>
-					call[0]?.includes('Stream did not close within timeout'),
-				);
-				expect(timeoutWarnings).toHaveLength(0);
-
-				loggerWarnSpy.mockRestore();
-				clearTimeoutSpy.mockRestore();
-				setTimeoutSpy.mockRestore();
-			});
-
-			it('should log warning when stream does not close within timeout', async () => {
-				const loggerWarnSpy = jest.spyOn(Container.get(ChatHubService)['logger'], 'warn');
-
-				// Keep track of the setTimeout for the timeout warning
-				let timeoutCallback: (() => void) | null = null;
-				const originalSetTimeout = global.setTimeout;
-				const setTimeoutSpy = jest
-					.spyOn(global, 'setTimeout')
-					.mockImplementation((callbackFn, delay?: number, ...args) => {
-						// Capture the stream close timeout ID
-						if (delay === STREAM_CLOSE_TIMEOUT) {
-							timeoutCallback = callbackFn;
-							// Return a fake timer id
-							return { unref: () => {}, ref: () => {}, hasRef: () => true } as NodeJS.Timeout;
-						}
-						// For all other timeouts, use the real setTimeout
-						return originalSetTimeout(callbackFn, delay, ...args);
-					});
-
-				// First call: main message execution with stream that never closes
-				spyExecute.mockImplementationOnce(async (_u, workflowData, data, stream) => {
-					const executionId = await executionRepository.createNewExecution({
-						finished: false,
-						mode: 'chat',
-						status: 'running',
-						workflowId: workflowData.id,
-						data,
-						workflowData,
-					});
-
-					setTimeout(() => stream!.write('{"type":"begin","metadata":{}}\n'), 10);
-					// Stream never closes - simulating a hanging stream
-
-					// Eventually finish the execution
-					setTimeout(async () => {
-						await executionRepository.updateExistingExecution(executionId, {
-							status: 'success',
-						});
-						finishRun({} as IRun);
-					}, 100);
-
-					// Close the stream later (after we manually trigger the timeout)
-					setTimeout(() => stream!.end(), 500);
-
-					return { executionId };
-				});
-
-				// Second call: title generation (don't care in this test)
-				spyExecute.mockRejectedValue(Error());
-
-				const messagePromise = chatHubService.sendHumanMessage(
-					mockResponse,
-					member,
-					{
-						userId: member.id,
-						sessionId,
-						messageId,
-						message: 'Test message',
-						model: { provider: 'anthropic', model: 'claude-3-5-sonnet-20241022' },
-						credentials: {
-							anthropicApi: { id: anthropicCredential.id, name: anthropicCredential.name },
-						},
-						previousMessageId: null,
-						tools: [],
-						attachments: [],
-					},
-					{
-						authToken: 'authtoken',
-						method: 'POST',
-						endpoint: '/api/chat/message',
-					},
-				);
-
-				// Wait for the execution to be set up
-				await new Promise((resolve) => originalSetTimeout(resolve, 150));
-
-				// Manually trigger the timeout callback
-				if (timeoutCallback) {
-					(timeoutCallback as () => void)();
-				}
-
-				await messagePromise;
-
-				// Verify timeout warning was logged
-				const timeoutWarnings = loggerWarnSpy.mock.calls.filter((call) =>
-					call[0]?.includes('Stream did not close within timeout'),
-				);
-				expect(timeoutWarnings).toHaveLength(1);
-				expect(timeoutWarnings[0][0]).toContain('300000ms'); // STREAM_CLOSE_TIMEOUT
-
-				loggerWarnSpy.mockRestore();
-				setTimeoutSpy.mockRestore();
-			}, 5000);
 		});
 
 		describe('n8n workflow agents', () => {
-			let writeMock: jest.Mock;
-			let flushMock: jest.Mock;
-
-			let mockResponse: Response;
-
 			let sessionId: string;
 			let messageId: string;
 
@@ -1435,23 +1184,6 @@ describe('chatHub', () => {
 							finishRun = r;
 						});
 					});
-
-				writeMock = jest.fn().mockReturnValue(true);
-				flushMock = jest.fn();
-				mockResponse = Object.assign(new EventEmitter(), {
-					write: writeMock,
-					end: jest.fn(function (this: EventEmitter) {
-						setImmediate(() => {
-							this.emit('finish');
-							this.emit('close');
-						});
-						return this;
-					}),
-					writeHead: jest.fn().mockReturnThis(),
-					flushHeaders: jest.fn(),
-					flush: flushMock,
-					headersSent: false,
-				}) as unknown as Response;
 
 				sessionId = crypto.randomUUID();
 				messageId = crypto.randomUUID();
@@ -1543,7 +1275,6 @@ describe('chatHub', () => {
 					});
 
 					await chatHubService.sendHumanMessage(
-						mockResponse,
 						member,
 						{
 							userId: member.id,
@@ -1578,22 +1309,6 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('success');
 					expect(messages[1]?.content).toBe('Hello from last node!');
-
-					// Verify response chunks were written (begin, item, end)
-					expect(writeMock).toHaveBeenCalledTimes(3);
-
-					// Verify begin chunk
-					const beginChunk = JSON.parse(writeMock.mock.calls[0][0].trim());
-					expect(beginChunk.type).toBe('begin');
-
-					// Verify item chunk with content
-					const itemChunk = JSON.parse(writeMock.mock.calls[1][0].trim());
-					expect(itemChunk.type).toBe('item');
-					expect(itemChunk.content).toBe('Hello from last node!');
-
-					// Verify end chunk
-					const endChunk = JSON.parse(writeMock.mock.calls[2][0].trim());
-					expect(endChunk.type).toBe('end');
 				});
 
 				it('should respond with "lastNode" response mode and handle errors', async () => {
@@ -1662,7 +1377,6 @@ describe('chatHub', () => {
 					});
 
 					await chatHubService.sendHumanMessage(
-						mockResponse,
 						member,
 						{
 							userId: member.id,
@@ -1693,15 +1407,6 @@ describe('chatHub', () => {
 					expect(messages[1]?.type).toBe('ai');
 					expect(messages[1]?.status).toBe('error');
 					expect(messages[1]?.content).toBe('Workflow execution failed');
-
-					// Verify response chunks (begin, error)
-					expect(writeMock).toHaveBeenCalledTimes(2);
-
-					const beginChunk = JSON.parse(writeMock.mock.calls[0][0].trim());
-					expect(beginChunk.type).toBe('begin');
-
-					const errorChunk = JSON.parse(writeMock.mock.calls[1][0].trim());
-					expect(errorChunk.type).toBe('error');
 				});
 
 				it('should extract text field when output is not present in "lastNode" mode', async () => {
@@ -1788,7 +1493,6 @@ describe('chatHub', () => {
 					});
 
 					await chatHubService.sendHumanMessage(
-						mockResponse,
 						member,
 						{
 							userId: member.id,
@@ -1949,7 +1653,6 @@ describe('chatHub', () => {
 					});
 
 					await chatHubService.sendHumanMessage(
-						mockResponse,
 						member,
 						{
 							userId: member.id,
@@ -2070,7 +1773,6 @@ describe('chatHub', () => {
 					});
 
 					await chatHubService.sendHumanMessage(
-						mockResponse,
 						member,
 						{
 							userId: member.id,
@@ -2133,7 +1835,6 @@ describe('chatHub', () => {
 
 					await expect(
 						chatHubService.sendHumanMessage(
-							mockResponse,
 							member,
 							{
 								userId: member.id,
@@ -2153,468 +1854,6 @@ describe('chatHub', () => {
 							},
 						),
 					).rejects.toThrow('Chat Trigger node response mode must be set to');
-				});
-			});
-
-			describe('multi-main mode execution waiting', () => {
-				const TEST_POLL_INTERVAL = 50;
-				const originalPollInterval = chatHubConstants.EXECUTION_POLL_INTERVAL;
-
-				beforeEach(() => {
-					Object.defineProperty(chatHubConstants, 'EXECUTION_POLL_INTERVAL', {
-						value: TEST_POLL_INTERVAL,
-						writable: true,
-						configurable: true,
-					});
-				});
-
-				afterEach(() => {
-					Object.defineProperty(chatHubConstants, 'EXECUTION_POLL_INTERVAL', {
-						value: originalPollInterval,
-						writable: true,
-						configurable: true,
-					});
-				});
-
-				it('should poll and complete when execution finishes with "waiting" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					// Spy on findSingleExecution to verify polling occurs
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
-
-					const workflow = await createActiveWorkflow(
-						{
-							name: 'Multi-Main Wait Workflow',
-							nodes: [
-								{
-									id: 'chat-trigger-1',
-									name: 'Chat Trigger',
-									type: CHAT_TRIGGER_NODE_TYPE,
-									typeVersion: 1.4,
-									position: [0, 0],
-									parameters: {
-										availableInChat: true,
-										options: {
-											responseMode: 'responseNodes',
-										},
-									},
-								},
-								{
-									id: 'respond-1',
-									name: 'Respond to Chat',
-									type: CHAT_NODE_TYPE,
-									typeVersion: 1,
-									position: [200, 0],
-									parameters: {
-										message: 'Waiting for your input',
-										waitUserReply: true,
-									},
-								},
-							],
-							connections: {
-								'Chat Trigger': {
-									main: [[{ node: 'Respond to Chat', type: 'main', index: 0 }]],
-								},
-							},
-						},
-						member,
-					);
-
-					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
-							finished: false,
-							mode: 'webhook',
-							status: 'running',
-							workflowId: workflowData.id,
-							data: executionData,
-							workflowData,
-						});
-
-						// Update execution status to 'waiting' after multiple poll intervals
-						// This ensures the poller runs at least 3 times before finding a finished status
-						setTimeout(async () => {
-							await executionRepository.updateExistingExecution(executionId, {
-								status: 'waiting',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'Respond to Chat': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: {},
-																	sendMessage: 'Waiting for your input',
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'Respond to Chat',
-									},
-								}),
-							});
-						}, TEST_POLL_INTERVAL * 3);
-
-						return { executionId };
-					});
-
-					await chatHubService.sendHumanMessage(
-						mockResponse,
-						member,
-						{
-							userId: member.id,
-							sessionId,
-							messageId,
-							message: 'Test message',
-							model: { provider: 'n8n', workflowId: workflow.id },
-							credentials: {},
-							previousMessageId: null,
-							tools: [],
-							attachments: [],
-						},
-						{
-							authToken: 'authtoken',
-							method: 'POST',
-							endpoint: '/api/chat/message',
-						},
-					);
-
-					const messages = await retryUntil(async () => {
-						const messages = await messagesRepository.getManyBySessionId(sessionId);
-						expect(messages.length).toBeGreaterThanOrEqual(2);
-						expect(messages[1]?.status).toBe('waiting');
-						return messages;
-					});
-
-					expect(messages[0]?.type).toBe('human');
-					expect(messages[0]?.content).toBe('Test message');
-
-					expect(messages[1]?.type).toBe('ai');
-					expect(messages[1]?.status).toBe('waiting');
-					expect(messages[1]?.content).toBe('Waiting for your input');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
-				});
-
-				it('should poll and complete when execution finishes with "success" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
-
-					const workflow = await createActiveWorkflow(
-						{
-							name: 'Multi-Main Success Workflow',
-							nodes: [
-								{
-									id: 'chat-trigger-1',
-									name: 'Chat Trigger',
-									type: CHAT_TRIGGER_NODE_TYPE,
-									typeVersion: 1.4,
-									position: [0, 0],
-									parameters: {
-										availableInChat: true,
-										options: {
-											responseMode: 'lastNode',
-										},
-									},
-								},
-								{
-									id: 'agent-1',
-									name: 'AI Agent',
-									type: '@n8n/n8n-nodes-langchain.agent',
-									typeVersion: 2.2,
-									position: [200, 0],
-									parameters: {},
-								},
-							],
-							connections: {
-								'Chat Trigger': {
-									main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
-								},
-							},
-						},
-						member,
-					);
-
-					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
-							finished: false,
-							mode: 'webhook',
-							status: 'running',
-							workflowId: workflowData.id,
-							data: executionData,
-							workflowData,
-						});
-
-						// Update execution status to 'success' after multiple poll intervals
-						setTimeout(async () => {
-							await executionRepository.updateExistingExecution(executionId, {
-								status: 'success',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {
-											'AI Agent': [
-												{
-													startTime: Date.now(),
-													executionTime: 100,
-													executionIndex: 0,
-													executionStatus: 'success',
-													source: [],
-													data: {
-														main: [
-															[
-																{
-																	json: { output: 'Hello from multi-main!' },
-																},
-															],
-														],
-													},
-												},
-											],
-										},
-										lastNodeExecuted: 'AI Agent',
-									},
-								}),
-							});
-						}, TEST_POLL_INTERVAL * 3);
-
-						return { executionId };
-					});
-
-					await chatHubService.sendHumanMessage(
-						mockResponse,
-						member,
-						{
-							userId: member.id,
-							sessionId,
-							messageId,
-							message: 'Test message',
-							model: { provider: 'n8n', workflowId: workflow.id },
-							credentials: {},
-							previousMessageId: null,
-							tools: [],
-							attachments: [],
-						},
-						{
-							authToken: 'authtoken',
-							method: 'POST',
-							endpoint: '/api/chat/message',
-						},
-					);
-
-					const messages = await retryUntil(async () => {
-						const messages = await messagesRepository.getManyBySessionId(sessionId);
-						expect(messages.length).toBeGreaterThanOrEqual(2);
-						expect(messages[1]?.status).toBe('success');
-						return messages;
-					});
-
-					expect(messages[0]?.type).toBe('human');
-					expect(messages[0]?.content).toBe('Test message');
-
-					expect(messages[1]?.type).toBe('ai');
-					expect(messages[1]?.status).toBe('success');
-					expect(messages[1]?.content).toBe('Hello from multi-main!');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
-				});
-
-				it('should poll and complete when execution finishes with "error" status', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
-
-					const workflow = await createActiveWorkflow(
-						{
-							name: 'Multi-Main Error Workflow',
-							nodes: [
-								{
-									id: 'chat-trigger-1',
-									name: 'Chat Trigger',
-									type: CHAT_TRIGGER_NODE_TYPE,
-									typeVersion: 1.4,
-									position: [0, 0],
-									parameters: {
-										availableInChat: true,
-										options: {
-											responseMode: 'lastNode',
-										},
-									},
-								},
-								{
-									id: 'agent-1',
-									name: 'AI Agent',
-									type: '@n8n/n8n-nodes-langchain.agent',
-									typeVersion: 2.2,
-									position: [200, 0],
-									parameters: {},
-								},
-							],
-							connections: {
-								'Chat Trigger': {
-									main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
-								},
-							},
-						},
-						member,
-					);
-
-					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
-							finished: false,
-							mode: 'webhook',
-							status: 'running',
-							workflowId: workflowData.id,
-							data: executionData,
-							workflowData,
-						});
-
-						// Update execution status to 'error' after multiple poll intervals
-						setTimeout(async () => {
-							await executionRepository.updateExistingExecution(executionId, {
-								status: 'error',
-								data: createRunExecutionData({
-									resultData: {
-										runData: {},
-										error: new NodeOperationError(mock<INode>(), 'Multi-main execution failed'),
-									},
-								}),
-							});
-						}, TEST_POLL_INTERVAL * 3);
-
-						return { executionId };
-					});
-
-					await chatHubService.sendHumanMessage(
-						mockResponse,
-						member,
-						{
-							userId: member.id,
-							sessionId,
-							messageId,
-							message: 'Test message',
-							model: { provider: 'n8n', workflowId: workflow.id },
-							credentials: {},
-							previousMessageId: null,
-							tools: [],
-							attachments: [],
-						},
-						{
-							authToken: 'authtoken',
-							method: 'POST',
-							endpoint: '/api/chat/message',
-						},
-					);
-
-					const messages = await retryUntil(async () => {
-						const messages = await messagesRepository.getManyBySessionId(sessionId);
-						expect(messages.length).toBeGreaterThanOrEqual(2);
-						expect(messages[1]?.status).toBe('error');
-						return messages;
-					});
-
-					expect(messages[0]?.type).toBe('human');
-					expect(messages[0]?.content).toBe('Test message');
-
-					expect(messages[1]?.type).toBe('ai');
-					expect(messages[1]?.status).toBe('error');
-					expect(messages[1]?.content).toBe('Multi-main execution failed');
-
-					// Ensure polling happened
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
-
-					findSingleExecutionSpy.mockRestore();
-				});
-
-				it('should handle poll error by writing error response when finding execution throws', async () => {
-					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
-
-					const findSingleExecutionSpy = jest
-						.spyOn(executionRepository, 'findSingleExecution')
-						.mockRejectedValue(new Error('Database error'));
-
-					const workflow = await createActiveWorkflow(
-						{
-							name: 'Multi-Main DB Error Workflow',
-							nodes: [
-								{
-									id: 'chat-trigger-1',
-									name: 'Chat Trigger',
-									type: CHAT_TRIGGER_NODE_TYPE,
-									typeVersion: 1.4,
-									position: [0, 0],
-									parameters: {
-										availableInChat: true,
-										options: {
-											responseMode: 'lastNode',
-										},
-									},
-								},
-							],
-							connections: {},
-						},
-						member,
-					);
-
-					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
-						const executionId = await executionRepository.createNewExecution({
-							finished: false,
-							mode: 'webhook',
-							status: 'running',
-							workflowId: workflowData.id,
-							data: executionData,
-							workflowData,
-						});
-
-						return { executionId };
-					});
-
-					await chatHubService.sendHumanMessage(
-						mockResponse,
-						member,
-						{
-							userId: member.id,
-							sessionId,
-							messageId,
-							message: 'Test message',
-							model: { provider: 'n8n', workflowId: workflow.id },
-							credentials: {},
-							previousMessageId: null,
-							tools: [],
-							attachments: [],
-						},
-						{
-							authToken: 'authtoken',
-							method: 'POST',
-							endpoint: '/api/chat/message',
-						},
-					);
-
-					// Ensure polling was attempted
-					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
-
-					// Verify error was written to response
-					const errorChunkCall = writeMock.mock.calls[1][0];
-					expect(errorChunkCall).toBeDefined();
-					const parsedError = JSON.parse(errorChunkCall.trim());
-					expect(parsedError.content).toBe('Database error');
-
-					findSingleExecutionSpy.mockRestore();
 				});
 			});
 		});
