@@ -362,7 +362,11 @@ defineExpose({ focus, blur, select });
 </template>
 
 <style module lang="scss">
-@use '../../css/mixins/focus';
+// Local focus mixin matching Element Plus inset shadow pattern
+// TODO: Replace with @include focus-visible-ring when --focus--border-* tokens are added to main _tokens.scss
+@mixin input-focus {
+	box-shadow: 0 0 0 1px var(--color--secondary) inset;
+}
 
 .inputContainer {
 	display: inline-flex;
@@ -457,11 +461,7 @@ defineExpose({ focus, blur, select });
 	color: var(--color--text--shade-1);
 
 	&:focus {
-		outline: none;
-	}
-
-	&:focus-visible {
-		@include focus.focus-ring;
+		@include input-focus;
 	}
 }
 
@@ -498,11 +498,7 @@ defineExpose({ focus, blur, select });
 	color: var(--color--text--shade-1);
 
 	&:focus {
-		outline: none;
-	}
-
-	&:focus-visible {
-		@include focus.focus-ring;
+		@include input-focus;
 	}
 }
 
