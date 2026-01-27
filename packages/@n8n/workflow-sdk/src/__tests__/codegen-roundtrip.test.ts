@@ -17,63 +17,23 @@ const SKIP_WORKFLOWS = new Set<string>(['5979']);
 // Workflows to skip validation due to known codegen bugs (invalid warnings)
 // These produce warnings that don't exist in the original workflow (codegen issues to fix)
 // - MERGE_SINGLE_INPUT: Codegen loses some merge node input connections
-// - MISSING_EXPRESSION_PREFIX: Codegen creates expressions without = prefix
+// - DISCONNECTED_NODE: Codegen creates disconnected nodes that weren't in original
 // Once fixed, these should be moved to expectedWarnings in manifest.json
 const SKIP_VALIDATION_WORKFLOWS = new Set<string>([
-	// Committed fixtures (test workflows with complex merge/connection patterns)
-	'1',
-	'2',
-	'3',
-	// Downloaded fixtures with codegen bugs
-	'2872',
-	'2878',
-	'3121',
-	'3224',
-	'3442',
-	'4281',
-	'4295',
-	'4587',
-	'4696',
-	'4740',
-	'4930',
-	'4968',
-	'5271',
-	'5303',
-	'5338',
-	'5453',
-	'5745',
-	'5794',
-	'5805',
-	'5895',
-	'6150',
-	'6272',
-	'6686',
-	'6938',
-	'6993',
-	'7289',
-	'7946',
-	'7957',
-	'8077',
-	'8095',
-	'8448',
-	'8549',
-	'8591',
-	'9200',
-	'9801',
-	'9876',
-	'9999',
-	'10000',
-	'10029',
-	'10132',
-	'10150',
-	'10196',
-	'10358',
-	'10476',
-	'11204',
-	'12299',
-	'12462',
-	'12645',
-	'12732',
+	// MERGE_SINGLE_INPUT bugs - codegen loses merge input connections
+	'3066', // Automated AI Powered Social Media Content Factory
+	'3121', // AI Automated TikTok/Youtube Shorts/Reels Generator
+	'3442', // AI-Powered Short-Form Video Generator
+	'4767', // VEO3 Video Generator TEMPLATE
+	'5805', // YT script automation
+	'5851', // Save_your_workflows_into_a_GitHub_repository
+	'6897', // HR CVs Filter
+	'6993', // Unknown
+	// DISCONNECTED_NODE bugs - codegen creates disconnected nodes
+	'4295', // Automated Lead Scraper: Apify to Google Sheets
+	'4696', // Conversational Telegram Bot with GPT-4o
+	'9999', // Unknown (AI Feedback Triage)
+	'10476', // Unknown (Switch disconnected)
 ]);
 
 interface ExpectedWarning {

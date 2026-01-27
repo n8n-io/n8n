@@ -30,12 +30,28 @@
 		{
 			"id": 5895,
 			"name": "Create executive security briefings with NixGuard AI & Wazuh alerts",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Set Prompt for Summary"
+				}
+			]
 		},
 		{
 			"id": 10000,
 			"name": "Auto-create TikTok videos with VEED.io AI avatars, ElevenLabs & GPT-4",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Workflow Configuration"
+				},
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Workflow Configuration"
+				}
+			]
 		},
 		{
 			"id": 7639,
@@ -193,7 +209,45 @@
 		{
 			"id": 5271,
 			"name": "🎓 Learn n8n expressions with an interactive step-by-step tutorial for beginners",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note2"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note3"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note4"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note5"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note6"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note7"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note9"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note10"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note11"
+				}
+			]
 		},
 		{
 			"id": 5755,
@@ -230,12 +284,36 @@
 		{
 			"id": 10358,
 			"name": "Automate AI video creation & multi-platform publishing with GPT-4, Veo 3.1 & Blotato",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Workflow Configuration"
+				},
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Workflow Configuration"
+				}
+			]
 		},
 		{
 			"id": 5338,
 			"name": "Generate AI viral videos with Seedance and upload to TikTok, YouTube & Instagram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Generate Creative Video Idea"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Tool: Inject Creative Perspective (Idea)"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Tool: Refine and Validate Prompts1"
+				}
+			]
 		},
 		{
 			"id": 9437,
@@ -256,12 +334,17 @@
 		{
 			"id": 12462,
 			"name": "Create AI product images and marketing videos with NanoBanana Pro, Veo 3.1 and Blotato",
-			"success": true
+			"success": true,
+			"expectedWarnings": [{ "code": "HARDCODED_CREDENTIALS", "nodeName": "Merge 3 Videos" }]
 		},
 		{
 			"id": 9200,
 			"name": "Automate & publish video ad campaigns with NanoBanana, Seedream, GPT-4o, Veo 3",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{ "code": "TOOL_NO_PARAMETERS", "nodeName": "Think" },
+				{ "code": "TOOL_NO_PARAMETERS", "nodeName": "Think1" }
+			]
 		},
 		{
 			"id": 6287,
@@ -271,7 +354,21 @@
 		{
 			"id": 4968,
 			"name": "Automated LinkedIn content creation with GPT-4 and DALL-E for scheduled posts",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Content topic generator2"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Content topic generator2"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Hashtag generator /SEO"
+				}
+			]
 		},
 		{
 			"id": 5906,
@@ -340,7 +437,17 @@
 		{
 			"id": 11204,
 			"name": "Create AI viral videos using NanoBanana 2 PRO & VEO3.1 and publish via Blotato",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Set: Bot Token (Placeholder)"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
+				}
+			]
 		},
 		{
 			"id": 6067,
@@ -511,7 +618,11 @@
 		{
 			"id": 12645,
 			"name": "Generate scalable e-commerce product images with GPT-4 and NanoBanana Pro",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{ "code": "HARDCODED_CREDENTIALS", "nodeName": "NanoBanana: Create Image" },
+				{ "code": "HARDCODED_CREDENTIALS", "nodeName": "Download Edited Image" }
+			]
 		},
 		{
 			"id": 12325,
@@ -674,7 +785,8 @@
 		{
 			"id": 8591,
 			"name": "AI personal assistant for Google Tasks",
-			"success": true
+			"success": true,
+			"expectedWarnings": [{ "code": "TOOL_NO_PARAMETERS", "nodeName": "Think" }]
 		},
 		{
 			"id": 5796,
@@ -981,7 +1093,17 @@
 		{
 			"id": 8095,
 			"name": "Email new leads from Google Sheets via Outlook on a schedule",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note6"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note7"
+				}
+			]
 		},
 		{
 			"id": 4484,
@@ -997,7 +1119,17 @@
 		{
 			"id": 9801,
 			"name": "Summarize meeting transcripts with GPT-4 & sentiment analysis for Gmail",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note5"
+				}
+			]
 		},
 		{
 			"id": 7467,
@@ -2094,7 +2226,13 @@
 		{
 			"id": 4587,
 			"name": "Extract Instagram profile data with Apify and store in Google Sheets",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note1"
+				}
+			]
 		},
 		{
 			"id": 4295,
@@ -2229,7 +2367,36 @@
 		{
 			"id": 6686,
 			"name": "Track expenses from receipt photos with Telegram & Google Sheets using OCR.space",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_TRIGGER"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Telegram Bot (Webhook)"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Check 'Photo'"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Get Telegram Photo"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OCR.space Request"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send Raw OCR Text"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Send Raw OCR Text"
+				}
+			]
 		},
 		{
 			"id": 6531,
@@ -2646,7 +2813,8 @@
 			"id": 7957,
 			"name": "Conversational Meta ads reporting & management with GPT-5",
 			"success": true,
-			"app": "Merge"
+			"app": "Merge",
+			"expectedWarnings": [{ "code": "AGENT_STATIC_PROMPT", "nodeName": "AI Agent" }]
 		},
 		{
 			"id": 11617,
@@ -2912,7 +3080,17 @@
 			"id": 6150,
 			"name": "Auto Germany apartment search & apply with Immobilienscout24 & Google Services",
 			"success": true,
-			"nodeType": "splitInBatches"
+			"nodeType": "splitInBatches",
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cron Trigger"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Send Application Email"
+				}
+			]
 		},
 		{
 			"id": 5851,
@@ -3237,7 +3415,17 @@
 		{
 			"id": 10029,
 			"name": "Automate invoice processing with OCR, GPT-4 & Salesforce opportunity creation",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note2"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note3"
+				}
+			]
 		},
 		{
 			"id": 9810,
@@ -3823,7 +4011,17 @@
 		{
 			"id": 8448,
 			"name": "Automated B2B lead generation: Google Places, Scrape.do & AI enrichment",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "6a. Scrape Website with Scrape.do"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "6a. Scrape Website with Scrape.do"
+				}
+			]
 		},
 		{
 			"id": 8077,
@@ -3844,7 +4042,13 @@
 		{
 			"id": 7289,
 			"name": "Secure web form to Odoo CRM lead creation with UTM tracking",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Sticky Note2"
+				}
+			]
 		},
 		{
 			"id": 6242,
@@ -3895,7 +4099,8 @@
 		{
 			"id": 5303,
 			"name": "Google Search Console and analytics analysis with AI optimizations",
-			"success": true
+			"success": true,
+			"expectedWarnings": [{ "code": "AGENT_NO_SYSTEM_MESSAGE", "nodeName": "SEO analyst" }]
 		},
 		{
 			"id": 3791,
@@ -4087,7 +4292,13 @@
 		{
 			"id": 4930,
 			"name": "Document-based chatbot with memory using OpenAI, Pinecone and Google Drive",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Agent"
+				}
+			]
 		},
 		{
 			"id": 4892,
@@ -4200,12 +4411,44 @@
 		{
 			"id": 3224,
 			"name": "Analyze any website with OpenAI and get on-page SEO audit",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Content Audit"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Technical Audit"
+				}
+			]
 		},
 		{
 			"id": 10150,
 			"name": "AI-driven lead classification & routing with HighLevel and Azure GPT-4o-mini",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Lead Classifier Agent"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Lead Classifier Agent"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Route to Demo Team"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Route to Support Team"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Route to Partnership Team"
+				}
+			]
 		},
 		{
 			"id": 10123,
@@ -4618,7 +4861,13 @@
 		{
 			"id": 2872,
 			"name": "🤖🧠 AI agent chatbot + LONG TERM memory + note storage + Telegram",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "DeepSeek-V3  Chat"
+				}
+			]
 		},
 		{
 			"id": 9544,
