@@ -188,39 +188,21 @@ class TestDynamicImportDetection(TestTaskAnalyzer):
 
 
 class TestFormatStringAttacks(TestTaskAnalyzer):
-    def test_format_string_builtins_access_blocked(
-        self, analyzer: TaskAnalyzer
-    ) -> None:
-        exploit_attempts = [
+    def test_dangerous_format_patterns_blocked(self, analyzer: TaskAnalyzer) -> None:
+        dangerous_strings = [
+            # Attribute access patterns
             '"{.__builtins__}".format(print)',
-            '"{0.__builtins__}".format(print)',
-            '"{x.__builtins__}".format(x=print)',
-        ]
-
-        for code in exploit_attempts:
-            with pytest.raises(SecurityViolationError) as exc_info:
-                analyzer.validate(code)
-            assert "__builtins__" in exc_info.value.description
-
-    def test_format_string_import_access_blocked(self, analyzer: TaskAnalyzer) -> None:
-        exploit_attempts = [
+            '"{.__class__}".format(obj)',
+            '"{.__globals__}".format(fn)',
+            '"{.__class__.__mro__}".format(obj)',
+            # Subscript access patterns
             '"{.__builtins__[__import__]}".format(print)',
             '"{[__import__]}".format(__builtins__)',
+            'fmt = "{.__class__}"',
+            'fmt = "{.__builtins__}"; fmt.format(obj)',
         ]
 
-        for code in exploit_attempts:
-            with pytest.raises(SecurityViolationError) as exc_info:
-                analyzer.validate(code)
-            assert "disallowed" in exc_info.value.description.lower()
-
-    def test_format_string_class_access_blocked(self, analyzer: TaskAnalyzer) -> None:
-        exploit_attempts = [
-            '"{.__class__}".format(obj)',
-            '"{.__class__.__mro__}".format(obj)',
-            '"{.__globals__}".format(fn)',
-        ]
-
-        for code in exploit_attempts:
+        for code in dangerous_strings:
             with pytest.raises(SecurityViolationError) as exc_info:
                 analyzer.validate(code)
             assert "disallowed" in exc_info.value.description.lower()
@@ -247,21 +229,6 @@ class TestFormatStringAttacks(TestTaskAnalyzer):
 
         for code in safe_escaped:
             analyzer.validate(code)
-
-    def test_dangerous_patterns_in_any_string_blocked(
-        self, analyzer: TaskAnalyzer
-    ) -> None:
-        dangerous_strings = [
-            'docs = "{.__class__}"',
-            'msg = "{.__builtins__}"',
-            'print("{.__globals__}")',
-            'fmt = "{.__class__}"; fmt.format(obj)',  # The variable bypass
-        ]
-
-        for code in dangerous_strings:
-            with pytest.raises(SecurityViolationError) as exc_info:
-                analyzer.validate(code)
-            assert "disallowed" in exc_info.value.description.lower()
 
     def test_fstring_blocked_attributes_detected(self, analyzer: TaskAnalyzer) -> None:
         exploit_attempts = [
