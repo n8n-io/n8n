@@ -46,8 +46,42 @@ jobs:
           echo ""
           echo "=== Method 5: Check app info ==="
           gh api /app --jq '{name: .name, permissions: .permissions}' 2>/dev/null || echo "Cannot access /app endpoint"
+
+          echo ""
+          echo "=== CONCLUSION ==="
+          echo "Token can READ workflows (60 found)"
+          echo "But 'workflows:write' permission status is UNKNOWN"
+          echo "The push failure suggests it may be missing workflows:write"
         env:
           GH_TOKEN: ${{ steps.app_token.outputs.token }}
+
+      - name: Checkout for push test
+        uses: actions/checkout@v4.1.1
+        with:
+          ref: 'outdated.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Test if we can push a workflow file change
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+          BRANCH="ci-test/workflow-write-test-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+
+          # Add a comment to a workflow file
+          echo "# test $(date)" >> .github/workflows/release-create-pr.yml
+          git add .github/workflows/release-create-pr.yml
+          git commit -m "Test: can we push workflow changes?"
+
+          echo "Attempting to push workflow file change..."
+          if timeout 30 git push origin "$BRANCH" 2>&1; then
+            echo "✅ SUCCESS - Token CAN push workflow changes"
+            git push origin --delete "$BRANCH" || true
+          else
+            echo "❌ FAILED - Token CANNOT push workflow changes"
+            echo "This confirms workflows:write permission is missing or validation timed out"
+          fi
   # Test 1: Simple push from outdated.x (should reproduce the timeout)
   test-push-from-outdated:
     name: 'Test 1: Push from outdated.x'
