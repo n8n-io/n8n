@@ -142,6 +142,8 @@ import CanvasChatButton from '@/features/workflows/canvas/components/elements/bu
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
+import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
@@ -217,6 +219,8 @@ const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore()
 const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
+const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
+const chatPanelStore = useChatPanelStore();
 
 const workflowState = useWorkflowState();
 
@@ -1821,6 +1825,18 @@ function showAddFirstStepIfEnabled() {
 	}
 }
 
+async function handlePendingBuilderPrompt() {
+	const pendingPrompt = emptyStateBuilderPromptStore.consumePendingPrompt();
+	if (pendingPrompt) {
+		await chatPanelStore.open({ mode: 'builder', showCoachmark: false });
+		await builderStore.sendChatMessage({
+			text: pendingPrompt,
+			initialGeneration: true,
+			source: 'empty-state',
+		});
+	}
+}
+
 /**
  * Routing
  */
@@ -2047,6 +2063,9 @@ onMounted(() => {
 				}, 500);
 
 				emitPostMessageReady();
+
+				// Check for pending builder prompt from empty state experiment
+				void handlePendingBuilderPrompt();
 			});
 
 		void usersStore.showPersonalizationSurvey();

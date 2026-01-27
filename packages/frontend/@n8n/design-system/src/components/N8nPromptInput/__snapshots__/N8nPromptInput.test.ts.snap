@@ -55,7 +55,9 @@ exports[`N8nPromptInput > rendering > should render correctly with default props
                 />
               </svg>
             </span>
-            <!--v-if-->
+            
+            
+            
           </button>
         </div>
       </div>

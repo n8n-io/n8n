@@ -45,4 +45,5 @@ export const STORES = {
 	BANNERS: 'banners',
 	CONSENT: 'consent',
 	CHAT_HUB: 'chatHub',
+	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
 } as const;
