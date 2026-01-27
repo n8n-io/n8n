@@ -267,6 +267,58 @@ jobs:
         if: always()
         run: git push origin --delete "$BRANCH" 2>/dev/null || true
 
+  # Test 6: Push from 1.x with a workflow file modification
+  test-workflow-change:
+    name: 'Test 6: 1.x with workflow file change'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout 1.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: '1.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Push with workflow file change
+        id: push_test
+        run: |
+          BRANCH="ci-test-isolation/1x-workflow-change-$(date +%s)"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH"
+
+          # Modify an existing workflow file (triggers GitHub validation)
+          echo "" >> .github/workflows/ci.yml
+          echo "# test comment $(date)" >> .github/workflows/ci.yml
+
+          git add .github/workflows/ci.yml
+          git commit -m "Test 6: 1.x with workflow file change"
+
+          echo "Pushing $BRANCH with workflow file modification..."
+          if git push origin "$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "$BRANCH" 2>/dev/null || true
+
   # Summary
   summary:
     name: 'Results Summary'
@@ -278,6 +330,7 @@ jobs:
         test-master,
         test-release-pr-name,
         test-force-with-lease,
+        test-workflow-change,
       ]
     if: always()
 
@@ -292,6 +345,7 @@ jobs:
           echo "Test 3 (master):            ${{ needs.test-master.result }}"
           echo "Test 4 (release-pr name):   ${{ needs.test-release-pr-name.result }}"
           echo "Test 5 (--force-with-lease):${{ needs.test-force-with-lease.result }}"
+          echo "Test 6 (workflow change):   ${{ needs.test-workflow-change.result }}"
           echo "============================================"
           echo ""
           echo "INTERPRETATION:"
@@ -299,3 +353,4 @@ jobs:
           echo "- Test 1 mixed (some pass/fail) → intermittent issue"
           echo "- Test 1 & 2 both fail → not just .github (token scope?)"
           echo "- Test 5 fails differently → force-push specific issue"
+          echo "- Test 6 fails → workflow file changes trigger timeout"
