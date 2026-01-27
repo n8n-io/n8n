@@ -321,6 +321,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Check if this is a NodeChain
 		if (isNodeChain(node)) {
+			// Track node ID -> actual map key for renamed nodes
+			const nameMapping = new Map<string, string>();
+
 			// Add all nodes from the chain, handling composites that may have been chained
 			for (const chainNode of node.allNodes) {
 				// Check for builders FIRST (before composites) - builders have similar properties
@@ -342,19 +345,25 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					);
 				} else if (this.isSplitInBatchesBuilder(chainNode)) {
 					// Handle SplitInBatchesBuilder nested in chain (via node.then(splitInBatches(...)))
-					this.addSplitInBatchesChainNodes(newNodes, chainNode);
+					this.addSplitInBatchesChainNodes(newNodes, chainNode, nameMapping);
 				} else {
-					this.addNodeWithSubnodes(newNodes, chainNode);
+					const actualKey = this.addNodeWithSubnodes(newNodes, chainNode);
+					// Track the actual key if it was renamed
+					if (actualKey && actualKey !== chainNode.name) {
+						nameMapping.set(chainNode.id, actualKey);
+					}
 				}
 			}
 			// Also add nodes from connections that aren't in allNodes (e.g., onError handlers)
-			this.addConnectionTargetNodes(newNodes, node);
+			this.addConnectionTargetNodes(newNodes, node, nameMapping);
 			// Collect pinData from all nodes in the chain
 			const chainPinData = this.collectPinDataFromChain(node);
 			// Set currentNode to the tail (last node in the chain)
+			// Use nameMapping to get the actual key if the tail was renamed
+			const tailKey = nameMapping.get(node.tail.id) ?? node.tail.name;
 			return this.clone({
 				nodes: newNodes,
-				currentNode: node.tail.name,
+				currentNode: tailKey,
 				currentOutput: 0,
 				pinData: chainPinData,
 			});
@@ -684,8 +693,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					nodeConnections[connType] = outputArray;
 				}
 
-				if (Object.keys(nodeConnections).length > 0 && instance.name !== undefined) {
-					connections[instance.name] = nodeConnections;
+				if (Object.keys(nodeConnections).length > 0 && nodeName !== undefined) {
+					connections[nodeName] = nodeConnections;
 				}
 			}
 		}
@@ -1414,12 +1423,21 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Resolve the target node name from a connection target.
 	 * Handles NodeInstance, NodeChain, and composites (SwitchCaseComposite, IfElseComposite, MergeComposite).
 	 * Returns the map key (which may differ from instance.name for renamed duplicates).
+	 * @param nameMapping - Optional map from node ID to actual map key (used when nodes are renamed during addBranchToGraph)
 	 */
-	private resolveTargetNodeName(target: unknown): string | undefined {
+	private resolveTargetNodeName(
+		target: unknown,
+		nameMapping?: Map<string, string>,
+	): string | undefined {
 		if (target === null || typeof target !== 'object') return undefined;
 
 		// Helper to get the actual node name, accounting for auto-renamed nodes
 		const getNodeName = (nodeInstance: NodeInstance<string, string, unknown>): string => {
+			// First check the passed-in nameMapping (used during addBranchToGraph)
+			const mappedKey = nameMapping?.get(nodeInstance.id);
+			if (mappedKey) return mappedKey;
+
+			// Fall back to searching in this._nodes
 			const mapKey = this.findMapKeyForNodeId(nodeInstance.id);
 			if (!mapKey) return nodeInstance.name;
 
@@ -1559,8 +1577,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	/**
 	 * Add target nodes from a chain's connections that aren't already in the nodes map.
 	 * This handles nodes added via .onError() which aren't included in the chain's allNodes.
+	 * @param nameMapping - Optional map from node ID to actual map key (used when nodes are renamed)
 	 */
-	private addConnectionTargetNodes(nodes: Map<string, GraphNode>, chain: NodeChain): void {
+	private addConnectionTargetNodes(
+		nodes: Map<string, GraphNode>,
+		chain: NodeChain,
+		nameMapping?: Map<string, string>,
+	): void {
 		const connections = chain.getConnections();
 		for (const { target } of connections) {
 			// Skip if target is a composite or builder (already handled elsewhere)
@@ -1573,7 +1596,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 			// Handle NodeChains - use addBranchToGraph to add all nodes with their connections
 			if (isNodeChain(target)) {
-				this.addBranchToGraph(nodes, target as NodeChain);
+				this.addBranchToGraph(nodes, target as NodeChain, nameMapping);
 				continue;
 			}
 
@@ -1581,7 +1604,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			if (isInputTarget(target)) {
 				const inputTargetNode = target.node as NodeInstance<string, string, unknown>;
 				if (!nodes.has(inputTargetNode.name)) {
-					this.addNodeWithSubnodes(nodes, inputTargetNode);
+					const actualKey = this.addNodeWithSubnodes(nodes, inputTargetNode);
+					if (actualKey && nameMapping && actualKey !== inputTargetNode.name) {
+						nameMapping.set(inputTargetNode.id, actualKey);
+					}
 				}
 				continue;
 			}
@@ -1589,7 +1615,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			// Add the target node if not already in the map
 			const targetNode = target as NodeInstance<string, string, unknown>;
 			if (!nodes.has(targetNode.name)) {
-				this.addNodeWithSubnodes(nodes, targetNode);
+				const actualKey = this.addNodeWithSubnodes(nodes, targetNode);
+				if (actualKey && nameMapping && actualKey !== targetNode.name) {
+					nameMapping.set(targetNode.id, actualKey);
+				}
 			}
 		}
 	}
@@ -2025,8 +2054,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	/**
 	 * Add nodes from a SplitInBatches chain (EachChainImpl/DoneChainImpl) to the nodes map
 	 * This handles the case where splitInBatches() is chained via node.then(splitInBatches()...)
+	 * @param nameMapping - Optional map from node ID to actual map key (used when nodes are renamed)
 	 */
-	private addSplitInBatchesChainNodes(nodes: Map<string, GraphNode>, sibChain: unknown): void {
+	private addSplitInBatchesChainNodes(
+		nodes: Map<string, GraphNode>,
+		sibChain: unknown,
+		nameMapping?: Map<string, string>,
+	): void {
 		const builder = this.extractSplitInBatchesBuilder(sibChain);
 
 		// Check if we're already processing this builder (prevents infinite recursion)
@@ -2047,6 +2081,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		const sibGraphNode = nodes.get(builder.sibNode.name)!;
 		const sibMainConns = sibGraphNode.connections.get('main') || new Map();
 
+		// Create nameMapping if not passed (tracks node ID -> actual map key for renamed nodes)
+		const effectiveNameMapping = nameMapping ?? new Map<string, string>();
+
 		// Check if this is named syntax (has _doneTarget/_eachTarget)
 		// Named syntax uses full branch targets instead of batches
 		const hasNamedSyntax = '_doneTarget' in builder || '_eachTarget' in builder;
@@ -2060,12 +2097,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					// Handle FanOut targets
 					if (isFanOut(doneTarget)) {
 						for (const target of doneTarget.targets) {
-							const firstNodeName = this.addBranchToGraph(nodes, target);
+							const firstNodeName = this.addBranchToGraph(nodes, target, effectiveNameMapping);
 							const output0 = sibMainConns.get(0) || [];
 							sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
 						}
 					} else {
-						const firstNodeName = this.addBranchToGraph(nodes, doneTarget);
+						const firstNodeName = this.addBranchToGraph(nodes, doneTarget, effectiveNameMapping);
 						const output0 = sibMainConns.get(0) || [];
 						sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
 					}
@@ -2077,12 +2114,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					// Handle FanOut targets
 					if (isFanOut(eachTarget)) {
 						for (const target of eachTarget.targets) {
-							const firstNodeName = this.addBranchToGraph(nodes, target);
+							const firstNodeName = this.addBranchToGraph(nodes, target, effectiveNameMapping);
 							const output1 = sibMainConns.get(1) || [];
 							sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
 						}
 					} else {
-						const firstNodeName = this.addBranchToGraph(nodes, eachTarget);
+						const firstNodeName = this.addBranchToGraph(nodes, eachTarget, effectiveNameMapping);
 						const output1 = sibMainConns.get(1) || [];
 						sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
 					}
@@ -2104,7 +2141,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				if (Array.isArray(batch)) {
 					// Fan-out: all nodes in the array connect to the same source
 					for (const doneNode of batch) {
-						const firstNodeName = this.addBranchToGraph(nodes, doneNode);
+						const firstNodeName = this.addBranchToGraph(nodes, doneNode, effectiveNameMapping);
 						if (prevDoneNode === null) {
 							const output0 = sibMainConns.get(0) || [];
 							sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
@@ -2123,7 +2160,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					}
 				} else {
 					const doneNode = batch;
-					const firstNodeName = this.addBranchToGraph(nodes, doneNode);
+					const firstNodeName = this.addBranchToGraph(nodes, doneNode, effectiveNameMapping);
 					if (prevDoneNode === null) {
 						const output0 = sibMainConns.get(0) || [];
 						sibMainConns.set(0, [...output0, { node: firstNodeName, type: 'main', index: 0 }]);
@@ -2151,7 +2188,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				if (Array.isArray(batch)) {
 					// Fan-out: all nodes in the array connect to the same source
 					for (const eachNode of batch) {
-						const firstNodeName = this.addBranchToGraph(nodes, eachNode);
+						const firstNodeName = this.addBranchToGraph(nodes, eachNode, effectiveNameMapping);
 						if (prevEachNode === null) {
 							const output1 = sibMainConns.get(1) || [];
 							sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
@@ -2170,7 +2207,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					}
 				} else {
 					const eachNode = batch;
-					const firstNodeName = this.addBranchToGraph(nodes, eachNode);
+					const firstNodeName = this.addBranchToGraph(nodes, eachNode, effectiveNameMapping);
 					if (prevEachNode === null) {
 						const output1 = sibMainConns.get(1) || [];
 						sibMainConns.set(1, [...output1, { node: firstNodeName, type: 'main', index: 0 }]);
@@ -2231,19 +2268,21 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Add a node and its subnodes to the nodes map, creating AI connections
+	 * Add a node and its subnodes to the nodes map, creating AI connections.
+	 * Returns the actual map key used (may differ from nodeInstance.name if renamed),
+	 * or undefined if the node was skipped (invalid or duplicate reference).
 	 */
 	private addNodeWithSubnodes(
 		nodes: Map<string, GraphNode>,
 		nodeInstance: NodeInstance<string, string, unknown>,
-	): void {
+	): string | undefined {
 		// Guard against invalid node instances (e.g., empty objects from chain.allNodes)
 		if (!nodeInstance || typeof nodeInstance !== 'object') {
-			return;
+			return undefined;
 		}
 		if (!nodeInstance.type || !nodeInstance.name) {
 			// Not a valid node instance - skip silently
-			return;
+			return undefined;
 		}
 
 		// Check if a node with the same name already exists
@@ -2251,7 +2290,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (existingNode) {
 			// If it's the same node instance (by reference), skip - it's a duplicate reference
 			if (existingNode.instance === nodeInstance) {
-				return;
+				return undefined;
 			}
 			// Different node instance with same name - generate unique name and add it
 			// This handles the case where user creates multiple nodes with the same name
@@ -2262,7 +2301,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				instance: nodeInstance,
 				connections: connectionsMap,
 			});
-			return;
+			return uniqueName;
 		}
 
 		// Add the main node
@@ -2275,7 +2314,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Process subnodes if present
 		const subnodes = nodeInstance.config?.subnodes as SubnodeConfig | undefined;
-		if (!subnodes) return;
+		if (!subnodes) return nodeInstance.name;
 
 		// Helper to add a subnode with its AI connection (recursively handles nested subnodes)
 		const addSubnode = (subnode: NodeInstance<string, string, unknown>, connectionType: string) => {
@@ -2360,6 +2399,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		if (subnodes.reranker) {
 			addSubnode(subnodes.reranker, 'ai_reranker');
 		}
+
+		return nodeInstance.name;
 	}
 
 	/**
@@ -2681,11 +2722,16 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	/**
 	 * Add a branch to the graph, handling both single nodes and NodeChains.
 	 * Returns the name of the first node in the branch (for connection from IF).
+	 * @param nameMapping - Optional map from node ID to actual map key (used when nodes are renamed)
 	 */
 	private addBranchToGraph(
 		nodes: Map<string, GraphNode>,
 		branch: NodeInstance<string, string, unknown>,
+		nameMapping?: Map<string, string>,
 	): string {
+		// Create nameMapping if not passed (tracks node ID -> actual map key for renamed nodes)
+		const effectiveNameMapping = nameMapping ?? new Map<string, string>();
+
 		// Handle IfElseBuilder (fluent API) - add via addIfElseBuilderNodes
 		if (isIfElseBuilder(branch)) {
 			const builder = branch as unknown as IfElseBuilder<unknown>;
@@ -2745,9 +2791,13 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 					);
 				} else if (this.isSplitInBatchesBuilder(chainNode)) {
 					// Handle EachChainImpl/DoneChainImpl that got chained via node.then(splitInBatches()...)
-					this.addSplitInBatchesChainNodes(nodes, chainNode);
+					this.addSplitInBatchesChainNodes(nodes, chainNode, effectiveNameMapping);
 				} else {
-					this.addNodeWithSubnodes(nodes, chainNode);
+					const actualKey = this.addNodeWithSubnodes(nodes, chainNode);
+					// Track the actual key if it was renamed
+					if (actualKey && actualKey !== chainNode.name) {
+						effectiveNameMapping.set(chainNode.id, actualKey);
+					}
 				}
 			}
 
@@ -2849,9 +2899,12 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 								this.addNodeWithSubnodes(nodes, target as NodeInstance<string, string, unknown>);
 							}
 
-							const sourceGraphNode = nodes.get(nodeName);
+							// Use the effectiveNameMapping to get the actual key if the node was renamed
+							const mappedKey = nodeToCheck && effectiveNameMapping.get(nodeToCheck.id);
+							const actualSourceKey = mappedKey ?? nodeName;
+							const sourceGraphNode = nodes.get(actualSourceKey!);
 							if (sourceGraphNode) {
-								const targetName = this.resolveTargetNodeName(target);
+								const targetName = this.resolveTargetNodeName(target, effectiveNameMapping);
 								if (targetName) {
 									const mainConns = sourceGraphNode.connections.get('main') || new Map();
 									const outputConns = mainConns.get(outputIndex) || [];
@@ -2872,7 +2925,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 			}
 
 			// Return the head node name (first node in the chain)
-			return branch.head.name;
+			// Use effectiveNameMapping to get the actual key if the head was renamed
+			const headKey = effectiveNameMapping.get(branch.head.id) ?? branch.head.name;
+			return headKey;
 		} else {
 			// Check if this is a composite that needs special handling
 			if (this.isSwitchCaseComposite(branch)) {
@@ -2892,15 +2947,19 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				return (branch as unknown as MergeComposite<NodeInstance<string, string, unknown>[]>)
 					.mergeNode.name;
 			} else if (this.isSplitInBatchesBuilder(branch)) {
-				this.addSplitInBatchesChainNodes(nodes, branch);
+				this.addSplitInBatchesChainNodes(nodes, branch, effectiveNameMapping);
 				// Return the split in batches node name
 				const builder = this.extractSplitInBatchesBuilder(branch);
 				return builder.sibNode.name;
 			}
 
 			// Single node - add it and return its name
-			this.addNodeWithSubnodes(nodes, branch);
-			return branch.name;
+			const actualKey = this.addNodeWithSubnodes(nodes, branch);
+			// If the node was renamed, track it and return the actual key
+			if (actualKey && actualKey !== branch.name) {
+				effectiveNameMapping.set(branch.id, actualKey);
+			}
+			return actualKey ?? branch.name;
 		}
 	}
 
@@ -3531,6 +3590,9 @@ function fromJSON(json: WorkflowJSON): WorkflowBuilder {
 				throw new Error(
 					'Nodes from fromJSON() do not support then() - use workflow builder methods',
 				);
+			},
+			to: function () {
+				throw new Error('Nodes from fromJSON() do not support to() - use workflow builder methods');
 			},
 			input: function () {
 				throw new Error(

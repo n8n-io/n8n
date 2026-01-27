@@ -586,6 +586,89 @@ describe('Split In Batches', () => {
 		});
 	});
 
+	describe('multiple independent SIB loops', () => {
+		it('should handle multiple independent SIB loops with same-named nodes', () => {
+			const morningTrigger = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.3,
+				config: { name: 'Morning Schedule' },
+			});
+			const afternoonTrigger = trigger({
+				type: 'n8n-nodes-base.scheduleTrigger',
+				version: 1.3,
+				config: { name: 'Afternoon Schedule' },
+			});
+
+			const createMorningBatch = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Create Batch' },
+			});
+			const createAfternoonBatch = node({
+				type: 'n8n-nodes-base.set',
+				version: 3.4,
+				config: { name: 'Create Batch' },
+			});
+
+			const morningLoop = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'Morning Loop' },
+			}) as SibNode;
+			const afternoonLoop = node({
+				type: 'n8n-nodes-base.splitInBatches',
+				version: 3,
+				config: { name: 'Afternoon Loop' },
+			}) as SibNode;
+
+			const processMorning = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Process' },
+			});
+			const processAfternoon = node({
+				type: 'n8n-nodes-base.httpRequest',
+				version: 4.2,
+				config: { name: 'Process' },
+			});
+
+			const wf = workflow('test-id', 'Test')
+				.add(
+					morningTrigger
+						.then(createMorningBatch)
+						.then(splitInBatches(morningLoop).onEachBatch(processMorning.then(morningLoop))),
+				)
+				.add(
+					afternoonTrigger
+						.then(createAfternoonBatch)
+						.then(splitInBatches(afternoonLoop).onEachBatch(processAfternoon.then(afternoonLoop))),
+				);
+
+			const json = wf.toJSON();
+
+			// Should have nodes from both chains with renamed duplicates
+			const nodeNames = json.nodes.map((n) => n.name).sort();
+			expect(nodeNames).toContain('Morning Schedule');
+			expect(nodeNames).toContain('Afternoon Schedule');
+			expect(nodeNames).toContain('Morning Loop');
+			expect(nodeNames).toContain('Afternoon Loop');
+			expect(nodeNames).toContain('Process');
+			expect(nodeNames).toContain('Process 1');
+			expect(nodeNames).toContain('Create Batch');
+			expect(nodeNames).toContain('Create Batch 1');
+
+			// Morning Loop output 1 should connect to "Process" (the first one)
+			expect(json.connections['Morning Loop']!.main[1]![0]!.node).toBe('Process');
+
+			// Afternoon Loop output 1 should connect to "Process 1" (the renamed one)
+			expect(json.connections['Afternoon Loop']!.main[1]![0]!.node).toBe('Process 1');
+
+			// Verify loop-back connections are correct
+			expect(json.connections['Process']!.main[0]![0]!.node).toBe('Morning Loop');
+			expect(json.connections['Process 1']!.main[0]![0]!.node).toBe('Afternoon Loop');
+		});
+	});
+
 	describe('circular reference handling', () => {
 		it('should handle splitInBatches with long chain looping back without stack overflow', () => {
 			// This test reproduces a bug where parsing code with splitInBatches
