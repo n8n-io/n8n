@@ -1,7 +1,8 @@
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
-import { User, WorkflowHistoryRepository } from '@n8n/db';
+import { User, type WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
+import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { getWorkflow } from '@test-integration/workflow';
@@ -125,6 +126,113 @@ describe('WorkflowHistoryService', () => {
 
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalled();
+		});
+	});
+
+	describe('getVersionsByIds', () => {
+		it('should return empty array when versionIds is empty', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionIds: string[] = [];
+
+			// Act
+			const result = await workflowHistoryService.getVersionsByIds(
+				testUser,
+				workflowId,
+				versionIds,
+			);
+
+			// Assert
+			expect(result).toEqual([]);
+			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
+			expect(workflowHistoryRepository.find).not.toHaveBeenCalled();
+		});
+
+		it('should throw SharedWorkflowNotFoundError when workflow not found for user', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionIds = ['version1', 'version2'];
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(null);
+
+			// Act & Assert
+			await expect(
+				workflowHistoryService.getVersionsByIds(testUser, workflowId, versionIds),
+			).rejects.toThrow(SharedWorkflowNotFoundError);
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, testUser, [
+				'workflow:read',
+			]);
+		});
+
+		it('should return only existing versions from the provided list', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionIds = ['version1', 'version2', 'version3'];
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = workflowId;
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+
+			const mockVersions = [
+				{ versionId: 'version1', createdAt: new Date('2024-01-01') },
+				{ versionId: 'version3', createdAt: new Date('2024-01-03') },
+			];
+			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions as any);
+
+			// Act
+			const result = await workflowHistoryService.getVersionsByIds(
+				testUser,
+				workflowId,
+				versionIds,
+			);
+
+			// Assert
+			expect(result).toEqual([
+				{ versionId: 'version1', createdAt: new Date('2024-01-01') },
+				{ versionId: 'version3', createdAt: new Date('2024-01-03') },
+			]);
+		});
+
+		it('should return versionId and createdAt for each found version', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionIds = ['version1'];
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = workflowId;
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+
+			const createdAt = new Date('2024-01-01');
+			const mockVersions = [{ versionId: 'version1', createdAt }];
+			workflowHistoryRepository.find.mockResolvedValueOnce(mockVersions as WorkflowHistory[]);
+
+			// Act
+			const result = await workflowHistoryService.getVersionsByIds(
+				testUser,
+				workflowId,
+				versionIds,
+			);
+
+			// Assert
+			expect(result).toEqual([{ versionId: 'version1', createdAt }]);
+			expect(result[0]).toHaveProperty('versionId');
+			expect(result[0]).toHaveProperty('createdAt');
+			expect(Object.keys(result[0])).toHaveLength(2);
+		});
+
+		it('should call workflowFinderService.findWorkflowForUser with correct parameters', async () => {
+			// Arrange
+			const workflowId = '123';
+			const versionIds = ['version1'];
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.id = workflowId;
+			workflowFinderService.findWorkflowForUser.mockResolvedValueOnce(workflow);
+			workflowHistoryRepository.find.mockResolvedValueOnce([]);
+
+			// Act
+			await workflowHistoryService.getVersionsByIds(testUser, workflowId, versionIds);
+
+			// Assert
+			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(workflowId, testUser, [
+				'workflow:read',
+			]);
 		});
 	});
 });

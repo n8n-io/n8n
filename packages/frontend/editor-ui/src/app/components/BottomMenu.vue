@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import {
 	N8nMenuItem,
 	N8nPopover,
@@ -10,7 +9,6 @@ import {
 	type IMenuElement,
 } from '@n8n/design-system';
 import { RELEASE_NOTES_URL } from '@/app/constants';
-import BecomeTemplateCreatorCta from '@/app/components/BecomeTemplateCreatorCta/BecomeTemplateCreatorCta.vue';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import VersionUpdateCTA from '@/app/components/VersionUpdateCTA.vue';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -27,7 +25,6 @@ const emit = defineEmits<{
 	logout: [];
 }>();
 
-const cloudPlanStore = useCloudPlanStore();
 const versionsStore = useVersionsStore();
 const usersStore = useUsersStore();
 
@@ -61,20 +58,22 @@ const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>
 			size: 'small',
 			customIconSize: 'small',
 		},
-		{
-			id: 'version-upgrade-cta',
-			component: VersionUpdateCTA,
-			available: versionsStore.hasVersionUpdates && usersStore.canUserUpdateVersion,
-			props: {
-				tooltipText: !usersStore.canUserUpdateVersion
-					? i18n.baseText('whatsNew.updateNudgeTooltip')
-					: undefined,
-			},
-		},
+		...(versionsStore.hasVersionUpdates
+			? [
+					{
+						id: 'version-upgrade-cta',
+						component: VersionUpdateCTA,
+						props: {
+							tooltipText: !usersStore.canUserUpdateVersion
+								? i18n.baseText('whatsNew.updateNudgeTooltip')
+								: undefined,
+							disabled: !usersStore.canUserUpdateVersion,
+						},
+					},
+				]
+			: []),
 	],
 }));
-
-const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
 function handleSelect(key: string) {
 	emit('select', key);
@@ -104,7 +103,6 @@ function onLogout() {
 				>
 					<template #content>
 						<div :class="$style.popover">
-							<BecomeTemplateCreatorCta v-if="!isCollapsed && !userIsTrialing" />
 							<template v-for="child in item.children" :key="child.id">
 								<component
 									:is="child.component"
@@ -221,11 +219,5 @@ function onLogout() {
 	border-bottom: var(--border);
 	margin-bottom: var(--spacing--3xs);
 	background-color: var(--color--border);
-}
-
-@media screen and (max-height: 470px) {
-	:global(#help) {
-		display: none;
-	}
 }
 </style>

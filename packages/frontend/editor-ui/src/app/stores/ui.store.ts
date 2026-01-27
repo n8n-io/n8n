@@ -26,12 +26,12 @@ import {
 	LOCAL_STORAGE_THEME,
 	WHATS_NEW_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
-	PRE_BUILT_AGENTS_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
-	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
+	BINARY_DATA_VIEW_MODAL_KEY,
+	STOP_MANY_EXECUTIONS_MODAL_KEY,
 	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
@@ -149,10 +149,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				PROJECT_MOVE_RESOURCE_MODAL,
 				NEW_ASSISTANT_SESSION_MODAL,
 				IMPORT_WORKFLOW_URL_MODAL_KEY,
-				PRE_BUILT_AGENTS_MODAL_KEY,
 				WORKFLOW_DIFF_MODAL_KEY,
 				EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 				VARIABLE_MODAL_KEY,
+				BINARY_DATA_VIEW_MODAL_KEY,
 				WORKFLOW_DESCRIPTION_MODAL_KEY,
 				WORKFLOW_PUBLISH_MODAL_KEY,
 				WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -232,6 +232,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				nodeName: undefined,
 			},
 		},
+		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
+			open: false,
+			data: {},
+		},
 		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {
 			open: false,
 			data: {
@@ -256,16 +260,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				nodeName: '',
 			},
 		},
-		[EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY]: {
-			open: false,
-			data: {},
-		},
 	});
 
 	const modalStack = ref<string[]>([]);
 	const sidebarMenuCollapsed = useLocalStorage<boolean>('sidebar.collapsed', true);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
+	const dirtyStateSetCount = ref<number>(0);
 	const lastSelectedNode = ref<string | null>(null);
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
@@ -546,6 +547,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 		workflowListEventBus: EventBus,
 	) => {
@@ -606,6 +608,15 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		processingExecutionResults.value = value;
 	};
 
+	const markStateDirty = () => {
+		dirtyStateSetCount.value++;
+		stateIsDirty.value = true;
+	};
+
+	const markStateClean = () => {
+		stateIsDirty.value = false;
+	};
+
 	/**
 	 * Register a modal dynamically
 	 */
@@ -664,7 +675,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isActionActive,
 		activeActions,
 		headerHeight,
-		stateIsDirty,
+		dirtyStateSetCount: computed(() => dirtyStateSetCount.value),
+		stateIsDirty: computed(() => stateIsDirty.value),
 		isBlankRedirect,
 		activeCredentialType,
 		lastSelectedNode,
@@ -700,6 +712,8 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		setNotificationsForView,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
+		markStateDirty,
+		markStateClean,
 		openDeleteFolderModal,
 		openMoveToFolderModal,
 		moduleTabs,

@@ -59,23 +59,17 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 	}
 
 	async getColumns(dataTableId: string, trx?: EntityManager) {
-		return await withTransaction(
-			this.manager,
-			trx,
-			async (em) => {
-				const columns = await em
-					.createQueryBuilder(DataTableColumn, 'dsc')
-					.where('dsc.dataTableId = :dataTableId', { dataTableId })
-					.getMany();
+		const em = trx ?? this.manager;
+		const columns = await em
+			.createQueryBuilder(DataTableColumn, 'dsc')
+			.where('dsc.dataTableId = :dataTableId', { dataTableId })
+			.getMany();
 
-				// Ensure columns are always returned in the correct order by index,
-				// since the database does not guarantee ordering and TypeORM does not preserve
-				// join order in @OneToMany relations.
-				columns.sort((a, b) => a.index - b.index);
-				return columns;
-			},
-			false,
-		);
+		// Ensure columns are always returned in the correct order by index,
+		// since the database does not guarantee ordering and TypeORM does not preserve
+		// join order in @OneToMany relations.
+		columns.sort((a, b) => a.index - b.index);
+		return columns;
 	}
 
 	async addColumn(dataTableId: string, schema: DataTableCreateColumnSchema, trx?: EntityManager) {

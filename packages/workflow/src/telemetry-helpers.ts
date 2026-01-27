@@ -440,11 +440,9 @@ export function generateNodesGraph(
 			nodeItem.language =
 				language === undefined
 					? 'javascript'
-					: language === 'python'
+					: language === 'python' || language === 'pythonNative'
 						? 'python'
-						: language === 'pythonNative'
-							? 'pythonNative'
-							: 'unknown';
+						: 'unknown';
 		} else if (node.type === GUARDRAILS_NODE_TYPE) {
 			nodeItem.operation = node.parameters.operation as string;
 			const usedGuardrails = Object.keys(node.parameters?.guardrails ?? {});

@@ -1,6 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { createResultOk, createResultError } from 'n8n-workflow';
+import { createResultOk, createResultError, NodeOperationError } from 'n8n-workflow';
 
 import { PythonTaskRunnerSandbox } from '../PythonTaskRunnerSandbox';
 
@@ -135,6 +135,25 @@ describe('PythonTaskRunnerSandbox', () => {
 			await expect(sandbox.runUsingIncomingItems()).rejects.toThrow('Execution failed');
 			expect(throwExecutionErrorSpy).toHaveBeenCalledWith(executionError);
 		});
+
+		it('should throw NodeOperationError when pythonCode is undefined', async () => {
+			const nodeMode = 'runOnceForAllItems';
+			const workflowMode = 'manual';
+			const executeFunctions = createMockExecuteFunctions([]);
+
+			const sandbox = new PythonTaskRunnerSandbox(
+				undefined as unknown as string,
+				nodeMode,
+				workflowMode,
+				executeFunctions,
+			);
+
+			await expect(sandbox.runUsingIncomingItems()).rejects.toThrow(NodeOperationError);
+			await expect(sandbox.runUsingIncomingItems()).rejects.toThrow(
+				'No Python code found to execute',
+			);
+			expect(executeFunctions.startJob).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('runCodeForTool', () => {
@@ -253,6 +272,24 @@ describe('PythonTaskRunnerSandbox', () => {
 
 			await expect(sandbox.runCodeForTool()).rejects.toThrow('Tool execution failed');
 			expect(throwExecutionErrorSpy).toHaveBeenCalledWith(executionError);
+		});
+
+		it('should throw NodeOperationError when pythonCode is undefined', async () => {
+			const nodeMode = 'runOnceForAllItems';
+			const workflowMode = 'manual';
+			const executeFunctions = createMockExecuteFunctions([]);
+
+			const sandbox = new PythonTaskRunnerSandbox(
+				undefined as unknown as string,
+				nodeMode,
+				workflowMode,
+				executeFunctions,
+				{ query: 'test' },
+			);
+
+			await expect(sandbox.runCodeForTool()).rejects.toThrow(NodeOperationError);
+			await expect(sandbox.runCodeForTool()).rejects.toThrow('No Python code found to execute');
+			expect(executeFunctions.startJob).not.toHaveBeenCalled();
 		});
 	});
 });

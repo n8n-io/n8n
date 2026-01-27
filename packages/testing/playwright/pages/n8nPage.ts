@@ -30,6 +30,8 @@ import { SettingsSsoPage } from './SettingsSsoPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
+import { SourceControlPullModal } from './SourceControlPullModal';
+import { SourceControlPushModal } from './SourceControlPushModal';
 import { TemplateCredentialSetupPage } from './TemplateCredentialSetupPage';
 import { TemplatesPage } from './TemplatesPage';
 import { VariablesPage } from './VariablesPage';
@@ -103,6 +105,8 @@ export class n8nPage {
 	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
+	readonly sourceControlPushModal: SourceControlPushModal;
+	readonly sourceControlPullModal: SourceControlPullModal;
 	readonly mfaSetupModal: MfaSetupModal;
 	readonly modal: BaseModal;
 	readonly resourceMoveModal: ResourceMoveModal;
@@ -172,6 +176,8 @@ export class n8nPage {
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
+		this.sourceControlPushModal = new SourceControlPushModal(page);
+		this.sourceControlPullModal = new SourceControlPullModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
 		this.resourceMoveModal = new ResourceMoveModal(page);

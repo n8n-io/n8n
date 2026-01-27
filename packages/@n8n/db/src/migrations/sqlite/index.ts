@@ -49,6 +49,8 @@ import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeD
 import { AddCreatorIdToProjectTable1764276827837 } from './1764276827837-AddCreatorIdToProjectTable';
 import { AddResolvableFieldsToCredentials1764689448000 } from './1764689448000-AddResolvableFieldsToCredentials';
 import { AddAgentIdForeignKeys1765886667897 } from './1765886667897-AddAgentIdForeignKeys';
+import { AddChatMessageIndices1766068346315 } from './1766068346315-AddChatMessageIndices';
+import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -124,6 +126,12 @@ import { AddDynamicCredentialEntryTable1764689388394 } from '../common/176468938
 import { BackfillMissingWorkflowHistoryRecords1765448186933 } from '../common/1765448186933-BackfillMissingWorkflowHistoryRecords';
 import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIconToAgentTable';
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
+import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
+import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
+import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
+import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
+import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
+import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -253,6 +261,14 @@ const sqliteMigrations: Migration[] = [
 	AddIconToAgentTable1765788427674,
 	AddAgentIdForeignKeys1765886667897,
 	AddWorkflowVersionIdToExecutionData1765892199653,
+	AddWorkflowPublishScopeToProjectRoles1766064542000,
+	AddChatMessageIndices1766068346315,
+	ChangeWorkflowStatisticsFKToNoAction1767018516000,
+	ExpandModelColumnLength1768402473068,
+	AddStoredAtToExecutionEntity1768557000000,
+	AddDynamicCredentialUserEntryTable1768901721000,
+	AddPublishedVersionIdToWorkflowDependency1769000000000,
+	CreateSecretsProviderConnectionTables1769433700000,
 ];
 
 export { sqliteMigrations };

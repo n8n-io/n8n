@@ -25,11 +25,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
-import {
-	EnterpriseEditionFeature,
-	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/app/constants';
+import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -69,8 +65,6 @@ import {
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
-import { ElSwitch } from 'element-plus';
-import { N8nLink, N8nTooltip } from '@n8n/design-system';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 type Props = {
@@ -603,6 +597,11 @@ function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
 	hasUnsavedChanges.value = true;
 }
 
+function onResolvableChange(value: boolean) {
+	isResolvable.value = value;
+	hasUnsavedChanges.value = true;
+}
+
 function onDataChange({ name, value }: IUpdateInformation) {
 	const currentValue = get(credentialData.value, name);
 	if (currentValue === value) {
@@ -920,10 +919,7 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id:
-			workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-				? null
-				: workflowsStore.workflowId,
+		workflow_id: workflowsStore.workflowId,
 	});
 
 	return credential;
@@ -1076,10 +1072,7 @@ async function oAuthCredentialAuthorize() {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id:
-				workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-					? null
-					: workflowsStore.workflowId,
+			workflow_id: workflowsStore.workflowId || null,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,
@@ -1276,65 +1269,16 @@ const { width } = useElementSize(credNameRef);
 						:mode="mode"
 						:selected-credential="selectedCredential"
 						:show-auth-type-selector="requiredCredentials"
+						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
+						:is-resolvable="isResolvable"
+						:is-new-credential="isNewCredential"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
+						@update:is-resolvable="onResolvableChange"
 					/>
-					<div
-						v-if="
-							isDynamicCredentialsEnabled &&
-							((credentialPermissions.create && isNewCredential) || credentialPermissions.update)
-						"
-						:class="$style.dynamicCredentials"
-						data-test-id="dynamic-credentials-section"
-					>
-						<div :class="$style.dynamicCredentialsHeader">
-							<N8nText size="medium" weight="bold">
-								{{ i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.title') }}
-							</N8nText>
-							<N8nTooltip placement="top">
-								<template #content>
-									<div>
-										{{
-											i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')
-										}}
-									</div>
-								</template>
-								<N8nIcon icon="circle-help" size="small" />
-							</N8nTooltip>
-						</div>
-						<ElSwitch
-							v-model="isResolvable"
-							data-test-id="dynamic-credentials-toggle"
-							@update:model-value="() => (hasUnsavedChanges = true)"
-						/>
-						<div :class="$style.dynamicCredentialsDescription">
-							<N8nText :tag="'div'" size="small" color="text-light">
-								{{
-									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description1')
-								}}
-							</N8nText>
-							<N8nText size="small" color="text-light">
-								{{
-									i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.description2')
-								}}
-								<N8nLink
-									:to="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.docsUrl')"
-									size="small"
-									theme="text"
-									underline
-								>
-									{{
-										i18n.baseText(
-											'credentialEdit.credentialConfig.dynamicCredentials.documentation',
-										)
-									}}
-								</N8nLink>
-							</N8nText>
-						</div>
-					</div>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
 					<CredentialSharing
@@ -1443,23 +1387,5 @@ const { width } = useElementSize(credNameRef);
 	display: flex;
 	align-items: center;
 	margin-right: var(--spacing--xs);
-}
-
-.dynamicCredentials {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	padding-top: var(--spacing--lg);
-	border-top: var(--border);
-}
-
-.dynamicCredentialsHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-}
-
-.dynamicCredentialsDescription {
-	margin-top: var(--spacing--2xs);
 }
 </style>

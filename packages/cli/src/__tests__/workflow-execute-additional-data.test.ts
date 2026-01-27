@@ -34,7 +34,8 @@ import {
 	executeWorkflow,
 	getBase,
 	getRunData,
-	getWorkflowData,
+	getDraftWorkflowData,
+	getPublishedWorkflowData,
 } from '@/workflow-execute-additional-data';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
@@ -234,6 +235,97 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
 		});
+
+		/**
+		 * Tests for workflow version selection based on execution mode.
+		 *
+		 * Note: These tests verify that executeWorkflow accepts different execution modes.
+		 * The actual version selection logic (draft vs published) is tested in detail in the
+		 * getDraftWorkflowData and getPublishedWorkflowData test suites below.
+		 */
+		describe('workflow version selection based on execution mode', () => {
+			const mockWorkflowData = mock<IWorkflowBase>({
+				id: 'workflow-123',
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
+			});
+
+			it('should execute successfully with manual execution mode (uses draft version, includes test webhooks)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'manual',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+
+			it('should execute successfully with chat execution mode (uses draft version)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'chat',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+
+			it('should execute successfully with trigger execution mode (uses published version)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'trigger',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+
+			it('should execute successfully with webhook execution mode (uses published version for production webhooks)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'webhook',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+
+			it('should execute successfully with integrated execution mode (uses published version)', async () => {
+				const result = await executeWorkflow(
+					mock<IExecuteWorkflowInfo>({ id: 'workflow-123' }),
+					mock<IWorkflowExecuteAdditionalData>(),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: mockWorkflowData,
+						executionMode: 'integrated',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(result.executionId).toBe(EXECUTION_ID);
+				expect(result.data).toBeDefined();
+			});
+		});
 	});
 
 	describe('getRunData', () => {
@@ -325,7 +417,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 	});
 
-	describe('getWorkflowData', () => {
+	describe('getPublishedWorkflowData', () => {
 		beforeEach(() => {
 			workflowRepository.get.mockClear();
 		});
@@ -374,7 +466,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			const result = await getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+			const result = await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
 			expect(result.nodes).toEqual(activeVersionNodes);
 			expect(result.connections).toEqual(activeVersionConnections);
@@ -409,9 +501,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			await expect(getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id')).rejects.toThrow(
-				'Workflow is not active and cannot be executed.',
-			);
+			await expect(
+				getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id'),
+			).rejects.toThrow('Workflow is not active and cannot be executed.');
 		});
 
 		it('should load activeVersion relation when tags are disabled', async () => {
@@ -432,7 +524,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			await getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+			await getPublishedWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
 
 			expect(workflowRepository.get).toHaveBeenCalledWith(
 				{ id: 'workflow-123' },
@@ -445,9 +537,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 		it('should throw error when workflow does not exist', async () => {
 			workflowRepository.get.mockResolvedValue(null);
 
-			await expect(getWorkflowData({ id: 'non-existent' }, 'parent-workflow-id')).rejects.toThrow(
-				'Workflow does not exist',
-			);
+			await expect(
+				getPublishedWorkflowData({ id: 'non-existent' }, 'parent-workflow-id'),
+			).rejects.toThrow('Workflow does not exist');
 		});
 
 		it('should use provided workflow code when id is not provided', async () => {
@@ -468,7 +560,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				connections: {},
 			});
 
-			const result = await getWorkflowData({ code: workflowCode }, 'parent-workflow-id');
+			const result = await getPublishedWorkflowData({ code: workflowCode }, 'parent-workflow-id');
 
 			expect(result).toEqual(workflowCode);
 			expect(workflowRepository.get).not.toHaveBeenCalled();
@@ -485,13 +577,102 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 			const parentSettings = { executionOrder: 'v1' as const };
 
-			const result = await getWorkflowData(
+			const result = await getPublishedWorkflowData(
 				{ code: workflowCode },
 				'parent-workflow-id',
 				parentSettings,
 			);
 
 			expect(result.settings).toEqual(parentSettings);
+		});
+	});
+
+	describe('getDraftWorkflowData', () => {
+		beforeEach(() => {
+			workflowRepository.get.mockClear();
+		});
+
+		it('should use draft version', async () => {
+			const activeVersionNodes: INode[] = [
+				mock<INode>({
+					id: 'active-node',
+					type: 'n8n-nodes-base.set',
+					name: 'Active Node',
+					typeVersion: 1,
+					parameters: {},
+					position: [250, 300],
+				}),
+			];
+			const activeVersionConnections = { 'Active Node': {} };
+			const draftNodes: INode[] = [
+				mock<INode>({
+					id: 'draft-node',
+					type: 'n8n-nodes-base.set',
+					name: 'Draft Node',
+					typeVersion: 1,
+					parameters: {},
+					position: [250, 300],
+				}),
+			];
+			const draftConnections = { 'Draft Node': {} };
+
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: 'workflow-123',
+					name: 'Test Workflow',
+					active: true,
+					activeVersionId: 'version-456',
+					nodes: draftNodes,
+					connections: draftConnections,
+					activeVersion: mock({
+						versionId: 'version-456',
+						workflowId: 'workflow-123',
+						nodes: activeVersionNodes,
+						connections: activeVersionConnections,
+						authors: 'user1',
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					}),
+				}),
+			);
+
+			const result = await getDraftWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+
+			// Should use draft nodes/connections, not active version
+			expect(result.nodes).toEqual(draftNodes);
+			expect(result.connections).toEqual(draftConnections);
+		});
+
+		it('should allow draft workflow without active version', async () => {
+			const draftNodes: INode[] = [
+				mock<INode>({
+					id: 'draft-node',
+					type: 'n8n-nodes-base.set',
+					name: 'Draft Node',
+					typeVersion: 1,
+					parameters: {},
+					position: [250, 300],
+				}),
+			];
+			const draftConnections = { 'Draft Node': {} };
+
+			workflowRepository.get.mockResolvedValue(
+				mock<WorkflowEntity>({
+					id: 'workflow-123',
+					name: 'Test Workflow',
+					active: false,
+					activeVersionId: null,
+					nodes: draftNodes,
+					connections: draftConnections,
+					activeVersion: null,
+				}),
+			);
+
+			const result = await getDraftWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
+
+			// Should use draft nodes/connections even without active version
+			expect(result.nodes).toEqual(draftNodes);
+			expect(result.connections).toEqual(draftConnections);
 		});
 	});
 

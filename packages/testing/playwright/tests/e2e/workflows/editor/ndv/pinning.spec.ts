@@ -64,7 +64,6 @@ test.describe('Data pinning', () => {
 			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 0)).toContainText('1');
 
 			await n8n.ndv.close();
-			await n8n.canvas.clickSaveWorkflowButton();
 			await n8n.canvas.openNode(NODES.SCHEDULE_TRIGGER);
 
 			await expect(n8n.ndv.outputPanel.getTableHeaders().first()).toContainText('test');
@@ -94,7 +93,6 @@ test.describe('Data pinning', () => {
 			await n8n.ndv.close();
 
 			await n8n.canvas.duplicateNode('Edit Fields');
-			await n8n.canvas.clickSaveWorkflowButton();
 			await n8n.canvas.openNode('Edit Fields1');
 
 			await expect(n8n.ndv.outputPanel.getTableHeader(0)).toContainText('test');
@@ -199,21 +197,20 @@ test.describe('Data pinning', () => {
 			await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText('pin-overwritten');
 		});
 
-		// eslint-disable-next-line n8n-local-rules/no-skipped-tests -- Flaky in multi-main mode due to webhook registration timing issues
-		test.skip('should not use pin data in production webhook executions', async ({
-			n8n,
-			setupRequirements,
-		}) => {
-			await setupRequirements(webhookTestRequirements);
-			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
-			await n8n.canvas.publishWorkflow();
-			const webhookUrl = '/webhook/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
-			const response = await n8n.ndv.makeWebhookRequest(webhookUrl);
-			expect(response.status(), 'Webhook response is: ' + (await response.text())).toBe(200);
+		// Flaky in multi-main mode due to webhook registration timing issues
+		test.fixme(
+			'should not use pin data in production webhook executions @fixme',
+			async ({ n8n, setupRequirements }) => {
+				await setupRequirements(webhookTestRequirements);
+				await n8n.canvas.publishWorkflow();
+				const webhookUrl = '/webhook/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
+				const response = await n8n.ndv.makeWebhookRequest(webhookUrl);
+				expect(response.status(), 'Webhook response is: ' + (await response.text())).toBe(200);
 
-			const responseBody = await response.json();
-			expect(responseBody).toEqual({ nodeData: 'pin' });
-		});
+				const responseBody = await response.json();
+				expect(responseBody).toEqual({ nodeData: 'pin' });
+			},
+		);
 
 		test('should not show pinned data tooltip', async ({ n8n, setupRequirements }) => {
 			await setupRequirements(pinnedWebhookRequirements);

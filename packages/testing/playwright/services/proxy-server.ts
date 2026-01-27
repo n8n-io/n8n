@@ -73,7 +73,10 @@ export class ProxyServer {
 	/**
 	 * Load all expectations from the specified subfolder and mock them
 	 */
-	async loadExpectations(folderName: string): Promise<void> {
+	async loadExpectations(
+		folderName: string,
+		options: { strictBodyMatching?: boolean } = {},
+	): Promise<void> {
 		try {
 			const targetDir = join(this.expectationsDir, folderName);
 			const files = await fs.readdir(targetDir);
@@ -85,6 +88,11 @@ export class ProxyServer {
 					const filePath = join(targetDir, file);
 					const fileContent = await fs.readFile(filePath, 'utf8');
 					const expectation = JSON.parse(fileContent);
+
+					if (options.strictBodyMatching && expectation.httpRequest?.body) {
+						expectation.httpRequest.body.matchType = 'STRICT';
+					}
+
 					expectations.push(expectation);
 				} catch (parseError) {
 					console.log(`Error parsing expectation from ${file}:`, parseError);
@@ -196,6 +204,7 @@ export class ProxyServer {
 	 * @param options.raw - Save full original requests (true) or cleaned requests (false, default)
 	 *   - raw: false (default) - Saves only essential fields: method, path, queryStringParameters (GET), body (POST/PUT)
 	 *   - raw: true - Saves complete original request including all headers and metadata
+	 * @param options.transform - Transform function to modify expectation before saving
 	 */
 	async recordExpectations(
 		folderName: string,
@@ -204,6 +213,7 @@ export class ProxyServer {
 			host?: string;
 			dedupe?: boolean;
 			raw?: boolean;
+			transform?: (expectation: Expectation) => Expectation;
 		},
 	): Promise<void> {
 		try {
@@ -281,13 +291,18 @@ export class ProxyServer {
 				}
 
 				// Create expectation (cleaned or raw)
-				const processedExpectation: Expectation = {
+				let processedExpectation: Expectation = {
 					...expectation,
 					httpRequest: requestForProcessing,
 					times: {
 						unlimited: true,
 					},
 				};
+
+				// Apply transform if provided
+				if (options?.transform) {
+					processedExpectation = options.transform(processedExpectation);
+				}
 
 				// Generate unique filename based on request details
 				const hash = crypto

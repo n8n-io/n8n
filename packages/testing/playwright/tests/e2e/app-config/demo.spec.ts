@@ -25,6 +25,7 @@ test.describe('Demo', () => {
 
 	test('can import workflow with pin data', async ({ n8n }) => {
 		await n8n.demo.visitDemoPage();
+		await expect(n8n.canvas.canvasPane()).toBeVisible();
 		await n8n.demo.importWorkflow(workflowWithPinned);
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 		await n8n.canvas.openNode('Webhook');

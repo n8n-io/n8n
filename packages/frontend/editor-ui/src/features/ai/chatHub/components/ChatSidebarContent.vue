@@ -175,7 +175,10 @@ onMounted(() => {
 			/>
 		</div>
 		<N8nScrollArea as-child type="scroll">
-			<div :class="[$style.historySections, { [$style.collapsed]: isCollapsed }]">
+			<div
+				:class="[$style.historySections, { [$style.collapsed]: isCollapsed }]"
+				data-test-id="chat-conversation-list"
+			>
 				<div v-if="!readyToShowSessions" :class="$style.group">
 					<SkeletonMenuItem v-for="i in 10" :key="`loading-${i}`" />
 				</div>
@@ -262,8 +265,7 @@ onMounted(() => {
 .links {
 	display: flex;
 	flex-direction: column;
-	padding: 0 var(--spacing--3xs) var(--spacing--2xs);
-	gap: 1px;
+	padding: var(--spacing--2xs) var(--spacing--3xs);
 
 	&.collapsed {
 		border-bottom: var(--border);

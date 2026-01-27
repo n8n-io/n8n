@@ -138,7 +138,9 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(Publisher);
 
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+
+		const subscriber = Container.get(Subscriber);
+		await subscriber.subscribe(subscriber.getCommandChannel());
 		Container.get(WorkerStatusService);
 	}
 
@@ -191,6 +193,8 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 				if (key.charCodeAt(0) === 3) process.kill(process.pid, 'SIGINT'); // ctrl+c
 			});
 		}
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		// Make sure that the process does not close
 		if (!inTest) await new Promise(() => {});

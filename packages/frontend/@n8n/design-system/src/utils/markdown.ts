@@ -1,3 +1,5 @@
+import { safeAttrValue } from 'xss';
+
 const checkedRegEx = /(\*|-) \[x\]/;
 const uncheckedRegEx = /(\*|-) \[\s\]/;
 
@@ -30,3 +32,8 @@ export const toggleCheckbox = (markdown: string, index: number) => {
 
 	return lines.join('\n');
 };
+
+export function serializeAttr(tag: string, name: string, value: string) {
+	const safe = safeAttrValue(tag, name, value, { process: (v) => v });
+	return safe ? `${name}="${safe}"` : '';
+}

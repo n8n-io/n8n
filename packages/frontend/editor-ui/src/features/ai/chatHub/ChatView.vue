@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
 import {
+	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS,
 	VIEWS,
@@ -33,7 +34,7 @@ import {
 	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -52,6 +53,9 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasRole } from '@/app/utils/rbac/checks';
+import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
+import ChatGreetings from './components/ChatGreetings.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -68,8 +72,11 @@ const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
 const scrollableRef = useTemplateRef('scrollable');
 
-const scrollableSize = useElementSize(scrollableRef);
+const welcomeScreenDismissed = ref(false);
+const showCreditsClaimedCallout = ref(false);
+const hasAttemptedAutoClaim = ref(false);
 
+const { userCanClaimOpenAiCredits, aiCreditsQuota, claimCredits } = useFreeAiCredits();
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
@@ -86,6 +93,25 @@ const canSelectTools = computed(
 		selectedModel.value?.model.provider === 'custom-agent' ||
 		!!selectedModel.value?.metadata.capabilities.functionCalling,
 );
+const hadConversationBefore = useLocalStorage(
+	LOCAL_STORAGE_CHAT_HUB_HAD_CONVERSATION_BEFORE(usersStore.currentUserId ?? 'anonymous'),
+	false,
+);
+const hasSession = computed(() => (chatStore.sessions.ids?.length ?? 0) > 0);
+
+const showWelcomeScreen = computed<boolean | undefined>(() => {
+	if (hadConversationBefore.value || welcomeScreenDismissed.value) {
+		return false; // return false early to make UI ready fast
+	}
+
+	if (!chatStore.sessionsReady) {
+		return undefined; // not known yet
+	}
+
+	return (
+		!hasSession.value && (!settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']))
+	);
+});
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -205,7 +231,7 @@ const customAgentId = computed(() =>
 		? selectedModel.value.model.agentId
 		: undefined,
 );
-const customAgent = useCustomAgent(customAgentId);
+const { customAgent } = useCustomAgent(customAgentId);
 
 const selectedTools = computed<INode[]>(() => {
 	if (customAgent.value) {
@@ -268,14 +294,24 @@ const messagingState = computed<MessagingState>(() => {
 });
 
 const editingMessageId = ref<string>();
+const messageElementsRef = useTemplateRef('messages');
 const didSubmitInCurrentSession = ref(false);
 
-const canAcceptFiles = computed(
-	() =>
-		editingMessageId.value === undefined &&
+const canAcceptFiles = computed(() => {
+	const baseCondition =
 		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
-		!isMissingSelectedCredential.value,
-);
+		!isMissingSelectedCredential.value;
+
+	if (!baseCondition) return false;
+
+	// If editing, only allow file drops for human messages
+	if (editingMessageId.value) {
+		const editingMessage = chatMessages.value.find((msg) => msg.id === editingMessageId.value);
+		return editingMessage?.type === 'human';
+	}
+
+	return true;
+});
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 
@@ -410,6 +446,44 @@ watch(
 	{ immediate: true },
 );
 
+// Auto-claim free AI credits if available when user lands on chat without credentials
+watch(
+	[welcomeScreenDismissed, userCanClaimOpenAiCredits, messagingState, () => chatStore.agentsReady],
+	async ([dismissed, canClaim, state, ready]) => {
+		if (!canClaim || hasAttemptedAutoClaim.value) return;
+
+		const shouldClaim = dismissed || (ready && state === 'missingCredentials');
+		if (shouldClaim) {
+			hasAttemptedAutoClaim.value = true;
+			const success = await claimCredits('chatHubAutoClaim');
+			if (success) {
+				showCreditsClaimedCallout.value = true;
+			}
+		}
+	},
+	{ immediate: true },
+);
+
+// Hide credits callout when user sends their first message
+watch(chatMessages, (messages) => {
+	if (messages.length > 0) {
+		showCreditsClaimedCallout.value = false;
+	}
+});
+
+// Update hadConversationBefore
+watch(
+	hasSession,
+	(value) => {
+		hadConversationBefore.value = hadConversationBefore.value || value;
+	},
+	{ immediate: true },
+);
+
+function handleDismissCreditsCallout() {
+	showCreditsClaimedCallout.value = false;
+}
+
 async function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
@@ -452,25 +526,30 @@ function handleCancelEditMessage() {
 	editingMessageId.value = undefined;
 }
 
-async function handleEditMessage(message: ChatHubMessageDto) {
+async function handleEditMessage(
+	content: string,
+	keptAttachmentIndices: number[],
+	newFiles: File[],
+) {
 	if (
+		!editingMessageId.value ||
 		isResponding.value ||
-		!['human', 'ai'].includes(message.type) ||
 		!selectedModel.value ||
 		!credentialsForSelectedProvider.value
 	) {
 		return;
 	}
 
-	const messageToEdit = message.revisionOfMessageId ?? message.id;
-
 	await chatStore.editMessage(
 		sessionId.value,
-		messageToEdit,
-		message.content,
+		editingMessageId.value,
+		content,
 		selectedModel.value,
 		credentialsForSelectedProvider.value,
+		keptAttachmentIndices,
+		newFiles,
 	);
+
 	editingMessageId.value = undefined;
 }
 
@@ -577,12 +656,19 @@ function handleOpenWorkflow(workflowId: string) {
 }
 
 function onFilesDropped(files: File[]) {
-	inputRef.value?.addAttachments(files);
+	if (!editingMessageId.value) {
+		inputRef.value?.addAttachments(files);
+		return;
+	}
+
+	const index = chatMessages.value.findIndex((message) => message.id === editingMessageId.value);
+	messageElementsRef.value?.[index]?.addFiles(files);
 }
 </script>
 
 <template>
 	<ChatLayout
+		v-if="showWelcomeScreen !== undefined"
 		:class="{
 			[$style.chatLayout]: true,
 			[$style.isNewSession]: isNewSession,
@@ -603,6 +689,7 @@ function onFilesDropped(files: File[]) {
 		</div>
 
 		<ChatConversationHeader
+			v-if="!showWelcomeScreen"
 			ref="headerRef"
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
@@ -621,21 +708,19 @@ function onFilesDropped(files: File[]) {
 			as-child
 			:class="$style.scrollArea"
 		>
-			<div :class="$style.scrollable" ref="scrollable">
-				<ChatStarter
-					v-if="isNewSession"
-					:class="$style.starter"
-					:is-mobile-device="isMobileDevice"
-				/>
+			<div ref="scrollable" :class="$style.scrollable">
+				<ChatGreetings v-if="isNewSession" :selected-agent="selectedModel" />
 
 				<div v-else role="log" aria-live="polite" :class="$style.messageList">
 					<ChatMessage
 						v-for="(message, index) in chatMessages"
 						:key="message.id"
+						ref="messages"
 						:message="message"
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
-						:is-streaming="message.status === 'running'"
+						:is-edit-submitting="chatStore.streaming?.revisionOfMessageId === message.id"
+						:has-session-streaming="isResponding"
 						:cached-agent-display-name="selectedModel?.name ?? null"
 						:cached-agent-icon="selectedModel?.icon ?? null"
 						:min-height="
@@ -646,7 +731,6 @@ function onFilesDropped(files: File[]) {
 								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
 								: undefined
 						"
-						:container-width="scrollableSize.width.value ?? 0"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"
@@ -655,7 +739,7 @@ function onFilesDropped(files: File[]) {
 					/>
 				</div>
 
-				<div :class="$style.promptContainer">
+				<div v-if="!showWelcomeScreen" :class="$style.promptContainer">
 					<N8nIconButton
 						v-if="!arrivedState.bottom && !isNewSession"
 						type="secondary"
@@ -673,16 +757,28 @@ function onFilesDropped(files: File[]) {
 						:messaging-state="messagingState"
 						:is-tools-selectable="canSelectTools"
 						:is-new-session="isNewSession"
+						:show-credits-claimed-callout="showCreditsClaimedCallout"
+						:ai-credits-quota="String(aiCreditsQuota)"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
 						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
 						@edit-agent="handleEditAgent"
+						@dismiss-credits-callout="handleDismissCreditsCallout"
 					/>
 				</div>
 			</div>
 		</N8nScrollArea>
+
+		<ChatStarter
+			v-if="isNewSession"
+			:show-welcome-screen="showWelcomeScreen"
+			@start-new-chat="
+				welcomeScreenDismissed = true;
+				inputRef?.focus();
+			"
+		/>
 	</ChatLayout>
 </template>
 
@@ -703,7 +799,7 @@ function onFilesDropped(files: File[]) {
 	flex-direction: column;
 	align-items: stretch;
 	justify-content: start;
-	gap: var(--spacing--2xl);
+	gap: var(--spacing--xl);
 
 	.isNewSession & {
 		justify-content: center;
@@ -716,24 +812,17 @@ function onFilesDropped(files: File[]) {
 	align-items: center;
 }
 
-.starter {
-	.isMobileDevice & {
-		padding-top: 30px;
-		padding-bottom: 200px;
-	}
-}
-
 .messageList {
 	width: 100%;
-	max-width: 55rem;
+	max-width: 78ch;
 	min-height: 100%;
 	align-self: center;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
-	padding-top: 30px;
+	gap: var(--spacing--xl);
+	padding-top: var(--spacing--2xl);
 	padding-bottom: 200px;
-	padding-inline: 64px;
+	padding-inline: var(--spacing--xl);
 
 	.isMobileDevice & {
 		padding-inline: var(--spacing--md);

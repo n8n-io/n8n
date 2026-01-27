@@ -146,6 +146,30 @@ describe('WaitTracker', () => {
 			);
 		});
 
+		it('should preserve original startedAt timestamp when resuming execution', async () => {
+			const originalStartedAt = new Date('2025-12-02T09:04:47.150Z');
+			const executionWithStartedAt = {
+				...execution,
+				startedAt: originalStartedAt,
+			};
+
+			executionRepository.findSingleExecution
+				.calledWith(execution.id)
+				.mockResolvedValue(executionWithStartedAt);
+
+			await waitTracker.startExecution(execution.id);
+
+			// Verify startedAt is passed to workflowRunner.run()
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					startedAt: originalStartedAt,
+				}),
+				false,
+				false,
+				execution.id,
+			);
+		});
+
 		describe('parent execution with waiting sub-workflow', () => {
 			const setupParentExecutionTest = (shouldResume: boolean | undefined) => {
 				const parentExecution = mock<IExecutionResponse>({
@@ -181,6 +205,7 @@ describe('WaitTracker', () => {
 							lastNodeExecuted: finalNodeName,
 						},
 					}),
+					storedAt: 'db',
 				};
 
 				executionRepository.findSingleExecution
@@ -316,6 +341,7 @@ describe('WaitTracker', () => {
 					startedAt: new Date(),
 					mode: 'manual',
 					workflowId: 'parent_workflow_id',
+					storedAt: 'db',
 					data: createRunExecutionData({ executionData: { nodeExecutionStack: [executeData] } }),
 				};
 
@@ -347,6 +373,7 @@ describe('WaitTracker', () => {
 							lastNodeExecuted: finalNodeName,
 						},
 					}),
+					storedAt: 'db',
 				};
 
 				// Setup ExecutionRepository and ActiveExecutions
@@ -431,6 +458,7 @@ describe('WaitTracker', () => {
 					stoppedAt: new Date(),
 					mode: 'manual',
 					workflowId: 'parent_workflow_id',
+					storedAt: 'db',
 					data: createRunExecutionData(),
 				};
 

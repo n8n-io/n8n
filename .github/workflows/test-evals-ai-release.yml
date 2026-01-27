@@ -1,0 +1,60 @@
+name: 'Test: Evals AI (Release)'
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  check-minor-release:
+    name: Check Minor Release
+    runs-on: ubuntu-latest
+    outputs:
+      is_minor: ${{ steps.check.outputs.is_minor }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - name: Check if minor release
+        id: check
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          echo "Release tag: $TAG"
+
+          # Check if it's a minor release (e.g., v1.2.0, not v1.2.1)
+          if [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.0$ ]]; then
+            echo "is_minor=true" >> "$GITHUB_OUTPUT"
+            echo "version=$TAG" >> "$GITHUB_OUTPUT"
+            echo "Minor release detected: $TAG"
+          else
+            echo "is_minor=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "Not a minor release, skipping evals"
+          fi
+
+  run-pairwise-evals:
+    name: Run Pairwise (Spec) Evaluations
+    needs: check-minor-release
+    if: needs.check-minor-release.outputs.is_minor == 'true'
+    uses: ./.github/workflows/test-evals-ai-reusable.yml
+    with:
+      branch: ${{ github.event.release.tag_name }}
+      suite: pairwise
+      dataset: notion-pairwise-fresh
+      # Spec evals on minor release: 2 reps, 3 judges
+      repetitions: 2
+      judges: 3
+      experiment_name_prefix: CI_${{ needs.check-minor-release.outputs.version }}
+    secrets: inherit
+
+  run-llm-judge-evals:
+    name: Run LLM Judge (Matrix) Evaluations
+    needs: check-minor-release
+    if: needs.check-minor-release.outputs.is_minor == 'true'
+    uses: ./.github/workflows/test-evals-ai-reusable.yml
+    with:
+      branch: ${{ github.event.release.tag_name }}
+      suite: llm-judge
+      dataset: workflow-builder-canvas-prompts
+      # Matrix evals always use 3 reps, 3 judges
+      repetitions: 3
+      judges: 3
+      experiment_name_prefix: CI_${{ needs.check-minor-release.outputs.version }}
+    secrets: inherit

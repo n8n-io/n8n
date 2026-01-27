@@ -27,6 +27,7 @@ defineProps<Props>();
 <style lang="scss" module>
 .view {
 	--action--arrow--color: var(--color--text--tint-1);
+	--node--icon--color: var(--node-creator--icon--color);
 	margin-left: var(--spacing--sm);
 	margin-right: var(--spacing--xs);
 }

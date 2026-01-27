@@ -29,6 +29,7 @@ import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
+import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
@@ -123,7 +124,7 @@ export abstract class BaseCommand<F = never> {
 					await this.exitWithCrash('There was an error running database migrations', error),
 			);
 
-		// Initialize the auth roles service to make sure that roles are correctly setup for the instance
+		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		await Container.get(AuthRolesService).init();
 
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
@@ -164,6 +165,7 @@ export abstract class BaseCommand<F = never> {
 
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
+		Container.get(WorkflowFailureNotificationEventRelay).init();
 	}
 
 	protected async stopProcess() {

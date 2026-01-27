@@ -1,5 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
-import { emptyChatModelsResponse, type EnrichedStructuredChunk } from '@n8n/api-types';
+import { emptyChatModelsResponse } from '@n8n/api-types';
+import { within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,7 +12,8 @@ import {
 	createMockMessageDto,
 	createMockModelsResponse,
 	createMockSession,
-	createMockStreamChunk,
+	wrapOnMessageUpdate,
+	type SimulateMessageChunkFn,
 } from './__test__/data';
 import * as chatApi from './chat.api';
 import ChatView from './ChatView.vue';
@@ -56,8 +58,21 @@ vi.mock('@/app/stores/settings.store', () => ({
 		moduleSettings: {
 			'chat-hub': createChatHubModuleSettings(),
 		},
+		isChatFeatureEnabled: true,
 	}),
 }));
+
+const { mockHasRole } = vi.hoisted(() => ({
+	mockHasRole: vi.fn(() => true),
+}));
+
+vi.mock('@/app/utils/rbac/checks', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as object),
+		hasRole: mockHasRole,
+	};
+});
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
@@ -103,37 +118,41 @@ const renderComponent = createComponentRenderer(ChatView);
 
 describe('ChatView', () => {
 	let pinia: ReturnType<typeof createPinia>;
-	let sendMessageUpdated: (chunk: EnrichedStructuredChunk) => void;
-	let sendDone: () => void;
+	let simulateStreamChunk: SimulateMessageChunkFn;
+	let simulateStreamDone: () => void;
 
 	beforeEach(() => {
 		pinia = createPinia();
 		setActivePinia(pinia);
-		sendMessageUpdated = () => {};
-		sendDone = () => {};
+		simulateStreamChunk = () => {};
+		simulateStreamDone = () => {};
 
 		mockRoute.params = {};
 		mockRoute.query = {};
 		mockRouterPush.mockClear();
+		mockHasRole.mockClear();
+		mockHasRole.mockReturnValue(true);
 		localStorage.clear();
+		// Skip welcome screen in tests by marking user as having had a conversation before
+		localStorage.setItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE', 'true');
 
 		vi.mocked(chatApi.sendMessageApi).mockClear();
 		vi.mocked(chatApi.sendMessageApi).mockImplementation((_ctx, _, onMessageUpdated_, onDone_) => {
-			sendMessageUpdated = onMessageUpdated_;
-			sendDone = onDone_;
+			simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
+			simulateStreamDone = onDone_;
 		});
 		vi.mocked(chatApi.editMessageApi).mockClear();
 		vi.mocked(chatApi.editMessageApi).mockImplementation(
 			(_ctx, _request, onMessageUpdated_, onDone_) => {
-				sendMessageUpdated = onMessageUpdated_;
-				sendDone = onDone_;
+				simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
+				simulateStreamDone = onDone_;
 			},
 		);
 		vi.mocked(chatApi.regenerateMessageApi).mockClear();
 		vi.mocked(chatApi.regenerateMessageApi).mockImplementation(
 			(_ctx, _request, onMessageUpdated_, onDone_) => {
-				sendMessageUpdated = onMessageUpdated_;
-				sendDone = onDone_;
+				simulateStreamChunk = wrapOnMessageUpdate(onMessageUpdated_);
+				simulateStreamDone = onDone_;
 			},
 		);
 		vi.mocked(chatApi.stopGenerationApi).mockClear();
@@ -212,7 +231,13 @@ describe('ChatView', () => {
 		it('displays greeting message', async () => {
 			const rendered = renderComponent({ pinia });
 
-			expect(await rendered.findByText('Hello, Test!')).toBeInTheDocument();
+			const greetingText = await rendered.findByText('Start a chat with');
+			expect(greetingText).toBeInTheDocument();
+
+			// Find the agent name within the greetings container
+			const greetingsContainer = greetingText.closest('.greetings') as HTMLElement;
+			expect(greetingsContainer).not.toBeNull();
+			expect(within(greetingsContainer).getByText('GPT-4')).toBeInTheDocument();
 		});
 
 		it('preselects agent from agentId query parameter', async () => {
@@ -278,6 +303,40 @@ describe('ChatView', () => {
 
 			expect(await rendered.findByText('select a model')).toBeInTheDocument();
 			expect(await rendered.findByRole('textbox')).toBeDisabled();
+		});
+
+		it('displays welcome screen for first-time users and allows dismissing it', async () => {
+			const user = userEvent.setup();
+
+			// Make welcome screen visible for first-time user
+			localStorage.removeItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE');
+			mockHasRole.mockReturnValue(false);
+
+			const rendered = renderComponent({ pinia });
+
+			// Manually trigger sessions fetch since the sidebar (which normally does this) isn't rendered in this test
+			const { useChatStore } = await import('./chat.store');
+			const chatStore = useChatStore();
+			await chatStore.fetchSessions(true);
+
+			// Verify welcome screen is displayed
+			expect(await rendered.findByText('Your agents, any model')).toBeInTheDocument();
+			expect(
+				rendered.getByText("One place to talk to everything you've built or connected"),
+			).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-workflow-agents')).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-personal-agents')).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-base-models')).toBeInTheDocument();
+
+			// Verify chat input is not visible while welcome screen is shown
+			expect(rendered.queryByRole('textbox')).not.toBeInTheDocument();
+
+			// Click "Start new chat" to dismiss welcome screen
+			await user.click(rendered.getByTestId('welcome-start-new-chat'));
+
+			// Verify chat interface is now shown
+			expect(await rendered.findByRole('textbox')).toBeInTheDocument();
+			expect(rendered.queryByText('Your agents, any model')).not.toBeInTheDocument();
 		});
 	});
 
@@ -392,69 +451,39 @@ describe('ChatView', () => {
 			const messageIdFromApi = apiCallArgs[1].messageId;
 			const sessionIdFromApi = apiCallArgs[1].sessionId;
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'begin',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
 			await vi.waitFor(() => expect(textarea).toHaveValue(''));
 			await rendered.findByText('What is n8n?');
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: 'n8n is',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('item', 'n8n is', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
 			expect(await rendered.findByText(/n8n is/)).toBeInTheDocument();
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: ' a workflow',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('item', ' a workflow', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
 			expect(await rendered.findByText(/n8n is a workflow/)).toBeInTheDocument();
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: ' automation tool.',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('item', ' automation tool.', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'end',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('end', '', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
-			sendDone();
+			simulateStreamDone();
 
 			expect(await rendered.findByText('n8n is a workflow automation tool.')).toBeInTheDocument();
 			expect(mockRouterPush).toHaveBeenCalledWith({
@@ -529,42 +558,22 @@ describe('ChatView', () => {
 			const apiCallArgs = vi.mocked(chatApi.sendMessageApi).mock.calls[0];
 			const messageIdFromApi = apiCallArgs[1].messageId;
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'begin',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-456',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-456',
+				previousMessageId: messageIdFromApi,
+			});
 
 			await vi.waitFor(() => expect(textarea).toHaveValue(''));
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: 'AI response here',
-					metadata: {
-						messageId: 'ai-message-456',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
-
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'end',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-456',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
-
-			sendDone();
+			simulateStreamChunk('item', 'AI response here', {
+				messageId: 'ai-message-456',
+				previousMessageId: messageIdFromApi,
+			});
+			simulateStreamChunk('end', '', {
+				messageId: 'ai-message-456',
+				previousMessageId: messageIdFromApi,
+			});
+			simulateStreamDone();
 
 			expect(await rendered.findByText('AI response here')).toBeInTheDocument();
 
@@ -595,27 +604,15 @@ describe('ChatView', () => {
 			const messageIdFromApi = sendApiCall[1].messageId;
 			const sessionId = sendApiCall[1].sessionId;
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'begin',
-					content: '',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
-			sendMessageUpdated(
-				createMockStreamChunk({
-					type: 'item',
-					content: 'Starting response...',
-					metadata: {
-						messageId: 'ai-message-123',
-						previousMessageId: messageIdFromApi,
-					},
-				}),
-			);
+			simulateStreamChunk('item', 'Starting response...', {
+				messageId: 'ai-message-123',
+				previousMessageId: messageIdFromApi,
+			});
 
 			await user.click(await rendered.findByRole('button', { name: /stop generating/i }));
 
@@ -624,6 +621,114 @@ describe('ChatView', () => {
 				sessionId,
 				'ai-message-123',
 			);
+		});
+	});
+
+	describe('Editing messages', () => {
+		beforeEach(() => {
+			mockRoute.params = { id: 'existing-session-123' };
+
+			vi.mocked(chatApi.fetchSingleConversationApi).mockResolvedValue(
+				createMockConversationResponse({
+					session: createMockSession({
+						id: 'existing-session-123',
+						provider: 'custom-agent',
+						agentId: 'agent-123',
+					}),
+					conversation: {
+						messages: {
+							'msg-1': createMockMessageDto({
+								id: 'msg-1',
+								sessionId: 'existing-session-123',
+								content: 'Please analyze these files',
+								attachments: [
+									{ fileName: 'file1.txt', mimeType: 'text/plain' },
+									{ fileName: 'file2.pdf', mimeType: 'application/pdf' },
+									{ fileName: 'file3.jpg', mimeType: 'image/jpeg' },
+								],
+							}),
+							'msg-2': createMockMessageDto({
+								id: 'msg-2',
+								sessionId: 'existing-session-123',
+								type: 'ai',
+								name: 'Assistant',
+								content: 'Analysis complete',
+								provider: 'custom-agent',
+								agentId: 'agent-123',
+								previousMessageId: 'msg-1',
+							}),
+						},
+					},
+				}),
+			);
+		});
+
+		it('edits message with adding and removing files', async () => {
+			const user = userEvent.setup();
+			const rendered = renderComponent({ pinia });
+
+			await rendered.findByText('Please analyze these files');
+
+			const humanMessage = rendered.getByTestId('chat-message-msg-1');
+
+			await user.click(within(humanMessage).getByTestId('chat-message-edit'));
+
+			const attachments = within(humanMessage).getAllByTestId('chat-file');
+			const fileInput = within(humanMessage).getByTestId('message-edit-file-input');
+			const newFile = new File(['new content'], 'new-file.txt', { type: 'text/plain' });
+
+			expect(within(humanMessage).getByRole('textbox')).toHaveValue('Please analyze these files');
+			expect(attachments).toHaveLength(3);
+
+			await user.click(within(attachments[1]).getByTestId('chat-file-remove'));
+			await user.upload(fileInput, newFile);
+			await user.click(within(humanMessage).getByText('Send'));
+
+			await vi.waitFor(() => expect(chatApi.editMessageApi).toHaveBeenCalled());
+
+			expect(chatApi.editMessageApi).toHaveBeenCalledWith(
+				expect.anything(),
+				{
+					sessionId: 'existing-session-123',
+					editId: 'msg-1',
+					payload: expect.objectContaining({
+						message: 'Please analyze these files',
+						model: { provider: 'custom-agent', agentId: 'agent-123' },
+						keepAttachmentIndices: [0, 2], // Kept file1.txt (index 0) and file3.jpg (index 2)
+						newAttachments: [
+							expect.objectContaining({
+								fileName: 'new-file.txt',
+								mimeType: 'text/plain',
+								data: expect.any(String), // base64 data
+							}),
+						],
+					}),
+				},
+				expect.any(Function),
+				expect.any(Function),
+				expect.any(Function),
+			);
+
+			const promptId = vi.mocked(chatApi.editMessageApi).mock.calls[0][1].payload.messageId;
+
+			simulateStreamChunk('begin', '', {
+				messageId: 'ai-message-revised',
+				previousMessageId: promptId,
+			});
+
+			simulateStreamChunk('item', 'Updated analysis complete', {
+				messageId: 'ai-message-revised',
+				previousMessageId: promptId,
+			});
+
+			simulateStreamChunk('end', '', {
+				messageId: 'ai-message-revised',
+				previousMessageId: promptId,
+			});
+
+			simulateStreamDone();
+
+			expect(await rendered.findByText('Updated analysis complete')).toBeInTheDocument();
 		});
 	});
 });

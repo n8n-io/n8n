@@ -51,11 +51,7 @@ async function setupBasicAgentWorkflow(n8n: n8nPage, additionalNodes: string[] =
 	await addOpenAILanguageModelWithCredentials(n8n, AGENT_NODE_NAME);
 }
 
-test.use({
-	addContainerCapability: {
-		proxyServerEnabled: true,
-	},
-});
+test.use({ capability: 'proxy' });
 test.describe('Langchain Integration @capability:proxy', () => {
 	test.beforeEach(async ({ n8n, proxyServer }) => {
 		await proxyServer.clearAllExpectations();
@@ -64,8 +60,9 @@ test.describe('Langchain Integration @capability:proxy', () => {
 	});
 
 	// @AI team to look at this
-	// eslint-disable-next-line playwright/no-skipped-test
-	test.skip('Tool Usage Notifications', () => {
+	test.describe('Tool Usage Notifications @fixme', () => {
+		test.fixme();
+
 		test('should show tool info notice if no existing tools were used during execution', async ({
 			n8n,
 		}) => {

@@ -174,6 +174,7 @@ onBeforeMount(() => {
 	<N8nPopover
 		:side="props.popoverSide"
 		:align="props.popoverAlign"
+		position-strategy="absolute"
 		width="440px"
 		:content-class="$style['popover-content']"
 		show-arrow

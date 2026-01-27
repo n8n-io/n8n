@@ -66,7 +66,13 @@ describe('ExecutionRecoveryService', () => {
 	afterEach(async () => {
 		jest.restoreAllMocks();
 		globalConfig.executions.recovery.workflowDeactivationEnabled = false;
-		await testDb.truncate(['ExecutionEntity', 'ExecutionData', 'WorkflowEntity']);
+		await testDb.truncate([
+			'ExecutionEntity',
+			'ExecutionData',
+			'WorkflowEntity',
+			'WorkflowHistory',
+			'WorkflowPublishHistory',
+		]);
 	});
 
 	afterAll(async () => {

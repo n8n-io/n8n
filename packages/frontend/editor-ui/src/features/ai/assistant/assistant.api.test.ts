@@ -1,4 +1,4 @@
-import { chatWithBuilder, getBuilderCredits } from './assistant.api';
+import { chatWithBuilder, getBuilderCredits, truncateBuilderMessages } from './assistant.api';
 import * as apiUtils from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
@@ -51,7 +51,7 @@ describe('API: ai', () => {
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				payload,
+				{ ...payload, payload: { ...payload.payload, versionId: undefined } },
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
@@ -79,13 +79,14 @@ describe('API: ai', () => {
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
+				undefined,
 				abortSignal,
 			);
 
 			expect(streamRequestSpy).toHaveBeenCalledWith(
 				mockContext,
 				'/ai/build',
-				payload,
+				{ ...payload, payload: { ...payload.payload, versionId: undefined } },
 				mockOnMessageUpdated,
 				mockOnDone,
 				mockOnError,
@@ -335,6 +336,55 @@ describe('API: ai', () => {
 			makeRestApiRequestSpy.mockRejectedValue(error);
 
 			await expect(getBuilderCredits(mockContext)).rejects.toThrow('API request failed');
+		});
+	});
+
+	describe('truncateBuilderMessages', () => {
+		let mockContext: IRestApiContext;
+		let makeRestApiRequestSpy: MockInstance;
+
+		beforeEach(() => {
+			mockContext = {
+				baseUrl: 'http://test-base-url',
+				sessionId: 'test-session',
+				pushRef: 'test-ref',
+			} as IRestApiContext;
+
+			makeRestApiRequestSpy = vi.spyOn(apiUtils, 'makeRestApiRequest');
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should call makeRestApiRequest with correct parameters and return success response', async () => {
+			const mockResponse = {
+				success: true,
+			};
+
+			makeRestApiRequestSpy.mockResolvedValue(mockResponse);
+
+			const result = await truncateBuilderMessages(mockContext, 'workflow-123', 'message-456');
+
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				mockContext,
+				'POST',
+				'/ai/build/truncate-messages',
+				{
+					workflowId: 'workflow-123',
+					messageId: 'message-456',
+				},
+			);
+			expect(result).toEqual(mockResponse);
+		});
+
+		it('should handle API errors', async () => {
+			const error = new Error('API request failed');
+			makeRestApiRequestSpy.mockRejectedValue(error);
+
+			await expect(
+				truncateBuilderMessages(mockContext, 'workflow-123', 'message-456'),
+			).rejects.toThrow('API request failed');
 		});
 	});
 });

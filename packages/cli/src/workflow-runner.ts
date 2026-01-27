@@ -7,7 +7,7 @@ import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
-import { ErrorReporter, InstanceSettings, WorkflowExecute } from 'n8n-core';
+import { ErrorReporter, InstanceSettings, StorageConfig, WorkflowExecute } from 'n8n-core';
 import type {
 	ExecutionError,
 	IDeferredPromise,
@@ -35,7 +35,7 @@ import {
 	getLifecycleHooksForScalingWorker,
 	getLifecycleHooksForScalingMain,
 } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ExecutionDataService } from '@/executions/execution-data.service';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
@@ -60,9 +60,10 @@ export class WorkflowRunner {
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly manualExecutionService: ManualExecutionService,
-		private readonly executionDataService: ExecutionDataService,
+		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly storageConfig: StorageConfig,
 	) {}
 
 	/** The process did error */
@@ -120,6 +121,7 @@ export class WorkflowRunner {
 			startedAt,
 			stoppedAt: new Date(),
 			status: 'error',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		// Remove from active execution with empty data. That will
@@ -147,7 +149,7 @@ export class WorkflowRunner {
 			await this.credentialsPermissionChecker.check(workflowId, nodes);
 		} catch (error) {
 			// Create a failed execution with the data for the node, save it and abort execution
-			const runData = this.executionDataService.generateFailedExecutionFromError(
+			const runData = this.failedRunFactory.generateFailedExecutionFromError(
 				data.executionMode,
 				error,
 				error.node,
@@ -475,6 +477,7 @@ export class WorkflowRunner {
 					status: fullExecutionData.status,
 					data: fullExecutionData.data,
 					jobId: job.id.toString(),
+					storedAt: fullExecutionData.storedAt,
 				};
 
 				this.activeExecutions.finalizeExecution(executionId, runData);

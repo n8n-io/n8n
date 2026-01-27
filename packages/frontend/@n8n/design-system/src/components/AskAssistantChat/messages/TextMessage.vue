@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, nextTick, watch } from 'vue';
 
 import BaseMessage from './BaseMessage.vue';
+import RestoreVersionLink from './RestoreVersionLink.vue';
 import { useMarkdown } from './useMarkdown';
 import { useI18n } from '../../../composables/useI18n';
 import type { ChatUI, RatingFeedback } from '../../../types/assistant';
@@ -18,12 +19,16 @@ interface Props {
 	streaming?: boolean;
 	isLastMessage?: boolean;
 	color?: string;
+	pruneTimeHours?: number;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	feedback: [RatingFeedback];
+	restoreConfirm: [versionId: string, messageId: string];
+	restoreCancel: [];
+	showVersion: [versionId: string];
 }>();
 const { renderMarkdown } = useMarkdown();
 const { t } = useI18n();
@@ -82,6 +87,16 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		@feedback="(feedback) => emit('feedback', feedback)"
 	>
 		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
+			<!-- Restore version link for user messages with revertVersion - positioned before the message -->
+			<RestoreVersionLink
+				v-if="message.role === 'user' && message.revertVersion && message.id"
+				:revert-version="message.revertVersion"
+				:streaming="streaming"
+				:prune-time-hours="pruneTimeHours"
+				@restore-confirm="(versionId) => emit('restoreConfirm', versionId, message.id!)"
+				@restore-cancel="emit('restoreCancel')"
+				@show-version="(versionId) => emit('showVersion', versionId)"
+			/>
 			<!-- User message with container -->
 			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
 				<div
