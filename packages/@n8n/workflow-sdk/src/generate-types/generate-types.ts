@@ -3031,26 +3031,44 @@ const AI_SUBNODE_TYPES: Array<{
 // AI Input Type Extraction and Narrowed Subnode Config Generation
 // =============================================================================
 
+export interface AIInputTypeInfo {
+	type: string;
+	required: boolean;
+}
+
 /**
  * Extract AI input types from a node definition.
  * Handles both static array inputs and dynamic expression inputs.
  *
  * @param node The node type description
- * @returns Array of AI input types (e.g., ['ai_languageModel', 'ai_memory', 'ai_tool'])
+ * @returns Array of AI input types with required status (e.g., [{ type: 'ai_languageModel', required: true }])
  */
-export function extractAIInputTypes(node: NodeTypeDescription): string[] {
+export function extractAIInputTypes(node: NodeTypeDescription): AIInputTypeInfo[] {
 	const inputs = node.inputs;
-	const aiTypes: Set<string> = new Set();
+	// Use Map to track type -> required status (true if ANY input of that type is required)
+	const aiTypes: Map<string, boolean> = new Map();
 
 	// Handle string inputs (expression format like "={{ ... }}")
 	if (typeof inputs === 'string') {
 		// Extract ai_* types from the expression string using regex
+		// For expression inputs, we also try to extract required status
 		const aiTypeRegex = /["']ai_(\w+)["']/g;
 		let match;
 		while ((match = aiTypeRegex.exec(inputs)) !== null) {
-			aiTypes.add(`ai_${match[1]}`);
+			const aiType = `ai_${match[1]}`;
+			// Check if this type has required: true in the expression
+			// Look for pattern like: { type: "ai_languageModel", ... required: true }
+			const requiredRegex = new RegExp(
+				`\\{[^}]*type:\\s*["']${aiType}["'][^}]*required:\\s*true[^}]*\\}`,
+				'g',
+			);
+			const isRequired = requiredRegex.test(inputs);
+			// Only update if not already set to true (any required input makes it required)
+			if (!aiTypes.has(aiType) || isRequired) {
+				aiTypes.set(aiType, isRequired);
+			}
 		}
-		return [...aiTypes];
+		return [...aiTypes.entries()].map(([type, required]) => ({ type, required }));
 	}
 
 	// Handle array inputs
@@ -3060,32 +3078,39 @@ export function extractAIInputTypes(node: NodeTypeDescription): string[] {
 
 	for (const input of inputs) {
 		let inputType: string | undefined;
+		let isRequired = false;
 
 		if (typeof input === 'string') {
 			inputType = input;
 		} else if (typeof input === 'object' && input !== null && 'type' in input) {
 			inputType = input.type;
+			// Extract required status from object input
+			if ('required' in input && input.required === true) {
+				isRequired = true;
+			}
 		}
 
 		// Only include AI input types (starting with 'ai_')
 		if (inputType && inputType.startsWith('ai_')) {
-			aiTypes.add(inputType);
+			// If any input of this type is required, mark it as required
+			const existingRequired = aiTypes.get(inputType) ?? false;
+			aiTypes.set(inputType, existingRequired || isRequired);
 		}
 	}
 
-	return [...aiTypes];
+	return [...aiTypes.entries()].map(([type, required]) => ({ type, required }));
 }
 
 /**
  * Generate a narrowed SubnodeConfig interface for a node based on its accepted AI input types.
  *
- * @param aiInputTypes Array of AI input types the node accepts
+ * @param aiInputTypes Array of AI input types with required status
  * @param nodeName The node name (PascalCase, e.g., 'LcAgent')
  * @param versionSuffix The version suffix (e.g., 'V31')
  * @returns TypeScript interface code, or null if no AI inputs
  */
 export function generateNarrowedSubnodeConfig(
-	aiInputTypes: string[],
+	aiInputTypes: AIInputTypeInfo[],
 	nodeName: string,
 	versionSuffix: string,
 ): string | null {
@@ -3098,8 +3123,8 @@ export function generateNarrowedSubnodeConfig(
 
 	lines.push(`export interface ${interfaceName} {`);
 
-	for (const aiType of aiInputTypes) {
-		const fieldInfo = AI_TYPE_TO_SUBNODE_FIELD[aiType];
+	for (const aiInput of aiInputTypes) {
+		const fieldInfo = AI_TYPE_TO_SUBNODE_FIELD[aiInput.type];
 		if (!fieldInfo) {
 			continue;
 		}
@@ -3113,7 +3138,9 @@ export function generateNarrowedSubnodeConfig(
 			typeStr = fieldInfo.instanceType;
 		}
 
-		lines.push(`\t${fieldInfo.fieldName}?: ${typeStr};`);
+		// Mark field as optional only if not required
+		const optional = aiInput.required ? '' : '?';
+		lines.push(`\t${fieldInfo.fieldName}${optional}: ${typeStr};`);
 	}
 
 	lines.push('}');
@@ -3127,11 +3154,11 @@ export function generateNarrowedSubnodeConfig(
  * @param aiInputTypes Array of AI input types
  * @returns Array of instance type names to import
  */
-export function getSubnodeInstanceTypeImports(aiInputTypes: string[]): string[] {
+export function getSubnodeInstanceTypeImports(aiInputTypes: AIInputTypeInfo[]): string[] {
 	const imports: string[] = [];
 
-	for (const aiType of aiInputTypes) {
-		const fieldInfo = AI_TYPE_TO_SUBNODE_FIELD[aiType];
+	for (const aiInput of aiInputTypes) {
+		const fieldInfo = AI_TYPE_TO_SUBNODE_FIELD[aiInput.type];
 		if (fieldInfo && !imports.includes(fieldInfo.instanceType)) {
 			imports.push(fieldInfo.instanceType);
 		}

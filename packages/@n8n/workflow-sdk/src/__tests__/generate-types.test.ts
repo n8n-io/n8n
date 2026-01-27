@@ -51,7 +51,7 @@ interface NodeTypeDescription {
 	defaultVersion?: number;
 	properties: NodeProperty[];
 	credentials?: Array<{ name: string; required?: boolean }>;
-	inputs: string[] | Array<{ type: string; displayName?: string }>;
+	inputs: string[] | Array<{ type: string; displayName?: string; required?: boolean }>;
 	outputs: string[] | Array<{ type: string; displayName?: string }>;
 	subtitle?: string;
 	usableAsTool?: boolean;
@@ -2820,12 +2820,13 @@ describe('generate-types', () => {
 					properties: [],
 				};
 				const result = generateTypes.extractAIInputTypes(mockAgentNode);
-				expect(result).toContain('ai_languageModel');
-				expect(result).toContain('ai_memory');
-				expect(result).toContain('ai_tool');
-				expect(result).toContain('ai_outputParser');
-				expect(result).not.toContain('main');
-				expect(result).not.toContain('ai_vectorStore');
+				const types = result.map((r) => r.type);
+				expect(types).toContain('ai_languageModel');
+				expect(types).toContain('ai_memory');
+				expect(types).toContain('ai_tool');
+				expect(types).toContain('ai_outputParser');
+				expect(types).not.toContain('main');
+				expect(types).not.toContain('ai_vectorStore');
 			});
 
 			it('should extract AI input types from dynamic expression inputs', () => {
@@ -2847,10 +2848,11 @@ describe('generate-types', () => {
 					properties: [],
 				};
 				const result = generateTypes.extractAIInputTypes(mockAgentWithExpressionInputs);
-				expect(result).toContain('ai_languageModel');
-				expect(result).toContain('ai_memory');
-				expect(result).toContain('ai_tool');
-				expect(result).not.toContain('ai_vectorStore');
+				const types = result.map((r) => r.type);
+				expect(types).toContain('ai_languageModel');
+				expect(types).toContain('ai_memory');
+				expect(types).toContain('ai_tool');
+				expect(types).not.toContain('ai_vectorStore');
 			});
 
 			it('should return empty array for nodes with no AI inputs', () => {
@@ -2884,7 +2886,7 @@ describe('generate-types', () => {
 					properties: [],
 				};
 				const result = generateTypes.extractAIInputTypes(mockNodeWithDuplicates);
-				expect(result.filter((t) => t === 'ai_languageModel').length).toBe(1);
+				expect(result.filter((r) => r.type === 'ai_languageModel').length).toBe(1);
 			});
 
 			it('should handle string array inputs format', () => {
@@ -2901,11 +2903,57 @@ describe('generate-types', () => {
 				const result = generateTypes.extractAIInputTypes(mockNodeWithStringInputs);
 				expect(result).toEqual([]);
 			});
+
+			it('should extract required status from AI inputs', () => {
+				const mockAgentNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'AI Agent node',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [
+						{ type: 'ai_languageModel', required: true },
+						{ type: 'ai_memory' }, // required: undefined = optional
+						{ type: 'ai_tool' },
+					],
+					outputs: ['main'],
+					properties: [],
+				};
+				const result = generateTypes.extractAIInputTypes(mockAgentNode);
+				expect(result).toContainEqual({ type: 'ai_languageModel', required: true });
+				expect(result).toContainEqual({ type: 'ai_memory', required: false });
+				expect(result).toContainEqual({ type: 'ai_tool', required: false });
+			});
+
+			it('should mark type as required if ANY input of that type is required', () => {
+				const mockNodeWithDuplicates: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'AI Agent node',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [
+						{ type: 'ai_languageModel', displayName: 'Chat Model', required: true },
+						{ type: 'ai_languageModel', displayName: 'Fallback Model' }, // not required
+						{ type: 'ai_tool' },
+					],
+					outputs: ['main'],
+					properties: [],
+				};
+				const result = generateTypes.extractAIInputTypes(mockNodeWithDuplicates);
+				const modelInput = result.find((r) => r.type === 'ai_languageModel');
+				expect(modelInput?.required).toBe(true);
+			});
 		});
 
 		describe('generateNarrowedSubnodeConfig', () => {
 			it('should generate narrowed config with only accepted subnodes', () => {
-				const aiInputTypes = ['ai_languageModel', 'ai_memory', 'ai_tool', 'ai_outputParser'];
+				const aiInputTypes = [
+					{ type: 'ai_languageModel', required: false },
+					{ type: 'ai_memory', required: false },
+					{ type: 'ai_tool', required: false },
+					{ type: 'ai_outputParser', required: false },
+				];
 				const result = generateTypes.generateNarrowedSubnodeConfig(aiInputTypes, 'LcAgent', 'V31');
 
 				expect(result).toContain('export interface LcAgentV31SubnodeConfig');
@@ -2924,7 +2972,10 @@ describe('generate-types', () => {
 			});
 
 			it('should include correct instance types', () => {
-				const aiInputTypes = ['ai_languageModel', 'ai_tool'];
+				const aiInputTypes = [
+					{ type: 'ai_languageModel', required: false },
+					{ type: 'ai_tool', required: false },
+				];
 				const result = generateTypes.generateNarrowedSubnodeConfig(aiInputTypes, 'LcAgent', 'V31');
 
 				expect(result).toContain('LanguageModelInstance');
@@ -2932,7 +2983,11 @@ describe('generate-types', () => {
 			});
 
 			it('should handle array vs single instance correctly', () => {
-				const aiInputTypes = ['ai_languageModel', 'ai_memory', 'ai_tool'];
+				const aiInputTypes = [
+					{ type: 'ai_languageModel', required: false },
+					{ type: 'ai_memory', required: false },
+					{ type: 'ai_tool', required: false },
+				];
 				const result = generateTypes.generateNarrowedSubnodeConfig(aiInputTypes, 'LcAgent', 'V31');
 
 				// model can be single or array
@@ -2940,6 +2995,31 @@ describe('generate-types', () => {
 				// memory is single
 				expect(result).toContain('memory?: MemoryInstance');
 				// tools is array
+				expect(result).toContain('tools?: ToolInstance[]');
+			});
+
+			it('should generate non-optional field for required subnodes', () => {
+				const aiInputTypes = [
+					{ type: 'ai_languageModel', required: true },
+					{ type: 'ai_memory', required: false },
+				];
+				const result = generateTypes.generateNarrowedSubnodeConfig(aiInputTypes, 'LcAgent', 'V31');
+
+				// model is required - no ?
+				expect(result).toContain('model: LanguageModelInstance');
+				expect(result).not.toContain('model?:');
+				// memory is optional - has ?
+				expect(result).toContain('memory?: MemoryInstance');
+			});
+
+			it('should generate optional field when required is false', () => {
+				const aiInputTypes = [
+					{ type: 'ai_languageModel', required: false },
+					{ type: 'ai_tool', required: false },
+				];
+				const result = generateTypes.generateNarrowedSubnodeConfig(aiInputTypes, 'LcAgent', 'V31');
+
+				expect(result).toContain('model?: LanguageModelInstance');
 				expect(result).toContain('tools?: ToolInstance[]');
 			});
 		});
@@ -3017,6 +3097,34 @@ describe('generate-types', () => {
 				// Should import the needed instance types
 				expect(result).toContain('LanguageModelInstance');
 				expect(result).toContain('ToolInstance');
+			});
+
+			it('should generate non-optional fields for required AI inputs', () => {
+				const mockAgentNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'AI Agent node',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [
+						{ type: 'main' },
+						{ type: 'ai_languageModel', displayName: 'Model', required: true },
+						{ type: 'ai_memory', displayName: 'Memory' },
+						{ type: 'ai_tool', displayName: 'Tool' },
+					],
+					outputs: ['main'],
+					properties: [],
+				};
+
+				const result = generateTypes.generateSingleVersionTypeFile(mockAgentNode, 3.1);
+
+				// model should be non-optional (required: true)
+				expect(result).toContain('model: LanguageModelInstance');
+				expect(result).not.toContain('model?:');
+				// memory should be optional (no required field)
+				expect(result).toContain('memory?: MemoryInstance');
+				// tools should be optional (no required field)
+				expect(result).toContain('tools?: ToolInstance[]');
 			});
 		});
 	});
