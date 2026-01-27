@@ -92,6 +92,35 @@ export type PubSubCommandMap = {
 		pushRef: string;
 	};
 
+	/**
+	 * Relay chat stream events between main instances.
+	 * Used when the main handling the workflow execution is different from
+	 * the main that has the WebSocket connection to the client.
+	 */
+	'relay-chat-stream-event': {
+		/** Event type: begin, chunk, end, or error */
+		eventType: 'begin' | 'chunk' | 'end' | 'error';
+		/** Push reference for the WebSocket connection */
+		pushRef: string;
+		/** User ID for server-initiated messages (when no pushRef available) */
+		userId?: string;
+		/** Chat session ID */
+		sessionId: string;
+		/** Message ID being streamed */
+		messageId: string;
+		/** Sequence number for ordering */
+		sequenceNumber: number;
+		/** Event-specific payload */
+		payload: {
+			previousMessageId?: string | null;
+			retryOfMessageId?: string | null;
+			executionId?: number | null;
+			content?: string;
+			status?: string;
+			error?: string;
+		};
+	};
+
 	// #endregion
 };
 

@@ -903,6 +903,124 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return saved;
 	}
 
+	// #region WebSocket streaming handlers
+
+	/**
+	 * Handle the beginning of a WebSocket stream
+	 */
+	function handleWebSocketStreamBegin(data: {
+		sessionId: ChatSessionId;
+		messageId: ChatMessageId;
+		previousMessageId: ChatMessageId | null;
+		retryOfMessageId: ChatMessageId | null;
+	}) {
+		const { sessionId, messageId, previousMessageId, retryOfMessageId } = data;
+
+		// If we already have streaming state for this session, use it
+		// Otherwise create a minimal state for the incoming stream
+		if (!streaming.value || streaming.value.sessionId !== sessionId) {
+			return;
+		}
+
+		// Update the streaming state with the message ID from the server
+		streaming.value.messageId = messageId;
+
+		// Create the AI message placeholder
+		const message = createAiMessageFromStreamingState(sessionId, messageId, streaming.value);
+
+		// Override with server-provided values
+		if (previousMessageId !== null) {
+			message.previousMessageId = previousMessageId;
+		}
+		if (retryOfMessageId !== null) {
+			message.retryOfMessageId = retryOfMessageId;
+		}
+
+		addMessage(sessionId, message);
+	}
+
+	/**
+	 * Handle a WebSocket stream chunk
+	 */
+	function handleWebSocketStreamChunk(data: {
+		sessionId: ChatSessionId;
+		messageId: ChatMessageId;
+		content: string;
+		sequenceNumber: number;
+	}) {
+		const { sessionId, messageId, content } = data;
+
+		// Append the content to the message
+		const conversation = getConversation(sessionId);
+		if (!conversation?.messages[messageId]) {
+			// Message not found, might need to create it
+			ensureMessage(sessionId, messageId);
+		}
+
+		appendMessage(sessionId, messageId, content);
+	}
+
+	/**
+	 * Handle the end of a WebSocket stream
+	 */
+	function handleWebSocketStreamEnd(data: {
+		sessionId: ChatSessionId;
+		messageId: ChatMessageId;
+		status: ChatHubMessageStatus;
+	}) {
+		const { sessionId, messageId, status } = data;
+
+		// Update the message status
+		updateMessage(sessionId, messageId, status);
+
+		// Clear streaming state if this is the current session
+		if (streaming.value?.sessionId === sessionId) {
+			const currentSessionId = streaming.value.sessionId;
+			streaming.value = undefined;
+
+			// Fetch updated conversation title
+			void fetchConversationTitle(currentSessionId);
+		}
+	}
+
+	/**
+	 * Handle a WebSocket stream error
+	 */
+	function handleWebSocketStreamError(data: {
+		sessionId: ChatSessionId;
+		messageId: ChatMessageId;
+		error: string;
+	}) {
+		const { sessionId, messageId, error } = data;
+
+		// Ensure the message exists
+		const message = ensureMessage(sessionId, messageId);
+
+		// Update the message with error content and status
+		if (message.content) {
+			message.content += '\n\n' + error;
+		} else {
+			message.content = error;
+		}
+		message.status = 'error';
+
+		updateMessage(sessionId, messageId, 'error', message.content);
+
+		// Clear streaming state if this is the current session
+		if (streaming.value?.sessionId === sessionId) {
+			const currentSessionId = streaming.value.sessionId;
+			streaming.value = undefined;
+
+			// Show error toast
+			toast.showError(new Error(error), i18n.baseText('chatHub.error.streamError'));
+
+			// Fetch updated conversation title
+			void fetchConversationTitle(currentSessionId);
+		}
+	}
+
+	// #endregion
+
 	return {
 		/**
 		 * models and agents
@@ -958,5 +1076,13 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+
+		/**
+		 * WebSocket streaming handlers
+		 */
+		handleWebSocketStreamBegin,
+		handleWebSocketStreamChunk,
+		handleWebSocketStreamEnd,
+		handleWebSocketStreamError,
 	};
 });

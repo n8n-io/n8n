@@ -509,3 +509,42 @@ export interface ChatHubModuleSettings {
 	enabled: boolean;
 	providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 }
+
+/**
+ * Response returned immediately when sending a message via WebSocket streaming
+ */
+export interface ChatSendMessageResponse {
+	/** The ID of the user's message */
+	promptMessageId: ChatMessageId;
+	/** The ID of the AI response message that will be streamed */
+	responseMessageId: ChatMessageId;
+	/** Execution ID if applicable */
+	executionId: number | null;
+	/** Status indicating streaming has started */
+	status: 'streaming';
+}
+
+/**
+ * Request to reconnect to an active chat session
+ */
+export class ChatReconnectRequest extends Z.class({
+	/** The new pushRef after reconnection */
+	pushRef: z.string(),
+}) {}
+
+/**
+ * Response containing pending chunks for reconnection replay
+ */
+export interface ChatReconnectResponse {
+	/** Whether there is an active stream for this session */
+	hasActiveStream: boolean;
+	/** Current message ID being streamed, if any */
+	currentMessageId: ChatMessageId | null;
+	/** Pending chunks that were missed during disconnection */
+	pendingChunks: Array<{
+		sequenceNumber: number;
+		content: string;
+	}>;
+	/** Last sequence number received by client (for gap detection) */
+	lastSequenceNumber: number;
+}
