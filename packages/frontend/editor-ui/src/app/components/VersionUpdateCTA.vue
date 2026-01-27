@@ -37,6 +37,7 @@ const onUpdateClick = async () => {
 			id: 'version-update-cta',
 			icon: { value: 'status-warning', type: 'icon', color: 'primary' },
 			disabled: props.disabled,
+			disabledReason: props.tooltipText,
 			label: i18n.baseText('whatsNew.versionsBehind', {
 				interpolate: {
 					count: versionsStore.nextVersions.length > 99 ? '99+' : versionsStore.nextVersions.length,

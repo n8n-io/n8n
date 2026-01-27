@@ -37,6 +37,7 @@ describe('ExecutionService', () => {
 		concurrencyControl,
 		mock(),
 		mock(),
+		mock(),
 	);
 
 	beforeEach(() => {

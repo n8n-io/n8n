@@ -98,8 +98,8 @@ export function useChatHubMarkdownOptions(
 				}
 
 				return defaultRendered.replace(
-					'</pre>',
-					`<div data-markdown-token-idx="${idx}" class="${codeBlockActionsClassName}"></div></pre>`,
+					'<pre>',
+					`<pre><div data-markdown-token-idx="${idx}" class="${codeBlockActionsClassName}"></div>`,
 				);
 			};
 		};

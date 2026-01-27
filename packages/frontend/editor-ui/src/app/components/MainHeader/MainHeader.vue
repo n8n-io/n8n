@@ -13,7 +13,6 @@ import {
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -33,7 +32,6 @@ const pushConnection = usePushConnection({ router });
 const toast = useToast();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
-const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const executionsStore = useExecutionsStore();
 const settingsStore = useSettingsStore();
@@ -72,7 +70,7 @@ const hideMenuBar = computed(() =>
 const workflow = computed(() => workflowsStore.workflow);
 const workflowId = computed(() => String(route.params.name || workflowsStore.workflowId));
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
-const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
+
 const isEnterprise = computed(
 	() => settingsStore.isQueueModeEnabled && settingsStore.isWorkerViewAvailable,
 );
@@ -193,7 +191,11 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 		window.open(href, '_blank');
 	} else if (route.name !== routeToNavigateTo.name) {
 		if (route.name === VIEWS.NEW_WORKFLOW) {
-			uiStore.stateIsDirty = dirtyState.value;
+			if (dirtyState.value) {
+				uiStore.markStateDirty();
+			} else {
+				uiStore.markStateClean();
+			}
 		}
 		activeHeaderTab.value = MAIN_HEADER_TABS.WORKFLOW;
 		await router.push(routeToNavigateTo);
@@ -280,7 +282,6 @@ async function onWorkflowDeactivated() {
 					:meta="workflow.meta"
 					:scopes="workflow.scopes"
 					:active="workflow.active"
-					:read-only="readOnly"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflow.isArchived"
 					:description="workflow.description"

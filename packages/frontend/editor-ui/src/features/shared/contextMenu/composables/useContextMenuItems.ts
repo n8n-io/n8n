@@ -8,6 +8,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
@@ -44,6 +45,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
 	const sourceControlStore = useSourceControlStore();
+	const collaborationStore = useCollaborationStore();
 	const i18n = useI18n();
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
@@ -57,7 +59,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
-			workflowsStore.workflow.isArchived,
+			workflowsStore.workflow.isArchived ||
+			collaborationStore.shouldBeReadOnly,
 	);
 
 	const canOpenSubworkflow = computed(() => {

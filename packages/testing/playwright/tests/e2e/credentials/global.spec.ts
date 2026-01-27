@@ -98,12 +98,6 @@ test.describe('Global credentials @isolated', () => {
 		// Close NDV
 		await n8n.ndv.clickBackToCanvasButton();
 
-		// Save workflow
-		await n8n.canvas.saveWorkflow();
-
-		// Verify workflow saved successfully
-		await expect(n8n.canvas.getWorkflowNameInput()).toHaveValue('Test Global Credential Workflow');
-
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 			'Workflow executed successfully',
 		);

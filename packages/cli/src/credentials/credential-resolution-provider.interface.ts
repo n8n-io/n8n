@@ -25,8 +25,8 @@ export interface ICredentialResolutionProvider {
 	 *
 	 * @param credentialsResolveMetadata The credential resolve metadata
 	 * @param staticData The decrypted static credential data
-	 * @param executionContext Optional execution context containing credential context
-	 * @param workflowSettings Optional workflow settings containing resolver ID fallback
+	 * @param additionalData Additional workflow execution data for context and settings
+	 * @param canUseExternalSecrets Whether the credential can use external secrets for expression resolution
 	 * @returns Resolved credential data (either dynamic or static)
 	 */
 	resolveIfNeeded(
@@ -34,5 +34,6 @@ export interface ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
+		canUseExternalSecrets?: boolean,
 	): Promise<ICredentialDataDecryptedObject>;
 }

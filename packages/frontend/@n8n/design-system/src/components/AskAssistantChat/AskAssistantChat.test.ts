@@ -48,7 +48,6 @@ const stubs = [
 	'AssistantIcon',
 	'AssistantText',
 	'InlineAskAssistantButton',
-	'AssistantLoadingMessage',
 ];
 
 // Stub MessageWrapper to render message as stringified JSON
@@ -293,12 +292,32 @@ describe('AskAssistantChat', () => {
 		// Tool messages are now grouped into thinking-group messages and rendered by ThinkingMessage component
 		// instead of MessageWrapper. These tests verify the grouping behavior.
 
-		const ThinkingMessageMock = vi.fn(() => ({
+		const thinkingMessageProps: Array<{
+			items: ChatUI.ThinkingItem[];
+			latestStatusText: string;
+			defaultExpanded?: boolean;
+			isStreaming?: boolean;
+		}> = [];
+		let thinkingMessageCallCount = 0;
+		const ThinkingMessageMock = {
+			name: 'ThinkingMessage',
+			props: ['items', 'latestStatusText', 'isStreaming', 'defaultExpanded'],
+			setup(props: Record<string, unknown>) {
+				thinkingMessageCallCount++;
+				thinkingMessageProps.push({
+					items: props.items as ChatUI.ThinkingItem[],
+					latestStatusText: props.latestStatusText as string,
+					defaultExpanded: props.defaultExpanded as boolean | undefined,
+					isStreaming: props.isStreaming as boolean | undefined,
+				});
+				return {};
+			},
 			template: '<div data-testid="thinking-message-mock"></div>',
-		}));
+		};
 		const MessageWrapperMock = vi.fn(() => ({
 			template: '<div data-testid="message-wrapper-mock"></div>',
 		}));
+
 		const stubsWithMocks = {
 			...Object.fromEntries(stubs.map((stub) => [stub, true])),
 			MessageWrapper: MessageWrapperMock,
@@ -320,7 +339,8 @@ describe('AskAssistantChat', () => {
 
 		const renderWithMessages = (messages: ChatUI.AssistantMessage[], extraProps = {}) => {
 			MessageWrapperMock.mockClear();
-			ThinkingMessageMock.mockClear();
+			thinkingMessageCallCount = 0;
+			thinkingMessageProps.length = 0;
 			return render(AskAssistantChat, {
 				global: { stubs: stubsWithMocks },
 				props: {
@@ -333,7 +353,8 @@ describe('AskAssistantChat', () => {
 
 		const renderWithDirectives = (messages: ChatUI.AssistantMessage[], extraProps = {}) => {
 			MessageWrapperMock.mockClear();
-			ThinkingMessageMock.mockClear();
+			thinkingMessageCallCount = 0;
+			thinkingMessageProps.length = 0;
 			return render(AskAssistantChat, {
 				global: {
 					directives: { n8nHtml },
@@ -348,9 +369,8 @@ describe('AskAssistantChat', () => {
 		};
 
 		const getThinkingMessageProps = (callIndex = 0) => {
-			const mockCall = ThinkingMessageMock.mock.calls[callIndex];
-			expect(mockCall).toBeDefined();
-			return mockCall as unknown as [{ items: ChatUI.ThinkingItem[]; latestStatusText: string }];
+			expect(thinkingMessageProps[callIndex]).toBeDefined();
+			return thinkingMessageProps[callIndex];
 		};
 
 		const getMessageWrapperProps = (callIndex = 0): MessageWrapperProps => {
@@ -369,10 +389,10 @@ describe('AskAssistantChat', () => {
 			renderWithMessages([message]);
 
 			// Tool messages are rendered as ThinkingMessage, not MessageWrapper
-			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(thinkingMessageCallCount).toBe(1);
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 
-			const props = getThinkingMessageProps()[0];
+			const props = getThinkingMessageProps();
 			expect(props.items).toHaveLength(1);
 			expect(props.items[0].displayTitle).toBe('Search Results');
 		});
@@ -403,10 +423,10 @@ describe('AskAssistantChat', () => {
 			renderWithMessages(messages);
 
 			// All tool messages with same toolName should be grouped into one thinking-group
-			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(thinkingMessageCallCount).toBe(1);
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 
-			const props = getThinkingMessageProps()[0];
+			const props = getThinkingMessageProps();
 			// Should have 1 item after deduplication by toolName
 			expect(props.items).toHaveLength(1);
 		});
@@ -443,7 +463,7 @@ describe('AskAssistantChat', () => {
 			renderWithMessages(messages);
 
 			// Hidden messages are filtered out, so tool messages are grouped together
-			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(thinkingMessageCallCount).toBe(1);
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 		});
 
@@ -466,10 +486,10 @@ describe('AskAssistantChat', () => {
 			renderWithMessages(messages);
 
 			// Both tools should be in the same thinking-group but as separate items
-			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(thinkingMessageCallCount).toBe(1);
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 
-			const props = getThinkingMessageProps()[0];
+			const props = getThinkingMessageProps();
 			expect(props.items).toHaveLength(2);
 		});
 
@@ -493,7 +513,7 @@ describe('AskAssistantChat', () => {
 			renderWithMessages(messages);
 
 			// Should render as ThinkingMessage with running tool
-			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(thinkingMessageCallCount).toBe(1);
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(0);
 		});
 
@@ -522,7 +542,7 @@ describe('AskAssistantChat', () => {
 			renderWithDirectives(messages);
 
 			// Should have 2 thinking-groups and 1 text message
-			expect(ThinkingMessageMock).toHaveBeenCalledTimes(2);
+			expect(thinkingMessageCallCount).toBe(2);
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(1);
 
 			const textMessageProps = getMessageWrapperProps(0);
@@ -567,7 +587,7 @@ describe('AskAssistantChat', () => {
 
 			// 2 text messages via MessageWrapper, 1 thinking-group via ThinkingMessage
 			expect(MessageWrapperMock).toHaveBeenCalledTimes(2);
-			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			expect(thinkingMessageCallCount).toBe(1);
 
 			const firstProps = getMessageWrapperProps(0);
 			expect(firstProps.message).toEqual(
@@ -590,16 +610,35 @@ describe('AskAssistantChat', () => {
 			);
 		});
 
-		it('should show initial thinking-group when streaming with no tool messages', () => {
-			renderWithMessages([], { streaming: true, loadingMessage: 'Thinking...' });
+		it('should show ThinkingMessage with placeholder item when streaming with no tool messages', () => {
+			renderWithMessages([], { streaming: true, loadingMessage: 'Thinking' });
 
-			// Should create an initial thinking-group
-			expect(ThinkingMessageMock).toHaveBeenCalledTimes(1);
+			// Should render ThinkingMessage with a single "Thinking" item
+			expect(thinkingMessageCallCount).toBe(1);
 
-			const props = getThinkingMessageProps()[0];
+			const props = getThinkingMessageProps();
 			expect(props.items).toHaveLength(1);
-			expect(props.items[0].displayTitle).toBe('Thinking...');
+			expect(props.items[0].id).toBe('thinking-placeholder');
+			expect(props.items[0].displayTitle).toBe('Thinking');
 			expect(props.items[0].status).toBe('running');
+			expect(props.latestStatusText).toBe('Thinking');
+			expect(props.defaultExpanded).toBe(true);
+			expect(props.isStreaming).toBe(true);
+		});
+
+		it('should pass defaultExpanded as true to ThinkingMessage', () => {
+			const message = createToolMessage({
+				id: '1',
+				displayTitle: 'Search Results',
+				updates: [{ type: 'output', data: { result: 'Found items' } }],
+			});
+
+			renderWithMessages([message]);
+
+			expect(thinkingMessageCallCount).toBe(1);
+
+			const props = getThinkingMessageProps();
+			expect(props.defaultExpanded).toBe(true);
 		});
 	});
 

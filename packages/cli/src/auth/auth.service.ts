@@ -85,6 +85,7 @@ export class AuthService {
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/types/node-versions.json',
 			'/mcp-oauth/authorize/',
 
 			// Skip browser ID check for chat hub attachments
@@ -106,7 +107,7 @@ export class AuthService {
 					if (isInvalid) throw new AuthError('Unauthorized');
 
 					const [user, { usedMfa }] = await this.resolveJwt(token, req, res);
-					const mfaEnforced = this.mfaService.isMFAEnforced();
+					const mfaEnforced = await this.mfaService.isMFAEnforced();
 
 					if (mfaEnforced && !usedMfa && !allowSkipMFA) {
 						// If MFA is enforced, we need to check if the user has MFA enabled and used it during authentication
@@ -114,7 +115,16 @@ export class AuthService {
 							// If the user has MFA enforced, but did not use it during authentication, we need to throw an error
 							throw new AuthError('MFA not used during authentication');
 						} else {
+							// User doesn't have MFA enabled, but MFA is enforced
+							// They need to set up MFA before accessing most endpoints
 							if (allowUnauthenticated) {
+								// Don't set req.user to avoid giving full access to semi-authenticated users
+								// Instead, set a flag in authInfo to indicate MFA enrollment is required
+								// This allows endpoints to handle this state appropriately (e.g., return public settings)
+								req.authInfo = {
+									usedMfa,
+									mfaEnrollmentRequired: true,
+								};
 								return next();
 							}
 
@@ -144,6 +154,22 @@ export class AuthService {
 			else if (shouldSkipAuth) next();
 			else res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		};
+	}
+
+	getCookieToken(req: AuthenticatedRequest) {
+		return req.cookies[AUTH_COOKIE_NAME];
+	}
+
+	getBrowserId(req: AuthenticatedRequest) {
+		return req.browserId;
+	}
+
+	getMethod(req: AuthenticatedRequest) {
+		return req.method;
+	}
+
+	getEndpoint(req: AuthenticatedRequest) {
+		return req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
 	}
 
 	clearCookie(res: Response) {
@@ -196,11 +222,58 @@ export class AuthService {
 		});
 	}
 
-	async resolveJwt(
+	async authenticateUserBasedOnToken(
 		token: string,
-		req: AuthenticatedRequest,
-		res: Response,
-	): Promise<[User, { usedMfa: boolean }]> {
+		method: string,
+		endpoint: string,
+		browserId: string | undefined,
+	): Promise<User> {
+		const isInvalid = await this.invalidAuthTokenRepository.existsBy({ token });
+		if (isInvalid) throw new AuthError('Unauthorized');
+
+		const { user, jwtPayload } = await this.validateToken(token);
+
+		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
+
+		const usedMfa = jwtPayload.usedMfa ?? false;
+
+		// MFA was used, we are good either way.
+		if (usedMfa) {
+			return user;
+		}
+		const mfaEnforced = await this.mfaService.isMFAEnforced();
+
+		if (!mfaEnforced && !user.mfaEnabled) {
+			// MFA is not enforced and the user has MFA not enabled
+			// we are good
+			return user;
+		}
+
+		// either MFA is enforced or user has MFA enabled
+		throw new AuthError('Unauthorized');
+	}
+
+	private validateBrowserId(
+		jwtPayload: IssuedJWT,
+		browserId: string | undefined,
+		endpoint: string,
+		method: string,
+	) {
+		if (method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
+			this.logger.debug(`Skipped browserId check on ${endpoint}`);
+		} else if (
+			jwtPayload.browserId &&
+			(!browserId || jwtPayload.browserId !== this.hash(browserId))
+		) {
+			this.logger.warn(`browserId check failed on ${endpoint}`);
+			throw new AuthError('Unauthorized');
+		}
+	}
+
+	private async validateToken(token: string): Promise<{
+		user: User;
+		jwtPayload: IssuedJWT;
+	}> {
 		const jwtPayload: IssuedJWT = this.jwtService.verify(token, {
 			algorithms: ['HS256'],
 		});
@@ -222,21 +295,27 @@ export class AuthService {
 			throw new AuthError('Unauthorized');
 		}
 
-		// Check if the token was issued for another browser session, ignoring the endpoints that can't send custom headers
-		const endpoint = req.route ? `${req.baseUrl}${req.route.path}` : req.baseUrl;
-		if (req.method === 'GET' && this.skipBrowserIdCheckEndpoints.includes(endpoint)) {
-			this.logger.debug(`Skipped browserId check on ${endpoint}`);
-		} else if (
-			jwtPayload.browserId &&
-			(!req.browserId || jwtPayload.browserId !== this.hash(req.browserId))
-		) {
-			this.logger.warn(`browserId check failed on ${endpoint}`);
-			throw new AuthError('Unauthorized');
-		}
+		return {
+			user,
+			jwtPayload,
+		};
+	}
+
+	async resolveJwt(
+		token: string,
+		req: AuthenticatedRequest,
+		res: Response,
+	): Promise<[User, { usedMfa: boolean }]> {
+		const { user, jwtPayload } = await this.validateToken(token);
+
+		const browserId = this.getBrowserId(req);
+		const endpoint = this.getEndpoint(req);
+		const method = this.getMethod(req);
+		this.validateBrowserId(jwtPayload, browserId, endpoint, method);
 
 		if (jwtPayload.exp * 1000 - Date.now() < this.jwtRefreshTimeout) {
 			this.logger.debug('JWT about to expire. Will be refreshed');
-			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, req.browserId);
+			this.issueCookie(res, user, jwtPayload.usedMfa ?? false, browserId);
 		}
 
 		return [user, { usedMfa: jwtPayload.usedMfa ?? false }];

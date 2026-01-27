@@ -164,7 +164,7 @@ export class SwitchV3 implements INodeType {
 					options: [
 						{
 							name: 'values',
-							displayName: 'Values',
+							displayName: 'Routing Rule',
 							values: [
 								{
 									displayName: 'Conditions',

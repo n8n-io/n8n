@@ -28,18 +28,18 @@ import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from '@/environments.ee/source-control/constants';
-import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
-import type { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
-import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
-import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
-import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
-import { SourceControlStatusService } from '@/environments.ee/source-control/source-control-status.service.ee';
-import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
-import type { ExportableCredential } from '@/environments.ee/source-control/types/exportable-credential';
-import type { ExportableFolder } from '@/environments.ee/source-control/types/exportable-folders';
-import type { ExportableWorkflow } from '@/environments.ee/source-control/types/exportable-workflow';
-import type { RemoteResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
+} from '@/modules/source-control.ee/constants';
+import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
+import type { SourceControlGitService } from '@/modules/source-control.ee/source-control-git.service.ee';
+import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
+import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
+import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders';
+import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow';
+import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/resource-owner';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';

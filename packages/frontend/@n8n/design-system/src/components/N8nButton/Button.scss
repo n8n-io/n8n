@@ -172,6 +172,37 @@
 	--button--color--background--loading: var(--button--color--background--highlight--loading);
 }
 
+@mixin n8n-button-highlight-fill {
+	--button--color--text: var(--button--color--text--highlight-fill);
+	--button--border-color: var(--button--border-color--highlight-fill);
+	--button--color--background: var(--button--color--background--highlight-fill);
+
+	--button--color--text--hover: var(--button--color--text--highlight-fill--hover-active-focus);
+	--button--border-color--hover: var(--button--border-color--highlight-fill--hover-active-focus);
+	--button--color--background--hover: var(--button--color--background--highlight-fill--hover);
+
+	--button--color--text--active: var(--button--color--text--highlight-fill--hover-active-focus);
+	--button--border-color--active: var(--button--border-color--highlight-fill--hover-active-focus);
+	--button--color--background--active: var(
+		--button--color--background--highlight-fill--active-focus
+	);
+
+	--button--color--text--focus: var(--button--color--text--highlight-fill--hover-active-focus);
+	--button--border-color--focus: var(--button--border-color--highlight-fill--hover-active-focus);
+	--button--color--background--focus: var(
+		--button--color--background--highlight-fill--active-focus
+	);
+	--button--outline-color--focus: var(--button--outline-color--highlight-fill--focus);
+
+	--button--color--text--disabled: var(--button--color--text--highlight-fill--disabled);
+	--button--border-color--disabled: var(--button--border-color--highlight-fill--disabled);
+	--button--color--background--disabled: var(--button--color--background--highlight-fill--disabled);
+
+	--button--color--text--loading: var(--button--color--text--highlight-fill);
+	--button--border-color--loading: var(--button--border-color--highlight-fill);
+	--button--color--background--loading: var(--button--color--background--highlight-fill);
+}
+
 @mixin n8n-button-success {
 	--button--color--text: var(--button--color--text--success);
 	--button--border-color: var(--color--success);

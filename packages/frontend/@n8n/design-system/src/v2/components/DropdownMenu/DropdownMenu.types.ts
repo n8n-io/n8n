@@ -2,7 +2,7 @@ import type { IconOrEmoji } from '../../../components/N8nIconPicker/types';
 
 type VueCssClass = undefined | string | Record<string, boolean> | Array<string | VueCssClass>;
 
-export type Placement =
+export type DropdownMenuPlacement =
 	| 'top'
 	| 'top-start'
 	| 'top-end'
@@ -16,12 +16,12 @@ export type Placement =
 	| 'right-start'
 	| 'right-end';
 
-export type Side = 'top' | 'bottom' | 'left' | 'right';
-export type Align = 'start' | 'end' | 'center';
+export type DropdownMenuSide = 'top' | 'bottom' | 'left' | 'right';
+export type DropdownMenuAlign = 'start' | 'end' | 'center';
 
 export type DropdownMenuTrigger = 'click' | 'hover';
 
-export type DropdownMenuItemProps<T = string> = {
+export type DropdownMenuItemProps<T = string, D = never> = {
 	/** Unique identifier for the item */
 	id: T;
 	/** Display text for the item */
@@ -37,7 +37,7 @@ export type DropdownMenuItemProps<T = string> = {
 	/** Additional CSS classes */
 	class?: VueCssClass;
 	/** Nested menu items (creates a sub-menu) */
-	children?: Array<DropdownMenuItemProps<T>>;
+	children?: Array<DropdownMenuItemProps<T, D>>;
 	/** Whether to show loading state in sub-menu */
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */
@@ -50,19 +50,21 @@ export type DropdownMenuItemProps<T = string> = {
 	highlighted?: boolean;
 	/** Whether this item's sub-menu should be open (controlled by parent for keyboard nav) */
 	subMenuOpen?: boolean;
+	/** extra data useful for rendering leading/trailing slot */
+	data?: D;
 };
 
-export interface DropdownMenuProps<T = string> {
+export interface DropdownMenuProps<T = string, D = never> {
 	/** Unique identifier for the dropdown */
 	id?: string;
 	/** Array of menu items to display */
-	items: Array<DropdownMenuItemProps<T>>;
+	items: Array<DropdownMenuItemProps<T, D>>;
 	/** The controlled open state of the dropdown. Can be bind as `v-model` */
 	modelValue?: boolean;
 	/** The open state of the dropdown when initially rendered */
 	defaultOpen?: boolean;
 	/** Dropdown placement relative to trigger */
-	placement?: Placement;
+	placement?: DropdownMenuPlacement;
 	/** How the dropdown is triggered */
 	trigger?: DropdownMenuTrigger;
 	/** Icon or emoji for the default trigger button */
@@ -85,6 +87,8 @@ export interface DropdownMenuProps<T = string> {
 	searchPlaceholder?: string;
 	/** Debounce delay in ms for search event */
 	searchDebounce?: number;
+	/** Text to be shown when no menu item exists */
+	emptyText?: string;
 }
 
 export interface DropdownMenuEmits<T = string> {
@@ -100,26 +104,30 @@ export interface DropdownMenuEmits<T = string> {
 
 type SlotUiProps = { class: string };
 
-export interface DropdownMenuSlots<T = string> {
+export interface DropdownMenuSlots<T = string, D = never> {
 	/** Custom trigger element (replaces default button) */
 	trigger?: () => void;
 	/** Complete custom dropdown content (replaces item list) */
 	content?: () => void;
 	/** Custom item rendering (replaces default N8nDropdownMenuItem) */
-	item?: (props: { item: DropdownMenuItemProps<T> }) => void;
+	item?: (props: { item: DropdownMenuItemProps<T, D> }) => void;
 	/** Pass-through to N8nDropdownMenuItem */
-	'item-leading'?: (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
+	'item-leading'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
+	/** Pass-through to N8nDropdownMenuItem - replaces the label text */
+	'item-label'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
 	/** Pass-through to N8nDropdownMenuItem */
-	'item-trailing'?: (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
+	'item-trailing'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
 	/** Custom loading state */
 	loading?: () => void;
 	/** Custom empty state when no items */
 	empty?: () => void;
 }
 
-export interface DropdownMenuItemSlots<T = string> {
+export interface DropdownMenuItemSlots<T = string, D = never> {
 	/** Content before the label (default: icon if provided) */
-	'item-leading'?: (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
+	'item-leading'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
+	/** Content that replaces the label text (default: label string) */
+	'item-label'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
 	/** Content after the label (badges, shortcuts, etc.) */
-	'item-trailing'?: (props: { item: DropdownMenuItemProps<T>; ui: SlotUiProps }) => void;
+	'item-trailing'?: (props: { item: DropdownMenuItemProps<T, D>; ui: SlotUiProps }) => void;
 }

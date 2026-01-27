@@ -601,6 +601,18 @@ export class JsTaskRunner extends TaskRunner {
 			'Object.setPrototypeOf = () => false',
 			'Reflect.setPrototypeOf = () => false',
 
+			// prevent Error.prepareStackTrace RCE attack BEFORE disabling defineProperty
+			// This V8 API allows accessing the real global object via stack frame's getThis()
+			'delete Error.prepareStackTrace',
+			'delete Error.captureStackTrace',
+			'Object.defineProperty(Error, "prepareStackTrace", { configurable: false, writable: false, value: undefined })',
+			'Object.defineProperty(Error, "captureStackTrace", { configurable: false, writable: false, value: undefined })',
+
+			// prevent defineProperty attacks (used to bypass sandbox via Error.prepareStackTrace)
+			// Must come AFTER we've locked down Error properties above
+			'Object.defineProperty = () => ({})',
+			'Object.defineProperties = () => ({})',
+
 			// wrap user code
 			`module.exports = async function VmCodeWrapper() {${code}\n}()`,
 		].join('; ');

@@ -1,21 +1,13 @@
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { createTestingPinia } from '@pinia/testing';
-import {
-	PrebuiltAgentTemplates,
-	SampleTemplates,
-} from '@/features/workflows/templates/utils/workflowSamples';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { mockedStore } from '@/__tests__/utils';
-import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
-import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
+import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
+import { VIEWS } from '@/app/constants';
 
 const mocks = vi.hoisted(() => ({
 	resolve: vi.fn(),
 	track: vi.fn(),
 	useRoute: vi.fn(() => ({ query: {}, params: {} })),
-	isVariantEnabled: vi.fn(() => false),
 	isCalloutDismissed: vi.fn(() => false),
 	setCalloutDismissed: vi.fn(),
 	restApiContext: vi.fn(() => ({})),
@@ -32,12 +24,6 @@ vi.mock('vue-router', () => ({
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: mocks.track }),
-}));
-
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: () => ({
-		isVariantEnabled: mocks.isVariantEnabled,
-	}),
 }));
 
 vi.mock('@/features/settings/users/users.store', () => ({
@@ -73,17 +59,10 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	}),
 }));
 
-let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
-let nodeCreatorStore: ReturnType<typeof mockedStore<typeof useNodeCreatorStore>>;
-let viewStacks: ReturnType<typeof mockedStore<typeof useViewStacks>>;
-
 describe('useCalloutHelpers()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createTestingPinia();
-		ndvStore = mockedStore(useNDVStore);
-		nodeCreatorStore = mockedStore(useNodeCreatorStore);
-		viewStacks = mockedStore(useViewStacks);
 	});
 
 	describe('openSampleWorkflowTemplate()', () => {
@@ -193,90 +172,6 @@ describe('useCalloutHelpers()', () => {
 				},
 			});
 		});
-
-		it.each(Object.values(PrebuiltAgentTemplates))(
-			'opens pre-built agent template %s from NDV successfully',
-			(templateId) => {
-				vi.spyOn(window, 'open').mockImplementation(() => null);
-				mocks.resolve.mockReturnValue({ href: 'n8n.io' });
-
-				const { openSampleWorkflowTemplate } = useCalloutHelpers();
-				const nodeType = 'testNode';
-
-				openSampleWorkflowTemplate(templateId, {
-					telemetry: {
-						source: 'ndv',
-						nodeType,
-					},
-				});
-
-				expect(window.open).toHaveBeenCalledWith('n8n.io', '_blank');
-				expect(mocks.track).toHaveBeenCalledWith('User inserted pre-built Agent', {
-					source: 'ndv',
-					template: templateId,
-					node_type: nodeType,
-					section: null,
-				});
-			},
-		);
-
-		it.each(Object.values(PrebuiltAgentTemplates))(
-			'opens pre-built agent template %s from node creator successfully',
-			(templateId) => {
-				vi.spyOn(window, 'open').mockImplementation(() => null);
-				mocks.resolve.mockReturnValue({ href: 'n8n.io' });
-
-				const { openSampleWorkflowTemplate } = useCalloutHelpers();
-				const section = 'Test Section';
-
-				openSampleWorkflowTemplate(templateId, {
-					telemetry: {
-						source: 'nodeCreator',
-						section,
-					},
-				});
-
-				expect(window.open).toHaveBeenCalledWith('n8n.io', '_blank');
-				expect(mocks.track).toHaveBeenCalledWith('User inserted pre-built Agent', {
-					source: 'nodeCreator',
-					template: templateId,
-					node_type: null,
-					section,
-				});
-			},
-		);
-	});
-
-	describe('openPreBuiltAgentsCollection', () => {
-		it('opens pre-built agents collection successfully', async () => {
-			vi.spyOn(window, 'open').mockImplementation(() => null);
-			mocks.resolve.mockReturnValue({ href: 'n8n.io' });
-
-			const { openPreBuiltAgentsCollection } = useCalloutHelpers();
-
-			await openPreBuiltAgentsCollection({
-				telemetry: {
-					source: 'ndv',
-					nodeType: 'testNode',
-					section: 'testSection',
-				},
-			});
-
-			expect(ndvStore.unsetActiveNodeName).toHaveBeenCalled();
-			expect(nodeCreatorStore.setNodeCreatorState).toHaveBeenCalledWith({
-				source: NODE_CREATOR_OPEN_SOURCES.TEMPLATES_CALLOUT,
-				createNodeActive: true,
-			});
-			expect(viewStacks.pushViewStack).toHaveBeenCalledWith(
-				expect.objectContaining({ title: 'Pre-built agents' }),
-				{ resetStacks: false },
-			);
-			expect(mocks.track).toHaveBeenCalledWith('User opened pre-built Agents collection', {
-				source: 'ndv',
-				node_type: 'testNode',
-				section: 'testSection',
-			});
-		});
 	});
 
 	describe('isRagStarterCalloutVisible', () => {
@@ -302,22 +197,6 @@ describe('useCalloutHelpers()', () => {
 
 			const { isRagStarterCalloutVisible } = useCalloutHelpers();
 			expect(isRagStarterCalloutVisible.value).toBe(false);
-		});
-	});
-
-	describe('isPreBuiltAgentsCalloutVisible', () => {
-		it('should be false with experiment disabled', () => {
-			mocks.isVariantEnabled.mockReturnValueOnce(false);
-
-			const { isPreBuiltAgentsCalloutVisible } = useCalloutHelpers();
-			expect(isPreBuiltAgentsCalloutVisible.value).toBe(false);
-		});
-
-		it('should be true with experiment enabled', () => {
-			mocks.isVariantEnabled.mockReturnValueOnce(true);
-
-			const { isPreBuiltAgentsCalloutVisible } = useCalloutHelpers();
-			expect(isPreBuiltAgentsCalloutVisible.value).toBe(true);
 		});
 	});
 

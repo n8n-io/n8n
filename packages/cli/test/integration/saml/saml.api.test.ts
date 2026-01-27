@@ -5,8 +5,8 @@ import { Container } from '@n8n/di';
 import type express from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { setSamlLoginEnabled } from '@/sso.ee/saml/saml-helpers';
-import { SamlService } from '@/sso.ee/saml/saml.service.ee';
+import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
+import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,

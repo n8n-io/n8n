@@ -11,3 +11,6 @@ export { EMBEDDING_NODES_GUIDE } from './embedding-nodes';
 export { RESOURCE_LOCATOR_GUIDE } from './resource-locator';
 export { SYSTEM_MESSAGE_GUIDE } from './system-message';
 export { TEXT_FIELDS_GUIDE } from './text-fields';
+
+// Context-aware guides
+export { PREDECESSOR_OUTPUT_GUIDE } from './predecessor-output';

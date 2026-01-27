@@ -1,12 +1,13 @@
-import { Get, RestController } from '@n8n/decorators';
+import { Get, Options, RestController } from '@n8n/decorators';
 import { Request, Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialResolverWorkflowService } from './services/credential-resolver-workflow.service';
 import { WorkflowExecutionStatus } from '@n8n/api-types';
-import { getBearerToken } from './utils';
+import { getBearerToken, getDynamicCredentialMiddlewares } from './utils';
 import { UrlService } from '@/services/url.service';
 import { GlobalConfig } from '@n8n/config';
+import { DynamicCredentialCorsService } from './services/dynamic-credential-cors.service';
 
 @RestController('/workflows')
 export class WorkflowStatusController {
@@ -14,7 +15,18 @@ export class WorkflowStatusController {
 		private readonly credentialResolverWorkflowService: CredentialResolverWorkflowService,
 		private readonly urlService: UrlService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly dynamicCredentialCorsService: DynamicCredentialCorsService,
 	) {}
+
+	/**
+	 * OPTIONS /workflows/:workflowId/execution-status
+	 *
+	 * Handles CORS preflight requests
+	 */
+	@Options('/:workflowId/execution-status', { skipAuth: true })
+	handlePreflightExecutionStatus(req: Request, res: Response): void {
+		this.dynamicCredentialCorsService.preflightHandler(req, res, ['get', 'options']);
+	}
 
 	/**
 	 * GET /workflows/:workflowId/execution-status
@@ -25,8 +37,12 @@ export class WorkflowStatusController {
 	 * @returns Workflow execution status with credential details and authorization URLs
 	 * @throws {BadRequestError} When authorization header is missing or malformed
 	 */
-	@Get('/:workflowId/execution-status', { skipAuth: true })
-	async checkWorkflowForExecution(req: Request, _res: Response): Promise<WorkflowExecutionStatus> {
+	@Get('/:workflowId/execution-status', {
+		skipAuth: true,
+		middlewares: getDynamicCredentialMiddlewares(),
+	})
+	async checkWorkflowForExecution(req: Request, res: Response): Promise<WorkflowExecutionStatus> {
+		this.dynamicCredentialCorsService.applyCorsHeadersIfEnabled(req, res, ['get', 'options']);
 		const workflowId = req.params['workflowId'];
 		const token = getBearerToken(req);
 
@@ -53,6 +69,7 @@ export class WorkflowStatusController {
 				credentialStatus: s.status,
 				credentialType: s.credentialType,
 				authorizationUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/authorize?resolverId=${encodeURIComponent(s.resolverId)}`,
+				revokeUrl: `${basePath}/${restPath}/credentials/${s.credentialId}/revoke?resolverId=${encodeURIComponent(s.resolverId)}`,
 			})),
 		};
 		return executionStatus;

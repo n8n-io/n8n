@@ -13,7 +13,9 @@ import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '../../builder.store';
+import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 
 const workflowValidationIssuesRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
@@ -74,10 +76,18 @@ vi.mock('./NodeIssueItem.vue', () => ({
 	},
 }));
 
+vi.mock('./CredentialsSetupCard.vue', () => ({
+	default: {
+		template: '<div data-test-id="credentials-setup-card" @click="$emit(\'click\')" />',
+		emits: ['click'],
+	},
+}));
+
 describe('ExecuteMessage', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let renderExecuteMessage: () => ReturnType<ReturnType<typeof createComponentRenderer>>;
 
@@ -107,6 +117,7 @@ describe('ExecuteMessage', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
+		uiStore = mockedStore(useUIStore);
 		builderStore = mockedStore(useBuilderStore);
 
 		workflowsStore.workflow.nodes = workflowNodes as unknown as INodeUi[];
@@ -374,5 +385,65 @@ describe('ExecuteMessage', () => {
 			node_type: 'n8n-nodes-base.httpRequest',
 			type: 'parameters',
 		});
+	});
+
+	it('opens credentials modal and tracks telemetry when clicking credentials card', async () => {
+		const credentialIssue = {
+			node: 'OpenAI Model',
+			type: 'credentials',
+			value: "Credentials for 'OpenAI' are not set",
+		};
+		workflowTodosRef.value = [credentialIssue];
+		workflowNodes.push({
+			id: '2',
+			name: 'OpenAI Model',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			position: [100, 0],
+			parameters: {},
+			typeVersion: 1,
+			issues: {},
+		});
+
+		const { getByTestId } = renderExecuteMessage();
+		const credentialsCard = getByTestId('credentials-setup-card');
+
+		await fireEvent.click(credentialsCard);
+
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+			name: SETUP_CREDENTIALS_MODAL_KEY,
+			data: { source: 'builder' },
+		});
+		expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith('user_clicked_todo', {
+			type: 'credentials',
+			count: 1,
+			source: 'builder',
+		});
+	});
+
+	it('tracks no_placeholder_values_left when all todos are resolved', async () => {
+		const todoIssue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
+		workflowTodosRef.value = [todoIssue];
+
+		renderExecuteMessage();
+
+		// Simulate resolving all todos
+		workflowTodosRef.value = [];
+		await nextTick();
+		await flushPromises();
+
+		expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
+			'no_placeholder_values_left',
+		);
+	});
+
+	it('does not track no_placeholder_values_left when component mounts without issues', async () => {
+		workflowTodosRef.value = [];
+
+		renderExecuteMessage();
+		await nextTick();
+
+		expect(builderStore.trackWorkflowBuilderJourney).not.toHaveBeenCalledWith(
+			'no_placeholder_values_left',
+		);
 	});
 });
