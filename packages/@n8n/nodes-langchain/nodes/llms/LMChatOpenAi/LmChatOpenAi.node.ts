@@ -187,6 +187,7 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-5-mini',
+				builderHint: '*IMPORTANT* Always use latest mini model gpt-5-mini',
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
