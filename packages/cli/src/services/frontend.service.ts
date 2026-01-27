@@ -223,7 +223,7 @@ export class FrontendService {
 				apiHost: this.globalConfig.diagnostics.posthogConfig.apiHost,
 				apiKey: this.globalConfig.diagnostics.posthogConfig.apiKey,
 				autocapture: false,
-				disableSessionRecording: this.globalConfig.deployment.type !== 'cloud',
+				disableSessionRecording: false,
 				proxy: `${instanceBaseUrl}/${restEndpoint}/ph`,
 				debug: this.globalConfig.logging.level === 'debug',
 			},
