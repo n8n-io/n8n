@@ -36,7 +36,7 @@ export class ExecutionPersistence {
 
 		return await this.executionRepository.manager.transaction(async (tx) => {
 			const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
-			const { id: executionId } = identifiers[0] as { id: string };
+			const executionId = String(identifiers[0].id);
 
 			if (storedAt === 'db') {
 				await tx.insert(ExecutionData, {
