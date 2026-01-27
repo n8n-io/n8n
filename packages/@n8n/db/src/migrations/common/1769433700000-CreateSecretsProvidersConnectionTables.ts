@@ -4,10 +4,11 @@ const secretsProviderConnectionTable = 'secrets_provider_connection';
 const projectSecretsProviderAccessTable = 'project_secrets_provider_access';
 
 export class CreateSecretsProviderConnectionTables1769433700000 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column, createIndex } }: MigrationContext) {
 		// Create secrets_provider_connection table first (parent table)
 		await createTable(secretsProviderConnectionTable).withColumns(
-			column('providerKey').varchar().primary.notNull,
+			column('id').varchar().primary.notNull,
+			column('providerKey').varchar(128).notNull,
 			column('type')
 				.varchar(36)
 				.notNull.comment(
@@ -16,6 +17,8 @@ export class CreateSecretsProviderConnectionTables1769433700000 implements Rever
 			column('encryptedSettings').text.notNull,
 			column('isEnabled').bool.default(false).notNull,
 		).withTimestamps;
+
+		await createIndex(secretsProviderConnectionTable, ['providerKey'], true);
 
 		// Create project_secrets_provider_access table (join table with FKs)
 		await createTable(projectSecretsProviderAccessTable)
