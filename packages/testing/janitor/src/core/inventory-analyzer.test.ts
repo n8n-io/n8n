@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { Project } from 'ts-morph';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -241,8 +241,10 @@ describe('InventoryAnalyzer', () => {
 			const report = analyzer.generate();
 			const json = formatInventoryJSON(report);
 
-			expect(() => JSON.parse(json)).not.toThrow();
-			const parsed = JSON.parse(json);
+			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+			expect(() => JSON.parse(json) as unknown).not.toThrow();
+			// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse
+			const parsed = JSON.parse(json) as { pages?: unknown; summary?: unknown };
 			expect(parsed.pages).toBeDefined();
 			expect(parsed.summary).toBeDefined();
 		});

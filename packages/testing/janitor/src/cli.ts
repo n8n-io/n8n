@@ -10,8 +10,8 @@
  *   playwright-janitor --help             # Show help
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import {
@@ -461,7 +461,7 @@ function runTcr(options: CliOptions): void {
 	}
 }
 
-async function runAnalyze(options: CliOptions): Promise<void> {
+function runAnalyze(options: CliOptions): void {
 	const config = getConfig();
 	const runner = createRunner();
 
@@ -635,7 +635,7 @@ async function main(): Promise<void> {
 			runMethodImpact(options);
 			break;
 		default:
-			await runAnalyze(options);
+			runAnalyze(options);
 	}
 }
 

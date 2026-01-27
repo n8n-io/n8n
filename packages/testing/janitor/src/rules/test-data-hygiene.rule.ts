@@ -1,6 +1,6 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import type { Project, SourceFile } from 'ts-morph';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
 import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
@@ -48,11 +48,16 @@ export class TestDataHygieneRule extends BaseRule {
 
 	getTargetGlobs(): string[] {
 		const config = getConfig();
-		// We analyze test files to find references, not the data files themselves
-		return [...config.patterns.tests, ...config.patterns.flows];
+		// We analyze test files, flows, fixtures, and helpers to find references
+		return [
+			...config.patterns.tests,
+			...config.patterns.flows,
+			...config.patterns.fixtures,
+			...config.patterns.helpers,
+		];
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	analyze(project: Project, _files: SourceFile[]): Violation[] {
 		const violations: Violation[] = [];
 		const config = getConfig();
 		const root = getRootDir();
@@ -60,8 +65,18 @@ export class TestDataHygieneRule extends BaseRule {
 		// Get all test data files
 		const testDataFiles = getTestDataFiles(config.patterns.testData);
 
-		// Build reference index from test files
-		const references = this.buildReferenceIndex(files);
+		// Always load ALL test/flow/fixture/helper files for reference checking
+		// This ensures orphan detection works correctly even in targeted file mode (TCR)
+		const allReferenceGlobs = [
+			...config.patterns.tests,
+			...config.patterns.flows,
+			...config.patterns.fixtures,
+			...config.patterns.helpers,
+		];
+		const allReferenceFiles = this.loadAllFiles(project, allReferenceGlobs, root);
+
+		// Build reference index from ALL test files
+		const references = this.buildReferenceIndex(allReferenceFiles);
 
 		for (const dataFile of testDataFiles) {
 			const relativePath = path.relative(root, dataFile);
@@ -101,19 +116,27 @@ export class TestDataHygieneRule extends BaseRule {
 		const folderNames = new Set<string>();
 
 		for (const file of files) {
-			const content = file.getText();
+			// Use AST to find actual string literals (excludes comments)
+			const stringLiterals = file.getDescendantsOfKind(SyntaxKind.StringLiteral);
 
-			// Find workflow imports: import('workflows/name.json') or .import('name.json')
-			const workflowMatches = content.matchAll(/['"`]([^'"`]*\.json)['"`]/g);
-			for (const match of workflowMatches) {
-				const fileName = path.basename(match[1]);
-				fileNames.add(fileName);
-			}
+			for (const literal of stringLiterals) {
+				const value = literal.getLiteralText();
 
-			// Find expectation folder loads: loadExpectations('folder-name')
-			const expectationMatches = content.matchAll(/loadExpectations\s*\(\s*['"`]([^'"`]+)['"`]/g);
-			for (const match of expectationMatches) {
-				folderNames.add(match[1]);
+				// Check for .json file references
+				if (value.endsWith('.json')) {
+					const fileName = path.basename(value);
+					fileNames.add(fileName);
+				}
+
+				// Check for loadExpectations calls
+				const parent = literal.getParent();
+				if (parent?.isKind(SyntaxKind.CallExpression)) {
+					const callExpr = parent.asKindOrThrow(SyntaxKind.CallExpression);
+					const exprText = callExpr.getExpression().getText();
+					if (exprText.endsWith('loadExpectations')) {
+						folderNames.add(value);
+					}
+				}
 			}
 		}
 
@@ -138,6 +161,21 @@ export class TestDataHygieneRule extends BaseRule {
 		}
 
 		return null;
+	}
+
+	private loadAllFiles(project: Project, globs: string[], root: string): SourceFile[] {
+		const files: SourceFile[] = [];
+		for (const glob of globs) {
+			const absoluteGlob = path.join(root, glob);
+			const added = project.addSourceFilesAtPaths(absoluteGlob);
+			files.push(...added);
+		}
+		// Deduplicate
+		const uniqueFiles = new Map<string, SourceFile>();
+		for (const file of files) {
+			uniqueFiles.set(file.getFilePath(), file);
+		}
+		return Array.from(uniqueFiles.values());
 	}
 
 	private isOrphaned(

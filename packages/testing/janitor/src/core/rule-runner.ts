@@ -1,4 +1,4 @@
-import * as path from 'path';
+import * as path from 'node:path';
 import type { Project, SourceFile } from 'ts-morph';
 
 import type { BaseRule } from '../rules/base-rule.js';

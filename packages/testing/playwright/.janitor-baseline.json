@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-01-27T09:30:50.518Z",
-	"totalViolations": 367,
+	"generated": "2026-01-27T12:45:39.009Z",
+	"totalViolations": 336,
 	"violations": {
 		"pages/NodeDetailsViewPage.ts": [
 			{
@@ -1183,6 +1183,106 @@
 				"hash": "7a16d85129d2"
 			}
 		],
+		"tests/e2e/settings/environments/source-control.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 52,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'main' })",
+				"hash": "8e36dd6e7c35"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 71,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'main' })",
+				"hash": "8e36dd6e7c35"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 72,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' })",
+				"hash": "4157d0d852a3"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 73,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'staging' })",
+				"hash": "5ea1e1189ae1"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 74,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'production' })",
+				"hash": "13bbd087b456"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 75,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' }).cli...",
+				"hash": "2d47edbe9c6a"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 75,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' })",
+				"hash": "4157d0d852a3"
+			},
+			{
+				"rule": "api-purity",
+				"line": 79,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			},
+			{
+				"rule": "api-purity",
+				"line": 88,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
+		"tests/e2e/workflows/checklist/production-checklist.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 63,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
+				"hash": "6dff31c05187"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 64,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-error-workflow')",
+				"hash": "e86d143e5094"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 79,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
+				"hash": "6dff31c05187"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 94,
+				"message": "Direct page locator call: n8n.page.locator('body').click({ position: { x: 0, y: 0 } })",
+				"hash": "82ea0a8120b9"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 94,
+				"message": "Direct page locator call: n8n.page.locator('body')",
+				"hash": "6667df4502c4"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 132,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
+				"hash": "6dff31c05187"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 155,
+				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
+				"hash": "a41c304c373a"
+			}
+		],
 		"tests/e2e/workflows/demo-diff.spec.ts": [
 			{
 				"rule": "selector-purity",
@@ -1309,162 +1409,6 @@
 				"line": 283,
 				"message": "Direct page locator call: n8n.page.locator('body')",
 				"hash": "6667df4502c4"
-			}
-		],
-		"tests/e2e/settings/environments/source-control.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 52,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'main' })",
-				"hash": "8e36dd6e7c35"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 71,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'main' })",
-				"hash": "8e36dd6e7c35"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 72,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' })",
-				"hash": "4157d0d852a3"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 73,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'staging' })",
-				"hash": "5ea1e1189ae1"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 74,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'production' })",
-				"hash": "13bbd087b456"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 75,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' }).cli...",
-				"hash": "2d47edbe9c6a"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 75,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'development' })",
-				"hash": "4157d0d852a3"
-			},
-			{
-				"rule": "api-purity",
-				"line": 79,
-				"message": "Raw API call detected: request.get(",
-				"hash": "5128d500e46f"
-			},
-			{
-				"rule": "api-purity",
-				"line": 88,
-				"message": "Raw API call detected: request.get(",
-				"hash": "5128d500e46f"
-			}
-		],
-		"tests/e2e/workflows/checklist/production-checklist.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 63,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "6dff31c05187"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 64,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-error-workflow')",
-				"hash": "e86d143e5094"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 79,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "6dff31c05187"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 94,
-				"message": "Direct page locator call: n8n.page.locator('body').click({ position: { x: 0, y: 0 } })",
-				"hash": "82ea0a8120b9"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 94,
-				"message": "Direct page locator call: n8n.page.locator('body')",
-				"hash": "6667df4502c4"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 132,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-settings-dialog')",
-				"hash": "6dff31c05187"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 155,
-				"message": "Direct page locator call: n8n.page.locator('.el-message-box')",
-				"hash": "a41c304c373a"
-			}
-		],
-		"tests/e2e/workflows/executions/list.spec.ts": [
-			{
-				"rule": "selector-purity",
-				"line": 45,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Success' }).click()",
-				"hash": "fbad8571f166"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 45,
-				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Success' })",
-				"hash": "75835fe42ab8"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 312,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-trigger-conte...",
-				"hash": "407bd53b3360"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 314,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })....",
-				"hash": "90ae792f4909"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 314,
-				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })",
-				"hash": "ae0e7537f378"
-			},
-			{
-				"rule": "selector-purity",
-				"line": 320,
-				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-content')",
-				"hash": "36b71f3e9617"
-			},
-			{
-				"rule": "api-purity",
-				"line": 265,
-				"message": "Raw API call detected: request.post(",
-				"hash": "fc24119a27f0"
-			},
-			{
-				"rule": "api-purity",
-				"line": 283,
-				"message": "Raw API call detected: request.get(",
-				"hash": "5128d500e46f"
-			},
-			{
-				"rule": "api-purity",
-				"line": 291,
-				"message": "Raw API call detected: request.get(",
-				"hash": "5128d500e46f"
 			}
 		],
 		"tests/e2e/workflows/editor/canvas/canvas-nodes.spec.ts": [
@@ -1795,6 +1739,62 @@
 				"hash": "c58b0877f9a1"
 			}
 		],
+		"tests/e2e/workflows/executions/list.spec.ts": [
+			{
+				"rule": "selector-purity",
+				"line": 45,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Success' }).click()",
+				"hash": "fbad8571f166"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 45,
+				"message": "Direct page locator call: n8n.page.getByRole('option', { name: 'Success' })",
+				"hash": "75835fe42ab8"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 312,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-trigger-conte...",
+				"hash": "407bd53b3360"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 314,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })....",
+				"hash": "90ae792f4909"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 314,
+				"message": "Direct page locator call: n8n.page.getByRole('button', { name: 'Add first step' })",
+				"hash": "ae0e7537f378"
+			},
+			{
+				"rule": "selector-purity",
+				"line": 320,
+				"message": "Direct page locator call: n8n.page.getByTestId('workflow-execution-no-content')",
+				"hash": "36b71f3e9617"
+			},
+			{
+				"rule": "api-purity",
+				"line": 265,
+				"message": "Raw API call detected: request.post(",
+				"hash": "fc24119a27f0"
+			},
+			{
+				"rule": "api-purity",
+				"line": 283,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			},
+			{
+				"rule": "api-purity",
+				"line": 291,
+				"message": "Raw API call detected: request.get(",
+				"hash": "5128d500e46f"
+			}
+		],
 		"composables/DataTablesComposer.ts": [
 			{
 				"rule": "no-page-in-flow",
@@ -2087,14 +2087,6 @@
 				"hash": "cd4f8ac67ffc"
 			}
 		],
-		"workflows/chat-hub-workflow-agent.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: chat-hub-workflow-agent.json is not referenced in any test",
-				"hash": "aa2818d900f1"
-			}
-		],
 		"workflows/ai_assistant_test_workflow.json": [
 			{
 				"rule": "test-data-hygiene",
@@ -2139,246 +2131,6 @@
 				"line": 1,
 				"message": "Poorly named test data: Test_workflow_1.json",
 				"hash": "59565c005bcb"
-			}
-		],
-		"expectations/chat-hub/1766457411869-unknown-host-POST-_v1_messages-db1ea44d.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766457411869-unknown-host-POST-_v1_messages-db1ea44d.json is not referenced in any test",
-				"hash": "adf54d97361c"
-			}
-		],
-		"expectations/chat-hub/1766398460696-unknown-host-POST-_v1_messages-3b632b14.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766398460696-unknown-host-POST-_v1_messages-3b632b14.json is not referenced in any test",
-				"hash": "8353afd09660"
-			}
-		],
-		"expectations/chat-hub/1766397179515-unknown-host-POST-_v1_messages-a6d4f58f.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766397179515-unknown-host-POST-_v1_messages-a6d4f58f.json is not referenced in any test",
-				"hash": "558b2c1b8400"
-			}
-		],
-		"expectations/chat-hub/1766396596975-unknown-host-POST-_v1_messages-68299689.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396596975-unknown-host-POST-_v1_messages-68299689.json is not referenced in any test",
-				"hash": "ea2d2aad3b3e"
-			}
-		],
-		"expectations/chat-hub/1766396596974-unknown-host-POST-_v1_messages-9de947e4.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396596974-unknown-host-POST-_v1_messages-9de947e4.json is not referenced in any test",
-				"hash": "38b8d878bc5a"
-			}
-		],
-		"expectations/chat-hub/1766396596973-unknown-host-POST-_v1_messages-cdbee010.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396596973-unknown-host-POST-_v1_messages-cdbee010.json is not referenced in any test",
-				"hash": "61d34725f985"
-			}
-		],
-		"expectations/chat-hub/1766396516885-unknown-host-POST-_v1_messages-cd7642d7.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396516885-unknown-host-POST-_v1_messages-cd7642d7.json is not referenced in any test",
-				"hash": "7bdb38df1ab0"
-			}
-		],
-		"expectations/chat-hub/1766396516877-s.jina.ai-GET-_-a3cb871f.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396516877-s.jina.ai-GET-_-a3cb871f.json is not referenced in any test",
-				"hash": "2cb865611677"
-			}
-		],
-		"expectations/chat-hub/1766396516876-unknown-host-POST-_v1_messages-65349e41.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396516876-unknown-host-POST-_v1_messages-65349e41.json is not referenced in any test",
-				"hash": "e8fc1e9ef5a8"
-			}
-		],
-		"expectations/chat-hub/1766396412034-unknown-host-POST-_v1_messages-cd2455c9.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396412034-unknown-host-POST-_v1_messages-cd2455c9.json is not referenced in any test",
-				"hash": "4dba7a8d637b"
-			}
-		],
-		"expectations/chat-hub/1766396349752-unknown-host-POST-_v1_messages-c351eae4.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396349752-unknown-host-POST-_v1_messages-c351eae4.json is not referenced in any test",
-				"hash": "ea8946e441a7"
-			}
-		],
-		"expectations/chat-hub/1766396349752-unknown-host-POST-_v1_messages-00e3845b.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396349752-unknown-host-POST-_v1_messages-00e3845b.json is not referenced in any test",
-				"hash": "1bfeb1b0413f"
-			}
-		],
-		"expectations/chat-hub/1766396349751-unknown-host-POST-_v1_messages-72708cf3.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396349751-unknown-host-POST-_v1_messages-72708cf3.json is not referenced in any test",
-				"hash": "89cc66fd89d4"
-			}
-		],
-		"expectations/chat-hub/1766396347366-unknown-host-POST-_v1_messages-00e3845b.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396347366-unknown-host-POST-_v1_messages-00e3845b.json is not referenced in any test",
-				"hash": "2ca767f1a587"
-			}
-		],
-		"expectations/chat-hub/1766396347365-unknown-host-POST-_v1_messages-72708cf3.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396347365-unknown-host-POST-_v1_messages-72708cf3.json is not referenced in any test",
-				"hash": "e18e0f40e0f5"
-			}
-		],
-		"expectations/chat-hub/1766396344593-unknown-host-POST-_v1_messages-4003722d.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766396344593-unknown-host-POST-_v1_messages-4003722d.json is not referenced in any test",
-				"hash": "196ab0d87ab8"
-			}
-		],
-		"expectations/chat-hub/1766036806379-unknown-host-POST-_v1_messages-cd2455c9.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766036806379-unknown-host-POST-_v1_messages-cd2455c9.json is not referenced in any test",
-				"hash": "2fde2c406fec"
-			}
-		],
-		"expectations/chat-hub/1766035024386-unknown-host-POST-_v1_messages-e724dbff.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766035024386-unknown-host-POST-_v1_messages-e724dbff.json is not referenced in any test",
-				"hash": "63230925d5c5"
-			}
-		],
-		"expectations/chat-hub/1766032064867-unknown-host-POST-_v1_messages-a2fd6861.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766032064867-unknown-host-POST-_v1_messages-a2fd6861.json is not referenced in any test",
-				"hash": "e32ec920a6af"
-			}
-		],
-		"expectations/chat-hub/1766029584880-unknown-host-POST-_v1_messages-c4c27532.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766029584880-unknown-host-POST-_v1_messages-c4c27532.json is not referenced in any test",
-				"hash": "f4ea71185b15"
-			}
-		],
-		"expectations/chat-hub/1766027610251-unknown-host-POST-_v1_messages-66b47835.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027610251-unknown-host-POST-_v1_messages-66b47835.json is not referenced in any test",
-				"hash": "22e94923eac2"
-			}
-		],
-		"expectations/chat-hub/1766027610251-unknown-host-POST-_v1_messages-51dd0005.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027610251-unknown-host-POST-_v1_messages-51dd0005.json is not referenced in any test",
-				"hash": "070115edd7de"
-			}
-		],
-		"expectations/chat-hub/1766027610251-unknown-host-POST-_v1_messages-0b9d46a3.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027610251-unknown-host-POST-_v1_messages-0b9d46a3.json is not referenced in any test",
-				"hash": "5e9a3ae30c79"
-			}
-		],
-		"expectations/chat-hub/1766027610250-api.anthropic.com-GET-_v1_models-2ef5ce20.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027610250-api.anthropic.com-GET-_v1_models-2ef5ce20.json is not referenced in any test",
-				"hash": "73e0151f33ac"
-			}
-		],
-		"expectations/chat-hub/1766027609438-unknown-host-POST-_v1_messages-dca010d7.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027609438-unknown-host-POST-_v1_messages-dca010d7.json is not referenced in any test",
-				"hash": "0598de6320bf"
-			}
-		],
-		"expectations/chat-hub/1766027609438-unknown-host-POST-_v1_messages-b279ce88.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027609438-unknown-host-POST-_v1_messages-b279ce88.json is not referenced in any test",
-				"hash": "a02ab994c8b7"
-			}
-		],
-		"expectations/chat-hub/1766027609437-api.anthropic.com-GET-_v1_models-2ef5ce20.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027609437-api.anthropic.com-GET-_v1_models-2ef5ce20.json is not referenced in any test",
-				"hash": "3676b1e8ee66"
-			}
-		],
-		"expectations/chat-hub/1766027608059-unknown-host-POST-_v1_messages-fa48c432.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027608059-unknown-host-POST-_v1_messages-fa48c432.json is not referenced in any test",
-				"hash": "1bbd29b74086"
-			}
-		],
-		"expectations/chat-hub/1766027608059-unknown-host-POST-_v1_messages-b72fba5a.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027608059-unknown-host-POST-_v1_messages-b72fba5a.json is not referenced in any test",
-				"hash": "8da3623e3d86"
-			}
-		],
-		"expectations/chat-hub/1766027608058-api.anthropic.com-GET-_v1_models-2ef5ce20.json": [
-			{
-				"rule": "test-data-hygiene",
-				"line": 1,
-				"message": "Orphaned test data: 1766027608058-api.anthropic.com-GET-_v1_models-2ef5ce20.json is not referenced in any test",
-				"hash": "6c5dc689e283"
 			}
 		]
 	}
