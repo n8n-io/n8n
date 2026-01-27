@@ -1,12 +1,15 @@
 import type {
+	ChatAttachmentInfo,
 	ChatHubMessageStatus,
+	ChatHumanMessageCreated,
+	ChatMessageEdited,
 	ChatMessageId,
 	ChatSessionId,
 	ChatStreamBegin,
 	ChatStreamChunk,
 	ChatStreamEnd,
 	ChatStreamError,
-	ChatStreamPushMessage,
+	ChatStreamEvent,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
@@ -243,7 +246,7 @@ export class ChatStreamService {
 		const { eventType, userId, sessionId, messageId, sequenceNumber } = payload;
 		const timestamp = Date.now();
 
-		let message: ChatStreamPushMessage;
+		let message: ChatStreamEvent;
 
 		switch (eventType) {
 			case 'begin':
@@ -308,7 +311,7 @@ export class ChatStreamService {
 	 */
 	private async sendPushMessage(
 		params: Pick<StartStreamParams, 'userId' | 'sessionId' | 'messageId'>,
-		message: ChatStreamPushMessage,
+		message: ChatStreamEvent,
 		eventType: 'begin' | 'chunk' | 'end' | 'error',
 	): Promise<void> {
 		const { userId } = params;
@@ -334,7 +337,7 @@ export class ChatStreamService {
 	 */
 	private async relayViaPubSub(
 		params: Pick<StartStreamParams, 'userId' | 'sessionId' | 'messageId'>,
-		message: ChatStreamPushMessage,
+		message: ChatStreamEvent,
 		eventType: 'begin' | 'chunk' | 'end' | 'error',
 	): Promise<void> {
 		const payload: Record<string, unknown> = {};
@@ -367,5 +370,173 @@ export class ChatStreamService {
 				payload,
 			},
 		});
+	}
+
+	/**
+	 * Broadcast a human message to all user connections (for cross-client sync)
+	 */
+	async sendHumanMessage(params: {
+		userId: string;
+		sessionId: ChatSessionId;
+		messageId: ChatMessageId;
+		previousMessageId: ChatMessageId | null;
+		content: string;
+		attachments: ChatAttachmentInfo[];
+	}): Promise<void> {
+		const message: ChatHumanMessageCreated = {
+			type: 'chatHumanMessageCreated',
+			data: {
+				sessionId: params.sessionId,
+				messageId: params.messageId,
+				previousMessageId: params.previousMessageId,
+				content: params.content,
+				attachments: params.attachments,
+				timestamp: Date.now(),
+			},
+		};
+
+		this.push.sendToUsers(message, [params.userId]);
+
+		if (this.shouldRelayViaPubSub()) {
+			await this.relayHumanMessageViaPubSub(params, message);
+		}
+	}
+
+	/**
+	 * Broadcast a message edit to all user connections (for cross-client sync)
+	 */
+	async sendMessageEdit(params: {
+		userId: string;
+		sessionId: ChatSessionId;
+		originalMessageId: ChatMessageId;
+		newMessageId: ChatMessageId;
+		content: string;
+		attachments: ChatAttachmentInfo[];
+	}): Promise<void> {
+		const message: ChatMessageEdited = {
+			type: 'chatMessageEdited',
+			data: {
+				sessionId: params.sessionId,
+				originalMessageId: params.originalMessageId,
+				newMessageId: params.newMessageId,
+				content: params.content,
+				attachments: params.attachments,
+				timestamp: Date.now(),
+			},
+		};
+
+		this.push.sendToUsers(message, [params.userId]);
+
+		if (this.shouldRelayViaPubSub()) {
+			await this.relayMessageEditViaPubSub(params, message);
+		}
+	}
+
+	/**
+	 * Relay human message via Redis pub/sub for multi-main coordination
+	 */
+	private async relayHumanMessageViaPubSub(
+		params: {
+			userId: string;
+			sessionId: ChatSessionId;
+			messageId: ChatMessageId;
+			previousMessageId: ChatMessageId | null;
+			content: string;
+			attachments: ChatAttachmentInfo[];
+		},
+		_message: ChatHumanMessageCreated,
+	): Promise<void> {
+		await this.publisher.publishCommand({
+			command: 'relay-chat-human-message',
+			payload: {
+				userId: params.userId,
+				sessionId: params.sessionId,
+				messageId: params.messageId,
+				previousMessageId: params.previousMessageId,
+				content: params.content,
+				attachments: params.attachments,
+			},
+		});
+	}
+
+	/**
+	 * Relay message edit via Redis pub/sub for multi-main coordination
+	 */
+	private async relayMessageEditViaPubSub(
+		params: {
+			userId: string;
+			sessionId: ChatSessionId;
+			originalMessageId: ChatMessageId;
+			newMessageId: ChatMessageId;
+			content: string;
+			attachments: ChatAttachmentInfo[];
+		},
+		_message: ChatMessageEdited,
+	): Promise<void> {
+		await this.publisher.publishCommand({
+			command: 'relay-chat-message-edit',
+			payload: {
+				userId: params.userId,
+				sessionId: params.sessionId,
+				originalMessageId: params.originalMessageId,
+				newMessageId: params.newMessageId,
+				content: params.content,
+				attachments: params.attachments,
+			},
+		});
+	}
+
+	/**
+	 * Handle relay events for human messages from other main instances
+	 */
+	@OnPubSubEvent('relay-chat-human-message', { instanceType: 'main' })
+	handleRelayChatHumanMessage(payload: {
+		userId: string;
+		sessionId: string;
+		messageId: string;
+		previousMessageId: string | null;
+		content: string;
+		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+	}): void {
+		const message: ChatHumanMessageCreated = {
+			type: 'chatHumanMessageCreated',
+			data: {
+				sessionId: payload.sessionId,
+				messageId: payload.messageId,
+				previousMessageId: payload.previousMessageId,
+				content: payload.content,
+				attachments: payload.attachments,
+				timestamp: Date.now(),
+			},
+		};
+
+		this.push.sendToUsers(message, [payload.userId]);
+	}
+
+	/**
+	 * Handle relay events for message edits from other main instances
+	 */
+	@OnPubSubEvent('relay-chat-message-edit', { instanceType: 'main' })
+	handleRelayChatMessageEdit(payload: {
+		userId: string;
+		sessionId: string;
+		originalMessageId: string;
+		newMessageId: string;
+		content: string;
+		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+	}): void {
+		const message: ChatMessageEdited = {
+			type: 'chatMessageEdited',
+			data: {
+				sessionId: payload.sessionId,
+				originalMessageId: payload.originalMessageId,
+				newMessageId: payload.newMessageId,
+				content: payload.content,
+				attachments: payload.attachments,
+				timestamp: Date.now(),
+			},
+		};
+
+		this.push.sendToUsers(message, [payload.userId]);
 	}
 }

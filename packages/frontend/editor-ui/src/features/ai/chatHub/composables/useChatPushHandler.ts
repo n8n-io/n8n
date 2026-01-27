@@ -5,9 +5,12 @@ import type {
 	ChatStreamChunk,
 	ChatStreamEnd,
 	ChatStreamError,
+	ChatHumanMessageCreated,
+	ChatMessageEdited,
 	ChatSessionId,
 	ChatMessageId,
 	ChatHubMessageStatus,
+	ChatAttachmentInfo,
 } from '@n8n/api-types';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useChatStore } from '../chat.store';
@@ -45,6 +48,20 @@ export function useChatPushHandler() {
 			event.type === 'chatStreamEnd' ||
 			event.type === 'chatStreamError'
 		);
+	}
+
+	/**
+	 * Check if a push message is a human message created event
+	 */
+	function isChatHumanMessage(event: PushMessage): event is ChatHumanMessageCreated {
+		return event.type === 'chatHumanMessageCreated';
+	}
+
+	/**
+	 * Check if a push message is a message edited event
+	 */
+	function isChatMessageEdited(event: PushMessage): event is ChatMessageEdited {
+		return event.type === 'chatMessageEdited';
 	}
 
 	/**
@@ -158,9 +175,34 @@ export function useChatPushHandler() {
 	}
 
 	/**
+	 * Handle a human message created event (for cross-client sync)
+	 */
+	function handleHumanMessageCreated(event: ChatHumanMessageCreated): void {
+		chatStore.handleRemoteHumanMessage?.(event.data);
+	}
+
+	/**
+	 * Handle a message edited event (for cross-client sync)
+	 */
+	function handleMessageEdited(event: ChatMessageEdited): void {
+		chatStore.handleRemoteMessageEdit?.(event.data);
+	}
+
+	/**
 	 * Process a push message if it's a chat stream event
 	 */
 	function processMessage(event: PushMessage): void {
+		// Handle human message sync events first
+		if (isChatHumanMessage(event)) {
+			handleHumanMessageCreated(event);
+			return;
+		}
+		if (isChatMessageEdited(event)) {
+			handleMessageEdited(event);
+			return;
+		}
+
+		// Handle stream events
 		if (!isChatStreamMessage(event)) {
 			return;
 		}
@@ -262,5 +304,21 @@ export interface ChatWebSocketHandlers {
 		sessionId: ChatSessionId;
 		messageId: ChatMessageId;
 		error: string;
+	}) => void;
+	handleRemoteHumanMessage?: (data: {
+		sessionId: ChatSessionId;
+		messageId: ChatMessageId;
+		previousMessageId: ChatMessageId | null;
+		content: string;
+		attachments: ChatAttachmentInfo[];
+		timestamp: number;
+	}) => void;
+	handleRemoteMessageEdit?: (data: {
+		sessionId: ChatSessionId;
+		originalMessageId: ChatMessageId;
+		newMessageId: ChatMessageId;
+		content: string;
+		attachments: ChatAttachmentInfo[];
+		timestamp: number;
 	}) => void;
 }

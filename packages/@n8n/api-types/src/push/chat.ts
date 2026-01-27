@@ -63,10 +63,62 @@ export type ChatStreamError = {
 };
 
 /**
- * Union type of all chat stream push messages
+ * Attachment info sent in human message events
  */
-export type ChatStreamPushMessage =
-	| ChatStreamBegin
-	| ChatStreamChunk
-	| ChatStreamEnd
-	| ChatStreamError;
+export interface ChatAttachmentInfo {
+	id: string;
+	fileName: string;
+	mimeType: string;
+}
+
+/**
+ * Sent when a human message is created (for cross-client sync)
+ */
+export type ChatHumanMessageCreated = {
+	type: 'chatHumanMessageCreated';
+	data: {
+		/** Unique identifier for the chat session */
+		sessionId: ChatSessionId;
+		/** Unique identifier for the human message */
+		messageId: ChatMessageId;
+		/** ID of the message this follows */
+		previousMessageId: ChatMessageId | null;
+		/** The message content */
+		content: string;
+		/** Attachments on the message */
+		attachments: ChatAttachmentInfo[];
+		/** Timestamp when this message was created */
+		timestamp: number;
+	};
+};
+
+/**
+ * Sent when a message is edited (for cross-client sync)
+ */
+export type ChatMessageEdited = {
+	type: 'chatMessageEdited';
+	data: {
+		/** Unique identifier for the chat session */
+		sessionId: ChatSessionId;
+		/** ID of the original message being edited */
+		originalMessageId: ChatMessageId;
+		/** ID of the new message created from the edit */
+		newMessageId: ChatMessageId;
+		/** The new message content */
+		content: string;
+		/** Attachments on the new message */
+		attachments: ChatAttachmentInfo[];
+		/** Timestamp when this edit was created */
+		timestamp: number;
+	};
+};
+
+/**
+ * Union type of AI stream-related push messages
+ */
+export type ChatStreamEvent = ChatStreamBegin | ChatStreamChunk | ChatStreamEnd | ChatStreamError;
+
+/**
+ * Union type of all chat push messages
+ */
+export type ChatStreamPushMessage = ChatStreamEvent | ChatHumanMessageCreated | ChatMessageEdited;

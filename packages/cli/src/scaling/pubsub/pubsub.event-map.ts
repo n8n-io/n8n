@@ -119,6 +119,46 @@ export type PubSubCommandMap = {
 		};
 	};
 
+	/**
+	 * Relay human message events between main instances.
+	 * Used for cross-client synchronization when a user sends a message
+	 * from one browser window and other windows need to be updated.
+	 */
+	'relay-chat-human-message': {
+		/** User ID - sends to all user connections */
+		userId: string;
+		/** Chat session ID */
+		sessionId: string;
+		/** Human message ID */
+		messageId: string;
+		/** ID of the previous message in the chain */
+		previousMessageId: string | null;
+		/** Message content */
+		content: string;
+		/** Attachments on the message */
+		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+	};
+
+	/**
+	 * Relay message edit events between main instances.
+	 * Used for cross-client synchronization when a user edits a message
+	 * from one browser window and other windows need to be updated.
+	 */
+	'relay-chat-message-edit': {
+		/** User ID - sends to all user connections */
+		userId: string;
+		/** Chat session ID */
+		sessionId: string;
+		/** ID of the original message being edited */
+		originalMessageId: string;
+		/** ID of the new message created from the edit */
+		newMessageId: string;
+		/** New message content */
+		content: string;
+		/** Attachments on the new message */
+		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+	};
+
 	// #endregion
 };
 

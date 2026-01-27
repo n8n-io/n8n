@@ -59,11 +59,15 @@ export {
 
 export type {
 	ChatStreamPushMessage,
+	ChatStreamEvent,
 	ChatStreamBegin,
 	ChatStreamChunk,
 	ChatStreamEnd,
 	ChatStreamError,
 	ChatStreamMetadata,
+	ChatHumanMessageCreated,
+	ChatMessageEdited,
+	ChatAttachmentInfo,
 } from './push/chat';
 
 export type { Collaborator } from './push/collaboration';

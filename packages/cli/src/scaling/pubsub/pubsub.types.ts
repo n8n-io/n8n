@@ -57,6 +57,8 @@ export namespace PubSub {
 		export type DisplayWorkflowActivationError = ToCommand<'display-workflow-activation-error'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
+		export type RelayChatHumanMessage = ToCommand<'relay-chat-human-message'>;
+		export type RelayChatMessageEdit = ToCommand<'relay-chat-message-edit'>;
 		export type ClearTestWebhooks = ToCommand<'clear-test-webhooks'>;
 		export type ReloadSsoProvisioningConfiguration =
 			ToCommand<'reload-sso-provisioning-configuration'>;
@@ -80,6 +82,8 @@ export namespace PubSub {
 		| Commands.DisplayWorkflowActivationError
 		| Commands.RelayExecutionLifecycleEvent
 		| Commands.RelayChatStreamEvent
+		| Commands.RelayChatHumanMessage
+		| Commands.RelayChatMessageEdit
 		| Commands.ClearTestWebhooks
 		| Commands.ReloadOIDCConfiguration
 		| Commands.ReloadSamlConfiguration

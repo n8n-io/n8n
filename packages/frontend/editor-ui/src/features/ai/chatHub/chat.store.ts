@@ -1125,6 +1125,111 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		}
 	}
 
+	/**
+	 * Handle a human message received from another client (cross-client sync)
+	 */
+	function handleRemoteHumanMessage(data: {
+		sessionId: ChatSessionId;
+		messageId: ChatMessageId;
+		previousMessageId: ChatMessageId | null;
+		content: string;
+		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+		timestamp: number;
+	}): void {
+		const conversation = conversationsBySession.value.get(data.sessionId);
+		if (!conversation) {
+			// Session not loaded in this client, skip
+			return;
+		}
+
+		// Skip if we already have this message (we sent it from this client)
+		if (conversation.messages[data.messageId]) {
+			return;
+		}
+
+		// Create and add the human message
+		const message: ChatMessage = {
+			id: data.messageId,
+			sessionId: data.sessionId,
+			type: 'human',
+			name: 'User',
+			content: data.content,
+			previousMessageId: data.previousMessageId,
+			retryOfMessageId: null,
+			revisionOfMessageId: null,
+			status: 'success',
+			attachments: data.attachments.map((a) => ({
+				fileName: a.fileName,
+				mimeType: a.mimeType,
+			})),
+			provider: null,
+			model: null,
+			workflowId: null,
+			agentId: null,
+			executionId: null,
+			createdAt: new Date(data.timestamp).toISOString(),
+			updatedAt: new Date(data.timestamp).toISOString(),
+			responses: [],
+			alternatives: [],
+		};
+
+		addMessage(data.sessionId, message);
+	}
+
+	/**
+	 * Handle a message edit from another client (cross-client sync)
+	 */
+	function handleRemoteMessageEdit(data: {
+		sessionId: ChatSessionId;
+		originalMessageId: ChatMessageId;
+		newMessageId: ChatMessageId;
+		content: string;
+		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
+		timestamp: number;
+	}): void {
+		const conversation = conversationsBySession.value.get(data.sessionId);
+		if (!conversation) {
+			// Session not loaded in this client, skip
+			return;
+		}
+
+		// Skip if we already have the new message (we sent it from this client)
+		if (conversation.messages[data.newMessageId]) {
+			return;
+		}
+
+		// Get the original message to inherit some properties
+		const originalMessage = conversation.messages[data.originalMessageId];
+
+		// Create and add the edited message
+		const message: ChatMessage = {
+			id: data.newMessageId,
+			sessionId: data.sessionId,
+			type: 'human',
+			name: originalMessage?.name ?? 'User',
+			content: data.content,
+			previousMessageId: originalMessage?.previousMessageId ?? null,
+			retryOfMessageId: null,
+			revisionOfMessageId: data.originalMessageId,
+			status: 'success',
+			attachments: data.attachments.map((a) => ({
+				fileName: a.fileName,
+				mimeType: a.mimeType,
+			})),
+			provider: originalMessage?.provider ?? null,
+			model: originalMessage?.model ?? null,
+			workflowId: originalMessage?.workflowId ?? null,
+			agentId: originalMessage?.agentId ?? null,
+			executionId: null,
+			createdAt: new Date(data.timestamp).toISOString(),
+			updatedAt: new Date(data.timestamp).toISOString(),
+			responses: [],
+			alternatives: [],
+		};
+
+		addMessage(data.sessionId, message);
+	}
+
 	// #endregion
 
 	return {
@@ -1190,6 +1295,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		handleWebSocketStreamChunk,
 		handleWebSocketStreamEnd,
 		handleWebSocketStreamError,
+
+		/**
+		 * Cross-client sync handlers
+		 */
+		handleRemoteHumanMessage,
+		handleRemoteMessageEdit,
 
 		/**
 		 * WebSocket streaming mode

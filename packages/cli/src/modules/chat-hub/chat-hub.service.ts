@@ -2202,6 +2202,20 @@ export class ChatHubService {
 			throw new UnexpectedError('Failed to prepare chat workflow.');
 		}
 
+		// Broadcast human message to all user connections for cross-client sync
+		await this.chatStreamService.sendHumanMessage({
+			userId: user.id,
+			sessionId,
+			messageId,
+			previousMessageId,
+			content: message,
+			attachments: processedAttachments.map((a) => ({
+				id: a.id!,
+				fileName: a.fileName ?? 'file',
+				mimeType: a.mimeType,
+			})),
+		});
+
 		const responseMessageId = uuidv4();
 
 		// Start the workflow execution with WebSocket streaming (fire and forget)
@@ -2239,11 +2253,14 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
-		let workflow: PreparedChatWorkflow | null = null;
+		let transactionResult: {
+			workflow: PreparedChatWorkflow | null;
+			combinedAttachments: IBinaryData[];
+		} | null = null;
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
-			workflow = await this.messageRepository.manager.transaction(async (trx) => {
+			transactionResult = await this.messageRepository.manager.transaction(async (trx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -2260,7 +2277,7 @@ export class ChatHubService {
 
 					// AI edits just change the original message without revisioning or response generation
 					await this.messageRepository.updateChatMessage(editId, { content: payload.message }, trx);
-					return null;
+					return { workflow: null, combinedAttachments: [] };
 				}
 
 				if (messageToEdit.type === 'human') {
@@ -2296,7 +2313,7 @@ export class ChatHubService {
 						trx,
 					);
 
-					return await this.prepareReplyWorkflow(
+					const workflow = await this.prepareReplyWorkflow(
 						user,
 						sessionId,
 						credentials,
@@ -2309,6 +2326,8 @@ export class ChatHubService {
 						trx,
 						executionMetadata,
 					);
+
+					return { workflow, combinedAttachments: attachments };
 				}
 
 				throw new BadRequestError('Only human and AI messages can be edited');
@@ -2325,10 +2344,24 @@ export class ChatHubService {
 			throw error;
 		}
 
-		if (!workflow) {
+		if (!transactionResult?.workflow) {
 			// AI message edit - no streaming needed
 			return { promptMessageId: messageId, responseMessageId: null };
 		}
+
+		// Broadcast message edit to all user connections for cross-client sync
+		await this.chatStreamService.sendMessageEdit({
+			userId: user.id,
+			sessionId,
+			originalMessageId: editId,
+			newMessageId: messageId,
+			content: message,
+			attachments: transactionResult.combinedAttachments.map((a) => ({
+				id: a.id!,
+				fileName: a.fileName ?? 'file',
+				mimeType: a.mimeType,
+			})),
+		});
 
 		const responseMessageId = uuidv4();
 
@@ -2336,13 +2369,13 @@ export class ChatHubService {
 		void this.executeChatWorkflowWithCleanupWs(
 			user,
 			model,
-			workflow.workflowData,
-			workflow.executionData,
+			transactionResult.workflow.workflowData,
+			transactionResult.workflow.executionData,
 			sessionId,
 			messageId,
 			responseMessageId,
 			null,
-			workflow.responseMode,
+			transactionResult.workflow.responseMode,
 			null,
 			{},
 			'',
