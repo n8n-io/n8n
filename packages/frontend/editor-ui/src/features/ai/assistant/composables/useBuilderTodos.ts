@@ -5,6 +5,7 @@ import type { WorkflowValidationIssue } from '@/Interface';
 
 const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
 const PLACEHOLDER_SUFFIX = '__>';
+const PLACEHOLDER_REGEX = /<__PLACEHOLDER_VALUE__(.+?)__>/g;
 
 export interface PlaceholderDetail {
 	path: string[];
@@ -24,17 +25,26 @@ export interface TodosTrackingPayload {
 }
 
 /**
- * Extracts the label from a placeholder value string.
- * Returns null if the value is not a valid placeholder.
+ * Extracts all placeholder labels from a string value.
+ * Handles both cases where the entire value is a placeholder and where
+ * placeholders are embedded within code (e.g., Code node).
+ * Returns an array of labels found.
  */
-export function extractPlaceholderLabel(value: unknown): string | null {
-	if (typeof value !== 'string') return null;
-	if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) return null;
+export function extractPlaceholderLabels(value: unknown): string[] {
+	if (typeof value !== 'string') return [];
 
-	const label = value
-		.slice(PLACEHOLDER_PREFIX.length, value.length - PLACEHOLDER_SUFFIX.length)
-		.trim();
-	return label.length > 0 ? label : null;
+	const labels: string[] = [];
+	const regex = new RegExp(PLACEHOLDER_REGEX.source, 'g');
+	let match;
+
+	while ((match = regex.exec(value)) !== null) {
+		const label = match[1].trim();
+		if (label.length > 0) {
+			labels.push(label);
+		}
+	}
+
+	return labels;
 }
 
 /**
@@ -42,8 +52,11 @@ export function extractPlaceholderLabel(value: unknown): string | null {
  * all placeholder values and their paths.
  */
 export function findPlaceholderDetails(value: unknown, path: string[] = []): PlaceholderDetail[] {
-	const label = extractPlaceholderLabel(value);
-	if (label) return [{ path, label }];
+	// Check for placeholders in strings (handles both full placeholders and embedded ones)
+	if (typeof value === 'string') {
+		const labels = extractPlaceholderLabels(value);
+		return labels.map((label) => ({ path, label }));
+	}
 
 	if (Array.isArray(value)) {
 		return value.flatMap((item, index) => findPlaceholderDetails(item, [...path, `[${index}]`]));
