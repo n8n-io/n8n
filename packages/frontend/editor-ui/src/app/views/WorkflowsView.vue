@@ -1954,6 +1954,7 @@ const onNameSubmit = async (name: string) => {
 					}"
 					:show-ownership-badge="showCardsBadge"
 					data-target="folder"
+					data-droppable
 					class="mb-2xs"
 					@action="onFolderCardAction"
 					@mouseenter="folderHelpers.onDragEnter"
