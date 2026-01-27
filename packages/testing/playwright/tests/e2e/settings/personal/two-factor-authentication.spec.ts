@@ -18,9 +18,7 @@ const NOTIFICATIONS = {
 const { email, password, mfaSecret, mfaRecoveryCodes } = INSTANCE_OWNER_CREDENTIALS;
 const RECOVERY_CODE = mfaRecoveryCodes![0];
 
-test.describe('Two-factor authentication @auth:none @db:reset', () => {
-	test.describe.configure({ mode: 'serial' });
-
+test.describe('Two-factor authentication @auth:none', () => {
 	test('Should be able to login with MFA code', async ({ n8n }) => {
 		await n8n.mfaComposer.enableMfa(email, password, mfaSecret!);
 		await n8n.sideBar.signOutFromWorkflows();

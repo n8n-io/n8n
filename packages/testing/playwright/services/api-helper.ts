@@ -37,10 +37,6 @@ const AUTH_TAGS = {
 	NONE: '@auth:none',
 } as const;
 
-const DB_TAGS = {
-	RESET: '@db:reset',
-} as const;
-
 export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
@@ -83,23 +79,12 @@ export class ApiHelpers {
 	 * - ['@auth:none'] = no signin (unauthenticated)
 	 */
 	async setupFromTags(tags: string[], memberIndex: number = 0): Promise<LoginResponseData | null> {
-		const shouldReset = this.shouldResetDatabase(tags);
 		const role = this.getRoleFromTags(tags);
 
-		if (shouldReset && role) {
-			// Reset + signin
-			await this.resetDatabase();
-			return await this.signin(role, memberIndex);
-		} else if (shouldReset) {
-			// Reset only, manual signin required
-			await this.resetDatabase();
-			return null;
-		} else if (role) {
-			// Signin only
+		if (role) {
 			return await this.signin(role, memberIndex);
 		}
 
-		// No setup required
 		return null;
 	}
 
