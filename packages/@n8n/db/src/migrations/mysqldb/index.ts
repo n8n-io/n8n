@@ -129,7 +129,6 @@ import { AddIconToAgentTable1765788427674 } from '../common/1765788427674-AddIco
 import { AddAgentIdForeignKeys1765886667897 } from '../common/1765886667897-AddAgentIdForeignKeys';
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
-import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -264,5 +263,4 @@ export const mysqlMigrations: Migration[] = [
 	AddAgentIdForeignKeys1765886667897,
 	AddWorkflowVersionIdToExecutionData1765892199653,
 	AddPublishedVersionIdToWorkflowDependency1769000000000,
-	CreateSecretsProviderConnectionTables1769433700000,
 ];
