@@ -153,6 +153,9 @@ function onClick(event: MouseEvent) {
 .container {
 	position: relative;
 
+	// Creates an invisible barrier around the handle from to prevent edge hover states (like the delete icon from nearby edges)
+	// from coming to the forefront when the user moves their mouse over the plus button.
+	// Only needed for bottom position (e.g. Ai Agent Node Output).
 	&.bottom::before {
 		content: '';
 		position: absolute;
