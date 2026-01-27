@@ -824,8 +824,10 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				this.checkFromAiInNonToolNode(graphNode.instance, warnings);
 			}
 
-			// Check for {{ $... }} without = prefix (applies to all nodes)
-			this.checkMissingExpressionPrefix(graphNode.instance, warnings);
+			// Check for {{ $... }} without = prefix (skip sticky notes - they're just documentation)
+			if (graphNode.instance.type !== 'n8n-nodes-base.stickyNote') {
+				this.checkMissingExpressionPrefix(graphNode.instance, warnings);
+			}
 		}
 
 		return {
@@ -848,17 +850,15 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		const promptType = params.promptType as string | undefined;
 
-		// Skip checks for auto/guardrails mode
-		if (promptType === 'auto' || promptType === 'guardrails') {
+		// Skip checks for auto/guardrails mode (undefined defaults to auto)
+		if (!promptType || promptType === 'auto' || promptType === 'guardrails') {
 			return;
 		}
 
 		// Check: Static prompt (no expression)
 		const text = params.text as string | undefined;
 		const hasValidExpression = text ? this.containsExpression(text) : false;
-		const hasMalformedExpression = text
-			? WorkflowBuilderImpl.MISSING_EXPR_PREFIX_PATTERN.test(text)
-			: false;
+		const hasMalformedExpression = text ? !text.startsWith('=') && text.includes('{{ $') : false;
 
 		// Only warn about static prompt if there's NO expression at all
 		// (MISSING_EXPRESSION_PREFIX will handle malformed expressions)
@@ -907,9 +907,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		// Check: Static prompt (no expression)
 		const text = params.text as string | undefined;
 		const hasValidExpression = text ? this.containsExpression(text) : false;
-		const hasMalformedExpression = text
-			? WorkflowBuilderImpl.MISSING_EXPR_PREFIX_PATTERN.test(text)
-			: false;
+		const hasMalformedExpression = text ? !text.startsWith('=') && text.includes('{{ $') : false;
 
 		// Only warn about static prompt if there's NO expression at all
 		// (MISSING_EXPRESSION_PREFIX will handle malformed expressions)
@@ -1182,14 +1180,6 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Pattern to detect {{ }} containing n8n variables without = prefix.
-	 * Matches: {{ $json }}, {{ $env.X }}, {{ $('Node') }}, etc.
-	 * Does NOT match: ={{ $json }} (has prefix) or {{ someVar }} (no $ variable)
-	 */
-	private static readonly MISSING_EXPR_PREFIX_PATTERN =
-		/(?<!=)\{\{[^}]*\$(?:json|input|binary|env|vars|secrets|now|today|execution|workflow|node|prevNode|item|itemIndex|runIndex|position|\()[^}]*\}\}/;
-
-	/**
 	 * Recursively find all string values that have {{ $... }} without = prefix
 	 */
 	private findMissingExpressionPrefixes(
@@ -1200,7 +1190,8 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		if (typeof value === 'string') {
 			// If string starts with '=', it's already an expression - {{ }} is valid template syntax inside
-			if (!value.startsWith('=') && WorkflowBuilderImpl.MISSING_EXPR_PREFIX_PATTERN.test(value)) {
+			// Otherwise check if it contains {{ $ pattern (n8n variable reference without = prefix)
+			if (!value.startsWith('=') && value.includes('{{ $')) {
 				issues.push({ path, value });
 			}
 		} else if (Array.isArray(value)) {

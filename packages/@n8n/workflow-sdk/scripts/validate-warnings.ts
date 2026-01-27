@@ -205,15 +205,6 @@ function hasNoToolParametersInOriginal(json: WorkflowJSON, nodeName: string): bo
 }
 
 /**
- * Pattern to detect {{ }} containing n8n variables without = prefix.
- * Matches: {{ $json }}, {{ $env.X }}, {{ $('Node') }}, {{ JSON.stringify($json) }}, etc.
- * Does NOT match: ={{ $json }} (has prefix) or {{ someVar }} (no $ variable)
- * Must match the pattern in workflow-builder.ts to correctly identify valid warnings.
- */
-const MISSING_EXPR_PREFIX_PATTERN =
-	/(?<!=)\{\{[^}]*\$(?:json|input|binary|env|vars|secrets|now|today|execution|workflow|node|prevNode|item|itemIndex|runIndex|position|\()[^}]*\}\}/;
-
-/**
  * Check if a value contains a missing expression prefix in the original JSON
  */
 function hasMissingExpressionPrefixInOriginal(json: WorkflowJSON, nodeName: string): boolean {
@@ -224,7 +215,7 @@ function hasMissingExpressionPrefixInOriginal(json: WorkflowJSON, nodeName: stri
 		if (typeof value === 'string') {
 			// Check for {{ $json... }}, {{ JSON.stringify($json) }}, etc. without leading =
 			// Use the same pattern as workflow-builder.ts for consistency
-			if (!value.startsWith('=') && MISSING_EXPR_PREFIX_PATTERN.test(value)) {
+			if (!value.startsWith('=')) {
 				return true;
 			}
 		} else if (Array.isArray(value)) {

@@ -4,13 +4,7 @@
 		{
 			"id": 6270,
 			"name": "Build your first AI agent",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Your First AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5819,
@@ -20,23 +14,13 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "OpenAI"
-				},
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Your First AI Agent"
 				}
 			]
 		},
 		{
 			"id": 5895,
 			"name": "Create executive security briefings with NixGuard AI & Wazuh alerts",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Set Prompt for Summary"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 10000,
@@ -56,13 +40,7 @@
 		{
 			"id": 7639,
 			"name": "Talk to your Google Sheets using ChatGPT-5",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Talk to Your Data"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5035,
@@ -75,11 +53,11 @@
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
-					"nodeName": "Tool: Inject Creativity"
+					"nodeName": "Tool: Build Prompt Structure"
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
-					"nodeName": "Tool: Build Prompt Structure"
+					"nodeName": "Tool: Inject Creativity"
 				}
 			]
 		},
@@ -102,48 +80,12 @@
 		{
 			"id": 7756,
 			"name": "Nutrition tracker & meal logger with Telegram, Gemini AI and Google Sheets",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note17"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note18"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note19"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note20"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note21"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note22"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note23"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5148,
 			"name": "Local chatbot with retrieval augmented generation (RAG)",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5110,
@@ -182,16 +124,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "🤖 SERP Scraper Agent (MCP)"
+				},
+				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "MCP Client"
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "MCP Client"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "🤖 SERP Scraper Agent (MCP)"
 				}
 			]
 		},
@@ -209,45 +151,7 @@
 		{
 			"id": 5271,
 			"name": "🎓 Learn n8n expressions with an interactive step-by-step tutorial for beginners",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note2"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note3"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note4"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note5"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note6"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note7"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note9"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note10"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note11"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5755,
@@ -323,13 +227,7 @@
 		{
 			"id": 5170,
 			"name": "🎓 Learn JSON basics with an interactive step-by-step tutorial for beginners",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note8"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 12462,
@@ -368,16 +266,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Content topic generator2"
-				},
-				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Content topic generator2"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Hashtag generator /SEO"
+				},
+				{
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "Content topic generator2"
 				}
 			]
 		},
@@ -387,15 +285,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "MISSING_TRIGGER"
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "🕐 Status Check Trigger"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "🕘 Daily Application Trigger"
 				},
 				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "🕐 Status Check Trigger"
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "📝 Update Changed Status"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -411,15 +310,14 @@
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "📝 Update Changed Status"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "📧 Send Status Update"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "📧 Send Status Update"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -504,17 +402,7 @@
 		{
 			"id": 5010,
 			"name": "RAG Starter Template using Simple Vector Stores, Form trigger and OpenAI",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4110,
@@ -523,11 +411,11 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Suggest Similar Idea (Perplexity)"
+					"nodeName": "Fetch Available Avatars"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Fetch Available Avatars"
+					"nodeName": "Fetch Avatar Video URL"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -535,7 +423,7 @@
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Fetch Avatar Video URL"
+					"nodeName": "Suggest Similar Idea (Perplexity)"
 				}
 			]
 		},
@@ -598,11 +486,11 @@
 			"expectedWarnings": [
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Update Campaign Dashboard"
+					"nodeName": "Alert: Issues Detected"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Update Campaign Dashboard"
+					"nodeName": "Alert: Scale Opportunity"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -618,11 +506,11 @@
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Alert: Scale Opportunity"
+					"nodeName": "Update Campaign Dashboard"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Alert: Issues Detected"
+					"nodeName": "Update Campaign Dashboard"
 				}
 			]
 		},
@@ -633,11 +521,11 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "NanoBanana: Create Image"
+					"nodeName": "Download Edited Image"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Download Edited Image"
+					"nodeName": "NanoBanana: Create Image"
 				}
 			]
 		},
@@ -652,11 +540,11 @@
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Format Content to HTML"
+					"nodeName": "Choose Image"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Choose Image"
+					"nodeName": "Format Content to HTML"
 				}
 			]
 		},
@@ -694,24 +582,18 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Hollywood News Research Agent"
+					"nodeName": "AI Agent"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent"
+					"nodeName": "Hollywood News Research Agent"
 				}
 			]
 		},
 		{
 			"id": 6524,
 			"name": "Automate AI news videos to social media with GPT-4o & HeyGen and Postiz",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5626,
@@ -721,13 +603,7 @@
 		{
 			"id": 5449,
 			"name": "Automate sales cold calling pipeline with Apify, GPT-4o, and WhatsApp",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent1"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 9429,
@@ -755,10 +631,6 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent Support"
-				},
-				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Reasoning Tool (LangChain)"
 				}
@@ -776,11 +648,11 @@
 			"expectedWarnings": [
 				{
 					"code": "SET_CREDENTIAL_FIELD",
-					"nodeName": "Extracting Long Term Token"
+					"nodeName": "Extracting Access Token"
 				},
 				{
 					"code": "SET_CREDENTIAL_FIELD",
-					"nodeName": "Extracting Access Token"
+					"nodeName": "Extracting Long Term Token"
 				},
 				{
 					"code": "SET_CREDENTIAL_FIELD",
@@ -830,11 +702,11 @@
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Send PO to Supplier"
+					"nodeName": "Log to ERP System"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Log to ERP System"
+					"nodeName": "Send PO to Supplier"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -867,22 +739,32 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "MISSING_TRIGGER"
-				},
-				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Daily Stock Check"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Send Email Alert"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
 		{
 			"id": 5979,
 			"name": "Automated content marketing intelligence with OpenAI, Ahrefs & multi-platform integration",
-			"success": true
+			"success": true,
+			"expectedWarnings": [
+				{
+					"code": "MERGE_SINGLE_INPUT",
+					"nodeName": "🔗 Merge All Data"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "📝 Prepare AI Prompt"
+				}
+			]
 		},
 		{
 			"id": 4600,
@@ -891,51 +773,7 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Mistral Cloud Chat Model"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "OpenRouter Chat Model"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
 					"nodeName": "Anthropic Chat Model"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Google Gemini Chat Model"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "xAI Grok Chat Model"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "DeepSeek Chat Model"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Hugging Face Inference Model"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Freepik API"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Runware API"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Clipdrop API"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Ollama Chat Model"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Azure OpenAI Chat Model"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -943,15 +781,27 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Ideogram API"
+					"nodeName": "Azure OpenAI Chat Model"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Replicate API"
+					"nodeName": "Clipdrop API"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Imagen Google API"
+					"nodeName": "DeepSeek Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Freepik API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Google Gemini Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Hugging Face Inference Model"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -959,11 +809,11 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Runway Images"
+					"nodeName": "Ideogram API"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Minimax Images"
+					"nodeName": "Imagen Google API"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -974,20 +824,36 @@
 					"nodeName": "Leonardo Images"
 				},
 				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "GENERATE PROMPT"
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Minimax Images"
 				},
 				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Ideogram API"
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Mistral Cloud Chat Model"
 				},
 				{
-					"code": "HARDCODED_CREDENTIALS",
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Ollama Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenRouter Chat Model"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
 					"nodeName": "Replicate API"
 				},
 				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Imagen Google API"
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Runware API"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Runway Images"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "xAI Grok Chat Model"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -995,7 +861,15 @@
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Runway Images"
+					"nodeName": "Ideogram API"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Imagen Google API"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Kling Images"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -1003,7 +877,15 @@
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Kling Images"
+					"nodeName": "Replicate API"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Runway Images"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "GENERATE PROMPT"
 				}
 			]
 		},
@@ -1015,50 +897,18 @@
 		{
 			"id": 9277,
 			"name": "Automate Google Classroom with Gemini AI: Topics, assignments & student tracking",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Google Classroom Ultimate Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5523,
 			"name": "Evaluate tool usage accuracy in multi-agent AI workflows using evaluation nodes",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Search Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 3066,
 			"name": "✨🤖Automate Multi-Platform Social Media Content Creation with AI",
 			"success": true,
 			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Google Gemini LLM"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "gpt-4o"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "pollinations.ai"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Approve Final Post Content"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Image Choice"
-				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Prepare Content Review Email"
@@ -1070,33 +920,39 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Prepare Results Message"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Approve Final Post Content"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Google Gemini LLM"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "gpt-4o"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Image Choice"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "pollinations.ai"
 				}
 			]
 		},
 		{
 			"id": 10420,
 			"name": "Automated daily financial analysis from Loyverse POS with Google Sheets & email",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note5"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note7"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5398,
 			"name": "AI Assistant which answers questions with a RAG MCP and a Search Engine MCP",
 			"success": true,
 			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "MCP Client"
@@ -1115,17 +971,7 @@
 		{
 			"id": 8095,
 			"name": "Email new leads from Google Sheets via Outlook on a schedule",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note6"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note7"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4484,
@@ -1141,17 +987,7 @@
 		{
 			"id": 9801,
 			"name": "Summarize meeting transcripts with GPT-4 & sentiment analysis for Gmail",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note5"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 7467,
@@ -1159,20 +995,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				},
-				{
-					"code": "TOOL_NO_PARAMETERS",
-					"nodeName": "Think"
-				},
-				{
 					"code": "FROM_AI_IN_NON_TOOL",
 					"nodeName": "Sticky Note7"
 				},
 				{
 					"code": "FROM_AI_IN_NON_TOOL",
 					"nodeName": "Sticky Note9"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Think"
 				}
 			]
 		},
@@ -1189,27 +1021,13 @@
 		{
 			"id": 5817,
 			"name": "Build a weekly AI trend alerter with arXiv and Weaviate",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note17"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4723,
 			"name": "AI Personal Assistant",
 			"success": true,
 			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Slack"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Slack1"
-				},
 				{
 					"code": "AGENT_STATIC_PROMPT",
 					"nodeName": "Email Assistant"
@@ -1220,11 +1038,19 @@
 				},
 				{
 					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Slack Assistant"
+					"nodeName": "Master Orchestrator Agent"
 				},
 				{
 					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Master Orchestrator Agent"
+					"nodeName": "Slack Assistant"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Slack"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Slack1"
 				}
 			]
 		},
@@ -1296,11 +1122,11 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent1"
+					"nodeName": "AI Agent"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent"
+					"nodeName": "AI Agent1"
 				}
 			]
 		},
@@ -1325,28 +1151,24 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Gemini"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Anthropic"
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Agent"
 				},
 				{
 					"code": "AGENT_STATIC_PROMPT",
 					"nodeName": "AI Agent"
 				},
 				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent"
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Anthropic"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Gemini"
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Think"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note"
 				}
 			]
 		},
@@ -1372,11 +1194,11 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Company Research1"
+					"nodeName": "AI Sales Assistant"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Sales Assistant"
+					"nodeName": "Company Research1"
 				}
 			]
 		},
@@ -1404,14 +1226,6 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Template List"
-				},
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "DocAgent"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note4"
 				}
 			]
 		},
@@ -1422,11 +1236,11 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Location Analyzer"
+					"nodeName": "AI Generate Email Content"
 				},
 				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Trigger Trustpilot Scraper"
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI Location Analyzer"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -1434,23 +1248,23 @@
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Download Trustpilot Data"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Generate Email Content"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Yelp Scraper"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Check Yelp Scrape Progress"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Download Trustpilot Data"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Fetch Yelp Results"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Trigger Trustpilot Scraper"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Yelp Scraper"
 				}
 			]
 		},
@@ -1478,13 +1292,7 @@
 		{
 			"id": 5296,
 			"name": "AI YouTube trend explorer – n8n automation workflow with Gemini/ChatGPT",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent - Trend Explorer"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 7455,
@@ -1492,25 +1300,19 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Typing…"
-				},
-				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "AI Agent1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Typing…"
 				}
 			]
 		},
 		{
 			"id": 5828,
 			"name": "Generate cold emails & sales letters with OpenAI GPT & Google Docs via Chat",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Copy Assistant"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 6236,
@@ -1519,15 +1321,7 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Answer - Basic Access"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
 					"nodeName": "Answer - Array Access"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Answer - Nested Object"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -1535,15 +1329,19 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Answer - JS Function"
+					"nodeName": "Answer - Basic Access"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Answer - Final"
 				},
 				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Error - Basic Access"
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Answer - JS Function"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Answer - Nested Object"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -1551,7 +1349,7 @@
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Feedback Incorrect1"
+					"nodeName": "Error - Basic Access"
 				}
 			]
 		},
@@ -1562,15 +1360,7 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Send Video to Klap for Shorts Generation"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Check Shorts Generation Status"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "List Generated Clip Ideas"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -1579,6 +1369,14 @@
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Fetch Final Shorts URLs"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "List Generated Clip Ideas"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Send Video to Klap for Shorts Generation"
 				}
 			]
 		},
@@ -1637,17 +1435,7 @@
 		{
 			"id": 1954,
 			"name": "AI agent chat",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 2043,
@@ -1749,11 +1537,11 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "AGENT_STATIC_PROMPT",
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "🤖 Agent: Scrape & Analyze Campaign Performance"
 				},
 				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"code": "AGENT_STATIC_PROMPT",
 					"nodeName": "🤖 Agent: Scrape & Analyze Campaign Performance"
 				}
 			]
@@ -1800,11 +1588,11 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Set Video URL and Prompt"
+					"nodeName": "Set Prompt & Image Url"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Set Prompt & Image Url"
+					"nodeName": "Set Video URL and Prompt"
 				}
 			]
 		},
@@ -1820,32 +1608,22 @@
 			"expectedWarnings": [
 				{
 					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Append Transaction to Sheet"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Read Sheet for Queries"
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Send Low Balance Alert"
-				},
-				{
-					"code": "TOOL_NO_PARAMETERS",
-					"nodeName": "Append Transaction to Sheet"
 				}
 			]
 		},
 		{
 			"id": 10111,
 			"name": "AI-powered invoice reminder & payment tracker for finance & accounting",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent For Generate Email Content"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent For Generate Email Content"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 8258,
@@ -1890,7 +1668,7 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Remove Image Background"
+					"nodeName": "Check Video Status"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -1898,11 +1676,11 @@
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Check Video Status"
+					"nodeName": "Get Video Link"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Get Video Link"
+					"nodeName": "Remove Image Background"
 				}
 			]
 		},
@@ -1913,11 +1691,11 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Create VEO3 Video"
+					"nodeName": "Check VEO3 Status"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Check VEO3 Status"
+					"nodeName": "Create VEO3 Video"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -1962,15 +1740,15 @@
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Generate Blog Topics AI"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Generate Image Keyword AI"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Search Pexels Image"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Generate Blog Topics AI"
 				}
 			]
 		},
@@ -2002,23 +1780,13 @@
 		{
 			"id": 3770,
 			"name": "Build your own N8N workflows MCP server",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 3050,
 			"name": "Build your first AI data analyst chatbot",
 			"success": true,
 			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				},
 				{
 					"code": "FROM_AI_IN_NON_TOOL",
 					"nodeName": "Sticky Note9"
@@ -2033,14 +1801,6 @@
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "AI Feedback Triage"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note2"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note6"
 				}
 			]
 		},
@@ -2071,15 +1831,15 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "MISSING_TRIGGER"
-				},
-				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Read LinkedIn URLs1"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Send Success Notification1"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -2088,14 +1848,6 @@
 			"name": "Analyze cryptocurrency market data with HTX API, GPT-4o and Telegram",
 			"success": true,
 			"expectedWarnings": [
-				{
-					"code": "FROM_AI_IN_NON_TOOL",
-					"nodeName": "Sticky Note7"
-				},
-				{
-					"code": "FROM_AI_IN_NON_TOOL",
-					"nodeName": "Sticky Note8"
-				},
 				{
 					"code": "FROM_AI_IN_NON_TOOL",
 					"nodeName": "Sticky Note10"
@@ -2115,19 +1867,21 @@
 				{
 					"code": "FROM_AI_IN_NON_TOOL",
 					"nodeName": "Sticky Note14"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note7"
+				},
+				{
+					"code": "FROM_AI_IN_NON_TOOL",
+					"nodeName": "Sticky Note8"
 				}
 			]
 		},
 		{
 			"id": 6542,
 			"name": "Build an All-Source Knowledge Assistant with Claude, RAG, Perplexity, and Drive",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Knowledge Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4967,
@@ -2165,11 +1919,11 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "➡️ Select these three nodes"
+					"nodeName": "➡️ Now select everything"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "➡️ Now select everything"
+					"nodeName": "➡️ Select these three nodes"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -2188,12 +1942,12 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "SET_CREDENTIAL_FIELD",
-					"nodeName": "Setup"
-				},
-				{
 					"code": "AGENT_STATIC_PROMPT",
 					"nodeName": "Generate Prompts"
+				},
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Setup"
 				}
 			]
 		},
@@ -2204,24 +1958,18 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "OCR.Space"
+					"nodeName": "OCR Fallback Processing"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "OCR Fallback Processing"
+					"nodeName": "OCR.Space"
 				}
 			]
 		},
 		{
 			"id": 7449,
 			"name": "Talk to your Google Sheets using ChatGPT-5",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Talk to Your Data"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4949,
@@ -2240,35 +1988,23 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "MISSING_TRIGGER"
-				},
-				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Market Hours Trigger"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
 		{
 			"id": 4867,
 			"name": "AI-powered stock market summary bot",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note8"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4587,
 			"name": "Extract Instagram profile data with Apify and store in Google Sheets",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note1"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4295,
@@ -2299,17 +2035,7 @@
 		{
 			"id": 5751,
 			"name": "YouTube lead generation: Turn comments into enriched prospects with Apify and Gemini AI",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note1"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5741,
@@ -2318,15 +2044,15 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Generate Full Narrative from Prompt"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Break Narrative into {{n}} Scenes"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Describe Each Scene for Video"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Generate Full Narrative from Prompt"
 				}
 			]
 		},
@@ -2347,8 +2073,8 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Send error"
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Content writer"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
@@ -2356,11 +2082,11 @@
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Content writer"
+					"nodeName": "Prompt engineer"
 				},
 				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Prompt engineer"
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send error"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -2375,11 +2101,11 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Leave Agent"
+					"nodeName": "Attendance Agent"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Attendance Agent"
+					"nodeName": "Book Meeting"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
@@ -2387,11 +2113,11 @@
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Shortlist Agent"
+					"nodeName": "Leave Agent"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Book Meeting"
+					"nodeName": "Shortlist Agent"
 				}
 			]
 		},
@@ -2412,13 +2138,6 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "MISSING_TRIGGER"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Telegram Bot (Webhook)"
-				},
-				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Check 'Photo'"
 				},
@@ -2435,8 +2154,11 @@
 					"nodeName": "Send Raw OCR Text"
 				},
 				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Send Raw OCR Text"
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Telegram Bot (Webhook)"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -2457,12 +2179,12 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "SET_CREDENTIAL_FIELD",
-					"nodeName": "Set Input Data"
-				},
-				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Social Media Agent"
+				},
+				{
+					"code": "SET_CREDENTIAL_FIELD",
+					"nodeName": "Set Input Data"
 				}
 			]
 		},
@@ -2472,16 +2194,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Generate HTML"
+				},
+				{
 					"code": "SET_CREDENTIAL_FIELD",
 					"nodeName": "Set Stock Symbol and API Key"
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Think"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Generate HTML"
 				}
 			]
 		},
@@ -2504,13 +2226,7 @@
 		{
 			"id": 10230,
 			"name": "Add Project Tasks to Google Sheets with GPT-4.1-mini Chat Assistant",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Project Manager Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 9876,
@@ -2527,12 +2243,12 @@
 					"nodeName": "Set Preferences"
 				},
 				{
-					"code": "AGENT_STATIC_PROMPT",
+					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "AI Agent"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "AI Agent"
+					"nodeName": "OpenAI"
 				}
 			]
 		},
@@ -2549,10 +2265,6 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Scrape Website Content (via Apify)"
-				},
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent - Lead Collection"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -2597,15 +2309,15 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Uploading Image in Airtable"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Generate Video Veo 3"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Get the Video"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Uploading Image in Airtable"
 				}
 			]
 		},
@@ -2637,7 +2349,15 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Update Article Writer table1"
+					"nodeName": "Article Assembly Agent1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Final Article1"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Final Edit Agent1"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -2649,15 +2369,7 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Article Assembly Agent1"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Final Edit Agent1"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Final Article1"
+					"nodeName": "Update Article Writer table1"
 				}
 			]
 		},
@@ -2669,13 +2381,7 @@
 		{
 			"id": 6290,
 			"name": "Company website chatbot agent (RAG, calendar integrations)",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Ultimate Website Chatbot Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 11366,
@@ -2709,13 +2415,7 @@
 		{
 			"id": 5734,
 			"name": "Build a PDF-based RAG system with OpenAI, Pinecone and Cohere reranking",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5670,
@@ -2729,15 +2429,15 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Sends profile URLs to Bright Data to trigger scraping"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Checks scraping progress from Bright Data"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Gets TikTok influencer details from Bright Data using snapshot ID"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Sends profile URLs to Bright Data to trigger scraping"
 				}
 			]
 		},
@@ -2754,13 +2454,7 @@
 		{
 			"id": 3514,
 			"name": "Build an MCP server with Google Calendar and custom functions",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 11049,
@@ -2823,7 +2517,11 @@
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
-					"nodeName": "Google Sheets"
+					"nodeName": "Check Examples1"
+				},
+				{
+					"code": "TOOL_NO_PARAMETERS",
+					"nodeName": "Get_Brand_Brief"
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
@@ -2831,11 +2529,7 @@
 				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
-					"nodeName": "Check Examples1"
-				},
-				{
-					"code": "TOOL_NO_PARAMETERS",
-					"nodeName": "Get_Brand_Brief"
+					"nodeName": "Google Sheets"
 				}
 			]
 		},
@@ -2843,13 +2537,7 @@
 			"id": 7957,
 			"name": "Conversational Meta ads reporting & management with GPT-5",
 			"success": true,
-			"app": "Merge",
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"app": "Merge"
 		},
 		{
 			"id": 11617,
@@ -2897,13 +2585,7 @@
 			"id": 5002,
 			"name": "Generate AI-Powered LinkedIn Posts with Google Gemini and Gen-Imager",
 			"success": true,
-			"searchTerm": "Code",
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"searchTerm": "Code"
 		},
 		{
 			"id": 9890,
@@ -2947,19 +2629,19 @@
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Intro"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Steps"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Conclusion"
 				},
 				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Intro"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "slug"
+				},
+				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Steps"
 				}
 			]
 		},
@@ -3003,13 +2685,7 @@
 			"id": 5757,
 			"name": "Personalized email automation using Google Docs, Pinecone, GPT-4o and Gmail",
 			"success": true,
-			"nodeType": "agent",
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent1"
-				}
-			]
+			"nodeType": "agent"
 		},
 		{
 			"id": 4689,
@@ -3039,10 +2715,6 @@
 			"success": true,
 			"nodeType": "agent",
 			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Anthropic Routing Agent"
-				},
 				{
 					"code": "TOOL_NO_PARAMETERS",
 					"nodeName": "Think"
@@ -3074,16 +2746,16 @@
 			"nodeType": "agent",
 			"expectedWarnings": [
 				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent1"
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Execute SQL"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Get table definition"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Snowflake1"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Execute SQL"
 				}
 			]
 		},
@@ -3114,10 +2786,6 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Cron Trigger"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Send Application Email"
 				}
 			]
 		},
@@ -3134,16 +2802,16 @@
 			"nodeType": "splitInBatches",
 			"expectedWarnings": [
 				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Notify over Phone Call"
+				},
+				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Slack Notification for Up"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Telegram Notification for Up"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Notify over Phone Call"
 				}
 			]
 		},
@@ -3166,6 +2834,10 @@
 			"nodeType": "splitInBatches",
 			"expectedWarnings": [
 				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "AI: Synthesize Final Report"
+				},
+				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Apify抓取x推文"
 				},
@@ -3180,10 +2852,6 @@
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "AI Pre-filtering"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI: Synthesize Final Report"
 				}
 			]
 		},
@@ -3213,10 +2881,6 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Object & Caption"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note11"
 				}
 			]
 		},
@@ -3226,11 +2890,11 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "MISSING_TRIGGER"
-				},
-				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Check New Email (IMAP)"
+				},
+				{
+					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -3271,23 +2935,11 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Email Trigger"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Normalize Message Data"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Get Conversation History"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "OpenAI Support Agent"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
 					"nodeName": "Check if Escalation Needed"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Email Trigger"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -3295,15 +2947,19 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Send WhatsApp Response"
+					"nodeName": "Get Conversation History"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Send Telegram Response"
+					"nodeName": "Normalize Message Data"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Send Email Response"
+					"nodeName": "Notify Human Agents"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenAI Support Agent"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -3311,7 +2967,15 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Notify Human Agents"
+					"nodeName": "Send Email Response"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send Telegram Response"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Send WhatsApp Response"
 				}
 			]
 		},
@@ -3333,13 +2997,7 @@
 		{
 			"id": 12110,
 			"name": "Discover buying-intent leads on Twitter and Instagram with GPT-4o-mini and send summaries to Slack and Notion",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Discover Buying-Intent Leads from Social Platforms (AI)"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 10370,
@@ -3349,24 +3007,12 @@
 		{
 			"id": 5821,
 			"name": "Build a scalable AI chatbot with GPT-4 and Pipedream: Calendly, Gmail integration",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5286,
 			"name": "News research and sentiment analysis AI agent with Gemini and SearXNG",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Research Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4526,
@@ -3392,17 +3038,7 @@
 		{
 			"id": 5011,
 			"name": "Save Costs In RAG Workflows using the Q&A Tool With Multiple Models",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 3954,
@@ -3418,17 +3054,7 @@
 		{
 			"id": 3905,
 			"name": "Build a personal assistant with Google Gemini, Gmail and Calendar using MCP",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Personal Assistant"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Personal Assistant"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5312,
@@ -3438,17 +3064,7 @@
 		{
 			"id": 10029,
 			"name": "Automate invoice processing with OCR, GPT-4 & Salesforce opportunity creation",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note2"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note3"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 9810,
@@ -3477,15 +3093,15 @@
 			"expectedWarnings": [
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "New Product Entry"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "New Voucher Entry"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Set Coupon as Posted"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "New Product Entry"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -3536,6 +3152,10 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
+					"nodeName": "Cancel All Order Params"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
 					"nodeName": "LimitBuy Parmeter"
 				},
 				{
@@ -3553,23 +3173,13 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Open Orders Params"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Cancel All Order Params"
 				}
 			]
 		},
 		{
 			"id": 9061,
 			"name": "📁 Extract and clean PDF data from Google Drive",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note5"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 7140,
@@ -3593,15 +3203,15 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Fetch Meeting Audio File\t"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Launch Vexa Bot for Meeting\t"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Stop Vexa Bot\t"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Fetch Meeting Audio File\t"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -3637,6 +3247,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Convert AI Risoprint Image to File"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Function: Prepare Post Data"
 				},
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
@@ -3698,13 +3312,7 @@
 		{
 			"id": 5908,
 			"name": "Real-time email RAG assistant with Gmail, OpenAI GPT, and PGVector",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "New RAG Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5607,
@@ -3717,16 +3325,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "create summary"
+				},
+				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Get progress"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Get snapshot + data"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "create summary"
 				}
 			]
 		},
@@ -3912,6 +3520,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Create Document Rows Table (for Tabular Data)"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Query Document Rows"
 				}
 			]
 		},
@@ -4004,24 +3616,16 @@
 			"success": true,
 			"expectedWarnings": [
 				{
+					"code": "AGENT_NO_SYSTEM_MESSAGE",
+					"nodeName": "Generate Daily Summary (AI)"
+				},
+				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Check Scraper Progress"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Fetch Scraper Results"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Generate Daily Summary (AI)"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note3"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note11"
 				}
 			]
 		},
@@ -4032,10 +3636,6 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "6a. Scrape Website with Scrape.do"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "6a. Scrape Website with Scrape.do"
 				}
 			]
@@ -4059,13 +3659,7 @@
 		{
 			"id": 7289,
 			"name": "Secure web form to Odoo CRM lead creation with UTM tracking",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Sticky Note2"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 6242,
@@ -4100,11 +3694,11 @@
 			"expectedWarnings": [
 				{
 					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Research Agent"
+					"nodeName": "Report Agent"
 				},
 				{
 					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Report Agent"
+					"nodeName": "Research Agent"
 				}
 			]
 		},
@@ -4142,13 +3736,7 @@
 		{
 			"id": 2753,
 			"name": "RAG chatbot for company documents using Google Drive and Gemini",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 7010,
@@ -4203,8 +3791,12 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Execute SQL Query"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "Get Table Definition"
 				}
 			]
 		},
@@ -4314,13 +3906,7 @@
 		{
 			"id": 4930,
 			"name": "Document-based chatbot with memory using OpenAI, Pinecone and Google Drive",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4892,
@@ -4346,13 +3932,7 @@
 		{
 			"id": 4402,
 			"name": "AI Chatbot Agent with a Panel of Experts using InfraNodus GraphRAG Knowledge",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 12732,
@@ -4371,11 +3951,11 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Generate Embeddings for Search with OpenAI"
+					"nodeName": "Download File From Google Drive1"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Download File From Google Drive1"
+					"nodeName": "Generate Embeddings for Search with OpenAI"
 				}
 			]
 		},
@@ -4422,13 +4002,7 @@
 		{
 			"id": 3942,
 			"name": "AI-powered restaurant order chatbot with GPT-4o for POS integration",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 3224,
@@ -4451,24 +4025,12 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Lead Classifier Agent"
-				},
-				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "AI Lead Classifier Agent"
 				},
 				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Route to Demo Team"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Route to Support Team"
-				},
-				{
-					"code": "MISSING_EXPRESSION_PREFIX",
-					"nodeName": "Route to Partnership Team"
+					"code": "AGENT_STATIC_PROMPT",
+					"nodeName": "AI Lead Classifier Agent"
 				}
 			]
 		},
@@ -4490,17 +4052,7 @@
 		{
 			"id": 9438,
 			"name": "Create universal OpenAI-compatible API endpoints for multiple AI workflows",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Powered By n8n Workflow Models"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "Powered By n8n Workflow Models"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 9386,
@@ -4575,12 +4127,12 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Crawl TechCrunch (FireCrawl)"
-				},
-				{
 					"code": "AGENT_NO_SYSTEM_MESSAGE",
 					"nodeName": "Summarizer Agent"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Crawl TechCrunch (FireCrawl)"
 				}
 			]
 		},
@@ -4607,23 +4159,7 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Deepseek"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "OpenAI Image"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Post generator"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
 					"nodeName": "Content repurpose1"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Switch"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -4631,11 +4167,27 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Perplexity Research"
+					"nodeName": "Deepseek"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "If Dipt"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "OpenAI Image"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Perplexity Research"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Post generator"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Switch"
 				}
 			]
 		},
@@ -4667,11 +4219,11 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Script mapping"
+					"nodeName": "Create Script"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Create Script"
+					"nodeName": "Script mapping"
 				}
 			]
 		},
@@ -4689,12 +4241,8 @@
 					"nodeName": "AI API Request"
 				},
 				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent (Optional)"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent (Optional)"
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "AI API Request"
 				}
 			]
 		},
@@ -4715,11 +4263,11 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Script mapping"
+					"nodeName": "Create Script"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Create Script"
+					"nodeName": "Script mapping"
 				}
 			]
 		},
@@ -4737,12 +4285,8 @@
 					"nodeName": "AI API Request"
 				},
 				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent (Optional)"
-				},
-				{
-					"code": "AGENT_NO_SYSTEM_MESSAGE",
-					"nodeName": "AI Agent (Optional)"
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "AI API Request"
 				}
 			]
 		},
@@ -4788,15 +4332,15 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Sends keyword to Bright Data's Discover API to start scraping."
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Checks the scraping status using snapshot ID."
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Decode Snapshot from Response"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Sends keyword to Bright Data's Discover API to start scraping."
 				}
 			]
 		},
@@ -4807,15 +4351,15 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Scrap data"
-				},
-				{
-					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Check Delivery Status of Snap ID"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
 					"nodeName": "Getting Job Lists"
+				},
+				{
+					"code": "HARDCODED_CREDENTIALS",
+					"nodeName": "Scrap data"
 				}
 			]
 		},
@@ -4856,6 +4400,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "InfraNodus AI Questions"
+				},
+				{
+					"code": "MISSING_EXPRESSION_PREFIX",
+					"nodeName": "InfraNodus AI Questions"
 				}
 			]
 		},
@@ -4866,11 +4414,11 @@
 			"expectedWarnings": [
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Create Snapshot ID"
+					"nodeName": "Check Snapshot Status"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
-					"nodeName": "Check Snapshot Status"
+					"nodeName": "Create Snapshot ID"
 				},
 				{
 					"code": "HARDCODED_CREDENTIALS",
@@ -4892,13 +4440,7 @@
 		{
 			"id": 3656,
 			"name": "Ai-powered Telegram task manager with MCP server",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "AI Agent"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 2872,
@@ -4952,11 +4494,7 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Normalize Message Data"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Get Customer History"
+					"nodeName": "AI Business Assistant"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -4964,15 +4502,31 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "AI Business Assistant"
+					"nodeName": "Check Escalation"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Process AI Response"
+					"nodeName": "Get Customer History"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Log Conversation"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Normalize Message Data"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Notify Support Team"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Platform Router"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Process AI Response"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
@@ -4984,19 +4538,7 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Log Conversation"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
 					"nodeName": "Update Customer Record"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Check Escalation"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Notify Support Team"
 				}
 			]
 		},
@@ -5052,24 +4594,18 @@
 			"expectedWarnings": [
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "YouTube Transcript"
+					"nodeName": "Split Out"
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Split Out"
+					"nodeName": "YouTube Transcript"
 				}
 			]
 		},
 		{
 			"id": 12600,
 			"name": "Identify buying-intent leads on Twitter and Instagram with Slack and Notion CRM",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "AGENT_STATIC_PROMPT",
-					"nodeName": "Discover Buying-Intent Leads from Social Platforms (AI)"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 12599,
