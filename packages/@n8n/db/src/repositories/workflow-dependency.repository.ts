@@ -64,13 +64,10 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		dependencies: WorkflowDependencies,
 		tx: EntityManager,
 	): Promise<boolean> {
-		// Scope delete by publishedVersionId: use IsNull() for drafts, exact value for published versions
-		const publishedVersionCondition = dependencies.publishedVersionId ?? IsNull();
-
 		const deleteResult = await tx.delete(WorkflowDependency, {
 			workflowId,
 			workflowVersionId: LessThan(dependencies.workflowVersionId),
-			publishedVersionId: publishedVersionCondition,
+			publishedVersionId: dependencies.publishedVersionId ?? IsNull(),
 		});
 
 		// If we deleted something, the incoming version is newer - proceed with insert
@@ -121,10 +118,10 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		publishedVersionId?: string | null,
 	): Promise<boolean> {
 		return await this.manager.transaction(async (tx) => {
-			// Build where conditions
-			const whereConditions: Record<string, unknown> = { workflowId };
-
-			whereConditions.publishedVersionId = publishedVersionId ?? IsNull();
+			const whereConditions: Record<string, unknown> = {
+				workflowId,
+				publishedVersionId: publishedVersionId ?? IsNull(),
+			};
 
 			const deleteResult = await tx.delete(WorkflowDependency, whereConditions);
 
