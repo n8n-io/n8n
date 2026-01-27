@@ -626,22 +626,26 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, or fanOut
+ * Target type for IF else branches - can be a node, chain, null, fanOut, or nested builder
  */
 export type IfElseTarget =
 	| null
 	| NodeInstance<string, string, unknown>
 	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	| FanOutTargets;
+	| FanOutTargets
+	| IfElseBuilder<unknown>
+	| SwitchCaseBuilder<unknown>;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, or fanOut
+ * Target type for Switch case branches - can be a node, chain, null, fanOut, or nested builder
  */
 export type SwitchCaseTarget =
 	| null
 	| NodeInstance<string, string, unknown>
 	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-	| FanOutTargets;
+	| FanOutTargets
+	| IfElseBuilder<unknown>
+	| SwitchCaseBuilder<unknown>;
 
 /**
  * Fluent builder for IF nodes with onTrue/onFalse methods.

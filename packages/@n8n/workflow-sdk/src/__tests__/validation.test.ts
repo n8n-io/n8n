@@ -2,6 +2,7 @@ import { validateWorkflow, ValidationError } from '../validation';
 import { workflow } from '../workflow-builder';
 import { node, trigger, sticky } from '../node-builder';
 import { languageModel, tool } from '../subnode-builders';
+import type { NodeInstance } from '../types/base';
 
 describe('Validation', () => {
 	describe('validateWorkflow()', () => {
@@ -296,6 +297,111 @@ describe('Validation', () => {
 			expect(result.warnings.some((w) => w.code === 'MISSING_EXPRESSION_PREFIX')).toBe(true);
 			// Should NOT have AGENT_STATIC_PROMPT (there ARE expressions, just malformed)
 			expect(result.warnings.some((w) => w.code === 'AGENT_STATIC_PROMPT')).toBe(false);
+		});
+	});
+
+	describe('nested ifElse validation', () => {
+		it('should not flag nodes in nested ifElse branches as disconnected', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+
+			const outerIF = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: { name: 'Outer IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+
+			const innerIF = node({
+				type: 'n8n-nodes-base.if',
+				version: 2.2,
+				config: { name: 'Inner IF' },
+			}) as NodeInstance<'n8n-nodes-base.if', string, unknown>;
+
+			const innerTrueNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Inner True' },
+			});
+			const innerFalseNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Inner False' },
+			});
+			const outerFalseNode = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Outer False' },
+			});
+
+			// Nested ifElse: outer.onTrue(inner.onTrue(A).onFalse(B)).onFalse(C)
+			const wf = workflow('test', 'Test')
+				.add(t)
+				.then(
+					outerIF.onTrue!(innerIF.onTrue!(innerTrueNode).onFalse(innerFalseNode)).onFalse(
+						outerFalseNode,
+					),
+				);
+
+			// Test builder's validate() - this is what the user's script uses
+			const builderResult = wf.validate();
+			const disconnectedWarnings = builderResult.warnings.filter(
+				(w) => w.code === 'DISCONNECTED_NODE',
+			);
+			expect(disconnectedWarnings).toHaveLength(0);
+
+			// Test JSON-based validateWorkflow() as well
+			const jsonResult = validateWorkflow(wf);
+			const jsonDisconnectedWarnings = jsonResult.warnings.filter(
+				(w) => w.code === 'DISCONNECTED_NODE',
+			);
+			expect(jsonDisconnectedWarnings).toHaveLength(0);
+		});
+
+		it('should not flag nodes in nested switch cases as disconnected', () => {
+			const t = trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} });
+
+			const outerSwitch = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.2,
+				config: { name: 'Outer Switch' },
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+
+			const innerSwitch = node({
+				type: 'n8n-nodes-base.switch',
+				version: 3.2,
+				config: { name: 'Inner Switch' },
+			}) as NodeInstance<'n8n-nodes-base.switch', string, unknown>;
+
+			const innerCase0 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Inner Case 0' },
+			});
+			const innerCase1 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Inner Case 1' },
+			});
+			const outerCase1 = node({
+				type: 'n8n-nodes-base.noOp',
+				version: 1,
+				config: { name: 'Outer Case 1' },
+			});
+
+			// Nested switch: outer.onCase(0, inner.onCase(0, A).onCase(1, B)).onCase(1, C)
+			const wf = workflow('test', 'Test')
+				.add(t)
+				.then(
+					outerSwitch.onCase!(0, innerSwitch.onCase!(0, innerCase0).onCase(1, innerCase1)).onCase(
+						1,
+						outerCase1,
+					),
+				);
+
+			const builderResult = wf.validate();
+			const disconnectedWarnings = builderResult.warnings.filter(
+				(w) => w.code === 'DISCONNECTED_NODE',
+			);
+			expect(disconnectedWarnings).toHaveLength(0);
 		});
 	});
 });
