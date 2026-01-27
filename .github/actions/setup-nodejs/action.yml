@@ -57,9 +57,13 @@ runs:
     - name: Configure Turborepo Cache
       uses: rharkor/caching-for-turbo@cda201ff2b32699a2ae9f59704db029e3dde4fbd # v2.3.5
 
-    - name: Setup Docker Builder for Docker Cache
-      if: ${{ inputs.enable-docker-cache == 'true' }}
+    - name: Setup Docker Builder for Docker Cache (Blacksmith)
+      if: ${{ inputs.enable-docker-cache == 'true' && vars.RUNNER_PROVIDER != 'github' }}
       uses: useblacksmith/setup-docker-builder@53647ab5afe8827af5623b35bd4302eabd41619f # v1.2.0
+
+    - name: Setup Docker Builder (GitHub fallback)
+      if: ${{ inputs.enable-docker-cache == 'true' && vars.RUNNER_PROVIDER == 'github' }}
+      uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
     - name: Build Project
       if: ${{ inputs.build-command != '' }}

@@ -506,6 +506,17 @@ Team ownership mappings in `CODEOWNERS`:
 
 **`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads, full E2E coverage runs
 
+### Runner Provider Toggle
+
+The `RUNNER_PROVIDER` repository variable controls runner selection across workflows:
+
+| Value | Behavior |
+|-------|----------|
+| (unset) | Use Blacksmith runners (default) |
+| `github` | Use GitHub-hosted `ubuntu-latest` |
+
+**Note:** When set to `github`, all jobs use `ubuntu-latest` regardless of any runner inputs or defaults specified in reusable workflows. GitHub runners have fewer vCPUs (2 vs 4), so jobs may run slower.
+
 ---
 
 ## Security

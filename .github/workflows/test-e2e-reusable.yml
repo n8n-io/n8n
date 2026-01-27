@@ -87,7 +87,7 @@ env:
 
 jobs:
   matrix:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     outputs:
       matrix: ${{ steps.generate.outputs.matrix }}
     steps:
@@ -107,7 +107,7 @@ jobs:
 
   test:
     needs: matrix
-    runs-on: ${{ inputs.runner }}
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || inputs.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
