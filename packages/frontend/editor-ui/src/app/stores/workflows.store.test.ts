@@ -220,13 +220,11 @@ describe('useWorkflowsStore', () => {
 							name: 'Start',
 							type: 'n8n-nodes-base.manualTrigger',
 						}),
-						{
-							...createTestNode({
-								id: 'fetch',
-								name: 'Fetch',
-								type: 'n8n-nodes-base.httpRequest',
-								position: [300, 0],
-							}),
+						createTestNode({
+							id: 'fetch',
+							name: 'Fetch',
+							type: 'n8n-nodes-base.httpRequest',
+							position: [300, 0],
 							issues: {
 								parameters: {
 									url: ['Missing URL', 'Invalid URL.'],
@@ -235,28 +233,24 @@ describe('useWorkflowsStore', () => {
 									httpBasicAuth: ['Credentials not set'],
 								},
 							},
-						},
-						{
-							...createTestNode({
-								id: 'orphan',
-								name: 'Disconnected',
-								position: [0, 400],
-							}),
+						}),
+						createTestNode({
+							id: 'orphan',
+							name: 'Disconnected',
+							position: [0, 400],
 							issues: {
 								parameters: { field: ['Should be ignored'] },
 							},
-						},
-						{
-							...createTestNode({
-								id: 'disabled',
-								name: 'Disabled Node',
-								disabled: true,
-								position: [0, 600],
-							}),
+						}),
+						createTestNode({
+							id: 'disabled',
+							name: 'Disabled Node',
+							disabled: true,
+							position: [0, 600],
 							issues: {
 								parameters: { field: ['Disabled issue'] },
 							},
-						},
+						}),
 					],
 					connections,
 				}),

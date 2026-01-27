@@ -226,7 +226,7 @@ export function createTestWorkflow({
 	};
 }
 
-export function createTestNode(node: Partial<INode> = {}): INode {
+export function createTestNode(node: Partial<INodeUi> = {}): INodeUi {
 	return {
 		id: uuid(),
 		name: 'Node',
