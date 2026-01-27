@@ -13,7 +13,7 @@ from src.constants import (
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_NAME_MANGLED_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
-    ERROR_DANGEROUS_FORMAT_STRING,
+    ERROR_DANGEROUS_STRING_PATTERN,
     BLOCKED_ATTRIBUTES,
     BLOCKED_NAMES,
 )
@@ -154,7 +154,7 @@ class SecurityValidator(ast.NodeVisitor):
                 attr = attr_match.group(1)
                 if attr in BLOCKED_ATTRIBUTES or attr in BLOCKED_NAMES:
                     self._add_violation(
-                        lineno, ERROR_DANGEROUS_FORMAT_STRING.format(attr=attr)
+                        lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=attr)
                     )
 
             # subscript access
@@ -162,7 +162,7 @@ class SecurityValidator(ast.NodeVisitor):
                 key = subscript_match.group(2)
                 if key in BLOCKED_ATTRIBUTES or key in BLOCKED_NAMES:
                     self._add_violation(
-                        lineno, ERROR_DANGEROUS_FORMAT_STRING.format(attr=key)
+                        lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=key)
                     )
 
     # ========== Validation ==========
