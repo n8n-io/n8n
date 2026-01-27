@@ -44,4 +44,5 @@ export const STORES = {
 	TEMPLATES_DATA_QUALITY: 'templatesDataQuality',
 	BANNERS: 'banners',
 	CONSENT: 'consent',
+	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
 } as const;
