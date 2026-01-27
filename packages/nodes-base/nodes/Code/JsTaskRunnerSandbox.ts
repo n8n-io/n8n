@@ -18,7 +18,6 @@ const JS_TEXT_KEYS: TextKeys = {
  */
 export class JsTaskRunnerSandbox {
 	constructor(
-		private readonly jsCode: string,
 		private readonly workflowMode: WorkflowExecuteMode,
 		private readonly executeFunctions: Pick<
 			IExecuteFunctions,
@@ -28,13 +27,13 @@ export class JsTaskRunnerSandbox {
 		private readonly additionalProperties: Record<string, unknown> = {},
 	) {}
 
-	async runCodeAllItems(): Promise<INodeExecutionData[]> {
+	async runCodeAllItems(code: string): Promise<INodeExecutionData[]> {
 		const itemIndex = 0;
 
 		const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
 			'javascript',
 			{
-				code: this.jsCode,
+				code,
 				nodeMode: 'runOnceForAllItems',
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
@@ -54,13 +53,13 @@ export class JsTaskRunnerSandbox {
 		);
 	}
 
-	async runCodeForTool(): Promise<unknown> {
+	async runCodeForTool(code: string): Promise<unknown> {
 		const itemIndex = 0;
 
 		const executionResult = await this.executeFunctions.startJob(
 			'javascript',
 			{
-				code: this.jsCode,
+				code,
 				nodeMode: 'runOnceForAllItems',
 				workflowMode: this.workflowMode,
 				continueOnFail: this.executeFunctions.continueOnFail(),
@@ -76,8 +75,8 @@ export class JsTaskRunnerSandbox {
 		return executionResult.result;
 	}
 
-	async runCodeForEachItem(numInputItems: number): Promise<INodeExecutionData[]> {
-		validateNoDisallowedMethodsInRunForEach(this.jsCode, 0);
+	async runCodeForEachItem(code: string, numInputItems: number): Promise<INodeExecutionData[]> {
+		validateNoDisallowedMethodsInRunForEach(code, 0);
 
 		const itemIndex = 0;
 		const chunks = this.chunkInputItems(numInputItems);
@@ -87,7 +86,7 @@ export class JsTaskRunnerSandbox {
 			const executionResult = await this.executeFunctions.startJob<INodeExecutionData[]>(
 				'javascript',
 				{
-					code: this.jsCode,
+					code,
 					nodeMode: 'runOnceForEachItem',
 					workflowMode: this.workflowMode,
 					continueOnFail: this.executeFunctions.continueOnFail(),
