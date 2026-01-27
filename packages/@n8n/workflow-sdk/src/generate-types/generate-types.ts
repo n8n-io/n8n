@@ -1542,7 +1542,6 @@ export function generateSharedFile(
 	lines.push(' * resource/operation combinations.');
 	lines.push(' */');
 	lines.push('');
-	lines.push('// @ts-nocheck - Generated file may have unused imports');
 	lines.push('');
 
 	// Helper function to check if property needs Expression import
@@ -1716,7 +1715,6 @@ export function generateDiscriminatorFile(
 	lines.push(` * Discriminator: ${comboDesc}`);
 	lines.push(' */');
 	lines.push('');
-	lines.push('// @ts-nocheck - Generated file may have unused imports');
 	lines.push('');
 
 	// Check what helper types we need
@@ -2146,7 +2144,6 @@ export function generateSingleVersionTypeFile(
 	}
 	lines.push(' */');
 	lines.push('');
-	lines.push('// @ts-nocheck - Generated file may have unused imports');
 	lines.push('');
 
 	// Helper function to check if a property type needs Expression import
@@ -2445,7 +2442,6 @@ export function generateNodeTypeFile(nodes: NodeTypeDescription | NodeTypeDescri
 	lines.push(generateNodeJSDoc(node));
 	lines.push('');
 	// Suppress unused variable warnings - some imports may be conditional
-	lines.push('// @ts-nocheck - Generated file may have unused imports');
 	lines.push('');
 
 	// Helper function to check if a property type needs Expression import
