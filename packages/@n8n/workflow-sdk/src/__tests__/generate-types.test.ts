@@ -21,6 +21,7 @@ interface NodeProperty {
 	type: string;
 	description?: string;
 	hint?: string;
+	builderHint?: string;
 	default?: unknown;
 	required?: boolean;
 	placeholder?: string;
@@ -563,6 +564,40 @@ describe('generate-types', () => {
 			// Dynamic options should fall back to string
 			expect(result).toBe('string | Expression<string>');
 		});
+
+		it('should include builderHint in nested fixedCollection properties', () => {
+			const prop: NodeProperty = {
+				name: 'rule',
+				displayName: 'Trigger Rules',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				options: [
+					{
+						displayName: 'Trigger Interval',
+						name: 'interval',
+						values: [
+							{
+								displayName: 'Trigger Interval',
+								name: 'field',
+								type: 'options',
+								description: 'Select the interval type',
+								builderHint: 'You can add multiple intervals to trigger at different times.',
+								options: [
+									{ name: 'Seconds', value: 'seconds' },
+									{ name: 'Minutes', value: 'minutes' },
+								],
+								default: 'minutes',
+							},
+						],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			// Should include @builderHint in the JSDoc for nested property
+			expect(result).toContain('@builderHint');
+			expect(result).toContain('You can add multiple intervals');
+		});
 	});
 
 	// =========================================================================
@@ -1012,6 +1047,37 @@ describe('generate-types', () => {
 			expect(result).toContain('resource: ["contact", "deal"]');
 			expect(result).toContain('@displayOptions.hide');
 			expect(result).toContain('operation: ["delete"]');
+		});
+
+		it('should include builderHint in JSDoc when provided', () => {
+			const prop: NodeProperty = {
+				name: 'interval',
+				displayName: 'Trigger Interval',
+				type: 'fixedCollection',
+				description: 'Configure when the workflow triggers',
+				builderHint:
+					'You can add multiple intervals to trigger at different times. Use Custom (Cron) for more specific scheduling patterns.',
+				default: {},
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// Should include builderHint with @builderHint tag
+			expect(result).toContain('@builderHint You can add multiple intervals');
+			expect(result).toContain('Use Custom (Cron) for more specific scheduling patterns.');
+		});
+
+		it('should escape HTML in builderHint text', () => {
+			const prop: NodeProperty = {
+				name: 'customCode',
+				displayName: 'Custom Code',
+				type: 'string',
+				description: 'Custom code to execute',
+				builderHint: 'See <a href="https://docs.example.com">documentation</a> for examples',
+				default: '',
+			};
+			const result = generateTypes.generatePropertyJSDoc(prop);
+			// Should escape HTML in builderHint
+			expect(result).toContain('@builderHint');
+			expect(result).toContain('&lt;a href=');
 		});
 	});
 
