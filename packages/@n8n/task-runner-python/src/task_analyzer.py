@@ -22,6 +22,8 @@ CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
 
+FORMAT_FIELD_PATTERN = re.compile(r"\{([^}]*)\}")
+
 
 class SecurityValidator(ast.NodeVisitor):
     """AST visitor that enforces import allowlists and blocks dangerous attribute access."""
@@ -143,12 +145,10 @@ class SecurityValidator(ast.NodeVisitor):
     def _check_format_string(self, s: str, lineno: int) -> None:
         """Check if a string contains format patterns that access blocked attributes."""
 
-        format_field_pattern = re.compile(r"\{([^}]*)\}")
-
         # escaped braces produce literal braces, not format fields
         s = s.replace("{{", "").replace("}}", "")
 
-        for match in format_field_pattern.finditer(s):
+        for match in FORMAT_FIELD_PATTERN.finditer(s):
             field = match.group(1)
 
             # attribute access
