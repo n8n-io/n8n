@@ -1,4 +1,5 @@
 import {
+	NodeOperationError,
 	updateDisplayOptions,
 	type IExecuteSingleFunctions,
 	type IN8nHttpFullResponse,
@@ -102,9 +103,13 @@ const properties: INodeProperties[] = [
 							const site = this.getNodeParameter('site', undefined, {
 								extractValue: true,
 							}) as string;
-							const drive = this.getNodeParameter('drive', undefined, {
+							const driveParameter = this.getNodeParameter('drive', undefined, {
 								extractValue: true,
-							}) as string;
+							});
+							if (typeof driveParameter !== 'string') {
+								throw new NodeOperationError(this.getNode(), 'Drive parameter must be a string');
+							}
+							const drive = driveParameter;
 							const file = this.getNodeParameter('file', undefined, {
 								extractValue: true,
 							}) as string;

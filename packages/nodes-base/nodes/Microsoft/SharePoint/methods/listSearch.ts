@@ -88,7 +88,11 @@ export async function getFiles(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
-	const drive = this.getNodeParameter('drive', undefined, { extractValue: true }) as string;
+	const driveParameter = this.getNodeParameter('drive', undefined, { extractValue: true });
+	if (typeof driveParameter !== 'string') {
+		throw new Error('Drive parameter must be a string');
+	}
+	const drive = driveParameter;
 	const folder = this.getNodeParameter('folder', undefined, { extractValue: true }) as string;
 
 	let response: any;
@@ -141,7 +145,11 @@ export async function getFolders(
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
-	const drive = this.getNodeParameter('drive', undefined, { extractValue: true }) as string;
+	const driveParameter = this.getNodeParameter('drive', undefined, { extractValue: true });
+	if (typeof driveParameter !== 'string') {
+		throw new Error('Drive parameter must be a string');
+	}
+	const drive = driveParameter;
 
 	let response: any;
 	if (paginationToken) {
