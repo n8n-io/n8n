@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Not, Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager, IsNull, LessThan, Repository } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
 
@@ -127,35 +127,9 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			// Build where conditions
 			const whereConditions: Record<string, unknown> = { workflowId };
 
-			// Only add publishedVersionId filter if it's not undefined
-			if (publishedVersionId !== undefined) {
-				whereConditions.publishedVersionId =
-					publishedVersionId === null ? IsNull() : publishedVersionId;
-			}
+			whereConditions.publishedVersionId = publishedVersionId ?? IsNull();
 
 			const deleteResult = await tx.delete(WorkflowDependency, whereConditions);
-
-			return (
-				deleteResult.affected !== undefined &&
-				deleteResult.affected !== null &&
-				deleteResult.affected > 0
-			);
-		});
-	}
-
-	/**
-	 * Remove all published version dependencies for a given workflow.
-	 * This is useful when re-publishing a workflow with a new version.
-	 *
-	 * @param workflowId The ID of the workflow
-	 * @returns Whether any dependencies were removed
-	 */
-	async removePublishedDependenciesForWorkflow(workflowId: string): Promise<boolean> {
-		return await this.manager.transaction(async (tx) => {
-			const deleteResult = await tx.delete(WorkflowDependency, {
-				workflowId,
-				publishedVersionId: Not(IsNull()),
-			});
 
 			return (
 				deleteResult.affected !== undefined &&
