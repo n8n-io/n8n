@@ -1280,11 +1280,14 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 				const connections = graphNode.instance.getConnections();
 				for (const conn of connections) {
 					// Get the target node name
-					const targetName =
-						typeof conn.target === 'object' && 'name' in conn.target
-							? conn.target.name
-							: String(conn.target);
-					nodesWithIncoming.add(targetName);
+					// For NodeChains, use head.name (entry point of the chain)
+					if (isNodeChain(conn.target)) {
+						nodesWithIncoming.add(conn.target.head.name);
+					} else if (typeof conn.target === 'object' && 'name' in conn.target) {
+						nodesWithIncoming.add(conn.target.name);
+					} else {
+						nodesWithIncoming.add(String(conn.target));
+					}
 				}
 			}
 		}

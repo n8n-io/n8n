@@ -156,6 +156,21 @@ describe('Validation', () => {
 			// All nodes should be connected - no DISCONNECTED_NODE warnings
 			expect(disconnectedWarnings).toHaveLength(0);
 		});
+
+		it('should not flag nodes in chained .to() as disconnected when using builder validate', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const node1 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'Node1' } });
+			const node2 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'Node2' } });
+			const node3 = node({ type: 'n8n-nodes-base.set', version: 3, config: { name: 'Node3' } });
+
+			// Chained .to() pattern: t -> node1 -> node2 -> node3
+			const wf = workflow('test', 'Test').add(t.to(node1.to(node2.to(node3))));
+
+			// Use wf.validate() - the builder's method that the script uses
+			const result = wf.validate();
+			const disconnectedWarnings = result.warnings.filter((w) => w.code === 'DISCONNECTED_NODE');
+			expect(disconnectedWarnings).toHaveLength(0);
+		});
 	});
 
 	describe('AGENT_STATIC_PROMPT with malformed expressions', () => {
