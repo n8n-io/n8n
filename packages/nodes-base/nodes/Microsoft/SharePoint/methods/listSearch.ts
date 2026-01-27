@@ -14,7 +14,11 @@ export async function getDrives(
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
+	const siteParameter = this.getNodeParameter('site', undefined, { extractValue: true });
+	if (typeof siteParameter !== 'string') {
+		throw new Error('Site parameter must be a string');
+	}
+	const site = siteParameter;
 
 	const results: INodeListSearchItems[] = [];
 
