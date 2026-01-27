@@ -66,8 +66,8 @@ function onUpdate(value: boolean | 'indeterminate') {
 <style lang="css" module>
 .checkbox {
 	display: inline-flex;
-	align-items: center;
 	flex-direction: row;
+	gap: var(--spacing--2xs);
 	cursor: pointer;
 	color: white;
 	&[data-disabled] {
@@ -76,10 +76,11 @@ function onUpdate(value: boolean | 'indeterminate') {
 }
 
 .checkboxRoot {
+	position: relative;
 	background: transparent;
 	width: 16px;
 	height: 16px;
-	border-radius: 4px;
+	border-radius: var(--radius);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -107,18 +108,20 @@ function onUpdate(value: boolean | 'indeterminate') {
 }
 
 .checkboxIndicator {
+	position: absolute;
 	display: flex;
 	align-items: center;
-	flex-direction: row;
+	justify-content: center;
 }
 
 .label {
-	padding-left: 15px;
-	font-size: 15px;
-	line-height: 1;
-	cursor: inherit;
-	color: var(--color--text--shade-1);
 	flex: 1;
+	padding-top: 1px;
+	font-size: var(--font-size--sm);
+	line-height: 1;
+	color: var(--color--text--shade-1);
+	cursor: inherit;
+
 	&[data-disabled] {
 		color: var(--color--text--tint-1);
 	}

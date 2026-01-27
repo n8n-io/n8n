@@ -4,6 +4,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
+import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { IUser } from 'n8n-workflow';
 
@@ -18,6 +19,7 @@ export function useWorkflowsEmptyState() {
 	const projectsStore = useProjectsStore();
 	const sourceControlStore = useSourceControlStore();
 	const recommendedTemplatesStore = useRecommendedTemplatesStore();
+	const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 
 	const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 	const personalProject = computed(() => projectsStore.personalProject);
@@ -39,6 +41,24 @@ export function useWorkflowsEmptyState() {
 			!readOnlyEnv.value &&
 			projectPermissions.value.workflow.create
 		);
+	});
+
+	const showBuilderPrompt = computed(() => {
+		return (
+			emptyStateBuilderPromptStore.isFeatureEnabled &&
+			!readOnlyEnv.value &&
+			projectPermissions.value.workflow.create
+		);
+	});
+
+	const builderHeading = computed(() => {
+		const firstName = currentUser.value.firstName;
+		if (firstName) {
+			return i18n.baseText('workflows.empty.heading.builder', {
+				interpolate: { name: firstName },
+			});
+		}
+		return i18n.baseText('workflows.empty.heading.builder.userNotSetup');
 	});
 
 	const emptyStateHeading = computed(() => {
@@ -72,7 +92,9 @@ export function useWorkflowsEmptyState() {
 	});
 
 	return {
+		showBuilderPrompt,
 		showRecommendedTemplatesInline,
+		builderHeading,
 		emptyStateHeading,
 		emptyStateDescription,
 		canCreateWorkflow,

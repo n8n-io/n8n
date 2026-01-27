@@ -8,6 +8,7 @@ import { CredentialsEntity } from './credentials-entity';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
+import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
@@ -44,6 +45,7 @@ export {
 	BinaryDataFile,
 	SourceTypeSchema,
 	type SourceType,
+	type ExecutionDataStorageLocation,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,

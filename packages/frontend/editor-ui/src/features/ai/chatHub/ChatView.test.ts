@@ -58,8 +58,21 @@ vi.mock('@/app/stores/settings.store', () => ({
 		moduleSettings: {
 			'chat-hub': createChatHubModuleSettings(),
 		},
+		isChatFeatureEnabled: true,
 	}),
 }));
+
+const { mockHasRole } = vi.hoisted(() => ({
+	mockHasRole: vi.fn(() => true),
+}));
+
+vi.mock('@/app/utils/rbac/checks', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as object),
+		hasRole: mockHasRole,
+	};
+});
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
@@ -117,7 +130,11 @@ describe('ChatView', () => {
 		mockRoute.params = {};
 		mockRoute.query = {};
 		mockRouterPush.mockClear();
+		mockHasRole.mockClear();
+		mockHasRole.mockReturnValue(true);
 		localStorage.clear();
+		// Skip welcome screen in tests by marking user as having had a conversation before
+		localStorage.setItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE', 'true');
 
 		vi.mocked(chatApi.sendMessageApi).mockClear();
 		vi.mocked(chatApi.sendMessageApi).mockImplementation((_ctx, _, onMessageUpdated_, onDone_) => {
@@ -214,7 +231,13 @@ describe('ChatView', () => {
 		it('displays greeting message', async () => {
 			const rendered = renderComponent({ pinia });
 
-			expect(await rendered.findByText('Hello, Test!')).toBeInTheDocument();
+			const greetingText = await rendered.findByText('Start a chat with');
+			expect(greetingText).toBeInTheDocument();
+
+			// Find the agent name within the greetings container
+			const greetingsContainer = greetingText.closest('.greetings') as HTMLElement;
+			expect(greetingsContainer).not.toBeNull();
+			expect(within(greetingsContainer).getByText('GPT-4')).toBeInTheDocument();
 		});
 
 		it('preselects agent from agentId query parameter', async () => {
@@ -280,6 +303,40 @@ describe('ChatView', () => {
 
 			expect(await rendered.findByText('select a model')).toBeInTheDocument();
 			expect(await rendered.findByRole('textbox')).toBeDisabled();
+		});
+
+		it('displays welcome screen for first-time users and allows dismissing it', async () => {
+			const user = userEvent.setup();
+
+			// Make welcome screen visible for first-time user
+			localStorage.removeItem('user-123_N8N_CHAT_HUB_HAD_CONVERSATION_BEFORE');
+			mockHasRole.mockReturnValue(false);
+
+			const rendered = renderComponent({ pinia });
+
+			// Manually trigger sessions fetch since the sidebar (which normally does this) isn't rendered in this test
+			const { useChatStore } = await import('./chat.store');
+			const chatStore = useChatStore();
+			await chatStore.fetchSessions(true);
+
+			// Verify welcome screen is displayed
+			expect(await rendered.findByText('Your agents, any model')).toBeInTheDocument();
+			expect(
+				rendered.getByText("One place to talk to everything you've built or connected"),
+			).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-workflow-agents')).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-personal-agents')).toBeInTheDocument();
+			expect(rendered.getByTestId('welcome-card-base-models')).toBeInTheDocument();
+
+			// Verify chat input is not visible while welcome screen is shown
+			expect(rendered.queryByRole('textbox')).not.toBeInTheDocument();
+
+			// Click "Start new chat" to dismiss welcome screen
+			await user.click(rendered.getByTestId('welcome-start-new-chat'));
+
+			// Verify chat interface is now shown
+			expect(await rendered.findByRole('textbox')).toBeInTheDocument();
+			expect(rendered.queryByText('Your agents, any model')).not.toBeInTheDocument();
 		});
 	});
 

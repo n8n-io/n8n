@@ -1,4 +1,3 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { GlobalConfig } from '@n8n/config';
 import { User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -33,7 +32,8 @@ export class McpService {
 		private readonly projectService: ProjectService,
 	) {}
 
-	getServer(user: User) {
+	async getServer(user: User) {
+		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 		const server = new McpServer({
 			name: 'n8n MCP Server',
 			version: '1.0.0',

@@ -28,6 +28,7 @@ export interface N8nPromptInputProps {
 	showAskOwnerTooltip?: boolean;
 	refocusAfterSend?: boolean;
 	autofocus?: boolean;
+	buttonLabel?: string;
 }
 
 const INFINITE_CREDITS = -1;
@@ -46,6 +47,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	showAskOwnerTooltip: false,
 	refocusAfterSend: false,
 	autofocus: false,
+	buttonLabel: undefined,
 });
 
 const emit = defineEmits<{
@@ -384,6 +386,7 @@ defineExpose({
 							data-test-id="send-message-button"
 							:streaming="streaming"
 							:disabled="sendDisabled"
+							:label="buttonLabel"
 							@send="handleSubmit"
 							@stop="handleStop"
 						/>
@@ -422,6 +425,7 @@ defineExpose({
 							data-test-id="send-message-button"
 							:streaming="streaming"
 							:disabled="sendDisabled"
+							:label="buttonLabel"
 							@send="handleSubmit"
 							@stop="handleStop"
 						/>

@@ -1,4 +1,3 @@
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Head, Post, RootLevelController } from '@n8n/decorators';
@@ -109,8 +108,11 @@ export class McpController {
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			const server = this.mcpService.getServer(req.user);
-			const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
+			const { StreamableHTTPServerTransport } = await import(
+				'@modelcontextprotocol/sdk/server/streamableHttp.js'
+			);
+			const server = await this.mcpService.getServer(req.user);
+			const transport = new StreamableHTTPServerTransport({
 				sessionIdGenerator: undefined,
 			});
 			res.on('close', () => {

@@ -21,9 +21,9 @@ import {
 import { nodeViewEventBus } from '@/app/event-bus';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 import TimeAgo from '../TimeAgo.vue';
+import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 const props = defineProps<{
-	readOnly?: boolean;
 	id: IWorkflowDb['id'];
 	tags: IWorkflowDb['tags'];
 	name: IWorkflowDb['name'];
@@ -36,22 +36,9 @@ const props = defineProps<{
 
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 
-const readOnlyForPublish = computed(() => {
-	if (props.isNewWorkflow) return props.readOnly;
-	return (
-		props.readOnly ||
-		props.isArchived ||
-		!props.workflowPermissions.update ||
-		!props.workflowPermissions.publish
-	);
-});
-
-const shouldHidePublishButton = computed(() => {
-	return props.readOnly || props.isArchived || !props.workflowPermissions.update;
-});
-
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const collaborationStore = useCollaborationStore();
 const i18n = useI18n();
 const router = useRouter();
 
@@ -102,6 +89,20 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 	return hasChanges ? 'published-with-changes' : 'published-no-changes';
 });
 
+const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
+const hasUpdatePermission = computed(() => props.workflowPermissions.update);
+const hasPublishPermission = computed(() => props.workflowPermissions.publish);
+
+const shouldHidePublishButton = computed(() => {
+	if (props.isNewWorkflow) return false;
+	return props.isArchived || (!hasUpdatePermission.value && !hasPublishPermission.value);
+});
+
+const shouldDisablePublishButton = computed(() => {
+	if (props.isNewWorkflow) return true;
+	return collaborationReadOnly.value || !hasPublishPermission.value;
+});
+
 /**
  * Cancel autosave if scheduled or wait for it to finish if in progress
  * Save immediately if autosave idle or cancelled
@@ -149,7 +150,7 @@ const onPublishButtonClick = async () => {
 
 const publishButtonConfig = computed(() => {
 	// Handle permission-denied state first
-	if (!props.workflowPermissions.publish) {
+	if (!hasPublishPermission.value) {
 		const defaultConfigForNoPermission = {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
@@ -308,7 +309,7 @@ defineExpose({
 				</template>
 				<N8nButton
 					:loading="autoSaveForPublish"
-					:disabled="!publishButtonConfig.enabled || readOnlyForPublish"
+					:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
 					type="secondary"
 					data-test-id="workflow-open-publish-modal-button"
 					@click="onPublishButtonClick"
@@ -341,7 +342,6 @@ defineExpose({
 			ref="actionsMenu"
 			:workflow-permissions="workflowPermissions"
 			:is-new-workflow="isNewWorkflow"
-			:read-only="props.readOnly"
 			:is-archived="isArchived"
 			:name="name"
 			:tags="tags"

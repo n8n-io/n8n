@@ -15,6 +15,10 @@ export class StorageConfig {
 	@Env('N8N_EXECUTION_DATA_STORAGE_MODE', modeSchema)
 	mode: z.infer<typeof modeSchema> = 'database';
 
+	get modeTag(): 'db' | 'fs' {
+		return this.mode === 'database' ? 'db' : 'fs';
+	}
+
 	/** Base path for filesystem storage. Defaults to `~/.n8n/storage`. */
 	@Env('N8N_STORAGE_PATH')
 	storagePath: string;

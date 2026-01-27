@@ -2,6 +2,7 @@
  * Webhook utilities for sending evaluation results.
  */
 
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import dns from 'node:dns/promises';
 
 import type { RunSummary } from '../harness/harness-types';
@@ -13,6 +14,34 @@ import type { EvalLogger } from '../harness/logger';
 function maskWebhookUrl(webhookUrl: string): string {
 	const url = new URL(webhookUrl);
 	return `${url.protocol}//${url.hostname}${url.port ? `:${url.port}` : ''}/***`;
+}
+
+/**
+ * Generate HMAC-SHA256 signature for webhook payload.
+ * Format: sha256=<hex-encoded-signature>
+ */
+export function generateWebhookSignature(payload: string, secret: string): string {
+	const signature = createHmac('sha256', secret).update(payload, 'utf8').digest('hex');
+	return `sha256=${signature}`;
+}
+
+/**
+ * Verify HMAC-SHA256 signature of a webhook payload.
+ * Uses timing-safe comparison to prevent timing attacks.
+ */
+export function verifyWebhookSignature(
+	payload: string,
+	signature: string,
+	secret: string,
+): boolean {
+	const expectedSignature = generateWebhookSignature(payload, secret);
+
+	// Ensure both signatures have same length before comparison
+	if (signature.length !== expectedSignature.length) {
+		return false;
+	}
+
+	return timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
 }
 
 /**
@@ -148,18 +177,33 @@ export async function validateWebhookUrlWithDns(webhookUrl: string): Promise<voi
 	}
 }
 
+/** Header name for HMAC signature */
+export const WEBHOOK_SIGNATURE_HEADER = 'X-Signature-256';
+
+/** Header name for timestamp (for replay attack prevention) */
+export const WEBHOOK_TIMESTAMP_HEADER = 'X-Timestamp';
+
 /**
  * Send evaluation results to a webhook URL.
+ *
+ * @param params.webhookUrl - The URL to POST results to
+ * @param params.webhookSecret - Optional secret for HMAC signature (recommended for production)
+ * @param params.summary - Evaluation run summary
+ * @param params.dataset - Dataset name
+ * @param params.suite - Evaluation suite name
+ * @param params.metadata - Additional metadata to include
+ * @param params.logger - Logger instance
  */
 export async function sendWebhookNotification(params: {
 	webhookUrl: string;
+	webhookSecret?: string;
 	summary: RunSummary;
 	dataset: string;
 	suite: string;
 	metadata: Record<string, unknown>;
 	logger: EvalLogger;
 }): Promise<void> {
-	const { webhookUrl, summary, dataset, suite, metadata, logger } = params;
+	const { webhookUrl, webhookSecret, summary, dataset, suite, metadata, logger } = params;
 
 	await validateWebhookUrlWithDns(webhookUrl);
 
@@ -183,15 +227,32 @@ export async function sendWebhookNotification(params: {
 			: undefined,
 	};
 
+	const body = JSON.stringify(payload);
+
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+	};
+
+	if (webhookSecret) {
+		const timestamp = Date.now().toString();
+		const signaturePayload = `${timestamp}.${body}`;
+		headers[WEBHOOK_SIGNATURE_HEADER] = generateWebhookSignature(signaturePayload, webhookSecret);
+		headers[WEBHOOK_TIMESTAMP_HEADER] = timestamp;
+		logger.info('Webhook request will be signed with HMAC-SHA256');
+	} else {
+		logger.warn(
+			'No webhook secret provided - request will not be signed. ' +
+				'Consider using --webhook-secret for production use.',
+		);
+	}
+
 	// Log masked URL to avoid exposing potential tokens in path/query
 	logger.info(`Sending results to webhook: ${maskWebhookUrl(webhookUrl)}`);
 
 	const response = await fetch(webhookUrl, {
 		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify(payload),
+		headers,
+		body,
 	});
 
 	if (!response.ok) {

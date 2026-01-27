@@ -48,7 +48,7 @@ catalog:
   fast-glob: 3.2.12
   fastest-levenshtein: 1.0.16
   flatted: 3.2.7
-  form-data: 4.0.0
+  form-data: 4.0.4
   http-proxy-agent: 7.0.2
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
@@ -56,7 +56,7 @@ catalog:
   jsonrepair: 3.13.1
   jsonwebtoken: 9.0.3
   kafkajs: 2.2.4
-  lodash: 4.17.21
+  lodash: 4.17.23
   luxon: 3.4.4
   mime-types: 3.0.2
   mysql2: 3.15.0

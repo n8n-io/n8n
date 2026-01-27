@@ -4,7 +4,14 @@ import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndi
 import type { AgentIconOrEmoji, ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import {
+	computed,
+	onBeforeMount,
+	ref,
+	useTemplateRef,
+	watch,
+	type ComponentPublicInstance,
+} from 'vue';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel, splitMarkdownIntoChunks } from '@/features/ai/chatHub/chat.utils';
@@ -15,6 +22,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
+import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
 interface MergedAttachment {
 	isNew: boolean;
@@ -32,7 +40,6 @@ const {
 	minHeight,
 	cachedAgentDisplayName,
 	cachedAgentIcon,
-	containerWidth,
 } = defineProps<{
 	message: ChatMessage;
 	compact: boolean;
@@ -45,7 +52,6 @@ const {
 	 * minHeight allows scrolling agent's response to the top while it is being generated
 	 */
 	minHeight?: number;
-	containerWidth: number;
 }>();
 
 const emit = defineEmits<{
@@ -67,6 +73,24 @@ const removedExistingIndices = ref<Set<number>>(new Set());
 const fileInputRef = useTemplateRef('fileInputRef');
 const textareaRef = useTemplateRef('textarea');
 const messageContent = computed(() => message.content);
+const markdownChunkRefs = ref<
+	Array<ComponentPublicInstance<{
+		hoveredCodeBlockActions: HTMLElement | null;
+		getHoveredCodeBlockContent: () => string | undefined;
+	}> | null>
+>([]);
+
+const activeCodeBlockTeleport = computed(() => {
+	for (const chunkRef of markdownChunkRefs.value) {
+		if (chunkRef?.hoveredCodeBlockActions) {
+			const content = chunkRef.getHoveredCodeBlockContent();
+			if (content) {
+				return { target: chunkRef.hoveredCodeBlockActions, content };
+			}
+		}
+	}
+	return null;
+});
 
 const messageChunks = computed(() => {
 	// Handle error case with no content
@@ -250,7 +274,6 @@ onBeforeMount(() => {
 		]"
 		:style="{
 			minHeight: minHeight ? `${minHeight}px` : undefined,
-			'--container--width': `${containerWidth}px`,
 		}"
 		:data-message-id="message.id"
 		:data-test-id="`chat-message-${message.id}`"
@@ -327,14 +350,22 @@ onBeforeMount(() => {
 							:href="attachment.downloadUrl"
 						/>
 					</div>
-					<div v-if="message.type === 'human'">{{ message.content }}</div>
-					<ChatMarkdownChunk
-						v-for="(chunk, index) in messageChunks"
-						v-else
-						:key="index"
-						:source="chunk"
-						:container-width="containerWidth"
-					/>
+					<div v-if="message.type === 'human'">
+						{{ message.content }}
+					</div>
+					<div v-else :class="$style.markdownContent">
+						<ChatMarkdownChunk
+							v-for="(chunk, index) in messageChunks"
+							:key="index"
+							:ref="
+								(el) => (markdownChunkRefs[index] = el as (typeof markdownChunkRefs.value)[number])
+							"
+							:source="chunk"
+						/>
+						<Teleport v-if="activeCodeBlockTeleport" :to="activeCodeBlockTeleport.target">
+							<CopyButton :content="activeCodeBlockTeleport.content" />
+						</Teleport>
+					</div>
 				</div>
 				<ChatTypingIndicator v-if="message.status === 'running'" :class="$style.typingIndicator" />
 				<ChatMessageActions
@@ -353,11 +384,23 @@ onBeforeMount(() => {
 		</div>
 	</div>
 </template>
-
 <style lang="scss" module>
 .message {
 	position: relative;
 	scroll-margin-block: var(--spacing--sm);
+}
+
+.markdownContent {
+	> *:last-child > *:last-child {
+		margin-bottom: 0;
+	}
+	> *:first-child > *:first-child {
+		margin-top: 0;
+	}
+}
+
+.codeBlockActions > * {
+	margin-top: -2px;
 }
 
 .avatar {
@@ -382,14 +425,12 @@ onBeforeMount(() => {
 .content {
 	display: flex;
 	flex-direction: column;
-	align-items: stretch;
 }
 
 .attachments {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	padding-bottom: var(--spacing--2xs);
 
 	.chatMessage & {
 		margin-top: var(--spacing--xs);
@@ -399,17 +440,20 @@ onBeforeMount(() => {
 .chatMessage {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--2xs);
 	position: relative;
 	overflow-wrap: break-word;
 	font-size: var(--font-size--sm);
 	line-height: 1.5;
 
 	.user & {
-		max-width: fit-content;
 		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 		white-space-collapse: preserve-breaks;
+		width: fit-content;
+		font-size: var(--font-size--md);
+		line-height: var(--line-height--xl);
 	}
 }
 
@@ -419,6 +463,11 @@ onBeforeMount(() => {
 	background-color: var(--color--danger--tint-4);
 	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
 	color: var(--color--danger);
+
+	p,
+	a {
+		color: var(--color--danger);
+	}
 }
 
 .actions {

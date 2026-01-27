@@ -341,24 +341,6 @@ export function isLlmProviderModel(
 	return isLlmProvider(model?.provider);
 }
 
-export function findOneFromModelsResponse(
-	response: ChatModelsResponse,
-	providerSettings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>,
-): ChatModelDto | undefined {
-	for (const provider of chatHubProviderSchema.options) {
-		const settings = isLlmProvider(provider) ? providerSettings[provider] : undefined;
-		const availableModels = response[provider].models.filter(
-			(agent) => !settings || isAllowedModel(settings, agent.model),
-		);
-
-		if (availableModels.length > 0) {
-			return availableModels[0];
-		}
-	}
-
-	return undefined;
-}
-
 export function isAllowedModel(
 	{ enabled = true, allowedModels }: ChatProviderSettingsDto,
 	model: ChatHubConversationModel,
@@ -368,6 +350,35 @@ export function isAllowedModel(
 		(allowedModels.length === 0 ||
 			allowedModels.some((agent) => 'model' in model && agent.model === model.model))
 	);
+}
+
+export function findOneFromModelsResponse(
+	response: ChatModelsResponse,
+	providerSettings: Partial<Record<ChatHubLLMProvider, ChatProviderSettingsDto>>,
+): ChatModelDto | undefined {
+	for (const provider of chatHubProviderSchema.options) {
+		let bestModel: ChatModelDto | undefined;
+		let bestPriority = -Infinity;
+
+		const settings = isLlmProvider(provider) ? providerSettings[provider] : undefined;
+		const availableModels = response[provider].models.filter(
+			(agent) => !settings || isAllowedModel(settings, agent.model),
+		);
+
+		for (const model of availableModels) {
+			const priority = model.metadata.priority ?? 0;
+			if (priority > bestPriority) {
+				bestPriority = priority;
+				bestModel = model;
+			}
+		}
+
+		if (bestModel) {
+			return bestModel;
+		}
+	}
+
+	return undefined;
 }
 
 export function createSessionFromStreamingState(streaming: ChatStreamingState): ChatHubSessionDto {

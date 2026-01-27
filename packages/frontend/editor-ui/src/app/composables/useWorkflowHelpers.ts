@@ -22,7 +22,7 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
-	isToolType,
+	isHitlToolType,
 	NodeConnectionTypes,
 	NodeHelpers,
 	WEBHOOK_NODE_TYPE,
@@ -125,7 +125,12 @@ function resolveParameterImpl<T = IDataObject>(
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 		},
 		$vars: envVars,
-		$tool: isToolType(activeNode?.type) ? PLACEHOLDER_FILLED_AT_EXECUTION_TIME : undefined,
+		$tool: isHitlToolType(activeNode?.type)
+			? {
+					name: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					parameters: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				}
+			: undefined,
 
 		// deprecated
 		$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,

@@ -558,7 +558,7 @@ watch(connectionType, () => {
 		border: 1px solid var(--color--foreground--tint-1);
 	}
 
-	label {
+	> label {
 		display: inline-block;
 		padding: 0 0 var(--spacing--2xs);
 		font-size: var(--font-size--sm);

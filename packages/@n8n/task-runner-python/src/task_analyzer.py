@@ -1,5 +1,6 @@
 import ast
 import hashlib
+import re
 from collections import OrderedDict
 
 from src.errors import SecurityViolationError
@@ -12,6 +13,7 @@ from src.constants import (
     ERROR_DANGEROUS_ATTRIBUTE,
     ERROR_NAME_MANGLED_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
+    ERROR_DANGEROUS_STRING_PATTERN,
     BLOCKED_ATTRIBUTES,
     BLOCKED_NAMES,
 )
@@ -19,6 +21,8 @@ from src.constants import (
 CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
 CachedViolations = list[str]
 ValidationCache = OrderedDict[CacheKey, CachedViolations]
+
+FORMAT_FIELD_PATTERN = re.compile(r"\{([^}]*)\}")
 
 
 class SecurityValidator(ast.NodeVisitor):
@@ -127,6 +131,39 @@ class SecurityValidator(ast.NodeVisitor):
                 )
 
         self.generic_visit(node)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        """Detect string constants containing dangerous format patterns."""
+
+        if isinstance(node.value, str):
+            self._check_format_string(node.value, node.lineno)
+
+        self.generic_visit(node)
+
+    def _check_format_string(self, s: str, lineno: int) -> None:
+        """Check if a string contains format patterns that access blocked attributes."""
+
+        # escaped braces produce literal braces, not format fields
+        s = s.replace("{{", "").replace("}}", "")
+
+        for match in FORMAT_FIELD_PATTERN.finditer(s):
+            field = match.group(1)
+
+            # attribute access
+            for attr_match in re.finditer(r"\.(\w+)", field):
+                attr = attr_match.group(1)
+                if attr in BLOCKED_ATTRIBUTES or attr in BLOCKED_NAMES:
+                    self._add_violation(
+                        lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=attr)
+                    )
+
+            # subscript access
+            for subscript_match in re.finditer(r"\[(['\"]?)(\w+)\1\]", field):
+                key = subscript_match.group(2)
+                if key in BLOCKED_ATTRIBUTES or key in BLOCKED_NAMES:
+                    self._add_violation(
+                        lineno, ERROR_DANGEROUS_STRING_PATTERN.format(attr=key)
+                    )
 
     # ========== Validation ==========
 

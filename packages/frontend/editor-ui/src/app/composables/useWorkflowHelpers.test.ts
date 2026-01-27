@@ -9,12 +9,14 @@ import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
+	createMockNodeTypes,
 	createTestExpressionLocalResolveContext,
 	createTestNode,
 	createTestTaskData,
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
+	mockLoadedNodeType,
 } from '@/__tests__/mocks';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -25,7 +27,7 @@ import {
 import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
-import { SLACK_TRIGGER_NODE_TYPE } from '../constants';
+import { SLACK_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '../constants';
 import {
 	injectWorkflowState,
 	useWorkflowState,
@@ -1166,6 +1168,102 @@ describe(resolveParameter, () => {
 				f0: { foo: 777 },
 				f1: { foo: 777 },
 			});
+		});
+
+		it('should include $tool in additionalKeys for hitl tool node types', async () => {
+			const toolNodeType = 'n8n-nodes-base.someHitlTool';
+			const toolNodeTypes = createMockNodeTypes({
+				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			});
+
+			const result = await resolveParameter(
+				{
+					toolName: '={{ $tool.name }}',
+					toolParams: '={{ $tool.parameters }}',
+				},
+				{
+					localResolve: true,
+					workflow: createTestWorkflowObject({
+						nodes: [createTestNode({ name: 'toolNode', type: toolNodeType })],
+						nodeTypes: toolNodeTypes,
+					}),
+					execution: null,
+					nodeName: 'toolNode',
+					additionalKeys: {},
+				},
+			);
+
+			expect(result?.toolName).toBeDefined();
+			expect(result?.toolParams).toBeDefined();
+		});
+
+		it('should not include $tool in additionalKeys for non-tool node types', async () => {
+			const result = await resolveParameter(
+				{
+					toolCheck: '={{ $tool }}',
+				},
+				{
+					localResolve: true,
+					workflow: createTestWorkflowObject({
+						nodes: [createTestNode({ name: 'regularNode', type: SET_NODE_TYPE })],
+					}),
+					execution: null,
+					nodeName: 'regularNode',
+					additionalKeys: {},
+				},
+			);
+
+			expect(result?.toolCheck).toBeUndefined();
+		});
+
+		it('should resolve $tool.name expression for tool nodes', async () => {
+			const toolNodeType = 'n8n-nodes-base.someHitlTool';
+			const toolNodeTypes = createMockNodeTypes({
+				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			});
+
+			const result = await resolveParameter(
+				{
+					message: '={{ "The agent wants to call " + $tool.name }}',
+				},
+				{
+					localResolve: true,
+					workflow: createTestWorkflowObject({
+						nodes: [createTestNode({ name: 'hitlTool', type: toolNodeType })],
+						nodeTypes: toolNodeTypes,
+					}),
+					execution: null,
+					nodeName: 'hitlTool',
+					additionalKeys: {},
+				},
+			);
+
+			expect(result?.message).toContain('The agent wants to call');
+		});
+
+		it('should resolve $tool.parameters expression for hitl tool nodes', async () => {
+			const toolNodeType = 'n8n-nodes-base.someHitlTool';
+			const toolNodeTypes = createMockNodeTypes({
+				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			});
+
+			const result = await resolveParameter(
+				{
+					params: '={{ $tool.parameters }}',
+				},
+				{
+					localResolve: true,
+					workflow: createTestWorkflowObject({
+						nodes: [createTestNode({ name: 'someTool', type: toolNodeType })],
+						nodeTypes: toolNodeTypes,
+					}),
+					execution: null,
+					nodeName: 'someTool',
+					additionalKeys: {},
+				},
+			);
+
+			expect(result?.params).toBeDefined();
 		});
 	});
 });

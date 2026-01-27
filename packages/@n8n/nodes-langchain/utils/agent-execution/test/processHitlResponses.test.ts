@@ -18,6 +18,7 @@ const createHitlActionResponse = (
 	approved: boolean,
 	hitlMetadata: HitlMetadata,
 	actionId = 'action-1',
+	chatInput?: string,
 ): ExecuteNodeResult<RequestResponseMetadata> => ({
 	action: {
 		actionType: 'ExecutionNodeAction',
@@ -27,7 +28,7 @@ const createHitlActionResponse = (
 		id: actionId,
 		metadata: { hitl: hitlMetadata },
 	},
-	data: createMockTaskData({ approved }),
+	data: createMockTaskData({ approved, chatInput }),
 });
 
 const createNonHitlActionResponse = (
@@ -158,8 +159,22 @@ describe('processHitlResponses', () => {
 
 			const processedData = result.processedResponse.actionResponses[0].data?.data
 				?.ai_tool?.[0]?.[0]?.json as Record<string, unknown>;
-			expect(processedData.approved).toBe(false);
-			expect(processedData.response).toMatch(/reject/i);
+			expect(processedData.output).toMatch(/reject/i);
+		});
+		it('modifies response with denial message and chat input', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [createHitlActionResponse(false, hitlMetadata, 'action-1', 'chat input')],
+				metadata: {},
+			};
+
+			const result = processHitlResponses(response, 0);
+			expect(result.hasApprovedHitlTools).toBe(false);
+			expect(result.pendingGatedToolRequest).toBeUndefined();
+			expect(result.processedResponse.actionResponses).toHaveLength(1);
+
+			const processedData = result.processedResponse.actionResponses[0].data?.data
+				?.ai_tool?.[0]?.[0]?.json as Record<string, unknown>;
+			expect(processedData.output).toMatch(/chat input/i);
 		});
 	});
 

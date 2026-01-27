@@ -1,15 +1,19 @@
-import { Column, Entity, OneToMany, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
 import type { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 
 @Entity()
 export class SecretsProviderConnection extends WithTimestamps {
+	@PrimaryGeneratedColumn()
+	id: number;
+
 	/**
 	 * Unique provider identifier of the secrets provider connection.
 	 * This is the identifier used in the credential expressions e.g. {{ $secrets.<provider-key>.<secret-key>}
 	 */
-	@PrimaryColumn()
+	@Index({ unique: true })
+	@Column()
 	providerKey: string;
 
 	/**

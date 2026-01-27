@@ -782,6 +782,107 @@ describe('CommunityPackagesService', () => {
 				undefined,
 			);
 		});
+
+		test('should pass undefined checksum when package is not in vetted list at all', async () => {
+			const installedPackages = [installedPackage1]; // version 1.0.0
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			// getCommunityNodeTypes returns empty array (package not vetted)
+			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				undefined,
+			);
+		});
+
+		test('should handle multiple missing packages with mixed vetted status', async () => {
+			const installedPackages = [installedPackage1, installedPackage2];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			// Mock getCommunityNodeTypes to return both packages in a single call
+			mocked(getCommunityNodeTypes).mockResolvedValueOnce([
+				{
+					packageName: 'package-1',
+					checksum: 'sha512-package1',
+					npmVersion: '1.0.0',
+				} as never,
+				{
+					packageName: 'package-2',
+					checksum: 'sha512-package2',
+					npmVersion: '2.0.0',
+				} as never,
+			]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			// Both packages should be installed with their respective checksums
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-1',
+				'1.0.0',
+				'sha512-package1',
+			);
+			expect(communityPackagesService.installPackage).toHaveBeenCalledWith(
+				'package-2',
+				'2.0.0',
+				'sha512-package2',
+			);
+		});
+
+		test('should call getCommunityNodeTypes with correct filters for each package', async () => {
+			const installedPackages = [installedPackage1];
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(getCommunityNodeTypes).toHaveBeenCalledWith('production', {
+				filters: { packageName: { $in: ['package-1'] } },
+				fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+			});
+		});
+
+		test('should use staging environment when ENVIRONMENT is set to staging', async () => {
+			const installedPackages = [installedPackage1];
+			const originalEnv = process.env.ENVIRONMENT;
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			config.reinstallMissing = true;
+
+			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+
+			process.env.ENVIRONMENT = 'staging';
+
+			try {
+				await communityPackagesService.checkForMissingPackages();
+
+				expect(getCommunityNodeTypes).toHaveBeenCalledWith('staging', {
+					filters: { packageName: { $in: ['package-1'] } },
+					fields: ['packageName', 'npmVersion', 'checksum', 'nodeVersions'],
+				});
+			} finally {
+				// Restore original environment
+				if (originalEnv === undefined) {
+					delete process.env.ENVIRONMENT;
+				} else {
+					process.env.ENVIRONMENT = originalEnv;
+				}
+			}
+		});
 	});
 
 	describe('updatePackageJsonDependency', () => {

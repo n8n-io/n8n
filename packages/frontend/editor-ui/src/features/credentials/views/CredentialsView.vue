@@ -90,6 +90,7 @@ const allCredentials = computed<Resource[]>(() =>
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
 		needsSetup: needsSetup(credential.data),
 		isGlobal: credential.isGlobal,
+		isResolvable: credential.isResolvable,
 		type: credential.type,
 	})),
 );

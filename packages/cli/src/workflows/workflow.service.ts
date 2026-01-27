@@ -1,4 +1,4 @@
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
@@ -17,7 +17,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { EntityManager } from '@n8n/typeorm';
@@ -90,6 +90,7 @@ export class WorkflowService {
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
+		private readonly licenseState: LicenseState,
 	) {}
 
 	async getMany(
@@ -159,10 +160,35 @@ export class WorkflowService {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
 
+		// Add hasResolvableCredentials if dynamic credentials feature is licensed
+		if (this.licenseState.isDynamicCredentialsLicensed()) {
+			return {
+				workflows: await this.addResolvableCredentialsFlag(workflows),
+				count,
+			};
+		}
+
 		return {
 			workflows,
 			count,
 		};
+	}
+
+	private async addResolvableCredentialsFlag<
+		T extends ListQueryDb.Workflow.Plain | ListQueryDb.Workflow.WithSharing,
+	>(workflows: T[]): Promise<(T & { hasResolvableCredentials: boolean })[]> {
+		// Use lazy import to avoid circular dependency
+		const { EnterpriseWorkflowService } = await import('./workflow.service.ee');
+		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
+
+		const workflowIds = workflows.map((w) => w.id);
+		const workflowIdsWithResolvable =
+			await enterpriseWorkflowService.getWorkflowIdsWithResolvableCredentials(workflowIds);
+
+		return workflows.map((workflow) => ({
+			...workflow,
+			hasResolvableCredentials: workflowIdsWithResolvable.has(workflow.id),
+		}));
 	}
 
 	private async processSharedWorkflows(

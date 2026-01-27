@@ -227,8 +227,7 @@ export function createEngineRequests(
 					// omit hitlParameters, because they are destructured into the input instead
 					...omit(input, 'hitlParameters'),
 					...(input.hitlParameters as IDataObject),
-					// stringify parameters so that they can be accessed with $fromAI method
-					toolParameters: JSON.stringify(input.toolParameters),
+					toolParameters: input.toolParameters,
 				};
 			}
 
