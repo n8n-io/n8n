@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
@@ -9,6 +10,8 @@ import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class TaskRunnerDockerImageRule implements IBreakingChangeInstanceRule {
+	constructor(private readonly globalConfig: GlobalConfig) {}
+
 	id: string = 'task-runner-docker-image-v2';
 
 	getMetadata(): BreakingChangeRuleMetadata {
@@ -25,6 +28,15 @@ export class TaskRunnerDockerImageRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
+		// Not relevant for cloud deployments - cloud manages Docker images
+		if (this.globalConfig.deployment.type === 'cloud') {
+			return {
+				isAffected: false,
+				instanceIssues: [],
+				recommendations: [],
+			};
+		}
+
 		const result: InstanceDetectionReport = {
 			isAffected: true,
 			instanceIssues: [

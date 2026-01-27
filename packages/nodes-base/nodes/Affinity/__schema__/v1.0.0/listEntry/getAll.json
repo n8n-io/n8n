@@ -4,6 +4,9 @@
         "created_at": {
             "type": "string"
         },
+        "creator_id": {
+            "type": "integer"
+        },
         "entity": {
             "type": "object",
             "properties": {
@@ -40,5 +43,5 @@
             "type": "integer"
         }
     },
-    "version": 2
+    "version": 3
 }

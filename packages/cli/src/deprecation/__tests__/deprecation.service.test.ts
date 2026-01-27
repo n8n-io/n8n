@@ -19,10 +19,7 @@ describe('DeprecationService', () => {
 	beforeEach(() => {
 		// Ignore environment variables coming in from the environment when running
 		// this test suite.
-		process.env = {
-			N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
-			N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
-		};
+		process.env = {};
 
 		jest.resetAllMocks();
 	});
@@ -63,63 +60,16 @@ describe('DeprecationService', () => {
 		['EXECUTIONS_DATA_PRUNE_TIMEOUT', '1', true],
 		['N8N_CONFIG_FILES', '1', true],
 		['N8N_SKIP_WEBHOOK_DEREGISTRATION_SHUTDOWN', '1', true],
+		['N8N_RUNNERS_ENABLED', '1', true],
 	])('should detect when %s is `%s`', (envVar, value, mustWarn) => {
 		toTest(envVar, value, mustWarn);
-	});
-
-	test.each([
-		['default', true],
-		['filesystem', false],
-		['s3', false],
-	])('should handle N8N_BINARY_DATA_MODE as %s', (mode, mustWarn) => {
-		toTest('N8N_BINARY_DATA_MODE', mode, mustWarn);
-	});
-
-	test.each([
-		['sqlite', false],
-		['postgresdb', false],
-		['mysqldb', true],
-		['mariadb', true],
-	])('should handle DB_TYPE as %s', (dbType, mustWarn) => {
-		toTest('DB_TYPE', dbType, mustWarn);
-	});
-
-	describe('N8N_RUNNERS_ENABLED', () => {
-		const envVar = 'N8N_RUNNERS_ENABLED';
-
-		test.each([
-			['false', true],
-			['', true],
-			['true', false],
-			[undefined /* warnIfMissing */, true],
-		])('should handle value: %s', (value, mustWarn) => {
-			toTest(envVar, value, mustWarn);
-		});
-
-		test('should not warn when Code node is excluded', () => {
-			process.env[envVar] = 'false';
-
-			const globalConfig = mockInstance(GlobalConfig, {
-				nodes: {
-					exclude: ['n8n-nodes-base.code'],
-				},
-			});
-
-			new DeprecationService(logger, globalConfig, instanceSettings).warn();
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
 	});
 
 	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {
 		const envVar = 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS';
 
 		beforeEach(() => {
-			process.env = {
-				N8N_RUNNERS_ENABLED: 'true',
-				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
-				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
-			};
+			process.env = {};
 		});
 
 		describe('when executions.mode is not queue', () => {
@@ -207,80 +157,6 @@ describe('DeprecationService', () => {
 					expect(warningMessage).toContain(envVar);
 				});
 			});
-		});
-	});
-
-	describe('N8N_BLOCK_ENV_ACCESS_IN_NODE', () => {
-		beforeEach(() => {
-			process.env = {
-				N8N_RUNNERS_ENABLED: 'true',
-				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
-			};
-
-			jest.resetAllMocks();
-		});
-
-		test('should warn when N8N_BLOCK_ENV_ACCESS_IN_NODE is not set', () => {
-			delete process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE;
-			deprecationService.warn();
-			expect(logger.warn).toHaveBeenCalled();
-		});
-
-		test.each(['false', 'true'])(
-			'should not warn when N8N_BLOCK_ENV_ACCESS_IN_NODE is %s',
-			(value) => {
-				process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE = value;
-				deprecationService.warn();
-				expect(logger.warn).not.toHaveBeenCalled();
-			},
-		);
-	});
-
-	describe('N8N_GIT_NODE_DISABLE_BARE_REPOS', () => {
-		beforeEach(() => {
-			process.env = {
-				N8N_RUNNERS_ENABLED: 'true',
-				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
-			};
-			jest.resetAllMocks();
-		});
-
-		test('should warn when N8N_GIT_NODE_DISABLE_BARE_REPOS is not set', () => {
-			delete process.env.N8N_GIT_NODE_DISABLE_BARE_REPOS;
-			deprecationService.warn();
-			expect(logger.warn).toHaveBeenCalled();
-		});
-
-		test.each(['false', 'true'])(
-			'should not warn when N8N_GIT_NODE_DISABLE_BARE_REPOS is %s',
-			(value) => {
-				process.env.N8N_GIT_NODE_DISABLE_BARE_REPOS = value;
-				deprecationService.warn();
-				expect(logger.warn).not.toHaveBeenCalled();
-			},
-		);
-
-		test('should not warn when Git node is excluded', () => {
-			const globalConfig = mockInstance(GlobalConfig, {
-				nodes: { exclude: ['n8n-nodes-base.git'] },
-			});
-			const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
-
-			deprecationService.warn();
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-
-		test('should not warn when deployment type is cloud', () => {
-			const globalConfig = mockInstance(GlobalConfig, {
-				nodes: { exclude: [] },
-				deployment: { type: 'cloud' },
-			});
-			const deprecationService = new DeprecationService(logger, globalConfig, instanceSettings);
-
-			deprecationService.warn();
-
-			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 });

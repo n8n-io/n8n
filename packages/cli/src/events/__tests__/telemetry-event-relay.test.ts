@@ -61,6 +61,12 @@ describe('TelemetryEventRelay', () => {
 			level: 'info',
 			outputs: ['console'],
 		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 123,
+			batchSize: 234,
+			optimizingTimeWindowHours: 400,
+			trimmingTimeWindowDays: 600,
+		},
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
 		mode: 'default',
@@ -331,26 +337,128 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('variable events', () => {
-		it('should track on `variable-created` event', () => {
-			eventService.emit('variable-created', {});
+		it('should track on `variable-created` event without projectId', () => {
+			const event: RelayEventMap['variable-created'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {});
-
-			eventService.emit('variable-created', { projectId: 'projectId' });
+			eventService.emit('variable-created', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-created` event with projectId', () => {
+			const event: RelayEventMap['variable-created'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-created', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
+				user_id: 'user123',
 				project_id: 'projectId',
 			});
 		});
 
-		it('should track on `variable-updated` event', () => {
-			eventService.emit('variable-updated', {});
+		it('should track on `variable-updated` event without projectId', () => {
+			const event: RelayEventMap['variable-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
 
-			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {});
-
-			eventService.emit('variable-updated', { projectId: 'projectId' });
+			eventService.emit('variable-updated', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-updated` event with projectId', () => {
+			const event: RelayEventMap['variable-updated'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
+				user_id: 'user123',
+				project_id: 'projectId',
+			});
+		});
+
+		it('should track on `variable-deleted` event without projectId', () => {
+			const event: RelayEventMap['variable-deleted'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+			};
+
+			eventService.emit('variable-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted variable', {
+				user_id: 'user123',
+			});
+		});
+
+		it('should track on `variable-deleted` event with projectId', () => {
+			const event: RelayEventMap['variable-deleted'] = {
+				user: {
+					id: 'user123',
+					email: 'test@example.com',
+					firstName: 'Test',
+					lastName: 'User',
+					role: { slug: 'global:owner' },
+				},
+				variableId: 'var456',
+				variableKey: 'MY_VARIABLE',
+				projectId: 'projectId',
+			};
+
+			eventService.emit('variable-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted variable', {
+				user_id: 'user123',
 				project_id: 'projectId',
 			});
 		});
@@ -373,6 +481,18 @@ describe('TelemetryEventRelay', () => {
 				is_valid: true,
 				is_new: false,
 				error_message: undefined,
+			});
+		});
+
+		it('should track on `external-secrets-provider-reloaded` event', () => {
+			const event: RelayEventMap['external-secrets-provider-reloaded'] = {
+				vaultType: 'aws',
+			};
+
+			eventService.emit('external-secrets-provider-reloaded', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User reloaded external secrets', {
+				vault_type: 'aws',
 			});
 		});
 	});
@@ -545,6 +665,7 @@ describe('TelemetryEventRelay', () => {
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
+				isDynamic: false,
 			};
 
 			eventService.emit('credentials-created', event);
@@ -555,6 +676,7 @@ describe('TelemetryEventRelay', () => {
 				credential_id: 'cred123',
 				project_id: 'project123',
 				project_type: 'personal',
+				is_dynamic: false,
 			});
 		});
 
@@ -597,6 +719,7 @@ describe('TelemetryEventRelay', () => {
 				},
 				credentialId: 'cred123',
 				credentialType: 'github',
+				isDynamic: true,
 			};
 
 			eventService.emit('credentials-updated', event);
@@ -605,6 +728,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				credential_type: 'github',
 				credential_id: 'cred123',
+				is_dynamic: true,
 			});
 		});
 
@@ -765,6 +889,63 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should truncate node_graph_string when it exceeds size limit', async () => {
+			const largeNodeGraph: INodesGraphResult = {
+				nodeGraph: {
+					node_types: Array.from({ length: 1000 }, (_, i) => `n8n-nodes-base.node${i}`),
+					node_connections: Array.from({ length: 1000 }, (_, i) => ({
+						start: `${i}`,
+						end: `${i + 1}`,
+					})),
+					nodes: Object.fromEntries(
+						Array.from({ length: 500 }, (_, i) => [
+							`${i}`,
+							{
+								id: `node-${i}`,
+								type: `n8n-nodes-base.veryLongNodeTypeName${i}`,
+								version: 1,
+								position: [i * 100, i * 100],
+							},
+						]),
+					),
+					notes: {},
+					is_pinned: false,
+				},
+				nameIndices: {},
+				webhookNodeNames: [],
+				evaluationTriggerNodeNames: [],
+			};
+
+			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValueOnce(largeNodeGraph);
+
+			const event: RelayEventMap['workflow-created'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowBase>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				publicApi: false,
+				projectId: 'project123',
+				projectType: 'personal',
+			};
+
+			eventService.emit('workflow-created', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				node_graph_string: '{}',
+				public_api: false,
+				project_id: 'project123',
+				project_type: 'personal',
+			});
+		});
+
 		it('should track on `workflow-archived` event', () => {
 			const event: RelayEventMap['workflow-archived'] = {
 				user: {
@@ -852,6 +1033,7 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
+				used_dynamic_credentials: false,
 			});
 		});
 
@@ -882,6 +1064,58 @@ describe('TelemetryEventRelay', () => {
 				num_tags: 0,
 				public_api: false,
 				sharing_role: undefined,
+				meta: undefined, // workflow.meta is undefined in mock
+				workflow_edited_no_pos: false,
+				credential_edited: false,
+				ai_builder_assisted: false,
+				identity_extractor_changed: false,
+			});
+		});
+
+		it('should track resolver settings when credentialResolverId changes', async () => {
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					settings: { credentialResolverId: 'resolver-123' },
+				}),
+				publicApi: false,
+				settingsChanged: {
+					credentialResolverId: {
+						from: null,
+						to: 'resolver-123',
+					},
+				},
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith('User saved workflow', {
+				user_id: 'user123',
+				workflow_id: 'workflow123',
+				node_graph_string: expect.any(String),
+				notes_count_overlapping: 0,
+				notes_count_non_overlapping: 0,
+				version_cli: expect.any(String),
+				num_tags: 0,
+				public_api: false,
+				sharing_role: undefined,
+				meta: undefined,
+				workflow_edited_no_pos: false,
+				credential_edited: false,
+				ai_builder_assisted: false,
+				credential_resolver_id: 'resolver-123',
+				identity_extractor_changed: false,
 			});
 		});
 
@@ -1269,7 +1503,7 @@ describe('TelemetryEventRelay', () => {
 				{
 					id: 'node1',
 					name: 'Start',
-					type: 'n8n-nodes-base.start',
+					type: 'n8n-nodes-base.manualTrigger',
 					parameters: {},
 					typeVersion: 1,
 					position: [100, 200],
@@ -1798,6 +2032,39 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith('User ran out of free AI credits');
+		});
+	});
+	describe('workflow history compaction events', () => {
+		it('should call telemetry.track when compacting history finishes', async () => {
+			const payload = {
+				compactionStartTime: new Date('2026-01-23T09:44:49.792Z'),
+				durationMs: 3500,
+				windowStartIso: '2026-01-22T09:44:49.792Z',
+				windowEndIso: '2026-01-22T10:44:49.792Z',
+				errorCount: 3,
+				totalVersionsSeen: 25,
+				totalVersionsDeleted: 23,
+				workflowsProcessed: 3,
+			} satisfies RelayEventMap['history-compacted'];
+
+			eventService.emit('history-compacted', payload);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance compacted workflow history', {
+				workflows_processed: payload['workflowsProcessed'],
+				total_versions_seen: payload['totalVersionsSeen'],
+				total_versions_deleted: payload['totalVersionsDeleted'],
+				window_start_iso: new Date(payload['windowStartIso']),
+				window_end_iso: new Date(payload['windowEndIso']),
+				error_count: payload['errorCount'],
+				compaction_start_time_iso: payload['compactionStartTime'],
+				compaction_duration_ms: payload['durationMs'],
+				compaction_batch_delay_ms: globalConfig.workflowHistoryCompaction.batchDelayMs,
+				compaction_batch_size: globalConfig.workflowHistoryCompaction.batchSize,
+				compaction_trimming_optimizing_time_window_hours:
+					globalConfig.workflowHistoryCompaction.optimizingTimeWindowHours,
+				compaction_trimming_time_window_days:
+					globalConfig.workflowHistoryCompaction.trimmingTimeWindowDays,
+			});
 		});
 	});
 });

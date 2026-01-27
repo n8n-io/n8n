@@ -138,7 +138,7 @@ describe('settings.store', () => {
 				expect(mockRootStore.setOauthCallbackUrls).not.toHaveBeenCalledWith(
 					mockSettings.oauthCallbackUrls,
 				);
-				expect(mockRootStore.setDefaultLocale).not.toHaveBeenCalledWith(mockSettings.defaultLocale);
+				expect(mockRootStore.setDefaultLocale).toHaveBeenCalledWith(mockSettings.defaultLocale);
 				expect(mockRootStore.setInstanceId).not.toHaveBeenCalledWith(mockSettings.instanceId);
 				expect(mockRootStore.setUrlBaseWebhook).not.toHaveBeenCalled();
 				expect(mockRootStore.setUrlBaseEditor).not.toHaveBeenCalled();

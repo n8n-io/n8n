@@ -13,11 +13,14 @@ import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useLogsStore } from '@/app/stores/logs.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useBuilderStore } from '../../builder.store';
+import { SETUP_CREDENTIALS_MODAL_KEY } from '@/app/constants';
 
 const workflowValidationIssuesRef = ref<
 	Array<{ node: string; type: string; value: string | string[] }>
 >([]);
+const workflowTodosRef = ref<Array<{ node: string; type: string; value: string | string[] }>>([]);
 const executionWaitingForWebhookRef = ref(false);
 const selectedTriggerNodeNameRef = ref<string | undefined>(undefined);
 const hasNoCreditsRemainingRef = ref(false);
@@ -68,7 +71,15 @@ const renderComponent = createComponentRenderer(ExecuteMessage);
 
 vi.mock('./NodeIssueItem.vue', () => ({
 	default: {
-		template: '<li />',
+		template: '<li data-test-id="node-issue-item" @click="$emit(\'click\')" />',
+		emits: ['click'],
+	},
+}));
+
+vi.mock('./CredentialsSetupCard.vue', () => ({
+	default: {
+		template: '<div data-test-id="credentials-setup-card" @click="$emit(\'click\')" />',
+		emits: ['click'],
 	},
 }));
 
@@ -76,6 +87,7 @@ describe('ExecuteMessage', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let logsStore: ReturnType<typeof mockedStore<typeof useLogsStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let renderExecuteMessage: () => ReturnType<ReturnType<typeof createComponentRenderer>>;
 
@@ -84,6 +96,7 @@ describe('ExecuteMessage', () => {
 		runWorkflowMock.mockReset();
 		showMessageMock.mockReset();
 		workflowValidationIssuesRef.value = [];
+		workflowTodosRef.value = [];
 		executionWaitingForWebhookRef.value = false;
 		selectedTriggerNodeNameRef.value = undefined;
 		hasNoCreditsRemainingRef.value = false;
@@ -104,6 +117,7 @@ describe('ExecuteMessage', () => {
 		workflowsStore = mockedStore(useWorkflowsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		logsStore = mockedStore(useLogsStore);
+		uiStore = mockedStore(useUIStore);
 		builderStore = mockedStore(useBuilderStore);
 
 		workflowsStore.workflow.nodes = workflowNodes as unknown as INodeUi[];
@@ -139,14 +153,18 @@ describe('ExecuteMessage', () => {
 		Object.defineProperty(builderStore, 'hasNoCreditsRemaining', {
 			get: () => hasNoCreditsRemainingRef.value,
 		});
+		Object.defineProperty(builderStore, 'workflowTodos', {
+			get: () => workflowTodosRef.value,
+		});
+		builderStore.trackWorkflowBuilderJourney = vi.fn();
 
 		renderExecuteMessage = () => renderComponent({ pinia });
 	});
 
 	it('disables execution when validation issues exist', () => {
-		workflowValidationIssuesRef.value = [
-			{ node: 'Start Trigger', type: 'parameters', value: 'Missing field' },
-		];
+		const issue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
+		workflowValidationIssuesRef.value = [issue];
+		workflowTodosRef.value = [issue];
 
 		const { getAllByTestId, getByText } = renderExecuteMessage();
 
@@ -159,6 +177,9 @@ describe('ExecuteMessage', () => {
 		workflowNodes[0].parameters = {
 			url: '<__PLACEHOLDER_VALUE__API endpoint URL__>',
 		};
+		workflowTodosRef.value = [
+			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
+		];
 
 		const { getAllByTestId, getByText } = renderExecuteMessage();
 
@@ -327,6 +348,10 @@ describe('ExecuteMessage', () => {
 				url: ['Some other validation error'],
 			},
 		};
+		workflowTodosRef.value = [
+			{ node: 'Start Trigger', type: 'parameters', value: 'Some other validation error' },
+			{ node: 'Start Trigger', type: 'parameters', value: 'Fill in placeholder value' },
+		];
 
 		const { getAllByTestId, container } = renderExecuteMessage();
 		const button = getAllByTestId('execute-workflow-button')[0] as HTMLButtonElement;
@@ -336,5 +361,89 @@ describe('ExecuteMessage', () => {
 		expect(button.disabled).toBe(true);
 		// Should have both the existing issue and the placeholder issue
 		expect(issueItems.length).toBeGreaterThan(0);
+	});
+
+	it('tracks user_clicked_todo when clicking on an issue item', async () => {
+		const todoIssue = { node: 'HTTP Request', type: 'parameters', value: 'Missing URL' };
+		workflowTodosRef.value = [todoIssue];
+		workflowNodes.push({
+			id: '2',
+			name: 'HTTP Request',
+			type: 'n8n-nodes-base.httpRequest',
+			position: [100, 0],
+			parameters: {},
+			typeVersion: 1,
+			issues: {},
+		});
+
+		const { getAllByTestId } = renderExecuteMessage();
+		const issueItem = getAllByTestId('node-issue-item')[0];
+
+		await fireEvent.click(issueItem);
+
+		expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith('user_clicked_todo', {
+			node_type: 'n8n-nodes-base.httpRequest',
+			type: 'parameters',
+		});
+	});
+
+	it('opens credentials modal and tracks telemetry when clicking credentials card', async () => {
+		const credentialIssue = {
+			node: 'OpenAI Model',
+			type: 'credentials',
+			value: "Credentials for 'OpenAI' are not set",
+		};
+		workflowTodosRef.value = [credentialIssue];
+		workflowNodes.push({
+			id: '2',
+			name: 'OpenAI Model',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			position: [100, 0],
+			parameters: {},
+			typeVersion: 1,
+			issues: {},
+		});
+
+		const { getByTestId } = renderExecuteMessage();
+		const credentialsCard = getByTestId('credentials-setup-card');
+
+		await fireEvent.click(credentialsCard);
+
+		expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+			name: SETUP_CREDENTIALS_MODAL_KEY,
+			data: { source: 'builder' },
+		});
+		expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith('user_clicked_todo', {
+			type: 'credentials',
+			count: 1,
+			source: 'builder',
+		});
+	});
+
+	it('tracks no_placeholder_values_left when all todos are resolved', async () => {
+		const todoIssue = { node: 'Start Trigger', type: 'parameters', value: 'Missing field' };
+		workflowTodosRef.value = [todoIssue];
+
+		renderExecuteMessage();
+
+		// Simulate resolving all todos
+		workflowTodosRef.value = [];
+		await nextTick();
+		await flushPromises();
+
+		expect(builderStore.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
+			'no_placeholder_values_left',
+		);
+	});
+
+	it('does not track no_placeholder_values_left when component mounts without issues', async () => {
+		workflowTodosRef.value = [];
+
+		renderExecuteMessage();
+		await nextTick();
+
+		expect(builderStore.trackWorkflowBuilderJourney).not.toHaveBeenCalledWith(
+			'no_placeholder_values_left',
+		);
 	});
 });

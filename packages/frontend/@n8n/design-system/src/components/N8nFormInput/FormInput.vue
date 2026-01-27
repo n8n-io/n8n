@@ -13,10 +13,9 @@ import type {
 	InputTypePropType,
 	SwitchModelValuePropType,
 	CheckboxModelValuePropType,
-	CheckboxLabelSizePropType,
 	InputAutocompletePropType,
 } from '../../types';
-import N8nCheckbox from '../N8nCheckbox';
+import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nInput from '../N8nInput';
 import N8nInputLabel from '../N8nInputLabel';
 import N8nLink from '../N8nLink';
@@ -182,7 +181,6 @@ defineExpose({ inputRef });
 		ref="inputRef"
 		:label="label"
 		:disabled="disabled"
-		:label-size="labelSize as CheckboxLabelSizePropType"
 		:model-value="modelValue as CheckboxModelValuePropType"
 		@update:model-value="onUpdateModelValue"
 		@focus="onFocus"

@@ -57,6 +57,8 @@ export class McpOAuthService implements OAuthServerProvider {
 					}),
 					response_types: ['code'],
 					scope: SUPPORTED_SCOPES.join(' '),
+					logo_uri: undefined,
+					tos_uri: undefined,
 				};
 			},
 			registerClient: async (

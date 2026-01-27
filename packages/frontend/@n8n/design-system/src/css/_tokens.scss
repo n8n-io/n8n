@@ -30,7 +30,7 @@
 
 	// Primary
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--primary--shade-1: var(--color-primary-shade-1, var(--color--orange-400));
+	--color--primary--shade-1: var(--color-primary-shade-1, var(--color--primary));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--primary: var(--color-primary, var(--color--orange-300));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -68,7 +68,7 @@
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--warning--shade-1: var(--color-warning-shade-1, var(--color--gold-500));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
-	--color--warning: var(--color-warning, var(--color--gold-400));
+	--color--warning: var(--color-warning, var(--color--gold-600));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--color--warning--tint-1: var(--color-warning-tint-1, var(--color--gold-200));
 	/* stylelint-disable-next-line @n8n/css-var-naming */
@@ -137,6 +137,7 @@
 	);
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--shadow--light: var(--box-shadow-light, 0 2px 12px 0 rgba(0, 0, 0, 0.07));
+	--shadow--card-hover: 0 2px 8px rgba(68, 28, 23, 0.1);
 
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--radius--xl: var(--border-radius-xlarge, 12px);
@@ -167,20 +168,13 @@
 	--lm-chat--user--color: var(--color--text--tint-3);
 
 	// Canvas
-	--canvas--color--background: var(--color--neutral-50);
-	--canvas--color--background--h: 220;
-	--canvas--color--background--s: 47%;
-	--canvas--color--background--l: 99%;
+	--canvas--color--background: var(--color--neutral-125);
 	--canvas--dot--color: var(--color--neutral-500);
 	--canvas--read-only-line--color: var(--color--neutral-100);
 	--canvas--color--selected: var(--color--neutral-150);
 	--canvas--color--selected-transparent: hsla(220, 47%, 30%, 0.1);
-	--canvas--label--color--background: hsla(
-		var(--canvas--color--background--h),
-		var(--canvas--color--background--s),
-		var(--canvas--color--background--l),
-		0.85
-	);
+	--canvas--label--color: var(--color--neutral-600);
+	--canvas--label--color--background: oklch(from var(--canvas--color--background) l c h / 0.85);
 
 	// Nodes
 	--node--color--background: var(--color--background--light-3);
@@ -209,7 +203,7 @@
 	--sticky--border-color--variant-5: var(--color--blue-200);
 	--sticky--color--background--variant-6: var(--color--purple-200);
 	--sticky--border-color--variant-6: var(--color--purple-300);
-	--sticky--color--background--variant-7: var(--color--neutral-50);
+	--sticky--color--background--variant-7: var(--color--neutral-100);
 	--sticky--border-color--variant-7: var(--color--neutral-200);
 
 	// AI Assistant
@@ -241,6 +235,15 @@
 		var(--assistant--color--highlight-2) 50%,
 		var(--assistant--color--highlight-1) 100%
 	);
+
+	// AI Chat text and icon colors
+	--assistant--color--text--subtle: var(--color--neutral-500);
+	--assistant--icon-color--subtle: var(--color--neutral-500);
+	--assistant--color--text: var(--color--neutral-800);
+	--assistant--color--text--user-bubble: #414244;
+	--assistant--color--background--user-bubble: var(--color--neutral-150);
+	--assistant--text-message--collapsed--max-height: 200px;
+
 	--assistant--button--color--background--hover: linear-gradient(
 		108.82deg,
 		rgba(236, 123, 142, 0.12) 0%,
@@ -256,7 +259,7 @@
 
 	// NodeIcon
 	--node--icon--color--neutral: var(--color--neutral-400);
-	--node--icon--color--black: var(--color--neutral-900);
+	--node--icon--color--black: var(--color--neutral-800);
 	--node--icon--color--blue: #3a42e9;
 	--node--icon--color--light-blue: #5fabf7;
 	--node--icon--color--dark-blue: #353f6e;
@@ -347,8 +350,8 @@
 	--button--color--text--primary: var(--color--neutral-white);
 	--button--border-color--primary: var(--color--orange-300);
 	--button--color--background--primary: var(--color--orange-300);
-	--button--border-color--primary--hover-active: var(--color--orange-400);
-	--button--color--background--primary--hover-active-focus: var(--color--orange-400);
+	--button--border-color--primary--hover-active: var(--color--primary);
+	--button--color--background--primary--hover-active-focus: var(--color--primary);
 	--button--outline-color--primary--focus: var(--color--orange-alpha-300);
 	--button--color--text--primary--disabled: var(--color--white-alpha-800);
 	--button--border-color--primary--disabled: var(--color--orange-200);
@@ -378,6 +381,19 @@
 	--button--color--text--highlight--disabled: var(--color--neutral-200);
 	--button--border-color--highlight--disabled: transparent;
 	--button--color--background--highlight--disabled: transparent;
+
+	// Button highlight-fill
+	--button--color--text--highlight-fill: var(--color--text--shade-1);
+	--button--border-color--highlight-fill: transparent;
+	--button--color--background--highlight-fill: var(--color--background);
+	--button--color--text--highlight-fill--hover-active-focus: var(--color--primary);
+	--button--border-color--highlight-fill--hover-active-focus: transparent;
+	--button--color--background--highlight-fill--hover: var(--color--background);
+	--button--color--background--highlight-fill--active-focus: var(--color--background);
+	--button--outline-color--highlight-fill--focus: var(--color--neutral-125);
+	--button--color--text--highlight-fill--disabled: var(--color--neutral-200);
+	--button--border-color--highlight-fill--disabled: transparent;
+	--button--color--background--highlight-fill--disabled: var(--color--background);
 
 	// Button success, warning, danger
 	--button--color--text--success: var(--color--neutral-white);
@@ -464,7 +480,7 @@
 	// Dialogs and overlays
 	--dialog--color--background: var(--color--neutral-white);
 	--dialog--overlay--color--background: var(--color--white-alpha-800);
-	--dialog--overlay--color--background--dark: var(--color--slate-alpha-700);
+	--dialog--overlay--color--background--dark: var(--color--black-alpha-600);
 	--block-ui--overlay--color: var(--color--neutral-950);
 
 	// Avatar
@@ -709,9 +725,131 @@
 	--grid--cell--border-color--editing: 2px solid var(--color--secondary);
 
 	--command-bar-item--color--background--hover: var(--color--background);
+	--command-bar-item--height: 40px;
 	--command-bar--shadow: 0 15px 45px 0 hsla(0, 0%, 0%, 0.13), 0 5px 10px 0 hsla(0, 0%, 0%, 0.08);
+
+	// Animation
+	--animation--duration: 0.3s;
+	--animation--duration--snappy: 0.2s;
+	// Spring easing, generated at https://animejs.com/easing-editor/spring/default preset:snappy mode:perceived bounce:0.15
+	--animation--easing: linear(
+		0,
+		0.0088,
+		0.0327,
+		0.068,
+		0.1117,
+		0.1614,
+		0.2149,
+		0.2706,
+		0.327,
+		0.3831,
+		0.4379,
+		0.4907,
+		0.5412,
+		0.5889,
+		0.6336,
+		0.6751,
+		0.7135,
+		0.7487,
+		0.7809,
+		0.81,
+		0.8362,
+		0.8597,
+		0.8807,
+		0.8994,
+		0.9158,
+		0.9302,
+		0.9428,
+		0.9537,
+		0.9632,
+		0.9712,
+		0.9781,
+		0.9839,
+		0.9888,
+		0.9928,
+		0.9961,
+		0.9988,
+		1.001,
+		1.0026,
+		1.0039,
+		1.0049,
+		1.0055,
+		1.006,
+		1.0062,
+		1.0063,
+		1.0062,
+		1.0061,
+		1.0059,
+		1.0056,
+		1.0053,
+		1.005,
+		1.0046,
+		1.0043,
+		1.0039,
+		1.0036,
+		1.0032,
+		1.0029,
+		1.0026,
+		1.0023,
+		1.0021,
+		1.0018,
+		1.0016,
+		1.0014,
+		1.0012,
+		1.0011,
+		1.0009,
+		1.0008,
+		1.0006,
+		1.0005,
+		1.0005,
+		1.0004,
+		1.0003,
+		1.0002,
+		1.0002,
+		1.0001,
+		1.0001,
+		1.0001,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1
+	);
 }
 
 :root {
+	color-scheme: light dark;
 	@include theme;
+}
+
+body[data-theme='light'] {
+	color-scheme: light;
+}
+
+body[data-theme='dark'] {
+	color-scheme: dark;
+}
+
+body:not([data-theme]) {
+	color-scheme: light dark;
 }

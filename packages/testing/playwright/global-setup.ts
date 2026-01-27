@@ -1,12 +1,13 @@
 import { request } from '@playwright/test';
 
 import { ApiHelpers } from './services/api-helper';
+import { getBackendUrl } from './utils/url-helper';
 
 async function globalSetup() {
 	console.log('🚀 Starting global setup...');
 
-	// Check if N8N_BASE_URL is set
-	const n8nBaseUrl = process.env.N8N_BASE_URL;
+	// Check if backend URL is set (N8N_BACKEND_URL or N8N_BASE_URL)
+	const n8nBaseUrl = getBackendUrl();
 	if (!n8nBaseUrl) {
 		console.log('⚠️  N8N_BASE_URL environment variable is not set, skipping database reset');
 		return;

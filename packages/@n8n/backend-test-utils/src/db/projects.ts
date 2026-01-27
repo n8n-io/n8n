@@ -27,6 +27,7 @@ export const createTeamProject = async (name?: string, adminUser?: User) => {
 		projectRepository.create({
 			name: name ?? randomName(),
 			type: 'team',
+			creatorId: adminUser?.id,
 		}),
 	);
 

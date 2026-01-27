@@ -171,7 +171,7 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 					shared: { project: { projectRelations: { user: true } } },
 					tags: includeTags,
 					parentFolder: includeParentFolder,
-					activeVersion: includeActiveVersion,
+					activeVersion: includeActiveVersion ? { workflowPublishHistory: true } : false,
 				},
 			},
 		});

@@ -1,4 +1,4 @@
-import { Ollama } from '@langchain/community/llms/ollama';
+import { Ollama } from '@langchain/ollama';
 import {
 	NodeConnectionTypes,
 	type INodeType,

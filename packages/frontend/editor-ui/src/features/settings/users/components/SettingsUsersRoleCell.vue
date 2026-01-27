@@ -5,7 +5,7 @@ import { ElRadio } from 'element-plus';
 import { N8nActionDropdown, N8nIcon, N8nText, type ActionDropdownItem } from '@n8n/design-system';
 const props = defineProps<{
 	data: UsersList['items'][number];
-	roles: Record<Role, { label: string; desc: string }>;
+	roles: Partial<Record<Role, { label: string; desc: string }>>;
 	actions: Array<ActionDropdownItem<Role>>;
 }>();
 
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 
 const selectedRole = ref<Role>(props.data.role ?? ROLE.Default);
 const isEditable = computed(() => props.data.role !== ROLE.Owner);
-const roleLabel = computed(() => props.roles[selectedRole.value].label);
+const roleLabel = computed(() => props.roles[selectedRole.value]?.label);
 
 const onActionSelect = (role: Role) => {
 	emit('update:role', {
@@ -49,7 +49,7 @@ const onActionSelect = (role: Role) => {
 					<span :class="$style.radioLabel">
 						<N8nText color="text-dark" class="pb-3xs">{{ item.label }}</N8nText>
 						<N8nText color="text-dark" size="small">{{
-							props.roles[item.id as Role].desc
+							props.roles[item.id as Role]?.desc
 						}}</N8nText>
 					</span>
 				</ElRadio>

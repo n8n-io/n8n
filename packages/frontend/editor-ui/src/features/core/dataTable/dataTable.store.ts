@@ -10,6 +10,7 @@ import {
 	addDataTableColumnApi,
 	deleteDataTableColumnApi,
 	moveDataTableColumnApi,
+	renameDataTableColumnApi,
 	getDataTableRowsApi,
 	insertDataTableRowApi,
 	updateDataTableRowsApi,
@@ -28,6 +29,7 @@ import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -63,6 +65,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		}
 		return formattedSizes;
 	});
+
+	const canViewDataTables = computed(() =>
+		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } }),
+	);
 
 	const fetchDataTables = async (projectId: string, page: number, pageSize: number) => {
 		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, {
@@ -215,6 +221,30 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return moved;
 	};
 
+	const renameDataTableColumn = async (
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		newName: string,
+	): Promise<void> => {
+		await renameDataTableColumnApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			columnId,
+			newName,
+		);
+
+		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
+		if (index === -1) return;
+
+		const table = dataTables.value[index];
+		const column = table.columns.find((col) => col.id === columnId);
+		if (column) {
+			column.name = newName;
+		}
+	};
+
 	const fetchDataTableContent = async (
 		dataTableId: string,
 		projectId: string,
@@ -333,11 +363,13 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		addDataTableColumn,
 		deleteDataTableColumn,
 		moveDataTableColumn,
+		renameDataTableColumn,
 		fetchDataTableContent,
 		insertEmptyRow,
 		updateRow,
 		deleteRows,
 		downloadDataTableCsv,
 		projectPermissions,
+		canViewDataTables,
 	};
 });

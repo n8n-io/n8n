@@ -23,6 +23,7 @@ import type {
 	INodePropertyOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 export async function koBoToolboxApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -202,6 +203,56 @@ export function formatSubmission(
 	return response;
 }
 
+const KOBO_DOMAINS = ['kobotoolbox.org', 'humanitarianresponse.info'];
+
+export function validateAttachmentUrl(url: string, allowedDomain: string): void {
+	let attachmentUrl: URL;
+	let allowedUrl: URL;
+
+	try {
+		attachmentUrl = new URL(url);
+	} catch {
+		throw new Error('Invalid attachment URL format');
+	}
+
+	if (!['http:', 'https:'].includes(attachmentUrl.protocol)) {
+		throw new Error('Attachment URL must use HTTP or HTTPS');
+	}
+
+	try {
+		if (!allowedDomain.startsWith('http://') && !allowedDomain.startsWith('https://')) {
+			allowedDomain = `https://${allowedDomain}`;
+		}
+		allowedUrl = new URL(allowedDomain);
+	} catch {
+		throw new Error('Invalid allowed domain configuration');
+	}
+
+	const attachmentHost = attachmentUrl.hostname.toLowerCase();
+	const allowedHost = allowedUrl.hostname.toLowerCase();
+
+	const matchesDomain =
+		attachmentHost === allowedHost || attachmentHost.endsWith(`.${allowedHost}`);
+
+	if (matchesDomain) return;
+
+	const isKoboDomain = KOBO_DOMAINS.some(
+		(domain) => allowedHost === domain || allowedHost.endsWith(`.${domain}`),
+	);
+
+	if (isKoboDomain) {
+		const isFromKoboDomain = KOBO_DOMAINS.some(
+			(domain) => attachmentHost === domain || attachmentHost.endsWith(`.${domain}`),
+		);
+
+		if (isFromKoboDomain) return;
+	}
+
+	throw new Error(
+		`Attachment URL domain (${attachmentHost}) does not match allowed domain (${allowedHost})`,
+	);
+}
+
 export async function downloadAttachments(
 	this: IExecuteFunctions | IWebhookFunctions,
 	submission: IDataObject,
@@ -216,6 +267,7 @@ export async function downloadAttachments(
 	};
 
 	const credentials = await this.getCredentials('koBoToolboxApi');
+	const koboToolboxUrl = credentials.URL as string;
 
 	// Look for attachment links - there can be more than one
 	const attachmentList = (submission._attachments || submission.attachments) as any[];
@@ -247,6 +299,13 @@ export async function downloadAttachments(
 			let response = null;
 			const attachmentUrl =
 				attachment[options.version as string] || (attachment.download_url as string);
+
+			try {
+				validateAttachmentUrl(attachmentUrl, koboToolboxUrl);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error.message);
+			}
+
 			let final = false,
 				redir = 0;
 
@@ -266,6 +325,11 @@ export async function downloadAttachments(
 				response = await this.helpers.httpRequest(axiosOptions);
 
 				if (response?.headers.location) {
+					try {
+						validateAttachmentUrl(response.headers.location, koboToolboxUrl);
+					} catch (error) {
+						throw new NodeOperationError(this.getNode(), error.message);
+					}
 					// Follow redirect
 					axiosOptions.url = response.headers.location;
 					redir++;

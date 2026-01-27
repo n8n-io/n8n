@@ -5,13 +5,13 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { getResourcePermissions } from '@n8n/permissions';
 import dateformat from 'dateformat';
-import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -44,6 +44,10 @@ import {
 } from '@n8n/design-system';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { createEventBus } from '@n8n/utils/event-bus';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+
 const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	SHARE: 'share',
@@ -55,6 +59,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	MOVE_TO_FOLDER: 'moveToFolder',
 	ENABLE_MCP_ACCESS: 'enableMCPAccess',
 	REMOVE_MCP_ACCESS: 'removeMCPAccess',
+	UNPUBLISH: 'unpublish',
 };
 
 const props = withDefaults(
@@ -83,6 +88,7 @@ const emit = defineEmits<{
 	'workflow:deleted': [];
 	'workflow:archived': [];
 	'workflow:unarchived': [];
+	'workflow:unpublished': [value: { id: string }];
 	'workflow:active-toggle': [value: { id: string; active: boolean }];
 	'action:move-to-folder': [
 		value: {
@@ -90,6 +96,7 @@ const emit = defineEmits<{
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 	];
 }>();
@@ -101,6 +108,7 @@ const router = useRouter();
 const route = useRoute();
 const telemetry = useTelemetry();
 const mcp = useMcp();
+const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -108,7 +116,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
-
+const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
@@ -134,10 +142,6 @@ const projectPermissions = computed(
 const canCreateWorkflow = computed(
 	() => globalPermissions.value.create ?? projectPermissions.value.create,
 );
-
-const showFolders = computed(() => {
-	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
-});
 
 const showCardBreadcrumbs = computed(() => {
 	return props.showOwnershipBadge && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
@@ -197,9 +201,9 @@ const actions = computed(() => {
 	// TODO: add test to verify that moving a readonly card is not possible
 	if (
 		!props.readOnly &&
+		props.areFoldersEnabled &&
 		(workflowPermissions.value.update ||
 			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
-		showFolders.value &&
 		route.name !== VIEWS.SHARED_WORKFLOWS
 	) {
 		items.push({
@@ -224,6 +228,18 @@ const actions = computed(() => {
 				value: WORKFLOW_LIST_ITEM_ACTIONS.UNARCHIVE,
 			});
 		}
+	}
+
+	if (
+		isWorkflowPublished.value &&
+		workflowPermissions.value.update &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
+		items.push({
+			label: locale.baseText('menuActions.unpublish'),
+			value: WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH,
+		});
 	}
 
 	if (
@@ -270,6 +286,26 @@ const isSomeoneElsesWorkflow = computed(
 		props.data.homeProject?.type !== ProjectTypes.Team &&
 		props.data.homeProject?.id !== projectsStore.personalProject?.id,
 );
+
+const isWorkflowPublished = computed(() => {
+	return props.data.activeVersionId !== null;
+});
+
+const isDynamicCredentialsEnabled = computed(() =>
+	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
+);
+
+const hasDynamicCredentials = computed(() => {
+	return isDynamicCredentialsEnabled.value && props.data.hasResolvableCredentials;
+});
+
+const isResolverMissing = computed(() => {
+	return (
+		isDynamicCredentialsEnabled.value &&
+		props.data.hasResolvableCredentials &&
+		!props.data.settings?.credentialResolverId
+	);
+});
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -346,6 +382,7 @@ async function onAction(action: string) {
 				name: props.data.name,
 				parentFolderId: props.data.parentFolder?.id,
 				sharedWithProjects: props.data.sharedWithProjects,
+				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
@@ -354,7 +391,43 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.REMOVE_MCP_ACCESS:
 			await toggleMCPAccess(false);
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
+			await unpublishWorkflow();
+			break;
 	}
+}
+
+async function unpublishWorkflow() {
+	if (!props.data.activeVersionId) {
+		toast.showMessage({
+			title: locale.baseText('workflowHistory.action.unpublish.notAvailable'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	const unpublishEventBus = createEventBus();
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(props.data.id);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+		if (success) {
+			// Emit event to update workflow list
+			emit('workflow:unpublished', { id: props.data.id });
+
+			toast.showMessage({
+				title: locale.baseText('workflowHistory.action.unpublish.success.title'),
+				type: 'success',
+			});
+		}
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: props.data.name,
+			eventBus: unpublishEventBus,
+		},
+	});
 }
 
 async function toggleMCPAccess(enabled: boolean) {
@@ -491,21 +564,6 @@ function moveResource() {
 	});
 }
 
-const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) => {
-	emit('workflow:active-toggle', value);
-	// Show notification if MCP access was removed due to deactivation
-	if (!value.active && props.isMcpEnabled && isAvailableInMCP.value) {
-		// Reset the local MCP toggle status to null to use props data
-		mcpToggleStatus.value = null;
-
-		toast.showToast({
-			title: locale.baseText('mcp.workflowDeactivated.title'),
-			message: locale.baseText('mcp.workflowDeactivated.message'),
-			type: 'info',
-		});
-	}
-};
-
 const onBreadcrumbItemClick = async (item: PathItem) => {
 	if (item.href) {
 		await router.push(item.href);
@@ -528,27 +586,48 @@ const tags = computed(
 		@click="onClick"
 	>
 		<template #header>
-			<N8nTooltip
-				:content="data.description"
-				:disabled="!data.description"
-				data-test-id="workflow-card-name-tooltip"
-				:popper-class="$style['description-popper']"
+			<N8nText
+				tag="h2"
+				bold
+				:class="{
+					[$style.cardHeading]: true,
+					[$style.cardHeadingArchived]: data.isArchived,
+				}"
+				data-test-id="workflow-card-name"
 			>
-				<N8nText
-					tag="h2"
-					bold
-					:class="{
-						[$style.cardHeading]: true,
-						[$style.cardHeadingArchived]: data.isArchived,
-					}"
-					data-test-id="workflow-card-name"
-				>
-					{{ data.name }}
-					<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
-						{{ locale.baseText('workflows.item.readonly') }}
+				{{ data.name }}
+				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+					{{ locale.baseText('workflows.item.readonly') }}
+				</N8nBadge>
+				<N8nTooltip v-if="hasDynamicCredentials" placement="top">
+					<template #content>
+						<div :class="$style.tooltipContent">
+							<strong>{{ locale.baseText('workflows.dynamic.tooltipTitle') }}</strong>
+							<span>{{ locale.baseText('workflows.dynamic.tooltip') }}</span>
+						</div>
+					</template>
+					<N8nBadge
+						theme="tertiary"
+						class="ml-3xs pl-3xs pr-3xs"
+						data-test-id="workflow-card-dynamic-credentials"
+					>
+						<span :class="$style.dynamicBadgeText">
+							<N8nIcon icon="key-round" size="medium" />
+							{{ locale.baseText('credentials.dynamic.badge') }}
+						</span>
 					</N8nBadge>
-				</N8nText>
-			</N8nTooltip>
+				</N8nTooltip>
+				<N8nBadge
+					v-if="isResolverMissing"
+					theme="warning"
+					class="ml-3xs pl-3xs pr-3xs"
+					data-test-id="workflow-card-resolver-missing"
+				>
+					<span :class="$style.resolverMissingBadge">
+						{{ locale.baseText('workflows.dynamic.resolverMissing') }}
+					</span>
+				</N8nBadge>
+			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
 			<span v-show="data"
@@ -627,17 +706,16 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<WorkflowActivator
-					v-else
-					class="mr-s"
-					:is-archived="data.isArchived"
-					:workflow-active="data.active"
-					:workflow-id="data.id"
-					:workflow-permissions="workflowPermissions"
-					data-test-id="workflow-card-activator"
-					@update:workflow-active="onWorkflowActiveToggle"
-				/>
-
+				<div
+					v-else-if="isWorkflowPublished"
+					:class="$style.publishIndicator"
+					data-test-id="workflow-card-publish-indicator"
+				>
+					<span :class="$style.publishIndicatorDot" />
+					<N8nText size="small" color="text-base">{{
+						locale.baseText('workflows.published')
+					}}</N8nText>
+				</div>
 				<N8nActionToggle
 					:actions="actions"
 					theme="dark"
@@ -657,18 +735,16 @@ const tags = computed(
 	align-items: stretch;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 
 .cardHeading {
+	display: flex;
+	align-items: center;
 	font-size: var(--font-size--sm);
 	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
-
-	span {
-		color: var(--color--text--tint-1);
-	}
 }
 
 .cardHeadingArchived {
@@ -731,6 +807,50 @@ const tags = computed(
 	&:hover {
 		color: var(--color--text);
 	}
+}
+
+.dynamicBadgeText {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--3xs);
+	height: 18px;
+}
+
+.resolverMissingBadge {
+	display: inline-flex;
+	align-items: center;
+	font-size: var(--font-size--3xs);
+	height: 18px;
+	color: var(--color--warning);
+}
+
+.tooltipContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.publishIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	margin-left: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border-radius: var(--spacing--4xs);
+	border: var(--border);
+
+	* {
+		// This is needed to line height up with ownership badge
+		line-height: calc(var(--font-size--sm) + 1px);
+	}
+}
+
+.publishIndicatorDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--mint-600);
 }
 
 @include mixins.breakpoint('sm-and-down') {

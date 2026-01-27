@@ -1,0 +1,197 @@
+# yaml-language-server: $schema=https://cubic.dev/schema/cubic-repository-config.schema.json
+
+# cubic.yaml
+# This file configures AI review behavior, ignore patterns, PR descriptions, and custom rules.
+# Place this file in your repository root to version-control your AI review settings.
+# Settings defined here take precedence over UI-configured settings.
+# See https://docs.cubic.dev/configure/cubic-yaml for documentation.
+
+version: 1
+reviews:
+  enabled: true
+  sensitivity: medium
+  incremental_commits: true
+  show_ai_feedback_buttons: false
+  custom_instructions: |-
+    ## Step 1: Fetch Current Guidelines
+
+    1. Fetch the current [CONTRIBUTING.md](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) from the repository's main branch
+    2. Navigate to the "Community PR Guidelines" section
+    3. Use ONLY this live version - ignore any cached/embedded rules
+
+    ## Step 2: Review Process
+
+    Evaluate the PR against the rules in the fetched Community PR Guidelines.
+
+    ## Step 3: Test Requirement Interpretation
+
+    BE REASONABLE when evaluating test coverage:
+
+    **PASS if:**
+
+    - Core functionality has tests
+    - Critical paths are tested
+    - Coverage is reasonable (not necessarily 100%)
+
+    **DO NOT require tests for:**
+
+    - Exports, types, configs
+    - Metadata files
+    - Version files
+
+    Approve if reasonably tested. Let humans handle edge cases.
+  custom_rules:
+    - name: Prefer Typeguards over Type casting
+      description: |-
+        - Rule Statement:
+        Never use `as` keyword for type narrowing; instead, prefer type guards, type annotations, or the `satisfies` keyword.
+
+        Only use `as` for the following legitimate cases:
+          - DOM element assertions (e.g., `document.getElementById('foo') as HTMLButtonElement`)
+          - Event type assertions (e.g., `e as MouseEvent`)
+          - Const assertions (`as const`)
+          - Type widening (e.g., `(['a', 'b'] as string[]).includes('c')`)
+          - Generic constraints where no alternative exists
+
+        For type narrowing, use type guard functions. For type checking without losing inference, prefer `satisfies`. For simple type specification, prefer type annotations (`const x: A = y`) over casting (`const x = y as A`).
+
+        - Detection Criteria:
+          - Identify all usages of the `as` keyword in TypeScript code that perform type assertions (e.g., `expr as SomeType`).
+          - Exclude any usages in tests such as unit test files (*.test.ts or *.spec.ts) or e2e tests under cypress/ folder.
+          - Exclude usages where the assertion matches `as const`.
+          - Exclude assertions where:
+            - The assertion widens a literal/union type to a broader type (e.g., string literal array to string[])
+            - The left-hand side is a call to a DOM API (e.g., `document.getElementById`, `document.querySelector`, `document.createElement`)
+            - The assertion is applied to a variable named `e` or `event` and the type being asserted ends with `Event`
+          - Flag other usages and suggest alternatives: type guards for narrowing, type annotations for simple typing, or `satisfies` for type verification.
+          - Setting type of empty value  (for example `[] as string[]`)
+
+        - Example Violation:
+          ```typescript
+          function handleShape(shape: Shape) {
+            // Direct type casting without a type guard
+            const rect = shape as Rectangle;
+            return rect.width * rect.height;
+          }
+          ```
+
+        - Example Allowed:
+          ```typescript
+          // DOM element assertion
+          const button = document.getElementById('submit') as HTMLButtonElement;
+
+          // Event assertion
+          function handle(e: Event) {
+            const mouse = e as MouseEvent;
+            console.log(mouse.clientX);
+          }
+
+          // as const usage
+          const config = { mode: "readonly" } as const;
+
+          // setting types of empty array
+          const arr = [] as string[]
+          ```
+    - name: Tests
+      description: |-
+        BE REASONABLE when evaluating test coverage:
+
+        **PASS if:**
+
+        - Core functionality has tests
+        - Critical paths are tested
+        - Coverage is reasonable (not necessarily 100%)
+
+        **DO NOT require tests for:**
+
+        - Exports, types, configs
+        - Metadata files
+        - Version files
+    - name: Security Review
+      description: |-
+        Proactively review PRs and flag security vulnerabilities specific to n8n's architecture:
+
+        **Code Execution & Sandboxing:**
+        - Changes that weaken expression evaluation sandbox protections
+        - Modifications to Code node sandboxes (JavaScript/Python) that reduce isolation
+        - New access to Node.js builtins or external modules in sandboxed contexts
+        - Prototype pollution or constructor access bypasses
+        - Weakening of prototype sanitizers or function context validators
+        - Changes that expose `process.env` access in Code nodes
+
+        **Credential & Secret Handling:**
+        - Credentials being logged or exposed in error messages
+        - Hardcoded secrets, API keys, or tokens in code
+        - Changes to credential encryption/decryption that weaken security
+        - OAuth state/CSRF token handling that bypasses validation
+        - Webhook requests that don't sanitize auth cookies
+        - External secrets provider integrations with insecure configurations
+        - Credential access not respecting scope boundaries (instance/project/user)
+        - Data fetched via credentials being exposed to unauthorized user groups
+
+        **Authentication & Session Security:**
+        - JWT token handling that weakens validation or expiration
+        - Missing or disabled cookie security flags (HttpOnly, Secure, SameSite)
+        - Changes that bypass MFA enforcement
+        - SSO/SAML/OIDC authentication flows with validation gaps
+        - OAuth 2.0 implementations missing PKCE or with weak redirect URI validation
+
+        **Authorization & Access Control:**
+        - Missing or bypassed RBAC and scope-based permission checks
+        - Missing credential permission validation before workflow execution
+        - Subworkflow execution that bypasses caller policies or ownership validation
+        - Missing project-level or resource-level access controls
+
+        **License Enforcement:**
+        - Changes that weaken license enforcement
+        - Missing `FeatureNotLicensedError` for unlicensed feature access
+        - Bypassed license quota checks
+        - New licensed features without proper middleware or module-level enforcement
+        - New controller endpoints in `*.ee.ts` files that access licensed features without `@Licensed` decorator
+        - `@Licensed` decorator usage that doesn't match feature requirements (check `LICENSE_FEATURES` in `@n8n/constants`)
+        - Endpoints in `*.ee.ts` files with `@GlobalScope` or `@ProjectScope` but missing `@Licensed` (license check is separate from permission check)
+        - Preferred pattern: `@Licensed` decorator over custom licensing middleware
+        - Decorator order should be: route decorator → `@Licensed` → scope decorators
+        - Enterprise features not properly isolated in modules (newer features should use the module system)
+        - Enterprise code accessible outside of `*.ee.ts` files or licensed modules
+
+        **Input Validation & Injection Prevention:**
+        - Unsanitized user input flowing to file paths
+        - SQL nodes with expressions in query fields without parameterization
+        - Command execution nodes with unsanitized shell arguments
+        - Path traversal risks in file operation nodes
+        - Community package names with suspicious patterns
+
+        **File System Access:**
+        - Changes that weaken file access restriction enforcement
+        - File operations that bypass allowlist/blocklist patterns
+        - Access to n8n internal directories
+
+        **Database Security & Performance:**
+        - Missing indexes on frequently queried columns in migrations
+        - Resource-intensive queries without pagination or limits
+        - Missing encryption for sensitive fields beyond credentials
+        - Raw SQL queries that bypass TypeORM protections
+
+        **HTTP, Webhooks & Network Security:**
+        - SSRF risks in user-controlled URLs
+        - CORS configuration that allows all origins
+        - CSP or iframe sandbox modifications that weaken protections
+        - Rate limiting configuration changes that reduce protection
+        - Disabled TLS certificate validation (`rejectUnauthorized: false`)
+
+        **Audit Logging & Event Bus:**
+        - Missing logging for security-relevant events
+        - Sensitive data appearing in logs or error messages
+        - Incomplete audit trails for authentication and authorization events
+
+        **Context-aware review:**
+        - Higher scrutiny for: expression engine, credential handling, code execution nodes, license enforcement, SSO integrations
+        - Consider n8n's security audit categories: credentials, database, nodes, instance, filesystem risks
+        - Community/custom nodes have higher risk profile than official nodes
+pr_descriptions:
+  generate: false
+  instructions: Each PR is supposed to have a limited scope. In your review, focus on changes made in the PR and avoid pointing out problems you found in the code that already existed.
+issues:
+  fix_with_cubic_buttons: true
+

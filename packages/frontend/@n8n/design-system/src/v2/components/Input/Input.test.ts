@@ -1,7 +1,16 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 
+import type { Input2Size } from './Input.types';
 import Input from './Input.vue';
+
+const sizeCases: Array<[Input2Size, string]> = [
+	['xlarge', 'xlarge'],
+	['large', 'large'],
+	['medium', 'medium'],
+	['small', 'small'],
+	['mini', 'mini'],
+];
 
 describe('v2/components/Input', () => {
 	describe('rendering', () => {
@@ -36,13 +45,7 @@ describe('v2/components/Input', () => {
 	});
 
 	describe('sizes', () => {
-		test.each([
-			['xlarge' as const, 'XLarge'],
-			['large' as const, 'Large'],
-			['medium' as const, 'Medium'],
-			['small' as const, 'Small'],
-			['mini' as const, 'Mini'],
-		])('size %s should apply %s class', (size, expected) => {
+		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
 			const wrapper = render(Input, {
 				props: {
 					size,
@@ -56,7 +59,7 @@ describe('v2/components/Input', () => {
 		it('should default to large size', () => {
 			const wrapper = render(Input);
 			const container = wrapper.container.querySelector('div > div');
-			expect(container?.className).toContain('Large');
+			expect(container?.className).toContain('large');
 		});
 	});
 

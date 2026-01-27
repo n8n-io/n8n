@@ -19,6 +19,8 @@ const esmDependencies = [
 	'openid-client',
 	'oauth4webapi',
 	'jose',
+	'p-retry',
+	'is-network-error',
 	// Add other ESM dependencies that need to be transformed here
 ];
 

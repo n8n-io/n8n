@@ -58,6 +58,10 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.CUSTOM_ROLES);
 	}
 
+	isDynamicCredentialsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}

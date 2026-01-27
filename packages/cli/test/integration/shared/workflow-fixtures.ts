@@ -3,6 +3,7 @@
  * These fixtures create minimal workflow structures needed for testing.
  */
 
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 /**
@@ -88,7 +89,7 @@ export function createParentWorkflowFixture(childWorkflowId: string) {
 					[
 						{
 							node: 'Execute Workflow',
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -161,7 +162,7 @@ export function createMiddleWorkflowFixture(childWorkflowId: string) {
 					[
 						{
 							node: 'Execute Workflow',
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -247,7 +248,7 @@ export function createFailingWorkflowFixture() {
 					[
 						{
 							node: 'DebugHelper',
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],
@@ -291,7 +292,7 @@ export function createWorkflowWithErrorHandlerFixture(errorWorkflowId: string) {
 					[
 						{
 							node: 'DebugHelper',
-							type: 'main',
+							type: NodeConnectionTypes.Main,
 							index: 0,
 						},
 					],

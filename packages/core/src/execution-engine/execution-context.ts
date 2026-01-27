@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import {
 	type IWorkflowExecuteAdditionalData,
@@ -161,6 +162,12 @@ export const establishExecutionContext = async (
 		return;
 	}
 
+	// Store basic trigger node info in the context for reference
+	executionData.runtimeData.triggerNode = {
+		name: startItem.node.name,
+		type: startItem.node.type,
+	};
+
 	// We were triggered from a parent execution
 	// and can inherit context from there
 	if (startItem.metadata?.parentExecution?.executionContext) {
@@ -175,16 +182,23 @@ export const establishExecutionContext = async (
 	// Call the execution context service to augment the context with any hook-based data
 	const executionContextService = Container.get(ExecutionContextService);
 
-	const { context, triggerItems } = await executionContextService.augmentExecutionContextWithHooks(
-		workflow,
-		startItem,
-		executionData.runtimeData,
-	);
+	try {
+		const { context, triggerItems } =
+			await executionContextService.augmentExecutionContextWithHooks(
+				workflow,
+				startItem,
+				executionData.runtimeData,
+			);
 
-	executionData.runtimeData = context;
+		executionData.runtimeData = context;
 
-	// If the trigger items were modified by hooks, update the start item accordingly
-	if (triggerItems) {
-		startItem.data['main'][0] = triggerItems;
+		// If the trigger items were modified by hooks, update the start item accordingly
+		if (triggerItems) {
+			startItem.data['main'][0] = triggerItems;
+		}
+	} catch (error) {
+		// Log the error
+		Container.get(Logger).error('Failed to augment execution context with hooks.', { error });
+		throw error;
 	}
 };

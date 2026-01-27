@@ -1,4 +1,5 @@
 import isbot from 'isbot';
+import { getWebhookSandboxCSP } from 'n8n-core';
 import {
 	NodeOperationError,
 	SEND_AND_WAIT_OPERATION,
@@ -13,7 +14,7 @@ import type {
 	FormFieldsParameter,
 } from 'n8n-workflow';
 
-import { limitWaitTimeProperties } from './descriptions';
+import { limitWaitTimeOption } from './descriptions';
 import {
 	ACTION_RECORDED_PAGE,
 	BUTTON_STYLE_PRIMARY,
@@ -26,6 +27,7 @@ import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
 import {
 	prepareFormData,
+	prepareFormFields,
 	prepareFormReturnItem,
 	resolveRawData,
 } from '../../nodes/Form/utils/utils';
@@ -48,22 +50,6 @@ type FormResponseTypeOptions = {
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
 
-const limitWaitTimeOption: INodeProperties = {
-	displayName: 'Limit Wait Time',
-	name: 'limitWaitTime',
-	type: 'fixedCollection',
-	description:
-		'Whether the workflow will automatically resume execution after the specified limit type',
-	default: { values: { limitType: 'afterTimeInterval', resumeAmount: 45, resumeUnit: 'minutes' } },
-	options: [
-		{
-			displayName: 'Values',
-			name: 'values',
-			values: limitWaitTimeProperties,
-		},
-	],
-};
-
 const appendAttributionOption: INodeProperties = {
 	displayName: 'Append n8n Attribution',
 	name: 'appendAttribution',
@@ -76,14 +62,15 @@ const appendAttributionOption: INodeProperties = {
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
 	targetProperties: INodeProperties[],
-	resource: string = 'message',
+	resource: string | null = 'message',
 	additionalProperties: INodeProperties[] = [],
 	options?: {
 		noButtonStyle?: boolean;
 		defaultApproveLabel?: string;
 		defaultDisapproveLabel?: string;
+		extraOptions?: INodeProperties[];
 	},
-) {
+): INodeProperties[] {
 	const buttonStyle: INodeProperties = {
 		displayName: 'Button Style',
 		name: 'buttonStyle',
@@ -248,7 +235,7 @@ export function getSendAndWaitProperties(
 			type: 'collection',
 			placeholder: 'Add option',
 			default: {},
-			options: [limitWaitTimeOption, appendAttributionOption],
+			options: [limitWaitTimeOption, appendAttributionOption, ...(options?.extraOptions ?? [])],
 			displayOptions: {
 				show: {
 					responseType: ['approval'],
@@ -301,6 +288,7 @@ export function getSendAndWaitProperties(
 				},
 				limitWaitTimeOption,
 				appendAttributionOption,
+				...(options?.extraOptions ?? []),
 			],
 			displayOptions: {
 				show: {
@@ -314,7 +302,7 @@ export function getSendAndWaitProperties(
 	return updateDisplayOptions(
 		{
 			show: {
-				resource: [resource],
+				...(resource ? { resource: [resource] } : {}),
 				operation: [SEND_AND_WAIT_OPERATION],
 			},
 		},
@@ -390,6 +378,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {
@@ -430,6 +419,8 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			const { formTitle, formDescription, buttonLabel, customCss } =
 				getFormResponseCustomizations(this);
 
+			fields = prepareFormFields(this, fields);
+
 			const data = prepareFormData({
 				formTitle,
 				formDescription,
@@ -443,6 +434,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 				customCss,
 			});
 
+			res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
 			res.render('form-trigger', data);
 
 			return {

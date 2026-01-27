@@ -20,6 +20,9 @@ import {
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
+
+jest.spyOn(PyTaskRunnerProcess, 'checkRequirements').mockResolvedValue('python');
 
 /**
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner

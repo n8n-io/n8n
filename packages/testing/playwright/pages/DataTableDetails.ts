@@ -363,7 +363,8 @@ export class DataTableDetails extends BasePage {
 			const textCount = await textElement.count();
 
 			if (textCount > 0 && ariaColIndex) {
-				const text = await textElement.textContent();
+				// Use innerText instead of textContent to avoid getting hidden input values
+				const text = await textElement.innerText();
 				if (text) {
 					columnData.push({
 						index: parseInt(ariaColIndex, 10),

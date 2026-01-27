@@ -1,7 +1,13 @@
+import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { createReadStream } from 'node:fs';
-import { access as fsAccess, realpath as fsRealpath } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import {
+	access as fsAccess,
+	realpath as fsRealpath,
+	stat as fsStat,
+	open as fsOpen,
+} from 'node:fs/promises';
 import { join } from 'node:path';
 
 import {
@@ -9,13 +15,12 @@ import {
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
-	RESTRICT_FILE_ACCESS_TO,
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from '@/constants';
 import { InstanceSettings } from '@/instance-settings';
 
-import { getFileSystemHelperFunctions, isFilePathBlocked } from '../file-system-helper-functions';
+import { getFileSystemHelperFunctions } from '../file-system-helper-functions';
 
 jest.mock('node:fs');
 jest.mock('node:fs/promises');
@@ -23,6 +28,9 @@ jest.mock('node:fs/promises');
 const originalProcessEnv = { ...process.env };
 
 let instanceSettings: InstanceSettings;
+let securityConfig: SecurityConfig;
+let originalBlockedFilePatterns: string;
+
 beforeEach(() => {
 	process.env = { ...originalProcessEnv };
 
@@ -33,81 +41,90 @@ beforeEach(() => {
 	(fsRealpath as jest.Mock).mockImplementation((path: string) => path);
 
 	instanceSettings = Container.get(InstanceSettings);
+	securityConfig = Container.get(SecurityConfig);
+	securityConfig.restrictFileAccessTo = '';
+	originalBlockedFilePatterns = securityConfig.blockFilePatterns;
+});
+
+afterEach(() => {
+	securityConfig.blockFilePatterns = originalBlockedFilePatterns;
 });
 
 describe('isFilePathBlocked', () => {
+	const node = { type: 'TestNode' } as INode;
+	const { isFilePathBlocked, resolvePath } = getFileSystemHelperFunctions(node);
 	beforeEach(() => {
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 	});
 
 	it('should return true for static cache dir', async () => {
 		const filePath = instanceSettings.staticCacheDir;
-		expect(await isFilePathBlocked(filePath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
 	});
 
 	it('should return true for restricted paths', async () => {
 		const restrictedPath = instanceSettings.n8nFolder;
-		expect(await isFilePathBlocked(restrictedPath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(restrictedPath))).toBe(true);
 	});
 
 	it('should handle empty allowed paths', async () => {
-		delete process.env[RESTRICT_FILE_ACCESS_TO];
-		const result = await isFilePathBlocked('/some/random/path');
+		securityConfig.restrictFileAccessTo = '';
+		const result = isFilePathBlocked(await resolvePath('/some/random/path'));
 		expect(result).toBe(false);
 	});
 
 	it('should handle multiple allowed paths', async () => {
-		process.env[RESTRICT_FILE_ACCESS_TO] = '/path1;/path2;/path3';
+		securityConfig.restrictFileAccessTo = '/path1;/path2;/path3';
 		const allowedPath = '/path2/somefile';
-		expect(await isFilePathBlocked(allowedPath)).toBe(false);
+		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(false);
 	});
 
 	it('should handle empty strings in allowed paths', async () => {
-		process.env[RESTRICT_FILE_ACCESS_TO] = '/path1;;/path2';
+		securityConfig.restrictFileAccessTo = '/path1;;/path2';
 		const allowedPath = '/path2/somefile';
-		expect(await isFilePathBlocked(allowedPath)).toBe(false);
+		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(false);
 	});
 
 	it('should trim whitespace in allowed paths', async () => {
-		process.env[RESTRICT_FILE_ACCESS_TO] = ' /path1 ; /path2 ; /path3 ';
+		securityConfig.restrictFileAccessTo = ' /path1 ; /path2 ; /path3 ';
 		const allowedPath = '/path2/somefile';
-		expect(await isFilePathBlocked(allowedPath)).toBe(false);
+		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(false);
 	});
 
 	it('should return false when BLOCK_FILE_ACCESS_TO_N8N_FILES is false', async () => {
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'false';
 		const restrictedPath = instanceSettings.n8nFolder;
-		expect(await isFilePathBlocked(restrictedPath)).toBe(false);
+		expect(isFilePathBlocked(await resolvePath(restrictedPath))).toBe(false);
 	});
 
 	it('should return true when path is in allowed paths but still restricted', async () => {
-		process.env[RESTRICT_FILE_ACCESS_TO] = '/some/allowed/path';
+		securityConfig.restrictFileAccessTo = '/some/allowed/path';
 		const restrictedPath = instanceSettings.n8nFolder;
-		expect(await isFilePathBlocked(restrictedPath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(restrictedPath))).toBe(true);
 	});
 
 	it('should return false when path is in allowed paths', async () => {
 		const allowedPath = '/some/allowed/path';
-		process.env[RESTRICT_FILE_ACCESS_TO] = allowedPath;
-		expect(await isFilePathBlocked(allowedPath)).toBe(false);
+		securityConfig.restrictFileAccessTo = allowedPath;
+		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(false);
 	});
 
 	it('should return true when file paths in CONFIG_FILES', async () => {
 		process.env[CONFIG_FILES] = '/path/to/config1,/path/to/config2';
 		const configPath = '/path/to/config1/somefile';
-		expect(await isFilePathBlocked(configPath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(configPath))).toBe(true);
 	});
 
 	it('should return true when file paths in CUSTOM_EXTENSION_ENV', async () => {
 		process.env[CUSTOM_EXTENSION_ENV] = '/path/to/extensions1;/path/to/extensions2';
 		const extensionPath = '/path/to/extensions1/somefile';
-		expect(await isFilePathBlocked(extensionPath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(extensionPath))).toBe(true);
 	});
 
 	it('should return true when file paths in BINARY_DATA_STORAGE_PATH', async () => {
 		process.env[BINARY_DATA_STORAGE_PATH] = '/path/to/binary/storage';
 		const binaryPath = '/path/to/binary/storage/somefile';
-		expect(await isFilePathBlocked(binaryPath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(binaryPath))).toBe(true);
 	});
 
 	it('should block file paths in email template paths', async () => {
@@ -117,48 +134,48 @@ describe('isFilePathBlocked', () => {
 		const invitePath = '/path/to/invite/templates/invite.html';
 		const pwResetPath = '/path/to/pwreset/templates/reset.html';
 
-		expect(await isFilePathBlocked(invitePath)).toBe(true);
-		expect(await isFilePathBlocked(pwResetPath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(invitePath))).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(pwResetPath))).toBe(true);
 	});
 
 	it('should block access to n8n files if restrict and block are set', async () => {
 		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
 		const userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
 
-		process.env[RESTRICT_FILE_ACCESS_TO] = userHome;
+		securityConfig.restrictFileAccessTo = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 		const restrictedPath = instanceSettings.n8nFolder;
-		expect(await isFilePathBlocked(restrictedPath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(restrictedPath))).toBe(true);
 	});
 
 	it('should allow access to parent folder if restrict and block are set', async () => {
 		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
 		const userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
 
-		process.env[RESTRICT_FILE_ACCESS_TO] = userHome;
+		securityConfig.restrictFileAccessTo = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
-		const restrictedPath = join(userHome, 'somefile.txt');
-		expect(await isFilePathBlocked(restrictedPath)).toBe(false);
+		const restrictedPath = await resolvePath(join(userHome, 'somefile.txt'));
+		expect(isFilePathBlocked(restrictedPath)).toBe(false);
 	});
 
 	it('should not block similar paths', async () => {
 		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
 		const userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
 
-		process.env[RESTRICT_FILE_ACCESS_TO] = userHome;
+		securityConfig.restrictFileAccessTo = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
-		const restrictedPath = join(userHome, '.n8n_x');
-		expect(await isFilePathBlocked(restrictedPath)).toBe(false);
+		const restrictedPath = await resolvePath(join(userHome, '.n8n_x'));
+		expect(isFilePathBlocked(restrictedPath)).toBe(false);
 	});
 
 	it('should return true for a symlink in a allowed path to a restricted path', async () => {
-		process.env[RESTRICT_FILE_ACCESS_TO] = '/path1';
+		securityConfig.restrictFileAccessTo = '/path1';
 		const allowedPath = '/path1/symlink';
 		const actualPath = '/path2/realfile';
 		(fsRealpath as jest.Mock).mockImplementation((path: string) =>
 			path === allowedPath ? actualPath : path,
 		);
-		expect(await isFilePathBlocked(allowedPath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(true);
 	});
 
 	it('should handle non-existent file when it is allowed', async () => {
@@ -167,18 +184,89 @@ describe('isFilePathBlocked', () => {
 		// @ts-expect-error undefined property
 		error.code = 'ENOENT';
 		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
-		expect(await isFilePathBlocked(filePath)).toBe(false);
+		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(false);
 	});
 
 	it('should handle non-existent file when it is not allowed', async () => {
 		const filePath = '/non/existent/file';
 		const allowedPath = '/some/allowed/path';
-		process.env[RESTRICT_FILE_ACCESS_TO] = allowedPath;
+		securityConfig.restrictFileAccessTo = allowedPath;
 		const error = new Error('ENOENT');
 		// @ts-expect-error undefined property
 		error.code = 'ENOENT';
 		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
-		expect(await isFilePathBlocked(filePath)).toBe(true);
+		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
+	});
+
+	it.each(['.git', '/.git', '/tmp/.git', '/tmp/.git/config'])(
+		'should per default block access to %s',
+		async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
+		},
+	);
+
+	it('should allow access when pattern matching is disabled', async () => {
+		securityConfig.blockFilePatterns = '';
+		expect(isFilePathBlocked(await resolvePath('/tmp/.git'))).toBe(false);
+	});
+
+	it('should block all access when using invalid pattern', async () => {
+		securityConfig.blockFilePatterns = '(';
+		expect(isFilePathBlocked(await resolvePath('/tmp/xo'))).toBe(true);
+	});
+
+	describe('cross-platform path handling', () => {
+		beforeEach(() => {
+			// Use default .git blocking pattern
+			securityConfig.blockFilePatterns = '^(.*\\/)*\\.git(\\/.*)*$';
+		});
+
+		it('should handle Windows-style paths for .git directory', async () => {
+			const windowsGitPath = 'C:\\repo\\.git\\config';
+			expect(isFilePathBlocked(await resolvePath(windowsGitPath))).toBe(true);
+		});
+
+		it('should handle nested Windows paths for .git subdirectories', async () => {
+			const windowsGitPath = 'C:\\Users\\user\\project\\.git\\hooks\\pre-commit';
+			expect(isFilePathBlocked(await resolvePath(windowsGitPath))).toBe(true);
+		});
+
+		it('should handle mixed path separators', async () => {
+			const mixedPath = 'C:\\repo/.git\\objects\\abc123';
+			expect(isFilePathBlocked(await resolvePath(mixedPath))).toBe(true);
+		});
+
+		it('should allow legitimate files with git-related extensions', async () => {
+			const legitimatePath = 'C:\\repo\\somefile.txt';
+			expect(isFilePathBlocked(await resolvePath(legitimatePath))).toBe(false);
+		});
+
+		it('should handle Windows absolute paths to .git', async () => {
+			const windowsRootGit = 'C:\\.git';
+			expect(isFilePathBlocked(await resolvePath(windowsRootGit))).toBe(true);
+		});
+	});
+
+	describe('when multiple file patterns are configured', () => {
+		beforeEach(() => {
+			securityConfig.blockFilePatterns = 'hello; \\/there$; ^where';
+		});
+
+		it.each([
+			'hello',
+			'xhellox',
+			'subpath/hello/',
+			'/there',
+			'/subpath/there',
+			'where',
+			'where-is/it',
+		])('should block access to %s', async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(true);
+		});
+
+		it.each(['/there/is', '/where'])('should not block access to %s', async (path) => {
+			expect(isFilePathBlocked(await resolvePath(path))).toBe(false);
+		});
 	});
 });
 
@@ -203,58 +291,246 @@ describe('getFileSystemHelperFunctions', () => {
 	});
 
 	describe('createReadStream', () => {
+		const mockFileStats = { dev: 123, ino: 456 };
+
 		it('should throw error for non-existent file', async () => {
 			const filePath = '/non/existent/file';
 			const error = new Error('ENOENT');
 			// @ts-expect-error undefined property
 			error.code = 'ENOENT';
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
 			(fsAccess as jest.Mock).mockRejectedValueOnce(error);
 
-			await expect(helperFunctions.createReadStream(filePath)).rejects.toThrow(
-				`The file "${filePath}" could not be accessed.`,
-			);
+			await expect(
+				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
+			).rejects.toThrow(`The file "${filePath}" could not be accessed.`);
 		});
 
 		it('should throw when file access is blocked', async () => {
-			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
-			(fsAccess as jest.Mock).mockResolvedValueOnce({});
-			await expect(helperFunctions.createReadStream('/blocked/path')).rejects.toThrow(
-				'Access to the file is not allowed',
-			);
+			securityConfig.restrictFileAccessTo = '/allowed/path';
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			await expect(
+				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
+			).rejects.toThrow('Access to the file is not allowed');
 		});
 
 		it('should not reveal if file exists if it is within restricted path', async () => {
-			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
+			securityConfig.restrictFileAccessTo = '/allowed/path';
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
 
-			const error = new Error('ENOENT');
-			// @ts-expect-error undefined property
-			error.code = 'ENOENT';
-			(fsAccess as jest.Mock).mockRejectedValueOnce(error);
-
-			await expect(helperFunctions.createReadStream('/blocked/path')).rejects.toThrow(
-				'Access to the file is not allowed',
-			);
+			await expect(
+				helperFunctions.createReadStream(await helperFunctions.resolvePath('/blocked/path')),
+			).rejects.toThrow('Access to the file is not allowed');
 		});
 
 		it('should create a read stream if file access is permitted', async () => {
 			const filePath = '/allowed/path';
-			(fsAccess as jest.Mock).mockResolvedValueOnce({});
-			await helperFunctions.createReadStream(filePath);
-			expect(createReadStream).toHaveBeenCalledWith(filePath);
+			const mockStream = { pipe: jest.fn() };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(mockFileStats),
+				createReadStream: jest.fn().mockReturnValue(mockStream),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			const result = await helperFunctions.createReadStream(
+				await helperFunctions.resolvePath(filePath),
+			);
+
+			expect(result).toBe(mockStream);
+			expect(fsOpen).toHaveBeenCalledWith(filePath, constants.O_RDONLY | constants.O_NOFOLLOW);
+		});
+
+		it('should reject symlinks with ELOOP error', async () => {
+			const filePath = '/allowed/path/file';
+			const eloopError = new Error('ELOOP: too many symbolic links encountered');
+			// @ts-expect-error undefined property
+			eloopError.code = 'ELOOP';
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as jest.Mock).mockRejectedValueOnce(eloopError);
+
+			await expect(
+				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
+			).rejects.toThrow('Symlinks are not allowed.');
+		});
+
+		it('should reject when file identity changes', async () => {
+			const filePath = '/allowed/path/file';
+			const differentStats = { dev: 999, ino: 888 };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(differentStats),
+				createReadStream: jest.fn(),
+				close: jest.fn(),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsAccess as jest.Mock).mockResolvedValueOnce(undefined);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await expect(
+				helperFunctions.createReadStream(await helperFunctions.resolvePath(filePath)),
+			).rejects.toThrow('The file has changed and cannot be accessed.');
+			expect(mockFileHandle.close).toHaveBeenCalled();
 		});
 	});
 
 	describe('writeContentToFile', () => {
+		const mockFileStats = { dev: 123, ino: 456, isFile: () => true };
+
 		it('should throw error for blocked file path', async () => {
 			process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 
 			await expect(
 				helperFunctions.writeContentToFile(
-					instanceSettings.n8nFolder + '/test.txt',
+					await helperFunctions.resolvePath(instanceSettings.n8nFolder + '/test.txt'),
 					'content',
-					'w',
+					constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
 				),
 			).rejects.toThrow('not writable');
+		});
+
+		it('should reject symlinks with ELOOP error', async () => {
+			const filePath = '/allowed/path/file';
+			const eloopError = new Error('ELOOP: too many symbolic links encountered');
+			// @ts-expect-error undefined property
+			eloopError.code = 'ELOOP';
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as jest.Mock).mockRejectedValueOnce(eloopError);
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath(filePath),
+					'test content',
+				),
+			).rejects.toThrow('Symlinks are not allowed.');
+		});
+
+		it('should reject when file identity changes', async () => {
+			const filePath = '/allowed/path/file';
+			const differentStats = { dev: 999, ino: 888, isFile: () => true };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(differentStats),
+				truncate: jest.fn(),
+				write: jest.fn(),
+				close: jest.fn(),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath(filePath),
+					'test content',
+				),
+			).rejects.toThrow('The file has changed and cannot be written.');
+
+			expect(mockFileHandle.close).toHaveBeenCalled();
+		});
+
+		it('should successfully write to file when identity matches', async () => {
+			const filePath = '/allowed/path/file';
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(mockFileStats),
+				truncate: jest.fn().mockResolvedValue(undefined),
+				writeFile: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await helperFunctions.writeContentToFile(
+				await helperFunctions.resolvePath(filePath),
+				'test content',
+			);
+
+			expect(fsOpen).toHaveBeenCalledWith(
+				filePath,
+				constants.O_WRONLY | constants.O_CREAT | constants.O_NOFOLLOW,
+			);
+			expect(mockFileHandle.truncate).toHaveBeenCalledWith(0);
+			expect(mockFileHandle.writeFile).toHaveBeenCalledWith('test content', { encoding: 'binary' });
+			expect(mockFileHandle.close).toHaveBeenCalled();
+		});
+
+		it('should successfully create and write to new file', async () => {
+			const filePath = '/allowed/path/newfile';
+			const enoentError = new Error('ENOENT');
+			// @ts-expect-error undefined property
+			enoentError.code = 'ENOENT';
+
+			const newFileStats = { dev: 123, ino: 789, isFile: () => true };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(newFileStats),
+				truncate: jest.fn().mockResolvedValue(undefined),
+				writeFile: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+
+			(fsStat as jest.Mock).mockRejectedValueOnce(enoentError);
+			(fsStat as jest.Mock).mockResolvedValueOnce(newFileStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await helperFunctions.writeContentToFile(
+				await helperFunctions.resolvePath(filePath),
+				'new content',
+			);
+
+			expect(mockFileHandle.truncate).toHaveBeenCalledWith(0);
+			expect(mockFileHandle.writeFile).toHaveBeenCalledWith('new content', { encoding: 'binary' });
+			expect(mockFileHandle.close).toHaveBeenCalled();
+		});
+
+		it('should strip O_TRUNC flag from user flags', async () => {
+			const filePath = '/allowed/path/file';
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(mockFileStats),
+				truncate: jest.fn().mockResolvedValue(undefined),
+				writeFile: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(mockFileStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await helperFunctions.writeContentToFile(
+				await helperFunctions.resolvePath(filePath),
+				'test content',
+				constants.O_TRUNC, // This should be stripped
+			);
+
+			// Verify O_TRUNC was not passed to fsOpen
+			expect(fsOpen).toHaveBeenCalledWith(
+				filePath,
+				constants.O_WRONLY | constants.O_CREAT | constants.O_NOFOLLOW,
+			);
+		});
+
+		it('should reject non-regular files (directories)', async () => {
+			const filePath = '/allowed/path/directory';
+			const dirStats = { dev: 123, ino: 456, isFile: () => false };
+			const mockFileHandle = {
+				stat: jest.fn().mockResolvedValue(dirStats),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+
+			(fsStat as jest.Mock).mockResolvedValueOnce(dirStats);
+			(fsOpen as jest.Mock).mockResolvedValueOnce(mockFileHandle);
+
+			await expect(
+				helperFunctions.writeContentToFile(
+					await helperFunctions.resolvePath(filePath),
+					'test content',
+				),
+			).rejects.toThrow('The path is not a regular file.');
+
+			expect(mockFileHandle.close).toHaveBeenCalled();
 		});
 	});
 });

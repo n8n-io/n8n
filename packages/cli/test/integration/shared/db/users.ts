@@ -3,6 +3,7 @@ import {
 	AuthIdentity,
 	AuthIdentityRepository,
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	type Role,
@@ -42,13 +43,14 @@ async function handlePasswordSetup(password: string | null | undefined): Promise
 
 /** Store a new user object, defaulting to a `member` */
 export async function newUser(attributes: DeepPartial<User> = {}): Promise<User> {
-	const { email, password, firstName, lastName, role, ...rest } = attributes;
+	const { email, password, firstName, lastName, role, lastActiveAt, ...rest } = attributes;
 	return Container.get(UserRepository).create({
 		email: email ?? randomEmail(),
 		password: await handlePasswordSetup(password),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		role: role ?? GLOBAL_MEMBER_ROLE,
+		lastActiveAt: lastActiveAt ?? new Date(),
 		...rest,
 	});
 }
@@ -152,6 +154,10 @@ export async function createMember() {
 
 export async function createAdmin() {
 	return await createUser({ role: GLOBAL_ADMIN_ROLE });
+}
+
+export async function createChatUser() {
+	return await createUser({ role: GLOBAL_CHAT_USER_ROLE });
 }
 
 export async function createUserShell(role: Role): Promise<User> {

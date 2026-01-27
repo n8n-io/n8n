@@ -56,6 +56,7 @@ const agGrid = useAgGrid<DataTableRow>({
 
 const dataTableColumns = useDataTableColumns({
 	onDeleteColumn: onDeleteColumnFunction,
+	onRenameColumn: onRenameColumnFunction,
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
@@ -110,6 +111,10 @@ const dataTableOperations = useDataTableOperations({
 
 async function onDeleteColumnFunction(columnId: string) {
 	await dataTableOperations.onDeleteColumn(columnId);
+}
+
+async function onRenameColumnFunction(columnId: string, columnName: string) {
+	await dataTableOperations.onRenameColumn(columnId, columnName);
 }
 
 async function onAddColumnFunction(column: DataTableColumnCreatePayload) {
@@ -224,7 +229,7 @@ defineExpose({
 	--ag-cell-text-color: var(--color--text--shade-1);
 	--ag-accent-color: var(--color--purple-600);
 	--ag-row-hover-color: var(--color--background--light-1);
-	--ag-background-color: var(--color--background--light-3);
+	--ag-background-color: var(--color--background--light-2);
 	--ag-border-color: var(--border-color);
 	--ag-border-radius: var(--radius);
 	--ag-wrapper-border-radius: 0;
@@ -232,7 +237,7 @@ defineExpose({
 	--ag-font-size: var(--font-size--xs);
 	--ag-font-color: var(--color--text);
 	--ag-row-height: calc(var(--ag-grid-size) * 0.8 + 32px);
-	--ag-header-background-color: var(--color--background--light-1);
+	--ag-header-background-color: var(--color--foreground--tint-1);
 	--ag-header-font-size: var(--font-size--xs);
 	--ag-header-font-weight: var(--font-weight--medium);
 	--ag-header-foreground-color: var(--color--text--shade-1);
@@ -241,7 +246,7 @@ defineExpose({
 	--ag-header-column-border-height: 100%;
 	--ag-range-selection-border-color: var(--color--purple-600);
 	--ag-input-padding-start: var(--spacing--2xs);
-	--ag-input-background-color: var(--color--text--tint-3);
+	--ag-input-background-color: var(--color--background--light-2);
 	--ag-focus-shadow: none;
 
 	:global(.ag-cell) {
@@ -284,6 +289,10 @@ defineExpose({
 		color: var(--color--text--tint-1);
 	}
 
+	:global(.oversized-cell) {
+		cursor: not-allowed;
+	}
+
 	:global(.ag-header-cell[col-id='id']) {
 		text-align: center;
 	}
@@ -322,7 +331,7 @@ defineExpose({
 		padding: 0;
 
 		textarea {
-			padding-top: var(--spacing--2xs);
+			padding-top: var(--spacing--3xs);
 
 			&:where(:focus-within, :active) {
 				border: var(--grid--cell--border-color--editing);

@@ -1,4 +1,4 @@
-name: Test Workflows on PR Comment
+name: 'Test: Workflows PR Comment'
 
 on:
   issue_comment:
@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Validate User, Get PR Details, and React
         id: pr_check_and_details
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |

@@ -2,6 +2,7 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 import { ActiveExecutions } from '@/active-executions';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
@@ -91,6 +92,8 @@ export class Webhook extends BaseCommand {
 		await this.server.start();
 		this.logger.info('Webhook listener waiting for requests.');
 
+		Container.get(LoadNodesAndCredentials).releaseTypes();
+
 		// Make sure that the process does not close
 		await new Promise(() => {});
 	}
@@ -102,7 +105,9 @@ export class Webhook extends BaseCommand {
 	async initOrchestration() {
 		Container.get(Publisher);
 
+		const subscriber = Container.get(Subscriber);
+
 		Container.get(PubSubRegistry).init();
-		await Container.get(Subscriber).subscribe('n8n.commands');
+		await subscriber.subscribe(subscriber.getCommandChannel());
 	}
 }

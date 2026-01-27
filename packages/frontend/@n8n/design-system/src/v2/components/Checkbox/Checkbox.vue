@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { reactivePick } from '@vueuse/core';
+import { reactiveOmit, reactivePick } from '@vueuse/core';
 import { CheckboxIndicator, CheckboxRoot, Label, Primitive, useForwardProps } from 'reka-ui';
-import { computed, useId } from 'vue';
+import { computed, useAttrs, useId } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
@@ -19,6 +19,10 @@ const rootProps = useForwardProps(reactivePick(props, 'required', 'value', 'defa
 const modelValue = defineModel<boolean>({ default: undefined });
 const computedValue = computed(() => (props.indeterminate ? 'indeterminate' : modelValue.value));
 
+const attrs = useAttrs();
+const primitiveClass = computed(() => attrs.class);
+const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
+
 function onUpdate(value: boolean | 'indeterminate') {
 	// @ts-expect-error - 'target' does not exist in type 'EventInit'
 	emit('change', new Event('change', { target: { value } }));
@@ -27,17 +31,21 @@ function onUpdate(value: boolean | 'indeterminate') {
 </script>
 
 <template>
-	<Primitive :as :class="$style.Checkbox" :data-disabled="disabled ? '' : undefined">
+	<Primitive
+		:as
+		:class="[$style.checkbox, primitiveClass]"
+		:data-disabled="disabled ? '' : undefined"
+	>
 		<CheckboxRoot
 			:id="uuid"
-			v-bind="{ ...rootProps, ...$attrs }"
+			v-bind="{ ...rootProps, ...rootAttrs }"
 			:model-value="computedValue"
 			:name="name"
 			:disabled="disabled"
-			:class="$style.CheckboxRoot"
+			:class="$style.checkboxRoot"
 			@update:model-value="onUpdate"
 		>
-			<CheckboxIndicator :class="$style.CheckboxIndicator">
+			<CheckboxIndicator :class="$style.checkboxIndicator">
 				<Icon v-if="indeterminate" icon="minus" size="small" />
 				<Icon v-else icon="check" size="small" />
 			</CheckboxIndicator>
@@ -45,7 +53,7 @@ function onUpdate(value: boolean | 'indeterminate') {
 		<Label
 			v-if="label || !!slots.label"
 			:for="uuid"
-			:class="$style.Label"
+			:class="$style.label"
 			:data-disabled="disabled ? '' : undefined"
 		>
 			<slot name="label" :label="label">
@@ -56,10 +64,10 @@ function onUpdate(value: boolean | 'indeterminate') {
 </template>
 
 <style lang="css" module>
-.Checkbox {
-	display: flex;
-	align-items: center;
+.checkbox {
+	display: inline-flex;
 	flex-direction: row;
+	gap: var(--spacing--2xs);
 	cursor: pointer;
 	color: white;
 	&[data-disabled] {
@@ -67,17 +75,19 @@ function onUpdate(value: boolean | 'indeterminate') {
 	}
 }
 
-.CheckboxRoot {
+.checkboxRoot {
+	position: relative;
 	background: transparent;
 	width: 16px;
 	height: 16px;
-	border-radius: 4px;
+	border-radius: var(--radius);
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	border: var(--border);
 	color: white;
 	cursor: inherit;
+	flex-shrink: 0;
 
 	&[data-state='checked'],
 	&[data-state='indeterminate'] {
@@ -97,18 +107,21 @@ function onUpdate(value: boolean | 'indeterminate') {
 	}
 }
 
-.CheckboxIndicator {
+.checkboxIndicator {
+	position: absolute;
 	display: flex;
 	align-items: center;
-	flex-direction: row;
+	justify-content: center;
 }
 
-.Label {
-	padding-left: 15px;
-	font-size: 15px;
+.label {
+	flex: 1;
+	padding-top: 1px;
+	font-size: var(--font-size--sm);
 	line-height: 1;
-	cursor: inherit;
 	color: var(--color--text--shade-1);
+	cursor: inherit;
+
 	&[data-disabled] {
 		color: var(--color--text--tint-1);
 	}

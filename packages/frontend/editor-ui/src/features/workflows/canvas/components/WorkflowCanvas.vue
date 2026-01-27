@@ -175,5 +175,6 @@ defineExpose({
 	display: block;
 	align-items: stretch;
 	justify-content: stretch;
+	background-color: var(--canvas--color--background);
 }
 </style>

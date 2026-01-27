@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { Container, Service } from '@n8n/di';
+import { Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 import { BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
@@ -17,7 +17,7 @@ import { InvalidManagerError } from '../errors/invalid-manager.error';
 
 @Service()
 export class BinaryDataService {
-	private mode: BinaryData.ServiceMode = 'default';
+	private mode: BinaryData.ServiceMode = 'filesystem-v2';
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
@@ -36,29 +36,12 @@ export class BinaryDataService {
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
-		if (config.availableModes.includes('filesystem')) {
-			const { FileSystemManager } = await import('./file-system.manager');
+		const { FileSystemManager } = await import('./file-system.manager');
+		this.managers.filesystem = new FileSystemManager(config.localStoragePath, this.errorReporter);
+		this.managers['filesystem-v2'] = this.managers.filesystem;
+		await this.managers.filesystem.init();
 
-			this.managers.filesystem = new FileSystemManager(config.localStoragePath, this.errorReporter);
-			this.managers['filesystem-v2'] = this.managers.filesystem;
-
-			await this.managers.filesystem.init();
-		}
-
-		if (config.availableModes.includes('s3')) {
-			const { ObjectStoreManager } = await import('./object-store.manager');
-			const { ObjectStoreService } = await import('./object-store/object-store.service.ee');
-
-			this.managers.s3 = new ObjectStoreManager(Container.get(ObjectStoreService));
-
-			await this.managers.s3.init();
-		}
-
-		/**
-		 * DB manager is set directly at `BaseCommand` in `cli`.
-		 * to prevent a circular dependency (`core` -> `@n8n/db`
-		 * -> `core`) until we reorganize our dependency graph.
-		 */
+		// DB and S3 managers are set via `setManager()` from `cli`
 	}
 
 	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {
@@ -90,6 +73,7 @@ export class BinaryDataService {
 		if (!manager) {
 			const { size } = await stat(filePath);
 			binaryData.fileSize = prettyBytes(size);
+			binaryData.bytes = size;
 			binaryData.data = await readFile(filePath, { encoding: BINARY_ENCODING });
 
 			return binaryData;
@@ -104,6 +88,7 @@ export class BinaryDataService {
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
+		binaryData.bytes = fileSize;
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;
@@ -120,6 +105,7 @@ export class BinaryDataService {
 			const buffer = await binaryToBuffer(bufferOrStream);
 			binaryData.data = buffer.toString(BINARY_ENCODING);
 			binaryData.fileSize = prettyBytes(buffer.length);
+			binaryData.bytes = buffer.length;
 
 			return binaryData;
 		}
@@ -133,6 +119,7 @@ export class BinaryDataService {
 
 		binaryData.id = this.createBinaryDataId(fileId);
 		binaryData.fileSize = prettyBytes(fileSize);
+		binaryData.bytes = fileSize;
 		binaryData.data = this.mode; // clear binary data from memory
 
 		return binaryData;

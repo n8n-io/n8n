@@ -8,11 +8,32 @@ import type {
 	IRequestOptions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, sleep } from 'n8n-workflow';
 
 import type { SendAndWaitMessageBody } from './MessageInterface';
 import { getSendAndWaitConfig } from '../../../utils/sendAndWait/utils';
 import { createUtmCampaignLink } from '../../../utils/utilities';
+
+interface RateLimitOptions {
+	/**
+	 * The maximum number of times to retry the request if a rate limit error occurs.
+	 */
+	maxRetries?: number;
+	/**
+	 * The delay in milliseconds to wait before retrying the request if 'retry-after' header is not present.
+	 */
+	fallbackDelay?: number;
+	/**
+	 * What to do when a rate limit error occurs and maxRetries is exceeded.
+	 * - 'throw' will throw an error
+	 * - 'stop' will return the data collected so far with cursor/page info
+	 */
+	onFail?: 'throw' | 'stop';
+}
+
+function isDefined<T>(value: T | undefined | null | ''): value is NonNullable<T> {
+	return value !== undefined && value !== null && value !== '';
+}
 
 export async function slackApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -21,7 +42,7 @@ export async function slackApiRequest(
 	body: object = {},
 	query: IDataObject = {},
 	headers: {} | undefined = undefined,
-	option: {} = {},
+	option: Partial<IRequestOptions> = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
@@ -58,8 +79,11 @@ export async function slackApiRequest(
 		},
 	);
 
-	if (response.ok === false) {
-		if (response.error === 'paid_teams_only') {
+	const responseData = options.resolveWithFullResponse ? response.body : response;
+
+	// don't try to handle errors if simple responses are disabled
+	if (responseData.ok === false && options.simple !== false) {
+		if (responseData.error === 'paid_teams_only') {
 			throw new NodeOperationError(
 				this.getNode(),
 				`Your current Slack plan does not include the resource '${
@@ -71,16 +95,16 @@ export async function slackApiRequest(
 					level: 'warning',
 				},
 			);
-		} else if (response.error === 'missing_scope') {
+		} else if (responseData.error === 'missing_scope') {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Your Slack credential is missing required Oauth Scopes',
 				{
-					description: `Add the following scope(s) to your Slack App: ${response.needed}`,
+					description: `Add the following scope(s) to your Slack App: ${responseData.needed}`,
 					level: 'warning',
 				},
 			);
-		} else if (response.error === 'not_admin') {
+		} else if (responseData.error === 'not_admin') {
 			throw new NodeOperationError(
 				this.getNode(),
 				'Need higher Role Level for this Operation (e.g. Owner or Admin Rights)',
@@ -94,16 +118,127 @@ export async function slackApiRequest(
 
 		throw new NodeOperationError(
 			this.getNode(),
-			'Slack error response: ' + JSON.stringify(response.error),
+			'Slack error response: ' + JSON.stringify(responseData.error),
 		);
 	}
 
-	if (response.ts !== undefined) {
-		Object.assign(response, { message_timestamp: response.ts });
-		delete response.ts;
+	if (responseData.ts !== undefined) {
+		Object.assign(responseData, { message_timestamp: responseData.ts });
+		delete responseData.ts;
 	}
 
 	return response;
+}
+
+function hasNextPage(responseData: any, propertyName: string): boolean {
+	const nextCursorDefined = isDefined(responseData.response_metadata?.next_cursor);
+	const morePagesAvailable =
+		isDefined(responseData.paging?.pages) &&
+		isDefined(responseData.paging.page) &&
+		responseData.paging.page < responseData.paging.pages;
+	const morePropertyPagesAvailable =
+		isDefined(responseData[propertyName].paging?.pages) &&
+		isDefined(responseData[propertyName].paging.page) &&
+		responseData[propertyName].paging.page < responseData[propertyName].paging.pages;
+	return nextCursorDefined || morePagesAvailable || morePropertyPagesAvailable;
+}
+
+export async function slackApiRequestAllItemsWithRateLimit<TResponseData>(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: IHttpRequestMethods,
+	endpoint: string,
+	body: any = {},
+	query: IDataObject = {},
+	options: RateLimitOptions = {},
+): Promise<{ data: TResponseData[]; cursor?: string; page?: string }> {
+	const { maxRetries = 3, fallbackDelay = 30_000, onFail = 'throw' } = options;
+
+	const returnData: TResponseData[] = [];
+	let responseData;
+	query.page = 1;
+	//if the endpoint uses legacy pagination use count
+	//https://api.slack.com/docs/pagination#classic
+	if (endpoint.includes('files.list')) {
+		query.count = 100;
+	} else {
+		query.limit = query.limit ?? 100;
+	}
+	do {
+		let retryCount = 0;
+		let requestSuccessful = false;
+
+		while (!requestSuccessful) {
+			const response = await slackApiRequest.call(
+				context,
+				method,
+				endpoint,
+				body as IDataObject,
+				query,
+				{},
+				{ resolveWithFullResponse: true, simple: false },
+			);
+
+			const getErrMsg = () =>
+				'Slack error response: ' +
+				JSON.stringify(response.body?.error ?? response.statusMessage ?? 'Unknown error');
+
+			if (response.statusCode === 200) {
+				retryCount = 0;
+				responseData = response.body;
+				requestSuccessful = true;
+			} else if (response.statusCode === 429) {
+				const shouldRetry = retryCount < maxRetries;
+				// if onFail='stop' we should wait, so that user don't hit rate limit when scrolling through results
+				if (shouldRetry || onFail === 'stop') {
+					// Extract Retry-After header (in seconds) and convert to milliseconds
+					const retryAfterHeader =
+						response.headers?.['retry-after'] ?? response.headers?.['Retry-After'];
+					const waitTime = retryAfterHeader ? parseInt(retryAfterHeader, 10) * 1000 : fallbackDelay;
+					await sleep(waitTime);
+					retryCount++;
+				}
+
+				if (shouldRetry) {
+					continue;
+				}
+
+				if (onFail === 'stop') {
+					// Return the data collected so far with cursor/page info
+					const result: { data: TResponseData[]; cursor?: string; page?: string } = {
+						data: returnData,
+					};
+
+					// Add cursor if available
+					if (query.cursor) {
+						result.cursor = query.cursor as string;
+					}
+					// Add nextPage if using legacy pagination
+					if (responseData?.paging?.page) {
+						result.page = String(responseData.paging.page);
+					} else if (responseData?.[propertyName]?.paging?.page) {
+						result.page = String(responseData[propertyName].paging.page);
+					} else if (query.page) {
+						result.page = String(query.page);
+					}
+
+					return result;
+				}
+				throw new NodeOperationError(context.getNode(), getErrMsg());
+			} else {
+				throw new NodeOperationError(context.getNode(), getErrMsg());
+			}
+		}
+
+		query.cursor = get(responseData, 'response_metadata.next_cursor');
+		query.page++;
+		returnData.push.apply(
+			returnData,
+			(responseData[propertyName].matches as TResponseData[]) ?? responseData[propertyName],
+		);
+	} while (hasNextPage(responseData, propertyName));
+
+	return { data: returnData };
 }
 
 export async function slackApiRequestAllItems(
@@ -134,17 +269,7 @@ export async function slackApiRequestAllItems(
 			returnData,
 			(responseData[propertyName].matches as IDataObject[]) ?? responseData[propertyName],
 		);
-	} while (
-		(responseData.response_metadata?.next_cursor !== undefined &&
-			responseData.response_metadata.next_cursor !== '' &&
-			responseData.response_metadata.next_cursor !== null) ||
-		(responseData.paging?.pages !== undefined &&
-			responseData.paging.page !== undefined &&
-			responseData.paging.page < responseData.paging.pages) ||
-		(responseData[propertyName].paging?.pages !== undefined &&
-			responseData[propertyName].paging.page !== undefined &&
-			responseData[propertyName].paging.page < responseData[propertyName].paging.pages)
-	);
+	} while (hasNextPage(responseData, propertyName));
 	return returnData;
 }
 
@@ -266,7 +391,7 @@ export function processThreadOptions(threadOptions: IDataObject | undefined): ID
 	if (threadOptions?.replyValues) {
 		const replyValues = threadOptions.replyValues as IDataObject;
 		if (replyValues.thread_ts) {
-			result.thread_ts = replyValues.thread_ts;
+			result.thread_ts = String(replyValues.thread_ts);
 		}
 		if (replyValues.reply_broadcast !== undefined) {
 			result.reply_broadcast = replyValues.reply_broadcast;
@@ -323,6 +448,10 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 			},
 		],
 	};
+
+	const otherOptions = context.getNodeParameter('options', 0, {});
+	const threadParams = processThreadOptions(otherOptions?.thread_ts as IDataObject);
+	Object.assign(body, threadParams);
 
 	if (config.appendAttribution) {
 		const instanceId = context.getInstanceId();

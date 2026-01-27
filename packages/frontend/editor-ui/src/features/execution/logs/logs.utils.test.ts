@@ -547,6 +547,62 @@ describe(getTreeNodeData, () => {
 		const deepNodeRunIndex = rootNode2Tree[0].children[0].children[0].runIndex;
 		expect(typeof deepNodeRunIndex).toBe('number');
 	});
+
+	it('should treat missing previousNodeRun in source as 0', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
+		const workflow = createTestWorkflowObject({
+			nodes: [
+				rootNode,
+				createTestNode({ name: 'SubNode' }),
+				createTestNode({ name: 'NestedNode' }),
+			],
+			connections: {
+				SubNode: {
+					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+				NestedNode: {
+					ai_tool: [[{ node: 'SubNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+			},
+		});
+
+		// Create test run data with source information
+		const runData = {
+			RootNode: [
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:00.000Z'),
+					executionIndex: 0,
+				}),
+			],
+			SubNode: [
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
+					executionIndex: 1,
+					source: [{ previousNode: 'RootNode', previousNodeRun: undefined }],
+					data: { main: [[{ json: { result: 'from RootNode' } }]] },
+				}),
+			],
+			NestedNode: [
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
+					executionIndex: 2,
+					source: [{ previousNode: 'SubNode', previousNodeRun: undefined }],
+					data: { main: [[{ json: { result: 'from SubNode' } }]] },
+				}),
+			],
+		};
+
+		const rootNode1Tree = getTreeNodeData(
+			rootNode,
+			runData.RootNode[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
+		expect(rootNode1Tree[0].children.length).toBe(1);
+		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNode');
+		expect(rootNode1Tree[0].children[0].children.length).toBe(1);
+		expect(rootNode1Tree[0].children[0].children[0].node.name).toBe('NestedNode');
+	});
 });
 
 describe(findSelectedLogEntry, () => {
@@ -1178,6 +1234,54 @@ describe(createLogTree, () => {
 		expect(logs[0].runData).toBe(undefined);
 		expect(logs[0].children).toHaveLength(1);
 		expect(logs[0].children[0].node.name).toBe(aiModelNode.name);
+	});
+
+	it('should not duplicate parent node placeholder when multiple child nodes have the same parent without run data', () => {
+		// This test covers the AI-1726 bug scenario:
+		// When AI Agent execution finishes with error, the agent is NOT in runData
+		// But its child nodes (LLM and tools) ARE in runData
+		// Each child tries to insert the AI Agent as a placeholder
+		// Before the fix: AI Agent appeared twice (once per child)
+		// After the fix: AI Agent appears only once
+		const llmNode = createTestNode({ name: 'Anthropic Chat Model' });
+		const toolNode = createTestNode({ name: 'HTTP Request' });
+		const logs = createLogTree(
+			createTestWorkflowObject({
+				nodes: [aiAgentNode, llmNode, toolNode],
+				connections: {
+					[llmNode.name]: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[{ node: aiAgentNode.name, index: 0, type: NodeConnectionTypes.AiLanguageModel }],
+						],
+					},
+					[toolNode.name]: {
+						[NodeConnectionTypes.AiTool]: [
+							[{ node: aiAgentNode.name, index: 0, type: NodeConnectionTypes.AiTool }],
+						],
+					},
+				},
+			}),
+			createTestWorkflowExecutionResponse({
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							// AI Agent is NOT in runData (error case)
+							[llmNode.name]: [createTestTaskData()],
+							[toolNode.name]: [createTestTaskData()],
+						},
+					},
+				}),
+			}),
+		);
+
+		// Should have only ONE AI Agent entry (not duplicated)
+		expect(logs).toHaveLength(1);
+		expect(logs[0].node.name).toBe(aiAgentNode.name);
+		expect(logs[0].runData).toBe(undefined); // Placeholder has no runData
+		expect(logs[0].children).toHaveLength(2); // Both child nodes
+		expect(logs[0].children.map((c) => c.node.name)).toEqual(
+			expect.arrayContaining([llmNode.name, toolNode.name]),
+		);
 	});
 });
 

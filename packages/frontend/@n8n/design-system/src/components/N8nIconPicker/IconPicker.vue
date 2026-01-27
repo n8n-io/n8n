@@ -36,6 +36,7 @@ const emojiRanges = [
 type Props = {
 	buttonTooltip: string;
 	buttonSize?: 'small' | 'large';
+	isReadOnly?: boolean;
 };
 
 const { t } = useI18n();
@@ -88,13 +89,13 @@ const togglePopup = () => {
 <template>
 	<div
 		ref="container"
-		:class="$style.container"
+		:class="{ [$style.container]: true, [$style.isReadOnly]: isReadOnly }"
 		:aria-expanded="popupVisible"
 		role="button"
 		aria-haspopup="true"
 	>
 		<div :class="$style['icon-picker-button']">
-			<N8nTooltip placement="right" data-test-id="icon-picker-tooltip">
+			<N8nTooltip placement="right" data-test-id="icon-picker-tooltip" :disabled="isReadOnly">
 				<template #content>
 					{{ props.buttonTooltip ?? t('iconPicker.button.defaultToolTip') }}
 				</template>
@@ -104,6 +105,7 @@ const togglePopup = () => {
 					:icon="model.value"
 					:size="buttonSize"
 					:square="true"
+					:disabled="isReadOnly"
 					type="tertiary"
 					data-test-id="icon-picker-button"
 					@click="togglePopup"
@@ -115,6 +117,7 @@ const togglePopup = () => {
 					:square="true"
 					type="tertiary"
 					data-test-id="icon-picker-button"
+					:disabled="isReadOnly"
 					@click="togglePopup"
 				>
 					{{ model.value }}
@@ -155,9 +158,19 @@ const togglePopup = () => {
 .container {
 	position: relative;
 }
+
+.icon-button,
+.emoji-button {
+	.isReadOnly & {
+		pointer-events: none;
+		background-color: var(--input--color--background--disabled);
+	}
+}
+
 .emoji-button {
 	padding: 0;
 }
+
 .popup {
 	position: absolute;
 	z-index: 9999;

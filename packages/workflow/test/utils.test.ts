@@ -15,6 +15,7 @@ import {
 	setSafeObjectProperty,
 	sleepWithAbort,
 	isCommunityPackageName,
+	sanitizeFilename,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -108,6 +109,54 @@ describe('jsonParse', () => {
 
 	it('optionally returns a `fallbackValue`', () => {
 		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
+	});
+
+	describe('acceptJSObject', () => {
+		const options: Parameters<typeof jsonParse>[1] = {
+			acceptJSObject: true,
+		};
+
+		it('should handle string values', () => {
+			const result = jsonParse('{name: \'John\', surname: "Doe"}', options);
+			expect(result).toEqual({ name: 'John', surname: 'Doe' });
+		});
+
+		it('should handle positive numbers', () => {
+			const result = jsonParse(
+				'{int: 12345, float1: 444.111, float2: .123, float3: +.12, oct: 0x10}',
+				options,
+			);
+			expect(result).toEqual({
+				int: 12345,
+				float1: 444.111,
+				float2: 0.123,
+				float3: 0.12,
+				oct: 16,
+			});
+		});
+
+		it('should handle negative numbers', () => {
+			const result = jsonParse(
+				'{int: -12345, float1: -444.111, float2: -.123, float3: -.12, oct: -0x10}',
+				options,
+			);
+			expect(result).toEqual({
+				int: -12345,
+				float1: -444.111,
+				float2: -0.123,
+				float3: -0.12,
+				oct: -16,
+			});
+		});
+
+		it('should handle mixed values', () => {
+			const result = jsonParse('{int: -12345, float: 12.35, text: "hello world"}', options);
+			expect(result).toEqual({
+				int: -12345,
+				float: 12.35,
+				text: 'hello world',
+			});
+		});
 	});
 
 	describe('JSON repair', () => {
@@ -862,5 +911,55 @@ describe('isCommunityPackageName', () => {
 		expect(isCommunityPackageName('@user/n8n-nodes-example')).toBe(true);
 		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
 		expect(isCommunityPackageName('@test-scope/n8n-nodes-test')).toBe(true);
+	});
+});
+
+describe('sanitizeFilename', () => {
+	it('should return normal filenames unchanged', () => {
+		expect(sanitizeFilename('normalfile')).toBe('normalfile');
+		expect(sanitizeFilename('my-file_v2')).toBe('my-file_v2');
+		expect(sanitizeFilename('test.txt')).toBe('test.txt');
+	});
+
+	it('should handle empty and invalid inputs', () => {
+		expect(sanitizeFilename('')).toBe('untitled');
+	});
+
+	it('should handle edge cases', () => {
+		expect(sanitizeFilename('.')).toBe('untitled');
+		expect(sanitizeFilename('..')).toBe('untitled');
+	});
+
+	it('should prevent path traversal attacks', () => {
+		// Basic path traversal attempts - extracts just the filename
+		expect(sanitizeFilename('../../../etc/passwd')).toBe('passwd');
+		expect(sanitizeFilename('..\\..\\..\\windows\\system32')).toBe('system32');
+
+		// Path traversal with file extension
+		expect(sanitizeFilename('../file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('../../secret.json')).toBe('secret.json');
+
+		// Nested path separators - extracts just the final component
+		expect(sanitizeFilename('path/to/file')).toBe('file');
+		expect(sanitizeFilename('path\\to\\file')).toBe('file');
+
+		// Hidden files and nested directories
+		expect(sanitizeFilename('../../../.ssh/authorized_keys')).toBe('authorized_keys');
+		expect(sanitizeFilename('../../../etc/cron.d/backdoor')).toBe('backdoor');
+	});
+
+	it('should extract filename from full file paths', () => {
+		// Unix paths
+		expect(sanitizeFilename('/tmp/n8n-upload-xyz/original.pdf')).toBe('original.pdf');
+		expect(sanitizeFilename('/home/user/documents/report.docx')).toBe('report.docx');
+
+		// Windows paths
+		expect(sanitizeFilename('C:\\Users\\Admin\\file.txt')).toBe('file.txt');
+		expect(sanitizeFilename('D:\\temp\\upload\\image.png')).toBe('image.png');
+	});
+
+	it('should remove null bytes', () => {
+		expect(sanitizeFilename('file\0name.txt')).toBe('filename.txt');
+		expect(sanitizeFilename('\0\0\0')).toBe('untitled');
 	});
 });

@@ -14,7 +14,7 @@ export class Pagination {
 
 		const [take, skip] = [rawTake, rawSkip].map((o) => parseInt(o, 10));
 
-		const MAX_ITEMS_PER_PAGE = 50;
+		const MAX_ITEMS_PER_PAGE = 100;
 
 		return {
 			take: Math.min(take, MAX_ITEMS_PER_PAGE),

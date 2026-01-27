@@ -27,10 +27,6 @@ export class CanvasPage extends BasePage {
 		this.page.getByRole('dialog').filter({ hasText: 'Convert' }),
 	);
 
-	saveWorkflowButton(): Locator {
-		return this.page.getByRole('button', { name: 'Save' });
-	}
-
 	nodeCreatorItemByName(text: string): Locator {
 		return this.page.getByTestId('node-creator-item-name').getByText(text, { exact: true });
 	}
@@ -84,10 +80,6 @@ export class CanvasPage extends BasePage {
 		await this.clickByTestId('node-creator-plus-button');
 	}
 
-	async clickSaveWorkflowButton(): Promise<void> {
-		await this.saveWorkflowButton().click();
-	}
-
 	async fillNodeCreatorSearchBar(text: string): Promise<void> {
 		await this.nodeCreatorSearchBar().fill(text);
 	}
@@ -126,10 +118,15 @@ export class CanvasPage extends BasePage {
 			closeNDV?: boolean;
 			action?: string;
 			trigger?: string;
+			fromNode?: string;
 		},
 	): Promise<void> {
-		// Always start with canvas plus button
-		await this.clickNodeCreatorPlusButton();
+		if (options?.fromNode) {
+			await this.clickNodePlusEndpoint(options.fromNode);
+		} else {
+			// Always start with canvas plus button
+			await this.clickNodeCreatorPlusButton();
+		}
 
 		// Search for and select the node, works on exact name match only
 		await this.fillNodeCreatorSearchBar(nodeName);
@@ -155,7 +152,7 @@ export class CanvasPage extends BasePage {
 			await this.nodeCreatorSubItem(options.trigger).click();
 		}
 		if (options?.closeNDV) {
-			await this.page.getByTestId('back-to-canvas').click();
+			await this.page.getByTestId('ndv-close-button').click();
 		}
 	}
 
@@ -163,8 +160,13 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async saveWorkflow(): Promise<void> {
-		await this.clickSaveWorkflowButton();
+	async waitForSaveWorkflowCompleted() {
+		return await this.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/workflows') &&
+				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
+			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
+		);
 	}
 
 	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
@@ -290,22 +292,27 @@ export class CanvasPage extends BasePage {
 		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
-	async activateWorkflow() {
-		const switchElement = this.page.getByTestId('workflow-activate-switch');
-		const statusElement = this.page.getByTestId('workflow-activator-status');
-
+	async publishWorkflow(): Promise<void> {
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
-				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
+				response.url().includes('/rest/workflows/') &&
+				response.url().includes('/activate') &&
+				response.request().method() === 'POST',
 		);
 
-		await switchElement.click();
-		await statusElement.locator('span').filter({ hasText: 'Active' }).waitFor({ state: 'visible' });
+		await this.getOpenPublishModalButton().click();
+		await this.getPublishButton().click();
+
 		await responsePromise;
 	}
 
+	async cancelPublishWorkflowModal(): Promise<void> {
+		await this.page.getByTestId('workflow-publish-cancel-button').click();
+	}
+
 	async openShareModal(): Promise<void> {
-		await this.clickByTestId('workflow-share-button');
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-share');
 		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
@@ -363,7 +370,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickWorkflowTagsContainer(): Promise<void> {
-		await this.page.getByTestId('workflow-tags-container').click();
+		await this.page.getByTestId('workflow-tags-dropdown').click();
 	}
 
 	getTagPills(): Locator {
@@ -426,12 +433,20 @@ export class CanvasPage extends BasePage {
 		return this.getVisibleDropdown().locator('[data-test-id="tag"].tag.selected');
 	}
 
-	getWorkflowSaveButton(): Locator {
-		return this.page.getByTestId('workflow-save-button');
+	getOpenPublishModalButton(): Locator {
+		return this.page.getByTestId('workflow-open-publish-modal-button');
 	}
 
-	getWorkflowActivatorSwitch(): Locator {
-		return this.page.getByTestId('workflow-activate-switch');
+	getPublishModalCallout(): Locator {
+		return this.page.getByTestId('workflowPublish-modal').locator('.n8n-callout');
+	}
+
+	getPublishButton(): Locator {
+		return this.page.getByTestId('workflow-publish-button');
+	}
+
+	getPublishedIndicator(): Locator {
+		return this.page.getByRole('button', { name: 'Published' });
 	}
 
 	getLoadingMask(): Locator {
@@ -777,15 +792,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodesWithSpinner(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=refresh-cw]'),
-		});
+		return this.page.locator(
+			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
+		);
 	}
 
 	getWaitingNodes(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=clock]'),
-		});
+		return this.page.locator('[data-test-id="canvas-node"].waiting');
 	}
 
 	/**
@@ -850,9 +863,17 @@ export class CanvasPage extends BasePage {
 			| 'ai_vectorRetriever'
 			| 'ai_vectorStore',
 		parentNodeName: string,
-		{ closeNDV = false, exactMatch = false }: { closeNDV?: boolean; exactMatch?: boolean } = {},
+		{
+			closeNDV = false,
+			exactMatch = false,
+			subcategory,
+		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
+
+		if (subcategory) {
+			await this.nodeCreator.navigateToSubcategory(subcategory);
+		}
 
 		if (exactMatch) {
 			await this.nodeCreatorNodeItems().getByText(childNodeName, { exact: true }).click();
@@ -923,7 +944,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
-		return this.nodeByName(nodeName).locator('[data-icon="refresh-cw"]');
+		return this.page.locator(
+			`[data-test-id="canvas-node"][data-node-name="${nodeName}"].running, [data-test-id="canvas-node"][data-node-name="${nodeName}"].waiting`,
+		);
 	}
 
 	getSuccessEdges(): Locator {
@@ -942,6 +965,14 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('canvas-handle-plus');
 	}
 
+	getCanvasHandlePlusWrapperByName(nodeName: string): Locator {
+		return this.page
+			.locator(
+				`[data-test-id="canvas-node-output-handle"][data-node-name="${nodeName}"] [data-test-id="canvas-handle-plus-wrapper"]`,
+			)
+			.first();
+	}
+
 	stopExecutionWaitingForWebhookButton(): Locator {
 		return this.page.getByTestId('stop-execution-waiting-for-webhook-button');
 	}
@@ -956,10 +987,16 @@ export class CanvasPage extends BasePage {
 
 	async hitUndo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+z');
+		// Wait for canvas to redraw after undo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitRedo(): Promise<void> {
 		await this.page.keyboard.press('ControlOrMeta+Shift+z');
+		// Wait for canvas to redraw after redo
+		// eslint-disable-next-line playwright/no-wait-for-timeout
+		await this.page.waitForTimeout(100);
 	}
 
 	async hitSaveWorkflow(): Promise<void> {

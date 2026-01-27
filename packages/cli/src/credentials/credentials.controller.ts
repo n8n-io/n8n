@@ -4,7 +4,7 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
 	SharedCredentials,
@@ -40,7 +40,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
-import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { CredentialRequest } from '@/requests';
 import { NamingService } from '@/services/naming.service';
@@ -54,7 +53,7 @@ export class CredentialsController {
 		private readonly credentialsService: CredentialsService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly namingService: NamingService,
-		private readonly license: License,
+		private readonly licenseState: LicenseState,
 		private readonly logger: Logger,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
@@ -114,8 +113,8 @@ export class CredentialsController {
 		@Param('credentialId') credentialId: string,
 		@Query query: CredentialsGetOneRequestQuery,
 	) {
-		const { shared, ...credential } = this.license.isSharingEnabled()
-			? await this.enterpriseCredentialsService.getOne(
+		const { shared, ...credential } = this.licenseState.isSharingLicensed()
+			? await this.enterpriseCredentialsService.getOneForUser(
 					req.user,
 					credentialId,
 					// TODO: editor-ui is always sending this, maybe we can just rely on the
@@ -195,6 +194,7 @@ export class CredentialsController {
 			projectId: project?.id,
 			projectType: project?.type,
 			uiContext: payload.uiContext,
+			isDynamic: newCredential.isResolvable ?? false,
 		});
 
 		return newCredential;
@@ -246,6 +246,10 @@ export class CredentialsController {
 		// Update isGlobal if provided in the payload and user has permission
 		const isGlobal = body.isGlobal;
 		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
+			if (!this.licenseState.isSharingLicensed()) {
+				throw new ForbiddenError('You are not licensed for sharing credentials');
+			}
+
 			const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
 			if (!canShareGlobally) {
 				throw new ForbiddenError(
@@ -255,6 +259,7 @@ export class CredentialsController {
 			newCredentialData.isGlobal = isGlobal;
 		}
 
+		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {
@@ -270,6 +275,7 @@ export class CredentialsController {
 			user: req.user,
 			credentialType: credential.type,
 			credentialId: credential.id,
+			isDynamic: newCredentialData.isResolvable ?? false,
 		});
 
 		const scopes = await this.credentialsService.getCredentialScopes(req.user, credential.id);

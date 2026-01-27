@@ -39,7 +39,7 @@ export function useProjectNavigationCommands(options: {
 		);
 	});
 
-	const createProjectCommand = (project: ProjectListItem, isRoot: boolean): CommandBarItem => {
+	const openProjectCommand = (project: ProjectListItem, isRoot: boolean): CommandBarItem => {
 		let title =
 			project.type === 'personal'
 				? i18n.baseText('projects.menu.personal')
@@ -72,13 +72,13 @@ export function useProjectNavigationCommands(options: {
 	const openProjectCommands = computed<CommandBarItem[]>(() => {
 		const isInProjectParent = activeNodeId.value === ITEM_ID.OPEN_PROJECT;
 		if (!isInProjectParent) return [];
-		return filteredProjects.value.map((project) => createProjectCommand(project, false));
+		return filteredProjects.value.map((project) => openProjectCommand(project, false));
 	});
 
 	const rootProjectItems = computed<CommandBarItem[]>(() => {
 		const isRootWithQuery = activeNodeId.value === null && lastQuery.value.trim().length > 2;
-		if (!isRootWithQuery) return [];
-		return filteredProjects.value.map((project) => createProjectCommand(project, true));
+		if (!isRootWithQuery || !projectsStore.canViewProjects) return [];
+		return filteredProjects.value.map((project) => openProjectCommand(project, true));
 	});
 
 	const projectNavigationCommands = computed<CommandBarItem[]>(() => {
@@ -102,7 +102,7 @@ export function useProjectNavigationCommands(options: {
 			});
 		}
 
-		if (projectsStore.availableProjects.length > 0) {
+		if (projectsStore.availableProjects.length > 0 && projectsStore.canViewProjects) {
 			commands.push({
 				id: ITEM_ID.OPEN_PROJECT,
 				title: i18n.baseText('commandBar.projects.open'),

@@ -90,6 +90,7 @@ const allCredentials = computed<Resource[]>(() =>
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
 		needsSetup: needsSetup(credential.data),
 		isGlobal: credential.isGlobal,
+		isResolvable: credential.isResolvable,
 		type: credential.type,
 	})),
 );
@@ -334,7 +335,7 @@ onMounted(() => {
 			<N8nActionBox
 				v-else
 				data-test-id="empty-resources-list"
-				emoji="👋"
+				:icon="{ type: 'icon', value: 'lock' }"
 				:heading="
 					i18n.baseText(
 						usersStore.currentUser?.firstName

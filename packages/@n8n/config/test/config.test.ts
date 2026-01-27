@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { UserManagementConfig } from '../src/configs/user-management.config';
+import type { DatabaseConfig } from '../src/index';
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -56,7 +57,7 @@ describe('GlobalConfig', () => {
 		editorBaseUrl: '',
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
-			sizeCheckCacheDuration: 60000,
+			sizeCheckCacheDuration: 5 * 1000,
 			cleanupIntervalMs: 60 * 1000,
 			fileMaxAgeMs: 2 * 60 * 1000,
 			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
@@ -95,15 +96,13 @@ describe('GlobalConfig', () => {
 			},
 			sqlite: {
 				database: 'database.sqlite',
-				enableWAL: false,
 				executeVacuumOnStartup: false,
-				poolSize: 0,
+				poolSize: 3,
 			},
 			tablePrefix: '',
 			type: 'sqlite',
-			isLegacySqlite: true,
 			pingIntervalSeconds: 2,
-		},
+		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
 			overwrite: {
@@ -138,6 +137,7 @@ describe('GlobalConfig', () => {
 					'user-invited': '',
 					'password-reset-requested': '',
 					'workflow-deactivated': '',
+					'workflow-failure': '',
 					'workflow-shared': '',
 					'project-shared': '',
 				},
@@ -158,7 +158,7 @@ describe('GlobalConfig', () => {
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
-			exclude: [],
+			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
 		},
 		publicApi: {
@@ -186,7 +186,6 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: false,
-			draftPublishEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -252,6 +251,9 @@ describe('GlobalConfig', () => {
 					clusterNodes: '',
 					tls: false,
 					dualStack: false,
+					slotsRefreshInterval: 5_000,
+					slotsRefreshTimeout: 1_000,
+					dnsResolveStrategy: 'LOOKUP',
 				},
 				gracefulShutdownTimeout: 30,
 				prefix: 'bull',
@@ -259,12 +261,11 @@ describe('GlobalConfig', () => {
 					lockDuration: 60_000,
 					lockRenewTime: 10_000,
 					stalledInterval: 30_000,
-					maxStalledCount: 1,
 				},
 			},
 		},
 		taskRunners: {
-			enabled: false,
+			enabled: true,
 			mode: 'internal',
 			path: '/runners',
 			authToken: '',
@@ -277,7 +278,6 @@ describe('GlobalConfig', () => {
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
-			isNativePythonRunnerEnabled: false,
 		},
 		sentry: {
 			backendDsn: '',
@@ -318,15 +318,17 @@ describe('GlobalConfig', () => {
 			cert: '',
 		},
 		security: {
-			restrictFileAccessTo: '',
+			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
+			blockFilePatterns: '^(.*\\/)*\\.git(\\/.*)*$',
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
-			disableBareRepos: false,
+			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
+			enableGitNodeAllConfigKeys: false,
 		},
 		executions: {
 			mode: 'regular',
@@ -404,8 +406,19 @@ describe('GlobalConfig', () => {
 			prefix: 'n8n',
 		},
 		externalFrontendHooksUrls: '',
+		// @ts-expect-error structuredClone ignores properties defined as a getter
 		ai: {
 			enabled: false,
+			timeout: 3600000,
+		},
+		workflowHistoryCompaction: {
+			batchDelayMs: 1_000,
+			batchSize: 100,
+			optimizingMinimumAgeHours: 0.25,
+			optimizingTimeWindowHours: 2,
+			trimmingMinimumAgeDays: 7,
+			trimmingTimeWindowDays: 2,
+			trimOnStartUp: false,
 		},
 	};
 
@@ -434,6 +447,7 @@ describe('GlobalConfig', () => {
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
+
 		expect(structuredClone(config)).toEqual({
 			...defaultConfig,
 			database: {
@@ -513,7 +527,6 @@ describe('GlobalConfig', () => {
 		it('on invalid value, should warn and fall back to default value', () => {
 			process.env = {
 				N8N_RUNNERS_MODE: 'non-existing-mode',
-				N8N_RUNNERS_ENABLED: 'true',
 				DB_TYPE: 'postgresdb',
 			};
 

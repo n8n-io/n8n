@@ -161,19 +161,19 @@ const handlePageSizeUpdate = (newSize: number | string) => {
 
 // Styles
 const variants: Record<PaginationVariants, string> = {
-	default: $style.Default,
-	ghost: $style.Ghost,
+	default: $style.default,
+	ghost: $style.ghost,
 };
 const variant = computed(() => variants[props.variant]);
 
 const sizes: Record<PaginationSizes, string> = {
-	small: $style.Small,
-	medium: $style.Medium,
+	small: $style.small,
+	medium: $style.medium,
 };
 const size = computed(() => sizes[props.size]);
 
 // Background class
-const backgroundClass = computed(() => (props.background ? $style.Background : ''));
+const backgroundClass = computed(() => (props.background ? $style.background : ''));
 
 // Page size selector items
 const pageSizeItems = computed(() =>
@@ -200,13 +200,13 @@ const handleJumperSubmit = () => {
 <template>
 	<div
 		v-if="!shouldHide"
-		:class="['n8n-pagination', $style.PaginationContainer, variant, size, backgroundClass]"
+		:class="['n8n-pagination', $style.paginationContainer, variant, size, backgroundClass]"
 		v-bind="$attrs"
 	>
 		<!-- Render layout parts in order specified by layout prop -->
 		<template v-for="part in deduplicatedLayoutParts" :key="part">
 			<!-- Total count -->
-			<div v-if="part === 'total'" :class="$style.Total">
+			<div v-if="part === 'total'" :class="$style.total">
 				{{ totalText }}
 			</div>
 
@@ -218,7 +218,7 @@ const handleJumperSubmit = () => {
 				:size="props.size === 'small' ? 'xsmall' : 'small'"
 				:variant="props.variant === 'ghost' ? 'ghost' : 'default'"
 				:disabled="disabled"
-				:class="$style.PageSizeSelect"
+				:class="$style.pageSizeSelect"
 				@update:model-value="handlePageSizeUpdate"
 			/>
 
@@ -233,9 +233,9 @@ const handleJumperSubmit = () => {
 				:show-edges="showEdges"
 				@update:page="handlePageUpdate"
 			>
-				<PaginationList v-slot="{ items }" :class="$style.PaginationList">
+				<PaginationList v-slot="{ items }" :class="$style.paginationList">
 					<!-- Previous button -->
-					<PaginationPrev v-if="showPrev" v-slot="slotProps" :class="$style.PaginationButton">
+					<PaginationPrev v-if="showPrev" v-slot="slotProps" :class="$style.paginationButton">
 						<slot name="prev" v-bind="slotProps">
 							<span v-if="prevText">{{ prevText }}</span>
 							<Icon v-else :icon="prevIcon" />
@@ -252,18 +252,18 @@ const handleJumperSubmit = () => {
 							<PaginationEllipsis
 								v-if="item.type === 'ellipsis'"
 								:index="index"
-								:class="[$style.PaginationEllipsis, $style.PaginationButton]"
+								:class="[$style.paginationEllipsis, $style.paginationButton]"
 							>
 								<span aria-hidden="true">&#8230;</span>
 							</PaginationEllipsis>
-							<PaginationListItem v-else :value="item.value" :class="$style.PaginationItem">
+							<PaginationListItem v-else :value="item.value" :class="$style.paginationItem">
 								{{ item.value }}
 							</PaginationListItem>
 						</template>
 					</template>
 
 					<!-- Next button -->
-					<PaginationNext v-if="showNext" v-slot="slotProps" :class="$style.PaginationButton">
+					<PaginationNext v-if="showNext" v-slot="slotProps" :class="$style.paginationButton">
 						<slot name="next" v-bind="slotProps">
 							<span v-if="nextText">{{ nextText }}</span>
 							<Icon v-else :icon="nextIcon" />
@@ -273,14 +273,14 @@ const handleJumperSubmit = () => {
 			</PaginationRoot>
 
 			<!-- Page jumper -->
-			<div v-else-if="part === 'jumper'" :class="$style.Jumper">
-				<span :class="$style.JumperText">Go to</span>
+			<div v-else-if="part === 'jumper'" :class="$style.jumper">
+				<span :class="$style.jumperText">Go to</span>
 				<input
 					v-model="jumperValue"
 					type="number"
 					:min="1"
 					:max="pageCount"
-					:class="$style.JumperInput"
+					:class="$style.jumperInput"
 					:disabled="disabled"
 					@keyup.enter="handleJumperSubmit"
 				/>
@@ -290,7 +290,7 @@ const handleJumperSubmit = () => {
 </template>
 
 <style module>
-.PaginationContainer {
+.paginationContainer {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
@@ -298,43 +298,43 @@ const handleJumperSubmit = () => {
 	color: var(--color--text--shade-1);
 }
 
-.Default {
+.default {
 	/* Default styling */
 }
 
-.Ghost {
+.ghost {
 	/* Ghost variant */
 }
 
-.Small {
+.small {
 	font-size: var(--font-size--2xs);
 }
 
-.Medium {
+.medium {
 	font-size: var(--font-size--xs);
 }
 
-.Background {
+.background {
 	/* Applied when background prop is true */
 }
 
-.Total {
+.total {
 	color: var(--color--text--tint-1);
 	margin-right: var(--spacing--2xs);
 }
 
-.PageSizeSelect {
+.pageSizeSelect {
 	margin-right: var(--spacing--2xs);
 }
 
-.PaginationList {
+.paginationList {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 }
 
 /* Prev/Next buttons - minimal style like Element+ */
-.PaginationButton {
+.paginationButton {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -360,7 +360,7 @@ const handleJumperSubmit = () => {
 }
 
 /* Page number buttons - minimal style like Element+ */
-.PaginationItem {
+.paginationItem {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -394,7 +394,7 @@ const handleJumperSubmit = () => {
 }
 
 /* Background variant - filled style */
-.Background .PaginationItem {
+.background .paginationItem {
 	background-color: var(--color--background--light-2);
 	border-color: var(--color--foreground);
 
@@ -406,7 +406,7 @@ const handleJumperSubmit = () => {
 }
 
 /* Ellipsis - minimal style */
-.PaginationEllipsis {
+.paginationEllipsis {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -426,18 +426,18 @@ const handleJumperSubmit = () => {
 	}
 }
 
-.Jumper {
+.jumper {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
 	margin-left: var(--spacing--2xs);
 }
 
-.JumperText {
+.jumperText {
 	color: var(--color--text--tint-1);
 }
 
-.JumperInput {
+.jumperInput {
 	width: 50px;
 	height: var(--spacing--lg);
 	padding: 0 var(--spacing--3xs);
@@ -472,9 +472,9 @@ const handleJumperSubmit = () => {
 	}
 }
 
-.Medium .PaginationButton,
-.Medium .PaginationItem,
-.Medium .JumperInput {
+.medium .paginationButton,
+.medium .paginationItem,
+.medium .jumperInput {
 	height: 36px;
 	min-width: 36px;
 }

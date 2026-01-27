@@ -66,7 +66,11 @@ describe('ExecutionRepository', () => {
 				}),
 			);
 
-			await executionRepository.deleteExecutionsByFilter({ id: '1' }, ['1'], { ids: ['1'] });
+			await executionRepository.deleteExecutionsByFilter({
+				filters: { id: '1' },
+				accessibleWorkflowIds: ['1'],
+				deleteConditions: { ids: ['1'] },
+			});
 
 			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
 				{ type: 'execution', executionId: '1', workflowId },
@@ -95,6 +99,8 @@ describe('ExecutionRepository', () => {
 					await cb(entityManager);
 					txCallback();
 				});
+				// Mock update to return affected count
+				entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
 
 				await executionRepository.updateExistingExecution(executionId, execution);
 

@@ -36,7 +36,7 @@ vi.mock('@/features/core/dataTable/components/dataGrid/AddRowButton.vue', () => 
 }));
 
 vi.mock('@/features/core/dataTable/utils/columnUtils', () => ({
-	getCellClass: vi.fn(),
+	createCellClass: vi.fn(),
 	createValueGetter: vi.fn(),
 	createCellRendererSelector: vi.fn(),
 	createStringValueSetter: vi.fn(),
@@ -47,10 +47,12 @@ vi.mock('@/features/core/dataTable/utils/columnUtils', () => ({
 	getDateColumnFilterOptions: vi.fn(() => []),
 	getNumberColumnFilterOptions: vi.fn(() => []),
 	getBooleanColumnFilterOptions: vi.fn(() => []),
+	isOversizedValue: vi.fn(() => false),
 }));
 
 describe('useDataTableColumns', () => {
 	const mockOnDeleteColumn = vi.fn();
+	const mockOnRenameColumn = vi.fn();
 	const mockOnAddRowClick = vi.fn();
 	const mockOnAddColumn = vi.fn();
 	const isTextEditorOpen = ref(false);
@@ -62,6 +64,7 @@ describe('useDataTableColumns', () => {
 	const createComposable = () => {
 		return useDataTableColumns({
 			onDeleteColumn: mockOnDeleteColumn,
+			onRenameColumn: mockOnRenameColumn,
 			onAddRowClick: mockOnAddRowClick,
 			onAddColumn: mockOnAddColumn,
 			isTextEditorOpen,

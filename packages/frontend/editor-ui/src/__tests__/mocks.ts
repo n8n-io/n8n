@@ -30,6 +30,7 @@ import {
 	EXECUTABLE_TRIGGER_NODE_TYPES,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NO_OP_NODE_TYPE,
+	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -49,7 +50,7 @@ export const mockNode = ({
 	issues = undefined,
 	typeVersion = 1,
 	parameters = {},
-	draggable = true,
+	draggable = undefined,
 }: {
 	id?: INodeUi['id'];
 	name: INodeUi['name'];
@@ -105,13 +106,21 @@ export const mockNodeTypeDescription = ({
 		eventTriggerDescription,
 	});
 
-export const mockLoadedNodeType = (name: string) =>
-	mock<LoadedClass<INodeType>>({
+export const mockLoadedNodeType = (name: string) => {
+	const config: Partial<INodeTypeDescription> = { name };
+
+	// Configure special node types with their correct connection types
+	if (name === OPEN_AI_CHAT_MODEL_NODE_TYPE) {
+		config.outputs = [NodeConnectionTypes.AiLanguageModel];
+	}
+
+	return mock<LoadedClass<INodeType>>({
 		type: mock<INodeType>({
 			// @ts-expect-error
-			description: mockNodeTypeDescription({ name }),
+			description: mockNodeTypeDescription(config),
 		}),
 	});
+};
 
 export const mockNodes = [
 	mockNode({ name: 'Manual Trigger', type: MANUAL_TRIGGER_NODE_TYPE }),
@@ -121,6 +130,7 @@ export const mockNodes = [
 	mockNode({ name: 'Chat Trigger', type: CHAT_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Form Trigger', type: FORM_TRIGGER_NODE_TYPE }),
 	mockNode({ name: 'Agent', type: AGENT_NODE_TYPE }),
+	mockNode({ name: 'OpenAI Model', type: OPEN_AI_CHAT_MODEL_NODE_TYPE }),
 	mockNode({ name: 'Sticky', type: STICKY_NODE_TYPE }),
 	mockNode({ name: 'Simulate', type: SIMULATE_NODE_TYPE }),
 	mockNode({ name: CanvasNodeRenderType.AddNodes, type: CanvasNodeRenderType.AddNodes }),
@@ -211,6 +221,7 @@ export function createTestWorkflow({
 		activeVersionId: active ? 'v1' : null,
 		meta: {},
 		pinData,
+		checksum: 'checksum',
 		...rest,
 	};
 }

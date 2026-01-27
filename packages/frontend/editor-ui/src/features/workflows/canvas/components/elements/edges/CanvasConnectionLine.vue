@@ -25,18 +25,10 @@ const classes = computed(() => {
 	};
 });
 
-const edgeColor = computed(() => {
-	if (connectionType.value !== NodeConnectionTypes.Main) {
-		return 'var(--node-type--supplemental--color)';
-	} else {
-		return 'var(--color--foreground--shade-2)';
-	}
-});
-
 const edgeStyle = computed(() => ({
-	...(connectionType.value === NodeConnectionTypes.Main ? {} : { strokeDasharray: '8,8' }),
+	...(connectionType.value === NodeConnectionTypes.Main ? {} : { strokeDasharray: '5,6' }),
 	strokeWidth: 2,
-	stroke: edgeColor.value,
+	stroke: 'var(--color--foreground--shade-2)',
 }));
 
 const renderData = computed(() =>

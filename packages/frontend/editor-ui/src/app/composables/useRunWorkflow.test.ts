@@ -2,7 +2,7 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useRouter } from 'vue-router';
 import type router from 'vue-router';
-import { ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IPinData,
 	IRunData,
@@ -24,15 +24,22 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useToast } from '@/app/composables/useToast';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
-import { useToast } from './useToast';
-import { useI18n } from '@n8n/i18n';
 import { captor, mock } from 'vitest-mock-extended';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
-import { SLACK_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useI18n } from '@n8n/i18n';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+} from '../constants';
 
 vi.mock('@/app/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
@@ -40,7 +47,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 	} = {
 		allNodes: [],
 		runWorkflow: vi.fn(),
-		subWorkflowExecutionError: null,
 		getWorkflowRunData: null,
 		workflowExecutionData: null,
 		activeExecutionId: undefined,
@@ -48,6 +54,37 @@ vi.mock('@/app/stores/workflows.store', () => {
 		nodesIssuesExist: false,
 		executionWaitingForWebhook: false,
 		workflowObject: { id: '123' } as Workflow,
+		workflowValidationIssues: [],
+		workflow: {
+			nodes: [],
+			id: '',
+			name: '',
+			active: false,
+			isArchived: false,
+			createdAt: '',
+			updatedAt: '',
+			connections: {},
+			versionId: '',
+			activeVersionId: null,
+		},
+		workflowId: '123',
+		workflowsById: {
+			'123': {
+				id: '123',
+				name: 'Test Workflow',
+				active: false,
+				isArchived: false,
+				createdAt: '',
+				updatedAt: '',
+				connections: {},
+				nodes: [],
+				versionId: '',
+				activeVersionId: null,
+			},
+		},
+		isWorkflowSaved: {
+			'123': true,
+		},
 		getNodeByName: vi
 			.fn()
 			.mockImplementation((name) =>
@@ -86,6 +123,12 @@ vi.mock('@/app/stores/parameterOverrides.store', () => {
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
+	}),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: vi.fn().mockReturnValue({
+		binaryDataMode: 'filesystem',
 	}),
 }));
 
@@ -209,7 +252,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(workflowsStore.executionWaitingForWebhook).toBe(false);
 		});
 
-		it('should prevent running a webhook-based workflow that has issues', async () => {
+		it('should not prevent running a webhook-based workflow that has issues', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
 			vi.mocked(workflowsStore).nodesIssuesExist = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
@@ -217,9 +260,7 @@ describe('useRunWorkflow({ router })', () => {
 				waitingForWebhook: true,
 			});
 
-			await expect(runWorkflowApi({} as IStartRunData)).rejects.toThrow(
-				'workflowRun.showError.resolveOutstandingIssues',
-			);
+			await expect(runWorkflowApi({} as IStartRunData)).resolves.not.toThrow();
 
 			vi.mocked(workflowsStore).nodesIssuesExist = false;
 		});
@@ -250,177 +291,6 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	describe('runWorkflow()', () => {
-		it('should prevent execution and show error message when workflow is active with single webhook trigger', async () => {
-			const pinia = createTestingPinia({ stubActions: false });
-			setActivePinia(pinia);
-			const toast = useToast();
-			const i18n = useI18n();
-			const { runWorkflow } = useRunWorkflow({ router });
-
-			vi.mocked(workflowsStore).isWorkflowActive = true;
-
-			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
-				nodes: [
-					{
-						name: 'Slack',
-						type: SLACK_TRIGGER_NODE_TYPE,
-						disabled: false,
-					},
-				],
-			} as unknown as WorkflowData);
-
-			const result = await runWorkflow({});
-
-			expect(result).toBeUndefined();
-			expect(toast.showMessage).toHaveBeenCalledWith({
-				title: i18n.baseText('workflowRun.showError.deactivate'),
-				message: i18n.baseText('workflowRun.showError.productionActive', {
-					interpolate: { nodeName: 'Webhook' },
-				}),
-				type: 'error',
-			});
-		});
-
-		it('should execute the workflow if the single webhook trigger has pin data', async () => {
-			const pinia = createTestingPinia({ stubActions: false });
-			setActivePinia(pinia);
-			const toast = useToast();
-			const i18n = useI18n();
-			const { runWorkflow } = useRunWorkflow({ router });
-
-			vi.mocked(workflowsStore).isWorkflowActive = true;
-
-			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
-				nodes: [
-					{
-						name: 'Slack',
-						type: SLACK_TRIGGER_NODE_TYPE,
-						disabled: false,
-					},
-				],
-				pinData: {
-					Slack: [{ json: { value: 'data2' } }],
-				},
-			} as unknown as WorkflowData);
-
-			const mockExecutionResponse = { executionId: '123' };
-
-			vi.mocked(uiStore).activeActions = [''];
-			vi.mocked(workflowsStore).workflowObject = {
-				name: 'Test Workflow',
-			} as unknown as Workflow;
-			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			vi.mocked(workflowsStore).nodesIssuesExist = true;
-			vi.mocked(workflowsStore).getWorkflowRunData = {
-				NodeName: [],
-			};
-
-			const result = await runWorkflow({});
-			expect(result).toEqual(mockExecutionResponse);
-
-			expect(toast.showMessage).not.toHaveBeenCalledWith({
-				title: i18n.baseText('workflowRun.showError.deactivate'),
-				message: i18n.baseText('workflowRun.showError.productionActive', {
-					interpolate: { nodeName: 'Webhook' },
-				}),
-				type: 'error',
-			});
-		});
-
-		it('should execute the workflow if there is a single webhook trigger, but another trigger is chosen', async () => {
-			// ARRANGE
-			const pinia = createTestingPinia({ stubActions: false });
-			setActivePinia(pinia);
-			const toast = useToast();
-			const i18n = useI18n();
-			const { runWorkflow } = useRunWorkflow({ router });
-			const mockExecutionResponse = { executionId: '123' };
-			const triggerNode = 'Manual';
-
-			vi.mocked(workflowsStore).isWorkflowActive = true;
-			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
-				nodes: [
-					{
-						name: 'Slack',
-						type: SLACK_TRIGGER_NODE_TYPE,
-						disabled: false,
-					},
-					{
-						name: triggerNode,
-						type: MANUAL_TRIGGER_NODE_TYPE,
-						disabled: false,
-					},
-				],
-			} as unknown as WorkflowData);
-			vi.mocked(uiStore).activeActions = [''];
-			vi.mocked(workflowsStore).workflowObject = {
-				name: 'Test Workflow',
-			} as unknown as Workflow;
-			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			vi.mocked(workflowsStore).nodesIssuesExist = true;
-			vi.mocked(workflowsStore).getWorkflowRunData = { NodeName: [] };
-
-			// ACT
-			const result = await runWorkflow({ triggerNode });
-
-			// ASSERT
-			expect(result).toEqual(mockExecutionResponse);
-			expect(toast.showMessage).not.toHaveBeenCalledWith({
-				title: i18n.baseText('workflowRun.showError.deactivate'),
-				message: i18n.baseText('workflowRun.showError.productionActive', {
-					interpolate: { nodeName: 'Webhook' },
-				}),
-				type: 'error',
-			});
-		});
-
-		it('should prevent execution and show error message when workflow is active with multiple triggers and a single webhook trigger is chosen', async () => {
-			// ARRANGE
-			const pinia = createTestingPinia({ stubActions: false });
-			setActivePinia(pinia);
-			const toast = useToast();
-			const i18n = useI18n();
-			const { runWorkflow } = useRunWorkflow({ router });
-			const mockExecutionResponse = { executionId: '123' };
-			const triggerNode = 'Slack';
-
-			vi.mocked(workflowsStore).isWorkflowActive = true;
-			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
-				nodes: [
-					{
-						name: triggerNode,
-						type: SLACK_TRIGGER_NODE_TYPE,
-						disabled: false,
-					},
-					{
-						name: 'Manual',
-						type: MANUAL_TRIGGER_NODE_TYPE,
-						disabled: false,
-					},
-				],
-			} as unknown as WorkflowData);
-			vi.mocked(uiStore).activeActions = [''];
-			vi.mocked(workflowsStore).workflowObject = {
-				name: 'Test Workflow',
-			} as unknown as Workflow;
-			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			vi.mocked(workflowsStore).nodesIssuesExist = true;
-			vi.mocked(workflowsStore).getWorkflowRunData = { NodeName: [] };
-
-			// ACT
-			const result = await runWorkflow({ triggerNode });
-
-			// ASSERT
-			expect(result).toBeUndefined();
-			expect(toast.showMessage).toHaveBeenCalledWith({
-				title: i18n.baseText('workflowRun.showError.deactivate'),
-				message: i18n.baseText('workflowRun.showError.productionActive', {
-					interpolate: { nodeName: 'Webhook' },
-				}),
-				type: 'error',
-			});
-		});
-
 		it('should return undefined if UI action "workflowRunning" is active', async () => {
 			const { runWorkflow } = useRunWorkflow({ router });
 			workflowState.setActiveExecutionId('123');
@@ -470,6 +340,35 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should prevent execution and show error when binary mode is "combined" with filesystem mode "default"', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			const toast = useToast();
+			const rootStore = useRootStore();
+			const { runWorkflow } = useRunWorkflow({ router });
+
+			vi.mocked(rootStore).binaryDataMode = 'default';
+			vi.mocked(workflowsStore).workflowObject = {
+				name: 'Test Workflow',
+			} as Workflow;
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+				settings: {
+					binaryMode: BINARY_MODE_COMBINED,
+				},
+			} as unknown as WorkflowData);
+
+			const result = await runWorkflow({});
+
+			expect(result).toBeUndefined();
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: useI18n().baseText('workflowRun.showError.unsupportedExecutionLogic.title'),
+				message: useI18n().baseText('workflowRun.showError.unsupportedExecutionLogic.description'),
+				type: 'error',
+			});
 		});
 
 		it('should exclude destinationNode from startNodes when provided', async () => {
@@ -729,7 +628,7 @@ describe('useRunWorkflow({ router })', () => {
 			const { runWorkflow } = useRunWorkflow({ router });
 			const dataCaptor = captor();
 			const agentRequest = {
-				query: 'query',
+				query: { 'Test node': { query: 'query' } },
 				toolName: 'tool',
 			};
 
@@ -785,7 +684,7 @@ describe('useRunWorkflow({ router })', () => {
 			expect(agentRequestStore.getAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith({
 				agentRequest: {
-					query: 'query',
+					query: { 'Test node': { query: 'query' } },
 					tool: {
 						name: 'tool',
 					},
@@ -887,6 +786,166 @@ describe('useRunWorkflow({ router })', () => {
 
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
 			expect(setWorkflowExecutionData).lastCalledWith(null);
+		});
+
+		describe('Chat trigger warnings', () => {
+			const mockExecutionResponse = { executionId: '123' };
+			const toast = useToast();
+			const i18n = useI18n();
+
+			beforeEach(() => {
+				vi.mocked(pushConnectionStore).isConnected = true;
+				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
+				vi.mocked(workflowsStore).nodesIssuesExist = false;
+				vi.mocked(workflowsStore).workflowObject = {
+					name: 'Test Workflow',
+				} as Workflow;
+				vi.mocked(workflowsStore).getWorkflowRunData = {
+					NodeName: [],
+				};
+			});
+
+			it("should show a warning if there are no chat response nodes and chat trigger's response mode is `responseNodes`", async () => {
+				const { runWorkflow } = useRunWorkflow({ router });
+				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+					id: 'workflowId',
+					nodes: [
+						{
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							parameters: {
+								options: {
+									responseMode: 'responseNodes',
+								},
+							},
+						},
+					],
+				} as unknown as WorkflowData);
+
+				const result = await runWorkflow({ triggerNode: 'Chat Trigger' });
+
+				expect(result).toEqual(mockExecutionResponse);
+				expect(toast.showMessage).toHaveBeenCalledWith({
+					title: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.title'),
+					message: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.description'),
+					type: 'warning',
+				});
+			});
+
+			it.each([['lastNode'], ['streaming']])(
+				"should not show a warning if there are no chat response nodes but chat trigger's response mode is `%s`",
+				async (responseMode) => {
+					const { runWorkflow } = useRunWorkflow({ router });
+					vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+						id: 'workflowId',
+						nodes: [
+							{
+								name: 'Chat Trigger',
+								type: CHAT_TRIGGER_NODE_TYPE,
+								parameters: {
+									options: {
+										responseMode,
+									},
+								},
+							},
+						],
+					} as unknown as WorkflowData);
+
+					const result = await runWorkflow({ triggerNode: 'Chat Trigger' });
+
+					expect(result).toEqual(mockExecutionResponse);
+					expect(toast.showMessage).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should not show a warning if the workflow was started from a different trigger node', async () => {
+				const { runWorkflow } = useRunWorkflow({ router });
+				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+					id: 'workflowId',
+					nodes: [
+						{
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							parameters: {
+								options: {
+									responseMode: 'responseNodes',
+								},
+							},
+						},
+						{
+							name: 'Manual Trigger',
+							type: MANUAL_TRIGGER_NODE_TYPE,
+						},
+					],
+				} as unknown as WorkflowData);
+
+				const result = await runWorkflow({ triggerNode: 'Manual Trigger' });
+
+				expect(result).toEqual(mockExecutionResponse);
+				expect(toast.showMessage).not.toHaveBeenCalled();
+			});
+
+			it.each([[CHAT_NODE_TYPE], [CHAT_TOOL_NODE_TYPE], [RESPOND_TO_WEBHOOK_NODE_TYPE]])(
+				'should not show a warning if the there are response nodes in the workflow (%s)',
+				async (responseNodeType) => {
+					const { runWorkflow } = useRunWorkflow({ router });
+					vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+						id: 'workflowId',
+						nodes: [
+							{
+								name: 'Chat Trigger',
+								type: CHAT_TRIGGER_NODE_TYPE,
+								parameters: {
+									options: {
+										responseMode: 'responseNodes',
+									},
+								},
+							},
+							{
+								name: 'Response Node',
+								type: responseNodeType,
+							},
+						],
+					} as unknown as WorkflowData);
+
+					const result = await runWorkflow({ triggerNode: 'Chat Trigger' });
+
+					expect(result).toEqual(mockExecutionResponse);
+					expect(toast.showMessage).not.toHaveBeenCalled();
+				},
+			);
+
+			it('should show a warning if all the response nodes are disabled', async () => {
+				const { runWorkflow } = useRunWorkflow({ router });
+				vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+					id: 'workflowId',
+					nodes: [
+						{
+							name: 'Chat Trigger',
+							type: CHAT_TRIGGER_NODE_TYPE,
+							parameters: {
+								options: {
+									responseMode: 'responseNodes',
+								},
+							},
+						},
+						{
+							name: 'Response Node',
+							type: CHAT_NODE_TYPE,
+							disabled: true,
+						},
+					],
+				} as unknown as WorkflowData);
+
+				const result = await runWorkflow({ triggerNode: 'Chat Trigger' });
+
+				expect(result).toEqual(mockExecutionResponse);
+				expect(toast.showMessage).toHaveBeenCalledWith({
+					title: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.title'),
+					message: i18n.baseText('workflowRun.showWarning.noChatResponseNodes.description'),
+					type: 'warning',
+				});
+			});
 		});
 	});
 

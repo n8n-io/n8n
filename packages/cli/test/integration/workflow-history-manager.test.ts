@@ -29,7 +29,7 @@ describe('Workflow History Manager', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
+		await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
 		jest.clearAllMocks();
 
 		globalConfig.workflowHistory.pruneTime = -1;

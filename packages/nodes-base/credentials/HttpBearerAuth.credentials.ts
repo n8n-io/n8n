@@ -22,6 +22,7 @@ export class HttpBearerAuth implements ICredentialType {
 				password: true,
 			},
 			default: '',
+			resolvableField: true,
 		},
 		{
 			displayName:

@@ -6,6 +6,8 @@ import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { useI18n } from '@n8n/i18n';
 import CanvasHandleDot from './parts/CanvasHandleDot.vue';
 import CanvasHandlePlus from './parts/CanvasHandlePlus.vue';
+import { useCanvas } from '../../../../composables/useCanvas';
+import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 
 const emit = defineEmits<{
 	add: [];
@@ -16,6 +18,8 @@ const $style = useCssModule();
 const i18n = useI18n();
 const { render } = useCanvasNode();
 const { label, isConnected, isConnecting, isReadOnly, isRequired, runData } = useCanvasNodeHandle();
+const { viewport } = useCanvas();
+const { calculateHandleLightness } = useZoomAdjustedValues(viewport);
 
 const handleClasses = 'source';
 
@@ -64,6 +68,13 @@ const runDataLabelClasses = computed(() => ({
 	[$style.runDataLabel]: true,
 }));
 
+const handleLightness = calculateHandleLightness();
+
+const handleStyles = computed(() => ({
+	'--handle--border--lightness--light': handleLightness.value.light,
+	'--handle--border--lightness--dark': handleLightness.value.dark,
+}));
+
 function onMouseEnter() {
 	isHovered.value = true;
 }
@@ -80,7 +91,7 @@ function onClickAdd() {
 	<div :class="classes">
 		<div v-if="label" :class="outputLabelClasses">{{ label }}</div>
 		<div v-if="runData" :class="runDataLabelClasses">{{ runDataLabel }}</div>
-		<CanvasHandleDot :handle-classes="handleClasses" />
+		<CanvasHandleDot :handle-classes="handleClasses" :style="handleStyles" />
 		<Transition name="canvas-node-handle-main-output">
 			<CanvasHandlePlus
 				v-if="!isConnected && !isReadOnly"
@@ -131,7 +142,7 @@ function onClickAdd() {
 	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1));
 	transform-origin: center left;
 	font-size: var(--font-size--2xs);
-	color: var(--color--foreground--shade-2);
+	color: var(--canvas--label--color);
 }
 
 .runDataLabel {

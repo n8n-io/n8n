@@ -1,7 +1,20 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 
+import type { PaginationSizes, PaginationVariants } from './Pagination.types';
 import Pagination from './Pagination.vue';
+
+const sizeCases: Array<[PaginationSizes | undefined, string]> = [
+	[undefined, 'small'],
+	['small', 'small'],
+	['medium', 'medium'],
+];
+
+const variantCases: Array<[PaginationVariants | undefined, string]> = [
+	[undefined, 'default'],
+	['default', 'default'],
+	['ghost', 'ghost'],
+];
 
 describe('v2/components/Pagination', () => {
 	describe('rendering', () => {
@@ -58,11 +71,7 @@ describe('v2/components/Pagination', () => {
 	});
 
 	describe('sizes', () => {
-		test.each([
-			[undefined, 'Small'],
-			['small' as const, 'Small'],
-			['medium' as const, 'Medium'],
-		])('size %s should apply %s class', (size, expected) => {
+		test.each(sizeCases)('size %s should apply %s class', (size, expected) => {
 			const wrapper = render(Pagination, {
 				props: {
 					total: 100,
@@ -75,11 +84,7 @@ describe('v2/components/Pagination', () => {
 	});
 
 	describe('variants', () => {
-		test.each([
-			[undefined, 'Default'],
-			['default' as const, 'Default'],
-			['ghost' as const, 'Ghost'],
-		])('variant %s should apply %s class', (variant, expected) => {
+		test.each(variantCases)('variant %s should apply %s class', (variant, expected) => {
 			const wrapper = render(Pagination, {
 				props: {
 					total: 100,
@@ -98,7 +103,7 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 			const container = wrapper.container.firstChild as HTMLElement;
-			expect(container?.className).toContain('Background');
+			expect(container?.className).toContain('background');
 		});
 	});
 

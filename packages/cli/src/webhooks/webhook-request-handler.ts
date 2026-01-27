@@ -23,7 +23,6 @@ import {
 	isWebhookResponse,
 	isWebhookStreamResponse,
 } from '@/webhooks/webhook-response';
-import { WebhookService } from '@/webhooks/webhook.service';
 import type {
 	IWebhookManager,
 	WebhookOptionsRequest,
@@ -81,10 +80,7 @@ class WebhookRequestHandler {
 			const logger = Container.get(Logger);
 
 			if (e instanceof WebhookNotFoundError) {
-				const currentlyRegistered = await Container.get(WebhookService).findAll();
-				logger.error(`Received request for unknown webhook: ${e.message}`, {
-					currentlyRegistered: currentlyRegistered.map((w) => w.display()),
-				});
+				logger.error(`Received request for unknown webhook: ${e.message}`);
 			} else {
 				logger.error(
 					`Error in handling webhook request ${req.method} ${req.path}: ${error.message}`,

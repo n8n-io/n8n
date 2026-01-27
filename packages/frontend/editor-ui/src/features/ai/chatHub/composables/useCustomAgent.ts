@@ -1,29 +1,32 @@
-import type { ChatHubAgentDto } from '@n8n/api-types';
-import { ref, toValue, watch, type MaybeRef } from 'vue';
+import { computed, ref, toValue, watch, type MaybeRef } from 'vue';
 import { useChatStore } from '../chat.store';
-import { useToast } from '@/app/composables/useToast';
 
 export function useCustomAgent(agentId?: MaybeRef<string | undefined>) {
 	const store = useChatStore();
-	const agent = ref<ChatHubAgentDto>();
-	const toast = useToast();
+	const isLoading = ref(false);
+	const id = computed(() => toValue(agentId));
+	const customAgent = computed(() => {
+		if (!id.value) {
+			return undefined;
+		}
+
+		return store.customAgents[id.value];
+	});
 
 	watch(
-		() => toValue(agentId),
-		async (id) => {
-			if (!id) {
-				agent.value = undefined;
-				return;
-			}
-
-			try {
-				agent.value = await store.fetchCustomAgent(id);
-			} catch (error) {
-				toast.showError(error, 'Failed to load agent');
+		id,
+		async (theId) => {
+			if (theId) {
+				try {
+					isLoading.value = true;
+					await store.fetchCustomAgent(theId);
+				} finally {
+					isLoading.value = false;
+				}
 			}
 		},
 		{ immediate: true },
 	);
 
-	return agent;
+	return { isLoading, customAgent };
 }
