@@ -525,14 +525,6 @@ export interface ChatSendMessageResponse {
 }
 
 /**
- * Request to reconnect to an active chat session
- */
-export class ChatReconnectRequest extends Z.class({
-	/** The new pushRef after reconnection */
-	pushRef: z.string(),
-}) {}
-
-/**
  * Response containing pending chunks for reconnection replay
  */
 export interface ChatReconnectResponse {

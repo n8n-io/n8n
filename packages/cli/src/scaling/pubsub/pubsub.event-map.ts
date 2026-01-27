@@ -100,10 +100,8 @@ export type PubSubCommandMap = {
 	'relay-chat-stream-event': {
 		/** Event type: begin, chunk, end, or error */
 		eventType: 'begin' | 'chunk' | 'end' | 'error';
-		/** Push reference for the WebSocket connection */
-		pushRef: string;
-		/** User ID for server-initiated messages (when no pushRef available) */
-		userId?: string;
+		/** User ID - sends to all user connections */
+		userId: string;
 		/** Chat session ID */
 		sessionId: string;
 		/** Message ID being streamed */

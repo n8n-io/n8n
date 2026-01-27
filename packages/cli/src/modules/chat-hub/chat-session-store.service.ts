@@ -16,10 +16,8 @@ export interface StreamState {
 	sessionId: ChatSessionId;
 	/** Message ID being streamed */
 	messageId: ChatMessageId;
-	/** Push reference for WebSocket connection */
-	pushRef?: string;
-	/** User ID for server-initiated messages */
-	userId?: string;
+	/** User ID - required for sending to all user connections */
+	userId: string;
 	/** Current sequence number */
 	sequenceNumber: number;
 	/** Timestamp when stream started */
@@ -40,8 +38,7 @@ export interface BufferedChunk {
 export interface StartStreamParams {
 	sessionId: ChatSessionId;
 	messageId: ChatMessageId;
-	pushRef?: string;
-	userId?: string;
+	userId: string;
 }
 
 /** TTL for stream state in seconds */
@@ -87,12 +84,11 @@ export class ChatSessionStoreService {
 	 * Start tracking a new stream
 	 */
 	async startStream(params: StartStreamParams): Promise<void> {
-		const { sessionId, messageId, pushRef, userId } = params;
+		const { sessionId, messageId, userId } = params;
 
 		const state: StreamState = {
 			sessionId,
 			messageId,
-			pushRef,
 			userId,
 			sequenceNumber: 0,
 			startedAt: Date.now(),
@@ -184,26 +180,6 @@ export class ChatSessionStoreService {
 		}
 
 		return chunks.filter((chunk) => chunk.sequenceNumber > lastReceivedSequence);
-	}
-
-	/**
-	 * Update the pushRef for a session (used during reconnection)
-	 */
-	async updatePushRef(sessionId: ChatSessionId, pushRef: string): Promise<void> {
-		if (this.useRedis) {
-			const state = await this.getRedisState(sessionId);
-			if (state) {
-				state.pushRef = pushRef;
-				await this.setRedisState(sessionId, state);
-			}
-		} else {
-			const state = this.memoryStore.get(sessionId);
-			if (state) {
-				state.pushRef = pushRef;
-			}
-		}
-
-		this.logger.debug(`Updated pushRef for session ${sessionId}`);
 	}
 
 	/**

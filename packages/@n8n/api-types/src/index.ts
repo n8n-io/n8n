@@ -54,7 +54,6 @@ export {
 	UpdateChatSettingsRequest,
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
-	ChatReconnectRequest,
 	type ChatReconnectResponse,
 } from './chat-hub';
 

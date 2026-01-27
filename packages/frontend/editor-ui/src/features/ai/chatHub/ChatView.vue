@@ -93,6 +93,41 @@ onBeforeUnmount(() => {
 	pushConnectionStore.pushDisconnect();
 });
 
+// Handle WebSocket reconnection - replay missed chunks if there's an active stream
+watch(
+	() => pushConnectionStore.isConnected,
+	async (isConnected, wasConnected) => {
+		// Only handle reconnection (was disconnected, now connected)
+		if (!isConnected || wasConnected) {
+			return;
+		}
+
+		// Check if we have an active streaming session
+		const currentSessionId = sessionId.value;
+		if (!chatStore.streaming || chatStore.streaming.sessionId !== currentSessionId) {
+			return;
+		}
+
+		// Get the last sequence number we received
+		const lastSequence = chatPushHandler.getLastSequenceNumber(currentSessionId);
+
+		// Call the reconnect API to get missed chunks
+		const result = await chatStore.reconnectToStream(currentSessionId, lastSequence);
+
+		if (result && result.pendingChunks && result.pendingChunks.length > 0) {
+			// Update the push handler's sequence tracking
+			for (const chunk of result.pendingChunks) {
+				// The store's reconnectToStream already appended the content
+				// Just update the push handler's tracking
+				const streamState = chatPushHandler.getStreamState(currentSessionId);
+				if (streamState && chunk.sequenceNumber > streamState.lastSequenceNumber) {
+					streamState.lastSequenceNumber = chunk.sequenceNumber;
+				}
+			}
+		}
+	},
+);
+
 const headerRef = useTemplateRef('headerRef');
 const inputRef = useTemplateRef('inputRef');
 const scrollableRef = useTemplateRef('scrollable');

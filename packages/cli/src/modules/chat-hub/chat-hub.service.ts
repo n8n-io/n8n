@@ -93,11 +93,11 @@ import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
 import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 
 /**
- * Streaming context that can be either HTTP response or WebSocket push reference
+ * Streaming context that can be either HTTP response or WebSocket push
  */
 export type StreamingContext =
 	| { type: 'http'; response: Response }
-	| { type: 'websocket'; pushRef: string; userId: string };
+	| { type: 'websocket'; userId: string };
 
 @Service()
 export class ChatHubService {
@@ -2113,7 +2113,6 @@ export class ChatHubService {
 	 * Returns immediately with message IDs; streaming happens in background via Push
 	 */
 	async sendHumanMessageWs(
-		pushRef: string,
 		user: User,
 		payload: HumanMessagePayload,
 		executionMetadata: ChatHubAuthenticationMetadata,
@@ -2207,7 +2206,6 @@ export class ChatHubService {
 
 		// Start the workflow execution with WebSocket streaming (fire and forget)
 		void this.executeChatWorkflowWithCleanupWs(
-			pushRef,
 			user,
 			model,
 			workflow.workflowData,
@@ -2234,7 +2232,6 @@ export class ChatHubService {
 	 * Edit a message and stream the AI response via WebSocket
 	 */
 	async editMessageWs(
-		pushRef: string,
 		user: User,
 		payload: EditMessagePayload,
 		executionMetadata: ChatHubAuthenticationMetadata,
@@ -2337,7 +2334,6 @@ export class ChatHubService {
 
 		// Start the workflow execution with WebSocket streaming (fire and forget)
 		void this.executeChatWorkflowWithCleanupWs(
-			pushRef,
 			user,
 			model,
 			workflow.workflowData,
@@ -2363,7 +2359,6 @@ export class ChatHubService {
 	 * Regenerate an AI message and stream via WebSocket
 	 */
 	async regenerateAIMessageWs(
-		pushRef: string,
 		user: User,
 		payload: RegenerateMessagePayload,
 		executionMetadata: ChatHubAuthenticationMetadata,
@@ -2426,7 +2421,6 @@ export class ChatHubService {
 
 		// Start the workflow execution with WebSocket streaming (fire and forget)
 		void this.executeChatWorkflowWithCleanupWs(
-			pushRef,
 			user,
 			model,
 			workflow.workflowData,
@@ -2449,7 +2443,6 @@ export class ChatHubService {
 	 * Execute a chat workflow with cleanup, using WebSocket streaming
 	 */
 	private async executeChatWorkflowWithCleanupWs(
-		pushRef: string,
 		user: User,
 		model: ChatHubConversationModel,
 		workflowData: IWorkflowBase,
@@ -2468,7 +2461,6 @@ export class ChatHubService {
 			const executionMode = model.provider === 'n8n' ? 'webhook' : 'chat';
 
 			await this.executeChatWorkflowWs(
-				pushRef,
 				user,
 				model,
 				workflowData,
@@ -2514,7 +2506,6 @@ export class ChatHubService {
 	 * Execute a chat workflow using WebSocket streaming
 	 */
 	private async executeChatWorkflowWs(
-		pushRef: string,
 		user: User,
 		model: ChatHubConversationModel,
 		workflowData: IWorkflowBase,
@@ -2543,7 +2534,6 @@ export class ChatHubService {
 		}
 
 		await this.executeWithWebSocketStreaming(
-			pushRef,
 			user,
 			model,
 			workflowData,
@@ -2560,7 +2550,6 @@ export class ChatHubService {
 	 * Execute a workflow with WebSocket streaming output
 	 */
 	private async executeWithWebSocketStreaming(
-		pushRef: string,
 		user: User,
 		model: ChatHubConversationModel,
 		workflowData: IWorkflowBase,
@@ -2575,7 +2564,6 @@ export class ChatHubService {
 
 		// Start the stream via WebSocket
 		await this.chatStreamService.startStream({
-			pushRef,
 			userId: user.id,
 			sessionId,
 			messageId: responseMessageId,
@@ -2726,10 +2714,10 @@ export class ChatHubService {
 
 	/**
 	 * Reconnect to an active chat stream
+	 * Returns pending chunks that the client may have missed
 	 */
 	async reconnectToStream(
 		sessionId: ChatSessionId,
-		pushRef: string,
 		lastReceivedSequence: number,
 	): Promise<{
 		hasActiveStream: boolean;
@@ -2743,11 +2731,6 @@ export class ChatHubService {
 			sessionId,
 			lastReceivedSequence,
 		);
-
-		if (hasActiveStream) {
-			// Update the pushRef for future messages
-			await this.chatStreamService.updatePushRef(sessionId, pushRef);
-		}
 
 		return {
 			hasActiveStream,

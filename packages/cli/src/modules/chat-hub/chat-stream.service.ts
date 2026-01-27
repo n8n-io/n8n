@@ -23,10 +23,8 @@ import { ChatSessionStoreService } from './chat-session-store.service';
  * Parameters for starting a new stream
  */
 export interface StartStreamParams {
-	/** Push reference for WebSocket connection (user-initiated) */
-	pushRef?: string;
-	/** User ID for server-initiated messages (when no pushRef available) */
-	userId?: string;
+	/** User ID - required for sending to all user connections */
+	userId: string;
 	/** Chat session ID */
 	sessionId: ChatSessionId;
 	/** AI message ID being streamed */
@@ -41,8 +39,8 @@ export interface StartStreamParams {
 
 /**
  * Service responsible for streaming chat messages to clients via WebSocket.
- * Handles both user-initiated streams (with pushRef) and server-initiated streams (with userId).
- * In multi-main mode, relays events via Redis pub/sub to reach the correct main instance.
+ * Sends to all user connections so multiple browser windows receive updates.
+ * In multi-main mode, relays events via Redis pub/sub to reach all main instances.
  */
 @Service()
 export class ChatStreamService {
@@ -67,7 +65,6 @@ export class ChatStreamService {
 		await this.sessionStore.startStream({
 			sessionId,
 			messageId,
-			pushRef: params.pushRef,
 			userId: params.userId,
 		});
 
@@ -118,7 +115,7 @@ export class ChatStreamService {
 		};
 
 		await this.sendPushMessage(
-			{ pushRef: streamState.pushRef, userId: streamState.userId, sessionId, messageId },
+			{ userId: streamState.userId, sessionId, messageId },
 			message,
 			'chunk',
 		);
@@ -152,7 +149,7 @@ export class ChatStreamService {
 		};
 
 		await this.sendPushMessage(
-			{ pushRef: streamState.pushRef, userId: streamState.userId, sessionId, messageId },
+			{ userId: streamState.userId, sessionId, messageId },
 			message,
 			'end',
 		);
@@ -189,20 +186,13 @@ export class ChatStreamService {
 		};
 
 		await this.sendPushMessage(
-			{ pushRef: streamState.pushRef, userId: streamState.userId, sessionId, messageId },
+			{ userId: streamState.userId, sessionId, messageId },
 			message,
 			'error',
 		);
 
 		// Clean up the stream state
 		await this.sessionStore.endStream(sessionId);
-	}
-
-	/**
-	 * Update the pushRef for a session (used during reconnection)
-	 */
-	async updatePushRef(sessionId: ChatSessionId, pushRef: string): Promise<void> {
-		await this.sessionStore.updatePushRef(sessionId, pushRef);
 	}
 
 	/**
@@ -237,8 +227,7 @@ export class ChatStreamService {
 	@OnPubSubEvent('relay-chat-stream-event', { instanceType: 'main' })
 	handleRelayChatStreamEvent(payload: {
 		eventType: 'begin' | 'chunk' | 'end' | 'error';
-		pushRef: string;
-		userId?: string;
+		userId: string;
 		sessionId: string;
 		messageId: string;
 		sequenceNumber: number;
@@ -251,12 +240,7 @@ export class ChatStreamService {
 			error?: string;
 		};
 	}): void {
-		// Only handle if we have the pushRef locally
-		if (payload.pushRef && !this.push.hasPushRef(payload.pushRef)) {
-			return;
-		}
-
-		const { eventType, sessionId, messageId, sequenceNumber } = payload;
+		const { eventType, userId, sessionId, messageId, sequenceNumber } = payload;
 		const timestamp = Date.now();
 
 		let message: ChatStreamPushMessage;
@@ -314,45 +298,27 @@ export class ChatStreamService {
 				break;
 		}
 
-		// Send directly via push since we already verified we have the connection
-		if (payload.pushRef) {
-			this.push.send(message, payload.pushRef);
-		} else if (payload.userId) {
-			this.push.sendToUsers(message, [payload.userId]);
-		}
+		// Send to all user connections
+		this.push.sendToUsers(message, [userId]);
 	}
 
 	/**
-	 * Send a push message, either directly or via relay depending on instance topology
+	 * Send a push message, either directly or via relay depending on instance topology.
+	 * Always sends to ALL user connections so multiple browser windows receive updates.
 	 */
 	private async sendPushMessage(
-		params: Pick<StartStreamParams, 'pushRef' | 'userId' | 'sessionId' | 'messageId'>,
+		params: Pick<StartStreamParams, 'userId' | 'sessionId' | 'messageId'>,
 		message: ChatStreamPushMessage,
 		eventType: 'begin' | 'chunk' | 'end' | 'error',
 	): Promise<void> {
-		const { pushRef, userId } = params;
+		const { userId } = params;
 
-		// Try direct push first if we have a pushRef and it's local
-		if (pushRef && this.push.hasPushRef(pushRef)) {
-			this.push.send(message, pushRef);
-			return;
-		}
+		// Send to ALL user connections so all browser windows receive updates
+		this.push.sendToUsers(message, [userId]);
 
-		// Try sending to user if no pushRef (server-initiated)
-		if (!pushRef && userId) {
-			this.push.sendToUsers(message, [userId]);
-			return;
-		}
-
-		// Need to relay via pub/sub in multi-main mode
+		// In multi-main mode, also relay to other instances
 		if (this.shouldRelayViaPubSub()) {
 			await this.relayViaPubSub(params, message, eventType);
-			return;
-		}
-
-		// Single-main mode but pushRef not found - might be disconnected
-		if (pushRef) {
-			this.logger.debug(`PushRef ${pushRef} not found locally, client may be disconnected`);
 		}
 	}
 
@@ -367,7 +333,7 @@ export class ChatStreamService {
 	 * Relay a message via Redis pub/sub for multi-main coordination
 	 */
 	private async relayViaPubSub(
-		params: Pick<StartStreamParams, 'pushRef' | 'userId' | 'sessionId' | 'messageId'>,
+		params: Pick<StartStreamParams, 'userId' | 'sessionId' | 'messageId'>,
 		message: ChatStreamPushMessage,
 		eventType: 'begin' | 'chunk' | 'end' | 'error',
 	): Promise<void> {
@@ -394,7 +360,6 @@ export class ChatStreamService {
 			command: 'relay-chat-stream-event',
 			payload: {
 				eventType,
-				pushRef: params.pushRef ?? '',
 				userId: params.userId,
 				sessionId: params.sessionId,
 				messageId: params.messageId,
