@@ -140,7 +140,7 @@ Follow these rules strictly when generating workflows:
    - Example: \`subnodes: {{ model: languageModel(...), tools: [tool(...)] }}\`
 
 8. **Node connections use .to() for regular nodes**
-   - Chain nodes: \`trigger(...).to(node1).to(node2)\`
+   - Chain nodes: \`trigger(...).to(node1.to(node2))\`
    - IF branching: Use \`.onTrue(target).onFalse(target)\` on IF nodes
    - Switch routing: Use \`.onCase(n, target)\` on Switch nodes
    - Merge inputs: Use \`.to(mergeNode.input(n))\` to connect to specific merge inputs
@@ -238,7 +238,7 @@ const processData = node({{
 
 // 2. Compose workflow
 return workflow('id', 'name')
-  .add(startTrigger.to(fetchData).to(processData));
+  .add(startTrigger.to(fetchData.to(processData)));
 \`\`\`
 
 ## Conditional Branching (IF)
@@ -249,7 +249,7 @@ return workflow('id', 'name')
 // Assume nodes declared: checkValid (IF), formatData, enrichData, saveToDb, logError
 return workflow('id', 'name')
   .add(startTrigger.to(checkValid
-    .onTrue(formatData.to(enrichData).to(saveToDb))  // Chain 3 nodes on true branch
+    .onTrue(formatData.to(enrichData.to(saveToDb)))  // Chain 3 nodes on true branch
     .onFalse(logError)));
 \`\`\`
 
@@ -272,7 +272,7 @@ RIGHT - chain inside the branch:
 // Assume nodes declared: routeByPriority (Switch), processUrgent, notifyTeam, escalate, processNormal, archive
 return workflow('id', 'name')
   .add(startTrigger.to(routeByPriority
-    .onCase(0, processUrgent.to(notifyTeam).to(escalate))  // Chain of 3 nodes
+    .onCase(0, processUrgent.to(notifyTeam.to(escalate)))  // Chain of 3 nodes
     .onCase(1, processNormal)
     .onCase(2, archive)));
 \`\`\`
@@ -297,14 +297,9 @@ const processResults = node({{ type: 'n8n-nodes-base.set', ... }});
 
 // Connect branches to specific merge inputs using .input(n)
 return workflow('id', 'name')
-  .add(trigger({{ ... }})
-    .to(branch1)
-    .to(combineResults.input(0)))  // Connect to input 0
-  .add(trigger({{ ... }})
-    .to(branch2)
-    .to(combineResults.input(1)))  // Connect to input 1
-  .add(combineResults
-    .to(processResults));  // Process merged results
+  .add(trigger({{ ... }}).to(branch1.to(combineResults.input(0))))  // Connect to input 0
+  .add(trigger({{ ... }}).to(branch2.to(combineResults.input(1))))  // Connect to input 1
+  .add(combineResults.to(processResults));  // Process merged results
 \`\`\`
 
 ## Batch Processing (Loops)
@@ -339,7 +334,7 @@ const sibNode = splitInBatches({{ name: 'Batch Process', parameters: {{ batchSiz
 
 // 3. Compose workflow - use nextBatch() for explicit loop-back
 return workflow('id', 'name')
-  .add(startTrigger.to(fetchRecords).to(sibNode
+  .add(startTrigger.to(fetchRecords.to(sibNode
     .onDone(finalizeResults)
     .onEachBatch(processRecord.to(nextBatch(sibNode)))  // nextBatch() makes loop intent explicit
   ));

@@ -216,7 +216,7 @@ export interface NodeInstance<
 	 * Can pass an array for parallel targets: .to([nodeA, nodeB])
 	 *
 	 * @example
-	 * trigger.to(nodeA).to(nodeB)  // Linear chain
+	 * trigger.to(nodeA.to(nodeB))  // Linear chain
 	 * nodeA.to(mergeNode.input(0))   // Connect to specific input
 	 * nodeA.to([nodeB, nodeC])  // Fan-out to multiple parallel targets
 	 */
@@ -541,7 +541,7 @@ export type NewCredentialFn = (name: string) => CredentialReference;
  *
  * // Fluent API with nextBatch() for explicit loop-back
  * workflow('id', 'Batch Process')
- *   .add(startTrigger.to(fetchRecords).to(
+ *   .add(startTrigger.to(fetchRecords.to(
  *     sibNode
  *       .onDone(finalizeNode)                            // When all batches done
  *       .onEachBatch(processNode.to(nextBatch(sibNode))) // Loop back with nextBatch()
