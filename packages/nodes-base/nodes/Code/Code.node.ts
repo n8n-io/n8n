@@ -118,7 +118,7 @@ export class Code implements INodeType {
 				: 'javaScript';
 
 		const isJsLang = language === 'javaScript';
-		const isPyLang = language === 'pythonNative';
+		const isPyLang = language === 'python' || language === 'pythonNative'; // keep legacy `python` for backwards compatibility
 		const runnersConfig = Container.get(TaskRunnersConfig);
 		const isJsRunner = runnersConfig.enabled;
 
@@ -128,7 +128,7 @@ export class Code implements INodeType {
 
 		const nodeMode = this.getNodeParameter('mode', 0) as CodeExecutionMode;
 		const workflowMode = this.getMode();
-		const codeParameterName = language === 'pythonNative' ? 'pythonCode' : 'jsCode';
+		const codeParameterName = isPyLang ? 'pythonCode' : 'jsCode';
 
 		if (isJsLang && isJsRunner) {
 			const code = this.getNodeParameter(codeParameterName, 0) as string;

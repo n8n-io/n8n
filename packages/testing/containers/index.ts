@@ -9,6 +9,8 @@
 export { createN8NStack } from './stack';
 export type { N8NConfig, N8NStack } from './stack';
 
+export type { StackTelemetryRecord } from './telemetry';
+
 // Performance plans (CLI-only)
 export * from './performance-plans';
 

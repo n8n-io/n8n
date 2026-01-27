@@ -30,6 +30,14 @@ jobs:
     name: Security - Scan Docker Image With Trivy
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout for VEX file
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          sparse-checkout: |
+            vex.openvex.json
+            .github/trivy.yaml
+          sparse-checkout-cone-mode: false
+
       - name: Pull Docker image with retry
         run: |
           for i in {1..4}; do
@@ -47,6 +55,7 @@ jobs:
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
           ignore-unfixed: false
           exit-code: '0'
+          trivy-config: '.github/trivy.yaml'
 
       - name: Calculate vulnerability counts
         id: process_results

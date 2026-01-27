@@ -31,6 +31,7 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'workflow-similarity-evaluation-failed',
 	'http-request-hardcoded-credentials',
 	'set-node-credential-field',
+	'data-table-missing-set-node',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
@@ -42,6 +43,7 @@ export interface ProgrammaticViolation {
 	type: ProgrammaticViolationType;
 	description: string;
 	pointsDeducted: number;
+	metadata?: Record<string, string>;
 }
 
 export interface SingleEvaluatorResult {

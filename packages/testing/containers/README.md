@@ -19,6 +19,9 @@ pnpm stack --mains 2 --workers 1
 
 # Cloud plan simulation
 pnpm stack --plan starter
+
+# Public tunnel for webhook testing
+pnpm stack --tunnel
 ```
 
 When started, you'll see the URL: `http://localhost:[port]`
@@ -348,9 +351,11 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `victoriaMetrics` | - | VictoriaMetrics for metrics |
 | `vector` | - | Vector log collector (depends on victoriaLogs) |
 | `tracing` | ✓ | Jaeger for distributed tracing |
+| `kafka` | ✓ | Kafka broker for message queue testing |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
 | `loadBalancer` | - | Caddy for multi-main |
+| `cloudflared` | - | Cloudflare Tunnel for public webhook URLs |
 
 **Note:** For observability (logs + metrics), enable all three: `['victoriaLogs', 'victoriaMetrics', 'vector']`.
 The `observability` capability shortcut handles this automatically: `test.use({ capability: 'observability' })`.
@@ -367,8 +372,48 @@ The `observability` capability shortcut handles this automatically: `test.use({ 
 | `--name <name>` | Custom project name for parallel runs |
 | `--env KEY=VALUE` | Set environment variables |
 | `--observability` | Enable metrics/logs stack |
+| `--tracing` | Enable Jaeger tracing |
+| `--tunnel` | Enable Cloudflare Tunnel for public webhook URLs |
 | `--oidc` | Enable Keycloak |
 | `--source-control` | Enable Gitea |
+| `--mailpit` | Enable email testing (Mailpit) |
+
+## Telemetry
+
+Container stack telemetry tracks startup timing, configuration, and runner info. Useful for monitoring CI performance and debugging slow stacks.
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `CONTAINER_TELEMETRY_WEBHOOK` | POST telemetry JSON to this URL |
+| `CONTAINER_TELEMETRY_VERBOSE` | Set to `1` for JSON output to console |
+
+### What's Collected
+
+```typescript
+{
+  timestamp: string;              // ISO timestamp
+  git: { sha, branch, pr? };      // Git context from CI env vars
+  ci: { runId, job, workflow };   // GitHub Actions context
+  runner: { provider, cpuCores, memoryGb };  // github | blacksmith | local
+  stack: { type, mains, workers, postgres, services };
+  timing: { total, network, n8nStartup, services: Record<string, number> };
+  containers: { total, services, n8n };
+  success: boolean;
+  errorMessage?: string;
+}
+```
+
+### Usage
+
+```bash
+# Verbose output locally
+CONTAINER_TELEMETRY_VERBOSE=1 pnpm stack
+
+# Send to webhook (CI)
+CONTAINER_TELEMETRY_WEBHOOK=https://n8n.example.com/webhook/telemetry
+```
 
 ## Cleanup
 

@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	SettingsRepository,
+	StatisticsNames,
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	ExecutionStatus,
@@ -72,6 +77,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly ownershipService: OwnershipService,
 		private readonly userService: UserService,
 		private readonly eventService: EventService,
+		private readonly settingsRepository: SettingsRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -146,8 +153,51 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 					userId,
 				});
 			}
+
+			if (name === StatisticsNames.productionError && upsertResult === 'insert') {
+				// Check if this is the first production failure and if error workflows are configured
+				const instanceHadProductionFailure = await this.settingsRepository.findByKey(
+					'instance.firstProductionFailure',
+				);
+
+				if (
+					!instanceHadProductionFailure &&
+					!(await this.workflowRepository.hasAnyWorkflowsWithErrorWorkflow())
+				) {
+					// This is the first production failure ever on this instance
+					const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+					// Get owner: personal project owner if available, otherwise instance owner
+					let owner =
+						project.type === 'personal'
+							? await this.ownershipService.getPersonalProjectOwnerCached(project.id)
+							: null;
+
+					owner ??= await this.ownershipService.getInstanceOwner();
+
+					// Store the flag to prevent future emissions
+					await this.settingsRepository.save({
+						key: 'instance.firstProductionFailure',
+						value: JSON.stringify({
+							workflowId,
+							projectId: project.id,
+							userId: owner.id,
+							timestamp: runData.startedAt.getTime(),
+						}),
+						loadOnStartup: false,
+					});
+
+					// Emit the event
+					this.eventService.emit('instance-first-production-workflow-failed', {
+						projectId: project.id,
+						workflowId,
+						workflowName: workflowData.name,
+						userId: owner.id,
+					});
+				}
+			}
 		} catch (error) {
-			this.logger.debug('Unable to fire first workflow success telemetry event');
+			this.logger.debug('Unable to fire first workflow telemetry event');
 		}
 	}
 

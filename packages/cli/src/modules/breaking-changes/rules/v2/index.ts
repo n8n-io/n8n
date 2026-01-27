@@ -3,7 +3,6 @@ import { CliActivateAllWorkflowsRule } from './cli-replace-update-workflow-comma
 import { DisabledNodesRule } from './disabled-nodes.rule';
 import { DotenvUpgradeRule } from './dotenv-upgrade.rule';
 import { FileAccessRule } from './file-access.rule';
-import { GitNodeBareReposRule } from './git-node-bare-repos.rule';
 import { OAuthCallbackAuthRule } from './oauth-callback-auth.rule';
 import { ProcessEnvAccessRule } from './process-env-access.rule';
 import { PyodideRemovedRule } from './pyodide-removed.rule';
@@ -26,7 +25,6 @@ const v2Rules = [
 	FileAccessRule,
 	DisabledNodesRule,
 	WaitNodeSubworkflowRule,
-	GitNodeBareReposRule,
 	StartNodeRemovedRule,
 	// Instance-level rules
 	DotenvUpgradeRule,

@@ -205,6 +205,7 @@ export interface FrontendSettings {
 	aiCredits: {
 		enabled: boolean;
 		credits: number;
+		setup: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;

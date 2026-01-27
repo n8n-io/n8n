@@ -6,6 +6,7 @@ import { workflow } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import * as Helpers from './helpers';
+import { ExpressionReservedVariableError } from '../src/errors/expression-reserved-variable.error';
 import { ExpressionError } from '../src/errors/expression.error';
 import { extendSyntax } from '../src/extensions/expression-extension';
 import type { INodeExecutionData } from '../src/interfaces';
@@ -367,6 +368,87 @@ describe('Expression', () => {
 				// Even if you try to store it, you get undefined
 				const result = evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}');
 				expect(result).toBeUndefined();
+			});
+
+			it('should block prototype pollution via __lookupGetter__ as bare identifier', () => {
+				const payload = `={{(() => {
+					const getProto = __lookupGetter__('__proto__');
+					const objProto = getProto.call({});
+					objProto['win'] = 1337;
+					const empty = {};
+					return empty['win'];
+				})()}}`;
+
+				expect(evaluate(payload)).toBeUndefined();
+			});
+
+			it('should block __lookupGetter__ as bare identifier', () => {
+				expect(evaluate('={{__lookupGetter__}}')).toBeUndefined();
+			});
+
+			it('should block __lookupSetter__ as bare identifier', () => {
+				expect(evaluate('={{__lookupSetter__}}')).toBeUndefined();
+			});
+
+			it('should block __defineGetter__ as bare identifier', () => {
+				expect(evaluate('={{__defineGetter__}}')).toBeUndefined();
+			});
+
+			it('should block __defineSetter__ as bare identifier', () => {
+				expect(evaluate('={{__defineSetter__}}')).toBeUndefined();
+			});
+
+			it('should block TOCTOU bypass via custom toString()', () => {
+				const payload = `={{(() => {
+					function createBypass() {
+						let value = 'noop';
+						return {
+							toString: () => {
+								const current = value;
+								value = 'constructor';
+								return current;
+							}
+						}
+					}
+					return ({})[createBypass()][createBypass()]('return 1')();
+				})()}}`;
+
+				expect(evaluate(payload)).toBeUndefined();
+			});
+
+			it('should block `__sanitize` override attempt', () => {
+				const payload = `={{(() => {
+					__sanitize = a => a;
+					return this['const' + 'ructor']['const' + 'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow();
+			});
+
+			it('should block `___n8n_data` shadowing attempt', () => {
+				const payload = `={{(() => {
+					const ___n8n_data = {__sanitize: a => a};
+					return ({})['const'+'ructor']['const'+'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should block `__sanitize` variable declaration', () => {
+				const payload = `={{(() => {
+					const __sanitize = a => a;
+					return 1;
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+			});
+
+			it('should block `___n8n_data` as function parameter', () => {
+				const payload = `={{((___n8n_data) => {
+					return 1;
+				})({})}}`;
+
+				expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
 			});
 		});
 	});

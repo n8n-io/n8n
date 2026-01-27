@@ -32,7 +32,7 @@ import {
 	jsonParse,
 	jsonStringify,
 	StructuredChunk,
-	RESPOND_TO_CHAT_NODE_TYPE,
+	CHAT_NODE_TYPE,
 	IRunExecutionData,
 	INodeParameters,
 	INode,
@@ -89,6 +89,7 @@ import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 import { getLastNodeExecuted, shouldResumeImmediately } from '../../chat/utils';
+import { ChatHubAuthenticationMetadata } from './chat-hub-extractor';
 
 @Service()
 export class ChatHubService {
@@ -158,7 +159,12 @@ export class ChatHubService {
 		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
 	}
 
-	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
+	async sendHumanMessage(
+		res: Response,
+		user: User,
+		payload: HumanMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
 		const {
 			sessionId,
 			messageId,
@@ -221,6 +227,7 @@ export class ChatHubService {
 					processedAttachments,
 					tz,
 					trx,
+					executionMetadata,
 				);
 			});
 		} catch (error) {
@@ -305,7 +312,12 @@ export class ChatHubService {
 		}
 	}
 
-	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
+	async editMessage(
+		res: Response,
+		user: User,
+		payload: EditMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
@@ -384,6 +396,7 @@ export class ChatHubService {
 						attachments,
 						tz,
 						trx,
+						executionMetadata,
 					);
 				}
 
@@ -421,7 +434,12 @@ export class ChatHubService {
 		);
 	}
 
-	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
+	async regenerateAIMessage(
+		res: Response,
+		user: User,
+		payload: RegenerateMessagePayload,
+		executionMetadata: ChatHubAuthenticationMetadata,
+	) {
 		const { sessionId, retryId, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
@@ -470,6 +488,7 @@ export class ChatHubService {
 					attachments,
 					tz,
 					trx,
+					executionMetadata,
 				);
 
 				return {
@@ -503,6 +522,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		timeZone: string,
 		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		if (model.provider === 'n8n') {
 			return await this.prepareWorkflowAgentWorkflow(
@@ -512,6 +532,7 @@ export class ChatHubService {
 				message,
 				attachments,
 				trx,
+				executionMetadata,
 			);
 		}
 
@@ -525,6 +546,7 @@ export class ChatHubService {
 				attachments,
 				timeZone,
 				trx,
+				executionMetadata,
 			);
 		}
 
@@ -540,6 +562,7 @@ export class ChatHubService {
 			attachments,
 			timeZone,
 			trx,
+			executionMetadata,
 		);
 	}
 
@@ -555,6 +578,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		timeZone: string,
 		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 		this.chatHubCredentialsService.findProviderCredential(model.provider, credentials);
@@ -572,6 +596,7 @@ export class ChatHubService {
 			systemMessage,
 			tools,
 			timeZone,
+			executionMetadata,
 			trx,
 		);
 	}
@@ -585,6 +610,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		timeZone: string,
 		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const agent = await this.chatHubAgentService.getAgentById(agentId, user.id, trx);
 
@@ -630,6 +656,7 @@ export class ChatHubService {
 			attachments,
 			timeZone,
 			trx,
+			executionMetadata,
 		);
 	}
 
@@ -640,6 +667,7 @@ export class ChatHubService {
 		message: string,
 		attachments: IBinaryData[],
 		trx: EntityManager,
+		executionMetadata: ChatHubAuthenticationMetadata,
 	) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -685,12 +713,12 @@ export class ChatHubService {
 		}
 
 		const chatResponseNodes = workflow.activeVersion.nodes.filter(
-			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
+			(node) => node.type === CHAT_NODE_TYPE,
 		);
 
 		if (chatResponseNodes.length > 0 && responseMode !== 'responseNodes') {
 			throw new BadRequestError(
-				'"Respond to Chat" nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
+				'Chat nodes are not supported with the selected response mode. Please set the response mode to "Using Response Nodes" or remove the nodes from the workflow.',
 			);
 		}
 
@@ -710,6 +738,7 @@ export class ChatHubService {
 			sessionId,
 			message,
 			attachments,
+			executionMetadata,
 		);
 
 		const executionData = createRunExecutionData({
@@ -1034,7 +1063,12 @@ export class ChatHubService {
 		const entry = this.getFirstOutputEntry(outputs);
 		if (!entry) return undefined;
 
-		return this.extractMessage(entry, responseMode);
+		const message = this.extractMessage(entry, responseMode);
+		if (typeof message === 'object' && message !== null) {
+			return jsonStringify(message);
+		}
+
+		return message;
 	}
 
 	private getLastNodeExecuted(execution: IExecutionResponse): string | undefined {
