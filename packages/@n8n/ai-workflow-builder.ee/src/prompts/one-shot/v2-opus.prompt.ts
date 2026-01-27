@@ -36,7 +36,8 @@ function formatNodeEntry(node: NodeWithDiscriminators): string {
 				);
 			}
 		} else if (node.discriminators.type === 'mode' && node.discriminators.modes) {
-			lines.push(`    Requires mode for get_nodes: ${node.discriminators.modes.join(', ')}`);
+			const modeValues = node.discriminators.modes.map((m) => m.value).join(', ');
+			lines.push(`    Requires mode for get_nodes: ${modeValues}`);
 		}
 	}
 

@@ -212,7 +212,10 @@ describe('one-shot-generator.prompt', () => {
 						displayName: 'Code',
 						discriminators: {
 							type: 'mode',
-							modes: ['runOnceForAllItems', 'runOnceForEachItem'],
+							modes: [
+								{ value: 'runOnceForAllItems', displayName: 'Run Once for All Items' },
+								{ value: 'runOnceForEachItem', displayName: 'Run Once for Each Item' },
+							],
 						},
 					},
 				],
@@ -249,7 +252,10 @@ describe('one-shot-generator.prompt', () => {
 						displayName: 'Code',
 						discriminators: {
 							type: 'mode',
-							modes: ['runOnceForAllItems', 'runOnceForEachItem'],
+							modes: [
+								{ value: 'runOnceForAllItems', displayName: 'Run Once for All Items' },
+								{ value: 'runOnceForEachItem', displayName: 'Run Once for Each Item' },
+							],
 						},
 					},
 				],

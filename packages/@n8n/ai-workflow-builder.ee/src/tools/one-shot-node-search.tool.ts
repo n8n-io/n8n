@@ -16,7 +16,7 @@ import { tool } from '@langchain/core/tools';
 import { z } from 'zod';
 import type { NodeTypeParser } from '../utils/node-type-parser';
 import { extractResourceOperations } from '../utils/resource-operation-extractor';
-import { extractModeDiscriminator } from './utils/discriminator-utils';
+import { extractModeDiscriminator, type ModeInfo } from './utils/discriminator-utils';
 
 /**
  * Debug logging helper for search tool
@@ -45,7 +45,40 @@ function debugLog(message: string, data?: Record<string, unknown>): void {
 interface DiscriminatorInfo {
 	type: 'resource_operation' | 'mode' | 'none';
 	resources?: Array<{ value: string; operations: string[] }>;
-	modes?: string[];
+	modes?: ModeInfo[];
+}
+
+/**
+ * Maps NodeConnectionType to SDK function and subnode field
+ */
+const CONNECTION_TYPE_TO_SDK: Record<string, { fn: string; subnodeField: string }> = {
+	ai_tool: { fn: 'tool()', subnodeField: 'subnodes.tools' },
+	ai_vectorStore: { fn: 'vectorStore()', subnodeField: 'subnodes.vectorStore' },
+	ai_retriever: { fn: 'retriever()', subnodeField: 'subnodes.retriever' },
+	ai_languageModel: { fn: 'languageModel()', subnodeField: 'subnodes.model' },
+	ai_memory: { fn: 'memory()', subnodeField: 'subnodes.memory' },
+	ai_outputParser: { fn: 'outputParser()', subnodeField: 'subnodes.outputParser' },
+	ai_embedding: { fn: 'embedding()', subnodeField: 'subnodes.embedding' },
+	ai_document: { fn: 'documentLoader()', subnodeField: 'subnodes.documentLoader' },
+	ai_textSplitter: { fn: 'textSplitter()', subnodeField: 'subnodes.textSplitter' },
+};
+
+/**
+ * Format a mode for display, including SDK function mapping only if showSdkMapping is true
+ */
+function formatModeForDisplay(mode: ModeInfo, showSdkMapping: boolean): string {
+	if (!showSdkMapping) {
+		return `      - ${mode.value}: "${mode.displayName}"`;
+	}
+
+	const sdkMapping = mode.outputConnectionType
+		? CONNECTION_TYPE_TO_SDK[mode.outputConnectionType as string]
+		: undefined;
+
+	if (sdkMapping) {
+		return `      - ${mode.value}: "${mode.displayName}" → use ${sdkMapping.fn} for ${sdkMapping.subnodeField}`;
+	}
+	return `      - ${mode.value}: "${mode.displayName}" → use node()`;
 }
 
 /**
@@ -114,13 +147,18 @@ function formatDiscriminatorInfo(info: DiscriminatorInfo, nodeId: string): strin
 			`    get_nodes({ nodeIds: [{ nodeId: "${nodeId}", resource: "${firstResource?.value}", operation: "${firstOp}" }] })`,
 		);
 	} else if (info.type === 'mode' && info.modes) {
-		lines.push(`    mode: ${info.modes.join(', ')}`);
+		lines.push('    mode:');
+		// Only show SDK function mapping if there's variation (some modes have outputConnectionType)
+		const hasSubnodeModes = info.modes.some((m) => m.outputConnectionType);
+		for (const mode of info.modes) {
+			lines.push(formatModeForDisplay(mode, hasSubnodeModes));
+		}
 
-		// Add usage hint
+		// Add usage hint with first mode value
 		const firstMode = info.modes[0];
 		lines.push('');
 		lines.push('  Use get_nodes with discriminators:');
-		lines.push(`    get_nodes({ nodeIds: [{ nodeId: "${nodeId}", mode: "${firstMode}" }] })`);
+		lines.push(`    get_nodes({ nodeIds: [{ nodeId: "${nodeId}", mode: "${firstMode.value}" }] })`);
 	}
 
 	return lines.join('\n');

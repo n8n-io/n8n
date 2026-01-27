@@ -3,13 +3,25 @@
  * Used by the search tool to show available discriminators for split type files
  */
 
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeProperties, INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
+
+/**
+ * Represents a single mode option with its metadata
+ */
+export interface ModeInfo {
+	/** The mode value (e.g., 'retrieve', 'retrieve-as-tool') */
+	value: string;
+	/** The display name (e.g., 'Retrieve Documents (As Tool for AI Agent)') */
+	displayName: string;
+	/** The output connection type if this mode creates a subnode (e.g., 'ai_tool', 'ai_vectorStore') */
+	outputConnectionType?: NodeConnectionType;
+}
 
 /**
  * Represents mode discriminator information
  */
 export interface ModeDiscriminatorInfo {
-	modes: string[];
+	modes: ModeInfo[];
 }
 
 /**
@@ -41,13 +53,23 @@ export function extractModeDiscriminator(
 		return null;
 	}
 
-	// Extract mode values
-	const modes = modeProperty.options
+	// Extract mode values with their metadata
+	const modes: ModeInfo[] = modeProperty.options
 		.filter(
-			(opt): opt is { name: string; value: string } =>
+			(
+				opt,
+			): opt is {
+				name: string;
+				value: string;
+				outputConnectionType?: NodeConnectionType;
+			} =>
 				typeof opt === 'object' && opt !== null && 'value' in opt && typeof opt.value === 'string',
 		)
-		.map((opt) => opt.value);
+		.map((opt) => ({
+			value: opt.value,
+			displayName: opt.name,
+			outputConnectionType: opt.outputConnectionType,
+		}));
 
 	if (modes.length === 0) {
 		return null;

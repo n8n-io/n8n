@@ -242,8 +242,8 @@ describe('NodeTypeParser', () => {
 			expect(code?.discriminators).toBeDefined();
 			expect(code?.discriminators?.type).toBe('mode');
 			expect(code?.discriminators?.modes).toBeDefined();
-			expect(code?.discriminators?.modes).toContain('runOnceForAllItems');
-			expect(code?.discriminators?.modes).toContain('runOnceForEachItem');
+			expect(code?.discriminators?.modes?.map((m) => m.value)).toContain('runOnceForAllItems');
+			expect(code?.discriminators?.modes?.map((m) => m.value)).toContain('runOnceForEachItem');
 		});
 
 		it('should have no discriminators for nodes without patterns', () => {

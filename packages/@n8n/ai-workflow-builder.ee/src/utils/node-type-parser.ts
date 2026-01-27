@@ -10,7 +10,7 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeSearchEngine } from '../tools/engines/node-search-engine';
 import { extractResourceOperations } from './resource-operation-extractor';
-import { extractModeDiscriminator } from '../tools/utils/discriminator-utils';
+import { extractModeDiscriminator, type ModeInfo } from '../tools/utils/discriminator-utils';
 
 export interface ParsedNodeType {
 	id: string;
@@ -27,7 +27,7 @@ export interface ParsedNodeType {
 export interface NodeDiscriminatorInfo {
 	type: 'resource_operation' | 'mode';
 	resources?: Array<{ value: string; operations: string[] }>;
-	modes?: string[];
+	modes?: ModeInfo[];
 }
 
 /**

@@ -1,4 +1,4 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import { NodeTypeParser } from '../../utils/node-type-parser';
 import { createOneShotNodeSearchTool } from '../one-shot-node-search.tool';
 
@@ -98,6 +98,57 @@ const mockHttpRequestNode: INodeTypeDescription = {
 				{ name: 'POST', value: 'POST' },
 			],
 			default: 'GET',
+		},
+	],
+};
+
+// Mock vector store node with mode discriminator that includes outputConnectionType
+const mockVectorStoreNode: INodeTypeDescription = {
+	name: '@n8n/n8n-nodes-langchain.vectorStorePinecone',
+	displayName: 'Pinecone Vector Store',
+	description: 'Work with your data in Pinecone Vector Store',
+	group: ['transform'],
+	version: 1,
+	defaults: { name: 'Pinecone Vector Store' },
+	inputs: ['main'],
+	outputs: ['main'],
+	properties: [
+		{
+			displayName: 'Operation Mode',
+			name: 'mode',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Get Many',
+					value: 'load',
+					description: 'Get many ranked documents from vector store for query',
+				},
+				{
+					name: 'Insert Documents',
+					value: 'insert',
+					description: 'Insert documents into vector store',
+				},
+				{
+					name: 'Retrieve Documents (As Vector Store for Chain/Tool)',
+					value: 'retrieve',
+					description:
+						'Retrieve documents from vector store to be used as vector store with AI nodes',
+					outputConnectionType: NodeConnectionTypes.AiVectorStore,
+				},
+				{
+					name: 'Retrieve Documents (As Tool for AI Agent)',
+					value: 'retrieve-as-tool',
+					description: 'Retrieve documents from vector store to be used as tool with AI nodes',
+					outputConnectionType: NodeConnectionTypes.AiTool,
+				},
+				{
+					name: 'Update Documents',
+					value: 'update',
+					description: 'Update documents in vector store by ID',
+				},
+			],
+			default: 'load',
 		},
 	],
 };
@@ -234,6 +285,69 @@ describe('OneShotNodeSearchTool', () => {
 
 			expect(result).toContain('No nodes found');
 			expect(result).toContain('Try a different search term');
+		});
+	});
+
+	describe('mode discriminator with outputConnectionType and SDK function mapping', () => {
+		it('should show display name and SDK function for modes with outputConnectionType', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockVectorStoreNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['pinecone'] });
+
+			// Should include discriminator section
+			expect(result).toContain('Discriminators:');
+			expect(result).toContain('mode:');
+
+			// Should show mode values with display names
+			expect(result).toContain('retrieve');
+			expect(result).toContain('retrieve-as-tool');
+
+			// Should show display names
+			expect(result).toContain('Retrieve Documents (As Vector Store for Chain/Tool)');
+			expect(result).toContain('Retrieve Documents (As Tool for AI Agent)');
+
+			// Should show SDK function mapping for modes with outputConnectionType
+			// retrieve → vectorStore() for subnodes.vectorStore
+			expect(result).toMatch(/retrieve.*vectorStore\(\)/s);
+
+			// retrieve-as-tool → tool() for subnodes.tools
+			expect(result).toMatch(/retrieve-as-tool.*tool\(\)/s);
+		});
+
+		it('should show node() for modes without outputConnectionType', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockVectorStoreNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['pinecone'] });
+
+			// Modes without outputConnectionType should be shown as standalone
+			expect(result).toContain('load');
+			expect(result).toContain('Get Many');
+			expect(result).toContain('insert');
+			expect(result).toContain('Insert Documents');
+			expect(result).toContain('update');
+			expect(result).toContain('Update Documents');
+
+			// These should indicate they use node() function
+			expect(result).toMatch(/load.*Get Many.*node\(\)/is);
+		});
+
+		it('should NOT show SDK function for nodes where all modes use node()', async () => {
+			const nodeTypeParser = new NodeTypeParser([mockCodeNode]);
+			const tool = createOneShotNodeSearchTool(nodeTypeParser);
+
+			const result = await tool.invoke({ queries: ['code'] });
+
+			// Should show mode values with display names
+			expect(result).toContain('runOnceForAllItems');
+			expect(result).toContain('Run Once for All Items');
+			expect(result).toContain('runOnceForEachItem');
+			expect(result).toContain('Run Once for Each Item');
+
+			// Code node modes all use node(), so should NOT show SDK function mapping
+			expect(result).not.toContain('node()');
+			expect(result).not.toContain('→ use');
 		});
 	});
 });
