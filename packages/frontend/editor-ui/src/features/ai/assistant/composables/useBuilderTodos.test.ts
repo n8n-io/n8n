@@ -74,6 +74,20 @@ describe('useBuilderTodos', () => {
 			`;
 			expect(extractPlaceholderLabels(code)).toEqual(['Base URL', 'API Token']);
 		});
+
+		it('extracts label from alternative placeholder format with colon', () => {
+			expect(extractPlaceholderLabels('<__PLACEHOLDER__: Add your custom code here__>')).toEqual([
+				'Add your custom code here',
+			]);
+		});
+
+		it('extracts labels from mixed placeholder formats', () => {
+			const code = `
+				const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';
+				const customCode = '<__PLACEHOLDER__: Add your code here__>';
+			`;
+			expect(extractPlaceholderLabels(code)).toEqual(['API_KEY', 'Add your code here']);
+		});
 	});
 
 	describe('findPlaceholderDetails', () => {
