@@ -19,6 +19,7 @@ import type {
 import { z } from 'zod';
 
 import type { CredentialsEntity } from './credentials-entity';
+import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
 import type { SharedCredentials } from './shared-credentials';
@@ -58,6 +59,7 @@ export interface IExecutionBase {
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
 	waitTill?: Date | null;
+	storedAt: ExecutionDataStorageLocation;
 }
 
 // Required by PublicUser
@@ -153,7 +155,10 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 }
 
 /** Payload for creating an execution. */
-export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+export type CreateExecutionPayload = Omit<
+	IExecutionDb,
+	'id' | 'createdAt' | 'startedAt' | 'storedAt'
+>;
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {

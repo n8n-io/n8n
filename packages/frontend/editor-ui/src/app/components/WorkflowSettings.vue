@@ -221,9 +221,9 @@ const executionLogicOptions = computed(() => {
 });
 
 const onCallerIdsInput = (str: string) => {
-	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
+	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s_-]+$/.test(str)
 		? str
-		: str.replace(/[^a-zA-Z0-9,\s]/g, '');
+		: str.replace(/[^a-zA-Z0-9,\s_-]/g, '');
 };
 
 const closeDialog = () => {
