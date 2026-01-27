@@ -37,7 +37,7 @@ env:
 jobs:
   unit-test-backend:
     name: Backend Unit Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -78,7 +78,7 @@ jobs:
 
   integration-test-backend:
     name: Backend Integration Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -119,7 +119,7 @@ jobs:
 
   unit-test-nodes:
     name: Nodes Unit Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -160,7 +160,7 @@ jobs:
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/2)
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     strategy:
       fail-fast: false
       matrix:

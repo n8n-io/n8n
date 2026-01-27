@@ -53,6 +53,7 @@ describe('ActiveExecutions', () => {
 		mode: 'manual',
 		startedAt: new Date(),
 		status: 'new',
+		storedAt: 'db',
 	};
 
 	const executionData: IWorkflowExecutionDataProcess = {
