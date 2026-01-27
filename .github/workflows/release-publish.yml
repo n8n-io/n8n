@@ -202,7 +202,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: master
-          fetch-depth: 1
+          fetch-depth: 500
           token: ${{ steps.generate_token.outputs.token }}
 
       - name: Verify release tag exists
@@ -219,7 +219,7 @@ jobs:
         run: |
           git config user.name "n8n-release-tag-merge[bot]"
           git config user.email "256767729+n8n-release-tag-merge[bot]@users.noreply.github.com"
-          git merge --ff-only "n8n@${VERSION}"
+          git merge --ff "n8n@${VERSION}"
 
       - name: Push to master
         run: git push origin HEAD:master
