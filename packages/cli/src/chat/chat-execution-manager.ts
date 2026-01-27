@@ -90,7 +90,16 @@ export class ChatExecutionManager {
 		const workflow = this.getWorkflow(execution);
 		const lastNodeExecuted = execution.data.resultData.lastNodeExecuted as string;
 		const node = workflow.getNode(lastNodeExecuted);
-		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
+
+		// TODO: verify this context actually needs projectId because it resolves external secret expressions down the line
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(execution.workflowData.id)
+			.catch(() => undefined);
+
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId: workflow.id,
+			projectId: project?.id,
+		});
 		const executionData = execution.data.executionData?.nodeExecutionStack[0];
 
 		if (!node || !executionData) return null;

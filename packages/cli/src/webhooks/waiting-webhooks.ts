@@ -252,6 +252,7 @@ export class WaitingWebhooks implements IWebhookManager {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}
 
+		// TODO: verify that projectId is not needed in additionalData because external secrets are not evaluated
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId: workflow.id,
 		});

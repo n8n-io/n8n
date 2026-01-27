@@ -294,6 +294,7 @@ async function startExecution(
 		const workflowSettings = workflowData.settings;
 		const additionalDataIntegrated = await getBase({
 			workflowId: workflowData.id,
+			projectId: additionalData.projectId, // TODO: fully understand who depends on this / if this is needed here
 			workflowSettings,
 		});
 		additionalDataIntegrated.hooks = getLifecycleHooksForSubExecutions(
@@ -481,6 +482,7 @@ export async function getBase({
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		projectId,
 		setExecutionStatus,
 		variables,
 		workflowSettings,

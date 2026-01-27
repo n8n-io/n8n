@@ -32,6 +32,7 @@ describe('WaitingWebhooks', () => {
 		executionRepository,
 		mockWebhookService,
 		mockInstanceSettings,
+		mock(),
 	);
 
 	beforeEach(() => {

@@ -23,7 +23,7 @@ function buildSecretsValueProxy(value: IDataObject): unknown {
 }
 
 export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData): IDataObject {
-	const { externalSecretsProxy } = additionalData;
+	const { externalSecretsProxy, projectId } = additionalData;
 	return new Proxy(
 		{},
 		{
@@ -39,7 +39,7 @@ export function getSecretsProxy(additionalData: IWorkflowExecuteAdditionalData):
 								if (typeof secretName !== 'string') {
 									return;
 								}
-								if (!externalSecretsProxy.hasSecret(providerName, secretName)) {
+								if (!externalSecretsProxy.hasSecret(providerName, secretName, projectId)) {
 									throw new ExpressionError('Could not load secrets', {
 										description:
 											'The credential in use tries to use secret from an external store that could not be found',

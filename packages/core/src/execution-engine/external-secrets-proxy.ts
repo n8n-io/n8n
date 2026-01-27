@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 
 export interface IExternalSecretsManager {
 	updateSecrets(): Promise<void>;
-	hasSecret(provider: string, name: string): boolean;
+	hasSecret(provider: string, name: string, projectId?: string): boolean;
 	getSecret(provider: string, name: string): unknown;
 	getSecretNames(provider: string): string[];
 	hasProvider(provider: string): boolean;
@@ -25,8 +25,8 @@ export class ExternalSecretsProxy {
 		return this.manager?.getSecret(provider, name);
 	}
 
-	hasSecret(provider: string, name: string): boolean {
-		return !!this.manager && this.manager.hasSecret(provider, name);
+	hasSecret(provider: string, name: string, projectId?: string): boolean {
+		return !!this.manager && this.manager.hasSecret(provider, name, projectId);
 	}
 
 	hasProvider(provider: string): boolean {

@@ -30,6 +30,7 @@ import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -49,6 +50,7 @@ export class WorkflowExecutionService {
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async runWorkflow(
@@ -106,6 +108,12 @@ export class WorkflowExecutionService {
 		// Check whether this workflow is active.
 		const workflowIsActive = await this.workflowRepository.isActive(payload.workflowData.id);
 
+		// TODO: can getting the owning project of a workflow ever fail?
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(payload.workflowData.id)
+			.catch(() => undefined);
+		const projectId = project?.id;
+
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
@@ -128,6 +136,7 @@ export class WorkflowExecutionService {
 					pushRef,
 					workflowData: payload.workflowData,
 					userId: user.id,
+					projectId,
 					dirtyNodeNames: payload.dirtyNodeNames,
 					agentRequest: payload.agentRequest,
 				};
@@ -147,6 +156,7 @@ export class WorkflowExecutionService {
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
 						userId: user.id,
 						workflowId: payload.workflowData.id,
+						projectId,
 					}),
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
@@ -163,6 +173,7 @@ export class WorkflowExecutionService {
 				pushRef,
 				workflowData: payload.workflowData,
 				userId: user.id,
+				projectId,
 				triggerToStartFrom: payload.triggerToStartFrom,
 				agentRequest: payload.agentRequest,
 				destinationNode: payload.destinationNode,
@@ -185,6 +196,7 @@ export class WorkflowExecutionService {
 					additionalData: await WorkflowExecuteAdditionalData.getBase({
 						userId: user.id,
 						workflowId: payload.workflowData.id,
+						projectId,
 					}),
 					pushRef,
 					destinationNode: payload.destinationNode,
@@ -200,6 +212,7 @@ export class WorkflowExecutionService {
 				pushRef,
 				workflowData: payload.workflowData,
 				userId: user.id,
+				projectId,
 				agentRequest: payload.agentRequest,
 				destinationNode: payload.destinationNode,
 				triggerToStartFrom: pinnedTrigger ? { name: pinnedTrigger.name } : undefined,
