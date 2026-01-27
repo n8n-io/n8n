@@ -794,11 +794,11 @@ function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
 }
 
 function addWorkflowSavedEventBindings() {
-	canvasEventBus.on('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.on('saved:workflow', npsSurveyStore.showNpsSurveyIfPossible);
 }
 
 function removeWorkflowSavedEventBindings() {
-	canvasEventBus.off('saved:workflow', npsSurveyStore.fetchPromptsData);
+	canvasEventBus.off('saved:workflow', npsSurveyStore.showNpsSurveyIfPossible);
 	canvasEventBus.off('saved:workflow', onSaveFromWithinExecutionDebug);
 }
 

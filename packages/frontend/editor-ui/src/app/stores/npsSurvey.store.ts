@@ -6,17 +6,11 @@ import {
 	SIX_MONTHS_IN_MILLIS,
 	THREE_DAYS_IN_MILLIS,
 	NPS_SURVEY_MODAL_KEY,
-	CONTACT_PROMPT_MODAL_KEY,
-	TIME,
-	LOCAL_STORAGE_PROMPTS_DATA_CACHE,
 } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { IUserSettings, NpsSurveyState } from 'n8n-workflow';
 import { useSettingsStore } from './settings.store';
 import { updateNpsSurveyState } from '@n8n/rest-api-client/api/npsSurvey';
-import type { N8nPrompts } from '@n8n/rest-api-client/api/prompts';
-import { getPromptsData } from '@n8n/rest-api-client/api/prompts';
-import { assert } from '@n8n/utils/assert';
 
 export const MAXIMUM_TIMES_TO_SHOW_SURVEY_IF_IGNORED = 3;
 
@@ -28,7 +22,6 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	const shouldShowNpsSurveyNext = ref<boolean>(false);
 	const currentSurveyState = ref<NpsSurveyState | undefined>();
 	const currentUserId = ref<string | undefined>();
-	const promptsData = ref<N8nPrompts | undefined>();
 
 	function setupNpsSurveyOnLogin(userId: string, settings?: IUserSettings | null): void {
 		currentUserId.value = userId;
@@ -103,7 +96,9 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	}
 
 	async function respondNpsSurvey() {
-		assert(currentSurveyState.value);
+		if (!currentSurveyState.value) {
+			return;
+		}
 
 		const updatedState: NpsSurveyState = {
 			responded: true,
@@ -114,7 +109,9 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 	}
 
 	async function ignoreNpsSurvey() {
-		assert(currentSurveyState.value);
+		if (!currentSurveyState.value) {
+			return;
+		}
 
 		const state = currentSurveyState.value;
 		const ignoredCount = 'ignoredCount' in state ? state.ignoredCount : 0;
@@ -134,91 +131,11 @@ export const useNpsSurveyStore = defineStore('npsSurvey', () => {
 		currentSurveyState.value = updatedState;
 	}
 
-	function getPromptsDataCacheKey(): string {
-		return LOCAL_STORAGE_PROMPTS_DATA_CACHE(currentUserId.value!);
-	}
-
-	function isValidPromptsDataCache(
-		value: unknown,
-	): value is { data: N8nPrompts; timestamp: number } {
-		return (
-			typeof value === 'object' &&
-			value !== null &&
-			'data' in value &&
-			'timestamp' in value &&
-			typeof value.timestamp === 'number'
-		);
-	}
-
-	function getCachedPromptsData(): N8nPrompts | null {
-		try {
-			const cached = localStorage.getItem(getPromptsDataCacheKey());
-			if (!cached) {
-				return null;
-			}
-
-			const parsed: unknown = JSON.parse(cached);
-			if (!isValidPromptsDataCache(parsed)) {
-				return null;
-			}
-
-			if (Date.now() - parsed.timestamp < TIME.DAY) {
-				return parsed.data;
-			}
-		} catch {
-			// Invalid cache, will be refreshed
-		}
-		return null;
-	}
-
-	function setCachedPromptsData(data: N8nPrompts): void {
-		try {
-			localStorage.setItem(
-				getPromptsDataCacheKey(),
-				JSON.stringify({ data, timestamp: Date.now() }),
-			);
-		} catch {
-			// localStorage may be full or unavailable
-		}
-	}
-
-	async function fetchPromptsData(): Promise<void> {
-		assert(currentUserId.value);
-		if (!settingsStore.isTelemetryEnabled) {
-			return;
-		}
-
-		const cachedData = getCachedPromptsData();
-		if (cachedData) {
-			promptsData.value = cachedData;
-		} else {
-			try {
-				promptsData.value = await getPromptsData(
-					settingsStore.settings.instanceId,
-					currentUserId.value,
-				);
-				if (promptsData.value && !promptsData.value.showContactPrompt) {
-					setCachedPromptsData(promptsData.value);
-				}
-			} catch (e) {
-				console.error('Failed to fetch prompts data');
-			}
-		}
-
-		if (promptsData.value?.showContactPrompt) {
-			uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
-		} else {
-			await useNpsSurveyStore().showNpsSurveyIfPossible();
-		}
-	}
-
 	return {
-		promptsData,
 		resetNpsSurveyOnLogOut,
 		showNpsSurveyIfPossible,
 		ignoreNpsSurvey,
 		respondNpsSurvey,
 		setupNpsSurveyOnLogin,
-		fetchPromptsData,
 	};
 });

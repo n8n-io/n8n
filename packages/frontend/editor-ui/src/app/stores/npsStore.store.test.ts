@@ -1,20 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { useNpsSurveyStore } from './npsSurvey.store';
-import {
-	THREE_DAYS_IN_MILLIS,
-	TIME,
-	NPS_SURVEY_MODAL_KEY,
-	LOCAL_STORAGE_PROMPTS_DATA_CACHE,
-} from '@/app/constants';
+import { THREE_DAYS_IN_MILLIS, TIME, NPS_SURVEY_MODAL_KEY } from '@/app/constants';
 import { useSettingsStore } from './settings.store';
-import type { N8nPrompts } from '@n8n/rest-api-client/api/prompts';
-import { jsonParse } from 'n8n-workflow';
 
-const { openModal, updateNpsSurveyState, getPromptsData } = vi.hoisted(() => {
+const { openModal, updateNpsSurveyState } = vi.hoisted(() => {
 	return {
 		openModal: vi.fn(),
 		updateNpsSurveyState: vi.fn(),
-		getPromptsData: vi.fn(),
 	};
 });
 
@@ -26,10 +18,6 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 vi.mock('@n8n/rest-api-client/api/npsSurvey', () => ({
 	updateNpsSurveyState,
-}));
-
-vi.mock('@n8n/rest-api-client/api/prompts', () => ({
-	getPromptsData,
 }));
 
 const NOW = 1717602004819;
@@ -311,110 +299,5 @@ describe('useNpsSurvey', () => {
 
 		expect(openModal).not.toHaveBeenCalled();
 		expect(updateNpsSurveyState).not.toHaveBeenCalled();
-	});
-});
-
-describe('fetchPromptsData caching', () => {
-	const USER_ID = 'test-user-123';
-	const INSTANCE_ID = 'test-instance';
-	const CACHE_KEY = LOCAL_STORAGE_PROMPTS_DATA_CACHE(USER_ID);
-
-	const mockPromptsData: N8nPrompts = {
-		showContactPrompt: false,
-	};
-
-	let npsSurveyStore: ReturnType<typeof useNpsSurveyStore>;
-
-	beforeEach(() => {
-		vi.restoreAllMocks();
-		localStorage.clear();
-		setActivePinia(createPinia());
-		const settingsStore = useSettingsStore();
-		settingsStore.settings.telemetry = { enabled: true };
-		settingsStore.settings.instanceId = INSTANCE_ID;
-		npsSurveyStore = useNpsSurveyStore();
-		npsSurveyStore.setupNpsSurveyOnLogin(USER_ID, { userActivated: false });
-	});
-
-	it('fetches from API and caches when no cache exists', async () => {
-		getPromptsData.mockResolvedValue(mockPromptsData);
-
-		await npsSurveyStore.fetchPromptsData();
-
-		expect(getPromptsData).toHaveBeenCalledWith(INSTANCE_ID, USER_ID);
-		expect(npsSurveyStore.promptsData).toEqual(mockPromptsData);
-
-		const cached: unknown = jsonParse(localStorage.getItem(CACHE_KEY)!);
-		expect(cached).toEqual({
-			data: mockPromptsData,
-			timestamp: NOW,
-		});
-	});
-
-	it('uses cached data without API call when cache is valid', async () => {
-		const cachedData = {
-			data: mockPromptsData,
-			timestamp: NOW - TIME.DAY + 1000, // Just under 1 day old
-		};
-		localStorage.setItem(CACHE_KEY, JSON.stringify(cachedData));
-
-		await npsSurveyStore.fetchPromptsData();
-
-		expect(getPromptsData).not.toHaveBeenCalled();
-		expect(npsSurveyStore.promptsData).toEqual(mockPromptsData);
-	});
-
-	it('fetches from API when cache is expired', async () => {
-		const expiredCache = {
-			data: { showContactPrompt: true },
-			timestamp: NOW - TIME.DAY - 1000, // Just over 1 day old
-		};
-		localStorage.setItem(CACHE_KEY, JSON.stringify(expiredCache));
-		getPromptsData.mockResolvedValue(mockPromptsData);
-
-		await npsSurveyStore.fetchPromptsData();
-
-		expect(getPromptsData).toHaveBeenCalledWith(INSTANCE_ID, USER_ID);
-		expect(npsSurveyStore.promptsData).toEqual(mockPromptsData);
-	});
-
-	it('fetches from API when cache is invalid JSON', async () => {
-		localStorage.setItem(CACHE_KEY, 'invalid-json');
-		getPromptsData.mockResolvedValue(mockPromptsData);
-
-		await npsSurveyStore.fetchPromptsData();
-
-		expect(getPromptsData).toHaveBeenCalledWith(INSTANCE_ID, USER_ID);
-		expect(npsSurveyStore.promptsData).toEqual(mockPromptsData);
-	});
-
-	it('fetches from API when cache has invalid structure', async () => {
-		localStorage.setItem(CACHE_KEY, JSON.stringify({ invalid: 'structure' }));
-		getPromptsData.mockResolvedValue(mockPromptsData);
-
-		await npsSurveyStore.fetchPromptsData();
-
-		expect(getPromptsData).toHaveBeenCalledWith(INSTANCE_ID, USER_ID);
-		expect(npsSurveyStore.promptsData).toEqual(mockPromptsData);
-	});
-
-	it('does not fetch when telemetry is disabled', async () => {
-		useSettingsStore().settings.telemetry = { enabled: false };
-
-		await npsSurveyStore.fetchPromptsData();
-
-		expect(getPromptsData).not.toHaveBeenCalled();
-		expect(localStorage.getItem(CACHE_KEY)).toBeNull();
-	});
-
-	it('does not cache when showContactPrompt is true', async () => {
-		const promptsWithContactPrompt: N8nPrompts = { showContactPrompt: true };
-		getPromptsData.mockResolvedValue(promptsWithContactPrompt);
-
-		await npsSurveyStore.fetchPromptsData();
-
-		expect(getPromptsData).toHaveBeenCalledWith(INSTANCE_ID, USER_ID);
-		expect(npsSurveyStore.promptsData).toEqual(promptsWithContactPrompt);
-		expect(localStorage.getItem(CACHE_KEY)).toBeNull();
 	});
 });
