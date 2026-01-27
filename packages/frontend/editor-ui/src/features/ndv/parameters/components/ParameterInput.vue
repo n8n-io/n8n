@@ -111,7 +111,9 @@ import {
 	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch2,
 } from '@n8n/design-system';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
 
@@ -182,6 +184,7 @@ const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
 const builderStore = useBuilderStore();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -571,6 +574,10 @@ const displayIssues = computed(
 
 const isSwitch = computed(
 	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
+);
+
+const switchLabel = computed(() =>
+	i18n.nodeText(node.value?.type).inputLabelDisplayName(props.parameter, props.path),
 );
 
 const isTextarea = computed(
@@ -1865,6 +1872,18 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
+			<!-- New Switch layout: horizontal with integrated label -->
+			<N8nSwitch2
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
+				ref="inputField"
+				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
+				:model-value="Boolean(displayValue)"
+				:label="switchLabel"
+				:disabled="isReadOnly"
+				size="small"
+				@update:model-value="valueChanged"
+			/>
+			<!-- Legacy Switch layout: label rendered separately by parent -->
 			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"

@@ -36,6 +36,7 @@ import { inject } from 'vue';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 
 import { N8nInputLabel } from '@n8n/design-system';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -83,6 +84,7 @@ const wrapperHovered = ref(false);
 
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const activeNode = computed(() => {
@@ -122,6 +124,13 @@ const isDropDisabled = computed(
 		isExpression.value,
 );
 const isExpression = computed(() => isValueExpression(props.parameter, props.value));
+
+// Hide label when using new Switch layout (label is integrated into Switch component)
+const hideNewSwitchLabel = computed(
+	() =>
+		props.parameter.type === 'boolean' && isCollectionOverhaulEnabled.value && !isExpression.value,
+);
+
 const showExpressionSelector = computed(() => {
 	if (isResourceLocator.value) {
 		// The resourceLocator handles overrides itself, so we use this hack to
@@ -328,7 +337,65 @@ function removeOverride(clearField = false) {
 </script>
 
 <template>
+	<div
+		v-if="hideNewSwitchLabel"
+		:class="$style.inlineSwitchWrapper"
+		@mouseenter="onWrapperMouseEnter"
+		@mouseleave="onWrapperMouseLeave"
+	>
+		<DraggableTarget
+			type="mapping"
+			:disabled="isDropDisabled"
+			sticky
+			:sticky-offset="[3, 3]"
+			@drop="onDrop"
+		>
+			<template #default="{ droppable, activeDrop }">
+				<ParameterInputWrapper
+					ref="parameterInputWrapper"
+					:parameter="parameter"
+					:model-value="value"
+					:path="path"
+					:is-read-only="isReadOnly"
+					:rows="rows"
+					:droppable="droppable"
+					:active-drop="activeDrop"
+					:force-show-expression="forceShowExpression"
+					:hide-issues="hideIssues"
+					:label="label"
+					:event-bus="eventBus"
+					input-size="small"
+					@update="valueChanged"
+					@text-input="onTextInput"
+					@focus="onFocus"
+					@blur="onBlur"
+					@drop="onDrop"
+				/>
+			</template>
+		</DraggableTarget>
+		<div
+			:class="{
+				[$style.inlineSwitchOptions]: true,
+				[$style.visible]: menuExpanded || focused || wrapperHovered,
+			}"
+		>
+			<ParameterOptions
+				v-if="displayOptions"
+				:parameter="parameter"
+				:value="value"
+				:is-read-only="isReadOnly"
+				:show-options="displayOptions"
+				:show-expression-selector="showExpressionSelector"
+				:is-content-overridden="isContentOverride"
+				:show-delete="showDelete"
+				:on-delete="onDelete"
+				@update:model-value="optionSelected"
+				@menu-expanded="onMenuExpanded"
+			/>
+		</div>
+	</div>
 	<N8nInputLabel
+		v-else
 		ref="inputLabel"
 		:class="[$style.wrapper]"
 		:label="hideLabel ? '' : i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
@@ -479,6 +546,32 @@ function removeOverride(clearField = false) {
 		.optionsAbove {
 			opacity: 1;
 		}
+	}
+}
+
+.inlineSwitchWrapper {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	position: relative;
+	min-height: 30px;
+
+	&:hover {
+		.inlineSwitchOptions {
+			opacity: 1;
+		}
+	}
+}
+
+.inlineSwitchOptions {
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+
+	&.visible {
+		opacity: 1;
 	}
 }
 
