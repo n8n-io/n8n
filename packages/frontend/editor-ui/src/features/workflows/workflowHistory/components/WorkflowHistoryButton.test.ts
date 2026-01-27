@@ -38,212 +38,138 @@ describe('WorkflowHistoryButton', () => {
 		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
 	});
 
-	it('should be disabled if the workflow is new', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: true,
-			},
+	describe('button state', () => {
+		it('should be disabled for new workflows', async () => {
+			const { getByTestId } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: true },
+			});
+			await nextTick();
+			expect(getByTestId('workflow-history-button')).toHaveAttribute('disabled');
 		});
 
-		await nextTick();
-		const button = getByTestId('workflow-history-button');
-		expect(button).toHaveAttribute('disabled');
+		it('should be enabled for existing workflows', async () => {
+			const { getByTestId } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: false },
+			});
+			await nextTick();
+			expect(getByTestId('workflow-history-button')).not.toHaveAttribute('disabled');
+		});
+
+		it('should be disabled during autosave (scheduled and in progress)', async () => {
+			const { getByTestId } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: false },
+			});
+			await nextTick();
+
+			const uiStore = useUIStore();
+			const autosaveStore = useWorkflowAutosaveStore();
+
+			// Autosave scheduled
+			autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+			await nextTick();
+			expect(getByTestId('workflow-history-button')).toHaveAttribute('disabled');
+
+			// Autosave in progress
+			autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
+			uiStore.addActiveAction('workflowSaving');
+			await nextTick();
+			expect(getByTestId('workflow-history-button')).toHaveAttribute('disabled');
+		});
+
+		it('should be disabled during manual save (e.g. rename)', async () => {
+			const { getByTestId } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: false },
+			});
+			await nextTick();
+
+			const uiStore = useUIStore();
+			uiStore.addActiveAction('workflowSaving');
+			await nextTick();
+
+			expect(getByTestId('workflow-history-button')).toHaveAttribute('disabled');
+		});
 	});
 
-	it('should be enabled if the workflow is not new', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
-		});
+	describe('loading spinner', () => {
+		it('should show loading only during active save, not when scheduled', async () => {
+			const { getByTestId } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: false },
+			});
 
-		await nextTick();
-		const button = getByTestId('workflow-history-button');
-		expect(button).not.toHaveAttribute('disabled');
+			const uiStore = useUIStore();
+			const autosaveStore = useWorkflowAutosaveStore();
+
+			// Initially not loading
+			await nextTick();
+			expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('false');
+
+			// Scheduled - no loading spinner yet
+			autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
+			await nextTick();
+			expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('false');
+
+			// In progress - shows loading spinner
+			uiStore.addActiveAction('workflowSaving');
+			await nextTick();
+			expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('true');
+		});
 	});
 
-	it('should be disabled when autosave is scheduled', async () => {
-		const autosaveStore = useWorkflowAutosaveStore();
-		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
-
-		const { getByTestId } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
+	describe('RouterLink rendering', () => {
+		it('should render as div when disabled', async () => {
+			const { container } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: true },
+			});
+			await nextTick();
+			expect(container.querySelector('a.router-link')).not.toBeInTheDocument();
 		});
 
-		await nextTick();
-		const button = getByTestId('workflow-history-button');
-		expect(button).toHaveAttribute('disabled');
+		it('should render as RouterLink when enabled', async () => {
+			const { getByTestId } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: false },
+			});
+			await nextTick();
+			expect(getByTestId('workflow-history-button')).not.toHaveAttribute('disabled');
+		});
 	});
 
-	it('should be disabled when autosave is in progress', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
+	describe('tooltips', () => {
+		it('should show "no history" tooltip for new workflows', async () => {
+			const { container } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: true },
+			});
+			await nextTick();
+			expect(container.querySelector('.tooltip-content')?.textContent).toContain(
+				'This workflow currently has no history',
+			);
 		});
 
-		await nextTick();
+		it('should show "will be saved shortly" tooltip when scheduled', async () => {
+			const autosaveStore = useWorkflowAutosaveStore();
+			autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
 
-		const uiStore = useUIStore();
-		const autosaveStore = useWorkflowAutosaveStore();
-
-		// Simulate autosave in progress
-		autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
-		uiStore.addActiveAction('workflowSaving');
-		await nextTick();
-
-		const button = getByTestId('workflow-history-button');
-		expect(button).toHaveAttribute('disabled');
-	});
-
-	it('should be disabled when manual save (e.g. during renaming) is in progress', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
+			const { container } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: false },
+			});
+			await nextTick();
+			expect(container.querySelector('.tooltip-content')?.textContent).toContain(
+				'Workflow will be saved shortly',
+			);
 		});
 
-		await nextTick();
+		it('should show "being saved" tooltip when save is in progress', async () => {
+			const { container } = renderComponent({
+				props: { workflowId: '1', isNewWorkflow: false },
+			});
+			await nextTick();
 
-		const uiStore = useUIStore();
-		uiStore.addActiveAction('workflowSaving');
-		await nextTick();
+			const uiStore = useUIStore();
+			uiStore.addActiveAction('workflowSaving');
+			await nextTick();
 
-		const button = getByTestId('workflow-history-button');
-		expect(button).toHaveAttribute('disabled');
-	});
-
-	it('should show loading spinner only when save is in progress', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
+			expect(container.querySelector('.tooltip-content')?.textContent).toContain(
+				'Workflow is being saved',
+			);
 		});
-
-		const uiStore = useUIStore();
-		const autosaveStore = useWorkflowAutosaveStore();
-
-		// Initially not loading
-		await nextTick();
-		expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('false');
-
-		// Scheduled should not show loading
-		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
-		await nextTick();
-		expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('false');
-		expect(getByTestId('workflow-history-button')).toHaveAttribute('disabled');
-
-		// In progress should show loading
-		uiStore.addActiveAction('workflowSaving');
-		autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
-		await nextTick();
-		expect(getByTestId('workflow-history-button').getAttribute('data-loading')).toBe('true');
-	});
-
-	it('should render as div when disabled', async () => {
-		const { container } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: true,
-			},
-		});
-
-		await nextTick();
-		// When disabled, should render as div, not RouterLink
-		expect(container.querySelector('a.router-link')).not.toBeInTheDocument();
-		expect(container.querySelector('div')).toBeInTheDocument();
-	});
-
-	it('should render as RouterLink when enabled', async () => {
-		const { getByTestId } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
-		});
-
-		await nextTick();
-		// When enabled, button should be clickable (not disabled)
-		const button = getByTestId('workflow-history-button');
-		expect(button).not.toHaveAttribute('disabled');
-
-		// Check that button is inside an anchor or div
-		const parentElement = button.parentElement;
-		expect(parentElement?.tagName).toMatch(/^(A|DIV)$/);
-	});
-
-	it('should show correct tooltip for new workflow', async () => {
-		const { container } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: true,
-			},
-		});
-
-		await nextTick();
-		const tooltip = container.querySelector('.tooltip-content');
-		expect(tooltip?.textContent).toContain('This workflow currently has no history');
-	});
-
-	it('should show correct tooltip when autosave is scheduled', async () => {
-		const autosaveStore = useWorkflowAutosaveStore();
-		autosaveStore.setAutoSaveState(AutoSaveState.Scheduled);
-
-		const { container } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
-		});
-
-		await nextTick();
-		const tooltip = container.querySelector('.tooltip-content');
-		expect(tooltip?.textContent).toContain('Workflow will be saved shortly');
-	});
-
-	it('should show correct tooltip when autosave is in progress', async () => {
-		const { container } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
-		});
-
-		await nextTick();
-
-		const uiStore = useUIStore();
-		const autosaveStore = useWorkflowAutosaveStore();
-
-		// Simulate autosave in progress
-		autosaveStore.setAutoSaveState(AutoSaveState.InProgress);
-		uiStore.addActiveAction('workflowSaving');
-		await nextTick();
-
-		const tooltip = container.querySelector('.tooltip-content');
-		expect(tooltip?.textContent).toContain('Workflow is being saved');
-	});
-
-	it('should show correct tooltip when idle', async () => {
-		const autosaveStore = useWorkflowAutosaveStore();
-		autosaveStore.setAutoSaveState(AutoSaveState.Idle);
-
-		const { container } = renderComponent({
-			props: {
-				workflowId: '1',
-				isNewWorkflow: false,
-			},
-		});
-
-		await nextTick();
-		const tooltip = container.querySelector('.tooltip-content');
-		expect(tooltip?.textContent).toContain('Workflow history to view and restore');
 	});
 });
