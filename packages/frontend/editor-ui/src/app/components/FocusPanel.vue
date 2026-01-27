@@ -59,6 +59,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 defineOptions({ name: 'FocusPanel' });
 
 const props = defineProps<{
@@ -87,6 +88,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const environmentsStore = useEnvironmentsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const ndvStore = useNDVStore();
+const setupPanelStore = useSetupPanelStore();
 const deviceSupport = useDeviceSupport();
 const vueFlow = useVueFlow(workflowsStore.workflowId);
 const activeElement = useActiveElement();
@@ -100,6 +102,8 @@ const inputValue = ref<string>('');
 
 const focusPanelActive = computed(() => focusPanelStore.focusPanelActive);
 const focusPanelWidth = computed(() => focusPanelStore.focusPanelWidth);
+
+const isSetupPanelEnabled = computed(() => setupPanelStore.isFeatureEnabled);
 
 const isDisabled = computedAsync(async () => {
 	if (!resolvedParameter.value) {
