@@ -8,7 +8,11 @@ export class CreateSecretsProviderConnectionTables1769433700000 implements Rever
 		// Create secrets_provider_connection table first (parent table)
 		await createTable(secretsProviderConnectionTable).withColumns(
 			column('providerKey').varchar().primary.notNull,
-			column('type').varchar().notNull,
+			column('type')
+				.varchar(36)
+				.notNull.comment(
+					'Type of secrets provider. Possible values: awsSecretsManager, gcpSecretsManager, vault, azureKeyVault, infisical',
+				),
 			column('encryptedSettings').text.notNull,
 			column('isEnabled').bool.default(false).notNull,
 		).withTimestamps;
