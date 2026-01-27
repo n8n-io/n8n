@@ -13,7 +13,6 @@ import {
 	h,
 	onBeforeUnmount,
 	useTemplateRef,
-	provide,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
@@ -55,7 +54,6 @@ import {
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	DRAG_EVENT_DATA_KEY,
-	EnterpriseEditionFeature,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
@@ -66,7 +64,6 @@ import {
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
-	WorkflowStateKey,
 	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 } from '@/app/constants';
@@ -89,10 +86,8 @@ import type {
 	INodeParameters,
 } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/app/models/history';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -102,7 +97,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useHistoryStore } from '@/app/stores/history.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useExecutionDebugging } from '@/features/execution/executions/composables/useExecutionDebugging';
@@ -140,16 +134,13 @@ import { useLogsStore } from '@/app/stores/logs.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import CanvasChatButton from '@/features/workflows/canvas/components/elements/buttons/CanvasChatButton.vue';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
-import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
-import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useActivityDetection } from '@/app/composables/useActivityDetection';
-import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
@@ -197,15 +188,12 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
-const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const environmentsStore = useEnvironmentsStore();
-const externalSecretsStore = useExternalSecretsStore();
 const rootStore = useRootStore();
 const executionsStore = useExecutionsStore();
 const canvasStore = useCanvasStore();
 const npsSurveyStore = useNpsSurveyStore();
-const historyStore = useHistoryStore();
 const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
@@ -215,18 +203,16 @@ const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
 const agentRequestStore = useAgentRequestStore();
 const logsStore = useLogsStore();
-const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
-const readyToRunWorkflowsStore = useReadyToRunWorkflowsStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 
-const workflowState = useWorkflowState();
+// Inject workflowState provided by WorkflowLayout
+const workflowState = injectWorkflowState();
 
 // Initialize activity detection for collaboration
 useActivityDetection();
-provide(WorkflowStateKey, workflowState);
 
 const { addBeforeUnloadEventBindings, removeBeforeUnloadEventBindings } = useBeforeUnload({
 	route,
@@ -280,7 +266,6 @@ const {
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
-const { fetchAndSetParentFolder } = useParentFolder();
 
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
@@ -297,7 +282,6 @@ const canOpenNDV = ref(true);
 const hideNodeIssues = ref(false);
 const fallbackNodes = ref<INodeUi[]>([]);
 
-const initializedWorkflowId = ref<string | undefined>();
 const workflowId = computed(() => {
 	const name = route.params.name;
 	return Array.isArray(name) ? name[0] : name;
@@ -317,7 +301,6 @@ const hideCanvasControls = computed(() => {
 	return route.query.hideControls === 'true';
 });
 
-const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 const isReadOnlyEnvironment = computed(() => {
@@ -348,46 +331,7 @@ const isLogsPanelOpen = computed(() => logsStore.isOpen);
  * Initialization
  */
 
-async function initializeData() {
-	const loadPromises = (() => {
-		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
-
-		const promises: Array<Promise<unknown>> = [
-			workflowsStore.fetchActiveWorkflows(),
-			credentialsStore.fetchCredentialTypes(true),
-			loadCredentials(),
-		];
-
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]) {
-			promises.push(environmentsStore.fetchAllVariables());
-		}
-
-		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.ExternalSecrets]) {
-			promises.push(externalSecretsStore.fetchAllSecrets());
-		}
-
-		return promises;
-	})();
-
-	if (nodeTypesStore.allNodeTypes.length === 0) {
-		loadPromises.push(nodeTypesStore.getNodeTypes());
-	}
-
-	try {
-		await Promise.all(loadPromises);
-		//We don't need to await this as community node previews are not critical and needed only in nodes search panel
-		void nodeTypesStore.fetchCommunityNodePreviews();
-	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('nodeView.showError.mounted1.title'),
-			i18n.baseText('nodeView.showError.mounted1.message') + ':',
-		);
-		return;
-	}
-}
-
-async function initializeRoute(force = false) {
+async function initializeRoute() {
 	// Open node panel if the route has a corresponding action
 	if (route.query.action === 'addEvaluationTrigger') {
 		nodeCreatorStore.openNodeCreatorForTriggerNodes(
@@ -404,16 +348,14 @@ async function initializeRoute(force = false) {
 		}
 	}
 
-	const isAlreadyInitialized =
-		!force && initializedWorkflowId.value && initializedWorkflowId.value === workflowId.value;
-
-	// This function is called on route change as well, so we need to do the following:
-	// - if the redirect is blank, then do nothing
-	// - if the route is the template import view, then open the template
-	// - if the user is leaving the current view without saving the changes, then show a confirmation modal
+	// Handle blank redirect
 	if (uiStore.isBlankRedirect) {
 		uiStore.isBlankRedirect = false;
-	} else if (route.name === VIEWS.TEMPLATE_IMPORT) {
+		return;
+	}
+
+	// Handle template import route
+	if (route.name === VIEWS.TEMPLATE_IMPORT) {
 		const loadWorkflowFromJSON = route.query.fromJson === 'true';
 		const templateId = route.params.id;
 		if (!templateId) {
@@ -435,120 +377,18 @@ async function initializeRoute(force = false) {
 		} else {
 			await openWorkflowTemplate(templateId.toString());
 		}
-	} else if (isWorkflowRoute.value) {
-		if (!isAlreadyInitialized) {
-			historyStore.reset();
-
-			if (isDemoRoute.value) {
-				return await initializeWorkspaceForNewWorkflow();
-			}
-
-			// Check if we should initialize for a new workflow
-			if (isNewWorkflowRoute.value) {
-				const exists = await workflowsStore.checkWorkflowExists(workflowId.value);
-				if (!exists && route.meta?.nodeView === true) {
-					return await initializeWorkspaceForNewWorkflow();
-				} else {
-					await router.replace({
-						...route,
-						query: {
-							...route.query,
-							new: undefined,
-						},
-					});
-				}
-			}
-
-			// Load existing workflow
-			await initializeWorkspaceForExistingWorkflow(workflowId.value);
-
-			void nextTick(() => {
-				updateNodesIssues();
-			});
-		}
-
-		if (route.name === VIEWS.EXECUTION_DEBUG) {
-			await initializeDebugMode();
-		}
+		return;
 	}
-}
 
-async function initializeWorkspaceForNewWorkflow() {
-	resetWorkspace();
-
-	const parentFolderId = route.query.parentFolderId as string | undefined;
-
-	await workflowState.getNewWorkflowDataAndMakeShareable(
-		undefined,
-		projectsStore.currentProjectId,
-		parentFolderId,
-	);
-
-	// Set the workflow ID from the route params (auto-generated by router)
-	workflowState.setWorkflowId(workflowId.value);
-
-	await projectsStore.refreshCurrentProject();
-	await fetchAndSetParentFolder(parentFolderId);
-
-	uiStore.nodeViewInitialized = true;
-	initializedWorkflowId.value = workflowId.value;
-
-	fitView();
-}
-
-async function initializeWorkspaceForExistingWorkflow(id: string) {
-	try {
-		const workflowData = await workflowsStore.fetchWorkflow(id);
-
-		await openWorkflow(workflowData);
-
-		if (workflowData.parentFolder) {
-			workflowsStore.setParentFolder(workflowData.parentFolder);
-		}
-
-		if (workflowData.meta?.onboardingId) {
-			trackOpenWorkflowFromOnboardingTemplate();
-		}
-
-		if (workflowData.meta?.templateId?.startsWith('035_template_onboarding')) {
-			aiTemplatesStarterCollectionStore.trackUserOpenedWorkflow(
-				workflowData.meta.templateId.split('-').pop() ?? '',
-			);
-		}
-
-		if (workflowData.meta?.templateId?.startsWith('37_onboarding_experiments_batch_aug11')) {
-			readyToRunWorkflowsStore.trackOpenWorkflow(
-				workflowData.meta.templateId.split('-').pop() ?? '',
-			);
-		}
-
-		await projectsStore.setProjectNavActiveIdByWorkflowHomeProject(
-			workflowData.homeProject,
-			workflowData.sharedWithProjects,
-		);
-		void workflowsStore.fetchLastSuccessfulExecution();
-	} catch (error) {
-		if (error.httpStatusCode === 404) {
-			return await router.replace({
-				name: VIEWS.ENTITY_NOT_FOUND,
-				params: { entityType: 'workflow' },
-			});
-		}
-		if (error.httpStatusCode === 403) {
-			return await router.replace({
-				name: VIEWS.ENTITY_UNAUTHORIZED,
-				params: { entityType: 'workflow' },
-			});
-		}
-
-		toast.showError(error, i18n.baseText('openWorkflow.workflowNotFoundError'));
-		void router.push({
-			name: VIEWS.NEW_WORKFLOW,
-		});
-	} finally {
-		uiStore.nodeViewInitialized = true;
-		initializedWorkflowId.value = workflowId.value;
+	// Handle debug mode
+	if (route.name === VIEWS.EXECUTION_DEBUG) {
+		await initializeDebugMode();
 	}
+
+	// Update node issues after workflow is loaded
+	void nextTick(() => {
+		updateNodesIssues();
+	});
 }
 
 function updateNodesIssues() {
@@ -587,15 +427,6 @@ async function openWorkflow(data: IWorkflowDb) {
 	// }
 
 	fitView();
-}
-
-function trackOpenWorkflowFromOnboardingTemplate() {
-	telemetry.track(
-		`User opened workflow from onboarding template with ID ${editableWorkflow.value.meta?.onboardingId}`,
-		{
-			workflow_id: workflowId.value,
-		},
-	);
 }
 
 /**
@@ -990,8 +821,6 @@ async function importWorkflowExact({ workflow: workflowData }: { workflow: Workf
 
 	resetWorkspace();
 
-	await initializeData();
-
 	await initializeWorkspace({
 		...workflowData,
 		nodes: getNodesWithNormalizedPosition<INodeUi>(workflowData.nodes),
@@ -1329,7 +1158,6 @@ async function onOpenExecution(executionId: string, nodeId?: string) {
 	canvasStore.startLoading();
 
 	resetWorkspace();
-	await initializeData();
 
 	const data = await openExecution(executionId, nodeId);
 	if (!data) {
@@ -1641,7 +1469,7 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
  */
 
 function checkIfEditingIsAllowed(): boolean {
-	if (!initializedWorkflowId.value) {
+	if (!uiStore.nodeViewInitialized) {
 		return true;
 	}
 
@@ -1859,18 +1687,11 @@ function updateNodeRoute(nodeId: string) {
 	}
 }
 
-watch(
-	[() => route.name, () => route.params.name],
-	async ([newRouteName, newWorkflowId], [oldRouteName, oldWorkflowId]) => {
-		// When navigating from an existing workflow to a new workflow or the other way around we should load the new workflow
-		const force =
-			(newRouteName === VIEWS.NEW_WORKFLOW && oldRouteName === VIEWS.WORKFLOW) ||
-			(newRouteName === VIEWS.WORKFLOW && oldRouteName === VIEWS.NEW_WORKFLOW) ||
-			newWorkflowId !== oldWorkflowId;
-
-		await initializeRoute(force);
-	},
-);
+watch([() => route.name, () => route.params.name], async () => {
+	// WorkflowLayout handles workflow initialization on route changes
+	// NodeView only handles route-specific initialization (templates, debug mode, etc.)
+	await initializeRoute();
+});
 
 watch(
 	() => {
@@ -2025,53 +1846,45 @@ onBeforeMount(() => {
 	addPostMessageEventBindings();
 });
 
-onMounted(() => {
-	canvasStore.startLoading();
-
-	documentTitle.reset();
-	resetWorkspace();
-
+onMounted(async () => {
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
 	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
 		// Refresh the canvas with updated workflow
 		await initializeWorkspace(workflow);
 	});
 
-	void initializeData().then(() => {
-		void initializeRoute()
-			.then(() => {
-				// Once view is initialized, pick up all toast notifications
-				// waiting in the store and display them
-				toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
+	// WorkflowLayout handles data and workflow initialization
+	// NodeView only handles route-specific initialization (templates, debug mode, etc.)
+	await initializeRoute();
 
-				if (route.query.settings) {
-					uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
-					void router.replace({ query: { settings: undefined } });
-				}
-			})
-			.finally(() => {
-				isLoading.value = false;
-				canvasStore.stopLoading();
+	// Once view is initialized, pick up all toast notifications
+	// waiting in the store and display them
+	toast.showNotificationForViews([VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW]);
 
-				void externalHooks.run('nodeView.mount').catch(() => {});
+	if (route.query.settings) {
+		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+		void router.replace({ query: { settings: undefined } });
+	}
 
-				// A delay here makes opening the NDV a bit less jarring
-				setTimeout(() => {
-					if (routeNodeId.value) {
-						updateNodeRoute(routeNodeId.value);
-					}
-				}, 500);
+	isLoading.value = false;
 
-				emitPostMessageReady();
+	void externalHooks.run('nodeView.mount').catch(() => {});
 
-				// Check for pending builder prompt from empty state experiment
-				void handlePendingBuilderPrompt();
-			});
+	// A delay here makes opening the NDV a bit less jarring
+	setTimeout(() => {
+		if (routeNodeId.value) {
+			updateNodeRoute(routeNodeId.value);
+		}
+	}, 500);
 
-		void usersStore.showPersonalizationSurvey();
+	emitPostMessageReady();
 
-		checkIfRouteIsAllowed();
-	});
+	// Check for pending builder prompt from empty state experiment
+	void handlePendingBuilderPrompt();
+
+	void usersStore.showPersonalizationSurvey();
+
+	checkIfRouteIsAllowed();
 
 	addSourceControlEventBindings();
 	addWorkflowSavedEventBindings();
