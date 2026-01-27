@@ -79,7 +79,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	});
 	const executionsStore = useExecutionsStore();
 	const { dirtinessByName } = useNodeDirtiness();
-	const { startChat } = useCanvasOperations();
+	const { startChat } = useCanvasOperations(workflowsStore.workflowId);
 
 	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
 

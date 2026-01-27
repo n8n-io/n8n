@@ -51,11 +51,11 @@ const ITEM_ID = {
 
 export function useWorkflowCommands(): CommandGroup {
 	const i18n = useI18n();
-	const { editableWorkflow } = useCanvasOperations();
 	const rootStore = useRootStore();
 	const uiStore = useUIStore();
 	const tagsStore = useTagsStore();
 	const workflowsStore = useWorkflowsStore();
+	const { editableWorkflow } = useCanvasOperations(workflowsStore.workflowId);
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 

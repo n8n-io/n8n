@@ -42,7 +42,7 @@ const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
 const logsStore = useLogsStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
-const { startChat } = useCanvasOperations();
+const { startChat } = useCanvasOperations(workflowsStore.workflowId);
 
 const isChatOpen = computed(() => logsStore.isOpen);
 const isExecuting = computed(() => workflowsStore.isWorkflowRunning);

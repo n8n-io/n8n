@@ -11,7 +11,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 export function useWorkflowResourcesLocator(router: Router) {
 	const workflowsStore = useWorkflowsStore();
 	const ndvStore = useNDVStore();
-	const { renameNode } = useCanvasOperations();
+	const { renameNode } = useCanvasOperations(workflowsStore.workflowId);
 
 	const workflowsResources = ref<
 		Array<{ name: string; value: string; url: string; isArchived: boolean; active: boolean }>

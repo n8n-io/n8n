@@ -50,7 +50,7 @@ describe(useNodeDirtiness, () => {
 				workflowState = useWorkflowState();
 				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 
-				canvasOperations = useCanvasOperations();
+				canvasOperations = useCanvasOperations(workflowsStore.workflowId);
 				uiStore = useUIStore();
 
 				nodeTypeStore.setNodeTypes(defaultNodeDescriptions);

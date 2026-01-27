@@ -388,7 +388,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should still show logs for a removed node', async () => {
-		const operations = useCanvasOperations();
+		const operations = useCanvasOperations(workflowsStore.workflowId);
 
 		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
 		logsStore.toggleOpen(true);
@@ -484,7 +484,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should show new name when a node is renamed', async () => {
-		const canvasOperations = useCanvasOperations();
+		const canvasOperations = useCanvasOperations(workflowsStore.workflowId);
 
 		logsStore.toggleOpen(true);
 
@@ -569,7 +569,7 @@ describe('LogsPanel', () => {
 		});
 
 		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
-			const canvasOperations = useCanvasOperations();
+			const canvasOperations = useCanvasOperations(workflowsStore.workflowId);
 
 			workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
 			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);

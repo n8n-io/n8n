@@ -277,7 +277,7 @@ const {
 	fitView,
 	openWorkflowTemplate,
 	openWorkflowTemplateFromJSON,
-} = useCanvasOperations();
+} = useCanvasOperations(workflowsStore.workflowId);
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 const { fetchAndSetParentFolder } = useParentFolder();

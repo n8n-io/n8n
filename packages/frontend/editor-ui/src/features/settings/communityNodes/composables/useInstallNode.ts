@@ -37,7 +37,7 @@ export function useInstallNode() {
 	const isOwner = computed(() => useUsersStore().isInstanceOwner);
 	const loading = ref(false);
 	const toast = useToast();
-	const canvasOperations = useCanvasOperations();
+	const canvasOperations = useCanvasOperations(workflowsStore.workflowId);
 
 	const getNpmVersion = async (key: string) => {
 		const communityNodeAttributes = await nodeTypesStore.getCommunityNodeAttributes(key);

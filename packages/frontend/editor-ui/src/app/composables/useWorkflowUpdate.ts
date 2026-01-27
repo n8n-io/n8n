@@ -42,7 +42,7 @@ export function useWorkflowUpdate() {
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const builderStore = useBuilderStore();
-	const canvasOperations = useCanvasOperations();
+	const canvasOperations = useCanvasOperations(workflowsStore.workflowId);
 	const nodeHelpers = useNodeHelpers();
 
 	/**

@@ -4,8 +4,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export async function workflowDeactivated({ data }: WorkflowDeactivated) {
-	const { initializeWorkspace } = useCanvasOperations();
 	const workflowsStore = useWorkflowsStore();
+	const { initializeWorkspace } = useCanvasOperations(workflowsStore.workflowId);
 	const uiStore = useUIStore();
 
 	if (workflowsStore.workflowId === data.workflowId) {

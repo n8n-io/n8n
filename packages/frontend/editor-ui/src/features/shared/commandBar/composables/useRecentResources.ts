@@ -33,7 +33,7 @@ export function useRecentResources() {
 	const router = useRouter();
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const { setNodeActive } = useCanvasOperations();
+	const { setNodeActive } = useCanvasOperations(workflowsStore.workflowId);
 
 	const recentWorkflows = useLocalStorage<RecentWorkflow[]>(RECENT_WORKFLOWS_STORAGE_KEY, []);
 	const recentNodes = useLocalStorage<RecentNodesMap>(RECENT_NODES_STORAGE_KEY, {});
