@@ -740,46 +740,6 @@ export type NewCredentialFn = (name: string) => NewCredentialValue;
 //   .add(mergeNode.to(processResults));
 
 /**
- * FanOutTargets marker - wraps multiple target nodes for parallel connection.
- * Created by fanOut() function or by passing an array to .to().
- */
-export interface FanOutTargets {
-	readonly _isFanOut: true;
-	readonly targets: NodeInstance<string, string, unknown>[];
-}
-
-/**
- * fanOut(...targets) - Connect one output to multiple parallel targets
- *
- * NOTE: Prefer using array syntax with .to() instead: .to([nodeA, nodeB, nodeC])
- *
- * Use when a single output should fan out to multiple nodes that run in parallel.
- * This is the opposite of Merge (which combines multiple inputs).
- *
- * @example Fan-out to multiple APIs (using array syntax - preferred)
- * const fetchData = node({ type: 'n8n-nodes-base.httpRequest', ... });
- * const sendToSlack = node({ type: 'n8n-nodes-base.slack', ... });
- * const sendToEmail = node({ type: 'n8n-nodes-base.gmail', ... });
- * const saveToDb = node({ type: 'n8n-nodes-base.postgres', ... });
- *
- * workflow('id', 'name')
- *   .add(trigger({ ... }))
- *   .to(fetchData)
- *   .to([sendToSlack, sendToEmail, saveToDb]);  // All 3 run in parallel
- *
- * @example Fan-out with IF branches (using array syntax)
- * ifNode
- *   .onTrue([notifyAdmin, logToDb])  // Both run when true
- *   .onFalse(handleError);
- *
- * @example Fan-out with splitInBatches
- * splitInBatches(sibNode)
- *   .onDone([summarize, notify])  // Both run when done
- *   .onEachBatch(process.to(nextBatch(sibNode)));
- */
-export type FanOutFn = (...targets: NodeInstance<string, string, unknown>[]) => FanOutTargets;
-
-/**
  * ifElse(branches, config?) - Creates an IF node with true/false branching
  *
  * Use .onTrue()/.onFalse() fluent syntax for conditional branching:
