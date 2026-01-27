@@ -186,12 +186,14 @@ defineExpose({
 		}
 
 		& .codeBlockActions {
-			position: absolute;
+			position: sticky;
 			top: var(--markdown--spacing);
 			right: var(--markdown--spacing);
+			height: 0;
 			display: flex;
 			justify-content: flex-end;
 			pointer-events: none;
+			z-index: 1;
 
 			& > * {
 				pointer-events: auto;
