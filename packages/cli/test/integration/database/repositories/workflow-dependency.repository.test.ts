@@ -232,7 +232,10 @@ describe('WorkflowDependencyRepository', () => {
 			//
 			// ACT
 			//
-			const result = await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
+			const result = await workflowDependencyRepository.removeDependenciesForWorkflow(
+				workflow.id,
+				null,
+			);
 
 			//
 			// ASSERT
@@ -253,7 +256,10 @@ describe('WorkflowDependencyRepository', () => {
 			//
 			// ACT
 			//
-			const result = await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
+			const result = await workflowDependencyRepository.removeDependenciesForWorkflow(
+				workflow.id,
+				null,
+			);
 
 			//
 			// ASSERT
