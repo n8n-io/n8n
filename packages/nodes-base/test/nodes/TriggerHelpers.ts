@@ -107,6 +107,12 @@ export async function testTriggerNode(
 	const triggerFunctions = mock<ITriggerFunctions>({
 		helpers,
 		emit,
+		logger: mock({
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		}),
 		getTimezone: () => timezone,
 		getNode: () => node,
 		getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>

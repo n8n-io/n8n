@@ -30,7 +30,7 @@ export interface KafkaTriggerOptions {
 	sessionTimeout?: number;
 }
 
-type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess';
+type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
 
 export async function createConfig(ctx: ITriggerFunctions) {
 	const credentials = await ctx.getCredentials('kafka');
@@ -200,6 +200,27 @@ export function connectEventListeners(consumer: Consumer, logger: Logger) {
 	];
 }
 
+export function disconnectEventListeners(
+	listeners: Array<RemoveInstrumentationEventListener<'consumer.connect'>>,
+) {
+	listeners.forEach((listener) => listener());
+}
+
+export function setSchemaRegistry(ctx: ITriggerFunctions) {
+	const useSchemaRegistry = ctx.getNodeParameter('useSchemaRegistry', 0) as boolean;
+
+	if (useSchemaRegistry) {
+		try {
+			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
+			return new SchemaRegistry({ host: schemaRegistryUrl });
+		} catch (error) {
+			ctx.logger.warn('Could not connect to Schema Registry', { error });
+		}
+	}
+
+	return undefined;
+}
+
 function getResolveOffsetMode(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
@@ -229,6 +250,22 @@ export function configureDataEmitter(
 		};
 	}
 
+	const allowedStatuses: string[] = [];
+	if (mode === 'onSuccess') {
+		allowedStatuses.push('success');
+	} else if (mode === 'onStatus') {
+		const selectedStatuses = ctx.getNodeParameter('allowedStatuses', []) as string[];
+
+		if (Array.isArray(selectedStatuses) && selectedStatuses.length) {
+			allowedStatuses.push(...selectedStatuses);
+		} else {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'At least one execution status must be selected to resolve offsets on selected statuses.',
+			);
+		}
+	}
+
 	return async (dataArray: IDataObject[]) => {
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
@@ -236,42 +273,42 @@ export function configureDataEmitter(
 
 			const timeoutPromise = new Promise<IRun>((_, reject) => {
 				setTimeout(() => {
-					reject(new Error(`Workflow timed out after ${executionTimeoutInSeconds} seconds`));
+					reject(
+						new NodeOperationError(
+							ctx.getNode(),
+							`Execution took longer than the configured workflow timeout of ${executionTimeoutInSeconds} seconds to complete, offsets not resolved.`,
+						),
+					);
 				}, executionTimeoutInSeconds * 1000);
 			});
 
 			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
 
-			if (mode === 'onSuccess' && run.status !== 'success') {
-				throw new Error('Returned status: ' + run.status);
+			if (mode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
+				throw new NodeOperationError(
+					ctx.getNode(),
+					'Execution status is not allowed for resolving offsets, current status: ' + run.status,
+				);
 			}
 
 			return { success: true };
 		} catch (error) {
-			await sleep(10000);
-			ctx.logger.error(error.message);
+			await sleep(5000);
+			ctx.logger.error(error.message, { error });
 			return { success: false };
 		}
 	};
 }
 
-export function disconnectEventListeners(
-	listeners: Array<RemoveInstrumentationEventListener<'consumer.connect'>>,
-) {
-	listeners.forEach((listener) => listener());
-}
+export function getAutoCommitSettings(options: KafkaTriggerOptions, nodeVersion: number) {
+	const autoCommitInterval = options.autoCommitInterval ?? undefined;
+	const autoCommitThreshold = options.autoCommitThreshold ?? undefined;
+	const shouldAutoCommit = nodeVersion < 1.2 ? true : !!(autoCommitInterval || autoCommitThreshold);
 
-export function setSchemaRegistry(ctx: ITriggerFunctions) {
-	const useSchemaRegistry = ctx.getNodeParameter('useSchemaRegistry', 0) as boolean;
-
-	if (useSchemaRegistry) {
-		try {
-			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
-			return new SchemaRegistry({ host: schemaRegistryUrl });
-		} catch (error) {
-			ctx.logger.warn('Could not connect to Schema Registry', { error });
-		}
-	}
-
-	return undefined;
+	return {
+		autoCommit: shouldAutoCommit,
+		eachBatchAutoResolve: shouldAutoCommit,
+		autoCommitInterval,
+		autoCommitThreshold,
+	};
 }

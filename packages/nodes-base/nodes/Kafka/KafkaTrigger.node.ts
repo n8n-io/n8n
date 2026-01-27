@@ -6,7 +6,12 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError, TriggerCloseError } from 'n8n-workflow';
+import {
+	ensureError,
+	NodeConnectionTypes,
+	NodeOperationError,
+	TriggerCloseError,
+} from 'n8n-workflow';
 
 import {
 	type KafkaTriggerOptions,
@@ -17,6 +22,7 @@ import {
 	createConfig,
 	createConsumerConfig,
 	configureDataEmitter,
+	getAutoCommitSettings,
 } from './utils';
 
 export class KafkaTrigger implements INodeType {
@@ -83,8 +89,12 @@ export class KafkaTrigger implements INodeType {
 					{
 						name: 'On Execution Success',
 						value: 'onSuccess',
-						description:
-							'Resolve offset only if execution statue equlas success. Do not use this option if your workflow contains waiting nodes or the Execute Workflow node.',
+						description: 'Resolve offset only if execution statue equlas success',
+					},
+					{
+						name: 'On Allowed Execution Statuses',
+						value: 'onStatus',
+						description: 'Resolve offset only if execution status in the list of selected statuses',
 					},
 					{
 						name: 'Immediately',
@@ -96,6 +106,52 @@ export class KafkaTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Allowed Statuses',
+				name: 'allowedStatuses',
+				type: 'multiOptions',
+				default: ['success'],
+				options: [
+					{
+						name: 'Canceled',
+						value: 'canceled',
+					},
+					{
+						name: 'Crashed',
+						value: 'crashed',
+					},
+					{
+						name: 'Error',
+						value: 'error',
+					},
+					{
+						name: 'New',
+						value: 'new',
+					},
+					{
+						name: 'Running',
+						value: 'running',
+					},
+					{
+						name: 'Success',
+						value: 'success',
+					},
+					{
+						name: 'Unknown',
+						value: 'unknown',
+					},
+					{
+						name: 'Waiting',
+						value: 'waiting',
+					},
+				],
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+						resolveOffset: ['onStatus'],
 					},
 				},
 			},
@@ -302,17 +358,11 @@ export class KafkaTrigger implements INodeType {
 
 				await consumer.subscribe({ topic, fromBeginning: options.fromBeginning ? true : false });
 
-				const autoCommitInterval = options.autoCommitInterval ?? undefined;
-				const autoCommitThreshold = options.autoCommitThreshold ?? undefined;
-				const shouldAutoCommit = !!(autoCommitInterval || autoCommitThreshold);
-
 				await consumer.run({
-					autoCommit: shouldAutoCommit,
-					eachBatchAutoResolve: shouldAutoCommit,
-					autoCommitInterval,
-					autoCommitThreshold,
 					partitionsConsumedConcurrently,
+					...getAutoCommitSettings(options, nodeVersion),
 					eachBatch: async ({ batch, resolveOffset, heartbeat }: EachBatchPayload) => {
+						// avoid throwwing error in the callback, as it leads to consumer stop, disconnect and crash
 						const messages = batch.messages;
 						const messageTopic = batch.topic;
 
@@ -353,7 +403,10 @@ export class KafkaTrigger implements INodeType {
 				await consumer.stop();
 				await consumer.disconnect();
 			} catch (error) {
-				throw new TriggerCloseError(this.getNode(), { cause: error as Error, level: 'warning' });
+				throw new TriggerCloseError(this.getNode(), {
+					cause: ensureError(error),
+					level: 'warning',
+				});
 			}
 		};
 

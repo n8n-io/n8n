@@ -19,6 +19,13 @@ import { KafkaTrigger } from '../KafkaTrigger.node';
 
 jest.mock('kafkajs');
 jest.mock('@kafkajs/confluent-schema-registry');
+jest.mock('n8n-workflow', () => {
+	const actual = jest.requireActual('n8n-workflow');
+	return {
+		...actual,
+		sleep: jest.fn().mockResolvedValue(undefined),
+	};
+});
 
 describe('KafkaTrigger Node', () => {
 	let mockKafka: jest.Mocked<Kafka>;
@@ -1058,7 +1065,7 @@ describe('KafkaTrigger Node', () => {
 			await publishPromise;
 		});
 
-		it('should throw error when resolveOffset is "onSuccess" and execution fails', async () => {
+		it('should return success false when resolveOffset is "onSuccess" and execution fails', async () => {
 			const { emit } = await testTriggerNode(KafkaTrigger, {
 				mode: 'trigger',
 				node: {
@@ -1086,7 +1093,9 @@ describe('KafkaTrigger Node', () => {
 			expect(deferredPromise).toBeDefined();
 
 			deferredPromise?.resolve(mock<IRun>({ status: 'error' }));
-			await expect(publishPromise).rejects.toThrow('Status is not success');
+			// The emitter catches the error, logs it, and returns { success: false }
+			// instead of throwing, so the promise resolves (not rejects)
+			await publishPromise;
 		});
 
 		it('should ignore sessionTimeout and heartbeatInterval options', async () => {
@@ -1133,6 +1142,97 @@ describe('KafkaTrigger Node', () => {
 							groupId: 'test-group',
 							useSchemaRegistry: false,
 							resolveOffset: 'immediately',
+						},
+					},
+					credential: {
+						brokers: 'localhost:9092',
+						clientId: 'n8n-kafka',
+						ssl: false,
+						authentication: false,
+					},
+				}),
+			).rejects.toThrow(NodeOperationError);
+		});
+
+		it('should use resolveOffset "onStatus" and resolve when status matches allowed statuses', async () => {
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'onStatus',
+						allowedStatuses: ['success', 'error'],
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const publishPromise = publishMessage({ value: Buffer.from('test-message') });
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(emit).toHaveBeenCalled();
+			const deferredPromise = emit.mock.calls[0][2];
+			expect(deferredPromise).toBeDefined();
+
+			// Should resolve successfully when status is in allowedStatuses
+			deferredPromise?.resolve(mock<IRun>({ status: 'error' }));
+			await publishPromise;
+		});
+
+		it('should use resolveOffset "onStatus" and fail when status does not match allowed statuses', async () => {
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'onStatus',
+						allowedStatuses: ['success'],
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const publishPromise = publishMessage({ value: Buffer.from('test-message') });
+			await new Promise((resolve) => setImmediate(resolve));
+
+			expect(emit).toHaveBeenCalled();
+			const deferredPromise = emit.mock.calls[0][2];
+			expect(deferredPromise).toBeDefined();
+
+			// Should fail when status is not in allowedStatuses
+			deferredPromise?.resolve(mock<IRun>({ status: 'error' }));
+			// The emitter catches the error, logs it, and returns { success: false }
+			await publishPromise;
+		});
+
+		it('should throw error when resolveOffset is "onStatus" but no statuses are selected', async () => {
+			await expect(
+				testTriggerNode(KafkaTrigger, {
+					mode: 'trigger',
+					node: {
+						typeVersion: 1.2,
+						parameters: {
+							topic: 'test-topic',
+							groupId: 'test-group',
+							useSchemaRegistry: false,
+							resolveOffset: 'onStatus',
+							allowedStatuses: [],
 						},
 					},
 					credential: {
