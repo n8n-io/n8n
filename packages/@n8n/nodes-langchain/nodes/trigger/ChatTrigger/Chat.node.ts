@@ -40,8 +40,8 @@ export class Chat implements INodeType {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['input'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: [1, 1.1, 1.2],
+		defaultVersion: 1.2,
 		description: 'Send a message into the chat',
 		defaults: {
 			name: 'Chat',
@@ -237,20 +237,41 @@ export class Chat implements INodeType {
 			FREE_TEXT_CHAT_RESPONSE_TYPE,
 		) as string;
 		const isFreeText = responseType === FREE_TEXT_CHAT_RESPONSE_TYPE;
+
+		if (nodeVersion <= 1.1) {
+			return [
+				[
+					{
+						...data,
+						json: {
+							// put everything under the `data` key to be consistent
+							// with other HITL nodes
+							data: {
+								...data.json,
+								// if the response type is not "Free Text" and the
+								// user has typed something - we assume it's
+								// disapproval
+								approved: isFreeText ? undefined : false,
+							},
+						},
+					},
+				],
+			];
+		}
+
 		return [
 			[
 				{
 					...data,
 					json: {
-						// put everything under the `data` key to be consistent
-						// with other HITL nodes
-						data: {
-							...data.json,
-							// if the response type is not "Free Text" and the
-							// user has typed something - we assume it's
-							// disapproval
-							approved: isFreeText ? undefined : false,
-						},
+						// for v1.2+, don't nest under the `data` key so that Chat
+						// node can be connected to the AI Agent directly
+						// (it expects `$json.chatInput` field)
+						...data.json,
+						// if the response type is not "Free Text" and the
+						// user has typed something - we assume it's
+						// disapproval
+						approved: isFreeText ? undefined : false,
 					},
 				},
 			],

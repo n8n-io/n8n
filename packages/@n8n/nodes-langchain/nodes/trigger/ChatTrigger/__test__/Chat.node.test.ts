@@ -279,5 +279,43 @@ describe('Test Chat Node', () => {
 			]);
 			expect(memory.chatHistory.addUserMessage).toHaveBeenCalledWith('user message');
 		});
+
+		it('v1.2 should return output data directly without nested `data` field', async () => {
+			const chatNode = mock<INode>({
+				name: 'Chat',
+				type: CHAT_NODE_TYPE,
+				parameters: {},
+				typeVersion: 1.2,
+			});
+			const data = { json: { chatInput: 'user message' } };
+			mockExecuteFunctions.getInputData.mockReturnValue([data]);
+			mockExecuteFunctions.getNode.mockReturnValue(chatNode);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((parameterName) => {
+				switch (parameterName) {
+					case 'operation':
+						return SEND_AND_WAIT_OPERATION;
+					case 'responseType':
+						return 'approval';
+					case 'options':
+						return { memoryConnection: false };
+					default:
+						return undefined;
+				}
+			});
+
+			const result = await chat.onMessage(mockExecuteFunctions, data);
+
+			expect(result).toEqual([
+				[
+					{
+						...data,
+						json: {
+							...data.json,
+							approved: false,
+						},
+					},
+				],
+			]);
+		});
 	});
 });
