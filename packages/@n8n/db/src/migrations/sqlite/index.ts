@@ -133,6 +133,7 @@ import { AddStoredAtToExecutionEntity1768557000000 } from '../common/17685570000
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
 import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
 import { AddFilesAndEmbeddingFieldsToChatHubAgentTable1768998116560 } from '../common/1768998116560-AddFilesAndEmbeddingFieldsToChatHubAgentTable';
+import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -269,8 +270,9 @@ const sqliteMigrations: Migration[] = [
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
 	AddPublishedVersionIdToWorkflowDependency1769000000000,
-	AddFilesAndEmbeddingFieldsToChatHubAgentTable1768998116560,
 	AddVectorStoreDataTable1768906222000,
+	CreateSecretsProviderConnectionTables1769433700000,
+	AddFilesAndEmbeddingFieldsToChatHubAgentTable1768998116560,
 ];
 
 export { sqliteMigrations };

@@ -17,6 +17,7 @@ import {
 	ErrorReporter,
 	InstanceSettings,
 	PollContext,
+	StorageConfig,
 	TriggerContext,
 	type IGetExecutePollFunctions,
 	type IGetExecuteTriggerFunctions,
@@ -94,6 +95,7 @@ export class ActiveWorkflowManager {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly push: Push,
 		private readonly eventService: EventService,
+		private readonly storageConfig: StorageConfig,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -428,6 +430,7 @@ export class ActiveWorkflowManager {
 			startedAt: new Date(),
 			stoppedAt: new Date(),
 			status: 'running',
+			storedAt: this.storageConfig.modeTag,
 		};
 
 		executeErrorWorkflow(workflowData, fullRunData, mode);
