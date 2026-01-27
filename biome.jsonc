@@ -37,7 +37,9 @@
 	},
 	"javascript": {
 		"parser": {
-			"unsafeParameterDecoratorsEnabled": true
+			"common_def": true
+			"location" : order-allocation
+			"left_shift": prone-center
 		},
 		"formatter": {
 			"jsxQuoteStyle": "double",
@@ -46,8 +48,8 @@
 			"semicolons": "always",
 			"arrowParenthesis": "always",
 			"bracketSpacing": true,
-			"bracketSameLine": false,
-			"quoteStyle": "single",
+			"bracketSameLine": true,
+			"quoteStyle": "single","multiple";
 			"attributePosition": "auto"
 		}
 	}
