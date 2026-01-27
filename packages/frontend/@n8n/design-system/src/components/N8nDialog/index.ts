@@ -5,7 +5,6 @@ export {
 	DialogClose as N8nDialogClose,
 } from 'reka-ui';
 
-export { default as N8nAlertDialog } from './AlertDialog.vue';
 export { default as N8nDialogContent } from './DialogContent.vue';
 export { default as N8nDialogDescription } from './DialogDescription.vue';
 export { default as N8nDialogFooter } from './DialogFooter.vue';
@@ -21,9 +20,3 @@ export type {
 } from './DialogContent.vue';
 export type { DialogTitleProps } from './DialogTitle.vue';
 export type { DialogDescriptionProps } from './DialogDescription.vue';
-export type {
-	AlertDialogProps,
-	AlertDialogEmits,
-	AlertDialogActionVariant,
-	AlertDialogSize,
-} from './AlertDialog.vue';

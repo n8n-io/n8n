@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { DialogContent, DialogClose } from 'reka-ui';
-import { computed, useCssModule } from 'vue';
+import {
+	DialogContent,
+	DialogClose,
+	DialogTitle,
+	DialogDescription,
+	VisuallyHidden,
+} from 'reka-ui';
+import { computed, nextTick, onMounted, shallowRef, useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 
@@ -39,6 +45,14 @@ export interface DialogContentProps {
 	 * @default true
 	 */
 	showCloseButton?: boolean;
+	/**
+	 * Accessible label for the dialog (used when DialogTitle is not provided)
+	 */
+	ariaLabel?: string;
+	/**
+	 * Accessible description for the dialog (used when DialogDescription is not provided)
+	 */
+	ariaDescription?: string;
 }
 
 export interface DialogContentEmits {
@@ -58,6 +72,7 @@ const props = withDefaults(defineProps<DialogContentProps>(), {
 const emit = defineEmits<DialogContentEmits>();
 
 const $style = useCssModule();
+const contentRef = shallowRef<InstanceType<typeof DialogContent> | null>(null);
 
 const sizeClasses: Record<DialogContentSize, string> = {
 	small: $style.small,
@@ -71,11 +86,42 @@ const sizeClasses: Record<DialogContentSize, string> = {
 };
 
 const sizeClass = computed(() => sizeClasses[props.size]);
+
+/**
+ * NOTE (@heymynameisrob): Check if DialogTitle or DialogDescription components exist in the slot content
+ * and warn in dev mode if no accessible title is provided
+ */
+const checkForAccessibilityComponents = () => {
+	const el = contentRef.value?.$el;
+	if (!el || !(el instanceof HTMLElement)) return;
+
+	const titleElements = el.querySelectorAll('[id^="reka-dialog-title"]');
+	const hasTitleFromSlot = props.ariaLabel ? titleElements.length > 1 : titleElements.length > 0;
+
+	if (import.meta.env.DEV) {
+		if (!hasTitleFromSlot && !props.ariaLabel) {
+			console.warn(
+				'[N8nDialogContent] Dialog is missing accessible title. ' +
+					'Either include <N8nDialogTitle> in your dialog content or provide an "ariaLabel" prop.',
+			);
+		}
+	}
+};
+
+/** ARIA Fallbacks: These are visually hidden but accessible to screen readers **/
+const needsFallbackTitle = computed(() => !!props.ariaLabel);
+const needsFallbackDescription = computed(() => !!props.ariaDescription);
+
+onMounted(async () => {
+	await nextTick();
+	checkForAccessibilityComponents();
+});
 </script>
 
 <template>
 	<Transition name="n8n-dialog-fade">
 		<DialogContent
+			ref="contentRef"
 			:force-mount="forceMount"
 			:trap-focus="trapFocus"
 			:disable-outside-pointer-events="disableOutsidePointerEvents"
@@ -85,9 +131,24 @@ const sizeClass = computed(() => sizeClasses[props.size]);
 			@open-auto-focus="emit('openAutoFocus', $event)"
 			@close-auto-focus="emit('closeAutoFocus', $event)"
 		>
+			<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
+			<VisuallyHidden v-if="needsFallbackTitle" as-child>
+				<DialogTitle>{{ ariaLabel }}</DialogTitle>
+			</VisuallyHidden>
+
+			<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
+			<VisuallyHidden v-if="needsFallbackDescription" as-child>
+				<DialogDescription>{{ ariaDescription }}</DialogDescription>
+			</VisuallyHidden>
+
 			<slot />
 
-			<DialogClose v-if="showCloseButton" :class="$style['close-button']" aria-label="Close dialog">
+			<DialogClose
+				v-if="showCloseButton"
+				:class="$style['close-button']"
+				aria-label="Close dialog"
+				data-test-id="dialog-close-button"
+			>
 				<Icon icon="x" />
 			</DialogClose>
 		</DialogContent>
@@ -174,7 +235,7 @@ const sizeClass = computed(() => sizeClasses[props.size]);
 	max-height: calc(100dvh - var(--spacing--lg));
 }
 
-/** TODO (@heymynameisrob): Replace with <Button /> when shipped **/
+/** TODO (@heymynameisrob): Replace with <Button /> when v2 shipped **/
 .close-button {
 	position: absolute;
 	top: var(--spacing--sm);

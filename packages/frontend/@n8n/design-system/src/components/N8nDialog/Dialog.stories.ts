@@ -13,12 +13,11 @@ import {
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogClose,
-	N8nAlertDialog,
 	type DialogContentProps,
-} from '@n8n/design-system/v2/components/Dialog';
+} from '@n8n/design-system/components/N8nDialog';
 
 const meta = {
-	title: 'Components v2/Dialog',
+	title: 'Components/N8nDialog',
 	component: N8nDialogContent,
 	parameters: {
 		docs: {
@@ -347,135 +346,111 @@ export const ControlledState = {
 	args: {},
 } satisfies Story;
 
-export const AlertDialogBasic = {
-	render: () => ({
+export const AccessibilityFallback: Story = {
+	render: (args: DialogContentProps) => ({
 		components: {
-			N8nAlertDialog,
+			N8nDialogRoot,
+			N8nDialogTrigger,
+			N8nDialogPortal,
+			N8nDialogOverlay,
+			N8nDialogContent,
+			N8nDialogFooter,
+			N8nDialogClose,
 			N8nButton,
 		},
 		setup() {
-			const handleConfirm = () => {
-				console.log('Confirmed!');
-			};
-			return { handleConfirm };
+			return { args };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
-			<N8nAlertDialog
-				title="Save changes?"
-				description="Your changes will be saved to the server."
-				action-label="Save"
-				@action="handleConfirm"
-			>
-				<template #trigger>
-					<N8nButton label="Save" />
-				</template>
-			</N8nAlertDialog>
+		<div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px;">
+			<p style="max-width: 500px; text-align: center; color: var(--color--text--tint-1);">
+				This dialog uses <code>ariaLabel</code> and <code>ariaDescription</code> props instead of
+				<code>N8nDialogTitle</code> and <code>N8nDialogDescription</code> components.
+				The title and description are visually hidden but accessible to screen readers.
+			</p>
+
+			<N8nDialogRoot>
+				<N8nDialogTrigger as-child>
+					<N8nButton label="Open Dialog" />
+				</N8nDialogTrigger>
+				<N8nDialogPortal>
+					<N8nDialogOverlay />
+					<N8nDialogContent v-bind="args">
+						<div style="padding: var(--spacing--sm) 0;">
+							<p style="font-weight: var(--font-weight--bold); margin-bottom: var(--spacing--xs);">
+								Custom Visual Title
+							</p>
+							<p>
+								This dialog has no visible DialogTitle or DialogDescription components,
+								but screen readers will announce "Delete Confirmation" as the title
+								and the description text for accessibility.
+							</p>
+						</div>
+
+						<N8nDialogFooter>
+							<N8nDialogClose as-child>
+								<N8nButton type="secondary" label="Cancel" />
+							</N8nDialogClose>
+							<N8nButton type="danger" label="Delete" />
+						</N8nDialogFooter>
+					</N8nDialogContent>
+				</N8nDialogPortal>
+			</N8nDialogRoot>
 		</div>
 		`,
 	}),
-	args: {},
+	args: {
+		ariaLabel: 'Delete Confirmation',
+		ariaDescription: 'Are you sure you want to delete this item? This action cannot be undone.',
+	},
 } satisfies Story;
 
-export const AlertDialogDestructive = {
-	render: () => ({
+export const AccessibilityFallbackTitleOnly: Story = {
+	render: (args: DialogContentProps) => ({
 		components: {
-			N8nAlertDialog,
+			N8nDialogRoot,
+			N8nDialogTrigger,
+			N8nDialogPortal,
+			N8nDialogOverlay,
+			N8nDialogContent,
+			N8nDialogFooter,
+			N8nDialogClose,
 			N8nButton,
 		},
 		setup() {
-			const handleDelete = () => {
-				console.log('Deleted!');
-			};
-			return { handleDelete };
+			return { args };
 		},
 		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
-			<N8nAlertDialog
-				title="Delete item?"
-				description="This action cannot be undone. This will permanently delete the item."
-				action-label="Delete"
-				action-variant="destructive"
-				@action="handleDelete"
-			>
-				<template #trigger>
-					<N8nButton label="Delete" variant="danger" />
-				</template>
-			</N8nAlertDialog>
+		<div style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px;">
+			<p style="max-width: 500px; text-align: center; color: var(--color--text--tint-1);">
+				This dialog only uses the <code>ariaLabel</code> prop for an accessible title.
+				Useful for simple confirmation dialogs or icon-only interfaces.
+			</p>
+
+			<N8nDialogRoot>
+				<N8nDialogTrigger as-child>
+					<N8nButton label="Quick Action" variant="outline" />
+				</N8nDialogTrigger>
+				<N8nDialogPortal>
+					<N8nDialogOverlay />
+					<N8nDialogContent v-bind="args" size="small">
+						<div style="text-align: center; padding: var(--spacing--md) 0;">
+							<p>Complete this action?</p>
+						</div>
+
+						<N8nDialogFooter>
+							<N8nDialogClose as-child>
+								<N8nButton type="secondary" label="No" />
+							</N8nDialogClose>
+							<N8nButton label="Yes" />
+						</N8nDialogFooter>
+					</N8nDialogContent>
+				</N8nDialogPortal>
+			</N8nDialogRoot>
 		</div>
 		`,
 	}),
-	args: {},
-} satisfies Story;
-
-export const AlertDialogWithLoading = {
-	render: () => ({
-		components: {
-			N8nAlertDialog,
-			N8nButton,
-		},
-		setup() {
-			const loading = ref(false);
-			const isOpen = ref(false);
-
-			const handleAction = async () => {
-				loading.value = true;
-				await new Promise((resolve) => setTimeout(resolve, 2000));
-				loading.value = false;
-				isOpen.value = false;
-			};
-
-			return { loading, isOpen, handleAction };
-		},
-		template: `
-		<div style="display: flex; justify-content: center; padding: 40px;">
-			<N8nAlertDialog
-				v-model:open="isOpen"
-				title="Process data?"
-				description="This operation may take a few seconds."
-				action-label="Process"
-				:loading="loading"
-				@action="handleAction"
-			>
-				<template #trigger>
-					<N8nButton label="Start Process" />
-				</template>
-			</N8nAlertDialog>
-		</div>
-		`,
-	}),
-	args: {},
-} satisfies Story;
-
-export const AlertDialogSizes = {
-	render: () => ({
-		components: {
-			N8nAlertDialog,
-			N8nButton,
-		},
-		template: `
-		<div style="display: flex; gap: 16px; justify-content: center; padding: 40px;">
-			<N8nAlertDialog
-				title="Small Dialog"
-				description="This is a small alert dialog."
-				size="small"
-			>
-				<template #trigger>
-					<N8nButton label="Small" variant="outline" />
-				</template>
-			</N8nAlertDialog>
-
-			<N8nAlertDialog
-				title="Medium Dialog"
-				description="This is a medium alert dialog with more space for content."
-				size="medium"
-			>
-				<template #trigger>
-					<N8nButton label="Medium" variant="outline" />
-				</template>
-			</N8nAlertDialog>
-		</div>
-		`,
-	}),
-	args: {},
+	args: {
+		ariaLabel: 'Confirm Action',
+	},
 } satisfies Story;

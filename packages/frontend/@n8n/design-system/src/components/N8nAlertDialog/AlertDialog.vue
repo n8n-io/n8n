@@ -7,12 +7,12 @@ import {
 import { ref, watch } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import N8nDialogContent from '@n8n/design-system/v2/components/Dialog/DialogContent.vue';
-import N8nDialogDescription from '@n8n/design-system/v2/components/Dialog/DialogDescription.vue';
-import N8nDialogFooter from '@n8n/design-system/v2/components/Dialog/DialogFooter.vue';
-import N8nDialogHeader from '@n8n/design-system/v2/components/Dialog/DialogHeader.vue';
-import N8nDialogOverlay from '@n8n/design-system/v2/components/Dialog/DialogOverlay.vue';
-import N8nDialogTitle from '@n8n/design-system/v2/components/Dialog/DialogTitle.vue';
+import N8nDialogContent from '@n8n/design-system/components/N8nDialog/DialogContent.vue';
+import N8nDialogDescription from '@n8n/design-system/components/N8nDialog/DialogDescription.vue';
+import N8nDialogFooter from '@n8n/design-system/components/N8nDialog/DialogFooter.vue';
+import N8nDialogHeader from '@n8n/design-system/components/N8nDialog/DialogHeader.vue';
+import N8nDialogOverlay from '@n8n/design-system/components/N8nDialog/DialogOverlay.vue';
+import N8nDialogTitle from '@n8n/design-system/components/N8nDialog/DialogTitle.vue';
 
 export type AlertDialogActionVariant = 'solid' | 'destructive';
 export type AlertDialogSize = 'small' | 'medium';

@@ -22,6 +22,6 @@ defineProps<DialogDescriptionProps>();
 	margin: 0;
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
-	color: light-dark(--color--neutral-800, --color--neutral-200);
+	color: light-dark(var(--color--neutral-800), var(--color--neutral-200));
 }
 </style>
