@@ -238,6 +238,16 @@ class TestFormatStringAttacks(TestTaskAnalyzer):
         for code in safe_format_strings:
             analyzer.validate(code)
 
+    def test_escaped_braces_allowed(self, analyzer: TaskAnalyzer) -> None:
+        safe_escaped = [
+            '"{{.__class__}}".format()',
+            '"{{.__builtins__}}".format()',
+            '"{{.__globals__}}".format()',
+        ]
+
+        for code in safe_escaped:
+            analyzer.validate(code)
+
     def test_unformatted_strings_with_patterns_allowed(self, analyzer: TaskAnalyzer) -> None:
         safe_code = [
             'docs = "{.__class__}"',

@@ -99,13 +99,14 @@ class SecurityValidator(ast.NodeVisitor):
             else:
                 self._add_violation(node.lineno, ERROR_DYNAMIC_IMPORT)
 
-        # "string".format()
-        if (
+        is_format_call = (
             isinstance(node.func, ast.Attribute)
             and node.func.attr == "format"
             and isinstance(node.func.value, ast.Constant)
             and isinstance(node.func.value.value, str)
-        ):
+        )
+
+        if is_format_call:
             self._check_format_string(node.func.value.value, node.lineno)
 
         self.generic_visit(node)
@@ -143,6 +144,9 @@ class SecurityValidator(ast.NodeVisitor):
         """Check if a string contains format patterns that access blocked attributes."""
 
         format_field_pattern = re.compile(r"\{([^}]*)\}")
+
+        # escaped braces produce literal braces, not format fields
+        s = s.replace("{{", "").replace("}}", "")
 
         for match in format_field_pattern.finditer(s):
             field = match.group(1)
