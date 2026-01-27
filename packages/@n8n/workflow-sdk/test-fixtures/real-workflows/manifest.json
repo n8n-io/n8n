@@ -285,14 +285,6 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "🕐 Status Check Trigger"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "🕘 Daily Application Trigger"
-				},
-				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "📝 Update Changed Status"
 				},
@@ -315,9 +307,6 @@
 				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "📧 Send Status Update"
-				},
-				{
-					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -739,15 +728,8 @@
 			"success": true,
 			"expectedWarnings": [
 				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Daily Stock Check"
-				},
-				{
 					"code": "MISSING_EXPRESSION_PREFIX",
 					"nodeName": "Send Email Alert"
-				},
-				{
-					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -1985,16 +1967,7 @@
 		{
 			"id": 7701,
 			"name": "Real-time stock monitor with smart alerts for Indian & US markets",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Market Hours Trigger"
-				},
-				{
-					"code": "MISSING_TRIGGER"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4867,
@@ -2143,22 +2116,7 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Get Telegram Photo"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
 					"nodeName": "OCR.space Request"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Send Raw OCR Text"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Telegram Bot (Webhook)"
-				},
-				{
-					"code": "MISSING_TRIGGER"
 				}
 			]
 		},
@@ -2781,13 +2739,7 @@
 			"id": 6150,
 			"name": "Auto Germany apartment search & apply with Immobilienscout24 & Google Services",
 			"success": true,
-			"nodeType": "splitInBatches",
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Cron Trigger"
-				}
-			]
+			"nodeType": "splitInBatches"
 		},
 		{
 			"id": 5851,
@@ -2819,13 +2771,7 @@
 			"id": 5682,
 			"name": "Simulate debates between AI agents using Mistral to optimize answers",
 			"success": true,
-			"nodeType": "splitInBatches",
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Email Trigger (IMAP)"
-				}
-			]
+			"nodeType": "splitInBatches"
 		},
 		{
 			"id": 5375,
@@ -2887,16 +2833,7 @@
 		{
 			"id": 5196,
 			"name": "Smart email draft generator",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Check New Email (IMAP)"
-				},
-				{
-					"code": "MISSING_TRIGGER"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 5140,
@@ -2939,10 +2876,6 @@
 				},
 				{
 					"code": "DISCONNECTED_NODE",
-					"nodeName": "Email Trigger"
-				},
-				{
-					"code": "DISCONNECTED_NODE",
 					"nodeName": "Format AI Response"
 				},
 				{
@@ -2976,6 +2909,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Send WhatsApp Response"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Webhook Response"
 				}
 			]
 		},
@@ -4077,13 +4014,7 @@
 		{
 			"id": 8562,
 			"name": "AI Shopify product descriptions: GPT-4o Vision + Claude + Analytics",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Every 5 Minutes"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 4940,
@@ -4194,13 +4125,7 @@
 		{
 			"id": 8067,
 			"name": "Personalized evening wind-down system with mood tracking via Telegram, Notion & Email",
-			"success": true,
-			"expectedWarnings": [
-				{
-					"code": "DISCONNECTED_NODE",
-					"nodeName": "Cron: 9PM Daily"
-				}
-			]
+			"success": true
 		},
 		{
 			"id": 8042,
@@ -4539,6 +4464,10 @@
 				{
 					"code": "DISCONNECTED_NODE",
 					"nodeName": "Update Customer Record"
+				},
+				{
+					"code": "DISCONNECTED_NODE",
+					"nodeName": "Webhook Response"
 				}
 			]
 		},

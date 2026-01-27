@@ -9,30 +9,7 @@ import type { WorkflowJSON, NodeJSON } from '../types/base';
 import type { SemanticGraph, SemanticNode, SemanticConnection, AiConnectionType } from './types';
 import { AI_CONNECTION_TYPES } from './types';
 import { getOutputName, getInputName } from './semantic-registry';
-
-/**
- * Known trigger node types
- */
-const TRIGGER_TYPES = new Set([
-	'n8n-nodes-base.manualTrigger',
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.cronTrigger',
-	'n8n-nodes-base.scheduleTrigger',
-	'n8n-nodes-base.emailTrigger',
-	'n8n-nodes-base.start', // Legacy trigger
-]);
-
-/**
- * Check if a node type is a trigger
- */
-function isTriggerType(type: string): boolean {
-	// Check known trigger types
-	if (TRIGGER_TYPES.has(type)) {
-		return true;
-	}
-	// Check if type name contains "trigger" (case insensitive)
-	return type.toLowerCase().includes('trigger');
-}
+import { isTriggerNodeType } from '../utils/trigger-detection';
 
 /**
  * Create a SemanticNode from a NodeJSON
@@ -46,7 +23,7 @@ function createSemanticNode(nodeJson: NodeJSON): SemanticNode {
 		inputSources: new Map(),
 		subnodes: [],
 		annotations: {
-			isTrigger: isTriggerType(nodeJson.type),
+			isTrigger: isTriggerNodeType(nodeJson.type),
 			isCycleTarget: false,
 			isConvergencePoint: false,
 		},

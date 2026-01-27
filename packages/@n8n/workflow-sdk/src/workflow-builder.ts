@@ -23,6 +23,7 @@ import { isMergeNamedInputSyntax } from './merge';
 import { isFanOut } from './fan-out';
 import { isInputTarget, isIfElseBuilder, isSwitchCaseBuilder } from './node-builder';
 import type { IfElseBuilder, SwitchCaseBuilder } from './types/base';
+import { isTriggerNodeType } from './utils/trigger-detection';
 
 /**
  * Track SIB builders currently being processed to prevent infinite recursion.
@@ -1253,16 +1254,7 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	 * Check if a node type is a trigger
 	 */
 	private isTriggerNode(type: string): boolean {
-		return (
-			type.includes('Trigger') ||
-			type.includes('trigger') ||
-			type.includes('Webhook') ||
-			type.includes('webhook') ||
-			type.includes('Schedule') ||
-			type.includes('schedule') ||
-			type.includes('Poll') ||
-			type.includes('poll')
-		);
+		return isTriggerNodeType(type);
 	}
 
 	/**
