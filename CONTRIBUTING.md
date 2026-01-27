@@ -195,7 +195,7 @@ automatically build your code, restart the backend and refresh the frontend
 Given the size of the code base and the number of modules, we recommend only watching the modules you're
 actively working on.
 
-### Basic Development Workflow Example
+### Basic Development Workflow Example (most used within n8n)
 
 If you're working on API and FE, a lot of team members run the following steps:
 
