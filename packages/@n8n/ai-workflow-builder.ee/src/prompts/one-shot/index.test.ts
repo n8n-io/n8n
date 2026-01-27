@@ -78,6 +78,8 @@ describe('prompt version registry', () => {
 	});
 
 	describe('re-exported prompt builders', () => {
+		const mockSdkSourceCode = '// Mock SDK source code for testing';
+
 		it('should export buildOneShotGeneratorPrompt from v1-sonnet', () => {
 			expect(typeof buildOneShotGeneratorPrompt).toBe('function');
 			const result = buildOneShotGeneratorPrompt(mockNodeIds, mockSdkSourceCode);

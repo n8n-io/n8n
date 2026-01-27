@@ -13,6 +13,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { inspect } from 'node:util';
 
 import type { NodeWithDiscriminators } from '../../utils/node-type-parser';
+import { escapeCurlyBrackets, SDK_API_CONTENT } from './sdk-api';
 
 /**
  * Debug logging helper for prompt builder
@@ -39,31 +40,7 @@ function debugLog(message: string, data?: Record<string, unknown>): void {
  * Role and capabilities of the agent - optimized for Sonnet 4.5
  */
 const ROLE =
-	'You are an expert n8n workflow builder. Your task is to generate complete, executable TypeScript code for n8n workflows using the n8n Workflow SDK. You will receive a user request describing the desired workflow, and you must produce valid TypeScript code that creates that workflow.';
-
-/**
- * Escape curly brackets for LangChain prompt templates
- */
-function escapeCurlyBrackets(text: string): string {
-	return text.replace(/\{/g, '{{').replace(/\}/g, '}}');
-}
-
-/**
- * Build SDK API reference section from file content
- * NOTE: Commented out for Sonnet 4.5 optimized prompt - SDK reference is not included
- * to reduce prompt length. The function is kept for potential future use or Opus prompts.
- */
-function buildSdkApiReference(_sdkSourceCode: string): string {
-	// SDK reference is commented out for Sonnet 4.5 optimized prompt
-	// The condensed prompt relies on examples and patterns instead
-	// Kept function signature for backward compatibility
-	return '';
-	// Original implementation:
-	// const escapedSdkSourceCode = escapeCurlyBrackets(sdkSourceCode);
-	// return `<sdk_api_reference>
-	// ${escapedSdkSourceCode}
-	// </sdk_api_reference>`;
-}
+	'You are an expert n8n workflow builder. Your task is to generate complete, executable TypeScript code for n8n workflows using the n8n Workflow SDK. You will receive a user request describing the desired workflow, and you must produce valid TypeScript code representing the workflow as a graph of nodes.';
 
 /**
  * Format a single node with optional discriminator info
@@ -123,50 +100,6 @@ If you need a specific integration not listed, use the search_node tool to find 
 }
 
 /**
- * Available SDK Functions - pre-loaded in the execution environment
- */
-const SDK_FUNCTIONS = `# Available SDK Functions
-
-The following functions are pre-loaded in the execution environment. Do NOT write import statements:
-
-**Core Functions:**
-- \`workflow(id, name, settings?)\` - Create a workflow builder
-- \`node(input)\` - Create a regular node
-- \`trigger(input)\` - Create a trigger node
-- \`sticky(content, config?)\` - Create a sticky note for documentation
-- \`splitInBatches(config)\` - Batch processing with loops
-- \`nextBatch(sibNode)\` - Semantic helper for explicit loop-back connections
-- \`fanOut(...targets)\` - Connect one output to multiple parallel targets
-
-**Helper Functions:**
-- \`placeholder(description)\` - Create a placeholder for user input (use this instead of $env)
-- \`newCredential(name)\` - Create a credential placeholder
-
-**Connection Methods (on NodeInstance):**
-- \`.then(target)\` - Connect output 0 to another node
-- \`.output(n).then(target)\` - Connect from specific output index
-- \`.input(n)\` - Target for specific input (use with Merge)
-
-**Branching (on IF/Switch nodes):**
-- \`.onTrue(target).onFalse(target)\` - IF node branching
-- \`.onCase(n, target)\` - Switch node case routing
-
-**Batch Processing (on splitInBatches node):**
-- \`.onDone(target)\` - Connect to node when all batches complete
-- \`.onEachBatch(target)\` - Connect to node for each batch (chain back to sibNode for loop)
-
-**AI/LangChain Subnode Builders:**
-- \`languageModel(input)\` - Create a language model subnode
-- \`memory(input)\` - Create a memory subnode
-- \`tool(input)\` - Create a tool subnode for AI agents
-- \`outputParser(input)\` - Create an output parser subnode
-- \`embedding(input)\` - Create an embedding subnode
-- \`vectorStore(input)\` - Create a vector store subnode
-- \`retriever(input)\` - Create a retriever subnode
-- \`documentLoader(input)\` - Create a document loader subnode
-- \`textSplitter(input)\` - Create a text splitter subnode`;
-
-/**
  * Workflow structure rules - optimized for Sonnet 4.5
  */
 const WORKFLOW_RULES = `# Workflow Generation Rules
@@ -180,7 +113,7 @@ Follow these rules strictly when generating workflows:
 
 2. **No orphaned nodes**
    - Every node (except triggers) must be connected to the workflow
-   - Use \`.then()\` to chain nodes or \`.add()\` for separate chains
+   - Use \`.to()\` to chain nodes or \`.add()\` for separate chains
 
 3. **Use descriptive node names**
    - Good: "Fetch Weather Data", "Format Response", "Check Temperature"
@@ -201,15 +134,15 @@ Follow these rules strictly when generating workflows:
    - Example: \`credentials: {{ slackApi: newCredential('Slack Bot') }}\`
    - The credential type must match what the node expects
 
-7. **AI subnodes use subnodes config, not .then() chains**
+7. **AI subnodes use subnodes config, not .to() chains**
    - AI nodes (agents, chains) configure subnodes in the \`subnodes\` property
    - Example: \`subnodes: {{ model: languageModel(...), tools: [tool(...)] }}\`
 
-8. **Node connections use .then() for regular nodes**
-   - Chain nodes: \`trigger(...).then(node1).then(node2)\`
+8. **Node connections use .to() for regular nodes**
+   - Chain nodes: \`trigger(...).to(node1).to(node2)\`
    - IF branching: Use \`.onTrue(target).onFalse(target)\` on IF nodes
    - Switch routing: Use \`.onCase(n, target)\` on Switch nodes
-   - Merge inputs: Use \`.then(mergeNode.input(n))\` to connect to specific merge inputs
+   - Merge inputs: Use \`.to(mergeNode.input(n))\` to connect to specific merge inputs
 
 9. **Expressions must start with '='**
    - n8n expressions use the format \`={{{{ expression }}}}\`
@@ -286,7 +219,7 @@ const WORKFLOW_PATTERNS = `# Workflow Patterns
 // 1. Define all nodes first
 const startTrigger = trigger({{
   type: 'n8n-nodes-base.manualTrigger',
-  version: 1.1,
+  version: 1,
   config: {{ name: 'Start', position: [240, 300] }}
 }});
 
@@ -305,32 +238,32 @@ const processData = node({{
 // 2. Compose workflow
 return workflow('id', 'name')
   .add(startTrigger)
-  .then(fetchData)
-  .then(processData);
+  .to(fetchData)
+  .to(processData);
 \`\`\`
 
 ## Conditional Branching (IF)
 
-**CRITICAL:** Each branch defines a COMPLETE processing path. Chain multiple steps INSIDE the branch using .then().
+**CRITICAL:** Each branch defines a COMPLETE processing path. Chain multiple steps INSIDE the branch using .to().
 
 \`\`\`typescript
 // Assume nodes declared: checkValid (IF), formatData, enrichData, saveToDb, logError
 return workflow('id', 'name')
   .add(startTrigger)
-  .then(checkValid
-    .onTrue(formatData.then(enrichData).then(saveToDb))  // Chain 3 nodes on true branch
+  .to(checkValid
+    .onTrue(formatData.to(enrichData).to(saveToDb))  // Chain 3 nodes on true branch
     .onFalse(logError));
 \`\`\`
 
 WRONG - nodes after IF run for BOTH branches:
 \`\`\`typescript
-.then(checkValid.onTrue(formatData).onFalse(logError))
-.then(enrichData)  // WRONG: runs after both branches!
+.to(checkValid.onTrue(formatData).onFalse(logError))
+.to(enrichData)  // WRONG: runs after both branches!
 \`\`\`
 
 RIGHT - chain inside the branch:
 \`\`\`typescript
-.then(checkValid.onTrue(formatData.then(enrichData)).onFalse(logError))
+.to(checkValid.onTrue(formatData.to(enrichData)).onFalse(logError))
 \`\`\`
 
 ## Multi-Way Routing (Switch)
@@ -341,8 +274,8 @@ RIGHT - chain inside the branch:
 // Assume nodes declared: routeByPriority (Switch), processUrgent, notifyTeam, escalate, processNormal, archive
 return workflow('id', 'name')
   .add(startTrigger)
-  .then(routeByPriority
-    .onCase(0, processUrgent.then(notifyTeam).then(escalate))  // Chain of 3 nodes
+  .to(routeByPriority
+    .onCase(0, processUrgent.to(notifyTeam).to(escalate))  // Chain of 3 nodes
     .onCase(1, processNormal)
     .onCase(2, archive));
 \`\`\`
@@ -352,7 +285,7 @@ return workflow('id', 'name')
 // First declare the Merge node
 const combineResults = node({{
   type: 'n8n-nodes-base.merge',
-  version: 3,
+  version: 3.2,
   config: {{
     name: 'Combine Results',
     parameters: {{ mode: 'combine' }},
@@ -368,48 +301,21 @@ const processResults = node({{ type: 'n8n-nodes-base.set', ... }});
 // Connect branches to specific merge inputs using .input(n)
 return workflow('id', 'name')
   .add(trigger({{ ... }})
-    .then(branch1)
-    .then(combineResults.input(0)))  // Connect to input 0
+    .to(branch1)
+    .to(combineResults.input(0)))  // Connect to input 0
   .add(trigger({{ ... }})
-    .then(branch2)
-    .then(combineResults.input(1)))  // Connect to input 1
+    .to(branch2)
+    .to(combineResults.input(1)))  // Connect to input 1
   .add(combineResults
-    .then(processResults));  // Process merged results
+    .to(processResults));  // Process merged results
 \`\`\`
-
-## Fan-Out (One Source to Multiple Targets)
-
-Use \`fanOut()\` when ONE output should connect to MULTIPLE parallel targets. This is different from Merge (multiple inputs to one output).
-
-\`\`\`typescript
-// Assume nodes declared: startTrigger, fetchData, processA, processB, processC
-
-// Use fanOut() to connect fetchData to all three targets in parallel
-return workflow('id', 'name')
-  .add(startTrigger)
-  .then(fetchData)
-  .then(fanOut(processA, processB, processC));  // One source → 3 parallel targets
-
-// Fan-out also works with IF/Switch branches
-// Assume nodes declared: checkValid (IF), notifyAdmin, logToDb, sendAlert, handleError
-return workflow('id', 'name')
-  .add(startTrigger)
-  .then(checkValid
-    .onTrue(fanOut(notifyAdmin, logToDb, sendAlert))  // All 3 run when true
-    .onFalse(handleError));
-\`\`\`
-
-**When to use fanOut():**
-- Sending the same data to multiple destinations (APIs, databases, services)
-- Running parallel processing branches from a single source
-- IF/Switch branches that fan out to multiple nodes
 
 ## Batch Processing (Loops)
 \`\`\`typescript
 // 1. Define all nodes first
 const startTrigger = trigger({{
   type: 'n8n-nodes-base.manualTrigger',
-  version: 1.1,
+  version: 1,
   config: {{ name: 'Start', position: [240, 300] }}
 }});
 
@@ -437,10 +343,10 @@ const sibNode = splitInBatches({{ name: 'Batch Process', parameters: {{ batchSiz
 // 3. Compose workflow - use nextBatch() for explicit loop-back
 return workflow('id', 'name')
   .add(startTrigger)
-  .then(fetchRecords)
-  .then(sibNode
+  .to(fetchRecords)
+  .to(sibNode
     .onDone(finalizeResults)
-    .onEachBatch(processRecord.then(nextBatch(sibNode)))  // nextBatch() makes loop intent explicit
+    .onEachBatch(processRecord.to(nextBatch(sibNode)))  // nextBatch() makes loop intent explicit
   );
 \`\`\`
 
@@ -449,7 +355,7 @@ return workflow('id', 'name')
 // 1. Define nodes for first chain
 const webhookTrigger = trigger({{
   type: 'n8n-nodes-base.webhook',
-  version: 2,
+  version: 2.1,
   config: {{ name: 'Webhook', position: [240, 200] }}
 }});
 
@@ -462,7 +368,7 @@ const processWebhook = node({{
 // 2. Define nodes for second chain
 const scheduleTrigger = trigger({{
   type: 'n8n-nodes-base.scheduleTrigger',
-  version: 1.1,
+  version: 1.3,
   config: {{ name: 'Daily Schedule', parameters: {{}}, position: [240, 500] }}
 }});
 
@@ -474,8 +380,46 @@ const processSchedule = node({{
 
 // 3. Compose workflow with multiple chains
 return workflow('id', 'name')
-  .add(webhookTrigger.then(processWebhook))
-  .add(scheduleTrigger.then(processSchedule));
+  .add(webhookTrigger.to(processWebhook))
+  .add(scheduleTrigger.to(processSchedule));
+\`\`\`
+
+## Fan-In (Multiple Triggers, Shared Processing)
+\`\`\`typescript
+// Each trigger's execution runs in COMPLETE ISOLATION.
+// Different branches have no effect on each other.
+// Never duplicate chains for "isolation" - it's already guaranteed.
+
+const webhookTrigger = trigger({{
+  type: 'n8n-nodes-base.webhook',
+  version: 2.1,
+  config: {{ name: 'Webhook Trigger', position: [240, 200] }}
+}});
+
+const scheduleTrigger = trigger({{
+  type: 'n8n-nodes-base.scheduleTrigger',
+  version: 1.3,
+  config: {{ name: 'Daily Schedule', position: [240, 500] }}
+}});
+
+// Processing chain defined ONCE
+const processData = node({{
+  type: 'n8n-nodes-base.set',
+  version: 3.4,
+  config: {{ name: 'Process Data', parameters: {{}}, position: [540, 350] }}
+}});
+
+const sendNotification = node({{
+  type: 'n8n-nodes-base.slack',
+  version: 2.3,
+  config: {{ name: 'Notify Slack', parameters: {{}}, position: [840, 350] }}
+}});
+
+// Both triggers connect to the SAME processing chain
+return workflow('id', 'name')
+  .add(webhookTrigger.to(processData))
+  .add(scheduleTrigger.to(processData))
+  .add(processData.to(sendNotification));
 \`\`\`
 
 ## AI Agent (Basic)
@@ -483,14 +427,14 @@ return workflow('id', 'name')
 // 1. Define subnodes first
 const openAiModel = languageModel({{
   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-  version: 1,
+  version: 1.3,
   config: {{ name: 'OpenAI Model', parameters: {{}}, position: [540, 500] }}
 }});
 
 // 2. Define main nodes
 const startTrigger = trigger({{
   type: 'n8n-nodes-base.manualTrigger',
-  version: 1.1,
+  version: 1,
   config: {{ name: 'Start', position: [240, 300] }}
 }});
 
@@ -508,7 +452,7 @@ const aiAgent = node({{
 // 3. Compose workflow
 return workflow('ai-assistant', 'AI Assistant')
   .add(startTrigger)
-  .then(aiAgent);
+  .to(aiAgent);
 \`\`\`
 
 ## AI Agent with Tools
@@ -516,7 +460,7 @@ return workflow('ai-assistant', 'AI Assistant')
 // 1. Define subnodes first
 const openAiModel = languageModel({{
   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-  version: 1,
+  version: 1.3,
   config: {{
     name: 'OpenAI Model',
     parameters: {{}},
@@ -527,14 +471,14 @@ const openAiModel = languageModel({{
 
 const calculatorTool = tool({{
   type: '@n8n/n8n-nodes-langchain.toolCalculator',
-  version: 1.1,
+  version: 1,
   config: {{ name: 'Calculator', parameters: {{}}, position: [700, 500] }}
 }});
 
 // 2. Define main nodes
 const startTrigger = trigger({{
   type: 'n8n-nodes-base.manualTrigger',
-  version: 1.1,
+  version: 1,
   config: {{ name: 'Start', position: [240, 300] }}
 }});
 
@@ -552,7 +496,7 @@ const aiAgent = node({{
 // 3. Compose workflow
 return workflow('ai-calculator', 'AI Calculator')
   .add(startTrigger)
-  .then(aiAgent);
+  .to(aiAgent);
 \`\`\`
 
 ## AI Agent with $fromAI (AI-Driven Parameters)
@@ -560,7 +504,7 @@ return workflow('ai-calculator', 'AI Calculator')
 // 1. Define subnodes first
 const openAiModel = languageModel({{
   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-  version: 1,
+  version: 1.3,
   config: {{
     name: 'OpenAI Model',
     parameters: {{}},
@@ -587,7 +531,7 @@ const gmailTool = tool({{
 // 2. Define main nodes
 const startTrigger = trigger({{
   type: 'n8n-nodes-base.manualTrigger',
-  version: 1.1,
+  version: 1,
   config: {{ name: 'Start', position: [240, 300] }}
 }});
 
@@ -605,7 +549,7 @@ const aiAgent = node({{
 // 3. Compose workflow
 return workflow('ai-email', 'AI Email Sender')
   .add(startTrigger)
-  .then(aiAgent);
+  .to(aiAgent);
 \`\`\``;
 
 /**
@@ -638,6 +582,7 @@ Before generating any code, work through your planning inside <planning> tags. I
    - Is this linear, branching, parallel, or looped?
    - Which nodes connect to which other nodes?
    - What workflow patterns (ifElse, switchCase, merge, etc.) are needed?
+   - **CRITICAL:** If one node output goes to multiple parallel targets, use array syntax \`.to([nodeA, nodeB])\` - do NOT duplicate chains
 
 6. **Identify Placeholders and Credentials**:
    - List any values that need user input (use placeholder() for these)
@@ -683,13 +628,13 @@ Generate your response as a JSON object with a single field \`workflowCode\`:
 
 \`\`\`json
 {{
-  "workflowCode": "const startTrigger = trigger({{...}});\\nconst processData = node({{...}});\\n\\nreturn workflow('unique-id', 'Workflow Name')\\n  .add(startTrigger)\\n  .then(processData);"
+  "workflowCode": "const startTrigger = trigger({{...}});\\nconst processData = node({{...}});\\n\\nreturn workflow('unique-id', 'Workflow Name')\\n  .add(startTrigger)\\n  .to(processData);"
 }}
 \`\`\`
 
 The \`workflowCode\` field must contain:
 - **Define all nodes as constants FIRST** (subnodes before main nodes)
-- **Then return the workflow composition** with .add() and .then() chains
+- **Then return the workflow composition** with .add() and .to() chains
 - NO import statements (functions are pre-loaded)
 - Valid syntax following all workflow rules
 - Proper node positioning (left-to-right, vertical for branches)
@@ -699,7 +644,7 @@ Example output:
 
 \`\`\`json
 {{
-  "workflowCode": "const startTrigger = trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: {{ name: 'Start', position: [240, 300] }} }});\\nconst createMessage = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Create Message', parameters: {{ mode: 'manual', fields: {{ values: [{{ name: 'message', stringValue: 'Hello, World!' }}] }} }}, position: [540, 300] }} }});\\n\\nreturn workflow('hello-world', 'Hello World Workflow')\\n  .add(startTrigger)\\n  .then(createMessage);"
+  "workflowCode": "const startTrigger = trigger({{ type: 'n8n-nodes-base.manualTrigger', version: 1.1, config: {{ name: 'Start', position: [240, 300] }} }});\\nconst createMessage = node({{ type: 'n8n-nodes-base.set', version: 3.4, config: {{ name: 'Create Message', parameters: {{ mode: 'manual', fields: {{ values: [{{ name: 'message', stringValue: 'Hello, World!' }}] }} }}, position: [540, 300] }} }});\\n\\nreturn workflow('hello-world', 'Hello World Workflow')\\n  .add(startTrigger)\\n  .to(createMessage);"
 }}
 \`\`\`
 
@@ -719,6 +664,7 @@ Now, analyze the user's request and generate the workflow code following all the
 
 /**
  * Build the complete system prompt
+ * @param _sdkSourceCode - Unused, kept for backward compatibility with registry interface
  */
 export function buildOneShotGeneratorPrompt(
 	nodeIds: {
@@ -727,7 +673,7 @@ export function buildOneShotGeneratorPrompt(
 		ai: NodeWithDiscriminators[];
 		other: NodeWithDiscriminators[];
 	},
-	sdkSourceCode: string,
+	_sdkSourceCode?: string,
 	currentWorkflow?: WorkflowJSON,
 ): ChatPromptTemplate {
 	debugLog('========== BUILDING PROMPT ==========');
@@ -737,33 +683,15 @@ export function buildOneShotGeneratorPrompt(
 		aiCount: nodeIds.ai.length,
 		otherCount: nodeIds.other.length,
 	});
-	debugLog('SDK source code', {
-		sdkSourceCodeLength: sdkSourceCode.length,
-		sdkSourceCodePreview: sdkSourceCode.substring(0, 300),
-	});
 	debugLog('Current workflow', {
 		hasCurrentWorkflow: !!currentWorkflow,
 		currentWorkflowNodeCount: currentWorkflow?.nodes?.length ?? 0,
 	});
 
-	debugLog('Building available nodes section...');
-	// const availableNodesSection = buildAvailableNodesSection(nodeIds);
-	// debugLog('Available nodes section built', {
-	// 	sectionLength: availableNodesSection.length,
-	// });
-
-	// SDK reference is commented out for Sonnet 4.5 - kept for backward compatibility
-	debugLog('Building SDK API reference section (disabled for Sonnet 4.5)...');
-	const sdkApiReference = buildSdkApiReference(sdkSourceCode);
-	debugLog('SDK API reference section built', {
-		sectionLength: sdkApiReference.length,
-		note: 'SDK reference disabled for Sonnet 4.5 optimized prompt',
-	});
-
-	// Sonnet 4.5 optimized prompt structure - no SDK reference, condensed patterns
+	// Sonnet 4.5 optimized prompt structure - condensed patterns
 	const systemMessage = [
 		ROLE,
-		SDK_FUNCTIONS,
+		// SDK_FUNCTIONS,
 		// availableNodesSection,
 		WORKFLOW_RULES,
 		WORKFLOW_PATTERNS,
@@ -774,7 +702,7 @@ export function buildOneShotGeneratorPrompt(
 	debugLog('System message assembled', {
 		totalLength: systemMessage.length,
 		roleLength: ROLE.length,
-		sdkFunctionsLength: SDK_FUNCTIONS.length,
+		// sdkFunctionsLength: SDK_FUNCTIONS.length,
 		// availableNodesSectionLength: availableNodesSection.length,
 		workflowRulesLength: WORKFLOW_RULES.length,
 		workflowPatternsLength: WORKFLOW_PATTERNS.length,
@@ -817,9 +745,7 @@ export function buildOneShotGeneratorPrompt(
 /**
  * Build the raw system prompt string (without debug logs or ChatPromptTemplate).
  * Useful for printing/copying the full prompt for debugging.
- *
- * NOTE: SDK reference is commented out for Sonnet 4.5 optimized prompt.
- * The sdkSourceCode parameter is kept for backward compatibility but not used.
+ * @param _sdkSourceCode - Unused, kept for backward compatibility with registry interface
  */
 export function buildRawSystemPrompt(
 	nodeIds: {
@@ -828,15 +754,14 @@ export function buildRawSystemPrompt(
 		ai: NodeWithDiscriminators[];
 		other: NodeWithDiscriminators[];
 	},
-	_sdkSourceCode: string,
+	_sdkSourceCode?: string,
 ): string {
 	const availableNodesSection = buildAvailableNodesSection(nodeIds);
-	// SDK reference commented out for Sonnet 4.5 optimized prompt
-	// const sdkApiReference = `<sdk_api_reference>\n${sdkSourceCode}\n</sdk_api_reference>`;
+	const sdkApiReference = `<sdk_api_reference>\n${escapeCurlyBrackets(SDK_API_CONTENT)}\n</sdk_api_reference>`;
 
 	return [
 		ROLE,
-		SDK_FUNCTIONS,
+		sdkApiReference,
 		availableNodesSection,
 		WORKFLOW_RULES,
 		WORKFLOW_PATTERNS,

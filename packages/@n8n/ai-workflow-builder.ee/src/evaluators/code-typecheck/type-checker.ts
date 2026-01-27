@@ -116,8 +116,7 @@ export declare const placeholder: PlaceholderFn;
 /** Create a new credential marker */
 export declare const newCredential: NewCredentialFn;
 
-/** Create a merge composite */
-export declare const merge: MergeFn;
+// merge() is internal only - use node() to create a Merge node and .input(n) syntax
 
 /** Create an IF/ELSE composite */
 export declare const ifElse: IfElseFn;
