@@ -1,0 +1,30 @@
+name: 'Outdated: Fake Workflow 1'
+
+# This workflow exists only on outdated.x to create maximum divergence
+# from master for testing GitHub's workflow validation timeout
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-input:
+        description: 'A fake input'
+        required: false
+        default: 'test'
+
+jobs:
+  fake-job-1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fake step 1
+        run: echo "This is fake workflow 1 on outdated.x"
+
+      - name: Fake step 2
+        run: |
+          echo "Testing divergence"
+          echo "Input: ${{ github.event.inputs.test-input }}"
+
+  fake-job-2:
+    runs-on: ubuntu-latest
+    needs: fake-job-1
+    steps:
+      - run: echo "Dependent job"

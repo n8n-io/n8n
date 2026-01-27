@@ -1,0 +1,23 @@
+name: 'Outdated: Fake Reusable Workflow'
+
+on:
+  workflow_call:
+    inputs:
+      param1:
+        description: 'A parameter'
+        required: true
+        type: string
+      param2:
+        description: 'Optional parameter'
+        required: false
+        type: string
+        default: 'default-value'
+
+jobs:
+  reusable-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Use inputs
+        run: |
+          echo "Param1: ${{ inputs.param1 }}"
+          echo "Param2: ${{ inputs.param2 }}"

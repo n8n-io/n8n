@@ -1,0 +1,35 @@
+name: 'Outdated: Fake Workflow 2 - Complex'
+
+# Another fake workflow with more complexity to stress test validation
+
+on:
+  push:
+    branches:
+      - 'never-trigger-this-*'
+  pull_request:
+    branches:
+      - 'never-trigger-this-*'
+
+jobs:
+  matrix-job:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20, 22]
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Echo info
+        run: |
+          echo "Node: ${{ matrix.node }}"
+          echo "OS: ${{ matrix.os }}"
+
+  reusable-caller:
+    uses: ./.github/workflows/outdated-fake-reusable.yml
+    with:
+      param1: "test"
+    secrets: inherit
