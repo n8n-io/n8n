@@ -974,4 +974,21 @@ export class CanvasPage extends BasePage {
 	getWorkflowName(): Locator {
 		return this.page.getByTestId('workflow-name-input');
 	}
+
+	// Workflow History methods
+	getWorkflowHistoryButton(): Locator {
+		return this.page.getByTestId('workflow-history-button');
+	}
+
+	getWorkflowHistoryCloseButton(): Locator {
+		return this.page.getByTestId('workflow-history-close-button');
+	}
+
+	async openWorkflowHistory(): Promise<void> {
+		await this.getWorkflowHistoryButton().click();
+	}
+
+	async closeWorkflowHistory(): Promise<void> {
+		await this.getWorkflowHistoryCloseButton().click();
+	}
 }

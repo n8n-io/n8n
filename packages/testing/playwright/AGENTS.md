@@ -21,6 +21,15 @@ Always trim output: `--reporter=list 2>&1 | tail -50`
 
 Static analysis for Playwright test architecture. Catches problems before they spread.
 
+> **CRITICAL: Always use TCR for code changes.**
+> When janitor identifies violations and you fix them, use `pnpm janitor tcr --execute` to safely commit. Never manually commit janitor-related fixes - TCR ensures tests pass before the commit lands.
+
+### Golden Rules
+
+1. **Analysis only?** Run `pnpm janitor` (no TCR needed)
+2. **Making code changes?** Use TCR: `pnpm janitor tcr --execute -m="chore: ..."`
+3. **Never** manually `git commit` janitor-related fixes - always go through TCR
+
 ### When to Use
 
 | User Says | Intent | Approach |
