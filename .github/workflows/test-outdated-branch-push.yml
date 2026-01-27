@@ -215,6 +215,93 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app_token.outputs.token }}
 
+  # Test 5: Compare different push methods
+  test-push-methods:
+    name: 'Test 5: Compare push methods'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Generate App Token
+        id: app_token
+        uses: actions/create-github-app-token@v2.0.6
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      - name: Checkout outdated.x
+        uses: actions/checkout@v4.1.1
+        with:
+          fetch-depth: 0
+          ref: 'outdated.x'
+          token: ${{ steps.app_token.outputs.token }}
+
+      - name: Setup git
+        run: |
+          git config user.name "n8n-assistant[bot]"
+          git config user.email "n8n-assistant[bot]@users.noreply.github.com"
+
+      - name: Create test branch
+        run: |
+          BRANCH="ci-test/push-methods-${{ github.run_id }}"
+          echo "BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          git checkout -b "$BRANCH"
+          echo "test-$(date)" >> test-file.txt
+          git add test-file.txt
+          git commit -m "Test push methods"
+
+      - name: 'Method A: git push origin BRANCH'
+        id: method_a
+        run: |
+          echo "Testing: git push origin $BRANCH"
+          if timeout 30 git push origin "$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+            # Delete so we can test next method
+            git push origin --delete "$BRANCH" || true
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 'Method B: git push origin BRANCH:refs/heads/BRANCH'
+        id: method_b
+        if: always()
+        run: |
+          echo "Testing: git push origin $BRANCH:refs/heads/$BRANCH"
+          if timeout 30 git push origin "$BRANCH:refs/heads/$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+            git push origin --delete "$BRANCH" || true
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 'Method C: git push --force-with-lease (what peter-evans uses)'
+        id: method_c
+        if: always()
+        run: |
+          echo "Testing: git push --force-with-lease origin $BRANCH:refs/heads/$BRANCH"
+          if timeout 30 git push --force-with-lease origin "$BRANCH:refs/heads/$BRANCH" 2>&1; then
+            echo "result=SUCCESS" >> "$GITHUB_OUTPUT"
+            git push origin --delete "$BRANCH" || true
+          else
+            echo "result=FAILED" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Results
+        if: always()
+        run: |
+          echo "============================================"
+          echo "PUSH METHOD COMPARISON"
+          echo "============================================"
+          echo "Method A (simple push):      ${{ steps.method_a.outputs.result }}"
+          echo "Method B (refspec):          ${{ steps.method_b.outputs.result }}"
+          echo "Method C (force-with-lease): ${{ steps.method_c.outputs.result }}"
+          echo "============================================"
+
+      - name: Cleanup
+        if: always()
+        run: git push origin --delete "$BRANCH" 2>/dev/null || true
+
   summary:
     name: 'Results Summary'
     runs-on: ubuntu-latest
@@ -223,6 +310,7 @@ jobs:
       - test-push-with-synced-workflows
       - test-create-pr-from-outdated
       - test-create-pr-with-synced-workflows
+      - test-push-methods
     if: always()
 
     steps:
@@ -235,9 +323,11 @@ jobs:
           echo "Test 2 (push + sync):       ${{ needs.test-push-with-synced-workflows.result }}"
           echo "Test 3 (create-pr):         ${{ needs.test-create-pr-from-outdated.result }}"
           echo "Test 4 (create-pr + sync):  ${{ needs.test-create-pr-with-synced-workflows.result }}"
+          echo "Test 5 (push methods):      ${{ needs.test-push-methods.result }}"
           echo "============================================"
           echo ""
           echo "INTERPRETATION:"
           echo "- Tests 1 & 3 fail, Tests 2 & 4 pass -> Syncing .github is the fix"
           echo "- All fail -> Something else is wrong"
           echo "- All pass -> outdated.x not divergent enough"
+          echo "- Test 5 shows which push method specifically fails"
