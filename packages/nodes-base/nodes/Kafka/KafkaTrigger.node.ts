@@ -156,6 +156,23 @@ export class KafkaTrigger implements INodeType {
 				},
 			},
 			{
+				displayName: 'Disable Auto Commit',
+				name: 'disableAutoResolveOffset',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to disable automatic offset commits by the Kafka consumer. Enable this to rely on manual offset resolution based on execution status and offset resolution setting.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+						resolveOffset: ['onCompletion', 'onSuccess', 'onStatus'],
+					},
+					hide: {
+						resolveOffset: ['immediately'],
+					},
+				},
+			},
+			{
 				displayName: 'Use Schema Registry',
 				name: 'useSchemaRegistry',
 				type: 'boolean',
@@ -197,6 +214,11 @@ export class KafkaTrigger implements INodeType {
 						default: 0,
 						description:
 							'The consumer will commit offsets after resolving a given number of messages',
+						displayOptions: {
+							hide: {
+								'/disableAutoResolveOffset': [true],
+							},
+						},
 					},
 					{
 						displayName: 'Auto Commit Interval',
@@ -206,6 +228,11 @@ export class KafkaTrigger implements INodeType {
 						description:
 							'The consumer will commit offsets after a given period, for example, five seconds',
 						hint: 'Value in milliseconds',
+						displayOptions: {
+							hide: {
+								'/disableAutoResolveOffset': [true],
+							},
+						},
 					},
 					{
 						displayName: 'Batch Size',
@@ -380,13 +407,26 @@ export class KafkaTrigger implements INodeType {
 
 				await consumer.run({
 					partitionsConsumedConcurrently,
-					...getAutoCommitSettings(options, nodeVersion),
-					eachBatch: async ({ batch, resolveOffset, heartbeat }: EachBatchPayload) => {
+					...getAutoCommitSettings(this, options, nodeVersion),
+					eachBatch: async ({
+						batch,
+						resolveOffset,
+						heartbeat,
+						isStale,
+						isRunning,
+					}: EachBatchPayload) => {
 						// avoid throwing error in the callback, as it leads to consumer stop, disconnect and crash
 						const messages = batch.messages;
 						const messageTopic = batch.topic;
 
 						for (let i = 0; i < messages.length; i += batchSize) {
+							// Check if partition was revoked during rebalance or consumer stopped
+							// If so, abandon the batch to avoid duplicate processing
+							if (!isRunning() || isStale()) {
+								this.logger.debug('Batch processing interrupted due to rebalance or consumer stop');
+								break;
+							}
+
 							const chunk = messages.slice(i, Math.min(i + batchSize, messages.length));
 
 							const processedData = await Promise.all(

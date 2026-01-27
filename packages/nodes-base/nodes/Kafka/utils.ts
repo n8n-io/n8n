@@ -95,9 +95,12 @@ export function createConsumerConfig(
 		sessionTimeout = options.sessionTimeout ?? 30000;
 		heartbeatInterval = options.heartbeatInterval ?? 3000;
 	} else {
+		// Add 5 seconds buffer to ensure the session doesn't expire before the workflow completes
 		const executionTimeoutInSeconds = (ctx.getWorkflowSettings().executionTimeout ?? 3600) + 5;
 		sessionTimeout = executionTimeoutInSeconds * 1000;
-		heartbeatInterval = Math.floor((executionTimeoutInSeconds * 1000) / 3);
+		// KafkaJS recommends heartbeat interval to be 1/3 of session timeout
+		// Manual heartbeat() calls in the batch loop keep the session alive during processing
+		heartbeatInterval = Math.floor(sessionTimeout / 3);
 	}
 
 	const rebalanceTimeout = options.rebalanceTimeout ?? 600000;
@@ -283,12 +286,13 @@ export function configureDataEmitter(
 	}
 
 	return async (dataArray: IDataObject[]) => {
+		let timeoutId: NodeJS.Timeout | undefined;
 		try {
 			const responsePromise = ctx.helpers.createDeferredPromise<IRun>();
 			ctx.emit([ctx.helpers.returnJsonArray(dataArray)], undefined, responsePromise);
 
 			const timeoutPromise = new Promise<IRun>((_, reject) => {
-				setTimeout(() => {
+				timeoutId = setTimeout(() => {
 					reject(
 						new NodeOperationError(
 							ctx.getNode(),
@@ -300,6 +304,8 @@ export function configureDataEmitter(
 
 			const run = await Promise.race([responsePromise.promise, timeoutPromise]);
 
+			if (timeoutId) clearTimeout(timeoutId);
+
 			if (mode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
 					ctx.getNode(),
@@ -309,6 +315,7 @@ export function configureDataEmitter(
 
 			return { success: true };
 		} catch (e) {
+			if (timeoutId) clearTimeout(timeoutId);
 			await sleep(errorRetryDelay);
 			const error = ensureError(e);
 			ctx.logger.error(error.message, { error });
@@ -317,10 +324,26 @@ export function configureDataEmitter(
 	};
 }
 
-export function getAutoCommitSettings(options: KafkaTriggerOptions, nodeVersion: number) {
+export function getAutoCommitSettings(
+	ctx: ITriggerFunctions,
+	options: KafkaTriggerOptions,
+	nodeVersion: number,
+) {
+	let shouldAutoCommit = true;
+
+	if (nodeVersion >= 1.2) {
+		const resolveOffset = ctx.getNodeParameter('resolveOffset', 'immediately') as ResolveOffsetMode;
+		if (resolveOffset !== 'immediately') {
+			const disableAutoResolveOffset = ctx.getNodeParameter(
+				'disableAutoResolveOffset',
+				false,
+			) as boolean;
+			shouldAutoCommit = !disableAutoResolveOffset;
+		}
+	}
+
 	const autoCommitInterval = options.autoCommitInterval ?? undefined;
 	const autoCommitThreshold = options.autoCommitThreshold ?? undefined;
-	const shouldAutoCommit = nodeVersion < 1.2 ? true : !!(autoCommitInterval || autoCommitThreshold);
 
 	return {
 		autoCommit: shouldAutoCommit,

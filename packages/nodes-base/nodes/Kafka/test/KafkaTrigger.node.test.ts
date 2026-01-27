@@ -1221,5 +1221,362 @@ describe('KafkaTrigger Node', () => {
 				}),
 			).rejects.toThrow(NodeOperationError);
 		});
+
+		it('should stop processing batch when isRunning returns false (consumer stopping)', async () => {
+			let eachBatchHandler: EachBatchHandler | undefined;
+			mockConsumerRun.mockImplementation(({ eachBatch }: ConsumerRunConfig) => {
+				if (eachBatch) {
+					eachBatchHandler = eachBatch;
+				}
+			});
+
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'immediately',
+						options: {
+							batchSize: 1,
+						},
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const mockResolveOffset = jest.fn();
+			const mockHeartbeat = jest.fn();
+
+			// Simulate consumer stopping after first message
+			let messageCount = 0;
+			const mockIsRunning = jest.fn(() => {
+				messageCount++;
+				return messageCount <= 1; // Returns true for first message, false after
+			});
+
+			await eachBatchHandler!({
+				batch: {
+					topic: 'test-topic',
+					partition: 0,
+					highWatermark: '100',
+					messages: [
+						{
+							attributes: 1,
+							key: Buffer.from('key1'),
+							offset: '0',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message1'),
+							headers: {},
+						},
+						{
+							attributes: 1,
+							key: Buffer.from('key2'),
+							offset: '1',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message2'),
+							headers: {},
+						},
+						{
+							attributes: 1,
+							key: Buffer.from('key3'),
+							offset: '2',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message3'),
+							headers: {},
+						},
+					] as RecordBatchEntry[],
+					isEmpty: () => false,
+					firstOffset: () => '0',
+					lastOffset: () => '2',
+					offsetLag: () => '0',
+					offsetLagLow: () => '0',
+				},
+				resolveOffset: mockResolveOffset,
+				heartbeat: mockHeartbeat,
+				commitOffsetsIfNecessary: jest.fn(),
+				uncommittedOffsets: jest.fn(),
+				isRunning: mockIsRunning,
+				isStale: jest.fn(() => false),
+				pause: jest.fn(),
+			});
+
+			// Should only process first message before isRunning returns false
+			expect(emit).toHaveBeenCalledTimes(1);
+			expect(mockResolveOffset).toHaveBeenCalledTimes(1);
+			expect(mockResolveOffset).toHaveBeenCalledWith('0');
+		});
+
+		it('should stop processing batch when isStale returns true (partition revoked)', async () => {
+			let eachBatchHandler: EachBatchHandler | undefined;
+			mockConsumerRun.mockImplementation(({ eachBatch }: ConsumerRunConfig) => {
+				if (eachBatch) {
+					eachBatchHandler = eachBatch;
+				}
+			});
+
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'immediately',
+						options: {
+							batchSize: 1,
+						},
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const mockResolveOffset = jest.fn();
+			const mockHeartbeat = jest.fn();
+
+			// Simulate partition becoming stale after first message (rebalance occurred)
+			let messageCount = 0;
+			const mockIsStale = jest.fn(() => {
+				messageCount++;
+				return messageCount > 1; // Returns false for first message, true after
+			});
+
+			await eachBatchHandler!({
+				batch: {
+					topic: 'test-topic',
+					partition: 0,
+					highWatermark: '100',
+					messages: [
+						{
+							attributes: 1,
+							key: Buffer.from('key1'),
+							offset: '0',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message1'),
+							headers: {},
+						},
+						{
+							attributes: 1,
+							key: Buffer.from('key2'),
+							offset: '1',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message2'),
+							headers: {},
+						},
+						{
+							attributes: 1,
+							key: Buffer.from('key3'),
+							offset: '2',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message3'),
+							headers: {},
+						},
+					] as RecordBatchEntry[],
+					isEmpty: () => false,
+					firstOffset: () => '0',
+					lastOffset: () => '2',
+					offsetLag: () => '0',
+					offsetLagLow: () => '0',
+				},
+				resolveOffset: mockResolveOffset,
+				heartbeat: mockHeartbeat,
+				commitOffsetsIfNecessary: jest.fn(),
+				uncommittedOffsets: jest.fn(),
+				isRunning: jest.fn(() => true),
+				isStale: mockIsStale,
+				pause: jest.fn(),
+			});
+
+			// Should only process first message before isStale returns true
+			expect(emit).toHaveBeenCalledTimes(1);
+			expect(mockResolveOffset).toHaveBeenCalledTimes(1);
+			expect(mockResolveOffset).toHaveBeenCalledWith('0');
+		});
+
+		it('should disable auto commit when disableAutoResolveOffset is true', async () => {
+			await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'onCompletion',
+						disableAutoResolveOffset: true,
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			expect(mockConsumerRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					autoCommit: false,
+					eachBatchAutoResolve: false,
+				}),
+			);
+		});
+
+		it('should enable auto commit when disableAutoResolveOffset is false', async () => {
+			await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'onCompletion',
+						disableAutoResolveOffset: false,
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			expect(mockConsumerRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					autoCommit: true,
+					eachBatchAutoResolve: true,
+				}),
+			);
+		});
+
+		it('should enable auto commit when resolveOffset is immediately regardless of disableAutoResolveOffset', async () => {
+			await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'immediately',
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			expect(mockConsumerRun).toHaveBeenCalledWith(
+				expect.objectContaining({
+					autoCommit: true,
+					eachBatchAutoResolve: true,
+				}),
+			);
+		});
+
+		it('should process all messages when isRunning and isStale return normal values', async () => {
+			let eachBatchHandler: EachBatchHandler | undefined;
+			mockConsumerRun.mockImplementation(({ eachBatch }: ConsumerRunConfig) => {
+				if (eachBatch) {
+					eachBatchHandler = eachBatch;
+				}
+			});
+
+			const { emit } = await testTriggerNode(KafkaTrigger, {
+				mode: 'trigger',
+				node: {
+					typeVersion: 1.2,
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'test-group',
+						useSchemaRegistry: false,
+						resolveOffset: 'immediately',
+						options: {
+							batchSize: 1,
+						},
+					},
+				},
+				credential: {
+					brokers: 'localhost:9092',
+					clientId: 'n8n-kafka',
+					ssl: false,
+					authentication: false,
+				},
+			});
+
+			const mockResolveOffset = jest.fn();
+			const mockHeartbeat = jest.fn();
+
+			await eachBatchHandler!({
+				batch: {
+					topic: 'test-topic',
+					partition: 0,
+					highWatermark: '100',
+					messages: [
+						{
+							attributes: 1,
+							key: Buffer.from('key1'),
+							offset: '0',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message1'),
+							headers: {},
+						},
+						{
+							attributes: 1,
+							key: Buffer.from('key2'),
+							offset: '1',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message2'),
+							headers: {},
+						},
+						{
+							attributes: 1,
+							key: Buffer.from('key3'),
+							offset: '2',
+							timestamp: new Date().toISOString(),
+							value: Buffer.from('message3'),
+							headers: {},
+						},
+					] as RecordBatchEntry[],
+					isEmpty: () => false,
+					firstOffset: () => '0',
+					lastOffset: () => '2',
+					offsetLag: () => '0',
+					offsetLagLow: () => '0',
+				},
+				resolveOffset: mockResolveOffset,
+				heartbeat: mockHeartbeat,
+				commitOffsetsIfNecessary: jest.fn(),
+				uncommittedOffsets: jest.fn(),
+				isRunning: jest.fn(() => true),
+				isStale: jest.fn(() => false),
+				pause: jest.fn(),
+			});
+
+			// Should process all 3 messages
+			expect(emit).toHaveBeenCalledTimes(3);
+			expect(mockResolveOffset).toHaveBeenCalledTimes(3);
+			expect(mockResolveOffset).toHaveBeenNthCalledWith(1, '0');
+			expect(mockResolveOffset).toHaveBeenNthCalledWith(2, '1');
+			expect(mockResolveOffset).toHaveBeenNthCalledWith(3, '2');
+		});
 	});
 });
