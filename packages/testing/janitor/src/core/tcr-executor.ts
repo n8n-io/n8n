@@ -6,6 +6,7 @@ import { execSync } from 'node:child_process';
 import * as path from 'node:path';
 import { Project } from 'ts-morph';
 
+import { getConfig, hasConfig } from '../config.js';
 import { diffFileMethods, type MethodChange } from './ast-diff-analyzer.js';
 import { loadBaseline, filterNewViolations } from './baseline.js';
 import { MethodUsageAnalyzer, type MethodUsageIndex } from './method-usage-analyzer.js';
@@ -472,11 +473,17 @@ export class TcrExecutor {
 		if (verbose) console.log(`\nRunning ${testFiles.length} test file(s)...`);
 
 		try {
-			// Pass test files directly to Playwright (not via --grep which matches titles)
 			const fileArgs = testFiles.join(' ');
-			const cmd = testCommand
-				? `${testCommand} ${fileArgs}`
-				: `pnpm test:local ${fileArgs} --workers=1`;
+
+			// Priority: CLI option > config > fallback
+			let cmd: string;
+			if (testCommand) {
+				cmd = `${testCommand} ${fileArgs}`;
+			} else if (hasConfig()) {
+				cmd = `${getConfig().tcr.testCommand} ${fileArgs}`;
+			} else {
+				cmd = `npx playwright test ${fileArgs} --workers=1`;
+			}
 
 			if (verbose) console.log(`Command: ${cmd}`);
 
