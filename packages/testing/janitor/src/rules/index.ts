@@ -7,6 +7,7 @@ export { ApiPurityRule } from './api-purity.rule.js';
 export { NoPageInFlowRule } from './no-page-in-flow.rule.js';
 export { DeduplicationRule } from './deduplication.rule.js';
 export { TestDataHygieneRule } from './test-data-hygiene.rule.js';
+export { DuplicateLogicRule } from './duplicate-logic.rule.js';
 
 // Re-export types for convenience
 export type { Violation, FixResult, RuleResult, RuleConfig } from '../types.js';

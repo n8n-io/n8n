@@ -317,6 +317,35 @@ workflows/
   unused-workflow.json        Bad - Orphaned (if not referenced)
 ```
 
+#### `duplicate-logic`
+
+**Severity:** warning
+
+Detects duplicate code using AST structural fingerprinting. Finds copy-paste patterns across tests, pages, flows, and helpers by normalizing code structure (ignoring variable names and literal values).
+
+Catches:
+- **Duplicate methods** - Same logic in multiple page objects
+- **Duplicate tests** - Copy-pasted test bodies across files
+- **Tests duplicating methods** - Test code that reimplements existing page object methods
+
+```typescript
+// pages/WorkflowPage.ts
+async saveWorkflow() {
+  await this.page.click('#save');
+  await this.page.fill('#name', 'workflow');
+  await this.page.waitForSelector('.saved');
+}
+
+// pages/CredentialPage.ts - Violation: duplicates WorkflowPage.saveWorkflow()
+async saveCredential() {
+  await this.page.click('#save');
+  await this.page.fill('#name', 'credential');
+  await this.page.waitForSelector('.saved');
+}
+```
+
+**Threshold:** Methods/tests with fewer than 2 statements are ignored (configurable via `minStatements`).
+
 ## Configuration Reference
 
 ```typescript
