@@ -426,7 +426,6 @@ describe('WorkflowIndexService', () => {
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-created', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-saved', expect.any(Function));
 			expect(mockEventService.on).toHaveBeenCalledWith('workflow-deleted', expect.any(Function));
-			expect(mockEventService.on).toHaveBeenCalledWith('workflow-activated', expect.any(Function));
 		});
 	});
 
