@@ -3,6 +3,8 @@ import { type HLJSApi } from 'highlight.js';
 import { computed, ref } from 'vue';
 import type MarkdownIt from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
+import markdownItKatex from '@vscode/markdown-it-katex';
+import 'katex/dist/katex.min.css';
 
 let hljsInstance: HLJSApi | undefined;
 let asyncImport:
@@ -124,7 +126,14 @@ export function useChatHubMarkdownOptions(
 			};
 		};
 
-		return [linksNewTabPlugin, codeBlockPlugin, tablePlugin];
+		const mathPlugin = (vueMarkdownItInstance: MarkdownIt) => {
+			const katexPlugin =
+				(markdownItKatex as typeof markdownItKatex & { default?: typeof markdownItKatex })
+					.default ?? markdownItKatex;
+			vueMarkdownItInstance.use(katexPlugin, { throwOnError: false });
+		};
+
+		return [linksNewTabPlugin, codeBlockPlugin, tablePlugin, mathPlugin];
 	});
 
 	return { options, forceReRenderKey, plugins, codeBlockContents };
