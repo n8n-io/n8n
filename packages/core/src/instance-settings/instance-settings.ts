@@ -20,6 +20,9 @@ interface ReadOnlySettings {
 
 interface WritableSettings {
 	tunnelSubdomain?: string;
+
+	/** Whether `~/.n8n/binaryData` has been migrated to `~/.n8n/storage` */
+	fsStorageMigrated?: boolean;
 }
 
 type Settings = ReadOnlySettings & WritableSettings;
@@ -137,6 +140,14 @@ export class InstanceSettings {
 
 	get tunnelSubdomain() {
 		return this.settings.tunnelSubdomain;
+	}
+
+	get fsStorageMigrated() {
+		return this.settings.fsStorageMigrated === true;
+	}
+
+	markFsStorageMigrated() {
+		this.update({ fsStorageMigrated: true });
 	}
 
 	/**
