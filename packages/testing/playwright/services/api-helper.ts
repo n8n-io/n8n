@@ -37,10 +37,6 @@ const AUTH_TAGS = {
 	NONE: '@auth:none',
 } as const;
 
-const DB_TAGS = {
-	RESET: '@db:reset',
-} as const;
-
 export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
@@ -73,33 +69,22 @@ export class ApiHelpers {
 	// ===== MAIN SETUP METHODS =====
 
 	/**
-	 * Setup test environment based on test tags (recommended approach)
-	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
+	 * Setup test environment based on test tags
+	 * @param tags - Array of test tags (e.g., ['@auth:owner', '@auth:member'])
 	 * @param memberIndex - Which member to use (if auth role is 'member')
 	 *
 	 * Examples:
-	 * - ['@db:reset'] = reset DB, manual signin required
-	 * - ['@db:reset', '@auth:owner'] = reset DB + signin as owner
-	 * - ['@auth:admin'] = signin as admin (no reset)
+	 * - ['@auth:owner'] = signin as owner
+	 * - ['@auth:admin'] = signin as admin
+	 * - ['@auth:none'] = no signin (unauthenticated)
 	 */
 	async setupFromTags(tags: string[], memberIndex: number = 0): Promise<LoginResponseData | null> {
-		const shouldReset = this.shouldResetDatabase(tags);
 		const role = this.getRoleFromTags(tags);
 
-		if (shouldReset && role) {
-			// Reset + signin
-			await this.resetDatabase();
-			return await this.signin(role, memberIndex);
-		} else if (shouldReset) {
-			// Reset only, manual signin required
-			await this.resetDatabase();
-			return null;
-		} else if (role) {
-			// Signin only
+		if (role) {
 			return await this.signin(role, memberIndex);
 		}
 
-		// No setup required
 		return null;
 	}
 
@@ -464,14 +449,9 @@ export class ApiHelpers {
 
 	// ===== TAG PARSING METHODS =====
 
-	private shouldResetDatabase(tags: string[]): boolean {
-		const lowerTags = tags.map((tag) => tag.toLowerCase());
-		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
-	}
-
 	/**
 	 * Get the role from the tags
-	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
+	 * @param tags - Array of test tags (e.g., ['@auth:owner'])
 	 * @returns The role from the tags, or 'owner' if no role is found
 	 */
 	getRoleFromTags(tags: string[]): UserRole | null {

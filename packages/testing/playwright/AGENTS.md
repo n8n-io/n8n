@@ -81,7 +81,7 @@ await member2Page.navigate.toCredentials();
 | Pattern | Why | Use Instead |
 |---------|-----|-------------|
 | `test.describe.serial` | Creates test dependencies | Parallel tests with isolated setup |
-| `@db:reset` tag | Deprecated - CI issues | `test.use()` with unique capability |
+| Fresh DB needed | Tests need isolation | `test.use({ capability: { env: { TEST_ISOLATION: 'name' } } })` |
 | `n8n.api.signin()` | Session bleeding | `n8n.start.withUser()` |
 | `Date.now()` for IDs | Race conditions | `nanoid()` |
 | `waitForTimeout()` | Flaky | `waitForResponse()`, `toBeVisible()` |
@@ -182,7 +182,7 @@ Use `test.use()` at file top-level with unique capability config:
 import { test, expect } from '../fixtures/base';
 
 // Must be top-level, not inside describe block
-test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+test.use({ capability: { env: { TEST_ISOLATION: 'my-isolated-tests' } } });
 
 test('test with clean state', async ({ n8n }) => {
   // Fresh container with reset database

@@ -69,25 +69,10 @@ jobs:
       test-mode: docker-pull
       docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
       test-command: pnpm --filter=n8n-playwright test:container:multi-main:e2e
-      shards: 15
+      shards: 16
       runner: blacksmith-2vcpu-ubuntu-2204
       workers: '1'
       use-custom-orchestration: true
-    secrets: inherit
-
-  multi-main-isolated:
-    needs: [build-docker]
-    name: 'Multi-Main: Isolated'
-    if: ${{ !github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/test-e2e-reusable.yml
-    with:
-      branch: ${{ inputs.branch }}
-      test-mode: docker-pull
-      docker-image: ghcr.io/n8n-io/n8n:pr-${{ github.event.pull_request.number }}-${{ github.run_id }}
-      test-command: pnpm --filter=n8n-playwright test:container:multi-main:isolated
-      shards: 1
-      runner: blacksmith-2vcpu-ubuntu-2204
-      workers: '1'
     secrets: inherit
 
   # Community PR tests: Local mode with SQLite (no container building, no secrets required)
@@ -105,23 +90,10 @@ jobs:
       workers: '1'
       upload-failure-artifacts: true
 
-  community-isolated:
-    name: 'Community: Isolated'
-    if: ${{ github.event.pull_request.head.repo.fork }}
-    uses: ./.github/workflows/test-e2e-reusable.yml
-    with:
-      branch: ${{ inputs.branch }}
-      test-mode: local
-      test-command: pnpm --filter=n8n-playwright test:local:isolated
-      shards: 1
-      runner: ubuntu-latest
-      workers: '1'
-      upload-failure-artifacts: true
-
   # Cleanup ephemeral Docker image from GHCR after tests complete
   cleanup-docker:
     name: 'Cleanup Docker Image'
-    needs: [multi-main-e2e, multi-main-isolated]
+    needs: [multi-main-e2e]
     if: ${{ !failure() && !cancelled() && !github.event.pull_request.head.repo.fork }}
     runs-on: ubuntu-slim
     permissions:

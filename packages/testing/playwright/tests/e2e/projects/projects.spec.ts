@@ -7,6 +7,8 @@ import {
 } from '../../../config/test-users';
 import { test, expect } from '../../../fixtures/base';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'projects' } } });
+
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const EXECUTE_WORKFLOW_NODE_NAME = 'Execute Sub-workflow';
 const NOTION_NODE_NAME = 'Notion';
@@ -27,7 +29,7 @@ test.describe('Projects', () => {
 		await n8n.api.setMaxTeamProjectsQuota(-1);
 	});
 
-	test.describe('when starting from scratch @db:reset', () => {
+	test.describe('when starting from scratch', () => {
 		test('should not show project add button and projects to a member if not invited to any project @auth:member', async ({
 			n8n,
 		}) => {
@@ -267,7 +269,7 @@ test.describe('Projects', () => {
 		});
 	});
 
-	test.describe('when moving resources between projects @db:reset', () => {
+	test.describe('when moving resources between projects', () => {
 		test.describe.configure({ mode: 'serial' });
 
 		test.beforeEach(async ({ n8n }) => {

@@ -1,10 +1,11 @@
 import { test, expect } from '../../../fixtures/base';
 
-test.describe('Global credentials @isolated', () => {
+test.use({ capability: { env: { TEST_ISOLATION: 'global-credentials' } } });
+
+test.describe('Global credentials', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test.beforeAll(async ({ api }) => {
-		await api.resetDatabase();
 		await api.enableFeature('sharing');
 	});
 
