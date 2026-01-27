@@ -34,7 +34,7 @@ import {
 	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
-import { useElementSize, useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
+import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
@@ -77,9 +77,6 @@ const showCreditsClaimedCallout = ref(false);
 const hasAttemptedAutoClaim = ref(false);
 
 const { userCanClaimOpenAiCredits, aiCreditsQuota, claimCredits } = useFreeAiCredits();
-
-const scrollableSize = useElementSize(scrollableRef);
-
 const sessionId = computed<string>(() =>
 	typeof route.params.id === 'string' ? route.params.id : uuidv4(),
 );
@@ -734,7 +731,6 @@ function onFilesDropped(files: File[]) {
 								? scrollContainerRef.offsetHeight - 30 /* padding-top */ - 200 /* padding-bottom */
 								: undefined
 						"
-						:container-width="scrollableSize.width.value ?? 0"
 						@start-edit="handleStartEditMessage(message.id)"
 						@cancel-edit="handleCancelEditMessage"
 						@regenerate="handleRegenerateMessage"
@@ -818,15 +814,15 @@ function onFilesDropped(files: File[]) {
 
 .messageList {
 	width: 100%;
-	max-width: 55rem;
+	max-width: 78ch;
 	min-height: 100%;
 	align-self: center;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
-	padding-top: 30px;
+	gap: var(--spacing--xl);
+	padding-top: var(--spacing--2xl);
 	padding-bottom: 200px;
-	padding-inline: 64px;
+	padding-inline: var(--spacing--xl);
 
 	.isMobileDevice & {
 		padding-inline: var(--spacing--md);
