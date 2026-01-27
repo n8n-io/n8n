@@ -99,6 +99,80 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'oAuth2Api',
 ] as const;
 
+/**
+ * Mapping from AI input types to their corresponding subnode config field info
+ */
+const AI_TYPE_TO_SUBNODE_FIELD: Record<
+	string,
+	{
+		fieldName: string;
+		instanceType: string;
+		isArray: boolean;
+		canBeMultiple: boolean; // Whether it can be single or array (like model)
+	}
+> = {
+	ai_languageModel: {
+		fieldName: 'model',
+		instanceType: 'LanguageModelInstance',
+		isArray: false,
+		canBeMultiple: true,
+	},
+	ai_memory: {
+		fieldName: 'memory',
+		instanceType: 'MemoryInstance',
+		isArray: false,
+		canBeMultiple: false,
+	},
+	ai_tool: {
+		fieldName: 'tools',
+		instanceType: 'ToolInstance',
+		isArray: true,
+		canBeMultiple: false,
+	},
+	ai_outputParser: {
+		fieldName: 'outputParser',
+		instanceType: 'OutputParserInstance',
+		isArray: false,
+		canBeMultiple: false,
+	},
+	ai_embedding: {
+		fieldName: 'embedding',
+		instanceType: 'EmbeddingInstance',
+		isArray: false,
+		canBeMultiple: true,
+	},
+	ai_vectorStore: {
+		fieldName: 'vectorStore',
+		instanceType: 'VectorStoreInstance',
+		isArray: false,
+		canBeMultiple: false,
+	},
+	ai_retriever: {
+		fieldName: 'retriever',
+		instanceType: 'RetrieverInstance',
+		isArray: false,
+		canBeMultiple: false,
+	},
+	ai_document: {
+		fieldName: 'documentLoader',
+		instanceType: 'DocumentLoaderInstance',
+		isArray: false,
+		canBeMultiple: true,
+	},
+	ai_textSplitter: {
+		fieldName: 'textSplitter',
+		instanceType: 'TextSplitterInstance',
+		isArray: false,
+		canBeMultiple: false,
+	},
+	ai_reranker: {
+		fieldName: 'reranker',
+		instanceType: 'RerankerInstance',
+		isArray: false,
+		canBeMultiple: false,
+	},
+};
+
 // =============================================================================
 // Type Definitions
 // =============================================================================
@@ -2192,6 +2266,12 @@ export function generateSingleVersionTypeFile(
 	lines.push('');
 	lines.push('');
 
+	// Extract AI input types for narrowed subnode config
+	const aiInputTypes = extractAIInputTypes(node);
+	const subnodeInstanceImports = getSubnodeInstanceTypeImports(aiInputTypes);
+	const subnodeConfigTypeName =
+		aiInputTypes.length > 0 ? `${nodeName}${versionSuffix}SubnodeConfig` : undefined;
+
 	// Helper function to check if a property type needs Expression import
 	const propNeedsExpression = (p: NodeProperty): boolean => {
 		if (p.type === 'fixedCollection' || p.type === 'collection') {
@@ -2215,6 +2295,11 @@ export function generateSingleVersionTypeFile(
 	if (needsExpression) baseImports.unshift('Expression');
 	if (needsCredentialReference)
 		baseImports.splice(baseImports.length - 1, 0, 'CredentialReference');
+
+	// Add subnode instance type imports if needed
+	if (subnodeInstanceImports.length > 0) {
+		baseImports.push(...subnodeInstanceImports);
+	}
 
 	lines.push(`import type { ${baseImports.join(', ')} } from '../../../../base';`);
 	if (needsIDataObject) {
@@ -2298,6 +2383,20 @@ export function generateSingleVersionTypeFile(
 		}
 	}
 
+	// Subnode Config section (for AI nodes)
+	if (subnodeConfigTypeName) {
+		lines.push('// ' + '='.repeat(75));
+		lines.push('// Subnode Configuration');
+		lines.push('// ' + '='.repeat(75));
+		lines.push('');
+
+		const subnodeConfigCode = generateNarrowedSubnodeConfig(aiInputTypes, nodeName, versionSuffix);
+		if (subnodeConfigCode) {
+			lines.push(subnodeConfigCode);
+			lines.push('');
+		}
+	}
+
 	// Credentials section
 	lines.push('// ' + '='.repeat(75));
 	lines.push('// Credentials');
@@ -2376,7 +2475,14 @@ export function generateSingleVersionTypeFile(
 		individualNodeTypes.push(finalTypeName);
 
 		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
-		lines.push(`\tconfig: NodeConfig<${configInfo.typeName}>;`);
+		// Include narrowed subnode config in the NodeConfig if available
+		if (subnodeConfigTypeName) {
+			lines.push(
+				`\tconfig: NodeConfig<${configInfo.typeName}> & { subnodes?: ${subnodeConfigTypeName} };`,
+			);
+		} else {
+			lines.push(`\tconfig: NodeConfig<${configInfo.typeName}>;`);
+		}
 		if (outputTypeName) {
 			lines.push(`\toutput?: ${outputTypeName};`);
 		}
@@ -2920,6 +3026,119 @@ const AI_SUBNODE_TYPES: Array<{
 		factoryName: 'textSplitter',
 	},
 ];
+
+// =============================================================================
+// AI Input Type Extraction and Narrowed Subnode Config Generation
+// =============================================================================
+
+/**
+ * Extract AI input types from a node definition.
+ * Handles both static array inputs and dynamic expression inputs.
+ *
+ * @param node The node type description
+ * @returns Array of AI input types (e.g., ['ai_languageModel', 'ai_memory', 'ai_tool'])
+ */
+export function extractAIInputTypes(node: NodeTypeDescription): string[] {
+	const inputs = node.inputs;
+	const aiTypes: Set<string> = new Set();
+
+	// Handle string inputs (expression format like "={{ ... }}")
+	if (typeof inputs === 'string') {
+		// Extract ai_* types from the expression string using regex
+		const aiTypeRegex = /["']ai_(\w+)["']/g;
+		let match;
+		while ((match = aiTypeRegex.exec(inputs)) !== null) {
+			aiTypes.add(`ai_${match[1]}`);
+		}
+		return [...aiTypes];
+	}
+
+	// Handle array inputs
+	if (!Array.isArray(inputs)) {
+		return [];
+	}
+
+	for (const input of inputs) {
+		let inputType: string | undefined;
+
+		if (typeof input === 'string') {
+			inputType = input;
+		} else if (typeof input === 'object' && input !== null && 'type' in input) {
+			inputType = input.type;
+		}
+
+		// Only include AI input types (starting with 'ai_')
+		if (inputType && inputType.startsWith('ai_')) {
+			aiTypes.add(inputType);
+		}
+	}
+
+	return [...aiTypes];
+}
+
+/**
+ * Generate a narrowed SubnodeConfig interface for a node based on its accepted AI input types.
+ *
+ * @param aiInputTypes Array of AI input types the node accepts
+ * @param nodeName The node name (PascalCase, e.g., 'LcAgent')
+ * @param versionSuffix The version suffix (e.g., 'V31')
+ * @returns TypeScript interface code, or null if no AI inputs
+ */
+export function generateNarrowedSubnodeConfig(
+	aiInputTypes: string[],
+	nodeName: string,
+	versionSuffix: string,
+): string | null {
+	if (aiInputTypes.length === 0) {
+		return null;
+	}
+
+	const lines: string[] = [];
+	const interfaceName = `${nodeName}${versionSuffix}SubnodeConfig`;
+
+	lines.push(`export interface ${interfaceName} {`);
+
+	for (const aiType of aiInputTypes) {
+		const fieldInfo = AI_TYPE_TO_SUBNODE_FIELD[aiType];
+		if (!fieldInfo) {
+			continue;
+		}
+
+		let typeStr: string;
+		if (fieldInfo.isArray) {
+			typeStr = `${fieldInfo.instanceType}[]`;
+		} else if (fieldInfo.canBeMultiple) {
+			typeStr = `${fieldInfo.instanceType} | ${fieldInfo.instanceType}[]`;
+		} else {
+			typeStr = fieldInfo.instanceType;
+		}
+
+		lines.push(`\t${fieldInfo.fieldName}?: ${typeStr};`);
+	}
+
+	lines.push('}');
+
+	return lines.join('\n');
+}
+
+/**
+ * Get the instance type imports needed for a set of AI input types.
+ *
+ * @param aiInputTypes Array of AI input types
+ * @returns Array of instance type names to import
+ */
+export function getSubnodeInstanceTypeImports(aiInputTypes: string[]): string[] {
+	const imports: string[] = [];
+
+	for (const aiType of aiInputTypes) {
+		const fieldInfo = AI_TYPE_TO_SUBNODE_FIELD[aiType];
+		if (fieldInfo && !imports.includes(fieldInfo.instanceType)) {
+			imports.push(fieldInfo.instanceType);
+		}
+	}
+
+	return imports;
+}
 
 /**
  * Extract output types from a node definition

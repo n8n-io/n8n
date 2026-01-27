@@ -2795,4 +2795,229 @@ describe('generate-types', () => {
 			});
 		});
 	});
+
+	// =========================================================================
+	// Narrowed Subnode Config Generation Tests
+	// =========================================================================
+
+	describe('narrowed subnode config generation', () => {
+		describe('extractAIInputTypes', () => {
+			it('should extract AI input types from static array inputs', () => {
+				const mockAgentNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'AI Agent node',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [
+						{ type: 'main' },
+						{ type: 'ai_languageModel', displayName: 'Model' },
+						{ type: 'ai_memory', displayName: 'Memory' },
+						{ type: 'ai_tool', displayName: 'Tool' },
+						{ type: 'ai_outputParser', displayName: 'Output Parser' },
+					],
+					outputs: ['main'],
+					properties: [],
+				};
+				const result = generateTypes.extractAIInputTypes(mockAgentNode);
+				expect(result).toContain('ai_languageModel');
+				expect(result).toContain('ai_memory');
+				expect(result).toContain('ai_tool');
+				expect(result).toContain('ai_outputParser');
+				expect(result).not.toContain('main');
+				expect(result).not.toContain('ai_vectorStore');
+			});
+
+			it('should extract AI input types from dynamic expression inputs', () => {
+				const mockAgentWithExpressionInputs: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'AI Agent node',
+					group: ['transform'],
+					version: 3.1,
+					inputs: `={{
+						let specialInputs = [
+							{ type: "ai_languageModel" },
+							{ type: "ai_memory" },
+							{ type: "ai_tool" },
+						];
+						return specialInputs;
+					}}` as unknown as string[],
+					outputs: ['main'],
+					properties: [],
+				};
+				const result = generateTypes.extractAIInputTypes(mockAgentWithExpressionInputs);
+				expect(result).toContain('ai_languageModel');
+				expect(result).toContain('ai_memory');
+				expect(result).toContain('ai_tool');
+				expect(result).not.toContain('ai_vectorStore');
+			});
+
+			it('should return empty array for nodes with no AI inputs', () => {
+				const mockHttpNode: NodeTypeDescription = {
+					name: 'n8n-nodes-base.httpRequest',
+					displayName: 'HTTP Request',
+					description: 'Makes HTTP requests',
+					group: ['transform'],
+					version: 4.2,
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [],
+				};
+				const result = generateTypes.extractAIInputTypes(mockHttpNode);
+				expect(result).toEqual([]);
+			});
+
+			it('should deduplicate AI input types', () => {
+				const mockNodeWithDuplicates: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'AI Agent node',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [
+						{ type: 'ai_languageModel', displayName: 'Chat Model' },
+						{ type: 'ai_languageModel', displayName: 'Fallback Model' },
+						{ type: 'ai_tool' },
+					],
+					outputs: ['main'],
+					properties: [],
+				};
+				const result = generateTypes.extractAIInputTypes(mockNodeWithDuplicates);
+				expect(result.filter((t) => t === 'ai_languageModel').length).toBe(1);
+			});
+
+			it('should handle string array inputs format', () => {
+				const mockNodeWithStringInputs: NodeTypeDescription = {
+					name: 'n8n-nodes-base.set',
+					displayName: 'Set',
+					description: 'Set values',
+					group: ['transform'],
+					version: 3,
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [],
+				};
+				const result = generateTypes.extractAIInputTypes(mockNodeWithStringInputs);
+				expect(result).toEqual([]);
+			});
+		});
+
+		describe('generateNarrowedSubnodeConfig', () => {
+			it('should generate narrowed config with only accepted subnodes', () => {
+				const aiInputTypes = ['ai_languageModel', 'ai_memory', 'ai_tool', 'ai_outputParser'];
+				const result = generateTypes.generateNarrowedSubnodeConfig(aiInputTypes, 'LcAgent', 'V31');
+
+				expect(result).toContain('export interface LcAgentV31SubnodeConfig');
+				expect(result).toContain('model?:');
+				expect(result).toContain('memory?:');
+				expect(result).toContain('tools?:');
+				expect(result).toContain('outputParser?:');
+				expect(result).not.toContain('vectorStore');
+				expect(result).not.toContain('embedding');
+				expect(result).not.toContain('retriever');
+			});
+
+			it('should return null for nodes with no AI inputs', () => {
+				const result = generateTypes.generateNarrowedSubnodeConfig([], 'Http', 'V42');
+				expect(result).toBeNull();
+			});
+
+			it('should include correct instance types', () => {
+				const aiInputTypes = ['ai_languageModel', 'ai_tool'];
+				const result = generateTypes.generateNarrowedSubnodeConfig(aiInputTypes, 'LcAgent', 'V31');
+
+				expect(result).toContain('LanguageModelInstance');
+				expect(result).toContain('ToolInstance');
+			});
+
+			it('should handle array vs single instance correctly', () => {
+				const aiInputTypes = ['ai_languageModel', 'ai_memory', 'ai_tool'];
+				const result = generateTypes.generateNarrowedSubnodeConfig(aiInputTypes, 'LcAgent', 'V31');
+
+				// model can be single or array
+				expect(result).toContain('model?: LanguageModelInstance | LanguageModelInstance[]');
+				// memory is single
+				expect(result).toContain('memory?: MemoryInstance');
+				// tools is array
+				expect(result).toContain('tools?: ToolInstance[]');
+			});
+		});
+
+		describe('generateSingleVersionTypeFile with narrowed subnodes', () => {
+			it('should generate narrowed subnode config for AI nodes', () => {
+				const mockAgentNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'AI Agent node',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [
+						{ type: 'main' },
+						{ type: 'ai_languageModel', displayName: 'Model' },
+						{ type: 'ai_memory', displayName: 'Memory' },
+						{ type: 'ai_tool', displayName: 'Tool' },
+						{ type: 'ai_outputParser', displayName: 'Output Parser' },
+					],
+					outputs: ['main'],
+					properties: [],
+				};
+
+				const result = generateTypes.generateSingleVersionTypeFile(mockAgentNode, 3.1);
+
+				// Should have narrowed subnode config
+				expect(result).toContain('LcAgentV31SubnodeConfig');
+				expect(result).toContain('model?:');
+				expect(result).toContain('memory?:');
+				expect(result).toContain('tools?:');
+				expect(result).toContain('outputParser?:');
+
+				// Should NOT have vectorStore, embedding, retriever
+				expect(result).not.toContain('vectorStore?:');
+				expect(result).not.toContain('embedding?:');
+				expect(result).not.toContain('retriever?:');
+			});
+
+			it('should not generate narrowed subnode config for non-AI nodes', () => {
+				const mockHttpNode: NodeTypeDescription = {
+					name: 'n8n-nodes-base.httpRequest',
+					displayName: 'HTTP Request',
+					description: 'Makes HTTP requests',
+					group: ['transform'],
+					version: 4.2,
+					inputs: ['main'],
+					outputs: ['main'],
+					properties: [],
+				};
+
+				const result = generateTypes.generateSingleVersionTypeFile(mockHttpNode, 4.2);
+
+				// Should NOT have SubnodeConfig
+				expect(result).not.toContain('SubnodeConfig');
+			});
+
+			it('should import subnode instance types when AI inputs exist', () => {
+				const mockAgentNode: NodeTypeDescription = {
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'AI Agent node',
+					group: ['transform'],
+					version: 3.1,
+					inputs: [
+						{ type: 'main' },
+						{ type: 'ai_languageModel', displayName: 'Model' },
+						{ type: 'ai_tool', displayName: 'Tool' },
+					],
+					outputs: ['main'],
+					properties: [],
+				};
+
+				const result = generateTypes.generateSingleVersionTypeFile(mockAgentNode, 3.1);
+
+				// Should import the needed instance types
+				expect(result).toContain('LanguageModelInstance');
+				expect(result).toContain('ToolInstance');
+			});
+		});
+	});
 });
