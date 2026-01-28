@@ -23,7 +23,7 @@ import type { SourceControlPreferences } from '@/modules/source-control.ee/types
 
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
-import { DataTable } from '../data-table.entity';
+import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { mockDataTableSizeValidator } from './test-helpers';
 
