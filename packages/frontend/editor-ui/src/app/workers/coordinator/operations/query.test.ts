@@ -54,6 +54,9 @@ describe('Coordinator Query Operations', () => {
 			activeTabId: null,
 			initialized: false,
 			version: null,
+			crdtSubscriptions: new Map(),
+			crdtDocuments: new Map(),
+			crdtProvider: null,
 			...overrides,
 		};
 	}

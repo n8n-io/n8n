@@ -29,9 +29,11 @@ export const coordinator = Comlink.wrap<CoordinatorApi>(sharedWorker.port);
 const tabState: {
 	tabId: string | null;
 	isRegistered: boolean;
+	crdtPort: MessagePort | null;
 } = {
 	tabId: null,
 	isRegistered: false,
+	crdtPort: null,
 };
 
 /**
@@ -46,14 +48,25 @@ export async function registerTab(): Promise<string> {
 	console.log('[Coordinator] Registering tab...');
 
 	// Create a MessageChannel to pass the data worker to the coordinator
-	const channel = new MessageChannel();
+	const dataWorkerChannel = new MessageChannel();
 
 	// Connect one end to the data worker
 	// The data worker will expose its API on this port via its onmessage handler
-	dataWorker.postMessage({ type: 'connect', port: channel.port1 }, [channel.port1]);
+	dataWorker.postMessage({ type: 'connect', port: dataWorkerChannel.port1 }, [
+		dataWorkerChannel.port1,
+	]);
 
-	// Register with the coordinator, passing port2 for it to communicate with our data worker
-	const newTabId = await coordinator.registerTab(Comlink.transfer(channel.port2, [channel.port2]));
+	// Create a MessageChannel for CRDT binary messages
+	// This port is established once during registration, not on-demand
+	const crdtChannel = new MessageChannel();
+	tabState.crdtPort = crdtChannel.port1; // Keep locally
+	tabState.crdtPort.start();
+
+	// Register with the coordinator, passing both ports
+	const newTabId = await coordinator.registerTab(
+		Comlink.transfer(dataWorkerChannel.port2, [dataWorkerChannel.port2]),
+		Comlink.transfer(crdtChannel.port2, [crdtChannel.port2]),
+	);
 	tabState.tabId = newTabId;
 	tabState.isRegistered = true;
 
@@ -73,6 +86,10 @@ function unregisterCurrentTab(): void {
 		coordinator.unregisterTab(tabState.tabId).catch(console.error);
 		tabState.isRegistered = false;
 		tabState.tabId = null;
+		if (tabState.crdtPort) {
+			tabState.crdtPort.close();
+			tabState.crdtPort = null;
+		}
 	}
 }
 
@@ -107,6 +124,15 @@ function setupCleanupHandlers(): void {
  */
 export function getTabId(): string | null {
 	return tabState.tabId;
+}
+
+/**
+ * Get the CRDT MessagePort for this tab.
+ * The port is established during registration, not on-demand.
+ * Returns null if the tab is not registered yet.
+ */
+export function getCrdtPort(): MessagePort | null {
+	return tabState.crdtPort;
 }
 
 /**
