@@ -3,6 +3,7 @@ import {
 	UpdateSecretsProviderConnectionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	Body,
 	Delete,
@@ -12,7 +13,6 @@ import {
 	Param,
 	Patch,
 	Post,
-	Put,
 	RestController,
 } from '@n8n/decorators';
 import type { NextFunction, Request, Response } from 'express';
@@ -40,15 +40,19 @@ export class SecretProvidersConnectionsController {
 		next();
 	}
 
-	@Put('/:providerKey')
+	@Post('/')
 	@GlobalScope('externalSecretsProvider:create')
 	async createConnection(
-		@Param('providerKey') providerKey: string,
+		_req: AuthenticatedRequest,
+		_res: Response,
 		@Body body: CreateSecretsProviderConnectionDto,
 	) {
-		this.logger.debug('Creating new connection', { providerKey, type: body.type });
+		this.logger.debug('Creating new connection', {
+			providerKey: body.providerKey,
+			type: body.type,
+		});
 		const connection = await this.connectionsService.createConnection(
-			providerKey,
+			body.providerKey,
 			body.type,
 			body.projectIds,
 			body.settings,
@@ -59,6 +63,8 @@ export class SecretProvidersConnectionsController {
 	@Patch('/:providerKey')
 	@GlobalScope('externalSecretsProvider:update')
 	async updateConnection(
+		_req: AuthenticatedRequest,
+		_res: Response,
 		@Param('providerKey') providerKey: string,
 		@Body body: UpdateSecretsProviderConnectionDto,
 	) {
@@ -69,7 +75,11 @@ export class SecretProvidersConnectionsController {
 
 	@Delete('/:providerKey')
 	@GlobalScope('externalSecretsProvider:delete')
-	async deleteConnection(@Param('providerKey') providerKey: string) {
+	async deleteConnection(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('providerKey') providerKey: string,
+	) {
 		this.logger.debug('Deleting connection', { providerKey });
 		const connection = await this.connectionsService.deleteConnection(providerKey);
 		return this.connectionsService.toPublicConnection(connection);
@@ -85,7 +95,11 @@ export class SecretProvidersConnectionsController {
 
 	@Get('/:providerKey')
 	@GlobalScope('externalSecretsProvider:read')
-	async getConnection(@Param('providerKey') providerKey: string) {
+	async getConnection(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('providerKey') providerKey: string,
+	) {
 		this.logger.debug('Getting connection', { providerKey });
 		const connection = await this.connectionsService.getConnection(providerKey);
 		return this.connectionsService.toPublicConnection(connection);
@@ -93,7 +107,11 @@ export class SecretProvidersConnectionsController {
 
 	@Post('/:providerKey/test')
 	@GlobalScope('externalSecretsProvider:read')
-	testConnection() {
+	testConnection(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('providerKey') _providerKey: string,
+	) {
 		this.logger.debug('Testing provider connnection');
 		//TODO implement
 		return;
@@ -101,7 +119,11 @@ export class SecretProvidersConnectionsController {
 
 	@Post('/:providerKey/connect')
 	@GlobalScope('externalSecretsProvider:update')
-	toggleConnectionStatus() {
+	toggleConnectionStatus(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('providerKey') _providerKey: string,
+	) {
 		this.logger.debug('Toggling connection status');
 		//TODO implement
 		return;
@@ -109,14 +131,22 @@ export class SecretProvidersConnectionsController {
 
 	@Post('/:providerKey/reload')
 	@GlobalScope('externalSecretsProvider:sync')
-	reloadConnectionSecrets() {
+	reloadConnectionSecrets(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('providerKey') _providerKey: string,
+	) {
 		this.logger.debug('Reloading secrets for secret provider connection');
 		return;
 	}
 
 	@Post('/:providerKey/share')
 	@GlobalScope('externalSecretsProvider:update')
-	shareConnection() {
+	shareConnection(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('providerKey') _providerKey: string,
+	) {
 		this.logger.debug('Share connection with other projects');
 		return;
 	}

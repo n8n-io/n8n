@@ -12,6 +12,7 @@ import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
@@ -28,6 +29,11 @@ export class SecretsProvidersConnectionsService {
 		projectIds: string[],
 		settings: IDataObject,
 	): Promise<SecretsProviderConnection> {
+		const existing = await this.repository.findOne({ where: { providerKey } });
+		if (existing) {
+			throw new BadRequestError(`Connection with key "${providerKey}" already exists`);
+		}
+
 		const encryptedSettings = this.encryptConnectionSettings(settings);
 
 		const connection = this.repository.create({

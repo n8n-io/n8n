@@ -1,23 +1,38 @@
+import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
-import { Container } from '@n8n/di';
 import type { Project } from '@n8n/db';
 import {
 	ProjectRepository,
 	ProjectSecretsProviderAccessRepository,
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 
+import { MockProviders } from '../shared/external-secrets/utils';
 import { createOwner } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils';
 
+const mockProvidersInstance = new MockProviders();
+mockInstance(ExternalSecretsProviders, mockProvidersInstance);
+
+const licenseMock = mock<LicenseState>();
+licenseMock.isLicensed.mockReturnValue(true);
+Container.set(LicenseState, licenseMock);
+
+mockInstance(ExternalSecretsConfig, {
+	externalSecretsForProjects: true,
+});
+
 describe('Secret Providers Connections API', () => {
-	let testServer = utils.setupTestServer({
-		endpointGroups: [],
-		enabledFeatures: [],
+	const testServer = utils.setupTestServer({
+		endpointGroups: ['externalSecrets'],
+		enabledFeatures: ['feat:externalSecrets'],
 		modules: ['external-secrets'],
 	});
 
@@ -26,11 +41,6 @@ describe('Secret Providers Connections API', () => {
 	let teamProject2: Project;
 
 	beforeAll(async () => {
-		// Mock config to enable feature flag
-		mockInstance(ExternalSecretsConfig, {
-			externalSecretsForProjects: true,
-		});
-
 		const owner = await createOwner();
 		ownerAgent = testServer.authAgentFor(owner);
 
@@ -42,46 +52,8 @@ describe('Secret Providers Connections API', () => {
 		await testDb.truncate(['SecretsProviderConnection', 'ProjectSecretsProviderAccess']);
 	});
 
-	describe('Feature flag off = API off', () => {
-		beforeAll(() => {
-			mockInstance(ExternalSecretsConfig, { externalSecretsForProjects: false });
-		});
-
-		afterAll(() => {
-			mockInstance(ExternalSecretsConfig, { externalSecretsForProjects: true });
-		});
-
-		test('PUT', async () => {
-			// Given
-			const payload = {
-				providerKey: 'test-provider',
-				type: 'awsSecretsManager',
-				projectIds: [],
-				settings: { region: 'us-east-1' },
-			};
-
-			// When
-			const response = await ownerAgent
-				.put('/secret-providers/connections/test-provider')
-				.send(payload)
-				.expect(400);
-
-			// Then
-			expect(response.body.message).toBe('External secrets for projects feature is not enabled');
-		});
-
-		test('GET', async () => {
-			// When
-			const response = await ownerAgent.get('/secret-providers/connections/delete-test');
-
-			// Then
-			expect(response.body.message).toBe('External secrets for projects feature is not enabled');
-		});
-	});
-
 	describe('Create connection', () => {
 		test('should create a global connection by default with encrypted settings', async () => {
-			// Given
 			const payload = {
 				providerKey: 'aws-prod',
 				type: 'awsSecretsManager',
@@ -93,14 +65,12 @@ describe('Secret Providers Connections API', () => {
 				},
 			};
 
-			// When
 			const response = await ownerAgent
-				.put('/secret-providers/connections/aws-prod')
+				.post('/secret-providers/connections')
 				.send(payload)
 				.expect(200);
 
-			// Then
-			expect(response.body).toEqual({
+			expect(response.body.data).toEqual({
 				id: 'aws-prod',
 				name: 'aws-prod',
 				type: 'awsSecretsManager',
@@ -113,7 +83,7 @@ describe('Secret Providers Connections API', () => {
 				updatedAt: expect.any(String),
 			});
 
-			// Then - Validate encrypted items in the DB as we can't get hold of these via the API
+			// Validate encrypted items in the DB
 			const savedConnection = await Container.get(
 				SecretsProviderConnectionRepository,
 			).findOneByOrFail({ providerKey: 'aws-prod' });
@@ -122,14 +92,13 @@ describe('Secret Providers Connections API', () => {
 			expect(savedConnection.encryptedSettings).not.toContain('us-east-1');
 			expect(savedConnection.encryptedSettings).not.toContain('AKIAIOSFODNN7EXAMPLE');
 
-			// Also check we can decrypt them - or we'll have some big problems lter
+			// Check we can decrypt them
 			const cipher = Container.get(Cipher);
 			const decryptedSettings = JSON.parse(cipher.decrypt(savedConnection.encryptedSettings));
 			expect(decryptedSettings).toEqual(payload.settings);
 		});
 
 		test('should create a connection and assign its projects', async () => {
-			// Given
 			const payload = {
 				providerKey: 'aws-shared',
 				type: 'awsSecretsManager',
@@ -141,15 +110,13 @@ describe('Secret Providers Connections API', () => {
 				},
 			};
 
-			// When
 			const response = await ownerAgent
-				.put('/secret-providers/connections/aws-shared')
+				.post('/secret-providers/connections')
 				.send(payload)
 				.expect(200);
 
-			// Then
-			expect(response.body.projects).toHaveLength(2);
-			expect(response.body.projects).toEqual(
+			expect(response.body.data.projects).toHaveLength(2);
+			expect(response.body.data.projects).toEqual(
 				expect.arrayContaining([
 					{ id: teamProject1.id, name: 'Engineering' },
 					{ id: teamProject2.id, name: 'Marketing' },
@@ -160,15 +127,32 @@ describe('Secret Providers Connections API', () => {
 				.get('/secret-providers/connections/aws-shared')
 				.expect(200);
 
-			expect(getResponse.body.projects).toHaveLength(2);
+			expect(getResponse.body.data.projects).toHaveLength(2);
+		});
+
+		test('should reject duplicate provider key', async () => {
+			const payload = {
+				providerKey: 'duplicate-test',
+				type: 'awsSecretsManager',
+				projectIds: [],
+				settings: { region: 'us-east-1' },
+			};
+
+			await ownerAgent.post('/secret-providers/connections').send(payload).expect(200);
+
+			const response = await ownerAgent
+				.post('/secret-providers/connections')
+				.send(payload)
+				.expect(400);
+
+			expect(response.body.message).toBe('There is already an entry with this name');
 		});
 	});
 
 	describe('Update connection', () => {
 		test('should update connection type', async () => {
-			// Given
 			await ownerAgent
-				.put('/secret-providers/connections/update-type-test')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'update-type-test',
 					type: 'awsSecretsManager',
@@ -177,28 +161,24 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// When
 			const response = await ownerAgent
 				.patch('/secret-providers/connections/update-type-test')
 				.send({ type: 'gcpSecretsManager' })
 				.expect(200);
 
-			// Then
-			expect(response.body.type).toBe('gcpSecretsManager');
-			expect(response.body.projects).toHaveLength(1);
+			expect(response.body.data.type).toBe('gcpSecretsManager');
+			expect(response.body.data.projects).toHaveLength(1);
 
-			// Then - Verify via GET
 			const getResponse = await ownerAgent
 				.get('/secret-providers/connections/update-type-test')
 				.expect(200);
 
-			expect(getResponse.body.type).toBe('gcpSecretsManager');
+			expect(getResponse.body.data.type).toBe('gcpSecretsManager');
 		});
 
 		test('should completely replace settings (not merge)', async () => {
-			// Given
 			await ownerAgent
-				.put('/secret-providers/connections/replace-settings-test')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'replace-settings-test',
 					type: 'awsSecretsManager',
@@ -211,7 +191,6 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// When
 			await ownerAgent
 				.patch('/secret-providers/connections/replace-settings-test')
 				.send({
@@ -222,7 +201,6 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// Then - Settings are write only - so we expect a full replacement here
 			const updated = await Container.get(SecretsProviderConnectionRepository).findOneByOrFail({
 				providerKey: 'replace-settings-test',
 			});
@@ -238,9 +216,8 @@ describe('Secret Providers Connections API', () => {
 		});
 
 		test('should update project access', async () => {
-			// Given
 			await ownerAgent
-				.put('/secret-providers/connections/update-projects-test')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'update-projects-test',
 					type: 'awsSecretsManager',
@@ -249,28 +226,24 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// When
 			const response = await ownerAgent
 				.patch('/secret-providers/connections/update-projects-test')
 				.send({ projectIds: [teamProject2.id] })
 				.expect(200);
 
-			// Then
-			expect(response.body.projects).toEqual([{ id: teamProject2.id, name: 'Marketing' }]);
+			expect(response.body.data.projects).toEqual([{ id: teamProject2.id, name: 'Marketing' }]);
 
-			// Then - Verify via GET
 			const getResponse = await ownerAgent
 				.get('/secret-providers/connections/update-projects-test')
 				.expect(200);
 
-			expect(getResponse.body.projects).toHaveLength(1);
-			expect(getResponse.body.projects[0].id).toBe(teamProject2.id);
+			expect(getResponse.body.data.projects).toHaveLength(1);
+			expect(getResponse.body.data.projects[0].id).toBe(teamProject2.id);
 		});
 
 		test('should convert to global by passing empty projectIds', async () => {
-			// Given
 			await ownerAgent
-				.put('/secret-providers/connections/to-global-test')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'to-global-test',
 					type: 'awsSecretsManager',
@@ -279,40 +252,34 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// When
 			const response = await ownerAgent
 				.patch('/secret-providers/connections/to-global-test')
 				.send({ projectIds: [] })
 				.expect(200);
 
-			// Then
-			expect(response.body.projects).toEqual([]);
+			expect(response.body.data.projects).toEqual([]);
 
-			// Then - Verify via GET
 			const getResponse = await ownerAgent
 				.get('/secret-providers/connections/to-global-test')
 				.expect(200);
 
-			expect(getResponse.body.projects).toEqual([]);
+			expect(getResponse.body.data.projects).toEqual([]);
 		});
 
 		test('should fail for non-existent connection', async () => {
-			// When
 			const response = await ownerAgent
 				.patch('/secret-providers/connections/non-existent')
 				.send({ type: 'gcpSecretsManager' })
 				.expect(404);
 
-			// Then
 			expect(response.body.message).toBe('Connection with key "non-existent" not found');
 		});
 	});
 
 	describe('Delete connection', () => {
 		test('should delete connection and cascade project access', async () => {
-			// Given
 			await ownerAgent
-				.put('/secret-providers/connections/delete-test')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'delete-test',
 					type: 'awsSecretsManager',
@@ -327,19 +294,17 @@ describe('Secret Providers Connections API', () => {
 			).findOneByOrFail({ providerKey: 'delete-test' });
 			const connectionId = savedConnection.id;
 
-			// When
 			const response = await ownerAgent
 				.delete('/secret-providers/connections/delete-test')
 				.expect(200);
 
-			// Then
-			expect(response.body.id).toBe('delete-test');
-			expect(response.body.projects).toHaveLength(2);
+			expect(response.body.data.id).toBe('delete-test');
+			expect(response.body.data.projects).toHaveLength(2);
 
-			// Then - Verify deletion via GET
+			// Verify deletion via GET
 			await ownerAgent.get('/secret-providers/connections/delete-test').expect(404);
 
-			// Then - Verify cascade delete (database check necessary)
+			// Verify cascade delete
 			const remainingAccess = await Container.get(ProjectSecretsProviderAccessRepository).find({
 				where: { secretsProviderConnectionId: connectionId },
 			});
@@ -347,21 +312,18 @@ describe('Secret Providers Connections API', () => {
 		});
 
 		test('should fail for non-existent connection', async () => {
-			// When
 			const response = await ownerAgent
 				.delete('/secret-providers/connections/non-existent')
 				.expect(404);
 
-			// Then
 			expect(response.body.message).toBe('Connection with key "non-existent" not found');
 		});
 	});
 
 	describe('List connections', () => {
 		test('should list all connections with eager-loaded projects', async () => {
-			// Given
 			await ownerAgent
-				.put('/secret-providers/connections/list-test-1')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'list-test-1',
 					type: 'awsSecretsManager',
@@ -371,7 +333,7 @@ describe('Secret Providers Connections API', () => {
 				.expect(200);
 
 			await ownerAgent
-				.put('/secret-providers/connections/list-test-2')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'list-test-2',
 					type: 'gcpSecretsManager',
@@ -381,22 +343,20 @@ describe('Secret Providers Connections API', () => {
 				.expect(200);
 
 			await ownerAgent
-				.put('/secret-providers/connections/list-test-3')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'list-test-3',
-					type: 'hashicorpVault',
+					type: 'vault',
 					projectIds: [],
 					settings: { vaultUrl: 'https://vault.example.com' },
 				})
 				.expect(200);
 
-			// When
 			const response = await ownerAgent.get('/secret-providers/connections').expect(200);
 
-			// Then
-			expect(response.body).toHaveLength(3);
+			expect(response.body.data).toHaveLength(3);
 
-			for (const connection of response.body) {
+			for (const connection of response.body.data) {
 				expect(connection).toMatchObject({
 					id: expect.any(String),
 					name: expect.any(String),
@@ -412,27 +372,24 @@ describe('Secret Providers Connections API', () => {
 				expect(connection).not.toHaveProperty('secrets');
 			}
 
-			const connection1 = response.body.find((c: any) => c.id === 'list-test-1');
+			const connection1 = response.body.data.find((c: { id: string }) => c.id === 'list-test-1');
 			expect(connection1.projects).toHaveLength(1);
 
-			const connection3 = response.body.find((c: any) => c.id === 'list-test-3');
+			const connection3 = response.body.data.find((c: { id: string }) => c.id === 'list-test-3');
 			expect(connection3.projects).toEqual([]);
 		});
 
 		test('should return empty array when no connections exist', async () => {
-			// When
 			const response = await ownerAgent.get('/secret-providers/connections').expect(200);
 
-			// Then
-			expect(response.body).toEqual([]);
+			expect(response.body.data).toEqual([]);
 		});
 	});
 
 	describe('Get single connection', () => {
 		test('should return full connection details', async () => {
-			// Given
 			await ownerAgent
-				.put('/secret-providers/connections/get-test')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'get-test',
 					type: 'awsSecretsManager',
@@ -444,11 +401,9 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// When
 			const response = await ownerAgent.get('/secret-providers/connections/get-test').expect(200);
 
-			// Then
-			expect(response.body).toMatchObject({
+			expect(response.body.data).toMatchObject({
 				id: 'get-test',
 				name: 'get-test',
 				type: 'awsSecretsManager',
@@ -458,25 +413,21 @@ describe('Secret Providers Connections API', () => {
 				secretsCount: 0,
 				createdAt: expect.any(String),
 				updatedAt: expect.any(String),
-				secrets: [],
 			});
-			expect(response.body.projects).toHaveLength(2);
+			expect(response.body.data.projects).toHaveLength(2);
 		});
 
 		test('should fail for non-existent connection', async () => {
-			// When
 			const response = await ownerAgent
 				.get('/secret-providers/connections/does-not-exist')
 				.expect(404);
 
-			// Then
 			expect(response.body.message).toBe('Connection with key "does-not-exist" not found');
 		});
 	});
 
 	describe('Security', () => {
 		test('should never return settings in any endpoint', async () => {
-			// Given
 			const sensitiveSettings = {
 				region: 'us-east-1',
 				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
@@ -484,9 +435,9 @@ describe('Secret Providers Connections API', () => {
 				sessionToken: 'very-secret-session-token',
 			};
 
-			// When - Create
+			// Create
 			const createResponse = await ownerAgent
-				.put('/secret-providers/connections/security-test')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'security-test',
 					type: 'awsSecretsManager',
@@ -495,48 +446,48 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// Then - Create response
-			expect(createResponse.body.settings).toEqual({});
-			expect(JSON.stringify(createResponse.body)).not.toContain('AKIAIOSFODNN7EXAMPLE');
-			expect(JSON.stringify(createResponse.body)).not.toContain('very-secret-session-token');
+			expect(createResponse.body.data.settings).toEqual({});
+			expect(JSON.stringify(createResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(JSON.stringify(createResponse.body.data)).not.toContain('very-secret-session-token');
 
-			// When/Then - GET response
+			// GET
 			const getResponse = await ownerAgent
 				.get('/secret-providers/connections/security-test')
 				.expect(200);
 
-			expect(getResponse.body.settings).toEqual({});
-			expect(JSON.stringify(getResponse.body)).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(getResponse.body.data.settings).toEqual({});
+			expect(JSON.stringify(getResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
 
-			// When/Then - LIST response
+			// LIST
 			const listResponse = await ownerAgent.get('/secret-providers/connections').expect(200);
 
-			const securityConnection = listResponse.body.find((c: any) => c.id === 'security-test');
+			const securityConnection = listResponse.body.data.find(
+				(c: { id: string }) => c.id === 'security-test',
+			);
 			expect(securityConnection.settings).toEqual({});
-			expect(JSON.stringify(listResponse.body)).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(JSON.stringify(listResponse.body.data)).not.toContain('AKIAIOSFODNN7EXAMPLE');
 
-			// When/Then - UPDATE response
+			// UPDATE
 			const updateResponse = await ownerAgent
 				.patch('/secret-providers/connections/security-test')
 				.send({ type: 'awsSecretsManager' })
 				.expect(200);
 
-			expect(updateResponse.body.settings).toEqual({});
+			expect(updateResponse.body.data.settings).toEqual({});
 
-			// When/Then - DELETE response
+			// DELETE
 			const deleteResponse = await ownerAgent
 				.delete('/secret-providers/connections/security-test')
 				.expect(200);
 
-			expect(deleteResponse.body.settings).toEqual({});
+			expect(deleteResponse.body.data.settings).toEqual({});
 		});
 	});
 
 	describe('Relationships with Project entity', () => {
 		test('multiple providers can be associated with the same project', async () => {
-			// Given
 			await ownerAgent
-				.put('/secret-providers/connections/provider-1')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'provider-1',
 					type: 'awsSecretsManager',
@@ -546,7 +497,7 @@ describe('Secret Providers Connections API', () => {
 				.expect(200);
 
 			await ownerAgent
-				.put('/secret-providers/connections/provider-2')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'provider-2',
 					type: 'gcpSecretsManager',
@@ -555,19 +506,17 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// When
 			const response = await ownerAgent.get('/secret-providers/connections').expect(200);
 
-			// Then
-			const provider1 = response.body.find((c: any) => c.id === 'provider-1');
-			const provider2 = response.body.find((c: any) => c.id === 'provider-2');
+			const provider1 = response.body.data.find((c: { id: string }) => c.id === 'provider-1');
+			const provider2 = response.body.data.find((c: { id: string }) => c.id === 'provider-2');
 
 			expect(provider1).toBeDefined();
 			expect(provider2).toBeDefined();
 			expect(provider1.projects[0].id).toBe(teamProject1.id);
 			expect(provider2.projects[0].id).toBe(teamProject1.id);
 
-			// Then - Database validation (verify no constraint violations)
+			// Database validation
 			const accessForProject = await Container.get(ProjectSecretsProviderAccessRepository).find({
 				where: { projectId: teamProject1.id },
 			});
@@ -575,10 +524,9 @@ describe('Secret Providers Connections API', () => {
 		});
 
 		test('should clean up project access when project is deleted', async () => {
-			// Given
 			const tempProject = await createTeamProject('Temporary');
 			await ownerAgent
-				.put('/secret-providers/connections/orphan-test')
+				.post('/secret-providers/connections')
 				.send({
 					providerKey: 'orphan-test',
 					type: 'awsSecretsManager',
@@ -587,20 +535,19 @@ describe('Secret Providers Connections API', () => {
 				})
 				.expect(200);
 
-			// When
 			await Container.get(ProjectRepository).delete(tempProject.id);
 
-			// Then - Verify no orphaned access entries (database check)
+			// Verify no orphaned access entries
 			const orphaned = await Container.get(ProjectSecretsProviderAccessRepository).find({
 				where: { projectId: tempProject.id },
 			});
 			expect(orphaned).toHaveLength(0);
 
-			// Then - Connection should still exist but with empty projects
+			// Connection should still exist but with empty projects
 			const response = await ownerAgent
 				.get('/secret-providers/connections/orphan-test')
 				.expect(200);
-			expect(response.body.projects).toEqual([]);
+			expect(response.body.data.projects).toEqual([]);
 		});
 	});
 });
