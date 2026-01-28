@@ -692,15 +692,9 @@
 			</section>
 		</div>
 		<script>
-			// Get signature from URL before cleaning (for direct access/refresh case)
+			// Get signature from URL for fetch requests
 			const url = new URL(window.location.href);
 			let formSignature = url.searchParams.get('signature');
-
-			// Remove signature from URL if present (keeps URL clean in address bar)
-			if (formSignature) {
-				url.searchParams.delete('signature');
-				history.replaceState(null, '', url);
-			}
 
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {

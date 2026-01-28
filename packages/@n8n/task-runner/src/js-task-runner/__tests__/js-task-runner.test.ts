@@ -307,12 +307,8 @@ describe('JsTaskRunner', () => {
 					{
 						id: 'exec-id',
 						mode: 'test',
-						resumeFormUrl: expect.stringMatching(
-							/^http:\/\/formwaitingbaseurl\/exec-id\?signature=/,
-						),
-						resumeUrl: expect.stringMatching(
-							/^http:\/\/webhookwaitingbaseurl\/exec-id\?signature=/,
-						),
+						resumeFormUrl: 'http://formWaitingBaseUrl/exec-id',
+						resumeUrl: 'http://webhookWaitingBaseUrl/exec-id',
 						customData: {
 							get: expect.any(Function),
 							getAll: expect.any(Function),

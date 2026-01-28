@@ -40,6 +40,7 @@ export interface CreateFullRunExecutionDataOptions {
 		runtimeData?: IExecutionContext;
 	} | null;
 	parentExecution?: RelatedExecution;
+	validateSignature?: boolean;
 	waitTill?: Date;
 	manualData?: IRunExecutionData['manualData'];
 	pushRef?: IRunExecutionData['pushRef'];
@@ -50,7 +51,6 @@ export interface CreateFullRunExecutionDataOptions {
  * You can pass `executionData: null` and `resultData.runData: null` if you
  * don't want them initialized.
  */
-// eslint-disable-next-line complexity
 export function createRunExecutionData(
 	options: CreateFullRunExecutionDataOptions = {},
 ): IRunExecutionData {
@@ -78,6 +78,7 @@ export function createRunExecutionData(
 						runtimeData: options.executionData?.runtimeData,
 					},
 		parentExecution: options.parentExecution,
+		validateSignature: options.validateSignature,
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,

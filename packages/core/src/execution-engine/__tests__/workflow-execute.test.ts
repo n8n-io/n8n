@@ -1370,7 +1370,7 @@ describe('WorkflowExecute', () => {
 
 		const executionData = mock<IExecuteData>();
 		const runExecutionData = mock<IRunExecutionData>();
-		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hmacSignatureSecret: undefined });
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const abortController = new AbortController();
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
@@ -1482,15 +1482,7 @@ describe('WorkflowExecute', () => {
 
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
-			workflowExecute = new WorkflowExecute(
-				mock<IWorkflowExecuteAdditionalData>({
-					webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
-					formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
-					hmacSignatureSecret: undefined,
-				}),
-				'manual',
-				runExecutionData,
-			);
+			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
 		});
 
 		test('should handle undefined error data input correctly', () => {
@@ -2321,7 +2313,7 @@ describe('WorkflowExecute', () => {
 		const nodeTypes = mock<INodeTypes>();
 
 		const runExecutionData = mock<IRunExecutionData>();
-		const additionalData = mock<IWorkflowExecuteAdditionalData>({ hmacSignatureSecret: undefined });
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 		const testCases: Array<{
@@ -2462,7 +2454,7 @@ describe('WorkflowExecute', () => {
 			});
 
 			mockHooks = mock<ExecutionLifecycleHooks>();
-			additionalData = mock<IWorkflowExecuteAdditionalData>({ hmacSignatureSecret: undefined });
+			additionalData = mock<IWorkflowExecuteAdditionalData>();
 			additionalData.hooks = mockHooks;
 			additionalData.currentNodeExecutionIndex = 0;
 

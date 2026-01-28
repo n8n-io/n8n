@@ -158,15 +158,9 @@
 			<a id='redirectUrl' href='{{redirectUrl}}' style='display: none;'></a>
 		{{/if}}
 	<script>
-		// Get signature from URL before cleaning (for direct access/refresh case)
+		// Get signature from URL for fetch requests
 		const url = new URL(window.location.href);
-		let formSignature = url.searchParams.get('signature');
-
-		// Remove signature from URL if present (keeps URL clean in address bar)
-		if (formSignature) {
-			url.searchParams.delete('signature');
-			history.replaceState(null, '', url);
-		}
+		const formSignature = url.searchParams.get('signature');
 
 		let interval = 1000;
 		let timeoutId;

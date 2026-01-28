@@ -44,9 +44,8 @@ export interface IRunExecutionDataV1 {
 	};
 	parentExecution?: RelatedExecution;
 	/**
-	 * Flag indicating that signature validation is required for webhook resume.
-	 * When true, incoming webhook requests must have a valid HMAC signature.
-	 * Used for backwards compatibility, old executions without this flag skip validation.
+	 * This is used to prevent breaking change
+	 * for waiting executions started before signature validation was added
 	 */
 	validateSignature?: boolean;
 	waitTill?: Date;

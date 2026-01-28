@@ -50,7 +50,6 @@ export class DataRequestResponseBuilder {
 			executionTimeoutTimestamp: additionalData.executionTimeoutTimestamp,
 			restartExecutionId: additionalData.restartExecutionId,
 			userId: additionalData.userId,
-			hmacSignatureSecret: additionalData.hmacSignatureSecret,
 		};
 	}
 
