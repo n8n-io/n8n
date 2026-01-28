@@ -125,7 +125,7 @@ test.describe('Folders - Basic Operations', () => {
 	});
 
 	test('should create workflow in a folder', async ({ n8n }) => {
-		const { name: projectName, id: projectId } = await n8n.api.projects.createProject();
+		const { id: projectId } = await n8n.api.projects.createProject();
 		const folder = await n8n.api.projects.createFolder(projectId);
 		await n8n.navigate.toFolder(folder.id, projectId);
 		await n8n.workflows.addResource.workflow();
