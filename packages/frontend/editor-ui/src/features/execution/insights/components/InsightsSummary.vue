@@ -97,6 +97,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 						:placement="route.name === VIEWS.INSIGHTS ? 'bottom' : 'top'"
 						:disabled="!(summaryHasNoData && id === 'total')"
 						:show-after="500"
+						:class="$style.insightsTab"
 					>
 						<template #content>
 							<I18nT keypath="insights.banner.noData.tooltip" scope="global">
@@ -200,6 +201,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 
 			&:first-child {
 				border-left: 0;
+			}
+
+			> span {
+				display: flex;
+				width: 100%;
+				height: 100%;
 			}
 		}
 
