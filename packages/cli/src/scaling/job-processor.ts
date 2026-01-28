@@ -29,6 +29,7 @@ import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/executi
 import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 /**
@@ -47,6 +48,7 @@ export class JobProcessor {
 		private readonly manualExecutionService: ManualExecutionService,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -121,8 +123,15 @@ export class JobProcessor {
 			settings: execution.workflowData.settings,
 		});
 
+		// TODO: verify this context actually needs projectId because it resolves external secret expressions down the line
+		const project = await this.ownershipService
+			.getWorkflowProjectCached(workflowId)
+			.catch(() => undefined);
+		const projectId = project?.id;
+
 		const additionalData = await WorkflowExecuteAdditionalData.getBase({
 			workflowId,
+			projectId,
 			executionTimeoutTimestamp,
 			workflowSettings: execution.workflowData.settings,
 		});

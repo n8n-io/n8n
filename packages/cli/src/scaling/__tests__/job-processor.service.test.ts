@@ -78,6 +78,7 @@ describe('JobProcessor', () => {
 			mock(),
 			executionsConfig,
 			mock(),
+			mock(),
 		);
 
 		const result = await jobProcessor.processJob(mock<Job>());
@@ -108,6 +109,7 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 			);
 
@@ -160,6 +162,7 @@ describe('JobProcessor', () => {
 			manualExecutionService,
 			executionsConfig,
 			mock(),
+			mock(),
 		);
 
 		const job = mock<Job>();
@@ -205,6 +208,7 @@ describe('JobProcessor', () => {
 			mock(),
 			manualExecutionService,
 			executionsConfig,
+			mock(),
 			mock(),
 		);
 
@@ -269,6 +273,7 @@ describe('JobProcessor', () => {
 				mock(),
 				manualExecutionService,
 				executionsConfig,
+				mock(),
 				mock(),
 			);
 

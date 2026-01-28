@@ -153,7 +153,9 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		return this.secretsCache.getSecret(provider, name);
 	}
 
-	hasSecret(provider: string, name: string): boolean {
+	hasSecret(provider: string, name: string, projectId?: string): boolean {
+		this.logger.info(`ExternalSecretsManager.hasSecret: projectId ${projectId}`);
+		// TODO: use projectId to validate that the given provider is available to the given projectId
 		return this.secretsCache.hasSecret(provider, name);
 	}
 

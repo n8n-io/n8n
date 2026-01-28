@@ -90,6 +90,7 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -376,6 +377,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -557,6 +559,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mock(),
 			);
 		});
 
@@ -699,6 +702,7 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				workflowRunnerMock,
 				globalConfig,
+				mock(),
 				mock(),
 				mock(),
 				mock(),
