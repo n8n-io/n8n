@@ -286,11 +286,9 @@ export function useBuilderMessages() {
 
 		const thinkingMessage = determineThinkingMessage(mutableMessages);
 
-		// Apply rating logic only to messages after workflow-updated
-		const messagesWithRatingLogic = applyRatingLogic(mutableMessages);
-
+		// Rating is now handled in the footer of AskAssistantChat, not per-message
 		// Remove retry from all error messages except the last one
-		const messagesWithRetryLogic = removeRetryFromOldErrorMessages(messagesWithRatingLogic);
+		const messagesWithRetryLogic = removeRetryFromOldErrorMessages(mutableMessages);
 
 		return {
 			messages: messagesWithRetryLogic,
