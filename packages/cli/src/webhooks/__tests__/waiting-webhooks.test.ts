@@ -242,6 +242,28 @@ describe('WaitingWebhooks', () => {
 			/* Assert - Should fail because signature was for /form-waiting/123 but URL is /form-waiting/123/n8n-execution-status */
 			expect(result).toEqual({ valid: false, webhookPath: undefined });
 		});
+
+		it('should validate signature correctly when nodeId suffix is part of signed URL (send-and-wait)', () => {
+			/* Arrange - Send-and-wait URLs include nodeId in the signed path along with query params.
+			 * The signature is computed from pathname + query params (excluding signature itself). */
+			const nodeId = '3a3e4b33-52d1-41f9-9c69-2829030062ff';
+			const pathWithNodeId = `/webhook-waiting/123/${nodeId}`;
+			const pathWithParams = `${pathWithNodeId}?approved=true`;
+			// Signature generated for full path including nodeId and query params
+			const validSignature = generateTestSignature(pathWithParams);
+			// Construct URL with both approved and signature params
+			const fullUrl = `${pathWithNodeId}?approved=true&${WAITING_TOKEN_QUERY_PARAM}=${validSignature}`;
+			const mockReq = mock<express.Request>({
+				url: fullUrl,
+				headers: { host: EXAMPLE_HOST },
+			});
+
+			/* Act - Don't pass suffix because nodeId is part of signed URL */
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: undefined });
+		});
 	});
 
 	describe('executeWebhook - signature validation', () => {

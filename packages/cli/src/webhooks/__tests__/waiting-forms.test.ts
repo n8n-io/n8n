@@ -1,22 +1,39 @@
 import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import type express from 'express';
 import { mock } from 'jest-mock-extended';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
+import { getWebhookSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import { FORM_NODE_TYPE, WAITING_FORMS_EXECUTION_STATUS, type Workflow } from 'n8n-workflow';
 
 import type { WaitingWebhookRequest } from '../webhook.types';
 
 import { WaitingForms } from '@/webhooks/waiting-forms';
 
+const TEST_HMAC_SECRET = 'test-hmac-secret-key';
+
 class TestWaitingForms extends WaitingForms {
 	exposeGetWorkflow(execution: IExecutionResponse): Workflow {
 		return this.getWorkflow(execution);
+	}
+
+	exposeValidateSignature(
+		req: express.Request,
+		suffix?: string,
+	): { valid: boolean; webhookPath?: string } {
+		return this.validateSignature(req, suffix);
 	}
 }
 
 describe('WaitingForms', () => {
 	const executionRepository = mock<ExecutionRepository>();
-	const waitingForms = new TestWaitingForms(mock(), mock(), executionRepository, mock(), mock());
+	const mockInstanceSettings = mock<InstanceSettings>({ hmacSignatureSecret: TEST_HMAC_SECRET });
+	const waitingForms = new TestWaitingForms(
+		mock(),
+		mock(),
+		executionRepository,
+		mock(),
+		mockInstanceSettings,
+	);
 
 	beforeEach(() => {
 		jest.restoreAllMocks();
@@ -654,6 +671,53 @@ describe('WaitingForms', () => {
 
 			expect(res.setHeader).toHaveBeenCalledWith('Content-Security-Policy', getWebhookSandboxCSP());
 			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
+
+	describe('validateSignature - backwards compat webhook path extraction', () => {
+		// Helper to generate proper HMAC signature for a URL
+		const generateTestSignature = (urlPath: string) => {
+			const crypto = require('crypto');
+			return crypto.createHmac('sha256', TEST_HMAC_SECRET).update(urlPath).digest('hex');
+		};
+
+		const createMockRequest = (opts: { host?: string; signature?: string; path?: string }) => {
+			const urlPath = opts.path ?? '/form-waiting/123';
+			const fullUrl = opts.signature
+				? `${urlPath}?${WAITING_TOKEN_QUERY_PARAM}=${opts.signature}`
+				: urlPath;
+			return mock<express.Request>({
+				url: fullUrl,
+				headers: { host: opts.host ?? 'localhost:5678' },
+			});
+		};
+
+		it('should extract webhook path from signature when appended (backwards compat)', () => {
+			/* Arrange - URL format: ?signature=hmac/suffix */
+			const urlPath = '/form-waiting/123';
+			const validSignature = generateTestSignature(urlPath);
+			const signatureWithSuffix = `${validSignature}/my-custom-suffix`;
+			const mockReq = createMockRequest({ signature: signatureWithSuffix, path: urlPath });
+
+			/* Act */
+			const result = waitingForms.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: 'my-custom-suffix' });
+		});
+
+		it('should handle nested suffix paths in signature (backwards compat)', () => {
+			/* Arrange - URL format: ?signature=hmac/path/to/suffix */
+			const urlPath = '/form-waiting/123';
+			const validSignature = generateTestSignature(urlPath);
+			const signatureWithNestedSuffix = `${validSignature}/path/to/suffix`;
+			const mockReq = createMockRequest({ signature: signatureWithNestedSuffix, path: urlPath });
+
+			/* Act */
+			const result = waitingForms.exposeValidateSignature(mockReq);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: 'path/to/suffix' });
 		});
 	});
 });

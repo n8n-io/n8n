@@ -172,7 +172,9 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Only validate signature for executions that have validateSignature flag set
 		// This provides backwards compatibility for old executions created before signature validation
 		if (execution?.data.validateSignature) {
-			const { valid, webhookPath } = this.validateSignature(req, suffix);
+			// Don't pass suffix to validateSignature - for send-and-wait URLs, the nodeId suffix
+			// is part of the signed URL and should NOT be stripped during validation
+			const { valid, webhookPath } = this.validateSignature(req);
 			if (!valid) {
 				const { workflowData } = execution;
 				const { nodes } = this.createWorkflow(workflowData);

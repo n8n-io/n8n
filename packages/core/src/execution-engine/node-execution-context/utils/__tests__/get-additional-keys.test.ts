@@ -163,4 +163,20 @@ describe('getAdditionalKeys', () => {
 		const allData = customData?.getAll() ?? {};
 		expect(Object.keys(allData)).toHaveLength(10);
 	});
+
+	it('should handle invalid URLs gracefully and return original URL when signing fails', () => {
+		const additionalDataWithInvalidUrl = mock<IWorkflowExecuteAdditionalData>({
+			executionId: '123',
+			webhookWaitingBaseUrl: 'not-a-valid-url',
+			formWaitingBaseUrl: 'also-invalid',
+			variables: {},
+			externalSecretsProxy,
+			hmacSignatureSecret: 'test-secret',
+		});
+
+		// Should not throw - should return original URLs without signature
+		const result = getAdditionalKeys(additionalDataWithInvalidUrl, 'manual', null);
+		expect(result.$execution?.resumeUrl).toBe('not-a-valid-url/123');
+		expect(result.$execution?.resumeFormUrl).toBe('also-invalid/123');
+	});
 });
