@@ -205,7 +205,9 @@ export function useCanvasOperations() {
 	const editableWorkflow = computed<IWorkflowDb>(
 		() => workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
 	);
-	const editableWorkflowObject = computed(
+	// Type assertion needed because workflowObjectsById uses computed property keys,
+	// causing TypeScript to infer an anonymous type instead of Workflow
+	const editableWorkflowObject = computed<Workflow>(
 		() =>
 			workflowDocumentsStore.workflowObjectsById[
 				workflowDocumentsStore.workflowDocumentId
