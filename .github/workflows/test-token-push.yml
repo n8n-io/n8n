@@ -35,13 +35,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event.inputs.source-branch || github.head_ref }}
+          ref: exp/2.4.6-exp.0
           token: ${{ steps.generate_token.outputs.token }}
 
-      - name: Test push (mimics release branch push - using GITHUB_TOKEN, should fail)
+      - name: Test push (mimics release branch push)
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SOURCE_BRANCH: ${{ github.event.inputs.source-branch || github.head_ref }}
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          SOURCE_BRANCH: exp/2.4.6-exp.0
         run: |
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           echo "Pushing ${SOURCE_BRANCH} to test-release/0.0.0-test..."
