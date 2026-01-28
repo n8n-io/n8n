@@ -8,16 +8,20 @@ export const dataTableNameSchema = z.string().trim().min(1).max(128);
 export const dataTableIdSchema = z.string().max(36);
 
 // Postgres does not allow leading numbers or -
-export const DATA_TABLE_COLUMN_REGEX = /^[a-zA-Z][a-zA-Z0-9_]*$/;
-export const DATA_TABLE_COLUMN_MAX_LENGTH = 63; // Postgres has a maximum of 63 characters
-export const DATA_TABLE_COLUMN_ERROR_MESSAGE =
-	'Only alphabetical characters and non-leading numbers and underscores are allowed for column names, and the maximum length is 63 characters.';
+const DATA_TABLE_COLUMN_REGEX = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+const DATA_TABLE_COLUMN_MAX_LENGTH = 63; // Postgres has a maximum of 63 characters
+const DATA_TABLE_COLUMN_NAME_NOT_ID = /^(?!id$).+/i
+const DATA_TABLE_COLUMN_NAME_NOT_ID_ERROR_MESSAGE =
+  'Column name cannot be id';
+const DATA_TABLE_COLUMN_ERROR_MESSAGE =
+  'Only alphabetical characters and non-leading numbers and underscores are allowed for column names, and the maximum length is 63 characters.';
 
 export const dataTableColumnNameSchema = z
 	.string()
 	.trim()
 	.min(1)
 	.max(DATA_TABLE_COLUMN_MAX_LENGTH) // Postgres has a maximum of 63 characters
+	.regex(DATA_TABLE_COLUMN_NAME_NOT_ID, DATA_TABLE_COLUMN_NAME_NOT_ID_ERROR_MESSAGE)
 	.regex(DATA_TABLE_COLUMN_REGEX, DATA_TABLE_COLUMN_ERROR_MESSAGE);
 export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
