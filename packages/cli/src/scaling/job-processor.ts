@@ -300,6 +300,22 @@ export class JobProcessor {
 
 		await job.progress(msg);
 
+		// For MCP executions, send an mcp-response message to notify main
+		// Main will fetch the execution data from DB and resolve the pending promise
+		if (job.data.isMcpExecution && job.data.mcpSessionId && job.data.originMainId) {
+			const mcpMsg: McpResponseMessage = {
+				kind: 'mcp-response',
+				executionId,
+				sessionId: job.data.mcpSessionId,
+				messageId: job.data.mcpMessageId ?? '',
+				response: { success: !hasErrors }, // Main will fetch full data from DB
+				workerId: this.instanceSettings.hostId,
+				targetMainId: job.data.originMainId,
+			};
+
+			await job.progress(mcpMsg);
+		}
+
 		/**
 		 * @important Do NOT call `workflowExecuteAfter` hook here.
 		 * It is being called from processSuccessExecution() already.

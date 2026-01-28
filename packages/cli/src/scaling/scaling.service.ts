@@ -13,7 +13,7 @@ import {
 	UnexpectedError,
 	ManualExecutionCancelledError,
 } from 'n8n-workflow';
-import type { IExecuteResponsePromiseData } from 'n8n-workflow';
+import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -403,8 +403,8 @@ export class ScalingService {
 						},
 					);
 
-					// TODO: Forward to MCP manager - will be implemented later
-					// mcpManager.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
+					// Fetch execution data from DB and forward to MCP service
+					void this.handleMcpResponse(msg.executionId);
 					break;
 				default:
 					assertNever(msg);
@@ -420,6 +420,45 @@ export class ScalingService {
 	/** Whether the argument is a message sent via Bull's internal pubsub setup. */
 	private isJobMessage(candidate: unknown): candidate is JobMessage {
 		return typeof candidate === 'object' && candidate !== null && 'kind' in candidate;
+	}
+
+	/**
+	 * Handle MCP response from worker - fetch execution data and forward to MCP service.
+	 */
+	private async handleMcpResponse(executionId: string): Promise<void> {
+		try {
+			// Fetch execution data from DB
+			const executionData = await this.executionRepository.findSingleExecution(executionId, {
+				includeData: true,
+				unflattenData: true,
+			});
+
+			if (!executionData) {
+				this.logger.error('MCP response: Execution not found in DB', { executionId });
+				return;
+			}
+
+			// Convert to IRun format
+			const runData: IRun = {
+				finished: executionData.finished,
+				mode: executionData.mode,
+				startedAt: executionData.startedAt,
+				stoppedAt: executionData.stoppedAt,
+				status: executionData.status,
+				data: executionData.data,
+				storedAt: executionData.storedAt,
+			};
+
+			// Forward to MCP service
+			const { McpService } = await import('@/modules/mcp/mcp.service');
+			const mcpService = Container.get(McpService);
+			mcpService.handleWorkerResponse(executionId, runData);
+		} catch (error) {
+			this.logger.error('Failed to handle MCP response', {
+				executionId,
+				error: ensureError(error).message,
+			});
+		}
 	}
 
 	// #endregion

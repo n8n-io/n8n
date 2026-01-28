@@ -382,6 +382,11 @@ export class WorkflowRunner {
 			loadStaticData: !!loadStaticData,
 			pushRef: data.pushRef,
 			streamingEnabled: data.streamingEnabled,
+			// MCP-specific fields for queue mode support
+			isMcpExecution: data.isMcpExecution,
+			mcpSessionId: data.mcpSessionId,
+			mcpMessageId: data.mcpMessageId,
+			originMainId: data.originMainId,
 		};
 
 		if (!this.scalingService) {
