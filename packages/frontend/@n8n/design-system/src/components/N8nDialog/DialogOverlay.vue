@@ -12,26 +12,40 @@ defineProps<DialogOverlayProps>();
 </script>
 
 <template>
-	<Transition name="n8n-dialog-backdrop-fade">
-		<DialogOverlay :force-mount="forceMount" :class="$style.overlay" />
-	</Transition>
+	<DialogOverlay :class="$style.overlay" />
 </template>
 
-<style module>
+<style module lang="scss">
 .overlay {
 	position: fixed;
 	inset: 0;
 	background-color: light-dark(var(--color--black-alpha-300), var(--color--black-alpha-600));
 	backdrop-filter: blur(8px);
 	z-index: 999998;
+
+	& [data-state='open'] {
+		animation: fadeIn 0.2s ease;
+	}
+
+	& [data-state='closed'] {
+		animation: fadeOut 0.2s ease;
+	}
+}
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
 }
 
-/** TODO (@heymynameisrob): Move to global animations library **/
-:global(.n8n-dialog-backdrop-fade-enter-active, .n8n-dialog-backdrop-fade-leave-active) {
-	transition: opacity 0.2s;
-}
-
-:global(.n8n-dialog-backdrop-fade-enter-from, .n8n-dialog-backdrop-fade-leave-to) {
-	opacity: 0;
+@keyframes fadeOut {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
 }
 </style>

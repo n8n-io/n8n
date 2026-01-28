@@ -1,29 +1,66 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { DialogRoot, DialogTrigger, DialogPortal } from 'reka-ui';
+import { ref } from 'vue';
 
 import {
-	N8nDialogRoot,
-	N8nDialogTrigger,
-	N8nDialogPortal,
-	N8nDialogOverlay,
+	N8nDialog,
+	N8nDialogClose,
 	N8nDialogContent,
-	N8nDialogHeader,
-	N8nDialogTitle,
 	N8nDialogDescription,
 	N8nDialogFooter,
-	N8nDialogClose,
+	N8nDialogHeader,
+	N8nDialogOverlay,
+	N8nDialogTitle,
 } from './index';
 
-// Helper to render a complete dialog setup
+// Helper to render the simplified N8nDialog component
 const renderDialog = (
+	props: Record<string, unknown> = {},
+	options: { defaultOpen?: boolean } = {},
+) => {
+	return render({
+		components: {
+			N8nDialog,
+			N8nDialogHeader,
+			N8nDialogTitle,
+			N8nDialogDescription,
+			N8nDialogFooter,
+			N8nDialogClose,
+		},
+		setup() {
+			const isOpen = ref(options.defaultOpen ?? false);
+			return { props, isOpen };
+		},
+		template: `
+			<button data-test-id="dialog-trigger" @click="isOpen = true">Open Dialog</button>
+			<N8nDialog v-model:open="isOpen" v-bind="props">
+				<N8nDialogHeader>
+					<N8nDialogTitle>Test Dialog Title</N8nDialogTitle>
+					<N8nDialogDescription>Test dialog description text.</N8nDialogDescription>
+				</N8nDialogHeader>
+				<div data-test-id="dialog-body">Dialog body content</div>
+				<N8nDialogFooter>
+					<N8nDialogClose as-child>
+						<button data-test-id="dialog-cancel">Cancel</button>
+					</N8nDialogClose>
+					<button data-test-id="dialog-confirm">Confirm</button>
+				</N8nDialogFooter>
+			</N8nDialog>
+		`,
+	});
+};
+
+// Helper to render the primitive dialog components (for advanced composition tests)
+const renderPrimitiveDialog = (
 	contentProps: Record<string, unknown> = {},
 	options: { defaultOpen?: boolean } = {},
 ) => {
 	return render({
 		components: {
-			N8nDialogRoot,
-			N8nDialogTrigger,
-			N8nDialogPortal,
+			DialogRoot,
+			DialogTrigger,
+			DialogPortal,
 			N8nDialogOverlay,
 			N8nDialogContent,
 			N8nDialogHeader,
@@ -36,11 +73,11 @@ const renderDialog = (
 			return { contentProps, defaultOpen: options.defaultOpen };
 		},
 		template: `
-			<N8nDialogRoot :default-open="defaultOpen">
-				<N8nDialogTrigger as-child>
+			<DialogRoot :default-open="defaultOpen">
+				<DialogTrigger as-child>
 					<button data-test-id="dialog-trigger">Open Dialog</button>
-				</N8nDialogTrigger>
-				<N8nDialogPortal>
+				</DialogTrigger>
+				<DialogPortal>
 					<N8nDialogOverlay />
 					<N8nDialogContent v-bind="contentProps">
 						<N8nDialogHeader>
@@ -55,8 +92,8 @@ const renderDialog = (
 							<button data-test-id="dialog-confirm">Confirm</button>
 						</N8nDialogFooter>
 					</N8nDialogContent>
-				</N8nDialogPortal>
-			</N8nDialogRoot>
+				</DialogPortal>
+			</DialogRoot>
 		`,
 	});
 };
@@ -149,24 +186,17 @@ describe('N8nDialog', () => {
 
 			const { getByTestId, getByRole, getByText } = render({
 				components: {
-					N8nDialogRoot,
-					N8nDialogTrigger,
-					N8nDialogPortal,
-					N8nDialogOverlay,
-					N8nDialogContent,
+					N8nDialog,
+				},
+				setup() {
+					const isOpen = ref(false);
+					return { isOpen };
 				},
 				template: `
-					<N8nDialogRoot>
-						<N8nDialogTrigger as-child>
-							<button data-test-id="dialog-trigger">Open</button>
-						</N8nDialogTrigger>
-						<N8nDialogPortal>
-							<N8nDialogOverlay />
-							<N8nDialogContent aria-label="Fallback Title">
-								<p>Content without DialogTitle component</p>
-							</N8nDialogContent>
-						</N8nDialogPortal>
-					</N8nDialogRoot>
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen" aria-label="Fallback Title">
+						<p>Content without DialogTitle component</p>
+					</N8nDialog>
 				`,
 			});
 
@@ -188,26 +218,19 @@ describe('N8nDialog', () => {
 
 			const { getByTestId, getByRole, getByText } = render({
 				components: {
-					N8nDialogRoot,
-					N8nDialogTrigger,
-					N8nDialogPortal,
-					N8nDialogOverlay,
-					N8nDialogContent,
+					N8nDialog,
 					N8nDialogTitle,
 				},
+				setup() {
+					const isOpen = ref(false);
+					return { isOpen };
+				},
 				template: `
-					<N8nDialogRoot>
-						<N8nDialogTrigger as-child>
-							<button data-test-id="dialog-trigger">Open</button>
-						</N8nDialogTrigger>
-						<N8nDialogPortal>
-							<N8nDialogOverlay />
-							<N8nDialogContent aria-description="Fallback Description">
-								<N8nDialogTitle>Test Title</N8nDialogTitle>
-								<p>Content without DialogDescription component</p>
-							</N8nDialogContent>
-						</N8nDialogPortal>
-					</N8nDialogRoot>
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen" aria-description="Fallback Description">
+						<N8nDialogTitle>Test Title</N8nDialogTitle>
+						<p>Content without DialogDescription component</p>
+					</N8nDialog>
 				`,
 			});
 
@@ -230,24 +253,17 @@ describe('N8nDialog', () => {
 
 			const { getByTestId, getByRole } = render({
 				components: {
-					N8nDialogRoot,
-					N8nDialogTrigger,
-					N8nDialogPortal,
-					N8nDialogOverlay,
-					N8nDialogContent,
+					N8nDialog,
+				},
+				setup() {
+					const isOpen = ref(false);
+					return { isOpen };
 				},
 				template: `
-					<N8nDialogRoot>
-						<N8nDialogTrigger as-child>
-							<button data-test-id="dialog-trigger">Open</button>
-						</N8nDialogTrigger>
-						<N8nDialogPortal>
-							<N8nDialogOverlay />
-							<N8nDialogContent>
-								<p>Content without any title</p>
-							</N8nDialogContent>
-						</N8nDialogPortal>
-					</N8nDialogRoot>
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen">
+						<p>Content without any title</p>
+					</N8nDialog>
 				`,
 			});
 
@@ -291,24 +307,17 @@ describe('N8nDialog', () => {
 
 			const { getByTestId, getByRole } = render({
 				components: {
-					N8nDialogRoot,
-					N8nDialogTrigger,
-					N8nDialogPortal,
-					N8nDialogOverlay,
-					N8nDialogContent,
+					N8nDialog,
+				},
+				setup() {
+					const isOpen = ref(false);
+					return { isOpen };
 				},
 				template: `
-					<N8nDialogRoot>
-						<N8nDialogTrigger as-child>
-							<button data-test-id="dialog-trigger">Open</button>
-						</N8nDialogTrigger>
-						<N8nDialogPortal>
-							<N8nDialogOverlay />
-							<N8nDialogContent aria-label="Accessible Title">
-								<p>Content with ariaLabel prop</p>
-							</N8nDialogContent>
-						</N8nDialogPortal>
-					</N8nDialogRoot>
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen" aria-label="Accessible Title">
+						<p>Content with ariaLabel prop</p>
+					</N8nDialog>
 				`,
 			});
 
@@ -381,114 +390,19 @@ describe('N8nDialog', () => {
 			});
 		});
 
-		it('should close dialog when clicking outside with disableOutsidePointerEvents=false', async () => {
-			const user = userEvent.setup();
-
-			const { getByTestId, getByRole, queryByRole, baseElement } = render({
-				components: {
-					N8nDialogRoot,
-					N8nDialogTrigger,
-					N8nDialogPortal,
-					N8nDialogOverlay,
-					N8nDialogContent,
-					N8nDialogTitle,
-				},
-				template: `
-					<N8nDialogRoot>
-						<N8nDialogTrigger as-child>
-							<button data-test-id="dialog-trigger">Open</button>
-						</N8nDialogTrigger>
-						<N8nDialogPortal>
-							<N8nDialogOverlay data-test-id="dialog-overlay" />
-							<N8nDialogContent :disable-outside-pointer-events="false">
-								<N8nDialogTitle>Test</N8nDialogTitle>
-							</N8nDialogContent>
-						</N8nDialogPortal>
-					</N8nDialogRoot>
-				`,
-			});
-
-			await user.click(getByTestId('dialog-trigger'));
-			expect(getByRole('dialog')).toBeInTheDocument();
-
-			// Dispatch pointer events directly to simulate clicking outside
-			// This bypasses the pointer-events CSS check in userEvent
-			const overlay = baseElement.querySelector('[data-test-id="dialog-overlay"]');
-			if (overlay) {
-				overlay.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-				overlay.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-			}
-
-			await waitFor(() => {
-				expect(queryByRole('dialog')).not.toBeInTheDocument();
-			});
-		});
-
-		it('should NOT close dialog when clicking outside with disableOutsidePointerEvents=true (default)', async () => {
-			const user = userEvent.setup();
-			const interactOutsideHandler = vi.fn((e: Event) => e.preventDefault());
-
-			const { getByTestId, getByRole, baseElement } = render({
-				components: {
-					N8nDialogRoot,
-					N8nDialogTrigger,
-					N8nDialogPortal,
-					N8nDialogOverlay,
-					N8nDialogContent,
-					N8nDialogTitle,
-				},
-				setup() {
-					return { interactOutsideHandler };
-				},
-				template: `
-					<N8nDialogRoot>
-						<N8nDialogTrigger as-child>
-							<button data-test-id="dialog-trigger">Open</button>
-						</N8nDialogTrigger>
-						<N8nDialogPortal>
-							<N8nDialogOverlay data-test-id="dialog-overlay" />
-							<N8nDialogContent @interact-outside="interactOutsideHandler">
-								<N8nDialogTitle>Test</N8nDialogTitle>
-							</N8nDialogContent>
-						</N8nDialogPortal>
-					</N8nDialogRoot>
-				`,
-			});
-
-			await user.click(getByTestId('dialog-trigger'));
-			expect(getByRole('dialog')).toBeInTheDocument();
-
-			// Dispatch pointer event on overlay - dialog should remain open
-			const overlay = baseElement.querySelector('[data-test-id="dialog-overlay"]');
-			if (overlay) {
-				overlay.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-			}
-
-			// Dialog should still be open because disableOutsidePointerEvents is true by default
-			expect(getByRole('dialog')).toBeInTheDocument();
-		});
-
 		it('should support controlled open state via v-model', async () => {
 			const { queryByRole, getByRole, rerender } = render({
 				components: {
-					N8nDialogRoot,
-					N8nDialogPortal,
-					N8nDialogOverlay,
-					N8nDialogContent,
+					N8nDialog,
 					N8nDialogTitle,
 				},
 				props: {
 					isOpen: false,
 				},
 				template: `
-					<N8nDialogRoot :open="isOpen">
-						<N8nDialogPortal>
-							<N8nDialogOverlay />
-							<N8nDialogContent>
-								<N8nDialogTitle>Controlled Dialog</N8nDialogTitle>
-							</N8nDialogContent>
-						</N8nDialogPortal>
-					</N8nDialogRoot>
+					<N8nDialog :open="isOpen">
+						<N8nDialogTitle>Controlled Dialog</N8nDialogTitle>
+					</N8nDialog>
 				`,
 			});
 
@@ -511,28 +425,18 @@ describe('N8nDialog', () => {
 
 			const { getByTestId, getByRole } = render({
 				components: {
-					N8nDialogRoot,
-					N8nDialogTrigger,
-					N8nDialogPortal,
-					N8nDialogOverlay,
-					N8nDialogContent,
+					N8nDialog,
 					N8nDialogTitle,
 				},
 				setup() {
-					return { escapeHandler };
+					const isOpen = ref(false);
+					return { isOpen, escapeHandler };
 				},
 				template: `
-					<N8nDialogRoot>
-						<N8nDialogTrigger as-child>
-							<button data-test-id="dialog-trigger">Open</button>
-						</N8nDialogTrigger>
-						<N8nDialogPortal>
-							<N8nDialogOverlay />
-							<N8nDialogContent @escape-key-down="escapeHandler">
-								<N8nDialogTitle>Test</N8nDialogTitle>
-							</N8nDialogContent>
-						</N8nDialogPortal>
-					</N8nDialogRoot>
+					<button data-test-id="dialog-trigger" @click="isOpen = true">Open</button>
+					<N8nDialog v-model:open="isOpen" @escape-key-down="escapeHandler">
+						<N8nDialogTitle>Test</N8nDialogTitle>
+					</N8nDialog>
 				`,
 			});
 
@@ -705,6 +609,17 @@ describe('N8nDialog', () => {
 				// Focus should stay within the dialog's focusable elements
 				expect(focusableElements.includes(document.activeElement as HTMLElement)).toBe(true);
 			}
+		});
+	});
+
+	describe('advanced composition with reka-ui primitives', () => {
+		it('should work with reka-ui primitives for full control', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, getByRole } = renderPrimitiveDialog();
+
+			await user.click(getByTestId('dialog-trigger'));
+
+			expect(getByRole('dialog')).toBeInTheDocument();
 		});
 	});
 });

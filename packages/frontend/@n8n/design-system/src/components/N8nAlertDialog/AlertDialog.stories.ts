@@ -34,23 +34,23 @@ export const Basic = {
 			N8nButton,
 		},
 		setup() {
+			const isOpen = ref(false);
 			const handleConfirm = () => {
 				console.log('Confirmed!');
+				isOpen.value = false;
 			};
-			return { handleConfirm };
+			return { isOpen, handleConfirm };
 		},
 		template: `
 		<div style="display: flex; justify-content: center; padding: 40px;">
+			<N8nButton label="Save" @click="isOpen = true" />
 			<N8nAlertDialog
+				v-model:open="isOpen"
 				title="Save changes?"
 				description="Your changes will be saved to the server."
 				action-label="Save"
 				@action="handleConfirm"
-			>
-				<template #trigger>
-					<N8nButton label="Save" />
-				</template>
-			</N8nAlertDialog>
+			/>
 		</div>
 		`,
 	}),
@@ -66,24 +66,24 @@ export const Destructive = {
 			N8nButton,
 		},
 		setup() {
+			const isOpen = ref(false);
 			const handleDelete = () => {
 				console.log('Deleted!');
+				isOpen.value = false;
 			};
-			return { handleDelete };
+			return { isOpen, handleDelete };
 		},
 		template: `
 		<div style="display: flex; justify-content: center; padding: 40px;">
+			<N8nButton label="Delete" variant="danger" @click="isOpen = true" />
 			<N8nAlertDialog
+				v-model:open="isOpen"
 				title="Delete item?"
 				description="This action cannot be undone. This will permanently delete the item."
 				action-label="Delete"
 				action-variant="destructive"
 				@action="handleDelete"
-			>
-				<template #trigger>
-					<N8nButton label="Delete" variant="danger" />
-				</template>
-			</N8nAlertDialog>
+			/>
 		</div>
 		`,
 	}),
@@ -113,6 +113,7 @@ export const WithLoading = {
 		},
 		template: `
 		<div style="display: flex; justify-content: center; padding: 40px;">
+			<N8nButton label="Start Process" @click="isOpen = true" />
 			<N8nAlertDialog
 				v-model:open="isOpen"
 				title="Process data?"
@@ -120,11 +121,7 @@ export const WithLoading = {
 				action-label="Process"
 				:loading="loading"
 				@action="handleAction"
-			>
-				<template #trigger>
-					<N8nButton label="Start Process" />
-				</template>
-			</N8nAlertDialog>
+			/>
 		</div>
 		`,
 	}),
@@ -139,27 +136,28 @@ export const Sizes = {
 			N8nAlertDialog,
 			N8nButton,
 		},
+		setup() {
+			const isSmallOpen = ref(false);
+			const isMediumOpen = ref(false);
+			return { isSmallOpen, isMediumOpen };
+		},
 		template: `
 		<div style="display: flex; gap: 16px; justify-content: center; padding: 40px;">
+			<N8nButton label="Small" variant="outline" @click="isSmallOpen = true" />
 			<N8nAlertDialog
+				v-model:open="isSmallOpen"
 				title="Small Dialog"
 				description="This is a small alert dialog."
 				size="small"
-			>
-				<template #trigger>
-					<N8nButton label="Small" variant="outline" />
-				</template>
-			</N8nAlertDialog>
+			/>
 
+			<N8nButton label="Medium" variant="outline" @click="isMediumOpen = true" />
 			<N8nAlertDialog
+				v-model:open="isMediumOpen"
 				title="Medium Dialog"
 				description="This is a medium alert dialog with more space for content."
 				size="medium"
-			>
-				<template #trigger>
-					<N8nButton label="Medium" variant="outline" />
-				</template>
-			</N8nAlertDialog>
+			/>
 		</div>
 		`,
 	}),

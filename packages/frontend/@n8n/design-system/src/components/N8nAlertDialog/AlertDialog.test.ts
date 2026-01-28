@@ -4,23 +4,22 @@ import { ref } from 'vue';
 
 import { N8nAlertDialog } from './index';
 
-// Helper to render AlertDialog with common setup
+// Helper to render AlertDialog with controlled state (matching N8nDialog pattern)
 const renderAlertDialog = (
 	props: Record<string, unknown> = {},
-	options: { withSlotContent?: boolean } = {},
+	options: { defaultOpen?: boolean; withSlotContent?: boolean } = {},
 ) => {
 	return render({
 		components: {
 			N8nAlertDialog,
 		},
 		setup() {
-			return { props, withSlotContent: options.withSlotContent };
+			const isOpen = ref(options.defaultOpen ?? false);
+			return { props, isOpen, withSlotContent: options.withSlotContent };
 		},
 		template: `
-			<N8nAlertDialog v-bind="props">
-				<template #trigger>
-					<button data-test-id="alert-trigger">Open Alert</button>
-				</template>
+			<button data-test-id="alert-trigger" @click="isOpen = true">Open Alert</button>
+			<N8nAlertDialog v-model:open="isOpen" v-bind="props">
 				<div v-if="withSlotContent" data-test-id="slot-content">Custom slot content</div>
 			</N8nAlertDialog>
 		`,
@@ -61,14 +60,12 @@ describe('N8nAlertDialog', () => {
 			const { getByTestId, getByRole } = render({
 				components: { N8nAlertDialog },
 				setup() {
-					return { actionHandler };
+					const isOpen = ref(false);
+					return { isOpen, actionHandler };
 				},
 				template: `
-					<N8nAlertDialog title="Confirm?" @action="actionHandler">
-						<template #trigger>
-							<button data-test-id="alert-trigger">Open</button>
-						</template>
-					</N8nAlertDialog>
+					<button data-test-id="alert-trigger" @click="isOpen = true">Open</button>
+					<N8nAlertDialog v-model:open="isOpen" title="Confirm?" @action="actionHandler" />
 				`,
 			});
 
@@ -85,14 +82,12 @@ describe('N8nAlertDialog', () => {
 			const { getByTestId, getByRole, queryByRole } = render({
 				components: { N8nAlertDialog },
 				setup() {
-					return { cancelHandler };
+					const isOpen = ref(false);
+					return { isOpen, cancelHandler };
 				},
 				template: `
-					<N8nAlertDialog title="Confirm?" @cancel="cancelHandler">
-						<template #trigger>
-							<button data-test-id="alert-trigger">Open</button>
-						</template>
-					</N8nAlertDialog>
+					<button data-test-id="alert-trigger" @click="isOpen = true">Open</button>
+					<N8nAlertDialog v-model:open="isOpen" title="Confirm?" @cancel="cancelHandler" />
 				`,
 			});
 
@@ -113,19 +108,21 @@ describe('N8nAlertDialog', () => {
 			const { getByTestId, getByRole } = render({
 				components: { N8nAlertDialog },
 				setup() {
-					return { updateOpenHandler };
+					const isOpen = ref(false);
+					const handleUpdateOpen = (value: boolean) => {
+						isOpen.value = value;
+						updateOpenHandler(value);
+					};
+					return { isOpen, handleUpdateOpen };
 				},
 				template: `
-					<N8nAlertDialog title="Confirm?" @update:open="updateOpenHandler">
-						<template #trigger>
-							<button data-test-id="alert-trigger">Open</button>
-						</template>
-					</N8nAlertDialog>
+					<button data-test-id="alert-trigger" @click="isOpen = true">Open</button>
+					<N8nAlertDialog :open="isOpen" @update:open="handleUpdateOpen" title="Confirm?" />
 				`,
 			});
 
 			await user.click(getByTestId('alert-trigger'));
-			expect(updateOpenHandler).toHaveBeenCalledWith(true);
+			// Dialog opened via external trigger, not through dialog's update:open
 
 			await user.click(getByRole('button', { name: 'Cancel' }));
 			expect(updateOpenHandler).toHaveBeenCalledWith(false);
@@ -328,40 +325,34 @@ describe('N8nAlertDialog', () => {
 				});
 			});
 
-			it('should respect defaultOpen prop for initial state', async () => {
-				const user = userEvent.setup();
-
-				// Test that defaultOpen=false (default) means dialog is closed initially
-				const { getByTestId, queryByRole, getByRole } = render({
+			it('should start closed when no open prop is provided', async () => {
+				const { queryByRole } = render({
 					components: { N8nAlertDialog },
 					template: `
-					<N8nAlertDialog title="Initially closed">
-						<template #trigger>
-							<button data-test-id="trigger">Open</button>
-						</template>
-					</N8nAlertDialog>
-				`,
+						<N8nAlertDialog title="Initially closed" />
+					`,
 				});
 
 				// Dialog should not be visible by default
 				expect(queryByRole('dialog')).not.toBeInTheDocument();
+			});
 
-				// But should open when trigger is clicked
-				await user.click(getByTestId('trigger'));
-				expect(getByRole('dialog')).toBeInTheDocument();
+			it('should open when open prop is true', async () => {
+				const { getByRole } = render({
+					components: { N8nAlertDialog },
+					template: `
+						<N8nAlertDialog title="Open dialog" :open="true" />
+					`,
+				});
+
+				await waitFor(() => {
+					expect(getByRole('dialog')).toBeInTheDocument();
+				});
 			});
 		});
 	});
 
 	describe('slots', () => {
-		it('should render trigger slot content', async () => {
-			const { getByTestId } = renderAlertDialog({
-				title: 'Alert',
-			});
-
-			expect(getByTestId('alert-trigger')).toBeInTheDocument();
-		});
-
 		it('should render default slot content between description and footer', async () => {
 			const user = userEvent.setup();
 			const { getByTestId } = renderAlertDialog(
@@ -378,7 +369,7 @@ describe('N8nAlertDialog', () => {
 			expect(getByTestId('slot-content')).toHaveTextContent('Custom slot content');
 		});
 
-		it('should work without trigger slot (controlled mode)', async () => {
+		it('should work in controlled mode without external trigger', async () => {
 			const { getByRole } = render({
 				components: { N8nAlertDialog },
 				template: `
@@ -406,11 +397,8 @@ describe('N8nAlertDialog', () => {
 					return { isOpen, handleAction };
 				},
 				template: `
-					<N8nAlertDialog v-model:open="isOpen" title="Async operation" @action="handleAction">
-						<template #trigger>
-							<button data-test-id="alert-trigger">Open</button>
-						</template>
-					</N8nAlertDialog>
+					<button data-test-id="alert-trigger" @click="isOpen = true">Open</button>
+					<N8nAlertDialog v-model:open="isOpen" title="Async operation" @action="handleAction" />
 				`,
 			});
 
@@ -437,11 +425,8 @@ describe('N8nAlertDialog', () => {
 					return { isOpen, handleAction };
 				},
 				template: `
-					<N8nAlertDialog v-model:open="isOpen" title="Async operation" @action="handleAction">
-						<template #trigger>
-							<button data-test-id="alert-trigger">Open</button>
-						</template>
-					</N8nAlertDialog>
+					<button data-test-id="alert-trigger" @click="isOpen = true">Open</button>
+					<N8nAlertDialog v-model:open="isOpen" title="Async operation" @action="handleAction" />
 				`,
 			});
 

@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import {
-	DialogRoot as N8nDialogRoot,
-	DialogTrigger as N8nDialogTrigger,
-	DialogPortal as N8nDialogPortal,
-} from 'reka-ui';
-import { ref, watch } from 'vue';
+import { DialogRoot, DialogPortal } from 'reka-ui';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nDialogContent from '@n8n/design-system/components/N8nDialog/DialogContent.vue';
@@ -19,12 +14,12 @@ export type AlertDialogSize = 'small' | 'medium';
 
 export interface AlertDialogProps {
 	/**
-	 * Controlled open state
+	 * Controlled open state of the alert dialog
 	 */
 	open?: boolean;
 	/**
-	 * Initial open state (uncontrolled)
-	 * @default false
+	 * The open state of the alert dialog when it is initially rendered.
+	 * Use when you do not need to control its open state.
 	 */
 	defaultOpen?: boolean;
 	/**
@@ -68,8 +63,7 @@ export interface AlertDialogEmits {
 	cancel: [];
 }
 
-const props = withDefaults(defineProps<AlertDialogProps>(), {
-	defaultOpen: false,
+withDefaults(defineProps<AlertDialogProps>(), {
 	actionLabel: 'Confirm',
 	actionVariant: 'solid',
 	cancelLabel: 'Cancel',
@@ -81,30 +75,13 @@ const emit = defineEmits<AlertDialogEmits>();
 
 defineSlots<{
 	/**
-	 * Trigger element that opens the dialog
-	 */
-	trigger?: () => unknown;
-	/**
 	 * Optional additional content between description and footer
 	 */
 	default?: () => unknown;
 }>();
 
-const internalOpen = ref(props.open ?? props.defaultOpen);
-
-// Sync internal state with controlled prop
-watch(
-	() => props.open,
-	(newVal) => {
-		if (newVal !== undefined) {
-			internalOpen.value = newVal;
-		}
-	},
-);
-
-const handleOpenChange = (open: boolean) => {
-	internalOpen.value = open;
-	emit('update:open', open);
+const handleOpenChange = (value: boolean) => {
+	emit('update:open', value);
 };
 
 const handleAction = () => {
@@ -118,12 +95,8 @@ const handleCancel = () => {
 </script>
 
 <template>
-	<N8nDialogRoot :open="internalOpen" @update:open="handleOpenChange">
-		<N8nDialogTrigger v-if="$slots.trigger" as-child>
-			<slot name="trigger" />
-		</N8nDialogTrigger>
-
-		<N8nDialogPortal>
+	<DialogRoot :open="open" :default-open="defaultOpen" @update:open="handleOpenChange">
+		<DialogPortal>
 			<N8nDialogOverlay />
 			<N8nDialogContent :size="size" :show-close-button="false">
 				<N8nDialogHeader>
@@ -145,6 +118,6 @@ const handleCancel = () => {
 					/>
 				</N8nDialogFooter>
 			</N8nDialogContent>
-		</N8nDialogPortal>
-	</N8nDialogRoot>
+		</DialogPortal>
+	</DialogRoot>
 </template>

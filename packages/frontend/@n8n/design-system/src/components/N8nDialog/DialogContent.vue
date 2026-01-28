@@ -1,14 +1,8 @@
 <script setup lang="ts">
-import {
-	DialogContent,
-	DialogClose,
-	DialogTitle,
-	DialogDescription,
-	VisuallyHidden,
-} from 'reka-ui';
-import { computed, shallowRef, useCssModule } from 'vue';
+import { DialogContent, DialogTitle, DialogDescription, VisuallyHidden } from 'reka-ui';
+import { computed, useCssModule } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nDialogClose from './DialogClose.vue';
 
 export type DialogContentSize =
 	| 'small'
@@ -72,7 +66,6 @@ const props = withDefaults(defineProps<DialogContentProps>(), {
 const emit = defineEmits<DialogContentEmits>();
 
 const $style = useCssModule();
-const contentRef = shallowRef<InstanceType<typeof DialogContent> | null>(null);
 
 const sizeClasses: Record<DialogContentSize, string> = {
 	small: $style.small,
@@ -93,45 +86,33 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 </script>
 
 <template>
-	<Transition name="n8n-dialog-fade">
-		<DialogContent
-			ref="contentRef"
-			:force-mount="forceMount"
-			:trap-focus="trapFocus"
-			:disable-outside-pointer-events="disableOutsidePointerEvents"
-			:class="[$style.content, sizeClass]"
-			@escape-key-down="emit('escapeKeyDown', $event)"
-			@interact-outside="emit('interactOutside', $event)"
-			@open-auto-focus="emit('openAutoFocus', $event)"
-			@close-auto-focus="emit('closeAutoFocus', $event)"
-		>
-			<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
-			<VisuallyHidden v-if="needsFallbackTitle" as-child>
-				<DialogTitle>{{ ariaLabel }}</DialogTitle>
-			</VisuallyHidden>
+	<DialogContent
+		:force-mount="forceMount"
+		:trap-focus="trapFocus"
+		:disable-outside-pointer-events="disableOutsidePointerEvents"
+		:class="[$style.content, sizeClass]"
+		@escape-key-down="emit('escapeKeyDown', $event)"
+		@interact-outside="emit('interactOutside', $event)"
+		@open-auto-focus="emit('openAutoFocus', $event)"
+		@close-auto-focus="emit('closeAutoFocus', $event)"
+	>
+		<!-- Fallback accessible title for screen readers when DialogTitle is not provided -->
+		<VisuallyHidden v-if="needsFallbackTitle" as-child>
+			<DialogTitle>{{ ariaLabel }}</DialogTitle>
+		</VisuallyHidden>
 
-			<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
-			<VisuallyHidden v-if="needsFallbackDescription" as-child>
-				<DialogDescription>{{ ariaDescription }}</DialogDescription>
-			</VisuallyHidden>
+		<!-- Fallback accessible description for screen readers when DialogDescription is not provided -->
+		<VisuallyHidden v-if="needsFallbackDescription" as-child>
+			<DialogDescription>{{ ariaDescription }}</DialogDescription>
+		</VisuallyHidden>
 
-			<slot />
+		<slot />
 
-			<DialogClose
-				v-if="showCloseButton"
-				:class="$style['close-button']"
-				aria-label="Close dialog"
-				data-test-id="dialog-close-button"
-			>
-				<Icon icon="x" />
-			</DialogClose>
-		</DialogContent>
-	</Transition>
+		<N8nDialogClose v-if="showCloseButton" />
+	</DialogContent>
 </template>
 
 <style module lang="scss">
-@use '@n8n/design-system/css/mixins/focus';
-
 .content {
 	position: fixed;
 	top: 50%;
@@ -152,6 +133,19 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 
 	&:focus {
 		outline: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transform:
+			opacity 0.1s,
+			translate(-50%, -50%);
+	}
+	&[data-state='open'] {
+		animation: fadeIn 0.2s var(--easing--ease-out);
+	}
+
+	&[data-state='closed'] {
+		animation: fadeOut 0.2s var(--easing--ease-out);
 	}
 }
 
@@ -211,47 +205,25 @@ const needsFallbackDescription = computed(() => !!props.ariaDescription);
 	max-height: calc(100dvh - var(--spacing--lg));
 }
 
-/** TODO (@heymynameisrob): Replace with <Button /> when v2 shipped **/
-.close-button {
-	position: absolute;
-	top: var(--spacing--sm);
-	right: var(--spacing--sm);
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: var(--spacing--lg);
-	height: var(--spacing--lg);
-	padding: 0;
-	border: none;
-	border-radius: var(--radius);
-	background-color: transparent;
-	color: var(--color--text);
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--background);
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
 	}
-
-	@include focus.focus-visible-ring;
-}
-
-:global(.n8n-dialog-fade-enter-active),
-:global(.n8n-dialog-fade-leave-active) {
-	--easing--ease-out: cubic-bezier(0.215, 0.61, 0.355, 1);
-	transition:
-		opacity 0.2s var(--easing--ease-out),
-		transform 0.2s var(--easing--ease-out);
-	@media (prefers-reduced-motion: reduce) {
-		transition: opacity 0.1s;
-	}
-}
-:global(.n8n-dialog-fade-enter-from),
-:global(.n8n-dialog-fade-leave-to) {
-	opacity: 0;
-	transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
-	transform-origin: center;
-	@media (prefers-reduced-motion: reduce) {
+	to {
+		opacity: 1;
 		transform: translate(-50%, -50%);
+	}
+}
+
+@keyframes fadeOut {
+	from {
+		opacity: 1;
+		transform: translate(-50%, -50%);
+	}
+	to {
+		opacity: 0;
+		transform: translate(-50%, calc(-50% + var(--spacing--2xs))) scale(0.98);
 	}
 }
 </style>
