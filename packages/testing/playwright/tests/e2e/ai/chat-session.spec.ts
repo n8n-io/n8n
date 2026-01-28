@@ -22,11 +22,20 @@ test.describe('Chat session ID reset', () => {
 		await n8n.canvas.logsPanel.refreshSession();
 		await expect(n8n.canvas.logsPanel.getManualChatMessages()).not.toBeAttached();
 
-		const newSessionId = await n8n.canvas.logsPanel.getSessionId(n8n.clipboard);
+		// Step 5: Get the new session ID
+		await sessionIdButton.click();
+		let newSessionId = await n8n.page
+			.locator('.n8n-tooltip', { hasText: '(click to copy)' })
+			?.textContent();
+		expect(newSessionId).toBeTruthy();
+		newSessionId = (newSessionId as string).split(' ')[0]; // Split text "SESSIONID (Click to copy)"
+
 		expect(newSessionId).not.toEqual(initialSessionId);
 
 		await n8n.canvas.logsPanel.sendManualChatMessage('Test message 2');
 		await expect(n8n.canvas.logsPanel.getManualChatMessages()).toHaveCount(2);
-		await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 0)).toContainText(newSessionId);
+
+		// Verify the NEW session ID in the output panel matches the chat header session ID
+		await expect(n8n.canvas.logsPanel.outputPanel.getTbodyCell(0, 1)).toContainText(newSessionId);
 	});
 });

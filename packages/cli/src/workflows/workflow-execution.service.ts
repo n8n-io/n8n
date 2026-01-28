@@ -151,6 +151,7 @@ export class WorkflowExecutionService {
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
 					destinationNode: payload.destinationNode,
+					chatSessionId: payload.chatSessionId,
 					workflowIsActive,
 				}))
 			) {

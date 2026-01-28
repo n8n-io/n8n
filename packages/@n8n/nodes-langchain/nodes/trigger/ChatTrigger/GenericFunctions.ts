@@ -5,7 +5,10 @@ import { ChatTriggerAuthorizationError } from './error';
 import type { AuthenticationChatOption } from './types';
 
 export async function validateAuth(context: IWebhookFunctions) {
-	const authentication = context.getNodeParameter('authentication') as AuthenticationChatOption;
+	const authentication = context.getNodeParameter(
+		'authentication',
+		'none',
+	) as AuthenticationChatOption;
 	const req = context.getRequestObject();
 	const headers = context.getHeaderData();
 
