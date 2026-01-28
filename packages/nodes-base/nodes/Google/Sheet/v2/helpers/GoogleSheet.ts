@@ -530,8 +530,21 @@ export class GoogleSheet {
 
 		const getKeyIndex = (key: string | number, data: Array<string | number>) => {
 			let index = -1;
+			const keyStr = String(key).trim();
+
 			for (let i = 0; i < data.length; i++) {
-				if (data[i]?.toString() === key.toString()) {
+				const dataStr = String(data[i] || '').trim();
+
+				// Direct string match
+				if (dataStr === keyStr) {
+					index = i;
+					break;
+				}
+
+				// Numeric comparison for phone numbers and IDs
+				const keyNum = Number(keyStr);
+				const dataNum = Number(dataStr);
+				if (!isNaN(keyNum) && !isNaN(dataNum) && keyNum === dataNum) {
 					index = i;
 					break;
 				}
@@ -723,10 +736,25 @@ export class GoogleSheet {
 
 				// Loop over all the items and find the one with the matching value
 				for (rowIndex = dataStartRowIndex; rowIndex < inputData.length; rowIndex++) {
-					if (
-						inputData[rowIndex][returnColumnIndex]?.toString() ===
-						lookupValue.lookupValue.toString()
-					) {
+					const cellValue = inputData[rowIndex][returnColumnIndex];
+					const lookupVal = lookupValue.lookupValue;
+
+					// Direct string comparison
+					const cellStr = String(cellValue || '').trim();
+					const lookupStr = String(lookupVal || '').trim();
+
+					let isMatch = cellStr === lookupStr;
+
+					// Numeric comparison for phone numbers and IDs
+					if (!isMatch) {
+						const cellNum = Number(cellStr);
+						const lookupNum = Number(lookupStr);
+						if (!isNaN(cellNum) && !isNaN(lookupNum)) {
+							isMatch = cellNum === lookupNum;
+						}
+					}
+
+					if (isMatch) {
 						if (addedRows.indexOf(rowIndex) === -1) {
 							returnData.push(inputData[rowIndex]);
 							addedRows.push(rowIndex);
@@ -755,10 +783,25 @@ export class GoogleSheet {
 						);
 					}
 
-					if (
-						inputData[rowIndex][returnColumnIndex]?.toString() !==
-						lookupValue.lookupValue.toString()
-					) {
+					const cellValue = inputData[rowIndex][returnColumnIndex];
+					const lookupVal = lookupValue.lookupValue;
+
+					// Direct string comparison
+					const cellStr = String(cellValue || '').trim();
+					const lookupStr = String(lookupVal || '').trim();
+
+					let isMatch = cellStr === lookupStr;
+
+					// Numeric comparison for phone numbers and IDs
+					if (!isMatch) {
+						const cellNum = Number(cellStr);
+						const lookupNum = Number(lookupStr);
+						if (!isNaN(cellNum) && !isNaN(lookupNum)) {
+							isMatch = cellNum === lookupNum;
+						}
+					}
+
+					if (!isMatch) {
 						allMatch = false;
 						break;
 					}
