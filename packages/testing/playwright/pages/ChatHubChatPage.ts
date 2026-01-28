@@ -87,27 +87,32 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	async clickEditButtonAt(index: number): Promise<void> {
-		const message = this.getChatMessages().nth(index);
-		await message.hover();
+		await this.hoverMessageActionsAt(index);
 		await this.getEditButtonAt(index).click();
 	}
 
 	async clickRegenerateButtonAt(index: number): Promise<void> {
-		const message = this.getChatMessages().nth(index);
-		await message.hover();
+		await this.hoverMessageActionsAt(index);
 		await this.getRegenerateButtonAt(index).click();
 	}
 
 	async clickPrevAlternativeButtonAt(index: number): Promise<void> {
-		const message = this.getChatMessages().nth(index);
-		await message.hover();
+		await this.hoverMessageActionsAt(index);
 		await this.getPrevAlternativeButtonAt(index).click();
 	}
 
 	async clickNextAlternativeButtonAt(index: number): Promise<void> {
-		const message = this.getChatMessages().nth(index);
-		await message.hover();
+		await this.hoverMessageActionsAt(index);
 		await this.getNextAlternativeButtonAt(index).click();
+	}
+
+	/**
+	 * Hovers over the message actions area to reveal hidden action buttons.
+	 * The action buttons are hidden by CSS until the content area is hovered.
+	 */
+	private async hoverMessageActionsAt(index: number): Promise<void> {
+		const actions = this.getChatMessages().nth(index).getByTestId('chat-message-actions');
+		await actions.hover();
 	}
 
 	getAttachButton(): Locator {
