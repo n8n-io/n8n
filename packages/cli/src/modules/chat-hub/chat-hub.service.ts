@@ -2049,6 +2049,16 @@ export class ChatHubService {
 					await this.chatStreamService.endStream(sessionId, message.id, 'error');
 				});
 			},
+			onCancel: async (message) => {
+				// Save content that was generated so far
+				await this.messageRepository.updateChatMessage(message.id, {
+					content: message.content,
+					status: 'cancelled',
+				});
+
+				// End stream with cancelled status
+				await this.chatStreamService.endStream(sessionId, message.id, 'cancelled');
+			},
 		});
 
 		// Create a fake Response-like object that routes to ChatStreamService via aggregator
@@ -2078,6 +2088,12 @@ export class ChatHubService {
 		} catch (error) {
 			if (error instanceof ManualExecutionCancelledError) {
 				executionStatus = 'cancelled';
+				// On multi-main, the stream doesn't send an error chunk on cancellation,
+				// so we need to explicitly cancel all active messages.
+				// On single-main, the onError handler already handles this via the error chunk.
+				if (this.instanceSettings.isMultiMain) {
+					await aggregator.cancelAll();
+				}
 			} else {
 				executionStatus = 'error';
 				throw error;

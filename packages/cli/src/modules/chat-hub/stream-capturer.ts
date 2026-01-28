@@ -107,6 +107,7 @@ type Handlers = {
 	onItem?: (message: AggregatedMessage, delta: string) => Promise<void>;
 	onEnd?: (message: AggregatedMessage) => Promise<void>;
 	onError?: (message: AggregatedMessage, errText?: string) => Promise<void>;
+	onCancel?: (message: AggregatedMessage) => Promise<void>;
 };
 
 export function createStructuredChunkAggregator(
@@ -114,9 +115,8 @@ export function createStructuredChunkAggregator(
 	retryOfMessageId: ChatMessageId | null,
 	handlers: Handlers = {},
 ) {
-	const { onBegin, onItem, onEnd, onError } = handlers;
+	const { onBegin, onItem, onEnd, onError, onCancel } = handlers;
 
-	const active = new Map<MessageKey, AggregatedMessage>();
 	const activeByKey = new Map<MessageKey, AggregatedMessage>();
 
 	let previousMessageId: ChatMessageId | null = initialPreviousMessageId;
@@ -191,13 +191,16 @@ export function createStructuredChunkAggregator(
 		return message;
 	};
 
-	const finalizeAll = () => {
-		for (const message of active.values()) {
+	const cancelAll = async () => {
+		const messages = Array.from(activeByKey.values());
+		activeByKey.clear();
+
+		for (const message of messages) {
 			message.status = 'cancelled';
 			message.updatedAt = new Date();
+			await onCancel?.(message);
 		}
-		active.clear();
 	};
 
-	return { ingest, finalizeAll };
+	return { ingest, cancelAll };
 }
