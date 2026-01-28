@@ -118,6 +118,101 @@ const AI_CONNECTION_TYPES = [
 ];
 
 /**
+ * Mapping from AI connection type to subnodes field name
+ */
+const AI_CONNECTION_TO_SUBNODE_FIELD: Record<string, string> = {
+	ai_languageModel: 'model',
+	ai_memory: 'memory',
+	ai_tool: 'tools',
+	ai_outputParser: 'outputParser',
+	ai_embedding: 'embedding',
+	ai_vectorStore: 'vectorStore',
+	ai_retriever: 'retriever',
+	ai_document: 'document',
+	ai_textSplitter: 'textSplitter',
+	ai_reranker: 'reranker',
+};
+
+/**
+ * AI connection types that should always be arrays in subnodes
+ */
+const AI_ARRAY_TYPES = new Set(['ai_tool']);
+
+interface NodeJSON {
+	id?: string;
+	name?: string;
+	type: string;
+	typeVersion?: number | string;
+	position?: [number, number];
+	parameters?: Record<string, unknown>;
+}
+
+/**
+ * Reconstruct subnodes object from AI connections in the workflow.
+ * When SDK code defines subnodes, they get serialized as separate nodes with AI connections.
+ * This function reverses that transformation for validation purposes.
+ */
+function reconstructSubnodesFromConnections(
+	targetNodeName: string,
+	json: WorkflowJSON,
+): Record<string, unknown> | undefined {
+	const subnodes: Record<string, unknown> = {};
+	const nodesByName = new Map<string, NodeJSON>();
+
+	// Build a map of node name -> node for quick lookup
+	for (const node of json.nodes) {
+		if (node.name) {
+			nodesByName.set(node.name, node);
+		}
+	}
+
+	// Scan all nodes' connections to find AI connections TO this target node
+	for (const [sourceNodeName, nodeConnections] of Object.entries(json.connections)) {
+		for (const connType of AI_CONNECTION_TYPES) {
+			const aiConns = nodeConnections[connType as keyof typeof nodeConnections];
+			if (!aiConns || !Array.isArray(aiConns)) continue;
+
+			for (const outputs of aiConns) {
+				if (!outputs) continue;
+				for (const conn of outputs) {
+					if (conn.node === targetNodeName) {
+						// Found an AI connection to our target node
+						const subnodeField = AI_CONNECTION_TO_SUBNODE_FIELD[connType];
+						if (!subnodeField) continue;
+
+						const sourceNode = nodesByName.get(sourceNodeName);
+						if (!sourceNode) continue;
+
+						// Build a minimal subnode config for validation
+						const subnodeConfig = {
+							type: sourceNode.type,
+							version: sourceNode.typeVersion,
+							parameters: sourceNode.parameters ?? {},
+						};
+
+						// For array types (like tools), collect into array
+						if (AI_ARRAY_TYPES.has(connType)) {
+							const existing = subnodes[subnodeField];
+							if (Array.isArray(existing)) {
+								existing.push(subnodeConfig);
+							} else {
+								subnodes[subnodeField] = [subnodeConfig];
+							}
+						} else {
+							// For single-value types, just set directly
+							subnodes[subnodeField] = subnodeConfig;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Return undefined if no subnodes were found
+	return Object.keys(subnodes).length > 0 ? subnodes : undefined;
+}
+
+/**
  * Check if a node has AI connections to a parent node (making it a connected subnode)
  */
 function hasAiConnectionToParent(nodeName: string, json: WorkflowJSON): boolean {
@@ -279,6 +374,13 @@ export function validateWorkflow(
 			const nodeWithSubnodes = node as typeof node & { subnodes?: unknown };
 			if (nodeWithSubnodes.subnodes !== undefined) {
 				config.subnodes = nodeWithSubnodes.subnodes;
+			} else if (node.name) {
+				// Try to reconstruct subnodes from AI connections in the workflow
+				// This handles the case where subnodes were serialized as separate nodes
+				const reconstructed = reconstructSubnodesFromConnections(node.name, json);
+				if (reconstructed) {
+					config.subnodes = reconstructed;
+				}
 			}
 
 			const schemaResult = validateNodeConfig(node.type, version, config);
