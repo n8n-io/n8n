@@ -299,7 +299,8 @@ export class EmailReadImapV2 implements INodeType {
 
 			const textParts = parts.filter((part) => {
 				return (
-					part.type.toUpperCase() === 'TEXT' && part.subtype.toUpperCase() === subtype.toUpperCase()
+					part?.type?.toUpperCase() === 'TEXT' &&
+					part?.subtype?.toUpperCase() === subtype?.toUpperCase()
 				);
 			});
 
@@ -475,7 +476,7 @@ export class EmailReadImapV2 implements INodeType {
 					}
 				});
 				conn.on('error', (error) => {
-					const errorCode = ((error as JsonObject).code as string).toUpperCase();
+					const errorCode = ((error as JsonObject).code as string)?.toUpperCase();
 					this.logger.debug(`IMAP connection experienced an error: (${errorCode})`, {
 						error: error as Error,
 					});

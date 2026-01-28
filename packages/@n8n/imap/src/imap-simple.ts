@@ -141,7 +141,8 @@ export class ImapSimple extends EventEmitter {
 				}
 
 				const data = result.parts[0].body as string;
-				const encoding = part.encoding.toUpperCase();
+				// Default to '7BIT' if encoding is not specified
+				const encoding = (part?.encoding || '7BIT')?.toUpperCase();
 				resolve(PartData.fromData(data, encoding));
 			};
 
