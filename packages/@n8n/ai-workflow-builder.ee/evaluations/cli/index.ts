@@ -36,6 +36,7 @@ import {
 	type EvaluationContext,
 	type GenerationResult,
 } from '../index';
+import { WorkflowGenerationError } from '../errors';
 import {
 	loadTestCasesFromCsv,
 	loadDefaultTestCases,
@@ -188,12 +189,12 @@ function createOneShotWorkflowGenerator(
 			}
 		}
 
-		if (!workflow) {
-			throw new Error('One-shot agent did not produce a workflow');
-		}
-
 		// Get captured logs if log capture was enabled
 		const logs = captureLog ? agent.getCapturedLogs() : undefined;
+
+		if (!workflow) {
+			throw new WorkflowGenerationError('One-shot agent did not produce a workflow', logs);
+		}
 
 		return { workflow, generatedCode, tokenUsage, iterationCount, generationErrors, logs };
 	};
