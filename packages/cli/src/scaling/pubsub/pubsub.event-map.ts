@@ -149,10 +149,10 @@ export type PubSubCommandMap = {
 		userId: string;
 		/** Chat session ID */
 		sessionId: string;
-		/** ID of the original message being edited */
-		originalMessageId: string;
-		/** ID of the new message created from the edit */
-		newMessageId: string;
+		/** ID of the message being revised */
+		revisionOfMessageId: string;
+		/** ID of this message (the revised version) */
+		messageId: string;
 		/** New message content */
 		content: string;
 		/** Attachments on the new message */

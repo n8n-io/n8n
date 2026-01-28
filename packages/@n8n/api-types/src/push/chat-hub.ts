@@ -100,10 +100,10 @@ export type ChatHubMessageEdited = {
 	data: {
 		/** Unique identifier for the chat session */
 		sessionId: ChatSessionId;
-		/** ID of the original message being edited */
-		originalMessageId: ChatMessageId;
-		/** ID of the new message created from the edit */
-		newMessageId: ChatMessageId;
+		/** ID of the message being revised */
+		revisionOfMessageId: ChatMessageId;
+		/** ID of this message (the revised version) */
+		messageId: ChatMessageId;
 		/** The new message content */
 		content: string;
 		/** Attachments on the new message */

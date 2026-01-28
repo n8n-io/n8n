@@ -533,8 +533,8 @@ export class ChatStreamService {
 	async sendMessageEdit(params: {
 		userId: string;
 		sessionId: ChatSessionId;
-		originalMessageId: ChatMessageId;
-		newMessageId: ChatMessageId;
+		revisionOfMessageId: ChatMessageId;
+		messageId: ChatMessageId;
 		content: string;
 		attachments: ChatHubAttachmentInfo[];
 	}): Promise<void> {
@@ -542,8 +542,8 @@ export class ChatStreamService {
 			type: 'chatHubMessageEdited',
 			data: {
 				sessionId: params.sessionId,
-				originalMessageId: params.originalMessageId,
-				newMessageId: params.newMessageId,
+				revisionOfMessageId: params.revisionOfMessageId,
+				messageId: params.messageId,
 				content: params.content,
 				attachments: params.attachments,
 				timestamp: Date.now(),
@@ -591,8 +591,8 @@ export class ChatStreamService {
 		params: {
 			userId: string;
 			sessionId: ChatSessionId;
-			originalMessageId: ChatMessageId;
-			newMessageId: ChatMessageId;
+			revisionOfMessageId: ChatMessageId;
+			messageId: ChatMessageId;
 			content: string;
 			attachments: ChatHubAttachmentInfo[];
 		},
@@ -603,8 +603,8 @@ export class ChatStreamService {
 			payload: {
 				userId: params.userId,
 				sessionId: params.sessionId,
-				originalMessageId: params.originalMessageId,
-				newMessageId: params.newMessageId,
+				revisionOfMessageId: params.revisionOfMessageId,
+				messageId: params.messageId,
 				content: params.content,
 				attachments: params.attachments,
 			},
@@ -645,8 +645,8 @@ export class ChatStreamService {
 	handleRelayChatMessageEdit(payload: {
 		userId: string;
 		sessionId: string;
-		originalMessageId: string;
-		newMessageId: string;
+		revisionOfMessageId: string;
+		messageId: string;
 		content: string;
 		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
 	}): void {
@@ -654,8 +654,8 @@ export class ChatStreamService {
 			type: 'chatHubMessageEdited',
 			data: {
 				sessionId: payload.sessionId,
-				originalMessageId: payload.originalMessageId,
-				newMessageId: payload.newMessageId,
+				revisionOfMessageId: payload.revisionOfMessageId,
+				messageId: payload.messageId,
 				content: payload.content,
 				attachments: payload.attachments,
 				timestamp: Date.now(),

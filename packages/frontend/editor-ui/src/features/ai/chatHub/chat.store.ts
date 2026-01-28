@@ -1117,8 +1117,8 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 */
 	function handleRemoteMessageEdit(data: {
 		sessionId: ChatSessionId;
-		originalMessageId: ChatMessageId;
-		newMessageId: ChatMessageId;
+		revisionOfMessageId: ChatMessageId;
+		messageId: ChatMessageId;
 		content: string;
 		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
 		timestamp: number;
@@ -1130,24 +1130,24 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 			return;
 		}
 
-		// Skip if we already have the new message (we sent it from this client)
-		if (conversation.messages[data.newMessageId]) {
+		// Skip if we already have this message (we sent it from this client)
+		if (conversation.messages[data.messageId]) {
 			return;
 		}
 
 		// Get the original message to inherit some properties
-		const originalMessage = conversation.messages[data.originalMessageId];
+		const originalMessage = conversation.messages[data.revisionOfMessageId];
 
 		// Create and add the edited message
 		const message: ChatMessage = {
-			id: data.newMessageId,
+			id: data.messageId,
 			sessionId: data.sessionId,
 			type: 'human',
 			name: originalMessage?.name ?? 'User',
 			content: data.content,
 			previousMessageId: originalMessage?.previousMessageId ?? null,
 			retryOfMessageId: null,
-			revisionOfMessageId: data.originalMessageId,
+			revisionOfMessageId: data.revisionOfMessageId,
 			status: 'success',
 			attachments: data.attachments.map((a) => ({
 				fileName: a.fileName,

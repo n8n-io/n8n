@@ -1390,8 +1390,8 @@ export class ChatHubService {
 		await this.chatStreamService.sendMessageEdit({
 			userId: user.id,
 			sessionId,
-			originalMessageId: editId,
-			newMessageId: messageId,
+			revisionOfMessageId: editId,
+			messageId,
 			content: message,
 			attachments: result.combinedAttachments.map((a) => ({
 				id: a.id!,
