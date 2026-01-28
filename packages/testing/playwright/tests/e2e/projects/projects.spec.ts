@@ -234,6 +234,8 @@ test.describe('Projects', () => {
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 
+			// Wait for URL to be updated (new=true removed after save)
+			await n8n.page.waitForURL(/\/workflow\/[^?]+$/);
 			const savedWorkflowUrl = n8n.page.url();
 
 			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
