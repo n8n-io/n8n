@@ -555,6 +555,7 @@ const showTemplateRecommendationV3 = computed(() => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
+
 	void usersStore.showPersonalizationSurvey();
 
 	workflowListEventBus.on('resource-moved', fetchWorkflows);

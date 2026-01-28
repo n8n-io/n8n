@@ -15,6 +15,15 @@ on:
         description: 'GitHub branch to test.'
         required: false
         default: 'master'
+      eval_type:
+        description: 'Which evaluations to run.'
+        required: false
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - spec
+          - matrix
       spec_repetitions:
         description: 'Number of repetitions for spec (pairwise) evals.'
         required: false
@@ -125,6 +134,7 @@ jobs:
   run-pairwise-evals:
     name: Run Pairwise (Spec) Evaluations
     needs: determine-config
+    if: github.event_name == 'push' || inputs.eval_type == 'both' || inputs.eval_type == 'spec'
     uses: ./.github/workflows/test-evals-ai-reusable.yml
     with:
       branch: ${{ needs.determine-config.outputs.branch }}
@@ -138,6 +148,7 @@ jobs:
   run-llm-judge-evals:
     name: Run LLM Judge (Matrix) Evaluations
     needs: determine-config
+    if: github.event_name == 'push' || inputs.eval_type == 'both' || inputs.eval_type == 'matrix'
     uses: ./.github/workflows/test-evals-ai-reusable.yml
     with:
       branch: ${{ needs.determine-config.outputs.branch }}

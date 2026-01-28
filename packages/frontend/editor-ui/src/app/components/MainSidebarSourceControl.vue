@@ -99,7 +99,12 @@ function pullWorkfolder() {
 			:class="$style.connected"
 			data-test-id="main-sidebar-source-control-connected"
 		>
-			<N8nTooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
+			<N8nTooltip
+				:disabled="!isCollapsed"
+				:show-after="tooltipOpenDelay"
+				placement="right"
+				:avoid-collisions="false"
+			>
 				<template #content>
 					<div>
 						{{ currentBranch }}
@@ -222,6 +227,10 @@ function pullWorkfolder() {
 		flex-direction: column-reverse;
 		gap: var(--spacing--3xs);
 		padding-right: 0;
+
+		> span:first-child {
+			width: 100%;
+		}
 
 		.icon {
 			width: 100%;
