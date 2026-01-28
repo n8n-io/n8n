@@ -3,6 +3,8 @@ import { authenticator } from 'otplib';
 import { INSTANCE_OWNER_CREDENTIALS } from '../../../../config/test-users';
 import { test, expect } from '../../../../fixtures/base';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'two-factor-auth' } } });
+
 const TEST_DATA = {
 	NEW_EMAIL: 'newemail@test.com',
 	NEW_FIRST_NAME: 'newFirstName',
@@ -17,6 +19,8 @@ const { email, password, mfaSecret, mfaRecoveryCodes } = INSTANCE_OWNER_CREDENTI
 const RECOVERY_CODE = mfaRecoveryCodes![0];
 
 test.describe('Two-factor authentication @auth:none @db:reset', () => {
+	test.describe.configure({ mode: 'serial' });
+
 	test('Should be able to login with MFA code', async ({ n8n }) => {
 		await n8n.mfaComposer.enableMfa(email, password, mfaSecret!);
 		await n8n.sideBar.signOutFromWorkflows();

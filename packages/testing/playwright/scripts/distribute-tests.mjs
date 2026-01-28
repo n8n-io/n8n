@@ -30,7 +30,7 @@ const METRICS_PATH = path.join(ROOT_DIR, '.github/test-metrics/playwright.json')
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
 const DEFAULT_DURATION = 60000; // 1 minute default (accounts for container startup)
 const E2E_PROJECT = 'multi-main:e2e';
-const CONTAINER_STARTUP_TIME = 20000; // 20 seconds per container type
+const CONTAINER_STARTUP_TIME = 22500; // 22.5 seconds average (heavier stacks with extra services take longer)
 const MAX_GROUP_DURATION = 5 * 60 * 1000; // 5 minutes - split groups larger than this
 
 const args = process.argv.slice(2);
@@ -128,26 +128,23 @@ function distributeCapabilityAware(numShards) {
 		}
 	}
 
-	// Calculate effective durations for capability groups
-	// When grouped, only first test pays container startup - rest reuse worker
+	// Group capability specs together - container startup is per-shard overhead, not per-spec
+	// Currents avgDuration = actual test time, container startup is separate
 	// If a group exceeds MAX_GROUP_DURATION, split it into smaller sub-groups
-	/** @type {Array<{type: string, capability: string, specs: string[], reportedDuration: number, effectiveDuration: number, startupSavings: number, subGroup?: number}>} */
+	/** @type {Array<{type: string, capability: string, specs: string[], duration: number, subGroup?: number}>} */
 	const capabilityItems = [];
 
 	for (const [capability, specs] of capabilityGroups.entries()) {
 		// Sort specs by duration (largest first) for better splitting
 		specs.sort((a, b) => b.duration - a.duration);
 
-		const reportedDuration = specs.reduce((sum, s) => sum + s.duration, 0);
-		// Calculate effective duration: each spec's actual time (minus startup) + one startup
-		const actualTestTime = reportedDuration - specs.length * CONTAINER_STARTUP_TIME;
-		const effectiveDuration = actualTestTime + CONTAINER_STARTUP_TIME;
+		const totalDuration = specs.reduce((sum, s) => sum + s.duration, 0);
 
 		// Check if we need to split this group
-		if (effectiveDuration > MAX_GROUP_DURATION && specs.length > 1) {
+		if (totalDuration > MAX_GROUP_DURATION && specs.length > 1) {
 			// Calculate how many sub-groups we need
-			const numSubGroups = Math.ceil(effectiveDuration / MAX_GROUP_DURATION);
-			const targetPerSubGroup = effectiveDuration / numSubGroups;
+			const numSubGroups = Math.ceil(totalDuration / MAX_GROUP_DURATION);
+			const targetPerSubGroup = totalDuration / numSubGroups;
 
 			// Greedy split: fill each sub-group up to target
 			let currentSubGroup = 0;
@@ -156,33 +153,27 @@ function distributeCapabilityAware(numShards) {
 			const subGroups = [[]];
 
 			for (const spec of specs) {
-				const specActualTime = spec.duration - CONTAINER_STARTUP_TIME;
-
 				// Start new sub-group if current is full (unless it's empty)
-				if (currentTotal + specActualTime > targetPerSubGroup && subGroups[currentSubGroup].length > 0) {
+				if (currentTotal + spec.duration > targetPerSubGroup && subGroups[currentSubGroup].length > 0) {
 					currentSubGroup++;
 					subGroups[currentSubGroup] = [];
 					currentTotal = 0;
 				}
 
 				subGroups[currentSubGroup].push(spec);
-				currentTotal += specActualTime;
+				currentTotal += spec.duration;
 			}
 
 			// Create items for each sub-group
 			for (let i = 0; i < subGroups.length; i++) {
 				const subGroupSpecs = subGroups[i];
-				const subReported = subGroupSpecs.reduce((sum, s) => sum + s.duration, 0);
-				const subActual = subReported - subGroupSpecs.length * CONTAINER_STARTUP_TIME;
-				const subEffective = subActual + CONTAINER_STARTUP_TIME; // Each sub-group pays one startup
+				const subDuration = subGroupSpecs.reduce((sum, s) => sum + s.duration, 0);
 
 				capabilityItems.push({
 					type: 'capability',
 					capability,
 					specs: subGroupSpecs.map((s) => s.path),
-					reportedDuration: subReported,
-					effectiveDuration: subEffective,
-					startupSavings: (subGroupSpecs.length - 1) * CONTAINER_STARTUP_TIME,
+					duration: subDuration,
 					subGroup: i + 1,
 				});
 			}
@@ -192,89 +183,96 @@ function distributeCapabilityAware(numShards) {
 				type: 'capability',
 				capability,
 				specs: specs.map((s) => s.path),
-				reportedDuration,
-				effectiveDuration,
-				startupSavings: (specs.length - 1) * CONTAINER_STARTUP_TIME,
+				duration: totalDuration,
 			});
 		}
 	}
 
-	// Standard specs keep their reported duration (no grouping benefit)
+	// Standard specs - each is its own item
 	const standardItems = standardSpecs.map((spec) => ({
 		type: 'standard',
 		capability: null,
 		specs: [spec.path],
-		reportedDuration: spec.duration,
-		effectiveDuration: spec.duration,
-		startupSavings: 0,
+		duration: spec.duration,
 	}));
 
-	// Combine and sort by effective duration (largest first for greedy packing)
-	const allItems = [...capabilityItems, ...standardItems].sort(
-		(a, b) => b.effectiveDuration - a.effectiveDuration,
-	);
+	// Combine and sort by duration (largest first for greedy packing)
+	const allItems = [...capabilityItems, ...standardItems].sort((a, b) => b.duration - a.duration);
 
 	// Calculate totals for reporting
-	const totalEffective = allItems.reduce((sum, item) => sum + item.effectiveDuration, 0);
-	const totalReported = allItems.reduce((sum, item) => sum + item.reportedDuration, 0);
-	const totalSavings = capabilityItems.reduce((sum, item) => sum + item.startupSavings, 0);
-	const targetPerShard = totalEffective / numShards;
+	const totalTestTime = allItems.reduce((sum, item) => sum + item.duration, 0);
+	const targetPerShard = totalTestTime / numShards;
 
 	console.error('\n📦 Capability-Aware Distribution:');
-	console.error(`  Reported total: ${(totalReported / 60000).toFixed(1)} min`);
-	console.error(`  Effective total: ${(totalEffective / 60000).toFixed(1)} min (after grouping)`);
-	console.error(`  Worker reuse savings: ${(totalSavings / 1000).toFixed(0)}s`);
+	console.error(`  Total test time: ${(totalTestTime / 60000).toFixed(1)} min`);
 	console.error(`  Target per shard: ${(targetPerShard / 60000).toFixed(1)} min\n`);
 
 	// Report capability groups
-	console.error('  Capability groups (treated as atomic units):');
+	console.error('  Capability groups:');
 	for (const item of capabilityItems) {
-		const reported = (item.reportedDuration / 60000).toFixed(1);
-		const effective = (item.effectiveDuration / 60000).toFixed(1);
-		const saved = (item.startupSavings / 1000).toFixed(0);
-		console.error(`    ${item.capability}: ${item.specs.length} specs, ${reported} min → ${effective} min (saved ${saved}s)`);
+		const mins = (item.duration / 60000).toFixed(1);
+		const subGroupLabel = item.subGroup ? ` (part ${item.subGroup})` : '';
+		console.error(`    ${item.capability}${subGroupLabel}: ${item.specs.length} specs, ${mins} min`);
 	}
 	console.error(`  Standard specs: ${standardItems.length} specs\n`);
 
 	// Initialize buckets
-	/** @type {Array<{specs: string[]; total: number; capabilities: Set<string>}>} */
+	/** @type {Array<{specs: string[]; testTime: number; capabilities: Set<string>; hasStandardSpecs: boolean}>} */
 	const buckets = Array.from({ length: numShards }, () => ({
 		specs: [],
-		total: 0,
+		testTime: 0,
 		capabilities: new Set(),
+		hasStandardSpecs: false,
 	}));
 
 	// Greedy bin-packing: assign each item to the lightest bucket
 	for (const item of allItems) {
-		const lightest = buckets.reduce((min, b) => (b.total < min.total ? b : min));
+		const lightest = buckets.reduce((min, b) => (b.testTime < min.testTime ? b : min));
 
 		// Add all specs from this item to the bucket
 		for (const specPath of item.specs) {
 			lightest.specs.push(specPath);
 		}
-		lightest.total += item.effectiveDuration;
+		lightest.testTime += item.duration;
 
 		if (item.capability) {
 			lightest.capabilities.add(item.capability);
+		} else {
+			lightest.hasStandardSpecs = true;
 		}
 	}
 
-	// Report container optimization
-	const simpleContainers = capabilityItems.reduce((sum, item) => {
-		// Estimate: with simple distribution, specs spread across ~70% of shards
+	// Calculate container starts per shard: unique capabilities + 1 for default if has standard specs
+	const containerStartsPerShard = buckets.map((b) => b.capabilities.size + (b.hasStandardSpecs ? 1 : 0));
+	const totalContainerStarts = containerStartsPerShard.reduce((sum, c) => sum + c, 0);
+	const totalContainerOverhead = totalContainerStarts * CONTAINER_STARTUP_TIME;
+
+	// Estimate simple distribution: capabilities spread across ~70% of shards + default container per shard
+	const simpleCapabilityContainers = capabilityItems.reduce((sum, item) => {
 		return sum + Math.min(numShards, Math.ceil(item.specs.length * 0.7));
 	}, 0);
+	const simpleDefaultContainers = numShards; // Every shard would have standard specs
+	const simpleContainers = simpleCapabilityContainers + simpleDefaultContainers;
+	const containersSaved = simpleContainers - totalContainerStarts;
 
-	const optimizedContainers = capabilityItems.reduce((sum, item) => {
-		// Count actual shards with this capability
-		return sum + buckets.filter((b) => b.capabilities.has(item.capability)).length;
-	}, 0);
-
-	console.error('  Container optimization:');
+	console.error('  Container starts per shard:');
+	for (let i = 0; i < buckets.length; i++) {
+		const caps = buckets[i].capabilities.size;
+		const def = buckets[i].hasStandardSpecs ? 1 : 0;
+		const containerCount = caps + def;
+		const overhead = containerCount * CONTAINER_STARTUP_TIME;
+		const totalTime = buckets[i].testTime + overhead;
+		const details = [
+			...[...buckets[i].capabilities],
+			...(buckets[i].hasStandardSpecs ? ['default'] : []),
+		].join(', ');
+		console.error(`    Shard ${i + 1}: ${containerCount} containers (${details}) → +${(overhead / 1000).toFixed(0)}s overhead`);
+	}
+	console.error(`\n  Container optimization:`);
 	console.error(`    Simple distribution: ~${simpleContainers} container starts`);
-	console.error(`    Capability-aware: ${optimizedContainers} container starts`);
-	console.error(`    Containers saved: ~${simpleContainers - optimizedContainers}`);
-	console.error(`    Total time saved: ~${((totalSavings + (simpleContainers - optimizedContainers) * CONTAINER_STARTUP_TIME) / 1000).toFixed(0)}s\n`);
+	console.error(`    Capability-aware: ${totalContainerStarts} container starts`);
+	console.error(`    Containers saved: ~${containersSaved}`);
+	console.error(`    Time saved: ~${((containersSaved * CONTAINER_STARTUP_TIME) / 1000).toFixed(0)}s\n`);
 
 	return buckets;
 }
@@ -296,13 +294,20 @@ if (matrixMode) {
 
 	if (orchestrate && buckets) {
 		console.error('\n📊 Shard Distribution:');
+		let maxShardTime = 0;
 		for (let i = 0; i < buckets.length; i++) {
-			const mins = (buckets[i].total / 60000).toFixed(1);
+			const containerCount = buckets[i].capabilities.size + (buckets[i].hasStandardSpecs ? 1 : 0);
+			const overhead = containerCount * CONTAINER_STARTUP_TIME;
+			const totalTime = buckets[i].testTime + overhead;
+			maxShardTime = Math.max(maxShardTime, totalTime);
+			const testMins = (buckets[i].testTime / 60000).toFixed(1);
+			const totalMins = (totalTime / 60000).toFixed(1);
 			const caps = buckets[i].capabilities.size > 0 ? ` [${[...buckets[i].capabilities].join(', ')}]` : '';
-			console.error(`  Shard ${i + 1}: ${buckets[i].specs.length} specs, ~${mins} min${caps}`);
+			console.error(`  Shard ${i + 1}: ${buckets[i].specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${caps}`);
 		}
-		const totalMins = (buckets.reduce((sum, b) => sum + b.total, 0) / 60000).toFixed(1);
-		console.error(`  Total: ${totalMins} min across ${shards} shards\n`);
+		const totalTestMins = (buckets.reduce((sum, b) => sum + b.testTime, 0) / 60000).toFixed(1);
+		console.error(`\n  Total test time: ${totalTestMins} min`);
+		console.error(`  Expected wall-clock: ~${(maxShardTime / 60000).toFixed(1)} min (longest shard)\n`);
 	}
 
 	console.log(JSON.stringify(matrix));

@@ -2,6 +2,8 @@ import { INSTANCE_MEMBER_CREDENTIALS } from '../../../../config/test-users';
 import { test, expect } from '../../../../fixtures/base';
 import type { n8nPage } from '../../../../pages/n8nPage';
 
+test.use({ capability: { env: { TEST_ISOLATION: 'viewer-permissions' } } });
+
 const MEMBER_EMAIL = INSTANCE_MEMBER_CREDENTIALS[0].email;
 
 // Helper to set up a project with a workflow and sign in as member with specified role
@@ -36,7 +38,7 @@ async function setupProjectWithWorkflowAndSignInAsMember({
 	await expect(n8n.canvas.getLoadingMask()).not.toBeAttached();
 }
 
-test.describe('Workflow Viewer Permissions @isolated', () => {
+test.describe('Workflow Viewer Permissions', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	let readOnlyRole: { slug: string };

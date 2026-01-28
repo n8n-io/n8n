@@ -13,18 +13,10 @@ import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 // - @capability:X - add-on features (email, proxy, source-control, etc.)
 // - @mode:X - infrastructure modes (postgres, queue, multi-main)
 // - @licensed - enterprise license features (log streaming, SSO, etc.)
+// - @db:reset - tests needing per-test database reset (requires isolated containers)
 const CONTAINER_ONLY = new RegExp(
-	`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})|@mode:(${CONTAINER_ONLY_MODES.join('|')})|@${LICENSED_TAG}`,
+	`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})|@mode:(${CONTAINER_ONLY_MODES.join('|')})|@${LICENSED_TAG}|@db:reset`,
 );
-
-// Tags that need serial execution
-// These tests will be run AFTER the first run of the E2E tests
-// In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
-const SERIAL_EXECUTION = /@db:reset/;
-
-// Routes tests to isolated worker without triggering automatic database resets in fixtures
-// Use when tests need worker isolation but have intentional state dependencies (e.g., serial tests sharing data)
-const ISOLATED_ONLY = /@isolated/;
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 	{ name: 'sqlite', config: {} },
@@ -41,41 +33,21 @@ export function getProjects(): Project[] {
 	const projects: Project[] = [];
 
 	if (isLocal) {
-		projects.push(
-			{
-				name: 'e2e',
-				testDir: './tests/e2e',
-				grepInvert: new RegExp(
-					[CONTAINER_ONLY.source, SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|'),
-				),
-				fullyParallel: true,
-				use: { baseURL: getFrontendUrl() },
-			},
-			{
-				name: 'e2e:isolated',
-				testDir: './tests/e2e',
-				grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
-				workers: 1,
-				use: { baseURL: getFrontendUrl() },
-			},
-		);
+		projects.push({
+			name: 'e2e',
+			testDir: './tests/e2e',
+			grepInvert: CONTAINER_ONLY,
+			fullyParallel: true,
+			use: { baseURL: getFrontendUrl() },
+		});
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
-			const grepInvertPatterns = [SERIAL_EXECUTION.source, ISOLATED_ONLY.source];
 			projects.push(
 				{
 					name: `${name}:e2e`,
 					testDir: './tests/e2e',
-					grepInvert: new RegExp(grepInvertPatterns.join('|')),
 					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
-					use: { containerConfig: config },
-				},
-				{
-					name: `${name}:e2e:isolated`,
-					testDir: './tests/e2e',
-					grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
-					workers: 1,
 					use: { containerConfig: config },
 				},
 				{
