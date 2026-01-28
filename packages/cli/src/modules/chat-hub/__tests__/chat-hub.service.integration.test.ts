@@ -1804,6 +1804,226 @@ describe('chatHub', () => {
 					expect(messages[1]?.status).toBe('waiting');
 					expect(messages[1]?.content).toBe('Please provide input');
 				});
+
+				it('should resume waiting execution when user sends a follow-up message', async () => {
+					// Create an active workflow with Respond to Chat node that waits for user reply
+					const workflow = await createActiveWorkflow(
+						{
+							name: 'Resume Chat Workflow',
+							nodes: [
+								{
+									id: 'chat-trigger-1',
+									name: 'Chat Trigger',
+									type: CHAT_TRIGGER_NODE_TYPE,
+									typeVersion: 1.4,
+									position: [0, 0],
+									parameters: {
+										availableInChat: true,
+										options: {
+											responseMode: 'responseNodes',
+										},
+									},
+								},
+								{
+									id: 'respond-1',
+									name: 'Respond to Chat',
+									type: CHAT_NODE_TYPE,
+									typeVersion: 1,
+									position: [200, 0],
+									parameters: {
+										message: 'What is your name?',
+										waitUserReply: true,
+									},
+								},
+							],
+							connections: {
+								'Chat Trigger': {
+									main: [[{ node: 'Respond to Chat', type: 'main', index: 0 }]],
+								},
+							},
+						},
+						member,
+					);
+
+					let capturedExecutionId: string;
+
+					// First message: workflow goes into waiting state
+					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+						const executionId = await executionRepository.createNewExecution({
+							finished: false,
+							mode: 'webhook',
+							status: 'running',
+							workflowId: workflowData.id,
+							data: executionData,
+							workflowData,
+						});
+						capturedExecutionId = executionId;
+
+						setTimeout(async () => {
+							await executionRepository.updateExistingExecution(executionId, {
+								status: 'waiting',
+								data: createRunExecutionData({
+									resultData: {
+										runData: {
+											'Respond to Chat': [
+												{
+													startTime: Date.now(),
+													executionTime: 100,
+													executionIndex: 0,
+													executionStatus: 'success',
+													source: [],
+													data: {
+														main: [
+															[
+																{
+																	json: {},
+																	sendMessage: 'What is your name?',
+																},
+															],
+														],
+													},
+												},
+											],
+										},
+										lastNodeExecuted: 'Respond to Chat',
+									},
+								}),
+							});
+							finishRun({} as IRun);
+						});
+
+						return { executionId };
+					});
+
+					// Send first message
+					await chatHubService.sendHumanMessage(
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Hello',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
+
+					// Wait for the first message to be processed and AI to be in waiting state
+					const initialMessages = await retryUntil(async () => {
+						const messages = await messagesRepository.getManyBySessionId(sessionId);
+						expect(messages.length).toBeGreaterThanOrEqual(2);
+						expect(messages[1]?.status).toBe('waiting');
+						return messages;
+					});
+
+					const waitingMessageId = initialMessages[1].id;
+
+					// Mock ChatExecutionManager.runWorkflow for the resume
+					const executionManager = Container.get(ChatExecutionManager);
+					const runWorkflowSpy = jest
+						.spyOn(executionManager, 'runWorkflow')
+						.mockImplementationOnce(async () => {
+							setTimeout(async () => {
+								await executionRepository.updateExistingExecution(capturedExecutionId, {
+									status: 'success',
+									data: createRunExecutionData({
+										resultData: {
+											runData: {
+												'Respond to Chat': [
+													{
+														startTime: Date.now(),
+														executionTime: 100,
+														executionIndex: 0,
+														executionStatus: 'success',
+														source: [],
+														data: {
+															main: [
+																[
+																	{
+																		json: {},
+																		sendMessage: 'Nice to meet you, Alice!',
+																	},
+																],
+															],
+														},
+													},
+												],
+											},
+											lastNodeExecuted: 'Respond to Chat',
+										},
+									}),
+								});
+								finishRun({} as IRun);
+							});
+						});
+
+					// Send second message (HITL) - this should resume the waiting execution
+					const secondMessageId = crypto.randomUUID();
+					await chatHubService.sendHumanMessage(
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId: secondMessageId,
+							message: 'My name is Alice',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: waitingMessageId, // Reference the waiting message
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
+
+					// Wait for the resumed execution to complete
+					const finalMessages = await retryUntil(async () => {
+						const messages = await messagesRepository.getManyBySessionId(sessionId);
+						// Should have: human1, ai1 (waiting->success), human2, ai2 (success)
+						expect(messages.length).toBeGreaterThanOrEqual(4);
+						// The last AI message should be successful
+						const aiMessages = messages.filter((m) => m.type === 'ai');
+						expect(aiMessages[aiMessages.length - 1]?.status).toBe('success');
+						return messages;
+					});
+
+					// Verify the execution was resumed via runWorkflow, not started fresh
+					// The key assertion is that runWorkflow was called with the correct execution and message
+					expect(runWorkflowSpy).toHaveBeenCalledWith(
+						expect.objectContaining({ id: capturedExecutionId! }),
+						expect.objectContaining({
+							action: 'sendMessage',
+							chatInput: 'My name is Alice',
+							sessionId,
+						}),
+					);
+
+					// Verify message structure
+					const humanMessages = finalMessages.filter((m) => m.type === 'human');
+					const aiMessages = finalMessages.filter((m) => m.type === 'ai');
+
+					expect(humanMessages).toHaveLength(2);
+					expect(humanMessages[0]?.content).toBe('Hello');
+					expect(humanMessages[1]?.content).toBe('My name is Alice');
+
+					expect(aiMessages.length).toBeGreaterThanOrEqual(2);
+					// First AI message should now be marked as success (was waiting)
+					expect(aiMessages[0]?.status).toBe('success');
+					// Last AI message should be the response after resume
+					expect(aiMessages[aiMessages.length - 1]?.status).toBe('success');
+					expect(aiMessages[aiMessages.length - 1]?.content).toBe('Nice to meet you, Alice!');
+				});
 			});
 
 			describe('"Using \'Respond to Webhook\' Node" response mode', () => {
