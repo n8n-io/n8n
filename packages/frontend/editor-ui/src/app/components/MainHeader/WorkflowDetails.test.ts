@@ -145,6 +145,8 @@ const workflow = {
 	isArchived: false,
 	scopes: [],
 	meta: {},
+	nodes: [],
+	connections: {},
 };
 
 describe('WorkflowDetails', () => {
