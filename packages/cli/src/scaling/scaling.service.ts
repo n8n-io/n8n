@@ -387,7 +387,24 @@ export class ScalingService {
 				case 'abort-job':
 					break; // only for worker
 				case 'mcp-response':
+					// Only process if this main instance originated the request (multi-main support)
+					if (msg.targetMainId !== this.instanceSettings.hostId) {
+						break;
+					}
+
+					this.logger.debug(
+						`Received MCP response for execution ${msg.executionId} (job ${jobId})`,
+						{
+							workerId: msg.workerId,
+							executionId: msg.executionId,
+							sessionId: msg.sessionId,
+							messageId: msg.messageId,
+							jobId,
+						},
+					);
+
 					// TODO: Forward to MCP manager - will be implemented later
+					// mcpManager.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
 					break;
 				default:
 					assertNever(msg);
