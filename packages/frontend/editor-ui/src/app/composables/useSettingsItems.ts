@@ -145,7 +145,7 @@ export function useSettingsItems() {
 			label: i18n.baseText('settings.securityAudit'),
 			position: 'top',
 			available:
-				posthog.isFeatureEnabled(SECURITY_AUDIT_UI_EXPERIMENT.name) &&
+				(import.meta.env.DEV || posthog.isFeatureEnabled(SECURITY_AUDIT_UI_EXPERIMENT.name)) &&
 				canUserAccessRouteByName(VIEWS.SECURITY_AUDIT),
 			route: { to: { name: VIEWS.SECURITY_AUDIT } },
 		});

@@ -839,6 +839,7 @@ export const routes: RouteRecordRaw[] = [
 							scope: 'securityAudit:generate',
 						},
 						custom: () => {
+							if (import.meta.env.DEV) return true;
 							const posthog = usePostHog();
 							return posthog.isFeatureEnabled(SECURITY_AUDIT_UI_EXPERIMENT.name);
 						},

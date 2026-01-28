@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
-const RiskCategorySchema = z.enum(['credentials', 'database', 'nodes', 'instance', 'filesystem']);
+const RiskCategorySchema = z.enum([
+	'credentials',
+	'database',
+	'nodes',
+	'instance',
+	'filesystem',
+	'advisories',
+]);
 
 export class RunSecurityAuditRequestDto extends Z.class({
 	additionalOptions: z

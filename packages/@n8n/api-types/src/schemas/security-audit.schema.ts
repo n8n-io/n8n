@@ -12,6 +12,7 @@ export const RISK_CATEGORIES = [
 	'nodes',
 	'instance',
 	'filesystem',
+	'advisories',
 ] as const;
 
 export type RiskCategory = (typeof RISK_CATEGORIES)[number];
@@ -77,6 +78,28 @@ export interface InstanceSection extends SectionBase {
 }
 
 /**
+ * Advisory types for security advisories
+ */
+export type AdvisorySeverity = 'critical' | 'high' | 'medium' | 'low';
+
+export interface AdvisoryDetails {
+	kind: 'advisory';
+	ghsaId: string;
+	cveId: string | null;
+	severity: AdvisorySeverity;
+	summary: string;
+	vulnerableVersionRange: string;
+	patchedVersions: string | null;
+	publishedAt: string;
+	htmlUrl: string;
+}
+
+export interface AdvisorySection extends SectionBase {
+	advisories: AdvisoryDetails[];
+	affectsCurrentVersion: boolean;
+}
+
+/**
  * Report types for audit results
  */
 export interface StandardReport {
@@ -89,7 +112,12 @@ export interface InstanceReport {
 	sections: InstanceSection[];
 }
 
-export type AuditReport = StandardReport | InstanceReport;
+export interface AdvisoryReport {
+	risk: 'advisories';
+	sections: AdvisorySection[];
+}
+
+export type AuditReport = StandardReport | InstanceReport | AdvisoryReport;
 
 /**
  * API response type for security audit

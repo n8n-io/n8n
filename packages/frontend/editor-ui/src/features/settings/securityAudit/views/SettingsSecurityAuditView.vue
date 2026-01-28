@@ -12,13 +12,24 @@ import {
 import { RISK_CATEGORIES, type RiskCategory } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { SECURITY_ADVISORIES_EXPERIMENT } from '@/app/constants/experiments';
 import { useSecurityAuditStore } from '../securityAudit.store';
 import SecurityAuditCategory from '../components/SecurityAuditCategory.vue';
 
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+const posthog = usePostHog();
 const securityAuditStore = useSecurityAuditStore();
+
+const isAdvisoriesEnabled = computed(
+	() => import.meta.env.DEV || posthog.isFeatureEnabled(SECURITY_ADVISORIES_EXPERIMENT.name),
+);
+
+const visibleCategories = computed(() =>
+	RISK_CATEGORIES.filter((cat) => cat !== 'advisories' || isAdvisoriesEnabled.value),
+);
 
 const formattedLastRunAt = computed(() => {
 	if (!securityAuditStore.lastRunAt) return null;
@@ -95,6 +106,7 @@ onMounted(() => {
 					<N8nIcon icon="triangle-alert" size="large" />
 				</template>
 				<N8nText bold>{{ i18n.baseText('settings.securityAudit.error.title') }}</N8nText>
+				<br />
 				<N8nText color="text-light" size="small">{{ securityAuditStore.error.message }}</N8nText>
 			</N8nCallout>
 		</div>
@@ -105,6 +117,7 @@ onMounted(() => {
 					<N8nIcon icon="lock" size="large" />
 				</template>
 				<N8nText>{{ i18n.baseText('settings.securityAudit.emptyState.title') }}</N8nText>
+				<br />
 				<N8nText color="text-light" size="small">{{
 					i18n.baseText('settings.securityAudit.emptyState.description')
 				}}</N8nText>
@@ -123,7 +136,7 @@ onMounted(() => {
 			</div>
 
 			<div :class="$style.categories">
-				<template v-for="category in RISK_CATEGORIES" :key="category">
+				<template v-for="category in visibleCategories" :key="category">
 					<SecurityAuditCategory
 						v-if="getReportForCategory(category)"
 						:report="getReportForCategory(category)!"
@@ -141,7 +154,9 @@ onMounted(() => {
 												? 'git-branch'
 												: category === 'instance'
 													? 'server'
-													: 'folder-open'
+													: category === 'advisories'
+														? 'shield-alert'
+														: 'folder-open'
 								"
 								:class="$style.emptyCategoryIcon"
 							/>
