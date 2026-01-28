@@ -132,3 +132,5 @@ minimumReleaseAgeExclude:
   - node-forge
   - vm2
   - tar
+  # Renovate security update: expr-eval@2.0.2@3.0.1
+  - expr-eval@2.0.2@3.0.1
