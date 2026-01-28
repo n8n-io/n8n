@@ -365,7 +365,7 @@ defineExpose({ focus, blur, select });
 // Local focus mixin matching Element Plus inset shadow pattern
 // TODO: Replace with @include focus.focus-visible mixin from _focus.scss when we have the new design tokens ready
 @mixin input-focus {
-	box-shadow: 0 0 0 1px var(--color--secondary) inset;
+	border-color: var(--color--secondary);
 }
 
 .inputContainer {
