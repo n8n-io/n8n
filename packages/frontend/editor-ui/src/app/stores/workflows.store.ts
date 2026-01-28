@@ -439,9 +439,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	function getWorkflowById(id: string): IWorkflowDb {
-		return workflowsListStore.getWorkflowById(id);
-	}
+	// Delegated to workflowsListStore for backward compatibility
+	const getWorkflowById = workflowsListStore.getWorkflowById;
 
 	function getNodeByName(nodeName: string): INodeUi | null {
 		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
