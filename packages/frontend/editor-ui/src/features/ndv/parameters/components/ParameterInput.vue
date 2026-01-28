@@ -112,7 +112,9 @@ import {
 	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch2,
 } from '@n8n/design-system';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPlaceholderValue } from '@/features/ai/assistant/composables/useBuilderTodos';
 
@@ -184,6 +186,7 @@ const focusPanelStore = useFocusPanelStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const projectsStore = useProjectsStore();
 const builderStore = useBuilderStore();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -573,6 +576,10 @@ const displayIssues = computed(
 
 const isSwitch = computed(
 	() => props.parameter.type === 'boolean' && !isModelValueExpression.value,
+);
+
+const switchLabel = computed(() =>
+	i18n.nodeText(node.value?.type).inputLabelDisplayName(props.parameter, props.path),
 );
 
 const isTextarea = computed(
@@ -1859,7 +1866,23 @@ onUpdated(async () => {
 				</N8nOption>
 			</N8nSelect>
 
-			<!-- temporary state of booleans while data is mapped -->
+			<N8nInput
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled && droppable"
+				:size="inputSize"
+				:disabled="isReadOnly"
+				:title="displayTitle"
+				class="switch-droppable-input"
+			>
+				<template #prefix>
+					<N8nSwitch2
+						:model-value="Boolean(displayValue)"
+						:label="switchLabel"
+						:disabled="true"
+						size="small"
+					/>
+				</template>
+			</N8nInput>
+
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="inputSize"
@@ -1867,6 +1890,18 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
+
+			<N8nSwitch2
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
+				ref="inputField"
+				:class="{ 'ph-no-capture': shouldRedactValue }"
+				:model-value="Boolean(displayValue)"
+				:label="switchLabel"
+				:disabled="isReadOnly"
+				size="small"
+				@update:model-value="valueChanged"
+			/>
+
 			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
@@ -1976,6 +2011,10 @@ onUpdated(async () => {
 
 .has-issues {
 	--input--border-color: var(--color--danger);
+}
+
+.switch-droppable-input .el-input__prefix {
+	left: 8px;
 }
 
 .el-dropdown {
