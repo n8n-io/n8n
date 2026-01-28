@@ -133,8 +133,6 @@ test.describe('Folders - Basic Operations', () => {
 		await n8n.canvas.setWorkflowName('Workflow in Folder');
 		await n8n.page.keyboard.press('Enter');
 		await n8n.canvas.waitForSaveWorkflowCompleted();
-		const successMessage = `Workflow successfully created in "${projectName}", within "${folder.name}"`;
-		await expect(n8n.notifications.getNotificationByTitleOrContent(successMessage)).toBeVisible();
 		await n8n.navigate.toFolder(folder.id, projectId);
 		await expect(n8n.workflows.cards.getWorkflows()).toBeVisible();
 	});

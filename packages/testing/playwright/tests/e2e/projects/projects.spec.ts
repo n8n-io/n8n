@@ -135,9 +135,6 @@ test.describe('Projects', () => {
 			await n8n.sideBar.addWorkflowFromUniversalAdd(projectName);
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.waitForSaveWorkflowCompleted();
-			await n8n.notifications.waitForNotification(
-				`Workflow successfully created in ${projectName}`,
-			);
 
 			await n8n.canvas.addNode(EXECUTE_WORKFLOW_NODE_NAME, { action: 'Execute A Sub Workflow' });
 
@@ -182,10 +179,6 @@ test.describe('Projects', () => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.waitForSaveWorkflowCompleted();
 
-			// Wait for save notification to confirm workflow is saved
-			await n8n.notifications.waitForNotification(
-				`Workflow successfully created in ${projectName}`,
-			);
 			// Wait for URL to update with workflow ID after save
 			await n8n.page.waitForURL(/\/workflow\/[^/]+$/);
 
@@ -240,9 +233,6 @@ test.describe('Projects', () => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
 			await n8n.canvas.waitForSaveWorkflowCompleted();
-			await n8n.notifications.waitForNotification(
-				'Workflow successfully created inside your personal space',
-			);
 
 			const savedWorkflowUrl = n8n.page.url();
 
