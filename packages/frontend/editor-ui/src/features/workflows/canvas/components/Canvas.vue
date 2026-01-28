@@ -63,6 +63,8 @@ import Edge from './elements/edges/CanvasEdge.vue';
 import Node from './elements/nodes/CanvasNode.vue';
 import { useExperimentalNdvStore } from '../experimental/experimentalNdv.store';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 
 const $style = useCssModule();
 
@@ -158,6 +160,8 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const experimentalNdvStore = useExperimentalNdvStore();
+const focusedNodesStore = useFocusedNodesStore();
+const chatPanelStore = useChatPanelStore();
 
 const isExperimentalNdvActive = computed(() => experimentalNdvStore.isActive(viewport.value.zoom));
 
@@ -401,6 +405,13 @@ const hoveredTriggerNode = useCanvasNodeHover(triggerNodes, vueFlow, (nodeRect) 
 watch(selectedNodes, (nodes) => {
 	if (!lastSelectedNode.value || !nodes.find((node) => node.id === lastSelectedNode.value?.id)) {
 		lastSelectedNode.value = nodes[nodes.length - 1];
+	}
+});
+
+// Sync canvas selection with focused nodes (unconfirmed badges) when chat panel is open
+watch(selectedNodeIds, (newIds) => {
+	if (chatPanelStore.isOpen) {
+		focusedNodesStore.setUnconfirmedFromCanvasSelection(newIds);
 	}
 });
 
@@ -783,6 +794,11 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return emit('extract-workflow', nodeIds);
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
+		}
+		case 'focus_ai_on_selected': {
+			focusedNodesStore.confirmNodes(nodeIds, 'context_menu');
+			void chatPanelStore.open({ mode: 'builder' });
+			return;
 		}
 	}
 }
