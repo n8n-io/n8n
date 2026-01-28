@@ -5,6 +5,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { i18n } from '@n8n/i18n';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
@@ -36,12 +37,13 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, () => {
 		sharedWithProjects: ProjectSharingData[];
 	}) => {
 		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentsStore = useWorkflowDocumentsStore();
 		workflowsStore.workflowsById[payload.workflowId] = {
 			...workflowsStore.workflowsById[payload.workflowId],
 			sharedWithProjects: payload.sharedWithProjects,
 		};
 		workflowsStore.workflow = {
-			...workflowsStore.workflow,
+			...workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
 			sharedWithProjects: payload.sharedWithProjects,
 		};
 	};

@@ -1,6 +1,7 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
@@ -31,6 +32,7 @@ const emit = defineEmits<Emits>();
 // Initialize composables and stores
 const router = useRouter();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
@@ -77,8 +79,11 @@ const ensureExecutionWatcher = () => {
 };
 
 const hasValidationIssues = computed(() => builderStore.workflowTodos.length > 0);
-const triggerNodes = computed(() =>
-	workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
+const triggerNodes = computed(
+	() =>
+		workflowDocumentsStore.workflowDocumentsById[
+			workflowDocumentsStore.workflowDocumentId
+		]?.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)) ?? [],
 );
 
 const issuesByType = computed(() => {
@@ -132,7 +137,9 @@ function formatIssueMessage(issue: string | string[]): string {
 
 // Helper to get node type
 function getNodeTypeByName(nodeName: string) {
-	const node = workflowsStore.workflow.nodes.find((n) => n.name === nodeName);
+	const node = workflowDocumentsStore.workflowDocumentsById[
+		workflowDocumentsStore.workflowDocumentId
+	]?.nodes.find((n) => n.name === nodeName);
 
 	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type);

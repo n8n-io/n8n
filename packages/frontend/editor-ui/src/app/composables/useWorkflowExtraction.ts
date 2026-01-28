@@ -1,4 +1,5 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
@@ -38,6 +39,7 @@ const CANVAS_HISTORY_OPTIONS = {
 export function useWorkflowExtraction() {
 	const uiStore = useUIStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const toast = useToast();
 	const router = useRouter();
@@ -46,9 +48,19 @@ export function useWorkflowExtraction() {
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
 
-	const adjacencyList = computed(() => buildAdjacencyList(workflowsStore.workflow.connections));
+	const adjacencyList = computed(() =>
+		buildAdjacencyList(
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				.connections,
+		),
+	);
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowObject = computed(
+		() =>
+			workflowDocumentsStore.workflowObjectsById[
+				workflowDocumentsStore.workflowDocumentId
+			] as Workflow,
+	);
 
 	function showError(message: string) {
 		toast.showMessage({
@@ -254,8 +266,12 @@ export function useWorkflowExtraction() {
 				...endNodeConnection,
 			},
 			settings: { executionOrder: 'v1' },
-			projectId: workflowsStore.workflow.homeProject?.id,
-			parentFolderId: workflowsStore.workflow.parentFolder?.id ?? undefined,
+			projectId:
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+					.homeProject?.id,
+			parentFolderId:
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+					.parentFolder?.id ?? undefined,
 		};
 	}
 
@@ -396,7 +412,9 @@ export function useWorkflowExtraction() {
 		);
 
 		for (const node of selectionChildNodes) {
-			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
+			const currentNode = workflowDocumentsStore.workflowDocumentsById[
+				workflowDocumentsStore.workflowDocumentId
+			].nodes.find((x) => x.id === node.id);
 
 			if (isEqual(node, currentNode)) continue;
 
@@ -448,7 +466,9 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
+		const allNodeNames = workflowDocumentsStore.workflowDocumentsById[
+			workflowDocumentsStore.workflowDocumentId
+		].nodes.map((x) => x.name);
 
 		let startNodeName = 'Start';
 		const subGraphNames = subGraph.map((x) => x.name);
@@ -494,7 +514,8 @@ export function useWorkflowExtraction() {
 			newWorkflowName,
 			selection,
 			nodes,
-			workflowsStore.workflow.connections,
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				.connections,
 			variables,
 			afterVariables,
 			startNodeName,

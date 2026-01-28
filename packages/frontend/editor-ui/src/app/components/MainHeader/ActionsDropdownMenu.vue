@@ -32,6 +32,7 @@ import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -61,6 +62,7 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const uiStore = useUIStore();
 const $style = useCssModule();
 const rootStore = useRootStore();
@@ -86,7 +88,11 @@ const onExecutionsTab = computed(() => {
 
 const collaborationReadOnly = computed(() => collaborationStore.shouldBeReadOnly);
 
-const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
+const activeVersion = computed(
+	() =>
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+			.activeVersion,
+);
 
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -413,7 +419,8 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			uiStore.openModalWithData({
 				name: PROJECT_MOVE_RESOURCE_MODAL,
 				data: {
-					resource: workflowsStore.workflowsById[workflowId],
+					resource:
+						workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
 					resourceType: ResourceType.Workflow,
 					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
 					eventBus: changeOwnerEventBus,

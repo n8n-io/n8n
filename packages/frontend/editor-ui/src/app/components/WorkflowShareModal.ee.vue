@@ -12,6 +12,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -36,6 +37,7 @@ const props = defineProps<{
 const { data } = props;
 
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
@@ -54,7 +56,7 @@ const workflowSaving = useWorkflowSaving({ router });
 const workflow = ref(
 	data.id && workflowsStore.workflowsById[data.id]
 		? workflowsStore.workflowsById[data.id]
-		: workflowsStore.workflow,
+		: workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
 );
 const loading = ref(true);
 const isDirty = ref(false);

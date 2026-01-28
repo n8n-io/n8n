@@ -45,6 +45,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
@@ -90,10 +91,13 @@ export async function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 
 	return await resolveParameterImpl(
 		parameter,
-		workflowsStore.workflowObject as Workflow,
+		workflowDocumentsStore.workflowObjectsById[
+			workflowDocumentsStore.workflowDocumentId
+		] as Workflow,
 		workflowsStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
@@ -522,6 +526,7 @@ export function useWorkflowHelpers() {
 	const nodeTypesStore = useNodeTypesStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
@@ -590,10 +595,15 @@ export function useWorkflowHelpers() {
 			pinData: workflowsStore.pinnedWorkflowData,
 			connections: workflowConnections,
 			active: workflowsStore.isWorkflowActive,
-			settings: workflowsStore.workflow.settings,
+			settings:
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+					.settings,
 			tags: workflowsStore.workflowTags,
-			versionId: workflowsStore.workflow.versionId,
-			meta: workflowsStore.workflow.meta,
+			versionId:
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+					.versionId,
+			meta: workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				.meta,
 		};
 
 		const workflowId = workflowsStore.workflowId;
@@ -830,7 +840,9 @@ export function useWorkflowHelpers() {
 		if (typeof obj === 'object' && stringifyObject) {
 			const proxy = obj as { isProxy: boolean; toJSON?: () => unknown } | null;
 			if (proxy?.isProxy && proxy.toJSON) return JSON.stringify(proxy.toJSON());
-			return workflowsStore.workflowObject.expression.convertObjectValueToString(obj as object);
+			return workflowDocumentsStore.workflowObjectsById[
+				workflowDocumentsStore.workflowDocumentId
+			].expression.convertObjectValueToString(obj as object);
 		}
 		return obj;
 	}

@@ -21,6 +21,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
@@ -93,6 +94,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = injectWorkflowState();
 
 	const activeNode = computed(() => {
@@ -181,12 +183,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const parentNodes = workflowsStore.workflowObject.getParentNodes(
-			activeNode.value.name,
-			NodeConnectionTypes.Main,
-			1,
-		);
-		return parentNodes.includes(inputNodeName);
+		const parentNodes = workflowDocumentsStore.workflowObjectsById[
+			workflowDocumentsStore.workflowDocumentId
+		]?.getParentNodes(activeNode.value.name, NodeConnectionTypes.Main, 1);
+		return parentNodes?.includes(inputNodeName) ?? false;
 	});
 
 	const getHoveringItem = computed(() => {
@@ -367,9 +367,12 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		const activeNode = workflowsStore.getNodeByName(activeNodeName.value || '');
 
 		if (activeNode) {
-			const nodeIndex = workflowsStore.workflow.nodes.findIndex((node) => {
-				return node.name === activeNode.name;
-			});
+			const nodeIndex =
+				workflowDocumentsStore.workflowDocumentsById[
+					workflowDocumentsStore.workflowDocumentId
+				]?.nodes.findIndex((node) => {
+					return node.name === activeNode.name;
+				}) ?? -1;
 
 			workflowState.updateNodeAtIndex(nodeIndex, {
 				issues: {

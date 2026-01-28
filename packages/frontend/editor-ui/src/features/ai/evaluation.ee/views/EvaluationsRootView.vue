@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
 import { EVALUATIONS_DOCS_URL } from '@/app/constants';
@@ -22,6 +23,7 @@ const props = defineProps<{
 }>();
 
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const usageStore = useUsageStore();
 const evaluationStore = useEvaluationStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -90,7 +92,9 @@ const { isReady } = useAsyncState(async () => {
 	}
 
 	const workflowId = props.name;
-	const isAlreadyInitialized = workflowsStore.workflow.id === workflowId;
+	const isAlreadyInitialized =
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.id ===
+		workflowId;
 
 	// Skip fetching if it's a new workflow that hasn't been saved yet
 	if (isNewWorkflowRoute.value || isAlreadyInitialized) {

@@ -4,6 +4,7 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { FROM_AI_PARAMETERS_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { FormFieldValueUpdate } from '@n8n/design-system';
 import { N8nButton, N8nCallout, N8nFormInputs, N8nText } from '@n8n/design-system';
@@ -37,6 +38,7 @@ const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const modalBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
 const agentRequestStore = useAgentRequestStore();
@@ -47,7 +49,9 @@ const node = computed(() =>
 
 const parentNode = computed(() => {
 	if (!node.value) return undefined;
-	const parentNodes = workflowsStore.workflowObject.getChildNodes(node.value.name, 'ALL', 1);
+	const parentNodes = workflowDocumentsStore.workflowObjectsById[
+		workflowDocumentsStore.workflowDocumentId
+	].getChildNodes(node.value.name, 'ALL', 1);
 	if (parentNodes.length === 0) return undefined;
 	return workflowsStore.getNodeByName(parentNodes[0])?.name;
 });
