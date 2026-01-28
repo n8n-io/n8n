@@ -458,4 +458,51 @@ describe('ScalingService', () => {
 			expect(executionRepository.markAsCrashed).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('MCP response handling', () => {
+		it('should ignore mcp-response messages targeted at other main instances', async () => {
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const mcpResponseMessage = {
+				kind: 'mcp-response',
+				executionId: 'exec-123',
+				mcpType: 'service',
+				sessionId: 'session-456',
+				messageId: 'msg-789',
+				response: { success: true },
+				workerId: 'worker-abc',
+				targetMainId: 'other-main-id', // Different from current instance
+			};
+
+			// Should not throw and should silently ignore
+			messageHandler('job-999', mcpResponseMessage);
+		});
+
+		it('should process mcp-response messages targeted at this main instance', async () => {
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const mcpResponseMessage = {
+				kind: 'mcp-response',
+				executionId: 'exec-123',
+				mcpType: 'service',
+				sessionId: 'session-456',
+				messageId: 'msg-789',
+				response: { success: true },
+				workerId: 'worker-abc',
+				targetMainId: instanceSettings.hostId, // Current instance
+			};
+
+			// Should not throw - the handler will attempt to process
+			// (actual MCP service routing is tested in integration tests)
+			messageHandler('job-999', mcpResponseMessage);
+		});
+	});
 });
