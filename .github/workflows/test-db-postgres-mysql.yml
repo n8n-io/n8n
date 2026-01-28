@@ -115,27 +115,22 @@ jobs:
   postgres:
     name: Postgres
     needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 20
     env:
-      DB_POSTGRESDB_PASSWORD: password
-      DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
+      TEST_IMAGE_POSTGRES: postgres:16
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
 
-      - name: Start Postgres
-        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
-        with:
-          compose-file: ./.github/docker-compose.yml
-          services: |
-            postgres
+      - name: Pre-pull Test Container Images
+        run: npx tsx packages/testing/containers/pull-test-images.ts || true
 
       - name: Test Postgres
         working-directory: packages/cli
-        run: pnpm test:postgres
+        run: pnpm test:postgres:tc
 
   notify-on-failure:
     name: Notify Slack on failure

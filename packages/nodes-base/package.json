@@ -15,7 +15,8 @@
     "lint:fix": "eslint nodes credentials utils test --fix",
     "watch": "tsc-watch -p tsconfig.build.cjs.json --onCompilationComplete \"pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json\" --onSuccess \"pnpm n8n-generate-metadata\"",
     "test": "jest",
-    "test:dev": "jest --watch"
+    "test:dev": "jest --watch",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "files": [
     "dist"
@@ -853,6 +854,9 @@
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "n8n-containers": "workspace:*",
+    "vitest": "catalog:",
     "@types/amqplib": "^0.10.1",
     "@types/aws4": "^1.5.1",
     "@types/basic-auth": "catalog:",

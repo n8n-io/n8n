@@ -372,7 +372,7 @@ The `observability` capability shortcut handles this automatically: `test.use({ 
 | `--name <name>` | Custom project name for parallel runs |
 | `--env KEY=VALUE` | Set environment variables |
 | `--observability` | Enable metrics/logs stack |
-| `--tracing` | Enable Jaeger tracing |
+| `--tracing` | Enable tracing stack (Jaeger) |
 | `--tunnel` | Enable Cloudflare Tunnel for public webhook URLs |
 | `--oidc` | Enable Keycloak |
 | `--source-control` | Enable Gitea |
@@ -426,5 +426,5 @@ pnpm stack:clean:all
 
 - **Container Reuse**: Set `TESTCONTAINERS_REUSE_ENABLE=true` for faster restarts
 - **Parallel Testing**: Use `--name` to run multiple stacks without conflicts
-- **Custom Image**: Set `N8N_DOCKER_IMAGE=n8nio/n8n:dev` to use a different image
+- **Custom Image**: Set `TEST_IMAGE_N8N=n8nio/n8n:dev` to use a different image
 - **Multi-Main**: Requires queue mode and license key in `N8N_LICENSE_ACTIVATION_KEY`
