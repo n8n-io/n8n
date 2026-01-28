@@ -387,7 +387,7 @@ export const ROOT_DOLLAR_COMPLETIONS: Completion[] = [
 		section: METADATA_SECTION,
 		info: createInfoBoxRenderer({
 			name: '$tool',
-			returnType: 'string',
+			returnType: 'Object',
 			description: i18n.baseText('codeNodeEditor.completer.$tool'),
 		}),
 	},

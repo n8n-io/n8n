@@ -81,7 +81,8 @@ await member2Page.navigate.toCredentials();
 | Pattern | Why | Use Instead |
 |---------|-----|-------------|
 | `test.describe.serial` | Creates test dependencies | Parallel tests with isolated setup |
-| `@db:reset` tag | Deprecated - CI issues | `test.use()` with unique capability |
+| Fresh DB per file | Tests need isolated container | `test.use({ capability: { env: { TEST_ISOLATION: 'name' } } })` |
+| Fresh DB per test | Tests modify shared state | `@db:reset` tag on describe (container-only, combined with `test.use()`) |
 | `n8n.api.signin()` | Session bleeding | `n8n.start.withUser()` |
 | `Date.now()` for IDs | Race conditions | `nanoid()` |
 | `waitForTimeout()` | Flaky | `waitForResponse()`, `toBeVisible()` |
@@ -113,6 +114,26 @@ See `CONTRIBUTING.md` for detailed patterns and conventions.
 See [README.md#debugging](./README.md#debugging) for detailed instructions on:
 - **Keepalive mode** - Keep containers running after tests with `N8N_CONTAINERS_KEEPALIVE=true`
 - **Victoria exports** - Logs/metrics automatically attached on failure, importable locally via `scripts/import-victoria-data.mjs`
+
+## Test Migration & Refactoring
+
+**Test Name = Contract**
+- Name declares intent, assertion proves it, everything else is flow
+- Bad: `should open W1 as U2` (describes action)
+- Good: `should allow sharee to edit shared workflow` (declares rule)
+
+**Coverage Parity Check**
+1. Read old test name → what was the intent?
+2. Find the explicit assertion that proved it
+3. Verify new test has equivalent proof
+4. No proof found? Document as intentional drop or gap
+
+**Legacy Tests (unauditable names/assertions)**
+- Prioritize clarity over parity - can't audit what you can't read
+- Document your best interpretation of intent
+- Accept short-term risk, fix regressions forward
+
+See [Quality Corner: Test Migration Guide](https://www.notion.so/n8n/Best-Practices-Test-Migration-Refactoring) for full rationale and examples.
 
 ## Reference Files
 
@@ -162,10 +183,20 @@ Use `test.use()` at file top-level with unique capability config:
 import { test, expect } from '../fixtures/base';
 
 // Must be top-level, not inside describe block
-test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+test.use({ capability: { env: { TEST_ISOLATION: 'my-isolated-tests' } } });
 
 test('test with clean state', async ({ n8n }) => {
   // Fresh container with reset database
+});
+```
+
+For per-test database reset (when tests modify shared state like MFA), add `@db:reset` to the describe. **Note:** `@db:reset` is container-only - these tests won't run locally.
+
+```typescript
+test.use({ capability: { env: { TEST_ISOLATION: 'my-stateful-tests' } } });
+
+test.describe('My stateful tests @db:reset', () => {
+  // Each test gets a fresh database reset (container-only)
 });
 ```
 

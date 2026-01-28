@@ -2874,6 +2874,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		status: error ? 'error' : 'success',
 		startedAt: new Date(),
 		stoppedAt: new Date(),
+		storedAt: 'db',
 		data: {
 			startData: {},
 			resultData: {
