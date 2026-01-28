@@ -44,7 +44,7 @@ describe('ChatTokenService', () => {
 			jwtService.verify.mockReturnValue({ executionId, type: 'chat' });
 
 			expect(chatTokenService.validateToken(executionId, 'valid-token')).toBe(true);
-			expect(jwtService.verify).toHaveBeenCalledWith('valid-token');
+			expect(jwtService.verify).toHaveBeenCalledWith('valid-token', { algorithms: ['HS256'] });
 		});
 
 		it('should return false when token verification throws', () => {

@@ -36,7 +36,9 @@ export class ChatTokenService {
 	 */
 	validateToken(executionId: string, token: string): boolean {
 		try {
-			const payload = this.jwtService.verify<ChatTokenPayload>(token);
+			const payload = this.jwtService.verify<ChatTokenPayload>(token, {
+				algorithms: ['HS256'],
+			});
 			return payload.type === 'chat' && payload.executionId === executionId;
 		} catch {
 			return false;
