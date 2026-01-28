@@ -2422,6 +2422,7 @@ describe('useWorkflowsStore', () => {
 						resumeFormUrl: signedFormUrl,
 					},
 				},
+				itemCountByConnectionType: {},
 			});
 
 			// Should open form popup with the signed URL from metadata
@@ -2460,6 +2461,7 @@ describe('useWorkflowsStore', () => {
 					hints: [],
 					// No metadata
 				},
+				itemCountByConnectionType: {},
 			});
 
 			// Should NOT open form popup
