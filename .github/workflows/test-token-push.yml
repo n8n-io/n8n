@@ -41,6 +41,7 @@ jobs:
           SOURCE_BRANCH: ${{ github.event.inputs.source-branch }}
         run: |
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git fetch origin "${SOURCE_BRANCH}"
           echo "Pushing ${SOURCE_BRANCH} to test-release/0.0.0-test..."
           git push -f origin "refs/remotes/origin/${SOURCE_BRANCH}:refs/heads/test-release/0.0.0-test"
           echo "Push succeeded!"
