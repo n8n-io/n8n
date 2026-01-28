@@ -64,7 +64,7 @@ const CLEANUP_DELAY_MS = STREAM_STATE_TTL * Time.seconds.toMilliseconds;
  * Uses in-memory storage for single-main mode and Redis for multi-main mode.
  */
 @Service()
-export class ChatSessionStoreService {
+export class ChatStreamStateService {
 	private readonly memoryStore = new Map<ChatSessionId, StreamState>();
 	private readonly chunkBuffer = new Map<ChatSessionId, BufferedChunk[]>();
 	private readonly cleanupTimers = new Map<ChatSessionId, ReturnType<typeof setTimeout>>();

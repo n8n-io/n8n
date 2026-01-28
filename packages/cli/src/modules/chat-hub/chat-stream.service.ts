@@ -19,7 +19,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { ChatSessionStoreService } from './chat-session-store.service';
+import { ChatStreamStateService } from './chat-stream-state.service';
 
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -55,7 +55,7 @@ export class ChatStreamService {
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly executionsConfig: ExecutionsConfig,
-		private readonly sessionStore: ChatSessionStoreService,
+		private readonly sessionStore: ChatStreamStateService,
 	) {
 		this.logger = this.logger.scoped('chat-hub');
 	}
