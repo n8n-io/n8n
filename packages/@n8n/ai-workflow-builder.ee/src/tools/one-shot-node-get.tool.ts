@@ -175,12 +175,13 @@ function getNodeVersions(nodeId: string, generatedTypesDir?: string): string[] {
 		const versions: string[] = [];
 
 		for (const entry of entries) {
-			// Flat file: v1.ts, v2.ts, etc.
+			// Flat file: v1.ts, v2.ts, etc. (exclude schema files and index.ts)
 			if (
 				entry.isFile() &&
 				entry.name.startsWith('v') &&
 				entry.name.endsWith('.ts') &&
-				entry.name !== 'index.ts'
+				entry.name !== 'index.ts' &&
+				!entry.name.endsWith('.schema.ts')
 			) {
 				versions.push(entry.name.replace('.ts', ''));
 			}
