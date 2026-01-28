@@ -186,6 +186,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: false,
+			useWorkflowPublicationService: false,
 		},
 		endpoints: {
 			metrics: {
@@ -414,7 +415,7 @@ describe('GlobalConfig', () => {
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,
 			batchSize: 100,
-			optimizingMinimumAgeHours: 3,
+			optimizingMinimumAgeHours: 0.25,
 			optimizingTimeWindowHours: 2,
 			trimmingMinimumAgeDays: 7,
 			trimmingTimeWindowDays: 2,

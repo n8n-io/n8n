@@ -11,6 +11,7 @@ import {
 	type IPinData,
 	type IRun,
 	type IWorkflowBase,
+	type IWorkflowDataProxyAdditionalKeys,
 	type WorkflowExecuteMode,
 	type WorkflowSettingsBinaryMode,
 } from '../src/interfaces';
@@ -40,6 +41,7 @@ const getProxyFromFixture = (
 		throwOnMissingExecutionData: boolean;
 		connectionType?: NodeConnectionType;
 		runIndex?: number;
+		additionalKeys?: IWorkflowDataProxyAdditionalKeys;
 	},
 ) => {
 	const taskData = run?.data.resultData.runData[activeNode]?.[opts?.runIndex ?? 0];
@@ -86,7 +88,7 @@ const getProxyFromFixture = (
 		lastNodeConnectionInputData ?? [],
 		{},
 		mode ?? 'integrated',
-		{},
+		opts?.additionalKeys ?? {},
 		executeData,
 	);
 
@@ -257,6 +259,7 @@ describe('WorkflowDataProxy', () => {
 			mode: 'manual',
 			startedAt: new Date(),
 			status: 'success',
+			storedAt: 'db',
 		});
 
 		describe('Default behavior (no binaryMode or separate mode)', () => {
@@ -1048,6 +1051,99 @@ describe('WorkflowDataProxy', () => {
 		});
 	});
 
+	describe('$tool', () => {
+		const fixture = loadFixture('from_ai_tool_alias');
+		const getToolProxy = (runIndex = 0, additionalKeys?: IWorkflowDataProxyAdditionalKeys) =>
+			getProxyFromFixture(fixture.workflow, fixture.run, 'Google Sheets1', 'manual', {
+				connectionType: NodeConnectionTypes.AiTool,
+				throwOnMissingExecutionData: false,
+				runIndex,
+				additionalKeys,
+			});
+
+		test('Returns object with name and parameters when execution data exists', () => {
+			const proxy = getToolProxy();
+			const toolValue = proxy.$tool;
+			// $tool should now return an object with name and parameters
+			expect(toolValue).toBeDefined();
+			expect(typeof toolValue).toBe('object');
+			expect(toolValue).toHaveProperty('name');
+			expect(toolValue).toHaveProperty('parameters');
+		});
+
+		test('Works consistently across different items', () => {
+			const proxy0 = getToolProxy(0);
+			const proxy1 = getToolProxy(1);
+			// Both should return objects
+			expect(typeof proxy0.$tool).toBe('object');
+			expect(typeof proxy1.$tool).toBe('object');
+		});
+
+		test('Falls back to additionalKeys when no execution data exists', () => {
+			// Create a workflow with no execution data at all (empty connectionInputData)
+			const workflowWithoutResultData: IWorkflowBase = {
+				id: '123',
+				name: 'test workflow',
+				nodes: [
+					{
+						id: 'aiNode',
+						name: 'AI Node',
+						type: 'n8n-nodes-base.aiAgent',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+
+			const dataProxy = new WorkflowDataProxy(
+				new Workflow({
+					id: '123',
+					name: 'test workflow',
+					nodes: workflowWithoutResultData.nodes,
+					connections: workflowWithoutResultData.connections,
+					active: false,
+					nodeTypes: Helpers.NodeTypes(),
+				}),
+				null, // No run execution data
+				0,
+				0,
+				'AI Node',
+				[], // Empty connectionInputData - this triggers no_execution_data error
+				{},
+				'manual',
+				{ $tool: { name: 'fallback-tool', parameters: 'fallback-params' } }, // Fallback value
+				undefined,
+			);
+
+			const proxy = dataProxy.getDataProxy();
+
+			// Should return the fallback value since there's no execution data
+			expect(proxy.$tool).toEqual({ name: 'fallback-tool', parameters: 'fallback-params' });
+		});
+
+		test('Uses execution data when available, ignoring fallback', () => {
+			// When execution data exists, it should use that instead of fallback
+			const proxy = getToolProxy(0, {
+				$tool: { name: 'fallback-tool', parameters: 'fallback-params' },
+			});
+			// Should use the actual value from execution data
+			// The fallback should be ignored when execution data is available
+			const toolValue = proxy.$tool;
+			// Should return an object with name and parameters from execution data
+			expect(toolValue).toBeDefined();
+			expect(typeof toolValue).toBe('object');
+			expect(toolValue).toHaveProperty('name');
+			expect(toolValue).toHaveProperty('parameters');
+		});
+	});
+
 	describe('$rawParameter', () => {
 		const fixture = loadFixture('rawParameter');
 		const proxy = getProxyFromFixture(fixture.workflow, fixture.run, 'Execute Workflow', 'manual', {
@@ -1074,6 +1170,7 @@ describe('WorkflowDataProxy', () => {
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
+					storedAt: 'db',
 				},
 				'Execute Workflow',
 				'manual',
@@ -1402,6 +1499,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Send a text message');
@@ -1464,6 +1562,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Process Data');
@@ -1522,6 +1621,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'End Node');
@@ -1609,6 +1709,7 @@ describe('WorkflowDataProxy', () => {
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
+				storedAt: 'db' as const,
 			};
 
 			const proxy = getProxyFromFixture(workflow, run, 'Real Node');

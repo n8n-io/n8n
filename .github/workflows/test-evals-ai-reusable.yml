@@ -103,4 +103,6 @@ jobs:
             --repetitions ${{ inputs.repetitions }} \
             --judges ${{ inputs.judges }} \
             --concurrency ${{ inputs.concurrency }} \
-            --name "${{ steps.experiment.outputs.name }}"
+            --name "${{ steps.experiment.outputs.name }}" \
+            ${{ secrets.EVALS_WEBHOOK_URL && format('--webhook-url "{0}"', secrets.EVALS_WEBHOOK_URL) || '' }} \
+            ${{ secrets.EVALS_WEBHOOK_SECRET && format('--webhook-secret "{0}"', secrets.EVALS_WEBHOOK_SECRET) || '' }}

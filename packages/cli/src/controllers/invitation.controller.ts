@@ -2,7 +2,14 @@ import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-type
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
+import {
+	Post,
+	GlobalScope,
+	RestController,
+	Body,
+	Param,
+	createBodyKeyedRateLimiter,
+} from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -206,12 +213,11 @@ export class InvitationController {
 		// Two layered rate limit to ensure multiple users can accept an invitation from
 		// the same IP address but aggressive per inviteeId limit.
 		ipRateLimit: { limit: 100, windowMs: 5 * Time.minutes.toMilliseconds },
-		keyedRateLimit: {
+		keyedRateLimit: createBodyKeyedRateLimiter<AcceptInvitationRequestDto>({
 			limit: 10,
 			windowMs: 1 * Time.minutes.toMilliseconds,
-			source: 'body',
-			field: 'inviterId' satisfies keyof AcceptInvitationRequestDto,
-		},
+			field: 'inviterId',
+		}),
 	})
 	async acceptInvitation(
 		req: AuthlessRequest,

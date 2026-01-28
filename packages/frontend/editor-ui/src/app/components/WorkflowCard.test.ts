@@ -7,6 +7,7 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import type { WorkflowResource } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import type { FrontendSettings } from '@n8n/api-types';
 import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -53,6 +54,27 @@ vi.mock('@/app/composables/useMessage', () => {
 	};
 });
 
+vi.mock('@/app/composables/useWorkflowActivate', () => {
+	const unpublishWorkflowFromHistory = vi.fn().mockResolvedValue(true);
+	return {
+		useWorkflowActivate: () => ({
+			unpublishWorkflowFromHistory,
+		}),
+	};
+});
+
+vi.mock('@n8n/utils/event-bus', () => ({
+	createEventBus: () => ({
+		once: vi.fn((event, callback) => {
+			// Auto-trigger the callback for testing
+			if (event === 'unpublish') {
+				callback();
+			}
+		}),
+		emit: vi.fn(),
+	}),
+}));
+
 const renderComponent = createComponentRenderer(WorkflowCard, {
 	pinia: createTestingPinia({}),
 });
@@ -88,6 +110,12 @@ describe('WorkflowCard', () => {
 		usersStore = mockedStore(useUsersStore);
 		message = useMessage();
 		toast = useToast();
+
+		settingsStore.settings = {
+			envFeatureFlags: {
+				N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: true,
+			},
+		} as unknown as FrontendSettings;
 
 		windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 	});
@@ -591,6 +619,56 @@ describe('WorkflowCard', () => {
 		expect(indicator).not.toBeVisible();
 	});
 
+	it('should show dynamic credentials indicator when workflow has resolvable credentials', () => {
+		const data = createWorkflow({
+			hasResolvableCredentials: true,
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+
+		const indicator = getByTestId('workflow-card-dynamic-credentials');
+		expect(indicator).toBeVisible();
+	});
+
+	it('should hide dynamic credentials indicator when workflow has no resolvable credentials', () => {
+		const data = createWorkflow({
+			hasResolvableCredentials: false,
+		});
+
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		const indicator = queryByTestId('workflow-card-dynamic-credentials');
+		expect(indicator).toBeNull();
+	});
+
+	it('should show resolver missing badge when workflow has resolvable credentials but no resolver configured', () => {
+		const data = createWorkflow({
+			hasResolvableCredentials: true,
+			settings: {
+				credentialResolverId: undefined,
+			},
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+
+		const badge = getByTestId('workflow-card-resolver-missing');
+		expect(badge).toBeVisible();
+	});
+
+	it('should hide resolver missing badge when workflow has resolver configured', () => {
+		const data = createWorkflow({
+			hasResolvableCredentials: true,
+			settings: {
+				credentialResolverId: 'resolver-123',
+			},
+		});
+
+		const { queryByTestId } = renderComponent({ props: { data } });
+
+		const badge = queryByTestId('workflow-card-resolver-missing');
+		expect(badge).toBeNull();
+	});
+
 	it('should show Archived text on archived workflows', async () => {
 		const data = createWorkflow({ isArchived: true });
 		const { getByTestId, queryByTestId } = renderComponent({ props: { data } });
@@ -744,5 +822,99 @@ describe('WorkflowCard', () => {
 			throw new Error('Actions menu not found');
 		}
 		expect(actions).not.toHaveTextContent('Duplicate');
+	});
+
+	describe('Unpublish functionality', () => {
+		beforeEach(() => {
+			// Enable draft/publish feature by default for unpublish tests
+			settingsStore.isFeatureEnabled = vi.fn().mockReturnValue(true);
+		});
+
+		it('should show "Unpublish" action when workflow is published and user has permissions', async () => {
+			const data = createWorkflow({
+				activeVersionId: 'v1', // Published workflow
+				scopes: ['workflow:update'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const cardActions = getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActions);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			expect(actions).toHaveTextContent('Unpublish');
+		});
+
+		it('should not show "Unpublish" action when workflow is not published', async () => {
+			const data = createWorkflow({
+				activeVersionId: null, // Not published
+				scopes: ['workflow:update'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const cardActions = getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActions);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			expect(actions).not.toHaveTextContent('Unpublish');
+		});
+
+		it('should not show "Unpublish" action when user lacks update permission', async () => {
+			const data = createWorkflow({
+				activeVersionId: 'v1',
+				scopes: ['workflow:read'], // No update permission
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+			const cardActions = getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActions);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			expect(actions).not.toHaveTextContent('Unpublish');
+		});
+
+		it('should emit workflow:unpublished event when unpublish action is successful', async () => {
+			const data = createWorkflow({
+				activeVersionId: 'v1',
+				scopes: ['workflow:update'],
+			});
+
+			const { getByTestId, emitted } = renderComponent({ props: { data } });
+			const cardActions = getByTestId('workflow-card-actions');
+			const cardActionsOpener = within(cardActions).getByRole('button');
+			const controllingId = cardActionsOpener.getAttribute('aria-controls');
+
+			await userEvent.click(cardActions);
+			const actions = document.querySelector<HTMLElement>(`#${controllingId}`);
+			if (!actions) {
+				throw new Error('Actions menu not found');
+			}
+
+			// Find and click the unpublish action
+			const unpublishAction = within(actions).getByTestId('action-unpublish');
+			await userEvent.click(unpublishAction);
+
+			await waitFor(() => {
+				expect(emitted()['workflow:unpublished']).toBeTruthy();
+				expect(emitted()['workflow:unpublished'][0]).toEqual([{ id: '1' }]);
+			});
+		});
 	});
 });

@@ -89,6 +89,7 @@ const handleOpenChange = (open: boolean) => {
 			</TooltipTrigger>
 			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">
 				<TooltipContent
+					data-test-id="tooltip-content"
 					:class="['n8n-tooltip', contentClass]"
 					:side="placementParts.side"
 					:align="placementParts.align"

@@ -351,6 +351,7 @@ Now usable as `test.use({ capability: 'my-capability' })`.
 | `victoriaMetrics` | - | VictoriaMetrics for metrics |
 | `vector` | - | Vector log collector (depends on victoriaLogs) |
 | `tracing` | ✓ | Jaeger for distributed tracing |
+| `kafka` | ✓ | Kafka broker for message queue testing |
 | `proxy` | - | HTTP proxy (MockServer) |
 | `taskRunner` | - | External task runner |
 | `loadBalancer` | - | Caddy for multi-main |
