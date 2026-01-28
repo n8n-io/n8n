@@ -428,11 +428,26 @@ export class JiraTrigger implements INodeType {
 					{},
 				);
 
+				let webhookId: string | undefined;
+
 				for (const webhook of webhooks) {
-					if (webhook.url === webhookUrl && eventExists(events, webhook.events)) {
-						webhookData.webhookId = getWebhookId(webhook);
-						return true;
+					if (webhook.url === webhookUrl) {
+						if (eventExists(events, webhook.events) && webhookId === undefined) {
+							webhookId = getWebhookId(webhook);
+							webhookData.webhookId = webhookId;
+						} else {
+							// Webhook exists but events do not match, or we already found a valid one.
+							// Delete it to avoid having multiple webhooks for the same URL.
+							const deleteEndpoint = `${endpoint}/${getWebhookId(webhook)}`;
+							try {
+								await jiraSoftwareCloudApiRequest.call(this, deleteEndpoint, 'DELETE', {});
+							} catch (error) {}
+						}
 					}
+				}
+
+				if (webhookId !== undefined) {
+					return true;
 				}
 
 				return false;
