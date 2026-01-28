@@ -86,6 +86,30 @@ export class ChatHubChatPage extends BasePage {
 		return this.getChatMessages().nth(index).getByTestId('chat-message-next-alternative');
 	}
 
+	async clickEditButtonAt(index: number): Promise<void> {
+		const message = this.getChatMessages().nth(index);
+		await message.hover();
+		await this.getEditButtonAt(index).click();
+	}
+
+	async clickRegenerateButtonAt(index: number): Promise<void> {
+		const message = this.getChatMessages().nth(index);
+		await message.hover();
+		await this.getRegenerateButtonAt(index).click();
+	}
+
+	async clickPrevAlternativeButtonAt(index: number): Promise<void> {
+		const message = this.getChatMessages().nth(index);
+		await message.hover();
+		await this.getPrevAlternativeButtonAt(index).click();
+	}
+
+	async clickNextAlternativeButtonAt(index: number): Promise<void> {
+		const message = this.getChatMessages().nth(index);
+		await message.hover();
+		await this.getNextAlternativeButtonAt(index).click();
+	}
+
 	getAttachButton(): Locator {
 		return this.page.getByRole('button', { name: /attach/i });
 	}
