@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import type { ChatExecutionEnd, ChatStreamError } from '@n8n/api-types';
+import type { ChatHubExecutionEnd, ChatHubStreamError } from '@n8n/api-types';
 import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/backend-test-utils';
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
@@ -1212,8 +1212,8 @@ describe('chatHub', () => {
 				// Verify frontend was notified via push
 				const pushCalls = mockPush.sendToUsers.mock.calls;
 				const errorEvent = pushCalls.find(
-					(call) => call[0]?.type === 'chatStreamError' && call[1]?.includes(member.id),
-				) as [ChatStreamError, string[]] | undefined;
+					(call) => call[0]?.type === 'chatHubStreamError' && call[1]?.includes(member.id),
+				) as [ChatHubStreamError, string[]] | undefined;
 				expect(errorEvent).toBeDefined();
 				expect(errorEvent![0].data.error).toBe('Early execution failure');
 				expect(errorEvent![0].data.sessionId).toBe(sessionId);
@@ -1221,10 +1221,10 @@ describe('chatHub', () => {
 				// Verify execution end was sent with error status
 				const endEvent = pushCalls.find(
 					(call) =>
-						call[0]?.type === 'chatExecutionEnd' &&
+						call[0]?.type === 'chatHubExecutionEnd' &&
 						call[0]?.data?.status === 'error' &&
 						call[1]?.includes(member.id),
-				) as [ChatExecutionEnd, string[]] | undefined;
+				) as [ChatHubExecutionEnd, string[]] | undefined;
 				expect(endEvent).toBeDefined();
 				expect(endEvent![0].data.sessionId).toBe(sessionId);
 			});

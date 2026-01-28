@@ -1,18 +1,18 @@
 import { ref } from 'vue';
 import type {
 	PushMessage,
-	ChatStreamBegin,
-	ChatStreamChunk,
-	ChatStreamEnd,
-	ChatStreamError,
-	ChatExecutionBegin,
-	ChatExecutionEnd,
-	ChatHumanMessageCreated,
-	ChatMessageEdited,
+	ChatHubStreamBegin,
+	ChatHubStreamChunk,
+	ChatHubStreamEnd,
+	ChatHubStreamError,
+	ChatHubExecutionBegin,
+	ChatHubExecutionEnd,
+	ChatHubHumanMessageCreated,
+	ChatHubMessageEdited,
+	ChatHubAttachmentInfo,
 	ChatSessionId,
 	ChatMessageId,
 	ChatHubMessageStatus,
-	ChatAttachmentInfo,
 } from '@n8n/api-types';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useChatStore } from '../chat.store';
@@ -40,7 +40,7 @@ export function useChatPushHandler() {
 	/**
 	 * Handle a chat execution begin event (whole streaming session starts)
 	 */
-	function handleExecutionBegin(event: ChatExecutionBegin): void {
+	function handleExecutionBegin(event: ChatHubExecutionBegin): void {
 		const { sessionId } = event.data;
 		chatStore.handleWebSocketExecutionBegin?.({ sessionId });
 	}
@@ -48,7 +48,7 @@ export function useChatPushHandler() {
 	/**
 	 * Handle a chat execution end event (whole streaming session ends)
 	 */
-	function handleExecutionEnd(event: ChatExecutionEnd): void {
+	function handleExecutionEnd(event: ChatHubExecutionEnd): void {
 		const { sessionId, status } = event.data;
 
 		// Clean up all active streams for this session
@@ -60,7 +60,7 @@ export function useChatPushHandler() {
 	/**
 	 * Handle a chat stream begin event
 	 */
-	function handleStreamBegin(event: ChatStreamBegin): void {
+	function handleStreamBegin(event: ChatHubStreamBegin): void {
 		const { sessionId, messageId, sequenceNumber, previousMessageId, retryOfMessageId } =
 			event.data;
 
@@ -93,7 +93,7 @@ export function useChatPushHandler() {
 	/**
 	 * Handle a chat stream chunk event
 	 */
-	function handleStreamChunk(event: ChatStreamChunk): void {
+	function handleStreamChunk(event: ChatHubStreamChunk): void {
 		const { sessionId, messageId, sequenceNumber, content } = event.data;
 
 		const streamState = activeStreams.value.get(sessionId);
@@ -119,7 +119,7 @@ export function useChatPushHandler() {
 	/**
 	 * Handle a chat stream end event
 	 */
-	function handleStreamEnd(event: ChatStreamEnd): void {
+	function handleStreamEnd(event: ChatHubStreamEnd): void {
 		const { sessionId, messageId, status } = event.data;
 
 		activeStreams.value.delete(sessionId);
@@ -134,7 +134,7 @@ export function useChatPushHandler() {
 	/**
 	 * Handle a chat stream error event
 	 */
-	function handleStreamError(event: ChatStreamError): void {
+	function handleStreamError(event: ChatHubStreamError): void {
 		const { sessionId, messageId, error } = event.data;
 
 		activeStreams.value.delete(sessionId);
@@ -149,14 +149,14 @@ export function useChatPushHandler() {
 	/**
 	 * Handle a human message created event (for cross-client sync)
 	 */
-	function handleHumanMessageCreated(event: ChatHumanMessageCreated): void {
+	function handleHumanMessageCreated(event: ChatHubHumanMessageCreated): void {
 		chatStore.handleRemoteHumanMessage?.(event.data);
 	}
 
 	/**
 	 * Handle a message edited event (for cross-client sync)
 	 */
-	function handleMessageEdited(event: ChatMessageEdited): void {
+	function handleMessageEdited(event: ChatHubMessageEdited): void {
 		chatStore.handleRemoteMessageEdit?.(event.data);
 	}
 
@@ -165,28 +165,28 @@ export function useChatPushHandler() {
 	 */
 	function processMessage(event: PushMessage): void {
 		switch (event.type) {
-			case 'chatHumanMessageCreated':
+			case 'chatHubHumanMessageCreated':
 				handleHumanMessageCreated(event);
 				break;
-			case 'chatMessageEdited':
+			case 'chatHubMessageEdited':
 				handleMessageEdited(event);
 				break;
-			case 'chatExecutionBegin':
+			case 'chatHubExecutionBegin':
 				handleExecutionBegin(event);
 				break;
-			case 'chatExecutionEnd':
+			case 'chatHubExecutionEnd':
 				handleExecutionEnd(event);
 				break;
-			case 'chatStreamBegin':
+			case 'chatHubStreamBegin':
 				handleStreamBegin(event);
 				break;
-			case 'chatStreamChunk':
+			case 'chatHubStreamChunk':
 				handleStreamChunk(event);
 				break;
-			case 'chatStreamEnd':
+			case 'chatHubStreamEnd':
 				handleStreamEnd(event);
 				break;
-			case 'chatStreamError':
+			case 'chatHubStreamError':
 				handleStreamError(event);
 				break;
 		}
@@ -283,7 +283,7 @@ export interface ChatWebSocketHandlers {
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
 		content: string;
-		attachments: ChatAttachmentInfo[];
+		attachments: ChatHubAttachmentInfo[];
 		timestamp: number;
 	}) => void;
 	handleRemoteMessageEdit?: (data: {
@@ -291,7 +291,7 @@ export interface ChatWebSocketHandlers {
 		originalMessageId: ChatMessageId;
 		newMessageId: ChatMessageId;
 		content: string;
-		attachments: ChatAttachmentInfo[];
+		attachments: ChatHubAttachmentInfo[];
 		timestamp: number;
 	}) => void;
 }

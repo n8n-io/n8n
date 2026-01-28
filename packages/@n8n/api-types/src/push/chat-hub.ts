@@ -3,7 +3,7 @@ import type { ChatHubMessageStatus, ChatMessageId, ChatSessionId } from '../chat
 /**
  * Base metadata included in all chat stream push messages
  */
-export interface ChatStreamMetadata {
+export interface ChatHubStreamMetadata {
 	/** Unique identifier for the chat session */
 	sessionId: ChatSessionId;
 	/** Unique identifier for the AI message being streamed */
@@ -17,9 +17,9 @@ export interface ChatStreamMetadata {
 /**
  * Sent when a new AI response begins streaming
  */
-export type ChatStreamBegin = {
-	type: 'chatStreamBegin';
-	data: ChatStreamMetadata & {
+export type ChatHubStreamBegin = {
+	type: 'chatHubStreamBegin';
+	data: ChatHubStreamMetadata & {
 		/** ID of the message this is responding to */
 		previousMessageId: ChatMessageId | null;
 		/** If this is a retry, the ID of the message being retried */
@@ -32,9 +32,9 @@ export type ChatStreamBegin = {
 /**
  * Sent for each chunk of content during streaming
  */
-export type ChatStreamChunk = {
-	type: 'chatStreamChunk';
-	data: ChatStreamMetadata & {
+export type ChatHubStreamChunk = {
+	type: 'chatHubStreamChunk';
+	data: ChatHubStreamMetadata & {
 		/** The content chunk */
 		content: string;
 	};
@@ -43,9 +43,9 @@ export type ChatStreamChunk = {
 /**
  * Sent when streaming completes successfully
  */
-export type ChatStreamEnd = {
-	type: 'chatStreamEnd';
-	data: ChatStreamMetadata & {
+export type ChatHubStreamEnd = {
+	type: 'chatHubStreamEnd';
+	data: ChatHubStreamMetadata & {
 		/** Final status of the message */
 		status: ChatHubMessageStatus;
 	};
@@ -54,9 +54,9 @@ export type ChatStreamEnd = {
 /**
  * Sent when an error occurs during streaming
  */
-export type ChatStreamError = {
-	type: 'chatStreamError';
-	data: ChatStreamMetadata & {
+export type ChatHubStreamError = {
+	type: 'chatHubStreamError';
+	data: ChatHubStreamMetadata & {
 		/** Error message */
 		error: string;
 	};
@@ -65,7 +65,7 @@ export type ChatStreamError = {
 /**
  * Attachment info sent in human message events
  */
-export interface ChatAttachmentInfo {
+export interface ChatHubAttachmentInfo {
 	id: string;
 	fileName: string;
 	mimeType: string;
@@ -74,8 +74,8 @@ export interface ChatAttachmentInfo {
 /**
  * Sent when a human message is created (for cross-client sync)
  */
-export type ChatHumanMessageCreated = {
-	type: 'chatHumanMessageCreated';
+export type ChatHubHumanMessageCreated = {
+	type: 'chatHubHumanMessageCreated';
 	data: {
 		/** Unique identifier for the chat session */
 		sessionId: ChatSessionId;
@@ -86,7 +86,7 @@ export type ChatHumanMessageCreated = {
 		/** The message content */
 		content: string;
 		/** Attachments on the message */
-		attachments: ChatAttachmentInfo[];
+		attachments: ChatHubAttachmentInfo[];
 		/** Timestamp when this message was created */
 		timestamp: number;
 	};
@@ -95,8 +95,8 @@ export type ChatHumanMessageCreated = {
 /**
  * Sent when a message is edited (for cross-client sync)
  */
-export type ChatMessageEdited = {
-	type: 'chatMessageEdited';
+export type ChatHubMessageEdited = {
+	type: 'chatHubMessageEdited';
 	data: {
 		/** Unique identifier for the chat session */
 		sessionId: ChatSessionId;
@@ -107,7 +107,7 @@ export type ChatMessageEdited = {
 		/** The new message content */
 		content: string;
 		/** Attachments on the new message */
-		attachments: ChatAttachmentInfo[];
+		attachments: ChatHubAttachmentInfo[];
 		/** Timestamp when this edit was created */
 		timestamp: number;
 	};
@@ -116,8 +116,8 @@ export type ChatMessageEdited = {
 /**
  * Sent when a chat execution begins (can contain multiple messages, e.g., with tool calls)
  */
-export type ChatExecutionBegin = {
-	type: 'chatExecutionBegin';
+export type ChatHubExecutionBegin = {
+	type: 'chatHubExecutionBegin';
 	data: {
 		/** Unique identifier for the chat session */
 		sessionId: ChatSessionId;
@@ -129,8 +129,8 @@ export type ChatExecutionBegin = {
 /**
  * Sent when a chat execution ends (all messages have been sent)
  */
-export type ChatExecutionEnd = {
-	type: 'chatExecutionEnd';
+export type ChatHubExecutionEnd = {
+	type: 'chatHubExecutionEnd';
 	data: {
 		/** Unique identifier for the chat session */
 		sessionId: ChatSessionId;
@@ -144,18 +144,22 @@ export type ChatExecutionEnd = {
 /**
  * Union type of AI stream-related push messages (message level)
  */
-export type ChatStreamEvent = ChatStreamBegin | ChatStreamChunk | ChatStreamEnd | ChatStreamError;
+export type ChatHubStreamEvent =
+	| ChatHubStreamBegin
+	| ChatHubStreamChunk
+	| ChatHubStreamEnd
+	| ChatHubStreamError;
 
 /**
  * Union type of execution-level push messages
  */
-export type ChatExecutionEvent = ChatExecutionBegin | ChatExecutionEnd;
+export type ChatHubExecutionEvent = ChatHubExecutionBegin | ChatHubExecutionEnd;
 
 /**
  * Union type of all chat push messages
  */
-export type ChatStreamPushMessage =
-	| ChatStreamEvent
-	| ChatExecutionEvent
-	| ChatHumanMessageCreated
-	| ChatMessageEdited;
+export type ChatHubPushMessage =
+	| ChatHubStreamEvent
+	| ChatHubExecutionEvent
+	| ChatHubHumanMessageCreated
+	| ChatHubMessageEdited;

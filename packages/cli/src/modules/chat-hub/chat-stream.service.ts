@@ -1,17 +1,17 @@
 import type {
-	ChatAttachmentInfo,
-	ChatExecutionBegin,
-	ChatExecutionEnd,
+	ChatHubAttachmentInfo,
+	ChatHubExecutionBegin,
+	ChatHubExecutionEnd,
 	ChatHubMessageStatus,
-	ChatHumanMessageCreated,
-	ChatMessageEdited,
+	ChatHubHumanMessageCreated,
+	ChatHubMessageEdited,
 	ChatMessageId,
 	ChatSessionId,
-	ChatStreamBegin,
-	ChatStreamChunk,
-	ChatStreamEnd,
-	ChatStreamError,
-	ChatStreamEvent,
+	ChatHubStreamBegin,
+	ChatHubStreamChunk,
+	ChatHubStreamEnd,
+	ChatHubStreamError,
+	ChatHubStreamEvent,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
@@ -19,10 +19,10 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
+import { ChatSessionStoreService } from './chat-session-store.service';
+
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-
-import { ChatSessionStoreService } from './chat-session-store.service';
 
 /**
  * Parameters for starting a new stream
@@ -72,8 +72,8 @@ export class ChatStreamService {
 			userId,
 		});
 
-		const message: ChatExecutionBegin = {
-			type: 'chatExecutionBegin',
+		const message: ChatHubExecutionBegin = {
+			type: 'chatHubExecutionBegin',
 			data: {
 				sessionId,
 				timestamp: Date.now(),
@@ -105,8 +105,8 @@ export class ChatStreamService {
 		sessionId: ChatSessionId,
 		status: 'success' | 'error' | 'cancelled',
 	): Promise<void> {
-		const message: ChatExecutionEnd = {
-			type: 'chatExecutionEnd',
+		const message: ChatHubExecutionEnd = {
+			type: 'chatHubExecutionEnd',
 			data: {
 				sessionId,
 				status,
@@ -147,8 +147,8 @@ export class ChatStreamService {
 		// Update the current message ID in the session store
 		await this.sessionStore.setCurrentMessage(sessionId, messageId);
 
-		const message: ChatStreamBegin = {
-			type: 'chatStreamBegin',
+		const message: ChatHubStreamBegin = {
+			type: 'chatHubStreamBegin',
 			data: {
 				sessionId,
 				messageId,
@@ -182,8 +182,8 @@ export class ChatStreamService {
 		// Buffer the chunk for reconnection replay
 		await this.sessionStore.bufferChunk(sessionId, { sequenceNumber, content });
 
-		const message: ChatStreamChunk = {
-			type: 'chatStreamChunk',
+		const message: ChatHubStreamChunk = {
+			type: 'chatHubStreamChunk',
 			data: {
 				sessionId,
 				messageId,
@@ -216,8 +216,8 @@ export class ChatStreamService {
 
 		const sequenceNumber = await this.sessionStore.incrementSequence(sessionId);
 
-		const message: ChatStreamEnd = {
-			type: 'chatStreamEnd',
+		const message: ChatHubStreamEnd = {
+			type: 'chatHubStreamEnd',
 			data: {
 				sessionId,
 				messageId,
@@ -253,8 +253,8 @@ export class ChatStreamService {
 
 		const sequenceNumber = await this.sessionStore.incrementSequence(sessionId);
 
-		const message: ChatStreamError = {
-			type: 'chatStreamError',
+		const message: ChatHubStreamError = {
+			type: 'chatHubStreamError',
 			data: {
 				sessionId,
 				messageId,
@@ -283,8 +283,8 @@ export class ChatStreamService {
 		messageId: ChatMessageId,
 		error: string,
 	): Promise<void> {
-		const message: ChatStreamError = {
-			type: 'chatStreamError',
+		const message: ChatHubStreamError = {
+			type: 'chatHubStreamError',
 			data: {
 				sessionId,
 				messageId,
@@ -360,12 +360,12 @@ export class ChatStreamService {
 		const { eventType, userId, sessionId, messageId, sequenceNumber } = payload;
 		const timestamp = Date.now();
 
-		let message: ChatStreamEvent | ChatExecutionBegin | ChatExecutionEnd;
+		let message: ChatHubStreamEvent | ChatHubExecutionBegin | ChatHubExecutionEnd;
 
 		switch (eventType) {
 			case 'execution-begin':
 				message = {
-					type: 'chatExecutionBegin',
+					type: 'chatHubExecutionBegin',
 					data: {
 						sessionId,
 						timestamp,
@@ -374,7 +374,7 @@ export class ChatStreamService {
 				break;
 			case 'execution-end':
 				message = {
-					type: 'chatExecutionEnd',
+					type: 'chatHubExecutionEnd',
 					data: {
 						sessionId,
 						status: (payload.payload.status as 'success' | 'error' | 'cancelled') ?? 'success',
@@ -384,7 +384,7 @@ export class ChatStreamService {
 				break;
 			case 'begin':
 				message = {
-					type: 'chatStreamBegin',
+					type: 'chatHubStreamBegin',
 					data: {
 						sessionId,
 						messageId,
@@ -398,7 +398,7 @@ export class ChatStreamService {
 				break;
 			case 'chunk':
 				message = {
-					type: 'chatStreamChunk',
+					type: 'chatHubStreamChunk',
 					data: {
 						sessionId,
 						messageId,
@@ -410,7 +410,7 @@ export class ChatStreamService {
 				break;
 			case 'end':
 				message = {
-					type: 'chatStreamEnd',
+					type: 'chatHubStreamEnd',
 					data: {
 						sessionId,
 						messageId,
@@ -422,7 +422,7 @@ export class ChatStreamService {
 				break;
 			case 'error':
 				message = {
-					type: 'chatStreamError',
+					type: 'chatHubStreamError',
 					data: {
 						sessionId,
 						messageId,
@@ -444,7 +444,7 @@ export class ChatStreamService {
 	 */
 	private async sendPushMessage(
 		params: Pick<StartStreamParams, 'userId' | 'sessionId' | 'messageId'>,
-		message: ChatStreamEvent,
+		message: ChatHubStreamEvent,
 		eventType: 'begin' | 'chunk' | 'end' | 'error',
 	): Promise<void> {
 		const { userId } = params;
@@ -470,24 +470,24 @@ export class ChatStreamService {
 	 */
 	private async relayViaPubSub(
 		params: Pick<StartStreamParams, 'userId' | 'sessionId' | 'messageId'>,
-		message: ChatStreamEvent,
+		message: ChatHubStreamEvent,
 		eventType: 'begin' | 'chunk' | 'end' | 'error',
 	): Promise<void> {
 		const payload: Record<string, unknown> = {};
 
 		switch (message.type) {
-			case 'chatStreamBegin':
+			case 'chatHubStreamBegin':
 				payload.previousMessageId = message.data.previousMessageId;
 				payload.retryOfMessageId = message.data.retryOfMessageId;
 				payload.executionId = message.data.executionId;
 				break;
-			case 'chatStreamChunk':
+			case 'chatHubStreamChunk':
 				payload.content = message.data.content;
 				break;
-			case 'chatStreamEnd':
+			case 'chatHubStreamEnd':
 				payload.status = message.data.status;
 				break;
-			case 'chatStreamError':
+			case 'chatHubStreamError':
 				payload.error = message.data.error;
 				break;
 		}
@@ -514,10 +514,10 @@ export class ChatStreamService {
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
 		content: string;
-		attachments: ChatAttachmentInfo[];
+		attachments: ChatHubAttachmentInfo[];
 	}): Promise<void> {
-		const message: ChatHumanMessageCreated = {
-			type: 'chatHumanMessageCreated',
+		const message: ChatHubHumanMessageCreated = {
+			type: 'chatHubHumanMessageCreated',
 			data: {
 				sessionId: params.sessionId,
 				messageId: params.messageId,
@@ -544,10 +544,10 @@ export class ChatStreamService {
 		originalMessageId: ChatMessageId;
 		newMessageId: ChatMessageId;
 		content: string;
-		attachments: ChatAttachmentInfo[];
+		attachments: ChatHubAttachmentInfo[];
 	}): Promise<void> {
-		const message: ChatMessageEdited = {
-			type: 'chatMessageEdited',
+		const message: ChatHubMessageEdited = {
+			type: 'chatHubMessageEdited',
 			data: {
 				sessionId: params.sessionId,
 				originalMessageId: params.originalMessageId,
@@ -575,9 +575,9 @@ export class ChatStreamService {
 			messageId: ChatMessageId;
 			previousMessageId: ChatMessageId | null;
 			content: string;
-			attachments: ChatAttachmentInfo[];
+			attachments: ChatHubAttachmentInfo[];
 		},
-		_message: ChatHumanMessageCreated,
+		_message: ChatHubHumanMessageCreated,
 	): Promise<void> {
 		await this.publisher.publishCommand({
 			command: 'relay-chat-human-message',
@@ -602,9 +602,9 @@ export class ChatStreamService {
 			originalMessageId: ChatMessageId;
 			newMessageId: ChatMessageId;
 			content: string;
-			attachments: ChatAttachmentInfo[];
+			attachments: ChatHubAttachmentInfo[];
 		},
-		_message: ChatMessageEdited,
+		_message: ChatHubMessageEdited,
 	): Promise<void> {
 		await this.publisher.publishCommand({
 			command: 'relay-chat-message-edit',
@@ -631,8 +631,8 @@ export class ChatStreamService {
 		content: string;
 		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
 	}): void {
-		const message: ChatHumanMessageCreated = {
-			type: 'chatHumanMessageCreated',
+		const message: ChatHubHumanMessageCreated = {
+			type: 'chatHubHumanMessageCreated',
 			data: {
 				sessionId: payload.sessionId,
 				messageId: payload.messageId,
@@ -658,8 +658,8 @@ export class ChatStreamService {
 		content: string;
 		attachments: Array<{ id: string; fileName: string; mimeType: string }>;
 	}): void {
-		const message: ChatMessageEdited = {
-			type: 'chatMessageEdited',
+		const message: ChatHubMessageEdited = {
+			type: 'chatHubMessageEdited',
 			data: {
 				sessionId: payload.sessionId,
 				originalMessageId: payload.originalMessageId,

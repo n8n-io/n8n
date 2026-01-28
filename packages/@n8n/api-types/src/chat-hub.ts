@@ -512,7 +512,7 @@ export interface ChatHubModuleSettings {
 
 /**
  * Response returned immediately when sending a message via WebSocket streaming.
- * Message IDs are not included as they come via WebSocket events (chatStreamBegin).
+ * Message IDs are not included as they come via WebSocket events (chatHubStreamBegin).
  */
 export interface ChatSendMessageResponse {
 	/** Execution ID if applicable */

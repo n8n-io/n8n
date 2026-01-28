@@ -58,20 +58,20 @@ export {
 } from './chat-hub';
 
 export type {
-	ChatStreamPushMessage,
-	ChatStreamEvent,
-	ChatStreamBegin,
-	ChatStreamChunk,
-	ChatStreamEnd,
-	ChatStreamError,
-	ChatStreamMetadata,
-	ChatExecutionEvent,
-	ChatExecutionBegin,
-	ChatExecutionEnd,
-	ChatHumanMessageCreated,
-	ChatMessageEdited,
-	ChatAttachmentInfo,
-} from './push/chat';
+	ChatHubPushMessage,
+	ChatHubStreamEvent,
+	ChatHubStreamBegin,
+	ChatHubStreamChunk,
+	ChatHubStreamEnd,
+	ChatHubStreamError,
+	ChatHubStreamMetadata,
+	ChatHubExecutionEvent,
+	ChatHubExecutionBegin,
+	ChatHubExecutionEnd,
+	ChatHubHumanMessageCreated,
+	ChatHubMessageEdited,
+	ChatHubAttachmentInfo,
+} from './push/chat-hub';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';
