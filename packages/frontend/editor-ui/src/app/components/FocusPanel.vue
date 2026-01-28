@@ -40,6 +40,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computedAsync, useActiveElement, useThrottleFn } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -80,6 +81,7 @@ const locale = useI18n();
 const nodeHelpers = useNodeHelpers();
 const focusPanelStore = useFocusPanelStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
@@ -165,7 +167,9 @@ const { workflowRunData } = useExecutionData({ node });
 
 const hasNodeRun = computed(() => {
 	if (!node.value) return true;
-	const parentNode = workflowsStore.workflowObject.getParentNodes(node.value.name, 'main', 1)[0];
+	const parentNode = workflowDocumentsStore.workflowObjectsById[
+		workflowDocumentsStore.workflowDocumentId
+	].getParentNodes(node.value.name, 'main', 1)[0];
 	return Boolean(
 		parentNode &&
 			workflowRunData.value &&

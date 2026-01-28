@@ -14,6 +14,7 @@ import {
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
@@ -49,6 +50,7 @@ export function useWorkflowSaving({
 	const message = useMessage();
 	const i18n = useI18n();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const focusPanelStore = useFocusPanelStore();
@@ -75,8 +77,12 @@ export function useWorkflowSaving({
 	) {
 		if (
 			!uiStore.stateIsDirty ||
-			workflowsStore.workflow.isArchived ||
-			!getResourcePermissions(workflowsStore.workflow.scopes).workflow.update
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				.isArchived ||
+			!getResourcePermissions(
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+					.scopes,
+			).workflow.update
 		) {
 			next();
 			return;
@@ -130,7 +136,11 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { name: workflowsStore.workflow.id },
+				params: {
+					name: workflowDocumentsStore.workflowDocumentsById[
+						workflowDocumentsStore.workflowDocumentId
+					].id,
+				},
 			}),
 		);
 	}

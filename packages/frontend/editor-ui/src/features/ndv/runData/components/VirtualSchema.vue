@@ -21,6 +21,7 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	type IRunExecutionData,
@@ -87,6 +88,7 @@ const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
 const settingsStore = useSettingsStore();
@@ -218,7 +220,10 @@ const contextSchema = computed(() => {
 			mode: 'test',
 			resumeUrl: i18n.baseText('dataMapping.schemaView.execution.resumeUrl'),
 		},
-		$workflow: pick(workflowsStore.workflow, ['id', 'name', 'active']),
+		$workflow: pick(
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId] ?? {},
+			['id', 'name', 'active'],
+		),
 	};
 
 	return filterSchema(getSchema(schemaSource), props.search);

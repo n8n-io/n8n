@@ -1,5 +1,6 @@
 import type { WorkflowActivated } from '@n8n/api-types/push/workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -8,6 +9,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 export async function workflowActivated({ data }: WorkflowActivated) {
 	const { initializeWorkspace } = useCanvasOperations();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const bannersStore = useBannersStore();
 	const uiStore = useUIStore();
@@ -15,7 +17,9 @@ export async function workflowActivated({ data }: WorkflowActivated) {
 	const { workflowId, activeVersionId } = data;
 
 	const workflowIsBeingViewed = workflowsStore.workflowId === workflowId;
-	const activeVersionIsSet = workflowsStore.workflow.activeVersionId !== activeVersionId;
+	const activeVersionIsSet =
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+			.activeVersionId !== activeVersionId;
 	if (workflowIsBeingViewed && activeVersionIsSet) {
 		// Only update workflow if there are no unsaved changes
 		if (!uiStore.stateIsDirty) {

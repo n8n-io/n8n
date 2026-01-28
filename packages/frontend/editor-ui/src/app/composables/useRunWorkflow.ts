@@ -38,6 +38,7 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { displayForm } from '@/features/execution/executions/executions.utils';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -72,6 +73,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = useRunWorkflowOpts.workflowState ?? injectWorkflowState();
 	const nodeHelpers = useNodeHelpers({ workflowState });
 	const workflowSaving = useWorkflowSaving({
@@ -82,7 +84,12 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const { dirtinessByName } = useNodeDirtiness();
 	const { startChat } = useCanvasOperations();
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowObject = computed(
+		() =>
+			workflowDocumentsStore.workflowObjectsById[
+				workflowDocumentsStore.workflowDocumentId
+			] as Workflow,
+	);
 
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {

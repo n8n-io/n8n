@@ -5,6 +5,7 @@ import { SETUP_CREDENTIALS_MODAL_KEY, TEMPLATE_SETUP_EXPERIENCE } from '@/app/co
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { doesNodeHaveAllCredentialsFilled } from '@/app/utils/nodes/nodeTransforms';
 
 import { N8nButton } from '@n8n/design-system';
@@ -14,6 +15,7 @@ import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/ready
 import { useRoute } from 'vue-router';
 
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const readyToRunStore = useReadyToRunStore();
 const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
@@ -27,7 +29,8 @@ const isTemplateImportRoute = computed(() => {
 });
 
 const isTemplateSetupCompleted = computed(() => {
-	return !!workflowsStore.workflow?.meta?.templateCredsSetupCompleted;
+	return !!workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+		?.meta?.templateCredsSetupCompleted;
 });
 
 const allCredentialsFilled = computed(() => {
@@ -44,7 +47,9 @@ const allCredentialsFilled = computed(() => {
 });
 
 const showButton = computed(() => {
-	const isCreatedFromTemplate = !!workflowsStore.workflow?.meta?.templateId;
+	const isCreatedFromTemplate =
+		!!workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.meta
+			?.templateId;
 	if (!isCreatedFromTemplate || isTemplateSetupCompleted.value) {
 		return false;
 	}
@@ -77,7 +82,9 @@ onBeforeUnmount(() => {
 });
 
 onMounted(() => {
-	const templateId = workflowsStore.workflow?.meta?.templateId;
+	const templateId =
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.meta
+			?.templateId;
 	const isReadyToRunWorkflow = readyToRunStore.isReadyToRunTemplateId(templateId);
 
 	if (

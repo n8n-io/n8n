@@ -41,6 +41,7 @@ import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
@@ -68,6 +69,7 @@ const $style = useCssModule();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const collaborationStore = useCollaborationStore();
@@ -534,7 +536,12 @@ onBeforeUnmount(() => {
 		</span>
 
 		<PushConnectionTracker class="actions">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
+			<WorkflowProductionChecklist
+				v-if="!isNewWorkflow"
+				:workflow="
+					workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				"
+			/>
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
 				ref="workflowHeaderActions"

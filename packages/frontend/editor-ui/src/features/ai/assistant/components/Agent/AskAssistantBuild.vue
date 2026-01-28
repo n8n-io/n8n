@@ -10,6 +10,7 @@ import { computed, watch, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useRoute, useRouter } from 'vue-router';
 import type { RatingFeedback, WorkflowSuggestion } from '@n8n/design-system/types/assistant';
 import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
@@ -42,6 +43,7 @@ const collaborationStore = useCollaborationStore();
 const workflowAutosaveStore = useWorkflowAutosaveStore();
 const telemetry = useTelemetry();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const router = useRouter();
 const i18n = useI18n();
 const route = useRoute();
@@ -118,7 +120,8 @@ const showExecuteMessage = computed(() => {
 
 	return (
 		!builderStore.streaming &&
-		workflowsStore.workflow.nodes.length > 0 &&
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.nodes
+			.length > 0 &&
 		builderUpdatedWorkflowMessageIndex > -1 &&
 		!hasErrorAfterUpdate &&
 		!hasTaskAbortedAfterUpdate
@@ -165,7 +168,9 @@ async function onUserMessage(content: string) {
 	accumulatedNodeIdsToTidyUp.value = [];
 
 	// If the workflow is empty, set the initial generation flag
-	const isInitialGeneration = workflowsStore.workflow.nodes.length === 0;
+	const isInitialGeneration =
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.nodes
+			.length === 0;
 
 	await builderStore.sendChatMessage({
 		text: content,
@@ -203,7 +208,9 @@ async function onWorkflowExecuted() {
 	const executionStatus = executionData?.status ?? 'unknown';
 	const errorNodeName = executionData?.data?.resultData.lastNodeExecuted;
 	const errorNodeType = errorNodeName
-		? workflowsStore.workflow.nodes.find((node) => node.name === errorNodeName)?.type
+		? workflowDocumentsStore.workflowDocumentsById[
+				workflowDocumentsStore.workflowDocumentId
+			]?.nodes.find((node) => node.name === errorNodeName)?.type
 		: undefined;
 
 	if (!executionData) {
@@ -320,7 +327,11 @@ watch(
 			return;
 		}
 
-		if (builderStore.initialGeneration && workflowsStore.workflow.nodes.length > 0) {
+		if (
+			builderStore.initialGeneration &&
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]?.nodes
+				.length > 0
+		) {
 			builderStore.initialGeneration = false;
 		}
 	},

@@ -5,7 +5,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { computed, nextTick, ref } from 'vue';
 import { i18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 
@@ -33,7 +33,7 @@ export function useInstallNode() {
 	const communityNodesStore = useCommunityNodesStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const isOwner = computed(() => useUsersStore().isInstanceOwner);
 	const loading = ref(false);
 	const toast = useToast();
@@ -74,8 +74,10 @@ export function useInstallNode() {
 
 			// update parameters and webhooks for freshly installed nodes
 			const nodeType = props.nodeType;
-			if (nodeType && workflowsStore.workflow.nodes?.length) {
-				const nodesToUpdate = workflowsStore.workflow.nodes.filter(
+			const workflowDocument =
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId];
+			if (nodeType && workflowDocument?.nodes?.length) {
+				const nodesToUpdate = workflowDocument.nodes.filter(
 					(node) => node.type === removePreviewToken(nodeType),
 				);
 				canvasOperations.initializeUnknownNodes(nodesToUpdate);

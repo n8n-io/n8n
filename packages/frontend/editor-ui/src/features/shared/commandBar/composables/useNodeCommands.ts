@@ -10,6 +10,7 @@ import { type CommandBarItem } from '@n8n/design-system/components/N8nCommandBar
 import type { CommandGroup } from '../types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -34,16 +35,25 @@ export function useNodeCommands(options: {
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const collaborationStore = useCollaborationStore();
 	const { generateMergedNodesAndActions } = useActionsGenerator();
 
 	const isReadOnly = computed(
 		() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
 	);
-	const isArchived = computed(() => workflowsStore.workflow.isArchived);
+	const isArchived = computed(
+		() =>
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				?.isArchived,
+	);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() =>
+			getResourcePermissions(
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+					?.scopes,
+			).workflow,
 	);
 
 	const hasPermission = (permission: keyof typeof workflowPermissions.value) =>

@@ -6,6 +6,7 @@ import Close from 'virtual:icons/mdi/close';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -58,6 +59,7 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -78,7 +80,10 @@ const inputEditor = computed(() => expressionInputRef.value?.editor);
 const parentNodes = computed(() => {
 	const node = activeNode.value;
 	if (!node) return [];
-	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
+	const nodes =
+		workflowDocumentsStore.workflowObjectsById[
+			workflowDocumentsStore.workflowDocumentId
+		]?.getParentNodesByDepth(node.name) ?? [];
 
 	return nodes.filter(({ name }) => name !== node.name);
 });
@@ -91,7 +96,11 @@ const rootNode = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return workflowsStore.workflowObject.getParentNodesByDepth(rootNode.value);
+	return (
+		workflowDocumentsStore.workflowObjectsById[
+			workflowDocumentsStore.workflowDocumentId
+		]?.getParentNodesByDepth(rootNode.value) ?? []
+	);
 });
 
 watch(

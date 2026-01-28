@@ -2,6 +2,7 @@
 import type { INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { computed, ref, watch } from 'vue';
 import { NodeHelpers } from 'n8n-workflow';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -25,6 +26,7 @@ interface Props {
 
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nodeHelpers = useNodeHelpers();
 const i18n = useI18n();
@@ -62,7 +64,12 @@ const nodeType = computed(() =>
 const nodeData = computed(() => workflowsStore.getNodeByName(props.rootNode.name));
 const ndvStore = useNDVStore();
 
-const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+const workflowObject = computed(
+	() =>
+		workflowDocumentsStore.workflowObjectsById[
+			workflowDocumentsStore.workflowDocumentId
+		] as Workflow,
+);
 
 const nodeInputIssues = computed(() => {
 	const issues = nodeHelpers.getNodeIssues(nodeType.value, props.rootNode, workflowObject.value, [

@@ -47,4 +47,5 @@ export const STORES = {
 	CONSENT: 'consent',
 	CHAT_HUB: 'chatHub',
 	EXPERIMENT_EMPTY_STATE_BUILDER_PROMPT: 'emptyStateBuilderPrompt',
+	WORKFLOW_DOCUMENTS: 'workflowDocuments',
 } as const;

@@ -10,6 +10,7 @@ import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
@@ -38,6 +39,7 @@ const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>(
 
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const collaborationStore = useCollaborationStore();
 const i18n = useI18n();
 const router = useRouter();
@@ -66,10 +68,14 @@ type WorkflowPublishState =
 	| 'published-invalid-trigger'; // Published but no trigger nodes
 
 const workflowPublishState = computed((): WorkflowPublishState => {
-	const hasBeenPublished = !!workflowsStore.workflow.activeVersion;
+	const hasBeenPublished =
+		!!workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+			.activeVersion;
 	const hasChanges =
-		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId ||
-		uiStore.stateIsDirty;
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+			.versionId !==
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				.activeVersion?.versionId || uiStore.stateIsDirty;
 
 	// Not published states
 	if (!hasBeenPublished) {
@@ -159,7 +165,9 @@ const publishButtonConfig = computed(() => {
 			tooltip: i18n.baseText('workflows.publish.permissionDenied'),
 			showVersionInfo: false,
 		};
-		const isWorkflowPublished = !!workflowsStore.workflow.activeVersion;
+		const isWorkflowPublished =
+			!!workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				.activeVersion;
 		if (isWorkflowPublished) {
 			return {
 				...defaultConfigForNoPermission,
@@ -257,7 +265,11 @@ const publishButtonConfig = computed(() => {
 	return configs[workflowPublishState.value];
 });
 
-const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
+const activeVersion = computed(
+	() =>
+		workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+			.activeVersion,
+);
 
 const activeVersionName = computed(() => {
 	if (!activeVersion.value) {

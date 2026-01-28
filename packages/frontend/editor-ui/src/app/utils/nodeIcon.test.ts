@@ -1,5 +1,5 @@
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import type { INode } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -46,11 +46,14 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 
 const resolveExpressionMock = vi.fn();
 
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		workflowObject: {
-			expression: {
-				getParameterValue: resolveExpressionMock,
+vi.mock('@/app/stores/workflowDocuments.store', () => ({
+	useWorkflowDocumentsStore: vi.fn(() => ({
+		workflowDocumentId: 'test-workflow-id',
+		workflowObjectsById: {
+			'test-workflow-id': {
+				expression: {
+					getParameterValue: resolveExpressionMock,
+				},
 			},
 		},
 	})),
@@ -109,10 +112,13 @@ describe('util: Node Icon', () => {
 		});
 
 		it('should return null when expression resolution fails', () => {
-			vi.mocked(useWorkflowsStore).mockReturnValueOnce({
-				workflowObject: {
-					expression: {
-						getParameterValue: vi.fn().mockReturnValue({ invalid: 'object' }),
+			vi.mocked(useWorkflowDocumentsStore).mockReturnValueOnce({
+				workflowDocumentId: 'test-workflow-id',
+				workflowObjectsById: {
+					'test-workflow-id': {
+						expression: {
+							getParameterValue: vi.fn().mockReturnValue({ invalid: 'object' }),
+						},
 					},
 				},
 			} as never);
@@ -126,10 +132,13 @@ describe('util: Node Icon', () => {
 		});
 
 		it('should return null when expression resolves to invalid format', () => {
-			vi.mocked(useWorkflowsStore).mockReturnValueOnce({
-				workflowObject: {
-					expression: {
-						getParameterValue: vi.fn().mockReturnValue('invalid:prefix:name'),
+			vi.mocked(useWorkflowDocumentsStore).mockReturnValueOnce({
+				workflowDocumentId: 'test-workflow-id',
+				workflowObjectsById: {
+					'test-workflow-id': {
+						expression: {
+							getParameterValue: vi.fn().mockReturnValue('invalid:prefix:name'),
+						},
 					},
 				},
 			} as never);

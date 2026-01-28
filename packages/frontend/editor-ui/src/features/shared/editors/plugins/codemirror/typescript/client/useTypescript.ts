@@ -5,6 +5,7 @@ import { autocompletableNodeNames } from '@/features/shared/editors/plugins/code
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { forceParse } from '@/app/utils/forceParse';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { autocompletion } from '@codemirror/autocomplete';
@@ -33,6 +34,7 @@ export function useTypescript(
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const { debounce } = useDebounce();
 	const activeNodeName = toValue(targetNodeParameterContext)?.nodeName ?? ndvStore.activeNodeName;
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();
@@ -50,14 +52,14 @@ export function useTypescript(
 				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
 				variables: useEnvironmentsStore().scopedVariables.map((v) => v.key),
 				inputNodeNames: activeNodeName
-					? workflowsStore.workflowObject.getParentNodes(
-							activeNodeName,
-							NodeConnectionTypes.Main,
-							1,
-						)
+					? workflowDocumentsStore.workflowObjectsById[
+							workflowDocumentsStore.workflowDocumentId
+						].getParentNodes(activeNodeName, NodeConnectionTypes.Main, 1)
 					: [],
 				mode: toValue(mode),
-				binaryMode: workflowsStore.workflow.settings?.binaryMode,
+				binaryMode:
+					workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+						?.settings?.binaryMode,
 			},
 			Comlink.proxy(async (nodeName) => {
 				const node = workflowsStore.getNodeByName(nodeName);

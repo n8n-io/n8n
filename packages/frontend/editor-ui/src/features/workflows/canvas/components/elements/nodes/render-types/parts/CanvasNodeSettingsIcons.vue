@@ -2,14 +2,14 @@
 import { computed } from 'vue';
 import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const { name } = useCanvasNode();
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const credentialsStore = useCredentialsStore();
 const { check: checkEnvFeatureFlag } = useEnvFeatureFlag();
 
@@ -17,7 +17,11 @@ const isDynamicCredentialsEnabled = computed(() =>
 	checkEnvFeatureFlag.value('DYNAMIC_CREDENTIALS'),
 );
 
-const node = computed(() => workflowsStore.workflowObject.getNode(name.value));
+const node = computed(() =>
+	workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId].getNode(
+		name.value,
+	),
+);
 const size = 'medium';
 
 const hasResolvableCredential = computed(() => {

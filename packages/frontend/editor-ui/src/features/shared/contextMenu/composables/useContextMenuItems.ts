@@ -8,6 +8,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -44,14 +45,24 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
 	const i18n = useI18n();
 
-	const workflowObject = computed(() => workflowsStore.workflowObject as Workflow);
+	const workflowObject = computed(
+		() =>
+			workflowDocumentsStore.workflowObjectsById[
+				workflowDocumentsStore.workflowDocumentId
+			] as Workflow,
+	);
 
 	const workflowPermissions = computed(
-		() => getResourcePermissions(workflowsStore.workflow.scopes).workflow,
+		() =>
+			getResourcePermissions(
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+					?.scopes,
+			).workflow,
 	);
 
 	const isReadOnly = computed(
@@ -59,7 +70,8 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			sourceControlStore.preferences.branchReadOnly ||
 			uiStore.isReadOnlyView ||
 			!workflowPermissions.value.update ||
-			workflowsStore.workflow.isArchived ||
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				?.isArchived ||
 			collaborationStore.shouldBeReadOnly,
 	);
 
@@ -225,7 +237,9 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 				if (isWebhookNode(nodes[0])) {
 					const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(nodes[0].type);
-					const isWorkflowActive = workflowsStore.workflow.active;
+					const isWorkflowActive =
+						workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+							?.active;
 					if (!isProductionOnly) {
 						copyWebhookActions.push({
 							divided: true,

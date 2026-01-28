@@ -5,7 +5,7 @@ import { useExecutionsStore } from '../executions.store';
 import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -20,7 +20,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { executionRetryMessage } from '../executions.utils';
 
 const executionsStore = useExecutionsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentsStore = useWorkflowDocumentsStore();
 const workflowsListStore = useWorkflowsListStore();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
@@ -146,7 +146,8 @@ async function initializeRoute() {
 async function fetchWorkflow() {
 	// Skip fetching if it's a new workflow that hasn't been saved yet
 	if (isNewWorkflowRoute.value) {
-		workflow.value = workflowsStore.workflow;
+		workflow.value =
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId];
 		return;
 	}
 

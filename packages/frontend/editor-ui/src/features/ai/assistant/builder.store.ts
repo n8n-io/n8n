@@ -11,6 +11,7 @@ import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useBuilderMessages } from './composables/useBuilderMessages';
 import {
 	chatWithBuilder,
@@ -133,6 +134,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowState = injectWorkflowState();
 	const ndvStore = useNDVStore();
 	const route = useRoute();
@@ -521,7 +523,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 
 		// Use workflow updatedAt as version timestamp
 		// might not be the same as "version.createdAt" but close enough
-		const updatedAt = workflowsStore.workflow.updatedAt;
+		const updatedAt =
+			workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+				?.updatedAt;
 		return {
 			id: versionId,
 			createdAt: typeof updatedAt === 'number' ? new Date(updatedAt).toISOString() : updatedAt,
@@ -601,7 +605,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
 		const payload = await createBuilderPayload(text, userMessageId, {
 			quickReplyType,
-			workflow: workflowsStore.workflow,
+			workflow:
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
 			executionData: executionResult,
 			nodesForSchema: Object.keys(workflowsStore.nodesByName),
 		});
@@ -731,7 +736,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	}
 
 	function getWorkflowSnapshot() {
-		return JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections']));
+		return JSON.stringify(
+			pick(
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId],
+				['nodes', 'connections'],
+			),
+		);
 	}
 
 	/**

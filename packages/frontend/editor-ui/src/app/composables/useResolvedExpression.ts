@@ -1,5 +1,6 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import {
 	isExpression as isExpressionUtil,
 	stringifyExpressionResult,
@@ -36,6 +37,7 @@ export function useResolvedExpression({
 }) {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentsStore = useWorkflowDocumentsStore();
 
 	const { resolveExpression } = useWorkflowHelpers();
 
@@ -119,7 +121,9 @@ export function useResolvedExpression({
 			toRef(additionalData),
 			() => workflowsStore.getWorkflowExecution,
 			() => workflowsStore.getWorkflowRunData,
-			() => workflowsStore.workflow.name,
+			() =>
+				workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
+					.name,
 			targetItem,
 		],
 		debouncedUpdateExpression,
