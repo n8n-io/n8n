@@ -1,6 +1,8 @@
 import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { createTestWorkflow } from '@/__tests__/mocks';
+import type { IWorkflowDb } from '@/Interface';
 import {
 	EnterpriseEditionFeature,
 	MODAL_CONFIRM,
@@ -8,7 +10,6 @@ import {
 	WORKFLOW_SHARE_MODAL_KEY,
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
-import type { IWorkflowDb } from '@/Interface';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -139,7 +140,7 @@ let message: ReturnType<typeof useMessage>;
 let toast: ReturnType<typeof useToast>;
 let router: ReturnType<typeof useRouter>;
 
-const workflow = {
+const workflow = createTestWorkflow({
 	id: '1',
 	name: 'Test Workflow',
 	tags: ['1', '2'],
@@ -147,7 +148,7 @@ const workflow = {
 	isArchived: false,
 	scopes: [],
 	meta: {},
-};
+});
 
 describe('WorkflowDetails', () => {
 	beforeEach(() => {
@@ -162,8 +163,8 @@ describe('WorkflowDetails', () => {
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
 		workflowsListStore.workflowsById = {
-			'1': workflow as unknown as IWorkflowDb,
-			'123': workflow as unknown as IWorkflowDb,
+			'1': workflow,
+			'123': workflow,
 		};
 		workflowsStore.isWorkflowSaved = { '1': true, '123': true };
 		projectsStore.currentProject = null;
@@ -491,7 +492,7 @@ describe('WorkflowDetails', () => {
 				},
 			};
 
-			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as unknown as IWorkflowDb);
+			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as IWorkflowDb);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent({
@@ -523,9 +524,7 @@ describe('WorkflowDetails', () => {
 				},
 			};
 
-			workflowsListStore.getWorkflowById.mockReturnValue(
-				personalWorkflow as unknown as IWorkflowDb,
-			);
+			workflowsListStore.getWorkflowById.mockReturnValue(personalWorkflow as IWorkflowDb);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent({
@@ -625,7 +624,7 @@ describe('WorkflowDetails', () => {
 				},
 			};
 
-			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as unknown as IWorkflowDb);
+			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as IWorkflowDb);
 			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent({
@@ -657,9 +656,7 @@ describe('WorkflowDetails', () => {
 				},
 			};
 
-			workflowsListStore.getWorkflowById.mockReturnValue(
-				personalWorkflow as unknown as IWorkflowDb,
-			);
+			workflowsListStore.getWorkflowById.mockReturnValue(personalWorkflow as IWorkflowDb);
 			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent({
@@ -682,7 +679,7 @@ describe('WorkflowDetails', () => {
 		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
-			workflowsListStore.workflowsById = { [workflow.id]: workflow as unknown as IWorkflowDb };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
 			const { getByTestId } = renderComponent({
 				props: {

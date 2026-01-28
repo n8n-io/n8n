@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -64,7 +64,7 @@ describe('useWorkflowNavigationCommands', () => {
 	let mockSourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let mockFoldersStore: ReturnType<typeof useFoldersStore>;
 
-	const allWorkflows = [
+	const allWorkflows: IWorkflowDb[] = [
 		{
 			id: 'w1',
 			name: 'Alpha',
@@ -73,25 +73,25 @@ describe('useWorkflowNavigationCommands', () => {
 			homeProject: { id: 'proj-1', type: ProjectTypes.Personal },
 			parentFolder: { id: 'f2', name: 'Child' },
 			tags: ['Marketing'],
-		},
+		} as unknown as IWorkflowDb,
 		{
 			id: 'w2',
 			name: 'Beta',
 			active: true,
 			isArchived: false,
 			homeProject: { id: 'proj-2', name: 'Team A' },
-			parentFolder: null,
+			parentFolder: undefined,
 			tags: [],
-		},
+		} as unknown as IWorkflowDb,
 		{
 			id: 'w3',
 			name: 'Gamma',
 			active: true,
 			isArchived: true, // should be filtered out
 			homeProject: { id: 'proj-2', name: 'Team A' },
-			parentFolder: null,
+			parentFolder: undefined,
 			tags: [],
-		},
+		} as unknown as IWorkflowDb,
 	];
 
 	beforeEach(() => {
@@ -151,16 +151,16 @@ describe('useWorkflowNavigationCommands', () => {
 			async (params: { query?: string; nodeTypes?: string[]; tags?: string[] }) => {
 				if (params.nodeTypes && params.nodeTypes.length > 0) {
 					return [
-						{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] },
-					] as unknown as IWorkflowDb[];
+						{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] } as IWorkflowDb,
+					];
 				}
 				if (params.tags && params.tags.length > 0) {
-					return [allWorkflows[0]] as unknown as IWorkflowDb[];
+					return [allWorkflows[0]];
 				}
 				if (typeof params.query === 'string') {
-					return [allWorkflows[0], allWorkflows[1], allWorkflows[2]] as unknown as IWorkflowDb[];
+					return [allWorkflows[0], allWorkflows[1], allWorkflows[2]];
 				}
-				return [] as IWorkflowDb[];
+				return [];
 			},
 		);
 

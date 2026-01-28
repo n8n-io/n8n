@@ -7,6 +7,7 @@ import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
@@ -41,42 +42,42 @@ describe('useWorkflowResourcesLocator', () => {
 			{
 				activeNodeName: 'Execute Workflow',
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'Test Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'Test Workflow' }),
 				expectedRename: "Call 'Test Workflow'",
 				expectedCalledWith: 'Execute Workflow',
 			},
 			{
 				activeNodeName: 'Execute Workflow1',
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'Test Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'Test Workflow' }),
 				expectedRename: "Call 'Test Workflow'",
 				expectedCalledWith: 'Execute Workflow1',
 			},
 			{
 				activeNodeName: 'Execute Workflow2',
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'Another Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'Another Workflow' }),
 				expectedRename: "Call 'Another Workflow'",
 				expectedCalledWith: 'Execute Workflow2',
 			},
 			{
 				activeNodeName: 'Call n8n Workflow Tool',
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'Test Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'Test Workflow' }),
 				expectedRename: "Call 'Test Workflow'",
 				expectedCalledWith: 'Call n8n Workflow Tool',
 			},
 			{
 				activeNodeName: 'Call n8n Workflow Tool1',
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'Test Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'Test Workflow' }),
 				expectedRename: "Call 'Test Workflow'",
 				expectedCalledWith: 'Call n8n Workflow Tool1',
 			},
 			{
 				activeNodeName: "Call 'Old Workflow'",
 				workflowId: 'workflow-id',
-				mockedWorkflow: { name: 'New Workflow' },
+				mockedWorkflow: createTestWorkflow({ name: 'New Workflow' }),
 				expectedRename: "Call 'New Workflow'",
 				expectedCalledWith: "Call 'Old Workflow'",
 			},
@@ -86,9 +87,7 @@ describe('useWorkflowResourcesLocator', () => {
 				const { applyDefaultExecuteWorkflowNodeName } = useWorkflowResourcesLocator(routerMock);
 
 				ndvStoreMock.activeNodeName = activeNodeName;
-				workflowsListStoreMock.getWorkflowById.mockReturnValue(
-					mockedWorkflow as unknown as IWorkflowDb,
-				);
+				workflowsListStoreMock.getWorkflowById.mockReturnValue(mockedWorkflow);
 
 				applyDefaultExecuteWorkflowNodeName(workflowId);
 
@@ -124,12 +123,10 @@ describe('useWorkflowResourcesLocator', () => {
 			const { applyDefaultExecuteWorkflowNodeName } = useWorkflowResourcesLocator(routerMock);
 			const workflowId = 'workflow-id';
 			const activeNodeName = 'Some Other Node';
-			const mockedWorkflow = { name: 'Test Workflow' };
+			const mockedWorkflow = createTestWorkflow({ name: 'Test Workflow' });
 
 			ndvStoreMock.activeNodeName = activeNodeName;
-			workflowsListStoreMock.getWorkflowById.mockReturnValue(
-				mockedWorkflow as unknown as IWorkflowDb,
-			);
+			workflowsListStoreMock.getWorkflowById.mockReturnValue(mockedWorkflow);
 
 			applyDefaultExecuteWorkflowNodeName(workflowId);
 
