@@ -1,3 +1,5 @@
+import type { ChatRequest } from './assistant.types';
+
 export type FocusedNodeState = 'hidden' | 'unconfirmed' | 'confirmed';
 
 export interface FocusedNode {
@@ -7,12 +9,8 @@ export interface FocusedNode {
 	state: FocusedNodeState;
 }
 
-export interface FocusedNodesContextPayload {
-	name: string;
-	type: string;
-	typeVersion: number;
-	parameters: Record<string, unknown>;
-	issues?: Record<string, string[]>;
-	incomingConnections: string[];
-	outgoingConnections: string[];
-}
+/**
+ * Payload structure for focused node context sent to the AI.
+ * This is equivalent to ChatRequest.SelectedNodeContext.
+ */
+export type FocusedNodesContextPayload = ChatRequest.SelectedNodeContext;

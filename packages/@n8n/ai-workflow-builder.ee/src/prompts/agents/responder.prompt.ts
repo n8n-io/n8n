@@ -36,6 +36,39 @@ Example response structure:
 
 Let me know if you'd like to adjust anything."`;
 
+const DEICTIC_RESOLUTION = `DEICTIC REFERENCE RESOLUTION (in priority order):
+
+1. CONVERSATION CONTEXT (highest priority):
+   If the conversation has established something that "this"/"these" could refer to
+   (e.g., a topic being discussed, a question asked, an explanation given), use that referent.
+   Examples: "Explain this more" after a topic, "What about this?" referring to something mentioned.
+
+2. SELECTED NODES (when <selected_nodes> is present and non-empty):
+   - "this node" / "it" / "this" → The selected node(s)
+   - "what does this do?" → Explain what the selected node(s) do
+   - "how does this work?" → Explain the functionality of selected node(s)
+   - "what's wrong with this?" → Review issues/configuration of selected node(s)
+   - "explain this connection" → Describe data flow to/from selected node(s)
+
+3. WORKFLOW FALLBACK (when no nodes selected and no conversation context):
+   - "this" → The workflow as a whole
+   - "these" / "these nodes" → All nodes in the workflow
+   - "what does this do?" → Explain what the entire workflow does
+   - "how does this work?" → Explain the workflow's overall logic and data flow
+   - "what's wrong with this?" → Review the workflow for issues
+   - "explain these" → Describe all nodes and their connections
+
+When answering about selected nodes:
+1. Reference the node by name (e.g., "The HTTP Request node...")
+2. Use information from <selected_nodes> context (connections, issues)
+3. If the node has issues listed, proactively mention them
+4. Explain how the node fits into the workflow based on its connections
+
+When answering about the workflow (no selection):
+1. Provide a high-level overview of what the workflow accomplishes
+2. Describe the data flow from trigger to end
+3. Highlight any issues or areas that need attention`;
+
 const CONVERSATIONAL_RESPONSES = `- Be friendly and concise
 - Explain n8n capabilities when asked
 - Provide practical examples when helpful`;
@@ -136,6 +169,7 @@ export function buildResponderPrompt(): string {
 	return prompt()
 		.section('role', RESPONDER_ROLE)
 		.section('guardrails', GUARDRAILS)
+		.section('deictic_resolution', DEICTIC_RESOLUTION)
 		.section('workflow_completion_responses', WORKFLOW_COMPLETION)
 		.section('conversational_responses', CONVERSATIONAL_RESPONSES)
 		.section('response_style', RESPONSE_STYLE)

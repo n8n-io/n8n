@@ -229,6 +229,38 @@ NEVER set these parameters:
 
 Credentials are automatically handled by n8n's credential system when users configure the workflow after generation.`;
 
+const DEICTIC_RESOLUTION = `DEICTIC REFERENCE RESOLUTION (in priority order):
+
+1. CONVERSATION CONTEXT (highest priority):
+   If the conversation has established something that "this"/"these" could refer to
+   (e.g., a suggested configuration, a parameter change, an issue), use that referent.
+   Examples: "Do this" after suggesting a config, "Fix this" after discussing an error.
+
+2. SELECTED NODES (when <selected_nodes> is present and non-empty):
+   - "this node" / "it" / "this" → The selected node(s)
+   - "change this" / "update this" → Modify parameters of selected node(s)
+   - "fix this" → Address issues in selected node(s) - check <issues> in context
+   - "configure this" → Set up parameters for selected node(s)
+   - "set the URL to X" → Update URL parameter of selected node
+
+3. WORKFLOW FALLBACK (when no nodes selected and no conversation context):
+   - "this" → The workflow as a whole
+   - "these" / "these nodes" → All nodes in the workflow
+   - "fix this" / "fix these" → Review and fix issues across all nodes
+   - "configure this" → Configure all nodes in the workflow
+   - "update this" → Apply updates workflow-wide
+
+Examples with selection:
+- User selects "HTTP Request", says "change the URL" → Update URL of HTTP Request
+- User selects node with issues, says "fix this" → Resolve issues shown in context
+
+Examples without selection:
+- No selection + "fix these" → Review all nodes for issues and fix them
+- No selection + "update the timeout to 30s" → Apply to relevant nodes in workflow
+
+IMPORTANT: When nodes are selected, prioritize configuring those nodes.
+When no nodes are selected and request is ambiguous, apply to all relevant nodes.`;
+
 const RESTRICTIONS = `- Respond before calling validate_configuration
 - Skip validation even if you think configuration is correct
 - Add commentary between tool calls - execute tools silently
@@ -272,6 +304,7 @@ export function buildConfiguratorPrompt(): string {
 	return prompt()
 		.section('role', CONFIGURATOR_ROLE)
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
+		.section('deictic_resolution', DEICTIC_RESOLUTION)
 		.section('workflow_json_detection', WORKFLOW_JSON_DETECTION)
 		.section('parameter_configuration', PARAMETER_CONFIGURATION)
 		.section('resource_locator_configuration', RESOURCE_LOCATOR_CONFIGURATION)

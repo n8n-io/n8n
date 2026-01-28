@@ -79,6 +79,26 @@ export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
 }
 
+/**
+ * Context for a node selected/focused by the user.
+ * Used for focused nodes feature - allows user to select specific nodes
+ * for the AI to prioritize in its responses.
+ *
+ * Note: Only contains additional context not already in currentWorkflow.nodes.
+ * The LLM should look up full node details (type, parameters, etc.) by matching
+ * the `name` field against currentWorkflow.nodes[].name.
+ */
+export interface SelectedNodeContext {
+	/** Node display name - use to look up full node in currentWorkflow.nodes */
+	name: string;
+	/** Configuration issues/validation errors on the node (not in currentWorkflow) */
+	issues?: Record<string, string[]>;
+	/** Names of nodes that connect INTO this node (pre-resolved for convenience) */
+	incomingConnections: string[];
+	/** Names of nodes that this node connects TO (pre-resolved for convenience) */
+	outgoingConnections: string[];
+}
+
 export interface ChatPayload {
 	id: string;
 	message: string;
@@ -87,6 +107,12 @@ export interface ChatPayload {
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
 		expressionValues?: Record<string, ExpressionValue[]>;
+		/**
+		 * Nodes explicitly selected/focused by the user for AI context.
+		 * When present, the AI should prioritize responses around these nodes,
+		 * resolving deictic references ("this node", "it") to these nodes.
+		 */
+		selectedNodes?: SelectedNodeContext[];
 	};
 	featureFlags?: BuilderFeatureFlags;
 	/** Version ID to store in message metadata for restore functionality */

@@ -499,6 +499,36 @@ CORRECT: Calculator Tool -> AI Agent
 CORRECT: Window Buffer Memory -> AI Agent
 </connection_type_reference>`;
 
+const DEICTIC_RESOLUTION = `DEICTIC REFERENCE RESOLUTION (in priority order):
+
+1. CONVERSATION CONTEXT (highest priority):
+   If the conversation has established something that "this"/"these" could refer to
+   (e.g., a proposed structure, a connection pattern, an approach), use that referent.
+   Examples: "Do this" after suggesting a connection, "Add these" after listing nodes.
+
+2. SELECTED NODES (when <selected_nodes> is present and non-empty):
+   - "this node" / "it" / "this" → The selected node(s)
+   - "connect this to X" → Create connection FROM selected node(s) TO node X
+   - "connect X to this" → Create connection FROM node X TO selected node(s)
+   - "add X before this" → Create node X, then connect X TO selected node(s)
+   - "add X after this" → Create node X, then connect selected node(s) TO X
+   - "disconnect this" → Remove connections involving selected nodes
+   - "connect these in sequence" → Connect selected nodes in order
+
+3. WORKFLOW FALLBACK (when no nodes selected and no conversation context):
+   - "this" → The workflow as a whole
+   - "these" / "these nodes" → All nodes in the workflow
+   - "connect these" → Connect all workflow nodes (clarify order if ambiguous)
+   - "reorganize this" → Restructure workflow connections
+
+Examples with selection:
+- User selects "HTTP Request", says "add an IF node after this" → Create IF, connect HTTP Request → IF
+- User selects "Trigger", says "connect this to Slack" → Connect Trigger → Slack
+
+Examples without selection:
+- No selection + "connect these in sequence" → Connect all workflow nodes sequentially
+- No selection + "add error handling to this" → Add error handling to the workflow`;
+
 const RESTRICTIONS = `- Respond before calling validate_structure
 - Skip validation even if you think structure is correct
 - Add commentary between tool calls - execute tools silently
@@ -516,6 +546,7 @@ export function buildBuilderPrompt(): string {
 	return prompt()
 		.section('role', BUILDER_ROLE)
 		.section('mandatory_execution_sequence', EXECUTION_SEQUENCE)
+		.section('deictic_resolution', DEICTIC_RESOLUTION)
 		.section('node_creation', NODE_CREATION)
 		.section('workflow_configuration_node', WORKFLOW_CONFIG_NODE)
 		.section('data_parsing_strategy', DATA_PARSING)
