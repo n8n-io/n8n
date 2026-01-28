@@ -87,18 +87,20 @@ describe('DataTableBreadcrumbs', () => {
 		sourceControlStore = mockedStore(useSourceControlStore);
 
 		// Mock project permissions to enable renaming
+		// @ts-expect-error - partial mock for testing
 		dataTableStore.projectPermissions = {
 			dataTable: {
 				update: true,
 				delete: true,
 				create: true,
 			},
-		} as any;
+		};
 
 		// Mock source control to not be in read-only mode
+		// @ts-expect-error - partial mock for testing
 		sourceControlStore.preferences = {
 			branchReadOnly: false,
-		} as any;
+		};
 	});
 
 	describe('Breadcrumbs rendering', () => {
