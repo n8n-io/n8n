@@ -19,6 +19,7 @@ import type {
 	JobFinishedMessage,
 	JobId,
 	JobResult,
+	McpResponseMessage,
 	RespondToWebhookMessage,
 	RunningJob,
 	SendChunkMessage,
@@ -147,6 +148,23 @@ export class JobProcessor {
 		}
 
 		lifecycleHooks.addHandler('sendResponse', async (response): Promise<void> => {
+			// Check if this is an MCP execution - route response back to the originating main
+			if (job.data.isMcpExecution && job.data.mcpSessionId && job.data.originMainId) {
+				const msg: McpResponseMessage = {
+					kind: 'mcp-response',
+					executionId,
+					sessionId: job.data.mcpSessionId,
+					messageId: job.data.mcpMessageId ?? '',
+					response,
+					workerId: this.instanceSettings.hostId,
+					targetMainId: job.data.originMainId,
+				};
+
+				await job.progress(msg);
+				return;
+			}
+
+			// Standard webhook response
 			const msg: RespondToWebhookMessage = {
 				kind: 'respond-to-webhook',
 				executionId,
