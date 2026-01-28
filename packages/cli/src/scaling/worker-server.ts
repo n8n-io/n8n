@@ -19,6 +19,8 @@ import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { RedisClientService } from '@/services/redis-client.service';
 
+import { checkWorkerReadiness } from './worker-readiness';
+
 export type WorkerServerEndpointsConfig = {
 	/** Whether the `/healthz` endpoint is enabled. */
 	health: boolean;
@@ -131,13 +133,7 @@ export class WorkerServer {
 	}
 
 	private async readiness(_req: express.Request, res: express.Response) {
-		const { connectionState } = this.dbConnection;
-		const isReady =
-			connectionState.connected &&
-			connectionState.migrated &&
-			this.redisClientService.isConnected();
-
-		return isReady
+		return checkWorkerReadiness(this.dbConnection, this.redisClientService)
 			? res.status(200).send({ status: 'ok' })
 			: res.status(503).send({ status: 'error' });
 	}

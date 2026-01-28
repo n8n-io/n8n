@@ -165,6 +165,10 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.scalingService.setupQueue();
 
 		this.scalingService.setupWorker(this.concurrency);
+
+		// Start health monitoring after queue and worker are set up
+		const { WorkerHealthMonitor } = await import('@/scaling/worker-health-monitor');
+		await Container.get(WorkerHealthMonitor).start(this.scalingService);
 	}
 
 	async run() {
