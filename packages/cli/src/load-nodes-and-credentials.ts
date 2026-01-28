@@ -230,6 +230,13 @@ export class LoadNodesAndCredentials {
 
 		if (process.env[CUSTOM_EXTENSION_ENV] !== undefined) {
 			const customExtensionFolders = process.env[CUSTOM_EXTENSION_ENV].split(';');
+			if (customExtensionFolders.length > 1) {
+				throw new UserError(
+					picocolors.red(
+						`Multiple directories in N8N_CUSTOM_EXTENSIONS are not supported yet. Please provide a single directory path.`,
+					),
+				);
+			}
 			customDirectories.push(...customExtensionFolders);
 		}
 
