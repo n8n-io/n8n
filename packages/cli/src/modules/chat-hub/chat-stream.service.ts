@@ -60,8 +60,6 @@ export class ChatStreamService {
 		this.logger = this.logger.scoped('chat-hub');
 	}
 
-	// #region Execution-level methods (for the entire streaming session)
-
 	/**
 	 * Start a chat execution (can contain multiple messages, e.g., with tool calls)
 	 */
@@ -133,10 +131,6 @@ export class ChatStreamService {
 		// Clean up the session state
 		await this.sessionStore.endExecution(sessionId);
 	}
-
-	// #endregion
-
-	// #region Message-level methods (for individual messages within an execution)
 
 	/**
 	 * Start a new message stream within an execution
@@ -310,8 +304,6 @@ export class ChatStreamService {
 		}
 	}
 
-	// #endregion
-
 	/**
 	 * Get pending chunks for reconnection replay
 	 */
@@ -440,7 +432,7 @@ export class ChatStreamService {
 
 	/**
 	 * Send a push message, either directly or via relay depending on instance topology.
-	 * Always sends to ALL user connections so multiple browser windows receive updates.
+	 * Always sends to all user's connections so multiple browser windows receive updates.
 	 */
 	private async sendPushMessage(
 		params: Pick<StartStreamParams, 'userId' | 'sessionId' | 'messageId'>,
@@ -449,7 +441,7 @@ export class ChatStreamService {
 	): Promise<void> {
 		const { userId } = params;
 
-		// Send to ALL user connections so all browser windows receive updates
+		// Send to all user's connections so all browser windows receive updates
 		this.push.sendToUsers(message, [userId]);
 
 		// In multi-main mode, also relay to other instances

@@ -287,8 +287,6 @@ export class ChatSessionStoreService {
 		}
 	}
 
-	// #region Redis operations
-
 	private getStateKey(sessionId: ChatSessionId): string {
 		return `${this.redisPrefix}state:${sessionId}`;
 	}
@@ -371,10 +369,6 @@ export class ChatSessionStoreService {
 		}
 	}
 
-	// #endregion
-
-	// #region Memory cleanup (single-main mode)
-
 	private scheduleCleanup(sessionId: ChatSessionId): void {
 		this.cancelCleanup(sessionId);
 
@@ -395,6 +389,4 @@ export class ChatSessionStoreService {
 			this.cleanupTimers.delete(sessionId);
 		}
 	}
-
-	// #endregion
 }

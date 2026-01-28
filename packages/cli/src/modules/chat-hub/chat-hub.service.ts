@@ -1000,33 +1000,6 @@ export class ChatHubService {
 		};
 	}
 
-	private convertMessageToDto(message: ChatHubMessage): ChatHubMessageDto {
-		return {
-			id: message.id,
-			sessionId: message.sessionId,
-			type: message.type,
-			name: message.name,
-			content: message.content,
-			provider: message.provider,
-			model: message.model,
-			workflowId: message.workflowId,
-			agentId: message.agentId,
-			executionId: message.executionId,
-			status: message.status,
-			createdAt: message.createdAt.toISOString(),
-			updatedAt: message.updatedAt.toISOString(),
-
-			previousMessageId: message.previousMessageId,
-			retryOfMessageId: message.retryOfMessageId,
-			revisionOfMessageId: message.revisionOfMessageId,
-
-			attachments: (message.attachments ?? []).map(({ fileName, mimeType }) => ({
-				fileName,
-				mimeType,
-			})),
-		};
-	}
-
 	/**
 	 * Build the message history chain ending to the message with ID `lastMessageId`
 	 */
@@ -1143,34 +1116,9 @@ export class ChatHubService {
 		}
 	}
 
-	private convertSessionEntityToDto(session: ChatHubSession): ChatHubSessionDto {
-		const agent = session.workflow
-			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow, [])
-			: session.agent
-				? this.chatHubAgentService.convertAgentEntityToModel(session.agent)
-				: undefined;
-
-		return {
-			id: session.id,
-			title: session.title,
-			ownerId: session.ownerId,
-			lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
-			credentialId: session.credentialId,
-			provider: session.provider,
-			model: session.model,
-			workflowId: session.workflowId,
-			agentId: session.agentId,
-			agentName: agent?.name ?? session.agentName ?? session.model ?? '',
-			agentIcon: agent?.icon ?? null,
-			createdAt: session.createdAt.toISOString(),
-			updatedAt: session.updatedAt.toISOString(),
-			tools: session.tools,
-		};
-	}
-
 	/**
 	 * Send a human message and stream the AI response via Push events.
-	 * Returns immediately; streaming happens in background.
+	 * Returns immediately, streaming happens in background after.
 	 */
 	async sendHumanMessage(
 		user: User,
@@ -1208,7 +1156,7 @@ export class ChatHubService {
 					trx,
 				);
 
-				const prevMsg = await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
+				const previousMessage = await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
 				const history = this.buildMessageHistory(messages, previousMessageId);
 
@@ -1229,7 +1177,7 @@ export class ChatHubService {
 					trx,
 				);
 
-				const wf = await this.prepareReplyWorkflow(
+				const replyWorkflow = await this.prepareReplyWorkflow(
 					user,
 					sessionId,
 					credentials,
@@ -1243,7 +1191,7 @@ export class ChatHubService {
 					executionMetadata,
 				);
 
-				return { workflow: wf, previousMessage: prevMsg };
+				return { workflow: replyWorkflow, previousMessage };
 			});
 			workflow = result.workflow;
 			previousMessage = result.previousMessage;
@@ -1278,7 +1226,7 @@ export class ChatHubService {
 		});
 
 		// Check if we should resume a waiting execution instead of starting a new one
-		// This happens when the previous message is in 'waiting' state (responseNodes mode)
+		// This happens when the previous message is in 'waiting' state (Chat node waiting for user input)
 		if (
 			model.provider === 'n8n' &&
 			workflow.responseMode === 'responseNodes' &&
@@ -1298,7 +1246,7 @@ export class ChatHubService {
 			this.logger.debug(
 				`Resuming execution ${execution.id} from waiting state for session ${sessionId}`,
 			);
-			// Resume the waiting execution instead of starting a new workflow
+
 			void this.resumeChatExecutionWs(
 				execution,
 				message,
@@ -1311,7 +1259,7 @@ export class ChatHubService {
 			return;
 		}
 
-		// Start the workflow execution with streaming (fire and forget)
+		// Start the workflow execution with streaming
 		void this.executeChatWorkflowWithCleanup(
 			user,
 			model,
@@ -1330,7 +1278,7 @@ export class ChatHubService {
 
 	/**
 	 * Edit a message and stream the AI response via Push events.
-	 * Returns immediately; streaming happens in background.
+	 * Returns immediately, streaming happens in background after.
 	 */
 	async editMessage(
 		user: User,
@@ -1340,14 +1288,14 @@ export class ChatHubService {
 		const { sessionId, editId, messageId, message, model, credentials, timeZone } = payload;
 		const tz = timeZone ?? this.globalConfig.generic.timezone;
 
-		let transactionResult: {
+		let result: {
 			workflow: PreparedChatWorkflow | null;
 			combinedAttachments: IBinaryData[];
 		} | null = null;
 		let newStoredAttachments: IBinaryData[] = [];
 
 		try {
-			transactionResult = await this.messageRepository.manager.transaction(async (trx) => {
+			result = await this.messageRepository.manager.transaction(async (trx) => {
 				const session = await this.getChatSession(user, sessionId, trx);
 				if (!session) {
 					throw new NotFoundError('Chat session not found');
@@ -1431,10 +1379,12 @@ export class ChatHubService {
 			throw error;
 		}
 
-		if (!transactionResult?.workflow) {
+		if (!result?.workflow) {
 			// AI message edit - no streaming needed
 			return;
 		}
+
+		const { workflowData, executionData, responseMode } = result.workflow;
 
 		// Broadcast message edit to all user connections for cross-client sync
 		await this.chatStreamService.sendMessageEdit({
@@ -1443,23 +1393,23 @@ export class ChatHubService {
 			originalMessageId: editId,
 			newMessageId: messageId,
 			content: message,
-			attachments: transactionResult.combinedAttachments.map((a) => ({
+			attachments: result.combinedAttachments.map((a) => ({
 				id: a.id!,
 				fileName: a.fileName ?? 'file',
 				mimeType: a.mimeType,
 			})),
 		});
 
-		// Start the workflow execution with streaming (fire and forget)
+		// Start the workflow execution with streaming
 		void this.executeChatWorkflowWithCleanup(
 			user,
 			model,
-			transactionResult.workflow.workflowData,
-			transactionResult.workflow.executionData,
+			workflowData,
+			executionData,
 			sessionId,
 			messageId,
 			null,
-			transactionResult.workflow.responseMode,
+			responseMode,
 			null,
 			{},
 			'',
@@ -2215,6 +2165,58 @@ export class ChatHubService {
 				pendingChunks.length > 0
 					? pendingChunks[pendingChunks.length - 1].sequenceNumber
 					: lastReceivedSequence,
+		};
+	}
+
+	private convertMessageToDto(message: ChatHubMessage): ChatHubMessageDto {
+		return {
+			id: message.id,
+			sessionId: message.sessionId,
+			type: message.type,
+			name: message.name,
+			content: message.content,
+			provider: message.provider,
+			model: message.model,
+			workflowId: message.workflowId,
+			agentId: message.agentId,
+			executionId: message.executionId,
+			status: message.status,
+			createdAt: message.createdAt.toISOString(),
+			updatedAt: message.updatedAt.toISOString(),
+
+			previousMessageId: message.previousMessageId,
+			retryOfMessageId: message.retryOfMessageId,
+			revisionOfMessageId: message.revisionOfMessageId,
+
+			attachments: (message.attachments ?? []).map(({ fileName, mimeType }) => ({
+				fileName,
+				mimeType,
+			})),
+		};
+	}
+
+	private convertSessionEntityToDto(session: ChatHubSession): ChatHubSessionDto {
+		const agent = session.workflow
+			? this.chatHubModelsService.extractModelFromWorkflow(session.workflow, [])
+			: session.agent
+				? this.chatHubAgentService.convertAgentEntityToModel(session.agent)
+				: undefined;
+
+		return {
+			id: session.id,
+			title: session.title,
+			ownerId: session.ownerId,
+			lastMessageAt: session.lastMessageAt?.toISOString() ?? null,
+			credentialId: session.credentialId,
+			provider: session.provider,
+			model: session.model,
+			workflowId: session.workflowId,
+			agentId: session.agentId,
+			agentName: agent?.name ?? session.agentName ?? session.model ?? '',
+			agentIcon: agent?.icon ?? null,
+			createdAt: session.createdAt.toISOString(),
+			updatedAt: session.updatedAt.toISOString(),
+			tools: session.tools,
 		};
 	}
 }
