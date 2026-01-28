@@ -10,7 +10,7 @@ interface Props {
 	nodes: INodeUi[];
 	selectedNodeIds: string[];
 	highlightedIndex: number;
-	position: { top: number; left: number };
+	position: { top: number; left?: number; right?: number };
 	searchQuery: string;
 }
 
@@ -43,11 +43,18 @@ watch(localQuery, (newQuery) => {
 	emit('update:searchQuery', newQuery);
 });
 
-const positionStyle = computed(() => ({
-	top: `${props.position.top}px`,
-	left: `${props.position.left}px`,
-	transform: 'translateY(-100%)',
-}));
+const positionStyle = computed(() => {
+	const style: Record<string, string> = {
+		top: `${props.position.top}px`,
+		transform: 'translateY(-100%)',
+	};
+	if (props.position.right !== undefined) {
+		style.right = `${props.position.right}px`;
+	} else if (props.position.left !== undefined) {
+		style.left = `${props.position.left}px`;
+	}
+	return style;
+});
 
 function getNodeType(nodeTypeName: string) {
 	return nodeTypesStore.getNodeType(nodeTypeName);

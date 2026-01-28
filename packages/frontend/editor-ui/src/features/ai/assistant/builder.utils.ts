@@ -4,6 +4,7 @@ import {
 	type TextMessageWithRevertVersionId,
 } from '@/features/ai/assistant/assistant.types';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT } from '@/app/constants/experiments';
 import type { IRunExecutionData } from 'n8n-workflow';
@@ -31,6 +32,7 @@ export async function createBuilderPayload(
 ): Promise<ChatRequest.UserChatMessage> {
 	const assistantHelpers = useAIAssistantHelpers();
 	const posthogStore = usePostHog();
+	const focusedNodesStore = useFocusedNodesStore();
 	const workflowContext: ChatRequest.WorkflowContext = {};
 
 	if (options.workflow) {
@@ -60,6 +62,16 @@ export async function createBuilderPayload(
 			options.nodesForSchema,
 			true,
 		);
+	}
+
+	// Include focused/selected nodes for context-aware AI responses
+	const selectedNodes = focusedNodesStore.buildContextPayload();
+	console.log('[AI Builder] Focused nodes payload:', {
+		confirmedCount: focusedNodesStore.confirmedNodes.length,
+		selectedNodes,
+	});
+	if (selectedNodes.length > 0) {
+		workflowContext.selectedNodes = selectedNodes;
 	}
 
 	// Get feature flags from Posthog

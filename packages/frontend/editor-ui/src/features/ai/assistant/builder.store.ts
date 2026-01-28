@@ -39,6 +39,7 @@ import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 
 const INFINITE_CREDITS = -1;
 export const ENABLED_VIEWS = BUILDER_ENABLED_VIEWS;
@@ -141,6 +142,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const uiStore = useUIStore();
 	const router = useRouter();
 	const workflowSaver = useWorkflowSaving({ router });
+	const focusedNodesStore = useFocusedNodesStore();
 
 	// Composables
 	const {
@@ -494,6 +496,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		telemetry.track('User submitted builder message', trackingPayload);
+
+		// Track focused nodes usage when message is sent with focused nodes
+		const focusedCount = focusedNodesStore.confirmedNodes.length;
+		if (focusedCount > 0) {
+			// Simple heuristic to detect deictic references (e.g., "this node", "it", "this")
+			const deicticPatterns = /\b(this node|this|it|these nodes|these|that node|that)\b/i;
+			const hasDeicticRef = deicticPatterns.test(text);
+
+			telemetry.track('ai.focusedNodes.chatSent', {
+				focused_count: focusedCount,
+				has_deictic_ref: hasDeicticRef,
+			});
+		}
 	}
 
 	/**

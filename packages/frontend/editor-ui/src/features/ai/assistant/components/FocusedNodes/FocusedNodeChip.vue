@@ -77,9 +77,9 @@ function handleRemove(event: MouseEvent) {
 	}
 
 	&.unconfirmed {
-		background-color: white;
+		background-color: var(--color--background--light-3);
 		border: 1px dashed var(--color--foreground);
-		color: var(--color--neutral-500);
+		color: var(--color--text--tint-1);
 
 		&:hover {
 			background-color: var(--color--background--light-1);
@@ -102,7 +102,7 @@ function handleRemove(event: MouseEvent) {
 }
 
 .prefixIcon {
-	color: var(--color--neutral-500);
+	color: var(--color--text--tint-1);
 }
 
 .label {

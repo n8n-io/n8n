@@ -7,17 +7,25 @@ export interface UseNodeMentionOptions {
 	maxResults?: number;
 }
 
+export interface OpenDropdownOptions {
+	viaButton?: boolean;
+	alignRight?: boolean;
+}
+
 export interface UseNodeMentionReturn {
 	showDropdown: Ref<boolean>;
 	searchQuery: Ref<string>;
 	highlightedIndex: Ref<number>;
-	dropdownPosition: Ref<{ top: number; left: number }>;
+	dropdownPosition: Ref<{ top: number; left?: number; right?: number }>;
 	filteredNodes: Ref<INodeUi[]>;
 	handleInput: (event: InputEvent, inputElement: HTMLInputElement | HTMLTextAreaElement) => void;
 	handleKeyDown: (event: KeyboardEvent) => boolean;
 	selectNode: (node: INodeUi) => void;
 	closeDropdown: (removeQueryFromInput?: boolean) => void;
-	openDropdown: (inputElement: HTMLInputElement | HTMLTextAreaElement) => void;
+	openDropdown: (
+		inputElement: HTMLInputElement | HTMLTextAreaElement | HTMLElement,
+		options?: OpenDropdownOptions,
+	) => void;
 }
 
 export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMentionReturn {
@@ -30,7 +38,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 	const showDropdown = ref(false);
 	const searchQuery = ref('');
 	const highlightedIndex = ref(0);
-	const dropdownPosition = ref({ top: 0, left: 0 });
+	const dropdownPosition = ref<{ top: number; left?: number; right?: number }>({ top: 0, left: 0 });
 	const mentionStartIndex = ref(-1);
 	const inputElementRef = ref<HTMLInputElement | HTMLTextAreaElement | null>(null);
 
@@ -51,22 +59,43 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 		return result.slice(0, maxResults);
 	});
 
-	function calculateDropdownPosition(inputElement: HTMLInputElement | HTMLTextAreaElement) {
+	function calculateDropdownPosition(
+		inputElement: HTMLElement,
+		options: OpenDropdownOptions = {},
+	) {
 		const rect = inputElement.getBoundingClientRect();
 		// Position above the input
-		dropdownPosition.value = {
-			top: rect.top - 8, // 8px gap above input
-			left: rect.left,
-		};
+		if (options.alignRight) {
+			// Align dropdown's right edge to the button's right edge
+			dropdownPosition.value = {
+				top: rect.top - 8,
+				right: window.innerWidth - rect.right,
+			};
+		} else {
+			dropdownPosition.value = {
+				top: rect.top - 8,
+				left: rect.left,
+			};
+		}
 	}
 
-	function openDropdown(inputElement: HTMLInputElement | HTMLTextAreaElement) {
-		inputElementRef.value = inputElement;
+	function openDropdown(
+		inputElement: HTMLInputElement | HTMLTextAreaElement | HTMLElement,
+		options: OpenDropdownOptions = {},
+	) {
+		// When opened via button, we don't have a text input to track
+		if (options.viaButton) {
+			inputElementRef.value = null;
+			mentionStartIndex.value = -1;
+		} else {
+			const textInput = inputElement as HTMLInputElement | HTMLTextAreaElement;
+			inputElementRef.value = textInput;
+			mentionStartIndex.value = textInput.selectionStart ?? textInput.value.length;
+		}
 		showDropdown.value = true;
 		searchQuery.value = '';
 		highlightedIndex.value = 0;
-		mentionStartIndex.value = inputElement.selectionStart ?? inputElement.value.length;
-		calculateDropdownPosition(inputElement);
+		calculateDropdownPosition(inputElement, options);
 	}
 
 	function closeDropdown(removeQueryFromInput = false) {

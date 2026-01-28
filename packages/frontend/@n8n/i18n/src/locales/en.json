@@ -4451,7 +4451,7 @@
 	"browserNotifications.permission.denied.checkAgain": "Check again",
 	"browserNotifications.permission.granted.message": "Desktop notifications are enabled",
 	"focusedNodes.nodesLabel": "nodes",
-	"focusedNodes.nodesSelected": "{count} nodes selected",
+	"focusedNodes.nodesCount": "{count} nodes",
 	"focusedNodes.noMatches": "No nodes matching \"{query}\"",
 	"focusedNodes.mentionPlaceholder": "Search nodes...",
 	"focusedNodes.mentionTooltip": "Mention a node"

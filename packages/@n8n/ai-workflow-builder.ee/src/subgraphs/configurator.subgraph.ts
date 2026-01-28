@@ -34,6 +34,7 @@ import {
 	buildWorkflowJsonBlock,
 	buildExecutionContextBlock,
 	buildDiscoveryContextBlock,
+	buildSelectedNodesContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -303,13 +304,20 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(userRequest);
 		}
 
-		// 2. Discovery context - includes available resources/operations for each node type
+		// 2. Selected nodes context (for deictic resolution)
+		const selectedNodesBlock = buildSelectedNodesContextBlock(parentState.workflowContext);
+		if (selectedNodesBlock) {
+			contextParts.push('=== SELECTED NODES ===');
+			contextParts.push(selectedNodesBlock);
+		}
+
+		// 3. Discovery context - includes available resources/operations for each node type
 		if (parentState.discoveryContext) {
 			contextParts.push('=== DISCOVERY CONTEXT ===');
 			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
 		}
 
-		// 3. Check if this workflow came from a recovered builder recursion error (AI-1812)
+		// 4. Check if this workflow came from a recovered builder recursion error (AI-1812)
 		const builderErrorEntry = parentState.coordinationLog?.find((entry) => {
 			if (entry.status !== 'error') return false;
 			if (entry.phase !== 'builder') return false;
@@ -328,13 +336,13 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
 
-		// 4. Full workflow JSON (nodes to configure)
+		// 5. Full workflow JSON (nodes to configure)
 		// Note: resource/operation are already set by Builder via initialParameters
 		// and filtering happens automatically in update_node_parameters
 		contextParts.push('=== WORKFLOW TO CONFIGURE ===');
 		contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
 
-		// 5. Full execution context (data + schema for parameter values)
+		// 6. Full execution context (data + schema for parameter values)
 		contextParts.push('=== EXECUTION CONTEXT ===');
 		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
