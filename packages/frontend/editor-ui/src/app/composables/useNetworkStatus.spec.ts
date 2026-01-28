@@ -23,16 +23,15 @@ describe('useNetworkStatus', () => {
 		setActivePinia(createPinia());
 		networkStore = useNetworkStore();
 
-		// Mock fetch
 		mockFetch = vi.fn();
-		global.fetch = mockFetch;
+		vi.stubGlobal('fetch', mockFetch);
 
-		// Clear mocks
 		mockStartHeartbeat.mockClear();
 		mockStopHeartbeat.mockClear();
 	});
 
 	afterEach(() => {
+		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 	});
 
@@ -77,7 +76,7 @@ describe('useNetworkStatus', () => {
 		wrapper.unmount();
 	});
 
-	it('should set offline when browser offline event fires', async () => {
+	it('should set offline when browser offline event fires', () => {
 		mockFetch.mockResolvedValue({ ok: true });
 		networkStore.setOnline(true);
 
@@ -114,7 +113,7 @@ describe('useNetworkStatus', () => {
 		wrapper.unmount();
 	});
 
-	it('should clean up event listeners on unmount', async () => {
+	it('should clean up event listeners on unmount', () => {
 		const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 
 		const wrapper = createWrapper();
