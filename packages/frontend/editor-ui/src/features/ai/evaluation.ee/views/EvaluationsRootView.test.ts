@@ -108,34 +108,21 @@ describe('EvaluationsRootView', () => {
 		});
 	});
 
-	it('should initialize workflow on mount if not already initialized', async () => {
+	it('should not fetch workflow (WorkflowLayout handles initialization)', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
 		const usageStore = mockedStore(useUsageStore);
 		const evaluationStore = mockedStore(useEvaluationStore);
 
-		// Set workflow id to empty to simulate uninitialized state
-		workflowsStore.workflow = { ...mockWorkflow, id: '' };
-		const newWorkflowId = 'workflow123';
-
-		// Mock the async operations that run before fetchWorkflow
+		workflowsStore.workflow = mockWorkflow;
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
-		workflowsStore.isWorkflowSaved = { workflow123: true };
-
-		renderComponent({ props: { name: newWorkflowId } });
-
-		// Wait for async operation to complete
-		await flushPromises();
-		await waitFor(() => expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId));
-	});
-
-	it('should not initialize workflow if already loaded', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflow = mockWorkflow;
 
 		renderComponent({ props: { name: mockWorkflow.id } });
 
+		// Wait for async operation to complete
+		await flushPromises();
+
+		// WorkflowLayout handles workflow initialization, not EvaluationsRootView
 		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
 	});
 

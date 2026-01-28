@@ -1,7 +1,24 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowLayout from './WorkflowLayout.vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+
+vi.mock('vue-router', async (importOriginal) => {
+	const actual = await importOriginal();
+	return {
+		...(actual as object),
+		useRoute: vi.fn(() => ({
+			params: { name: 'test-workflow-id' },
+			query: {},
+			name: 'NodeViewExisting',
+		})),
+		useRouter: vi.fn(() => ({
+			push: vi.fn(),
+			replace: vi.fn(),
+		})),
+	};
+});
 
 vi.mock('@/app/composables/useLayoutProps', () => ({
 	useLayoutProps: vi.fn(() => ({
@@ -15,35 +32,57 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 	})),
 }));
 
+vi.mock('@/app/composables/useWorkflowInitialization', () => ({
+	useWorkflowInitialization: vi.fn(() => ({
+		isLoading: ref(false),
+		workflowId: computed(() => 'test-workflow-id'),
+		isTemplateRoute: computed(() => false),
+		isOnboardingRoute: computed(() => false),
+		initializeData: vi.fn().mockResolvedValue(undefined),
+		initializeWorkflow: vi.fn().mockResolvedValue(undefined),
+		cleanup: vi.fn(),
+	})),
+}));
+
+const defaultStubs = {
+	AppHeader: {
+		template: '<div data-test-id="app-header">App Header</div>',
+	},
+	AppSidebar: {
+		template: '<div data-test-id="app-sidebar">App Sidebar</div>',
+	},
+	LogsPanel: {
+		template: '<div data-test-id="logs-panel">Logs Panel</div>',
+	},
+	AskAssistantFloatingButton: {
+		template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
+	},
+	AppChatPanel: {
+		template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
+	},
+	LoadingView: {
+		template: '<div data-test-id="loading-view">Loading</div>',
+	},
+	RouterView: {
+		template: '<div><slot /></div>',
+	},
+	Suspense: {
+		template: '<div><slot /></div>',
+	},
+};
+
 const renderComponent = createComponentRenderer(WorkflowLayout, {
 	global: {
-		stubs: {
-			AppHeader: {
-				template: '<div data-test-id="app-header">App Header</div>',
-			},
-			AppSidebar: {
-				template: '<div data-test-id="app-sidebar">App Sidebar</div>',
-			},
-			LogsPanel: {
-				template: '<div data-test-id="logs-panel">Logs Panel</div>',
-			},
-			AskAssistantFloatingButton: {
-				template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
-			},
-			AppChatPanel: {
-				template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
-			},
-			RouterView: {
-				template: '<div><slot /></div>',
-			},
-			Suspense: {
-				template: '<div><slot /></div>',
-			},
-		},
+		stubs: defaultStubs,
 	},
 });
 
 describe('WorkflowLayout', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		vi.clearAllMocks();
+	});
+
 	it('should render the layout without throwing', () => {
 		expect(() => renderComponent()).not.toThrow();
 	});
@@ -64,26 +103,9 @@ describe('WorkflowLayout', () => {
 		const { getByText } = renderComponent({
 			global: {
 				stubs: {
-					AppHeader: {
-						template: '<div data-test-id="app-header">App Header</div>',
-					},
-					AppSidebar: {
-						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
-					},
-					LogsPanel: {
-						template: '<div data-test-id="logs-panel">Logs Panel</div>',
-					},
-					AskAssistantFloatingButton: {
-						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
-					},
-					AppChatPanel: {
-						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
-					},
+					...defaultStubs,
 					RouterView: {
 						template: '<div>Workflow Content</div>',
-					},
-					Suspense: {
-						template: '<div><slot /></div>',
 					},
 				},
 			},
@@ -124,26 +146,9 @@ describe('WorkflowLayout', () => {
 		const { getByText, getByTestId } = renderComponent({
 			global: {
 				stubs: {
-					AppHeader: {
-						template: '<div data-test-id="app-header">App Header</div>',
-					},
-					AppSidebar: {
-						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
-					},
-					LogsPanel: {
-						template: '<div data-test-id="logs-panel">Logs Panel</div>',
-					},
-					AskAssistantFloatingButton: {
-						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
-					},
-					AppChatPanel: {
-						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
-					},
+					...defaultStubs,
 					RouterView: {
 						template: '<div>Workflow Canvas</div>',
-					},
-					Suspense: {
-						template: '<div><slot /></div>',
 					},
 				},
 			},
@@ -171,26 +176,9 @@ describe('WorkflowLayout', () => {
 		const { container, getByText, getByTestId } = renderComponent({
 			global: {
 				stubs: {
-					AppHeader: {
-						template: '<div data-test-id="app-header">App Header</div>',
-					},
-					AppSidebar: {
-						template: '<div data-test-id="app-sidebar">App Sidebar</div>',
-					},
-					LogsPanel: {
-						template: '<div data-test-id="logs-panel">Logs Panel</div>',
-					},
-					AskAssistantFloatingButton: {
-						template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
-					},
-					AppChatPanel: {
-						template: '<div data-test-id="app-chat-panel">Chat Panel</div>',
-					},
+					...defaultStubs,
 					RouterView: {
 						template: '<div>Workflow Editor</div>',
-					},
-					Suspense: {
-						template: '<div><slot /></div>',
 					},
 				},
 			},
