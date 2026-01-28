@@ -530,6 +530,18 @@ describe('WorkflowExecutionService', () => {
 
 			expect(node).toEqual(secondWebhookNode);
 		});
+
+		it('should return first pinned trigger if no destination node', () => {
+			workflow.nodes.push(webhookNode, executeWorkflowTriggerNode, hackerNewsNode);
+			workflow.connections = {
+				...createMainConnection(hackerNewsNode.name, webhookNode.name),
+				...createMainConnection(hackerNewsNode.name, executeWorkflowTriggerNode.name),
+			};
+
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, undefined, pinData);
+
+			expect(node).toEqual(webhookNode);
+		});
 	});
 
 	describe('offloading manual executions to workers', () => {

@@ -136,6 +136,8 @@ export class WorkflowExecutionService {
 			}
 		}
 
+		console.log(payload);
+
 		// Case 2: Full execution from a known trigger.
 		if (isFullExecutionFromKnownTrigger(payload)) {
 			// Check if we need a webhook.
@@ -455,19 +457,23 @@ export class WorkflowExecutionService {
 	 * trigger types in the sorting order.
 	 *
 	 * @param workflow The workflow containing the nodes and connections
-	 * @param destinationNode The name of the node to find a pinned trigger for
+	 * @param destinationNode The name of the node to find a pinned trigger for. If undefined, any pinned trigger is valid.
 	 * @param pinData Pin data mapping node names to their pinned data
 	 * @returns The pinned trigger node if found, undefined otherwise
 	 */
 	selectPinnedTrigger(
 		workflow: IWorkflowBase,
-		destinationNode: string,
+		destinationNode: string | undefined,
 		pinData: IPinData,
 	): INode | undefined {
 		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
 
 		if (allPinnedTriggers.length === 0) return undefined;
 
+		if (destinationNode === undefined) {
+			// If there's no destination node, return the first pinned trigger.
+			return allPinnedTriggers[0];
+		}
 		const destinationParents = new Set(
 			new Workflow({
 				nodes: workflow.nodes,
