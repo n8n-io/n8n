@@ -40,6 +40,7 @@ import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
@@ -66,6 +67,7 @@ const $style = useCssModule();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const collaborationStore = useCollaborationStore();
 const sourceControlStore = useSourceControlStore();
@@ -264,7 +266,7 @@ async function handleArchiveWorkflow() {
 	});
 
 	// Navigate to the appropriate project's workflow list
-	const workflow = workflowsStore.getWorkflowById(props.id);
+	const workflow = workflowsListStore.getWorkflowById(props.id);
 	if (workflow?.homeProject?.type === ProjectTypes.Team) {
 		await router.push({
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -307,11 +309,11 @@ async function handleDeleteWorkflow() {
 	}
 
 	// Get workflow before deletion to know which project to navigate to
-	const workflow = workflowsStore.getWorkflowById(props.id);
+	const workflow = workflowsListStore.getWorkflowById(props.id);
 	const isTeamProject = workflow?.homeProject?.type === ProjectTypes.Team;
 
 	try {
-		await workflowsStore.deleteWorkflow(props.id);
+		await workflowsListStore.deleteWorkflow(props.id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
