@@ -118,6 +118,7 @@ export function createStructuredChunkAggregator(
 	const { onBegin, onItem, onEnd, onError, onCancel } = handlers;
 
 	const activeByKey = new Map<MessageKey, AggregatedMessage>();
+	let cancelled = false;
 
 	let previousMessageId: ChatMessageId | null = initialPreviousMessageId;
 
@@ -148,7 +149,12 @@ export function createStructuredChunkAggregator(
 		return message;
 	};
 
-	const ingest = async (chunk: StructuredChunk): Promise<AggregatedMessage> => {
+	const ingest = async (chunk: StructuredChunk): Promise<AggregatedMessage | null> => {
+		// After cancelAll(), ignore any further chunks
+		if (cancelled) {
+			return null;
+		}
+
 		const { type, content, metadata } = chunk;
 		const key = keyOf(metadata);
 
@@ -192,6 +198,7 @@ export function createStructuredChunkAggregator(
 	};
 
 	const cancelAll = async () => {
+		cancelled = true;
 		const messages = Array.from(activeByKey.values());
 		activeByKey.clear();
 
