@@ -13,6 +13,8 @@ import { getConnectedTools, getPromptInputByType, isChatInstance } from '@utils/
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';
+import { N8nChatModelToLangChain } from '@utils/translators/n8n-to-langchain';
+import { isN8nChatModel } from 'n8n-workflow';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
@@ -22,9 +24,14 @@ export async function reActAgentAgentExecute(
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing ReAct Agent');
 
-	const model = (await this.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0)) as
-		| BaseLanguageModel
-		| BaseChatModel;
+	let model = await this.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+
+	// If this is an n8n chat model (from community node), wrap it with LangChain adapter
+	if (isN8nChatModel(model)) {
+		model = new N8nChatModelToLangChain(model);
+	}
+
+	const typedModel = model as BaseLanguageModel | BaseChatModel;
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 
@@ -42,14 +49,14 @@ export async function reActAgentAgentExecute(
 	};
 	let agent: ChatAgent | ZeroShotAgent;
 
-	if (isChatInstance(model)) {
-		agent = ChatAgent.fromLLMAndTools(model, tools, {
+	if (isChatInstance(typedModel)) {
+		agent = ChatAgent.fromLLMAndTools(typedModel, tools, {
 			prefix: options.prefix,
 			suffix: options.suffixChat,
 			humanMessageTemplate: options.humanMessageTemplate,
 		});
 	} else {
-		agent = ZeroShotAgent.fromLLMAndTools(model, tools, {
+		agent = ZeroShotAgent.fromLLMAndTools(typedModel, tools, {
 			prefix: options.prefix,
 			suffix: options.suffix,
 		});

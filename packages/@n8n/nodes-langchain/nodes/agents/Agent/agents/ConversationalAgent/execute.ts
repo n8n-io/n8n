@@ -8,6 +8,8 @@ import { isChatInstance, getPromptInputByType, getConnectedTools } from '@utils/
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { throwIfToolSchema } from '@utils/schemaParsing';
 import { getTracingConfig } from '@utils/tracing';
+import { N8nChatModelToLangChain } from '@utils/translators/n8n-to-langchain';
+import { isN8nChatModel } from 'n8n-workflow';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
 
@@ -16,7 +18,12 @@ export async function conversationalAgentExecute(
 	nodeVersion: number,
 ): Promise<INodeExecutionData[][]> {
 	this.logger.debug('Executing Conversational Agent');
-	const model = await this.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+	let model = await this.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
+
+	// If this is an n8n chat model (from community node), wrap it with LangChain adapter
+	if (isN8nChatModel(model)) {
+		model = new N8nChatModelToLangChain(model);
+	}
 
 	if (!isChatInstance(model)) {
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
