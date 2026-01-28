@@ -14,7 +14,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 	let hookMetadata: ContextEstablishmentHookMetadata;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		hookMetadata = new ContextEstablishmentHookMetadata();
 		Container.set(ContextEstablishmentHookMetadata, hookMetadata);

@@ -44,7 +44,6 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
-				containerWidth: 100,
 			},
 			pinia,
 		});
@@ -54,6 +53,54 @@ describe('ChatMessage', () => {
 			const highlightedElements = container.querySelectorAll('.hljs-keyword');
 
 			expect(highlightedElements.length).toBeGreaterThan(0);
+		});
+	});
+
+	it('should render KaTeX inline math expressions', async () => {
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: 'The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$',
+		});
+
+		const { container } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			const katexElements = container.querySelectorAll('.katex');
+			expect(katexElements.length).toBeGreaterThan(0);
+		});
+	});
+
+	it('should render KaTeX block math expressions', async () => {
+		const message: ChatMessageType = createMockMessage({
+			type: 'ai',
+			content: '$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$',
+		});
+
+		const { container } = renderComponent({
+			props: {
+				message,
+				compact: false,
+				isEditing: false,
+				hasSessionStreaming: false,
+				cachedAgentDisplayName: null,
+				cachedAgentIcon: null,
+			},
+			pinia,
+		});
+
+		await waitFor(() => {
+			const katexDisplayElements = container.querySelectorAll('.katex-display');
+			expect(katexDisplayElements.length).toBeGreaterThan(0);
 		});
 	});
 
@@ -72,7 +119,6 @@ describe('ChatMessage', () => {
 				hasSessionStreaming: false,
 				cachedAgentDisplayName: null,
 				cachedAgentIcon: null,
-				containerWidth: 100,
 			},
 			pinia,
 		});

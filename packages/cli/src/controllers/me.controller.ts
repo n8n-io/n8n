@@ -7,7 +7,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User, PublicUser } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Body, Patch, Post, RestController } from '@n8n/decorators';
+import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
@@ -165,7 +165,9 @@ export class MeController {
 	/**
 	 * Update the logged-in user's password.
 	 */
-	@Patch('/password', { rateLimit: true })
+	@Patch('/password', {
+		keyedRateLimit: createUserKeyedRateLimiter({}),
+	})
 	async updatePassword(
 		req: AuthenticatedRequest,
 		res: Response,
