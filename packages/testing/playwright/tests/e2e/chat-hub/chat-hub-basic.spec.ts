@@ -76,17 +76,17 @@ test.describe('Basic conversation @capability:proxy', () => {
 		await expect(page.getChatMessages()).toHaveCount(4);
 
 		// STEP: regenerate response to first prompt
-		await page.getRegenerateButtonAt(1).click();
+		await page.clickRegenerateButtonAt(1);
 		await expect(page.getChatMessages().nth(1)).toContainText('Hello!');
 		await expect(page.getChatMessages()).toHaveCount(2);
 
 		// STEP: switch to previous alternative
-		await page.getPrevAlternativeButtonAt(1).click();
+		await page.clickPrevAlternativeButtonAt(1);
 		await expect(page.getChatMessages().nth(1)).toContainText('Hi there!');
 		await expect(page.getChatMessages()).toHaveCount(4);
 
 		// STEP: edit 2nd prompt
-		await page.getEditButtonAt(2).click();
+		await page.clickEditButtonAt(2);
 		await page.getEditorAt(2).fill('Hola');
 		await page.getSendButtonAt(2).click();
 		await expect(page.getChatMessages().nth(3)).toContainText('¡Hola!');

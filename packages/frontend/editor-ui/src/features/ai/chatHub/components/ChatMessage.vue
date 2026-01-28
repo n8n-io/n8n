@@ -425,6 +425,15 @@ onBeforeMount(() => {
 .content {
 	display: flex;
 	flex-direction: column;
+	align-items: stretch;
+
+	@media (hover: hover) {
+		&:hover .actions,
+		&:focus-within .actions {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
 }
 
 .attachments {
@@ -472,6 +481,17 @@ onBeforeMount(() => {
 
 .actions {
 	margin-top: var(--spacing--2xs);
+	transition: opacity 0.15s;
+
+	@media (hover: hover) {
+		opacity: 0;
+		pointer-events: none;
+
+		&:hover {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
 }
 
 .editContainer {
