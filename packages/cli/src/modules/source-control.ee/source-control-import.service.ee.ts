@@ -1365,8 +1365,8 @@ export class SourceControlImportService {
 					);
 
 					await this.workflowHistoryService.updateVersion(
-						importedWorkflow.versionId,
 						importedWorkflow.id,
+						importedWorkflow.versionId,
 						{
 							nodes: importedWorkflow.nodes,
 							connections: importedWorkflow.connections,
