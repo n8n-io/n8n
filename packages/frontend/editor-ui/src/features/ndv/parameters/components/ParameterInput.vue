@@ -81,6 +81,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -174,6 +175,7 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -529,7 +531,7 @@ const getIssues = computed<string[]>(() => {
 	} else if (props.parameter.type === 'workflowSelector') {
 		const selected = modelValueResourceLocator.value?.value;
 		if (selected) {
-			const isSelectedArchived = workflowsStore.allWorkflows.some(
+			const isSelectedArchived = workflowsListStore.allWorkflows.some(
 				(resource) => resource.id === selected && resource.isArchived,
 			);
 

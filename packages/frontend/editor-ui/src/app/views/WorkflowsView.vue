@@ -58,6 +58,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	type Project,
 	type ProjectSharingData,
@@ -123,6 +124,7 @@ const folderHelpers = useFolders();
 const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
@@ -587,7 +589,7 @@ const initialize = async () => {
 	const [, resourcesPage] = await Promise.all([
 		usersStore.fetchUsers(),
 		fetchWorkflows(),
-		workflowsStore.fetchActiveWorkflows(),
+		workflowsListStore.fetchActiveWorkflows(),
 		usageStore.getLicenseInfo(),
 		foldersStore.fetchTotalWorkflowsAndFoldersCount(
 			route.params.projectId as string | undefined,
@@ -631,7 +633,7 @@ const fetchWorkflows = async () => {
 	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
 
 	try {
-		const fetchedResources = await workflowsStore.fetchWorkflowsPage(
+		const fetchedResources = await workflowsListStore.fetchWorkflowsPage(
 			routeProjectId ?? homeProjectFilter,
 			currentPage.value,
 			pageSize.value,
@@ -995,7 +997,7 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 
 	// Fetch the updated workflow to get the latest settings
 	try {
-		const updatedWorkflow = await workflowsStore.fetchWorkflow(data.id);
+		const updatedWorkflow = await workflowsListStore.fetchWorkflow(data.id);
 		if (updatedWorkflow.settings) {
 			workflow.settings = updatedWorkflow.settings;
 		}
@@ -1765,7 +1767,7 @@ const onNameSubmit = async (name: string) => {
 		:loading="false"
 		:resources-refreshing="loading"
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
-		:total-items="workflowsStore.totalWorkflowCount"
+		:total-items="workflowsListStore.totalWorkflowCount"
 		:dont-perform-sorting-and-filtering="true"
 		:has-empty-state="foldersStore.totalWorkflowCount === 0 && !currentFolderId"
 		@click:add="addWorkflow"

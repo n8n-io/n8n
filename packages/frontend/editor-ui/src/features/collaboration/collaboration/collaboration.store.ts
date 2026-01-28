@@ -9,6 +9,7 @@ import { TIME } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -29,6 +30,7 @@ const INACTIVITY_TIMEOUT_THRESHOLD = 20 * TIME.SECOND;
 export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 	const pushStore = usePushConnectionStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
@@ -257,7 +259,7 @@ export const useCollaborationStore = defineStore(STORES.COLLABORATION, () => {
 
 		try {
 			// Fetch the latest workflow data
-			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflowsStore.workflowId);
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflowsStore.workflowId);
 
 			// Refresh the canvas with the new workflow data
 			if (refreshCanvasCallback) {

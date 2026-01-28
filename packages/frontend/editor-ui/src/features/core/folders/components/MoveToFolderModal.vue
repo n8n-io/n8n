@@ -29,7 +29,7 @@ import {
 	ResourceType,
 	getTruncatedProjectName,
 } from '@/features/collaboration/projects/projects.utils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { I18nT } from 'vue-i18n';
 
 import { N8nButton, N8nCallout, N8nCheckbox, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -68,7 +68,7 @@ const foldersStore = useFoldersStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const selectedFolder = ref<ChangeLocationSearchResult | null>(null);
 const selectedProject = ref<ProjectSharingData | null>(projectsStore.currentProject);
@@ -329,7 +329,7 @@ onMounted(async () => {
 	}
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
-			workflowsStore.fetchWorkflow(props.data.resource.id),
+			workflowsListStore.fetchWorkflow(props.data.resource.id),
 			credentialsStore.fetchAllCredentials(),
 		]);
 

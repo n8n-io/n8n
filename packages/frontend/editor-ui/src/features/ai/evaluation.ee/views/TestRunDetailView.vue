@@ -7,7 +7,7 @@ import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -55,7 +55,7 @@ export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }
 const router = useRouter();
 const toast = useToast();
 const evaluationStore = useEvaluationStore();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const locale = useI18n();
 const workflowsCache = useWorkflowSettingsCache();
 
@@ -65,7 +65,9 @@ const hasFailedTestCases = ref<boolean>(false);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = computed(() => router.currentRoute.value.params.name as string);
-const workflowName = computed(() => workflowsStore.getWorkflowById(workflowId.value)?.name ?? '');
+const workflowName = computed(
+	() => workflowsListStore.getWorkflowById(workflowId.value)?.name ?? '',
+);
 
 const cachedUserPreferences = ref<UserEvaluationPreferences | undefined>();
 const expandedRows = ref<Set<string>>(new Set());

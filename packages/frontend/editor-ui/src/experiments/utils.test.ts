@@ -23,9 +23,8 @@ vi.mock('@/app/stores/cloudPlan.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		userIsTrialing: isTrialing,
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: vi.fn(() => ({
 		activeWorkflows: [1, 2, 3],
 	})),
 }));

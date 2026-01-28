@@ -14,7 +14,7 @@ import type { IWorkflowDb } from '@/Interface';
 import type { SourceControlledFileStatus } from '@n8n/api-types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
@@ -55,7 +55,7 @@ const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
 
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const manualAsyncConfiguration = {
 	resetOnExecute: true,
@@ -89,7 +89,7 @@ const local = useAsyncState<{ workflow?: IWorkflowDb; remote: boolean } | undefi
 	async () => {
 		try {
 			const { workflowId } = props.data;
-			const workflow = await workflowsStore.fetchWorkflow(workflowId);
+			const workflow = await workflowsListStore.fetchWorkflow(workflowId);
 			return { workflow, remote: false };
 		} catch (error) {
 			toast.showError(error, i18n.baseText('generic.error'));

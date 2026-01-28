@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRoute } from 'vue-router';
 
 import { ElDropdown } from 'element-plus';
@@ -14,7 +14,7 @@ const props = defineProps<{
 	};
 }>();
 
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const route = useRoute();
 const i18n = useI18n();
 
@@ -23,7 +23,8 @@ const isDropdownVisible = ref(false);
 
 const workflowId = computed(() => route.params.name as string);
 const workflowPermissions = computed(
-	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
+	() =>
+		getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
 
 const customDataLength = computed(() => {

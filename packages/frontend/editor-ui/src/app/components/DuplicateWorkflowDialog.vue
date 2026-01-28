@@ -6,6 +6,7 @@ import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTags
 import Modal from '@/app/components/Modal.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { createEventBus, type EventBus } from '@n8n/utils/event-bus';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -39,6 +40,7 @@ const telemetry = useTelemetry();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const name = ref('');
 const currentTagIds = ref(props.data.tags);
@@ -101,7 +103,7 @@ const save = async (): Promise<void> => {
 				activeVersion,
 				active,
 				...workflow
-			} = await workflowsStore.fetchWorkflow(props.data.id);
+			} = await workflowsListStore.fetchWorkflow(props.data.id);
 			workflowToUpdate = workflow;
 
 			workflowHelpers.removeForeignCredentialsFromWorkflow(

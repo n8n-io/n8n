@@ -3,6 +3,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
@@ -71,9 +72,11 @@ const renderComponent = createComponentRenderer(WorkflowPublishModal, {
 
 describe('WorkflowPublishModal', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 
 		workflowsStore.workflow = {
 			id: 'workflow-1',
@@ -128,7 +131,7 @@ describe('WorkflowPublishModal', () => {
 				success: false,
 				errorHandled: true,
 			});
-			workflowsStore.fetchWorkflow.mockResolvedValue({
+			workflowsListStore.fetchWorkflow.mockResolvedValue({
 				id: 'conflicting-workflow-123',
 				name: 'Conflicting Workflow Name',
 				active: true,
@@ -160,7 +163,7 @@ describe('WorkflowPublishModal', () => {
 				success: false,
 				errorHandled: false,
 			});
-			workflowsStore.fetchWorkflow.mockResolvedValue({
+			workflowsListStore.fetchWorkflow.mockResolvedValue({
 				id: 'conflicting-workflow-123',
 				name: 'Conflicting Workflow Name',
 				active: true,

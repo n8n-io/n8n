@@ -10,8 +10,8 @@ import { STORES } from '@n8n/stores';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY } from '../communityNodes.constants';
 
 const fetchWorkflowsWithNodesIncluded = vi.fn();
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: vi.fn(() => ({
 		fetchWorkflowsWithNodesIncluded,
 	})),
 }));
