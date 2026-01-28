@@ -403,7 +403,7 @@ export function createOneShotNodeSearchTool(nodeTypeParser: NodeTypeParser) {
 			const response = `${allResults.join('\n\n---\n\n')}\n\nUse get_nodes to see the full TypeScript type definitions for these nodes.`;
 			debugLog('Returning response', {
 				responseLength: response.length,
-				responsePreview: response.substring(0, 500),
+				responsePreview: response,
 			});
 			debugLog('========== SEARCH_NODES TOOL COMPLETE ==========');
 
