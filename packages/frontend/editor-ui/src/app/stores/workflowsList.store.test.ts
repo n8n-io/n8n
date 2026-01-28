@@ -1,7 +1,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import * as workflowsApi from '@/app/api/workflows';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, WorkflowListResource, WorkflowResource } from '@/Interface';
 import * as apiUtils from '@n8n/rest-api-client';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
@@ -253,7 +253,7 @@ describe('useWorkflowsListStore', () => {
 			const mockWorkflows = [
 				{ id: '1', name: 'Workflow 1', resource: 'workflow' },
 				{ id: '2', name: 'Workflow 2', resource: 'workflow' },
-			];
+			] as WorkflowListResource[];
 			vi.mocked(workflowsApi).getWorkflowsAndFolders.mockResolvedValue({
 				count: 2,
 				data: mockWorkflows,
@@ -270,7 +270,7 @@ describe('useWorkflowsListStore', () => {
 			const mockData = [
 				{ id: '1', name: 'Workflow 1', resource: 'workflow' },
 				{ id: 'folder-1', name: 'Folder', resource: 'folder' },
-			];
+			] as WorkflowListResource[];
 			vi.mocked(workflowsApi).getWorkflowsAndFolders.mockResolvedValue({
 				count: 2,
 				data: mockData,
@@ -413,7 +413,7 @@ describe('useWorkflowsListStore', () => {
 
 	describe('fetchWorkflowsWithNodesIncluded', () => {
 		it('should fetch workflows containing specified node types', async () => {
-			const mockWorkflows = [{ id: '1', name: 'Workflow with HTTP' }];
+			const mockWorkflows = [{ id: '1', name: 'Workflow with HTTP' }] as WorkflowResource[];
 			vi.mocked(workflowsApi).getWorkflowsWithNodesIncluded.mockResolvedValue({
 				count: 1,
 				data: mockWorkflows,
