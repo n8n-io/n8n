@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch, nextTick } from 'vue';
-import { N8nPromptInput, N8nButton, N8nTooltip } from '@n8n/design-system';
+import { N8nPromptInput, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNodeMention } from '../../composables/useNodeMention';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
@@ -142,15 +142,14 @@ defineExpose({
 <template>
 	<div :class="$style.wrapper">
 		<N8nTooltip :content="i18n.baseText('focusedNodes.mentionTooltip')" placement="top">
-			<N8nButton
-				type="tertiary"
-				size="mini"
+			<button
+				type="button"
 				:class="$style.atButton"
 				data-test-id="mention-button"
 				@click="openMentionDropdown"
 			>
-				@
-			</N8nButton>
+				<N8nIcon icon="at-sign" :size="16" />
+			</button>
 		</N8nTooltip>
 
 		<N8nPromptInput
@@ -198,11 +197,26 @@ defineExpose({
 }
 
 .atButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	flex-shrink: 0;
 	margin-top: var(--spacing--2xs);
-	font-weight: var(--font-weight--bold);
-	min-width: 28px;
+	width: 28px;
 	height: 28px;
 	padding: 0;
+	background: transparent;
+	border: 1px solid var(--color--foreground--tint-1);
+	border-radius: 50%;
+	color: var(--color--text--tint-1);
+	cursor: pointer;
+	transition:
+		border-color 0.15s ease,
+		color 0.15s ease;
+
+	&:hover {
+		border-color: var(--color--text--tint-1);
+		color: var(--color--text);
+	}
 }
 </style>

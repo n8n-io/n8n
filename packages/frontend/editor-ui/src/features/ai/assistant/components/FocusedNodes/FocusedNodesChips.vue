@@ -29,7 +29,12 @@ function handleChipClick(nodeId: string) {
 }
 
 function handleRemove(nodeId: string) {
-	focusedNodesStore.removeNode(nodeId);
+	const isSelectedOnCanvas = focusedNodesStore.isNodeSelectedOnCanvas(nodeId);
+	if (isSelectedOnCanvas) {
+		focusedNodesStore.setState(nodeId, 'unconfirmed');
+	} else {
+		focusedNodesStore.removeNode(nodeId);
+	}
 }
 
 function handleExpandClick() {
