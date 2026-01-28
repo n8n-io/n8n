@@ -287,6 +287,152 @@ describe('Telegram > GenericFunctions', () => {
 				text: 'Hello, world!\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)',
 			});
 		});
+
+		it('should handle JSON keyboard for inline keyboard', () => {
+			const body = {} as IDataObject;
+			const mockExecuteFunctions = {
+				getNodeParameter: jest.fn(),
+			} as unknown as IExecuteFunctions;
+
+			const keyboardJson = JSON.stringify([
+				[
+					{ text: 'Button 1', callback_data: 'data1' },
+					{ text: 'Button 2', callback_data: 'data2' },
+				],
+			]);
+
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, index: number, defaultValue?: any) => {
+					switch (paramName) {
+						case 'operation':
+							return 'sendMessage';
+						case 'replyMarkup':
+							return 'inlineKeyboard';
+						case 'specifyKeyboard':
+							return 'json';
+						case 'keyboardJson':
+							return keyboardJson;
+						case 'additionalFields':
+							return {};
+						default:
+							return defaultValue || {};
+					}
+				},
+			);
+
+			addAdditionalFields.call(mockExecuteFunctions, body, 0);
+
+			expect(body.reply_markup).toEqual({
+				inline_keyboard: [
+					[
+						{ text: 'Button 1', callback_data: 'data1' },
+						{ text: 'Button 2', callback_data: 'data2' },
+					],
+				],
+			});
+		});
+
+		it('should handle JSON keyboard for reply keyboard with options', () => {
+			const body = {} as IDataObject;
+			const mockExecuteFunctions = {
+				getNodeParameter: jest.fn(),
+			} as unknown as IExecuteFunctions;
+
+			const keyboardJson = JSON.stringify([[{ text: 'Yes' }, { text: 'No' }]]);
+
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, index: number, defaultValue?: any) => {
+					switch (paramName) {
+						case 'operation':
+							return 'sendMessage';
+						case 'replyMarkup':
+							return 'replyKeyboard';
+						case 'specifyKeyboard':
+							return 'json';
+						case 'keyboardJson':
+							return keyboardJson;
+						case 'replyKeyboardOptions':
+							return { resize_keyboard: true, one_time_keyboard: true };
+						case 'additionalFields':
+							return {};
+						default:
+							return defaultValue || {};
+					}
+				},
+			);
+
+			addAdditionalFields.call(mockExecuteFunctions, body, 0);
+
+			expect(body.reply_markup).toEqual({
+				keyboard: [[{ text: 'Yes' }, { text: 'No' }]],
+				resize_keyboard: true,
+				one_time_keyboard: true,
+			});
+		});
+
+		it('should throw error for invalid JSON in keyboard', () => {
+			const body = {} as IDataObject;
+			const mockExecuteFunctions = {
+				getNodeParameter: jest.fn(),
+			} as unknown as IExecuteFunctions;
+
+			const invalidJson = '{ invalid json }';
+
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, index: number, defaultValue?: any) => {
+					switch (paramName) {
+						case 'operation':
+							return 'sendMessage';
+						case 'replyMarkup':
+							return 'inlineKeyboard';
+						case 'specifyKeyboard':
+							return 'json';
+						case 'keyboardJson':
+							return invalidJson;
+						case 'additionalFields':
+							return {};
+						default:
+							return defaultValue || {};
+					}
+				},
+			);
+
+			expect(() => {
+				addAdditionalFields.call(mockExecuteFunctions, body, 0);
+			}).toThrow('Invalid keyboard JSON');
+		});
+
+		it('should throw error for non-array JSON in keyboard', () => {
+			const body = {} as IDataObject;
+			const mockExecuteFunctions = {
+				getNodeParameter: jest.fn(),
+			} as unknown as IExecuteFunctions;
+
+			const invalidJson = '{"text": "Button"}';
+
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string, index: number, defaultValue?: any) => {
+					switch (paramName) {
+						case 'operation':
+							return 'sendMessage';
+						case 'replyMarkup':
+							return 'inlineKeyboard';
+						case 'specifyKeyboard':
+							return 'json';
+						case 'keyboardJson':
+							return invalidJson;
+						case 'additionalFields':
+							return {};
+						default:
+							return defaultValue || {};
+					}
+				},
+			);
+
+			expect(() => {
+				addAdditionalFields.call(mockExecuteFunctions, body, 0);
+			}).toThrow('Keyboard JSON must be an array');
+		});
 	});
 	describe('getPropertyName', () => {
 		it('should return the property name by removing "send" and converting to lowercase', () => {
