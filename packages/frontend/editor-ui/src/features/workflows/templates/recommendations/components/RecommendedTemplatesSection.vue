@@ -46,6 +46,7 @@ onMounted(async () => {
 				:key="template.id"
 				:template="template"
 				:tile-number="index + 1"
+				:clickable="true"
 			/>
 		</div>
 	</section>

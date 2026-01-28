@@ -11,6 +11,7 @@ import get from 'lodash/get';
 import type {
 	ExecutionBaseError,
 	ExecutionStatus,
+	ExecutionStorageLocation,
 	GenericValue,
 	IConnection,
 	IDataObject,
@@ -84,6 +85,19 @@ import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
 import { convertBinaryData } from '../utils/convert-binary-data';
 
+interface RunWorkflowOptions {
+	workflow: Workflow;
+	startNode?: INode;
+	destinationNode?: IDestinationNode;
+	pinData?: IPinData;
+	triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'];
+	/**
+	 * Nodes to include in the run filter, so that the workflow can execute them
+	 * By default run() executes only destinationNode and its parents, others are not allowed to run
+	 */
+	additionalRunFilterNodes?: string[];
+}
+
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
 
@@ -94,6 +108,7 @@ export class WorkflowExecute {
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
 		private runExecutionData: IRunExecutionData = createRunExecutionData(),
+		private readonly storedAt: ExecutionStorageLocation = 'db',
 	) {}
 
 	/**
@@ -107,13 +122,14 @@ export class WorkflowExecute {
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	run(
-		workflow: Workflow,
-		startNode?: INode,
-		destinationNode?: IDestinationNode,
-		pinData?: IPinData,
-		triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'],
-	): PCancelable<IRun> {
+	run({
+		workflow,
+		startNode,
+		destinationNode,
+		pinData,
+		triggerToStartFrom,
+		additionalRunFilterNodes,
+	}: RunWorkflowOptions): PCancelable<IRun> {
 		this.status = 'running';
 
 		// Get the nodes to start workflow execution from
@@ -129,6 +145,9 @@ export class WorkflowExecute {
 			runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
 			if (destinationNode.mode === 'inclusive') {
 				runNodeFilter.push(destinationNode.nodeName);
+			}
+			if (additionalRunFilterNodes) {
+				runNodeFilter.push.apply(runNodeFilter, additionalRunFilterNodes);
 			}
 		}
 
@@ -477,8 +496,8 @@ export class WorkflowExecute {
 					waitingNodeIndex
 				].main[connectionData.index] = {
 					previousNode: parentNodeName,
-					previousNodeOutput: outputIndex || undefined,
-					previousNodeRun: runIndex || undefined,
+					previousNodeOutput: outputIndex ?? undefined,
+					previousNodeRun: runIndex ?? undefined,
 				};
 			}
 
@@ -713,8 +732,8 @@ export class WorkflowExecute {
 									main: [
 										{
 											previousNode: parentNodeName,
-											previousNodeOutput: outputIndex || undefined,
-											previousNodeRun: runIndex || undefined,
+											previousNodeOutput: outputIndex ?? undefined,
+											previousNodeRun: runIndex ?? undefined,
 										},
 									],
 								},
@@ -773,7 +792,7 @@ export class WorkflowExecute {
 			this.runExecutionData.executionData!.waitingExecutionSource![connectionData.node][
 				waitingNodeIndex
 			].main = waitingExecutionSource;
-		} else {
+		} else if (workflow.nodes[connectionData.node]) {
 			// All data is there so add it directly to stack
 			this.runExecutionData.executionData!.nodeExecutionStack[enqueueFn]({
 				node: workflow.nodes[connectionData.node],
@@ -784,8 +803,8 @@ export class WorkflowExecute {
 					main: [
 						{
 							previousNode: parentNodeName,
-							previousNodeOutput: outputIndex || undefined,
-							previousNodeRun: runIndex || undefined,
+							previousNodeOutput: outputIndex ?? undefined,
+							previousNodeRun: runIndex ?? undefined,
 						},
 					],
 				},
@@ -831,7 +850,13 @@ export class WorkflowExecute {
 			let nodeIssues: INodeIssues | null = null;
 			const node = workflow.nodes[nodeName];
 
-			if (node.disabled === true) {
+			if (!node && nodeName === TOOL_EXECUTOR_NODE_NAME) {
+				// ToolExecutor is added dynamically during test executions and isn't saved in the workflow
+				// Skip checks for it because the node can't be accessed
+				continue;
+			}
+
+			if (!node || node.disabled === true) {
 				continue;
 			}
 
@@ -1297,9 +1322,12 @@ export class WorkflowExecute {
 				this.additionalData,
 				this.mode,
 			);
-			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
+
+			const executionStackEntry = this.runExecutionData.executionData.nodeExecutionStack[0];
+			executionStackEntry.node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
+
 			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
 		}
 	}
@@ -1923,8 +1951,9 @@ export class WorkflowExecute {
 					// Rewire output data log to the given connectionType
 					if (executionNode.rewireOutputLogTo) {
 						// TODO: Remove when AI-723 lands.
+						// Try to get inputOverride from existing run data
 						taskData.inputOverride =
-							this.runExecutionData.resultData.runData[executionNode.name][runIndex]
+							this.runExecutionData.resultData.runData[executionNode.name]?.[runIndex]
 								?.inputOverride || {};
 						taskData.data = {
 							[executionNode.rewireOutputLogTo]: nodeSuccessData,
@@ -2454,6 +2483,7 @@ export class WorkflowExecute {
 			mode: this.mode,
 			startedAt,
 			stoppedAt: stoppedAt ?? new Date(),
+			storedAt: this.storedAt,
 			status: this.status,
 		};
 	}
