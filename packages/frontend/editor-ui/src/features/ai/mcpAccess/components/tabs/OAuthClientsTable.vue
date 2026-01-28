@@ -100,7 +100,7 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 						</N8nText>
 						<N8nButton
 							data-test-id="mcp-oauth-create-client-button"
-							variant="primary"
+							type="primary"
 							@click="mcpStore.openConnectPopover()"
 						>
 							{{ i18n.baseText('settings.mcp.oauth.table.empty.button') }}

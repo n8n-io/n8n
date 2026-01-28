@@ -5,7 +5,7 @@ import Button from './Button.vue';
 
 const stubs = ['N8nIcon'];
 
-describe('v2/components/Button', () => {
+describe('Deprecated v2 standalone Button', () => {
 	describe('rendering', () => {
 		it('should render correctly with default props', () => {
 			const wrapper = render(Button, {
