@@ -136,8 +136,8 @@ catalogs:
       specifier: 4.17.23
       version: 4.17.23
     luxon:
-      specifier: 3.4.4
-      version: 3.4.4
+      specifier: 3.7.2
+      version: 3.7.2
     mime-types:
       specifier: 3.0.2
       version: 3.0.2
@@ -278,6 +278,7 @@ catalogs:
       version: 10.1.11
 
 overrides:
+  libphonenumber-js: npm:empty-npm-package@1.0.0
   ast-types: 0.16.1
   '@azure/identity': 4.13.0
   '@lezer/common': ^1.2.0
@@ -1591,7 +1592,7 @@ importers:
         version: 4.17.23
       luxon:
         specifier: 'catalog:'
-        version: 3.4.4
+        version: 3.7.2
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -1841,7 +1842,7 @@ importers:
         version: 4.17.23
       luxon:
         specifier: 'catalog:'
-        version: 3.4.4
+        version: 3.7.2
       mysql2:
         specifier: 'catalog:'
         version: 3.15.0
@@ -2136,7 +2137,7 @@ importers:
         version: 4.17.23
       luxon:
         specifier: 'catalog:'
-        version: 3.4.4
+        version: 3.7.2
       mime-types:
         specifier: 'catalog:'
         version: 3.0.2
@@ -2930,7 +2931,7 @@ importers:
         version: 4.17.23
       luxon:
         specifier: 'catalog:'
-        version: 3.4.4
+        version: 3.7.2
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -3268,7 +3269,7 @@ importers:
         version: 1.0.5
       luxon:
         specifier: 'catalog:'
-        version: 3.4.4
+        version: 3.7.2
       mailparser:
         specifier: 3.6.7
         version: 3.6.7
@@ -3587,7 +3588,7 @@ importers:
         version: 4.17.23
       luxon:
         specifier: 'catalog:'
-        version: 3.4.4
+        version: 3.7.2
       md5:
         specifier: 2.3.0
         version: 2.3.0
@@ -11441,6 +11442,9 @@ packages:
     resolution: {integrity: sha512-i6UzDscO/XfAcNYD75CfICkmfLedpyPDdozrLMmQc5ORaQcdMoc21OnlEylMIqI7U8eniKrPMxxtj8k0vhmJhA==}
     engines: {node: '>=14'}
 
+  empty-npm-package@1.0.0:
+    resolution: {integrity: sha512-q4Mq/+XO7UNDdMiPpR/LIBIW1Zl4V0Z6UT9aKGqIAnBCtCb3lvZJM1KbDbdzdC8fKflwflModfjR29Nt0EpcwA==}
+
   enabled@2.0.0:
     resolution: {integrity: sha512-AKrN98kuwOzMIdAizXGI86UFBoo26CL21UM763y1h/GMSJ4/OHU9k2YlsmBpyScFo/wbLzWQJBMCW4+IO3/+OQ==}
 
@@ -13847,9 +13851,6 @@ packages:
   libmime@5.2.1:
     resolution: {integrity: sha512-A0z9O4+5q+ZTj7QwNe/Juy1KARNb4WaviO4mYeFC4b8dBT2EEqK2pkM+GC8MVnkOjqhl5nYQxRgnPYRRTNmuSQ==}
 
-  libphonenumber-js@1.10.14:
-    resolution: {integrity: sha512-McGS7GV/WjJ2KjfOGhJU1oJn29RYeo7Q+RpANRbUNMQ9gj5XArpbjurSuyYPTejFwbaUojstQ4XyWCrAzGOUXw==}
-
   libqp@2.0.1:
     resolution: {integrity: sha512-Ka0eC5LkF3IPNQHJmYBWljJsw0UvM6j+QdKRbWyCdTmYwvIDE6a7bCm0UkTAL/K+3KXK5qXT/ClcInU01OpdLg==}
 
@@ -14122,10 +14123,6 @@ packages:
 
   lunr@2.3.9:
     resolution: {integrity: sha512-zTU3DaZaF3Rt9rhN3uBMGQD3dD2/vFQqnvZCDv4dl5iOzq2IZQqTxu90r4E5J+nP70J3ilqVCrbho2eWaeW8Ow==}
-
-  luxon@3.4.4:
-    resolution: {integrity: sha512-zobTr7akeGHnv7eBOXcRgMeCP6+uyYsczwmeRCauvpvaAltgNyTbLH/+VaEAPUeWBT+1GuNmz4wC/6jtQzbbVA==}
-    engines: {node: '>=12'}
 
   luxon@3.7.2:
     resolution: {integrity: sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew==}
@@ -27815,7 +27812,7 @@ snapshots:
   class-validator@0.14.0:
     dependencies:
       '@types/validator': 13.7.10
-      libphonenumber-js: 1.10.14
+      libphonenumber-js: empty-npm-package@1.0.0
       validator: 13.15.26
 
   classnames@2.5.1: {}
@@ -28886,6 +28883,8 @@ snapshots:
   emoji-regex@9.2.2: {}
 
   empathic@2.0.0: {}
+
+  empty-npm-package@1.0.0: {}
 
   enabled@2.0.0: {}
 
@@ -30579,7 +30578,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0
+      axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3(supports-color@8.1.1)
       dotenv: 16.6.1
@@ -30589,7 +30588,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -32207,8 +32206,6 @@ snapshots:
       libbase64: 1.2.1
       libqp: 2.0.1
 
-  libphonenumber-js@1.10.14: {}
-
   libqp@2.0.1: {}
 
   license-checker@25.0.1:
@@ -32429,8 +32426,6 @@ snapshots:
   lru.min@1.1.2: {}
 
   lunr@2.3.9: {}
-
-  luxon@3.4.4: {}
 
   luxon@3.7.2: {}
 
@@ -35024,7 +35019,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0
 
