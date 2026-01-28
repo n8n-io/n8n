@@ -14,6 +14,8 @@ import type {
 	INodeTypeDescription,
 	ITriggerResponse,
 	IRun,
+	IBinaryKeyData,
+	INodeExecutionData,
 } from 'n8n-workflow';
 import {
 	jsonParse,
@@ -33,6 +35,7 @@ interface KafkaTriggerOptions {
 	maxInFlightRequests?: number;
 	fromBeginning?: boolean;
 	jsonParseMessage?: boolean;
+	keepBinaryData?: boolean;
 	parallelProcessing?: boolean;
 	partitionsConsumedConcurrently?: number;
 	onlyMessage?: boolean;
@@ -48,7 +51,7 @@ export class KafkaTrigger implements INodeType {
 		name: 'kafkaTrigger',
 		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
@@ -113,7 +116,7 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to allow sending message to a previously non exisiting topic',
+						description: 'Whether to allow sending message to a previously non-existing topic',
 					},
 					{
 						displayName: 'Auto Commit Threshold',
@@ -185,6 +188,19 @@ export class KafkaTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to try to parse the message to an object',
+					},
+					{
+						displayName: 'Keep Binary Data',
+						name: 'keepBinaryData',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'@version': [1.2],
+							},
+						},
+						description:
+							'Whether to keep message value as binary data for downstream processing (e.g., Avro deserialization)',
 					},
 					{
 						displayName: 'Parallel Processing',
@@ -262,7 +278,8 @@ export class KafkaTrigger implements INodeType {
 
 		const options = this.getNodeParameter('options', {}) as KafkaTriggerOptions;
 
-		options.nodeVersion = this.getNode().typeVersion;
+		const nodeVersion = this.getNode().typeVersion;
+		options.nodeVersion = nodeVersion;
 
 		const config: KafkaConfig = {
 			clientId,
@@ -326,9 +343,10 @@ export class KafkaTrigger implements INodeType {
 		const processMessage = async (
 			message: KafkaMessage,
 			messageTopic: string,
-		): Promise<IDataObject> => {
+		): Promise<INodeExecutionData> => {
 			let data: IDataObject = {};
 			let value = message.value?.toString() as string;
+			const binary: IBinaryKeyData = {};
 
 			if (options.jsonParseMessage) {
 				try {
@@ -350,6 +368,16 @@ export class KafkaTrigger implements INodeType {
 				}
 			}
 
+			// Preserve raw binary data for downstream processing (only in v1.2+)
+			if (nodeVersion >= 1.2 && options.keepBinaryData && message.value) {
+				const binaryData = await this.helpers.prepareBinaryData(
+					message.value as Buffer,
+					'message',
+					'application/octet-stream',
+				);
+				binary.data = binaryData;
+			}
+
 			if (options.returnHeaders && message.headers) {
 				data.headers = Object.fromEntries(
 					Object.entries(message.headers).map(([headerKey, headerValue]) => [
@@ -366,16 +394,21 @@ export class KafkaTrigger implements INodeType {
 				data = value as unknown as IDataObject;
 			}
 
-			return data;
+			// Return with binary data if present (only in v1.2+)
+			if (nodeVersion >= 1.2 && options.keepBinaryData && Object.keys(binary).length > 0) {
+				return { json: data, binary };
+			}
+
+			return { json: data };
 		};
 
-		const emitData = async (dataArray: IDataObject[]): Promise<void> => {
+		const emitData = async (dataArray: INodeExecutionData[]): Promise<void> => {
 			if (!parallelProcessing && (options.nodeVersion as number) > 1) {
 				const responsePromise = this.helpers.createDeferredPromise<IRun>();
-				this.emit([this.helpers.returnJsonArray(dataArray)], undefined, responsePromise);
+				this.emit([dataArray], undefined, responsePromise);
 				await responsePromise.promise;
 			} else {
-				this.emit([this.helpers.returnJsonArray(dataArray)]);
+				this.emit([dataArray]);
 			}
 		};
 
