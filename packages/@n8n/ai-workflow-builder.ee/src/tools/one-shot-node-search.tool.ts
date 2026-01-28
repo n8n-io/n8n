@@ -40,11 +40,30 @@ function debugLog(message: string, data?: Record<string, unknown>): void {
 }
 
 /**
+ * Simplified operation info for discriminator display
+ */
+interface DiscriminatorOperationInfo {
+	value: string;
+	description?: string;
+	builderHint?: string;
+}
+
+/**
+ * Simplified resource info for discriminator display
+ */
+interface DiscriminatorResourceInfo {
+	value: string;
+	description?: string;
+	builderHint?: string;
+	operations: DiscriminatorOperationInfo[];
+}
+
+/**
  * Discriminator info structure for search results
  */
 interface DiscriminatorInfo {
 	type: 'resource_operation' | 'mode' | 'none';
-	resources?: Array<{ value: string; operations: string[] }>;
+	resources?: DiscriminatorResourceInfo[];
 	modes?: ModeInfo[];
 }
 
@@ -67,18 +86,37 @@ const CONNECTION_TYPE_TO_SDK: Record<string, { fn: string; subnodeField: string 
  * Format a mode for display, including SDK function mapping only if showSdkMapping is true
  */
 function formatModeForDisplay(mode: ModeInfo, showSdkMapping: boolean): string {
-	if (!showSdkMapping) {
-		return `      - ${mode.value}: "${mode.displayName}"`;
+	const lines: string[] = [];
+
+	// First line: value and display name
+	let firstLine = `      - ${mode.value}: "${mode.displayName}"`;
+
+	// Add SDK mapping if applicable
+	if (showSdkMapping) {
+		const sdkMapping = mode.outputConnectionType
+			? CONNECTION_TYPE_TO_SDK[mode.outputConnectionType as string]
+			: undefined;
+
+		if (sdkMapping) {
+			firstLine += ` → use ${sdkMapping.fn} for ${sdkMapping.subnodeField}`;
+		} else {
+			firstLine += ' → use node()';
+		}
 	}
 
-	const sdkMapping = mode.outputConnectionType
-		? CONNECTION_TYPE_TO_SDK[mode.outputConnectionType as string]
-		: undefined;
+	lines.push(firstLine);
 
-	if (sdkMapping) {
-		return `      - ${mode.value}: "${mode.displayName}" → use ${sdkMapping.fn} for ${sdkMapping.subnodeField}`;
+	// Add description if available
+	if (mode.description) {
+		lines.push(`        ${mode.description}`);
 	}
-	return `      - ${mode.value}: "${mode.displayName}" → use node()`;
+
+	// Add builder hint if available
+	if (mode.builderHint) {
+		lines.push(`        Hint: ${mode.builderHint}`);
+	}
+
+	return lines.join('\n');
 }
 
 /**
@@ -98,13 +136,19 @@ function getDiscriminatorInfo(
 	// Check for resource/operation pattern
 	const resourceOps = extractResourceOperations(nodeType, version);
 	if (resourceOps && resourceOps.resources.length > 0) {
-		const resources = resourceOps.resources
+		const resources: DiscriminatorResourceInfo[] = resourceOps.resources
 			.filter((r) => r.value !== '__CUSTOM_API_CALL__')
 			.map((r) => ({
 				value: r.value,
+				description: r.description,
+				builderHint: r.builderHint,
 				operations: r.operations
 					.filter((op) => op.value !== '__CUSTOM_API_CALL__')
-					.map((op) => op.value),
+					.map((op) => ({
+						value: op.value,
+						description: op.description,
+						builderHint: op.builderHint,
+					})),
 			}));
 
 		if (resources.length > 0) {
@@ -134,13 +178,31 @@ function formatDiscriminatorInfo(info: DiscriminatorInfo, nodeId: string): strin
 	if (info.type === 'resource_operation' && info.resources) {
 		lines.push('    resource:');
 		for (const resource of info.resources) {
-			const ops = resource.operations.join(', ');
-			lines.push(`      - ${resource.value} (operations: ${ops})`);
+			// Format resource line
+			lines.push(`      - ${resource.value}:`);
+			if (resource.description) {
+				lines.push(`          ${resource.description}`);
+			}
+			if (resource.builderHint) {
+				lines.push(`          Hint: ${resource.builderHint}`);
+			}
+
+			// Format operations
+			lines.push('          operations:');
+			for (const op of resource.operations) {
+				lines.push(`            - ${op.value}`);
+				if (op.description) {
+					lines.push(`              ${op.description}`);
+				}
+				if (op.builderHint) {
+					lines.push(`              Hint: ${op.builderHint}`);
+				}
+			}
 		}
 
 		// Add usage hint
 		const firstResource = info.resources[0];
-		const firstOp = firstResource?.operations[0] || 'get';
+		const firstOp = firstResource?.operations[0]?.value || 'get';
 		lines.push('');
 		lines.push('  Use get_nodes with discriminators:');
 		lines.push(
