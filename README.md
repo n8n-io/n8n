@@ -1,5 +1,4 @@
 ![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
-
 # n8n - Secure Workflow Automation for Technical Teams
 
 n8n is a workflow automation platform that gives technical teams the flexibility of code with the speed of no-code. With 400+ integrations, native AI capabilities, and a fair-code license, n8n lets you build powerful automations while maintaining full control over your data and deployments.
@@ -16,20 +15,63 @@ n8n is a workflow automation platform that gives technical teams the flexibility
 
 ## Quick Start
 
-Try n8n instantly with [npx](https://docs.n8n.io/hosting/installation/npm/) (requires [Node.js](https://nodejs.org/en/)):
+### Prerequisites
 
-```
+- **Node.js**: Version 18.10 or above (check with `node --version`)
+- **Docker**: Latest version (for Docker installation method)
+
+### Option 1: Run with npx (Recommended for Quick Testing)
+
+The fastest way to try n8n without installation:
+```bash
 npx n8n
 ```
 
-Or deploy with [Docker](https://docs.n8n.io/hosting/installation/docker/):
+This will:
+1. Download and start n8n automatically
+2. Open your browser to http://localhost:5678
+3. Create a local data folder at `~/.n8n`
 
+**Note**: For permanent installation, use npm:
+```bash
+npm install n8n -g
+n8n start
 ```
+
+### Option 2: Run with Docker (Recommended for Production)
+
+1. Create a persistent data volume:
+```bash
 docker volume create n8n_data
-docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n
 ```
 
-Access the editor at http://localhost:5678
+2. Start n8n container:
+```bash
+docker run -it --rm \
+  --name n8n \
+  -p 5678:5678 \
+  -v n8n_data:/home/node/.n8n \
+  docker.n8n.io/n8nio/n8n
+```
+
+3. Access the editor at http://localhost:5678
+
+**To run in background (detached mode)**:
+```bash
+docker run -d \
+  --name n8n \
+  -p 5678:5678 \
+  --restart unless-stopped \
+  -v n8n_data:/home/node/.n8n \
+  docker.n8n.io/n8nio/n8n
+```
+
+### Next Steps
+
+After starting n8n:
+1. Create your account at http://localhost:5678
+2. Explore the [workflow templates](https://n8n.io/workflows)
+3. Check the [documentation](https://docs.n8n.io) for detailed guides
 
 ## Resources
 
@@ -42,8 +84,7 @@ Access the editor at http://localhost:5678
 
 ## Support
 
-Need help? Our community forum is the place to get support and connect with other users:
-[community.n8n.io](https://community.n8n.io)
+Need help? Our community forum is the place to get support and connect with other users: [community.n8n.io](https://community.n8n.io)
 
 ## License
 
