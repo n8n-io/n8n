@@ -17,6 +17,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -130,6 +131,7 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 
 let uiStore: ReturnType<typeof useUIStore>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
 let collaborationStore: MockedStore<typeof useCollaborationStore>;
 let sourceControlStore: MockedStore<typeof useSourceControlStore>;
@@ -151,6 +153,7 @@ describe('WorkflowDetails', () => {
 	beforeEach(() => {
 		uiStore = useUIStore();
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		projectsStore = mockedStore(useProjectsStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 		sourceControlStore = mockedStore(useSourceControlStore);
@@ -158,7 +161,7 @@ describe('WorkflowDetails', () => {
 		// Set up default mocks
 		mockSaveCurrentWorkflow.mockClear();
 		mockSaveCurrentWorkflow.mockResolvedValue(true);
-		workflowsStore.workflowsById = {
+		workflowsListStore.workflowsById = {
 			'1': workflow as unknown as IWorkflowDb,
 			'123': workflow as unknown as IWorkflowDb,
 		};
@@ -488,7 +491,7 @@ describe('WorkflowDetails', () => {
 				},
 			};
 
-			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(teamWorkflow);
+			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as unknown as IWorkflowDb);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent({
@@ -520,7 +523,9 @@ describe('WorkflowDetails', () => {
 				},
 			};
 
-			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(personalWorkflow);
+			workflowsListStore.getWorkflowById.mockReturnValue(
+				personalWorkflow as unknown as IWorkflowDb,
+			);
 			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent({
@@ -600,8 +605,8 @@ describe('WorkflowDetails', () => {
 			expect(message.confirm).toHaveBeenCalledTimes(1);
 			expect(toast.showError).toHaveBeenCalledTimes(0);
 			expect(toast.showMessage).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
-			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledTimes(1);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
@@ -620,8 +625,8 @@ describe('WorkflowDetails', () => {
 				},
 			};
 
-			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(teamWorkflow);
-			workflowsStore.deleteWorkflow.mockResolvedValue(undefined);
+			workflowsListStore.getWorkflowById.mockReturnValue(teamWorkflow as unknown as IWorkflowDb);
+			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -634,7 +639,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 
-			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.PROJECTS_WORKFLOWS,
 				params: { projectId: teamProjectId },
@@ -652,8 +657,10 @@ describe('WorkflowDetails', () => {
 				},
 			};
 
-			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(personalWorkflow);
-			workflowsStore.deleteWorkflow.mockResolvedValue(undefined);
+			workflowsListStore.getWorkflowById.mockReturnValue(
+				personalWorkflow as unknown as IWorkflowDb,
+			);
+			workflowsListStore.deleteWorkflow.mockResolvedValue(undefined);
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -666,7 +673,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 			await userEvent.click(getByTestId('workflow-menu-item-delete'));
 
-			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
 			});
@@ -675,7 +682,7 @@ describe('WorkflowDetails', () => {
 		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
-			workflowsStore.workflowsById = { [workflow.id]: workflow as unknown as IWorkflowDb };
+			workflowsListStore.workflowsById = { [workflow.id]: workflow as unknown as IWorkflowDb };
 
 			const { getByTestId } = renderComponent({
 				props: {

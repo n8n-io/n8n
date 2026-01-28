@@ -132,6 +132,7 @@ import { useBuilderStore } from '../../builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import type { INodeUi } from '@/Interface';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -221,6 +222,7 @@ describe('AskAssistantBuild', () => {
 	const renderComponent = createComponentRenderer(AskAssistantBuild);
 	let builderStore: ReturnType<typeof mockedStore<typeof useBuilderStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
 	let historyStore: ReturnType<typeof mockedStore<typeof useHistoryStore>>;
 	let collaborationStore: ReturnType<typeof mockedStore<typeof useCollaborationStore>>;
 
@@ -270,6 +272,7 @@ describe('AskAssistantBuild', () => {
 		setActivePinia(pinia);
 		builderStore = mockedStore(useBuilderStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsListStore = mockedStore(useWorkflowsListStore);
 		historyStore = mockedStore(useHistoryStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 
@@ -451,7 +454,7 @@ describe('AskAssistantBuild', () => {
 		it('should initialize builder chat when a user sends a message', async () => {
 			// Mock empty workflow to ensure initialGeneration is true
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow to send emails';
@@ -472,7 +475,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should request write access when sending a message', async () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 			const testMessage = 'Create a workflow';
@@ -666,7 +669,7 @@ describe('AskAssistantBuild', () => {
 		it('should reset initialGeneration flag when streaming ends and workflow has nodes', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -705,7 +708,7 @@ describe('AskAssistantBuild', () => {
 		it('should NOT reset initialGeneration flag when workflow is still empty', async () => {
 			// Setup: empty workflow
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			renderComponent();
 
@@ -1082,7 +1085,7 @@ describe('AskAssistantBuild', () => {
 
 		it('should reset accumulated node IDs on new user message', async () => {
 			workflowsStore.$patch({ workflow: { nodes: [], connections: {} } });
-			workflowsStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
+			workflowsListStore.$patch({ workflowsById: { abc123: { id: 'abc123' } } });
 
 			const { container } = renderComponent();
 

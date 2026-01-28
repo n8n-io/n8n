@@ -439,9 +439,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	// Delegated to workflowsListStore for backward compatibility
-	const getWorkflowById = workflowsListStore.getWorkflowById;
-
 	function getNodeByName(nodeName: string): INodeUi | null {
 		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
 	}
@@ -637,14 +634,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
-	// Delegated to workflowsListStore for backward compatibility
-	const fetchWorkflowsPage = workflowsListStore.fetchWorkflowsPage;
-	const searchWorkflows = workflowsListStore.searchWorkflows;
-	const fetchAllWorkflows = workflowsListStore.fetchAllWorkflows;
-	const fetchWorkflow = workflowsListStore.fetchWorkflow;
-	const fetchWorkflowsWithNodesIncluded = workflowsListStore.fetchWorkflowsWithNodesIncluded;
-	const checkWorkflowExists = workflowsListStore.checkWorkflowExists;
-
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
 		workflowChecksum.value = '';
@@ -745,12 +734,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedNodesCount;
 	}
 
-	// Delegated to workflowsListStore for backward compatibility
-	const setWorkflows = workflowsListStore.setWorkflows;
-
-	// Delegated to workflowsListStore for backward compatibility
-	const deleteWorkflow = workflowsListStore.deleteWorkflow;
-
 	async function archiveWorkflow(id: string) {
 		const updatedWorkflow = await workflowsListStore.archiveWorkflowInList(id);
 		setWorkflowInactive(id);
@@ -769,9 +752,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			setWorkflowVersionId(updatedWorkflow.versionId, updatedWorkflow.checksum!);
 		}
 	}
-
-	// Delegated to workflowsListStore for backward compatibility
-	const addWorkflow = workflowsListStore.addWorkflow;
 
 	function setWorkflowActive(
 		targetWorkflowId: string,
@@ -799,9 +779,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflow.value.activeVersion = null;
 		}
 	}
-
-	// Delegated to workflowsListStore for backward compatibility
-	const fetchActiveWorkflows = workflowsListStore.fetchActiveWorkflows;
 
 	function setIsArchived(isArchived: boolean) {
 		workflow.value.isArchived = isArchived;
@@ -1538,7 +1515,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				currentSettings = cached.settings ?? ({} as IWorkflowSettings);
 				currentVersionId = cached.versionId;
 			} else {
-				const fetched = await fetchWorkflow(id);
+				const fetched = await workflowsListStore.fetchWorkflow(id);
 				currentSettings = fetched.settings ?? ({} as IWorkflowSettings);
 				currentVersionId = fetched.versionId;
 			}
@@ -1584,7 +1561,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			if (cached?.versionId) {
 				currentVersionId = cached.versionId;
 			} else {
-				const fetched = await fetchWorkflow(id);
+				const fetched = await workflowsListStore.fetchWorkflow(id);
 				currentVersionId = fetched.versionId;
 			}
 		}
@@ -1811,12 +1788,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowTags,
 		isNewWorkflow,
 		isWorkflowSaved,
-
-		// Re-exported from workflowsListStore for backward compatibility
-		workflowsById: workflowsListStore.workflowsById,
-		activeWorkflows: workflowsListStore.activeWorkflows,
-		allWorkflows: workflowsListStore.allWorkflows,
-		totalWorkflowCount: workflowsListStore.totalWorkflowCount,
 		isWorkflowActive,
 		workflowTriggerNodes,
 		currentWorkflowHasWebhookNode,
@@ -1846,7 +1817,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
 		isNodeInOutgoingNodeConnections,
-		getWorkflowById,
 		getNodeByName,
 		findRootWithMainConnection,
 		getNodeById,
@@ -1865,12 +1835,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		cloneWorkflowObject,
 		getWorkflowFromUrl,
 		getActivationError,
-		searchWorkflows,
-		fetchAllWorkflows,
-		fetchWorkflowsPage,
-		fetchWorkflow,
-		fetchWorkflowsWithNodesIncluded,
-		checkWorkflowExists,
 		resetWorkflow,
 		addNodeExecutionStartedData,
 		setUsedCredentials,
@@ -1878,14 +1842,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowActiveVersion,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,
-		setWorkflows,
-		deleteWorkflow,
 		archiveWorkflow,
 		unarchiveWorkflow,
-		addWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
-		fetchActiveWorkflows,
 		setIsArchived,
 		setDescription,
 		getDuplicateCurrentWorkflowName,
