@@ -7,7 +7,12 @@
  * This module parallels generate-types.ts but outputs Zod schemas instead of TypeScript types.
  */
 
-import type { NodeProperty, NodeTypeDescription } from './generate-types';
+import type {
+	NodeProperty,
+	NodeTypeDescription,
+	DiscriminatorCombination,
+	DiscriminatorTree,
+} from './generate-types';
 
 import {
 	extractDiscriminatorCombinations,
@@ -15,6 +20,7 @@ import {
 	filterPropertiesForVersion,
 	versionToTypeName,
 	getPackageName,
+	buildDiscriminatorTree,
 } from './generate-types';
 
 // =============================================================================
@@ -114,6 +120,18 @@ function toPascalCase(str: string): string {
 		.split(' ')
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join('');
+}
+
+/**
+ * Convert string to snake_case (lowercase with underscores)
+ * Used for folder/file naming in split type structure
+ */
+function toSnakeCase(str: string): string {
+	return str
+		.replace(/([A-Z])/g, '_$1')
+		.toLowerCase()
+		.replace(/^_/, '')
+		.replace(/[-\s]+/g, '_');
 }
 
 /**
@@ -776,4 +794,346 @@ export function generateSchemaIndexFile(node: NodeTypeDescription, versions: num
 	}
 
 	return lines.join('\n');
+}
+
+// =============================================================================
+// Split Version Schema Generation (for nodes with resource/operation discriminators)
+// =============================================================================
+
+/**
+ * Generate a Zod schema file for a single discriminator combination (e.g., ticket/get)
+ *
+ * This parallels generateDiscriminatorFile() but outputs Zod schemas.
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @param combo The discriminator combination (e.g., { resource: 'ticket', operation: 'get' })
+ * @param props Properties applicable to this combination
+ * @param importDepth How many levels deep (for import paths to base.schema.ts)
+ */
+export function generateDiscriminatorSchemaFile(
+	node: NodeTypeDescription,
+	version: number,
+	combo: DiscriminatorCombination,
+	props: NodeProperty[],
+	importDepth: number,
+): string {
+	const prefix = getPackagePrefix(node.name);
+	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+	const versionSuffix = versionToTypeName(version);
+
+	// Build type name from discriminator values
+	const comboValues = Object.entries(combo)
+		.filter(([_, v]) => v !== undefined)
+		.map(([_, v]) => toPascalCase(v!));
+	const comboSuffix = comboValues.join('');
+	const schemaName = `${nodeName}${versionSuffix}${comboSuffix}ConfigSchema`;
+
+	const lines: string[] = [];
+
+	// Build description from discriminator values
+	const comboDesc = Object.entries(combo)
+		.filter(([_, v]) => v !== undefined)
+		.map(([k, v]) => `${k}=${v}`)
+		.join(', ');
+
+	// Header
+	lines.push('/**');
+	lines.push(` * ${node.displayName} Node - Version ${version} - Zod Schema`);
+	lines.push(` * Discriminator: ${comboDesc}`);
+	lines.push(' *');
+	lines.push(' * Use .parse() for strict validation or .safeParse() for error handling.');
+	lines.push(' */');
+	lines.push('');
+
+	// Imports - relative path to base.schema.ts
+	const basePath = '../'.repeat(importDepth) + 'base.schema';
+	lines.push("import { z } from 'zod';");
+	lines.push('import {');
+	lines.push('\texpressionSchema,');
+	lines.push('\tstringOrExpression,');
+	lines.push('\tnumberOrExpression,');
+	lines.push('\tbooleanOrExpression,');
+	lines.push('\tresourceLocatorValueSchema,');
+	lines.push('\tfilterValueSchema,');
+	lines.push('\tassignmentCollectionValueSchema,');
+	lines.push('\tiDataObjectSchema,');
+	lines.push(`} from '${basePath}';`);
+	lines.push('');
+
+	// Schema definition
+	lines.push('// ' + '='.repeat(75));
+	lines.push('// Validation Schema');
+	lines.push('// ' + '='.repeat(75));
+	lines.push('');
+
+	lines.push(`export const ${schemaName} = z.object({`);
+
+	// Add discriminator fields as literals
+	for (const [key, value] of Object.entries(combo)) {
+		if (value !== undefined) {
+			lines.push(`\t${key}: z.literal('${value}'),`);
+		}
+	}
+
+	// Add other properties
+	const seenNames = new Set<string>();
+	for (const prop of props) {
+		if (seenNames.has(prop.name)) {
+			continue;
+		}
+		seenNames.add(prop.name);
+		const propLine = generateSchemaPropertyLine(prop, !prop.required);
+		if (propLine) {
+			lines.push(propLine);
+		}
+	}
+
+	lines.push('});');
+	lines.push('');
+
+	// Generate inferred type
+	lines.push(
+		`export type ${nodeName}${versionSuffix}${comboSuffix}ConfigValidated = z.infer<typeof ${schemaName}>;`,
+	);
+
+	return lines.join('\n');
+}
+
+/**
+ * Generate a Zod schema index file for a resource directory (e.g., resource_ticket/index.schema.ts)
+ * Re-exports all operation schemas within this resource.
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @param resource The resource name
+ * @param operations Array of operation names for this resource
+ */
+export function generateResourceIndexSchemaFile(
+	node: NodeTypeDescription,
+	version: number,
+	resource: string,
+	operations: string[],
+): string {
+	const prefix = getPackagePrefix(node.name);
+	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+	const versionSuffix = versionToTypeName(version);
+
+	const lines: string[] = [];
+
+	lines.push('/**');
+	lines.push(` * ${node.displayName} - ${toPascalCase(resource)} Resource - Zod Schemas`);
+	lines.push(' * Re-exports all operation schemas for this resource.');
+	lines.push(' */');
+	lines.push('');
+
+	// Import schema names for union
+	const schemaNames: string[] = [];
+	for (const op of operations.sort()) {
+		const fileName = `operation_${toSnakeCase(op)}.schema`;
+		const schemaName = `${nodeName}${versionSuffix}${toPascalCase(resource)}${toPascalCase(op)}ConfigSchema`;
+		schemaNames.push(schemaName);
+		lines.push(`import { ${schemaName} } from './${fileName}';`);
+	}
+	lines.push('');
+
+	// Re-export all operation schemas
+	for (const op of operations.sort()) {
+		const fileName = `operation_${toSnakeCase(op)}.schema`;
+		lines.push(`export * from './${fileName}';`);
+	}
+	lines.push('');
+
+	// Union schema for this resource
+	const resourceSchemaName = `${nodeName}${versionSuffix}${toPascalCase(resource)}ConfigSchema`;
+	if (schemaNames.length === 1) {
+		lines.push(`export const ${resourceSchemaName} = ${schemaNames[0]};`);
+	} else {
+		lines.push(`export const ${resourceSchemaName} = z.union([`);
+		for (const name of schemaNames) {
+			lines.push(`\t${name},`);
+		}
+		lines.push(']);');
+	}
+	lines.push('');
+	lines.push(
+		`export type ${nodeName}${versionSuffix}${toPascalCase(resource)}ConfigValidated = z.infer<typeof ${resourceSchemaName}>;`,
+	);
+
+	// Need z import for union
+	if (schemaNames.length > 1) {
+		// Prepend z import at line 6 (after header comments)
+		const zImport = "import { z } from 'zod';";
+		const insertIndex = lines.findIndex((line) => line.startsWith('import {'));
+		if (insertIndex !== -1) {
+			lines.splice(insertIndex, 0, zImport);
+		}
+	}
+
+	return lines.join('\n');
+}
+
+/**
+ * Generate a version-level index file for split structure schemas (e.g., v1/index.schema.ts)
+ * Re-exports all discriminator schemas.
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @param tree The discriminator tree structure
+ */
+export function generateSplitVersionIndexSchemaFile(
+	node: NodeTypeDescription,
+	version: number,
+	tree: DiscriminatorTree,
+): string {
+	const prefix = getPackagePrefix(node.name);
+	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
+	const versionSuffix = versionToTypeName(version);
+
+	const lines: string[] = [];
+
+	lines.push('/**');
+	lines.push(` * ${node.displayName} Node - Version ${version} - Zod Schemas`);
+	lines.push(' * Re-exports all discriminator combination schemas.');
+	lines.push(' */');
+	lines.push('');
+
+	// Collect all schema names for the union
+	const schemaNames: string[] = [];
+
+	if (tree.type === 'resource_operation' && tree.resources) {
+		// Import resource schemas for union
+		for (const [resource] of tree.resources) {
+			const resourceSchemaName = `${nodeName}${versionSuffix}${toPascalCase(resource)}ConfigSchema`;
+			schemaNames.push(resourceSchemaName);
+			const resourceDir = `resource_${toSnakeCase(resource)}`;
+			lines.push(`import { ${resourceSchemaName} } from './${resourceDir}/index.schema';`);
+		}
+		lines.push('');
+
+		// Re-export resource schema directories
+		for (const [resource] of tree.resources) {
+			const resourceDir = `resource_${toSnakeCase(resource)}`;
+			lines.push(`export * from './${resourceDir}/index.schema';`);
+		}
+		lines.push('');
+	} else if (tree.type === 'single' && tree.discriminatorName && tree.discriminatorValues) {
+		// Single discriminator pattern (mode, etc.)
+		const discName = tree.discriminatorName;
+
+		// Import schemas
+		for (const value of tree.discriminatorValues.sort()) {
+			const fileName = `${discName}_${toSnakeCase(value)}.schema`;
+			const schemaName = `${nodeName}${versionSuffix}${toPascalCase(value)}ConfigSchema`;
+			schemaNames.push(schemaName);
+			lines.push(`import { ${schemaName} } from './${fileName}';`);
+		}
+		lines.push('');
+
+		// Re-export discriminator schema files
+		for (const value of tree.discriminatorValues.sort()) {
+			const fileName = `${discName}_${toSnakeCase(value)}.schema`;
+			lines.push(`export * from './${fileName}';`);
+		}
+		lines.push('');
+	}
+
+	// Generate the combined schema union
+	const combinedSchemaName = `${nodeName}${versionSuffix}ConfigSchema`;
+	if (schemaNames.length === 1) {
+		lines.push(`export const ${combinedSchemaName} = ${schemaNames[0]};`);
+	} else if (schemaNames.length > 1) {
+		lines.push(`export const ${combinedSchemaName} = z.union([`);
+		for (const name of schemaNames) {
+			lines.push(`\t${name},`);
+		}
+		lines.push(']);');
+	}
+	lines.push('');
+	lines.push(
+		`export type ${nodeName}${versionSuffix}ConfigValidated = z.infer<typeof ${combinedSchemaName}>;`,
+	);
+
+	// Need z import for union
+	if (schemaNames.length > 1) {
+		// Prepend z import at line 6 (after header comments)
+		const zImport = "import { z } from 'zod';";
+		const insertIndex = lines.findIndex((line) => line.startsWith('import {'));
+		if (insertIndex !== -1) {
+			lines.splice(insertIndex, 0, zImport);
+		}
+	}
+
+	return lines.join('\n');
+}
+
+/**
+ * Plan schema files for a split version directory.
+ * Returns a Map of relative file paths to their content, to be merged with type files.
+ *
+ * @param node The node type description
+ * @param version The specific version number
+ * @returns Map of relative path -> file content (schema files only)
+ */
+export function planSplitVersionSchemaFiles(
+	node: NodeTypeDescription,
+	version: number,
+): Map<string, string> {
+	const files = new Map<string, string>();
+
+	// Get discriminator combinations
+	const combinations = extractDiscriminatorCombinations(node);
+	const tree = buildDiscriminatorTree(combinations);
+
+	if (tree.type === 'resource_operation' && tree.resources) {
+		// Resource/operation pattern: nested directories
+		for (const [resource, operations] of tree.resources) {
+			const resourceDir = `resource_${toSnakeCase(resource)}`;
+
+			// Generate operation schema files within resource directory
+			for (const operation of operations) {
+				const combo = { resource, operation };
+				// Filter properties by version before getting combination-specific props
+				const versionFilteredProps = filterPropertiesForVersion(node.properties, version);
+				const nodeForCombination = { ...node, properties: versionFilteredProps };
+				const props = getPropertiesForCombination(nodeForCombination, combo);
+				const fileName = `operation_${toSnakeCase(operation)}.schema.ts`;
+				const filePath = `${resourceDir}/${fileName}`;
+
+				// Import depth: 6 levels deep (node/version/resource_x/operation.schema.ts -> base.schema)
+				const content = generateDiscriminatorSchemaFile(node, version, combo, props, 6);
+				files.set(filePath, content);
+			}
+
+			// Generate resource schema index file
+			const resourceIndexContent = generateResourceIndexSchemaFile(
+				node,
+				version,
+				resource,
+				operations,
+			);
+			files.set(`${resourceDir}/index.schema.ts`, resourceIndexContent);
+		}
+	} else if (tree.type === 'single' && tree.discriminatorName && tree.discriminatorValues) {
+		// Single discriminator pattern (mode, etc.): flat files
+		const discName = tree.discriminatorName;
+
+		for (const value of tree.discriminatorValues) {
+			const combo: DiscriminatorCombination = { [discName]: value };
+			// Filter properties by version before getting combination-specific props
+			const versionFilteredProps = filterPropertiesForVersion(node.properties, version);
+			const nodeForCombination = { ...node, properties: versionFilteredProps };
+			const props = getPropertiesForCombination(nodeForCombination, combo);
+			const fileName = `${discName}_${toSnakeCase(value)}.schema.ts`;
+
+			// Import depth: 5 levels deep (node/version/mode.schema.ts -> base.schema)
+			const content = generateDiscriminatorSchemaFile(node, version, combo, props, 5);
+			files.set(fileName, content);
+		}
+	}
+
+	// Generate version schema index file
+	files.set('index.schema.ts', generateSplitVersionIndexSchemaFile(node, version, tree));
+
+	return files;
 }
