@@ -1130,6 +1130,77 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('unpinAllData', () => {
+		beforeEach(() => {
+			workflowsStore.workflow.pinData = {
+				Node1: [{ json: { key: 'value1' } }],
+				Node2: [{ json: { key: 'value2' } }],
+			};
+			workflowsStore.nodeMetadata = {
+				Node1: {
+					pinnedDataLastUpdatedAt: 1000,
+					pinnedDataLastRemovedAt: undefined,
+					pristine: false,
+				},
+				Node2: {
+					pinnedDataLastUpdatedAt: 2000,
+					pinnedDataLastRemovedAt: undefined,
+					pristine: true,
+				},
+			};
+		});
+
+		it('should clear all pinned data', () => {
+			workflowsStore.unpinAllData();
+
+			expect(workflowsStore.workflow.pinData).toBeUndefined();
+		});
+
+		it('should emit unpin-data event with all node names', () => {
+			const emitSpy = vi.spyOn(dataPinningEventBus, 'emit');
+
+			workflowsStore.unpinAllData();
+
+			expect(emitSpy).toHaveBeenCalledWith('unpin-data', {
+				nodeNames: ['Node1', 'Node2'],
+			});
+		});
+
+		it('should update node metadata to set pinnedDataLastRemovedAt', async () => {
+			const now = Date.now();
+			vi.setSystemTime(now);
+			workflowsStore.unpinAllData();
+
+			expect(workflowsStore.nodeMetadata.Node1.pinnedDataLastRemovedAt).toBe(now);
+			expect(workflowsStore.nodeMetadata.Node2.pinnedDataLastRemovedAt).toBe(now);
+		});
+
+		it('should not modify other metadata fields', () => {
+			workflowsStore.unpinAllData();
+
+			expect(workflowsStore.nodeMetadata.Node1.pinnedDataLastUpdatedAt).toBe(1000);
+			expect(workflowsStore.nodeMetadata.Node2.pinnedDataLastUpdatedAt).toBe(2000);
+		});
+
+		it('should set stateIsDirty to true', () => {
+			uiStore.markStateClean();
+
+			workflowsStore.unpinAllData();
+
+			expect(uiStore.stateIsDirty).toBe(true);
+		});
+
+		it('should handle case when no pinData exists', () => {
+			workflowsStore.workflow.pinData = undefined;
+
+			workflowsStore.unpinAllData();
+
+			expect(workflowsStore.workflow.pinData).toBeUndefined();
+			expect(workflowsStore.nodeMetadata.Node1.pinnedDataLastRemovedAt).toBeUndefined();
+			expect(workflowsStore.nodeMetadata.Node2.pinnedDataLastRemovedAt).toBeUndefined();
+		});
+	});
+
 	describe('updateNodeExecutionRunData', () => {
 		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
