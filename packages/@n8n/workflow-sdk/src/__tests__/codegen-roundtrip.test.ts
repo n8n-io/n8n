@@ -1912,6 +1912,34 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 		});
 	} else {
 		describe('generateWorkflowCode -> parseWorkflowCode roundtrip', () => {
+			// Helper to check if an object looks like a resource locator
+			const isResourceLocatorLike = (obj: unknown): obj is Record<string, unknown> => {
+				if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return false;
+				const record = obj as Record<string, unknown>;
+				return 'mode' in record && 'value' in record;
+			};
+
+			// Helper to recursively add __rl: true to resource locator values
+			const normalizeResourceLocators = (params: unknown): unknown => {
+				if (typeof params !== 'object' || params === null) return params;
+				if (Array.isArray(params)) return params.map(normalizeResourceLocators);
+
+				const result: Record<string, unknown> = {};
+				for (const [key, value] of Object.entries(params as Record<string, unknown>)) {
+					if (isResourceLocatorLike(value)) {
+						result[key] = {
+							__rl: true,
+							...(normalizeResourceLocators(value) as Record<string, unknown>),
+						};
+					} else if (typeof value === 'object' && value !== null) {
+						result[key] = normalizeResourceLocators(value);
+					} else {
+						result[key] = value;
+					}
+				}
+				return result;
+			};
+
 			// Helper function for normalizing parameters
 			const normalizeParams = (p: unknown, nodeType: string) => {
 				if (!p || typeof p !== 'object') return p;
@@ -1921,7 +1949,9 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 					const { content, ...rest } = obj;
 					return Object.keys(rest).length === 0 ? undefined : rest;
 				}
-				return p;
+				// Normalize resource locators (add __rl: true) for fair comparison
+				// since SDK-generated code adds __rl: true to all resource locators
+				return normalizeResourceLocators(p);
 			};
 
 			// Helper function for filtering empty connections, orphaned connections (from non-existent nodes),
