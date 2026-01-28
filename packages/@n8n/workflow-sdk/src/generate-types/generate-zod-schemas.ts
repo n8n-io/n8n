@@ -166,6 +166,14 @@ const AI_TYPE_TO_SCHEMA_FIELD: Record<
 // =============================================================================
 
 /**
+ * Check if any AI input types have required fields.
+ * Used to determine if the `subnodes` field itself should be optional or required.
+ */
+function hasRequiredSubnodeFields(aiInputTypes: AIInputTypeInfo[]): boolean {
+	return aiInputTypes.some((input) => input.required);
+}
+
+/**
  * Get base node name without package prefix
  */
 function getNodeBaseName(nodeName: string): string {
@@ -749,7 +757,10 @@ function generateSchemasForNode(
 		lines.push(`export const ${configSchemaName} = z.object({`);
 		lines.push(`\tparameters: ${parametersSchemaName}.optional(),`);
 		if (hasAiInputs) {
-			lines.push(`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema.optional(),`);
+			const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+			lines.push(
+				`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+			);
 		}
 		lines.push(`\t// TODO: Add other NodeConfig fields (disabled, retryOnFail, etc.)`);
 		lines.push('});');
@@ -831,7 +842,10 @@ function generateSchemasForNode(
 		lines.push(`export const ${configSchemaName} = z.object({`);
 		lines.push(`\tparameters: ${parametersSchemaName}.optional(),`);
 		if (hasAiInputs) {
-			lines.push(`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema.optional(),`);
+			const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+			lines.push(
+				`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+			);
 		}
 		lines.push(`\t// TODO: Add other NodeConfig fields`);
 		lines.push('});');
@@ -1110,7 +1124,7 @@ export function generateSchemaIndexFile(node: NodeTypeDescription, versions: num
  * @param combo The discriminator combination (e.g., { resource: 'ticket', operation: 'get' })
  * @param props Properties applicable to this combination
  * @param importDepth How many levels deep (for import paths to base.schema.ts)
- * @param hasAiInputs Whether this node has AI inputs (for subnode schema reference)
+ * @param aiInputTypes AI input types for this node (for subnode schema reference)
  */
 export function generateDiscriminatorSchemaFile(
 	node: NodeTypeDescription,
@@ -1118,8 +1132,9 @@ export function generateDiscriminatorSchemaFile(
 	combo: DiscriminatorCombination,
 	props: NodeProperty[],
 	importDepth: number,
-	hasAiInputs: boolean = false,
+	aiInputTypes: AIInputTypeInfo[] = [],
 ): string {
+	const hasAiInputs = aiInputTypes.length > 0;
 	const prefix = getPackagePrefix(node.name);
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
 	const versionSuffix = versionToTypeName(version);
@@ -1211,7 +1226,10 @@ export function generateDiscriminatorSchemaFile(
 	lines.push(`export const ${configSchemaName} = z.object({`);
 	lines.push(`\tparameters: ${parametersSchemaName}.optional(),`);
 	if (hasAiInputs) {
-		lines.push(`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema.optional(),`);
+		const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
+		lines.push(
+			`\tsubnodes: ${baseSchemaName}SubnodeConfigSchema${subnodesOptional ? '.optional()' : ''},`,
+		);
 	}
 	lines.push(`\t// TODO: Add other NodeConfig fields`);
 	lines.push('});');
@@ -1455,7 +1473,6 @@ export function planSplitVersionSchemaFiles(
 		version,
 	};
 	const aiInputTypes = extractAIInputTypesFromBuilderHint(versionFilteredNode);
-	const hasAiInputs = aiInputTypes.length > 0;
 
 	if (tree.type === 'resource_operation' && tree.resources) {
 		// Resource/operation pattern: nested directories
@@ -1479,7 +1496,7 @@ export function planSplitVersionSchemaFiles(
 					combo,
 					props,
 					6,
-					hasAiInputs,
+					aiInputTypes,
 				);
 				files.set(filePath, content);
 			}
@@ -1506,7 +1523,7 @@ export function planSplitVersionSchemaFiles(
 			const fileName = `${discName}_${toSnakeCase(value)}.schema.ts`;
 
 			// Import depth: 5 levels deep (node/version/mode.schema.ts -> base.schema)
-			const content = generateDiscriminatorSchemaFile(node, version, combo, props, 5, hasAiInputs);
+			const content = generateDiscriminatorSchemaFile(node, version, combo, props, 5, aiInputTypes);
 			files.set(fileName, content);
 		}
 	}

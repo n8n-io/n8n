@@ -289,7 +289,7 @@ export function validateWorkflow(
 					warnings.push(
 						new ValidationWarning(
 							'INVALID_PARAMETER',
-							`Invalid parameter at ${error.path}: ${error.message}`,
+							`Node "${node.name}": ${error.message}`,
 							node.name,
 						),
 					);

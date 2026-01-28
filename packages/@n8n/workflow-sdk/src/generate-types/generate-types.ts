@@ -2016,8 +2016,11 @@ export function generateDiscriminatorFile(
 		lines.push('\tisTrigger: true;');
 	}
 	// Include subnodes in config if AI inputs exist
+	// subnodes field is required if any AI input type is required
+	const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
+	const subnodeOptionalMark = hasRequiredSubnodes ? '' : '?';
 	const configType = subnodeConfigTypeName
-		? `NodeConfig<${configName}> & { subnodes?: ${subnodeConfigTypeName} }`
+		? `NodeConfig<${configName}> & { subnodes${subnodeOptionalMark}: ${subnodeConfigTypeName} }`
 		: `NodeConfig<${configName}>`;
 	lines.push(`\tconfig: ${configType};`);
 	if (schema) {
@@ -2522,9 +2525,12 @@ export function generateSingleVersionTypeFile(
 
 		lines.push(`export type ${finalTypeName} = ${baseTypeName} & {`);
 		// Include narrowed subnode config in the NodeConfig if available
+		// subnodes field is required if any AI input type is required
 		if (subnodeConfigTypeName) {
+			const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
+			const subnodeOptionalMark = hasRequiredSubnodes ? '' : '?';
 			lines.push(
-				`\tconfig: NodeConfig<${configInfo.typeName}> & { subnodes?: ${subnodeConfigTypeName} };`,
+				`\tconfig: NodeConfig<${configInfo.typeName}> & { subnodes${subnodeOptionalMark}: ${subnodeConfigTypeName} };`,
 			);
 		} else {
 			lines.push(`\tconfig: NodeConfig<${configInfo.typeName}>;`);
