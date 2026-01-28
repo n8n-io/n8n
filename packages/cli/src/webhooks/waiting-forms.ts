@@ -88,7 +88,7 @@ export class WaitingForms extends WaitingWebhooks {
 
 		// Validate signature for forms if required (backwards compat: skip for old executions)
 		if (execution?.data.validateSignature) {
-			const { valid, webhookPath } = this.validateSignature(req);
+			const { valid, webhookPath } = this.validateSignature(req, suffix);
 			if (!valid) {
 				res.status(401).render('form-invalid-token');
 				return { noWebhookResponse: true };

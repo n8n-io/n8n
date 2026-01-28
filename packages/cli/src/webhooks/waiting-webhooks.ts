@@ -110,9 +110,17 @@ export class WaitingWebhooks implements IWebhookManager {
 	 * To maintain backwards compatibility, we detect when the signature contains a '/' and
 	 * extract the webhook path from it, allowing both URL formats to work.
 	 *
-	 * @returns Object with validation result and optionally the webhook path parsed from the signature
+	 * Additionally, when a suffix is provided in the URL path (e.g., /n8n-execution-status),
+	 * we strip it before validation since signatures are generated for the base URL only.
+	 *
+	 * @param req - The Express request object
+	 * @param suffix - Optional URL path suffix to strip before validation (e.g., 'n8n-execution-status')
+	 * @returns Object with validation result, optionally the webhook path, and the signature value
 	 */
-	protected validateSignature(req: express.Request): { valid: boolean; webhookPath?: string } {
+	protected validateSignature(
+		req: express.Request,
+		suffix?: string,
+	): { valid: boolean; webhookPath?: string } {
 		const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
 		let providedSignature = url.searchParams.get(WAITING_TOKEN_QUERY_PARAM);
 		let webhookPath: string | undefined;
@@ -129,6 +137,12 @@ export class WaitingWebhooks implements IWebhookManager {
 			providedSignature = providedSignature.slice(0, slashIndex);
 			// Update URL for validation (remove the path suffix from signature param)
 			url.searchParams.set(WAITING_TOKEN_QUERY_PARAM, providedSignature);
+		}
+
+		// Strip suffix from pathname if provided, since signatures are generated for the base URL only
+		// e.g., /form-waiting/123/n8n-execution-status -> /form-waiting/123
+		if (suffix && url.pathname.endsWith(`/${suffix}`)) {
+			url.pathname = url.pathname.slice(0, -(suffix.length + 1));
 		}
 
 		const valid = validateUrlSignature(
@@ -158,7 +172,7 @@ export class WaitingWebhooks implements IWebhookManager {
 		// Only validate signature for executions that have validateSignature flag set
 		// This provides backwards compatibility for old executions created before signature validation
 		if (execution?.data.validateSignature) {
-			const { valid, webhookPath } = this.validateSignature(req);
+			const { valid, webhookPath } = this.validateSignature(req, suffix);
 			if (!valid) {
 				const { workflowData } = execution;
 				const { nodes } = this.createWorkflow(workflowData);

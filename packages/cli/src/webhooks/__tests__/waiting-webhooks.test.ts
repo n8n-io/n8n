@@ -19,8 +19,11 @@ class TestWaitingWebhooks extends WaitingWebhooks {
 		return this.createWorkflow(workflowData);
 	}
 
-	exposeValidateSignature(req: express.Request): { valid: boolean; webhookPath?: string } {
-		return this.validateSignature(req);
+	exposeValidateSignature(
+		req: express.Request,
+		suffix?: string,
+	): { valid: boolean; webhookPath?: string } {
+		return this.validateSignature(req, suffix);
 	}
 }
 
@@ -178,7 +181,7 @@ describe('WaitingWebhooks', () => {
 			const result = waitingWebhooks.exposeValidateSignature(mockReq);
 
 			/* Assert */
-			expect(result).toEqual({ valid: false });
+			expect(result).toEqual({ valid: false, webhookPath: undefined });
 		});
 
 		it('should extract suffix from signature when appended (backwards compat)', () => {
@@ -207,6 +210,37 @@ describe('WaitingWebhooks', () => {
 
 			/* Assert */
 			expect(result).toEqual({ valid: true, webhookPath: 'path/to/suffix' });
+		});
+
+		it('should strip suffix from pathname when provided as second argument', () => {
+			/* Arrange - Signature was generated for base path, but request includes suffix in pathname */
+			const basePath = '/form-waiting/123';
+			const suffix = 'n8n-execution-status';
+			const pathWithSuffix = `${basePath}/${suffix}`;
+			const validSignature = generateTestSignature(basePath);
+			const mockReq = createMockRequest({ signature: validSignature, path: pathWithSuffix });
+
+			/* Act */
+			const result = waitingWebhooks.exposeValidateSignature(mockReq, suffix);
+
+			/* Assert */
+			expect(result).toEqual({ valid: true, webhookPath: undefined });
+		});
+
+		it('should fail validation when suffix is in pathname but not stripped', () => {
+			/* Arrange - Signature was generated for base path, but request includes suffix in pathname
+			 * Without passing suffix, validation should fail because paths don't match */
+			const basePath = '/form-waiting/123';
+			const suffix = 'n8n-execution-status';
+			const pathWithSuffix = `${basePath}/${suffix}`;
+			const validSignature = generateTestSignature(basePath);
+			const mockReq = createMockRequest({ signature: validSignature, path: pathWithSuffix });
+
+			/* Act - Note: not passing suffix parameter */
+			const result = waitingWebhooks.exposeValidateSignature(mockReq);
+
+			/* Assert - Should fail because signature was for /form-waiting/123 but URL is /form-waiting/123/n8n-execution-status */
+			expect(result).toEqual({ valid: false, webhookPath: undefined });
 		});
 	});
 

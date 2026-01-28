@@ -692,6 +692,16 @@
 			</section>
 		</div>
 		<script>
+			// Get signature from URL before cleaning (for direct access/refresh case)
+			const url = new URL(window.location.href);
+			let formSignature = url.searchParams.get('signature');
+
+			// Remove signature from URL if present (keeps URL clean in address bar)
+			if (formSignature) {
+				url.searchParams.delete('signature');
+				history.replaceState(null, '', url);
+			}
+
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {
 					errorElement.textContent = message;
@@ -901,11 +911,20 @@
 					const baseUrl = formWaitingUrl ?? window.location.href;
 					const url = new URL(baseUrl);
 					url.pathname = url.pathname + '/n8n-execution-status';
+					// Include signature in fetch request for validation
+					if (formSignature) {
+						url.searchParams.set('signature', formSignature);
+					}
 					const response = await fetch(url.toString());
 					const text = (await response.text()).trim();
 
 					if (text === "form-waiting") {
-						window.location.replace(formWaitingUrl ?? window.location.href);
+						// Redirect to form page with signature in URL (will be cleaned after load)
+						const redirectUrl = new URL(formWaitingUrl ?? window.location.href);
+						if (formSignature) {
+							redirectUrl.searchParams.set('signature', formSignature);
+						}
+						window.location.replace(redirectUrl.toString());
 						return;
 					}
 
@@ -994,6 +1013,9 @@
 					let postUrl = '';
 					if (!window.location.href.includes('form-waiting')) {
 						postUrl = window.location.search;
+					} else if (formSignature) {
+						// For waiting forms, include signature in POST URL since it was cleaned from address bar
+						postUrl = '?signature=' + encodeURIComponent(formSignature);
 					}
 
 					const authToken = '{{{ authToken }}}';
@@ -1020,6 +1042,9 @@
 
 								if(json?.formWaitingUrl) {
 									formWaitingUrl = json.formWaitingUrl;
+									// Extract signature from URL for subsequent requests
+									const waitingUrl = new URL(json.formWaitingUrl);
+									formSignature = waitingUrl.searchParams.get('signature');
 									clearTimeout(timeoutId);
 									timeoutId = setTimeout(checkExecutionStatus, interval);
 									return;
