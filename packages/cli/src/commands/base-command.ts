@@ -15,11 +15,11 @@ import {
 	BinaryDataConfig,
 	BinaryDataService,
 	InstanceSettings,
-	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
 	ExecutionContextHookRegistry,
 } from 'n8n-core';
+import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
 import { ensureError, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
@@ -216,20 +216,27 @@ export abstract class BaseCommand<F = never> {
 			}
 		}
 
-		// we always try to init S3 for reading - silently fail if not configured
-		try {
-			const objectStoreService = Container.get(ObjectStoreService);
-			await objectStoreService.init();
-			const { ObjectStoreManager } = await import('n8n-core/dist/binary-data/object-store.manager');
-			binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
-		} catch {
-			if (isS3WriteMode) {
-				this.logger.error(
-					'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
+		const isS3Configured = Container.get(ObjectStoreConfig).bucket.name !== '';
+
+		if (isS3Configured) {
+			try {
+				const { ObjectStoreService } = await import(
+					'n8n-core/dist/binary-data/object-store/object-store.service.ee'
 				);
-				process.exit(1);
+				const objectStoreService = Container.get(ObjectStoreService);
+				await objectStoreService.init();
+				const { ObjectStoreManager } = await import(
+					'n8n-core/dist/binary-data/object-store.manager'
+				);
+				binaryDataService.setManager('s3', new ObjectStoreManager(objectStoreService));
+			} catch {
+				if (isS3WriteMode) {
+					this.logger.error(
+						'Failed to connect to S3 for binary data storage. Please check your S3 configuration.',
+					);
+					process.exit(1);
+				}
 			}
-			// S3 not configured - users without S3 data are unaffected; users with S3 data will fail at runtime when reading
 		}
 
 		await binaryDataService.init();

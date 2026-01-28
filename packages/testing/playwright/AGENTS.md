@@ -81,7 +81,8 @@ await member2Page.navigate.toCredentials();
 | Pattern | Why | Use Instead |
 |---------|-----|-------------|
 | `test.describe.serial` | Creates test dependencies | Parallel tests with isolated setup |
-| `@db:reset` tag | Deprecated - CI issues | `test.use()` with unique capability |
+| Fresh DB per file | Tests need isolated container | `test.use({ capability: { env: { TEST_ISOLATION: 'name' } } })` |
+| Fresh DB per test | Tests modify shared state | `@db:reset` tag on describe (container-only, combined with `test.use()`) |
 | `n8n.api.signin()` | Session bleeding | `n8n.start.withUser()` |
 | `Date.now()` for IDs | Race conditions | `nanoid()` |
 | `waitForTimeout()` | Flaky | `waitForResponse()`, `toBeVisible()` |
@@ -182,10 +183,20 @@ Use `test.use()` at file top-level with unique capability config:
 import { test, expect } from '../fixtures/base';
 
 // Must be top-level, not inside describe block
-test.use({ capability: { env: { _ISOLATION: 'my-isolated-tests' } } });
+test.use({ capability: { env: { TEST_ISOLATION: 'my-isolated-tests' } } });
 
 test('test with clean state', async ({ n8n }) => {
   // Fresh container with reset database
+});
+```
+
+For per-test database reset (when tests modify shared state like MFA), add `@db:reset` to the describe. **Note:** `@db:reset` is container-only - these tests won't run locally.
+
+```typescript
+test.use({ capability: { env: { TEST_ISOLATION: 'my-stateful-tests' } } });
+
+test.describe('My stateful tests @db:reset', () => {
+  // Each test gets a fresh database reset (container-only)
 });
 ```
 

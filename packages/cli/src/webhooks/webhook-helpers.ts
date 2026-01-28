@@ -250,7 +250,7 @@ export const handleFormRedirectionCase = (
 				redirectURL: validatedUrl,
 			};
 		}
-		(data.headers as IDataObject).location = undefined;
+		delete (data.headers as IDataObject).location;
 	}
 
 	return data;
