@@ -383,7 +383,7 @@ describe('ActiveExecutions', () => {
 			activeExecutions.setStatus(waitingExecutionId2, 'waiting');
 		});
 
-		test('Should cancel only executions with response-promises by default', async () => {
+		test('Should wait for all running executions including those with response promises', async () => {
 			const stopExecutionSpy = jest.spyOn(activeExecutions, 'stopExecution');
 
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(4);
@@ -392,24 +392,11 @@ describe('ActiveExecutions', () => {
 
 			expect(concurrencyControl.disable).toHaveBeenCalled();
 
-			const removeAllCaptor = captor<string[]>();
-			expect(concurrencyControl.removeAll).toHaveBeenCalledWith(removeAllCaptor);
-			expect(removeAllCaptor.value.sort()).toEqual([newExecutionId1, waitingExecutionId1].sort());
+			expect(stopExecutionSpy).not.toHaveBeenCalled();
 
-			expect(stopExecutionSpy).toHaveBeenCalledTimes(2);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(
-				newExecutionId1,
-				expect.any(SystemShutdownExecutionCancelledError),
-			);
-			expect(stopExecutionSpy).toHaveBeenCalledWith(
-				waitingExecutionId1,
-				expect.any(SystemShutdownExecutionCancelledError),
-			);
-			expect(stopExecutionSpy).not.toHaveBeenCalledWith(newExecutionId2);
-			expect(stopExecutionSpy).not.toHaveBeenCalledWith(waitingExecutionId2);
+			expect(concurrencyControl.removeAll).toHaveBeenCalledWith([]);
 
 			await new Promise(setImmediate);
-			// the other two executions aren't cancelled, but still removed from memory
 			expect(activeExecutions.getActiveExecutions()).toHaveLength(0);
 		});
 
