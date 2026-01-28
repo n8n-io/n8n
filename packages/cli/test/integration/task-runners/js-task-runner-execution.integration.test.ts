@@ -137,10 +137,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 		});
 
 		return {
-			additionalData: mock<IWorkflowExecuteAdditionalData>({
-				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
-				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
-			}),
+			additionalData: mock<IWorkflowExecuteAdditionalData>(),
 			executeFunctions: mock<IExecuteFunctions>(),
 			taskSettings,
 			codeNode,
