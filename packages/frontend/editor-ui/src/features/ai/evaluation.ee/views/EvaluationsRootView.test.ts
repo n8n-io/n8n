@@ -5,6 +5,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationRootView from './EvaluationsRootView.vue';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useEvaluationStore } from '../evaluation.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -110,6 +111,7 @@ describe('EvaluationsRootView', () => {
 
 	it('should initialize workflow on mount if not already initialized', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		const usageStore = mockedStore(useUsageStore);
 		const evaluationStore = mockedStore(useEvaluationStore);
 
@@ -120,23 +122,26 @@ describe('EvaluationsRootView', () => {
 		// Mock the async operations that run before fetchWorkflow
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		workflowsStore.isWorkflowSaved = { workflow123: true };
 
 		renderComponent({ props: { name: newWorkflowId } });
 
 		// Wait for async operation to complete
 		await flushPromises();
-		await waitFor(() => expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId));
+		await waitFor(() =>
+			expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(newWorkflowId),
+		);
 	});
 
 	it('should not initialize workflow if already loaded', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		workflowsStore.workflow = mockWorkflow;
 
 		renderComponent({ props: { name: mockWorkflow.id } });
 
-		expect(workflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+		expect(workflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
 	});
 
 	it('should load test data', async () => {
@@ -151,8 +156,8 @@ describe('EvaluationsRootView', () => {
 	});
 
 	it('should not render setup wizard when there are test runs', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		const evaluationStore = mockedStore(useEvaluationStore);
 		evaluationStore.testRunsById = { foo: mock<TestRunRecord>({ workflowId: mockWorkflow.id }) };
 
@@ -164,11 +169,12 @@ describe('EvaluationsRootView', () => {
 
 	it('should render the setup wizard when there there are no test runs', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		const usageStore = mockedStore(useUsageStore);
 		const evaluationStore = mockedStore(useEvaluationStore);
 
 		workflowsStore.workflow = mockWorkflow;
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 		evaluationStore.testRunsById = {};
@@ -181,12 +187,13 @@ describe('EvaluationsRootView', () => {
 
 	it('should render read-only callout when in protected environment', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
 		const usageStore = mockedStore(useUsageStore);
 		const evaluationStore = mockedStore(useEvaluationStore);
 		const sourceControlStore = mockedStore(useSourceControlStore);
 
 		workflowsStore.workflow = mockWorkflow;
-		workflowsStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
+		workflowsListStore.fetchWorkflow.mockResolvedValue(mockWorkflow);
 		usageStore.getLicenseInfo.mockResolvedValue(undefined);
 		evaluationStore.fetchTestRuns.mockResolvedValue([]);
 		evaluationStore.testRunsById = {};
