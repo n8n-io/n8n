@@ -146,15 +146,24 @@ export async function componentsRequest(
 			comp.parameters = (
 				(component.headerParameters as IDataObject).parameter as IDataObject[]
 			).map((i: IDataObject) => {
-				if (i.type === 'image') {
-					return {
-						type: 'image',
-						image: {
-							link: i.imageLink,
-						},
-					};
+				switch (i.type) {
+					case 'image':
+						return {
+							type: 'image',
+							image: {
+								link: i.imageLink,
+							},
+						};
+					case 'document':
+						return {
+							type: 'document',
+							document: {
+								link: i.documentLink,
+							},
+						};
+					default:
+						return i;
 				}
-				return i;
 			});
 		}
 		componentsRet.push(comp);
