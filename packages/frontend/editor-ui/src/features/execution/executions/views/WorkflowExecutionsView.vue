@@ -5,7 +5,6 @@ import { useExecutionsStore } from '../executions.store';
 import { useI18n } from '@n8n/i18n';
 import type { ExecutionFilterType } from '../executions.types';
 import type { IWorkflowDb } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -21,7 +20,6 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { executionRetryMessage } from '../executions.utils';
 
 const executionsStore = useExecutionsStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentsStore = useWorkflowDocumentsStore();
 const workflowsListStore = useWorkflowsListStore();
 const nodeTypesStore = useNodeTypesStore();

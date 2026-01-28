@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
@@ -23,7 +22,6 @@ const props = defineProps<{
 	name: string;
 }>();
 
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentsStore = useWorkflowDocumentsStore();
 const workflowsListStore = useWorkflowsListStore();
 const usageStore = useUsageStore();

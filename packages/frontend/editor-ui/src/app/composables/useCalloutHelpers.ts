@@ -3,7 +3,6 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -25,7 +24,6 @@ export function useCalloutHelpers() {
 	const telemetry = useTelemetry();
 
 	const rootStore = useRootStore();
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentsStore = useWorkflowDocumentsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const usersStore = useUsersStore();
