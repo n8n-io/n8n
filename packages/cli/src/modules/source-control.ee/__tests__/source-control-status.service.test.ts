@@ -1436,20 +1436,6 @@ describe('getStatus', () => {
 		});
 	});
 
-	describe('data tables', () => {
-		it('should handle undefined data tables from remote (null safety)', async () => {
-			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
-
-			// Mock undefined data tables from remote
-			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
-			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
-
-			// ACT
-
 	describe('tag mappings', () => {
 		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
 
@@ -1467,6 +1453,38 @@ describe('getStatus', () => {
 				mappings: [],
 			});
 
+			const result = await sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: true,
+				preferLocalVersion: false,
+			});
+
+			if (Array.isArray(result)) {
+				fail('Expected result to be an object in verbose mode.');
+			}
+
+			expect(result.mappingsMissingInLocal).toHaveLength(1);
+			expect(result.mappingsMissingInLocal[0]).toMatchObject({
+				tagId: 'tag1',
+				workflowId: 'wf1',
+			});
+			expect(result.mappingsMissingInRemote).toHaveLength(0);
+		});
+	});
+
+	describe('data tables', () => {
+		it('should handle undefined data tables from remote (null safety)', async () => {
+			// ARRANGE
+			const user = mock<User>({
+				id: '1',
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			// Mock undefined data tables from remote
+			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
+			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+
+			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
 				direction: 'push',
 				verbose: true,
