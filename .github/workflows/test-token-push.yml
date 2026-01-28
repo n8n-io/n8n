@@ -14,6 +14,9 @@ on:
         description: 'Branch with outdated workflows to push from'
         required: true
         default: 'test/outdated-workflows'
+  pull_request:
+    branches:
+      - master
 
 jobs:
   test-push:
@@ -38,7 +41,7 @@ jobs:
       - name: Test push (mimics release branch push)
         env:
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
-          SOURCE_BRANCH: ${{ github.event.inputs.source-branch }}
+          SOURCE_BRANCH: ${{ github.event.inputs.source-branch || github.head_ref }}
         run: |
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
           git fetch origin "${SOURCE_BRANCH}"
