@@ -18,8 +18,6 @@ export const { type: dbType } = Container.get(GlobalConfig).database;
 const timestampSyntax = {
 	sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
 	postgresdb: 'CURRENT_TIMESTAMP(3)',
-	mysqldb: 'CURRENT_TIMESTAMP(3)',
-	mariadb: 'CURRENT_TIMESTAMP(3)',
 }[dbType];
 
 export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
@@ -27,8 +25,6 @@ export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'dat
 const binaryColumnTypeMap = {
 	sqlite: 'blob',
 	postgresdb: 'bytea',
-	mysqldb: 'longblob',
-	mariadb: 'longblob',
 } as const;
 const binaryColumnType = binaryColumnTypeMap[dbType];
 

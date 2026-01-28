@@ -414,34 +414,6 @@ describe('WorkflowRepository', () => {
 			);
 		});
 
-		it('should left join activeVersion with addSelect and use COALESCE for MySQL', async () => {
-			const mysqlConfig = mockInstance(GlobalConfig, {
-				database: { type: 'mysqldb' },
-			});
-			const mysqlWorkflowRepository = new WorkflowRepository(
-				entityManager.connection,
-				mysqlConfig,
-				folderRepository,
-				workflowHistoryRepository,
-			);
-			jest.spyOn(mysqlWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
-
-			const workflowIds = ['workflow1'];
-			const options = {
-				filter: { triggerNodeTypes: ['n8n-nodes-base.executeWorkflowTrigger'] },
-			};
-
-			await mysqlWorkflowRepository.getMany(workflowIds, options);
-
-			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
-			expect(queryBuilder.addSelect).toHaveBeenCalledWith('activeVersion.versionId');
-			// Should use COALESCE to check activeVersion.nodes first, falling back to workflow.nodes
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith(
-				'(COALESCE(activeVersion.nodes, workflow.nodes) LIKE :triggerNodeType0)',
-				{ triggerNodeType0: '%n8n-nodes-base.executeWorkflowTrigger%' },
-			);
-		});
-
 		it('should not join activeVersion again if already joined', async () => {
 			// Simulate activeVersion already being joined
 			Object.defineProperty(queryBuilder, 'expressionMap', {

@@ -7,7 +7,6 @@ import { OAuthCallbackAuthRule } from './oauth-callback-auth.rule';
 import { ProcessEnvAccessRule } from './process-env-access.rule';
 import { PyodideRemovedRule } from './pyodide-removed.rule';
 import { QueueWorkerMaxStalledCountRule } from './queue-worker-max-stalled-count.rule';
-import { RemovedDatabaseTypesRule } from './removed-database-types.rule';
 import { RemovedNodesRule } from './removed-nodes.rule';
 import { SettingsFilePermissionsRule } from './settings-file-permissions.rule';
 import { TaskRunnerDockerImageRule } from './task-runner-docker-image.rule';
@@ -33,7 +32,6 @@ const v2Rules = [
 	WorkflowHooksDeprecatedRule,
 	QueueWorkerMaxStalledCountRule,
 	TunnelOptionRule,
-	RemovedDatabaseTypesRule,
 	SettingsFilePermissionsRule,
 	TaskRunnersRule,
 	TaskRunnerDockerImageRule,

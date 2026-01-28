@@ -569,17 +569,9 @@ describe('POST /projects/', () => {
 			ownerAgent.post('/projects/').send({ name: 'Test Team Project 6' }),
 		]);
 
-		// Some of the calls above will interleave and may fail with a deadlock
-		// error on MySQL (this is not an issue on PG or MariaDB).
-		// That can lead to less projects being created than the quota allows.
-		// So we're only checking here that we didn't create more projects than
-		// are allowed instead of checking for a specific number.
-		// We only want to prevent that this endpoint is exploited. A normal user
-		// using the FE would almost never hit this and if they do they can retry
-		// the action. No need to implement rety logic in the controller.
-		await expect(
-			Container.get(ProjectRepository).count({ where: { type: 'team' } }),
-		).resolves.toBeLessThanOrEqual(maxTeamProjects);
+		await expect(Container.get(ProjectRepository).count({ where: { type: 'team' } })).resolves.toBe(
+			maxTeamProjects,
+		);
 	});
 });
 

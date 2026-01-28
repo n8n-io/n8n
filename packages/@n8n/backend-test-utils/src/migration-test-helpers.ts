@@ -17,7 +17,6 @@ export interface TestMigrationContext {
 	queryRunner: QueryRunner;
 	tablePrefix: string;
 	dbType: DatabaseType;
-	isMysql: boolean;
 	isSqlite: boolean;
 	isPostgres: boolean;
 	escape: {
@@ -41,7 +40,6 @@ export function createTestMigrationContext(dataSource: DataSource): TestMigratio
 		queryRunner,
 		tablePrefix,
 		dbType,
-		isMysql: ['mariadb', 'mysqldb'].includes(dbType),
 		isSqlite: dbType === 'sqlite',
 		isPostgres: dbType === 'postgresdb',
 		escape: {

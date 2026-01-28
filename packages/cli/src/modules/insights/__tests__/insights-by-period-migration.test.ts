@@ -102,11 +102,6 @@ describe('ChangeValueTypesForInsights - insights_by_period table', () => {
 					WHERE table_name = ${insightsByPeriodTableName} AND column_name = 'value'`,
 				);
 				expect(result[0].data_type).toBe('bigint');
-			} else if (postMigrationContext.isMysql) {
-				const result = await postMigrationContext.queryRunner.query(
-					`SHOW COLUMNS FROM ${insightsByPeriodTableName} LIKE 'value'`,
-				);
-				expect(result[0].Type.toLowerCase()).toContain('bigint');
 			}
 
 			// Verify data integrity after migration using SQL

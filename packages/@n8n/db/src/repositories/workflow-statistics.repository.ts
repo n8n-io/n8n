@@ -119,7 +119,6 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
 				)) as { affectedRows: number };
 
-				// MySQL returns 2 affected rows on update
 				return queryResult.affectedRows === 1 ? 'insert' : 'update';
 			}
 		} catch (error) {

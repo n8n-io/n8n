@@ -14,7 +14,7 @@ const MIGRATION_NAME = 'ChangeWorkflowStatisticsFKToNoAction1767018516000';
 
 /**
  * Generate parameter placeholders for a given context and count.
- * PostgreSQL uses $1, $2, ... while MySQL/SQLite use ?
+ * PostgreSQL uses $1, $2, ... while SQLite use ?
  */
 function getParamPlaceholders(context: TestMigrationContext, count: number): string {
 	if (context.isPostgres) {
