@@ -533,114 +533,120 @@ export interface WorkflowSnapshot {
 
 /**
  * Tools available in script execution context
+ *
+ * Most tools are synchronous and don't require await.
+ * Only updateNodeParameters() and updateAll() are async (they use the LLM).
  */
 export interface ScriptTools {
 	/**
-	 * Add a node to the workflow
+	 * Add a node to the workflow (synchronous - no await needed)
 	 * @param input Node creation parameters (full or short form)
 	 * @returns Result with nodeId on success
 	 */
-	addNode(input: AddNodeInput): Promise<AddNodeResult>;
+	addNode(input: AddNodeInput): AddNodeResult;
 
 	/**
-	 * Add multiple nodes to the workflow in a single operation.
+	 * Add multiple nodes to the workflow in a single operation (synchronous - no await needed)
 	 * More efficient than calling addNode multiple times.
 	 * @param input Array of node creation parameters
 	 * @returns Results for each node in order
 	 */
-	addNodes(input: AddNodesInput): Promise<AddNodesResult>;
+	addNodes(input: AddNodesInput): AddNodesResult;
 
-	/** Alias for addNodes - shorter name for reduced token usage */
-	add(input: AddNodesInput): Promise<AddNodesResult>;
+	/** Alias for addNodes - shorter name for reduced token usage (synchronous - no await needed) */
+	add(input: AddNodesInput): AddNodesResult;
 
 	/**
-	 * Connect two nodes in the workflow
+	 * Connect two nodes in the workflow (synchronous - no await needed)
 	 * @param input Connection parameters (full or short form)
 	 * @returns Result with connection info on success
 	 */
-	connectNodes(input: ConnectNodesInput): Promise<ConnectNodesResult>;
+	connectNodes(input: ConnectNodesInput): ConnectNodesResult;
 
 	/**
-	 * Connect multiple node pairs in a single operation.
+	 * Connect multiple node pairs in a single operation (synchronous - no await needed)
 	 * More efficient than calling connectNodes multiple times.
 	 * @param input Array of connection parameters
 	 * @returns Results for each connection in order
 	 */
-	connectMultiple(input: ConnectMultipleInput): Promise<ConnectMultipleResult>;
+	connectMultiple(input: ConnectMultipleInput): ConnectMultipleResult;
 
-	/** Alias for connectMultiple - shorter name for reduced token usage */
-	conn(input: ConnectMultipleInput): Promise<ConnectMultipleResult>;
+	/** Alias for connectMultiple - shorter name for reduced token usage (synchronous - no await needed) */
+	conn(input: ConnectMultipleInput): ConnectMultipleResult;
 
 	/**
-	 * Remove a node from the workflow
+	 * Remove a node from the workflow (synchronous - no await needed)
 	 * @param input Node removal parameters
 	 * @returns Result with removal info on success
 	 */
-	removeNode(input: RemoveNodeInput): Promise<RemoveNodeResult>;
+	removeNode(input: RemoveNodeInput): RemoveNodeResult;
 
 	/**
-	 * Remove a connection between nodes
+	 * Remove a connection between nodes (synchronous - no await needed)
 	 * @param input Connection removal parameters
 	 * @returns Result indicating success/failure
 	 */
-	removeConnection(input: RemoveConnectionInput): Promise<RemoveConnectionResult>;
+	removeConnection(input: RemoveConnectionInput): RemoveConnectionResult;
 
 	/**
-	 * Rename a node in the workflow
+	 * Rename a node in the workflow (synchronous - no await needed)
 	 * @param input Rename parameters
 	 * @returns Result with old/new names on success
 	 */
-	renameNode(input: RenameNodeInput): Promise<RenameNodeResult>;
+	renameNode(input: RenameNodeInput): RenameNodeResult;
 
 	/**
-	 * Validate the workflow structure
+	 * Validate the workflow structure (synchronous - no await needed)
 	 * @returns Result with validation status and any issues
 	 */
-	validateStructure(): Promise<ValidateStructureResult>;
+	validateStructure(): ValidateStructureResult;
 
 	/**
-	 * Update node parameters using natural language instructions (uses LLM)
+	 * Update node parameters using natural language instructions (ASYNC - requires await)
 	 * @param input Node ID and natural language changes
 	 * @returns Result with updated parameters on success
 	 */
 	updateNodeParameters(input: UpdateNodeParametersInput): Promise<UpdateNodeParametersResult>;
 
 	/**
-	 * Batch update multiple nodes' parameters with LLM (fewer LLM calls)
+	 * Batch update multiple nodes' parameters with LLM (ASYNC - requires await)
 	 * @param input Array of node updates with natural language changes
 	 * @returns Results for each update in order
 	 */
 	updateAll(input: BatchUpdateParametersInput): Promise<BatchUpdateParametersResult>;
 
 	/**
-	 * Directly set node parameters (use when you know the exact parameter structure)
+	 * Directly set node parameters (synchronous - no await needed)
+	 * Use when you know the exact parameter structure.
 	 * @param input Node ID and parameters object to set
 	 * @returns Result with final parameters on success
 	 */
-	setParameters(input: SetParametersInput): Promise<SetParametersResult>;
+	setParameters(input: SetParametersInput): SetParametersResult;
 
-	/** Alias for setParameters - shorter name for reduced token usage */
-	set(input: SetParametersInput): Promise<SetParametersResult>;
+	/** Alias for setParameters - shorter name for reduced token usage (synchronous - no await needed) */
+	set(input: SetParametersInput): SetParametersResult;
 
 	/**
-	 * Batch set parameters on multiple nodes (use when you know the parameter structures)
+	 * Batch set parameters on multiple nodes (synchronous - no await needed)
+	 * Use when you know the parameter structures.
 	 * @param input Array of parameter updates
 	 * @returns Results for each update in order
 	 */
-	setAll(input: BatchSetParametersInput): Promise<BatchSetParametersResult>;
+	setAll(input: BatchSetParametersInput): BatchSetParametersResult;
 
 	/**
-	 * Get a specific parameter value from a node
+	 * Get a specific parameter value from a node (synchronous - no await needed)
 	 * @param input Node ID and parameter path
 	 * @returns Result with parameter value on success
 	 */
-	getNodeParameter(input: GetNodeParameterInput): Promise<GetNodeParameterResult>;
+	getNodeParameter(input: GetNodeParameterInput): GetNodeParameterResult;
 
 	/**
-	 * Validate node configurations (agent prompts, tools, $fromAI usage)
+	 * Validate node configurations (synchronous - no await needed)
+	 * Checks agent prompts, tools, $fromAI usage.
 	 * @returns Result with validation status and any issues
 	 */
-	validateConfiguration(): Promise<ValidateConfigurationResult>;
+	validateConfiguration(): ValidateConfigurationResult;
 }
 
 /**
@@ -665,7 +671,8 @@ export interface ScriptExecutionContext {
  * NOTE: Curly braces are doubled ({{ }}) to escape them for LangChain template parsing.
  */
 export const TOOL_INTERFACE_DEFINITIONS = `
-// Short-form interfaces
+// IMPORTANT: Most tools are SYNCHRONOUS - no await needed!
+// Only updateNodeParameters() and updateAll() require await (they use the LLM).
 
 // Short form for adding nodes: t=type, v=version, n=name, p=params
 interface AddNodeInputShort {{
@@ -692,22 +699,22 @@ interface AddNodeResult {{
   error?: string;
 }}
 
-// Batch operations
+// Batch operations (SYNCHRONOUS - no await needed)
 interface AddNodesInput {{ nodes: AddNodeInputShort[]; }}
 interface ConnectMultipleInput {{ connections: ConnectNodesInputShort[]; }}
 
-// PRIMARY: Configure nodes with natural language (REQUIRED for all nodes)
+// PRIMARY: Configure nodes with natural language (ASYNC - requires await)
 // Describe what each node should do - the system figures out exact params
 interface UpdateNodeParametersInput {{
   nodeId: string;      // Use result.nodeId from add()
   changes: string[];   // Natural language descriptions
 }}
 
-// tools.updateAll() - Configure multiple nodes (RECOMMENDED)
-// tools.updateNodeParameters() - Configure single node
+// tools.updateAll() - Configure multiple nodes (ASYNC - requires await)
+// tools.updateNodeParameters() - Configure single node (ASYNC - requires await)
 interface BatchUpdateParametersInput {{ updates: UpdateNodeParametersInput[]; }}
 
-// SECONDARY: Direct parameter setting (only for simple, known params)
+// SECONDARY: Direct parameter setting (SYNCHRONOUS - no await needed)
 // Only use for AI Agent systemMessage/prompt or other simple string params
 interface SetParametersInput {{
   nodeId: NodeRef;
@@ -715,7 +722,7 @@ interface SetParametersInput {{
   replace?: boolean;
 }}
 
-// Other tools
+// Other tools (all SYNCHRONOUS - no await needed)
 interface RemoveNodeInput {{ nodeId: string; }}
 interface RenameNodeInput {{ nodeId: string; newName: string; }}
 `.trim();

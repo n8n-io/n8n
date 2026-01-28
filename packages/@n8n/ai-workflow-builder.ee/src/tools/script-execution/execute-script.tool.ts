@@ -106,11 +106,12 @@ function buildResultMessage(
 /**
  * Run combined structure and configuration validation
  */
-async function runCombinedValidation(
-	tools: Awaited<ReturnType<typeof createToolWrappers>>,
-): Promise<{ isValid: boolean; issues?: string[] }> {
-	const structureResult = await tools.validateStructure();
-	const configResult = await tools.validateConfiguration();
+function runCombinedValidation(tools: Awaited<ReturnType<typeof createToolWrappers>>): {
+	isValid: boolean;
+	issues?: string[];
+} {
+	const structureResult = tools.validateStructure();
+	const configResult = tools.validateConfiguration();
 
 	const allIssues = [...(structureResult.issues ?? []), ...(configResult.issues ?? [])];
 
@@ -246,7 +247,7 @@ export function createExecuteScriptTool(
 				let validationResult: { isValid: boolean; issues?: string[] } | undefined;
 				if (shouldValidate) {
 					reportProgress(reporter, 'Validating workflow...');
-					validationResult = await runCombinedValidation(tools);
+					validationResult = runCombinedValidation(tools);
 				}
 
 				// Build result message

@@ -493,7 +493,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Add a node to the workflow
 	 */
-	async function addNode(input: AddNodeInput): Promise<AddNodeResult> {
+	function addNode(input: AddNodeInput): AddNodeResult {
 		try {
 			// Normalize short-form input to full form
 			const normalized = normalizeAddNodeInput(input);
@@ -562,7 +562,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Connect two nodes
 	 */
-	async function connectNodes(input: ConnectNodesInput): Promise<ConnectNodesResult> {
+	function connectNodes(input: ConnectNodesInput): ConnectNodesResult {
 		try {
 			// Normalize short-form input
 			const normalized = normalizeConnectNodesInput(input);
@@ -631,7 +631,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Remove a node from the workflow
 	 */
-	async function removeNode(input: RemoveNodeInput): Promise<RemoveNodeResult> {
+	function removeNode(input: RemoveNodeInput): RemoveNodeResult {
 		try {
 			const { nodeId } = input;
 
@@ -704,7 +704,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Remove a connection between nodes
 	 */
-	async function removeConnection(input: RemoveConnectionInput): Promise<RemoveConnectionResult> {
+	function removeConnection(input: RemoveConnectionInput): RemoveConnectionResult {
 		try {
 			const { sourceOutputIndex = 0, targetInputIndex = 0 } = input;
 
@@ -772,7 +772,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Rename a node
 	 */
-	async function renameNode(input: RenameNodeInput): Promise<RenameNodeResult> {
+	function renameNode(input: RenameNodeInput): RenameNodeResult {
 		try {
 			const { nodeId, newName } = input;
 
@@ -826,7 +826,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Validate workflow structure
 	 */
-	async function validateStructure(): Promise<ValidateStructureResult> {
+	function validateStructure(): ValidateStructureResult {
 		try {
 			// Build current workflow state
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
@@ -986,7 +986,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Get a specific parameter value from a node
 	 */
-	async function getNodeParameter(input: GetNodeParameterInput): Promise<GetNodeParameterResult> {
+	function getNodeParameter(input: GetNodeParameterInput): GetNodeParameterResult {
 		try {
 			const { nodeId, path } = input;
 
@@ -1023,7 +1023,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Validate node configurations (agent prompts, tools, $fromAI usage)
 	 */
-	async function validateConfiguration(): Promise<ValidateConfigurationResult> {
+	function validateConfiguration(): ValidateConfigurationResult {
 		try {
 			// Build current workflow state
 			const currentNodes = getCurrentWorkflowNodes(workflow, operationsCollector);
@@ -1069,7 +1069,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	 * More efficient than calling addNode multiple times as it only computes
 	 * workflow state once instead of O(N) times.
 	 */
-	async function addNodes(input: AddNodesInput): Promise<AddNodesResult> {
+	function addNodes(input: AddNodesInput): AddNodesResult {
 		try {
 			const { nodes: inputNodes } = input;
 
@@ -1161,7 +1161,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	 * More efficient than calling connectNodes multiple times as it only
 	 * computes workflow state once.
 	 */
-	async function connectMultiple(input: ConnectMultipleInput): Promise<ConnectMultipleResult> {
+	function connectMultiple(input: ConnectMultipleInput): ConnectMultipleResult {
 		try {
 			const { connections: inputConnections } = input;
 
@@ -1291,7 +1291,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Directly set node parameters (use when you know the exact parameter structure)
 	 */
-	async function setParameters(input: SetParametersInput): Promise<SetParametersResult> {
+	function setParameters(input: SetParametersInput): SetParametersResult {
 		try {
 			// Resolve node reference
 			const nodeId = resolveNodeId(input.nodeId);
@@ -1344,7 +1344,7 @@ export function createToolWrappers(config: ToolWrappersConfig): ScriptTools {
 	/**
 	 * Batch set parameters on multiple nodes (use when you know the parameter structures)
 	 */
-	async function setAll(input: BatchSetParametersInput): Promise<BatchSetParametersResult> {
+	function setAll(input: BatchSetParametersInput): BatchSetParametersResult {
 		try {
 			const { updates } = input;
 

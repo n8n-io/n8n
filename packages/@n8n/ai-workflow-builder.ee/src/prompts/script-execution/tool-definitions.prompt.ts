@@ -33,7 +33,7 @@ export const SCRIPT_EXECUTION_BEST_PRACTICES = `## Script Best Practices
 2. **CRITICAL: Configure ALL nodes** - Every node MUST have its parameters fully configured using tools.updateNodeParameters()
 3. **Use tools.updateNodeParameters() for configuration** - This is the PRIMARY method for configuring nodes
 4. **Use batch methods** - \`tools.add()\`, \`tools.conn()\`, \`tools.updateAll()\` for efficiency
-5. **Always use async/await** - NEVER use .then() chains
+5. **AWAIT RULES** - Only \`updateNodeParameters()\` and \`updateAll()\` need await (they use LLM). All other tools are synchronous.
 6. **CRITICAL: Multi-output/input nodes** - Switch nodes need \`so:\` (output index), Merge nodes need \`di:\` (input index)
 
 MANDATORY: After creating nodes and connections, you MUST configure each node using tools.updateNodeParameters() or tools.updateAll().
@@ -41,16 +41,17 @@ Describe what each node should do in natural language - the system will figure o
 
 COMPLETE pattern (nodes + connections + FULL configuration via updateAll):
 \`\`\`javascript
-const r = await tools.add({{nodes:[
+// SYNCHRONOUS: add() and conn() don't need await
+const r = tools.add({{nodes:[
   {{t:'n8n-nodes-base.webhook',n:'Webhook',p:{{httpMethod:'POST',path:'purchase-request'}}}},
   {{t:'n8n-nodes-base.set',n:'Extract Data'}},
   {{t:'n8n-nodes-base.slack',n:'Request Approval'}},
   {{t:'n8n-nodes-base.emailSend',n:'Send Confirmation'}}
 ]}});
 const [wh,extract,slack,email] = r.results;
-await tools.conn({{connections:[{{s:wh,d:extract}},{{s:extract,d:slack}},{{s:slack,d:email}}]}});
+tools.conn({{connections:[{{s:wh,d:extract}},{{s:extract,d:slack}},{{s:slack,d:email}}]}});
 
-// CRITICAL: Configure ALL nodes with updateAll - describe what each node should do
+// ASYNC: updateAll() uses LLM so it needs await - describe what each node should do
 await tools.updateAll({{updates:[
   {{nodeId:extract.nodeId,changes:[
     "Add field 'requester' with value from {{$json.body.requester}}",
@@ -79,7 +80,7 @@ export const CONFIGURATOR_SCRIPT_TOOLS = `## Configuration Tools
 
 CRITICAL: Every node MUST be configured. Use tools.updateNodeParameters() or tools.updateAll() to configure nodes.
 
-### tools.updateNodeParameters({{ nodeId, changes }}) - PRIMARY Configuration Method
+### tools.updateNodeParameters({{ nodeId, changes }}) - PRIMARY Configuration Method (ASYNC - requires await)
 Describe what the node should do in natural language. The system figures out the exact parameters.
 \`\`\`javascript
 await tools.updateNodeParameters({{nodeId:slack.nodeId,changes:[
@@ -90,7 +91,7 @@ await tools.updateNodeParameters({{nodeId:slack.nodeId,changes:[
 ]}});
 \`\`\`
 
-### tools.updateAll({{ updates }}) - Batch Configuration (RECOMMENDED)
+### tools.updateAll({{ updates }}) - Batch Configuration (RECOMMENDED, ASYNC - requires await)
 Configure multiple nodes at once. Use this after creating all nodes and connections.
 \`\`\`javascript
 await tools.updateAll({{updates:[
@@ -113,11 +114,11 @@ await tools.updateAll({{updates:[
 ]}});
 \`\`\`
 
-### tools.set({{ nodeId, params }}) - Direct Setting (Advanced)
+### tools.set({{ nodeId, params }}) - Direct Setting (SYNCHRONOUS - no await needed)
 Only use when you know the EXACT parameter structure. For most nodes, use updateNodeParameters instead.
 \`\`\`javascript
-// Only for simple, well-known structures like AI Agent
-await tools.set({{nodeId:agent,params:{{
+// Only for simple, well-known structures like AI Agent (no await needed)
+tools.set({{nodeId:agent,params:{{
   systemMessage:'You are a helpful assistant.',
   prompt:'={{$json.input}}'
 }}}});
@@ -125,14 +126,14 @@ await tools.set({{nodeId:agent,params:{{
 
 ### When to use which method:
 
-**ALWAYS use tools.updateAll() for:**
+**ALWAYS use tools.updateAll() for:** (requires await)
 - Slack nodes (messages, channels, approval options)
 - Email nodes (recipients, subjects, HTML content)
 - Set/Edit Fields nodes (field assignments)
 - HTTP Request nodes (URLs, methods, headers, body)
 - Any node with complex configuration
 
-**Only use tools.set() for:**
+**Only use tools.set() for:** (no await needed)
 - AI Agent systemMessage and prompt (simple string params)
 - Merge node mode setting
 - Simple boolean or string parameters you're certain about
@@ -142,21 +143,22 @@ REMEMBER: When in doubt, use updateNodeParameters/updateAll. Unconfigured nodes 
 
 /**
  * Common script patterns for workflow building
- * IMPORTANT: All patterns use tools.updateAll() for configuration - describe what each node should do
+ * IMPORTANT: add() and conn() are SYNCHRONOUS (no await). Only updateAll() needs await.
  */
 export const SCRIPT_EXECUTION_PATTERNS = `## Common Script Patterns (with FULL Configuration via updateAll)
 
 ### Pattern 1: Simple AI Agent Setup
 \`\`\`javascript
-const r = await tools.add({{nodes:[
+// add() and conn() are synchronous - no await needed
+const r = tools.add({{nodes:[
   {{t:'n8n-nodes-base.manualTrigger',n:'Trigger'}},
   {{t:'@n8n/n8n-nodes-langchain.agent',n:'Agent',p:{{hasOutputParser:false}}}},
   {{t:'@n8n/n8n-nodes-langchain.lmChatOpenAi',n:'Model'}}
 ]}});
 const [t,a,m] = r.results;
-await tools.conn({{connections:[{{s:t,d:a}},{{s:m,d:a}}]}});
-// Configure AI Agent - can use set() for simple string params
-await tools.set({{nodeId:a,params:{{
+tools.conn({{connections:[{{s:t,d:a}},{{s:m,d:a}}]}});
+// set() is also synchronous - no await needed for simple params
+tools.set({{nodeId:a,params:{{
   systemMessage:'You are a helpful assistant that provides clear, concise answers.',
   prompt:'={{$json.chatInput}}'
 }}}});
@@ -165,7 +167,7 @@ await tools.set({{nodeId:a,params:{{
 ### Pattern 2: Switch Node with Multiple Outputs
 Switch nodes route to different paths. Use so: for output index.
 \`\`\`javascript
-const r = await tools.add({{nodes:[
+const r = tools.add({{nodes:[
   {{t:'n8n-nodes-base.webhook',n:'Webhook',p:{{httpMethod:'POST',path:'route-data'}}}},
   {{t:'n8n-nodes-base.switch',n:'Router'}},
   {{t:'n8n-nodes-base.set',n:'Handle Low'}},
@@ -173,13 +175,13 @@ const r = await tools.add({{nodes:[
   {{t:'n8n-nodes-base.set',n:'Handle High'}}
 ]}});
 const [wh,sw,low,med,high] = r.results;
-await tools.conn({{connections:[
+tools.conn({{connections:[
   {{s:wh,d:sw}},
   {{s:sw,d:low,so:0}},
   {{s:sw,d:med,so:1}},
   {{s:sw,d:high,so:2}}
 ]}});
-// Configure ALL nodes using updateAll - describe what each should do
+// updateAll() uses LLM so it needs await - describe what each node should do
 await tools.updateAll({{updates:[
   {{nodeId:sw.nodeId,changes:[
     "Add 3 routing rules based on {{$json.priority}} field",
@@ -196,19 +198,19 @@ await tools.updateAll({{updates:[
 ### Pattern 3: Merge Node with Multiple Inputs
 Merge nodes combine data from multiple paths. Use di: for input index.
 \`\`\`javascript
-const r = await tools.add({{nodes:[
+const r = tools.add({{nodes:[
   {{t:'n8n-nodes-base.set',n:'Source A'}},
   {{t:'n8n-nodes-base.set',n:'Source B'}},
   {{t:'n8n-nodes-base.merge',n:'Combine',p:{{mode:'combine'}}}},
   {{t:'n8n-nodes-base.set',n:'Output'}}
 ]}});
 const [a,b,m,out] = r.results;
-await tools.conn({{connections:[
+tools.conn({{connections:[
   {{s:a,d:m,di:0}},
   {{s:b,d:m,di:1}},
   {{s:m,d:out}}
 ]}});
-// Configure ALL Set nodes
+// updateAll() needs await
 await tools.updateAll({{updates:[
   {{nodeId:a.nodeId,changes:["Add field 'sourceA_data' from {{$json.fieldA}}"]}},
   {{nodeId:b.nodeId,changes:["Add field 'sourceB_data' from {{$json.fieldB}}"]}},
@@ -221,16 +223,16 @@ await tools.updateAll({{updates:[
 
 ### Pattern 4: Approval Workflow with Slack and Email
 \`\`\`javascript
-const r = await tools.add({{nodes:[
+const r = tools.add({{nodes:[
   {{t:'n8n-nodes-base.webhook',n:'Request Webhook',p:{{httpMethod:'POST',path:'approval-request'}}}},
   {{t:'n8n-nodes-base.set',n:'Extract Data'}},
   {{t:'n8n-nodes-base.slack',n:'Send Approval'}},
   {{t:'n8n-nodes-base.emailSend',n:'Send Confirmation'}}
 ]}});
 const [wh,extract,slack,email] = r.results;
-await tools.conn({{connections:[{{s:wh,d:extract}},{{s:extract,d:slack}},{{s:slack,d:email}}]}});
+tools.conn({{connections:[{{s:wh,d:extract}},{{s:extract,d:slack}},{{s:slack,d:email}}]}});
 
-// CRITICAL: Configure ALL nodes with updateAll
+// updateAll() needs await - configure ALL nodes
 await tools.updateAll({{updates:[
   {{nodeId:extract.nodeId,changes:[
     "Add field 'requester' from {{$json.body.requester}}",
@@ -292,18 +294,23 @@ SHORT-FORM SYNTAX:
 - Node: {{t:'nodeType',n:'Name',p:{{param:value}}}}
 - Connection: {{s:sourceNode,d:destNode,so:outputIndex,di:inputIndex}}
 
+AWAIT RULES - IMPORTANT:
+- tools.add(), tools.conn(), tools.set(), tools.setAll() are SYNCHRONOUS - no await needed
+- tools.updateAll(), tools.updateNodeParameters() are ASYNC - require await (they use LLM)
+
 COMPLETE EXAMPLE (nodes + connections + CONFIGURATION via updateAll):
 \`\`\`javascript
-const r = await tools.add({{nodes:[
+// SYNCHRONOUS: add() and conn() don't need await
+const r = tools.add({{nodes:[
   {{t:'n8n-nodes-base.webhook',n:'Webhook',p:{{httpMethod:'POST',path:'request'}}}},
   {{t:'n8n-nodes-base.set',n:'Extract Data'}},
   {{t:'n8n-nodes-base.slack',n:'Send Approval'}},
   {{t:'n8n-nodes-base.emailSend',n:'Send Confirmation'}}
 ]}});
 const [wh,extract,slack,email] = r.results;
-await tools.conn({{connections:[{{s:wh,d:extract}},{{s:extract,d:slack}},{{s:slack,d:email}}]}});
+tools.conn({{connections:[{{s:wh,d:extract}},{{s:extract,d:slack}},{{s:slack,d:email}}]}});
 
-// CRITICAL: Configure ALL nodes - describe what each should do
+// ASYNC: updateAll() uses LLM so it needs await - describe what each node should do
 await tools.updateAll({{updates:[
   {{nodeId:extract.nodeId,changes:[
     "Add field 'requester' from {{$json.body.requester}}",
@@ -325,11 +332,11 @@ await tools.updateAll({{updates:[
 \`\`\`
 
 Functions available INSIDE your script:
-- tools.add({{nodes:[...]}}) - Add multiple nodes
-- tools.conn({{connections:[...]}}) - Connect multiple pairs
-- tools.updateAll({{updates:[...]}}) - REQUIRED: Configure all nodes (describe in natural language)
-- tools.updateNodeParameters({{nodeId,changes}}) - Configure single node
-- tools.set({{nodeId,params}}) - Only for simple params you're certain about (AI Agent systemMessage)
+- tools.add({{nodes:[...]}}) - Add multiple nodes (SYNC - no await)
+- tools.conn({{connections:[...]}}) - Connect multiple pairs (SYNC - no await)
+- tools.set({{nodeId,params}}) - Simple params you're certain about (SYNC - no await)
+- tools.updateAll({{updates:[...]}}) - Configure all nodes via LLM (ASYNC - requires await)
+- tools.updateNodeParameters({{nodeId,changes}}) - Configure single node via LLM (ASYNC - requires await)
 
 Short-form aliases:
 - t = nodeType, v = nodeVersion, n = name, p = initialParameters
@@ -341,7 +348,7 @@ CRITICAL for multi-output/multi-input nodes:
 
 Key rules:
 1. Call execute_script ONCE with complete script
-2. ALWAYS use tools.updateAll() to configure nodes after creating them
+2. ALWAYS use tools.updateAll() to configure nodes after creating them (with await)
 3. Describe configuration in natural language - the system figures out exact params
 4. NEVER leave nodes unconfigured - every node must have its behavior defined
-5. Use await, NEVER .then() chains`;
+5. Only await updateAll() and updateNodeParameters() - other tools are synchronous`;
