@@ -9,7 +9,6 @@ import {
 	type StickyNoteConfig,
 	type PlaceholderValue,
 	type NewCredentialValue,
-	type CredentialReference,
 	type DeclaredConnection,
 	type NodeChain,
 	type MergeComposite,
@@ -22,7 +21,6 @@ import {
 	type SwitchCaseBuilder,
 	type IfElseTarget,
 	type SwitchCaseTarget,
-	type IDataObject,
 } from './types/base';
 
 /**
@@ -892,39 +890,33 @@ export function node<TNode extends NodeInput>(
  * Config for ifElse() factory function
  */
 export interface IfElseFactoryConfig {
-	name?: string;
+	/** Node version (defaults to 2.3) */
 	version?: number;
-	parameters?: IDataObject;
-	credentials?: Record<string, CredentialReference | NewCredentialValue>;
-	position?: [number, number];
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
 }
 
 /**
  * Create an IF node with the specified config.
  * Convenience wrapper around node() with type preset to 'n8n-nodes-base.if'.
  *
- * @param config - Optional config with name, version (defaults to 2.3), and other node properties
+ * @param input - Optional config with version (defaults to 2.3) and config object
  * @returns A configured IF node instance with .onTrue()/.onFalse() methods
  *
  * @example
  * ```typescript
- * const ifNode = ifElse({ name: 'Check Value' })
+ * const ifNode = ifElse({ config: { name: 'Check Value' } })
  *   .onTrue(trueHandler)
  *   .onFalse(falseHandler);
  * ```
  */
 export function ifElse<TOutput = unknown>(
-	config?: IfElseFactoryConfig,
+	input?: IfElseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.if', string, TOutput> {
 	return node({
 		type: 'n8n-nodes-base.if',
-		version: config?.version ?? 2.3,
-		config: {
-			name: config?.name,
-			parameters: config?.parameters,
-			credentials: config?.credentials,
-			position: config?.position,
-		},
+		version: input?.version ?? 2.3,
+		config: input?.config ?? {},
 	}) as NodeInstance<'n8n-nodes-base.if', string, TOutput>;
 }
 
@@ -935,42 +927,34 @@ export const ifNode = ifElse;
  * Config for switchCase() factory function
  */
 export interface SwitchCaseFactoryConfig {
-	name?: string;
+	/** Node version (defaults to 3.4) */
 	version?: number;
-	parameters?: IDataObject;
-	credentials?: Record<string, CredentialReference | NewCredentialValue>;
-	position?: [number, number];
-	id?: string;
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
 }
 
 /**
  * Create a Switch node for multi-way routing.
  * Use .onCase() fluent API to connect case targets.
  *
- * @param config - Optional configuration for the Switch node
+ * @param input - Optional config with version (defaults to 3.4) and config object
  * @returns A Switch NodeInstance with .onCase() fluent API
  *
  * @example
  * ```typescript
- * const routeByType = switchCase({ name: 'Route by Type' })
+ * const routeByType = switchCase({ config: { name: 'Route by Type' } })
  *   .onCase(0, handleTypeA)
  *   .onCase(1, handleTypeB)
  *   .onCase(2, handleFallback);
  * ```
  */
 export function switchCase<TOutput = unknown>(
-	config?: SwitchCaseFactoryConfig,
+	input?: SwitchCaseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.switch', string, TOutput> {
 	return node({
 		type: 'n8n-nodes-base.switch',
-		version: config?.version ?? 3.4,
-		config: {
-			id: config?.id,
-			name: config?.name,
-			parameters: config?.parameters,
-			credentials: config?.credentials,
-			position: config?.position,
-		},
+		version: input?.version ?? 3.4,
+		config: input?.config ?? {},
 	}) as NodeInstance<'n8n-nodes-base.switch', string, TOutput>;
 }
 

@@ -576,9 +576,11 @@ export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 /**
  * Configuration for IF else
  */
-export interface IfElseConfig extends NodeConfig {
-	version?: number | string;
-	id?: string;
+export interface IfElseConfig {
+	/** Node version (defaults to 2.3) */
+	version?: number;
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
 }
 
 /**
@@ -600,9 +602,11 @@ export interface IfElseComposite {
 /**
  * Configuration for Switch case
  */
-export interface SwitchCaseConfig extends NodeConfig {
-	version?: number | string;
-	id?: string;
+export interface SwitchCaseConfig {
+	/** Node version (defaults to 3.4) */
+	version?: number;
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
 }
 
 /**

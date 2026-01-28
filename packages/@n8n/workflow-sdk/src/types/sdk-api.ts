@@ -478,9 +478,11 @@ export interface MergeComposite<TBranches extends unknown[] = unknown[]> {
 /**
  * Configuration for ifElse()
  */
-export interface IfElseConfig extends NodeConfig {
+export interface IfElseConfig {
 	/** Node version (defaults to 2.3) */
-	version?: number | string;
+	version?: number;
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
 }
 
 /**
@@ -496,9 +498,11 @@ export interface IfElseComposite {
 /**
  * Configuration for switchCase()
  */
-export interface SwitchCaseConfig extends NodeConfig {
+export interface SwitchCaseConfig {
 	/** Node version (defaults to 3.4) */
-	version?: number | string;
+	version?: number;
+	/** Node configuration (name, parameters, etc.) */
+	config?: NodeConfig;
 }
 
 /**
@@ -775,7 +779,7 @@ export type IfElseFn = (
  * Use .onCase() fluent syntax for multi-way branching:
  *
  * @example
- * const routeByType = switchCase({ name: 'Route by Type' })
+ * const routeByType = switchCase({ config: { name: 'Route by Type' } })
  *   .onCase(0, handleTypeA)
  *   .onCase(1, handleTypeB)
  *   .onCase(2, handleFallback);

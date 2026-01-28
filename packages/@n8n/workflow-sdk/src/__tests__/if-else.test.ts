@@ -8,22 +8,22 @@ type IfNode = NodeInstance<'n8n-nodes-base.if', string, unknown>;
 
 describe('ifElse() and ifNode() factory functions', () => {
 	it('ifElse() creates an IF node with correct type', () => {
-		const ifN = ifElse({ name: 'My IF' });
+		const ifN = ifElse({ config: { name: 'My IF' } });
 		expect(ifN.type).toBe('n8n-nodes-base.if');
 	});
 
 	it('ifElse() defaults to version 2.3', () => {
-		const ifN = ifElse({ name: 'My IF' });
+		const ifN = ifElse({ config: { name: 'My IF' } });
 		expect(ifN.version).toBe('2.3');
 	});
 
 	it('ifElse() allows custom version', () => {
-		const ifN = ifElse({ name: 'My IF', version: 2.2 });
+		const ifN = ifElse({ version: 2.2, config: { name: 'My IF' } });
 		expect(ifN.version).toBe('2.2');
 	});
 
 	it('ifElse() supports .onTrue() and .onFalse()', () => {
-		const ifN = ifElse({ name: 'My IF' });
+		const ifN = ifElse({ config: { name: 'My IF' } });
 		const trueBranch = node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} });
 		const falseBranch = node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} });
 
@@ -42,7 +42,7 @@ describe('parseWorkflowCode with ifElse/ifNode', () => {
 		const code = `
 return workflow('test', 'Test')
   .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
-  .then(ifElse({ name: 'Check' }).onTrue(node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} })).onFalse(null));
+  .then(ifElse({ config: { name: 'Check' } }).onTrue(node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} })).onFalse(null));
 `;
 		expect(() => parseWorkflowCode(code)).not.toThrow();
 	});
@@ -51,7 +51,7 @@ return workflow('test', 'Test')
 		const code = `
 return workflow('test', 'Test')
   .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
-  .then(ifNode({ name: 'Check' }).onTrue(node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} })).onFalse(null));
+  .then(ifNode({ config: { name: 'Check' } }).onTrue(node({ type: 'n8n-nodes-base.noOp', version: 1, config: {} })).onFalse(null));
 `;
 		expect(() => parseWorkflowCode(code)).not.toThrow();
 	});
