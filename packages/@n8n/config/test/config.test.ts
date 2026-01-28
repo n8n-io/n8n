@@ -286,6 +286,9 @@ describe('GlobalConfig', () => {
 			environment: '',
 			deploymentName: '',
 		},
+		setupPanel: {
+			enabled: false,
+		},
 		logging: {
 			level: 'info',
 			format: 'text',
