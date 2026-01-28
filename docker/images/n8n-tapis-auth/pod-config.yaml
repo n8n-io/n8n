@@ -1,0 +1,57 @@
+{
+  "pod_id": "n8ntapisauth",
+  "image": "ghcr.io/sethsterling22/n8n-tapis-auth",
+  "template": "",
+  "description": "n8n with Tapis Authentication: ghcr.io/sethsterling22/n8n-tapis-auth",
+  "command": [
+    "tini",
+    "--",
+    "pnpm",
+    "start"
+  ],
+  "environment_variables": {
+    "WEBHOOK_URL": "https://n8ntapisauth.pods.tacc.tapis.io",
+    "JWT_AUTH_URL": "https://portals.tapis.io/v3/oauth2/clients",
+    "N8N_ENCRYPTION_KEY": "",
+    "AI_CREDENTIALS": "https://ai.tejas.tacc.utexas.edu/v1/chat/completions",
+    "AI_TOKEN": "",
+    "AI_MODEL": "Llama-4-Maverick-17B-128E-Instruct"
+  },
+  "status_requested": "ON",
+  "volume_mounts": {},
+  "time_to_stop_default": -1,
+  "networking": {
+    "default": {
+      "protocol": "http",
+      "port": 5678,
+      "url": "n8ntapisauth.pods.tacc.tapis.io",
+      "ip_allow_list": [],
+      "tapis_auth": false,
+      "tapis_auth_response_headers": {},
+      "tapis_auth_allowed_users": [
+        "*"
+      ],
+      "tapis_auth_return_path": "/",
+      "cors_allow_origins": [],
+      "cors_allow_methods": [],
+      "cors_allow_headers": [],
+      "cors_allow_credentials": false,
+      "cors_max_age": 100,
+      "tapis_ui_uri": "",
+      "tapis_ui_uri_redirect": false,
+      "tapis_ui_uri_description": ""
+    }
+  },
+  "resources": {
+    "cpu_request": 250,
+    "cpu_limit": 2000,
+    "mem_request": 256,
+    "mem_limit": 3072,
+    "gpus": 0
+  },
+  "compute_queue": "default",
+  "status": "CREATING",
+  "status_container": {},
+  "creation_ts": "2026-01-28T10:27:36.661Z",
+  "update_ts": "2026-01-28T10:27:36.661Z"
+}
