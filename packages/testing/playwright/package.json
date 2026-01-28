@@ -38,6 +38,7 @@
     "@currents/playwright": "catalog:e2e",
     "@n8n/api-types": "workspace:*",
     "@n8n/constants": "workspace:*",
+    "@n8n/permissions": "workspace:*",
     "@n8n/db": "workspace:*",
     "@playwright/test": "catalog:e2e",
     "@types/lodash": "catalog:",

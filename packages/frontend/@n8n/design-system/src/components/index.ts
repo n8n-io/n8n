@@ -15,7 +15,6 @@ export { default as N8nCallout } from './N8nCallout';
 export { default as N8nCanvasThinkingPill } from './CanvasThinkingPill';
 export { default as N8nCanvasCollaborationPill } from './CanvasCollaborationPill';
 export { default as N8nCard } from './N8nCard';
-export { default as N8nCheckbox } from './N8nCheckbox';
 export { default as N8nCircleLoader } from './N8nCircleLoader';
 export { default as N8nCollapsiblePanel } from './N8nCollapsiblePanel';
 export { default as N8nColorPicker } from './N8nColorPicker';

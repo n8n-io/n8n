@@ -824,10 +824,13 @@ describe('ParameterInput.vue', () => {
 				await fireEvent.focus(input);
 			}
 
-			expect(mockBuilderState.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
-				'field_focus_placeholder_in_ndv',
-				{ node_type: 'n8n-nodes-base.httpRequest' },
-			);
+			// Wait for debounced tracking call
+			await waitFor(() => {
+				expect(mockBuilderState.trackWorkflowBuilderJourney).toHaveBeenCalledWith(
+					'field_focus_placeholder_in_ndv',
+					{ node_type: 'n8n-nodes-base.httpRequest' },
+				);
+			});
 		});
 
 		it('does not track when value is not a placeholder', async () => {

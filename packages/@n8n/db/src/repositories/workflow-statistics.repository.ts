@@ -1,16 +1,15 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import {
-	DataSource,
-	IsNull,
-	MoreThanOrEqual,
-	Not,
-	QueryFailedError,
-	Repository,
-} from '@n8n/typeorm';
+import { DataSource, QueryFailedError, Repository } from '@n8n/typeorm';
 
-import { WorkflowStatistics } from '../entities';
+import {
+	ProjectRelation,
+	Role,
+	SharedWorkflow,
+	WorkflowEntity,
+	WorkflowStatistics,
+} from '../entities';
 import type { User } from '../entities';
 import { StatisticsNames } from '../entities/types-db';
 
@@ -29,6 +28,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	async insertWorkflowStatistics(
 		eventName: StatisticsNames,
 		workflowId: string,
+		workflowName?: string,
 	): Promise<StatisticsInsertResult> {
 		// Try to insert the data loaded statistic
 		try {
@@ -45,6 +45,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				count: 1,
 				rootCount: 1,
 				latestEvent: new Date(),
+				workflowName: workflowName ?? null,
 			});
 			return 'insert';
 		} catch (error) {
@@ -61,6 +62,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		eventName: StatisticsNames,
 		workflowId: string,
 		isRootExecution: boolean,
+		workflowName?: string,
 	): Promise<StatisticsUpsertResult> {
 		const dbType = this.globalConfig.database.type;
 		const escapedTableName = this.manager.connection.driver.escape(this.metadata.tableName);
@@ -69,14 +71,15 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			const rootCountIncrement = isRootExecution ? 1 : 0;
 			if (dbType === 'sqlite') {
 				await this.query(
-					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "latestEvent")
-					VALUES (1, ?, ?, ?, CURRENT_TIMESTAMP)
+					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "workflowName", "latestEvent")
+					VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 					ON CONFLICT (workflowId, name)
 					DO UPDATE SET
 						count = count + 1,
 						rootCount = rootCount + ?,
+						workflowName = excluded.workflowName,
 						latestEvent = CURRENT_TIMESTAMP`,
-					[rootCountIncrement, eventName, workflowId, rootCountIncrement],
+					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
 				);
 
 				// SQLite does not offer a reliable way to know whether or not an insert or update happened.
@@ -90,28 +93,30 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				return (counter?.count ?? 0) > 1 ? 'update' : counter?.count === 1 ? 'insert' : 'failed';
 			} else if (dbType === 'postgresdb') {
 				const queryResult = (await this.query(
-					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "latestEvent")
-					VALUES (1, $1, $2, $3, CURRENT_TIMESTAMP)
+					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "workflowName", "latestEvent")
+					VALUES (1, $1, $2, $3, $4, CURRENT_TIMESTAMP)
 					ON CONFLICT ("name", "workflowId")
 					DO UPDATE SET
 						"count" = ${escapedTableName}."count" + 1,
-						"rootCount" = ${escapedTableName}."rootCount" + $4,
+						"rootCount" = ${escapedTableName}."rootCount" + $5,
+						"workflowName" = $4,
 						"latestEvent" = CURRENT_TIMESTAMP
 					RETURNING *;`,
-					[rootCountIncrement, eventName, workflowId, rootCountIncrement],
-				)) as Array<{ count: number }>;
+					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
+				)) as Array<{ count: string | number }>;
 
-				return queryResult[0].count === 1 ? 'insert' : 'update';
+				return Number(queryResult[0].count) === 1 ? 'insert' : 'update';
 			} else {
 				const queryResult = (await this.query(
-					`INSERT INTO ${escapedTableName} (count, rootCount, name, workflowId, latestEvent)
-					VALUES (1, ?, ?, ?, NOW())
+					`INSERT INTO ${escapedTableName} (count, rootCount, name, workflowId, workflowName, latestEvent)
+					VALUES (1, ?, ?, ?, ?, NOW())
 					ON DUPLICATE KEY
 					UPDATE
 						count = count + 1,
 						rootCount = rootCount + ?,
+						workflowName = VALUES(workflowName),
 						latestEvent = NOW();`,
-					[rootCountIncrement, eventName, workflowId, rootCountIncrement],
+					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
 				)) as { affectedRows: number };
 
 				// MySQL returns 2 affected rows on update
@@ -125,18 +130,20 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {
-		return await this.count({
-			where: {
-				workflow: {
-					shared: {
-						role: 'workflow:owner',
-						project: { projectRelations: { userId, role: { slug: PROJECT_OWNER_ROLE_SLUG } } },
-					},
-					activeVersionId: Not(IsNull()),
-				},
-				name: StatisticsNames.productionSuccess,
-				count: MoreThanOrEqual(5),
-			},
-		});
+		const result = await this.createQueryBuilder('ws')
+			.select('COUNT(DISTINCT ws.workflowId)', 'count')
+			.innerJoin(WorkflowEntity, 'we', 'ws.workflowId = we.id')
+			.innerJoin(SharedWorkflow, 'sw', 'we.id = sw.workflowId')
+			.innerJoin(ProjectRelation, 'pr', 'sw.projectId = pr.projectId')
+			.innerJoin(Role, 'r', 'pr.role = r.slug')
+			.where('sw.role = :role', { role: 'workflow:owner' })
+			.andWhere('pr.userId = :userId', { userId })
+			.andWhere('r.slug = :slug', { slug: PROJECT_OWNER_ROLE_SLUG })
+			.andWhere('we.activeVersionId IS NOT NULL')
+			.andWhere('ws.name = :name', { name: StatisticsNames.productionSuccess })
+			.andWhere('ws.count >= :minCount', { minCount: 5 })
+			.getRawOne<{ count: string }>();
+
+		return Number(result?.count ?? 0);
 	}
 }

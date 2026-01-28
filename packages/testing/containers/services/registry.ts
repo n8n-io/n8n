@@ -1,7 +1,10 @@
+import { cloudflared } from './cloudflared';
 import { gitea, createGiteaHelper } from './gitea';
+import { kafka, createKafkaHelper } from './kafka';
 import { keycloak, createKeycloakHelper } from './keycloak';
 import { loadBalancer } from './load-balancer';
 import { mailpit, createMailpitHelper } from './mailpit';
+import { ngrok } from './ngrok';
 import { createObservabilityHelper } from './observability';
 import { postgres } from './postgres';
 import { proxy } from './proxy';
@@ -27,6 +30,9 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	proxy,
 	taskRunner,
 	loadBalancer,
+	cloudflared,
+	ngrok,
+	kafka,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
@@ -35,4 +41,5 @@ export const helperFactories: Partial<HelperFactories> = {
 	keycloak: createKeycloakHelper,
 	observability: createObservabilityHelper,
 	tracing: createTracingHelper,
+	kafka: createKafkaHelper,
 };

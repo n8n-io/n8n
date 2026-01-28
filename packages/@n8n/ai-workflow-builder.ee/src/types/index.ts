@@ -1,5 +1,6 @@
 // Re-export all types from their respective modules
 
+export type * from './callbacks';
 export type * from './workflow';
 export type * from './messages';
 export type * from './tools';
@@ -12,5 +13,6 @@ export type * from './categorization';
 export type * from './best-practices';
 export type * from './node-guidance';
 
-// Re-export web/templates (includes both types and runtime values)
+// exports with enumerations, export types and enums
 export * from './web/templates';
+export * from './node-recommendations';

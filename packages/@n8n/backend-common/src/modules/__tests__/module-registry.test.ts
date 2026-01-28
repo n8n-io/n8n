@@ -30,6 +30,10 @@ describe('eligibleModules', () => {
 			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
 		]);
 	});
 
@@ -46,6 +50,10 @@ describe('eligibleModules', () => {
 			'source-control',
 			'dynamic-credentials',
 			'chat-hub',
+			'sso-oidc',
+			'sso-saml',
+			'log-streaming',
+			'ldap',
 		]);
 	});
 

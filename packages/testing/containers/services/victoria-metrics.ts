@@ -155,6 +155,21 @@ export interface WaitForMetricOptions {
 export class MetricsHelper {
 	constructor(private readonly endpoint: string) {}
 
+	async exportAll(options: { start?: string; end?: string } = {}): Promise<string> {
+		const params = new URLSearchParams({
+			'match[]': '{__name__=~".+"}',
+		});
+		if (options.start) params.set('start', options.start);
+		if (options.end) params.set('end', options.end);
+
+		const response = await fetch(`${this.endpoint}/api/v1/export?${params}`);
+		if (!response.ok) {
+			throw new Error(`VictoriaMetrics export failed: ${response.status}`);
+		}
+
+		return await response.text();
+	}
+
 	async query(query: string): Promise<MetricResult[]> {
 		const response = await fetch(`${this.endpoint}/api/v1/query?${new URLSearchParams({ query })}`);
 		if (!response.ok) {

@@ -224,6 +224,11 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
+		data.__lookupGetter__ = undefined;
+		data.__lookupSetter__ = undefined;
+		data.__defineGetter__ = undefined;
+		data.__defineSetter__ = undefined;
+
 		// Deprecated
 		data.escape = {};
 		data.unescape = {};
@@ -426,7 +431,11 @@ export class Expression {
 		data.extend = extend;
 		data.extendOptional = extendOptional;
 
-		data[sanitizerName] = sanitizer;
+		Object.defineProperty(data, sanitizerName, {
+			value: sanitizer,
+			writable: false,
+			configurable: false,
+		});
 
 		Object.assign(data, extendedFunctions);
 

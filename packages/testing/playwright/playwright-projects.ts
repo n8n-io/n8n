@@ -1,15 +1,20 @@
 import type { Project } from '@playwright/test';
 import type { N8NConfig } from 'n8n-containers/stack';
 
-import { CONTAINER_ONLY_CAPABILITIES, CONTAINER_ONLY_MODES } from './fixtures/capabilities';
+import {
+	CONTAINER_ONLY_CAPABILITIES,
+	CONTAINER_ONLY_MODES,
+	LICENSED_TAG,
+} from './fixtures/capabilities';
 import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
 // Tests that require container environment (won't run against local n8n).
-// Matches both:
+// Matches:
 // - @capability:X - add-on features (email, proxy, source-control, etc.)
 // - @mode:X - infrastructure modes (postgres, queue, multi-main)
+// - @licensed - enterprise license features (log streaming, SSO, etc.)
 const CONTAINER_ONLY = new RegExp(
-	`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})|@mode:(${CONTAINER_ONLY_MODES.join('|')})`,
+	`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})|@mode:(${CONTAINER_ONLY_MODES.join('|')})|@${LICENSED_TAG}`,
 );
 
 // Tags that need serial execution
