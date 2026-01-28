@@ -1,4 +1,4 @@
-name: 'CI: Pull Requests (Build, Test, Lint)'
+name: 'CI: Pull Requests'
 
 on:
   pull_request:
@@ -9,124 +9,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  install-and-build:
-    name: Install & Build
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
-    env:
-      NODE_OPTIONS: '--max-old-space-size=6144'
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
-    outputs:
-      non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
-      workflows_changed: ${{ steps.paths-filter.outputs.workflows == 'true' }}
-      commit_sha: ${{ steps.commit-sha.outputs.sha }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          # Use merge_group SHA when in merge queue, otherwise PR merge ref
-          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
-
-      - name: Capture commit SHA for cache consistency
-        id: commit-sha
-        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Check for relevant changes
-        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
-        id: paths-filter
-        with:
-          filters: |
-            non-python:
-              - '**'
-              - '!packages/@n8n/task-runner-python/**'
-            workflows:
-              - .github/**
-      - name: Setup and Build
-        if: steps.paths-filter.outputs.non-python == 'true'
-        uses: ./.github/actions/setup-nodejs
-
-      - name: Run format check
-        if: steps.paths-filter.outputs.non-python == 'true'
-        run: pnpm format:check
-
-  unit-test:
-    name: Unit tests
-    if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/test-unit-reusable.yml
-    needs: install-and-build
+  ci:
+    # Fork PRs use ci-pull-request-target.yml instead (needs base repo context for secrets)
+    # merge_group events have no pull_request object, so this evaluates to true
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    uses: ./.github/workflows/ci-pull-requests-reusable.yml
     with:
-      ref: ${{ needs.install-and-build.outputs.commit_sha }}
-      collectCoverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      BUILD_STATS_WEBHOOK_URL: ${{ secrets.BUILD_STATS_WEBHOOK_URL }}
-      BUILD_STATS_WEBHOOK_USER: ${{ secrets.BUILD_STATS_WEBHOOK_USER }}
-      BUILD_STATS_WEBHOOK_PASSWORD: ${{ secrets.BUILD_STATS_WEBHOOK_PASSWORD }}
-
-  typecheck:
-    name: Typecheck
-    if: needs.install-and-build.outputs.non_python_changed == 'true'
-    runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
-    needs: install-and-build
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          ref: ${{ needs.install-and-build.outputs.commit_sha }}
-
-      - name: Setup Node.js
-        uses: ./.github/actions/setup-nodejs
-        with:
-          build-command: pnpm typecheck
-
-  lint:
-    name: Lint
-    if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/test-linting-reusable.yml
-    needs: install-and-build
-    with:
-      ref: ${{ needs.install-and-build.outputs.commit_sha }}
-
-  e2e-tests:
-    name: E2E Tests
-    needs: install-and-build
-    if: needs.install-and-build.outputs.non_python_changed == 'true'
-    uses: ./.github/workflows/test-e2e-ci-reusable.yml
-    with:
-      branch: ${{ needs.install-and-build.outputs.commit_sha }}
+      ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || format('refs/pull/{0}/merge', github.event.pull_request.number) }}
     secrets: inherit
-
-  security-checks:
-    name: Security Checks
-    needs: install-and-build
-    if: needs.install-and-build.outputs.workflows_changed == 'true'
-    uses: ./.github/workflows/sec-ci-reusable.yml
-    with:
-      ref: ${{ needs.install-and-build.outputs.commit_sha }}
-    secrets: inherit
-
-  # This job is required by GitHub branch protection rules.
-  # PRs cannot be merged unless this job passes.
-  # If you add/remove jobs that should block merging, update the 'needs' array
-  # and the skip conditions in the 'if' block below.
-  required-checks:
-    name: Required Checks
-    needs: [install-and-build, unit-test, typecheck, lint, e2e-tests, security-checks]
-    if: always()
-    runs-on: ubuntu-slim
-    steps:
-      - name: Fail if any required job failed or was skipped unexpectedly
-        # Explicit checks for each job's skip conditions:
-        # - Non-python jobs (unit-test, typecheck, lint, e2e-tests): can skip when non_python_changed == false
-        # - security-checks: can skip when workflows_changed == false
-        if: |
-          contains(needs.*.result, 'failure') ||
-          (needs.install-and-build.outputs.non_python_changed == 'true' && (
-            needs.unit-test.result == 'skipped' ||
-            needs.typecheck.result == 'skipped' ||
-            needs.lint.result == 'skipped' ||
-            needs.e2e-tests.result == 'skipped'
-          )) ||
-          (needs.install-and-build.outputs.workflows_changed == 'true' &&
-            needs.security-checks.result == 'skipped')
-        run: exit 1
