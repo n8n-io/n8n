@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.4.6",
+  "version": "2.4.7",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
