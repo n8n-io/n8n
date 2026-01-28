@@ -50,3 +50,20 @@ export {
 	loadNodeTypes,
 	generateTypes,
 } from './generate-types';
+
+// Zod schema generation
+export {
+	// Types
+	type SchemaGenerationResult,
+	type SchemaInfo,
+	// Core functions
+	mapPropertyToZodSchema,
+	generateSchemaPropertyLine,
+	// File generation
+	generateSingleVersionSchemaFile,
+	generateBaseSchemaFile,
+	generateSchemaIndexFile,
+} from './generate-zod-schemas';
+
+// Zod helpers (for use in generated files)
+export * from './zod-helpers';

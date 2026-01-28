@@ -24,6 +24,8 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+import { generateSingleVersionSchemaFile, generateBaseSchemaFile } from './generate-zod-schemas';
+
 // =============================================================================
 // Configuration
 // =============================================================================
@@ -2593,6 +2595,10 @@ export function generateVersionIndexFile(
 		// Both flat files and directories use the same export syntax
 		// TypeScript resolves ./v1 to either ./v1.ts or ./v1/index.ts
 		lines.push(`export * from './${fileName}';`);
+		// Also export schema for flat versions (split versions handle their own schemas)
+		if (!splitVersions.has(version)) {
+			lines.push(`export * from './${fileName}.schema';`);
+		}
 	}
 	lines.push('');
 
@@ -3620,12 +3626,18 @@ async function generateVersionSpecificFiles(
 					splitVersionsSet.add(version);
 					splitVersions++;
 				} else {
-					// Generate flat file
+					// Generate flat type file
 					const content = generateSingleVersionTypeFile(sourceNode, version);
 					const filePath = path.join(nodeDir, `${fileName}.ts`);
 					await fs.promises.writeFile(filePath, content);
 					generatedFiles++;
 					flatVersions++;
+
+					// Generate corresponding Zod schema file
+					const schemaContent = generateSingleVersionSchemaFile(sourceNode, version);
+					const schemaFilePath = path.join(nodeDir, `${fileName}.schema.ts`);
+					await fs.promises.writeFile(schemaFilePath, schemaContent);
+					generatedFiles++;
 				}
 			}
 
@@ -3659,6 +3671,11 @@ export async function generateTypes(): Promise<void> {
 
 	await fs.promises.mkdir(nodesBaseDir, { recursive: true });
 	await fs.promises.mkdir(nodesLangchainDir, { recursive: true });
+
+	// Generate base.schema.ts with common Zod helpers
+	const baseSchemaContent = generateBaseSchemaFile();
+	await fs.promises.writeFile(path.join(OUTPUT_PATH, 'base.schema.ts'), baseSchemaContent);
+	console.log('Generated base.schema.ts with Zod helpers');
 
 	const allNodes: NodeTypeDescription[] = [];
 
