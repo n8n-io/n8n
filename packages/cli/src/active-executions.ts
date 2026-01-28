@@ -299,9 +299,8 @@ export class ActiveExecutions {
 		let executionIds = Object.keys(this.activeExecutions);
 		const toCancel: string[] = [];
 		for (const executionId of executionIds) {
-			const { responsePromise, status } = this.activeExecutions[executionId];
-			if (!!responsePromise || (isRegularMode && cancelAll)) {
-				// Cancel all executions that have a response promise, because these promises can't be retained between restarts
+			const { status } = this.activeExecutions[executionId];
+			if (isRegularMode && cancelAll) {
 				this.stopExecution(executionId, new SystemShutdownExecutionCancelledError(executionId));
 				toCancel.push(executionId);
 			} else if (status === 'waiting' || status === 'new') {
