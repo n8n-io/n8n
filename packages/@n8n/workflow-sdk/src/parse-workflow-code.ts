@@ -254,6 +254,192 @@ function escapeN8nVariables(code: string): string {
 	result = escapeN8nVariablesInTemplateLiterals(result);
 	return result;
 }
+
+/**
+ * Unescape JSON escape sequences in code that was double-escaped.
+ *
+ * When code is passed through JSON.stringify() twice, or embedded in JSON strings,
+ * escape sequences like \n become literal \\n (backslash + n).
+ * This function detects and fixes such double-escaping.
+ *
+ * Detection heuristic: If the code contains literal backslash-n sequences outside
+ * of string literals and doesn't contain actual newlines, it's likely double-escaped.
+ */
+function unescapeJsonEscapeSequences(code: string): string {
+	// Quick check: if code has actual newlines and no literal \n outside strings, it's fine
+	if (code.includes('\n') && !hasLiteralBackslashNOutsideStrings(code)) {
+		return code;
+	}
+
+	// Check if code appears to be double-escaped (has \\n but no real newlines in code structure)
+	if (!hasLiteralBackslashNOutsideStrings(code)) {
+		return code;
+	}
+
+	// Unescape common JSON escape sequences
+	// We need to be careful to only unescape sequences outside of string literals
+	return unescapeOutsideStrings(code);
+}
+
+/**
+ * Check if code has literal backslash-n sequences outside of string literals.
+ * This indicates the code may have been double-escaped.
+ */
+function hasLiteralBackslashNOutsideStrings(code: string): boolean {
+	let i = 0;
+	while (i < code.length) {
+		const char = code[i];
+
+		// Skip string literals
+		if (char === '"') {
+			i++;
+			while (i < code.length && code[i] !== '"') {
+				if (code[i] === '\\' && i + 1 < code.length) i += 2;
+				else i++;
+			}
+			i++; // Skip closing quote
+			continue;
+		}
+
+		if (char === "'") {
+			i++;
+			while (i < code.length && code[i] !== "'") {
+				if (code[i] === '\\' && i + 1 < code.length) i += 2;
+				else i++;
+			}
+			i++; // Skip closing quote
+			continue;
+		}
+
+		if (char === '`') {
+			i++;
+			let depth = 0;
+			while (i < code.length) {
+				if (code[i] === '\\' && i + 1 < code.length) {
+					i += 2;
+				} else if (code[i] === '$' && code[i + 1] === '{') {
+					depth++;
+					i += 2;
+				} else if (code[i] === '}' && depth > 0) {
+					depth--;
+					i++;
+				} else if (code[i] === '`' && depth === 0) {
+					i++;
+					break;
+				} else {
+					i++;
+				}
+			}
+			continue;
+		}
+
+		// Check for literal backslash-n outside strings
+		if (char === '\\' && i + 1 < code.length && code[i + 1] === 'n') {
+			return true;
+		}
+
+		i++;
+	}
+
+	return false;
+}
+
+/**
+ * Unescape JSON escape sequences that appear outside of string literals.
+ */
+function unescapeOutsideStrings(code: string): string {
+	let result = '';
+	let i = 0;
+
+	while (i < code.length) {
+		const char = code[i];
+
+		// Copy string literals as-is (they may have their own valid escapes)
+		if (char === '"') {
+			const start = i;
+			i++;
+			while (i < code.length && code[i] !== '"') {
+				if (code[i] === '\\' && i + 1 < code.length) i += 2;
+				else i++;
+			}
+			i++; // Include closing quote
+			result += code.slice(start, i);
+			continue;
+		}
+
+		if (char === "'") {
+			const start = i;
+			i++;
+			while (i < code.length && code[i] !== "'") {
+				if (code[i] === '\\' && i + 1 < code.length) i += 2;
+				else i++;
+			}
+			i++; // Include closing quote
+			result += code.slice(start, i);
+			continue;
+		}
+
+		if (char === '`') {
+			const start = i;
+			i++;
+			let depth = 0;
+			while (i < code.length) {
+				if (code[i] === '\\' && i + 1 < code.length) {
+					i += 2;
+				} else if (code[i] === '$' && code[i + 1] === '{') {
+					depth++;
+					i += 2;
+				} else if (code[i] === '}' && depth > 0) {
+					depth--;
+					i++;
+				} else if (code[i] === '`' && depth === 0) {
+					i++;
+					break;
+				} else {
+					i++;
+				}
+			}
+			result += code.slice(start, i);
+			continue;
+		}
+
+		// Unescape escape sequences outside strings
+		if (char === '\\' && i + 1 < code.length) {
+			const nextChar = code[i + 1];
+			switch (nextChar) {
+				case 'n':
+					result += '\n';
+					i += 2;
+					break;
+				case 'r':
+					result += '\r';
+					i += 2;
+					break;
+				case 't':
+					result += '\t';
+					i += 2;
+					break;
+				case '\\':
+					result += '\\';
+					i += 2;
+					break;
+				case '"':
+					result += '"';
+					i += 2;
+					break;
+				default:
+					result += char;
+					i++;
+			}
+			continue;
+		}
+
+		result += char;
+		i++;
+	}
+
+	return result;
+}
 import {
 	node as nodeFn,
 	trigger as triggerFn,
@@ -297,9 +483,13 @@ import type { WorkflowJSON } from './types/base';
  * // parsed should match originalJson
  */
 export function parseWorkflowCode(code: string): WorkflowJSON {
+	// Pre-process: handle double-escaped JSON strings (e.g., when code was JSON.stringify'd twice)
+	// This converts literal \n to actual newlines, etc.
+	const unescapedCode = unescapeJsonEscapeSequences(code);
+
 	// Pre-process: escape n8n runtime variables in template literals
 	// This prevents "$today is not defined" errors when parsing Code nodes
-	const executableCode = escapeN8nVariables(code);
+	const executableCode = escapeN8nVariables(unescapedCode);
 
 	// Create a function that takes our SDK functions and returns the workflow
 	let factory: ReturnType<typeof Function>;
@@ -390,8 +580,11 @@ export function parseWorkflowCode(code: string): WorkflowJSON {
  * const workflow = builder.toJSON();
  */
 export function parseWorkflowCodeToBuilder(code: string) {
+	// Pre-process: handle double-escaped JSON strings (e.g., when code was JSON.stringify'd twice)
+	const unescapedCode = unescapeJsonEscapeSequences(code);
+
 	// Pre-process: escape n8n runtime variables in template literals
-	const executableCode = escapeN8nVariables(code);
+	const executableCode = escapeN8nVariables(unescapedCode);
 
 	// Create a function that takes our SDK functions and returns the workflow
 	let factory: ReturnType<typeof Function>;

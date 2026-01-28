@@ -15,6 +15,10 @@ export interface ModeInfo {
 	displayName: string;
 	/** The output connection type if this mode creates a subnode (e.g., 'ai_tool', 'ai_vectorStore') */
 	outputConnectionType?: NodeConnectionType;
+	/** The description of what this mode does */
+	description?: string;
+	/** Hint for the AI workflow builder on when to use this mode */
+	builderHint?: string;
 }
 
 /**
@@ -62,6 +66,8 @@ export function extractModeDiscriminator(
 				name: string;
 				value: string;
 				outputConnectionType?: NodeConnectionType;
+				description?: string;
+				builderHint?: string;
 			} =>
 				typeof opt === 'object' && opt !== null && 'value' in opt && typeof opt.value === 'string',
 		)
@@ -69,6 +75,8 @@ export function extractModeDiscriminator(
 			value: opt.value,
 			displayName: opt.name,
 			outputConnectionType: opt.outputConnectionType,
+			description: opt.description,
+			builderHint: opt.builderHint,
 		}));
 
 	if (modes.length === 0) {

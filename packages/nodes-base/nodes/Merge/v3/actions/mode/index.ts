@@ -20,21 +20,29 @@ export const description: INodeProperties[] = [
 				name: 'Append',
 				value: 'append',
 				description: 'Output items of each input, one after the other',
+				builderHint:
+					'Does NOT wait for all inputs to receive data. Use when you need to concatenate all items from multiple inputs into a single output stream. Items are not modified, just combined sequentially.',
 			},
 			{
 				name: 'Combine',
 				value: 'combine',
 				description: 'Merge matching items together',
+				builderHint:
+					'Waits for both inputs to receive data. Only accepts two inputs. Use when you need to join/merge data from two inputs based on matching field values (like a database JOIN). Set combineBy to specify matching strategy.',
 			},
 			{
 				name: 'SQL Query',
 				value: 'combineBySql',
 				description: 'Write a query to do the merge',
+				builderHint:
+					'Waits for all connected inputs to receive data. Use when you need complex merge logic with SQL-like syntax. Allows filtering, joining, and transforming data using SQL queries.',
 			},
 			{
 				name: 'Choose Branch',
 				value: 'chooseBranch',
 				description: 'Output data from a specific branch, without modifying it',
+				builderHint:
+					'Waits for all connected inputs to receive data. Use when you need to select data from only one specific input branch and discard the others. Useful after conditional nodes.',
 			},
 		],
 		default: 'append',

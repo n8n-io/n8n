@@ -11,6 +11,8 @@ import {
 export interface OperationInfo {
 	value: string;
 	displayName: string;
+	description?: string;
+	builderHint?: string;
 }
 
 /**
@@ -19,6 +21,8 @@ export interface OperationInfo {
 export interface ResourceInfo {
 	value: string;
 	displayName: string;
+	description?: string;
+	builderHint?: string;
 	operations: OperationInfo[];
 }
 
@@ -130,34 +134,38 @@ function findOperationProperties(
 function extractOptions(
 	property: INodeProperties,
 	logger?: Logger,
-): Array<{ value: string; displayName: string }> {
+): Array<{ value: string; displayName: string; description?: string; builderHint?: string }> {
 	if (!property.options || !Array.isArray(property.options)) {
 		return [];
 	}
 
 	return property.options
-		.filter((opt): opt is { name: string; value: string } => {
-			if (typeof opt !== 'object' || opt === null || !('name' in opt) || !('value' in opt)) {
-				return false;
-			}
-			// Extract after guards pass - TypeScript now knows these exist
-			const optName = opt.name;
-			const optValue = opt.value;
-			// Resource/operation values are always strings in n8n.
-			// Non-string values (number/boolean) are used for other option types.
-			if (typeof optValue !== 'string') {
-				logger?.debug('Skipping non-string option value in resource/operation extraction', {
-					propertyName: property.name,
-					optionName: optName,
-					valueType: typeof optValue,
-				});
-				return false;
-			}
-			return true;
-		})
+		.filter(
+			(opt): opt is { name: string; value: string; description?: string; builderHint?: string } => {
+				if (typeof opt !== 'object' || opt === null || !('name' in opt) || !('value' in opt)) {
+					return false;
+				}
+				// Extract after guards pass - TypeScript now knows these exist
+				const optName = opt.name;
+				const optValue = opt.value;
+				// Resource/operation values are always strings in n8n.
+				// Non-string values (number/boolean) are used for other option types.
+				if (typeof optValue !== 'string') {
+					logger?.debug('Skipping non-string option value in resource/operation extraction', {
+						propertyName: property.name,
+						optionName: optName,
+						valueType: typeof optValue,
+					});
+					return false;
+				}
+				return true;
+			},
+		)
 		.map((opt) => ({
 			value: opt.value,
 			displayName: opt.name,
+			description: opt.description,
+			builderHint: opt.builderHint,
 		}));
 }
 
@@ -218,6 +226,8 @@ export function extractResourceOperations(
 					allOperations.push({
 						value: op.value,
 						displayName: op.displayName,
+						description: op.description,
+						builderHint: op.builderHint,
 					});
 				}
 			}
@@ -226,6 +236,8 @@ export function extractResourceOperations(
 		return {
 			value: resource.value,
 			displayName: resource.displayName,
+			description: resource.description,
+			builderHint: resource.builderHint,
 			operations: allOperations,
 		};
 	});

@@ -917,9 +917,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		}
 
 		// Check: Static prompt (no expression)
-		const text = params.text as string | undefined;
-		const hasValidExpression = text ? this.containsExpression(text) : false;
-		const hasMalformedExpression = text ? !text.startsWith('=') && text.includes('{{ $') : false;
+		const text = params.text;
+		const hasValidExpression = this.containsExpression(text);
+		const hasMalformedExpression = this.containsMalformedExpression(text);
 
 		// Only warn about static prompt if there's NO expression at all
 		// (MISSING_EXPRESSION_PREFIX will handle malformed expressions)
@@ -935,8 +935,11 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 
 		// Check: No system message
 		const options = params.options as Record<string, unknown> | undefined;
-		const systemMessage = options?.systemMessage as string | undefined;
-		if (!systemMessage || systemMessage.trim().length === 0) {
+		const systemMessage = options?.systemMessage;
+		if (
+			!systemMessage ||
+			(typeof systemMessage === 'string' && systemMessage.trim().length === 0)
+		) {
 			warnings.push(
 				new ValidationWarning(
 					'AGENT_NO_SYSTEM_MESSAGE',
@@ -966,9 +969,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 		}
 
 		// Check: Static prompt (no expression)
-		const text = params.text as string | undefined;
-		const hasValidExpression = text ? this.containsExpression(text) : false;
-		const hasMalformedExpression = text ? !text.startsWith('=') && text.includes('{{ $') : false;
+		const text = params.text;
+		const hasValidExpression = this.containsExpression(text);
+		const hasMalformedExpression = this.containsMalformedExpression(text);
 
 		// Only warn about static prompt if there's NO expression at all
 		// (MISSING_EXPRESSION_PREFIX will handle malformed expressions)
@@ -984,10 +987,23 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 
 	/**
-	 * Check if a string contains an n8n expression
+	 * Check if a value contains an n8n expression
 	 */
-	private containsExpression(value: string): boolean {
+	private containsExpression(value: unknown): boolean {
+		if (typeof value !== 'string') {
+			return false;
+		}
 		return value.includes('={{') || value.startsWith('=');
+	}
+
+	/**
+	 * Check if a value contains a malformed expression ({{ $ without = prefix)
+	 */
+	private containsMalformedExpression(value: unknown): boolean {
+		if (typeof value !== 'string') {
+			return false;
+		}
+		return !value.startsWith('=') && value.includes('{{ $');
 	}
 
 	/**

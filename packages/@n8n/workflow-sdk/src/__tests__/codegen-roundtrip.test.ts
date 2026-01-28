@@ -1834,6 +1834,58 @@ return { json: { result } };\`
 			expect(mergeConns!.main[0]![0].node).toBe('Loop Over Items13');
 		});
 	});
+
+	describe('JSON-escaped code strings', () => {
+		it('should parse code with escaped newlines (from JSON.stringify)', () => {
+			// When code is passed through JSON.stringify, newlines become \\n
+			// This is a common scenario when code is stored/transmitted as JSON
+			const normalCode = `const myTrigger = trigger({
+  type: 'n8n-nodes-base.manualTrigger',
+  version: 1,
+  config: {
+    name: 'Start',
+    position: [240, 400]
+  }
+});
+
+return workflow('test-id', 'Test Workflow')
+  .add(myTrigger);`;
+
+			// Simulate what happens when code goes through JSON
+			const jsonEncoded = JSON.stringify(normalCode);
+			const jsonDecoded = JSON.parse(jsonEncoded);
+
+			// This should work - the JSON parse/stringify preserves newlines correctly
+			expect(() => parseWorkflowCode(jsonDecoded)).not.toThrow();
+			const parsedJson = parseWorkflowCode(jsonDecoded);
+			expect(parsedJson.id).toBe('test-id');
+			expect(parsedJson.name).toBe('Test Workflow');
+		});
+
+		it('should parse code with literal backslash-n sequences (double-escaped)', () => {
+			// When code is double-escaped (e.g., JSON stringified twice, or from certain APIs),
+			// the \\n becomes literal backslash-n characters in the string
+			// This commonly happens when code is embedded in JSON that gets stringified again
+			const codeWithLiteralBackslashN =
+				"const myTrigger = trigger({\\n  type: 'n8n-nodes-base.manualTrigger',\\n  version: 1,\\n  config: {\\n    name: 'Start',\\n    position: [240, 400]\\n  }\\n});\\n\\nreturn workflow('test-id', 'Test Workflow')\\n  .add(myTrigger);";
+
+			// The parser should handle this by converting \\n to actual newlines
+			expect(() => parseWorkflowCode(codeWithLiteralBackslashN)).not.toThrow();
+			const parsedJson = parseWorkflowCode(codeWithLiteralBackslashN);
+			expect(parsedJson.id).toBe('test-id');
+			expect(parsedJson.name).toBe('Test Workflow');
+		});
+
+		it('should parse code with escaped quotes in strings', () => {
+			// Double-escaped quotes like \\" should be handled
+			const codeWithEscapedQuotes =
+				"const setNode = node({\\n  type: 'n8n-nodes-base.set',\\n  version: 3.4,\\n  config: {\\n    name: 'Set Data',\\n    parameters: {\\n      mode: 'manual',\\n      assignments: {\\n        assignments: [{\\n          id: 'msg',\\n          name: 'message',\\n          value: '={{ $json.error || \\\"Default message\\\" }}',\\n          type: 'string'\\n        }]\\n      }\\n    },\\n    position: [240, 400]\\n  }\\n});\\n\\nreturn workflow('test-id', 'Test')\\n  .add(setNode);";
+
+			expect(() => parseWorkflowCode(codeWithEscapedQuotes)).not.toThrow();
+			const parsedJson = parseWorkflowCode(codeWithEscapedQuotes);
+			expect(parsedJson.id).toBe('test-id');
+		});
+	});
 });
 
 describe('Codegen Roundtrip with Real Workflows', () => {

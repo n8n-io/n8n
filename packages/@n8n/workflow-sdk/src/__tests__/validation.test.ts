@@ -405,6 +405,68 @@ describe('Validation', () => {
 		});
 	});
 
+	describe('containsExpression handles non-string values', () => {
+		it('should not throw when parameter values are numbers', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					parameters: {
+						promptType: 'define',
+						text: 123, // Number instead of string - should not crash
+						options: { systemMessage: 'You are helpful' },
+					},
+				},
+			});
+
+			const wf = workflow('test', 'Test').add(t).then(agent);
+
+			// Should not throw "value.includes is not a function"
+			expect(() => wf.validate()).not.toThrow();
+		});
+
+		it('should not throw when parameter values are objects', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					parameters: {
+						promptType: 'define',
+						text: { nested: 'value' }, // Object instead of string
+						options: { systemMessage: 'You are helpful' },
+					},
+				},
+			});
+
+			const wf = workflow('test', 'Test').add(t).then(agent);
+
+			// Should not throw
+			expect(() => wf.validate()).not.toThrow();
+		});
+
+		it('should not throw when parameter values are null or undefined', () => {
+			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });
+			const agent = node({
+				type: '@n8n/n8n-nodes-langchain.agent',
+				version: 1.7,
+				config: {
+					parameters: {
+						promptType: 'define',
+						text: null, // null value
+						options: { systemMessage: 'You are helpful' },
+					},
+				},
+			});
+
+			const wf = workflow('test', 'Test').add(t).then(agent);
+
+			// Should not throw
+			expect(() => wf.validate()).not.toThrow();
+		});
+	});
+
 	describe('schema validation integration', () => {
 		it('should validate node parameters against schema by default', () => {
 			const t = trigger({ type: 'n8n-nodes-base.webhookTrigger', version: 1, config: {} });

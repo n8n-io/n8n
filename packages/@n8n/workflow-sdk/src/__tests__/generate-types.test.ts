@@ -2703,7 +2703,7 @@ describe('generate-types', () => {
 				expect(content).not.toContain('embedding?:');
 
 				// Node type should have subnodes field
-				expect(content).toContain('subnodes?:');
+				expect(content).toContain('subnodes:');
 			});
 
 			it('should include SubnodeConfig with optional subnodes when not required', () => {

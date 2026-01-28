@@ -177,4 +177,66 @@ describe('extractModeDiscriminator', () => {
 			expect(runOnceForAll!.displayName).toBe('Run Once for All Items');
 		});
 	});
+
+	describe('description and builderHint extraction', () => {
+		it('should include description when present on mode options', () => {
+			const result = extractModeDiscriminator(mockVectorStoreNode, 1);
+
+			expect(result).not.toBeNull();
+
+			const loadMode = result!.modes.find((m) => m.value === 'load');
+			expect(loadMode!.description).toBe('Get many ranked documents from vector store for query');
+
+			const insertMode = result!.modes.find((m) => m.value === 'insert');
+			expect(insertMode!.description).toBe('Insert documents into vector store');
+		});
+
+		it('should include builderHint when present on mode options', () => {
+			const nodeWithBuilderHints: INodeTypeDescription = {
+				name: 'n8n-nodes-base.testNodeWithHints',
+				displayName: 'Test Node',
+				description: 'A test node with builderHints',
+				group: ['transform'],
+				version: 1,
+				defaults: { name: 'Test Node' },
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						displayName: 'Mode',
+						name: 'mode',
+						type: 'options',
+						noDataExpression: true,
+						options: [
+							{
+								name: 'Mode A',
+								value: 'modeA',
+								description: 'Description of mode A',
+								builderHint: 'Use mode A when you want to do X',
+							},
+							{
+								name: 'Mode B',
+								value: 'modeB',
+								description: 'Description of mode B',
+								// No builderHint - should be undefined
+							},
+						],
+						default: 'modeA',
+					},
+				],
+			};
+
+			const result = extractModeDiscriminator(nodeWithBuilderHints, 1);
+
+			expect(result).not.toBeNull();
+
+			const modeA = result!.modes.find((m) => m.value === 'modeA');
+			expect(modeA!.description).toBe('Description of mode A');
+			expect(modeA!.builderHint).toBe('Use mode A when you want to do X');
+
+			const modeB = result!.modes.find((m) => m.value === 'modeB');
+			expect(modeB!.description).toBe('Description of mode B');
+			expect(modeB!.builderHint).toBeUndefined();
+		});
+	});
 });
