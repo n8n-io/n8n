@@ -2275,6 +2275,10 @@ export type BuilderHintInputs = Record<string, IBuilderHintInputConfig>;
 export interface IBuilderHint {
 	/** Explicit AI input requirements for accurate type generation */
 	inputs?: BuilderHintInputs;
+	/** General hint message for LLM workflow builders */
+	message?: string;
+	/** Related node IDs that work together with this node */
+	relatedNodes?: string[];
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
