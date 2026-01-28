@@ -424,6 +424,68 @@ describe('KafkaTrigger Node', () => {
 		expect(emit).toHaveBeenCalledWith([[{ json: { message: 'test', topic: 'test-topic' } }]]);
 	});
 
+	it('should use immediate emit in manual mode even when resolveOffset is onCompletion (v1.2)', async () => {
+		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
+			mode: 'manual',
+			node: {
+				typeVersion: 1.2,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					resolveOffset: 'onCompletion',
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await manualTriggerFunction?.();
+
+		await publishMessage({ value: Buffer.from('test-message') });
+
+		expect(emit).toHaveBeenCalledWith([
+			[{ json: { message: 'test-message', topic: 'test-topic' } }],
+		]);
+		expect(emit.mock.calls[0][2]).toBeUndefined();
+	});
+
+	it('should use immediate emit in manual mode even when parallelProcessing is false (v1.1)', async () => {
+		const { emit, manualTriggerFunction } = await testTriggerNode(KafkaTrigger, {
+			mode: 'manual',
+			node: {
+				typeVersion: 1.1,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						parallelProcessing: false,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await manualTriggerFunction?.();
+
+		await publishMessage({ value: Buffer.from('test-message') });
+
+		expect(emit).toHaveBeenCalledWith([
+			[{ json: { message: 'test-message', topic: 'test-topic' } }],
+		]);
+		expect(emit.mock.calls[0][2]).toBeUndefined();
+	});
+
 	it('should handle sequential processing when parallelProcessing is false', async () => {
 		const { emit } = await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',

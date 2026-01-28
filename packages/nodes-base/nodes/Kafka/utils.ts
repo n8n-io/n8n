@@ -257,12 +257,14 @@ export function configureDataEmitter(
 	ctx: ITriggerFunctions,
 	options: KafkaTriggerOptions,
 	nodeVersion: number,
+	executionMode: string,
 ) {
 	const executionTimeoutInSeconds = ctx.getWorkflowSettings().executionTimeout ?? 3600;
-	const mode = getResolveOffsetMode(ctx, options, nodeVersion);
+	const resolveOffsetMode = getResolveOffsetMode(ctx, options, nodeVersion);
 	const errorRetryDelay = options.errorRetryDelay ?? DEFAULT_ERROR_RETRY_DELAY_MS;
 
-	if (mode === 'immediately') {
+	// For manual mode, always use immediate emit (no donePromise)
+	if (executionMode === 'manual' || resolveOffsetMode === 'immediately') {
 		return async (dataArray: IDataObject[]) => {
 			ctx.emit([ctx.helpers.returnJsonArray(dataArray)]);
 			return { success: true };
@@ -270,9 +272,9 @@ export function configureDataEmitter(
 	}
 
 	const allowedStatuses: string[] = [];
-	if (mode === 'onSuccess') {
+	if (resolveOffsetMode === 'onSuccess') {
 		allowedStatuses.push('success');
-	} else if (mode === 'onStatus') {
+	} else if (resolveOffsetMode === 'onStatus') {
 		const selectedStatuses = ctx.getNodeParameter('allowedStatuses', []) as string[];
 
 		if (Array.isArray(selectedStatuses) && selectedStatuses.length) {
@@ -306,7 +308,7 @@ export function configureDataEmitter(
 
 			if (timeoutId) clearTimeout(timeoutId);
 
-			if (mode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
+			if (resolveOffsetMode !== 'onCompletion' && !allowedStatuses.includes(run.status)) {
 				throw new NodeOperationError(
 					ctx.getNode(),
 					'Execution status is not allowed for resolving offsets, current status: ' + run.status,
