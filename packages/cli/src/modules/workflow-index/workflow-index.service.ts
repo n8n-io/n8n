@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencies, WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -18,8 +18,6 @@ const WORKFLOW_INDEXED_PLACEHOLDER_KEY = '__INDEXED__';
  * credentials, workflow calls, and webhook paths used by each workflow. The service builds the index on server start
  * and updates it in response to workflow-related events.
  *
- * TODO(CAT-1595): Build the index on startup.
- * TODO(CAT-1597): Update the index in realtime.
  */
 @Service()
 export class WorkflowIndexService {
@@ -38,38 +36,44 @@ export class WorkflowIndexService {
 			await this.buildIndex().catch((e) => this.errorReporter.error(e));
 		});
 		this.eventService.on('workflow-created', async ({ workflow }) => {
-			await this.updateIndexFor(workflow);
+			await this.updateIndexFor(workflow, /* publishedVersionId= */ null);
 		});
 		this.eventService.on('workflow-saved', async ({ workflow }) => {
-			await this.updateIndexFor(workflow);
+			await this.updateIndexFor(workflow, /* publishedVersionId= */ null);
 		});
 		this.eventService.on('workflow-deleted', async ({ workflowId }) => {
-			await this.dependencyRepository.removeDependenciesForWorkflow(
-				workflowId,
-				/*publishedVersionId=*/ null,
-			);
+			await this.dependencyRepository.removeDependenciesForWorkflow(workflowId);
 		});
 		this.eventService.on('workflow-activated', async ({ workflow }) => {
-			await this.updateIndexForPublishedVersion(workflow);
+			await this.updateIndexFor(workflow, workflow.activeVersionId);
 		});
 	}
 
 	async buildIndex() {
 		// Build draft index
-		const draftCount = await this.buildDraftIndex();
+		const draftCount = await this.buildIndexInternal(
+			async (batchSize) => await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize),
+		);
+
+		const publishedCount = await this.buildIndexInternal(
+			async (batchSize) =>
+				await this.workflowRepository.findWorkflowsNeedingPublishedVersionIndexing(batchSize),
+		);
 
 		this.logger.info(
-			`Finished building workflow dependency index. Processed ${draftCount} draft workflows.`,
+			`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows.`,
 		);
 	}
 
-	private async buildDraftIndex(): Promise<number> {
+	private async buildIndexInternal(
+		unindexedWorkflowFinder: (batchSize: number) => Promise<IWorkflowDb[]>,
+	): Promise<number> {
 		const batchSize = this.batchSize;
 		let processedCount = 0;
 
 		while (processedCount < LOOP_LIMIT) {
 			// Get only workflows that need draft indexing (unindexed or outdated).
-			const workflows = await this.workflowRepository.findWorkflowsNeedingIndexing(batchSize);
+			const workflows = await unindexedWorkflowFinder(batchSize);
 
 			if (workflows.length === 0) {
 				break;
@@ -77,7 +81,7 @@ export class WorkflowIndexService {
 
 			// Build the index for each workflow in the batch.
 			for (const workflow of workflows) {
-				await this.updateIndexFor(workflow);
+				await this.updateIndexFor(workflow, /* publishedVersionId= */ null);
 			}
 
 			processedCount += workflows.length;
@@ -99,19 +103,19 @@ export class WorkflowIndexService {
 	}
 
 	/**
-	 * Update the draft dependency index for a given workflow.
+	 * Update the dependency index for a given workflow.
 	 *
 	 * NOTE: this should generally be handled via events, rather than called directly.
 	 * The exception is during workflow imports where it's simpler to call directly.
 	 *
 	 */
-	async updateIndexFor(workflow: IWorkflowBase) {
+	async updateIndexFor(workflow: IWorkflowBase, publishedVersionId: string | null) {
 		// TODO: input validation.
 		// Generate the dependency updates for the given workflow draft (publishedVersionId = null).
 		const dependencyUpdates = new WorkflowDependencies(
 			workflow.id,
 			workflow.versionCounter,
-			null, // draft dependencies
+			publishedVersionId,
 		);
 
 		workflow.nodes.forEach((node) => {
