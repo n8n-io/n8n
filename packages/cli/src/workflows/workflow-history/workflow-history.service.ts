@@ -100,7 +100,11 @@ export class WorkflowHistoryService {
 
 	async saveVersion(
 		user: User | string,
-		workflow: IWorkflowBase,
+		workflow: {
+			versionId: string;
+			nodes: IWorkflowBase['nodes'];
+			connections: IWorkflowBase['connections'];
+		},
 		workflowId: string,
 		autosaved = false,
 		transactionManager?: EntityManager,

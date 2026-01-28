@@ -317,11 +317,11 @@ export class SourceControlService {
 			};
 		});
 
-		const allowedResources = (await this.sourceControlStatusService.getStatus(user, {
+		const allowedResources = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'push',
 			verbose: false,
 			preferLocalVersion: true,
-		})) as SourceControlledFile[];
+		});
 
 		// Fallback to all allowed resources if no fileNames are provided
 		if (!filesToPush.length) {
@@ -465,11 +465,11 @@ export class SourceControlService {
 	): Promise<{ statusCode: number; statusResult: SourceControlledFile[] }> {
 		await this.sanityCheck();
 
-		const statusResult = (await this.sourceControlStatusService.getStatus(user, {
+		const statusResult = await this.sourceControlStatusService.getStatus(user, {
 			direction: 'pull',
 			verbose: false,
 			preferLocalVersion: false,
-		})) as SourceControlledFile[];
+		});
 
 		if (options.force !== true) {
 			const possibleConflicts = statusResult.filter(
@@ -501,6 +501,7 @@ export class SourceControlService {
 		await this.sourceControlImportService.importWorkflowFromWorkFolder(
 			workflowsToBeImported,
 			user.id,
+			options.autoPublish,
 		);
 		const workflowsToBeDeleted = getDeletedResources(statusResult, 'workflow');
 		await this.sourceControlImportService.deleteWorkflowsNotInWorkfolder(
