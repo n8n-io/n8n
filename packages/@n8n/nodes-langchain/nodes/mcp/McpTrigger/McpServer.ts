@@ -21,6 +21,17 @@ import { FlushingSSEServerTransport, FlushingStreamableHTTPTransport } from './F
 import type { CompressionResponse } from './FlushingTransport';
 
 /**
+ * Pending MCP response for queue mode support.
+ * Stores the transport reference to send results when worker responds.
+ */
+interface PendingMcpTriggerResponse {
+	sessionId: string;
+	messageId: string;
+	transport: FlushingSSEServerTransport | FlushingStreamableHTTPTransport;
+	createdAt: Date;
+}
+
+/**
  * Parses the JSONRPC message and checks whether the method used was a tool
  * call. This is necessary in order to not have executions for listing tools
  * and other commands sent by the MCP client
@@ -71,6 +82,12 @@ export class McpServerManager {
 	private tools: { [sessionId: string]: Tool[] } = {};
 
 	private resolveFunctions: { [callId: string]: CallableFunction } = {};
+
+	/**
+	 * Pending responses for queue mode support.
+	 * Key is `${sessionId}_${messageId}` (callId).
+	 */
+	private pendingResponses: { [callId: string]: PendingMcpTriggerResponse } = {};
 
 	logger: Logger;
 
@@ -242,6 +259,94 @@ export class McpServerManager {
 
 		resp.status(404).send('Session not found');
 	}
+
+	// #region Queue Mode Support
+
+	/**
+	 * Get MCP metadata for a request. Used to pass MCP context to job data in queue mode.
+	 */
+	getMcpMetadata(req: express.Request): { sessionId: string; messageId: string } | undefined {
+		const sessionId = this.getSessionId(req);
+		if (!sessionId) return undefined;
+
+		const message = jsonParse(req.rawBody.toString());
+		const messageId = getRequestId(message);
+
+		return {
+			sessionId,
+			messageId: messageId ?? '',
+		};
+	}
+
+	/**
+	 * Store a pending response for queue mode.
+	 * Called when the workflow execution is enqueued to a worker.
+	 */
+	storePendingResponse(sessionId: string, messageId: string): void {
+		const transport = this.getTransport(sessionId);
+		if (!transport) {
+			this.logger.warn(`Cannot store pending response: no transport for session ${sessionId}`);
+			return;
+		}
+
+		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
+		this.pendingResponses[callId] = {
+			sessionId,
+			messageId,
+			transport,
+			createdAt: new Date(),
+		};
+
+		this.logger.debug('Stored pending MCP response', { callId, sessionId, messageId });
+	}
+
+	/**
+	 * Handle a response from a worker for an MCP Trigger execution.
+	 * Resolves the pending promise to allow the MCP handler to complete.
+	 * Note: The result is passed for future use but currently the MCP SDK
+	 * handles the response internally through the handler's return value.
+	 */
+	handleWorkerResponse(sessionId: string, messageId: string, _result: unknown): void {
+		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
+		const pending = this.pendingResponses[callId];
+
+		if (!pending) {
+			this.logger.warn('Received MCP Trigger response for unknown call', { callId });
+			return;
+		}
+
+		this.logger.debug('Handling worker response for MCP Trigger', { callId, sessionId, messageId });
+
+		// Resolve the pending promise if it exists (for cases where both mechanisms are used)
+		if (this.resolveFunctions[callId]) {
+			this.resolveFunctions[callId]();
+			delete this.resolveFunctions[callId];
+		}
+
+		// Clean up the pending response
+		delete this.pendingResponses[callId];
+	}
+
+	/**
+	 * Remove a pending response (e.g., on timeout or cancellation).
+	 */
+	removePendingResponse(sessionId: string, messageId: string): void {
+		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
+		if (this.pendingResponses[callId]) {
+			delete this.pendingResponses[callId];
+			this.logger.debug('Removed pending MCP response', { callId });
+		}
+	}
+
+	/**
+	 * Check if there's a pending response for a given session/message.
+	 */
+	hasPendingResponse(sessionId: string, messageId: string): boolean {
+		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
+		return callId in this.pendingResponses;
+	}
+
+	// #endregion
 
 	setUpHandlers(server: Server) {
 		server.setRequestHandler(

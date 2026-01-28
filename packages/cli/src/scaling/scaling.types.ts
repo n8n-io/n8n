@@ -24,6 +24,8 @@ export type JobData = {
 	// MCP-specific fields for queue mode support
 	/** Whether this execution was triggered by an MCP tool call. */
 	isMcpExecution?: boolean;
+	/** Type of MCP execution: 'service' for MCP Service, 'trigger' for MCP Trigger Node. */
+	mcpType?: 'service' | 'trigger';
 	/** MCP session ID for routing responses back to the correct client. */
 	mcpSessionId?: string;
 	/** MCP message ID for correlating responses with requests. */
@@ -82,6 +84,8 @@ export type SendChunkMessage = {
 export type McpResponseMessage = {
 	kind: 'mcp-response';
 	executionId: string;
+	/** Type of MCP execution: 'service' for MCP Service, 'trigger' for MCP Trigger Node. */
+	mcpType: 'service' | 'trigger';
 	sessionId: string;
 	messageId: string;
 	response: unknown;
