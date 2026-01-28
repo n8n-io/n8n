@@ -3,6 +3,9 @@ import { mockInstance, testDb, testModules, createActiveWorkflow } from '@n8n/ba
 import type { User, CredentialsEntity } from '@n8n/db';
 import { ExecutionRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { saveCredential } from '@test-integration/db/credentials';
+import { createAdmin, createMember } from '@test-integration/db/users';
+import { retryUntil } from '@test-integration/retry-until';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings, BinaryDataService, Cipher } from 'n8n-core';
 import {
@@ -14,15 +17,12 @@ import {
 	type IRun,
 } from 'n8n-workflow';
 
-import { saveCredential } from '@test-integration/db/credentials';
-import { createAdmin, createMember } from '@test-integration/db/users';
-import { retryUntil } from '@test-integration/retry-until';
-
 import { ActiveExecutions } from '../../../active-executions';
 import { ChatExecutionManager } from '../../../chat/chat-execution-manager';
 import { Push } from '../../../push';
 import { WorkflowExecutionService } from '../../../workflows/workflow-execution.service';
 import { ChatHubAgentRepository } from '../chat-hub-agent.repository';
+import * as chatHubConstants from '../chat-hub.constants';
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
@@ -2074,6 +2074,490 @@ describe('chatHub', () => {
 							},
 						),
 					).rejects.toThrow('Chat Trigger node response mode must be set to');
+				});
+			});
+
+			describe('multi-main mode execution waiting', () => {
+				const TEST_POLL_INTERVAL = 50;
+				const originalPollInterval = chatHubConstants.EXECUTION_POLL_INTERVAL;
+
+				beforeEach(() => {
+					Object.defineProperty(chatHubConstants, 'EXECUTION_POLL_INTERVAL', {
+						value: TEST_POLL_INTERVAL,
+						writable: true,
+						configurable: true,
+					});
+				});
+
+				afterEach(() => {
+					Object.defineProperty(chatHubConstants, 'EXECUTION_POLL_INTERVAL', {
+						value: originalPollInterval,
+						writable: true,
+						configurable: true,
+					});
+				});
+
+				it('should poll and complete when execution finishes with "waiting" status', async () => {
+					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+
+					// Spy on findSingleExecution to verify polling occurs
+					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
+
+					const workflow = await createActiveWorkflow(
+						{
+							name: 'Multi-Main Wait Workflow',
+							nodes: [
+								{
+									id: 'chat-trigger-1',
+									name: 'Chat Trigger',
+									type: CHAT_TRIGGER_NODE_TYPE,
+									typeVersion: 1.4,
+									position: [0, 0],
+									parameters: {
+										availableInChat: true,
+										options: {
+											responseMode: 'responseNodes',
+										},
+									},
+								},
+								{
+									id: 'respond-1',
+									name: 'Respond to Chat',
+									type: CHAT_NODE_TYPE,
+									typeVersion: 1,
+									position: [200, 0],
+									parameters: {
+										message: 'Waiting for your input',
+										waitUserReply: true,
+									},
+								},
+							],
+							connections: {
+								'Chat Trigger': {
+									main: [[{ node: 'Respond to Chat', type: 'main', index: 0 }]],
+								},
+							},
+						},
+						member,
+					);
+
+					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+						const executionId = await executionRepository.createNewExecution({
+							finished: false,
+							mode: 'webhook',
+							status: 'running',
+							workflowId: workflowData.id,
+							data: executionData,
+							workflowData,
+						});
+
+						// Update execution status to 'waiting' after multiple poll intervals
+						setTimeout(async () => {
+							await executionRepository.updateExistingExecution(executionId, {
+								status: 'waiting',
+								data: createRunExecutionData({
+									resultData: {
+										runData: {
+											'Respond to Chat': [
+												{
+													startTime: Date.now(),
+													executionTime: 100,
+													executionIndex: 0,
+													executionStatus: 'success',
+													source: [],
+													data: {
+														main: [
+															[
+																{
+																	json: {},
+																	sendMessage: 'Waiting for your input',
+																},
+															],
+														],
+													},
+												},
+											],
+										},
+										lastNodeExecuted: 'Respond to Chat',
+									},
+								}),
+							});
+						}, TEST_POLL_INTERVAL * 3);
+
+						return { executionId };
+					});
+
+					await chatHubService.sendHumanMessage(
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
+
+					const messages = await retryUntil(async () => {
+						const messages = await messagesRepository.getManyBySessionId(sessionId);
+						expect(messages.length).toBeGreaterThanOrEqual(2);
+						expect(messages[1]?.status).toBe('waiting');
+						return messages;
+					});
+
+					expect(messages[0]?.type).toBe('human');
+					expect(messages[0]?.content).toBe('Test message');
+
+					expect(messages[1]?.type).toBe('ai');
+					expect(messages[1]?.status).toBe('waiting');
+					expect(messages[1]?.content).toBe('Waiting for your input');
+
+					// Ensure polling happened
+					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
+
+					findSingleExecutionSpy.mockRestore();
+				});
+
+				it('should poll and complete when execution finishes with "success" status', async () => {
+					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+
+					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
+
+					const workflow = await createActiveWorkflow(
+						{
+							name: 'Multi-Main Success Workflow',
+							nodes: [
+								{
+									id: 'chat-trigger-1',
+									name: 'Chat Trigger',
+									type: CHAT_TRIGGER_NODE_TYPE,
+									typeVersion: 1.4,
+									position: [0, 0],
+									parameters: {
+										availableInChat: true,
+										options: {
+											responseMode: 'lastNode',
+										},
+									},
+								},
+								{
+									id: 'agent-1',
+									name: 'AI Agent',
+									type: '@n8n/n8n-nodes-langchain.agent',
+									typeVersion: 2.2,
+									position: [200, 0],
+									parameters: {},
+								},
+							],
+							connections: {
+								'Chat Trigger': {
+									main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+								},
+							},
+						},
+						member,
+					);
+
+					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+						const executionId = await executionRepository.createNewExecution({
+							finished: false,
+							mode: 'webhook',
+							status: 'running',
+							workflowId: workflowData.id,
+							data: executionData,
+							workflowData,
+						});
+
+						// Update execution status to 'success' after multiple poll intervals
+						setTimeout(async () => {
+							await executionRepository.updateExistingExecution(executionId, {
+								status: 'success',
+								data: createRunExecutionData({
+									resultData: {
+										runData: {
+											'AI Agent': [
+												{
+													startTime: Date.now(),
+													executionTime: 100,
+													executionIndex: 0,
+													executionStatus: 'success',
+													source: [],
+													data: {
+														main: [
+															[
+																{
+																	json: { output: 'Hello from multi-main!' },
+																},
+															],
+														],
+													},
+												},
+											],
+										},
+										lastNodeExecuted: 'AI Agent',
+									},
+								}),
+							});
+						}, TEST_POLL_INTERVAL * 3);
+
+						return { executionId };
+					});
+
+					await chatHubService.sendHumanMessage(
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
+
+					const messages = await retryUntil(async () => {
+						const messages = await messagesRepository.getManyBySessionId(sessionId);
+						expect(messages.length).toBeGreaterThanOrEqual(2);
+						expect(messages[1]?.status).toBe('success');
+						return messages;
+					});
+
+					expect(messages[0]?.type).toBe('human');
+					expect(messages[0]?.content).toBe('Test message');
+
+					expect(messages[1]?.type).toBe('ai');
+					expect(messages[1]?.status).toBe('success');
+					expect(messages[1]?.content).toBe('Hello from multi-main!');
+
+					// Ensure polling happened
+					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
+
+					findSingleExecutionSpy.mockRestore();
+				});
+
+				it('should poll and complete when execution finishes with "error" status', async () => {
+					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+
+					const findSingleExecutionSpy = jest.spyOn(executionRepository, 'findSingleExecution');
+
+					const workflow = await createActiveWorkflow(
+						{
+							name: 'Multi-Main Error Workflow',
+							nodes: [
+								{
+									id: 'chat-trigger-1',
+									name: 'Chat Trigger',
+									type: CHAT_TRIGGER_NODE_TYPE,
+									typeVersion: 1.4,
+									position: [0, 0],
+									parameters: {
+										availableInChat: true,
+										options: {
+											responseMode: 'lastNode',
+										},
+									},
+								},
+								{
+									id: 'agent-1',
+									name: 'AI Agent',
+									type: '@n8n/n8n-nodes-langchain.agent',
+									typeVersion: 2.2,
+									position: [200, 0],
+									parameters: {},
+								},
+							],
+							connections: {
+								'Chat Trigger': {
+									main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+								},
+							},
+						},
+						member,
+					);
+
+					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+						const executionId = await executionRepository.createNewExecution({
+							finished: false,
+							mode: 'webhook',
+							status: 'running',
+							workflowId: workflowData.id,
+							data: executionData,
+							workflowData,
+						});
+
+						// Update execution status to 'error' after multiple poll intervals
+						setTimeout(async () => {
+							await executionRepository.updateExistingExecution(executionId, {
+								status: 'error',
+								data: createRunExecutionData({
+									resultData: {
+										runData: {},
+										error: new NodeOperationError(mock<INode>(), 'Multi-main execution failed'),
+									},
+								}),
+							});
+						}, TEST_POLL_INTERVAL * 3);
+
+						return { executionId };
+					});
+
+					await chatHubService.sendHumanMessage(
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
+
+					const messages = await retryUntil(async () => {
+						const messages = await messagesRepository.getManyBySessionId(sessionId);
+						expect(messages.length).toBeGreaterThanOrEqual(2);
+						expect(messages[1]?.status).toBe('error');
+						return messages;
+					});
+
+					expect(messages[0]?.type).toBe('human');
+					expect(messages[0]?.content).toBe('Test message');
+
+					expect(messages[1]?.type).toBe('ai');
+					expect(messages[1]?.status).toBe('error');
+					expect(messages[1]?.content).toBe('Multi-main execution failed');
+
+					// Ensure polling happened
+					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
+
+					findSingleExecutionSpy.mockRestore();
+				});
+
+				it('should handle poll error by saving error to message when finding execution throws', async () => {
+					jest.spyOn(instanceSettings, 'isMultiMain', 'get').mockReturnValue(true);
+
+					const findSingleExecution = executionRepository.findSingleExecution.bind(
+						executionRepository,
+					) as typeof executionRepository.findSingleExecution;
+
+					// Subsequent calls during polling throw
+					const findSingleExecutionSpy = jest
+						.spyOn(executionRepository, 'findSingleExecution')
+						.mockImplementationOnce(findSingleExecution)
+						.mockRejectedValue(new Error('Database error'));
+
+					const workflow = await createActiveWorkflow(
+						{
+							name: 'Test Workflow',
+							nodes: [
+								{
+									id: 'chat-trigger-1',
+									name: 'Chat Trigger',
+									type: CHAT_TRIGGER_NODE_TYPE,
+									typeVersion: 1.4,
+									position: [0, 0],
+									parameters: {
+										availableInChat: true,
+										options: {
+											responseMode: 'lastNode',
+										},
+									},
+								},
+								{
+									id: 'agent-1',
+									name: 'AI Agent',
+									type: '@n8n/n8n-nodes-langchain.agent',
+									typeVersion: 2.2,
+									position: [200, 0],
+									parameters: {},
+								},
+							],
+							connections: {
+								'Chat Trigger': {
+									main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+								},
+							},
+						},
+						member,
+					);
+
+					spyExecute.mockImplementationOnce(async (_user, workflowData, executionData) => {
+						const executionId = await executionRepository.createNewExecution({
+							finished: false,
+							mode: 'webhook',
+							status: 'running',
+							workflowId: workflowData.id,
+							data: executionData,
+							workflowData,
+						});
+
+						return { executionId };
+					});
+
+					await chatHubService.sendHumanMessage(
+						member,
+						{
+							userId: member.id,
+							sessionId,
+							messageId,
+							message: 'Test message',
+							model: { provider: 'n8n', workflowId: workflow.id },
+							credentials: {},
+							previousMessageId: null,
+							tools: [],
+							attachments: [],
+						},
+						{
+							authToken: 'authtoken',
+							method: 'POST',
+							endpoint: '/api/chat/message',
+						},
+					);
+
+					// Wait for the error to be processed
+					const messages = await retryUntil(async () => {
+						const messages = await messagesRepository.getManyBySessionId(sessionId);
+						expect(messages.length).toBeGreaterThanOrEqual(2);
+						expect(messages[1]?.status).toBe('error');
+						return messages;
+					});
+
+					expect(messages[0]?.type).toBe('human');
+					expect(messages[0]?.content).toBe('Test message');
+
+					expect(messages[1]?.type).toBe('ai');
+					expect(messages[1]?.status).toBe('error');
+					expect(messages[1]?.content).toBe('Database error');
+
+					// Ensure polling was attempted
+					expect(findSingleExecutionSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
+
+					findSingleExecutionSpy.mockRestore();
 				});
 			});
 		});
