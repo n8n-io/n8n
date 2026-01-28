@@ -16,7 +16,6 @@ import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-syst
 import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
-import FocusedNodesChips from '../FocusedNodes/FocusedNodesChips.vue';
 import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
@@ -506,7 +505,6 @@ defineExpose({
 				/>
 			</template>
 			<template #inputHeader>
-				<FocusedNodesChips />
 				<Transition name="slide">
 					<NotificationPermissionBanner v-if="shouldShowNotificationBanner" />
 				</Transition>

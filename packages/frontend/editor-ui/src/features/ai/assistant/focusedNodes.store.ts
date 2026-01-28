@@ -5,7 +5,12 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounceFn } from '@vueuse/core';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
-import type { FocusedNode, FocusedNodeState } from './focusedNodes.types';
+import type {
+	FocusedNode,
+	FocusedNodeState,
+	FocusedNodesContextPayload,
+} from './focusedNodes.types';
+import type { INodeIssues } from 'n8n-workflow';
 
 const COLLAPSE_THRESHOLD = 7;
 const MAX_UNCONFIRMED_DISPLAY = 50;
@@ -50,8 +55,16 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		return { name: node.name, type: node.type };
 	}
 
+	// Telemetry types
+	type AddSource = 'context_menu' | 'canvas_selection' | 'mention' | 'keyboard_shortcut';
+	type RemoveMethod = 'badge_click' | 'clear_all' | 'node_deleted' | 'workflow_changed';
+
 	// Actions
-	function confirmNodes(nodeIds: string[], source: 'context_menu' | 'mention' | 'chip_click') {
+	function confirmNodes(
+		nodeIds: string[],
+		source: AddSource,
+		options?: { mentionQueryLength?: number },
+	) {
 		console.log('[FocusedNodesStore] confirmNodes called', { nodeIds, source });
 		const nodeTypes: string[] = [];
 
@@ -81,6 +94,9 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 				source,
 				node_count: nodeTypes.length,
 				node_types: nodeTypes,
+				...(source === 'mention' && options?.mentionQueryLength !== undefined
+					? { mention_query_length: options.mentionQueryLength }
+					: {}),
 			});
 		}
 	}
@@ -133,8 +149,8 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		if (!node) return;
 
 		if (node.state === 'unconfirmed') {
-			// Unconfirmed → Confirmed
-			confirmNodes([nodeId], 'chip_click');
+			// Unconfirmed → Confirmed (clicking unconfirmed badge = canvas_selection confirmation)
+			confirmNodes([nodeId], 'canvas_selection');
 		} else if (node.state === 'confirmed') {
 			// Confirmed → Remove (if not selected on canvas) or make unconfirmed (if selected)
 			if (isSelectedOnCanvas) {
@@ -145,7 +161,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		}
 	}
 
-	function removeNode(nodeId: string) {
+	function removeNode(nodeId: string, method: RemoveMethod = 'badge_click') {
 		const node = focusedNodesMap.value[nodeId];
 		if (!node) return;
 
@@ -156,7 +172,8 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 
 		if (wasConfirmed) {
 			telemetry.track('ai.focusedNodes.removed', {
-				method: 'chip_click',
+				method,
+				removed_count: 1,
 				remaining_count: confirmedNodes.value.length,
 			});
 		}
@@ -167,8 +184,11 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		focusedNodesMap.value = {};
 
 		if (previousCount > 0) {
-			telemetry.track('ai.focusedNodes.cleared', {
-				previous_count: previousCount,
+			// Merged into ai.focusedNodes.removed with method 'clear_all'
+			telemetry.track('ai.focusedNodes.removed', {
+				method: 'clear_all',
+				removed_count: previousCount,
+				remaining_count: 0,
 			});
 		}
 	}
@@ -194,11 +214,56 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		}
 	}
 
+	function confirmAllUnconfirmed() {
+		const unconfirmedNodeIds = unconfirmedNodes.value.map((n) => n.nodeId);
+		if (unconfirmedNodeIds.length > 0) {
+			confirmNodes(unconfirmedNodeIds, 'canvas_selection');
+		}
+	}
+
+	function removeAllConfirmed() {
+		const previousCount = confirmedNodes.value.length;
+		const confirmedIds = confirmedNodes.value.map((n) => n.nodeId);
+
+		// Remove all confirmed nodes, but keep those that are selected on canvas as unconfirmed
+		for (const nodeId of confirmedIds) {
+			if (canvasSelectedNodeIds.value.has(nodeId)) {
+				const node = focusedNodesMap.value[nodeId];
+				if (node) {
+					focusedNodesMap.value[nodeId] = { ...node, state: 'unconfirmed' };
+				}
+			} else {
+				delete focusedNodesMap.value[nodeId];
+			}
+		}
+
+		// Trigger reactivity
+		focusedNodesMap.value = { ...focusedNodesMap.value };
+
+		if (previousCount > 0) {
+			telemetry.track('ai.focusedNodes.removed', {
+				method: 'clear_all',
+				removed_count: previousCount,
+				remaining_count: confirmedNodes.value.length,
+			});
+		}
+	}
+
 	// Watch for workflow changes - reset all focused nodes
 	watch(
 		() => workflowsStore.workflowId,
-		() => {
+		(_newId, oldId) => {
+			// Only track if there were confirmed nodes and this isn't the initial load
+			const previousCount = confirmedNodes.value.length;
 			focusedNodesMap.value = {};
+
+			if (previousCount > 0 && oldId !== undefined) {
+				telemetry.track('ai.focusedNodes.removed', {
+					method: 'workflow_changed',
+					removed_count: previousCount,
+					remaining_count: 0,
+				});
+			}
 		},
 	);
 
@@ -209,16 +274,24 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 			const currentNodeIds = new Set(newNodes.map((n) => n.id));
 			const focusedIds = Object.keys(focusedNodesMap.value);
 
-			let hasChanges = false;
+			let deletedConfirmedCount = 0;
 			for (const focusedId of focusedIds) {
 				if (!currentNodeIds.has(focusedId)) {
+					const node = focusedNodesMap.value[focusedId];
+					if (node?.state === 'confirmed') {
+						deletedConfirmedCount++;
+					}
 					delete focusedNodesMap.value[focusedId];
-					hasChanges = true;
 				}
 			}
 
-			if (hasChanges) {
+			if (deletedConfirmedCount > 0) {
 				focusedNodesMap.value = { ...focusedNodesMap.value };
+				telemetry.track('ai.focusedNodes.removed', {
+					method: 'node_deleted',
+					removed_count: deletedConfirmedCount,
+					remaining_count: confirmedNodes.value.length,
+				});
 			}
 		},
 		{ deep: true },
@@ -237,6 +310,100 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		},
 		{ deep: true },
 	);
+
+	/**
+	 * Builds the context payload for confirmed focused nodes.
+	 * This payload is sent to the AI workflow builder to provide context
+	 * about which nodes the user wants the AI to focus on.
+	 */
+	function buildContextPayload(): FocusedNodesContextPayload[] {
+		const confirmedNodesList = confirmedNodes.value;
+		if (confirmedNodesList.length === 0) {
+			return [];
+		}
+
+		const connectionsByDestination = workflowsStore.connectionsByDestinationNode;
+		const connectionsBySource = workflowsStore.connectionsBySourceNode;
+		const allNodes = workflowsStore.allNodes;
+
+		// Build a map of nodeId -> node for quick lookup
+		const nodeById = new Map(allNodes.map((n) => [n.id, n]));
+
+		return confirmedNodesList.map((focusedNode) => {
+			const node = nodeById.get(focusedNode.nodeId);
+			if (!node) {
+				// Fallback if node not found (shouldn't happen)
+				return {
+					name: focusedNode.nodeName,
+					incomingConnections: [],
+					outgoingConnections: [],
+				};
+			}
+
+			// Get incoming connections (nodes that connect TO this node)
+			const incomingConnections: string[] = [];
+			const nodeConnections = connectionsByDestination[node.name];
+			if (nodeConnections?.main) {
+				for (const inputConnections of nodeConnections.main) {
+					if (inputConnections) {
+						for (const conn of inputConnections) {
+							if (conn.node && !incomingConnections.includes(conn.node)) {
+								incomingConnections.push(conn.node);
+							}
+						}
+					}
+				}
+			}
+
+			// Get outgoing connections (nodes that this node connects TO)
+			const outgoingConnections: string[] = [];
+			const sourceConnections = connectionsBySource[node.name];
+			if (sourceConnections?.main) {
+				for (const outputConnections of sourceConnections.main) {
+					if (outputConnections) {
+						for (const conn of outputConnections) {
+							if (conn.node && !outgoingConnections.includes(conn.node)) {
+								outgoingConnections.push(conn.node);
+							}
+						}
+					}
+				}
+			}
+
+			// Build issues map (convert INodeIssues to Record<string, string[]>)
+			let issues: Record<string, string[]> | undefined;
+			if (node.issues) {
+				issues = {};
+				const nodeIssues = node.issues as INodeIssues;
+				if (nodeIssues.parameters) {
+					for (const [param, paramIssues] of Object.entries(nodeIssues.parameters)) {
+						if (Array.isArray(paramIssues)) {
+							issues[param] = paramIssues;
+						}
+					}
+				}
+				if (nodeIssues.credentials) {
+					for (const [cred, credIssues] of Object.entries(nodeIssues.credentials)) {
+						if (Array.isArray(credIssues)) {
+							issues[`credential:${cred}`] = credIssues;
+						}
+					}
+				}
+				// Clean up empty issues object
+				if (Object.keys(issues).length === 0) {
+					issues = undefined;
+				}
+			}
+
+			// Return only additional context - full node details are in currentWorkflow.nodes
+			return {
+				name: node.name,
+				issues,
+				incomingConnections,
+				outgoingConnections,
+			};
+		});
+	}
 
 	return {
 		// State
@@ -260,5 +427,8 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 		handleNodeRenamed,
 		setState,
 		isNodeSelectedOnCanvas,
+		buildContextPayload,
+		confirmAllUnconfirmed,
+		removeAllConfirmed,
 	};
 });

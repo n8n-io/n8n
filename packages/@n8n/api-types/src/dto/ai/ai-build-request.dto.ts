@@ -9,6 +9,22 @@ export interface ExpressionValue {
 	nodeType?: string;
 }
 
+/**
+ * Context for a node selected/focused by the user.
+ * Used for focused nodes feature - allows user to select specific nodes
+ * for the AI to prioritize in its responses.
+ */
+export interface SelectedNodeContext {
+	/** Node display name - use to look up full node in currentWorkflow.nodes */
+	name: string;
+	/** Configuration issues/validation errors on the node */
+	issues?: Record<string, string[]>;
+	/** Names of nodes that connect INTO this node */
+	incomingConnections: string[];
+	/** Names of nodes that this node connects TO */
+	outgoingConnections: string[];
+}
+
 export class AiBuilderChatRequestDto extends Z.class({
 	payload: z.object({
 		id: z.string(),
@@ -57,6 +73,24 @@ export class AiBuilderChatRequestDto extends Z.class({
 					}
 
 					return val;
+				})
+				.optional(),
+
+			selectedNodes: z
+				.custom<SelectedNodeContext[]>((val: SelectedNodeContext[]) => {
+					// Check if it's an array with valid node context objects
+					if (!Array.isArray(val)) {
+						return false;
+					}
+					// Allow empty arrays
+					if (val.length === 0) {
+						return val;
+					}
+					// Check that items have required properties
+					if (val.every((item) => typeof item.name === 'string')) {
+						return val;
+					}
+					return false;
 				})
 				.optional(),
 		}),

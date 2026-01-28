@@ -48,6 +48,10 @@ import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
 	buildConversationContext,
 	buildDiscoveryContextBlock,
+	buildWorkflowJsonBlock,
+	buildExecutionSchemaBlock,
+	buildExecutionContextBlock,
+	buildSelectedNodesContextBlock,
 	createContextMessage,
 } from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
@@ -374,7 +378,14 @@ export class BuilderSubgraph extends BaseSubgraph<
 			}
 		}
 
-		// 3. Discovery context (what nodes to use)
+		// 3. Selected nodes context (for deictic resolution)
+		const selectedNodesBlock = buildSelectedNodesContextBlock(parentState.workflowContext);
+		if (selectedNodesBlock) {
+			contextParts.push('=== SELECTED NODES ===');
+			contextParts.push(selectedNodesBlock);
+		}
+
+		// 4. Discovery context (what nodes to use)
 		// Include best practices only when template examples feature flag is enabled
 		if (parentState.discoveryContext) {
 			const includeBestPractices = this.config?.featureFlags?.templateExamples === true;
@@ -384,7 +395,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 			);
 		}
 
-		// 4. Check if this workflow came from a recovered builder recursion error (AI-1812)
+		// 5. Check if this workflow came from a recovered builder recursion error (AI-1812)
 		const builderErrorEntry = parentState.coordinationLog?.find((entry) => {
 			if (entry.status !== 'error') return false;
 			if (entry.phase !== 'builder') return false;
@@ -402,6 +413,25 @@ export class BuilderSubgraph extends BaseSubgraph<
 			const { nodeCount, nodeNames } = builderErrorEntry.metadata.partialBuilderData;
 			contextParts.push(buildRecoveryModeContext(nodeCount, nodeNames));
 		}
+
+		// 6. Current workflow JSON (to add nodes to / configure)
+		contextParts.push('=== CURRENT WORKFLOW ===');
+		if (parentState.workflowJSON.nodes.length > 0) {
+			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
+		} else {
+			contextParts.push('Empty workflow - ready to build');
+		}
+
+		// 7. Execution schema (data types available for parameter values)
+		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
+		if (schemaBlock) {
+			contextParts.push('=== AVAILABLE DATA SCHEMA ===');
+			contextParts.push(schemaBlock);
+		}
+
+		// 7. Full execution context (data + schema for parameter values)
+		contextParts.push('=== EXECUTION CONTEXT ===');
+		contextParts.push(buildExecutionContextBlock(parentState.workflowContext));
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);

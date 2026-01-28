@@ -23,6 +23,7 @@ import {
 } from '@/utils/coordination-log';
 import { extractDataTableInfo } from '@/utils/data-table-helpers';
 import type { ChatPayload } from '@/workflow-builder-agent';
+import { buildSelectedNodesContextBlock } from '../utils/context-builders';
 
 /**
  * Context required for the responder to generate a response
@@ -36,10 +37,10 @@ export interface ResponderContext {
 	discoveryContext?: DiscoveryContext | null;
 	/** Current workflow state */
 	workflowJSON: SimpleWorkflow;
+	/** Workflow context including selected nodes and execution data */
+	workflowContext?: ChatPayload['workflowContext'];
 	/** Summary of previous conversation (from compaction) */
 	previousSummary?: string;
-	/** Workflow context with execution data */
-	workflowContext?: ChatPayload['workflowContext'];
 }
 
 /**
@@ -75,6 +76,12 @@ function buildContextContent(context: ResponderContext): string | null {
 	// Skip errors that have been cleared (AI-1812)
 	const errorEntry = getErrorEntry(context.coordinationLog);
 	const errorsCleared = hasRecursionErrorsCleared(context.coordinationLog);
+
+	// Selected nodes context (for deictic resolution)
+	const selectedNodesBlock = buildSelectedNodesContextBlock(context.workflowContext);
+	if (selectedNodesBlock) {
+		contextParts.push(`=== SELECTED NODES ===\n${selectedNodesBlock}`);
+	}
 
 	if (errorEntry && !errorsCleared) {
 		const hasWorkflow = context.workflowJSON.nodes.length > 0;

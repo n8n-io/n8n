@@ -155,7 +155,10 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			!onlyStickies && {
 				id: 'focus_ai_on_selected',
 				divided: true,
-				label: i18n.baseText('contextMenu.addToAi'),
+				label: i18n.baseText('contextMenu.focusAiOnSelected', {
+					adjustToNumber: nodes.length,
+					interpolate: { count: nodes.length },
+				}),
 				shortcut: { altKey: true, keys: ['I'] },
 				disabled: isReadOnly.value,
 			},
