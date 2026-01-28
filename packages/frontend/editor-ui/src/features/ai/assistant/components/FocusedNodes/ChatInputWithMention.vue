@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { ref, computed, watch, nextTick } from 'vue';
-import { N8nPromptInput, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { ref, computed, watch } from 'vue';
+import { N8nPromptInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useNodeMention } from '../../composables/useNodeMention';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
@@ -66,7 +66,6 @@ const {
 	handleKeyDown,
 	selectNode,
 	closeDropdown,
-	openDropdown,
 } = useNodeMention();
 
 const confirmedNodeIds = computed(() => focusedNodesStore.confirmedNodeIds);
@@ -100,34 +99,21 @@ function onUpgradeClick() {
 	emit('upgrade-click');
 }
 
-function openMentionDropdown() {
-	// Get the textarea element from the N8nPromptInput
-	const promptInput = inputRef.value?.$el as HTMLElement | undefined;
-	const textarea = promptInput?.querySelector('textarea');
-	if (textarea) {
-		// Insert @ at cursor position and open dropdown
-		const start = textarea.selectionStart ?? textValue.value.length;
-		const end = textarea.selectionEnd ?? textValue.value.length;
-		const before = textValue.value.substring(0, start);
-		const after = textValue.value.substring(end);
-		textValue.value = `${before}@${after}`;
-
-		// Focus and set cursor after @
-		void nextTick(() => {
-			textarea.focus();
-			const newPosition = start + 1;
-			textarea.setSelectionRange(newPosition, newPosition);
-			openDropdown(textarea);
-		});
-	}
-}
-
 function handleDropdownKeyDown(event: KeyboardEvent) {
 	handleKeyDown(event);
 }
 
 function handleDropdownSelect(node: { id: string; name: string; type: string }) {
 	selectNode(node as Parameters<typeof selectNode>[0]);
+}
+
+function handleSearchQueryUpdate(query: string) {
+	searchQuery.value = query;
+}
+
+function handleClose() {
+	// Remove @query text if there are no matches when closing via click outside
+	closeDropdown(filteredNodes.value.length === 0);
 }
 
 function focusInput() {
@@ -141,17 +127,6 @@ defineExpose({
 
 <template>
 	<div :class="$style.wrapper">
-		<N8nTooltip :content="i18n.baseText('focusedNodes.mentionTooltip')" placement="top">
-			<button
-				type="button"
-				:class="$style.atButton"
-				data-test-id="mention-button"
-				@click="openMentionDropdown"
-			>
-				<N8nIcon icon="at-sign" :size="16" />
-			</button>
-		</N8nTooltip>
-
 		<N8nPromptInput
 			ref="inputRef"
 			v-model="textValue"
@@ -183,40 +158,14 @@ defineExpose({
 			@select="handleDropdownSelect"
 			@highlight="highlightedIndex = $event"
 			@keydown="handleDropdownKeyDown"
-			@close="closeDropdown"
+			@close="handleClose"
+			@update:search-query="handleSearchQueryUpdate"
 		/>
 	</div>
 </template>
 
 <style lang="scss" module>
 .wrapper {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--4xs);
 	width: 100%;
-}
-
-.atButton {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	flex-shrink: 0;
-	margin-top: var(--spacing--2xs);
-	width: 28px;
-	height: 28px;
-	padding: 0;
-	background: transparent;
-	border: 1px solid var(--color--foreground--tint-1);
-	border-radius: 50%;
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-	transition:
-		border-color 0.15s ease,
-		color 0.15s ease;
-
-	&:hover {
-		border-color: var(--color--text--tint-1);
-		color: var(--color--text);
-	}
 }
 </style>

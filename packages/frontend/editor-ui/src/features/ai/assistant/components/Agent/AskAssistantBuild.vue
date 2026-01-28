@@ -17,6 +17,7 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import ExecuteMessage from './ExecuteMessage.vue';
 import NotificationPermissionBanner from './NotificationPermissionBanner.vue';
 import FocusedNodesChips from '../FocusedNodes/FocusedNodesChips.vue';
+import ChatInputWithMention from '../FocusedNodes/ChatInputWithMention.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useBrowserNotifications } from '@/app/composables/useBrowserNotifications';
 import { useToast } from '@/app/composables/useToast';
@@ -64,6 +65,8 @@ onDocumentVisible(() => {
 const processedWorkflowUpdates = ref(new Set<string>());
 const accumulatedNodeIdsToTidyUp = ref<string[]>([]);
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
+const chatInputRef = ref<InstanceType<typeof ChatInputWithMention>>();
+const inputText = ref('');
 
 const notificationsPermissionsBannerTriggered = ref(false);
 
@@ -172,6 +175,13 @@ async function onUserMessage(content: string) {
 		text: content,
 		initialGeneration: isInitialGeneration,
 	});
+}
+
+async function onCustomInputSubmit() {
+	if (!inputText.value.trim()) return;
+	const content = inputText.value;
+	inputText.value = '';
+	await onUserMessage(content);
 }
 
 function onNewWorkflow() {
@@ -377,7 +387,7 @@ watch(currentRoute, () => {
 
 defineExpose({
 	focusInput: () => {
-		n8nChatRef.value?.focusInput();
+		chatInputRef.value?.focusInput() ?? n8nChatRef.value?.focusInput();
 	},
 });
 </script>
@@ -426,6 +436,22 @@ defineExpose({
 				<N8nText :class="$style.topText"
 					>{{ i18n.baseText('aiAssistant.builder.assistantPlaceholder') }}
 				</N8nText>
+			</template>
+			<template #inputPlaceholder>
+				<ChatInputWithMention
+					ref="chatInputRef"
+					v-model="inputText"
+					:placeholder="i18n.baseText('aiAssistant.builder.assistantPlaceholder')"
+					:disabled="isInputDisabled"
+					:disabled-tooltip="disabledTooltip"
+					:streaming="builderStore.streaming"
+					:credits-quota="creditsQuota"
+					:credits-remaining="creditsRemaining"
+					:show-ask-owner-tooltip="showAskOwnerTooltip"
+					@submit="onCustomInputSubmit"
+					@stop="builderStore.abortStreaming"
+					@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
+				/>
 			</template>
 		</N8nAskAssistantChat>
 	</div>

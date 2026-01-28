@@ -21,20 +21,27 @@ const emit = defineEmits<{
 	highlight: [index: number];
 	keydown: [event: KeyboardEvent];
 	close: [];
+	'update:searchQuery': [query: string];
 }>();
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const inputRef = ref<HTMLInputElement | null>(null);
+const listRef = ref<HTMLDivElement | null>(null);
 const localQuery = ref(props.searchQuery);
 
-// Sync local query with prop
+// Sync local query with prop (incoming changes from parent)
 watch(
 	() => props.searchQuery,
 	(newQuery) => {
 		localQuery.value = newQuery;
 	},
 );
+
+// Emit local query changes to parent
+watch(localQuery, (newQuery) => {
+	emit('update:searchQuery', newQuery);
+});
 
 const positionStyle = computed(() => ({
 	top: `${props.position.top}px`,
@@ -65,6 +72,19 @@ function handleClickOutside(event: MouseEvent) {
 	}
 }
 
+watch(
+	() => props.highlightedIndex,
+	(index) => {
+		void nextTick(() => {
+			const listElement = listRef.value;
+			if (!listElement) return;
+			const items = listElement.querySelectorAll('[data-mention-item]');
+			const highlightedItem = items[index] as HTMLElement | undefined;
+			highlightedItem?.scrollIntoView({ block: 'nearest' });
+		});
+	},
+);
+
 onMounted(() => {
 	void nextTick(() => {
 		inputRef.value?.focus();
@@ -82,6 +102,7 @@ onUnmounted(() => {
 		<div data-node-mention-dropdown :class="$style.dropdown" :style="positionStyle">
 			<!-- Search input -->
 			<div :class="$style.searchWrapper">
+				<N8nIcon icon="search" size="small" :class="$style.searchIcon" />
 				<input
 					ref="inputRef"
 					v-model="localQuery"
@@ -93,10 +114,11 @@ onUnmounted(() => {
 			</div>
 
 			<!-- Node list -->
-			<div :class="$style.list">
+			<div ref="listRef" :class="$style.list">
 				<div
 					v-for="(node, index) in nodes"
 					:key="node.id"
+					data-mention-item
 					:class="[$style.item, { [$style.highlighted]: index === highlightedIndex }]"
 					@click="handleSelect(node)"
 					@mouseenter="handleMouseEnter(index)"
@@ -135,24 +157,27 @@ onUnmounted(() => {
 }
 
 .searchWrapper {
-	padding: var(--spacing--3xs) var(--spacing--xs);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	border-bottom: var(--border);
 }
 
+.searchIcon {
+	color: var(--color--text--tint-2);
+	flex-shrink: 0;
+}
+
 .searchInput {
-	width: 100%;
-	height: 28px;
-	padding: 0 var(--spacing--2xs);
-	border: 1px solid var(--color--foreground--tint-1);
-	border-radius: var(--radius--sm);
+	flex: 1;
+	height: 24px;
+	padding: 0;
+	border: none;
 	font-size: var(--font-size--sm);
-	background: var(--color--background);
+	background: transparent;
 	color: var(--color--text);
 	outline: none;
-
-	&:focus {
-		border-color: var(--color--primary);
-	}
 
 	&::placeholder {
 		color: var(--color--text--tint-2);

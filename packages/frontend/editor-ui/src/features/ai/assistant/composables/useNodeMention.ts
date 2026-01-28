@@ -16,7 +16,7 @@ export interface UseNodeMentionReturn {
 	handleInput: (event: InputEvent, inputElement: HTMLInputElement | HTMLTextAreaElement) => void;
 	handleKeyDown: (event: KeyboardEvent) => boolean;
 	selectNode: (node: INodeUi) => void;
-	closeDropdown: () => void;
+	closeDropdown: (removeQueryFromInput?: boolean) => void;
 	openDropdown: (inputElement: HTMLInputElement | HTMLTextAreaElement) => void;
 }
 
@@ -69,7 +69,22 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 		calculateDropdownPosition(inputElement);
 	}
 
-	function closeDropdown() {
+	function closeDropdown(removeQueryFromInput = false) {
+		if (removeQueryFromInput && inputElementRef.value && mentionStartIndex.value >= 0) {
+			const input = inputElementRef.value;
+			const value = input.value;
+			const cursorPosition = input.selectionStart ?? value.length;
+
+			const beforeMention = value.substring(0, mentionStartIndex.value);
+			const afterCursor = value.substring(cursorPosition);
+			input.value = beforeMention + afterCursor;
+
+			const newPosition = mentionStartIndex.value;
+			input.setSelectionRange(newPosition, newPosition);
+
+			input.dispatchEvent(new Event('input', { bubbles: true }));
+		}
+
 		showDropdown.value = false;
 		searchQuery.value = '';
 		highlightedIndex.value = 0;
@@ -133,7 +148,7 @@ export function useNodeMention(options: UseNodeMentionOptions = {}): UseNodeMent
 
 			case 'Escape':
 				event.preventDefault();
-				closeDropdown();
+				closeDropdown(filteredNodes.value.length === 0);
 				return true;
 
 			case 'Tab':
