@@ -386,6 +386,9 @@ export class ScalingService {
 					break;
 				case 'abort-job':
 					break; // only for worker
+				case 'mcp-response':
+					// TODO: Forward to MCP manager - will be implemented later
+					break;
 				default:
 					assertNever(msg);
 			}

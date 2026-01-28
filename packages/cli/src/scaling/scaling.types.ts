@@ -21,6 +21,16 @@ export type JobData = {
 	loadStaticData: boolean;
 	pushRef?: string;
 	streamingEnabled?: boolean;
+
+	// MCP-specific fields for queue mode support
+	/** Whether this execution was triggered by an MCP tool call. */
+	isMcpExecution?: boolean;
+	/** MCP session ID for routing responses back to the correct client. */
+	mcpSessionId?: string;
+	/** MCP message ID for correlating responses with requests. */
+	mcpMessageId?: string;
+	/** ID of the main instance that enqueued this job (for multi-main routing). */
+	originMainId?: string;
 };
 
 export type JobResult = {
@@ -42,7 +52,8 @@ export type JobMessage =
 	| JobFinishedMessage
 	| JobFailedMessage
 	| AbortJobMessage
-	| SendChunkMessage;
+	| SendChunkMessage
+	| McpResponseMessage;
 
 /** Message sent by worker to main to respond to a webhook. */
 export type RespondToWebhookMessage = {
@@ -87,6 +98,17 @@ export type SendChunkMessage = {
 	executionId: string;
 	chunkText: StructuredChunk;
 	workerId: string;
+};
+
+/** Message sent by worker to main to respond to an MCP tool call. */
+export type McpResponseMessage = {
+	kind: 'mcp-response';
+	executionId: string;
+	sessionId: string;
+	messageId: string;
+	response: unknown;
+	workerId: string;
+	targetMainId: string;
 };
 
 /** Message sent by worker to main to report a job has failed. */
