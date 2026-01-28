@@ -43,6 +43,7 @@ import {
 	UnexpectedError,
 	NodeConnectionTypes,
 	INodeExecutionData,
+	sleep,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -536,6 +537,48 @@ export class ChatHubService {
 			}
 			throw error;
 		}
+	}
+
+	/**
+	 * Wait for error details to be available in execution DB using exponential backoff
+	 * @param executionId - The execution ID to fetch error details from
+	 * @param workflowId - The workflow ID for the execution
+	 * @returns The error message if found, undefined otherwise
+	 */
+	private async waitForErrorDetails(
+		executionId: string,
+		workflowId: string,
+	): Promise<string | undefined> {
+		const maxRetries = 5;
+		let retries = 0;
+		let errorText: string | undefined;
+
+		while (!errorText) {
+			try {
+				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+					workflowId,
+				]);
+				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
+					errorText = this.getErrorMessage(execution);
+					break;
+				}
+			} catch (error) {
+				this.logger.debug(
+					`Failed to fetch execution ${executionId} for error extraction: ${String(error)}`,
+				);
+			}
+
+			retries++;
+
+			if (maxRetries <= retries) {
+				break;
+			}
+
+			// Wait with exponential backoff (double wait time, cap at 2 second)
+			await sleep(Math.min(500 * Math.pow(2, retries), 2000));
+		}
+
+		return errorText;
 	}
 
 	private async generateSessionTitle(
@@ -1972,9 +2015,7 @@ export class ChatHubService {
 		let executionId: string | undefined;
 		let executionStatus: 'success' | 'error' | 'cancelled' = 'success';
 
-		// Track messages that ended with error but had no error content from the stream
-		// These will be updated with the execution error message after completion
-		const emptyErrorMessageIds: string[] = [];
+		const workflowId = workflowData.id;
 
 		// Start the execution (tracks state for the whole streaming session)
 		await this.chatStreamService.startExecution(user.id, sessionId);
@@ -2020,21 +2061,20 @@ export class ChatHubService {
 			onError: async (message) => {
 				executionStatus = 'error';
 
-				// Track messages with empty error content - they'll be updated with execution error
-				if (!message.content) {
-					emptyErrorMessageIds.push(message.id);
+				// If error has no content, wait for execution to complete and get error details
+				let errorContent = message.content;
+				if (!errorContent) {
+					errorContent = executionId
+						? ((await this.waitForErrorDetails(executionId, workflowId)) ?? 'Unknown error')
+						: 'Request was not processed';
 				}
 
 				await this.messageRepository.updateChatMessage(message.id, {
-					content: message.content,
+					content: errorContent,
 					status: 'error',
 				});
 
-				await this.chatStreamService.sendError(
-					sessionId,
-					message.id,
-					message.content || 'Unknown error',
-				);
+				await this.chatStreamService.sendError(sessionId, message.id, errorContent);
 
 				// End the stream with error
 				await this.chatStreamService.endStream(sessionId, message.id, 'error');
@@ -2065,24 +2105,6 @@ export class ChatHubService {
 
 			// Wait for all pending aggregator operations to complete (message status updates, etc.)
 			await waitForPendingOperations();
-
-			// If there were error messages with empty content, update them with the execution error
-			if (emptyErrorMessageIds.length > 0) {
-				const execution = await this.executionRepository.findSingleExecution(executionId, {
-					includeData: true,
-					unflattenData: true,
-				});
-				if (execution) {
-					const errorMessage = this.getErrorMessage(execution);
-					if (errorMessage) {
-						for (const msgId of emptyErrorMessageIds) {
-							await this.messageRepository.updateChatMessage(msgId, {
-								content: errorMessage,
-							});
-						}
-					}
-				}
-			}
 		} catch (error) {
 			if (error instanceof ManualExecutionCancelledError) {
 				executionStatus = 'cancelled';
