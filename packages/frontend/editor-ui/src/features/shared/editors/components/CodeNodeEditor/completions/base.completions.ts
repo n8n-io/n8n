@@ -87,6 +87,10 @@ export function useBaseCompletions(
 				info: i18n.baseText('codeNodeEditor.completer.$today'),
 			},
 			{
+				label: `${prefix}uuid`,
+				info: i18n.baseText('codeNodeEditor.completer.$uuid'),
+			},
+			{
 				label: `${prefix}jmespath()`,
 				info: i18n.baseText('codeNodeEditor.completer.$jmespath'),
 			},

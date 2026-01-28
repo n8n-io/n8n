@@ -570,6 +570,7 @@
 	"codeNodeEditor.completer.$nodeVersion": "The version of the current node (as displayed at the bottom of the nodes's settings pane)",
 	"codeNodeEditor.completer.$tool": "The name and parameters of the tool that is currently being executed. Only available in HITL nodes",
 	"codeNodeEditor.completer.$today": "A DateTime representing midnight at the start of the current day. \n\nUses the instance's time zone (unless overridden in the workflow's settings).",
+	"codeNodeEditor.completer.$uuid": "Generates a new UUID v4 (universally unique identifier) each time it is accessed. \n\nUseful for creating unique IDs, tracking references, or generating unique keys.",
 	"codeNodeEditor.completer.$vars": "The <a target=\"_blank\"  href=\"https://docs.n8n.io/code/variables/\">variables</a> available to the workflow",
 	"codeNodeEditor.completer.$vars.varName.global": "Global variable defined for this n8n instance. All variables evaluate to strings.",
 	"codeNodeEditor.completer.$vars.varName.global.overridden": "Global variable overridden by project {projectName} variable. All variables evaluate to strings. ",
