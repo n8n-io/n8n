@@ -258,7 +258,7 @@ async function onWorkflowDeactivated() {
 	if (settingsStore.isModuleActive('mcp') && workflow.value.settings?.availableInMCP) {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
-			const updatedWorkflow = await workflowsStore.fetchWorkflow(workflow.value.id);
+			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
 			workflowsStore.setWorkflow(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),

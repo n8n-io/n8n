@@ -46,6 +46,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { convertWorkflowTagsToIds } from '@/app/utils/workflowUtils';
@@ -527,6 +528,7 @@ export function useWorkflowHelpers() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentsStore = useWorkflowDocumentsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const workflowState = injectWorkflowState();
 	const workflowsEEStore = useWorkflowsEEStore();
 	const uiStore = useUIStore();
@@ -859,7 +861,7 @@ export function useWorkflowHelpers() {
 				? { versionId: workflowsStore.workflowVersionId }
 				: await getWorkflowDataToSave();
 		} else {
-			const { versionId } = await workflowsStore.fetchWorkflow(workflowId);
+			const { versionId } = await workflowsListStore.fetchWorkflow(workflowId);
 			data.versionId = versionId;
 		}
 
@@ -943,7 +945,7 @@ export function useWorkflowHelpers() {
 	}
 
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
-		const workflow = workflowsStore.workflowsById[workflowId];
+		const workflow = workflowsListStore.getWorkflowById(workflowId);
 
 		// Check if workflow is new (not saved) or belongs to personal project
 		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || !workflow?.id) {
@@ -961,7 +963,7 @@ export function useWorkflowHelpers() {
 
 	async function initState(workflowData: IWorkflowDb, overrideWorkflowState?: WorkflowState) {
 		const ws = overrideWorkflowState ?? workflowState;
-		workflowsStore.addWorkflow(workflowData);
+		workflowsListStore.addWorkflow(workflowData);
 		ws.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
@@ -1032,7 +1034,7 @@ export function useWorkflowHelpers() {
 		if (uiStore.stateIsDirty) {
 			data = await getWorkflowDataToSave();
 		} else {
-			data = await workflowsStore.fetchWorkflow(workflowId);
+			data = await workflowsListStore.fetchWorkflow(workflowId);
 		}
 
 		const triggers = data.nodes.filter(

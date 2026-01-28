@@ -46,6 +46,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import {
@@ -123,6 +124,7 @@ const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentsStore = useWorkflowDocumentsStore();
+const workflowsListStore = useWorkflowsListStore();
 const workflowState = injectWorkflowState();
 const credentialsStore = useCredentialsStore();
 const historyStore = useHistoryStore();
@@ -159,7 +161,7 @@ const { isPreviewMode } = useSettingsStore();
 const isDemoPreview = computed(() => isDemoRoute.value && isPreviewMode);
 const currentWorkflow = computed(
 	() =>
-		workflowsStore.getWorkflowById(
+		workflowsListStore.getWorkflowById(
 			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId]?.id ??
 				'',
 		), // @TODO check if we actually need workflowObject here

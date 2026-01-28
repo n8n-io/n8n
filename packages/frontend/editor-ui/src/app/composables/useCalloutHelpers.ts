@@ -5,6 +5,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { VIEWS } from '@/app/constants';
@@ -26,6 +27,7 @@ export function useCalloutHelpers() {
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentsStore = useWorkflowDocumentsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const usersStore = useUsersStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const projectsStore = useProjectsStore();
@@ -36,7 +38,7 @@ export function useCalloutHelpers() {
 		const routeTemplateId = route.query.templateId;
 		const workflowObject =
 			workflowDocumentsStore.workflowObjectsById[workflowDocumentsStore.workflowDocumentId];
-		const workflow = workflowsStore.getWorkflowById(workflowObject.id);
+		const workflow = workflowsListStore.getWorkflowById(workflowObject.id);
 
 		// Hide the RAG starter callout if we're currently on the RAG starter template
 		if ((routeTemplateId ?? workflow?.meta?.templateId) === template.meta.templateId) {

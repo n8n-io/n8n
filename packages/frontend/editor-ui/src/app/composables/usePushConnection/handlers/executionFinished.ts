@@ -15,6 +15,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import {
 	SampleTemplates,
@@ -63,6 +64,7 @@ export async function executionFinished(
 	options: ExecutionFinishedOptions,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
 	const readyToRunStore = useReadyToRunStore();
@@ -78,7 +80,7 @@ export async function executionFinished(
 
 	clearPopupWindowState();
 
-	const workflow = workflowsStore.getWorkflowById(data.workflowId);
+	const workflow = workflowsListStore.getWorkflowById(data.workflowId);
 	const templateId = workflow?.meta?.templateId;
 
 	if (templateId) {

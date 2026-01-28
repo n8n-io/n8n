@@ -24,6 +24,7 @@ import CanvasRunWorkflowButton from '@/features/workflows/canvas/components/elem
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowDocumentsStore } from '@/app/stores/workflowDocuments.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
 import type {
@@ -197,6 +198,7 @@ const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentsStore = useWorkflowDocumentsStore();
+const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
 const settingsStore = useSettingsStore();
@@ -355,7 +357,7 @@ async function initializeData() {
 		if (settingsStore.isPreviewMode && isDemoRoute.value) return [];
 
 		const promises: Array<Promise<unknown>> = [
-			workflowsStore.fetchActiveWorkflows(),
+			workflowsListStore.fetchActiveWorkflows(),
 			credentialsStore.fetchCredentialTypes(true),
 			loadCredentials(),
 		];
@@ -447,7 +449,7 @@ async function initializeRoute(force = false) {
 
 			// Check if we should initialize for a new workflow
 			if (isNewWorkflowRoute.value) {
-				const exists = await workflowsStore.checkWorkflowExists(workflowId.value);
+				const exists = await workflowsListStore.checkWorkflowExists(workflowId.value);
 				if (!exists && route.meta?.nodeView === true) {
 					return await initializeWorkspaceForNewWorkflow();
 				} else {
@@ -500,7 +502,7 @@ async function initializeWorkspaceForNewWorkflow() {
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
 	try {
-		const workflowData = await workflowsStore.fetchWorkflow(id);
+		const workflowData = await workflowsListStore.fetchWorkflow(id);
 
 		await openWorkflow(workflowData);
 
@@ -1213,7 +1215,7 @@ function onClickReplaceNode(nodeId: string) {
 
 const workflowPermissions = computed(() => {
 	return workflowId.value
-		? getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow
+		? getResourcePermissions(workflowsListStore.getWorkflowById(workflowId.value)?.scopes).workflow
 		: {};
 });
 
@@ -1513,7 +1515,7 @@ async function onSourceControlPull() {
 		]);
 
 		if (workflowId.value && !uiStore.stateIsDirty) {
-			const workflowData = await workflowsStore.fetchWorkflow(workflowId.value);
+			const workflowData = await workflowsListStore.fetchWorkflow(workflowId.value);
 			if (workflowData) {
 				await openWorkflow(workflowData);
 			}
