@@ -277,26 +277,6 @@ const selectedWorkflows = reactive<Set<string>>(new Set());
 const maybeSelectCurrentWorkflow = (workflow?: SourceControlledFileWithProject) =>
 	workflow && selectedWorkflows.add(workflow.id);
 
-const currentProject = computed(() => {
-	if (!route.params.projectId) {
-		return null;
-	}
-
-	const project = projectsStore.availableProjects.find(
-		(project) => project.id === route.params.projectId?.toString(),
-	);
-
-	if (!project) {
-		return null;
-	}
-
-	if (!project.role || project.role === 'project:admin') {
-		return project;
-	}
-
-	return null;
-});
-
 const filters = ref<{ status?: SourceControlledFileStatus; project: ProjectSharingData | null }>({
 	project: null,
 });
