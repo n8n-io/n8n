@@ -174,11 +174,17 @@ function hasRequiredSubnodeFields(aiInputTypes: AIInputTypeInfo[]): boolean {
 }
 
 /**
- * Check if any properties have displayOptions.
+ * Check if any properties have displayOptions that remain after stripping @version.
  * Used to determine if we need to generate a factory function instead of static schema.
+ * @version is always stripped since it's implicit in the file path.
  */
 function hasDisplayOptions(properties: NodeProperty[]): boolean {
-	return properties.some((prop) => prop.displayOptions !== undefined);
+	return properties.some((prop) => {
+		if (!prop.displayOptions) return false;
+		// Strip @version since it's implicit in the file path
+		const stripped = stripDiscriminatorKeysFromDisplayOptions(prop.displayOptions, ['@version']);
+		return stripped !== undefined;
+	});
 }
 
 /**
@@ -835,10 +841,27 @@ function generateSchemasForNode(
 				seenNames.add(prop.name);
 
 				// Use conditional schema line for properties with displayOptions
+				// Strip @version since it's implicit in the file path
 				if (prop.displayOptions) {
-					const propLine = generateConditionalSchemaLine(prop);
-					if (propLine) {
-						lines.push(propLine);
+					const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
+						prop.displayOptions,
+						['@version'],
+					);
+					if (strippedDisplayOptions) {
+						const propWithStripped: NodeProperty = {
+							...prop,
+							displayOptions: strippedDisplayOptions,
+						};
+						const propLine = generateConditionalSchemaLine(propWithStripped);
+						if (propLine) {
+							lines.push(propLine);
+						}
+					} else {
+						// No remaining conditions after stripping @version - use static schema
+						const propLine = generateSchemaPropertyLine(prop, !prop.required);
+						if (propLine) {
+							lines.push(propLine);
+						}
 					}
 				} else {
 					const propLine = generateSchemaPropertyLine(prop, !prop.required);
@@ -1376,7 +1399,11 @@ export function generateDiscriminatorSchemaFile(
 	const baseSchemaName = `${nodeName}${versionSuffix}`;
 
 	// Get discriminator keys to strip from displayOptions
-	const discriminatorKeys = Object.keys(combo).filter((k) => combo[k] !== undefined);
+	// Always include @version since it's implicit in the file path
+	const discriminatorKeys = [
+		...Object.keys(combo).filter((k) => combo[k] !== undefined),
+		'@version',
+	];
 
 	// Check if any properties have remaining displayOptions after stripping discriminators
 	const hasRemainingDisplayOptions = props.some((prop) => {
@@ -1511,7 +1538,7 @@ export function generateDiscriminatorSchemaFile(
  */
 export function generateResourceIndexSchemaFile(
 	node: NodeTypeDescription,
-	version: number,
+	_version: number,
 	resource: string,
 	operations: string[],
 ): string {

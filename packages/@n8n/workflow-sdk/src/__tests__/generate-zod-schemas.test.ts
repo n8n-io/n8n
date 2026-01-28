@@ -101,6 +101,22 @@ describe('stripDiscriminatorKeysFromDisplayOptions', () => {
 		const result = stripDiscriminatorKeysFromDisplayOptions({}, ['resource']);
 		expect(result).toBeUndefined();
 	});
+
+	it('strips @version along with other discriminator keys', () => {
+		const result = stripDiscriminatorKeysFromDisplayOptions(
+			{ show: { '@version': [1, 1.1], resource: ['task'], someOther: ['value'] } },
+			['resource', 'operation', '@version'],
+		);
+		expect(result).toEqual({ show: { someOther: ['value'] } });
+	});
+
+	it('returns undefined when only @version remains after stripping other discriminators', () => {
+		const result = stripDiscriminatorKeysFromDisplayOptions(
+			{ show: { '@version': [1, 1.1], resource: ['task'] } },
+			['resource', '@version'],
+		);
+		expect(result).toBeUndefined();
+	});
 });
 
 describe('generateDiscriminatorSchemaFile with displayOptions', () => {
@@ -273,6 +289,78 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 		// But should not import resolveSchema from base.schema if not used in body
 		expect(code).not.toMatch(/import\s*\{[^}]*resolveSchema[^}]*\}/);
 	});
+
+	it('strips @version from displayOptions along with resource/operation', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'conditionalField',
+				displayName: 'Conditional',
+				type: 'string',
+				default: '',
+				// displayOptions with @version - should be stripped since version is implicit in file path
+				displayOptions: { show: { '@version': [1, 1.1], resource: ['task'], mode: ['advanced'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(
+			node,
+			1,
+			{ resource: 'task', operation: 'create' },
+			props,
+			5,
+			[],
+		);
+
+		// Should contain resolveSchema call since mode remains
+		expect(code).toContain('resolveSchema({');
+		// Should contain mode condition (not stripped)
+		expect(code).toContain('"mode"');
+		// Should NOT contain @version in the displayOptions (it's redundant)
+		expect(code).not.toContain('"@version"');
+	});
+
+	it('converts to static property when @version is the only remaining condition', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [],
+		};
+
+		const props: NodeProperty[] = [
+			{
+				name: 'versionOnlyField',
+				displayName: 'Version Only',
+				type: 'string',
+				default: '',
+				// displayOptions with only @version and discriminators - all should be stripped
+				displayOptions: { show: { '@version': [1], resource: ['task'], operation: ['create'] } },
+			},
+		];
+
+		const code = generateDiscriminatorSchemaFile(
+			node,
+			1,
+			{ resource: 'task', operation: 'create' },
+			props,
+			5,
+			[],
+		);
+
+		// Should NOT use resolveSchema (no remaining conditions)
+		expect(code).not.toMatch(/versionOnlyField:.*resolveSchema/);
+		// Should use static schema instead
+		expect(code).toContain('versionOnlyField: stringOrExpression');
+	});
 });
 
 describe('generateSingleVersionSchemaFile', () => {
@@ -349,5 +437,60 @@ describe('generateSingleVersionSchemaFile', () => {
 
 		// Should import resolveSchema from base.schema
 		expect(code).toContain('resolveSchema');
+	});
+
+	it('strips @version from displayOptions since version is implicit in file path', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.testNode',
+			displayName: 'Test Node',
+			version: 1,
+			properties: [
+				{
+					name: 'conditionalField',
+					displayName: 'Conditional Field',
+					type: 'string',
+					default: '',
+					// @version should be stripped, mode should remain
+					displayOptions: { show: { '@version': [1, 1.1], mode: ['advanced'] } },
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		// Should contain resolveSchema call since mode remains
+		expect(code).toContain('resolveSchema({');
+		// Should contain mode condition
+		expect(code).toContain('"mode"');
+		// Should NOT contain @version in the displayOptions
+		expect(code).not.toContain('"@version"');
+	});
+
+	it('generates static schema when @version is the only displayOption', () => {
+		const node: NodeTypeDescription = {
+			...baseNodeProps,
+			name: 'n8n-nodes-base.simpleNode',
+			displayName: 'Simple Node',
+			version: 1,
+			properties: [
+				{
+					name: 'versionField',
+					displayName: 'Version Field',
+					type: 'string',
+					default: '',
+					// Only @version in displayOptions - should be fully stripped
+					displayOptions: { show: { '@version': [1] } },
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		// Should generate static schema (no factory function needed since @version is stripped)
+		expect(code).toContain('export const');
+		expect(code).not.toContain('export function get');
+		// Should NOT contain @version anywhere
+		expect(code).not.toContain('@version');
 	});
 });
