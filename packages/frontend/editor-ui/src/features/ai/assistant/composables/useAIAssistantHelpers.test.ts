@@ -777,6 +777,205 @@ describe('Simplify assistant payloads', () => {
 	});
 });
 
+describe('processNodeForAssistant - trimParameterValues', () => {
+	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
+
+	beforeEach(() => {
+		setActivePinia(createTestingPinia());
+		aiAssistantHelpers = useAIAssistantHelpers();
+	});
+
+	it('Should strip values from set node assignments while preserving schema', async () => {
+		const node: INode = {
+			id: 'set-node',
+			name: 'Set Node',
+			type: 'n8n-nodes-base.set',
+			typeVersion: 2,
+			position: [0, 0],
+			parameters: {
+				mode: 'manual',
+				duplicateItem: false,
+				assignments: {
+					assignments: [
+						{
+							id: '4c1abbda-52ad-4809-97b6-6a88c421d9a3',
+							name: 'firstName',
+							value: 'John',
+							type: 'string',
+						},
+						{
+							id: 'af2e008d-cde6-45de-b5f1-26576ba463e0',
+							name: 'lastName',
+							value: 'Doe',
+							type: 'string',
+						},
+					],
+				},
+				includeOtherFields: false,
+				options: {},
+			},
+		};
+
+		const processed = await aiAssistantHelpers.processNodeForAssistant(node, [], {
+			trimParameterValues: true,
+		});
+
+		expect(processed.parameters).toEqual({
+			mode: '',
+			duplicateItem: null,
+			assignments: {
+				assignments: [
+					{
+						id: '4c1abbda-52ad-4809-97b6-6a88c421d9a3',
+						name: 'firstName',
+						type: 'string',
+					},
+					{
+						id: 'af2e008d-cde6-45de-b5f1-26576ba463e0',
+						name: 'lastName',
+						type: 'string',
+					},
+				],
+			},
+			includeOtherFields: null,
+			options: {},
+		});
+	});
+
+	it('Should sanitize primitive and structured parameter values', async () => {
+		const resourceMapperValue = {
+			mappingMode: 'auto',
+			value: { firstName: 'John' },
+			matchingColumns: ['firstName'],
+			schema: [
+				{
+					id: 'field1',
+					displayName: 'First Name',
+					defaultMatch: true,
+					required: true,
+					display: true,
+				},
+			],
+			attemptToConvertTypes: true,
+			convertFieldsToString: false,
+		};
+
+		const filterValue = {
+			options: {
+				caseSensitive: false,
+				leftValue: 'name',
+				typeValidation: 'strict',
+				version: 2,
+			},
+			combinator: 'AND',
+			conditions: [
+				{
+					id: 'condition-1',
+					leftValue: 'email',
+					operator: {
+						type: 'string',
+						operation: 'contains',
+					},
+					rightValue: ['@n8n'],
+				},
+			],
+		};
+
+		const node: INode = {
+			id: 'http-node',
+			name: 'HTTP Node',
+			type: 'n8n-nodes-base.httpRequest',
+			typeVersion: 5,
+			position: [0, 0],
+			parameters: {
+				preBuiltAgentsCalloutHttpRequest: '',
+				curlImport: '',
+				method: 'GET',
+				url: '=https://www.api.com/user={{ $json.firstName }}',
+				authentication: 'none',
+				provideSslCertificates: false,
+				sendQuery: true,
+				nested: {
+					query: {
+						field: 'value',
+					},
+				},
+				resourceLocator: {
+					__rl: true,
+					mode: 'list',
+					value: '123',
+					cachedResultName: 'User',
+					cachedResultUrl: 'https://example.com',
+				},
+				mapper: resourceMapperValue,
+				filters: filterValue,
+				options: {},
+			},
+		};
+
+		const processed = await aiAssistantHelpers.processNodeForAssistant(node, [], {
+			trimParameterValues: true,
+		});
+
+		expect(processed.parameters).toEqual({
+			preBuiltAgentsCalloutHttpRequest: '',
+			curlImport: '',
+			method: '',
+			url: '',
+			authentication: '',
+			provideSslCertificates: null,
+			sendQuery: null,
+			nested: {
+				query: {
+					field: '',
+				},
+			},
+			resourceLocator: {
+				__rl: true,
+				mode: 'list',
+				value: '',
+			},
+			mapper: {
+				mappingMode: 'auto',
+				value: null,
+				matchingColumns: ['firstName'],
+				schema: [
+					{
+						id: 'field1',
+						displayName: 'First Name',
+						defaultMatch: true,
+						required: true,
+						display: true,
+					},
+				],
+				attemptToConvertTypes: true,
+				convertFieldsToString: false,
+			},
+			filters: {
+				options: {
+					caseSensitive: false,
+					leftValue: 'name',
+					typeValidation: 'strict',
+					version: 2,
+				},
+				combinator: 'AND',
+				conditions: [
+					{
+						id: 'condition-1',
+						leftValue: null,
+						operator: {
+							type: 'string',
+							operation: 'contains',
+						},
+						rightValue: [],
+					},
+				],
+			},
+			options: {},
+		});
+	});
+});
+
 describe('Trim Payload Size', () => {
 	let aiAssistantHelpers: ReturnType<typeof useAIAssistantHelpers>;
 

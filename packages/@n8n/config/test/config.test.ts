@@ -414,6 +414,7 @@ describe('GlobalConfig', () => {
 		ai: {
 			enabled: false,
 			timeout: 3600000,
+			allowSendingParameterValues: true,
 		},
 		workflowHistoryCompaction: {
 			batchDelayMs: 1_000,

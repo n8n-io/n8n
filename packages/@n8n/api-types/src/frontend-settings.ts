@@ -207,6 +207,9 @@ export interface FrontendSettings {
 		credits: number;
 		setup: boolean;
 	};
+	ai: {
+		allowSendingParameterValues: boolean;
+	};
 	pruning?: {
 		isEnabled: boolean;
 		maxAge: number;
