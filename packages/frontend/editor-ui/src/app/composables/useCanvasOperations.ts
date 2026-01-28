@@ -1884,8 +1884,9 @@ export function useCanvasOperations() {
 			}
 		}
 
-		delete workflowDocumentsStore.workflowDocumentsById[workflowDocumentsStore.workflowDocumentId]
-			.connections[targetNode.name];
+		// Clean up the connections entry for this node as a source
+		// (destination connections were already removed by the deleteConnection calls above)
+		workflowsStore.removeAllNodeConnection(targetNode, { preserveInputConnections: true });
 
 		if (trackHistory && trackBulk) {
 			historyStore.stopRecordingUndo();

@@ -3561,7 +3561,9 @@ describe('useCanvasOperations', () => {
 				],
 			});
 
-			expect(workflowsStore.workflow.connections[node1.name]).toBeUndefined();
+			expect(workflowsStore.removeAllNodeConnection).toHaveBeenCalledWith(node1, {
+				preserveInputConnections: true,
+			});
 		});
 
 		it('should not delete connections if node ID does not exist', () => {
