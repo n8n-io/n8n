@@ -106,20 +106,6 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				)) as Array<{ count: string | number }>;
 
 				return Number(queryResult[0].count) === 1 ? 'insert' : 'update';
-			} else {
-				const queryResult = (await this.query(
-					`INSERT INTO ${escapedTableName} (count, rootCount, name, workflowId, workflowName, latestEvent)
-					VALUES (1, ?, ?, ?, ?, NOW())
-					ON DUPLICATE KEY
-					UPDATE
-						count = count + 1,
-						rootCount = rootCount + ?,
-						workflowName = VALUES(workflowName),
-						latestEvent = NOW();`,
-					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
-				)) as { affectedRows: number };
-
-				return queryResult.affectedRows === 1 ? 'insert' : 'update';
 			}
 		} catch (error) {
 			console.log('error', error);
