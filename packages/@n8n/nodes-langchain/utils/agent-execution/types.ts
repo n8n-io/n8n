@@ -27,7 +27,7 @@ export type ToolCallRequest = {
 export type ToolCallData = {
 	action: {
 		tool: string;
-		toolInput: Record<string, unknown>;
+		toolInput: Record<string, unknown> | string;
 		log: string | number | true | object;
 		messageLog?: AIMessage[];
 		toolCallId: IDataObject | GenericValue | GenericValue[] | IDataObject[];
