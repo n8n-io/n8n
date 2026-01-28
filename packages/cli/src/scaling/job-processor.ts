@@ -164,6 +164,7 @@ export class JobProcessor {
 				const msg: McpResponseMessage = {
 					kind: 'mcp-response',
 					executionId,
+					mcpType: job.data.mcpType ?? 'service',
 					sessionId: job.data.mcpSessionId,
 					messageId: job.data.mcpMessageId ?? '',
 					response,

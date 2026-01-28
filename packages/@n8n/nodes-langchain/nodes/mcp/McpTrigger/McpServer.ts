@@ -132,6 +132,7 @@ export class McpServerManager {
 
 		resp.on('close', async () => {
 			this.logger.debug(`Deleting transport for ${sessionId}`);
+			this.cleanupSessionPendingResponses(sessionId);
 			delete this.tools[sessionId];
 			delete this.transports[sessionId];
 			delete this.servers[sessionId];
@@ -180,6 +181,7 @@ export class McpServerManager {
 					this.logger.debug(`New session initialized: ${sessionId}`);
 					transport.onclose = () => {
 						this.logger.debug(`Deleting transport for ${sessionId}`);
+						this.cleanupSessionPendingResponses(sessionId);
 						delete this.tools[sessionId];
 						delete this.transports[sessionId];
 						delete this.servers[sessionId];
@@ -247,6 +249,9 @@ export class McpServerManager {
 		const transport = this.getTransport(sessionId);
 
 		if (transport) {
+			// Clean up any pending responses for this session before deletion
+			this.cleanupSessionPendingResponses(sessionId);
+
 			if (transport instanceof FlushingStreamableHTTPTransport) {
 				await transport.handleRequest(req, resp);
 				return;
@@ -344,6 +349,43 @@ export class McpServerManager {
 	hasPendingResponse(sessionId: string, messageId: string): boolean {
 		const callId = messageId ? `${sessionId}_${messageId}` : sessionId;
 		return callId in this.pendingResponses;
+	}
+
+	/**
+	 * Clean up all pending responses for a given session.
+	 * Called when a session is deleted or closed.
+	 */
+	cleanupSessionPendingResponses(sessionId: string): void {
+		const keysToDelete: string[] = [];
+
+		for (const callId of Object.keys(this.pendingResponses)) {
+			if (this.pendingResponses[callId].sessionId === sessionId) {
+				keysToDelete.push(callId);
+			}
+		}
+
+		for (const callId of keysToDelete) {
+			// Also clean up any associated resolve functions
+			if (this.resolveFunctions[callId]) {
+				this.resolveFunctions[callId]();
+				delete this.resolveFunctions[callId];
+			}
+			delete this.pendingResponses[callId];
+		}
+
+		if (keysToDelete.length > 0) {
+			this.logger.debug('Cleaned up pending MCP responses for session', {
+				sessionId,
+				count: keysToDelete.length,
+			});
+		}
+	}
+
+	/**
+	 * Get the count of pending responses.
+	 */
+	get pendingResponseCount(): number {
+		return Object.keys(this.pendingResponses).length;
 	}
 
 	// #endregion

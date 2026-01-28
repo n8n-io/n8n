@@ -4,7 +4,11 @@ import { User, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
-import { createDeferredPromise, type IDeferredPromise } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	ManualExecutionCancelledError,
+	type IDeferredPromise,
+} from 'n8n-workflow';
 
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -24,6 +28,7 @@ import { WorkflowService } from '@/workflows/workflow.service';
  * Pending MCP execution response, used for queue mode support.
  */
 interface PendingMcpResponse {
+	executionId: string;
 	promise: IDeferredPromise<IRun | undefined>;
 	createdAt: Date;
 }
@@ -131,6 +136,7 @@ export class McpService {
 	createPendingResponse(executionId: string): IDeferredPromise<IRun | undefined> {
 		const deferred = createDeferredPromise<IRun | undefined>();
 		this.pendingResponses.set(executionId, {
+			executionId,
 			promise: deferred,
 			createdAt: new Date(),
 		});
@@ -163,6 +169,55 @@ export class McpService {
 			this.pendingResponses.delete(executionId);
 			this.logger.debug('Removed pending MCP response', { executionId });
 		}
+	}
+
+	/**
+	 * Cancel a pending MCP execution.
+	 * Rejects the pending promise and attempts to stop the execution.
+	 */
+	cancelPendingExecution(executionId: string, reason = 'MCP execution cancelled'): void {
+		const pending = this.pendingResponses.get(executionId);
+		if (!pending) {
+			this.logger.debug('No pending MCP execution to cancel', { executionId });
+			return;
+		}
+
+		this.logger.debug('Cancelling pending MCP execution', { executionId, reason });
+
+		// Reject the pending promise
+		const cancellationError = new ManualExecutionCancelledError(executionId);
+		pending.promise.reject(cancellationError);
+
+		// Clean up
+		this.pendingResponses.delete(executionId);
+
+		// Attempt to stop the execution if it's still active
+		if (this.activeExecutions.has(executionId)) {
+			this.activeExecutions.stopExecution(executionId, cancellationError);
+		}
+	}
+
+	/**
+	 * Cancel all pending MCP executions.
+	 * Used during shutdown or cleanup.
+	 */
+	cancelAllPendingExecutions(reason = 'MCP service shutdown'): void {
+		const executionIds = Array.from(this.pendingResponses.keys());
+		this.logger.debug('Cancelling all pending MCP executions', {
+			count: executionIds.length,
+			reason,
+		});
+
+		for (const executionId of executionIds) {
+			this.cancelPendingExecution(executionId, reason);
+		}
+	}
+
+	/**
+	 * Get the count of pending executions.
+	 */
+	get pendingExecutionCount(): number {
+		return this.pendingResponses.size;
 	}
 
 	// #endregion
