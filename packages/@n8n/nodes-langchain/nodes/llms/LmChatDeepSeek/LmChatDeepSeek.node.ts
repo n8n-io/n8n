@@ -235,6 +235,28 @@ export class LmChatDeepSeek implements INodeType {
 					bodyTimeout: timeout,
 				}),
 			},
+			fetch: async (url: RequestInfo | URL, init?: RequestInit) => {
+					if (modelName.startsWith('deepseek-reasoner') && init?.body && typeof init.body === 'string') {
+							try {
+									const body = JSON.parse(init.body);
+									if (body.messages && Array.isArray(body.messages)) {
+											let modified = false;
+											for (const message of body.messages) {
+													if (message.role === 'assistant' && !('reasoning_content' in message)) {
+															message.reasoning_content = null;
+															modified = true;
+													}
+											}
+											if (modified) {
+													init.body = JSON.stringify(body);
+											}
+									}
+							} catch (e) {
+									// Ignore parse errors, just proceed
+							}
+					}
+					return fetch(url, init);
+			},
 		};
 
 		const model = new ChatOpenAI({
