@@ -1,5 +1,5 @@
 import { AuthIdentity } from '../auth-identity';
-import { Role } from '../role';
+import { type Role } from '../role';
 import { User } from '../user';
 
 describe('User Entity', () => {
