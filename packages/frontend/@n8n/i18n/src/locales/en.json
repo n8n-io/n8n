@@ -3441,6 +3441,8 @@
 	"workflowHistory.action.unpublish.modal.button.unpublish": "Unpublish",
 	"workflowHistory.button.tooltip.empty": "This workflow currently has no history to view. Once you've made your first save, you'll be able to view previous versions",
 	"workflowHistory.button.tooltip": "Workflow history to view and restore previous versions of your workflows",
+	"workflowHistory.button.tooltip.scheduled": "Workflow will be saved shortly",
+	"workflowHistory.button.tooltip.saving": "Workflow is being saved",
 	"workflowHistory.group.unnamedVersions": "1 version | {count} versions",
 	"workflowHistory.publishModal.title": "Publish {versionName}",
 	"workflows.heading": "Workflows",
