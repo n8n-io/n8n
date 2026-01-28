@@ -486,6 +486,11 @@ onBeforeMount(() => {
 	@media (hover: hover) {
 		opacity: 0;
 		pointer-events: none;
+
+		&:hover {
+			opacity: 1;
+			pointer-events: auto;
+		}
 	}
 }
 
