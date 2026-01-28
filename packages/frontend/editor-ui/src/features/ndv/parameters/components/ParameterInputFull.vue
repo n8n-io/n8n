@@ -555,6 +555,7 @@ function removeOverride(clearField = false) {
 	justify-content: space-between;
 	position: relative;
 	min-height: 30px;
+	line-height: 0;
 
 	&:hover {
 		.inlineSwitchOptions {

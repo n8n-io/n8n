@@ -1864,7 +1864,23 @@ onUpdated(async () => {
 				</N8nOption>
 			</N8nSelect>
 
-			<!-- temporary state of booleans while data is mapped -->
+			<N8nInput
+				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled && droppable"
+				:size="inputSize"
+				:disabled="isReadOnly"
+				:title="displayTitle"
+				class="switch-droppable-input"
+			>
+				<template #prefix>
+					<N8nSwitch2
+						:model-value="Boolean(displayValue)"
+						:label="switchLabel"
+						:disabled="true"
+						size="small"
+					/>
+				</template>
+			</N8nInput>
+
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && droppable"
 				:size="inputSize"
@@ -1872,7 +1888,7 @@ onUpdated(async () => {
 				:disabled="isReadOnly"
 				:title="displayTitle"
 			/>
-			<!-- New Switch layout: horizontal with integrated label -->
+
 			<N8nSwitch2
 				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
 				ref="inputField"
@@ -1883,7 +1899,7 @@ onUpdated(async () => {
 				size="small"
 				@update:model-value="valueChanged"
 			/>
-			<!-- Legacy Switch layout: label rendered separately by parent -->
+
 			<ElSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
@@ -1993,6 +2009,10 @@ onUpdated(async () => {
 
 .has-issues {
 	--input--border-color: var(--color--danger);
+}
+
+.switch-droppable-input .el-input__prefix {
+	left: 8px;
 }
 
 .el-dropdown {
