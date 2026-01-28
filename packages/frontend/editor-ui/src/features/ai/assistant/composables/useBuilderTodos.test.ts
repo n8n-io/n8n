@@ -49,7 +49,7 @@ describe('useBuilderTodos', () => {
 		});
 
 		it('extracts single embedded placeholder from code', () => {
-			const code = `const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';`;
+			const code = "const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';";
 			expect(extractPlaceholderLabels(code)).toEqual(['API_KEY']);
 		});
 
@@ -192,7 +192,7 @@ describe('useBuilderTodos', () => {
 
 		it('finds embedded placeholder in code string', () => {
 			const result = findPlaceholderDetails({
-				jsCode: `const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';`,
+				jsCode: "const apiKey = '<__PLACEHOLDER_VALUE__API_KEY__>';",
 			});
 			expect(result).toEqual([{ path: ['jsCode'], label: 'API_KEY' }]);
 		});
@@ -223,7 +223,7 @@ describe('useBuilderTodos', () => {
 
 		it('finds embedded placeholders in Python code', () => {
 			const result = findPlaceholderDetails({
-				pythonCode: `api_key = '<__PLACEHOLDER_VALUE__Python API Key__>'`,
+				pythonCode: "api_key = '<__PLACEHOLDER_VALUE__Python API Key__>'",
 			});
 			expect(result).toEqual([{ path: ['pythonCode'], label: 'Python API Key' }]);
 		});
