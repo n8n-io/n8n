@@ -397,14 +397,15 @@ export class ScalingService {
 						{
 							workerId: msg.workerId,
 							executionId: msg.executionId,
+							mcpType: msg.mcpType,
 							sessionId: msg.sessionId,
 							messageId: msg.messageId,
 							jobId,
 						},
 					);
 
-					// Fetch execution data from DB and forward to MCP service
-					void this.handleMcpResponse(msg.executionId);
+					// Route to appropriate MCP handler based on type
+					void this.handleMcpResponse(msg.executionId, msg.mcpType, msg.sessionId, msg.messageId);
 					break;
 				default:
 					assertNever(msg);
@@ -423,9 +424,14 @@ export class ScalingService {
 	}
 
 	/**
-	 * Handle MCP response from worker - fetch execution data and forward to MCP service.
+	 * Handle MCP response from worker - fetch execution data and forward to appropriate MCP handler.
 	 */
-	private async handleMcpResponse(executionId: string): Promise<void> {
+	private async handleMcpResponse(
+		executionId: string,
+		mcpType: 'service' | 'trigger',
+		sessionId: string,
+		messageId: string,
+	): Promise<void> {
 		try {
 			// Fetch execution data from DB
 			const executionData = await this.executionRepository.findSingleExecution(executionId, {
@@ -449,13 +455,25 @@ export class ScalingService {
 				storedAt: executionData.storedAt,
 			};
 
-			// Forward to MCP service
-			const { McpService } = await import('@/modules/mcp/mcp.service');
-			const mcpService = Container.get(McpService);
-			mcpService.handleWorkerResponse(executionId, runData);
+			if (mcpType === 'service') {
+				// Forward to MCP Service
+				const { McpService } = await import('@/modules/mcp/mcp.service');
+				const mcpService = Container.get(McpService);
+				mcpService.handleWorkerResponse(executionId, runData);
+			} else {
+				// Forward to MCP Trigger's McpServerManager
+				const { McpServerManager } = await import(
+					'@n8n/n8n-nodes-langchain/dist/nodes/mcp/McpTrigger/McpServer'
+				);
+				// McpServerManager is a singleton that requires a logger for first initialization
+				// At this point it should already be initialized by the MCP Trigger node
+				const mcpServerManager = McpServerManager.instance(this.logger);
+				mcpServerManager.handleWorkerResponse(sessionId, messageId, runData);
+			}
 		} catch (error) {
 			this.logger.error('Failed to handle MCP response', {
 				executionId,
+				mcpType,
 				error: ensureError(error).message,
 			});
 		}

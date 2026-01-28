@@ -384,6 +384,7 @@ export class WorkflowRunner {
 			streamingEnabled: data.streamingEnabled,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
+			mcpType: data.mcpType,
 			mcpSessionId: data.mcpSessionId,
 			mcpMessageId: data.mcpMessageId,
 			originMainId: data.originMainId,

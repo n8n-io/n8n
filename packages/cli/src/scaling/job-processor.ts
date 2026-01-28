@@ -306,6 +306,7 @@ export class JobProcessor {
 			const mcpMsg: McpResponseMessage = {
 				kind: 'mcp-response',
 				executionId,
+				mcpType: job.data.mcpType ?? 'service',
 				sessionId: job.data.mcpSessionId,
 				messageId: job.data.mcpMessageId ?? '',
 				response: { success: !hasErrors }, // Main will fetch full data from DB

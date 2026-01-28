@@ -264,6 +264,7 @@ export const executeWorkflow = async (
 		userId: user.id,
 		// MCP metadata for queue mode support
 		isMcpExecution: mcpService.isQueueMode,
+		mcpType: 'service',
 		mcpSessionId: mcpMessageId, // Using messageId as sessionId for MCP Service (no persistent session)
 		mcpMessageId,
 		originMainId: mcpService.hostId,
