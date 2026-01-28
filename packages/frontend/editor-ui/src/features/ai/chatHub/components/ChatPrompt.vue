@@ -453,7 +453,7 @@ defineExpose({
 	border: var(--border);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 	&:focus-within,
@@ -462,7 +462,7 @@ defineExpose({
 	}
 
 	& textarea {
-		font: inherit;
+		font-size: var(--font-size--md);
 		line-height: 1.5em;
 		resize: none;
 		background-color: transparent !important;

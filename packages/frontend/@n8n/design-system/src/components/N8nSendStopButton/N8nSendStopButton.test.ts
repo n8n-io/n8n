@@ -176,7 +176,7 @@ describe('N8nSendStopButton', () => {
 			expect(button).toHaveAttribute('data-type', 'primary');
 			expect(button).toHaveAttribute('data-size', 'medium');
 			expect(button).toHaveAttribute('data-icon-size', 'large');
-			expect(button).toHaveAttribute('data-square', '');
+			expect(button).toHaveAttribute('data-square', 'true');
 			expect(button).toHaveAttribute('data-icon', 'arrow-up');
 			expect(button).not.toHaveAttribute('disabled');
 		});
