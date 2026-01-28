@@ -170,16 +170,12 @@ const conflictedDataTables = computed(() => {
 
 const hasDataTableConflicts = computed(() => conflictedDataTables.value.length > 0);
 
-const dataTableWarningContent = computed(() => {
+const dataTableWarningMessage = computed(() => {
 	if (!hasDataTableConflicts.value) return '';
 
-	const message = i18n.baseText('settings.sourceControl.modals.pull.dataTablesWarning', {
+	return i18n.baseText('settings.sourceControl.modals.pull.dataTablesWarning', {
 		interpolate: { count: conflictedDataTables.value.length },
 	});
-
-	const tableList = conflictedDataTables.value.map((dt) => `<li>${dt.name}</li>`).join('');
-
-	return `<div>${message}</div><ul>${tableList}</ul>`;
 });
 
 // Active data source based on tab
@@ -477,12 +473,12 @@ onMounted(() => {
 				<N8nText bold size="medium">Additional changes to be pulled:</N8nText>
 				<N8nText size="small">{{ otherFilesText }}</N8nText>
 			</div>
-			<N8nCallout
-				v-if="hasDataTableConflicts"
-				theme="warning"
-				class="mb-xs"
-				v-html="dataTableWarningContent"
-			/>
+			<N8nCallout v-if="hasDataTableConflicts" theme="warning" class="mb-xs">
+				<div>{{ dataTableWarningMessage }}</div>
+				<ul>
+					<li v-for="table in conflictedDataTables" :key="table.id">{{ table.name }}</li>
+				</ul>
+			</N8nCallout>
 			<div :class="$style.footer">
 				<N8nButton type="tertiary" class="mr-2xs" @click="close">
 					{{ i18n.baseText('settings.sourceControl.modals.pull.buttons.cancel') }}
