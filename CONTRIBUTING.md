@@ -288,7 +288,7 @@ N8N_DEV_RELOAD=true pnpm dev
 #### Running the BE server with a clean database
 
 If you want to flush your existing database, you can delete the `~/.n8n` folder.
-However, there might be times where you want to test a feature in a clean n8n set-up without loosing your existing local setup.
+However, there might be times where you want to test a feature in a clean n8n set-up without losing your existing local setup.
 In such use cases, you can specify another `N8N_USER_FOLDER`, e.g.:
 
 ```bash
