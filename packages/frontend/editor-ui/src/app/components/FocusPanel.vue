@@ -49,6 +49,9 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { type ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import SetupPanelTabs from '@/features/setupPanel/components/SetupPanelTabs.vue';
+import type { SetupPanelTabs as SetupPanelTabsType } from '@/features/setupPanel/types';
+import SetupPanel from '@/features/setupPanel/components/SetupPanel.vue';
 
 import {
 	N8nIcon,
@@ -95,6 +98,12 @@ const activeElement = useActiveElement();
 const { renameNode } = useCanvasOperations();
 
 useTelemetryContext({ view_shown: 'focus_panel' });
+
+const selectedTab = ref<SetupPanelTabsType>('setup');
+
+const showSetupPanel = computed(
+	() => setupPanelStore.isFeatureEnabled && selectedTab.value === 'setup',
+);
 
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 
@@ -460,6 +469,10 @@ function onRenameNode(value: string) {
 		void renameNode(node.value.name, value);
 	}
 }
+
+const onTabSelected = (tab: SetupPanelTabsType) => {
+	selectedTab.value = tab;
+};
 </script>
 
 <template>
@@ -484,199 +497,210 @@ function onRenameNode(value: string) {
 			@resize="onResizeThrottle"
 		>
 			<div :class="$style.container">
-				<ExperimentalFocusPanelHeader
-					v-if="experimentalNdvStore.isNdvInFocusPanelEnabled && node && !multipleNodesSelected"
-					:node="node"
-					:parameter="resolvedParameter?.parameter"
-					:is-executable="isExecutable"
-					:read-only="isCanvasReadOnly"
-					@execute="onExecute"
-					@open-ndv="onOpenNdv"
-					@clear-parameter="closeFocusPanel"
-					@rename-node="onRenameNode"
-				/>
-				<div v-if="resolvedParameter" :class="$style.content" data-test-id="focus-parameter">
-					<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">
-						<div :class="$style.tabHeaderText">
-							<N8nText color="text-dark" size="small">
-								{{ resolvedParameter.parameter.displayName }}
-							</N8nText>
-							<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
-						</div>
-						<div :class="$style.buttonWrapper">
-							<NodeExecuteButton
-								data-test-id="node-execute-button"
-								:node-name="resolvedParameter.node.name"
-								:tooltip="`Execute ${resolvedParameter.node.name}`"
-								:disabled="!isExecutable"
-								size="small"
-								icon="play"
-								:square="true"
-								:hide-label="true"
-								telemetry-source="focus"
-								@execute="onExecute"
-							/>
-							<N8nIcon
-								:class="$style.closeButton"
-								icon="x"
-								color="text-base"
-								size="xlarge"
-								@click="closeFocusPanel"
-							/>
-						</div>
-					</div>
-					<div :class="$style.parameterDetailsWrapper">
-						<div :class="$style.parameterOptionsWrapper">
-							<div :class="$style.noExecutionDataTip">
-								<N8nInfoTip
-									v-if="!hasNodeRun && !isNodeExecuting"
-									:class="$style.delayedShow"
-									:bold="true"
-								>
-									{{ locale.baseText('nodeView.focusPanel.noExecutionData') }}
-								</N8nInfoTip>
+				<div v-if="isSetupPanelEnabled">
+					<SetupPanelTabs @tab-selected="onTabSelected" />
+				</div>
+				<div v-if="showSetupPanel" :data-test-id="setup - panel" :class="$style.content">
+					<SetupPanel />
+				</div>
+				<div v-else data-test-id="focus-panels" :class="$style.content">
+					<ExperimentalFocusPanelHeader
+						v-if="experimentalNdvStore.isNdvInFocusPanelEnabled && node && !multipleNodesSelected"
+						:node="node"
+						:parameter="resolvedParameter?.parameter"
+						:is-executable="isExecutable"
+						:read-only="isCanvasReadOnly"
+						@execute="onExecute"
+						@open-ndv="onOpenNdv"
+						@clear-parameter="closeFocusPanel"
+						@rename-node="onRenameNode"
+					/>
+					<div v-if="resolvedParameter" :class="$style.content" data-test-id="focus-parameter">
+						<div v-if="!experimentalNdvStore.isNdvInFocusPanelEnabled" :class="$style.tabHeader">
+							<div :class="$style.tabHeaderText">
+								<N8nText color="text-dark" size="small">
+									{{ resolvedParameter.parameter.displayName }}
+								</N8nText>
+								<N8nText color="text-base" size="xsmall">{{ resolvedParameter.node.name }}</N8nText>
 							</div>
-							<ParameterOptions
-								v-if="isDisplayed"
-								:parameter="resolvedParameter.parameter"
-								:value="resolvedParameter.value"
-								:is-read-only="isReadOnly"
-								@update:model-value="optionSelected"
-							/>
+							<div :class="$style.buttonWrapper">
+								<NodeExecuteButton
+									data-test-id="node-execute-button"
+									:node-name="resolvedParameter.node.name"
+									:tooltip="`Execute ${resolvedParameter.node.name}`"
+									:disabled="!isExecutable"
+									size="small"
+									icon="play"
+									:square="true"
+									:hide-label="true"
+									telemetry-source="focus"
+									@execute="onExecute"
+								/>
+								<N8nIcon
+									:class="$style.closeButton"
+									icon="x"
+									color="text-base"
+									size="xlarge"
+									@click="closeFocusPanel"
+								/>
+							</div>
 						</div>
-						<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
-							<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
-								<div :class="$style.emptyText">
-									<N8nText color="text-base">
-										{{ locale.baseText('nodeView.focusPanel.missingParameter') }}
-									</N8nText>
+						<div :class="$style.parameterDetailsWrapper">
+							<div :class="$style.parameterOptionsWrapper">
+								<div :class="$style.noExecutionDataTip">
+									<N8nInfoTip
+										v-if="!hasNodeRun && !isNodeExecuting"
+										:class="$style.delayedShow"
+										:bold="true"
+									>
+										{{ locale.baseText('nodeView.focusPanel.noExecutionData') }}
+									</N8nInfoTip>
 								</div>
+								<ParameterOptions
+									v-if="isDisplayed"
+									:parameter="resolvedParameter.parameter"
+									:value="resolvedParameter.value"
+									:is-read-only="isReadOnly"
+									@update:model-value="optionSelected"
+								/>
 							</div>
-							<ExpressionEditorModalInput
-								v-else-if="expressionModeEnabled"
-								ref="inputField"
-								v-model="inputValue"
-								:class="$style.editor"
-								:is-read-only="isReadOnly"
-								:path="resolvedParameter.parameterPath"
-								data-test-id="expression-modal-input"
-								:target-node-parameter-context="targetNodeParameterContext"
-								@change="onInputChange($event.value)"
-							/>
-							<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
-								<CodeNodeEditor
-									v-if="editorType === 'codeNodeEditor'"
-									:id="resolvedParameter.parameterPath"
-									ref="inputField"
-									v-model="inputValue"
-									:class="$style.heightFull"
-									:mode="codeEditorMode"
-									:default-value="resolvedParameter.parameter.default"
-									:language="editorLanguage"
-									:is-read-only="isReadOnly"
-									:target-node-parameter-context="targetNodeParameterContext"
-									fill-parent
-									:disable-ask-ai="true"
-									@update:model-value="onInputChange" />
-								<HtmlEditor
-									v-else-if="editorType === 'htmlEditor'"
-									ref="inputField"
-									v-model="inputValue"
-									:is-read-only="isReadOnly"
-									:rows="editorRows"
-									:disable-expression-coloring="!isHtmlNode"
-									:disable-expression-completions="!isHtmlNode"
-									fullscreen
-									:target-node-parameter-context="targetNodeParameterContext"
-									@update:model-value="onInputChange" />
-								<CssEditor
-									v-else-if="editorType === 'cssEditor'"
-									ref="inputField"
-									v-model="inputValue"
-									:is-read-only="isReadOnly"
-									:rows="editorRows"
-									fullscreen
-									:target-node-parameter-context="targetNodeParameterContext"
-									@update:model-value="onInputChange" />
-								<SqlEditor
-									v-else-if="editorType === 'sqlEditor'"
-									ref="inputField"
-									v-model="inputValue"
-									:dialect="getTypeOption('sqlDialect')"
-									:is-read-only="isReadOnly"
-									:rows="editorRows"
-									fullscreen
-									:target-node-parameter-context="targetNodeParameterContext"
-									@update:model-value="onInputChange" />
-								<JsEditor
-									v-else-if="editorType === 'jsEditor'"
-									ref="inputField"
-									v-model="inputValue"
-									:is-read-only="isReadOnly"
-									:rows="editorRows"
-									:posthog-capture="shouldCaptureForPosthog"
-									fill-parent
-									@update:model-value="onInputChange" />
-								<JsonEditor
-									v-else-if="resolvedParameter.parameter.type === 'json'"
-									ref="inputField"
-									v-model="inputValue"
-									:is-read-only="isReadOnly"
-									:rows="editorRows"
-									fullscreen
-									fill-parent
-									@update:model-value="onInputChange" />
-								<N8nInput
-									v-else
+							<div
+								v-if="typeof resolvedParameter.value === 'string'"
+								:class="$style.editorContainer"
+							>
+								<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
+									<div :class="$style.emptyText">
+										<N8nText color="text-base">
+											{{ locale.baseText('nodeView.focusPanel.missingParameter') }}
+										</N8nText>
+									</div>
+								</div>
+								<ExpressionEditorModalInput
+									v-else-if="expressionModeEnabled"
 									ref="inputField"
 									v-model="inputValue"
 									:class="$style.editor"
-									:readonly="isReadOnly"
-									type="textarea"
-									resize="none"
-									@update:model-value="onInputChange"
-								></N8nInput
-							></template>
+									:is-read-only="isReadOnly"
+									:path="resolvedParameter.parameterPath"
+									data-test-id="expression-modal-input"
+									:target-node-parameter-context="targetNodeParameterContext"
+									@change="onInputChange($event.value)"
+								/>
+								<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
+									<CodeNodeEditor
+										v-if="editorType === 'codeNodeEditor'"
+										:id="resolvedParameter.parameterPath"
+										ref="inputField"
+										v-model="inputValue"
+										:class="$style.heightFull"
+										:mode="codeEditorMode"
+										:default-value="resolvedParameter.parameter.default"
+										:language="editorLanguage"
+										:is-read-only="isReadOnly"
+										:target-node-parameter-context="targetNodeParameterContext"
+										fill-parent
+										:disable-ask-ai="true"
+										@update:model-value="onInputChange" />
+									<HtmlEditor
+										v-else-if="editorType === 'htmlEditor'"
+										ref="inputField"
+										v-model="inputValue"
+										:is-read-only="isReadOnly"
+										:rows="editorRows"
+										:disable-expression-coloring="!isHtmlNode"
+										:disable-expression-completions="!isHtmlNode"
+										fullscreen
+										:target-node-parameter-context="targetNodeParameterContext"
+										@update:model-value="onInputChange" />
+									<CssEditor
+										v-else-if="editorType === 'cssEditor'"
+										ref="inputField"
+										v-model="inputValue"
+										:is-read-only="isReadOnly"
+										:rows="editorRows"
+										fullscreen
+										:target-node-parameter-context="targetNodeParameterContext"
+										@update:model-value="onInputChange" />
+									<SqlEditor
+										v-else-if="editorType === 'sqlEditor'"
+										ref="inputField"
+										v-model="inputValue"
+										:dialect="getTypeOption('sqlDialect')"
+										:is-read-only="isReadOnly"
+										:rows="editorRows"
+										fullscreen
+										:target-node-parameter-context="targetNodeParameterContext"
+										@update:model-value="onInputChange" />
+									<JsEditor
+										v-else-if="editorType === 'jsEditor'"
+										ref="inputField"
+										v-model="inputValue"
+										:is-read-only="isReadOnly"
+										:rows="editorRows"
+										:posthog-capture="shouldCaptureForPosthog"
+										fill-parent
+										@update:model-value="onInputChange" />
+									<JsonEditor
+										v-else-if="resolvedParameter.parameter.type === 'json'"
+										ref="inputField"
+										v-model="inputValue"
+										:is-read-only="isReadOnly"
+										:rows="editorRows"
+										fullscreen
+										fill-parent
+										@update:model-value="onInputChange" />
+									<N8nInput
+										v-else
+										ref="inputField"
+										v-model="inputValue"
+										:class="$style.editor"
+										:readonly="isReadOnly"
+										type="textarea"
+										resize="none"
+										@update:model-value="onInputChange"
+									></N8nInput
+								></template>
+							</div>
 						</div>
 					</div>
-				</div>
-				<ExperimentalNodeDetailsDrawer
-					v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
-					:node="node"
-					:node-ids="selectedNodeIds"
-					:is-read-only="isReadOnly"
-					@open-ndv="onOpenNdv"
-					@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
-				/>
-				<div v-else :class="[$style.content, $style.emptyContent]">
-					<div :class="$style.focusParameterWrapper">
-						<div :class="$style.iconWrapper">
-							<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
-							<N8nIcon
-								:class="$style.pointerIcon"
-								icon="mouse-pointer"
-								color="text-dark"
-								size="large"
+					<ExperimentalNodeDetailsDrawer
+						v-else-if="node && experimentalNdvStore.isNdvInFocusPanelEnabled"
+						:node="node"
+						:node-ids="selectedNodeIds"
+						:is-read-only="isReadOnly"
+						@open-ndv="onOpenNdv"
+						@context-menu-action="(action, nodeIds) => emit('contextMenuAction', action, nodeIds)"
+					/>
+					<div v-else :class="[$style.content, $style.emptyContent]">
+						<div :class="$style.focusParameterWrapper">
+							<div :class="$style.iconWrapper">
+								<N8nIcon :class="$style.forceHover" icon="panel-right" size="medium" />
+								<N8nIcon
+									:class="$style.pointerIcon"
+									icon="mouse-pointer"
+									color="text-dark"
+									size="large"
+								/>
+							</div>
+							<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
+							<N8nRadioButtons
+								size="small"
+								:model-value="'expression'"
+								:disabled="true"
+								:options="[
+									{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
+									{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
+								]"
 							/>
 						</div>
-						<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
-						<N8nRadioButtons
-							size="small"
-							:model-value="'expression'"
-							:disabled="true"
-							:options="[
-								{ label: locale.baseText('parameterInput.fixed'), value: 'fixed' },
-								{ label: locale.baseText('parameterInput.expression'), value: 'expression' },
-							]"
-						/>
-					</div>
-					<div :class="$style.emptyText">
-						<N8nText color="text-base" size="medium" :bold="true">
-							{{ emptyTitle }}
-						</N8nText>
-						<N8nText color="text-base" size="small">
-							{{ emptySubtitle }}
-						</N8nText>
+						<div :class="$style.emptyText">
+							<N8nText color="text-base" size="medium" :bold="true">
+								{{ emptyTitle }}
+							</N8nText>
+							<N8nText color="text-base" size="small">
+								{{ emptySubtitle }}
+							</N8nText>
+						</div>
 					</div>
 				</div>
 			</div>
