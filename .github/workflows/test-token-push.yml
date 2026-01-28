@@ -38,9 +38,9 @@ jobs:
           ref: ${{ github.event.inputs.source-branch || github.head_ref }}
           token: ${{ steps.generate_token.outputs.token }}
 
-      - name: Test push (mimics release branch push)
+      - name: Test push (mimics release branch push - using GITHUB_TOKEN, should fail)
         env:
-          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE_BRANCH: ${{ github.event.inputs.source-branch || github.head_ref }}
         run: |
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
@@ -51,6 +51,6 @@ jobs:
       - name: Cleanup test branch
         if: always()
         env:
-          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git push origin --delete test-release/0.0.0-test || echo "Branch already deleted or doesn't exist"
