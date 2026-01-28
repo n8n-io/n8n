@@ -2,7 +2,9 @@
 
 exports[`ConnectionTracker > should not render error when connected and online 1`] = `
 <div>
-  <span>
+  <span
+    data-v-f4a2fe1d=""
+  >
     
     
   </span>
@@ -11,7 +13,9 @@ exports[`ConnectionTracker > should not render error when connected and online 1
 
 exports[`ConnectionTracker > should not render error when push connected and connection not requested 1`] = `
 <div>
-  <span>
+  <span
+    data-v-f4a2fe1d=""
+  >
     
     
   </span>
@@ -20,9 +24,12 @@ exports[`ConnectionTracker > should not render error when push connected and con
 
 exports[`ConnectionTracker > should render network error when both offline and push disconnected 1`] = `
 <div>
-  <span>
+  <span
+    data-v-f4a2fe1d=""
+  >
     <div
-      class="connection-lost primary-color"
+      class="connection-lost"
+      data-v-f4a2fe1d=""
     >
       
       
@@ -34,12 +41,24 @@ exports[`ConnectionTracker > should render network error when both offline and p
       >
         
         
-        <span>
+        <span
+          class="connection-lost-content"
+          data-v-f4a2fe1d=""
+        >
           <n8n-icon-stub
+            color="warning"
+            data-v-f4a2fe1d=""
             icon="triangle-alert"
             spin="false"
           />
-            Connection lost, auto save paused
+          <span
+            class="n8n-text size-small regular"
+            data-v-f4a2fe1d=""
+          >
+            
+            Connection lost, auto save paused
+            
+          </span>
         </span>
         
         
@@ -55,9 +74,12 @@ exports[`ConnectionTracker > should render network error when both offline and p
 
 exports[`ConnectionTracker > should render network error when offline (priority 1) 1`] = `
 <div>
-  <span>
+  <span
+    data-v-f4a2fe1d=""
+  >
     <div
-      class="connection-lost primary-color"
+      class="connection-lost"
+      data-v-f4a2fe1d=""
     >
       
       
@@ -69,12 +91,24 @@ exports[`ConnectionTracker > should render network error when offline (priority 
       >
         
         
-        <span>
+        <span
+          class="connection-lost-content"
+          data-v-f4a2fe1d=""
+        >
           <n8n-icon-stub
+            color="warning"
+            data-v-f4a2fe1d=""
             icon="triangle-alert"
             spin="false"
           />
-            Connection lost, auto save paused
+          <span
+            class="n8n-text size-small regular"
+            data-v-f4a2fe1d=""
+          >
+            
+            Connection lost, auto save paused
+            
+          </span>
         </span>
         
         
@@ -90,9 +124,12 @@ exports[`ConnectionTracker > should render network error when offline (priority 
 
 exports[`ConnectionTracker > should render push error when push disconnected and online 1`] = `
 <div>
-  <span>
+  <span
+    data-v-f4a2fe1d=""
+  >
     <div
-      class="connection-lost primary-color"
+      class="connection-lost"
+      data-v-f4a2fe1d=""
     >
       
       
@@ -104,12 +141,24 @@ exports[`ConnectionTracker > should render push error when push disconnected and
       >
         
         
-        <span>
+        <span
+          class="connection-lost-content"
+          data-v-f4a2fe1d=""
+        >
           <n8n-icon-stub
+            color="warning"
+            data-v-f4a2fe1d=""
             icon="triangle-alert"
             spin="false"
           />
-            Connection lost
+          <span
+            class="n8n-text size-small regular"
+            data-v-f4a2fe1d=""
+          >
+            
+            Connection lost
+            
+          </span>
         </span>
         
         

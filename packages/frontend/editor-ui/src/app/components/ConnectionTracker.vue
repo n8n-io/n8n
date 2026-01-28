@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import type { BaseTextKey } from '@n8n/i18n';
 
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 
 const pushConnectionStore = usePushConnectionStore();
 const networkStore = useNetworkStore();
@@ -56,17 +56,30 @@ const connectionStatus = computed<ConnectionStatus>(() => {
 
 <template>
 	<span>
-		<div v-if="connectionStatus.hasError" class="connection-lost primary-color">
+		<div v-if="connectionStatus.hasError" class="connection-lost">
 			<N8nTooltip placement="bottom-end">
 				<template #content>
 					<div v-n8n-html="i18n.baseText(connectionStatus.tooltip)"></div>
 				</template>
-				<span>
-					<N8nIcon icon="triangle-alert" />&nbsp;
-					{{ i18n.baseText(connectionStatus.message) }}
+				<span class="connection-lost-content">
+					<N8nIcon icon="triangle-alert" color="warning" />
+					<N8nText size="small">{{ i18n.baseText(connectionStatus.message) }}</N8nText>
 				</span>
 			</N8nTooltip>
 		</div>
 		<slot v-else />
 	</span>
 </template>
+
+<style scoped>
+.connection-lost {
+	display: flex;
+	align-items: center;
+}
+
+.connection-lost-content {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+</style>
