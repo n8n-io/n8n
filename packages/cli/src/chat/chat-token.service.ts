@@ -15,7 +15,7 @@ interface ChatTokenPayload {
  */
 @Service()
 export class ChatTokenService {
-	private static readonly TOKEN_EXPIRY = '1h';
+	private static readonly TOKEN_EXPIRY = '5m';
 
 	constructor(private readonly jwtService: JwtService) {}
 

@@ -23,7 +23,7 @@ describe('ChatTokenService', () => {
 			expect(token).toBe('signed-jwt-token');
 			expect(jwtService.sign).toHaveBeenCalledWith(
 				{ executionId, type: 'chat' },
-				{ expiresIn: '1h' },
+				{ expiresIn: '5m' },
 			);
 		});
 
